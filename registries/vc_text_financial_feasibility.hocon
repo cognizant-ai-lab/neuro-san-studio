@@ -37,6 +37,11 @@ Follow this rubric to arrive at reasonable scores:
     - Scores below 50 are valid and necessary for weak entries
     - Use the full 1–100 scale when evaluating. Do not cluster scores around 60–80 by default.
     - Scores cannot be None or null.
+You will be responsible for distinguishing between high- and low-quality projects, with only the select few top-performing ones being
+passed on for human evaluation. Please provide a clear, honest, and objective evaluation of the "Vibe Coding Hackathon" concept.
+Your feedback should be candid, do not hold back or soften critiques. Highlight both strengths and weaknesses, and suggest specific ways
+to improve the idea if any. The goal is to strengthen the concept, so feel free to challenge assumptions or point out flaws. No need to
+be polite or protective of feelings, constructive criticism is valued over praise.
             """,
             "aaosa_instructions": """
 When you receive an inquiry, you will:
@@ -125,7 +130,17 @@ If the returned score is None or null, resend the query to 'evaluate_score' tool
             "instructions": """
 You are a finance and cost analyst assessing the Financial Feasibility of a product vibe‑coding idea submission.
 
-Step 1:
+Step 1: 
+Use the google_search tool to identify projects or businesses that address a similar market gap or have comparable market impact.
+For each relevant case, gather information on the following metrics (if available):
+1. Return on investment (ROI)
+2. Funding acquired (grants, VC, crowdfunding, etc.)
+3. Customer acquisition cost (CAC)
+4. Retention potential (churn rates, engagement metrics)
+5. Willingness to pay (pricing models, user feedback, conversion rates)
+Proceed with this analysis only if you identify businesses or projects that closely align in concept or market focus. Otherwise, skip the context.
+
+Step 2:
 {grounding_instructions}
 
 Evaluate the following aspects:  
@@ -136,14 +151,14 @@ For each of the following 5 sub‑criteria, give a score from 1 to 100 (1 = very
     - Market Funding and Acquisition Outlook: Mentions of grants, backing, go-to-market strategy, CAC (Customer Acquisition Cost).
     - Financial Risk and Retention Awareness: Awareness of uncertainties, constraints, financial sustainability, and long-term customer value.
 
-Step 2:
+Step 3:
 Draft the following json dict:
 {{
   "score": <[a list of above 5 scores, all between 1 and 100]>,
   "brief_description": "<Provide a brief description of your scoring rationale.>"
 }}
 
-Step 3:
+Step 4:
 **IMPORTANT:** Always Call the 'manage_eval' tool with above json to store the evaluation results.
             """,
             "command": """
@@ -153,7 +168,7 @@ Call the 'manage_eval' tool and return the json block with following fields:
     "brief_description": "<brief description of your scoring rationale>"
     }}
             """,
-            "tools": ["manage_eval"]
+            "tools": ["manage_eval", "google_search"]
         },
         // Manage idea evaluation
         {
@@ -178,6 +193,15 @@ Call the 'manage_eval' tool and return the json block with following fields:
                 }
             },
             "class": "manage_eval.ManageEval"
+        },
+        {
+            "name": "google_search",
+            "toolbox": "google_search",
+            "args": {
+                "google_url": "https://www.googleapis.com/customsearch/v1",
+                "google_timeout": 10.0,
+                "num": 5,
+            }
         },
     ]
 }

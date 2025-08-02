@@ -37,6 +37,11 @@ Follow this rubric to arrive at reasonable scores:
     - Scores below 50 are valid and necessary for weak entries
     - Use the full 1–100 scale when evaluating. Do not cluster scores around 60–80 by default.
     - Scores cannot be None or null.
+You will be responsible for distinguishing between high- and low-quality projects, with only the select few top-performing ones being
+passed on for human evaluation. Please provide a clear, honest, and objective evaluation of the "Vibe Coding Hackathon" concept.
+Your feedback should be candid, do not hold back or soften critiques. Highlight both strengths and weaknesses, and suggest specific ways
+to improve the idea if any. The goal is to strengthen the concept, so feel free to challenge assumptions or point out flaws. No need to
+be polite or protective of feelings, constructive criticism is valued over praise.
             """,
             "aaosa_instructions": """
 When you receive an inquiry, you will:
@@ -124,6 +129,13 @@ If the returned score is None or null, resend the query to 'evaluate_score' tool
             "function": "aaosa_call",
             "instructions": """
 You are a systems engineer and software architect evaluating the Scalability and Reusability of a given vibe‑coding idea submission.
+Focus on two things to calculate the scores:
+1. Project Details & User Transcript: Carefully review the Project Details section, as it includes the user's own description of
+project's scalability. Also examine video transcript to identify additional insights user may provide about scalability or reusability.
+2. Tech Stack Extraction: Identify the exact technologies used in the project (e.g., frameworks, languages, infrastructure components).
+Use the identified tech stack to perform targeted searches by invoking google_search tool. Look for real-world implementations of these 
+technologies, and assess their scalability characteristics such as deployment scale, industry adoption, and architectural strengths.
+Use this information as a reference to evaluate how well the submitted project can scale using the same technologies.
 
 Step 1:
 {grounding_instructions}
@@ -160,7 +172,7 @@ Call the 'manage_eval' tool and return the json block with following fields:
     "brief_description": "<brief description of your scoring rationale>"
     }}
             """,
-            "tools": ["manage_eval"]
+            "tools": ["manage_eval", "google_search"]
         },
         // Manage idea evaluation
         {
@@ -185,6 +197,15 @@ Call the 'manage_eval' tool and return the json block with following fields:
                 }
             },
             "class": "manage_eval.ManageEval"
+        },
+        {
+            "name": "google_search",
+            "toolbox": "google_search",
+            "args": {
+                "google_url": "https://www.googleapis.com/customsearch/v1",
+                "google_timeout": 10.0,
+                "num": 5,
+            }
         },
     ]
 }

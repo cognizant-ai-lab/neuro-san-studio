@@ -37,6 +37,11 @@ Follow this rubric to arrive at reasonable scores:
     - Scores below 50 are valid and necessary for weak entries
     - Use the full 1–100 scale when evaluating. Do not cluster scores around 60–80 by default.
     - Scores cannot be None or null.
+You will be responsible for distinguishing between high- and low-quality projects, with only the select few top-performing ones being
+passed on for human evaluation. Please provide a clear, honest, and objective evaluation of the "Vibe Coding Submission Idea".
+Your feedback should be candid, do not hold back or soften critiques. Highlight both strengths and weaknesses, and suggest specific ways
+to improve the idea if any. The goal is to strengthen the concept, so feel free to challenge assumptions or point out flaws. No need to
+be polite or protective of feelings, constructive criticism is valued over praise.
             """,
             "aaosa_instructions": """
 When you receive an inquiry, you will:
@@ -127,6 +132,14 @@ You are an expert in product innovation and emerging technologies.
 Your job is to assess the Degree of Innovativeness of the vibe coding idea submission based on the input.
 
 Step 1:
+Before assigning any scores, you must first gather relevant background context by invoking the following tools:
+    1. RAGcontext_innovation — Search through ~200,000 research papers in the computer science domain to
+    identify whether similar ideas or techniques have already been proposed or published.
+    2. Webcontext_innovation — Search through websites like Google, Twitter, GitHub, Medium, and other startup
+    or product directories to find evidence of similar business ideas already implemented or discussed publicly.
+    These two sources give context which must be considered to evaluate the innocation score. Summarize your findings clearly.
+
+Step 2:
 {grounding_instructions}
 
 Evaluate the following aspects:
@@ -159,7 +172,65 @@ Call the 'manage_eval' tool and return the json block with following fields:
     "brief_description": "<brief description of your scoring rationale>"
     }}
             """,
-            "tools": ["manage_eval"]
+            "tools": ["manage_eval", "RAGcontext_innovation", "Webcontext_innovation"]
+        },
+        {
+            "name": "RAGcontext_innovation",
+            "function": "aaosa_call",
+            "instructions": """
+You are an expert in extracting context for the LLMs.
+Your primary role is to search through approximately 200,000 research papers in the computer science domain to identify whether ideas or techniques
+similar to the vibe coding submissions have already been proposed or published.
+Step 1:
+If document loading is required, invoke the innovation_tool to execute the load_csv action; otherwise, skip this step.
+Use the following json format to call the tool:
+{{
+    "action": "load_csv"
+    "folder_path": "<path to the csv folder>"
+}}
+Step 2:
+Invoke the innovation_tool with query_documents action to retrieve ideas from the RAG to use as context for the LLMs. The query parameter must contain
+a detailed summary of the idea, highlighting its objective and potential impact, the problems solved, market gap, tools, models, agents, or frameworks
+used, relevant AI, machine learning, and data science concepts applied and other details.
+Use the following json format to call the tool:
+{{
+    "action": "query_documents"
+    "query": "<brief summary of the user idea>"
+}}
+Step 3:
+After retrieving context from the RAG setup, format it clearly and compactly for the LLM. Please:
+- Include all relevant points.
+- Be concise, not verbose.
+- Use structured formatting (e.g., bullets or sections).
+- Ensure clarity and completeness to aid LLM understanding.
+            """,
+            "tools": ["innovation_tool"]
+        },
+        {
+            "name": "Webcontext_innovation",
+            "function": "aaosa_call",
+            "instructions": """
+You are an expert in product innovation and emerging technologies. 
+Your job is to find the Web context and assess the Webcontext_innovation_score of the vibe coding idea submission based on the input.
+
+Step 1:
+Using the google_search tool to retrieve similar ideas from the web which you can use as context to evaluate how innovative is the idea given to you
+and calculate a Webcontext_innovation_score.
+Please keep in mind that we need to complete this search as efficiently as possible.
+USE A MAXIMUM OF ONE GOOGLE SEARCH QUERY.
+We need to call the query to consider the following three cases:
+1. Projects/Businesses that are very similar in both idea and implementation to the submitted idea.
+2. Implementations that use the same core technology stack or methods but solve problems in a different domain or serve a different market.
+3. Projects targeting the same user need or domain, but achieving it with a different methodology or technical architecture.
+
+Step 2:
+After retrieving context from the google_search setup, format it clearly and compactly for the LLM. Please:
+- Include all relevant points.
+- Be concise, not verbose.
+- Use structured formatting (e.g., bullets or sections).
+- Ensure clarity and completeness to aid LLM understanding.
+            """,
+            "tools": ["google_search"]
         },
         // Manage idea evaluation
         {
@@ -184,6 +255,40 @@ Call the 'manage_eval' tool and return the json block with following fields:
                 }
             },
             "class": "manage_eval.ManageEval"
+        },
+        {
+            "name": "innovation_tool",
+            "function": {
+                "description": "Performs semantic search over arXiv to find research ideas similar to a user's input, supporting innovation score evaluation.",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "action": {
+                            "type": "string",
+                            description: "The action to perform: 'load_csv' or 'query_documents'."
+                        },
+                        "folder_path": {
+                            "type": "string",
+                            description: "Path to folder with CSVs. Needed for 'load_csv'."
+                        },
+                        "query": {
+                            "type": "string",
+                            "description": "Query string for document search. Needed for 'query_documents'."
+                        },
+                    },
+                    required: ["action"]
+                }
+            },
+            "class": "innovation_tool.ArxivRAG"
+        },
+        {
+            "name": "google_search",
+            "toolbox": "google_search",
+            "args": {
+                "google_url": "https://www.googleapis.com/customsearch/v1",
+                "google_timeout": 10.0,
+                "num": 5,
+            }
         },
     ]
 }

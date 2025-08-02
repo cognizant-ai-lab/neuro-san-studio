@@ -37,6 +37,11 @@ Follow this rubric to arrive at reasonable scores:
     - Scores below 50 are valid and necessary for weak entries
     - Use the full 1–100 scale when evaluating. Do not cluster scores around 60–80 by default.
     - Scores cannot be None or null.
+You will be responsible for distinguishing between high- and low-quality projects, with only the select few top-performing ones being
+passed on for human evaluation. Please provide a clear, honest, and objective evaluation of the "Vibe Coding Hackathon" concept.
+Your feedback should be candid, do not hold back or soften critiques. Highlight both strengths and weaknesses, and suggest specific ways
+to improve the idea if any. The goal is to strengthen the concept, so feel free to challenge assumptions or point out flaws. No need to
+be polite or protective of feelings, constructive criticism is valued over praise.
             """,
             "aaosa_instructions": """
 When you receive an inquiry, you will:
@@ -124,6 +129,14 @@ If the returned score is None or null, resend the query to 'evaluate_score' tool
             "function": "aaosa_call",
             "instructions": """
 You are a UX designer and human‑computer interaction expert evaluating the User Experience (UX) of the vibe‑coding idea submission based on the input.
+
+Focus on three things to calculate the scores:
+1. Project Details Section: This typically includes the user’s own description of the UX and functionality. Be sure to review this section closely for insights
+into the intended user experience and feature set.
+2. Video Transcript: Use this to assess the UI functionality and observe how naturally and clearly the user describes their experience. A smooth explanation
+often reflects good usability.
+3. Repository Metadata: Review this to gauge the robustness of the front-end component, for example, higher number of lines in HTML/CSS files suggests more
+complex or comprehensive UI development.
 
 Step 1:
 {grounding_instructions}
