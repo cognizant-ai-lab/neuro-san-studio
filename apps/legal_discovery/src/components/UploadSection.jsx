@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import ErrorBoundary from "./ErrorBoundary";
+import { io } from "socket.io-client";
 import Spinner from "./common/Spinner";
 import ErrorBanner from "./common/ErrorBanner";
 
@@ -34,6 +35,15 @@ function UploadSection() {
         setLoading(false);
       });
   };
+  useEffect(() => {
+    const s = io('/ws/upload', { transports: ["websocket"] });
+    s.on('upload_progress', (ev) => {
+      if (!ev || !ev.job_id) return;
+      // Event-driven updates are supplemental; polling remains the source of truth
+    });
+    return () => s.disconnect();
+  }, []);
+
   const upload = async () => {
     const files = Array.from(inputRef.current.files);
     if (!files.length) return;

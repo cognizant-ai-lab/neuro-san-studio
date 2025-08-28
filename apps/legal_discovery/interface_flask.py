@@ -208,6 +208,15 @@ def _set_status(job_id: str | None, state: str, **kwargs) -> None:
         return
     payload = {"state": state, "updated": time.time()} | kwargs
     _status_set(job_id, payload)
+    # Broadcast progress to connected clients
+    try:  # pragma: no cover - best effort
+        socketio.emit(
+            "upload_progress",
+            {"job_id": job_id, **payload},
+            namespace="/ws/upload",
+        )
+    except Exception:
+        pass
 # Allow the primary relational store to be configured at runtime. Default to
 # SQLite for local development but override with an environment-provided
 # PostgreSQL connection string when available so the application scales under
