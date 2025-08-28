@@ -17,7 +17,8 @@ from io import BytesIO, StringIO
 import fitz
 import schedule
 import spacy
-from flask import Flask, Response, jsonify, render_template, request, send_file
+from flask import Flask, Response, jsonify, render_template, request, send_file, g
+import uuid
 from more_itertools import chunked
 import structlog
 from pyhocon import ConfigFactory
@@ -151,6 +152,19 @@ app.config["SECRET_KEY"] = secret_key
 app.config["JWT_SECRET"] = jwt_secret
 # Configure rate limiting storage (Redis in production).
 app.config["RATELIMIT_STORAGE_URI"] = os.environ.get("REDIS_URL", "memory://")
+# Attach a request ID to each request for tracing and log correlation.
+@app.before_request
+def _assign_request_id():
+    rid = request.headers.get("X-Request-ID") or uuid.uuid4().hex
+    g.request_id = rid
+
+
+@app.after_request
+def _add_request_id_header(resp: Response):
+    rid = getattr(g, "request_id", None)
+    if rid:
+        resp.headers["X-Request-ID"] = rid
+    return resp
 # Allow the primary relational store to be configured at runtime. Default to
 # SQLite for local development but override with an environment-provided
 # PostgreSQL connection string when available so the application scales under

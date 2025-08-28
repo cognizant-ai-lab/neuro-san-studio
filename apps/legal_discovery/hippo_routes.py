@@ -18,7 +18,15 @@ except Exception:  # pragma: no cover - driver may be absent
 
 from . import hippo
 from .database import db, log_retrieval_trace, log_objection_resolution
-from .extensions import socketio, limiter, user_limit_key, blocked_requests, cache_stats
+from .extensions import (
+    socketio,
+    limiter,
+    user_limit_key,
+    blocked_requests,
+    cache_stats,
+    redis_client,
+)
+from .api_utils import ok
 from .cache import redis_cache
 from .models import ObjectionEvent, ObjectionResolution
 from .models_trial import TranscriptSegment, TrialSession
@@ -40,11 +48,15 @@ def _hippo_query_cached(case_id: str, query: str, k: int = 10):
 
 @health_bp.get("/health")
 def health() -> "flask.Response":
-    """Report connectivity status for Neo4j and Chroma services."""
+    """Report connectivity status for core dependencies (Neo4j, Chroma, Postgres, Redis)."""
     neo4j_status = "ok"
     chroma_status = "ok"
+    postgres_status = "ok"
+    redis_status = "ok"
     neo4j_error = None
     chroma_error = None
+    postgres_error = None
+    redis_error = None
 
     try:  # pragma: no cover - external service
         if GraphDatabase is None:
@@ -73,17 +85,63 @@ def health() -> "flask.Response":
         chroma_status = "fail"
         chroma_error = str(exc)
 
-    payload = {
+    # Postgres readiness via a trivial SELECT 1
+    try:  # pragma: no cover - external service
+        from .database import db
+
+        db.session.execute("SELECT 1")
+    except Exception as exc:
+        logger.exception("Postgres health check failed")
+        postgres_status = "fail"
+        postgres_error = str(exc)
+
+    # Redis readiness via ping if configured
+    try:  # pragma: no cover - external service
+        if redis_client is None:
+            raise RuntimeError("redis client unavailable")
+        redis_client.ping()
+    except Exception as exc:
+        logger.exception("Redis health check failed")
+        redis_status = "fail"
+        redis_error = str(exc)
+
+    data = {
         "neo4j": neo4j_status,
         "chroma": chroma_status,
+        "postgres": postgres_status,
+        "redis": redis_status,
         "blocked_requests": dict(blocked_requests),
         "cache": {"hits": cache_stats.get("hits", 0), "misses": cache_stats.get("misses", 0)},
     }
+    meta = {}
     if neo4j_error:
-        payload["neo4j_error"] = neo4j_error
+        meta["neo4j_error"] = neo4j_error
     if chroma_error:
-        payload["chroma_error"] = chroma_error
-    return jsonify(payload)
+        meta["chroma_error"] = chroma_error
+    if postgres_error:
+        meta["postgres_error"] = postgres_error
+    if redis_error:
+        meta["redis_error"] = redis_error
+
+    return ok(data=data, meta=meta if meta else None)
+
+
+@health_bp.get("/readiness")
+def readiness() -> "flask.Response":
+    """Report readiness of the application (DB migrations, caches, essential deps)."""
+    # For now, mirror health but require all OK.
+    res, status = health()
+    # health() already returns an envelope; determine readiness from fields.
+    try:
+        payload = res.get_json() or {}
+        data = payload.get("data", {})
+        ready = all(data.get(k) == "ok" for k in ("neo4j", "chroma", "postgres", "redis"))
+    except Exception:
+        ready = False
+    if not ready:
+        # Return original payload with a 503 status to signal not-ready.
+        return res[0], 503
+    return res
 
 
 @bp.post("/index")
