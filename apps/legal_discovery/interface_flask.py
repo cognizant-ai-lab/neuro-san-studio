@@ -86,6 +86,7 @@ from coded_tools.legal_discovery.legal_crawler import LegalCrawler
 from coded_tools.legal_discovery.narrative_discrepancy_detector import (
     NarrativeDiscrepancyDetector,
 )
+from coded_tools.legal_discovery.timeline_manager import TimelineManager
 
 try:
     from apps.legal_discovery.legal_discovery import (
@@ -1042,6 +1043,12 @@ def ingest_document(
         
         _set_status(job_id, "done")
 
+        # Kick off a lightweight agent-driven timeline overview update
+        try:
+            socketio.start_background_task(_generate_timeline_overview, case_id)
+        except Exception:
+            pass
+
 
 MAX_FILE_SIZE = 50 * 1024 * 1024  # 50MB
 MAX_TIMEOUT = 30  # seconds per file
@@ -1204,6 +1211,51 @@ def upload_status():
         st = _status_get(jid)
         payload[jid] = st or {"state": "unknown"}
     return ok(payload)
+
+
+def _generate_timeline_overview(case_id: int) -> None:
+    """Use the TimelineManager (coded tool/agent) to materialize a default overview.
+
+    We derive events from extracted Facts that include dates and upsert them via the
+    manager's text-based API to keep logic inside the agent layer.
+    """
+    try:
+        from .models import Fact
+        tm = TimelineManager()
+        facts = (
+            Fact.query.filter_by(case_id=case_id)
+            .order_by(Fact.created_at)
+            .all()
+        )
+        for f in facts:
+            if not f.dates:
+                continue
+            # Use the first date found; format as YYYY-MM-DD
+            date = None
+            if isinstance(f.dates, list) and f.dates:
+                date = str(f.dates[0])[:10]
+            elif isinstance(f.dates, dict) and f.dates.get("date"):
+                date = str(f.dates["date"])[:10]
+            if not date or len(date) < 8:
+                continue
+            text = f.text.strip().replace("\n", " ")
+            # Optionally include doc ref token for agent parser
+            doc_token = f" [ex:{f.document_id}]" if getattr(f, "document_id", None) else ""
+            tm.upsert_event_from_text(f"{date} {text}{doc_token}", case_id=case_id)
+    except Exception as exc:
+        logger.exception("timeline overview generation failed", exc_info=exc)
+
+
+@app.get("/api/timeline/generate")
+def generate_timeline_endpoint():
+    """Trigger agent-driven timeline generation for a case (overview or by query)."""
+    try:
+        case = Case.query.first()
+        case_id = int(request.args.get("case_id") or (case.id if case else 1))
+    except Exception:
+        case_id = 1
+    socketio.start_background_task(_generate_timeline_overview, case_id)
+    return ok({"case_id": case_id})
 
         try:
             db.session.commit()
