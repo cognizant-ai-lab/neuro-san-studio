@@ -258,7 +258,22 @@ def rate_limit_handler(exc):
     with tracer.start_as_current_span("rate_limit_handler"):
         endpoint = request.endpoint or request.path
         blocked_requests[endpoint] += 1
-        return jsonify({"error": "rate limit exceeded"}), 429
+        return err("rate_limited", "rate limit exceeded"), 429
+
+
+@app.errorhandler(404)
+def not_found_handler(exc):
+    return err("not_found", "resource not found"), 404
+
+
+@app.errorhandler(400)
+def bad_request_handler(exc):
+    return err("bad_request", "invalid request"), 400
+
+
+@app.errorhandler(500)
+def internal_error_handler(exc):
+    return err("internal_error", "unexpected server error"), 500
 
 
 # Shared crawler instance for legal references
@@ -843,6 +858,7 @@ def ingest_document(
     full_metadata: dict,
     chroma_metadata: dict,
     job_id: str | None = None,
+    enable_redaction: bool = False,
 ) -> None:
     """Extract, vectorize, and relate a document in the background."""
     with app.app_context():
@@ -860,7 +876,7 @@ def ingest_document(
             app.logger.error("Document %s not found during ingestion", doc_id)
             raise LookupError(f"Document {doc_id} not found")
             return
-        if privileged:
+        if enable_redaction and privileged:
             keywords = [text[s.start : s.end] for s in spans]
             if original_path.lower().endswith(".pdf"):
                 detector.redact_pdf(original_path, redacted_path, keywords)
@@ -893,9 +909,11 @@ def ingest_document(
         else:
             shutil.copy(original_path, redacted_path)
             redacted_text = text
-            doc.is_privileged = False
-            doc.is_redacted = False
-            doc.needs_review = False
+            # When redaction is disabled, do not mark as privileged/redacted.
+            if enable_redaction:
+                doc.is_privileged = False
+                doc.is_redacted = False
+                doc.needs_review = False
             db.session.commit()
             _set_status(job_id, "extracted")
 
@@ -979,6 +997,7 @@ def upload_files():
         return jsonify({"error": "No files provided"}), 400
 
     source_str = request.form.get("source", "user").lower()
+    redaction_flag = (request.form.get("redaction", "false").lower() == "true")
     try:
         source_enum = DocumentSource(source_str)
     except ValueError:
@@ -1081,6 +1100,7 @@ def upload_files():
                 full_metadata,
                 chroma_metadata,
                 job_id,
+                redaction_flag,
             )
             futures.append((future, job_id, filename))
             accepted.append(job_id)

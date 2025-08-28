@@ -14,6 +14,7 @@ function UploadSection() {
   const [current,setCurrent] = useState('');
   const [source,setSource] = useState('user');
   const [filter,setFilter] = useState('all');
+  const [redaction,setRedaction] = useState(false);
   const [paused,setPaused] = useState(false);
   const [loading,setLoading] = useState(false);
   const [error,setError] = useState(null);
@@ -39,6 +40,7 @@ function UploadSection() {
     let uploaded = 0;
     pausedRef.current = false;
     setPaused(false);
+    const jobIds = [];
     for (let i = 0; i < files.length; i += 10) {
       while (pausedRef.current) {
         await new Promise(r=>setTimeout(r,200));
@@ -48,28 +50,34 @@ function UploadSection() {
       const fd = new FormData();
       batch.forEach(f => fd.append('files', f, f.webkitRelativePath || f.name));
       fd.append('source', source);
-      await new Promise(res => {
-        const xhr = new XMLHttpRequest();
-        xhr.open('POST','/api/upload');
-        xhr.onload = xhr.onerror = () => res();
-        xhr.send(fd);
-      });
-      uploaded += batch.length;
-      const pct = Math.round((uploaded / files.length) * 100);
-      setProg(pct);
-      setVecProg(pct);
-      setKgProg(pct);
-      setNeoProg(pct);
+      fd.append('redaction', redaction ? 'true' : 'false');
+      const resp = await fetch('/api/upload', { method: 'POST', body: fd });
+      let data = {};
+      try { data = await resp.json(); } catch {}
+      const accepted = (data?.data?.accepted) || [];
+      jobIds.push(...accepted);
     }
-    setCurrent('');
-    setProg(0);
-    setVecProg(0);
-    setKgProg(0);
-    setNeoProg(0);
-    pausedRef.current = false;
-    setPaused(false);
-    fetchFiles();
-    window.dispatchEvent(new Event('graphRefresh'));
+    // Poll status until all jobs complete
+    const pending = new Set(jobIds);
+    while (pending.size) {
+      const qs = Array.from(pending).map(id => 'job_id='+encodeURIComponent(id)).join('&');
+      try {
+        const r = await fetch('/api/upload/status?'+qs);
+        const j = await r.json();
+        const payload = j?.data || {};
+        let doneCount = 0;
+        for (const [id, st] of Object.entries(payload)) {
+          if (st && (st.state === 'done' || st.state === 'unknown')) pending.delete(id);
+        }
+        doneCount = jobIds.length - pending.size;
+        const pct = Math.round((doneCount / jobIds.length) * 100);
+        setProg(pct); setVecProg(pct); setKgProg(pct); setNeoProg(pct);
+      } catch {}
+      await new Promise(r=>setTimeout(r, 1000));
+    }
+    setCurrent(''); setProg(0); setVecProg(0); setKgProg(0); setNeoProg(0);
+    pausedRef.current = false; setPaused(false);
+    fetchFiles(); window.dispatchEvent(new Event('graphRefresh'));
   };
   const fetchFiles = () => {
     setLoading(true);
@@ -150,6 +158,10 @@ function UploadSection() {
           <option value="opp_counsel">Opposing Counsel</option>
           <option value="court">Court</option>
         </select>
+        <label className="flex items-center gap-2 text-sm">
+          <input type="checkbox" checked={redaction} onChange={e=>setRedaction(e.target.checked)} />
+          Enable Redaction
+        </label>
         <button className="button-primary" onClick={upload}><i className="fa fa-upload mr-1"></i>Upload</button>
         <button className="button-secondary" onClick={exportAll}><i className="fa fa-file-export mr-1"></i>Export All</button>
         <button className="button-secondary" onClick={organize}><i className="fa fa-folder-tree mr-1"></i>Organize</button>

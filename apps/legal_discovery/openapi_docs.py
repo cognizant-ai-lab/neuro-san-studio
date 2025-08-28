@@ -56,6 +56,15 @@ def openapi_spec() -> Response:
             "/api/readiness": {
                 "get": {"summary": "Service readiness", "responses": {"200": {"description": "Ready"}, "503": {"description": "Not ready"}}}
             },
+            "/api/upload/status": {
+                "get": {
+                    "summary": "Get upload/ingestion status by job_id",
+                    "parameters": [
+                        {"name": "job_id", "in": "query", "schema": {"type": "string"}, "required": True, "description": "Repeatable; may be comma-separated"}
+                    ],
+                    "responses": {"200": {"description": "Map of job_id -> status"}}
+                }
+            },
             "/api/vector/search": {
                 "get": {
                     "summary": "Search vectors",
@@ -72,8 +81,21 @@ def openapi_spec() -> Response:
             "/api/upload": {
                 "post": {
                     "summary": "Upload documents",
-                    "requestBody": {"content": {"multipart/form-data": {"schema": {"type": "object"}}}},
-                    "responses": {"200": {"description": "Accepted / processing"}, "202": {"description": "Accepted"}},
+                    "requestBody": {
+                        "content": {
+                            "multipart/form-data": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "files": {"type": "array", "items": {"type": "string", "format": "binary"}},
+                                        "source": {"type": "string", "enum": ["user", "opp_counsel", "court"]},
+                                        "redaction": {"type": "boolean", "description": "Enable privilege redaction (default false)"}
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "responses": {"202": {"description": "Accepted", "content": {"application/json": {"schema": {"type": "object"}}}}},
                 }
             },
         },
@@ -105,4 +127,3 @@ def swagger_ui() -> Response:
   </html>
     """
     return Response(html, mimetype="text/html")
-
