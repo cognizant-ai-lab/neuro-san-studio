@@ -271,8 +271,9 @@ h2 {
 
 .card-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
-    gap: 24px;
+    grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+    gap: 32px;
+    align-items: stretch;
 }
 
 .network-grid {
@@ -291,13 +292,25 @@ h2 {
 /* Simple tabbed interface */
 .tab-buttons {
     display: flex;
-    flex-wrap: wrap;
-    gap: 8px;
-    margin-bottom: 20px;
+    flex-wrap: nowrap;
+    gap: var(--space-sm);
+    margin-bottom: var(--space-sm);
+    overflow-x: auto;
+    padding: var(--space-sm);
+    scrollbar-width: thin;
 }
+.tab-buttons::-webkit-scrollbar {
+    height: 4px;
+}
+.tab-buttons::-webkit-scrollbar-thumb {
+    background: var(--color-accent-700);
+    border-radius: 2px;
+}
+
 
 .tab-button {
     padding: 8px 16px;
+    flex: 0 0 auto;
     background: var(--card-bg);
     border: 1px solid var(--border-colour);
     border-radius: 6px;
@@ -333,7 +346,14 @@ h2 {
         "content";
 }
 .tab-buttons { grid-area: tabs; }
-.tab-panels { grid-area: content; }
+.tab-panels {
+    grid-area: content;
+    padding: var(--space-lg);
+    width: 100%;
+    max-width: 1600px;
+    margin: 0 auto;
+    box-sizing: border-box;
+}
 
 @media (min-width: 768px) {
     .dashboard-grid {
