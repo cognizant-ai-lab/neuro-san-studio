@@ -113,6 +113,13 @@ def health() -> "flask.Response":
         "blocked_requests": dict(blocked_requests),
         "cache": {"hits": cache_stats.get("hits", 0), "misses": cache_stats.get("misses", 0)},
     }
+    # Include ingestion queue depth if available
+    try:
+        from .interface_flask import _pending_count, MAX_PENDING  # type: ignore
+
+        data["queue"] = {"pending": _pending_count(), "max_pending": MAX_PENDING}
+    except Exception:
+        pass
     meta = {}
     if neo4j_error:
         meta["neo4j_error"] = neo4j_error

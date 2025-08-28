@@ -10,6 +10,7 @@ import secrets
 import threading
 import time
 from concurrent.futures import ThreadPoolExecutor, TimeoutError
+from threading import Lock
 from datetime import datetime
 from difflib import SequenceMatcher
 from io import BytesIO, StringIO
@@ -259,6 +260,28 @@ if FEATURE_FLAGS.get("chat"):
 executor = ThreadPoolExecutor(max_workers=int(os.environ.get("INGESTION_WORKERS", "4")))
 atexit.register(executor.shutdown)
 thread_started = False  # pylint: disable=invalid-name
+
+# Backpressure: limit the number of pending ingestion jobs to avoid unbounded queues
+PENDING_JOBS: set[str] = set()
+PENDING_LOCK: Lock = Lock()
+MAX_PENDING = int(os.environ.get("INGESTION_MAX_PENDING", "1000"))
+
+
+def _pending_count() -> int:
+    with PENDING_LOCK:
+        return len(PENDING_JOBS)
+
+
+def _pending_add(job_id: str) -> None:
+    with PENDING_LOCK:
+        PENDING_JOBS.add(job_id)
+
+
+def _pending_remove(job_id: str | None) -> None:
+    if not job_id:
+        return
+    with PENDING_LOCK:
+        PENDING_JOBS.discard(job_id)
 
 
 @app.errorhandler(429)
@@ -1016,6 +1039,7 @@ def ingest_document(
             metadata={"path": redacted_path},
             source_team="legal_discovery",
         )
+        
         _set_status(job_id, "done")
 
 
@@ -1124,8 +1148,13 @@ def upload_files():
             # ingestion thread can retrieve them using a separate session.
             db.session.commit()
             # Enqueue background ingestion and return job ID immediately
+            # Backpressure: stop enqueuing if too many jobs are pending
+            if _pending_count() >= MAX_PENDING:
+                app.logger.warning("ingestion queue full: %s >= %s", _pending_count(), MAX_PENDING)
+                break
             job_id = uuid.uuid4().hex
             _set_status(job_id, "queued", filename=filename, doc_id=int(doc.id))
+            _pending_add(job_id)
             future = executor.submit(
                 ingest_document,
                 original_path,
@@ -1141,7 +1170,8 @@ def upload_files():
             accepted.append(job_id)
 
         # Do not block on futures; return job IDs to the client
-    return ok({"accepted": accepted, "skipped": skipped}, status=202)
+    busy = _pending_count() >= MAX_PENDING
+    return ok({"accepted": accepted, "skipped": skipped}, meta={"pending": _pending_count(), "max_pending": MAX_PENDING, "busy": busy}, status=202)
 
 
 @app.route("/api/upload/status", methods=["GET"])

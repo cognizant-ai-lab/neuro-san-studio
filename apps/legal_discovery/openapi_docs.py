@@ -95,7 +95,13 @@ def openapi_spec() -> Response:
                             }
                         }
                     },
-                    "responses": {"202": {"description": "Accepted", "content": {"application/json": {"schema": {"type": "object"}}}}},
+                    "responses": {
+                        "202": {
+                            "description": "Accepted",
+                            "content": {"application/json": {"schema": {"type": "object"}}},
+                        },
+                        "429": {"description": "Too many requests / busy"}
+                    },
                 }
             },
         },

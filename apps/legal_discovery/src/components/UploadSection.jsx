@@ -65,7 +65,12 @@ function UploadSection() {
       let data = {};
       try { data = await resp.json(); } catch {}
       const accepted = (data?.data?.accepted) || [];
+      const busy = !!(data?.meta?.busy);
       jobIds.push(...accepted);
+      if (busy) {
+        // Server signaled backpressure; wait briefly before next batch
+        await new Promise(r=>setTimeout(r, 2000));
+      }
     }
     // Poll status until all jobs complete
     const pending = new Set(jobIds);
