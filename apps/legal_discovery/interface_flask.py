@@ -49,7 +49,7 @@ from .feature_flags import FEATURE_FLAGS
 from .hippo_routes import bp as hippo_bp, objections_bp, health_bp
 from .openapi_docs import docs_bp
 from .api_utils import ok, err
-from .tasks import tasks_bp
+from .tasks import tasks_bp, enqueue, queue as rq_queue, ingest_job as rq_ingest_job
 from .trial_assistant import bp as trial_assistant_bp
 from .trial_prep_routes import trial_prep_bp
 from .validators import NarrativeDiscrepancyAnalyzePayload
@@ -1155,18 +1155,32 @@ def upload_files():
             job_id = uuid.uuid4().hex
             _set_status(job_id, "queued", filename=filename, doc_id=int(doc.id))
             _pending_add(job_id)
-            future = executor.submit(
-                ingest_document,
-                original_path,
-                redacted_path,
-                doc.id,
-                case_id,
-                full_metadata,
-                chroma_metadata,
-                job_id,
-                redaction_flag,
-            )
-            futures.append((future, job_id, filename))
+            if rq_queue is not None:
+                # Use RQ if available (Redis-backed), else thread pool
+                enqueue(
+                    rq_ingest_job,
+                    original_path,
+                    redacted_path,
+                    int(doc.id),
+                    int(case_id),
+                    full_metadata,
+                    chroma_metadata,
+                    job_id,
+                    redaction_flag,
+                )
+            else:
+                future = executor.submit(
+                    ingest_document,
+                    original_path,
+                    redacted_path,
+                    doc.id,
+                    case_id,
+                    full_metadata,
+                    chroma_metadata,
+                    job_id,
+                    redaction_flag,
+                )
+                futures.append((future, job_id, filename))
             accepted.append(job_id)
 
         # Do not block on futures; return job IDs to the client

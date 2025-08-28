@@ -156,3 +156,32 @@ __all__ = [
     "analyze_segment_task",
     "tasks_bp",
 ]
+
+
+def ingest_job(
+    original_path: str,
+    redacted_path: str,
+    doc_id: int,
+    case_id: int,
+    full_metadata: dict,
+    chroma_metadata: dict,
+    job_id: str | None = None,
+    enable_redaction: bool = False,
+) -> None:
+    """RQ-compatible ingestion entrypoint wrapping interface_flask.ingest_document.
+
+    Imported lazily to avoid circular imports on module import.
+    """
+    with _context():
+        from .interface_flask import ingest_document  # local import
+
+        ingest_document(
+            original_path,
+            redacted_path,
+            doc_id,
+            case_id,
+            full_metadata,
+            chroma_metadata,
+            job_id,
+            enable_redaction,
+        )
