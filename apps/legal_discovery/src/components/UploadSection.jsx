@@ -178,6 +178,7 @@ function UploadSection() {
     setCurrent(''); setProg(0); setVecProg(0); setKgProg(0); setNeoProg(0);
     pausedRef.current = false; setPaused(false);
     fetchFiles(); window.dispatchEvent(new Event('graphRefresh'));
+    try { window.dispatchEvent(new CustomEvent('toast', { detail: { type: 'success', message: `Ingestion complete (${jobs.length} files)` } })); } catch {}
   };
   const fetchFiles = () => {
     setLoading(true);
