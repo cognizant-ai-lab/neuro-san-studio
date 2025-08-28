@@ -2177,6 +2177,84 @@ schedule.every().day.at("01:00").do(update_legal_references)
 schedule.every().day.at("00:00").do(cleanup_upload_folder)
 socketio.start_background_task(run_scheduled_tasks)
 
+
+# ---- Timeline event management and hover images ---------------------------
+
+def _thumb_dir() -> str:
+    d = os.path.join(app.static_folder, "thumbnails")
+    os.makedirs(d, exist_ok=True)
+    return d
+
+
+def _make_hover_image(pdf_path: str, page: int, rect: list[float]) -> str:
+    doc = fitz.open(pdf_path)
+    pg = doc.load_page(page)
+    r = fitz.Rect(*rect)
+    pix = pg.get_pixmap(clip=r, dpi=144)
+    fname = f"hover_{hashlib.sha256((pdf_path+str(page)+str(rect)).encode()).hexdigest()[:16]}.png"
+    out_path = os.path.join(_thumb_dir(), fname)
+    pix.save(out_path)
+    return f"/static/thumbnails/{fname}"
+
+
+@app.route("/api/timeline/events", methods=["POST"])
+def add_timeline_event():
+    data = request.get_json() or {}
+    case_id = int(data.get("case_id") or 1)
+    description = data.get("description") or ""
+    event_date = data.get("event_date") or datetime.utcnow().isoformat()
+    links = data.get("links") or {}
+    try:
+        if links.get("doc_path") and "page" in links and "rect" in links:
+            links["hover_image"] = _make_hover_image(links["doc_path"], int(links["page"]), links["rect"])
+    except Exception as exc:
+        logger.exception("hover image generation failed", exc_info=exc)
+    evt = TimelineEvent(case_id=case_id, description=description, event_date=datetime.fromisoformat(event_date), links=links)
+    db.session.add(evt)
+    db.session.commit()
+    return ok({"id": evt.id})
+
+
+@app.route("/api/timeline/events/<int:event_id>", methods=["DELETE"])
+def delete_timeline_event(event_id: int):
+    evt = db.session.get(TimelineEvent, event_id)
+    if not evt:
+        return err("not_found", "event not found"), 404
+    db.session.delete(evt)
+    db.session.commit()
+    return ok({"deleted": event_id})
+
+
+@app.route("/api/timeline/events/<int:event_id>/attach", methods=["POST"])
+def attach_timeline_support(event_id: int):
+    evt = db.session.get(TimelineEvent, event_id)
+    if not evt:
+        return err("not_found", "event not found"), 404
+    data = request.get_json() or {}
+    links = dict(evt.links or {})
+    attach = links.get("attachments", [])
+    attach.append(data)
+    links["attachments"] = attach
+    evt.links = links
+    db.session.commit()
+    return ok({"id": event_id, "links": links})
+
+
+@app.route("/api/timeline/hover_image", methods=["POST"])
+def create_hover_image():
+    data = request.get_json() or {}
+    doc_path = data.get("doc_path")
+    page = int(data.get("page", 0))
+    rect = data.get("rect")
+    if not doc_path or rect is None:
+        return err("bad_request", "doc_path and rect required"), 400
+    try:
+        url = _make_hover_image(doc_path, page, rect)
+        return ok({"url": url})
+    except Exception as exc:
+        logger.exception("hover image generation failed", exc_info=exc)
+        return err("hover_failed", str(exc)), 500
+
 if __name__ == "__main__":
     app.logger.info("Starting Flask server...")
     with app.app_context():
