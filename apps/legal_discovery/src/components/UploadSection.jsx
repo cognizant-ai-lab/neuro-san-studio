@@ -1,12 +1,67 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import ErrorBoundary from "./ErrorBoundary";
 import { io } from "socket.io-client";
 import Spinner from "./common/Spinner";
 import ErrorBanner from "./common/ErrorBanner";
+// Inline lightweight components to avoid extra deps/files in this pass
+const UploadGraph = ({ data = [], width = 560, height = 72 }) => {
+  const ref = React.useRef(null);
+  React.useEffect(() => {
+    const cvs = ref.current; if (!cvs) return;
+    const ctx = cvs.getContext('2d');
+    ctx.clearRect(0,0,width,height);
+    ctx.fillStyle = 'rgba(255,255,255,0.04)';
+    for (let x=0; x<width; x+=30) ctx.fillRect(x, 0, 1, height);
+    for (let y=0; y<height; y+=15) ctx.fillRect(0, y, width, 1);
+    if (!data.length) return;
+    const t0 = data[0].t; const t1 = data[data.length-1].t; const dt = Math.max(1, t1 - t0);
+    const pad = 4;
+    ctx.beginPath();
+    data.forEach((p, i) => {
+      const x = pad + (width - pad*2) * ((p.t - t0) / dt);
+      const y = pad + (height - pad*2) * (1 - p.v/100);
+      if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+    });
+    const grad = ctx.createLinearGradient(0,0,width,0);
+    grad.addColorStop(0, 'rgba(0,229,255,0.9)'); grad.addColorStop(1, 'rgba(0,200,255,0.5)');
+    ctx.strokeStyle = grad; ctx.lineWidth = 2; ctx.shadowColor = 'rgba(0,229,255,0.6)'; ctx.shadowBlur = 8; ctx.stroke();
+    const last = data[data.length-1]; const lastX = pad + (width - pad*2) * ((last.t - t0)/dt);
+    ctx.lineTo(lastX, height - pad); ctx.lineTo(pad, height - pad); ctx.closePath();
+    const fill = ctx.createLinearGradient(0,0,0,height);
+    fill.addColorStop(0, 'rgba(0,229,255,0.18)'); fill.addColorStop(1, 'rgba(0,229,255,0.02)');
+    ctx.fillStyle = fill; ctx.fill();
+  }, [data, width, height]);
+  return <canvas ref={ref} width={width} height={height} style={{ width, height, display:'block', borderRadius:8, background:'rgba(255,255,255,0.02)' }} aria-label="Upload progress graph" role="img"/>;
+};
+
+const VirtualList = ({ items = [], itemHeight = 28, height = 196, renderItem, overscan = 8 }) => {
+  const [scrollTop, setScrollTop] = React.useState(0);
+  const onScroll = (e) => setScrollTop(e.currentTarget.scrollTop);
+  const total = items.length;
+  const viewport = Math.max(1, Math.floor(height / itemHeight));
+  const start = Math.max(0, Math.floor(scrollTop / itemHeight) - overscan);
+  const end = Math.min(total, start + viewport + overscan * 2);
+  const topPad = start * itemHeight;
+  const visible = React.useMemo(() => items.slice(start, end), [items, start, end]);
+  return (
+    <div onScroll={onScroll} style={{ overflowY: 'auto', height: `${height}px` }}>
+      <div style={{ height: `${total * itemHeight}px`, position: 'relative' }}>
+        <div style={{ position: 'absolute', top: `${topPad}px`, left: 0, right: 0 }}>
+          {visible.map((item, i) => (
+            <div key={item.id || i} style={{ height: `${itemHeight}px` }}>
+              {renderItem(item, start + i)}
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+};
 
 function UploadSection() {
   const inputRef = React.useRef();
   const pausedRef = React.useRef(false);
+  const graphRef = useRef({ start: Date.now(), points: [] });
   const [tree, setTree] = useState([]);
   const [prog,setProg] = useState(0);
   const [vecProg,setVecProg] = useState(0);
@@ -14,6 +69,7 @@ function UploadSection() {
   const [neoProg,setNeoProg] = useState(0);
   const [current,setCurrent] = useState('');
   const [jobs, setJobs] = useState([]); // [{id, name, state}]
+  const [trend, setTrend] = useState([]); // [{t, v}]
   const [source,setSource] = useState('user');
   const [filter,setFilter] = useState('all');
   const [redaction,setRedaction] = useState(false);
@@ -44,6 +100,24 @@ function UploadSection() {
     });
     return () => s.disconnect();
   }, []);
+
+  useEffect(() => {
+    let raf;
+    const tick = () => {
+      const now = Date.now();
+      const total = jobs.length || 1;
+      const done = jobs.filter(j => j.state === 'done').length;
+      const v = total ? Math.round((done / total) * 100) : 0;
+      const pts = graphRef.current.points;
+      pts.push({ t: now, v });
+      const cutoff = now - 60000;
+      graphRef.current.points = pts.filter(p => p.t >= cutoff);
+      setTrend([...graphRef.current.points]);
+      raf = requestAnimationFrame(tick);
+    };
+    raf = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(raf);
+  }, [jobs]);
 
   const upload = async () => {
     const files = Array.from(inputRef.current.files);
@@ -220,14 +294,19 @@ function UploadSection() {
       )}
       {jobs.length>0 && (
         <div className="mb-3" role="status" aria-live="polite">
-          <ul className="text-xs grid gap-1">
-            {jobs.slice(-100).map((j,i)=> (
-              <li key={j.id||i} className="flex items-center justify-between bg-gray-900/40 px-2 py-1 rounded border border-gray-700">
+          <div className="mb-2"><UploadGraph data={trend} width={560} height={72} /></div>
+          <VirtualList
+            items={jobs}
+            itemHeight={28}
+            height={196}
+            overscan={8}
+            renderItem={(j)=> (
+              <div className="flex items-center justify-between bg-gray-900/40 px-2 rounded border border-gray-700">
                 <span className="truncate" title={j.name}>{j.name}</span>
                 <span className={`px-2 py-0.5 rounded text-gray-900 ${j.state==='done'?'bg-green-400': j.state==='vectored'?'bg-blue-300': j.state==='redacted'?'bg-purple-300': 'bg-yellow-300'}`}>{j.state}</span>
-              </li>
-            ))}
-          </ul>
+              </div>
+            )}
+          />
         </div>
       )}
       <div className="folder-tree text-sm"><ul>{renderNodes(tree)}</ul></div>
