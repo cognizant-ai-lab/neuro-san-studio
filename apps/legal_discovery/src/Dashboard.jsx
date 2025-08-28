@@ -93,7 +93,7 @@ function Dashboard() {
   return (
     <div className="dashboard-grid">
       <Tour />
-      <div className="tab-buttons" role="tablist" onKeyDown={handleKeyDown} ref={tabListRef}>
+      <nav className="tab-buttons" role="tablist" onKeyDown={handleKeyDown} ref={tabListRef}>
         {TABS.map(t => (
           <NavLink id={`tab-${t.id}`} key={t.id} to={t.id} className={({isActive})=>`tab-button${isActive?' active':''}`} role="tab" aria-label={t.label}>
             <i className={`fa ${t.icon} mr-1`} aria-hidden="true"></i>{t.label}
@@ -103,8 +103,8 @@ function Dashboard() {
           <i className="fa fa-cog"></i>
         </button>
         <ThemeToggle />
-      </div>
-      <div className="tab-panels">
+      </nav>
+      <main className="tab-panels">
         <Routes>
           {TABS.filter(t=>t.Component).map(t => (
             <Route key={t.id} path={t.id} element={render(t.Component)} />
@@ -112,7 +112,7 @@ function Dashboard() {
           <Route path="docs" element={render(DocsRoute)} />
           <Route index element={render(OverviewSection)} />
         </Routes>
-      </div>
+      </main>
       <SettingsModal open={showSettings} onClose={()=>setShowSettings(false)}/>
     </div>
   );
