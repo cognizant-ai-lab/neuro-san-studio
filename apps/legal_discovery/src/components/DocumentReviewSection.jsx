@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
+import VirtualList from "./common/VirtualList";
 import { fetchJSON } from "../utils";
 
 function DocumentReviewSection() {
@@ -17,12 +18,12 @@ function DocumentReviewSection() {
     <div className="score-bar"><div className="score-fill" style={{ width: `${v * 100}%`, backgroundColor: color }}></div></div>
   );
 
-  const filtered = docs
+  const filtered = useMemo(() => (docs
     .filter(d => d.probative_value >= minProb && d.admissibility_risk <= maxRisk)
     .sort((a, b) => {
       const f = sort.field;
       return sort.dir === "asc" ? a[f] - b[f] : b[f] - a[f];
-    });
+    })), [docs, minProb, maxRisk, sort]);
 
   return (
     <section className="card">
@@ -34,28 +35,29 @@ function DocumentReviewSection() {
         <input type="range" min="0" max="1" step="0.01" value={maxRisk} onChange={e=>setMaxRisk(parseFloat(e.target.value))} />
         <button className="button-secondary ml-auto" onClick={load}><i className="fa fa-sync mr-1"/>Refresh</button>
       </div>
-      <table className="w-full text-sm">
-        <thead>
-          <tr>
-            <th onClick={()=>setSortField('name')}>Name</th>
-            <th onClick={()=>setSortField('probative_value')}>Probative</th>
-            <th onClick={()=>setSortField('admissibility_risk')}>Admissibility</th>
-            <th onClick={()=>setSortField('narrative_alignment')}>Narrative</th>
-            <th onClick={()=>setSortField('score_confidence')}>Confidence</th>
-          </tr>
-        </thead>
-        <tbody>
-          {filtered.map(d => (
-            <tr key={d.id}>
-              <td>{d.name}</td>
-              <td>{bar(d.probative_value, '#38bdf8')}</td>
-              <td>{bar(d.admissibility_risk, '#f87171')}</td>
-              <td>{bar(d.narrative_alignment, '#a3e635')}</td>
-              <td>{bar(d.score_confidence, '#facc15')}</td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
+      <div className="w-full text-sm" role="table" aria-label="Documents">
+        <div className="grid grid-cols-5 gap-2 py-2 border-b border-gray-600" role="rowgroup">
+          <button className="text-left" role="columnheader" onClick={()=>setSortField('name')}>Name</button>
+          <button className="text-left" role="columnheader" onClick={()=>setSortField('probative_value')}>Probative</button>
+          <button className="text-left" role="columnheader" onClick={()=>setSortField('admissibility_risk')}>Admissibility</button>
+          <button className="text-left" role="columnheader" onClick={()=>setSortField('narrative_alignment')}>Narrative</button>
+          <button className="text-left" role="columnheader" onClick={()=>setSortField('score_confidence')}>Confidence</button>
+        </div>
+        <VirtualList
+          items={filtered}
+          itemHeight={40}
+          height={320}
+          renderItem={(d)=> (
+            <div key={d.id} role="row" className="grid grid-cols-5 gap-2 py-2 border-b border-gray-700">
+              <div role="cell" className="truncate" title={d.name}>{d.name}</div>
+              <div role="cell">{bar(d.probative_value, '#38bdf8')}</div>
+              <div role="cell">{bar(d.admissibility_risk, '#f87171')}</div>
+              <div role="cell">{bar(d.narrative_alignment, '#a3e635')}</div>
+              <div role="cell">{bar(d.score_confidence, '#facc15')}</div>
+            </div>
+          )}
+        />
+      </div>
     </section>
   );
 }
