@@ -40,11 +40,14 @@ from .extensions import (
     init_tracing,
     limiter,
     metrics,
+    redis_client,
     socketio,
     tracer,
 )
 from .feature_flags import FEATURE_FLAGS
 from .hippo_routes import bp as hippo_bp, objections_bp, health_bp
+from .openapi_docs import docs_bp
+from .api_utils import ok, err
 from .tasks import tasks_bp
 from .trial_assistant import bp as trial_assistant_bp
 from .trial_prep_routes import trial_prep_bp
@@ -165,6 +168,46 @@ def _add_request_id_header(resp: Response):
     if rid:
         resp.headers["X-Request-ID"] = rid
     return resp
+
+# --- Upload status tracking (Redis-backed with in-memory fallback) ----------
+UPLOAD_STATUS: dict[str, dict] = {}
+
+
+def _status_key(job_id: str) -> str:
+    return f"upload:{job_id}"
+
+
+def _status_set(job_id: str | None, data: dict) -> None:
+    if not job_id:
+        return
+    try:
+        if redis_client is not None:
+            redis_client.set(_status_key(job_id), json.dumps(data), ex=86400)
+            return
+    except Exception:
+        pass
+    UPLOAD_STATUS[job_id] = data
+
+
+def _status_get(job_id: str) -> dict | None:
+    try:
+        if redis_client is not None:
+            raw = redis_client.get(_status_key(job_id))
+            if raw:
+                try:
+                    return json.loads(raw)
+                except Exception:
+                    return None
+    except Exception:
+        pass
+    return UPLOAD_STATUS.get(job_id)
+
+
+def _set_status(job_id: str | None, state: str, **kwargs) -> None:
+    if not job_id:
+        return
+    payload = {"state": state, "updated": time.time()} | kwargs
+    _status_set(job_id, payload)
 # Allow the primary relational store to be configured at runtime. Default to
 # SQLite for local development but override with an environment-provided
 # PostgreSQL connection string when available so the application scales under
@@ -191,6 +234,7 @@ app.register_blueprint(hippo_bp)
 app.register_blueprint(objections_bp)
 app.register_blueprint(health_bp)
 app.register_blueprint(tasks_bp)
+app.register_blueprint(docs_bp)
 if FEATURE_FLAGS.get("theories"):
     from .theory_routes import theories_bp
 
@@ -798,9 +842,11 @@ def ingest_document(
     case_id: int,
     full_metadata: dict,
     chroma_metadata: dict,
+    job_id: str | None = None,
 ) -> None:
     """Extract, vectorize, and relate a document in the background."""
     with app.app_context():
+        _set_status(job_id, "started", doc_id=doc_id)
         processor = DocumentProcessor()
         text = processor.extract_text(original_path) or ""
         detector = PrivilegeDetector()
@@ -837,6 +883,7 @@ def ingest_document(
                     )
                 )
             db.session.commit()
+            _set_status(job_id, "redacted")
             log_event(
                 doc_id,
                 ChainEventType.REDACTED,
@@ -850,6 +897,7 @@ def ingest_document(
             doc.is_redacted = False
             doc.needs_review = False
             db.session.commit()
+            _set_status(job_id, "extracted")
 
         scorer = DocumentScorer()
         scores = scorer.score(redacted_text)
@@ -866,6 +914,7 @@ def ingest_document(
         db.session.commit()
 
         VectorDatabaseManager().add_documents([redacted_text], [chroma_metadata], [str(doc_id)])
+        _set_status(job_id, "vectored")
         kg = KnowledgeGraphManager()
         result = kg.run_query("MERGE (c:Case {id: $id}) RETURN id(c) as cid", {"id": case_id})
         case_node = result[0]["cid"] if result else None
@@ -914,6 +963,7 @@ def ingest_document(
             metadata={"path": redacted_path},
             source_team="legal_discovery",
         )
+        _set_status(job_id, "done")
 
 
 MAX_FILE_SIZE = 50 * 1024 * 1024  # 50MB
@@ -934,7 +984,7 @@ def upload_files():
     except ValueError:
         return jsonify({"error": "Invalid source"}), 400
 
-    processed, skipped = [], []
+    accepted, skipped = [], []
     case = Case.query.first()
     case_id = case.id if case else 1
 
@@ -1019,6 +1069,9 @@ def upload_files():
             # Ensure the document and metadata are committed so the background
             # ingestion thread can retrieve them using a separate session.
             db.session.commit()
+            # Enqueue background ingestion and return job ID immediately
+            job_id = uuid.uuid4().hex
+            _set_status(job_id, "queued", filename=filename, doc_id=int(doc.id))
             future = executor.submit(
                 ingest_document,
                 original_path,
@@ -1027,35 +1080,31 @@ def upload_files():
                 case_id,
                 full_metadata,
                 chroma_metadata,
+                job_id,
             )
-            futures.append((future, doc, raw_name, filename, redacted_path, raw_meta, chroma_meta))
+            futures.append((future, job_id, filename))
+            accepted.append(job_id)
 
-        for future, doc, raw_name, filename, redacted_path, raw_meta, chroma_meta in futures:
-            try:
-                future.result(timeout=MAX_TIMEOUT)
-            except TimeoutError:
-                record_skip(raw_name, "ingestion timeout")
-                db.session.delete(doc)
-                db.session.delete(raw_meta)
-                db.session.delete(chroma_meta)
-                for ext in ("", ".meta.json"):
-                    try:
-                        os.remove(redacted_path + ext)
-                    except OSError as exc:
-                        logger.exception("failed to remove file %s", redacted_path + ext, exc_info=exc)
-            except Exception as exc:  # pragma: no cover - best effort
-                record_skip(raw_name, f"ingestion error: {exc}")
-                db.session.delete(doc)
-                db.session.delete(raw_meta)
-                db.session.delete(chroma_meta)
-                for ext in ("", ".meta.json"):
-                    try:
-                        os.remove(redacted_path + ext)
-                    except OSError as exc:
-                        logger.exception("failed to remove file %s", redacted_path + ext, exc_info=exc)
-            else:
-                processed.append(filename)
-                batch_processed.append(filename)
+        # Do not block on futures; return job IDs to the client
+    return ok({"accepted": accepted, "skipped": skipped}, status=202)
+
+
+@app.route("/api/upload/status", methods=["GET"])
+def upload_status():
+    """Return ingestion status for one or more job IDs.
+
+    Accepts repeated `job_id` query params or a comma-separated list in `job_id`.
+    """
+    ids = request.args.getlist("job_id")
+    if len(ids) == 1 and "," in ids[0]:
+        ids = [i.strip() for i in ids[0].split(",") if i.strip()]
+    if not ids:
+        return err("bad_request", "job_id is required"), 400
+    payload = {}
+    for jid in ids:
+        st = _status_get(jid)
+        payload[jid] = st or {"state": "unknown"}
+    return ok(payload)
 
         try:
             db.session.commit()
@@ -1541,9 +1590,9 @@ def vector_search():
     """Query the vector database."""
     query = request.args.get("q")
     if not query:
-        return jsonify({"status": "ok", "data": {}})
+        return ok({})
     result = _vector_search_cached(query)
-    return jsonify({"status": "ok", "data": result})
+    return ok(result)
 
 
 @app.route("/api/vector/count", methods=["GET"])
@@ -1551,7 +1600,7 @@ def vector_count():
     """Return the document count in the vector database."""
     manager = VectorDatabaseManager()
     count = manager.get_document_count()
-    return jsonify({"status": "ok", "data": count})
+    return ok(count)
 
 
 @app.route("/api/cocounsel/search", methods=["GET"])
