@@ -1,6 +1,8 @@
 import asyncio
 import logging
 import os
+import random
+import time
 
 try:  # pragma: no cover - optional dependency
     import chromadb
@@ -99,6 +101,22 @@ class VectorDatabaseManager(CodedTool):
         self._msg_cache.clear()
         self._convo_cache.clear()
 
+    # ---- retry helpers ----------------------------------------------------
+
+    def _with_retry(self, func, *args, max_retries: int = 4, base_delay: float = 0.25, **kwargs):
+        last_exc: Exception | None = None
+        for attempt in range(max_retries):
+            try:
+                return func(*args, **kwargs)
+            except Exception as exc:  # pragma: no cover - best effort
+                last_exc = exc
+                delay = base_delay * (2 ** attempt) + random.uniform(0, base_delay)
+                logging.warning("vector op failed (%s); retrying in %.2fs", exc, delay)
+                time.sleep(delay)
+        if last_exc:
+            raise last_exc
+        return None
+
     def persist(self) -> None:
         """Persist pending changes to the backing store."""
         try:
@@ -179,27 +197,68 @@ class VectorDatabaseManager(CodedTool):
 
         try:
             if embeddings:
-                self.collection.add(
+                self._with_retry(
+                    self.collection.add,
                     documents=safe_docs,
                     metadatas=safe_metadatas,
                     ids=safe_ids,
                     embeddings=safe_embeddings,
                 )
             else:
-                self.collection.add(documents=safe_docs, metadatas=safe_metadatas, ids=safe_ids)
+                self._with_retry(
+                    self.collection.add,
+                    documents=safe_docs,
+                    metadatas=safe_metadatas,
+                    ids=safe_ids,
+                )
         except ValueError as exc:
             logging.warning("Vector add failed (%s); retrying with placeholder metadata", exc)
             fallback = [{"source": "unknown", "id": i} for i in safe_ids]
             if embeddings:
-                self.collection.add(
+                self._with_retry(
+                    self.collection.add,
                     documents=safe_docs,
                     metadatas=fallback,
                     ids=safe_ids,
                     embeddings=safe_embeddings,
                 )
             else:
-                self.collection.add(documents=safe_docs, metadatas=fallback, ids=safe_ids)
+                self._with_retry(
+                    self.collection.add,
+                    documents=safe_docs,
+                    metadatas=fallback,
+                    ids=safe_ids,
+                )
         self._invalidate_cache()
+
+    def add_documents_batched(
+        self,
+        documents: list[str],
+        metadatas: list[dict],
+        ids: list[str],
+        embeddings: list[list[float]] | None = None,
+        batch_size: int = 256,
+    ) -> None:
+        """Add many documents in batches with retry/backoff."""
+        total = len(documents)
+        if len(metadatas) < total:
+            metadatas = metadatas + [{}] * (total - len(metadatas))
+        emb_iter = None
+        if embeddings is not None and len(embeddings) < total:
+            embeddings = embeddings + [[]] * (total - len(embeddings))  # type: ignore
+        emb_iter = embeddings
+
+        for i in range(0, total, batch_size):
+            j = min(i + batch_size, total)
+            docs = documents[i:j]
+            mds = metadatas[i:j]
+            _ids = ids[i:j]
+            embs = emb_iter[i:j] if emb_iter is not None else None
+            self.add_documents(docs, mds, _ids, embs)
+        try:
+            self.persist()
+        except Exception:
+            pass
 
     async def aadd_documents(
         self,

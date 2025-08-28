@@ -931,8 +931,34 @@ def ingest_document(
             logger.exception("sanctions risk analysis failed", exc_info=exc)
         db.session.commit()
 
-        VectorDatabaseManager().add_documents([redacted_text], [chroma_metadata], [str(doc_id)])
-        _set_status(job_id, "vectored")
+        # Chunk text and add to Chroma in batches for robustness
+        def _chunk_text(t: str, max_chars: int = 4000, overlap: int = 400) -> list[str]:
+            t = t or ""
+            parts: list[str] = []
+            if len(t) <= max_chars:
+                return [t] if t else []
+            start = 0
+            while start < len(t):
+                end = min(start + max_chars, len(t))
+                parts.append(t[start:end])
+                if end == len(t):
+                    break
+                start = max(0, end - overlap)
+            return [p for p in parts if p.strip()]
+
+        chunks = _chunk_text(redacted_text)
+        if not chunks:
+            chunks = [redacted_text]
+        total = len(chunks)
+        ids = [f"{doc_id}:{i}" for i in range(total)]
+        md = []
+        for i in range(total):
+            m = dict(chroma_metadata)
+            m.update({"chunk": i, "n_chunks": total})
+            md.append(m)
+        vdm = VectorDatabaseManager()
+        vdm.add_documents_batched(chunks, md, ids, batch_size=256)
+        _set_status(job_id, "vectored", chunks=total)
         kg = KnowledgeGraphManager()
         result = kg.run_query("MERGE (c:Case {id: $id}) RETURN id(c) as cid", {"id": case_id})
         case_node = result[0]["cid"] if result else None
