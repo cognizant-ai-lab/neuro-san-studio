@@ -39,3 +39,33 @@ export const theme = {
     glass: 'blur(var(--glass-blur))'
   }
 };
+
+export function applyDesignTokens(tokens) {
+  const r = document.documentElement;
+  const set = (k, v) => r.style.setProperty(k, v);
+  const c = tokens.color || {};
+  const e = tokens.effect || {};
+  const f = tokens.font || {};
+  // Core colors
+  if (c.bg?.value) set('--color-bg', c.bg.value);
+  if (c.bgAlt?.value) set('--color-bg-alt', c.bgAlt.value);
+  if (c.surface?.value) set('--color-surface', c.surface.value);
+  if (c.accent?.value) set('--color-accent', c.accent.value);
+  if (c.text?.value) set('--color-text', c.text.value);
+  if (c.textMuted?.value) set('--color-text-muted', c.textMuted.value);
+  if (c.container?.value) set('--color-surface-hover', c.container.value);
+  // Typography / spacing defaults
+  if (f.base?.value) set('--font-base', f.base.value);
+  set('--font-size-sm', '0.875rem');
+  set('--font-size-md', '1rem');
+  set('--font-size-lg', '1.125rem');
+  set('--font-weight-normal', '400');
+  set('--font-weight-bold', '700');
+  set('--space-xs', '0.25rem');
+  set('--space-sm', '0.5rem');
+  set('--space-md', '1rem');
+  set('--space-lg', '1.5rem');
+  // Effects
+  if (e.glow?.value) set('--color-accent-glow', c.accent?.value || '#00e5ff');
+  if (e.glassBlur?.value) set('--glass-blur', e.glassBlur.value);
+}

@@ -13,6 +13,7 @@ function UploadSection() {
   const [kgProg,setKgProg] = useState(0);
   const [neoProg,setNeoProg] = useState(0);
   const [current,setCurrent] = useState('');
+  const [jobs, setJobs] = useState([]); // [{id, name, state}]
   const [source,setSource] = useState('user');
   const [filter,setFilter] = useState('all');
   const [redaction,setRedaction] = useState(false);
@@ -66,6 +67,8 @@ function UploadSection() {
       try { data = await resp.json(); } catch {}
       const accepted = (data?.data?.accepted) || [];
       const busy = !!(data?.meta?.busy);
+      const newEntries = accepted.map((id)=>({ id, name: batch.find(f=>true)?.name || 'file', state: 'queued' }));
+      setJobs(prev => [...prev, ...newEntries]);
       jobIds.push(...accepted);
       if (busy) {
         // Server signaled backpressure; wait briefly before next batch
@@ -81,8 +84,16 @@ function UploadSection() {
         const j = await r.json();
         const payload = j?.data || {};
         let doneCount = 0;
+        const updates = [];
         for (const [id, st] of Object.entries(payload)) {
           if (st && (st.state === 'done' || st.state === 'unknown')) pending.delete(id);
+          if (st && st.state) updates.push({ id, state: st.state });
+        }
+        if (updates.length) {
+          setJobs(prev => prev.map(j => {
+            const u = updates.find(x => x.id === j.id);
+            return u ? { ...j, state: u.state } : j;
+          }));
         }
         doneCount = jobIds.length - pending.size;
         const pct = Math.round((doneCount / jobIds.length) * 100);
@@ -206,6 +217,18 @@ function UploadSection() {
             <progress value={neoProg} max="100" className="w-full"></progress>
           </div>
         </>
+      )}
+      {jobs.length>0 && (
+        <div className="mb-3" role="status" aria-live="polite">
+          <ul className="text-xs grid gap-1">
+            {jobs.slice(-100).map((j,i)=> (
+              <li key={j.id||i} className="flex items-center justify-between bg-gray-900/40 px-2 py-1 rounded border border-gray-700">
+                <span className="truncate" title={j.name}>{j.name}</span>
+                <span className={`px-2 py-0.5 rounded text-gray-900 ${j.state==='done'?'bg-green-400': j.state==='vectored'?'bg-blue-300': j.state==='redacted'?'bg-purple-300': 'bg-yellow-300'}`}>{j.state}</span>
+              </li>
+            ))}
+          </ul>
+        </div>
       )}
       <div className="folder-tree text-sm"><ul>{renderNodes(tree)}</ul></div>
       </section>

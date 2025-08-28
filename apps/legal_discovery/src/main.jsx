@@ -3,6 +3,8 @@ import ReactDOM from 'react-dom/client';
 import { BrowserRouter, Routes, Route, useParams } from 'react-router-dom';
 import { AppProvider } from './AppContext';
 import Dashboard from './Dashboard';
+import tokens from '../figma_tokens.json';
+import { applyDesignTokens } from './theme';
 import DocumentViewer from './components/DocumentViewer';
 
 const API_BASE = __API_BASE__ || '';
@@ -20,6 +22,8 @@ function DocumentViewerWrapper() {
 }
 
 const root = document.getElementById('root');
+// Apply design tokens to CSS variables at startup
+try { applyDesignTokens(tokens); } catch {}
 ReactDOM.createRoot(root).render(
   <React.StrictMode>
     <AppProvider>
