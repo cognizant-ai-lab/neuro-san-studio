@@ -7,6 +7,7 @@
 # Purchase of a commercial license is mandatory for any use of the
 # neuro-san-studio SDK Software in commercial settings.
 #
+from copy import deepcopy
 import logging
 from typing import Any
 from typing import Dict
@@ -161,7 +162,8 @@ class CreateAgentNetworkHocon(CodedTool):
                 a text string an error message in the format:
                 "Error: <error message>"
         """
-        self.agents = sly_data.get(AGENT_NETWORK_NAME)
+        # Use copy here since we may have to rearrange the dictionary to get the correct frontman
+        self.agents = deepcopy(sly_data.get(AGENT_NETWORK_NAME))
         if not self.agents:
             return "Error: No network in sly data!"
 
