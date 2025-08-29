@@ -1,4 +1,6 @@
 import React, { useState, useEffect, useRef } from "react";
+import { Document, Page, pdfjs } from 'react-pdf';
+pdfjs.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjs.version}/pdf.worker.min.js`;
 import { io } from "socket.io-client";
 import Skeleton from "./Skeleton";
 function TimelineSection() {
@@ -10,6 +12,13 @@ function TimelineSection() {
   const [startDate,setStartDate] = useState('');
   const [endDate,setEndDate] = useState('');
   const [loading,setLoading] = useState(false);
+  const hoverRef = useRef(null);
+  const [captureOpen, setCaptureOpen] = useState(false);
+  const [capDoc, setCapDoc] = useState("");
+  const [capPage, setCapPage] = useState(1);
+  const [capRect, setCapRect] = useState(null);
+  const capWrapRef = useRef(null);
+  const startRef = useRef(null);
   const hoverRef = useRef(null);
   const load = () => {
     setLoading(true);
@@ -109,6 +118,56 @@ function TimelineSection() {
       </div>
       {exporting && <p className="text-sm mb-1">Exporting...</p>}
       {loading ? <Skeleton className="h-48" /> : <div ref={containerRef} style={{height:'200px'}}></div>}
+
+      {captureOpen && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50" onClick={()=>setCaptureOpen(false)}>
+          <div className="bg-gray-900 border border-gray-700 rounded-xl p-3 w-[720px] max-w-full" onClick={e=>e.stopPropagation()}>
+            <h3 className="mb-2">Set Hover Image Region</h3>
+            <div className="flex gap-2 mb-2">
+              <input className="px-2 py-1 bg-gray-800 border border-gray-600 rounded w-full" placeholder="/path/to/doc.pdf" value={capDoc} onChange={e=>setCapDoc(e.target.value)} />
+              <input className="px-2 py-1 bg-gray-800 border border-gray-600 rounded w-24" type="number" min="1" value={capPage} onChange={e=>setCapPage(parseInt(e.target.value||'1'))} />
+            </div>
+            <div ref={capWrapRef} className="relative border border-gray-700 rounded overflow-hidden" style={{ maxHeight: 480 }}>
+              {capDoc ? (
+                <Document file={`/uploads/${encodeURIComponent(capDoc)}`} loading={<div className="p-4">Loading PDF…</div>}>
+                  <Page pageNumber={capPage} scale={1.2} renderTextLayer={false} renderAnnotationLayer={false} onRenderSuccess={()=>{ setCapRect(null); }}/>
+                </Document>
+              ) : (
+                <div className="p-4 text-sm text-gray-400">Enter a document path and page.</div>
+              )}
+              <div
+                className="absolute inset-0"
+                onMouseDown={(e)=>{
+                  const r = capWrapRef.current.getBoundingClientRect();
+                  startRef.current = { x:(e.clientX - r.left)/r.width, y:(e.clientY - r.top)/r.height };
+                  setCapRect({ x0:startRef.current.x, y0:startRef.current.y, x1:startRef.current.x, y1:startRef.current.y });
+                }}
+                onMouseMove={(e)=>{
+                  if(!startRef.current || !capWrapRef.current) return;
+                  const r = capWrapRef.current.getBoundingClientRect();
+                  const x = (e.clientX - r.left)/r.width; const y=(e.clientY - r.top)/r.height;
+                  setCapRect({ x0:startRef.current.x, y0:startRef.current.y, x1:x, y1:y });
+                }}
+                onMouseUp={()=>{ startRef.current=null; }}
+              >
+                {capRect && (
+                  <div style={{ position:'absolute', left:`${Math.min(capRect.x0, capRect.x1)*100}%`, top:`${Math.min(capRect.y0, capRect.y1)*100}%`, width:`${Math.abs(capRect.x1-capRect.x0)*100}%`, height:`${Math.abs(capRect.y1-capRect.y0)*100}%`, border:'2px solid var(--color-accent)', background:'rgba(0,229,255,0.15)' }} />
+                )}
+              </div>
+            </div>
+            <div className="flex justify-end gap-2 mt-2">
+              <button className="button-secondary" onClick={()=>setCaptureOpen(false)}>Cancel</button>
+              <button className="button-primary" onClick={async()=>{
+                if(!capDoc || !capRect) return;
+                const rect=[Math.min(capRect.x0,capRect.x1), Math.min(capRect.y0,capRect.y1), Math.max(capRect.x0,capRect.x1), Math.max(capRect.y0,capRect.y1)];
+                const resp = await fetch('/api/timeline/hover_image', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ doc_path: capDoc, page: capPage-1, rect }) });
+                const j = await resp.json();
+                if(j?.data?.url){ window.dispatchEvent(new CustomEvent('toast',{detail:{type:'success',message:'Hover image saved'}})); setCaptureOpen(false); }
+              }}>Save Region</button>
+            </div>
+          </div>
+        </div>
+      )}
     </section>
   );
 }

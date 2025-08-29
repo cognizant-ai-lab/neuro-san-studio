@@ -2246,7 +2246,16 @@ def _thumb_dir() -> str:
 def _make_hover_image(pdf_path: str, page: int, rect: list[float]) -> str:
     doc = fitz.open(pdf_path)
     pg = doc.load_page(page)
-    r = fitz.Rect(*rect)
+    # Accept either absolute PDF coordinates or normalized [0..1] rectangle
+    if all(0.0 <= v <= 1.0 for v in rect):
+        page_rect = pg.rect
+        x0 = page_rect.x0 + rect[0] * page_rect.width
+        y0 = page_rect.y0 + rect[1] * page_rect.height
+        x1 = page_rect.x0 + rect[2] * page_rect.width
+        y1 = page_rect.y0 + rect[3] * page_rect.height
+        r = fitz.Rect(x0, y0, x1, y1)
+    else:
+        r = fitz.Rect(*rect)
     pix = pg.get_pixmap(clip=r, dpi=144)
     fname = f"hover_{hashlib.sha256((pdf_path+str(page)+str(rect)).encode()).hexdigest()[:16]}.png"
     out_path = os.path.join(_thumb_dir(), fname)
