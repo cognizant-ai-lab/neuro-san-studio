@@ -8,7 +8,7 @@ RUN npm ci
 
 # Build the React bundle so Flask can serve precompiled assets
 COPY apps/legal_discovery/ ./
-RUN npm run build --silent
+RUN npm run build
 
 
 # ---------- Backend (Python) ----------
@@ -19,7 +19,7 @@ FROM python:3.11-slim
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
-    PIP_NO_CACHE_DIR=1
+    PIP_NO_CACHE_DIR=0
 
 WORKDIR /usr/src/app
 
@@ -44,10 +44,8 @@ RUN python -m pip install --upgrade pip setuptools wheel
 COPY apps/legal_discovery/requirements.txt ./requirements.txt
 
 # Install dependencies and pull the CPU-only torch wheel directly
-RUN pip install --no-cache-dir \
-      https://download.pytorch.org/whl/cpu/torch-2.5.1%2Bcpu-cp311-cp311-linux_x86_64.whl \
-    && pip install --no-cache-dir -r requirements.txt \
-    && pip install --no-cache-dir openai-whisper
+RUN pip install https://download.pytorch.org/whl/cpu/torch-2.5.1%2Bcpu-cp311-cp311-linux_x86_64.whl \
+    && pip install -r requirements.txt
 
 # Optional: If you rely on spaCy model via `spacy download`, you can skip this
 # because your requirements already install the model wheel from GitHub.
@@ -65,14 +63,14 @@ RUN rm -rf apps/legal_discovery/node_modules
 # Expose app port
 EXPOSE 5001
 
-HEALTHCHECK --interval=30s --timeout=5s --retries=5 CMD curl -fsS http://localhost:5001/api/health || exit 1
+HEALTHCHECK --interval=30s --retries=5 CMD curl -fsS http://localhost:5001/api/health || exit 1
 
 # Environment defaults (can be overridden at runtime)
 ENV AGENT_MANIFEST_FILE=/usr/src/app/registries/manifest.hocon \
     AGENT_LLM_INFO_FILE=/usr/src/app/registries/llm_config.hocon
-ENV FLASK_SECRET_KEY="" \
-    JWT_SECRET=""
+ENV FLASK_SECRET_KEY=[] \
+    JWT_SECRET=[]
 
 # Run the Flask app via gunicorn+eventlet. Graph schema is bootstrapped in
-# `apps.legal_discovery.startup` when the application is imported.
-CMD ["bash", "-c", "python -m gunicorn -k eventlet -w 1 -b 0.0.0.0:5001 apps.legal_discovery.startup:app"]
+# Run the Flask app via gunicorn+eventlet
+CMD ["gunicorn", "-k", "eventlet", "-w", "1", "-b", "0.0.0.0:5001", "apps.legal_discovery.startup:app"]

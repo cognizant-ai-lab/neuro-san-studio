@@ -23,7 +23,7 @@ services:
       chromadb:
         condition: service_started
       neo4j:
-        condition: service_healthy
+        condition: service_started
       redis:
         condition: service_started
     volumes:
@@ -32,12 +32,11 @@ services:
       - ./docker_volumes/legal_discovery/audio_cache:/usr/src/app/audio_cache
     restart: unless-stopped
     command: >-
-      bash -c "pip install --no-cache-dir hipporag litellm && \
+      bash -c "pip install hipporag litellm && \
       python -m gunicorn -k eventlet -w 1 -b 0.0.0.0:5001 apps.legal_discovery.startup:app"
     healthcheck:
       test: ["CMD", "curl", "-fsS", "http://localhost:5001/api/health"]
       interval: 30s
-      timeout: 5s
       retries: 5
 
   postgres:
@@ -66,8 +65,6 @@ services:
     healthcheck:
       # Ensure Bolt is up
       test: ["CMD-SHELL", "cypher-shell -a bolt://localhost:7687 --format plain \"RETURN 1\" | grep -q 1"]
-      interval: 10s
-      timeout: 5s
       retries: 20
       start_period: 25s
     restart: unless-stopped

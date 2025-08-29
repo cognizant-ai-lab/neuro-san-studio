@@ -429,13 +429,9 @@ oauthlib==3.3.1
     #   requests-oauthlib
 ollama==0.5.3
     # via langchain-ollama
-onnxruntime==1.22.1
+onnxruntime
     # via chromadb
-openai==1.58.1
-    # via
-    #   langchain-openai
-    #   neuro-san
-opentelemetry-api==1.36.0
+opentelemetry-api
     # via
     #   chromadb
     #   leaf-server-common
@@ -580,7 +576,7 @@ pybase64==1.4.2
     # via chromadb
 pycparser==2.22
     # via cffi
-pydantic==2.10.4
+pydantic
     # via
     #   -r requirements.in
     #   anthropic
@@ -600,9 +596,9 @@ pydantic==2.10.4
     #   spacy
     #   thinc
     #   weasel
-pydantic-core==2.27.2
+pydantic-core
     # via pydantic
-pydantic-settings==2.10.1
+pydantic-settings
     # via langchain-community
 pydyf==0.11.0
     # via weasyprint
@@ -795,7 +791,7 @@ stack-data==0.6.3
     # via ipython
 structlog==25.4.0
     # via -r requirements.in
-sympy==1.14.0
+sympy
     # via
     #   onnxruntime
     #   torch

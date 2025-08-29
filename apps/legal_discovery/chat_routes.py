@@ -14,6 +14,7 @@ from .voice_commands import execute_command
 from .auth import auth_required, _require_auth
 
 import base64
+import os
 import logging
 
 from apps.message_bus import (
@@ -222,6 +223,24 @@ def list_voices():
     if not FEATURE_FLAGS["voice_tts"]:
         return jsonify({"voices": []})
     return jsonify({"voices": get_available_voices()})
+
+
+@chat_bp.post("/voice/settings")
+@limiter.limit("10/minute")
+@auth_required
+def set_voice_settings():
+    """Persist voice engine/model preferences."""
+    data = request.get_json() or {}
+    from . import settings as app_settings
+    app_settings.save_user_settings({
+        "voice_engine": data.get("voice_engine"),
+        "voice_model": data.get("voice_model"),
+    })
+    if data.get("voice_engine"):
+        os.environ["VOICE_ENGINE"] = str(data.get("voice_engine"))
+    if data.get("voice_model"):
+        os.environ["VOICE_MODEL"] = str(data.get("voice_model"))
+    return jsonify({"status": "ok"})
 
 
 @socketio.on("voice_query", namespace="/chat")

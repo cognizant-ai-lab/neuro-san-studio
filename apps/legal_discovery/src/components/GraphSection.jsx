@@ -13,6 +13,8 @@ function GraphSection() {
   const cyRef = useRef(null);
   const [exporting,setExporting] = useState(false);
   const [analysis,setAnalysis] = useState([]);
+  const [timelineStats,setTimelineStats] = useState(null);
+  const [enrichDeltas,setEnrichDeltas] = useState(null);
   const [loading,setLoading] = useState(true);
   const load = useCallback(() => {
     setLoading(true);
@@ -70,7 +72,14 @@ function GraphSection() {
   };
   const analyze = () => {
     const url = '/api/graph/analyze' + (subnet?`?subnet=${encodeURIComponent(subnet)}`:'');
-    fetchJSON(url).then(d=>setAnalysis(d.data||[]));
+    fetchJSON(url).then(d=>{ setAnalysis(d.data||[]); setTimelineStats((d.meta && d.meta.timeline) || null); });
+  };
+  const syncTimeline = () => {
+    fetch('/api/graph/sync_timeline',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({})})
+      .then(r=>r.json()).then(()=>load());
+  };
+  const enrich = () => {
+    fetch('/api/graph/enrich',{method:'POST'}).then(r=>r.json()).then(d=> setEnrichDeltas(d.data||d.error||null));
   };
   const runCypher = (preset) => {
     const query = preset || cypher;
@@ -108,6 +117,8 @@ function GraphSection() {
         <button className="button-secondary" style={{ padding: theme.spacing.xs }} onClick={highlight}><i className="fa fa-search mr-1"></i>Find</button>
         <button className="button-secondary" style={{ padding: theme.spacing.xs }} onClick={exportGraph}><i className="fa fa-file-export mr-1"></i>Export</button>
         <button className="button-secondary" style={{ padding: theme.spacing.xs }} onClick={analyze}><i className="fa fa-network-wired mr-1"></i>Analyze</button>
+        <button className="button-secondary" style={{ padding: theme.spacing.xs }} onClick={syncTimeline}><i className="fa fa-project-diagram mr-1"></i>Sync Timeline</button>
+        <button className="button-secondary" style={{ padding: theme.spacing.xs }} onClick={enrich}><i className="fa fa-bolt mr-1"></i>Enrich Graph</button>
       </div>
       <div className="flex flex-wrap" style={{ gap: theme.spacing.sm, marginBottom: theme.spacing.sm }}>
         <textarea
@@ -132,6 +143,21 @@ function GraphSection() {
           className="overflow-x-auto"
           style={{ background: 'rgba(0,0,0,0.3)', marginTop: theme.spacing.sm, padding: theme.spacing.sm, fontSize: theme.typography.sizeSm }}
         >{JSON.stringify(cypherResult,null,2)}</pre>
+      )}
+      {timelineStats && (
+        <div style={{ marginTop: theme.spacing.sm, fontSize: theme.typography.sizeSm }}>
+          <h3 style={{ fontWeight: theme.typography.weightBold, marginBottom: theme.spacing.xs }}>Timeline Metrics</h3>
+          <ul className="list-disc list-inside">
+            <li>Max chain length: {timelineStats.max_timeline_chain||0}</li>
+            <li>3-hop sequences: {timelineStats.three_hop_sequences||0}</li>
+          </ul>
+        </div>
+      )}
+      {enrichDeltas && (
+        <div style={{ marginTop: theme.spacing.sm, fontSize: theme.typography.sizeSm }}>
+          <h3 style={{ fontWeight: theme.typography.weightBold, marginBottom: theme.spacing.xs }}>Enrichment Deltas</h3>
+          <pre className="overflow-x-auto" style={{ background: 'rgba(0,0,0,0.3)', padding: theme.spacing.xs }}>{JSON.stringify(enrichDeltas,null,2)}</pre>
+        </div>
       )}
       {!!analysis.length && (
         <div style={{ marginTop: theme.spacing.sm, fontSize: theme.typography.sizeSm }}>

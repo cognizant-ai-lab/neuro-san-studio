@@ -18,7 +18,7 @@ from io import BytesIO, StringIO
 import fitz
 import schedule
 import spacy
-from flask import Flask, Response, jsonify, render_template, request, send_file, g
+from flask import Flask, Response, jsonify, render_template, request, send_file, send_from_directory, g
 import uuid
 from more_itertools import chunked
 import structlog
@@ -461,6 +461,11 @@ def manage_settings():
                 env_var = env_map.get(flag)
                 if env_var:
                     os.environ[env_var] = "1" if value else "0"
+        # Persist voice preferences to environment for runtime selection
+        if data.get("voice_engine"):
+            os.environ["VOICE_ENGINE"] = str(data.get("voice_engine"))
+        if data.get("voice_model"):
+            os.environ["VOICE_MODEL"] = str(data.get("voice_model"))
         return jsonify({"message": "Settings saved successfully"})
     else:
         user_settings = settings.get_user_settings()
@@ -486,6 +491,8 @@ def manage_settings():
                 "gcp_vertex_ai_search_app": user_settings.gcp_vertex_ai_search_app,
                 "gcp_service_account_key": user_settings.gcp_service_account_key,
                 "theme": user_settings.theme,
+                "voice_engine": user_settings.voice_engine,
+                "voice_model": user_settings.voice_model,
             }
         flags = settings.get_feature_flags()
         for key in FEATURE_FLAGS:
@@ -1042,6 +1049,7 @@ def ingest_document(
         )
         
         _set_status(job_id, "done")
+        _pending_remove(job_id)
 
         # Kick off a lightweight agent-driven timeline overview update
         try:
@@ -2040,11 +2048,13 @@ def analyze_graph():
     analyzer = GraphAnalyzer()
     try:
         results = analyzer.analyze_centrality(subnet)
+        # Include additional timeline path stats
+        timeline_stats = analyzer.analyze_timeline_sequences()
         user_input_queue.put("Provide insights on the most connected entities in the case graph.")
     except Exception as exc:  # pragma: no cover - optional analysis may fail
         app.logger.error("Graph analysis failed: %s", exc)
         return jsonify({"error": str(exc)}), 500
-    return jsonify({"status": "ok", "data": results})
+    return jsonify({"status": "ok", "data": results, "meta": {"timeline": timeline_stats}})
 
 
 @app.route("/api/graph/cypher", methods=["POST"])
@@ -2062,6 +2072,60 @@ def run_cypher_query():
         return jsonify({"error": str(exc)}), 400
     kg.close()
     return jsonify({"status": "ok", "data": results})
+
+
+@app.route("/api/graph/sync_timeline", methods=["POST"])
+def sync_timeline_to_graph():
+    """Upsert SQL timeline events into Neo4j and stitch OCCURS_BEFORE edges."""
+    data = request.get_json() or {}
+    case_id = int(data.get("case_id") or 1)
+    evts = (
+        TimelineEvent.query.filter_by(case_id=case_id)
+        .order_by(TimelineEvent.event_date.asc())
+        .all()
+    )
+    if not evts:
+        return jsonify({"status": "ok", "data": {"upserted": 0, "edges": 0}})
+    payload = [
+        {
+            "id": e.id,
+            "case_id": e.case_id,
+            "date": e.event_date.date().isoformat(),
+            "description": e.description or "",
+        }
+        for e in evts
+    ]
+    kg = KnowledgeGraphManager()
+    # Upsert nodes
+    upsert_q = (
+        "UNWIND $events AS ev MERGE (t:TimelineEvent {id: ev.id}) "
+        "SET t.case_id=ev.case_id, t.date=ev.date, t.description=ev.description"
+    )
+    kg.run_query(upsert_q, {"events": payload}, cache=False)
+    # Link consecutive OCCURS_BEFORE
+    link_q = (
+        "MATCH (t:TimelineEvent {case_id:$cid}) WITH t ORDER BY date(t.date) ASC "
+        "WITH collect(t) AS ts "
+        "UNWIND CASE WHEN size(ts)>1 THEN range(0,size(ts)-2) ELSE [] END AS i "
+        "WITH ts[i] AS a, ts[i+1] AS b MERGE (a)-[:OCCURS_BEFORE]->(b)"
+    )
+    kg.run_query(link_q, {"cid": case_id}, cache=False)
+    kg.close()
+    return jsonify({"status": "ok", "data": {"upserted": len(payload)}})
+
+
+@app.route("/api/graph/enrich", methods=["POST"])
+def enrich_graph_patterns():
+    """Run graph enrichment passes: fact causation, event relations, and co-supports."""
+    analyzer = GraphAnalyzer()
+    try:
+        rel_deltas = analyzer.enrich_relationships()
+        cause_deltas = analyzer.enrich_causation_and_timeline()
+        rel_deltas.update({f"timeline_{k}": v for k, v in cause_deltas.items()})
+        return jsonify({"status": "ok", "data": rel_deltas})
+    except Exception as exc:  # pragma: no cover - graph may be offline
+        app.logger.error("Graph enrichment failed: %s", exc)
+        return jsonify({"status": "error", "error": str(exc)}), 500
 
 
 def _get_file_excerpt(case_id: str, length: int = 400) -> str | None:

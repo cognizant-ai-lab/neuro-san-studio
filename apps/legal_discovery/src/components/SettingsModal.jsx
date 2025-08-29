@@ -96,6 +96,26 @@ function SettingsModal({open,onClose}) {
           <label className="flex items-center space-x-2"><input type="checkbox" name="voice_stt" checked={form.voice_stt||false} onChange={update}/><span>Enable Voice Transcription</span></label>
           <label className="flex items-center space-x-2"><input type="checkbox" name="voice_tts" checked={form.voice_tts||false} onChange={update}/><span>Enable Voice Synthesis</span></label>
           <label className="flex items-center space-x-2"><input type="checkbox" name="voice_commands" checked={form.voice_commands||false} onChange={update}/><span>Enable Voice Commands</span></label>
+          <div className="grid grid-cols-2 gap-2">
+            <label>Voice Engine
+              <select name="voice_engine" value={form.voice_engine||''} onChange={update} className="w-full p-2 rounded">
+                <option value="">Default</option>
+                <option value="gtts">gTTS</option>
+                <option value="system">System</option>
+                <option value="coqui">Coqui</option>
+              </select>
+            </label>
+            <label>Voice Model
+              <input type="text" name="voice_model" value={form.voice_model||''} onChange={update} className="w-full p-2 rounded" placeholder="e.g., en-US" />
+            </label>
+            <button type="button" className="button-secondary" onClick={()=>{
+              fetch('/api/chat/voices').then(r=>r.json()).then(v=>{
+                const first = (v.voices && v.voices[0] && (v.voices[0].id||v.voices[0].name)) || '';
+                if (first) setForm(prev=>({ ...prev, voice_model: first }));
+                alert(`Found ${v.voices? v.voices.length:0} voices${first?` (selected: ${first})`:''}`);
+              });
+            }}>List Voices</button>
+          </div>
           <button className="button-primary" type="submit">Save</button>
         </form>
       </div>

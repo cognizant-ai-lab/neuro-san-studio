@@ -309,7 +309,7 @@ class QAReview(db.Model):
 
 class UserSetting(db.Model):
     id = db.Column(db.Integer, primary_key=True)
-    user_id = db.Column(db.Integer, nullable=False)  # In a real app, this would be a foreign key to a users table
+    user_id = db.Column(db.Integer, nullable=False)
     courtlistener_api_key = db.Column(db.String(255), nullable=True)
     gemini_api_key = db.Column(db.String(255), nullable=True)
     california_codes_url = db.Column(db.String(255), nullable=True)
@@ -329,6 +329,9 @@ class UserSetting(db.Model):
     gcp_vertex_ai_search_app = db.Column(db.String(255), nullable=True)
     gcp_service_account_key = db.Column(db.Text, nullable=True)
     theme = db.Column(db.String(20), nullable=True)
+    # Voice preferences
+    voice_engine = db.Column(db.String(50), nullable=True)
+    voice_model = db.Column(db.String(100), nullable=True)
     feature_flags = db.Column(db.JSON, nullable=False, default=dict)
 
 

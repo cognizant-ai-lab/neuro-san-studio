@@ -17,6 +17,12 @@ from .models_trial import TranscriptSegment, TrialSession
 from .database import db, log_retrieval_trace
 from .extensions import socketio
 from .trial_assistant.services.objection_engine import engine
+from apps.message_bus import (
+    MessageBus,
+    RESEARCH_INSIGHT_TOPIC,
+    TIMELINE_ALERT_TOPIC,
+    TeamMessage,
+)
 from flask import has_app_context
 from contextlib import nullcontext
 
@@ -199,18 +205,53 @@ def run_case_analysis(case_id: int, iterations: int = 3) -> Dict[str, Any]:
         ga = GraphAnalyzer()
         lte = LegalTheoryEngine()
         ft = ForensicTools()
+        bus = None
+        try:
+            bus = MessageBus()
+        except Exception:
+            bus = None
         try:
             for i in range(iterations):
                 pass_result: Dict[str, Any] = {"iteration": i + 1}
                 try:
-                    ga.enrich_relationships()
-                    pass_result["graph"] = "enriched"
+                    deltas = ga.enrich_relationships()
+                    # Extended enrichment (causation + timeline sequences)
+                    try:
+                        extra = ga.enrich_causation_and_timeline()
+                        deltas |= {f"timeline_{k}": v for k, v in (extra or {}).items()}
+                        seq = ga.analyze_timeline_sequences()
+                        pass_result["timeline_sequences"] = seq
+                        if bus:
+                            bus.publish(
+                                TIMELINE_ALERT_TOPIC,
+                                TeamMessage(
+                                    source_team="legal_discovery",
+                                    payload={"case_id": case_id, "iteration": i + 1, "sequences": seq},
+                                ),
+                            )
+                    except Exception:
+                        pass
+                    pass_result["graph_deltas"] = deltas
+                    pass_result["timeline_paths"] = ga.analyze_timeline_paths()
                 except Exception as exc:
                     logger.exception("graph enrichment failed: %s", exc)
                     pass_result["graph_error"] = str(exc)
                 try:
                     theories = lte.suggest_theories()
                     pass_result["theories"] = theories[:5]
+                    if bus and theories:
+                        try:
+                            from apps.message_bus import TeamMessage
+
+                            bus.publish(
+                                RESEARCH_INSIGHT_TOPIC,
+                                TeamMessage(
+                                    source_team="legal_discovery",
+                                    payload={"case_id": case_id, "iteration": i + 1, "theories": theories[:5]},
+                                ),
+                            )
+                        except Exception:
+                            pass
                 except Exception as exc:
                     logger.exception("theory engine failed: %s", exc)
                     pass_result["theory_error"] = str(exc)
@@ -219,6 +260,15 @@ def run_case_analysis(case_id: int, iterations: int = 3) -> Dict[str, Any]:
                 except Exception:
                     pass
                 results["passes"].append(pass_result)
+                # Broadcast pass status to UI (non-blocking best-effort)
+                try:
+                    socketio.emit(
+                        "pipeline_pass",
+                        {"case_id": case_id, **pass_result},
+                        namespace="/chat",
+                    )
+                except Exception:
+                    pass
         finally:
             try:
                 lte.close()
