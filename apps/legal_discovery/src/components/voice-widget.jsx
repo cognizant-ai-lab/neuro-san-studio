@@ -5,9 +5,11 @@ import ObjectionBar from "./trial/ObjectionBar";
 export default function VoiceWidget({ sessionId }) {
   const socketRef = useRef(null);
   const recRef = useRef(null);
+  const mediaRef = useRef(null);
   const [segments, setSegments] = useState([]);
   const [objection, setObjection] = useState(null);
   const [listening, setListening] = useState(false);
+  const [serverSTT, setServerSTT] = useState(false);
 
   useEffect(() => {
     const socket = io("/ws/trial", { transports: ["websocket"] });
@@ -49,16 +51,37 @@ export default function VoiceWidget({ sessionId }) {
   }, [sessionId]);
 
   const toggle = () => {
-    if (!recRef.current) return;
-    if (listening) {
-      recRef.current.stop();
-      setListening(false);
-    } else {
-      try {
-        recRef.current.start();
+    if (serverSTT) {
+      if (listening && mediaRef.current) {
+        mediaRef.current.stop();
+        setListening(false);
+        return;
+      }
+      navigator.mediaDevices.getUserMedia({ audio: true }).then(stream => {
+        const mr = new MediaRecorder(stream, { mimeType: 'audio/webm' });
+        const chunks = [];
+        mr.ondataavailable = (e) => { if (e.data.size > 0) chunks.push(e.data); };
+        mr.onstop = async () => {
+          const blob = new Blob(chunks, { type: 'audio/webm' });
+          const buf = await blob.arrayBuffer();
+          const b64 = btoa(String.fromCharCode(...new Uint8Array(buf)));
+          try {
+            const s = socketRef.current || io('/chat');
+            s.emit('voice_query', { frames: [b64] });
+          } catch {}
+        };
+        mr.start();
+        mediaRef.current = mr;
         setListening(true);
-      } catch (e) {
-        console.error(e);
+        setTimeout(() => { try { mediaRef.current && mediaRef.current.stop(); } catch {} }, 5000);
+      }).catch(console.error);
+    } else {
+      if (!recRef.current) return;
+      if (listening) {
+        recRef.current.stop();
+        setListening(false);
+      } else {
+        try { recRef.current.start(); setListening(true); } catch (e) { console.error(e); }
       }
     }
   };
@@ -75,6 +98,9 @@ export default function VoiceWidget({ sessionId }) {
 
   return (
     <div className="p-4 bg-white/5 rounded-xl text-white backdrop-blur relative">
+      <div className="mb-2 text-xs flex items-center gap-2">
+        <label className="flex items-center gap-2"><input type="checkbox" checked={serverSTT} onChange={e=>setServerSTT(e.target.checked)} /> Use Server STT</label>
+      </div>
       <button
         onClick={toggle}
         className={`mb-4 rounded-full px-4 py-2 transition-colors ${
