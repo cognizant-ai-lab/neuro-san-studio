@@ -19,7 +19,6 @@ function TimelineSection() {
   const [capRect, setCapRect] = useState(null);
   const capWrapRef = useRef(null);
   const startRef = useRef(null);
-  const hoverRef = useRef(null);
   const load = () => {
     setLoading(true);
     fetch('/api/timeline?query='+encodeURIComponent(query))

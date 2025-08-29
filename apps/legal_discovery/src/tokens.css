@@ -1,0 +1,31 @@
+/* Fallback design tokens (kept minimal; JS also injects tokens inline). */
+:root {
+  --color-bg: #000;
+  --color-bg-alt: #0b0f1a;
+  --color-surface: rgba(15,23,42,0.6);
+  --color-surface-hover: rgba(31,38,45,0.75);
+  --color-accent: #00e5ff;
+  --color-text: #e5e7eb;
+  --color-text-muted: #9ca3af;
+  --color-border: rgba(255,255,255,0.08);
+  --glass-blur: 12px;
+  --font-base: Rajdhani, system-ui, -apple-system, Segoe UI, Roboto, Ubuntu, Cantarell, Noto Sans, Arial, sans-serif;
+  --font-size-sm: 0.875rem;
+  --font-size-md: 1rem;
+  --font-size-lg: 1.125rem;
+  --font-weight-normal: 400;
+  --font-weight-bold: 700;
+  --space-xs: 0.25rem;
+  --space-sm: 0.5rem;
+  --space-md: 1rem;
+  --space-lg: 1.5rem;
+}
+html, body, #root { height: 100%; }
+body {
+  margin: 0;
+  background: radial-gradient(1200px 800px at 20% -10%, rgba(0,229,255,.08), transparent),
+              radial-gradient(1000px 600px at 120% 10%, rgba(0,229,255,.06), transparent),
+              var(--color-bg);
+  color: var(--color-text);
+  font-family: var(--font-base);
+}
