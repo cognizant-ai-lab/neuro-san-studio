@@ -77,12 +77,12 @@ relevant workflows and responsible nodes. Call your network_generator tool for t
                     "required": ["agent_network_name"]
                 }
             },
-            "class": "get_agent_network_hocon.GetAgentNetworkHocon"
+            "class": "create_agent_network_hocon.CreateAgentNetworkHocon"
         },
         {
             "name": "network_generator",
             "function": {
-                "description": "I can help you create an agent network definition."
+                "description": "Create an agent network definition."
                 "parameters": {
                     "type": "object",
                     "properties": {
@@ -111,13 +111,13 @@ The network will be a DAG.
 Do not add anything about other agents within the instructions of an agent.
 Make sure there are no cycles.
 
-add_agent("customer_support_rep", "You are the top-level agent responsible for handling all inquiries for a telco with a B2B business. When interacting with the user, act as the single point of interaction. No need to mention the other tools or agents. If there are any requirements that need user input, ask them one at a time, with clear examples of the choices available.", "network_engineer, account_manager")
-add_agent("network_engineer", "You handle technical aspects of configuring and troubleshooting ethernet and optical networks at different locations for a telco with a B2B business. You configures and maintain network infrastructure and provide technical support when issues arise.", "network_ops_center_specialist, field_technician")
-add_agent("field_technician", "You are responsible for onsite installation, maintenance, and troubleshooting of network equipment at customer locations for a telco with a B2B business. You Execute hands-on technical work at customer premises and coordinates with the engineer to ensure networks are functional.", "logistics_coordinator")
-add_agent("network_ops_center_specialist", "You monitor network health, respond to alerts, and initiate troubleshooting remotely for a telco with a B2B business. You Provide round-the-clock monitoring and first-line response to network performance issues.", "")
-add_agent("project_manager", "You oversee complex network installation or upgrade projects involving multiple locations, ensuring they stay on track. You coordinates larger, cross-location projects and manage timelines, resources, and milestones.", "logistics_coordinator")
-add_agent("account_manager", "You manages the business relationship with the customer, addressing their needs, and ensuring ongoing satisfaction. You act as the main point of contact for clients post-sale, ensuring that the services meet their business needs.", "")
-add_agent("logistics_coordinator", "You manage the shipment and delivery of network equipment to various locations, ensuring timely arrival for installations. You coordinates the physical logistics of hardware and tools required for installation or maintenance.", "")
+add_agent("customer_support_rep", "You are the top-level agent responsible for handling all inquiries for a telco with a B2B business. When interacting with the user, act as the single point of interaction. No need to mention the other tools or agents. If there are any requirements that need user input, ask them one at a time, with clear examples of the choices available.", ["network_engineer, account_manager"], true)
+add_agent("network_engineer", "You handle technical aspects of configuring and troubleshooting ethernet and optical networks at different locations for a telco with a B2B business. You configures and maintain network infrastructure and provide technical support when issues arise.", ["network_ops_center_specialist, field_technician"], false)
+add_agent("field_technician", "You are responsible for onsite installation, maintenance, and troubleshooting of network equipment at customer locations for a telco with a B2B business. You Execute hands-on technical work at customer premises and coordinates with the engineer to ensure networks are functional.", ["logistics_coordinator"], false)
+add_agent("network_ops_center_specialist", "You monitor network health, respond to alerts, and initiate troubleshooting remotely for a telco with a B2B business. You Provide round-the-clock monitoring and first-line response to network performance issues.", [], false)
+add_agent("project_manager", "You oversee complex network installation or upgrade projects involving multiple locations, ensuring they stay on track. You coordinates larger, cross-location projects and manage timelines, resources, and milestones.", ["logistics_coordinator"], false)
+add_agent("account_manager", "You manages the business relationship with the customer, addressing their needs, and ensuring ongoing satisfaction. You act as the main point of contact for clients post-sale, ensuring that the services meet their business needs.", [], false)
+add_agent("logistics_coordinator", "You manage the shipment and delivery of network equipment to various locations, ensuring timely arrival for installations. You coordinates the physical logistics of hardware and tools required for installation or maintenance.", [], false)
 
 Make sure your design has no cycles. Make sure you have leaf nodes with no link back to up-chain agents so we keep this as a DAG.
 Also note, there should only be one top agent.
@@ -142,15 +142,18 @@ Make agents granular so that you have at least a depth of three agents from the 
                             "description": "the instructions for the agent."
                         },
                         "down_chains": {
-                            "type": "string",
-                            "description": "comma separated list of the names of agents down-chain to this one."
+                            "type": "array",
+                            "items": {
+                                "type": "string"
+                            },
+                            "description": "list of the names of agents down-chain to this one."
                         },
                         "top_agent": {
-                            "type": "string",
-                            "description": "'true' is this is a top agent."
+                            "type": "boolean",
+                            "description": "'true' for a top agent."
                         },
                     },
-                    "required": ["agent_name", "instructions"]
+                    "required": ["agent_name", "instructions", "top_agent"]
                 }
             },
             "class": "add_agent.AddAgent"
@@ -158,7 +161,7 @@ Make agents granular so that you have at least a depth of three agents from the 
         {
             "name": "query_generator",
             "function": {
-                "description": "I can generate some sample queries given an agent network definition."
+                "description": "Generate sample queries on a given agent network definition."
                 "parameters": {
                     "type": "object",
                     "properties": {
@@ -192,7 +195,7 @@ Make some of the examples transactional. If not stated, return no more than 3-4 
         {
             "name": "instruction_refiner",
             "function": {
-                "description": "I can refine the instructions for a given agent in an agent network definition."
+                "description": "Refine the instructions for a given agent in an agent network definition."
                 "parameters": {
                     "type": "object",
                     "properties": {
@@ -216,7 +219,7 @@ Make sure it is in-line with the company's cultural values and business objectiv
 Do not format your response and keep it as plain text with no other formatting characters.
 Wrap the lines at around 120 characters. Write it as if you are telling the agent.
             """,
-            "command": "Call to refine instructions of an agent."
+            "command": "Refine instructions of each agent in the given agent network."
             "tools": ["get_agent_network_tool", "set_agent_instructions_tool"]
         }
         {

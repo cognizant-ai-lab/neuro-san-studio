@@ -53,7 +53,7 @@ class GetAgentNetwork(CodedTool):
                 a text string an error message in the format:
                 "Error: <error message>"
         """
-        self.agents = sly_data.get(AGENT_NETWORK_NAME, None)
+        self.agents = sly_data.get(AGENT_NETWORK_NAME)
         if not self.agents:
             return "Error: No network in sly data!"
         logger = logging.getLogger(self.__class__.__name__)

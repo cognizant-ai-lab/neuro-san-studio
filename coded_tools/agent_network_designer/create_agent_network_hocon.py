@@ -124,7 +124,7 @@ async def modify_registry(the_agent_network_hocon_str, the_agent_network_name):
                 await file.write(updated_content)
 
 
-class GetAgentNetworkHocon(CodedTool):
+class CreateAgentNetworkHocon(CodedTool):
     """
     CodedTool implementation which provides a way to get a full hocon of a designed agent network from the sly data
     """
@@ -161,7 +161,7 @@ class GetAgentNetworkHocon(CodedTool):
                 a text string an error message in the format:
                 "Error: <error message>"
         """
-        self.agents = sly_data.get(AGENT_NETWORK_NAME, None)
+        self.agents = sly_data.get(AGENT_NETWORK_NAME)
         if not self.agents:
             return "Error: No network in sly data!"
 
@@ -185,12 +185,23 @@ class GetAgentNetworkHocon(CodedTool):
         """
         Returns a full agent network hocon.
         """
-        has_top_agent = False
-        for agent_name, agent in self.agents.items():
-            if agent["top_agent"] == "true":
-                has_top_agent = True
-        if not has_top_agent:
-            self.agents[0]["top_agent"] = "true"
+        # Make sure that the top agent is the first agent.
+        # Find or set the top agent
+        top_agent_name: str = None
+        for name, agent in self.agents.items():
+            if agent.get("top_agent"):
+                top_agent_name = name
+                break
+        if not top_agent_name:
+            # No top agent found, make the first one the top agent
+            first_name: str = next(iter(self.agents))
+            self.agents[first_name]["top_agent"] = True
+            top_agent_name = first_name
+
+        # Move top agent to front
+        if top_agent_name != next(iter(self.agents)):
+            top_agent: Dict[str, Any] = self.agents.pop(top_agent_name)
+            self.agents = {top_agent_name: top_agent, **self.agents}
 
         agent_network_hocon = HOCON_HEADER_START + agent_network_name + HOCON_HEADER_REMAINDER
         for agent_name, agent in self.agents.items():
@@ -200,7 +211,7 @@ class GetAgentNetworkHocon(CodedTool):
                     tools = tools + '"' + down_chain + '"'
                     if j < len(agent["down_chains"]) - 1:
                         tools = tools + ","
-            if agent["top_agent"] == "true":  # top agent
+            if agent["top_agent"] is True:  # top agent
                 an_agent = TOP_AGENT_TEMPLATE % (
                     agent_name,
                     agent["instructions"],

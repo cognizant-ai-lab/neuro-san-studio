@@ -54,7 +54,7 @@ class AddAgent(CodedTool):
                 a text string an error message in the format:
                 "Error: <error message>"
         """
-        self.agents = sly_data.get(AGENT_NETWORK_NAME, None)
+        self.agents = sly_data.get(AGENT_NETWORK_NAME)
         if not self.agents:
             self.agents = {}
         the_agent_name: str = args.get("agent_name", "")
@@ -63,19 +63,19 @@ class AddAgent(CodedTool):
         the_instructions: str = args.get("instructions", "")
         if the_instructions == "":
             return "Error: No agent instructions provided."
-        the_top_agent: str = args.get("top_agent", "")
+        the_top_agent: bool = args.get("top_agent", False)
 
-        the_down_chains_input = args.get("down_chains", "")
-        the_down_chains = []
-        if the_down_chains_input != "":
-            # Convert the_down_chains_input into a list if it's a string.
-            if isinstance(the_down_chains_input, str):
-                # Assuming the string is comma-separated (e.g. "On, Off"),
-                # we split it and remove any extra whitespace.
-                the_down_chains = [chain.strip() for chain in the_down_chains_input.split(",") if chain.strip()]
-            else:
-                # If it's already a list, just use it.
-                the_down_chains = the_down_chains_input
+        the_down_chains: list[str] = args.get("down_chains", [])
+        # the_down_chains = []
+        # if the_down_chains_input != "":
+        #     # Convert the_down_chains_input into a list if it's a string.
+        #     if isinstance(the_down_chains_input, str):
+        #         # Assuming the string is comma-separated (e.g. "On, Off"),
+        #         # we split it and remove any extra whitespace.
+        #         the_down_chains = [chain.strip() for chain in the_down_chains_input.split(",") if chain.strip()]
+        #     else:
+        #         # If it's already a list, just use it.
+        #         the_down_chains = the_down_chains_input
 
         logger = logging.getLogger(self.__class__.__name__)
         logger.info(">>>>>>>>>>>>>>>>>>>AddAgent>>>>>>>>>>>>>>>>>>")
@@ -89,7 +89,7 @@ class AddAgent(CodedTool):
         logger.info(">>>>>>>>>>>>>>>>>>>DONE !!!>>>>>>>>>>>>>>>>>>")
         return the_agent_network_str
 
-    def add_agent(self, agent_name: str, instructions: str, down_chains: list, top_agent: str):
+    def add_agent(self, agent_name: str, instructions: str, down_chains: list[str], top_agent: bool) -> str:
         """
         Adds an agent to the hierarchy.
 
@@ -100,9 +100,9 @@ class AddAgent(CodedTool):
         - top_agent (str): A textual indication of whether the agent is the top agent.
 
         Example usage:
-            add_agent("light", "You are a light", ["On", "Off"], "true")
-            add_agent("On", "You turn the light on", [])
-            add_agent("Off", "You turn the light off", [])
+            add_agent("light", "You are a light", ["On", "Off"], True)
+            add_agent("On", "You turn the light on", [], False)
+            add_agent("Off", "You turn the light off", [], False)
         """
         self.agents[agent_name] = {
             "instructions": instructions,
