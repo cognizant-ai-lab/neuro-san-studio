@@ -49,7 +49,7 @@ from .feature_flags import FEATURE_FLAGS
 from .hippo_routes import bp as hippo_bp, objections_bp, health_bp
 from .openapi_docs import docs_bp
 from .api_utils import ok, err
-from .tasks import tasks_bp, enqueue, queue as rq_queue, ingest_job as rq_ingest_job
+from .tasks import tasks_bp, enqueue, queue as rq_queue, ingest_job as rq_ingest_job, run_case_analysis
 from .trial_assistant import bp as trial_assistant_bp
 from .trial_prep_routes import trial_prep_bp
 from .validators import NarrativeDiscrepancyAnalyzePayload
@@ -1046,6 +1046,11 @@ def ingest_document(
         # Kick off a lightweight agent-driven timeline overview update
         try:
             socketio.start_background_task(_generate_timeline_overview, case_id)
+        except Exception:
+            pass
+        # Kick off deeper case analysis (3 passes) without blocking
+        try:
+            enqueue(run_case_analysis, int(case_id), iterations=3)
         except Exception:
             pass
 

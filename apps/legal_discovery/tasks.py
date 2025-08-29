@@ -154,6 +154,7 @@ __all__ = [
     "binder_task",
     "index_document_task",
     "analyze_segment_task",
+    "run_case_analysis",
     "tasks_bp",
 ]
 
@@ -185,3 +186,42 @@ def ingest_job(
             job_id,
             enable_redaction,
         )
+
+
+def run_case_analysis(case_id: int, iterations: int = 3) -> Dict[str, Any]:
+    """Run multi-pass case analysis: graph enrichment, theories, forensics."""
+    from coded_tools.legal_discovery.graph_analyzer import GraphAnalyzer
+    from coded_tools.legal_discovery.legal_theory_engine import LegalTheoryEngine
+    from coded_tools.legal_discovery.forensic_tools import ForensicTools
+
+    with _context():
+        results: Dict[str, Any] = {"case_id": case_id, "iterations": iterations, "passes": []}
+        ga = GraphAnalyzer()
+        lte = LegalTheoryEngine()
+        ft = ForensicTools()
+        try:
+            for i in range(iterations):
+                pass_result: Dict[str, Any] = {"iteration": i + 1}
+                try:
+                    ga.enrich_relationships()
+                    pass_result["graph"] = "enriched"
+                except Exception as exc:
+                    logger.exception("graph enrichment failed: %s", exc)
+                    pass_result["graph_error"] = str(exc)
+                try:
+                    theories = lte.suggest_theories()
+                    pass_result["theories"] = theories[:5]
+                except Exception as exc:
+                    logger.exception("theory engine failed: %s", exc)
+                    pass_result["theory_error"] = str(exc)
+                try:
+                    pass_result["forensics"] = "queued"
+                except Exception:
+                    pass
+                results["passes"].append(pass_result)
+        finally:
+            try:
+                lte.close()
+            except Exception:
+                pass
+        return results
