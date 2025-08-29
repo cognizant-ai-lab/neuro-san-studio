@@ -196,3 +196,5 @@ apps/legal_discovery/dist/
 
 # Docker data volumes
 docker_volumes/
+# PRP tools (flattened docs in docs/prps). Keep local helper repo out of VCS.
+tools/prps-codex/
