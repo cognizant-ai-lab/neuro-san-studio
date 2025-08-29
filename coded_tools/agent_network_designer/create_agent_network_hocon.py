@@ -206,7 +206,7 @@ class CreateAgentNetworkHocon(CodedTool):
         agent_network_hocon = HOCON_HEADER_START + agent_network_name + HOCON_HEADER_REMAINDER
         for agent_name, agent in self.agents.items():
             tools = ""
-            if agent["down_chains"]:
+            if agent.get("down_chains"):
                 for j, down_chain in enumerate(agent["down_chains"]):
                     tools = tools + '"' + down_chain + '"'
                     if j < len(agent["down_chains"]) - 1:
@@ -217,7 +217,7 @@ class CreateAgentNetworkHocon(CodedTool):
                     agent["instructions"],
                     tools,
                 )
-            elif agent["down_chains"]:
+            elif agent.get("down_chains"):
                 an_agent = REGULAR_AGENT_TEMPLATE % (
                     agent_name,
                     agent["instructions"],

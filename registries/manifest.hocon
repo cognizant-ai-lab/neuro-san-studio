@@ -136,6 +136,7 @@
     "macys.hocon": true,
     "LinkedInJobSeekerSupportNetwork.hocon": true,
     # Experimental and research
+    "agent_network_editor.hocon": true,
     "agent_network_designer.hocon": true,
     "six_thinking_hats.hocon": true,
     # Set the following agent network to true before running apps/cruse/interface_flask.py
