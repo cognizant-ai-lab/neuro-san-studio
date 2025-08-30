@@ -248,3 +248,7 @@ we are now working on implementing a major feature, so stand by, this is  A GDDM
 ## Update 2025-08-28T07:15Z
 - Added Neo4j health check with explicit user and blank password to avoid unhealthy container state.
 - Next: confirm docker-compose brings Neo4j up healthy on Windows.
+
+## Update 2025-08-30T22:05Z
+- Enabled wrapping and horizontal scroll on dashboard tabs so navigation no longer squashes on narrow screens.
+- Next: tighten mobile icon sizing and review remaining spacing on small viewports.

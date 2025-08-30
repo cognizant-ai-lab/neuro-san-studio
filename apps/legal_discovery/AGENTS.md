@@ -1162,3 +1162,7 @@ pip install python-dotenv flask gunicorn pillow requests neuro-san pyvis
 ## Update 2025-10-07T16:00Z
 - Removed stray indented block causing `interface_flask.py` to throw an IndentationError during startup.
 - Next: confirm timeline generation runs cleanly after container launch.
+
+## Update 2025-08-30T22:05Z
+- Added flex wrapping and horizontal scroll to tab navigation; buttons now keep their width for better responsiveness.
+- Next: tune card spacing for narrow viewports.
