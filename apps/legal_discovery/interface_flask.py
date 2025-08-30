@@ -1270,22 +1270,6 @@ def generate_timeline_endpoint():
     socketio.start_background_task(_generate_timeline_overview, case_id)
     return ok({"case_id": case_id})
 
-        try:
-            db.session.commit()
-        except Exception as exc:  # pragma: no cover - best effort
-            db.session.rollback()
-            app.logger.error("Batch commit failed: %s", exc)
-
-        VectorDatabaseManager().persist()
-
-        if batch_processed:
-            reinitialize_legal_discovery_session()
-            user_input_queue.put(
-                "process all files ingested within your scope and produce a basic overview and report."
-            )
-
-    return jsonify({"status": "ok", "processed": processed, "skipped": skipped})
-
 
 @app.route("/api/export", methods=["GET"])
 def export_files():

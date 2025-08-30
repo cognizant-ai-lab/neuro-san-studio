@@ -1158,3 +1158,7 @@ pip install python-dotenv flask gunicorn pillow requests neuro-san pyvis
 - Refined dashboard layout with scrollable tab bar and centered content panels to reduce squashed sections.
 - Expanded card grid spacing and minimum widths for clearer separation.
 - Next: review mobile navigation icons and optimize remaining component spacing.
+
+## Update 2025-10-07T16:00Z
+- Removed stray indented block causing `interface_flask.py` to throw an IndentationError during startup.
+- Next: confirm timeline generation runs cleanly after container launch.
