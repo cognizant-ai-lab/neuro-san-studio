@@ -40,7 +40,21 @@
         {
             "name": "agent_network_designer",
             "function": {
-                "description": "I can help you create an agent network."
+                "description": "I can help you create an agent network.",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "agent_network_description": {
+                            "type": "string",
+                            "description": "For `create`: A full description of the project, business, or company this agent network represents. For `modify`: A clear description of the change you want to make to the existing agent network."
+                        },
+                        "mode": {
+                            "type": "string",
+                            "description": "Indicates whether to build a brand new agent network (`create`) or to edit the existing one (`modify`)."
+                        }
+                    },
+                    "required": ["agent_network_description", "mode"]
+                }
             },
             "instructions": """
 {instructions_prefix}
