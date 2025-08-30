@@ -29,3 +29,13 @@ body {
   color: var(--color-text);
   font-family: var(--font-base);
 }
+
+.tab-buttons {
+  overflow-x: auto;
+  flex-wrap: wrap;
+}
+
+.tab-button {
+  flex: 0 0 auto;
+  white-space: nowrap;
+}
