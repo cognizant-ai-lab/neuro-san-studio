@@ -344,6 +344,8 @@ h2 {
     grid-template-areas:
         "tabs"
         "content";
+    grid-template-rows: auto 1fr;
+    min-height: 100vh;
 }
 .tab-buttons { grid-area: tabs; }
 .tab-panels {
@@ -359,6 +361,7 @@ h2 {
     .dashboard-grid {
         grid-template-columns: 220px 1fr;
         grid-template-areas: "tabs content";
+        grid-template-rows: 1fr;
     }
     .tab-buttons {
         flex-direction: column;
@@ -579,7 +582,7 @@ footer {
 .modal {
     display: flex;
     position: fixed;
-    z-index: 1;
+    z-index: 1000;
     left: 0;
     top: 0;
     width: 100%;

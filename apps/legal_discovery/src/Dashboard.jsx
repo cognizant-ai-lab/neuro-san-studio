@@ -36,8 +36,8 @@ const ChainLogSection = React.lazy(()=>import('./components/ChainLogSection'));
 const TABS = [
   {id:'network', label:'Agent Network', icon:'fa-sitemap', Component: AgentNetworkSection},
   {id:'overview', label:'Overview', icon:'fa-home', Component: OverviewSection},
-  {id:'pipeline', label:'Team Pipeline', icon:'fa-route', Component: PipelineSection},
   {id:'chat', label:'Orchestrator', icon:'fa-comments', Component: ChatSection},
+  {id:'pipeline', label:'Team Pipeline', icon:'fa-route', Component: PipelineSection},
   {id:'stats', label:'Stats', icon:'fa-chart-bar', Component: StatsSection},
   {id:'upload', label:'Ingestion', icon:'fa-upload', Component: UploadSection},
   {id:'review', label:'Doc Review', icon:'fa-list', Component: DocumentReviewSection},
@@ -67,14 +67,25 @@ const render = (Comp) => (
   </ErrorBoundary>
 );
 
-const DocsRoute = () => (
-  <div className="card-grid">
-    <DocToolsSection/>
-    <VersionHistorySection/>
-    <DocumentDraftSection/>
-    <AutoDraftSection/>
-  </div>
-);
+const DOC_TABS = [
+  { id: 'tools', label: 'Document Tools', Component: DocToolsSection },
+  { id: 'versions', label: 'Version History', Component: VersionHistorySection },
+  { id: 'draft', label: 'Document Draft', Component: DocumentDraftSection },
+  { id: 'auto', label: 'Auto Draft', Component: AutoDraftSection },
+];
+
+const DocsRoute = () => {
+  const [selected, setSelected] = useState('tools');
+  const Active = DOC_TABS.find(t => t.id === selected).Component;
+  return (
+    <div>
+      <select value={selected} onChange={e=>setSelected(e.target.value)} className="mb-4 p-2 rounded">
+        {DOC_TABS.map(t => <option key={t.id} value={t.id}>{t.label}</option>)}
+      </select>
+      <Active />
+    </div>
+  );
+};
 
 function Dashboard() {
   const [showSettings,setShowSettings] = useState(false);
