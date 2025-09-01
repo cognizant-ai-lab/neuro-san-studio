@@ -42,6 +42,7 @@ from .extensions import (
     limiter,
     metrics,
     redis_client,
+    cache_stats,
     socketio,
     tracer,
 )
@@ -1727,7 +1728,7 @@ def vector_add_documents():
     return jsonify({"status": "ok"})
 
 
-@redis_cache("vector_search", key_func=lambda q: q)
+@redis_cache("vector_search", ttl=900, key_func=lambda q: q)
 def _vector_search_cached(q: str):
     manager = VectorDatabaseManager()
     return manager.query([q], n_results=5)
@@ -1983,6 +1984,9 @@ def aggregated_metrics():
         with open(log_path, "r", encoding="utf-8", errors="ignore") as f:
             log_count = len(f.read().splitlines())
 
+    cache_hits = cache_stats.get("hits", 0)
+    cache_misses = cache_stats.get("misses", 0)
+
     data = {
         "uploaded_files": upload_count,
         "vector_docs": vector_count,
@@ -1990,6 +1994,8 @@ def aggregated_metrics():
         "task_count": task_count,
         "forensic_logs": log_count,
         "case_count": case_count,
+        "cache_hits": cache_hits,
+        "cache_misses": cache_misses,
     }
     return jsonify({"status": "ok", "data": data})
 
