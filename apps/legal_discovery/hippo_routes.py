@@ -41,7 +41,11 @@ health_bp = Blueprint("health", __name__, url_prefix="/api")
 logger = logging.getLogger(__name__)
 
 
-@redis_cache("hippo_query", key_func=lambda case_id, query, k=10: f"{case_id}:{query}:{k}")
+@redis_cache(
+    "hippo_query",
+    ttl=600,
+    key_func=lambda case_id, query, k=10: f"{case_id}:{query}:{k}",
+)
 def _hippo_query_cached(case_id: str, query: str, k: int = 10):
     return hippo.hippo_query(case_id, query, k=k)
 

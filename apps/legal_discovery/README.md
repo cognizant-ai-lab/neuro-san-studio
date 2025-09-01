@@ -120,6 +120,12 @@ Dashboard components use `/api/metrics` to retrieve counts for uploads,
 vector documents, graph nodes, tasks, forensic logs and total cases in a single request.
 This reduces network traffic and keeps the UI responsive.
 
+Cache hits and misses are also included so you can monitor the effectiveness
+of Redis caching.  The dashboard displays raw counts and a hit percentage to
+help tune performance.  Adjust cache expiry times by setting `CACHE_TTL` for a
+global default or `CACHE_TTL_<PREFIX>` for specific caches such as
+`CACHE_TTL_VECTOR_SEARCH` or `CACHE_TTL_HIPPO_QUERY`.
+
 The dashboard tabs are labelled after the teams defined in
 `registries/legal_discovery.hocon`. Outputs from each coded tool are shown
 directly within their respective sections so you can track the work of each

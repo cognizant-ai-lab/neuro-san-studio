@@ -1166,3 +1166,8 @@ pip install python-dotenv flask gunicorn pillow requests neuro-san pyvis
 ## Update 2025-08-30T22:05Z
 - Added flex wrapping and horizontal scroll to tab navigation; buttons now keep their width for better responsiveness.
 - Next: tune card spacing for narrow viewports.
+
+## Update 2025-08-31T00:00Z
+- Exposed Redis cache hit/miss metrics in `/api/metrics` and dashboard Stats/Overview cards.
+- Cache TTLs configurable via `CACHE_TTL` and `CACHE_TTL_<PREFIX>`.
+- Next: visualise cache performance trends and fine-tune TTL values.
