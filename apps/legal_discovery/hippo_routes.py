@@ -3,18 +3,13 @@
 from __future__ import annotations
 
 import logging
-import os
 import time
 import uuid
 
-import requests
-from flask import Blueprint, jsonify, request
+from flask import Blueprint, jsonify, request, current_app
+from http import HTTPStatus
+from sqlalchemy import text
 from .auth import auth_required
-
-try:  # pragma: no cover - optional dependency
-    from neo4j import GraphDatabase
-except Exception:  # pragma: no cover - driver may be absent
-    GraphDatabase = None
 
 from . import hippo
 from .database import db, log_retrieval_trace, log_objection_resolution
@@ -22,11 +17,7 @@ from .extensions import (
     socketio,
     limiter,
     user_limit_key,
-    blocked_requests,
-    cache_stats,
-    redis_client,
 )
-from .api_utils import ok
 from .cache import redis_cache
 from .models import ObjectionEvent, ObjectionResolution
 from .models_trial import TranscriptSegment, TrialSession
@@ -50,109 +41,61 @@ def _hippo_query_cached(case_id: str, query: str, k: int = 10):
     return hippo.hippo_query(case_id, query, k=k)
 
 
-@health_bp.get("/health")
+@health_bp.route("/health", methods=["GET"])
 def health() -> "flask.Response":
-    """Report connectivity status for core dependencies (Neo4j, Chroma, Postgres, Redis)."""
-    neo4j_status = "ok"
-    chroma_status = "ok"
-    postgres_status = "ok"
-    redis_status = "ok"
-    neo4j_error = None
-    chroma_error = None
-    postgres_error = None
-    redis_error = None
-
-    try:  # pragma: no cover - external service
-        if GraphDatabase is None:
-            raise RuntimeError("neo4j driver missing")
-        uri = os.environ.get("NEO4J_URI", "bolt://neo4j:7687")
-        user = os.environ.get("NEO4J_USER", "neo4j")
-        pwd = os.environ.get("NEO4J_PASSWORD")
-        auth = (user, pwd) if pwd else None
-        db_name = os.environ.get("NEO4J_DATABASE", "neo4j")
-        with GraphDatabase.driver(uri, auth=auth) as driver:
-            with driver.session(database=db_name) as session:
-                session.run("RETURN 1")
-    except Exception as exc:
-        logger.exception("Neo4j health check failed")
-        neo4j_status = "fail"
-        neo4j_error = str(exc)
-
-    try:  # pragma: no cover - external service
-        host = os.environ.get("CHROMA_HOST", "localhost")
-        port = int(os.environ.get("CHROMA_PORT", "8000"))
-        resp = requests.get(f"http://{host}:{port}/api/v1/heartbeat", timeout=2)
-        if resp.status_code != 200:
-            raise RuntimeError("chroma heartbeat failed")
-    except Exception as exc:
-        logger.exception("Chroma health check failed")
-        chroma_status = "fail"
-        chroma_error = str(exc)
-
-    # Postgres readiness via a trivial SELECT 1
-    try:  # pragma: no cover - external service
-        from .database import db
-
-        db.session.execute("SELECT 1")
-    except Exception as exc:
-        logger.exception("Postgres health check failed")
-        postgres_status = "fail"
-        postgres_error = str(exc)
-
-    # Redis readiness via ping if configured
-    try:  # pragma: no cover - external service
-        if redis_client is None:
-            raise RuntimeError("redis client unavailable")
-        redis_client.ping()
-    except Exception as exc:
-        logger.exception("Redis health check failed")
-        redis_status = "fail"
-        redis_error = str(exc)
-
-    data = {
-        "neo4j": neo4j_status,
-        "chroma": chroma_status,
-        "postgres": postgres_status,
-        "redis": redis_status,
-        "blocked_requests": dict(blocked_requests),
-        "cache": {"hits": cache_stats.get("hits", 0), "misses": cache_stats.get("misses", 0)},
+    """Basic dependency health checks for Chroma and Postgres."""
+    status = {
+        "service": "legal_discovery",
+        "opentelemetry_service": current_app.config.get("OTEL_SERVICE_NAME", "unknown_service"),
+        "chroma": {"ok": False, "error": None},
+        "postgres": {"ok": False, "error": None},
+        "uptime_seconds": None,
     }
-    # Include ingestion queue depth if available
-    try:
-        from .interface_flask import _pending_count, MAX_PENDING  # type: ignore
+    http_code = HTTPStatus.OK
 
-        data["queue"] = {"pending": _pending_count(), "max_pending": MAX_PENDING}
+    try:
+        started = current_app.config.get("APP_STARTED_AT")
+        if started:
+            status["uptime_seconds"] = int(time.time() - started)
     except Exception:
         pass
-    meta = {}
-    if neo4j_error:
-        meta["neo4j_error"] = neo4j_error
-    if chroma_error:
-        meta["chroma_error"] = chroma_error
-    if postgres_error:
-        meta["postgres_error"] = postgres_error
-    if redis_error:
-        meta["redis_error"] = redis_error
 
-    return ok(data=data, meta=meta if meta else None)
+    try:
+        chroma = current_app.config.get("CHROMA")
+        if chroma is None:
+            raise RuntimeError("Chroma client not configured")
+        hb = getattr(chroma, "heartbeat", None)
+        ok = bool(hb()) if callable(hb) else False
+        if not ok:
+            raise RuntimeError("heartbeat returned falsy")
+        status["chroma"]["ok"] = True
+    except Exception as e:
+        status["chroma"]["error"] = f"{type(e).__name__}: {e}"
+        http_code = HTTPStatus.SERVICE_UNAVAILABLE
+
+    try:
+        db.session.execute(text("SELECT 1"))
+        status["postgres"]["ok"] = True
+    except Exception as e:
+        status["postgres"]["error"] = f"{type(e).__name__}: {e}"
+        http_code = HTTPStatus.SERVICE_UNAVAILABLE
+
+    return jsonify(status), http_code
 
 
 @health_bp.get("/readiness")
 def readiness() -> "flask.Response":
     """Report readiness of the application (DB migrations, caches, essential deps)."""
-    # For now, mirror health but require all OK.
     res, status = health()
-    # health() already returns an envelope; determine readiness from fields.
     try:
         payload = res.get_json() or {}
-        data = payload.get("data", {})
-        ready = all(data.get(k) == "ok" for k in ("neo4j", "chroma", "postgres", "redis"))
+        checks = [v for v in payload.values() if isinstance(v, dict) and "ok" in v]
+        ready = all(item.get("ok") for item in checks)
     except Exception:
         ready = False
     if not ready:
-        # Return original payload with a 503 status to signal not-ready.
-        return res[0], 503
-    return res
+        return res, HTTPStatus.SERVICE_UNAVAILABLE
+    return res, status
 
 
 @bp.post("/index")

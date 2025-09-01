@@ -1171,3 +1171,8 @@ pip install python-dotenv flask gunicorn pillow requests neuro-san pyvis
 - Exposed Redis cache hit/miss metrics in `/api/metrics` and dashboard Stats/Overview cards.
 - Cache TTLs configurable via `CACHE_TTL` and `CACHE_TTL_<PREFIX>`.
 - Next: visualise cache performance trends and fine-tune TTL values.
+
+## Update 2025-10-08T00:00Z
+- Hardened `/api/health` endpoint with explicit Chroma/Postgres probes and SQLAlchemy `text` fix.
+- HTTP status now returns 503 with detailed errors when dependencies fail.
+- Next: extend checks to Neo4j and Redis for parity with previous implementation.
