@@ -3,7 +3,12 @@ import { alertResponse } from "../utils";
 function TasksSection() {
   const [task,setTask] = useState('');
   const [list,setList] = useState('');
-  const add = () => fetch('/api/tasks',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({task})}).then(r=>r.json()).then(alertResponse);
+  const add = () => fetch('/api/tasks',{
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({task}),
+    keepalive:true
+  }).then(r=>r.json()).then(alertResponse);
   const listAll = () => fetch('/api/tasks').then(r=>r.json()).then(d=>setList(d.data||''));
   const clear = () => fetch('/api/tasks',{method:'DELETE'}).then(r=>r.json()).then(d=>{setList('');alert(d.message||'Cleared');});
   return (
