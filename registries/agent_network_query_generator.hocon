@@ -1,0 +1,72 @@
+
+# Copyright (C) 2023-2025 Cognizant Digital Business, Evolutionary AI.
+# All Rights Reserved.
+# Issued under the Academic Public License.
+#
+# You can be released from the terms, and requirements of the Academic Public
+# License by purchasing a commercial license.
+# Purchase of a commercial license is mandatory for any use of the
+# neuro-san SDK Software in commercial settings.
+#
+# END COPYRIGHT
+{
+    "llm_config": {
+        "model_name": "gpt-4o",
+    },
+    "max_iterations": 40000,
+    "max_execution_seconds": 6000,
+    "tools": [
+        # This first agent definition is regarded as the "Front Man", which
+        # does all the talking to the outside world/client.
+        #
+        # Some disqualifications from being a front man:
+        #   1) Cannot use a CodedTool "class" definition
+        #   2) Cannot use a Tool "toolbox" definition
+        #
+        # Besides the first agent being the front man, these tool definitions
+        # do not have to be in any particular order. How they are linked and
+        # call each other is defined within their own specs.
+        # This could be a graph, potentially even with cycles.
+               
+        {
+            "name": "query_generator",
+            "function": {
+                "description": "Generate sample queries on a given agent network definition."
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "agent_network_description": {
+                            "type": "string",
+                            "description": "name of project, business or company or other description."
+                        },
+                    },
+                }
+            },
+            "instructions": """
+You generate example queries that the created agent network can handle.
+Only answer inquiries that are directly within your area of expertise. Do not try to help for other matters. Do not mention what you can NOT do. Only mention what you can do.
+
+First get the agent network definition using `get_agent_network_definition`.
+Ensure the queries align with the agents' capabilities.
+Provide a diverse range of queries to illustrate the network's functions.
+The queries should show how multiple sub networks might contribute to a consolidated response from the top agent.
+Just give the enumerated sample queries. Try to keep the queries simple and natural.
+Make some of the examples transactional. If not stated, return no more than 3-4 examples.
+            """,
+            "allow": {
+                "to_upstream": {
+                    "sly_data": ["agent_network_definition"]
+                }
+            },
+            "tools": ["get_agent_network_definition"]
+        },
+        {
+            "name": "get_agent_network_definition",
+            "class": "get_agent_network_definition.GetAgentNetworkDefinition",
+            "function": {
+                "description": "Get the agent network definition."
+            }
+        },
+        
+    ]
+}

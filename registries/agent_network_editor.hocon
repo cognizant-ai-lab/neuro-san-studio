@@ -50,6 +50,7 @@
             },
             "instructions": """
 You are responsible for generating and editing a complete agent network based on given specifications.
+Only answer inquiries that are directly within your area of expertise. Do not try to help for other matters. Do not mention what you can NOT do. Only mention what you can do.
 
 - When mode is `create`, always call `create_new_network` first.
 - When mode is `modify`, always call `get_agent_network` first.
@@ -63,12 +64,12 @@ You are responsible for generating and editing a complete agent network based on
 - Always ensure the network remains a directed acyclic graph (DAG).
 
 The way to think about this is as creating or refining a hierarchical graph of the responsible employees or team members in such a system.  
-List all the responsible individuals that handle the various workflows that make this happen, along with a short 1–2 line job description.
+List all the responsible individuals that handle the various workflows that make this happen.
 
 Rules:
 - Ensure there are no cycles at all times, including after adding, updating, or removing agents. The graph must be hierarchical.
-- There should only ever be one top agent, and this must remain true after any modifications.
-- The top agent must only connect to mid-level managers or coordinators, never directly to the lowest-level (leaf) agents.
+- There is only one top agent, and this must remain true after any modifications.
+- The top agent must only connect to mid-level managers or coordinators, never directly to the lowest-level agents.
 - Make agents granular so that at least one branch has a depth of three agents from the top.
 - When adding a new agent, always call `update_agent_in_network` afterwards to connect it to the appropriate up-chain or down-chain agents.
 - When removing an agent, update both up-chain and down-chain agents to prevent dangling references, while still maintaining the no-cycles and single-top-agent rules.
@@ -79,52 +80,38 @@ Graph Example:
 [
   (
     "agent_name": "customer_support_rep",
-    "instructions": "You are the top-level agent responsible for handling all inquiries for a telco with a B2B business. When interacting with the user, act as the single point of interaction. No need to mention the other tools or agents. If there are any requirements that need user input, ask them one at a time, with clear examples of the choices available.",
     "down_chain_agents": ["network_engineer", "account_manager", "project_manager"],
-    "top_agent": true
   ),
   (
     "agent_name": "network_engineer",
-    "instructions": "You handle technical aspects of configuring and troubleshooting ethernet and optical networks at different locations for a telco with a B2B business. You configure and maintain network infrastructure and provide technical support when issues arise.",
     "down_chain_agents": ["network_ops_center_specialist", "field_technician"],
-    "top_agent": false
   ),
   (
     "agent_name": "field_technician",
-    "instructions": "You are responsible for onsite installation, maintenance, and troubleshooting of network equipment at customer locations for a telco with a B2B business. You execute hands-on technical work at customer premises and coordinate with the engineer to ensure networks are functional.",
     "down_chain_agents": [],
-    "top_agent": false
   ),
   (
     "agent_name": "network_ops_center_specialist",
-    "instructions": "You monitor network health, respond to alerts, and initiate troubleshooting remotely for a telco with a B2B business. You provide round-the-clock monitoring and first-line response to network performance issues.",
     "down_chain_agents": [],
-    "top_agent": false
   ),
   (
     "agent_name": "account_manager",
-    "instructions": "You manage the business relationship with the customer, addressing their needs, and ensuring ongoing satisfaction. You act as the main point of contact for clients post-sale, ensuring that the services meet their business needs.",
     "down_chain_agents": [],
-    "top_agent": false
   ),
   (
     "agent_name": "project_manager",
-    "instructions": "You oversee complex network installation or upgrade projects involving multiple locations, ensuring they stay on track. You coordinate larger, cross-location projects and manage timelines, resources, and milestones.",
     "down_chain_agents": ["logistics_coordinator"],
-    "top_agent": false
   ),
   (
     "agent_name": "logistics_coordinator",
-    "instructions": "You manage the shipment and delivery of network equipment to various locations, ensuring timely arrival for installations. You coordinate the physical logistics of hardware and tools required for installation or maintenance.",
     "down_chain_agents": [],
-    "top_agent": false
   )
 ]
 
 """,
             "allow": {
                 "to_upstream": {
-                    "sly_data": ["AutomaticallyDesignedAgentNetwork"]
+                    "sly_data": ["agent_network_definition"]
                 }
             },
             "tools": [
@@ -132,7 +119,7 @@ Graph Example:
                 "add_agent_to_network",
                 "remove_agent_from_network",
                 "update_agent_in_network",
-                "get_agent_network"
+                "get_agent_network_definition"
             ]
         },
 
@@ -141,6 +128,17 @@ Graph Example:
             "class": "create_network.CreateNetwork",
             "function": {
                 "description": "Create a new network",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "agent_names": {
+                            "type": "array",
+                            "items": {"type": "string"},
+                            "description": "List of the names of the agents in the network"
+                        }
+                    },
+                    "required": ["agent_names"]
+                }
             }
         },
 
@@ -154,18 +152,10 @@ Graph Example:
                     "properties": {
                         "agent_name": {
                             "type": "string",
-                            "description": "the name of the agent being added."
-                        },
-                        "instructions": {
-                            "type": "string",
-                            "description": "the instructions for the agent."
-                        },
-                        "top_agent": {
-                            "type": "boolean",
-                            "description": "'true' for a top agent."
+                            "description": "The name of the agent being added."
                         },
                     },
-                    "required": ["agent_name", "instructions", "top_agent"]
+                    "required": ["agent_name"]
                 }
             }
         },
@@ -200,28 +190,20 @@ Graph Example:
                             "type": "string",
                             "description": "The name of the agent being updated."
                         },
-                        "new_instructions": {
-                            "type": "string",
-                            "description": "Optional. New instructions for the agent."
-                        },
                         "new_down_chains": {
                             "type": "array",
-                            "items": { "type": "string" },
-                            "description": "Optional. Replace the list of down-chain agents."
+                            "items": {"type": "string"},
+                            "description": "Replace the list of down-chain agents."
                         },
-                        "top_agent": {
-                            "type": "boolean",
-                            "description": "Optional. Update top-agent status."
-                        }
                     },
-                    "required": ["agent_name"]
+                    "required": ["agent_name", "new_down_chains"]
                 }
             }
         },
 
         {
-            "name": "get_agent_network",
-            "class": "get_agent_network.GetAgentNetwork",
+            "name": "get_agent_network_definition",
+            "class": "get_agent_network_definition.GetAgentNetworkDefinition",
             "function": {
                 "description": "Get the agent network definition."
             }

@@ -15,16 +15,7 @@
     },
     "max_iterations": 40000,
     "max_execution_seconds": 6000,
-    "commondefs": {
-        "replacement_strings": {
-            "instructions_prefix": """
-            You are an assistant helping with the process of building an agent network.
-            Only answer inquiries that are directly within your area of expertise.
-            Do not try to help for other matters.
-            Do not mention what you can NOT do. Only mention what you can do.
-            """,
-        },
-    },
+
     "tools": [
         # This first agent definition is regarded as the "Front Man", which
         # does all the talking to the outside world/client.
@@ -57,35 +48,59 @@
                 }
             },
             "instructions": """
-{instructions_prefix}
 You are responsible for designing and modifying agent networks based on user requirements.
+Only answer inquiries that are directly within your area of expertise. Do not try to help for other matters. Do not mention what you can NOT do. Only mention what you can do.
+
 Take the following steps. Make sure you don't miss any details and follow the steps carefully.
-1) If the user provides the name of a company, organization, or domain description, generate a new agent network definition mirroring relevant workflows and responsible nodes.
-Call your `agent_network_editor` tool for this one time. Make sure the name of the agent network is camelCase.
 
-If the user instead asks to modify an existing network, also call your `agent_network_editor` tool, but with the modification instructions.
+LOOPABLE WORKFLOW (steps 1–3 can repeat any number of times; step 4 is final):
+At any time before step 4 you may call `get_agent_network_definition` to inspect the current network definition and decide what to change next. You may repeat steps 1–3 (create/modify structure, refine instructions, regenerate queries) until the network is ready for finalization.
 
-2) After the network (newly created or modified) is produced, always call the `instruction_refiner` tool one time.
+1) Create or modify the network structure
+- If the user provides a company name or domain description for a new network, generate an agent network definition that mirrors relevant workflows and responsible nodes. Call your `agent_network_editor` tool. Ensure the agent network name is camelCase.
+- If the user asks to modify an existing network's structure (add/remove agents, or change up-chains/down-chains), call `agent_network_editor` with the modification instructions.
+- If the user only asks to modify agent instructions (no structural changes), skip structural edits and go to step 2.
+- Wait for and inspect the response from `agent_network_editor` before proceeding. You may call `get_agent_network_definition` now to confirm the change.
 
-3) Next, get 3-4 sample queries for the generated agent network by calling your `query_generator` tool.
+2) Create or refine agent instructions (MANDATORY)
+- Always call `agent_network_instruction_editor` after step 1, regardless of whether structural edits occurred.
+- After structural creation or modification, call `agent_network_instruction_editor` to generate or update agents' instructions.
+- You may call `agent_network_instruction_editor` multiple times as you iterate on the network; call it whenever agents are added/removed or when their responsibilities change.
+- Wait for and inspect the response from `agent_network_instruction_editor` before proceeding. Use `get_agent_network_definition` as needed to verify instruction placement.
 
-4) Once all is done, call the `produce_agent_network_hocon` tool one time to generate the hocon and return the exact full agent network definition hocon, along with the 3-4 sample queries as example usage.
-            """,
+3) Generate sample queries
+- Obtain 3–4 sample queries for the current agent network by calling `agent_network_query_generator`.
+- If the sample queries do not match the network or you decide further changes are needed, return to steps 1 or 2, then regenerate queries.
+- You may call `agent_network_query_generator` repeatedly until the queries accurately reflect the network behavior.
+
+4) FINALIZE HOCON — (MANDATORY, execute exactly once)
+- You MUST call `produce_agent_network_hocon` exactly one time before concluding the session.
+- Do not return a final answer, HOCON output, or claim completion until the `produce_agent_network_hocon` tool has been called and has returned the generated HOCON.
+- Return the produced HOCON together with the final 3–4 sample queries as example usage.
+- After calling `produce_agent_network_hocon`, treat the network as finalized for this session—do not make further structural or instruction edits unless the user explicitly requests a new modification cycle (which should repeat steps 1–4).
+
+Operational notes:
+- Always wait for each tool's response before taking the next action.
+- Use `get_agent_network_definition` liberally to inspect current state before deciding on changes.
+- Iteratively refine structure, instructions, and queries until they are coherent and aligned, then call the HOCON producer once to finalize.
+""",
             "allow": {
                 "to_upstream": {
-                    "sly_data": ["AutomaticallyDesignedAgentNetwork", "agent_name"]
+                    "sly_data": ["agent_network_definition", "agent_network_name"]
                 },
                 "from_downstream": {
-                    "sly_data": ["AutomaticallyDesignedAgentNetwork"]
+                    "sly_data": ["agent_network_definition"]
                 },
                 "to_downstream": {
-                    "sly_data": ["AutomaticallyDesignedAgentNetwork"]
+                    "sly_data": ["agent_network_definition"]
                 }
             },
-           "tools": ["/agent_network_editor", "query_generator", "instruction_refiner", "produce_agent_network_hocon"]
+           "tools": ["/agent_network_editor", "/agent_network_query_generator", "/agent_network_instructions_editor", "produce_agent_network_hocon", "get_agent_network_definition"]
         },
+
         {
             "name": "produce_agent_network_hocon",
+            "class": "create_agent_network_hocon.CreateAgentNetworkHocon"
             "function": {
                 "description": "Generate the complete hocon definition for an agent network and return it verbatim."
                 "parameters": {
@@ -99,93 +114,16 @@ If the user instead asks to modify an existing network, also call your `agent_ne
                     "required": ["agent_network_name"]
                 }
             },
-            "class": "create_agent_network_hocon.CreateAgentNetworkHocon"
+            
         },
                
         {
-            "name": "query_generator",
-            "function": {
-                "description": "Generate sample queries on a given agent network definition."
-                "parameters": {
-                    "type": "object",
-                    "properties": {
-                        "agent_network_description": {
-                            "type": "string",
-                            "description": "name of project, business or company or other description."
-                        },
-                    },
-                }
-            },
-            "instructions": """
-{instructions_prefix}
-You generate example queries that the created agent network can handle.
-First get the agent network using your agent network tool.
-Ensure the queries align with the agents' capabilities.
-Provide a diverse range of queries to illustrate the network's functions.
-The queries should show how multiple sub networks might contribute to a consolidated response from the top agent.
-Just give the enumerated sample queries. Try to keep the queries simple and natural.
-Make some of the examples transactional. If not stated, return no more than 3-4 examples.
-            """,
-            "command": "Call to generate sample queries for an agent network definition."
-            "tools": ["get_agent_network_tool"]
-        },
-        {
-            "name": "get_agent_network_tool",
+            "name": "get_agent_network_definition",
+            "class": "get_agent_network_definition.GetAgentNetworkDefinition",
             "function": {
                 "description": "Get the agent network definition."
-            },
-            "class": "get_agent_network.GetAgentNetwork"
+            }
         },
-        {
-            "name": "instruction_refiner",
-            "function": {
-                "description": "Refine the instructions for a given agent in an agent network definition."
-                "parameters": {
-                    "type": "object",
-                    "properties": {
-                        "agent_network_description": {
-                            "type": "string",
-                            "description": "name of project, business or company or other description."
-                        },
-                    },
-                }
-            },
-            "instructions": """
-{instructions_prefix}
-First get the full agent network definition using your `get_agent_network_tool`.
-Then iterate on all the agents one by one and refine and expand the instructions for each agent in the network and use your set_agent_instructions_tool tool for each agent's newly refined instructions to make sure they are saved.
-Ensure the instructions are clear, comprehensive, detailed, and specific to the agent's function.
-Provide context to improve the agent's effectiveness.
-Give a detailed and step-by-step description for what the given agent does given its scope of responsibilities.
-Make sure you only specify what concerns this particular agent, and not its up-chain or down-chains. The description
-should be specific to this agent. No need to mention anything about other agents or what they do.
-Make sure it is in-line with the company's cultural values and business objectives.
-Do not format your response and keep it as plain text with no other formatting characters.
-Wrap the lines at around 120 characters. Write it as if you are telling the agent.
-            """,
-            "command": "Refine instructions of each agent in the given agent network."
-            "tools": ["get_agent_network_tool", "set_agent_instructions_tool"]
-        }
-        {
-            "name": "set_agent_instructions_tool",
-            "function": {
-                "description": "Set the instructions for an agent in an agent network."
-                "parameters": {
-                    "type": "object",
-                    "properties": {
-                        "agent_name": {
-                            "type": "string",
-                            "description": "the name of the agent being added."
-                        },
-                        "instructions": {
-                            "type": "string",
-                            "description": "the instructions for the agent."
-                        },
-                    },
-                    "required": ["agent_name", "instructions"]
-                }
-            },
-            "class": "set_agent_instructions.SetAgentInstructions"
-        },
+        
     ]
 }

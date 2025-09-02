@@ -18,7 +18,7 @@ from neuro_san.interfaces.coded_tool import CodedTool
 
 WRITE_TO_FILE = True
 OUTPUT_PATH = "registries/"
-AGENT_NETWORK_NAME = "AutomaticallyDesignedAgentNetwork"
+AGENT_NETWORK_DEFINITION = "agent_network_definition"
 HOCON_HEADER_START = (
     "{\n"
     "# Importing content from other HOCON files\n"
@@ -163,13 +163,13 @@ class CreateAgentNetworkHocon(CodedTool):
                 "Error: <error message>"
         """
         # Use copy here since we may have to rearrange the dictionary to get the correct frontman
-        self.agents = deepcopy(sly_data.get(AGENT_NETWORK_NAME))
+        self.agents = deepcopy(sly_data.get(AGENT_NETWORK_DEFINITION))
         if not self.agents:
             return "Error: No network in sly data!"
 
         the_agent_network_name: str = args.get("agent_network_name", "")
         # Add the agent network name into sly data.
-        sly_data["agent_name"] = the_agent_network_name
+        sly_data["agent_network_name"] = the_agent_network_name
         if the_agent_network_name == "":
             return "Error: No agent_name provided."
 
@@ -189,16 +189,16 @@ class CreateAgentNetworkHocon(CodedTool):
         """
         # Make sure that the top agent is the first agent.
         # Find or set the top agent
-        top_agent_name: str = None
-        for name, agent in self.agents.items():
-            if agent.get("top_agent"):
-                top_agent_name = name
-                break
-        if not top_agent_name:
-            # No top agent found, make the first one the top agent
-            first_name: str = next(iter(self.agents))
-            self.agents[first_name]["top_agent"] = True
-            top_agent_name = first_name
+        top_agent_name: str = self.find_top_agent(self.agents)
+        # for name, agent in self.agents.items():
+        #     if agent.get("top_agent"):
+        #         top_agent_name = name
+        #         break
+        # if not top_agent_name:
+        #     # No top agent found, make the first one the top agent
+        #     first_name: str = next(iter(self.agents))
+        #     self.agents[first_name]["top_agent"] = True
+        #     top_agent_name = first_name
 
         # Move top agent to front
         if top_agent_name != next(iter(self.agents)):
@@ -213,7 +213,7 @@ class CreateAgentNetworkHocon(CodedTool):
                     tools = tools + '"' + down_chain + '"'
                     if j < len(agent["down_chains"]) - 1:
                         tools = tools + ","
-            if agent["top_agent"] is True:  # top agent
+            if agent_name == top_agent_name:  # top agent
                 an_agent = TOP_AGENT_TEMPLATE % (
                     agent_name,
                     agent["instructions"],
@@ -233,3 +233,15 @@ class CreateAgentNetworkHocon(CodedTool):
             agent_network_hocon = agent_network_hocon + an_agent
         agent_network_hocon = agent_network_hocon + "]\n}\n"
         return agent_network_hocon
+
+    def find_top_agent(self, network: dict[str, Any]) -> str:
+        as_down_chains = set()
+        has_down_chains = set()
+
+        for k, v in network.items():
+            down_chains: list[str] = v.get("down_chains")
+            if down_chains:
+                has_down_chains.add(k)
+                as_down_chains.update(down_chains)
+
+        return (has_down_chains - as_down_chains).pop()
