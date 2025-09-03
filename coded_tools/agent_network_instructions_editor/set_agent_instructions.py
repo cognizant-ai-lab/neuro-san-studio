@@ -67,7 +67,6 @@ class SetAgentInstructions(CodedTool):
         if the_agent_name not in network_def:
             return f"Error: Agent not found: {the_agent_name}"
 
-        old_instructions: str = network_def[the_agent_name].get("down_chains", "")
         new_instructions: str = args.get("new_instructions")
         if not new_instructions:
             return "Error: No agent instructions provided."
@@ -81,7 +80,6 @@ class SetAgentInstructions(CodedTool):
         sly_data[AGENT_NETWORK_DEFINITION] = network_def
         logger.info(">>>>>>>>>>>>>>>>>>>DONE !!!>>>>>>>>>>>>>>>>>>")
         return network_def
-        #return f"The instructions of {the_agent_name} was edited from {old_instructions} to {new_instructions}."
 
     async def async_invoke(self, args: dict[str, Any], sly_data: dict[str, Any]) -> str:
         """Run invoke asynchronously."""
