@@ -10,21 +10,14 @@
 #
 # END COPYRIGHT
 {
+    include "registries/aaosa.hocon"
+    
     "llm_config": {
         "use_model": "gpt-4o",
     },
     "max_iterations": 40000,
     "max_execution_seconds": 6000,
-    "commondefs": {
-        "replacement_strings": {
-            "instructions_prefix": """
-            You are part of a vibe-coding submissions Evaluator.
-            Only answer inquiries that are directly within your area of expertise, 
-            from the company's perspective.
-            Do not try to help for personal matters.
-            Do not mention what you can NOT do. Only mention what you can do.
-            """,
-            "grounding_instructions": """
+    "grounding_instructions": """
 Follow this rubric to arrive at reasonable scores:
 ## 1–30: Poor or Minimal - Lacks clarity, detail, or seriousness, Highly generic or boilerplate, Fails to meet basic expectations
 ## 31–50: Below Average - Some effort or relevance, but falls short, Incomplete, unoriginal, or weakly presented
@@ -37,60 +30,12 @@ Follow this rubric to arrive at reasonable scores:
     - Scores below 50 are valid and necessary for weak entries
     - Use the full 1–100 scale when evaluating. Do not cluster scores around 60–80 by default.
     - Scores cannot be None or null.
-            """,
-            "aaosa_instructions": """
-When you receive an inquiry, you will:
-1. If you are clearly not the right agent for this type of inquiry, reply you're not relevant.
-2. If there is a chance you're relevant, call your down-chain agents to determine if they can answer all or part of the inquiry.
-   Do not assume what your down-chain agents can do. Always call them. You'll be surprised.
-3. Determine which down-chain agents have the strongest claims to the inquiry.
-   3.1 If the inquiry is ambiguous, for example if more than one agent can fulfill the inquiry, then always ask for clarification.
-   3.2 Otherwise, call the relevant down-chain agents and:
-       - ask them for follow-up information if needed,
-       - or ask them to fulfill their part of the inquiry.
-4. Once all relevant down-chain agents have responded, either follow up with them to provide requirements or,
-   if all requirements have been fulfilled, compile their responses and return the final response.
-You may, in turn, be called by other agents in the system and have to act as a down-chain agent to them.
-            """,
-        },
-        "replacement_values": {
-            "aaosa_call": {
-                "description": "Depending on the mode, returns a natural language string in response.",
-                "parameters": {
-                    "type": "object",
-                    "properties": {
-                        "inquiry": {
-                            "type": "string",
-                            "description": "The inquiry"
-                        },
-                        "mode": {
-                            "type": "string",
-                            "description": """
-'Determine' to ask the agent if the inquiry belongs to it, in its entirety or in part.
-'Fulfill' to ask the agent to fulfill the inquiry, if it can.
-'Follow up' to ask the agent to respond to a follow up.
-                            """
-                        }
-                    },
-                    "required": [
-                        "inquiry",
-                        "mode"
-                    ]
-                }
-            },
-            "aaosa_command": """
-Always call all your tools and return a json block with the following fields:
-{{
-    "Name": <your name>,
-    "Inquiry": <the inquiry>,
-    "Mode": <Determine | Fulfill | Followup>,
-    "Relevant": <Yes | No>,
-    "Requirements": <None | list of requirements>,
-    "Response": <your response in the given format>
-}}
-            """,
-        }
-    },
+    """,
+    "aaosa_instructions_suffix": """
+**IMPORTANT:** Invoke your 'evaluate_score' tool with the full text as 'inquiry' to evaluate the inputs.
+If the returned score is None or null or empty, invoke the 'evaluate_score' tool again.
+    """,
+
     "tools": [
         # This first agent definition is regarded as the "Front Man", which
         # does all the talking to the outside world/client.
@@ -112,14 +57,9 @@ Always call all your tools and return a json block with the following fields:
             },
             "instructions": """
 You are the evaluation orchestrator for a vibe-coding idea.
-{aaosa_instructions}
 
 ALWAYS call 'evaluate_score' to evaluate an idea.
-
-**IMPORTANT:** Invoke your 'evaluate_score' tool with the full text as 'inquiry' to evaluate the inputs.
-
-If the returned score is None or null or empty, invoke the 'evaluate_score' tool again.
-            """,
+            """ ${aaosa_instructions} ${aaosa_instructions_suffix},
             "allow": {
                 "to_upstream": {
                     "sly_data": {
@@ -132,13 +72,13 @@ If the returned score is None or null or empty, invoke the 'evaluate_score' tool
         # Evaluate Innovation
         {
             "name": "evaluate_score",
-            "function": "aaosa_call",
+            "function": ${aaosa_call},
             "instructions": """
 You are a finance and cost analyst assessing the Financial Feasibility of a product vibe‑coding idea submission.
 Always use your tools to evaluate the inputs.
 
 Step 1:
-{grounding_instructions}
+""" ${grounding_instructions} """
 
 Evaluate the following aspects:  
 For each of the following 5 sub‑criteria, give a score from 1 to 100 (1 = very poor, 100 = excellent):

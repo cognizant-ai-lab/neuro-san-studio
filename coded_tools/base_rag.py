@@ -47,6 +47,7 @@ logger = logging.getLogger(__name__)
 @dataclass
 class PostgresConfig:
     """Configuration for PostgreSQL connection."""
+
     user: str
     password: str
     host: str
@@ -126,7 +127,9 @@ class BaseRag(ABC):
         # If vector store type is unsupported, fallback to in-memory vector store
         if vector_store_type not in {"in_memory", "postgres"}:
             logger.warning(
-                "Received %s as 'vector_store_typ'. Available types are 'in_memory' and 'postgres'\n", vector_store_type)
+                "Received %s as 'vector_store_typ'. Available types are 'in_memory' and 'postgres'\n",
+                vector_store_type,
+            )
             vector_store_type = "in_memory"
 
         # Validate postgres config if needed
@@ -140,9 +143,7 @@ class BaseRag(ABC):
                 return existing_store
 
         # Load and process documents
-        vectorstore = await self._create_new_vector_store(
-            loader_args, postgres_config, vector_store_type
-        )
+        vectorstore = await self._create_new_vector_store(loader_args, postgres_config, vector_store_type)
 
         # Save vector store if configured
         await self._save_vector_store(vectorstore, vector_store_type)
@@ -157,8 +158,7 @@ class BaseRag(ABC):
 
         try:
             vector_store: VectorStore = InMemoryVectorStore.load(
-                path=self.abs_vector_store_path,
-                embedding=self.embeddings
+                path=self.abs_vector_store_path, embedding=self.embeddings
             )
             logger.info("Loaded vector store from: %s\n", self.abs_vector_store_path)
             return vector_store
@@ -202,9 +202,7 @@ class BaseRag(ABC):
         )
 
     async def _create_postgres_vector_store(
-        self,
-        loader_args: Any,
-        postgres_config: PostgresConfig
+        self, loader_args: Any, postgres_config: PostgresConfig
     ) -> Optional[VectorStore]:
         """Create a PostgreSQL vector store."""
 
@@ -218,7 +216,10 @@ class BaseRag(ABC):
             + "  Port: %s\n"
             + "  Database: %s\n"
             + "  Table: %s\n",
-            postgres_config.host, postgres_config.port, postgres_config.database, table_name
+            postgres_config.host,
+            postgres_config.port,
+            postgres_config.database,
+            table_name,
         )
 
         try:
@@ -256,7 +257,9 @@ class BaseRag(ABC):
 
         except InvalidPasswordError as invalid_password_error:
             # Fail to create vector store due to invalid username or password
-            logger.error("Fail to create vector store due to invalid username or password. %s\n", invalid_password_error)
+            logger.error(
+                "Fail to create vector store due to invalid username or password. %s\n", invalid_password_error
+            )
             return None
 
         except InvalidCatalogNameError as invalid_catalog_error:
@@ -264,17 +267,9 @@ class BaseRag(ABC):
             logger.error("Fail to create vector store due to invalid DB name. %s\n", invalid_catalog_error)
             return None
 
-    async def _save_vector_store(
-        self,
-        vectorstore: VectorStore,
-        vector_store_type: Literal["in_memory", "postgres"]
-    ):
+    async def _save_vector_store(self, vectorstore: VectorStore, vector_store_type: Literal["in_memory", "postgres"]):
         """Save vector store to file if configured."""
-        should_save: bool = (
-            self.save_vector_store
-            and self.abs_vector_store_path
-            and vector_store_type == "in_memory"
-        )
+        should_save: bool = self.save_vector_store and self.abs_vector_store_path and vector_store_type == "in_memory"
 
         if not should_save:
             return None

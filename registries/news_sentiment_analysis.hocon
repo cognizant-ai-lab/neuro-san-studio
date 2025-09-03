@@ -13,81 +13,20 @@
 #Install newspaper3k, vaderSentiment, backoff, lxml-html-cleans
 
 {
+    include "registries/aaosa.hocon"
+    
     "llm_config": {
         "model_name": "gpt-4o",
     },
     "max_iterations": 40000,
-    "max_execution_seconds": 6000
-    "commondefs": {
-        "replacement_strings": {
-            "instructions_prefix": """
-You are part of a news_sentiment_analysis_network of assistants.
-Only answer inquiries that are directly within your area of expertise.
-Do not try to help for other matters.
-Do not mention what you can NOT do. Only mention what you can do.
-            """,
-            "aaosa_instructions": """
-When you receive an inquiry, you will:
-1. If you are clearly not the right agent for this type of inquiry, reply you're not relevant.
-2. If there is a chance you're relevant, call your down-chain agents to determine if they can answer all or part of the inquiry.
-   Do not assume what your down-chain agents can do. Always call them. You'll be surprised.
-3. Determine which down-chain agents have the strongest claims to the inquiry.
-   3.1 If the inquiry is ambiguous, for example if more than one agent can fulfill the inquiry, then always ask for clarification.
-   3.2 Otherwise, call the relevant down-chain agents and:
-       - ask them for follow-up information if needed,
-       - or ask them to fulfill their part of the inquiry.
-4. Once all relevant down-chain agents have responded, either follow up with them to provide requirements or,
-   if all requirements have been fulfilled, compile their responses and return the final response.
-You may, in turn, be called by other agents in the system and have to act as a down-chain agent to them.
-            """
-        },
-        "replacement_values": {
-            "aaosa_call": {
-                "description": "Depending on the mode, returns a natural language string in response.",
-                "parameters": {
-                    "type": "object",
-                    "properties": {
-                        "inquiry": {
-                            "type": "string",
-                            "description": "The inquiry"
-                        },
-                        "mode": {
-                            "type": "string",
-                            "description": """
-'Determine' to ask the agent if the inquiry belongs to it, in its entirety or in part.
-'Fulfill' to ask the agent to fulfill the inquiry, if it can.
-'Follow up' to ask the agent to respond to a follow up.
-                            """
-                        },
-                    },
-                    "required": [
-                        "inquiry",
-                        "mode"
-                    ]
-                }
-            },
-            "aaosa_command": """ 
-Explain if you can respond to all or parts of the inquiry and what you need in order to respond, if anything.
-If mode is 'Determine', return a json block with the following fields:
-{
-    "Name": <your name>,
-    "Inquiry": <the inquiry>,
-    "Mode": <Determine>,
-    "Relevant": <Yes | No>,
-    "Strength": <number between 1 and 10 repressenting how certain you are in your claim>,
-    "Claim:" <All | Partial>,
-    "Requirements" <None | list of requirements>
-}
-If mode is 'Fulfill' or "Follow up", respond to the inquiry and return a json block with the following fields:
-{
-    "Name": <your name>,
-    "Inquiry": <the inquiry>,
-    "Mode": <Fulfill | Followup>,
-    "Response" <your response>
-}
-            """
-        },
-    },
+    "max_execution_seconds": 6000,
+    "instructions_prefix": """
+    You are part of a news_sentiment_analysis_network of assistants.
+    Only answer inquiries that are directly within your area of expertise.
+    Do not try to help for other matters.
+    Do not mention what you can NOT do. Only mention what you can do.
+    """,
+
     "tools": [
         # This first agent definition is regarded as the "Front Man", which
         # does all the talking to the outside world/client.
@@ -105,7 +44,8 @@ If mode is 'Fulfill' or "Follow up", respond to the inquiry and return a json bl
             "function": {
                 "description": "I oversee sentiment analysis of media coverage, coordinating a pipeline to evaluate sentiment, bias, tone, and emotional framing across news sources."
                 },
-            "instructions": """{instructions_prefix} You are the top-level agent named news_query_manager, 
+            "instructions": ${instructions_prefix} """
+            You are the top-level agent named news_query_manager, 
             responsible for managing sentiment analysis of how a topic is portrayed in the media. 
             Act as the sole interface for the user—never mention or expose internal tools or agents.
             Follow this sequential step-by-step workflow:
@@ -126,13 +66,14 @@ If mode is 'Fulfill' or "Follow up", respond to the inquiry and return a json bl
             - Return the final report to the user.
             Always follow this order: first news_api_specialist, then sentiment_analysis_expert, and finally data_analyst.  
             Never skip or repeat steps.
-            {aaosa_instructions}""",
+            """ ${aaosa_instructions},
             "tools": ["news_api_specialist", "sentiment_analysis_expert", "data_analyst"]
         },
         {
             "name": "data_analyst",
-            "function": "aaosa_call",
-            "instructions": """{instructions_prefix} Produce a comprehensive sentiment analysis report that is detailed, quantitative, and based on clear inferences. 
+            "function": ${aaosa_call},
+            "instructions": ${instructions_prefix} """
+            Produce a comprehensive sentiment analysis report that is detailed, quantitative, and based on clear inferences. 
             The average compound sentiment scores for each source and overall sentiment in this format: "<source_name>": "avg_compound": <..>,
             Use the EXACT scores from the JSON file. Do NOT invent/fabricate sources, scores, or examples.
             Include all these report Sections:
@@ -147,7 +88,8 @@ If mode is 'Fulfill' or "Follow up", respond to the inquiry and return a json bl
             - Identify possible editorial bias (ONLY if supported by clear differences in tone or framing).
             - Compare optimism, criticism, or neutrality across sources.
             4. Key Insights:
-            - Summarize the analysis and conclude the report. {aaosa_instructions}"""
+            - Summarize the analysis and conclude the report.
+            """ ${aaosa_instructions} 
         },
         {
             "name": "news_api_specialist",

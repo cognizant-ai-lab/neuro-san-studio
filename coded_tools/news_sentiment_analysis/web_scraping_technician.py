@@ -138,7 +138,7 @@ class WebScrapingTechnician(CodedTool):
             if not content:
                 raise ValueError("Empty content")
             return content
-        
+
         except (requests.exceptions.RequestException, ValueError) as e:
             logger.debug("Newspaper3k failed for %s: %s", url, e)
             return self.scrape_with_bs4(url, source)
@@ -181,7 +181,7 @@ class WebScrapingTechnician(CodedTool):
         return {
             "saved_articles": len(all_articles),
             "file": filename,
-            "status": "success" if all_articles else "failed"
+            "status": "success" if all_articles else "failed",
         }
 
     def scrape_guardian(
@@ -347,9 +347,7 @@ class WebScrapingTechnician(CodedTool):
             return self.scrape_aljazeera(keyword_list, save_dir)
         if source == "all":
             return self.scrape_all(keyword_list, save_dir)
-        return {
-            "error": f"Invalid source '{source}'. Must be one of: nyt, guardian, aljazeera, all"
-        }
+        return {"error": f"Invalid source '{source}'. Must be one of: nyt, guardian, aljazeera, all"}
 
     async def async_invoke(self, args: Dict[str, Any], sly_data: Dict[str, Any]) -> Dict[str, Any]:
         """

@@ -15,7 +15,6 @@
     },
     "max_iterations": 40000,
     "max_execution_seconds": 6000,
-
     "tools": [
         # This first agent definition is regarded as the "Front Man", which
         # does all the talking to the outside world/client.
@@ -113,8 +112,7 @@ Operational notes:
                     },
                     "required": ["agent_network_name"]
                 }
-            },
-            
+            },            
         },
                
         {

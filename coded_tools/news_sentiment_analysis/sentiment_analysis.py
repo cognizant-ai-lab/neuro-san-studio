@@ -92,7 +92,9 @@ class SentimentAnalysis(CodedTool):
             logger.exception("Error analyzing keyword sentiment")
             return [], False
 
-    def _process_file(self, file_name: str, keywords_list: List[str], target_sources: Optional[set]) -> Optional[Dict[str, Any]]:
+    def _process_file(
+        self, file_name: str, keywords_list: List[str], target_sources: Optional[set]
+    ) -> Optional[Dict[str, Any]]:
         """
         Process a single file for sentiment analysis.
 
@@ -137,7 +139,9 @@ class SentimentAnalysis(CodedTool):
             "snippet": snippet,
         }
 
-    def _collect_articles(self, entries: List[str], keywords_list: List[str], target_sources: Optional[set]) -> Tuple[List[Dict[str, Any]], Dict[str, Dict[str, float]]]:
+    def _collect_articles(
+        self, entries: List[str], keywords_list: List[str], target_sources: Optional[set]
+    ) -> Tuple[List[Dict[str, Any]], Dict[str, Dict[str, float]]]:
         """
         Iterate over file entries, process each for keyword-based sentiment analysis,
         and accumulate per-article data and aggregate sentiment statistics.

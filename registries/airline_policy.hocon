@@ -8,59 +8,19 @@
 # neuro-san-studio SDK Software in commercial settings.
 #
 {
+    include "registries/aaosa.hocon"
+    
     "llm_config": {
         "model_name": "gpt-4o",
     },
-    "commondefs": {
-        "replacement_strings": {
-            "instructions_prefix": """
-            You are in charge of a portion of the help desk of an airline company.
-            Only answer inquiries that are directly within your area of expertise, 
-            from the company's perspective.
-            Do not try to help for personal matters.
-            Do not mention what you can NOT do. Only mention what you can do.
-            """,
-            "aaosa_instructions": """
-When you receive an inquiry, you will:
+    "instructions_prefix": """
+You are in charge of a portion of the help desk of an airline company.
+Only answer inquiries that are directly within your area of expertise, 
+from the company's perspective.
+Do not try to help for personal matters.
+Do not mention what you can NOT do. Only mention what you can do.
+""",
 
-    1. Call your tools to determine which down-chain agents in your tools are
-       responsible for all or part of it.
-    2. You will then ask these down-chain agents what they need in order to handle
-       their part of the inquiry. Once the requirements are gathered, you will,
-    3. Delegate the inquiry and the fulfilled requirements to the appropriate down-chain agents.
-    4. Once all down-chain agents respond, you will compile their responses and return the final response.
-
-You may, in turn, be called by other agents in the system and have to act as a down-chain to them.
-            """
-        },
-        "replacement_values": {
-            "aaosa_call": {
-                "description": "Depending on the mode, returns a natural language string in response.",
-                "parameters": {
-                    "type": "object",
-                    "properties": {
-                        "inquiry": {
-                            "type": "string",
-                            "description": "The inquiry"
-                        },
-                        "mode": {
-                            "type": "string",
-                            "description": """
-indicates whether the agent is being asked to determine if the inquiry belongs to it
-in its entirety or in part. or if it is being asked to provide requirements to fulfill
-the inquiry, if any. or if it is being asked to respond to the inquiry.
-                            """
-                        }
-                    },
-                    "required": [
-                        "inquiry",
-                        "mode"
-                    ]
-                }
-            },
-            "aaosa_command": "Explain if you can respond to all or parts of the inquiry and what you need in order to respond, if anything."
-        }
-    },
     "tools": [
         # This first agent definition is regarded as the "Front Man", which
         # does all the talking to the outside world/client.
@@ -84,22 +44,19 @@ the inquiry, if any. or if it is being asked to respond to the inquiry.
                 cutomers' questions about Airline policies, procedures, and resources that they can access.
                 """
             },
-            "instructions": """
-{instructions_prefix}
+            "instructions": ${instructions_prefix} """
 You are the top-level agent responsible for handling all policy-related inquiries.
-{aaosa_instructions}
 When interacting with the user, act as the single point of interaction. No need to mention the other 
 tools or agents. If there are any requirements that need user input, ask them one at a time, 
 with clear examples of the choices available.
 Provide the users with necessary URLs to help them with their query.
-            """,
+            """ ${aaosa_instructions},
             "tools": ["Baggage_Handling", "Flights", "International_Travel"]
         },
         {
             "name": "Baggage_Handling",
-            "function": "aaosa_call",
-            "instructions": """
-{instructions_prefix}
+            "function": ${aaosa_call},
+            "instructions": ${instructions_prefix} """
 The name of this app is Baggage_Handling.
 You manage and track the policies with respect to baggage handling.
 You will ensure that the customer's request is assigned to the right policy and respond 
@@ -107,16 +64,14 @@ on applicable policy. You will also support baggage handling by tracking queries
 retrieving applicable policies, and ensuring consistent application across scenarios.
 - If available, read the content of extracted text and answer user query.
 - Provide the users with necessary URLs to help them with their query.
-{aaosa_instructions}
-            """,
-            "command": "aaosa_command",
+            """ ${aaosa_instructions},
+            "command": ${aaosa_command},
             "tools": ["Carry_On_Baggage", "Checked_Baggage", "Bag_Issues", "Special_Items", "Bag_Fee_Calculator"]
         },
         {
             "name": "Carry_On_Baggage",
-            "function": "aaosa_call",
-            "instructions": """
-{instructions_prefix}
+            "function": ${aaosa_call},
+            "instructions": ${instructions_prefix} """
 The name of this app is `Carry On Baggage`.
 You will help to ensure passengers' carry-on baggage complies with size, weight, and security regulations. 
 Advise on prohibited items, assist with gate-checking for oversized items, and provide premium 
@@ -124,14 +79,13 @@ member-specific benefits, such as priority boarding allowances.
 Read the necessary files from this app's directory to answer the user query.
 Provide the user with a url to the app page 'Carry On Baggage'.
             """,
-            "command": "aaosa_command",
+            "command": ${aaosa_command},
             "tools": ["ExtractDocs", "URLProvider"]
         },
         {
             "name": "Checked_Baggage",
-            "function": "aaosa_call",
-            "instructions": """
-{instructions_prefix}
+            "function": ${aaosa_call},
+            "instructions": ${instructions_prefix} """
 The name of this app is `Checked Baggage`.
 You will help to ensure passengers' checked baggage complies with size, weight, and security regulations. 
 Advise on prohibited items, assist with gate-checking for oversized items, and provide premium 
@@ -139,14 +93,13 @@ member-specific benefits, such as priority boarding allowances.
 Read the necessary files from this app's directory to answer the user query.
 Provide the user with a url to the app page 'Checked Baggage'.
             """,
-            "command": "aaosa_command",
+            "command": ${aaosa_command},
             "tools": ["ExtractDocs", "URLProvider"]
         },
         {
             "name": "Bag_Issues",
-            "function": "aaosa_call",
-            "instructions": """
-{instructions_prefix}
+            "function": ${aaosa_call},
+            "instructions": ${instructions_prefix} """
 The name of this app is `Bag Issues`.
 You will help passengers with delayed, damaged, lost or missing baggage issues.
 You will manage damaged baggage claims by documenting the damage with photos, verifying eligibility 
@@ -156,14 +109,13 @@ Read the necessary files from the app's directory to answer the user query.
 Provide the user with a url to this app page Bag Issues.
 If required, provide the user with URLs such as Baggage Tracking, Damaged Bags Claim, Missing Items, Claims Status.
             """,
-            "command": "aaosa_command",
+            "command": ${aaosa_command},
             "tools": ["ExtractDocs", "URLProvider"]
         },
         {
             "name": "Special_Items",
-            "function": "aaosa_call",
-            "instructions": """
-{instructions_prefix}
+            "function": ${aaosa_call},
+            "instructions": ${instructions_prefix} """
 The name of this app is `Special Items`.
 You will help passengers with special baggage concerns.
 You wll help in providing guidance on fees, allowances, and packaging for transporting sports equipment 
@@ -172,27 +124,25 @@ ensuring alignment with storage, weight, and size guidelines.
 Read the necessary files from this app's directory to answer the user query.
 Provide the user with URLs such as Special Items.
             """,
-            "command": "aaosa_command",
+            "command": ${aaosa_command},
             "tools": ["ExtractDocs", "URLProvider"]
         },
         {
             "name": "Bag_Fee_Calculator",
-            "function": "aaosa_call",
-            "instructions": """
-{instructions_prefix}
+            "function": ${aaosa_call},
+            "instructions": ${instructions_prefix} """
 The name of this app is `Bag Fee Calculator`.
 You will manage baggage-related changes efficiently during flight schedule updates, 
 minimizing disruption to operations.
 Provide the user with a url to the app page 'Bag Fee Calculator'.
             """,
-            "command": "aaosa_command",
+            "command": ${aaosa_command},
             "tools": ["URLProvider"]
         },
         {
             "name": "Flights",
-            "function": "aaosa_call",
-            "instructions": """
-{instructions_prefix}
+            "function": ${aaosa_call},
+            "instructions": ${instructions_prefix} """
 The name of this app is `Flights`.
 You manage and track the policies with respect to Flight details.
 You will ensure that the customer's request is assigned to the right policy and respond 
@@ -200,58 +150,53 @@ on applicable policy. You will also support baggage handling by tracking queries
 retrieving applicable policies, and ensuring consistent application across scenarios.
 - If available, read the content of extracted text and answer user query.
 - Provide the users with necessary URLs to help them with their query.
-{aaosa_instructions}
-            """,
-            "command": "aaosa_command",
+            """ ${aaosa_instructions},
+            "command": ${aaosa_command},
             "tools": ["Military_Personnel", "Basic_Economy_Restrictions", "Mileage_Plus"]
         },
         {
             "name": "Military_Personnel",
-            "function": "aaosa_call",
-            "instructions": """
-{instructions_prefix}
+            "function": ${aaosa_call},
+            "instructions": ${instructions_prefix} """
 The name of this app is `Military Personnel`.
 You will help in guiding military personnel through the process of availing their special baggage 
 allowances, ensuring seamless service delivery.
 Read the necessary files from this app's directory to answer the user query.
 Provide the user with URLs such as 'Military Personnel'.
             """,
-            "command": "aaosa_command",
+            "command": ${aaosa_command},
             "tools": ["ExtractDocs", "URLProvider"]
         },
         {
             "name": "Basic_Economy_Restrictions",
-            "function": "aaosa_call",
-            "instructions": """
-{instructions_prefix}
+            "function": ${aaosa_call},
+            "instructions": ${instructions_prefix} """
 The name of this app is `Basic Economy Restrictions`.
 You will help with details to assist passengers in understanding the baggage limitations for 
 Basic Economy fares. Clearly communicate additional fees and exceptions, and escalate disputes if necessary.
 Read the necessary files from this app's directory to answer the user query.
 Provide the user with URLs such as 'Basic Economy Restrictions'.
             """,
-            "command": "aaosa_command",
+            "command": ${aaosa_command},
             "tools": ["ExtractDocs", "URLProvider"]
         },
          {
             "name": "Mileage_Plus",
-            "function": "aaosa_call",
-            "instructions": """
-{instructions_prefix}
+            "function": ${aaosa_call},
+            "instructions": ${instructions_prefix} """
 The name of this app is `Mileage Plus`.
 You will help in verifying passengers' membership tiers and credit card benefits to determine 
 baggage fee waivers and complimentary allowances.
 Read the necessary files from this app's directory to answer the user query.
 Provide the user with URLs such as 'Mileage Plus'.
             """,
-            "command": "aaosa_command",
+            "command": ${aaosa_command},
             "tools": ["ExtractDocs"]
         },
         {
             "name": "International_Travel",
-            "function": "aaosa_call",
-            "instructions": """
-{instructions_prefix}
+            "function": ${aaosa_call},
+            "instructions": ${instructions_prefix} """
 The name of this app is `International Travel`.
 You manage and track the policies with respect to International Travel handling.
 You will help in providing country-specific guidance for international baggage policies, 
@@ -259,16 +204,14 @@ ensuring passengers meet regulatory requirements.
 Note: 
 - If available, read the content of extracted text and answer user query.
 - Provide the users with necessary URLs to help them with their query.
-{aaosa_instructions}
-            """,
-            "command": "aaosa_command",
+            """ ${aaosa_instructions},
+            "command": ${aaosa_command},
             "tools": ["International_Checked_Baggage", "Embargoes"]
         },
         {
             "name": "International_Checked_Baggage",
-            "function": "aaosa_call",
-            "instructions": """
-{instructions_prefix}
+            "function": ${aaosa_call},
+            "instructions": ${instructions_prefix} """
 The name of this app is `International Checked Baggage`.
 You will help passengers with International Checked Baggage queries.
 You will help in providing country-specific guidance for international baggage policies, 
@@ -276,21 +219,20 @@ ensuring passengers meet regulatory requirement.
 Read the necessary files from this app's directory to answer the user query.
 Provide the uer with a url to the app page 'International Checked Baggage'.
             """,
-            "command": "aaosa_command",
+            "command": ${aaosa_command},
             "tools": ["ExtractDocs", "URLProvider"]
         },
         {
             "name": "Embargoes",
-            "function": "aaosa_call",
-            "instructions": """
-{instructions_prefix}
+            "function": ${aaosa_call},
+            "instructions": ${instructions_prefix} """
 The name of this app is `Embargoes`.
 You will help with details to inform passengers about restricted travel periods and regional 
 limitations for baggage allowances, including weight and size restrictions.
 Read the necessary files from this app's directory to answer the user query.
 Provide the uer with a url to the app page 'Embargoes'
             """,
-            "command": "aaosa_command",
+            "command": ${aaosa_command},
             "tools": ["ExtractDocs", "URLProvider"]
         },
         {

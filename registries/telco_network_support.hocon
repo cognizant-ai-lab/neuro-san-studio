@@ -10,51 +10,12 @@
 #
 # END COPYRIGHT
 {
+    include "registries/aaosa.hocon"
+    
     "llm_config": {
         "model_name": "gpt-4o",
     },
-    "commondefs": {
-        "replacement_strings": {
-            "aaosa_instructions": """
-When you receive an inquiry, you will:
 
-    1. Call your tools to determine which down-chain agents in your tools are
-       responsible for all or part of it.
-    2. You will then ask these down-chain agents what they need in order to handle
-       their part of the inquiry. Once the requirements are gathered, you will,
-    3. Delegate the inquiry and the fulfilled requirements to the appropriate down-chain agents.
-    4. Once all down-chain agents respond, you will compile their responses and return the final response.
-
-You may, in turn, be called by other agents in the system and have to act as a down-chain to them.
-            """
-        },        "replacement_values": {
-            "aaosa_call": {
-                  "description": "Depending on the mode, returns a natural language string in response.",
-                  "parameters": {
-                      "type": "object",
-                      "properties": {
-                          "inquiry": {
-                              "type": "string",
-                              "description": "The inquiry"
-                          },
-                          "mode": {
-                              "type": "string",
-                              "description": """
-indicates whether the agent is being asked to determine if the inquiry belongs to it
-in its entirety or in part. or if it is being asked to provide requirements to fulfill
-the inquiry, if any. or if it is being asked to respond to the inquiry.
-                              """
-                          },
-                      },
-                      "required": [
-                          "inquiry",
-                          "mode"
-                      ]
-                  }
-            },
-            "aaosa_command": "Explain if you can respond to all or parts of the inquiry and what you need in order to respond, if anything."
-        },
-    }
     "tools": [
         # This first agent definition is regarded as the "Front Man", which
         # does all the talking to the outside world/client.
@@ -74,16 +35,14 @@ the inquiry, if any. or if it is being asked to respond to the inquiry.
             },
             "instructions": """
 You are the top-level agent responsible for handling all inquiries.
-{aaosa_instructions}
 When interacting with the user, act as the single point of interaction. No need to mention the other tools or agents.
 If there are any requirements that need user input, ask them one at a time, with clear examples of the choices available.
-
-            """,
+            """ ${aaosa_instructions},
             "tools": ["service_delivery_coordinator", "network_engineer", "account_manager"]
         },
         {
             "name": "service_delivery_coordinator",
-            "function": "aaosa_call",
+            "function": ${aaosa_call},
             "instructions": """
 You manage and track the overall process of fulfilling orders and resolving issues related to network services.,
 You will ensure that the customer's request is assigned to the right department and follow up on order progress.
@@ -91,105 +50,99 @@ You will ensure that the customer's request is assigned to the right department 
         },
         {
             "name": "network_engineer",
-            "function": "aaosa_call",
+            "function": ${aaosa_call},
             "instructions": """
 You handle technical aspects of configuring and troubleshooting ethernet and optical networks at different locations.
 You configures and maintain network infrastructure and provide technical support when issues arise.
-{aaosa_instructions}
-            """,
+            """ ${aaosa_instructions},
             "command": "Explain if you can respond to all or parts of the inquiry and what you need in order to respond, if anything."
             "tools": ["network_ops_center_specialist", "field_technician"]
         },
         {
             "name": "field_technician",
-            "function": "aaosa_call",
+            "function": ${aaosa_call},
             "instructions": """
 You are responsible for onsite installation, maintenance, and troubleshooting of network equipment at customer locations.
-You Execute hands-on technical work at customer premises and coordinates with the engineer to ensure networks are functional.,
-{aaosa_instructions}
-            """,
-            "command": "aaosa_command"
+You Execute hands-on technical work at customer premises and coordinates with the engineer to ensure networks are functional.
+            """ ${aaosa_instructions},
+            "command": ${aaosa_command}
             "tools": ["logistics_coordinator"]
         },
         {
             "name": "network_ops_center_specialist",
-            "function": "aaosa_call",
+            "function": ${aaosa_call},
             "instructions": """
 You monitor network health, respond to alerts, and initiate troubleshooting remotely.
 You Provide round-the-clock monitoring and first-line response to network performance issues.
-{aaosa_instructions}
-            """,
-            "command": "aaosa_command"
+            """ ${aaosa_instructions},
+            "command": ${aaosa_command}
             "tools": ["noc_manager"]
         },
         {
             "name": "project_manager",
-            "function": "aaosa_call",
+            "function": ${aaosa_call},
             "instructions": """
 You oversee complex network installation or upgrade projects involving multiple locations, ensuring they stay on track.
 You coordinates larger, cross-location projects and manage timelines, resources, and milestones.
-{aaosa_instructions}
-            """,
-            "command": "aaosa_command"
+            """ ${aaosa_instructions},
+            "command": ${aaosa_command}
             "tools": ["senior_network_architect", "logistics_coordinator"]
         },
         {
             "name": "senior_network_architect",
-            "function": "aaosa_call",
+            "function": ${aaosa_call},
             "instructions": """
 You design the overall architecture for large-scale network infrastructure across multiple locations.
 You provide the strategic vision and high-level design for network services and oversee implementation for large-scale projects.
             """,
-            "command": "aaosa_command"
+            "command": ${aaosa_command}
         },
         {
             "name": "sales_engineer",
-            "function": "aaosa_call",
+            "function": ${aaosa_call},
             "instructions": """
 You engage with customers during the pre-sales phase, explaining technical details and solutions for ethernet and optical network services.,
 You ensure customer requirements are well understood and translated into appropriate technical solutions.
             """,
-            "command": "aaosa_command"
+            "command": ${aaosa_command}
         },
         {
             "name": "account_manager",
-            "function": "aaosa_call",
+            "function": ${aaosa_call},
             "instructions": """
 You manages the business relationship with the customer, addressing their needs, and ensuring ongoing satisfaction.
 You act as the main point of contact for clients post-sale, ensuring that the services meet their business needs.
-{aaosa_instructions}
-            """,
-            "command": "aaosa_command"
+            """ ${aaosa_instructions},
+            "command": ${aaosa_command}
             "tools": ["sales_engineer", "project_manager", "service_delivery_coordinator"]
         },
         {
             "name": "noc_manager",
-            "function": "aaosa_call",
+            "function": ${aaosa_call},
             "instructions": """
 You oversee the NOC team to ensure network performance and availability are maintained across all locations.
 You ensure the NOC team is efficiently handling alerts, escalations, and incidents, and communicates any critical issues to senior management.
-{aaosa_instructions}
-            """,
-            "command": "aaosa_command"
+            """ ${aaosa_instructions},
+            "command": ${aaosa_command}
             "tools": ["senior_management"]
         },
         {
             "name": "senior_management",
-            "function": "aaosa_call",
+            "function": ${aaosa_call},
             "instructions": """
 You provide strategic oversight of network operations and service delivery across the organization.,
 You set goals for network service performance, approve large projects, and ensure the organization meets its service delivery standards.
             """,
-            "command": "aaosa_command"
+            "command": ${aaosa_command}
         },
         {
             "name": "logistics_coordinator",
-            "function": "aaosa_call",
+            "function": ${aaosa_call},
             "instructions": """
 You manage the shipment and delivery of network equipment to various locations, ensuring timely arrival for installations.
 You coordinates the physical logistics of hardware and tools required for installation or maintenance.
             """,
-            "command": "aaosa_command"
+            "command": ${aaosa_command}
         }
     ]
 }

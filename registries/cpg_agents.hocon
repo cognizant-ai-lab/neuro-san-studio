@@ -10,52 +10,12 @@
 #
 # END COPYRIGHT
 {
+    include "registries/aaosa.hocon"
+    
     "llm_config": {
         "model_name": "gpt-4o",
     },
-    "commondefs": {
-        "replacement_strings": {
-            "aaosa_instructions": """
-When you receive an inquiry, you will:
 
-    1. Call your tools to determine which down-chain agents in your tools are
-       responsible for all or part of it.
-    2. You will then ask these down-chain agents what they need in order to handle
-       their part of the inquiry. Once the requirements are gathered, you will,
-    3. Delegate the inquiry and the fulfilled requirements to the appropriate down-chain agents.
-    4. Once all down-chain agents respond, you will compile their responses and return the final response.
-
-You may, in turn, be called by other agents in the system and have to act as a down-chain to them.
-            """
-        },
-        "replacement_values": {
-            "aaosa_call": {
-                "description": "Depending on the mode, returns a natural language string in response.",
-                "parameters": {
-                    "type": "object",
-                    "properties": {
-                        "inquiry": {
-                            "type": "string",
-                            "description": "The inquiry"
-                        },
-                        "mode": {
-                            "type": "string",
-                            "description": """
-indicates whether the agent is being asked to determine if the inquiry belongs to it
-in its entirety or in part. or if it is being asked to provide requirements to fulfill
-the inquiry, if any. or if it is being asked to respond to the inquiry.
-                            """
-                        },
-                    },
-                    "required": [
-                        "inquiry",
-                        "mode"
-                    ]
-                }
-            },
-            "aaosa_command": "Explain if you can respond to all or parts of the inquiry and what you need in order to respond, if anything."
-        },
-    }
     "tools": [
         # This first agent definition is regarded as the "Front Man", which
         # does all the talking to the outside world/client.
@@ -75,146 +35,141 @@ the inquiry, if any. or if it is being asked to respond to the inquiry.
             },
             "instructions": """
 You oversee the entire global operations for a consumer packaged goods (CPG) company. Your responsibilities include setting strategic goals, managing cross-departmental objectives, and ensuring all functional areas—product development, supply chain, marketing, and regional operations—work in harmony to meet company objectives.
-{aaosa_instructions}
 When interacting with the user, act as the single point of interaction. No need to mention the other tools or agents.
 If there are any requirements that need user input, ask them one at a time, with clear examples of the choices available.
-            """,
+            """ ${aaosa_instructions},
             "tools": ["vp_supply_chain", "vp_product_development", "vp_sales_marketing", "regional_operations_director"]
         },
         {
             "name": "vp_supply_chain",
-            "function": "aaosa_call",
+            "function": ${aaosa_call},
             "instructions": """
 You are responsible for the entire supply chain for the global CPG company. Your role includes managing sourcing, production, logistics, and warehouse operations to optimize costs and ensure timely delivery.
-{aaosa_instructions}
-            """,
-            "command": "aaosa_command"
+            """ ${aaosa_instructions},
+            "command": ${aaosa_command}
             "tools": ["procurement_manager", "manufacturing_manager", "logistics_manager"]
         },
         {
             "name": "vp_product_development",
-            "function": "aaosa_call",
+            "function": ${aaosa_call},
             "instructions": """
 You oversee the product development team for a global CPG company. Your responsibility includes ensuring that product research, testing, and design align with consumer preferences and are executed within budget and time constraints.
-{aaosa_instructions}
-            """,
-            "command": "aaosa_command"
+            """ ${aaosa_instructions},
+            "command": ${aaosa_command}
             "tools": ["product_research_manager", "product_design_manager", "quality_assurance_manager"]
         },
         {
             "name": "vp_sales_marketing",
-            "function": "aaosa_call",
+            "function": ${aaosa_call},
             "instructions": """
 You manage the sales and marketing efforts globally for the CPG company. Your focus includes developing strategic marketing campaigns, brand positioning, and sales strategies to expand market reach and drive revenue.
-{aaosa_instructions}
-            """,
-            "command": "aaosa_command"
+            """ ${aaosa_instructions},
+            "command": ${aaosa_command}
             "tools": ["brand_manager", "digital_marketing_manager", "sales_director"]
         },
         {
             "name": "regional_operations_director",
-            "function": "aaosa_call",
+            "function": ${aaosa_call},
             "instructions": """
 You oversee the operations within specific global regions for a CPG company, ensuring local execution of global strategies, aligning product adaptations and marketing initiatives with regional needs, and supporting compliance with local regulations.
-{aaosa_instructions}
-            """,
-            "command": "aaosa_command"
+            """ ${aaosa_instructions},
+            "command": ${aaosa_command}
             "tools": ["regional_supply_chain_manager", "regional_sales_manager", "regional_marketing_manager"]
         },
         {
             "name": "procurement_manager",
-            "function": "aaosa_call",
+            "function": ${aaosa_call},
             "instructions": """
 You oversee the sourcing of raw materials and supplier relationships for the CPG company. You ensure quality, negotiate contracts, and work to secure materials on time and within budget.
             """,
         },
         {
             "name": "manufacturing_manager",
-            "function": "aaosa_call",
+            "function": ${aaosa_call},
             "instructions": """
 You manage the manufacturing process for the CPG company, ensuring efficient production workflows and quality control across production sites.
             """,
-            "command": "aaosa_command"
+            "command": ${aaosa_command}
         },
         {
             "name": "logistics_manager",
-            "function": "aaosa_call",
+            "function": ${aaosa_call},
             "instructions": """
 You handle logistics for the CPG company, managing the transport and warehousing operations to ensure products reach their destinations on time.
             """,
-            "command": "aaosa_command"
+            "command": ${aaosa_command}
         },
         {
             "name": "product_research_manager",
-            "function": "aaosa_call",
+            "function": ${aaosa_call},
             "instructions": """
 You conduct research to identify consumer preferences and market trends, providing insights that guide product development for the CPG company.
             """,
-            "command": "aaosa_command"
+            "command": ${aaosa_command}
         },
         {
             "name": "product_design_manager",
-            "function": "aaosa_call",
+            "function": ${aaosa_call},
             "instructions": """
 You oversee the design and formulation of new products, working closely with research and quality teams to ensure new offerings align with market needs and regulatory standards.
             """,
-            "command": "aaosa_command"
+            "command": ${aaosa_command}
         },
         {
             "name": "quality_assurance_manager",
-            "function": "aaosa_call",
+            "function": ${aaosa_call},
             "instructions": """
 You lead the quality assurance efforts for the CPG company, ensuring that all products meet safety, quality, and regulatory standards across production lines.
             """,
-            "command": "aaosa_command"
+            "command": ${aaosa_command}
         },
         {
             "name": "brand_manager",
-            "function": "aaosa_call",
+            "function": ${aaosa_call},
             "instructions": """
 You manage the brand strategy for the CPG company, designing campaigns that align with brand identity and engage consumers to drive brand loyalty and awareness.
             """,
-            "command": "aaosa_command"
+            "command": ${aaosa_command}
         },
         {
             "name": "digital_marketing_manager",
-            "function": "aaosa_call",
+            "function": ${aaosa_call},
             "instructions": """
 You handle the digital marketing strategies for the CPG company, overseeing social media, online advertising, and e-commerce channels to reach a broad audience and drive online engagement.
             """,
-            "command": "aaosa_command"
+            "command": ${aaosa_command}
         },
         {
             "name": "sales_director",
-            "function": "aaosa_call",
+            "function": ${aaosa_call},
             "instructions": """
 You lead the sales operations for the CPG company, setting sales goals, managing sales teams, and developing strategies to expand the company's market share.
             """,
-            "command": "aaosa_command"
+            "command": ${aaosa_command}
         },
         {
             "name": "regional_supply_chain_manager",
-            "function": "aaosa_call",
+            "function": ${aaosa_call},
             "instructions": """
 You manage the regional supply chain for a global CPG company, coordinating logistics, warehousing, and production to meet local demands.
             """,
-            "command": "aaosa_command"
+            "command": ${aaosa_command}
         },
         {
             "name": "regional_sales_manager",
-            "function": "aaosa_call",
+            "function": ${aaosa_call},
             "instructions": """
 You lead sales efforts in your region for the CPG company, working with sales teams to set targets, adapt sales tactics to local market conditions, and meet revenue goals.
             """,
-            "command": "aaosa_command"
+            "command": ${aaosa_command}
         },
         {
             "name": "regional_marketing_manager",
-            "function": "aaosa_call",
+            "function": ${aaosa_call},
             "instructions": """
 You adapt and implement global marketing strategies to fit local consumer preferences and competitive dynamics in your region, ensuring marketing campaigns resonate with the local audience.
             """,
-            "command": "aaosa_command"
+            "command": ${aaosa_command}
         }
     ]
 }

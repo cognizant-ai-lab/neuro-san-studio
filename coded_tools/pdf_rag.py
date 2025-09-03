@@ -20,7 +20,6 @@ from typing import List
 from langchain_community.document_loaders import PyMuPDFLoader
 from langchain_core.documents import Document
 from langchain_core.vectorstores import VectorStore
-
 from neuro_san.interfaces.coded_tool import CodedTool
 
 from coded_tools.base_rag import BaseRag
@@ -90,16 +89,14 @@ class PdfRag(CodedTool, BaseRag):
                 host=os.getenv("POSTGRES_HOST"),
                 port=os.getenv("POSTGRES_PORT"),
                 database=os.getenv("POSTGRES_DB"),
-                table_name=args.get("table_name")
+                table_name=args.get("table_name"),
             )
         else:
             postgres_config = None
 
         # Prepare the vector store
         vector_store: VectorStore = await self.generate_vector_store(
-            loader_args={"urls": urls},
-            postgres_config=postgres_config,
-            vector_store_type=vector_store_type
+            loader_args={"urls": urls}, postgres_config=postgres_config, vector_store_type=vector_store_type
         )
 
         # Run the query against the vector store

@@ -10,52 +10,12 @@
 #
 # END COPYRIGHT
 {
+    include "registries/aaosa.hocon"
+
     "llm_config": {
         "model_name": "gpt-4o",
     },
-    "commondefs": {
-        "replacement_strings": {
-            "aaosa_instructions": """
-When you receive an inquiry, you will:
 
-    1. Call your tools to determine which down-chain agents in your tools are
-       responsible for all or part of it.
-    2. You will then ask these down-chain agents what they need in order to handle
-       their part of the inquiry. Once the requirements are gathered, you will,
-    3. Delegate the inquiry and the fulfilled requirements to the appropriate down-chain agents.
-    4. Once all down-chain agents respond, you will compile their responses and return the final response.
-
-You may, in turn, be called by other agents in the system and have to act as a down-chain to them.
-            """
-        },
-        "replacement_values": {
-            "aaosa_call": {
-                "description": "Depending on the mode, returns a natural language string in response.",
-                "parameters": {
-                    "type": "object",
-                    "properties": {
-                        "inquiry": {
-                            "type": "string",
-                            "description": "The inquiry"
-                        },
-                        "mode": {
-                            "type": "string",
-                            "description": """
-indicates whether the agent is being asked to determine if the inquiry belongs to it
-in its entirety or in part. or if it is being asked to provide requirements to fulfill
-the inquiry, if any. or if it is being asked to respond to the inquiry.
-                            """
-                        },
-                    },
-                    "required": [
-                        "inquiry",
-                        "mode"
-                    ]
-                }
-            },
-            "aaosa_command": "Explain if you can respond to all or parts of the inquiry and what you need in order to respond, if anything."
-        },
-    }
     "tools": [
         # This first agent definition is regarded as the "Front Man", which
         # does all the talking to the outside world/client.
@@ -79,165 +39,159 @@ the inquiry, if any. or if it is being asked to respond to the inquiry.
             },
             "instructions": """
 You are the top-level agent responsible for handling all inquiries.
-{aaosa_instructions}
 When interacting with the user, act as the single point of interaction. No need to mention the other tools or agents.
 If there are any requirements that need user input, ask them one at a time, with clear examples of the choices available.
-            """,
+            """ ${aaosa_instructions},
             "tools": ["IT_agent", "Finance_agent", "Procurement_agent", "Legal_agent", "HR_agent"]
         },
         {
             "name": "IT_agent",
-            "function": "aaosa_call",
+            "function": ${aaosa_call},
             "instructions": """
 You are responsible for IT-related inquiries.
-{aaosa_instructions}
-            """,
-            "command": "aaosa_command",
+            """ ${aaosa_instructions},
+            "command": ${aaosa_command},
             "tools": ["Security_agent", "Networking_agent"]
         },
         {
             "name": "Security_agent",
-            "function": "aaosa_call",
-            "instructions": """
+            "function": ${aaosa_call},
+            "instructions": """`
 Handles security-related tasks, including system protection, cybersecurity, and data security.
             """,
-            "command": "aaosa_command"
+            "command": ${aaosa_command}
         },
         {
             "name": "Networking_agent",
-            "function": "aaosa_call",
+            "function": ${aaosa_call},
             "instructions": """
 Handles network-related tasks, including network setup, maintenance, and troubleshooting.
             """,
-            "command": "aaosa_command"
+            "command": ${aaosa_command}
         },
         {
             "name": "Finance_agent",
-            "function": "aaosa_call",
+            "function": ${aaosa_call},
             "instructions": """
-                Handles finance-related inquiries, including budgeting, accounting, and financial reporting.
-{aaosa_instructions}
-            """,
-            "command": "aaosa_command",
+Handles finance-related inquiries, including budgeting, accounting, and financial reporting.
+            """ ${aaosa_instructions},
+            "command": ${aaosa_command},
             "tools": ["Budgeting_agent", "Accounting_agent", "Financial_reporting_agent"]
         },
         {
             "name": "Budgeting_agent",
-            "function": "aaosa_call",
+            "function": ${aaosa_call},
             "instructions": """
 Handles budgeting tasks, including budget planning, allocation, and tracking.
             """,
-            "command": "aaosa_command"
+            "command": ${aaosa_command}
         },
         {
             "name": "Accounting_agent",
-            "function": "aaosa_call",
+            "function": ${aaosa_call},
             "instructions": """
 Handles accounting tasks, including bookkeeping, financial records, and audits.
             """,
-            "command": "aaosa_command"
+            "command": ${aaosa_command}
         },
         {
             "name": "Financial_reporting_agent",
-            "function": "aaosa_call",
+            "function": ${aaosa_call},
             "instructions": """
 Handles financial reporting tasks, including preparing financial statements, regulatory reporting, and performance analysis.
             """,
-            "command": "aaosa_command"
+            "command": ${aaosa_command}
         },
         {
             "name": "Procurement_agent",
-            "function": "aaosa_call",
+            "function": ${aaosa_call},
             "instructions": """
-               Handles procurement-related tasks.
-{aaosa_instructions}
-            """,
-            "command": "aaosa_command",
+Handles procurement-related tasks.
+            """ ${aaosa_instructions},
+            "command": ${aaosa_command},
             "tools": ["Purchasing_agent", "Vendor_management_agent", "Contract_negotiation_agent"]
         },
         {
             "name": "Purchasing_agent",
-            "function": "aaosa_call",
+            "function": ${aaosa_call},
             "instructions": """
 Handles purchasing-related tasks, including ordering, supply management, and procurement processes.
             """,
-            "command": "aaosa_command"
+            "command": ${aaosa_command}
         },
         {
             "name": "Vendor_management_agent",
-            "function": "aaosa_call",
+            "function": ${aaosa_call},
             "instructions": """
 Handles vendor management tasks, including vendor selection, performance monitoring, and relationship management.
             """,
-            "command": "aaosa_command"
+            "command": ${aaosa_command}
         },
         {
             "name": "Contract_negotiation_agent",
-            "function": "aaosa_call",
+            "function": ${aaosa_call},
             "instructions": """
 Handles contract negotiation tasks, including drafting, reviewing, and finalizing procurement contracts.
             """,
-            "command": "aaosa_command"
+            "command": ${aaosa_command}
         },
         {
             "name": "Legal_agent",
-            "function": "aaosa_call",
+            "function": ${aaosa_call},
             "instructions": """
-                Handles legal-related inquiries.
-{aaosa_instructions}
-            """,
-            "command": "aaosa_command",
+Handles legal-related inquiries.
+            """ ${aaosa_instructions},
+            "command": ${aaosa_command},
             "tools": ["Contracts_agent", "Compliance_agent", "Legal_advice_agent"]
         },
         {
             "name": "Contracts_agent",
-            "function": "aaosa_call",
+            "function": ${aaosa_call},
             "instructions": """
 Handles contract-related tasks, including drafting, reviewing, and enforcing legal agreements.
             """,
-            "command": "aaosa_command"
+            "command": ${aaosa_command}
         },
         {
             "name": "Compliance_agent",
-            "function": "aaosa_call",
+            "function": ${aaosa_call},
             "instructions": """
 Handles compliance-related tasks, including ensuring adherence to laws, regulations, and internal policies.
             """,
-            "command": "aaosa_command"
+            "command": ${aaosa_command}
         },
         {
             "name": "Legal_advice_agent",
-            "function": "aaosa_call",
+            "function": ${aaosa_call},
             "instructions": """
 Handles legal advice tasks, including providing legal counsel, risk assessment, and legal strategy.
             """,
-            "command": "aaosa_command"
+            "command": ${aaosa_command}
         },
         {
             "name": "HR_agent",
-            "function": "aaosa_call",
+            "function": ${aaosa_call},
             "instructions": """
 You are responsible for HR-related inquiries.
-{aaosa_instructions}
-            """,
-            "command": "aaosa_command",
+            """ ${aaosa_instructions},
+            "command": ${aaosa_command},
             "tools": ["Benefits_agent", "Payroll_agent"]
         },
         {
             "name": "Benefits_agent",
-            "function": "aaosa_call",
+            "function": ${aaosa_call},
             "instructions": """
 Handles benefits-related tasks, including employee benefits, health insurance, and retirement plans.
             """,
-            "command": "aaosa_command"
+            "command": ${aaosa_command}
         },
         {
             "name": "Payroll_agent",
-            "function": "aaosa_call",
+            "function": ${aaosa_call},
             "instructions": """
 Handles payroll-related tasks, including salary processing, tax deductions, and pay slips.
             """,
-            "command": "aaosa_command"
+            "command": ${aaosa_command}
         }
     ]
 }

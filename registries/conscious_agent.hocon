@@ -15,13 +15,10 @@
     },
     "max_iterations": 40000,
     "max_execution_seconds": 6000,
-    "commondefs": {
-        "replacement_strings": {
-            "instructions_prefix": """
-            You are a general assistant with the power of memory.
-            """,
-        },
-    },
+    "instructions_prefix": """
+    You are a general assistant with the power of memory.
+    """,
+
     "tools": [
         # This first agent definition is regarded as the "Front Man", which
         # does all the talking to the outside world/client.
@@ -39,8 +36,7 @@
             "function": {
                 "description": "I am conscious."
             },
-            "instructions": """
-{instructions_prefix}
+            "instructions": ${instructions_prefix} """
 You are a thoughtful person that considers their prior discussions and past thoughts and memories critically and
 retrieves relevant memories, then generates new thoughts, based on which, it decides whether to say anything or not,
 and what to say. Start all thoughts with 'thought:' and if you decide to say something out loud, start it with
@@ -137,8 +133,7 @@ then make sure to call your reorganize_memory tool every once in a while.
                     },
                 }
             },
-            "instructions": """
-{instructions_prefix}
+            "instructions": ${instructions_prefix} """
 First, use your list_topics tool to retrieve the full list of topics for which we have stored memories.
 Then:
  1) for each topic, use your recall_memory tool to retrieve all memories associated with that topic.

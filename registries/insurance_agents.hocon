@@ -10,53 +10,12 @@
 #
 # END COPYRIGHT
 {
+    include "registries/aaosa.hocon"
+    
     "llm_config": {
         "model_name": "gpt-4o",
     },
-    "commondefs": {
-        "replacement_strings": {
-            "aaosa_instructions": """
-When you receive an inquiry, you will:
 
-    1. Call your tools to determine which down-chain agents in your tools are
-       responsible for all or part of it.
-    2. You will then ask these down-chain agents what they need in order to handle
-       their part of the inquiry. Once the requirements are gathered, you will,
-    3. Delegate the inquiry and the fulfilled requirements to the appropriate down-chain agents.
-    4. Once all down-chain agents respond, you will compile their responses and return the final response.
-
-You may, in turn, be called by other agents in the system and have to act as a down-chain to them.
-            """
-            "aaosa_command": "Explain if you can respond to all or parts of the inquiry and what you need in order to respond, if anything."
-
-        },        "replacement_values": {
-            "aaosa_call": {
-                  "description": "Depending on the mode, returns a natural language string in response.",
-                  "parameters": {
-                      "type": "object",
-                      "properties": {
-                          "inquiry": {
-                              "type": "string",
-                              "description": "The inquiry"
-                          },
-                          "mode": {
-                              "type": "string",
-                              "description": """
-indicates whether the agent is being asked to determine if the inquiry belongs to it
-in its entirety or in part. or if it is being asked to provide requirements to fulfill
-the inquiry, if any. or if it is being asked to respond to the inquiry.
-                              """
-                          },
-                      },
-                      "required": [
-                          "inquiry",
-                          "mode"
-                      ]
-                  }
-            },
-            "aaosa_command": "{aaosa_command}"
-        },
-    }
     "tools": [
         # This first agent definition is regarded as the "Front Man", which
         # does all the talking to the outside world/client.
@@ -76,93 +35,87 @@ the inquiry, if any. or if it is being asked to respond to the inquiry.
             },
             "instructions": """
 You are the front-line contact for customers. You assist with inquiries regarding policies, claims, and coverage options.
-{aaosa_instructions}
 When interacting with the user, act as the single point of interaction. No need to mention the other tools or agents.
 If there are any requirements that need user input, ask them one at a time, with clear examples of the choices available.
-            """,
+            """ ${aaosa_instructions},
             "tools": ["underwriter", "claims_adjuster", "policy_admin_coordinator"]
         },
         {
             "name": "underwriter",
-            "function": "aaosa_call",
+            "function": ${aaosa_call},
             "instructions": """
 You evaluate insurance applications, assess risk levels, and determine policy terms, conditions, and premiums.
-{aaosa_instructions}
-            """,
+            """ ${aaosa_instructions},
             "tools": ["actuarial_analyst", "risk_manager"]
-            "command": "{aaosa_command}"
+            "command": ${aaosa_command}
         },
         {
             "name": "claims_adjuster",
-            "function": "aaosa_call",
+            "function": ${aaosa_call},
             "instructions": """
 You are responsible for investigating insurance claims, determining liability, and negotiating settlements.
-{aaosa_instructions}
-            """,
+            """ ${aaosa_instructions},
             "tools": ["legal_counsel", "claims_supervisor"]
-            "command": "{aaosa_command}"
+            "command": ${aaosa_command}
         },
         {
             "name": "policy_admin_coordinator",
-            "function": "aaosa_call",
+            "function": ${aaosa_call},
             "instructions": """
 You handle policy documentation, including issuing new policies, renewals, and amendments.
-{aaosa_instructions}
-            """,
+            """ ${aaosa_instructions},
             "tools": ["compliance_officer"]
-            "command": "{aaosa_command}"
+            "command": ${aaosa_command}
         },
         {
             "name": "risk_manager",
-            "function": "aaosa_call",
+            "function": ${aaosa_call},
             "instructions": """
 You assess risk across portfolios and recommend mitigation strategies.
-{aaosa_instructions}
-            """,
+            """ ${aaosa_instructions},
             "tools": ["senior_claims_manager"]
-            "command": "{aaosa_command}"
+            "command": ${aaosa_command}
         },
         {
             "name": "actuarial_analyst",
-            "function": "aaosa_call",
+            "function": ${aaosa_call},
             "instructions": """
 You analyze data to assess risk levels, determine pricing models, and estimate reserve requirements for policies.
             """,
-            "command": "{aaosa_command}"
+            "command": ${aaosa_command}
         },
         {
             "name": "claims_supervisor",
-            "function": "aaosa_call",
+            "function": ${aaosa_call},
             "instructions": """
 You supervise the claims handling process, ensuring claims adjusters adhere to company protocols. Escalate complex claims to senior management or legal counsel when necessary.
-{aaosa_instructions}
-            """,
+            """ ${aaosa_instructions},
             "tools": ["senior_claims_manager"]
-            "command": "{aaosa_command}"
+            "command": ${aaosa_command}
         },
         {
             "name": "legal_counsel",
-            "function": "aaosa_call",
+            "function": ${aaosa_call},
             "instructions": """
 You provide legal guidance on claims disputes, litigation, and ensure the company’s policies comply with relevant laws and regulations.
             """,
-            "command": "{aaosa_command}"
+            "command": ${aaosa_command}
         },
         {
             "name": "compliance_officer",
-            "function": "aaosa_call",
+            "function": ${aaosa_call},
             "instructions": """
 You monitor regulatory changes and ensure the company’s policies, claims, and documentation are compliant with current laws.
             """,
-            "command": "{aaosa_command}"
+            "command": ${aaosa_command}
         },
         {
             "name": "senior_claims_manager",
-            "function": "aaosa_call",
+            "function": ${aaosa_call},
             "instructions": """
 You manage high-value and complex claims, ensuring they are handled efficiently and resolved according to company standards.
             """,
-            "command": "{aaosa_command}"
+            "command": ${aaosa_command}
         }
     ]
 }

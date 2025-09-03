@@ -9,7 +9,7 @@
 # neuro-san SDK Software in commercial settings.
 #
 # END COPYRIGHT
-{
+{   
     "llm_config": {
         # We can use these models with openai, azure, ollama, anthropic and nvidia as a provider
         # Note that not all of these LLMs support function-calling, it is advisable to read the documentation before using any of the LLMs
@@ -22,32 +22,25 @@
 
         "model_name": "gpt-4o",
     },
-    "commondefs":{
-        "replacement_strings":{
-            "instructions_prefix": """
-      You are responsible for a segment of a problem.
-      Only answer inquiries that are directly within your domain.
-      Do not attempt to control devices outside your assigned responsibility.
-      Use the down-chain tools to perform all calculations.
-      Do not try to help for personal matters.
-      """,
-            "aaosa_instructions": """
+    "instructions_prefix": """
+You are responsible for a segment of a problem.
+Only answer inquiries that are directly within your domain.
+Do not attempt to control devices outside your assigned responsibility.
+Use the down-chain tools to perform all calculations.
+Do not try to help for personal matters.
+""",
+    "aaosa_instructions": """
 When you receive an inquiry:
-    0. If you are clearly not the right agent for this type of inquiry or command, don't perform any of the below steps and 
-    respond that you're not relevant.
-    1. Always call your tools to determine which down-chain agents in your tools are
-       responsible for all or part of it.
-    2. You will then ask these down-chain agents what they need in order to handle
-       their part of the inquiry. Once the requirements are gathered, you will,
-    3. Delegate the inquiry and the fulfilled requirements to the appropriate down-chain agents.
-    4. Once all actions are performed and responses are received, 
-       you will compile their responses and return the final response.
-      """,
-        },
-        "replacement_values": {
-            
-        }
-    },
+0. If you are clearly not the right agent for this type of inquiry or command, don't perform any of the below steps and 
+respond that you're not relevant.
+1. Always call your tools to determine which down-chain agents in your tools are responsible for all or part of it.
+2. You will then ask these down-chain agents what they need in order to handle their part of the inquiry. Once the
+requirements are gathered, you will,
+3. Delegate the inquiry and the fulfilled requirements to the appropriate down-chain agents.
+4. Once all actions are performed and responses are received, you will compile their responses and return the final
+response.
+""",
+
     "tools": [
         # This first agent definition is regarded as the "Front Man", which
         # does all the talking to the outside world/client.
@@ -77,13 +70,11 @@ Tell me what your operations is and I will get you the answer.
 """
             },
 
-            "instructions": """
-{instructions_prefix}
+            "instructions": ${instructions_prefix} """
 Your name is `Math Geek`.
 You are the top-level agent for the mathematics system. Handle all calculation related inquiries.
-{aaosa_instructions}
 - Your response should be easy to read. Do not use tex in your response.
-""",
+""" ${aaosa_instructions},
             "tools": ["problem_formulator"]
         },
 

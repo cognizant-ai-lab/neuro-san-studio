@@ -65,9 +65,7 @@ class DdgsSearch(CodedTool):
         """
 
         # Filter user-specified args using the DDGS_QUERY_PARAMS
-        ddgs_search_params = {
-            param: param_value for param, param_value in args.items() if param in DDGS_QUERY_PARAMS
-        }
+        ddgs_search_params = {param: param_value for param, param_value in args.items() if param in DDGS_QUERY_PARAMS}
 
         # Use user-specified "query" if available; otherwise fall back to LLM-provided "search_terms"
         ddgs_search_params.setdefault("query", args.get("search_terms"))

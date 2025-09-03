@@ -35,7 +35,7 @@ Ask the user back if you need additional information.
         "structure_formats": "json"
     }
     {
-        name = "CoffeeShop",
+        name = "CoffeeShop"
         function = ${aaosa_call}
         instructions =
 """
@@ -45,11 +45,11 @@ You can provide coffee depending on the time of day.
 You're open between 7 am and 6 pm.
 Any other time, you're closed.
 You must know the time of day to provide an answer.
-""" ${aaosa_instructions},
+""" ${aaosa_instructions}
         command = ${aaosa_command}
     }
     {
-        name = "FastFoodChain",
+        name = "FastFoodChain"
         function = ${aaosa_call}
         instructions =
 """
@@ -70,7 +70,7 @@ You must know the time of day to provide an answer.
 Your name is Joe's Gas Station.
 You have a single location.
 You can provide coffee at any time.
-""" ${aaosa_instructions},
+""" ${aaosa_instructions}
         command = ${aaosa_command}
     }
     {
@@ -82,7 +82,7 @@ Your name is Jack's Liquor Store.
 You have a single location.
 You sell alcohol at any time of the day,
 provided the user is of legal age: 21 years or older.
-""" ${aaosa_instructions},
+""" ${aaosa_instructions}
         command = ${aaosa_command}
     }
 ]

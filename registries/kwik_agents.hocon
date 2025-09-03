@@ -15,13 +15,10 @@
     },
     "max_iterations": 40000,
     "max_execution_seconds": 6000,
-    "commondefs": {
-        "replacement_strings": {
-            "instructions_prefix": """
-            You are a general assistant with the power of memory.
-            """,
-        },
-    },
+    "instructions_prefix": """
+    You are a general assistant with the power of memory.
+    """,
+
     "tools": [
         # This first agent definition is regarded as the "Front Man", which
         # does all the talking to the outside world/client.
@@ -39,8 +36,7 @@
             "function": {
                 "description": "I can help you create an agent network."
             },
-            "instructions": """
-{instructions_prefix}
+            "instructions": ${instructions_prefix} """
 You will engage in a dialog with the user and use your tools to memorize or recall memories.
 Before responding, check the existing list of topics in your memory (if any). You should retrieve this list using your list_topics tool.
 Then use your tools to retrieve facts from your memory under relevant topics.
