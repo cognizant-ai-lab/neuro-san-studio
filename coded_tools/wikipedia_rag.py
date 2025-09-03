@@ -1,4 +1,3 @@
-
 # Copyright (C) 2023-2025 Cognizant Digital Business, Evolutionary AI.
 # All Rights Reserved.
 # Issued under the Academic Public License.
@@ -37,7 +36,7 @@ class WikipediaRag(CodedTool):
             "lang": language code for Wikipedia articles (default is "en")
             "top_k_results": number of top results to return (default is 3)
             "doc_content_chars_max": maximum number of characters to keep in each document (default is 4000)
-        
+
         :param sly_data: A dictionary whose keys are defined by the agent
             hierarchy, but whose values are meant to be kept out of the
             chat stream.

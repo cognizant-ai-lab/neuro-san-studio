@@ -1,4 +1,3 @@
-
 # Copyright (C) 2023-2025 Cognizant Digital Business, Evolutionary AI.
 # All Rights Reserved.
 # Issued under the Academic Public License.
@@ -15,7 +14,6 @@ from typing import Dict
 from typing import Union
 
 from langchain_community.utilities import GoogleSerperAPIWrapper
-
 from neuro_san.interfaces.coded_tool import CodedTool
 
 # Default parameters for google serper
@@ -79,13 +77,7 @@ class GoogleSerper(CodedTool):
         tbs: str = args.get("tbs")
 
         # Create search with the above parameters
-        search = GoogleSerperAPIWrapper(
-            gl=gl,
-            hl=hl,
-            k=k,
-            type=search_type,
-            tbs=tbs
-        )
+        search = GoogleSerperAPIWrapper(gl=gl, hl=hl, k=k, type=search_type, tbs=tbs)
 
         # Perform search asynchronously
         results = await search.aresults(query)
