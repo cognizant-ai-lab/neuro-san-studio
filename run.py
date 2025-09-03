@@ -43,7 +43,7 @@ class NeuroSanRunner:
             "server_host": os.getenv("NEURO_SAN_SERVER_HOST", "localhost"),
             "server_grpc_port": int(os.getenv("NEURO_SAN_SERVER_GRPC_PORT", "30011")),
             "server_http_port": int(os.getenv("NEURO_SAN_SERVER_HTTP_PORT", "8080")),
-            "server_connection": str(os.getenv("NEURO_SAN_SERVER_CONNECTION", "grpc")),
+            "server_connection": str(os.getenv("NEURO_SAN_SERVER_CONNECTION", "http")),
             "manifest_update_period_seconds": int(os.getenv("AGENT_MANIFEST_UPDATE_PERIOD_SECONDS", "5")),
             "default_sly_data": str(os.getenv("DEFAULT_SLY_DATA", "")),
             "nsflow_host": os.getenv("NSFLOW_HOST", "localhost"),
