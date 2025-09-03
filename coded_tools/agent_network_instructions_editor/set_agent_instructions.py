@@ -80,7 +80,8 @@ class SetAgentInstructions(CodedTool):
         logger.info("The resulting agent network: \n %s", str(network_def))
         sly_data[AGENT_NETWORK_DEFINITION] = network_def
         logger.info(">>>>>>>>>>>>>>>>>>>DONE !!!>>>>>>>>>>>>>>>>>>")
-        return f"The instructions of {the_agent_name} was edited from {old_instructions} to {new_instructions}."
+        return network_def
+        #return f"The instructions of {the_agent_name} was edited from {old_instructions} to {new_instructions}."
 
     async def async_invoke(self, args: dict[str, Any], sly_data: dict[str, Any]) -> str:
         """Run invoke asynchronously."""

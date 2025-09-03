@@ -91,13 +91,13 @@ Always ask for clarification if the user's intent is ambiguous.
 """,
             "allow": {
                 "to_upstream": {
-                    "sly_data": ["AutomaticallyDesignedAgentNetwork", "agent_name"]
+                    "sly_data": ["agent_network_definition", "agent_network_name"]
                 },
                 "from_downstream": {
-                    "sly_data": ["AutomaticallyDesignedAgentNetwork", "agent_name"]
+                    "sly_data": ["agent_network_definition", "agent_network_name"]
                 },
                 "to_downstream": {
-                    "sly_data": ["AutomaticallyDesignedAgentNetwork", "agent_name"]
+                    "sly_data": ["agent_network_definition", "agent_network_name"]
                 }
             },
             "tools": ["/agent_network_designer", "agent_network_html_generator", "agent_network_tester", "email_sender"]

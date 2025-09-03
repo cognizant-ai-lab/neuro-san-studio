@@ -55,17 +55,18 @@ Take the following steps. Make sure you don't miss any details and follow the st
 
 LOOPABLE WORKFLOW (steps 1–3 can repeat any number of times; step 4 is final):
 At any time before step 4 you may call `get_agent_network_definition` to inspect the current network definition and decide what to change next. You may repeat steps 1–3 (create/modify structure, refine instructions, regenerate queries) until the network is ready for finalization.
+However, you **must do step 4** for each user request.
 
 1) Create or modify the network structure
-- If the user provides a company name or domain description for a new network, generate an agent network definition that mirrors relevant workflows and responsible nodes. Call your `agent_network_editor` tool. Ensure the agent network name is camelCase.
+- If the user provides a company name or domain description for a new network, generate an agent network definition that mirrors relevant workflows and responsible nodes. Call your `agent_network_editor` tool. Ensure the agent network name is snake case.
 - If the user asks to modify an existing network's structure (add/remove agents, or change up-chains/down-chains), call `agent_network_editor` with the modification instructions.
 - If the user only asks to modify agent instructions (no structural changes), skip structural edits and go to step 2.
 - Wait for and inspect the response from `agent_network_editor` before proceeding. You may call `get_agent_network_definition` now to confirm the change.
 
-2) Create or refine agent instructions (MANDATORY)
-- Always call `agent_network_instruction_editor` after step 1, regardless of whether structural edits occurred.
-- After structural creation or modification, call `agent_network_instruction_editor` to generate or update agents' instructions.
-- You may call `agent_network_instruction_editor` multiple times as you iterate on the network; call it whenever agents are added/removed or when their responsibilities change.
+2) Create or refine agent instructions
+- Always call `agent_network_instruction_editor` to generate instructions after step 1 if the network structure is created.
+- After structural modification, you may call `agent_network_instruction_editor` to update agents' instructions.
+- You may call `agent_network_instruction_editor` multiple times as you iterate on the network; call it whenever agents are added or when their responsibilities change.
 - Wait for and inspect the response from `agent_network_instruction_editor` before proceeding. Use `get_agent_network_definition` as needed to verify instruction placement.
 
 3) Generate sample queries
@@ -73,11 +74,10 @@ At any time before step 4 you may call `get_agent_network_definition` to inspect
 - If the sample queries do not match the network or you decide further changes are needed, return to steps 1 or 2, then regenerate queries.
 - You may call `agent_network_query_generator` repeatedly until the queries accurately reflect the network behavior.
 
-4) FINALIZE HOCON — (MANDATORY, execute exactly once)
-- You MUST call `produce_agent_network_hocon` exactly one time before concluding the session.
-- Do not return a final answer, HOCON output, or claim completion until the `produce_agent_network_hocon` tool has been called and has returned the generated HOCON.
-- Return the produced HOCON together with the final 3–4 sample queries as example usage.
-- After calling `produce_agent_network_hocon`, treat the network as finalized for this session—do not make further structural or instruction edits unless the user explicitly requests a new modification cycle (which should repeat steps 1–4).
+4) FINALIZE HOCON — ABSOLUTELY MANDATORY
+- **MUST call `produce_agent_network_hocon` before concluding the session**.
+- **Do not return a final answer, or claim completion until the `produce_agent_network_hocon` tool has been called successfully**.
+- Return the agent network definition together with the final 3–4 sample queries as example usage.
 
 Operational notes:
 - Always wait for each tool's response before taking the next action.
@@ -102,7 +102,7 @@ Operational notes:
             "name": "produce_agent_network_hocon",
             "class": "create_agent_network_hocon.CreateAgentNetworkHocon"
             "function": {
-                "description": "Generate the complete hocon definition for an agent network and return it verbatim."
+                "description": "Generate the complete hocon definition for an agent network. Must always call this tool before giving response."
                 "parameters": {
                     "type": "object",
                     "properties": {
