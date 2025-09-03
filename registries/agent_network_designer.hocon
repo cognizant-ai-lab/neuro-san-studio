@@ -30,7 +30,7 @@
         {
             "name": "agent_network_designer",
             "function": {
-                "description": "I can help you create an agent network.",
+                "description": "Create or modify an agent network.",
                 "parameters": {
                     "type": "object",
                     "properties": {
