@@ -13,10 +13,12 @@ from typing import Union
 
 from neuro_san.interfaces.coded_tool import CodedTool
 
+
 class OrderAPI(CodedTool):
     """
     Places an order with a shop.
     """
+
     SHOP_1 = "Bob's Coffee Shop"
     SHOP_2 = "Henry's Fast Food"
     SHOP_3 = "Joe's Gas Station"
@@ -59,7 +61,7 @@ class OrderAPI(CodedTool):
         # Shop name is required to place an order.
         shop: str = args.get("shop_name", None)
         if not shop:
-            error =  "Error: Please provide the name of the shop for the order."
+            error = "Error: Please provide the name of the shop for the order."
             print(error)
             return error
         if shop not in OrderAPI.SHOPS:
@@ -68,7 +70,7 @@ class OrderAPI(CodedTool):
             return error
 
         # Details of the order are required to place an order.
-        order:str  = args.get("order_details", None)
+        order: str = args.get("order_details", None)
         if not order:
             error = "Error: Please provide the description of what to order."
             print(error)
