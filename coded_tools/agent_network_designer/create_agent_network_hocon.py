@@ -7,17 +7,18 @@
 # Purchase of a commercial license is mandatory for any use of the
 # neuro-san-studio SDK Software in commercial settings.
 #
+from copy import deepcopy
 import logging
 from typing import Any
-from typing import Dict
-from typing import Union
 
 import aiofiles  # Import for asynchronous file operations
 from neuro_san.interfaces.coded_tool import CodedTool
 
+from coded_tools.agent_network_validator import AgentNetworkValidator
+
 WRITE_TO_FILE = True
 OUTPUT_PATH = "registries/"
-AGENT_NETWORK_NAME = "AutomaticallyDesignedAgentNetwork"
+AGENT_NETWORK_DEFINITION = "agent_network_definition"
 HOCON_HEADER_START = (
     "{\n"
     "# Importing content from other HOCON files\n"
@@ -97,7 +98,6 @@ async def modify_registry(the_agent_network_hocon_str, the_agent_network_name):
     Writes the agent network to a file and updates the manifest.hocon file.
     :param the_agent_network_hocon_str: The agent network hocon string
     :param the_agent_network_name: The file name, without the .hocon extension
-    :return:
     """
     # Write the agent network file
     file_path = OUTPUT_PATH + the_agent_network_name + ".hocon"
@@ -124,22 +124,25 @@ async def modify_registry(the_agent_network_hocon_str, the_agent_network_name):
                 await file.write(updated_content)
 
 
-class GetAgentNetworkHocon(CodedTool):
+class CreateAgentNetworkHocon(CodedTool):
     """
-    CodedTool implementation which provides a way to get a full hocon of a designed agent network from the sly data
+    CodedTool implementation which creates a full hocon of a designed agent network
+    from the agent network definition in sly data.
+
+    Agent network definition is a structured representation of an agent network, expressed as a dictionary.
+    Each key is an agent name, and its value is an object containing:
+    - an instructions to the agent
+    - a list of down-chain agents (agents reporting to it)
     """
 
-    def __init__(self):
-        self.agents = None
-
-    async def async_invoke(self, args: Dict[str, Any], sly_data: Dict[str, Any]) -> Union[Dict[str, Any], str]:
+    async def async_invoke(self, args: dict[str, Any], sly_data: dict[str, Any]) -> str:
         """
         :param args: An argument dictionary whose keys are the parameters
                 to the coded tool and whose values are the values passed for them
                 by the calling agent.  This dictionary is to be treated as read-only.
 
                 The argument dictionary expects the following keys:
-                    "app_name" the name of the One Cognizant app for which the URL is needed.
+                    "agent_network_name": the name of the agent network HOCON file.
 
         :param sly_data: A dictionary whose keys are defined by the agent hierarchy,
                 but whose values are meant to be kept out of the chat stream.
@@ -152,7 +155,7 @@ class GetAgentNetworkHocon(CodedTool):
                 adding the data is not invoke()-ed more than once.
 
                 Keys expected for this implementation are:
-                    None
+                    "agent_network_definition": an outline of an agent network
 
         :return:
             In case of successful execution:
@@ -161,52 +164,76 @@ class GetAgentNetworkHocon(CodedTool):
                 a text string an error message in the format:
                 "Error: <error message>"
         """
-        self.agents = sly_data.get(AGENT_NETWORK_NAME, None)
-        if not self.agents:
+        logger = logging.getLogger(self.__class__.__name__)
+
+        # Use copy here since we may have to rearrange the dictionary to get the correct frontman
+        network_def: dict[str, Any] = deepcopy(sly_data.get(AGENT_NETWORK_DEFINITION))
+        if not network_def:
             return "Error: No network in sly data!"
 
-        the_agent_network_name: str = args.get("agent_network_name", "")
-        # Add the agent network name into sly data.
-        sly_data["agent_name"] = the_agent_network_name
-        if the_agent_network_name == "":
-            return "Error: No agent_name provided."
+        # Validate the agent network and return error message if there are any issues.
+        validator = AgentNetworkValidator(network_def)
+        error_list: list[str] = validator.validate_network_structure() + \
+            validator.validate_network_keywords("instructions")
+        if error_list:
+            error_msg = f"Error: {error_list}"
+            logger.error(error_msg)
+            return error_msg
 
-        logger = logging.getLogger(self.__class__.__name__)
-        logger.info(">>>>>>>>>>>>>>>>>>>GetAgentNetworkHocon>>>>>>>>>>>>>>>>>>")
+        the_agent_network_name: str = args.get("agent_network_name")
+        if not the_agent_network_name:
+            return "Error: No agent_name provided."
+        # Add the agent network name into sly data.
+        sly_data["agent_network_name"] = the_agent_network_name
+
+        logger.info(">>>>>>>>>>>>>>>>>>>Create Agent Network Hocon>>>>>>>>>>>>>>>>>>")
         logger.info("Agent Network Name: %s", str(the_agent_network_name))
-        the_agent_network_hocon_str = self.get_agent_network_hocon(the_agent_network_name)
-        logger.info("The resulting agent network: \n %s", str(the_agent_network_hocon_str))
+
+        the_agent_network_hocon_str: str = self.get_agent_network_hocon(validator, the_agent_network_name)
+
+        logger.info("The resulting agent network HOCON: \n %s", str(the_agent_network_hocon_str))
         if WRITE_TO_FILE:
             await modify_registry(the_agent_network_hocon_str, the_agent_network_name)
         logger.info(">>>>>>>>>>>>>>>>>>>DONE !!!>>>>>>>>>>>>>>>>>>")
-        return the_agent_network_hocon_str
+        return (
+            f"The agent network HOCON file for {the_agent_network_name}"
+            f"has been successfully created from the agent network definition: {network_def}."
+        )
 
-    def get_agent_network_hocon(self, agent_network_name):
+    def get_agent_network_hocon(self, validator: AgentNetworkValidator, agent_network_name: str) -> str:
         """
-        Returns a full agent network hocon.
-        """
-        has_top_agent = False
-        for agent_name, agent in self.agents.items():
-            if agent["top_agent"] == "true":
-                has_top_agent = True
-        if not has_top_agent:
-            self.agents[0]["top_agent"] = "true"
+        Substitutes value from agent network definition into the template of agent network HOCON file
+        :param validator: Agent network validator.
+        :param agent_network_name: The file name, without the .hocon extension
 
-        agent_network_hocon = HOCON_HEADER_START + agent_network_name + HOCON_HEADER_REMAINDER
-        for agent_name, agent in self.agents.items():
+        :return: A full agent network HOCON as a string.
+        """
+        network_def: dict[str, Any] = validator.network
+        # Make sure that the top agent is the first agent.
+        # Find or set the top agent
+        top_agent_name: str = validator.get_top_agent()
+        # Move top agent to front
+        if top_agent_name != next(iter(network_def)):
+            top_agent: dict[str, Any] = network_def.pop(top_agent_name)
+            network_def = {top_agent_name: top_agent, **network_def}
+
+        agent_network_hocon: str = HOCON_HEADER_START + agent_network_name + HOCON_HEADER_REMAINDER
+
+        for agent_name, agent in network_def.items():
             tools = ""
-            if agent["down_chains"]:
+            if agent.get("down_chains"):
                 for j, down_chain in enumerate(agent["down_chains"]):
                     tools = tools + '"' + down_chain + '"'
                     if j < len(agent["down_chains"]) - 1:
                         tools = tools + ","
-            if agent["top_agent"] == "true":  # top agent
+
+            if agent_name == top_agent_name:  # top agent
                 an_agent = TOP_AGENT_TEMPLATE % (
                     agent_name,
                     agent["instructions"],
                     tools,
                 )
-            elif agent["down_chains"]:
+            elif agent.get("down_chains"):
                 an_agent = REGULAR_AGENT_TEMPLATE % (
                     agent_name,
                     agent["instructions"],
@@ -217,6 +244,7 @@ class GetAgentNetworkHocon(CodedTool):
                     agent_name,
                     agent["instructions"],
                 )
-            agent_network_hocon = agent_network_hocon + an_agent
-        agent_network_hocon = agent_network_hocon + "]\n}\n"
+            agent_network_hocon += an_agent
+
+        agent_network_hocon += "]\n}\n"
         return agent_network_hocon

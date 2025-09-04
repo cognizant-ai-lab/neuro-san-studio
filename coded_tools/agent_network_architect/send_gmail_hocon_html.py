@@ -78,7 +78,7 @@ class SendGmailHoconHtml(CodedTool):
         # Since 2 valid files are expected, if they are not both valid, use sly_data instead.
         if len(valid_attachment_paths) < 2:
             # Extract "agent_name" from sly_data and use it to create file paths.
-            agent_name: str = sly_data.get("agent_name")
+            agent_name: str = sly_data.get("agent_network_name")
             if not agent_name:
                 return "Error: No valid attachments file path found and no agent_name provided in the sly data."
             hocon_file = f"registries/{agent_name}.hocon"

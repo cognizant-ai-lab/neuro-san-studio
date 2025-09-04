@@ -85,7 +85,7 @@ class NsflowSelenium(CodedTool):
         if not os.path.isfile(hocon_file):
             print(f"Cannot find agent network HOCON file for '{agent_name}' from args.")
             print("Attempting to get 'agent_name' from sly_data instead.")
-            agent_name = sly_data.get("agent_name")
+            agent_name = sly_data.get("agent_network_name")
             hocon_file = f"registries/{agent_name}.hocon"
 
         # Final validation: ensure agent_name is set and the file exists.

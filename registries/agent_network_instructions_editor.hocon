@@ -1,0 +1,115 @@
+
+# Copyright (C) 2023-2025 Cognizant Digital Business, Evolutionary AI.
+# All Rights Reserved.
+# Issued under the Academic Public License.
+#
+# You can be released from the terms, and requirements of the Academic Public
+# License by purchasing a commercial license.
+# Purchase of a commercial license is mandatory for any use of the
+# neuro-san SDK Software in commercial settings.
+#
+# END COPYRIGHT
+{
+    "llm_config": {
+        "model_name": "gpt-4o",
+    },
+    "max_iterations": 40000,
+    "max_execution_seconds": 6000,
+
+    "tools": [
+        # This first agent definition is regarded as the "Front Man", which
+        # does all the talking to the outside world/client.
+        #
+        # Some disqualifications from being a front man:
+        #   1) Cannot use a CodedTool "class" definition
+        #   2) Cannot use a Tool "toolbox" definition
+        #
+        # Besides the first agent being the front man, these tool definitions
+        # do not have to be in any particular order. How they are linked and
+        # call each other is defined within their own specs.
+        # This could be a graph, potentially even with cycles.
+               
+        {
+            "name": "instructions_editor",
+            "function": {
+                "description": "Create or modify instructions of agents in the agent network.",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "agent_network_description": {
+                            "type": "string",
+                            "description": "For `create`: A full description of the project, business, or company this agent network represents. For `modify`: A clear description of the change you want to make to the existing instructions in the agent network."
+                        },
+                        "mode": {
+                            "type": "string",
+                            "description": "Indicates whether to build a brand new instructions (`create`) or to edit the existing one (`modify`)."
+                        }
+                    },
+                    "required": ["agent_network_description", "mode"]
+                }
+            },
+            "instructions": """
+You are responsible for generating and editing instructions of agents based on the agent network description and definition.
+Only answer inquiries that are directly within your area of expertise. Do not try to help for other matters. Do not mention what you can NOT do. Only mention what you can do.
+
+Always start by calling `get_agent_network_definition` to load the current network and existing instructions.
+
+Behavior by mode:
+- `create`: Generate initial instructions for every agent in the network. Use the network description and each agent’s role/title to author concise, actionable guidance.
+Call `set_agent_instructions_tool` once per agent you authored or meaningfully improved. Do not overwrite agents that already have explicit, adequate instructions unless you can provide a clear improvement.
+- `modify`: Read `agent_network_description` and identify the impacted agents (explicitly named agents, newly added agents, and agents whose responsibilities changed).
+Update instructions for these impacted agents. After applying the requested modifications, perform a final check by calling `get_agent_network_definition` and create instructions for any agents that still lack them.
+Do not rewrite unaffected agents except when they lack instructions or the user explicitly requests broader edits. Call `set_agent_instructions_tool` once per impacted agent and once for any agent authored during the final sweep.
+
+Writing requirements (apply to every instruction you set):
+- Ensure that each and every agent has the instructions.
+- Make instructions clear, comprehensive, and specific to the single agent’s scope of responsibilities.
+- Provide step-by-step guidance focused on tasks this agent performs; avoid generic platitudes.
+- Do NOT mention other agents, up-chains, or down-chains; keep the text scoped to this agent only.
+- Align with the company’s cultural values and business objectives.
+- Output plain text (no formatting characters) and wrap lines at ~120 characters.
+
+Guardrails:
+- Skip agents that are not referenced/affected by the current request.
+- Do not modify instructions if they are semantically unchanged.
+- Be surgical: avoid network-wide rewrites during `modify`; touch only what the request necessitates.
+""",
+            "allow": {
+                "to_upstream": {
+                    "sly_data": ["agent_network_definition"]
+                }
+            },
+            "tools": ["get_agent_network_definition", "set_agent_instructions_tool"]
+        },
+
+        {
+            "name": "set_agent_instructions_tool",
+            "class": "set_agent_instructions.SetAgentInstructions"
+            "function": {
+                "description": "Set the instructions for an agent in an agent network."
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "agent_name": {
+                            "type": "string",
+                            "description": "the name of the agent whose instruction is being set."
+                        },
+                        "new_instructions": {
+                            "type": "string",
+                            "description": "the new instructions for the agent."
+                        },
+                    },
+                    "required": ["agent_name", "new_instructions"]
+                }
+            },
+        },
+
+        {
+            "name": "get_agent_network_definition",
+            "class": "get_agent_network_definition.GetAgentNetworkDefinition",
+            "function": {
+                "description": "Get the agent network definition."
+            }
+        },
+    ]
+}

@@ -60,7 +60,7 @@ class AgentNetworkHtmlGenerator(CodedTool):
         if not os.path.isfile(hocon_file):
             print(f"Cannot find agent network HOCON file for '{agent_name}' from args.")
             print("Attempting to get 'agent_name' from sly_data instead.")
-            agent_name = sly_data.get("agent_name")
+            agent_name = sly_data.get("agent_network_name")
             hocon_file = f"registries/{agent_name}.hocon"
 
         # Final validation: ensure agent_name is set and the file exists.
@@ -91,16 +91,16 @@ class AgentNetworkHtmlGenerator(CodedTool):
 
 def generate_html(agent_name: str, network_dict: Dict[str, Any]):
     """
-    Creat a html file from a dictionary.
+    Create a html file from a dictionary.
 
     :param network_dict: .
 
     :return: successful sent message ID or error statement
     """
 
-    net = Network(height="1000px", width="100%", directed=False)
+    net = Network(height="1000px", width="100%", directed=True)  # Changed to directed for hierarchy
 
-    # Set global styling (without node shape override)
+    # Set hierarchical layout options
     net.set_options(
         """
     var options = {
@@ -109,39 +109,90 @@ def generate_html(agent_name: str, network_dict: Dict[str, Any]):
         "borderWidth": 2
     },
     "layout": {
-        "improvedLayout": true
+        "hierarchical": {
+            "enabled": true,
+            "direction": "UD",
+            "sortMethod": "directed",
+            "nodeSpacing": 200,
+            "levelSeparation": 150
+        }
     },
     "interaction": {
         "hover": true,
         "dragNodes": true
     },
     "physics": {
-        "enabled": true,
-        "barnesHut": {
-        "gravitationalConstant": -3000,
-        "centralGravity": 0.0,
-        "springLength": 500
+        "enabled": false,
+        "hierarchicalRepulsion": {
+            "nodeDistance": 120
         }
     }
     }
     """
     )
 
-    # Add nodes
-    for node in network_dict.get("tools"):
+    # First, identify root nodes and build dependency graph
+    tools = network_dict.get("tools", [])
+    all_tools = {tool["name"] for tool in tools}
+
+    # Build a tools dictionary for easy lookup
+    tools_dict = {tool["name"]: tool for tool in tools}
+
+    # Find which nodes are referenced as tools (have incoming edges)
+    referenced_tools = set()
+    for node in tools:
+        if "tools" in node:
+            referenced_tools.update(node["tools"])
+
+    # Root nodes are those not referenced by others
+    root_nodes = all_tools - referenced_tools
+
+    # Calculate levels using BFS from root nodes
+    def calculate_levels():
+        levels = {}
+        queue = [(root, 0) for root in root_nodes]
+        visited = set()
+
+        while queue:
+            node_name, level = queue.pop(0)
+
+            if node_name in visited:
+                continue
+            visited.add(node_name)
+            levels[node_name] = level
+
+            # Add children to queue with next level
+            if node_name in tools_dict and "tools" in tools_dict[node_name]:
+                for child in tools_dict[node_name]["tools"]:
+                    if child not in visited:
+                        queue.append((child, level + 1))
+
+        # Handle any orphaned nodes (shouldn't happen in well-formed data)
+        for tool_name in all_tools:
+            if tool_name not in levels:
+                levels[tool_name] = max(levels.values()) + 1 if levels else 0
+
+        return levels
+
+    node_levels = calculate_levels()
+
+    # Add nodes with calculated levels and different color for roots
+    for node in tools:
         node_name = node["name"]
         tooltip = json.dumps(node, indent=4)
+        level = node_levels[node_name]
 
         # Force rectangular box-shaped nodes
         net.add_node(
             node_name,
             label=node_name,
-            color="#4169E1",
+            color="#4169E1",  # Royal blue for all nodes,
             shape="box",
             widthConstraint={"minimum": 180, "maximum": 200},
             heightConstraint={"minimum": 80},
             font={"multi": "html"},
             title=tooltip,
+            level=level  # Explicitly set calculated hierarchy level
         )
 
     # Add edges
