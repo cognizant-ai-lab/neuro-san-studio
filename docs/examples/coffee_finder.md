@@ -1,6 +1,6 @@
 # Coffee Finder
 
-This agent networks looks for coffee options for its user,
+This agent network looks for coffee options for its user,
 depending on the time of the day.
 
 It's good for testing:
@@ -16,7 +16,7 @@ It's good for testing:
 
 ## Description
 
-Coffee finder is an agent network that can suggest options for coffee locations
+Coffee Finder is an agent network that can suggest options for coffee locations
 based on the time of day.
 
 ## Example conversation
