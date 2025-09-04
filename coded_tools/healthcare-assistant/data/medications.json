@@ -1,0 +1,11 @@
+{
+  "patient123": [
+    {
+      "name": "Aspirin",
+      "dosage": "100mg",
+      "frequency": "daily",
+      "start_date": "2025-06-17",
+      "end_date": null
+    }
+  ]
+}

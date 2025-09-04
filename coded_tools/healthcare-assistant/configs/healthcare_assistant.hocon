@@ -1,0 +1,89 @@
+healthcare_assistant {
+  agents {
+    scheduler_agent {
+      type = "conversational"
+      model = "gpt-4o"
+      system_message = """
+      You are a Healthcare Scheduling Agent. Your responsibilities:
+      - Schedule medical appointments
+      - Check appointment availability
+      - Send appointment confirmations
+      - Handle rescheduling requests
+      - Maintain patient privacy and HIPAA compliance
+      """
+      tools = ["AppointmentScheduler"]
+      llm_config = {
+        config_list = [
+          {
+            model = "gpt-4o"
+            api_key = "${OPENAI_API_KEY}"
+          }
+        ]
+      }
+    }
+    medication_agent {
+      type = "conversational"
+      model = "gpt-4o"
+      system_message = """
+      You are a Medication Management Agent. Your responsibilities:
+      - Provide medication reminders
+      - Check drug interactions
+      - Offer dosage information
+      - Alert about side effects
+      - Maintain medication adherence tracking
+      """
+      tools = ["MedicationManager"]
+      llm_config = {
+        config_list = [
+          {
+            model = "gpt-4o"
+            api_key = "${OPENAI_API_KEY}"
+          }
+        ]
+      }
+    }
+    health_advisor_agent {
+      type = "conversational"
+      model = "gpt-4o"
+      system_message = """
+      You are a Health Advisory Agent. Your responsibilities:
+      - Provide general health tips
+      - Suggest wellness activities
+      - Offer nutritional guidance
+      - Recommend exercise routines
+      - Share preventive care information
+      """
+      tools = ["HealthKnowledgeBase"]
+      llm_config = {
+        config_list = [
+          {
+            model = "gpt-4o"
+            api_key = "${OPENAI_API_KEY}"
+          }
+        ]
+      }
+    }
+    coordinator_agent {
+      type = "conversational"
+      model = "gpt-4o"
+      system_message = """
+      You are the Healthcare Coordinator Agent. Your responsibilities:
+      - Route patient queries to appropriate agents
+      - Ensure comprehensive care coordination
+      - Maintain patient interaction history
+      - Escalate complex cases to human providers
+      """
+      tools = []
+      llm_config = {
+        config_list = [
+          {
+            model = "gpt-4o"
+            api_key = "${OPENAI_API_KEY}"
+          }
+        ]
+      }
+    }
+  }
+  communication_protocol = "aaosa"
+  entry_point = "coordinator_agent"
+}

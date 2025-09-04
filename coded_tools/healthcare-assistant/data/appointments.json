@@ -1,0 +1,9 @@
+[
+  {
+    "patient_id": "patient123",
+    "doctor_id": "doctor456",
+    "datetime": "2025-06-01T10:00:00",
+    "type": "checkup",
+    "status": "scheduled"
+  }
+]
