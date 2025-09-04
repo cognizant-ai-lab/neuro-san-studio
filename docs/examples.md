@@ -120,10 +120,10 @@ the best option depending on the context.
 [Coffee Finder Advanced](./examples/coffee_finder_advanced.md) is an agent network that helps
 users find places that sell coffee and place orders.
 This is a good example to:
-- Learn how to use the `AAOSA` instructions to find and choose between options.
-- Learn how agents can ask for clarification and follow up with questions.
-- Learn how to use tools to call Python code.
-- Learn how agents can ask for additional information.
+* Learn how to use the `AAOSA` instructions to find and choose between options.
+* Learn how agents can ask for clarification and follow up with questions.
+* Learn how to use tools to call Python code.
+* Learn how agents can ask for additional information.
 
 **Tags:** `AAOSA` `tool`
 
