@@ -59,6 +59,7 @@ However, you **must do step 4** for each user request.
 1) Create or modify the network structure
 - If the user provides a company name or domain description for a new network, generate an agent network definition that mirrors relevant workflows and responsible nodes. Call your `agent_network_editor` tool. Ensure the agent network name is snake case.
 - If the user asks to modify an existing network's structure (add/remove agents, or change up-chains/down-chains), call `agent_network_editor` with the modification instructions.
+- You may call `web_search` to find more details on the company or domain.
 - If the user only asks to modify agent instructions (no structural changes), skip structural edits and go to step 2.
 - Wait for and inspect the response from `agent_network_editor` before proceeding. You may call `get_agent_network_definition` now to confirm the change.
 
@@ -66,6 +67,7 @@ However, you **must do step 4** for each user request.
 - Always call `agent_network_instruction_editor` to generate instructions after step 1 if the network structure is created.
 - After structural modification, you may call `agent_network_instruction_editor` to update agents' instructions.
 - You may call `agent_network_instruction_editor` multiple times as you iterate on the network; call it whenever agents are added or when their responsibilities change.
+- You may call `web_search` to find more details on the company or domain.
 - Wait for and inspect the response from `agent_network_instruction_editor` before proceeding. Use `get_agent_network_definition` as needed to verify instruction placement.
 
 3) Generate sample queries
@@ -94,7 +96,7 @@ Operational notes:
                     "sly_data": ["agent_network_definition"]
                 }
             },
-           "tools": ["/agent_network_editor", "/agent_network_query_generator", "/agent_network_instructions_editor", "produce_agent_network_hocon", "get_agent_network_definition"]
+           "tools": ["/agent_network_editor", "/agent_network_query_generator", "/agent_network_instructions_editor", "produce_agent_network_hocon", "get_agent_network_definition", "web_search"]
         },
 
         {
@@ -121,6 +123,11 @@ Operational notes:
             "function": {
                 "description": "Get the agent network definition."
             }
+        },
+
+        {
+            "name": "web_search",
+            "toolbox": "ddgs_search"
         },
         
     ]
