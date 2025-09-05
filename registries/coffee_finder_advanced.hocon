@@ -32,9 +32,11 @@ Always return order IDs and details when placing orders.
 Do not worry about the location.
 Call ALL your downstream agents to see if they can help with the inquiry before answering.
 Be as succinct as possible in your response, while explaining the reasoning process if needed.
+Keep track of every order by calling your UserHabits tool.
+Call your UserHabits tool to get user habits and preferences.
 Ask the user back if you need additional information.
 """ ${this_is_not_a_game} "\n" ${aaosa_instructions}
-        tools = ["CoffeeShop", "FastFoodChain", "GasStation", "LiquorStore", "Time"]
+        tools = ["CoffeeShop", "FastFoodChain", "GasStation", "LiquorStore", "Time", "UserHabits"]
     }
     {
         name = "CoffeeShop"
@@ -126,5 +128,17 @@ Always return the API generated order ID, shop, customer name and order details 
             description = "Use this API to get the current time"
         }
         class = "time_tool.TimeTool"
+    }
+    {
+        name = "UserHabits"
+        function = ${aaosa_call}
+        instructions =
+"""
+You infer user habits.
+Send order details to your kwik_agents tool for persistence.
+Ask your kwik_agents tool for user habits and preferences.
+""" ${this_is_not_a_game} "\n" ${aaosa_instructions}
+        command = ${aaosa_command}
+        tools = ["/kwik_agents"]
     }
 ]
