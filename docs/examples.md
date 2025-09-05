@@ -127,7 +127,7 @@ This is a good example to:
 * Learn how to use tools to call Python code.
 * Learn how agents can ask for additional information.
 
-**Tags:** `AAOSA` `tool`
+**Tags:** `AAOSA` `tool` `time` `sly_data`
 
 ## 🧰 Tool Integration Examples
 
