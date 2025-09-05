@@ -12,7 +12,9 @@ Here are a few examples ordered by level of complexity.
     * [Music Nerd Pro Local](#music-nerd-pro-local)
     * [Music Nerd Pro Sly](#music-nerd-pro-sly)
     * [Music Nerd Pro Sly Local](#music-nerd-pro-sly-local)
+    * [Music Nerd LLM Fallbacks](#music-nerd-llm-fallbacks)
     * [Coffee Finder](#coffee-finder)
+    * [Coffee Finder Advanced](#coffee-finder-advanced)
   * [🧰 Tool Integration Examples](#-tool-integration-examples)
     * [Anthropic Code Execution](#anthropic-code-execution)
     * [Anthropic Web Search](#anthropic-web-search)
@@ -114,6 +116,18 @@ provide the same service and how the AAOSA instructions can be used to choose
 the best option depending on the context.
 
 **Tags:** `AAOSA`
+
+### Coffee Finder Advanced
+
+[Coffee Finder Advanced](./examples/coffee_finder_advanced.md) is an agent network that helps
+users find places that sell coffee and place orders.
+This is a good example to:
+* Learn how to use the `AAOSA` instructions to find and choose between options.
+* Learn how agents can ask for clarification and follow up with questions.
+* Learn how to use tools to call Python code.
+* Learn how agents can ask for additional information.
+
+**Tags:** `AAOSA` `tool`
 
 ## 🧰 Tool Integration Examples
 
