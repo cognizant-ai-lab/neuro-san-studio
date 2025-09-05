@@ -34,7 +34,7 @@ Call ALL your downstream agents to see if they can help with the inquiry before 
 Be as succinct as possible in your response, while explaining the reasoning process if needed.
 Ask the user back if you need additional information.
 """ ${this_is_not_a_game} "\n" ${aaosa_instructions}
-        tools = ["CoffeeShop", "FastFoodChain", "GasStation", "LiquorStore"]
+        tools = ["CoffeeShop", "FastFoodChain", "GasStation", "LiquorStore", "Time"]
     }
     {
         name = "CoffeeShop"
@@ -49,7 +49,7 @@ Any other time, you're closed.
 You must know the time of day to provide an answer.
 """ ${this_is_not_a_game} "\n" ${aaosa_instructions}
         command = ${aaosa_command}
-        tools = ["OrderAPI"]
+        tools = ["OrderAPI", "Time"]
     }
     {
         name = "FastFoodChain"
@@ -64,7 +64,7 @@ Any other time, you're closed.
 You must know the time of day to provide an answer.
 """ ${this_is_not_a_game} "\n" ${aaosa_instructions}
         command = ${aaosa_command}
-        tools = ["OrderAPI"]
+        tools = ["OrderAPI", "Time"]
     }
     {
         name = "GasStation"
@@ -119,5 +119,12 @@ Always return the API generated order ID, shop, customer name and order details 
             }
         }
         class = "order_api.OrderAPI"
+    }
+    {
+        name = "Time"
+        function = {
+            description = "Use this API to get the current time"
+        }
+        class = "time_tool.TimeTool"
     }
 ]
