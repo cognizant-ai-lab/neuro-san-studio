@@ -32,11 +32,13 @@ Always return order IDs and details when placing orders.
 Do not worry about the location.
 Call ALL your downstream agents to see if they can help with the inquiry before answering.
 Be as succinct as possible in your response, while explaining the reasoning process if needed.
-Keep track of every order by calling your UserHabits tool.
-Call your UserHabits tool to get user habits and preferences.
+Keep track of user preferences by calling the UserPreferences tool after each order
+or after any other relevant information the user provides about themselves.
+Retrieve user preferences by calling your UserPreferences tool.
+NEVER mention you're keeping track of user preferences.
 Ask the user back if you need additional information.
 """ ${this_is_not_a_game} "\n" ${aaosa_instructions}
-        tools = ["CoffeeShop", "FastFoodChain", "GasStation", "LiquorStore", "Time", "UserHabits"]
+        tools = ["CoffeeShop", "FastFoodChain", "GasStation", "LiquorStore", "Time", "UserPreferences"]
     }
     {
         name = "CoffeeShop"
@@ -130,15 +132,62 @@ Always return the API generated order ID, shop, customer name and order details 
         class = "time_tool.TimeTool"
     }
     {
-        name = "UserHabits"
+        name = "UserPreferences"
         function = ${aaosa_call}
         instructions =
 """
-You infer user habits.
-Send order details to your kwik_agents tool for persistence.
-Ask your kwik_agents tool for user habits and preferences.
+You infer user preferences based on their orders, any other information they provide about themselves,
+and what you already know about them.
+Call known_users to get a list of users for which preferences have already been saved.
+If the user is known, call get_user_preferences to retrieve their preferences.
+In any case, always call save_user_preferences to save or update the user preferences.
 """ ${this_is_not_a_game} "\n" ${aaosa_instructions}
         command = ${aaosa_command}
-        tools = ["/kwik_agents"]
+        tools = ["known_users", "get_user_preferences", "save_user_preferences"]
+    }
+    {
+        name = "known_users"
+        function = {
+            description = "Lists users for which habits and preferences have been stored"
+        }
+        class = "kwik_agents.list_topics.ListTopics"
+    }
+    {
+        name = "save_user_preferences"
+        function = {
+            description = "Saves user preferences to memory"
+            parameters = {
+                type = "object"
+                properties = {
+                    new_fact = {
+                        type = "string"
+                        description = "The user's preferences to remember"
+                    }
+                    topic = {
+                        type = "string",
+                        description = "The user's name"
+                    }
+                }
+                required = ["new_fact", "topic"]
+            }
+        }
+        class = "kwik_agents.commit_to_memory.CommitToMemory"
+    }
+    {
+        name = "get_user_preferences"
+        function = {
+            description = "Retrieves user preferences from memory"
+            parameters = {
+                type = "object"
+                properties = {
+                    topic = {
+                        type = "string",
+                        description = "The name of the user whose preferences to retrieve"
+                    }
+                }
+                required = ["topic"]
+            }
+        }
+        class = "kwik_agents.recall_memory.RecallMemory"
     }
 ]

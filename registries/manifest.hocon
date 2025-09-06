@@ -59,7 +59,7 @@
     "agentspace_adapter.hocon": false,
     "pdf_rag.hocon": true,
     "agentic_rag.hocon": false,
-    "kwik_agents.hocon": true,
+    "kwik_agents.hocon": false,
 
     # Requirement to use this agent network:
     # - langchain-openai >= 0.3.26
