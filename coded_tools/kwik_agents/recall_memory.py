@@ -9,7 +9,7 @@ from coded_tools.kwik_agents.list_topics import MEMORY_DATA_STRUCTURE
 
 class RecallMemory(CodedTool):
     """
-    CodedTool implementation which provides a way to get an outline of an agent network stored in sly data
+    A CodedTool that retrieves facts related to a topic from memory.
     """
 
     def __init__(self):
@@ -22,7 +22,7 @@ class RecallMemory(CodedTool):
                 by the calling agent.  This dictionary is to be treated as read-only.
 
                 The argument dictionary expects the following keys:
-                    "app_name" the name of the One Cognizant app for which the URL is needed.
+                    "topic" A topic for which to retrieve relevant facts.
 
         :param sly_data: A dictionary whose keys are defined by the agent hierarchy,
                 but whose values are meant to be kept out of the chat stream.
@@ -35,7 +35,7 @@ class RecallMemory(CodedTool):
                 adding the data is not invoke()-ed more than once.
 
                 Keys expected for this implementation are:
-                    None
+                    "TopicMemory" a dictionary containing topics as keys and strings of facts as values.
 
         :return:
             In case of successful execution:

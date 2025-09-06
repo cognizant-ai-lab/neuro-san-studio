@@ -14,7 +14,7 @@ from coded_tools.kwik_agents.list_topics import MEMORY_FILE_PATH
 
 class CommitToMemory(CodedTool):
     """
-    CodedTool implementation which provides a way to add an agent to an agent network and store in sly data
+    A CodedTool that saves facts related to a topic to memory.
     """
 
     def __init__(self):
@@ -27,7 +27,8 @@ class CommitToMemory(CodedTool):
                 by the calling agent.  This dictionary is to be treated as read-only.
 
                 The argument dictionary expects the following keys:
-                    "app_name" the name of the One Cognizant app for which the URL is needed.
+                    "new_fact" a brief description of the new fact to remember.
+                    "topic" a topic for this new fact to be stored under.
 
         :param sly_data: A dictionary whose keys are defined by the agent hierarchy,
                 but whose values are meant to be kept out of the chat stream.
@@ -40,7 +41,7 @@ class CommitToMemory(CodedTool):
                 adding the data is not invoke()-ed more than once.
 
                 Keys expected for this implementation are:
-                    None
+                    "TopicMemory" a dictionary containing topics as keys and strings of facts as values.
 
         :return:
             In case of successful execution:

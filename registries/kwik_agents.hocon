@@ -98,16 +98,7 @@ List such facts under a section header named 'Relevant facts from memory:'.
         {
             "name": "list_topics",
             "function": {
-                "description": "I can list all topics for which we have stored memories."
-                "parameters": {
-                    "type": "object",
-                    "properties": {
-                        "dialog_name": {
-                            "type": "string",
-                            "description": "A name for the current dialog."
-                        },
-                    },
-                }
+                "description": "Lists all topics that have been stored in memory."
             },
             "class": "list_topics.ListTopics"
         },
