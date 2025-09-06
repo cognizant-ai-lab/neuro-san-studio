@@ -924,8 +924,6 @@ Example:
 }
 ```
 
-### Subnetworks
-
 ### AAOSA
 
 AAOSA stands for **A**daptive **A**gent **O**riented **S**oftware **A**rchitecture.
@@ -943,6 +941,34 @@ Look at [../registries/smart_home.hocon](../registries/smart_home.hocon) and in 
 * aaosa_instructions
 * aaosa_call
 * aaosa_command
+
+### External Agent Networks
+
+When designing an agent network in a `.hocon` file, it is possible to use other agent networks as tools.
+This makes it possible for an agent to delegate a query to another agent network.
+This is an elegant way to reuse agent networks and keep them specialized.
+
+If the agent network is hosted on the same server,
+it can be referenced by adding a forward-slash `/` in front of the served agent's name.
+This is typically the stem of an agent network hocon file in a deployment's registries directory.
+
+Example: `/expedia` to reference an agent network defined in `expedia.hocon`.
+
+An agent provided with `"tools": ["/expedia"]` will be able to call the expedia agent network and delegate
+travel inquiries to it.
+
+Furthermore, it is also possible to reference agents on other neuro-san servers by using a URL as a tool reference.
+
+Example: `"tools": ["http://192.168.1.1:8080/expedia"]` will call the expedia agent network hosted on the server
+at IP address `192.168.1.1` and port `8080`.
+
+This enables entire ecosystems of agent webs.
+
+Look at [Consumer Decision Assistant](examples/consumer_decision_assistant.md) for an example.
+
+### Memory
+
+TBD
 
 ## Connect with other agent frameworks
 
