@@ -33,13 +33,11 @@ HOCON_HEADER_START = (
     "# Ensure that you run `python -m run` from the top level of the repository.\n"
     "# The path to this substitution file is **relative to the top-level directory**,\n"
     "# so running the script from elsewhere may result in file not found errors.\n"
-    'include "registries/aaosa.hocon"\n'
+    '    include "registries/aaosa.hocon"\n'
     '    "llm_config": {\n'
     '        "model_name": "gpt-4o",\n'
     "    },\n"
-    '    "commondefs": {\n'
-    '        "replacement_strings": {\n'
-    '            "instructions_prefix": """\n'
+    '   "instructions_prefix": """\n'
     "You are part of a "
 )
 HOCON_HEADER_REMAINDER = (
@@ -47,11 +45,9 @@ HOCON_HEADER_REMAINDER = (
     "Only answer inquiries that are directly within your area of expertise.\n"
     "Do not try to help for other matters.\n"
     "Do not mention what you can NOT do. Only mention what you can do.\n"
-    '            """,\n'
-    '            "demo_mode": "You are part of a demo system, so when queried, make up a realistic response as if you '
+    '""",\n'
+    '   "demo_mode": "You are part of a demo system, so when queried, make up a realistic response as if you '
     'are actually grounded in real data or you are operating a real application API or microservice."\n'
-    "        },\n"
-    "    }\n"
     '"tools": [\n'
 )
 TOP_AGENT_TEMPLATE = (
@@ -62,10 +58,9 @@ TOP_AGENT_TEMPLATE = (
     "An assistant that answer inquiries from the user.\n"
     '                """\n'
     "            },\n"
-    '            "instructions": """\n'
-    "{instructions_prefix}\n"
+    '            "instructions": ${instructions_prefix} """\n'
     "%s\n"
-    '            """ ${aaosa_instructions},\n'
+    '""" ${aaosa_instructions},\n'
     '            "tools": [%s]\n'
     "        },\n"
 )
@@ -73,10 +68,9 @@ REGULAR_AGENT_TEMPLATE = (
     "        {\n"
     '            "name": "%s",\n'
     '            "function": ${aaosa_call},\n'
-    '            "instructions": """\n'
-    "{instructions_prefix}\n"
+    '            "instructions": ${instructions_prefix} """\n'
     "%s\n"
-    '            """ ${aaosa_instructions},\n'
+    '""" ${aaosa_instructions},\n'
     '            "command": ${aaosa_command},\n'
     '            "tools": [%s]\n'
     "        },\n"
@@ -85,10 +79,9 @@ LEAF_NODE_AGENT_TEMPLATE = (
     "        {\n"
     '            "name": "%s",\n'
     '            "function": ${aaosa_call},\n'
-    '            "instructions": """\n'
-    "{instructions_prefix} {demo_mode}\n"
+    '            "instructions": ${instructions_prefix} ${demo_mode} """\n'
     "%s\n"
-    '            """,\n'
+    '""",\n'
     "        },\n"
 )
 
