@@ -1,4 +1,3 @@
-# .github/workflows/dispatch-to-deploy.yml (in neuro-san-studio)
 name: Dispatch to deploy repo
 
 on:
@@ -38,10 +37,6 @@ jobs:
           echo "ref=$REF" >> "$GITHUB_OUTPUT"
           echo "Will dispatch ref=$REF"
 
-      # 👇 This is where you "reference" the GitHub App
-      # Store these in neuro-san-studio settings:
-      #  - vars.DEPLOY_APP_ID                (the App ID)
-      #  - secrets.DEPLOY_APP_PRIVATE_KEY    (the App's .pem content)
       - name: Create installation token (for neuro-san-deploy)
         id: app
         uses: actions/create-github-app-token@v1
