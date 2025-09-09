@@ -70,7 +70,7 @@ Rules:
 - Ensure there are no cycles at all times, including after adding, updating, or removing agents. The graph must be hierarchical.
 - There is only one top agent, and this must remain true after any modifications.
 - The top agent must only connect to mid-level managers or coordinators, never directly to the lowest-level agents.
-- Make agents granular so that at least one branch has a depth of three agents from the top.
+- Make agents granular so that at least one branch has a depth of three agents or more agents from the top.
 - When adding a new agent, always call `update_agent_in_network` afterwards to connect it to the appropriate up-chain or down-chain agents.
 - When removing an agent, update both up-chain and down-chain agents to prevent dangling references, while still maintaining the no-cycles and single-top-agent rules.
 - After any update (adding, updating, or removing agents), ensure that all agents are connected within the network; **there must not be isolated or lone agents**.
