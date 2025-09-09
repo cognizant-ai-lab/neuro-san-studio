@@ -58,5 +58,8 @@ jobs:
           repository: cognizant-ai-lab/neuro-san-deploy
           event-type: neurosan_build
           client-payload: |
-            {"ref":"${{ steps.r.outputs.ref }}","image_tag":""}
+            {"ref":"${{ steps.r.outputs.ref }}",
+             "image_tag":"",
+             "source_repo":"${{ github.repository }}",
+             "sender":"${{ github.actor }}"}
 
