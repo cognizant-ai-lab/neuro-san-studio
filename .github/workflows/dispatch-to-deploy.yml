@@ -1,0 +1,60 @@
+name: Dispatch to deploy repo
+
+on:
+  push:
+    branches: [ main ]
+  release:
+    types: [ published ]
+  workflow_dispatch:
+    inputs:
+      ref:
+        description: "Override ref to send to neuro-san-deploy (branch/tag/SHA)"
+        required: false
+        default: ""
+
+permissions:
+  contents: read  # enough for this workflow
+
+jobs:
+  dispatch:
+    # only run from the canonical repo (not forks)
+    if: ${{ !github.event.repository.fork && github.repository == 'cognizant-ai-lab/neuro-san-studio' }}
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Resolve ref to send
+        id: r
+        shell: bash
+        run: |
+          set -euo pipefail
+          case "${{ github.event_name }}" in
+            release) REF="${{ github.event.release.tag_name }}" ;;
+            push)    REF="${{ github.ref_name }}" ;;
+            workflow_dispatch)
+                     REF="${{ inputs.ref || github.ref_name }}" ;;
+            *)       echo "Unsupported event"; exit 1 ;;
+          esac
+          echo "ref=$REF" >> "$GITHUB_OUTPUT"
+          echo "Will dispatch ref=$REF"
+
+      - name: Create installation token (for neuro-san-deploy)
+        id: app
+        uses: actions/create-github-app-token@v1
+        with:
+          app-id: ${{ vars.DEPLOY_APP_ID }}
+          private-key: ${{ secrets.DEPLOY_APP_PRIVATE_KEY }}
+          owner: cognizant-ai-lab
+          repositories: neuro-san-deploy   # repo where the App is installed
+
+      - name: Dispatch to neuro-san-deploy
+        uses: peter-evans/repository-dispatch@v3
+        with:
+          token: ${{ steps.app.outputs.token }}
+          repository: cognizant-ai-lab/neuro-san-deploy
+          event-type: neurosan_build
+          client-payload: |
+            {"ref":"${{ steps.r.outputs.ref }}",
+             "image_tag":"",
+             "source_repo":"${{ github.repository }}",
+             "sender":"${{ github.actor }}"}
+
