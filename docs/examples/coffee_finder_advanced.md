@@ -1,18 +1,20 @@
 # Coffee Finder Advanced
 
 This agent network is an advanced version of the Coffee Finder example.
-Like Coffee Finder, it can:
+It can:
 * check the current time (can be overridden by the user)
 * look for coffee options at that time of the day
 * place orders on behalf of the user
+* remember user preferences like favorite shop or usual order
 
 It's good for testing:
 
 * how multiple agents can provide the same service
 * how to leverage AAOSA instructions to disambiguate
-* ask for more information when needed, like a username
-* call a CodedTool
-* use sly_data to pass information to CodedTools
+* how to ask for more information when needed, like a username
+* how to call a CodedTool
+* how to use sly_data to pass information to CodedTools
+* how to learn and remember facts like user preferences
 
 ## File
 
@@ -21,13 +23,14 @@ It's good for testing:
 ## Description
 
 Coffee Finder Advanced is an agent network that can suggest options for coffee locations
-based on the time of day, and place orders on behalf of the user. Here is what it looks like:
+based on the time of day, place orders on behalf of the user and remember user preferences.
+Here is what it looks like:
 
 ![Coffee Finder Advanced Network](../../docs/images/coffee_finder_advanced_network.png)
 
 ## Tools
 
-Coffee Finder Advanced uses 2 tools:
+Coffee Finder Advanced uses 2 simple tools:
 * OrderAPI, that can be called by the 4 shops
 * Time, that's only used by CoffeeShop and FastFoodChain, as well as CoffeeFinder.
 The other 2 shops are open 24/7, so they don't need to use Time.
@@ -40,6 +43,10 @@ See for instance how [TimeTool](../../coded_tools/coffee_finder_advanced/time_to
 
 Remember, `sly_data` is NOT visible in the chat, but it's passed to the CodedTools that can use it like any
 regular dictionary argument.
+
+It also uses "memory" to remember user preferences like favorite shop or usual order.
+Check the `UserPreferences` agent and the tools it's calling for more info about
+how to gather and persist facts.
 
 ## Example conversations
 
@@ -164,4 +171,46 @@ Order ID: 301
 Details: Black coffee for Mike
 
 Let me know if you need anything else!
+```
+
+### Memorizing user preferences
+
+Let's place more orders to see if Coffee Finder remembers user preferences.
+Let's set the time to 8 am again:
+
+```text
+Human:
+message: Liz here. Get me a cappuccino from Bob's Coffee Shop
+sly_data: {"time": "8 am"}
+
+AI:
+Your order has been placed at Bob's Coffee Shop.
+
+Order ID: 101
+Details: Cappuccino for Liz
+
+Let me know if you need anything else!
+```
+
+Now let's reload or restart the server, and see if Coffee Finder remembers our preference:
+
+```text
+Human:
+message: Hey, it's Liz. Get me the same as usual please.
+sly_data: {"time": "8 am"}
+
+AI:
+Liz, your usual order has been placed: 1 cappuccino from Bob's Coffee Shop.
+Order ID: 101
+
+Let me know if you need anything else!
+```
+
+You can check what Coffee Finder has memorized in the `TopicMemory.json` file:
+
+```json
+{
+  "Mike": "[2025-09-09 16:22:27] Prefers black coffee from Henry's Fast Food.\n[2025-09-09 16:23:37] Prefers black coffee from Joe's Gas Station.",
+  "Liz": "[2025-09-09 16:25:23] Liz ordered a cappuccino from Bob's Coffee Shop.\n[2025-09-09 16:28:47] Liz's usual coffee order is a cappuccino from Bob's Coffee Shop.\n[2025-09-09 16:28:56] Liz ordered a cappuccino from Bob's Coffee Shop."
+}
 ```
