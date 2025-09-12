@@ -1,7 +1,7 @@
 # Neuro SAN
 neuro-san==0.5.56
 neuro-san-web-client==0.1.12
-nsflow==0.5.19
+nsflow==0.5.20
 
 # For the airline_policy demo and agentic rag, to extract text from documents
 pypdf>=5.4.0
