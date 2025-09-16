@@ -11,6 +11,13 @@ on:
         description: "Override ref to send to neuro-san-deploy (branch/tag/SHA)"
         required: false
         default: ""
+      # let a manual run override the env (defaults to dev)
+      target_environment:
+        description: "Target env when run manually"
+        required: false
+        type: choice
+        options: [dev, staging, prod]
+        default: dev
 
 permissions:
   contents: read  # enough for this workflow
@@ -22,20 +29,32 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Resolve ref to send
+      - name: Resolve ref and target environment
         id: r
         shell: bash
         run: |
           set -euo pipefail
+          # Release goes to staging, merge to main goes to dev
           case "${{ github.event_name }}" in
-            release) REF="${{ github.event.release.tag_name }}" ;;
-            push)    REF="${{ github.ref_name }}" ;;
+            release) 
+              REF="${{ github.event.release.tag_name }}"
+              TARGET_ENV="staging" 
+              ;;
+            push)    
+              REF="${{ github.ref_name }}" 
+              TARGET_REF="dev"
+              ;;
             workflow_dispatch)
-                     REF="${{ inputs.ref || github.ref_name }}" ;;
-            *)       echo "Unsupported event"; exit 1 ;;
+              REF="${{ inputs.ref || github.ref_name }}" 
+              TARGET_REF="${{ inputs.target_environment || 'dev' }}"
+              ;;
+            *)       
+              echo "Unsupported event"; exit 1 
+              ;;
           esac
           echo "ref=$REF" >> "$GITHUB_OUTPUT"
-          echo "Will dispatch ref=$REF"
+          echo "target_env=$TARGET_ENV" >> "$GITHUB_OUTPUT"
+          echo "Will dispatch ref=$REF and target_environment=$TARGET_ENV"
 
       - name: Create installation token (for neuro-san-deploy)
         id: app
@@ -53,8 +72,11 @@ jobs:
           repository: cognizant-ai-lab/neuro-san-deploy
           event-type: neurosan_build
           client-payload: |
-            {"ref":"${{ steps.r.outputs.ref }}",
-             "image_tag":"",
-             "source_repo":"${{ github.repository }}",
-             "sender":"${{ github.actor }}"}
+            {
+              "ref":"${{ steps.r.outputs.ref }}",
+              "image_tag":"",
+              "source_repo":"${{ github.repository }}",
+              "sender":"${{ github.actor }}",
+              "target_environment":"${{ steps.r.outputs.target_env }}"
+            }
 
