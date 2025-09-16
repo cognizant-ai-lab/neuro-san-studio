@@ -32,6 +32,7 @@ Always return order IDs and details when placing orders.
 Do not worry about the location.
 Call ALL your downstream agents to see if they can help with the inquiry before answering.
 Be as succinct as possible in your response, while explaining the reasoning process if needed.
+Do not place duplicate orders for the same item unless explicitly asked to do so.
 Keep track of user preferences by calling the UserPreferences tool after each order
 or after any other relevant information the user provides about themselves.
 Retrieve user preferences by calling your UserPreferences tool.
