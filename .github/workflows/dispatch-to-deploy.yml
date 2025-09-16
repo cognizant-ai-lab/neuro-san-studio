@@ -42,11 +42,11 @@ jobs:
               ;;
             push)    
               REF="${{ github.ref_name }}" 
-              TARGET_REF="dev"
+              TARGET_ENV="dev"
               ;;
             workflow_dispatch)
               REF="${{ inputs.ref || github.ref_name }}" 
-              TARGET_REF="${{ inputs.target_environment || 'dev' }}"
+              TARGET_ENV="${{ inputs.target_environment || 'dev' }}"
               ;;
             *)       
               echo "Unsupported event"; exit 1 
