@@ -1,5 +1,5 @@
 # Neuro SAN
-neuro-san==0.5.56
+neuro-san==0.5.60
 neuro-san-web-client==0.1.12
 nsflow==0.5.20
 
