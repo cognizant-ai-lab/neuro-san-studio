@@ -74,6 +74,7 @@ jobs:
           client-payload: |
             {
               "ref":"${{ steps.r.outputs.ref }}",
+              "sha":"${{ github.sha }}",
               "image_tag":"",
               "source_repo":"${{ github.repository }}",
               "sender":"${{ github.actor }}",
