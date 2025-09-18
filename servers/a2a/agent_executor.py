@@ -28,7 +28,7 @@ from agent import CrewAiResearchReport
 
 class CrewAiAgentExecutor(AgentExecutor):
     """Agent executor for crewAI agents
-    
+
     adapted from https://github.com/a2aproject/a2a-samples/blob/main/samples/python/agents/helloworld/agent_executor.py
     """
 

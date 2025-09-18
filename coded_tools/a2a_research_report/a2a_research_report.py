@@ -75,7 +75,7 @@ class A2aResearchReport(CodedTool):
 
         if not topic:
             return "Error: No topic provided."
-        
+
         logger.info("Writing report on %s", topic)
 
         # It could take a long time before remote agents response.
@@ -95,8 +95,7 @@ class A2aResearchReport(CodedTool):
                 return "Failed to the agent card. Cannot continue."
 
             # Create client
-            config = ClientConfig(httpx_client=httpx_client)
-            factory = ClientFactory(config=config)
+            factory = ClientFactory(config=ClientConfig(httpx_client=httpx_client))
             client: Client = factory.create(agent_card)
             logger.info("A2A Client initialized.")
 
@@ -112,9 +111,8 @@ class A2aResearchReport(CodedTool):
                 responses.append(response)
 
             # Last response is typically the final message
-            final_response: Message = responses[-1]
             # Convert to a dictionary
-            result: dict[str, Any] = final_response.model_dump(mode='json', exclude_none=True)
+            result: dict[str, Any] = responses[-1].model_dump(mode='json', exclude_none=True)
             logger.info("Got the following response: %s", str(result))
 
             # Extract text from the response
