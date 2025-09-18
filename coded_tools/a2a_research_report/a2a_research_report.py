@@ -2,10 +2,9 @@
 Example of how to use coded tool as a2a client.
 
 Before running this coded tool
-- cloning the repo from https://github.com/google/a2a-python/tree/main
-- pip install .
-- run A2A server
-
+- `pip install a2a-sdk crewai`
+- run A2A server (servers/a2a/server.py)
+- `python server.py`
 """
 
 # Copyright (C) 2023-2025 Cognizant Digital Business, Evolutionary AI.
@@ -19,6 +18,7 @@ Before running this coded tool
 #
 # END COPYRIGHT
 
+import logging
 from typing import Any
 from typing import Dict
 from uuid import uuid4
@@ -26,15 +26,26 @@ from uuid import uuid4
 import httpx
 
 # pylint: disable=import-error
-from a2a.client import A2AClient
-from a2a.types import SendMessageResponse
+from a2a.client import A2ACardResolver
+from a2a.client import Client
+from a2a.client import ClientConfig
+from a2a.client import ClientFactory
+from a2a.types import AgentCard
+from a2a.types import Message
+from a2a.utils.constants import AGENT_CARD_WELL_KNOWN_PATH
+
 from neuro_san.interfaces.coded_tool import CodedTool
+
+# Make sure that the port here matches the one in the server.
+BASE_URL = "http://localhost:9999"
 
 
 class A2aResearchReport(CodedTool):
     """
     CodedTool as an A2A client that connects to a crewAI agents that write
     a report on a given topic in A2A server.
+
+    Adapted from https://github.com/a2aproject/a2a-samples/blob/main/samples/python/agents/helloworld/test_client.py
     """
 
     async def async_invoke(self, args: Dict[str, Any], sly_data: Dict[str, Any]) -> str:
@@ -57,33 +68,54 @@ class A2aResearchReport(CodedTool):
                 None
         :return: A report or error message
         """
+        logger = logging.getLogger(self.__class__.__name__)
+
         # Extract arguments from the input dictionary
         topic: str = args.get("topic")
 
         if not topic:
             return "Error: No topic provided."
+        
+        logger.info("Writing report on %s", topic)
 
         # It could take a long time before remote agents response.
         # Adjust the timeout accordingly.
         async with httpx.AsyncClient(timeout=600.0) as httpx_client:
-            client = await A2AClient.get_client_from_agent_card_url(
-                # Make sure the A2A server is running and the port here
-                # matches the one in the server.
-                httpx_client,
-                "http://localhost:9999",
-            )
-            # Send the message to server
-            send_message_payload: dict[str, Any] = {
-                "message": {
-                    "role": "user",
-                    "parts": [{"type": "text", "text": f"{topic}"}],
-                    "messageId": uuid4().hex,
-                },
+
+            # Initialize A2ACardResolver
+            resolver = A2ACardResolver(httpx_client=httpx_client, base_url=BASE_URL)
+
+            try:
+                logger.info("Attempting to fetch public agent card from: %s%s", BASE_URL, AGENT_CARD_WELL_KNOWN_PATH)
+                agent_card: AgentCard = await resolver.get_agent_card()
+                logger.info("Successfully fetched agent card:")
+                logger.info(agent_card.model_dump_json(indent=2, exclude_none=True))
+            except RuntimeError as runtime_error:
+                logger.error("Critical error fetching public agent card: %s", str(runtime_error))
+                return "Failed to the agent card. Cannot continue."
+
+            # Create client
+            config = ClientConfig(httpx_client=httpx_client)
+            factory = ClientFactory(config=config)
+            client: Client = factory.create(agent_card)
+            logger.info("A2A Client initialized.")
+
+            # Send message and process responses
+            message: Message = {
+                "role": "user",
+                "parts": [{"kind": "text", "text": topic}],
+                "messageId": uuid4().hex,
             }
 
-            # Get response and parse to dictionary
-            response: SendMessageResponse = await client.send_message(payload=send_message_payload)
-            result: Dict[str, Any] = response.model_dump(exclude_none=True)
+            responses: list[Message] = []
+            async for response in client.send_message(message):
+                responses.append(response)
+
+            # Last response is typically the final message
+            final_response: Message = responses[-1]
+            # Convert to a dictionary
+            result: dict[str, Any] = final_response.model_dump(mode='json', exclude_none=True)
+            logger.info("Got the following response: %s", str(result))
 
             # Extract text from the response
-            return result["result"]["parts"][-1]["text"]
+            return result["parts"][-1]["text"]

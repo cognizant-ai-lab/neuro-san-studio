@@ -16,10 +16,7 @@ of this agent network is to show how one can connect to A2A server using coded t
 
 - This agent is **disabled by default**. To test it:
     - Manually enable it in the `manifest.hocon` file.
-    - As A2A is not published to pypi yet
-        - Clone the repo from [https://github.com/google/a2a-python/tree/main](https://github.com/google/a2a-python/tree/main)
-        - `pip install .`
-    - Install `crewai`
+    - `pip install a2a-sdk crewai`
     - Run the A2A server:
 
     ```bash

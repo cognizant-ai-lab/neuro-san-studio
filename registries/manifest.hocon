@@ -93,8 +93,8 @@
     "mcp_bmi_streamable_http.hocon": false,
 
     # The following agent network is an example of Agent2Agent (A2A) Protocol implementation:
-    # Make sure to start the A2A server before turning the agent on.
-    # The A2Aserver can be found at cservers/A2A/server.py and run by command
+    # Make sure to pip install a2a-sdk crewai and start the server by python server.py before turning the agent on.
+    # The A2Aserver can be found at servers/A2A/server.py and run by command
     # python server.py
     "a2a_research_report.hocon": false,
 
