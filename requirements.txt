@@ -1,5 +1,5 @@
 # Neuro SAN
-neuro-san==0.5.56
+neuro-san==0.5.60
 neuro-san-web-client==0.1.12
 nsflow==0.5.20
 
@@ -15,3 +15,6 @@ aiofiles>=24.1.0
 
 # For MCP servers and clients
 langchain-mcp-adapters>=0.1.7
+
+# Neuro-SAN now requires explicit installation of langchain LLM providers' libs
+langchain-anthropic>=0.3.11,<0.4
