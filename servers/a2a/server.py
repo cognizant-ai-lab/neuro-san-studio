@@ -5,8 +5,7 @@ See https://github.com/google/a2a-python/tree/main/examples
 and https://google.github.io/A2A/specification
 
 Before running this server
- - cloning the repo from https://github.com/google/a2a-python/tree/main then `pip install .`
- - install crewai
+ - `pip install a2a-sdk crewai`
  - run server by `python server.py`
 """
 
@@ -23,10 +22,11 @@ Before running this server
 
 # pylint: disable=import-error
 import click
+import uvicorn
 
-from a2a.server import A2AServer
-from a2a.server.request_handlers import DefaultA2ARequestHandler
-from a2a.types import AgentAuthentication
+from a2a.server.apps import A2AStarletteApplication
+from a2a.server.request_handlers import DefaultRequestHandler
+from a2a.server.tasks import InMemoryTaskStore
 from a2a.types import AgentCapabilities
 from a2a.types import AgentCard
 from a2a.types import AgentSkill
@@ -65,15 +65,12 @@ def main(host: str, port: int):
         defaultOutputModes=['text'],
         capabilities=AgentCapabilities(),
         skills=[skill],
-        authentication=AgentAuthentication(schemes=['public']),
     )
 
-    request_handler = DefaultA2ARequestHandler(
-        agent_executor=CrewAiAgentExecutor()
-    )
+    request_handler = DefaultRequestHandler(agent_executor=CrewAiAgentExecutor(), task_store=InMemoryTaskStore())
 
-    server = A2AServer(agent_card=agent_card, request_handler=request_handler)
-    server.start(host=host, port=port)
+    server = A2AStarletteApplication(agent_card=agent_card, http_handler=request_handler)
+    uvicorn.run(server.build(), host=host, port=port)
 
 
 if __name__ == '__main__':

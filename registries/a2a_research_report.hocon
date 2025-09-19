@@ -12,11 +12,11 @@
 
 # ***Important Notes***
 # This is an example of Agent2Agent (A2A) Protocol implementation in neuro-san
-# Before running this agent network
-# - cloning the repo from https://github.com/google/a2a-python/tree/main
-# - pip install .
-# - run A2A server and make sure that its port matches with that of the client in
-# coded tool/a2a_research_report/a2a_research_report
+# Before running this agent network, ensure the following:
+# - Install dependencies: pip install a2a-sdk crewai
+# - Start the A2A server: python server.py
+# - Make sure the server port matches the client configuration in coded_tool/a2a_research_report/a2a_research_report.
+# - The server code is located at: servers/a2a/server.py
 
 
 {

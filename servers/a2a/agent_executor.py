@@ -15,56 +15,44 @@ See https://github.com/google/a2a-python/tree/main/examples
 #
 # END COPYRIGHT
 
-from typing import Any
-from uuid import uuid4
 from typing_extensions import override
 
 # pylint: disable=import-error
-from a2a.server.agent_execution import BaseAgentExecutor
+from a2a.server.agent_execution import AgentExecutor
+from a2a.server.agent_execution import RequestContext
 from a2a.server.events import EventQueue
-from a2a.types import Message
-from a2a.types import MessageSendParams
-from a2a.types import Part
-from a2a.types import Role
-from a2a.types import SendMessageRequest
-from a2a.types import Task
-from a2a.types import TextPart
+from a2a.utils import new_agent_text_message
 
 from agent import CrewAiResearchReport
 
 
-class CrewAiAgentExecutor(BaseAgentExecutor):
-    """Agent executor for crewAI agents"""
+class CrewAiAgentExecutor(AgentExecutor):
+    """Agent executor for crewAI agents
+
+    adapted from https://github.com/a2aproject/a2a-samples/blob/main/samples/python/agents/helloworld/agent_executor.py
+    """
 
     def __init__(self):
         self.agent = CrewAiResearchReport()
 
     @override
-    async def on_message_send(
-        self,
-        request: SendMessageRequest,
-        event_queue: EventQueue,
-        task: Task | None,
-    ) -> None:
+    async def execute(self, context: RequestContext, event_queue: EventQueue):
+        """
+        Handles incoming requests that expect a response or a stream of events.
+        It processes the user's input (available via context) and uses the event_queue to send back Message
+        """
+        # Get query from the context
+        query: str = context.get_user_input()
+        if not context.message:
+            raise ValueError("No message provided")
 
-        # Get topic from the request message
-        params: MessageSendParams = request.params
-        topic: str = self._get_user_query(params)
+        # Invoke the underlying agent
+        result = await self.agent.ainvoke(query)
+        await event_queue.enqueue_event(new_agent_text_message(result))
 
-        # invoke the underlying agent
-        agent_response: dict[str, Any] = await self.agent.ainvoke(topic)
-
-        # return response message
-        message: Message = Message(
-            role=Role.agent,
-            parts=[Part(TextPart(text=agent_response))],
-            messageId=str(uuid4()),
-        )
-        event_queue.enqueue_event(message)
-
-    def _get_user_query(self, task_send_params: MessageSendParams) -> str:
-        """Helper to get user query from task send params."""
-        part = task_send_params.message.parts[0].root
-        if not isinstance(part, TextPart):
-            raise ValueError('Only text parts are supported')
-        return part.text
+    @override
+    async def cancel(self, context: RequestContext, event_queue: EventQueue):
+        """
+        Handles requests to cancel an ongoing task. Cancellation is not supported for this example.
+        """
+        raise NotImplementedError
