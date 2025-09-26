@@ -52,6 +52,7 @@
 
                 # List of PDF URLs to use for Retrieval-Augmented Generation (RAG)
                 "urls": [
+                    """https://www.europarl.europa.eu/RegData/etudes/BRIE/2025/769564/EPRS_BRI(2025)769564_EN.pdf""",
                     """https://www.replicon.com/wp-content/uploads/2016/06/RFP-Template_Replicon.pdf""",
                     """https://www.usac.org/wp-content/uploads/rural-health-care/documents/samples/LargeProjectScopeRFP.pdf"""
                 ],
@@ -83,7 +84,7 @@
 
                 # Directory to save and load the vector store (use absolute path or path relative to "neuro-san-studio/coded_tools/pdf_rag/")
                 # Must be ".json". Only valid for in-memory vector store.
-                "vector_store_path": "vector_store.json"
+                "vector_store_path": "./pdf_rag/vector_store.json"
             }
         },
     ]

@@ -180,3 +180,6 @@ cython_debug/
 # Google credentials
 credentials.json
 token.json
+
+# pdf_rag demo
+vector_store.json
