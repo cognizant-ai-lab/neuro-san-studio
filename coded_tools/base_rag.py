@@ -74,9 +74,9 @@ class BaseRag(ABC):
         self.abs_vector_store_path: Optional[str] = None
         self.embeddings: Embeddings = OpenAIEmbeddings(model=EMBEDDINGS_MODEL, dimensions=VECTOR_SIZE)
 
-        logger.info(f"BaseRag - save_vector_store: {self.save_vector_store}")
-        logger.info(f"BaseRag - recreate_vector_store_on_start: {self.recreate_vector_store_on_start}")
-        logger.info(f"BaseRag - abs_vector_store_path: {self.abs_vector_store_path}")
+        logger.info("BaseRag - save_vector_store: %s", self.save_vector_store)
+        logger.info("BaseRag - recreate_vector_store_on_start: %s", self.recreate_vector_store_on_start)
+        logger.info("BaseRag - abs_vector_store_path: %s", self.abs_vector_store_path)
 
     @abstractmethod
     async def load_documents(self, loader_args: Any) -> List[Document]:
@@ -147,13 +147,15 @@ class BaseRag(ABC):
             if existing_store and self.recreate_vector_store_on_start:
                 # Delete the existing vector in-memory store (a JSON file)
                 try:
-                    logger.info(f"Deleting in-memory vector store at: '{self.abs_vector_store_path}")
+                    logger.info("Deleting in-memory vector store at: %s", self.abs_vector_store_path)
                     os.remove(self.abs_vector_store_path)
                 except PermissionError:
-                    logger.error(f"Permission denied: Cannot delete in-memory vector store at: '{self.abs_vector_store_path}")
+                    logger.error(
+                        "Permission denied: Cannot delete in-memory vector store at: %s", self.abs_vector_store_path
+                    )
                     logger.error("You may experience unexpected behaviour with the vector store.")
             else:
-                logger.info(f"Using existing in-memory vector store at: '{self.abs_vector_store_path}")
+                logger.info("Using existing in-memory vector store at: %s", self.abs_vector_store_path)
                 return existing_store
 
         # Load and process documents
