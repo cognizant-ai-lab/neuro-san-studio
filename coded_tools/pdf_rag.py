@@ -78,9 +78,6 @@ class PdfRag(CodedTool, BaseRag):
         # Save the generated vector store as a JSON file if True
         self.save_vector_store = args.get("save_vector_store", False)
 
-        # Re-create the generated vector store on start-up. Only valid for in-memory vector store if True
-        self.recreate_vector_store_on_start = args.get("recreate_vector_store_on_start", False)
-
         # Configure the vector store path
         self.configure_vector_store_path(args.get("vector_store_path"))
 

@@ -82,9 +82,6 @@
                 # Set to true to save the generated vector store as a JSON file. Only valid for in-memory vector store.
                 "save_vector_store": true,
 
-                # Set to true to re-create the generated vector store on start-up. Only valid for in-memory vector store.
-                "recreate_vector_store_on_start": false,
-
                 # Directory to save and load the vector store (use absolute path or path relative to "neuro-san-studio/coded_tools/pdf_rag/")
                 # Must be ".json". Only valid for in-memory vector store.
                 "vector_store_path": "./pdf_rag/vector_store.json"
