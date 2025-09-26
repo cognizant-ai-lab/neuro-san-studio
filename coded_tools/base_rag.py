@@ -70,8 +70,13 @@ class BaseRag(ABC):
     def __init__(self):
         # Save the generated vector store as a JSON file if True
         self.save_vector_store: bool = False
+        self.recreate_vector_store_on_start: bool = True
         self.abs_vector_store_path: Optional[str] = None
         self.embeddings: Embeddings = OpenAIEmbeddings(model=EMBEDDINGS_MODEL, dimensions=VECTOR_SIZE)
+
+        logger.info(f"BaseRag - save_vector_store: {self.save_vector_store}")
+        logger.info(f"BaseRag - recreate_vector_store_on_start: {self.recreate_vector_store_on_start}")
+        logger.info(f"BaseRag - abs_vector_store_path: {self.abs_vector_store_path}")
 
     @abstractmethod
     async def load_documents(self, loader_args: Any) -> List[Document]:
@@ -139,7 +144,16 @@ class BaseRag(ABC):
         # Try to load existing vector store for in-memory vector store
         if vector_store_type == "in_memory":
             existing_store = await self._load_existing_vector_store()
-            if existing_store:
+            if existing_store and self.recreate_vector_store_on_start:
+                # Delete the existing vector in-memory store (a JSON file)
+                try:
+                    logger.info(f"Deleting in-memory vector store at: '{self.abs_vector_store_path}")
+                    os.remove(self.abs_vector_store_path)
+                except PermissionError:
+                    logger.error(f"Permission denied: Cannot delete in-memory vector store at: '{self.abs_vector_store_path}")
+                    logger.error("You may experience unexpected behaviour with the vector store.")
+            else:
+                logger.info(f"Using existing in-memory vector store at: '{self.abs_vector_store_path}")
                 return existing_store
 
         # Load and process documents
