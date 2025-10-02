@@ -108,6 +108,8 @@ class BaseRag(ABC):
             base_path: str = os.path.dirname(__file__)
             self.abs_vector_store_path = os.path.abspath(os.path.join(base_path, vector_store_path))
 
+        logger.info("abs_vector_store_path set to: '%s'\n", self.abs_vector_store_path)
+
     async def generate_vector_store(
         self,
         loader_args: Any,
@@ -136,13 +138,26 @@ class BaseRag(ABC):
         if vector_store_type == "postgres" and postgres_config is None:
             raise ValueError("postgres_config is required when vector_store_type is 'postgres'\n")
 
-        # Try to load existing vector store for in-memory vector store
+        # If Vector Store is in-memory, delete and re-create from scratch every time
         if vector_store_type == "in_memory":
+            
+            # Initially attempt to retrieve the existing store to determine if it already exists
             existing_store = await self._load_existing_vector_store()
+            
+            # If there is an existing store, delete it
             if existing_store:
-                return existing_store
+                await self._delete_existing_vector_store()
+                # try:
+                #     logger.info("Deleting in-memory vector store at: %s", self.abs_vector_store_path)
+                #     os.remove(self.abs_vector_store_path)
+                # except PermissionError:
+                #     logger.error("Permission denied: Cannot delete in-memory vector store at: %s", self.abs_vector_store_path)
+                #     logger.error("You may experience unexpected behaviour with the vector store as a result.")
+            # else:
+            #     logger.info("Using existing in-memory vector store at: %s", self.abs_vector_store_path)
+            #     return existing_store
 
-        # Load and process documents
+        # Create the new vector store
         vectorstore = await self._create_new_vector_store(loader_args, postgres_config, vector_store_type)
 
         # Save vector store if configured
@@ -163,8 +178,22 @@ class BaseRag(ABC):
             logger.info("Loaded vector store from: %s\n", self.abs_vector_store_path)
             return vector_store
         except FileNotFoundError:
-            logger.info("Vector store not found at: %s. Creating from source.\n", self.abs_vector_store_path)
+            logger.info("Vector store not found at: %s.\n", self.abs_vector_store_path)
             return None
+
+    async def _delete_existing_vector_store(self):
+        """Try to delete existing vector store from file."""
+
+        if not self.abs_vector_store_path:
+            return
+
+        try:
+            os.remove(self.abs_vector_store_path)
+            logger.info("Deleted vector store at: %s\n", self.abs_vector_store_path)
+        except FileNotFoundError:
+            logger.error("Error deleting vector store; vector store file not found at: %s.\n", self.abs_vector_store_path)
+        except PermissionError as e:
+            logger.error(f"Error deleting vector store; permission denied: {e}.\n")
 
     async def _create_new_vector_store(
         self,
@@ -296,8 +325,8 @@ class BaseRag(ABC):
 
             return await self.query_retriever(retriever, query)
 
-        except AttributeError:
-            return "Failed to create vector store. Please check the log for more information.\n"
+        except AttributeError as e:
+            return f"Failed to query vector store. Please check the log for more information. Error: {e}\n"
 
     @staticmethod
     async def query_retriever(retriever: Any, query: str) -> str:
