@@ -318,6 +318,25 @@ For examples of agent networks, check out [docs/examples.md](docs/examples.md).
 
 For the development guide, check out [docs/dev_guide.md](docs/dev_guide.md).
 
+---
+
+## Community Projects
+
+- [Neuro SAN Web Client](https://github.com/cognizant-ai-lab/neuro-san-web-client):
+a basic Flask web client interface for Neuro SAN.
+
+---
+
+## Links
+
+* YouTube: [Decision AI](https://www.youtube.com/@decision-ai)
+* Website: [Cognizant AI Lab](https://www.cognizant.com/us/en/ai-lab)
+* Twitter: [x.com/decision__ai](https://x.com/decision__ai)
+* LinkedIn: [Cognizant AI Lab](https://www.linkedin.com/showcase/cognizant-ai-lab)
+* Medium blog: [medium.com/@evolutionmlmail](https://medium.com/@evolutionmlmail)
+
+---
+
 ## Blog posts
 
 * [Code versus Model in Multi-Agentic Systems](https://medium.com/@evolutionmlmail/code-versus-model-in-multi-agentic-systems-e33cf581e32b):
@@ -327,6 +346,8 @@ and coded tools.
 explores Neuro SAN's architecture, configuration model, adaptive communication protocol (AAOSA),
 and how it enables secure, extensible agent collaboration without hardcoded logic.
 
+---
+
 ## More details
 
-For more information, check out the [Cognizant AI Lab Neuro SAN landing page](https://decisionai.ml/neuro-san).
+For more information, check out the [Cognizant AI Lab Neuro SAN landing page](https://www.cognizant.com/us/en/ai-lab/neuro-san).
