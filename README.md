@@ -278,13 +278,14 @@ Neuro SAN Studio provides a user-friendly environment to interact with agent net
     python -m run
     ```
 
-2. Navigate to http://localhost:4173/ to access the UI.
+2. Navigate to [http://localhost:4173/](http://localhost:4173/) to access the UI.
 3. (Optional) Check the logs:
-    - For the server logs: `logs/server.log`
-    - For the client logs: `logs/nsflow.log`
-    - For the agents logs: `logs/thinking_dir/*`
+   * For the server logs: `logs/server.log`
+   * For the client logs: `logs/nsflow.log`
+   * For the agents logs: `logs/thinking_dir/*`
 
 Use the `--help` option to see the various config options for the `run` command:
+
 ```bash
 python -m run --help
 ```
@@ -322,7 +323,7 @@ For the development guide, check out [docs/dev_guide.md](docs/dev_guide.md).
 
 ## Community Projects
 
-- [Neuro SAN Web Client](https://github.com/cognizant-ai-lab/neuro-san-web-client):
+* [Neuro SAN Web Client](https://github.com/cognizant-ai-lab/neuro-san-web-client):
 a basic Flask web client interface for Neuro SAN.
 
 ---
