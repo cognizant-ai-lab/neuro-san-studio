@@ -17,3 +17,6 @@ langchain-mcp-adapters>=0.1.7
 
 # Neuro-SAN now requires explicit installation of langchain LLM providers' libs
 langchain-anthropic>=0.3.11,<0.4
+
+# For the HTML agent-network graph generator
+pyvis~=0.3.2
