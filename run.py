@@ -390,6 +390,14 @@ class NeuroSanRunner:
             print("Cannot use --client-only and --server-only together.")
             sys.exit(1)
 
+        if use_flask:
+            # Check if flask web client is available
+            try:
+                import neuro_san_web_client  # pylint: disable=unused-import,import-outside-toplevel
+            except ImportError:
+                print("Flask web client is not available. Please install it with `pip install neuro-san-web-client`.")
+                sys.exit(1)
+
         port_conflicts = self._check_port_conflicts()
 
         # Exit early if any conflict is found
