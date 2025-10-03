@@ -36,6 +36,7 @@ Here are a few examples ordered by level of complexity.
     * [Intranet Agents](#intranet-agents)
     * [Intranet Agents With Tools](#intranet-agents-with-tools)
     * [Airline Policy 360 Assistant](#airline-policy-360-assistant)
+    * [Telco Network Orchestration](#telco-network-orchestration)
     * [Real Estate Agent](#real-estate-agent)
     * [Consumer Decision Assistant Agents](#consumer-decision-assistant-agents)
     * [Therapy Vignette Supervision](#therapy-vignette-supervision)
@@ -289,7 +290,10 @@ flights, international travel, and more.
 
 ### Telco Network Orchestration
 
-[Telco Network Orchestration](examples/telco_network_orchestration.md) describes an agent-based network that models the orchestration of a large-scale telecommunications system for an Australian telco, encompassing monitoring, fault detection, and resource allocation.
+[Telco Network Orchestration](examples/telco_network_orchestration.md) describes
+an agent-based network that models the orchestration of a large-scale
+telecommunications system for an Australian telco, encompassing monitoring,
+fault detection, and resource allocation.
 
 ### Real Estate Agent
 
