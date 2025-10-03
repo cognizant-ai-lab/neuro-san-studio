@@ -30,7 +30,7 @@
   <img src="https://img.shields.io/github/watchers/cognizant-ai-lab/neuro-san-studio?style=social" alt="GitHub watchers">
 </p>
 <p align="center">
-  <!-- Github Info -->
+  <!-- GitHub Info -->
   <img src="https://img.shields.io/github/last-commit/cognizant-ai-lab/neuro-san-studio" alt="Last Commit">
   <img src="https://img.shields.io/github/issues/cognizant-ai-lab/neuro-san-studio" alt="Issues">
   <img src="https://img.shields.io/github/issues-pr/cognizant-ai-lab/neuro-san-studio" alt="Pull Requests">
@@ -75,7 +75,7 @@ to single-agent systems, where no single model has all the expertise or context 
 * **🗂️ Data-Driven Configuration**: Entire agent networks are defined declaratively via simple HOCON files, empowering
 technical and non-technical stakeholders to design agent interactions intuitively.
 * **🔀 Adaptive Communication ([AAOSA Protocol](https://arxiv.org/abs/cs/9812015))**: Agents autonomously determine how
-to delegate tasks, making interactions fluid and dynamic with decentralized decison making.
+to delegate tasks, making interactions fluid and dynamic with decentralized decision-making.
 * **🔒 Sly-Data**: Sly Data facilitates safe handling and transfer of sensitive data between agents without exposing it
 directly to any language models.
 * **🧩 Dynamic Agent Network Designer**: Includes a meta-agent called the Agent Network Designer – essentially, an agent
@@ -230,7 +230,7 @@ Install the requirements:
 pip install -r requirements.txt
 ```
 
-**IMPORTANT**: By default the server relies on OpenAI's `gpt-4o` model. Set the OpenAI API key, and add it to your shell
+**IMPORTANT**: By default, the server relies on OpenAI's `gpt-4o` model. Set the OpenAI API key and add it to your shell
 configuration so it's available in future sessions.
 
 You can get your OpenAI API key from <https://platform.openai.com/signup>. After signing up, create a new API key in the
@@ -270,77 +270,29 @@ For testing the API keys, please refer to this [documentation](./docs/api_key.md
 
 ### Run
 
-There are multiple ways in which we can now use the neuro-san server with a client:
+Neuro SAN Studio provides a user-friendly environment to interact with agent networks.
 
-<!-- pyml disable-next-line line-length -->
-#### Option 1: Using [`nsflow`](https://github.com/cognizant-ai-lab/nsflow) as a developer-oriented web client
+1. Start the server and client with a single command, from the project root directory:
 
-If you want to use neuro-san with a FastAPI-based developer-oriented client, follow these steps:
+    ```bash
+    python -m run
+    ```
 
-* Start the server and client with a single command, from project root:
+2. Navigate to [http://localhost:4173/](http://localhost:4173/) to access the UI.
+3. (Optional) Check the logs:
+   * For the server logs: `logs/server.log`
+   * For the client logs: `logs/nsflow.log`
+   * For the agents logs: `logs/thinking_dir/*`
 
-  ```bash
-  python -m run
-  ```
+Use the `--help` option to see the various config options for the `run` command:
 
-* As a default
-    * Frontend will be available at: `http://127.0.0.1:4173`
-    * The client and server logs will be saved to `logs/nsflow.log` and `logs/server.log` respectively.
-
-* To see the various config options for this app, on terminal
-
-  ```bash
-  python -m run --help
-  ```
+```bash
+python -m run --help
+```
 
 Screenshot:
 
 ![NSFlow UI Snapshot](https://raw.githubusercontent.com/cognizant-ai-lab/nsflow/main/docs/snapshot01.png)
-
----
-
-#### Option 2: Using a basic web client interface
-
-A [basic web client interface](https://github.com/cognizant-ai-lab/neuro-san-web-client) is installed by default.
-It's a great, simple example of how to connect to a neuro-san server and interact with it.
-Start the server and the client in one single command:
-
-```bash
-python -m run --use-flask-web-client
-```
-
-The client and server logs will show on the screen,
-and will also be saved to `logs/server.log` and `logs/client.log` respectively.
-As a default, on a web browser you can now navigate to <http://127.0.0.1:5003/> to start using the application.
-
-Notes:
-
-1. Expand the `Configuration` tab at the bottom of the interface to connect to the neuro-san server host and port
-2. Choose an Agent Network Name, e.g. "music_nerd", click Update  
-   This Agent Network Name should match the list of agent networks that are activated in the `registries/manifest.hocon`
-   file.
-3. Type your message in the chat box and press 'Send' to interact with the agent network.
-4. Optional: open the `Agent Network Diagram` tab to visualize the interactions between the agents.
-5. Optional: open the `Agent Communications` tab to see the messages exchanged between the agents.
-
----
-
-#### Option 3: Command Line Interface
-
-You can also use [neuro-san](https://github.com/cognizant-ai-lab/neuro-san)'s command line interface (CLI) to start and
-interact with the server.
-
-* Export the following environment variables:
-
-  ```bash
-  # Point the server to the manifest file containing the agent network configurations
-  export AGENT_MANIFEST_FILE="./registries/manifest.hocon"
-  # Point the server to the directory containing the agent Python tools
-  export AGENT_TOOL_PATH="./coded_tools"
-  ```
-
-* For further instructions, refer to the client/server [setup](https://github.com/cognizant-ai-lab/neuro-san/blob/main/README.md#clientserver-setup)
-in neuro-san.
 
 ---
 
@@ -367,6 +319,25 @@ For examples of agent networks, check out [docs/examples.md](docs/examples.md).
 
 For the development guide, check out [docs/dev_guide.md](docs/dev_guide.md).
 
+---
+
+## Community Projects
+
+* [Neuro SAN Web Client](https://github.com/cognizant-ai-lab/neuro-san-web-client):
+a basic Flask web client interface for Neuro SAN.
+
+---
+
+## Links
+
+* YouTube: [Decision AI](https://www.youtube.com/@decision-ai)
+* Website: [Cognizant AI Lab](https://www.cognizant.com/us/en/ai-lab)
+* Twitter: [x.com/decision__ai](https://x.com/decision__ai)
+* LinkedIn: [Cognizant AI Lab](https://www.linkedin.com/showcase/cognizant-ai-lab)
+* Medium blog: [medium.com/@evolutionmlmail](https://medium.com/@evolutionmlmail)
+
+---
+
 ## Blog posts
 
 * [Code versus Model in Multi-Agentic Systems](https://medium.com/@evolutionmlmail/code-versus-model-in-multi-agentic-systems-e33cf581e32b):
@@ -376,6 +347,8 @@ and coded tools.
 explores Neuro SAN's architecture, configuration model, adaptive communication protocol (AAOSA),
 and how it enables secure, extensible agent collaboration without hardcoded logic.
 
+---
+
 ## More details
 
-For more information, check out the [Cognizant AI Lab Neuro SAN landing page](https://decisionai.ml/neuro-san).
+For more information, check out the [Cognizant AI Lab Neuro SAN landing page](https://www.cognizant.com/us/en/ai-lab/neuro-san).
