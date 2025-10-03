@@ -20,6 +20,7 @@
     "intranet_agents_with_tools.hocon": true,
     "retail_ops_and_customer_service.hocon": true,
     "telco_network_support.hocon": true,
+    "telco_network_orchestration.hocon": true,
     "therapy_vignette_supervisors.hocon": true,
     "consumer_decision_assistant.hocon": true,
     # The following agent networks are used as sub-networkds by consumer_decision_assistant.hocon

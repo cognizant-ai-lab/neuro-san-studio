@@ -287,6 +287,10 @@ flights, international travel, and more.
 
 **Tags:** `tool`, `API`, `AAOSA`
 
+### Telco Network Orchestration
+
+[Telco Network Orchestration](examples/telco_network_orchestration.md) describes an agent-based network that models the orchestration of a large-scale telecommunications system for an Australian telco, encompassing monitoring, fault detection, and resource allocation.
+
 ### Real Estate Agent
 
 [Real Estate Agent](examples/real_estate.md) is a multi-agent system that provides help with real estate transaction
