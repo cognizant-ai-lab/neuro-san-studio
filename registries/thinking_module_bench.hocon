@@ -1,0 +1,47 @@
+
+# Copyright (C) 2023-2025 Cognizant Digital Business, Evolutionary AI.
+# All Rights Reserved.
+# Issued under the Academic Public License.
+#
+# You can be released from the terms, and requirements of the Academic Public
+# License by purchasing a commercial license.
+# Purchase of a commercial license is mandatory for any use of the
+# neuro-san SDK Software in commercial settings.
+#
+# END COPYRIGHT
+{
+    "llm_config": {
+#             "model_name": "gpt-4o-mini-2024-07-18"
+             "model_name": "gpt-4o"
+    },
+    "max_iterations": 40000, #3000
+    "max_execution_seconds": 7200, #600
+    "tools": [
+        {
+            "name": "thinking_module_bench",
+            "function": {
+                "description": """
+You are a reasoning module. You will receive a 'problem' and you will solve the problem using chain-of-thought reasoning.
+Return the solution on the last line after >>>> with no extra explanation or formatting.
+                """,
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "problem": {
+                            "type": "string",
+                            "description": "An input instance to reason on."
+                        },
+                    },
+                    "required": ["problem"]
+                }
+            },
+
+            "instructions": """
+You are a reasoning module. You will receive a 'problem' and solve it and return the result.
+First, think carefully about how to solve the problem and provide detailed reasoning steps for how to solve the problem,
+Then solve the problem using the reasoning steps.
+Return the solution on the last line after >>>> with no extra explanation or formatting.
+""",
+        },
+    ]
+}

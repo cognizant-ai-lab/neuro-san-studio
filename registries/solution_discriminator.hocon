@@ -1,0 +1,66 @@
+
+# Copyright (C) 2023-2025 Cognizant Digital Business, Evolutionary AI.
+# All Rights Reserved.
+# Issued under the Academic Public License.
+#
+# You can be released from the terms, and requirements of the Academic Public
+# License by purchasing a commercial license.
+# Purchase of a commercial license is mandatory for any use of the
+# neuro-san SDK Software in commercial settings.
+#
+# END COPYRIGHT
+{
+    "llm_config": {
+#             "model_name": "gpt-4o-mini-2024-07-18"
+             "model_name": "gpt-4o"
+    },
+    "max_iterations": 40000, #3000
+    "max_execution_seconds": 7200, #600
+    "tools": [
+        {
+            "name": "solution_discriminator",
+            "function": {
+                "description": """
+You are a solution discriminator.
+You will receive a problem statement along with a number of suggested decompositions of the problem, and you return the decomposition you prefer.
+                """,
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "problem": {
+                            "type": "string",
+                            "description": "Description of a problem."
+                        },
+                        "decompositions": {
+                            "type": "string",
+                            "description": "A set of decompositions of the problem."
+                        },
+                    },
+                    "required": ["problem", "decompositions"]
+                }
+            },
+
+            "instructions": """
+You are a solution discriminator. You receive a 'problem', P and a number of decompositions in the following form:
+
+1. P1=[p1], P2=[p2], C=[c]
+2. P1=[p1'], P2=[p2'], C=[c']
+3. P1=[p1''], P2=[p2''], C=[c'']
+...
+
+ where each line is a decomposition candidate, P1 and P2 are the proposed subproblems,
+and C is the function that tells us how to put their solutions together to solve the 'problem'.
+
+A decomposition may take the following form P1=[p1], P2=[None], C=[None]
+This means the 'problem' is not decomposed, which may be a valid option too.
+
+You need to check each candidate for correctness, simplicity of the decompositions, as well as simplicity and correctness of C.
+If you have a candidate that suggests not decomposing the 'problem', and if the 'problem' is already simple enough or cannot be decomposed easily,
+then feel free to return that candidate number as your preference.
+
+First, review the various decomposition candidates carefully and tell me what you think about each one, in detail.
+Then, return your preferred decomposition number in the last line after >>>> with no extra explanation or formatting.
+""",
+        },
+     ]
+}

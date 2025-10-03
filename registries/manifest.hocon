@@ -177,4 +177,7 @@
     "agent_network_architect.hocon": false,
     "news_sentiment_analysis.hocon": false,
     "now_agents.hocon": true,
+    "decomposer.hocon": true,
+    "solution_discriminator.hocon": true,
+    "thinking_module_bench.hocon": true,
 }
