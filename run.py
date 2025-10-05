@@ -321,7 +321,7 @@ class NeuroSanRunner:
         self.flask_webclient_process = self.start_process(command, "FlaskWebClient", "logs/webclient.log")
         print("Flask web client started on port: ", self.args["web_client_port"])
 
-    # pylint: disable=unused-argument
+    # pylint: disable=unused-argument,useless-suppression,no-member
     def signal_handler(self, signum, frame):
         """Handle termination signals to cleanly exit."""
         print("\nTermination signal received. Stopping all processes...")
@@ -331,21 +331,27 @@ class NeuroSanRunner:
             if self.is_windows:
                 self.server_process.terminate()
             else:
-                os.killpg(os.getpgid(self.server_process.pid), signal.SIGKILL)  # pylint: disable=useless-suppression,no-member
+                os.killpg(
+                    os.getpgid(self.server_process.pid), signal.SIGKILL
+                )
 
         if self.flask_webclient_process:
             print(f"Stopping WEB CLIENT (PID {self.flask_webclient_process.pid})...")
             if self.is_windows:
                 self.flask_webclient_process.terminate()
             else:
-                os.killpg(os.getpgid(self.flask_webclient_process.pid), signal.SIGKILL)  # pylint: disable=useless-suppression,no-member
+                os.killpg(
+                    os.getpgid(self.flask_webclient_process.pid), signal.SIGKILL
+                )
 
         if self.nsflow_process:
             print(f"Stopping NSFLOW (PID {self.nsflow_process.pid})...")
             if self.is_windows:
                 self.nsflow_process.terminate()
             else:
-                os.killpg(os.getpgid(self.nsflow_process.pid), signal.SIGKILL)  # pylint: disable=useless-suppression,no-member
+                os.killpg(
+                    os.getpgid(self.nsflow_process.pid), signal.SIGKILL
+                )
 
         sys.exit(0)
 
