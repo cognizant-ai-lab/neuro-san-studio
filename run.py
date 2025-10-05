@@ -298,9 +298,8 @@ class NeuroSanRunner:
         print("Starting Phoenix (AI observability)...")
         # If something is already listening on PHOENIX_PORT, assume Phoenix is running and skip autostart
         if self.is_port_open(self.args["phoenix_host"], self.args["phoenix_port"]):
-            print(
-                f"Phoenix detected at http://{self.args['phoenix_host']}:{self.args['phoenix_port']} — skipping autostart."
-            )
+            phoenix_url = f"http://{self.args['phoenix_host']}:{self.args['phoenix_port']}"
+            print(f"Phoenix detected at {phoenix_url} — skipping autostart.")
         else:
             # Disable gRPC on Windows (port binding issues)
             os.environ["PHOENIX_GRPC_PORT"] = "0"
@@ -522,9 +521,8 @@ class NeuroSanRunner:
 
                 initialize_phoenix_if_enabled()
             except ImportError:
-                print(
-                    "Warning: Phoenix plugin not installed. Install with: pip install -r plugins/phoenix/requirements.txt"
-                )
+                print("Warning: Phoenix plugin not installed.")
+                print("Install with: pip install -r plugins/phoenix/requirements.txt")
             except Exception as e:
                 print(f"Warning: Phoenix initialization failed: {e}")
 
