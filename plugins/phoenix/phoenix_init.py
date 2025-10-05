@@ -1,13 +1,13 @@
-import os
 import logging
+import os
 from typing import Optional
 
 try:
     from opentelemetry import trace
+    from opentelemetry.exporter.otlp.proto.http.trace_exporter import OTLPSpanExporter
     from opentelemetry.sdk.resources import Resource
     from opentelemetry.sdk.trace import TracerProvider
     from opentelemetry.sdk.trace.export import BatchSpanProcessor
-    from opentelemetry.exporter.otlp.proto.http.trace_exporter import OTLPSpanExporter
 except Exception:  # pragma: no cover
     trace = None  # type: ignore
     TracerProvider = None  # type: ignore
@@ -34,18 +34,19 @@ def _configure_tracer_provider() -> None:
     service_name = os.getenv("OTEL_SERVICE_NAME", "neuro-san-demos")
     service_version = os.getenv("OTEL_SERVICE_VERSION", "dev")
 
-    resource = Resource.create({
-        "service.name": service_name,
-        "service.version": service_version,
-    })
+    resource = Resource.create(
+        {
+            "service.name": service_name,
+            "service.version": service_version,
+        }
+    )
 
     provider = TracerProvider(resource=resource)
 
     if OTLPSpanExporter is not None:
         # Prefer explicit traces endpoint if provided; fallback to Phoenix default
-        endpoint: Optional[str] = (
-            os.getenv("OTEL_EXPORTER_OTLP_TRACES_ENDPOINT")
-            or os.getenv("OTEL_EXPORTER_OTLP_ENDPOINT")
+        endpoint: Optional[str] = os.getenv("OTEL_EXPORTER_OTLP_TRACES_ENDPOINT") or os.getenv(
+            "OTEL_EXPORTER_OTLP_ENDPOINT"
         )
         if not endpoint:
             endpoint = "http://localhost:6006/v1/traces"
