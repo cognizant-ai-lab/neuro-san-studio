@@ -288,6 +288,57 @@ class NeuroSanRunner:
 
         return process
 
+    def start_phoenix(self):
+        """Start Phoenix server (UI + OTLP HTTP collector) if enabled."""
+        if str(self.args["phoenix_autostart"]).lower() not in ("true", "1", "yes", "on"):
+            return
+        if str(self.args["phoenix_enabled"]).lower() not in ("true", "1", "yes", "on"):
+            return
+
+        print("Starting Phoenix (AI observability)...")
+        # If something is already listening on PHOENIX_PORT, assume Phoenix is running and skip autostart
+        if self.is_port_open(self.args["phoenix_host"], self.args["phoenix_port"]):
+            print(
+                f"Phoenix detected at http://{self.args['phoenix_host']}:{self.args['phoenix_port']} — skipping autostart."
+            )
+        else:
+            # Try a sequence of known entrypoints (prefer module form)
+            candidates = [
+                [
+                    sys.executable,
+                    "-m",
+                    "phoenix.server.main",
+                    "serve",
+                ],
+                [
+                    "phoenix",
+                    "serve",
+                ],
+            ]
+
+            for idx, command in enumerate(candidates):
+                try:
+                    self.phoenix_process = self.start_process(command, "Phoenix", "logs/phoenix.log")
+                    # Give it a moment to bind the port
+                    time.sleep(2)
+                    if self.is_port_open(self.args["phoenix_host"], self.args["phoenix_port"]):
+                        print("Phoenix started successfully.")
+                        break
+                    # If process died quickly, try next candidate
+                    if self.phoenix_process and self.phoenix_process.poll() is not None:
+                        continue
+                except Exception:
+                    if idx == len(candidates) - 1:
+                        print("Failed to start Phoenix automatically. Check logs/phoenix.log")
+            else:
+                print("Failed to start Phoenix automatically. Check logs/phoenix.log")
+
+        # Update OTLP endpoint env to point to this phoenix instance if not explicitly overridden
+        default_otlp = f"http://{self.args['phoenix_host']}:{self.args['phoenix_port']}/v1/traces"
+        if os.getenv("OTEL_EXPORTER_OTLP_TRACES_ENDPOINT") in (None, "", "http://localhost:6006/v1/traces"):
+            os.environ["OTEL_EXPORTER_OTLP_TRACES_ENDPOINT"] = default_otlp
+            print(f"OTEL_EXPORTER_OTLP_TRACES_ENDPOINT updated to: {default_otlp}")
+
     def start_neuro_san(self):
         """Start the Neuro SAN server."""
         print("Starting Neuro SAN server...")
