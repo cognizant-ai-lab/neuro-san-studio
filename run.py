@@ -331,21 +331,21 @@ class NeuroSanRunner:
             if self.is_windows:
                 self.server_process.terminate()
             else:
-                os.killpg(os.getpgid(self.server_process.pid), signal.SIGKILL)  # pylint: disable=no-member
+                os.killpg(os.getpgid(self.server_process.pid), signal.SIGKILL)  # pylint: disable=useless-suppression,no-member
 
         if self.flask_webclient_process:
             print(f"Stopping WEB CLIENT (PID {self.flask_webclient_process.pid})...")
             if self.is_windows:
                 self.flask_webclient_process.terminate()
             else:
-                os.killpg(os.getpgid(self.flask_webclient_process.pid), signal.SIGKILL)  # pylint: disable=no-member
+                os.killpg(os.getpgid(self.flask_webclient_process.pid), signal.SIGKILL)  # pylint: disable=useless-suppression,no-member
 
         if self.nsflow_process:
             print(f"Stopping NSFLOW (PID {self.nsflow_process.pid})...")
             if self.is_windows:
                 self.nsflow_process.terminate()
             else:
-                os.killpg(os.getpgid(self.nsflow_process.pid), signal.SIGKILL)  # pylint: disable=no-member
+                os.killpg(os.getpgid(self.nsflow_process.pid), signal.SIGKILL)  # pylint: disable=useless-suppression,no-member
 
         sys.exit(0)
 
@@ -438,7 +438,7 @@ class NeuroSanRunner:
         # Set up signal handling for termination
         signal.signal(signal.SIGINT, self.signal_handler)  # Handle Ctrl+C
         if self.is_windows:
-            signal.signal(signal.SIGBREAK, self.signal_handler)  # Handle Ctrl+Break on Windows  # pylint: disable=no-member
+            signal.signal(signal.SIGBREAK, self.signal_handler)  # Handle Ctrl+Break on Windows  # pylint: disable=useless-suppression,no-member
         else:
             signal.signal(signal.SIGTERM, self.signal_handler)  # Handle kill command (not available on Windows)
 
