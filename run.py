@@ -90,6 +90,7 @@ class NeuroSanRunner:
         self.server_process = None
         self.flask_webclient_process = None
         self.nsflow_process = None
+        self.phoenix_process = None
 
     def load_env_variables(self):
         """Load .env file from project root and set variables."""
