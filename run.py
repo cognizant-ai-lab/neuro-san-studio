@@ -497,6 +497,8 @@ class NeuroSanRunner:
             sys.exit(1)
 
         # Start services only if ports are free
+        # 1) Phoenix first so other services point OTLP to it
+        self.start_phoenix()
         if not server_only:
             if use_flask:
                 if not no_html:
