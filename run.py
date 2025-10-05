@@ -419,6 +419,13 @@ class NeuroSanRunner:
             else:
                 os.killpg(os.getpgid(self.nsflow_process.pid), signal.SIGKILL)
 
+        if self.phoenix_process:
+            print(f"Stopping PHOENIX (PID {self.phoenix_process.pid})...")
+            if self.is_windows:
+                self.phoenix_process.terminate()
+            else:
+                os.killpg(os.getpgid(self.phoenix_process.pid), signal.SIGKILL)
+
         sys.exit(0)
 
     def is_port_open(self, host: str, port: int, timeout=1.0) -> bool:
