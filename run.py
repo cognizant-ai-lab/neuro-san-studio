@@ -183,6 +183,21 @@ class NeuroSanRunner:
         print(f"NEURO_SAN_SERVER_CONNECTION set to: {os.environ['NEURO_SAN_SERVER_CONNECTION']}")
         print(f"AGENT_MANIFEST_UPDATE_PERIOD_SECONDS set to: {os.environ['AGENT_MANIFEST_UPDATE_PERIOD_SECONDS']}\n")
 
+        # Phoenix / OpenTelemetry envs
+        os.environ["PHOENIX_ENABLED"] = str(self.args["phoenix_enabled"]).lower()
+        os.environ["OTEL_SERVICE_NAME"] = self.args["otel_service_name"]
+        os.environ["OTEL_SERVICE_VERSION"] = self.args["otel_service_version"]
+        os.environ["OTEL_EXPORTER_OTLP_TRACES_ENDPOINT"] = self.args["otel_exporter_otlp_traces_endpoint"]
+        print(f"PHOENIX_ENABLED set to: {os.environ['PHOENIX_ENABLED']}")
+        print(f"OTEL_SERVICE_NAME set to: {os.environ['OTEL_SERVICE_NAME']}")
+        print(f"OTEL_SERVICE_VERSION set to: {os.environ['OTEL_SERVICE_VERSION']}")
+        print(f"OTEL_EXPORTER_OTLP_TRACES_ENDPOINT set to: {os.environ['OTEL_EXPORTER_OTLP_TRACES_ENDPOINT']}\n")
+        # Phoenix register settings
+        os.environ["PHOENIX_PROJECT_NAME"] = str(self.args["phoenix_project_name"])
+        os.environ["PHOENIX_OTEL_REGISTER"] = str(self.args["phoenix_otel_register"]).lower()
+        print(f"PHOENIX_PROJECT_NAME set to: {os.environ['PHOENIX_PROJECT_NAME']}")
+        print(f"PHOENIX_OTEL_REGISTER set to: {os.environ['PHOENIX_OTEL_REGISTER']}\n")
+
         # Client-only env variables
         if not self.args["server_only"]:
             os.environ["THINKING_FILE"] = self.args["thinking_file"]
