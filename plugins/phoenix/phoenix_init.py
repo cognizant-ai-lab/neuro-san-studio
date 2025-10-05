@@ -161,5 +161,3 @@ def initialize_phoenix_if_enabled() -> None:
 
 # Eager init on import so that sitecustomize can just import this module
 initialize_phoenix_if_enabled()
-
-
