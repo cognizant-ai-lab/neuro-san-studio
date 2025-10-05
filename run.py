@@ -165,7 +165,7 @@ class NeuroSanRunner:
 
         return vars(args)
 
-    def set_environment_variables(self):
+    def set_environment_variables(self):  # pylint: disable=too-many-statements
         """Set required environment variables, optionally using neuro-san defaults."""
         print("\n" + "=" * 50 + "\n")
         print("Setting environment variables...\n")
@@ -313,7 +313,7 @@ class NeuroSanRunner:
                 )
                 # Wait for Phoenix to bind to port (with retry)
                 phoenix_ready = False
-                for i in range(10):  # Try for up to 10 seconds
+                for _ in range(10):  # Try for up to 10 seconds
                     time.sleep(1)
                     if self.is_port_open(self.args["phoenix_host"], self.args["phoenix_port"]):
                         phoenix_ready = True
@@ -323,7 +323,7 @@ class NeuroSanRunner:
                     print("Phoenix started successfully.")
                 else:
                     print("Failed to start Phoenix automatically. Check logs/phoenix.log")
-            except Exception as e:
+            except Exception as e:  # pylint: disable=broad-exception-caught
                 print(f"Failed to start Phoenix automatically: {e}")
 
         # Update OTLP endpoint env to point to this phoenix instance if not explicitly overridden
@@ -517,13 +517,15 @@ class NeuroSanRunner:
         # Initialize Phoenix instrumentation if enabled
         if str(self.args["phoenix_enabled"]).lower() in ("true", "1", "yes", "on"):
             try:
-                from plugins.phoenix import initialize_phoenix_if_enabled
+                from plugins.phoenix import (  # pylint: disable=import-outside-toplevel
+                    initialize_phoenix_if_enabled,
+                )
 
                 initialize_phoenix_if_enabled()
             except ImportError:
                 print("Warning: Phoenix plugin not installed.")
                 print("Install with: pip install -r plugins/phoenix/requirements.txt")
-            except Exception as e:
+            except Exception as e:  # pylint: disable=broad-exception-caught
                 print(f"Warning: Phoenix initialization failed: {e}")
 
         # Ensure logs directory exists
