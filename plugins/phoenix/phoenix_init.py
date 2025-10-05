@@ -124,20 +124,38 @@ def _try_phoenix_register() -> bool:
         return False
 
 
+# Process-local flag to prevent double initialization within same process
+_initialized = False
+
+
 def initialize_phoenix_if_enabled() -> None:
-    if os.getenv("PHOENIX_INITIALIZED") == "1":
+    global _initialized
+
+    print(f"[Phoenix] initialize_phoenix_if_enabled called, PID={os.getpid()}")
+    print(f"[Phoenix] _initialized={_initialized}")
+    print(f"[Phoenix] PHOENIX_ENABLED={os.getenv('PHOENIX_ENABLED')}")
+
+    if _initialized:
+        print(f"[Phoenix] Already initialized in this process, skipping (PID={os.getpid()})")
         return
 
     if not _get_bool_env("PHOENIX_ENABLED", True):
+        print(f"[Phoenix] Phoenix not enabled, skipping (PID={os.getpid()})")
         return
 
     try:
+        print(f"[Phoenix] Attempting phoenix.otel.register() (PID={os.getpid()})")
         used_phoenix_register = _try_phoenix_register()
         if not used_phoenix_register:
+            print(f"[Phoenix] phoenix.otel.register() failed, using manual setup (PID={os.getpid()})")
             _configure_tracer_provider()
             _instrument_sdks()
-        os.environ["PHOENIX_INITIALIZED"] = "1"
+        else:
+            print(f"[Phoenix] phoenix.otel.register() succeeded (PID={os.getpid()})")
+        _initialized = True
+        print(f"[Phoenix] Initialization complete (PID={os.getpid()})")
     except Exception as exc:  # pragma: no cover
+        print(f"[Phoenix] Initialization FAILED: {exc} (PID={os.getpid()})")
         logging.getLogger("phoenix_init").warning("Phoenix initialization failed: %s", exc)
 
 
