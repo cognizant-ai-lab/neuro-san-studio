@@ -3,10 +3,10 @@
 import os
 import sys
 
-# Ensure project root is in path
-_root = os.path.dirname(os.path.abspath(__file__))
-if _root not in sys.path:
-    sys.path.insert(0, _root)
+# Ensure project root is in path (derive from PYTHONPATH env var)
+_project_root = os.getenv("PYTHONPATH")
+if _project_root and _project_root not in sys.path:
+    sys.path.insert(0, _project_root)
 
 if os.getenv("PHOENIX_ENABLED", "false").lower() in ("true", "1", "yes", "on"):
     try:

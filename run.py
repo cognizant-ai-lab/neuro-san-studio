@@ -302,36 +302,30 @@ class NeuroSanRunner:
                 f"Phoenix detected at http://{self.args['phoenix_host']}:{self.args['phoenix_port']} — skipping autostart."
             )
         else:
-            # Try a sequence of known entrypoints (prefer module form)
-            candidates = [
-                [
-                    sys.executable,
-                    "-m",
-                    "phoenix.server.main",
-                    "serve",
-                ],
-                [
-                    "phoenix",
-                    "serve",
-                ],
-            ]
+            # Disable gRPC on Windows (port binding issues)
+            os.environ["PHOENIX_GRPC_PORT"] = "0"
 
-            for idx, command in enumerate(candidates):
-                try:
-                    self.phoenix_process = self.start_process(command, "Phoenix", "logs/phoenix.log")
-                    # Give it a moment to bind the port
-                    time.sleep(2)
+            # Use python -m form for better compatibility
+            try:
+                self.phoenix_process = self.start_process(
+                    [sys.executable, "-m", "phoenix.server.main", "serve"],
+                    "Phoenix",
+                    "logs/phoenix.log"
+                )
+                # Wait for Phoenix to bind to port (with retry)
+                phoenix_ready = False
+                for i in range(10):  # Try for up to 10 seconds
+                    time.sleep(1)
                     if self.is_port_open(self.args["phoenix_host"], self.args["phoenix_port"]):
-                        print("Phoenix started successfully.")
+                        phoenix_ready = True
                         break
-                    # If process died quickly, try next candidate
-                    if self.phoenix_process and self.phoenix_process.poll() is not None:
-                        continue
-                except Exception:
-                    if idx == len(candidates) - 1:
-                        print("Failed to start Phoenix automatically. Check logs/phoenix.log")
-            else:
-                print("Failed to start Phoenix automatically. Check logs/phoenix.log")
+
+                if phoenix_ready:
+                    print("Phoenix started successfully.")
+                else:
+                    print("Failed to start Phoenix automatically. Check logs/phoenix.log")
+            except Exception as e:
+                print(f"Failed to start Phoenix automatically: {e}")
 
         # Update OTLP endpoint env to point to this phoenix instance if not explicitly overridden
         default_otlp = f"http://{self.args['phoenix_host']}:{self.args['phoenix_port']}/v1/traces"
