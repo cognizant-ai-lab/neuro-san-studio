@@ -331,21 +331,21 @@ class NeuroSanRunner:
             if self.is_windows:
                 self.server_process.terminate()
             else:
-                os.killpg(os.getpgid(self.server_process.pid), signal.SIGKILL)
+                os.killpg(os.getpgid(self.server_process.pid), signal.SIGKILL)  # pylint: disable=no-member
 
         if self.flask_webclient_process:
             print(f"Stopping WEB CLIENT (PID {self.flask_webclient_process.pid})...")
             if self.is_windows:
                 self.flask_webclient_process.terminate()
             else:
-                os.killpg(os.getpgid(self.flask_webclient_process.pid), signal.SIGKILL)
+                os.killpg(os.getpgid(self.flask_webclient_process.pid), signal.SIGKILL)  # pylint: disable=no-member
 
         if self.nsflow_process:
             print(f"Stopping NSFLOW (PID {self.nsflow_process.pid})...")
             if self.is_windows:
                 self.nsflow_process.terminate()
             else:
-                os.killpg(os.getpgid(self.nsflow_process.pid), signal.SIGKILL)
+                os.killpg(os.getpgid(self.nsflow_process.pid), signal.SIGKILL)  # pylint: disable=no-member
 
         sys.exit(0)
 
