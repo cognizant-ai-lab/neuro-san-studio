@@ -521,6 +521,19 @@ class NeuroSanRunner:
         # Set environment variables
         self.set_environment_variables()
 
+        # Initialize Phoenix instrumentation if enabled
+        if str(self.args["phoenix_enabled"]).lower() in ("true", "1", "yes", "on"):
+            try:
+                from plugins.phoenix import initialize_phoenix_if_enabled
+
+                initialize_phoenix_if_enabled()
+            except ImportError:
+                print(
+                    "Warning: Phoenix plugin not installed. Install with: pip install -r plugins/phoenix/requirements.txt"
+                )
+            except Exception as e:
+                print(f"Warning: Phoenix initialization failed: {e}")
+
         # Ensure logs directory exists
         os.makedirs("logs", exist_ok=True)
 
