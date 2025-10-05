@@ -25,14 +25,23 @@ PHOENIX_ENABLED=true
 PHOENIX_AUTOSTART=true
 ```
 
+**Note:** A `sitecustomize.py` file in the project root enables automatic instrumentation of subprocesses. This file is included in the repository and requires no additional setup.
+
 ## Configuration
 
 ### Environment Variables
+
+#### Required Variables
 
 | Variable | Default | Description |
 |----------|---------|-------------|
 | `PHOENIX_ENABLED` | `false` | Enable/disable Phoenix observability |
 | `PHOENIX_AUTOSTART` | `false` | Automatically start Phoenix server |
+
+#### Optional Variables
+
+| Variable | Default | Description |
+|----------|---------|-------------|
 | `PHOENIX_HOST` | `127.0.0.1` | Phoenix server host |
 | `PHOENIX_PORT` | `6006` | Phoenix server port |
 | `PHOENIX_PROJECT_NAME` | `default` | Project name for grouping traces |
@@ -42,13 +51,17 @@ PHOENIX_AUTOSTART=true
 
 ### Example `.env` Configuration
 
+**Minimal (Required only):**
 ```bash
-# Enable Phoenix observability
+PHOENIX_ENABLED=true
+PHOENIX_AUTOSTART=true
+```
+
+**With Optional Customization:**
+```bash
 PHOENIX_ENABLED=true
 PHOENIX_AUTOSTART=true
 PHOENIX_PROJECT_NAME=my-project
-
-# Optional: customize service info
 OTEL_SERVICE_NAME=neuro-san-studio
 OTEL_SERVICE_VERSION=1.0.0
 ```
