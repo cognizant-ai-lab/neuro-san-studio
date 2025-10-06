@@ -180,4 +180,5 @@
     "decomposer.hocon": true,
     "solution_discriminator.hocon": true,
     "thinking_module_bench.hocon": true,
+    "composition_discriminator.hocon": true
 }

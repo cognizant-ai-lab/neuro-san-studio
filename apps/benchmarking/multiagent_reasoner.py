@@ -20,7 +20,9 @@ FINAL_TOKEN = ">>>>"  # agents end their final answer on the last line after thi
 CANDIDATE_COUNT = 3
 NUMBER_OF_VOTES = 5
 WINNING_VOTE_COUNT = 3
+SOLUTION_CANDIDATE_COUNT = 3
 MAX_DEPTH = 3
+
 
 AGENTS_PORT = 30011
 
@@ -31,6 +33,10 @@ decomposer_agent_session = agent_session_factory.create_session(
 )
 solution_discriminator_agent_session = agent_session_factory.create_session(
     "direct", "solution_discriminator", "localhost", AGENTS_PORT, False,
+    {"user_id": os.environ.get("USER")}
+)
+composition_discriminator_agent_session = agent_session_factory.create_session(
+    "direct", "composition_discriminator", "localhost", AGENTS_PORT, False,
     {"user_id": os.environ.get("USER")}
 )
 thinking_module_bench_agent_session = agent_session_factory.create_session(
@@ -160,8 +166,40 @@ def solve(problem: str, depth: int = 0, max_depth: int = MAX_DEPTH) -> str:
     comp_prompt = _compose_prompt(c, s1, s2)
     logging.info(f"[solve] depth={depth} composing with C={c!r}")
 
-    resp = call_agent(thinking_module_bench_agent_session, comp_prompt)
-    logging.info(f"[solve] depth={depth} composed final: {_extract_final(resp)!r}")
+    # Generate multiple composed solutions
+    solutions: list[str] = []
+    finals: list[str] = []
+    for k in range(SOLUTION_CANDIDATE_COUNT):
+        r = call_agent(thinking_module_bench_agent_session, comp_prompt)
+        solutions.append(r)
+        finals.append(_extract_final(r))
+        logging.info(f"[solve] depth={depth} composed candidate {k + 1}: {finals[-1]!r}")
+
+    # Vote among composed solutions using composition_discriminator
+    numbered = "\n".join(f"{i + 1}. {ans}" for i, ans in enumerate(finals))
+    votes = [0] * len(finals)
+    winner_idx = None
+    for _ in range(NUMBER_OF_VOTES):  # reuse existing vote knobs
+        vresp = call_agent(composition_discriminator_agent_session, f"{numbered}\n\n")
+        vote_txt = _extract_final(vresp)
+        logging.info(f"[solve] depth={depth} solution vote: {vote_txt}")
+        try:
+            idx = int(vote_txt) - 1
+            if 0 <= idx < len(finals):
+                votes[idx] += 1
+                logging.info(f"[solve] depth={depth} tally: {votes}")
+                if votes[idx] >= WINNING_VOTE_COUNT:
+                    winner_idx = idx
+                    logging.info(f"[solve] depth={depth} early solution winner: {winner_idx + 1}")
+                    break
+        except ValueError:
+            logging.warning(f"[solve] depth={depth} malformed vote ignored: {vote_txt!r}")
+
+    if winner_idx is None:
+        winner_idx = max(range(len(votes)), key=lambda i: votes[i])
+
+    resp = solutions[winner_idx]
+    logging.info(f"[solve] depth={depth} composed final (chosen): {finals[winner_idx]!r}")
     return resp
 
 
