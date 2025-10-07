@@ -45,7 +45,7 @@ thinking_module_bench_agent_session = agent_session_factory.create_session(
 )
 
 
-def call_agent(agent_session: AgentSession, text: str, timeout_ms: float = 10000.0) -> str:
+def call_agent(agent_session: AgentSession, text: str, timeout_ms: float = 100000.0) -> str:
     """Call a single agent with given text, return its response."""
     thread = {
         "last_chat_response": None,
