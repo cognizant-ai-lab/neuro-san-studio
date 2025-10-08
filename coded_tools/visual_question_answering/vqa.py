@@ -52,10 +52,18 @@ class VisualQuestionAnswering(CodedTool):
     A tool that updates a running cost each time it is called.
     """
 
+    # pylint: disable=too-many-locals,too-many-return-statements
     def invoke(self, args: Dict[str, Any], sly_data: Dict[str, Any]) -> Union[Dict[str, Any], str]:
         """
-        Updates the passed running cost each time it's called.
-        :param args: An empty dictionary (not used)
+        Provide an answer for a query on an image/video
+        :param args: An dictionary with the following fields
+                     - query: question we want the model to answer (mandatory)
+                     - model_name: name of the ml-fastvlm model to use to answer the query (optional)
+                     - expected_num_of_frames: number of frames to capture in a video input (optional)
+                     - max_new_tokens: maximum number of tokens returned as an answer (optional)
+                     - temperature: determines the randomness in the model (optional)
+                     - timeout_sec: timeout in seconds when calling the model (optional)
+
 
         :param sly_data: A dictionary containing parameters that should be kept out of the chat stream.
                          Keys expected for this implementation are:
@@ -65,7 +73,6 @@ class VisualQuestionAnswering(CodedTool):
             In case of successful execution:
                 A dictionary containing:
                     "answer": the answer to the query about the image/video file.
-                    "file_path": The path to the image/video file
             otherwise:
                 a text string an error message in the format:
                 "Error: <error message>"
@@ -77,12 +84,18 @@ class VisualQuestionAnswering(CodedTool):
         query: str = args.get("query", None)
         if query is None:
             return "Error: No query provided."
-        model_name : int = args.get("model_name", DEFAULT_MODEL_NAME)
+        model_name: int = args.get("model_name", DEFAULT_MODEL_NAME)
         if model_name not in ACCEPTABLE_MODEL_NAMES:
-           return "Error: model name " + model_name + " not among valid model names (" + ",".join(ACCEPTABLE_MODEL_NAMES) + ")"
-        expected_num_of_frames : int = int(args.get("expected_num_of_frames", DEFAULT_NUM_OF_FRAMES))
-        max_new_tokens : int = int(args.get("max_new_tokens", DEFAULT_MAX_NUM_OF_TOKENS))
-        temperature : float = float(args.get("temperature", DEFAULT_TEMPERATURE))
+            return (
+                "Error: model name "
+                + model_name
+                + " not among valid model names ("
+                + ",".join(ACCEPTABLE_MODEL_NAMES)
+                + ")"
+            )
+        expected_num_of_frames: int = int(args.get("expected_num_of_frames", DEFAULT_NUM_OF_FRAMES))
+        max_new_tokens: int = int(args.get("max_new_tokens", DEFAULT_MAX_NUM_OF_TOKENS))
+        temperature: float = float(args.get("temperature", DEFAULT_TEMPERATURE))
         timeout_sec: int = int(args.get("timeout_sec", DEFAULT_TIMEOUT))
 
         model = os.path.join(MODEL_PATH, model_name)
