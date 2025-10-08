@@ -47,13 +47,6 @@ You’re VisualQuestionAnswering. You will receive a query about an image or vid
 For each query, call your VQA (Visual Question Answering) agent to answer the query.
 Then answer with a JSON message that has an "answer" key, whose value has the answer to the query
 """,
-            "allow": {
-                "to_upstream": {
-                    "sly_data": {
-                        "file_path": true,
-                    }
-                }
-            },
             "tools": ["VQA"]
         },
         {
