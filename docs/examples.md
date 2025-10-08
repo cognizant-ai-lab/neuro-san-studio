@@ -263,8 +263,8 @@ procurement, and other enterprise processes.
 
 ### Visual Question Answering
 
-[Visual Question Answering](./examples/visual_question_answering.md) is an agent network that allows you to pose queries against
-images or videos. It uses Apple's ml-fastvlm library to answer the queries.
+[Visual Question Answering](./examples/visual_question_answering.md) is an agent network that allows you to pose
+queries against images or videos. It uses Apple's ml-fastvlm library to answer the queries.
 
 **Tags:** `tool`, `Visual Question Answering`, `VQA`, `Vision Language Models`, `VLM`, `ml-fastvlm`
 
