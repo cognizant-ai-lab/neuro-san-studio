@@ -11,10 +11,7 @@
 import os
 import subprocess
 from pathlib import Path
-
-from typing import Any
-from typing import Dict
-from typing import Union
+from typing import Any, Dict, Union
 
 from neuro_san.interfaces.coded_tool import CodedTool
 
@@ -87,11 +84,11 @@ class VisualQuestionAnswering(CodedTool):
         # Convert extension to lowercase as the list of supported extensions are in lowercase
         extension = Path(file_path).suffix.lower()
 
-        # 
-        # Process image file 
+        #
+        # Process image file
         #
         if extension in IMAGE_EXTENSIONS:
-            print("Its an image!")
+            print("It's an image!")
 
             # Call predict.py
             cmd = [
@@ -104,32 +101,11 @@ class VisualQuestionAnswering(CodedTool):
                 "--prompt",
                 query,
             ]
-
-            try:
-                proc = subprocess.run(
-                    cmd,
-                    capture_output=True,
-                    text=True,
-                    timeout=timeout_sec,
-                    check=False,  # don’t raise automatically; we’ll return stderr if needed
-                )
-            except subprocess.TimeoutExpired:
-                return "Query timed out after " + timeout_sec + " seconds"
-
-            # Parse/return
-            payload = {
-                "exit_code": proc.returncode,
-                "stdout": proc.stdout.strip(),
-                "stderr": proc.stderr.strip(),
-            }
-            if proc.returncode != 0:
-                return "Error: exit_code: " + str(payload["exit_code"]) + " , stdout: " + payload["stdout"] + ", stderr: " + payload["stderr"]
-
-        # 
-        # Process video file 
+        #
+        # Process video file
         #
         elif extension in VIDEO_EXTENSIONS:
-            print("Its an video!")
+            print("It's a video!")
 
             # Call predict.py
             cmd = [
@@ -145,35 +121,53 @@ class VisualQuestionAnswering(CodedTool):
                 # str(expected_num_of_frames),
                 str(8),
                 "--max_new_tokens",
-                #str(max_new_tokens),
+                # str(max_new_tokens),
                 str(128),
                 "--temperature",
-                #str(temperature),
+                # str(temperature),
                 str(0.8),
             ]
 
-            try:
-                proc = subprocess.run(
-                    cmd,
-                    capture_output=True,
-                    text=True,
-                    timeout=timeout_sec,
-                    check=False,  # don’t raise automatically; we’ll return stderr if needed
-                )
-            except subprocess.TimeoutExpired:
-                return "Query timed out after " + timeout_sec + " seconds"
-
-            # Parse/return
-            payload = {
-                "exit_code": proc.returncode,
-                "stdout": proc.stdout.strip(),
-                "stderr": proc.stderr.strip(),
-            }
-            if proc.returncode != 0:
-                return "Error: exit_code: " + str(payload["exit_code"]) + " , stdout: " + payload["stdout"] + ", stderr: " + payload["stderr"]
-
+        #
+        # Invalid extension!
+        #
         else:
-            return "Error: File extension is " + extension + ". Only .jpg and .mp4 are allowed."
+            return (
+                "Error: File extension is "
+                + extension
+                + ". Only "
+                + ",".join(IMAGE_EXTENSIONS)
+                + " and "
+                + ",".join(VIDEO_EXTENSIONS)
+                + " are allowed."
+            )
+
+        try:
+            proc = subprocess.run(
+                cmd,
+                capture_output=True,
+                text=True,
+                timeout=timeout_sec,
+                check=False,  # don’t raise automatically; we’ll return stderr if needed
+            )
+        except subprocess.TimeoutExpired:
+            return "Query timed out after " + timeout_sec + " seconds"
+
+        # Parse/return
+        payload = {
+            "exit_code": proc.returncode,
+            "stdout": proc.stdout.strip(),
+            "stderr": proc.stderr.strip(),
+        }
+        if proc.returncode != 0:
+            return (
+                "Error: exit_code: "
+                + str(payload["exit_code"])
+                + " , stdout: "
+                + payload["stdout"]
+                + ", stderr: "
+                + payload["stderr"]
+            )
 
         print("-----------------------")
         print(f"{tool_name} response: ", payload["stdout"])
