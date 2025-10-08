@@ -62,6 +62,27 @@ You are an API that queries an image/video and returns the answer.
                             "type": "string",
                             "description": "User query about the image/video"
                         },
+                        "model_name": {
+                            "type": "string",
+                            "description": "ml-fastvlm model to use to answer the query"
+                        },
+                        "expected_num_of_frames": {
+                            "type": "int",
+                            "description": "Number of frames to capture in a video input"
+                        },
+                        "max_new_tokens": {
+                            "type": "int",
+                            "description": "Maximum number of tokens returned by model as an answer"
+                        },
+                        "temperature": {
+                            "type": "float",
+                            "description": "Temperature to decide randomness in model response"
+                        },
+                        "timeout_sec": {
+                            "type": "int",
+                            "description": "Timeout in seconds for calling the model"
+                        },
+
                     },
                     "required": ["query"]
                 }

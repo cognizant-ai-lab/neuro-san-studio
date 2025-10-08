@@ -21,7 +21,6 @@ REPO_DIR = os.path.join(working_directory, "..", "ml-fastvlm")
 PREDICT = os.path.join(REPO_DIR, "predict.py")
 PREDICT_VIDEO = os.path.join(REPO_DIR, "predict_video.py")
 MODEL_PATH = os.path.join(REPO_DIR, "checkpoints")
-DEFAULT_MODEL = os.path.join(MODEL_PATH, "llava-fastvithd_0.5b_stage3")
 PYTHON_CMD = os.path.join(REPO_DIR, "venv/bin/python")
 ACCEPTABLE_MODEL_NAMES = [
     "llava-fastvithd_1.5b_stage2",
@@ -40,6 +39,12 @@ IMAGE_EXTENSIONS = [".jpg", ".jpeg", ".png", ".gif", ".webp", ".avif"]
 # More extensions are supported by open-cv library
 # and can be added to this list if necessary
 VIDEO_EXTENSIONS = [".mp4", ".mov", ".avi", ".mkv"]
+
+DEFAULT_MODEL_NAME = "llava-fastvithd_0.5b_stage3"
+DEFAULT_NUM_OF_FRAMES = 8
+DEFAULT_MAX_NUM_OF_TOKENS = 128
+DEFAULT_TEMPERATURE = 0.2
+DEFAULT_TIMEOUT = 120
 
 
 class VisualQuestionAnswering(CodedTool):
@@ -72,7 +77,15 @@ class VisualQuestionAnswering(CodedTool):
         query: str = args.get("query", None)
         if query is None:
             return "Error: No query provided."
-        timeout_sec: str = int(args.get("timeout_sec", "120"))
+        model_name : int = args.get("model_name", DEFAULT_MODEL_NAME)
+        if model_name not in ACCEPTABLE_MODEL_NAMES:
+           return "Error: model name " + model_name + " not among valid model names (" + ",".join(ACCEPTABLE_MODEL_NAMES) + ")"
+        expected_num_of_frames : int = int(args.get("expected_num_of_frames", DEFAULT_NUM_OF_FRAMES))
+        max_new_tokens : int = int(args.get("max_new_tokens", DEFAULT_MAX_NUM_OF_TOKENS))
+        temperature : float = float(args.get("temperature", DEFAULT_TEMPERATURE))
+        timeout_sec: int = int(args.get("timeout_sec", DEFAULT_TIMEOUT))
+
+        model = os.path.join(MODEL_PATH, model_name)
 
         # Parse the sly data
         print(f"sly_data: {sly_data}")
@@ -95,7 +108,7 @@ class VisualQuestionAnswering(CodedTool):
                 PYTHON_CMD,
                 PREDICT,
                 "--model-path",
-                DEFAULT_MODEL,
+                model,
                 "--image-file",
                 file_path,
                 "--prompt",
@@ -112,20 +125,17 @@ class VisualQuestionAnswering(CodedTool):
                 PYTHON_CMD,
                 PREDICT_VIDEO,
                 "--model-path",
-                DEFAULT_MODEL,
+                model,
                 "--video-path",
                 file_path,
                 "--prompt",
                 query,
                 "--expected_num_of_frames",
-                # str(expected_num_of_frames),
-                str(8),
+                str(expected_num_of_frames),
                 "--max_new_tokens",
-                # str(max_new_tokens),
-                str(128),
+                str(max_new_tokens),
                 "--temperature",
-                # str(temperature),
-                str(0.8),
+                str(temperature),
             ]
 
         #
