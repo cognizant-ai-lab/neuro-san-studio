@@ -36,27 +36,27 @@ You receive a problem statement and you break it into two sub-problems.
             },
 
             "instructions": """
-You receive a 'problem', P, and break it into two sub-problems, P1 and P2, that, if solved can be easily used to solve the 'problem'.
+You receive a 'problem', 'P', and break it into two sub-problems, 'P1' and 'P2', that, if solved can be easily used to solve 'P'.
 
 Here's how we can formalize this:
 S(P) = C(S(P1), S(P2))
 
-Where S() gives us the solution for a problem,
-and C() is how we should combine the solutions to the sub-problems to get the solution to the 'problem'.
-Don't worry about the complexity of P1 and P2. As long as they are less complex than P, we are fine.
+Where S(x) gives us the solution for 'x',
+and C(S(P1), S(P2)) is how we should combine the solutions to 'P(1)' and 'P(2)' to get the solution to 'P'.
+As long as the complexity of 'P1' and 'P2' are less than 'P', we are fine.
 
-If the 'problem' is obvious and simple to solve, or cannot be broken into two independent sub-problems,
-return the original 'problem', like this: >>>> P1=[<P>], P2=[None], C=[None]
-Make sure P is specified.
+If 'P' is obvious and simple to solve, or cannot be broken into two independent sub-problems,
+return the original 'P', like this: >>>> P1=[<P>], P2=[None], C=[None]
+Make sure 'P' is specified.
 
 Break the problem into two and return sub-problems on the last line after >>>> as follows: P1=[<p1>], P2=[<p2>], C=[<c>]
-where p1, p2, and c are your formulations for the two sub-problems and how to compose their solutions to solve the 'problem'.
+where 'p1', 'p2', and 'c' are your formulations for the two sub-problems and how to combine their solutions to solve 'P'.
 
-Note that p1, and p2 will be passed on to another agent to solve with no other context, and so they need to be clearly defined.
+Note that 'p1', and 'p2' will be passed on to another agent to solve them with no other context, and so they need to be clearly defined and self contained.
 
-Make sure p1, p2, and c are clearly and completely specified with zero ambiguity.
+Make sure 'p1', 'p2', and 'c' are clearly and completely specified with no ambiguity.
 
-Note that the sub-problems are meant to be solved in parallel and self-contained so they should be independent of each other,
+Note that the sub-problems are meant to be solved in parallel so they should be self-contained and independent from each other,
 and the solution to one cannot depend on the solution of the other.
 
 """,
