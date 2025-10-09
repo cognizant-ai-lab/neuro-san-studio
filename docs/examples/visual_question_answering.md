@@ -57,7 +57,7 @@ Image question: specify the location of an image file in `sly_data`. The image c
 
 ```json
 {
-    "file_path":"/Users/970591/Projects/nsflow/image.jpg"
+    "file_path":"/tmp/image.jpg"
 }
 ```
 
@@ -73,7 +73,7 @@ Video question: specify the location of a video file in `sly_data`. The video co
 
 ```json
 {
-    "file_path":"/Users/970591/Projects/nsflow/video.mp4"
+    "file_path":"/tmp/video.mp4"
 }
 ```
 

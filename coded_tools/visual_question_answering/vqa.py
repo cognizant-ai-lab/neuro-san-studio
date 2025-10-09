@@ -49,7 +49,7 @@ DEFAULT_TIMEOUT = 120
 
 class VisualQuestionAnswering(CodedTool):
     """
-    A tool that updates a running cost each time it is called.
+    A tool that allows you to query an image or a video.
     """
 
     # pylint: disable=too-many-locals,too-many-return-statements
