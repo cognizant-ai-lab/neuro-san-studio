@@ -1,0 +1,28 @@
+# Copyright (C) 2023-2025 Cognizant Digital Business, Evolutionary AI.
+# All Rights Reserved.
+# Issued under the Academic Public License.
+#
+# You can be released from the terms, and requirements of the Academic Public
+# License by purchasing a commercial license.
+# Purchase of a commercial license is mandatory for any use of the
+# neuro-san SDK Software in commercial settings.
+#
+# END COPYRIGHT
+
+
+# This file contains the MCP server configurations in the following format:
+#     "mcp_server_url_1": {
+#         "headers": {
+#                "Authorization": "Bearer <token>",
+#         }, # Optional: if the server requires authentication
+#         "tools": ["tool_1", "tool_2"]  # Optional: list of specific tools to load from this server. Load all tools if not specified.
+#     },
+
+{
+    "https://api.githubcopilot.com/mcp/": {
+        "headers": {
+            "Authorization": "Bearer" ${GITHUB_TOKEN}
+        },
+        "tools": ["create_issue"]
+    },
+}
