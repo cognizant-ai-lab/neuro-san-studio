@@ -19,6 +19,7 @@ from coded_tools.agent_network_validator import AgentNetworkValidator
 WRITE_TO_FILE = True
 OUTPUT_PATH = "registries/"
 AGENT_NETWORK_DEFINITION = "agent_network_definition"
+AGENT_NETWORK_NAME = "agent_network_name"
 HOCON_HEADER_START = (
     "{\n"
     "# Importing content from other HOCON files\n"
@@ -48,7 +49,7 @@ HOCON_HEADER_REMAINDER = (
     '""",\n'
     '   "demo_mode": "You are part of a demo system, so when queried, make up a realistic response as if you '
     'are actually grounded in real data or you are operating a real application API or microservice."\n'
-    '"tools": [\n'
+    '   "tools": [\n'
 )
 TOP_AGENT_TEMPLATE = (
     "        {\n"
@@ -84,6 +85,13 @@ LEAF_NODE_AGENT_TEMPLATE = (
     '""",\n'
     "        },\n"
 )
+# pylint: disable=implicit-str-concat
+TOOLBOX_AGENT_TEMPLATE = (
+    "        {\n"
+    '            "name": "%s",\n'
+    '            "toolbox": "%s"\n'
+    "        },\n"
+)
 
 
 async def modify_registry(the_agent_network_hocon_str, the_agent_network_name):
@@ -93,28 +101,42 @@ async def modify_registry(the_agent_network_hocon_str, the_agent_network_name):
     :param the_agent_network_name: The file name, without the .hocon extension
     """
     # Write the agent network file
-    file_path = OUTPUT_PATH + the_agent_network_name + ".hocon"
+    file_path: str = OUTPUT_PATH + the_agent_network_name + ".hocon"
     async with aiofiles.open(file_path, "w") as file:
         await file.write(the_agent_network_hocon_str)
+
     # Update the manifest.hocon file
-    manifest_path = OUTPUT_PATH + "manifest.hocon"
-    manifest_entry = f'    "{the_agent_network_name}.hocon": true,'
+    manifest_path: str = OUTPUT_PATH + "manifest.hocon"
+
     # Read the current manifest content
     async with aiofiles.open(manifest_path, "r") as file:
-        manifest_content = await file.read()
-    # Find the position to insert the new entry (before the closing brace)
-    insert_position = manifest_content.rfind("}")
-    if insert_position != -1:
-        # Check if the entry already exists to avoid duplicates
-        if f'"{the_agent_network_name}.hocon"' not in manifest_content:
-            # Insert the new entry
-            updated_content = (
-                manifest_content[:insert_position] + "\n" + manifest_entry + manifest_content[insert_position:]
-            )
+        manifest_content: str = await file.read()
 
-            # Write the updated content back to the manifest file
-            async with aiofiles.open(manifest_path, "w") as file:
-                await file.write(updated_content)
+    # Check if the entry already exists to avoid duplicates
+    if f'"{the_agent_network_name}.hocon"' in manifest_content or f'{the_agent_network_name}.hocon' in manifest_content:
+        return
+
+    # Detect format: JSON (has braces) or HOCON (no braces)
+    is_json_format = "{" in manifest_content and "}" in manifest_content
+    updated_content: str = ""
+    if is_json_format:
+        # JSON format handling
+        manifest_entry: str = f'    "{the_agent_network_name}.hocon": true,'
+        insert_position: int = manifest_content.rfind("}")
+
+        if insert_position != -1:
+            updated_content: str = (
+                manifest_content[:insert_position] + "\n" + manifest_entry + "\n"
+                + manifest_content[insert_position:]
+            )
+    else:
+        # HOCON format handling
+        manifest_entry = f'"{the_agent_network_name}.hocon" = true\n'
+        updated_content = manifest_content.rstrip() + "\n" + manifest_entry
+
+    # Write the updated content back to the manifest file
+    async with aiofiles.open(manifest_path, "w") as file:
+        await file.write(updated_content)
 
 
 class CreateAgentNetworkHocon(CodedTool):
@@ -166,18 +188,15 @@ class CreateAgentNetworkHocon(CodedTool):
 
         # Validate the agent network and return error message if there are any issues.
         validator = AgentNetworkValidator(network_def)
-        error_list: list[str] = validator.validate_network_structure() + \
-            validator.validate_network_keywords("instructions")
+        error_list: list[str] = validator.validate_network_structure() + validator.validate_network_keywords() \
+            + validator.validate_toolbox_agents() + validator.validate_url()
         if error_list:
             error_msg = f"Error: {error_list}"
             logger.error(error_msg)
             return error_msg
 
-        the_agent_network_name: str = args.get("agent_network_name")
-        if not the_agent_network_name:
-            return "Error: No agent_name provided."
-        # Add the agent network name into sly data.
-        sly_data["agent_network_name"] = the_agent_network_name
+        # Get the agent network name from sly data
+        the_agent_network_name: str = sly_data.get(AGENT_NETWORK_NAME)
 
         logger.info(">>>>>>>>>>>>>>>>>>>Create Agent Network Hocon>>>>>>>>>>>>>>>>>>")
         logger.info("Agent Network Name: %s", str(the_agent_network_name))
@@ -214,10 +233,10 @@ class CreateAgentNetworkHocon(CodedTool):
 
         for agent_name, agent in network_def.items():
             tools = ""
-            if agent.get("down_chains"):
-                for j, down_chain in enumerate(agent["down_chains"]):
+            if agent.get("tools"):
+                for j, down_chain in enumerate(agent["tools"]):
                     tools = tools + '"' + down_chain + '"'
-                    if j < len(agent["down_chains"]) - 1:
+                    if j < len(agent["tools"]) - 1:
                         tools = tools + ","
 
             if agent_name == top_agent_name:  # top agent
@@ -226,16 +245,21 @@ class CreateAgentNetworkHocon(CodedTool):
                     agent["instructions"],
                     tools,
                 )
-            elif agent.get("down_chains"):
+            elif agent.get("tools"):
                 an_agent = REGULAR_AGENT_TEMPLATE % (
                     agent_name,
                     agent["instructions"],
                     tools,
                 )
-            else:  # leaf node agent
+            elif agent.get("instructions"):  # leaf node agent
                 an_agent = LEAF_NODE_AGENT_TEMPLATE % (
                     agent_name,
                     agent["instructions"],
+                )
+            else:
+                an_agent = TOOLBOX_AGENT_TEMPLATE % (
+                    agent_name,
+                    agent_name,  # toolbox name is the same as agent name
                 )
             agent_network_hocon += an_agent
 

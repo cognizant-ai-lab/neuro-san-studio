@@ -17,6 +17,7 @@ from neuro_san.interfaces.coded_tool import CodedTool
 
 AGENT_NETWORK_DEFINITION = "agent_network_definition"
 AGENT_NETWORK_HOCON_FILE = "agent_network_hocon_file"
+AGENT_NETWORK_NAME = "agent_network_name"
 
 
 class GetAgentNetworkDefinition(CodedTool):
@@ -25,6 +26,7 @@ class GetAgentNetworkDefinition(CodedTool):
 
     Agent network definition is a structured representation of an agent network, expressed as a dictionary.
     Each key is an agent name, and its value is an object containing:
+    - a description of the agent
     - an instructions to the agent
     - a list of down-chain agents (agents reporting to it)
     """
@@ -90,7 +92,8 @@ class GetAgentNetworkDefinition(CodedTool):
         # Store in sly_data and validate
         if network_def:
             sly_data[AGENT_NETWORK_DEFINITION] = network_def
-            logger.info("The resulting agent network definition: \n %s", str(network_def))
+            network_name: str = sly_data.get(AGENT_NETWORK_NAME)
+            logger.info("The resulting %s agent network definition: \n %s", network_name, str(network_def))
             logger.info(">>>>>>>>>>>>>>>>>>>DONE !!!>>>>>>>>>>>>>>>>>>")
             return network_def
 
@@ -111,7 +114,7 @@ class GetAgentNetworkDefinition(CodedTool):
             network_hocon_file = "registries/" + network_hocon_file
             hocon = EasyHoconPersistence(full_ref=network_hocon_file, must_exist=True)
             network_hocon = hocon.restore()
-        except FileNotFoundError:
+        except (FileNotFoundError, TypeError):
             return None
 
         # Only extract agents info and only "instructions" and "tools" parts
@@ -127,7 +130,7 @@ class GetAgentNetworkDefinition(CodedTool):
                 network_def[agent_name]["instructions"] = custom_instructions
             tools: list[str] = agent.get("tools")
             if tools:
-                network_def[agent_name]["down_chains"] = tools
+                network_def[agent_name]["tools"] = tools
 
         return network_def
 
