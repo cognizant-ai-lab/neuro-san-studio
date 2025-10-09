@@ -39,10 +39,10 @@ HOCON_HEADER_START = (
     '        "model_name": "gpt-4o",\n'
     "    },\n"
     '   "instructions_prefix": """\n'
-    "You are part of a "
+    "You are part of a team of assistants in "
 )
 HOCON_HEADER_REMAINDER = (
-    " of assistants.\n"
+    ".\n"
     "Only answer inquiries that are directly within your area of expertise.\n"
     "Do not try to help for other matters.\n"
     "Do not mention what you can NOT do. Only mention what you can do.\n"
@@ -60,6 +60,9 @@ TOP_AGENT_TEMPLATE = (
     '                """\n'
     "            },\n"
     '            "instructions": ${instructions_prefix} """\n'
+    "            Never express irrelevance unless you have first consulted all your tools.\n"
+    "            Once you have determined the relevant tools, do not express that to the user, rather,\n"
+    "            call all the relevant tools and make sure the command is fully serviced and express the end result.\n"
     "%s\n"
     '""" ${aaosa_instructions},\n'
     '            "tools": [%s]\n'
