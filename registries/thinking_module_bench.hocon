@@ -10,11 +10,10 @@
 #
 # END COPYRIGHT
 {
-    "llm_config": {
-             "model_name": "gpt-4.1"
-#             "model_name": "gpt-4o-mini-2024-07-18"
-#             "model_name": "gpt-4o"
-    },
+llm_config {
+    class = "openai"
+    model_name = "gpt-4.1-mini"
+}
     "max_iterations": 40000, #3000
     "max_execution_seconds": 7200, #600
     "tools": [

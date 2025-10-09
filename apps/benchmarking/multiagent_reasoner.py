@@ -17,10 +17,10 @@ os.environ["AGENT_TOOL_PATH"] = "coded_tools"
 FINAL_TOKEN = ">>>>"  # agents end their final answer on the last line after this token
 
 # Tuning knobs
-CANDIDATE_COUNT = 3
+CANDIDATE_COUNT = 4
 NUMBER_OF_VOTES = 5
 WINNING_VOTE_COUNT = 3
-SOLUTION_CANDIDATE_COUNT = 3
+SOLUTION_CANDIDATE_COUNT = 4
 MAX_DEPTH = 3
 
 
