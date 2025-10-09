@@ -1,0 +1,93 @@
+
+# Copyright (C) 2023-2025 Cognizant Digital Business, Evolutionary AI.
+# All Rights Reserved.
+# Issued under the Academic Public License.
+#
+# You can be released from the terms, and requirements of the Academic Public
+# License by purchasing a commercial license.
+# Purchase of a commercial license is mandatory for any use of the
+# neuro-san SDK Software in commercial settings.
+#
+# END COPYRIGHT
+{
+    "llm_config": {
+        "model_name": "gpt-4o",
+    },
+    "tools": [
+        # This first agent definition is regarded as the "Front Man", which
+        # does all the talking to the outside world/client.
+        #
+        # Some disqualifications from being a front man:
+        #   1) Cannot use a CodedTool "class" definition
+        #   2) Cannot use a Tool "toolbox" definition
+        #
+        # Besides the first agent being the front man, these tool definitions
+        # do not have to be in any particular order. How they are linked and
+        # call each other is defined within their own specs.
+        # This could be a graph, potentially even with cycles.
+        {
+            "name": "VisualQuestionAnswering",
+
+            # Note that there are no parameters defined for this guy's "function" key.
+            # This is the primary way to identify this tool as a front-man,
+            # distinguishing it from the rest of the tools.
+
+            "function": {
+
+                # The description acts as an initial prompt.
+
+                "description": """
+I can help with image or video queries.
+"""
+            },
+
+            "instructions": """
+You’re VisualQuestionAnswering. You will receive a query about an image or video file and you will answer the query.
+
+For each query, call your VQA (Visual Question Answering) agent to answer the query.
+Then answer with a JSON message that has an "answer" key, whose value has the answer to the query
+""",
+            "tools": ["VQA"]
+        },
+        {
+            "name": "VQA",
+            "function": {
+                "description": """
+You are an API that queries an image/video and returns the answer.
+                """,
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "query": {
+                            "type": "string",
+                            "description": "User query about the image/video"
+                        },
+                        "model_name": {
+                            "type": "string",
+                            "description": "ml-fastvlm model to use to answer the query"
+                        },
+                        "expected_num_of_frames": {
+                            "type": "int",
+                            "description": "Number of frames to capture in a video input"
+                        },
+                        "max_new_tokens": {
+                            "type": "int",
+                            "description": "Maximum number of tokens returned by model as an answer"
+                        },
+                        "temperature": {
+                            "type": "float",
+                            "description": "Temperature to decide randomness in model response"
+                        },
+                        "timeout_sec": {
+                            "type": "int",
+                            "description": "Timeout in seconds for calling the model"
+                        },
+
+                    },
+                    "required": ["query"]
+                }
+            },
+            "class": "vqa.VisualQuestionAnswering"
+        },
+    ]
+}
