@@ -19,13 +19,13 @@
 #     },
 
 {
-    "https://mcp.deepwiki.com/mcp/": {
+    "https://mcp.deepwiki.com/mcp": {
         "tools": ["read_wiki_structure", "ask_question"]
     },
 
     # Uncomment this section to use GitHub Copilot MCP server.
     # Make sure to set the environment variable GITHUB_TOKEN with a valid token.
-    # "https://api.githubcopilot.com/mcp/": {
+    # "https://api.githubcopilot.com/mcp": {
     #     "headers": {
     #        # ${GITHUB_TOKEN} is an environment variable that should contain a valid GitHub Copilot token.
     #         "Authorization": "Bearer" ${GITHUB_TOKEN}
