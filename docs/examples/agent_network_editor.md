@@ -81,12 +81,12 @@ The frontman, `agent_network_editor`, has multiple coded tools that can be calle
 At the start of each session, the editor always call the following functions to discover available tools and resources:
 
 - `get_toolbox`
-    — returns a dictionary where each key is a tool name and the value contains detailed tool information.
+    — returns a dictionary where each key is a tool name and the value contains tool description.
     - The available toolbox can be set with environment variable `AGENT_TOOLBOX_INFO_FILE`. If not provided,
     [toolbox_info.hocon](../../toolbox/toolbox_info.hocon) will be used.
 
 - `get_subnetwork`
-    — returns a dictionary of subnetworks, mapping each name to its description.
+    — returns a dictionary of subnetworks, mapping each name to its frontman's description.
     - The available manifest can be set with environment variable `AGENT_MANIFEST_FILE`. If omitted,
     [manifest.hocon](../../registries/manifest.hocon) will be used.
 
@@ -115,9 +115,9 @@ The network supports two main operational modes:
 
 ### Agent Operations
 
-- Adding agents — Use `add_agent_to_network` to create one non-connected.
+- Adding agents — Use `add_agent_to_network` to create one non-connected node.
 
-- Updating agents — Use update_agent_in_network to modify connections and add or remove tools from `get_subnetwork` or `get_mcp_tool`.
+- Updating agents — Use `update_agent_in_network` to modify connections and add or remove tools from `get_subnetwork` or `get_mcp_tool`.
 
 - Removing agents — Use `remove_agent_from_network`.
 
@@ -141,9 +141,36 @@ The network supports two main operational modes:
 
 ## Debugging Hints
 
-- Modify the prompt to optimize the graph’s quality and organization.
-- Some of the coded tools, such as those getting the tools list,
-can be put under another subnetwork to represents a distinct role or responsibility
-- Check if environment variables are set correctly
+Designing or modifying an agent network often involves iterative refinement.
+If the generated structure is not as expected, or if validation fails, consider the following debugging steps and best practices:
+
+- Refine the prompt
+
+    The quality, organization, and logical flow of the generated graph are highly dependent on the clarity of the prompt.
+    Try rewording or expanding the prompt to give more context about roles, hierarchy, or relationships between agents.
+
+- Verify toolbox and subnetwork descriptions
+
+    Ensure that:
+
+    - Each tool in the Toolbox has a clear and accurate description that conveys its purpose and usage.
+
+    - Each subnetwork, the front-man has a detailed and context-rich description.
+
+    These descriptions directly influence how the network assigns tools.
+
+- Check environment variables
+
+    Confirm that all relevant environment variables are correctly set and accessible to the running process.
+
+    Missing or misconfigured environment variables can prevent certain tools or MCP connections from being discovered or properly loaded.
+
+- Incremental testing
+
+    When building complex agent networks, try adding or modifying a few agents at a time.
+
+- Review logs and tool outputs
+
+    Make sure that each tool returns the expected output.
 
 ---
