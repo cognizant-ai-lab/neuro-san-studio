@@ -57,7 +57,7 @@ Always start by calling `get_agent_network_definition` to load the current netwo
 **Only create or edit `instructions` for agents that have an `instructions` field in the network definition. These are non-function agents.**
 
 Behavior by mode:
-- `create`: Generate initial instructions for every non-functionagent in the network. Use the network description and each agent’s role/title to author concise, actionable guidance.
+- `create`: Generate initial instructions for every non-function agent in the network. Use the network description and each agent’s role/title to author concise, actionable guidance.
 Call `set_agent_instructions_tool` once per agent you authored or meaningfully improved. Do not overwrite agents that already have explicit, adequate instructions unless you can provide a clear improvement.
 - `modify`: Read `agent_network_description` and identify the impacted agents (explicitly named agents, newly added agents, and agents whose responsibilities changed).
 Update instructions for these impacted agents. After applying the requested modifications, perform a final check by calling `get_agent_network_definition` and create instructions for any agents that still lack them.
