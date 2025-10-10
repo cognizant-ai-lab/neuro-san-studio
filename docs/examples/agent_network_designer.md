@@ -1,15 +1,23 @@
 # Agent Network Designer
 
-The **Agent Network Designer** is a multi-agent system for creating multi-agent systems. Give the top agent the name of an
-organization or describe a use-case, and it will design a multi-agent system and save it into your registries directory
-in hocon format, and add it to your manifest file. It will also give you a few usage examples. Restart your server and client,
-and use the new agent network!
+The **Agent Network Designer** is a multi-agent system designed to create or modify other multi-agent systems.
+Simply provide the frontman agent with the name of an organization or a description of a use case, and it will:
 
-**Note**: this demo will add a file to your directory and modify your manifest.hocon file. You can turn this feature off
-by changing WRITE_TO_FILE to False in [get_agent_network_hocon.py](../../coded_tools/agent_network_designer/get_agent_network_hocon.py)
+- Design a new multi-agent system.
 
-**Note** obviously the agents will not be grounded, however, they will pretend that they are. Remove or edit the
-demo_mode common_def once you ground the agents.
+- Save it to your registries directory in HOCON format.
+
+- Add it to your manifest.hocon file.
+
+- Generate several example usage queries.
+
+- After that, just restart your server and client to begin using the newly created agent network.
+
+Note that
+
+- This demo will write a file to your directory and modify your manifest.hocon file. To disable this behavior, set `WRITE_TO_FILE` to `False` in [create_agent_network_hocon.py](../../coded_tools/agent_network_designer/create_agent_network_hocon.py)
+
+- The generated agents are not grounded by default — they only simulate grounded behavior. You can remove or edit the `demo_mode` and `instruction_prefix` settings once you connect the agents to real systems such as APIs or databases via the `Toolbox` or `MCP`.
 
 ---
 
@@ -21,17 +29,37 @@ demo_mode common_def once you ground the agents.
 
 ## Description
 
-This network follows a relatively rigid set of steps, with the top-level "front-man" agent giving a design request to the
-network_generator, then having the instruction_refiner agent refine the instructions of every agent one by one, then the
-top agent has the query_generator agent return some example usage queries for the new agent network, and finally, the
-produce_agent_network_hocon agent creates the hocon definition, appends the header, and saves it to file.
+The Agent Network Designer operates as a structured, hierarchical network, following a well-defined sequence of steps:
 
-This can be considered as an example of agent-oriented software, with a clear delineation of where we need to rely on LLMs
-(e.g., for creativity, language understanding, language generation) and where we should use code (e.g., to encode machine
-readable syntax such as is needed in a hocon agent definition file).
+1. The frontman agent receives a design request and delegates it to the
+[`agent_network_editor`](../../registries/agent_network_editor.hocon)
+ subnetwork.
+This component creates or modifies the structure (graph) of the network.
 
-Note the use of sly_data in the coded tools for storing and passing around the agent network data structure. Agents use
-coded tools for adding agents to this data structure, or for refining the description of a specific agent.
+2. Next, the [`agent_network_instructions_editor`](../../registries/agent_network_instructions_editor.hocon)
+ subnetwork
+generates or refines the `instructions` for each agent in the network.
+
+3. Once the structure and instructions are defined, the frontman calls the
+[`agent_network_query_generator`](../../registries/agent_network_query_generator.hocon)
+ subnetwork to produce example usage queries for the new agent network.
+
+4. Finally, the [create_agent_network_hocon.py](../../coded_tools/agent_network_designer/create_agent_network_hocon.py) coded tool converts the `agent_network_definition` into a HOCON file and saves it to disk.
+
+    The **`agent_network_definition`** is a dictionary mapping agent names to their configurations
+(e.g., instructions, tools, or other agents they can call).
+The tool also validates the network for issues such as disconnected nodes or missing instructions.
+Any detected errors are reported back to the frontman agent, which then triggers the appropriate subnetworks to resolve them.
+
+This system serves as an example of agent-oriented software, clearly separating where we rely on:
+
+- LLMs — for creativity, language understanding, and generation.
+
+- Code — for precise, machine-readable structures like HOCON agent definition files.
+
+**Implementation Detail:**
+
+The `sly_data` is used internally to hold and share the `agent_network_definition` object between subnetworks.
 
 ---
 
@@ -40,7 +68,7 @@ coded tools for adding agents to this data structure, or for refining the descri
 ### Human
 
 ```text
-UNHCR back-office
+create a network for UNHCR back-office
 ```
 
 ### AI (agent_network_designer)
@@ -252,64 +280,74 @@ chain and contract specialists?"
 
 ## Architecture Overview
 
-### Frontman Agent: **agent_network_designer**
+### Frontman Agent: `agent_network_designer`
 
-- Acts as the entry point for all user commands.
-- Follows a set of steps to design, construct, and refine an agent network hocon.
-- Once the agent network is designed and the instructions for every agent is refined, calls [get_agent_network_hocon.py]
-(../../coded_tools/agent_network_designer/get_agent_network_hocon.py) to generate the hocon formatted definition.
-- Calls the query_generator agent to produce a few usage ea=xamples for the new agent network.
-- Returns the hocon definition as well as a few example queries.
+The frontman agent serves as the primary entry point for all user commands and orchestrates the entire workflow of designing, constructing, and refining agent networks.
 
-### Agents called by the Frontman
+**Key Responsibilities:**
+- Acts as the sole external-facing interface for network creation and modification requests
+- Coordinates the sequential workflow of network design, instruction refinement, and query generation
+- Manages iterative refinement cycles until the network meets user requirements
+- Generates final HOCON configuration files
 
-1. **network_generator**
-   - Designs an agent network by determining the top agent, its down-chain agents, and their down-chain agents, if needed.
-   - Calls the add_agent_to_network agent repeatedly in order to add each agent, the list of the agent's down-chains, and
-   the agent's preliminary instructions to the agent definition data structure stored in sly_data.
-   - See [add_agent.py](../../coded_tools/agent_network_designer/add_agent.py)
+**Available Agents/Tools:**
+- `agent_network_editor` – Subnetwork for creating and modifying `agent_network_definition`
+- `agent_network_query_generator` – Subnetwork for createing sample queries
+- `agent_network_instructions_editor` – Subnetwork for creating and refining agent instructions
+- `produce_agent_network_hocon` – Generates final HOCON output
+- `get_agent_network_definition` – Retrieves current network state
+- `web_search` – Researches company domains and contexts
 
-2. **instruction_refiner**
-   - Retrieves the agent network definition using the [get_agent_network.py](../../coded_tools/agent_network_designer/get_agent_network.py)
-   tool.
-   - Iterates through the agents in the retrieved definition and refines each agent's instructions using the [set_agent_instructions.py]
-   (../../coded_tools/agent_network_designer/set_agent_instructions.py) tool
+### Subnetworks
 
-3. **query_generator**
-   - Retrieves the agent network definition using the [get_agent_network.py](../../coded_tools/agent_network_designer/get_agent_network.py)
-   tool.
-   - Generates and returns a few usage examples for the new agent network.
+`agent_network_editor`
+- Modifies or creates the agent network structure
+- Returns updated `agent_network_definition` to sly data
+- Determine what agent to add or remove as well as what tools each agent will use
 
----
+`agent_network_instructions_editor`
+- Generates and refines instructions for individual agents
+- Called after structural creation or modification
+- Ensures instructions align with agent roles and network topology
 
-## Functional Tools
+`agent_network_query_generator`
+- Creates 3–4 representative sample queries for the network
+- Returns queries formatted for testing
 
-These are coded tools called by various policy agents:
+### Functional Tools
 
-- **add_agent**
-    - Adds the name, instructions, and list of down-chains of an agent to a data structure stored in sly_data. It also determines
-  of the agent is the top agent.
+The system relies on several coded tools:
 
-- **get_agent_network**
-    - Retrieves the agent network data structure from sly_data and returns a string representation of it.
+#### Retrieval & Output Tools
 
-- **set_agent_instructions**
-    - Replaces the instructions for a given agent in the list of agents in the agent network data structure in sly_data.
+`get_agent_network_definition`
+- Retrieves the current agent network definition from sly data
+- Returns both machine-readable and human-readable formats
+- Able to create `agent_network_definition` from existing hocon file
+by setting the file to `agent_network_hocon_file` sly data or
+specifically given the hocon file name in the user prompt
+- Used for state inspection throughout workflow
 
-- **get_agent_network_hocon**
-    - Retrieves the agent network data structure from sly_data.
-    - Formats the agent network as a hocon definition config.
-    - Appends a header.
-    - Saves the hocon file under the local registries directory.
-    - Adds an entry to the local manifest.hocon file.
+`produce_agent_network_hocon`
+- Generates the complete HOCON-formatted configuration file by calling `create_agent_network_hocon`
+- Validates the network definition for correctness and completeness
+- Saves output to local registries directory
+- Updates the local manifest.hocon file
+- Returns errors to the frontman if the network is incomplete or invalid
 
-**Note**: it is assumed that the agent coordination mechanism is AAOSA, and the LLM is GPT-4o.
+### Research Tool
+
+**`web_search`**
+- Searches the web for company information, industry best practices, and domain-specific workflows
+- Called to gather contextual information to use as description for creating network
+- Informs network design and instruction generation
 
 ---
 
 ## Debugging Hints
 
-- While the hocon definition returned by the top agent may occasionally be incomplete or have errors, the hocon file stored
-in the registries directory will be complete and error free.
+- Since there are many steps, the agent may time out or hit max iterations before it finishes.
+This can be prevented by setting higher `max_execution_seconds`, `max_iterations`, respectively.
+- If the agent stops working mid-process, it is possible that the max token limit has been reached.
 
 ---

@@ -17,7 +17,6 @@ from neuro_san.internals.run_context.langchain.mcp.langchain_mcp_adapter import 
 from neuro_san.internals.run_context.langchain.mcp.mcp_clients_info_restorer import McpClientsInfoRestorer
 
 # Use deepwiki MCP server as default since it is free and does not require authorization.
-DEFAULT_MCP_SERVERS = ["https://mcp.deepwiki.com/mcp"]
 DEFAULT_MCP_INFO_FILE = os.path.join("mcp", "mcp_info.hocon")
 
 
@@ -81,4 +80,5 @@ class GetMcpTool(CodedTool):
                 error_msg = f"Error: Failed to load tools from {mcp_server}. {str(exception)}"
                 logger.warning(error_msg)
 
+        # Returns a dict with url as a key and combined descriptions of tools as a value.
         return str(tool_dict)
