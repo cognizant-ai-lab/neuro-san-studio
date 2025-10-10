@@ -20,7 +20,7 @@
 
     "tools": [
         {
-            "name": "Wikipedia RAG Assistant",
+            "name": "Wikipedia_RAG_Assistant",
 
             "function": {
               "description": "Answer caller's query with answers from tools.",
