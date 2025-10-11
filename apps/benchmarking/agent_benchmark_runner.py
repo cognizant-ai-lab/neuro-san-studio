@@ -8,7 +8,6 @@ import json
 import time
 import random
 import subprocess
-import shlex
 import json as _json
 from typing import Dict, Any, Tuple, Optional, List, Callable, Iterable
 
@@ -343,21 +342,13 @@ class AgentBenchmarkRunner:
             question: str,
             gold: str,
             *,
-            fewshot_prefix: Optional[str],
-            show_work: bool,
             per_item_timeout_ms: Optional[float] = None,
             retries: int = 0,
             final_token: str = "####",
             answer_format: str = "number",
     ) -> Dict[str, Any]:
         gold_parsed = self.parse_gold(gold, final_token=final_token, answer_format=answer_format)
-        prompt = self.build_prompt(
-            question,
-            fewshot_prefix=fewshot_prefix,
-            show_work=show_work,
-            final_token=final_token,
-            answer_format=answer_format,
-        )
+        prompt = question.strip()
         start = time.time()
         response, err = None, None
         for attempt in range(retries + 1):
@@ -398,8 +389,6 @@ class AgentBenchmarkRunner:
             data: Iterable[Dict[str, Any]],
             *,
             limit: Optional[int] = None,
-            fewshot_prefix: Optional[str] = None,
-            show_work: bool = False,
             per_item_timeout_ms: Optional[float] = None,
             retries: int = 0,
             progress_every: int = 10,
@@ -425,8 +414,6 @@ class AgentBenchmarkRunner:
                 r = self.evaluate_item(
                     ex["question"],
                     ex["answer"],
-                    fewshot_prefix=fewshot_prefix,
-                    show_work=show_work,
                     per_item_timeout_ms=per_item_timeout_ms,
                     retries=retries,
                     final_token=final_token,
@@ -535,8 +522,6 @@ if __name__ == "__main__":
     ap.add_argument("--local-jsonl", help="Path to local JSONL with fields: question, answer, [id]")
     ap.add_argument("--limit", type=int, help="Limit number of problems")
     ap.add_argument("--seed", type=int, default=0, help="Shuffle seed for selection")
-    ap.add_argument("--fewshot", help="Optional few-shot prefix file to prepend to prompts")
-    ap.add_argument("--show-work", action="store_true", help="Ask the agent to show its reasoning in the output")
     ap.add_argument("--timeout-ms", type=float, default=120_000.0, help="Per-item timeout (ms)")
     ap.add_argument("--retries", type=int, default=0, help="Retries on transport errors/timeouts")
 
@@ -573,12 +558,6 @@ if __name__ == "__main__":
         python_prog_args=args.python_prog_args,
      )
 
-    # Load fewshot prefix (optional)
-    fewshot_prefix = None
-    if args.fewshot:
-        with open(args.fewshot, "r", encoding="utf-8") as f:
-            fewshot_prefix = f.read()
-
     # Load data
     data = runner.load_data(task=args.task, split=args.split, local_jsonl=args.local_jsonl, seed=args.seed)
     if args.limit:
@@ -593,8 +572,6 @@ if __name__ == "__main__":
         payload = runner.evaluate(
             data,
             limit=None,
-            fewshot_prefix=fewshot_prefix,
-            show_work=args.show_work,
             per_item_timeout_ms=args.timeout_ms,
             retries=args.retries,
             # if you already added these previously:
