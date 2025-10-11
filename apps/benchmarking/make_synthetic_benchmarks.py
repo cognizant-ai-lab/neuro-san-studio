@@ -35,13 +35,14 @@ def main():
         # Long multiplication, varying difficulty
         # ("long_mul_4_4__200.jsonl", generate_long_multiplication(200, 4, 4, args.seed)),
         # ("long_mul_5_5__200.jsonl", generate_long_multiplication(200, 5, 5, args.seed)),
+        ("long_mul_6_6__200.jsonl", generate_long_multiplication(200, 6, 6, args.seed)),
         # ("long_mul_10_10__200.jsonl", generate_long_multiplication(200, 10, 10, args.seed)),
         # ("long_mul_20_20__200.jsonl", generate_long_multiplication(200, 20, 20, args.seed)),
         # ("long_mul_30_30__200.jsonl", generate_long_multiplication(200, 30, 30, args.seed+1)),
         # ("long_mul_50_50__100.jsonl", generate_long_multiplication(100, 50, 50, args.seed+2)),
 
         # Sorting, varying lengths
-        ("sort_len_3__200.jsonl",  generate_sorting_tasks(200, 3,  -10_000, 10_000, args.seed)),
+        # ("sort_len_3__200.jsonl",  generate_sorting_tasks(200, 3,  -10_000, 10_000, args.seed)),
         # ("sort_len_4__200.jsonl",  generate_sorting_tasks(200, 4,  -10_000, 10_000, args.seed)),
         # ("sort_len_5__200.jsonl",  generate_sorting_tasks(200, 5,  -10_000, 10_000, args.seed)),
         # ("sort_len_10__200.jsonl",  generate_sorting_tasks(200, 10,  -10_000, 10_000, args.seed)),
