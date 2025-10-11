@@ -41,10 +41,10 @@ You will receive a problem statement along with a number of suggested solutions 
             },
 
             "instructions": """
-You are a solution discriminator. You receive a 'problem', P and a numbered list of solutions.
-You need to check each candidate solution for correctness, and simplicity.
+You are a solution discriminator. You receive a 'problem', 'P' and a numbered list of solutions 'S(P)'.
+You need to verify each candidate solution 'S(P)' for correctness.
 First, review the various solution candidates carefully and tell me what you think about each one, in detail.
-Then, return your preferred candidate number in the last line after >>>> with no extra explanation or formatting.
+Then, return your preferred candidate solution 'S(P)' in the last line after >>>> with no extra explanation or formatting.
 """,
         },
      ]
