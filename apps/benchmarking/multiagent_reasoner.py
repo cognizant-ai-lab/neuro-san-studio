@@ -27,22 +27,25 @@ MAX_DEPTH = 3
 
 AGENTS_PORT = 30011
 
-_tls = threading.local()
-
-def _ensure_factory():
-    if not hasattr(_tls, "factory"):
-        _tls.factory = AgentSessionFactory()
+# Global, shared across threads
+_factory_lock = threading.RLock()
+_factory: AgentSessionFactory | None = None
+_sessions: dict[str, AgentSession] = {}
 
 def _get_session(agent_name: str) -> AgentSession:
-    _ensure_factory()
-    if not hasattr(_tls, "cache"):
-        _tls.cache = {}
-    if agent_name not in _tls.cache:
-        _tls.cache[agent_name] = _tls.factory.create_session(
-            "direct", agent_name, "localhost", AGENTS_PORT, False,
-            {"user_id": os.environ.get("USER")}
-        )
-    return _tls.cache[agent_name]
+    """Return a shared, thread-safe session for the named agent."""
+    global _factory
+    with _factory_lock:
+        if _factory is None:
+            _factory = AgentSessionFactory()
+        sess = _sessions.get(agent_name)
+        if sess is None:
+            sess = _factory.create_session(
+                "direct", agent_name, "localhost", AGENTS_PORT, False,
+                {"user_id": os.environ.get("USER")}
+            )
+            _sessions[agent_name] = sess
+        return sess
 
 def decomposer_session() -> AgentSession:
     return _get_session("decomposer")
@@ -56,8 +59,9 @@ def composition_discriminator_session() -> AgentSession:
 def thinking_module_bench_session() -> AgentSession:
     return _get_session("thinking_module_bench")
 
-def _tmpfile(prefix: str) -> str:
-    return f"/tmp/{prefix}_{os.getpid()}_{threading.get_ident()}.txt"
+# Unique temp file per *call*
+def _tmpfile(stem: str) -> str:
+    return f"/tmp/{stem}_{os.getpid()}_{threading.get_ident()}.txt"
 
 def call_agent(agent_session: AgentSession, text: str, timeout_ms: float = 100000.0) -> str:
     """Call a single agent with given text, return its response."""
@@ -70,7 +74,7 @@ def call_agent(agent_session: AgentSession, text: str, timeout_ms: float = 10000
         "sly_data": None,
         "chat_filter": {"chat_filter_type": "MAXIMAL"},
     }
-    inp = StreamingInputProcessor("DEFAULT", _tmpfile("/tmp/program_mode_thinking.txt"),
+    inp = StreamingInputProcessor("DEFAULT", _tmpfile("program_mode_thinking"),
                                   agent_session, None)
     thread = inp.process_once(thread)
     logging.debug(f"call_agent({agent_session}): sending {len(text)} chars")
