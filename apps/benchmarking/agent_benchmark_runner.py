@@ -10,6 +10,7 @@ import random
 import subprocess
 import json as _json
 from typing import Dict, Any, Tuple, Optional, List, Callable, Iterable
+from concurrent.futures import ThreadPoolExecutor, ProcessPoolExecutor, as_completed
 
 # Neuro-SAN client
 from neuro_san.client.agent_session_factory import AgentSessionFactory
@@ -56,6 +57,7 @@ class AgentBenchmarkRunner:
             # add these two:
             python_prog: Optional[str] = None,
             python_prog_args: Optional[List[str]] = None,
+            num_workers: int = 1
     ):
         self.agent_name = agent_name
         self.connection = connection
@@ -66,6 +68,7 @@ class AgentBenchmarkRunner:
         self.chat_filter = chat_filter or {"chat_filter_type": "MAXIMAL"}
         self.python_prog = python_prog
         self.python_prog_args = python_prog_args or []
+        self.num_workers = num_workers
 
         # Environment for Neuro-SAN
         os.environ["AGENT_MANIFEST_FILE"] = agent_manifest_file
@@ -335,6 +338,139 @@ class AgentBenchmarkRunner:
             return self._normalize_number(all_nums[-1].group(0))
         return None
 
+    def _evaluate_item_with_retries(self, ex, *, per_item_timeout_ms, retries, final_token,
+                                    answer_format):
+        # identical to the inner loop you had in evaluate(); reused by both seq/parallel
+        attempt = 0
+        backoff = 0.5
+        last = None
+        while attempt <= self.sample_retries:
+            r = self.evaluate_item(
+                ex["question"], ex["answer"],
+                per_item_timeout_ms=per_item_timeout_ms,
+                retries=retries,
+                final_token=final_token,
+                answer_format=answer_format,
+            )
+            last = {"id": ex.get("id", ""), **r}
+            if r["status"] == "ok":
+                break
+            attempt += 1
+            if attempt <= self.sample_retries:
+                time.sleep(backoff)
+                backoff *= 2
+        return last
+
+    @staticmethod
+    def _agent_worker_payload(payload):
+        """Isolated process/thread worker for AGENT mode (no --python-prog)."""
+        cfg, ex, fewshot_prefix, show_work, per_item_timeout_ms, retries, final_token, answer_format, sample_retries = payload
+        runner = AgentBenchmarkRunner(
+            agent_name=cfg["agent_name"],
+            connection=cfg["connection"],
+            host=cfg["host"],
+            port=cfg["port"],
+            local_externals_direct=cfg["local_externals_direct"],
+            agent_manifest_file=cfg["agent_manifest_file"],
+            agent_tool_path=cfg["agent_tool_path"],
+            default_timeout_ms=cfg["default_timeout_ms"],
+            chat_filter=cfg["chat_filter"],
+            python_prog=None,
+            python_prog_args=[],
+            num_workers=1,
+        )
+        runner.sample_retries = sample_retries
+        runner.start(user_meta={"benchmark": "parallel"})
+        try:
+            return runner._evaluate_item_with_retries(
+                ex,
+                per_item_timeout_ms=per_item_timeout_ms,
+                retries=retries,
+                final_token=final_token,
+                answer_format=answer_format,
+            )
+        finally:
+            runner.close()
+
+    def _evaluate_parallel(self, items, *, per_item_timeout_ms, retries, answer_format,
+                           final_token, progress_every):
+        results = []
+        correct = 0
+        latencies = []
+        processed = 0
+
+        if self.python_prog:
+            # PROGRAM MODE: threads are perfect (each task is a blocking subprocess.run)
+            exec_cls = ThreadPoolExecutor
+            payloads = [(ex,) for ex in items]
+
+            def submit_fn(ex):
+                return self._evaluate_item_with_retries(
+                    ex,
+                    per_item_timeout_ms=per_item_timeout_ms,
+                    retries=retries,
+                    final_token=final_token,
+                    answer_format=answer_format,
+                )
+        else:
+            # AGENT MODE: avoid sharing one session; spin isolated runner per task
+            exec_cls = ProcessPoolExecutor
+            cfg = {
+                "agent_name": self.agent_name,
+                "connection": self.connection,
+                "host": self.host,
+                "port": self.port,
+                "local_externals_direct": self.local_externals_direct,
+                "agent_manifest_file": os.environ.get("AGENT_MANIFEST_FILE", "registries/manifest.hocon"),
+                "agent_tool_path": os.environ.get("AGENT_TOOL_PATH", "coded_tools"),
+                "default_timeout_ms": self.default_timeout_ms,
+                "chat_filter": self.chat_filter,
+            }
+            payloads = [(cfg, ex, per_item_timeout_ms, retries, final_token, answer_format,
+                         getattr(self, "sample_retries", 2)) for ex in items]
+
+            def submit_fn(payload):
+                return AgentBenchmarkRunner._agent_worker_payload(payload)
+
+        with exec_cls(max_workers=max(1, self.num_workers)) as executor:
+            future_map = {}
+            for p in payloads:
+                fut = executor.submit(submit_fn, *p)
+                future_map[fut] = p
+
+            completed = 0
+            total = len(items)
+            for fut in as_completed(future_map):
+                r = fut.result()
+                results.append(r)
+                completed += 1
+
+                if r["status"] == "ok":
+                    processed += 1
+                    correct += int(r["correct"])
+                    latencies.append(r["latency_sec"])
+                else:
+                    processed += 1
+                    latencies.append(r["latency_sec"])
+
+                if progress_every and (completed % progress_every == 0 or completed == total):
+                    denom = processed if processed else 1
+                    print(
+                        f"[{completed}/{total}] acc_so_far={correct / denom:.3f} last_latency={r['latency_sec']:.2f}s")
+
+        denom = processed if processed else 1
+        accuracy = correct / denom
+        avg_latency = (sum(latencies) / len(latencies)) if latencies else 0.0
+        p95_latency = self._percentile(latencies, 95) if latencies else 0.0
+
+        return {
+            "accuracy": accuracy,
+            "count": denom,
+            "avg_latency_sec": avg_latency,
+            "p95_latency_sec": p95_latency,
+            "results": results,
+        }
+
     # ------------------ Single Item Eval ------------------
 
     def evaluate_item(
@@ -399,6 +535,19 @@ class AgentBenchmarkRunner:
         items = list(data) if not isinstance(data, list) else data
         if limit is not None:
             items = items[:limit]
+
+            # make these accessible to helpers
+        self.sample_retries = sample_retries
+
+        if getattr(self, "num_workers", 1) and self.num_workers > 1:
+            return self._evaluate_parallel(
+                items,
+                per_item_timeout_ms=per_item_timeout_ms,
+                retries=retries,
+                answer_format=answer_format,
+                final_token=final_token,
+                progress_every=progress_every,
+            )
 
         results = []
         correct = 0
@@ -543,6 +692,7 @@ if __name__ == "__main__":
                     help="Marker token preceding the final answer (default: ####).")
     ap.add_argument("--python-prog", help="Path to a Python program to call instead of an agent")
     ap.add_argument("--python-prog-args", nargs="*", default=[], help="Args to pass to --python-prog")
+    ap.add_argument("--num-workers", type=int, default=1, help="Parallel workers (default: 1)")
 
     args = ap.parse_args()
 
@@ -556,7 +706,8 @@ if __name__ == "__main__":
         # add:
         python_prog=args.python_prog,
         python_prog_args=args.python_prog_args,
-     )
+        num_workers=args.num_workers,
+    )
 
     # Load data
     data = runner.load_data(task=args.task, split=args.split, local_jsonl=args.local_jsonl, seed=args.seed)
@@ -574,7 +725,6 @@ if __name__ == "__main__":
             limit=None,
             per_item_timeout_ms=args.timeout_ms,
             retries=args.retries,
-            # if you already added these previously:
             sample_retries=getattr(args, "sample_retries", 2),
             retry_backoff_ms=getattr(args, "retry_backoff_ms", 500),
             exclude_errors=getattr(args, "exclude_errors", False),

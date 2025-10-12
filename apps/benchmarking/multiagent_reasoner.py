@@ -2,6 +2,7 @@ import os
 import sys
 import re
 import logging
+import threading
 from neuro_san.client.agent_session_factory import AgentSessionFactory, AgentSession
 from neuro_san.client.streaming_input_processor import StreamingInputProcessor
 
@@ -26,24 +27,37 @@ MAX_DEPTH = 3
 
 AGENTS_PORT = 30011
 
-agent_session_factory = AgentSessionFactory()
-decomposer_agent_session = agent_session_factory.create_session(
-    "direct", "decomposer", "localhost", AGENTS_PORT, False,
-    {"user_id": os.environ.get("USER")}
-)
-solution_discriminator_agent_session = agent_session_factory.create_session(
-    "direct", "solution_discriminator", "localhost", AGENTS_PORT, False,
-    {"user_id": os.environ.get("USER")}
-)
-composition_discriminator_agent_session = agent_session_factory.create_session(
-    "direct", "composition_discriminator", "localhost", AGENTS_PORT, False,
-    {"user_id": os.environ.get("USER")}
-)
-thinking_module_bench_agent_session = agent_session_factory.create_session(
-    "direct", "thinking_module_bench", "localhost", AGENTS_PORT, False,
-    {"user_id": os.environ.get("USER")}
-)
+_tls = threading.local()
 
+def _ensure_factory():
+    if not hasattr(_tls, "factory"):
+        _tls.factory = AgentSessionFactory()
+
+def _get_session(agent_name: str) -> AgentSession:
+    _ensure_factory()
+    if not hasattr(_tls, "cache"):
+        _tls.cache = {}
+    if agent_name not in _tls.cache:
+        _tls.cache[agent_name] = _tls.factory.create_session(
+            "direct", agent_name, "localhost", AGENTS_PORT, False,
+            {"user_id": os.environ.get("USER")}
+        )
+    return _tls.cache[agent_name]
+
+def decomposer_session() -> AgentSession:
+    return _get_session("decomposer")
+
+def solution_discriminator_session() -> AgentSession:
+    return _get_session("solution_discriminator")
+
+def composition_discriminator_session() -> AgentSession:
+    return _get_session("composition_discriminator")
+
+def thinking_module_bench_session() -> AgentSession:
+    return _get_session("thinking_module_bench")
+
+def _tmpfile(prefix: str) -> str:
+    return f"/tmp/{prefix}_{os.getpid()}_{threading.get_ident()}.txt"
 
 def call_agent(agent_session: AgentSession, text: str, timeout_ms: float = 100000.0) -> str:
     """Call a single agent with given text, return its response."""
@@ -56,7 +70,7 @@ def call_agent(agent_session: AgentSession, text: str, timeout_ms: float = 10000
         "sly_data": None,
         "chat_filter": {"chat_filter_type": "MAXIMAL"},
     }
-    inp = StreamingInputProcessor("DEFAULT", "/tmp/program_mode_thinking.txt",
+    inp = StreamingInputProcessor("DEFAULT", _tmpfile("/tmp/program_mode_thinking.txt"),
                                   agent_session, None)
     thread = inp.process_once(thread)
     logging.debug(f"call_agent({agent_session}): sending {len(text)} chars")
@@ -128,7 +142,7 @@ def _compose_prompt(c: str, s1: str, s2: str) -> str:
 
 def _solve_atomic(problem: str) -> str:
     """Single call to thinking_module_bench; returns the full agent response."""
-    return call_agent(thinking_module_bench_agent_session, problem)
+    return call_agent(thinking_module_bench_session(), problem)
 
 def solve(problem: str, depth: int = 0, max_depth: int = MAX_DEPTH) -> str:
     """
@@ -170,7 +184,7 @@ def solve(problem: str, depth: int = 0, max_depth: int = MAX_DEPTH) -> str:
     solutions: list[str] = []
     finals: list[str] = []
     for k in range(SOLUTION_CANDIDATE_COUNT):
-        r = call_agent(thinking_module_bench_agent_session, comp_prompt)
+        r = call_agent(thinking_module_bench_session(), comp_prompt)
         solutions.append(r)
         finals.append(_extract_final(r))
         logging.info(f"[solve] depth={depth} composed candidate {k + 1}: {finals[-1]!r}")
@@ -180,7 +194,7 @@ def solve(problem: str, depth: int = 0, max_depth: int = MAX_DEPTH) -> str:
     votes = [0] * len(finals)
     winner_idx = None
     for _ in range(NUMBER_OF_VOTES):  # reuse existing vote knobs
-        vresp = call_agent(composition_discriminator_agent_session, f"{numbered}\n\n")
+        vresp = call_agent(composition_discriminator_session(), f"{numbered}\n\n")
         vote_txt = _extract_final(vresp)
         logging.info(f"[solve] depth={depth} solution vote: {vote_txt}")
         try:
@@ -211,7 +225,7 @@ def decompose(problem: str) -> tuple[str | None, str | None, str | None]:
     # 1) Gather candidates
     candidates: list[str] = []
     for _ in range(CANDIDATE_COUNT):
-        resp = call_agent(decomposer_agent_session, problem)
+        resp = call_agent(decomposer_session(), problem)
         cand = _extract_decomposition_text(resp)  # expect "P1=[...], P2=[...], C=[...]"
         if cand:
             candidates.append(cand)
@@ -232,7 +246,7 @@ def decompose(problem: str) -> tuple[str | None, str | None, str | None]:
         disc_prompt = (
             f"{numbered}\n\n"
         )
-        vresp = call_agent(solution_discriminator_agent_session, disc_prompt)
+        vresp = call_agent(solution_discriminator_session(), disc_prompt)
         vote_txt = _extract_final(vresp)
         logging.info(f"[decompose] discriminator raw vote: {vote_txt}")
         try:
