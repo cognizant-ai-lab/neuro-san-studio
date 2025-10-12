@@ -49,7 +49,7 @@ class AgentBenchmarkRunner:
             host: str = "localhost",
             port: int = PORT,
             local_externals_direct: bool = False,
-            agent_manifest_file: str = "registries/manifest.hocon",
+            agent_manifest_file: str = "apps/benchmarking/manifest_solver.hocon",
             agent_tool_path: str = "coded_tools",
             default_timeout_ms: float = 120_000.0,
             chat_filter: Optional[Dict[str, Any]] = None,
