@@ -56,11 +56,17 @@ class GetSubnetwork(CodedTool):
         logger = logging.getLogger(self.__class__.__name__)
         os.environ["AGENT_MANIFEST_FILE"] = os.getenv("AGENT_MANIFEST_FILE", DEFAULT_MANIFEST_FILE)
         manifest_file: str | list[str] = os.environ["AGENT_MANIFEST_FILE"]
+
+        empty: dict[str, AgentNetwork] = {}
+        networks: dict[str, AgentNetwork] = {}
         try:
             logger.info(">>>>>>>>>>>>>>>>>>>Getting Subnetwork Descriptions from Manifest>>>>>>>>>>>>>>>>>>>")
             logger.info("Manifest file: %s", str(manifest_file))
-            networks: dict[str, AgentNetwork] = RegistryManifestRestorer().restore()
+            networks_by_storage: dict[str, dict[str, AgentNetwork]] = RegistryManifestRestorer().restore()
             logger.info("Successfully loaded agent networks info from %s", str(manifest_file))
+            for storage_type in ["public", "protected"]:
+                one_storage_dict: dict[str, AgentNetwork] = networks_by_storage.get(storage_type, empty)
+                networks.update(one_storage_dict)
         except FileNotFoundError as not_found_err:
             error_msg = f"Error: Failed to load agent networkds info from {manifest_file}. {str(not_found_err)}"
             logger.warning(error_msg)
