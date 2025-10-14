@@ -63,8 +63,13 @@ class GetSubnetwork(CodedTool):
         try:
             logger.info(">>>>>>>>>>>>>>>>>>>Getting Subnetwork Descriptions from Manifest>>>>>>>>>>>>>>>>>>>")
             logger.info("Manifest file: %s", str(manifest_file))
+
+            # What is returned is mapping from storage type -> (name -> AgentNetwork mapping)
             networks_by_storage: dict[str, dict[str, AgentNetwork]] = RegistryManifestRestorer().restore()
             logger.info("Successfully loaded agent networks info from %s", str(manifest_file))
+
+            # Put all name -> AgentNetwork mappings into a single dictionary,
+            # as is expected by the rest of this tool.
             for storage_type in ["public", "protected"]:
                 one_storage_dict: dict[str, AgentNetwork] = networks_by_storage.get(storage_type, empty)
                 networks.update(one_storage_dict)
