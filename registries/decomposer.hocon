@@ -42,7 +42,7 @@ Here's how we can formalize this:
 S(P) = C(S(P1), S(P2))
 
 Where S(x) gives us the solution for 'x',
-and C(S(P1), S(P2)) is how we should combine the solutions to 'P(1)' and 'P(2)' to get the solution to 'P'.
+and C(S(P1), S(P2)) is how we should combine the solutions to 'P1' and 'P2' to get the solution to 'P'.
 As long as the complexity of 'P1' and 'P2' are less than 'P', we are fine.
 
 If 'P' is obvious and simple to solve, or cannot be broken into two independent sub-problems,
