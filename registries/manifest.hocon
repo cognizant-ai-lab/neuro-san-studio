@@ -179,6 +179,6 @@
     "now_agents.hocon": true,
     "decomposer.hocon": true,
     "solution_discriminator.hocon": true,
-    "thinking_module_bench.hocon": true,
+    "problem_solver.hocon": true,
     "composition_discriminator.hocon": true
 }

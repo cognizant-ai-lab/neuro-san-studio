@@ -18,10 +18,10 @@ llm_config {
     "max_execution_seconds": 7200, #600
     "tools": [
         {
-            "name": "thinking_module_bench",
+            "name": "problem_solver",
             "function": {
                 "description": """
-You are a reasoning module. You will receive a 'problem' and you will solve the problem using chain-of-thought reasoning.
+You will receive a 'problem' and you will solve the problem.
 Return the solution on the last line after >>>> with no extra explanation or formatting.
                 """,
                 "parameters": {
@@ -29,7 +29,7 @@ Return the solution on the last line after >>>> with no extra explanation or for
                     "properties": {
                         "problem": {
                             "type": "string",
-                            "description": "An input instance to reason on."
+                            "description": "Description of a problem."
                         },
                     },
                     "required": ["problem"]
@@ -37,9 +37,7 @@ Return the solution on the last line after >>>> with no extra explanation or for
             },
 
             "instructions": """
-You are a reasoning module. You will receive a 'problem' and solve it and return the result.
-First, think carefully about how to solve the problem and provide detailed reasoning steps for how to solve the problem,
-Then solve the problem using the reasoning steps.
+You will receive a 'problem' and solve it and return the result.
 Return the solution on the last line after >>>> with no extra explanation or formatting.
 """,
         },

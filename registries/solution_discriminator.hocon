@@ -33,7 +33,7 @@ You will receive a problem statement along with a number of suggested decomposit
                         },
                         "decompositions": {
                             "type": "string",
-                            "description": "A set of decompositions of the problem."
+                            "description": "A numbered set of decompositions of the problem."
                         },
                     },
                     "required": ["problem", "decompositions"]
@@ -52,15 +52,14 @@ You are a solution discriminator. You receive a 'problem', P and a number of dec
 and C is the function that tells us how to put their solutions together to solve the 'problem'.
 
 A decomposition may take the following form P1=[p1], P2=[None], C=[None]
-This means the 'problem' is not decomposed, which may be a valid option too.
+This means the 'problem' is not decomposed, which may be a valid option too, especially if it is simple enough.
 
 You need to check each candidate for correctness, simplicity of the decompositions, as well as simplicity and correctness of C.
 Make sure P2 is not dependent on P1 and can be solved in isolation.
 If you have a candidate that suggests not decomposing the 'problem', and if the 'problem' is already simple enough or cannot be decomposed easily,
 then feel free to return that candidate number as your preference.
 
-First, review the various decomposition candidates carefully and tell me what you think about each one, in detail.
-Then, return your preferred decomposition number in the last line after >>>> with no extra explanation or formatting.
+Return your preferred decomposition number in the last line after >>>> with no extra explanation or formatting.
 """,
         },
      ]

@@ -18,11 +18,11 @@ os.environ["AGENT_TOOL_PATH"] = "coded_tools"
 FINAL_TOKEN = ">>>>"  # agents end their final answer on the last line after this token
 
 # Tuning knobs
-CANDIDATE_COUNT = 4
-NUMBER_OF_VOTES = 5
-WINNING_VOTE_COUNT = 3
-SOLUTION_CANDIDATE_COUNT = 4
-MAX_DEPTH = 3
+CANDIDATE_COUNT = 2
+NUMBER_OF_VOTES = 2
+WINNING_VOTE_COUNT = 2
+SOLUTION_CANDIDATE_COUNT = 2
+MAX_DEPTH = 1
 
 
 AGENTS_PORT = 30011
@@ -56,8 +56,8 @@ def solution_discriminator_session() -> AgentSession:
 def composition_discriminator_session() -> AgentSession:
     return _get_session("composition_discriminator")
 
-def thinking_module_bench_session() -> AgentSession:
-    return _get_session("thinking_module_bench")
+def problem_solver_session() -> AgentSession:
+    return _get_session("problem_solver")
 
 # Unique temp file per *call*
 def _tmpfile(stem: str) -> str:
@@ -146,7 +146,7 @@ def _compose_prompt(c: str, s1: str, s2: str) -> str:
 
 def _solve_atomic(problem: str) -> str:
     """Single call to thinking_module_bench; returns the full agent response."""
-    return call_agent(thinking_module_bench_session(), problem)
+    return call_agent(problem_solver_session(), problem)
 
 def solve(problem: str, depth: int = 0, max_depth: int = MAX_DEPTH) -> str:
     """
@@ -188,13 +188,15 @@ def solve(problem: str, depth: int = 0, max_depth: int = MAX_DEPTH) -> str:
     solutions: list[str] = []
     finals: list[str] = []
     for k in range(SOLUTION_CANDIDATE_COUNT):
-        r = call_agent(thinking_module_bench_session(), comp_prompt)
+        r = call_agent(problem_solver_session(), comp_prompt)
         solutions.append(r)
         finals.append(_extract_final(r))
         logging.info(f"[solve] depth={depth} composed candidate {k + 1}: {finals[-1]!r}")
 
     # Vote among composed solutions using composition_discriminator
     numbered = "\n".join(f"{i + 1}. {ans}" for i, ans in enumerate(finals))
+    numbered = f"problem: {comp_prompt}, {numbered}"
+    logging.info(f"[solve] depth={depth} composition_discriminator query: {numbered}")
     votes = [0] * len(finals)
     winner_idx = None
     for _ in range(NUMBER_OF_VOTES):  # reuse existing vote knobs
@@ -242,6 +244,8 @@ def decompose(problem: str) -> tuple[str | None, str | None, str | None]:
 
     # Numbered list for the discriminator
     numbered = "\n".join(f"{i+1}. {c}" for i, c in enumerate(candidates))
+    numbered = f"problem: {problem}, {numbered}"
+    logging.info(f"[decompose] solution_discriminator query: {numbered}")
 
     # 2) Voting
     votes = [0] * len(candidates)
