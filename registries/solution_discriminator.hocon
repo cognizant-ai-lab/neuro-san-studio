@@ -55,7 +55,6 @@ A decomposition may take the following form P1=[p1], P2=[None], C=[None]
 This means the 'problem' is not decomposed, which may be a valid option too, especially if it is simple enough.
 
 You need to check each candidate for correctness, simplicity of the decompositions, as well as simplicity and correctness of C.
-Make sure P2 is not dependent on P1 and can be solved in isolation.
 If you have a candidate that suggests not decomposing the 'problem', and if the 'problem' is already simple enough or cannot be decomposed easily,
 then feel free to return that candidate number as your preference.
 
