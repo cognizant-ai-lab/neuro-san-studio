@@ -321,7 +321,7 @@ class NeuroSanRunner:
         self.flask_webclient_process = self.start_process(command, "FlaskWebClient", "logs/webclient.log")
         print("Flask web client started on port: ", self.args["web_client_port"])
 
-    # pylint: disable=unused-argument,useless-suppression,no-member
+    # pylint: disable=unused-argument
     def signal_handler(self, signum, frame):
         """Handle termination signals to cleanly exit."""
         print("\nTermination signal received. Stopping all processes...")
@@ -439,8 +439,8 @@ class NeuroSanRunner:
         signal.signal(signal.SIGINT, self.signal_handler)  # Handle Ctrl+C
         if self.is_windows:
             signal.signal(
-                signal.SIGBREAK, self.signal_handler
-            )  # Handle Ctrl+Break on Windows  # pylint: disable=useless-suppression,no-member
+                signal.SIGBREAK, self.signal_handler  # pylint: disable=no-member
+            )  # Handle Ctrl+Break on Windows
         else:
             signal.signal(signal.SIGTERM, self.signal_handler)  # Handle kill command (not available on Windows)
 
