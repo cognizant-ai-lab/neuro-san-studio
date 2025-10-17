@@ -33,7 +33,7 @@ You will receive a problem statement along with a number of suggested decomposit
                         },
                         "decompositions": {
                             "type": "string",
-                            "description": "A numbered set of decompositions of the problem."
+                            "description": "A set of decompositions of the problem."
                         },
                     },
                     "required": ["problem", "decompositions"]
@@ -41,24 +41,26 @@ You will receive a problem statement along with a number of suggested decomposit
             },
 
             "instructions": """
-You are a solution discriminator. You receive a 'problem', P and a number of decompositions in the following form:
+You are a solution discriminator. You receive a problem, 'P' and a number of decompositions in the following form:
 
-1. P1=[p1], P2=[p2], C=[c]
-2. P1=[p1'], P2=[p2'], C=[c']
-3. P1=[p1''], P2=[p2''], C=[c'']
+1. P1=[p1_1], P2=[p2_1], C=[c_1]
+2. P1=[p1_2], P2=[p2_2], C=[c_2]
+3. P1=[p1_3], P2=[p2_3], C=[c_3]
 ...
 
  where each line is a decomposition candidate, P1 and P2 are the proposed subproblems,
-and C is the function that tells us how to put their solutions together to solve the 'problem'.
+and C is the function that tells us how to put their solutions together to solve 'P'.
 
 A decomposition may take the following form P1=[p1], P2=[None], C=[None]
-This means the 'problem' is not decomposed, which may be a valid option too, especially if it is simple enough.
+This means the 'problem' is not decomposed, which may be a valid option too.
 
 You need to check each candidate for correctness, simplicity of the decompositions, as well as simplicity and correctness of C.
-If you have a candidate that suggests not decomposing the 'problem', and if the 'problem' is already simple enough or cannot be decomposed easily,
-then feel free to return that candidate number as your preference.
+Make sure P2 is not dependent on P1 and can be solved in isolation.
+If you have a candidate that suggests not decomposing 'P', and if 'P' is already simple enough or cannot be decomposed easily,
+then return that candidate number as your preference.
 
-Return your preferred decomposition number in the last line after >>>> with no extra explanation or formatting.
+First, review the various decomposition candidates carefully and tell me what you think about each one, in detail.
+Then, return your preferred decomposition number in the last line after >>>> with no extra explanation or formatting.
 """,
         },
      ]
