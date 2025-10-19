@@ -53,7 +53,10 @@ class AbsenceManager:
                 logger.debug("AbsenceManager: associate_id found in environment variables")
 
         if client_id is None or client_secret is None or associate_id is None:
-            logger.error("ERROR: AbsenceManager is NOT configured. Please check your parameters or environment variables.")
+            logger.error(
+                "ERROR: AbsenceManager is NOT configured. "
+                "Please check your parameters or environment variables."
+            )
             # The service is not configured. We cannot query the API, but we can still use a mock response.
             self.is_configured = False
         else:

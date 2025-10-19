@@ -64,7 +64,10 @@ class AgentforceAdapter:
             client_secret = AgentforceAdapter._get_env_variable("AGENTFORCE_CLIENT_SECRET")
 
         if my_domain_url is None or agent_id is None or client_id is None or client_secret is None:
-            logger.error("ERROR: AgentforceAdapter is NOT configured. Please check your parameters or environment variables.")
+            logger.error(
+                "ERROR: AgentforceAdapter is NOT configured. "
+                "Please check your parameters or environment variables."
+            )
             # The service is not configured. We cannot query the API, but we can still use mock responses.
             self.is_configured = False
         else:
