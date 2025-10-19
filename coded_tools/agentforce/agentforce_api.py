@@ -15,9 +15,9 @@ from typing import Optional
 
 from neuro_san.interfaces.coded_tool import CodedTool
 
-logger = logging.getLogger(__name__)
-
 from coded_tools.agentforce.agentforce_adapter import AgentforceAdapter
+
+logger = logging.getLogger(__name__)
 
 MOCK_SESSION_ID = "06518755-b897-4311-afea-2aab1df77314"
 MOCK_SECRET = "1234567890"

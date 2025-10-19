@@ -19,8 +19,6 @@ from typing import Optional
 
 from neuro_san.interfaces.coded_tool import CodedTool
 
-logger = logging.getLogger(__name__)
-
 # pylint: disable=import-error
 from selenium import webdriver
 from selenium.common.exceptions import TimeoutException
@@ -32,6 +30,8 @@ from selenium.webdriver.remote.webdriver import WebDriver
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.support.ui import WebDriverWait
 from webdriver_manager.chrome import ChromeDriverManager
+
+logger = logging.getLogger(__name__)
 
 TIME_TO_FIND_ELEMENT = 120.0
 TIME_BEFORE_CLICK_SEND = 2.0
