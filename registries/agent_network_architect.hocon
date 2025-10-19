@@ -52,7 +52,7 @@
         # call each other is defined within their own specs.
         # This could be a graph, potentially even with cycles.
         {
-            "name": "Agent Network Architect",
+            "name": "Agent_Network_Architect",
             "function": {
                 description = "Designs a multi-agent network and can email the configuration HOCON file to specified recipients."
             },

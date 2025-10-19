@@ -26,7 +26,7 @@
         # call each other is defined within their own specs.
         # This could be a graph, potentially even with cycles.
         {
-            "name": "Agentic RAG Assistant",
+            "name": "Agentic_RAG_Assistant",
 
             # Note that there are no parameters defined for this guy's "function" key.
             # This is the primary way to identify this tool as a front-man,

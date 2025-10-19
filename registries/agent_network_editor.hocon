@@ -49,69 +49,117 @@
                 }
             },
             "instructions": """
-You are responsible for generating and editing a complete agent network based on given specifications.
-Only answer inquiries that are directly within your area of expertise. Do not try to help for other matters. Do not mention what you can NOT do. Only mention what you can do.
+You are responsible for generating and editing the structure of the agent network according to the given specifications. 
+Only answer inquiries that are directly within your area of expertise. Do not describe what you cannot do; only state what you can do.
 
-- When mode is `create`, always call `create_new_network` first.
-- When mode is `modify`, always call `get_agent_network` first.
-- You can add agents with `add_agent_to_network`.
-  - Note: adding an agent only creates the agent itself. To connect it to other agents, you must follow up with `update_agent_in_network` to set its up-chain or down-chain relationships.
-- You can update existing agents with `update_agent_in_network`.
-- You can remove agents with `remove_agent_from_network`.
-- When removing an agent, ensure that its up-chain and down-chain relationships are updated accordingly:
-  - All references to the removed agent must be removed from other agents’ down-chain lists.
-  - If the removed agent had down-chain agents, either reassign them to a specified new parent or leave them orphaned only if explicitly intended.
-- Always ensure the network remains a directed acyclic graph (DAG).
+**Always begin by calling `get_toolbox`, `get_subnetwork`, and `get_mcp_tool`.**  
+These calls provide the list of available tools for use in the network:
+- `get_toolbox` returns a dictionary where each key is a tool name and the value contains the tool’s information.
+- `get_subnetwork` returns a dictionary where each key is a subnetwork name and the value contains its description.
+- `get_mcp_tool` returns a dictionary where each key is an MCP server URL and the value is the capabilities of the tools provided by that server.
 
-The way to think about this is as creating or refining a hierarchical graph of the responsible employees or team members in such a system.  
-List all the responsible individuals that handle the various workflows that make this happen.
+When adding tools to the network, follow this priority order:
+1. Subnetworks first:
+    - If a subnetwork is available from `get_subnetwork`, add the name of the subnetwork to the agent’s tools list.
+    - Do not create a node for subnetworks.
+2. Toolbox tools second:
+    - Add the name of tools from `get_toolbox` to the agent’s tools list.
+    - Create nodes for these tools.
+3. MCP tools last:
+    - MCP tools can be added by adding MCP server URL from `get_mcp_tool` to an agent’s tools list.
+    - Do not create nodes for MCP tools.
 
-Rules:
-- Ensure there are no cycles at all times, including after adding, updating, or removing agents. The graph must be hierarchical.
-- There is only one top agent, and this must remain true after any modifications.
-- The top agent must only connect to mid-level managers or coordinators, never directly to the lowest-level agents.
-- Make agents granular so that at least one branch has a depth of three agents or more agents from the top.
-- When adding a new agent, always call `update_agent_in_network` afterwards to connect it to the appropriate up-chain or down-chain agents.
-- When removing an agent, update both up-chain and down-chain agents to prevent dangling references, while still maintaining the no-cycles and single-top-agent rules.
-- After any update (adding, updating, or removing agents), ensure that all agents are connected within the network; **there must not be isolated or lone agents**.
+- Subnetwork names always start with "/".
+- MCP tool names always start with "http://" or "https://"".
+- Example of attaching these tools:
+"tools": ["/banking_ops", "https://example.com/mcp"]
+- Rule: Only add subnetworks and MCP tools to the tools list. Never create nodes for them.
 
-Graph Example:
+### Step-by-step workflow
+- **Create mode (`mode=create`)**  
+  - Always call `create_new_network` first.  
+  - In the resulting network, mark `is_tool_list[i] = true` only if `agent_names[i]` is a toolbox tool.
+- **Modify mode (`mode=modify`)**  
+  - Always call `get_agent_network` first.
 
+- **Adding agents**: Use `add_agent_to_network`.  
+  - Set `is_tool = true` only if the `agent_name` comes from the toolbox.  
+  - Adding an agent creates the node only; you must follow up with `update_agent_in_network` to connect it to up-chain or down-chain agents.
+
+- **Updating agents**: Use `update_agent_in_network`.  
+  - This also allows you to add or change tools from `get_subnetwork` or `get_mcp_tool` in the down-chain list.
+
+- **Removing agents**: Use `remove_agent_from_network`.  
+  - Ensure all up-chain and down-chain references to the removed agent are updated.  
+  - If the removed agent had down-chain agents, reassign them to a new parent or leave them orphaned only if explicitly intended.
+
+- **Validation**: Call `validate_structure` any time to confirm the network follows rules and constraints.  
+  - **Always call `validate_structure` before final response.**
+
+### Conceptual model
+Think of this as building or refining a hierarchical organizational chart. Each agent represents a responsible individual or role handling part of the workflow.
+
+### Rules
+- The network must always remain a directed acyclic graph (DAG).  
+- There must be exactly one top agent after all modifications.  
+- The top agent connects only to mid-level agents, not directly to the lowest-level ones.  
+- At least one branch must have a depth of three or more agents from the top.  
+- When adding an agent, always follow up with `update_agent_in_network` to connect it properly.  
+- When removing an agent, update related up-chain and down-chain references to avoid dangling links.  
+- All agents must remain connected; no isolated agents are allowed.  
+- If an agent has **no `instructions` key**, it is treated as a **function** and cannot have `tools`.  
+- In the graph, down-chain agents are always listed under `tools`.
+- Add tools from `get_subnetwork`, `get_toolbox`, and `get_mcp_tool` if the tool’s description or name clearly matches the agent’s responsibilities or role.
+
+### Example
 [
   (
-    "agent_name": "customer_support_rep",
-    "down_chain_agents": ["network_engineer", "account_manager", "project_manager"],
+    "customer_support_rep": (
+      "instructions": "",
+      "tools": ["network_engineer", "account_manager", "project_manager", "https://example.com/mcp"],
+    )
   ),
   (
-    "agent_name": "network_engineer",
-    "down_chain_agents": ["network_ops_center_specialist", "field_technician"],
+    "network_engineer": (
+      "instructions": "",
+      "tools": ["network_ops_center_specialist", "field_technician"],
+    )
   ),
   (
-    "agent_name": "field_technician",
-    "down_chain_agents": [],
+    "field_technician": (
+      "instructions": "",
+    )
   ),
   (
-    "agent_name": "network_ops_center_specialist",
-    "down_chain_agents": [],
+    "network_ops_center_specialist": (
+      "instructions": "",
+    )
   ),
   (
-    "agent_name": "account_manager",
-    "down_chain_agents": [],
+    "account_manager": (
+      "instructions": "",
+      "tools": ["billing_tool", "/banking_ops"],
+    )
   ),
   (
-    "agent_name": "project_manager",
-    "down_chain_agents": ["logistics_coordinator"],
+    "billing_tool": ()   # Function (no instructions, no tools)
   ),
   (
-    "agent_name": "logistics_coordinator",
-    "down_chain_agents": [],
+    "project_manager": (
+      "instructions": "",
+      "tools": ["logistics_coordinator"],
+    )
+  ),
+  (
+    "logistics_coordinator": (
+      "instructions": "",
+    )
   )
 ]
-
 """,
             "allow": {
                 "to_upstream": {
-                    "sly_data": ["agent_network_definition"]
+                    "sly_data": ["agent_network_definition", "agent_network_name"]
                 }
             },
             "tools": [
@@ -119,7 +167,11 @@ Graph Example:
                 "add_agent_to_network",
                 "remove_agent_from_network",
                 "update_agent_in_network",
-                "get_agent_network_definition"
+                "get_agent_network_definition",
+                "get_mcp_tool",
+                "get_subnetwork",
+                "get_toolbox",
+                "validate_structure"
             ]
         },
 
@@ -131,13 +183,24 @@ Graph Example:
                 "parameters": {
                     "type": "object",
                     "properties": {
+                        "agent_network_name": {
+                            "type": "string",
+                            "description": "Name of the agent network. Write it in snake case, e.g. foo_bar."
+                        }
                         "agent_names": {
                             "type": "array",
                             "items": {"type": "string"},
                             "description": "List of the names of the agents in the network"
-                        }
+                        },
+                        "is_tool_list": {
+                            "type": "array",
+                            "items": {"type": "boolean"},
+                            "description": """List of booleans indicating whether each agent in the `agent_name` is a tool or not.
+                            Each entry corresponds to the agent at the same index in the `agent_names` list. Must be the same length as agent_names.
+                            """
+                        },
                     },
-                    "required": ["agent_names"]
+                    "required": ["agent_network_name", "agent_names", "is_tool_list"]
                 }
             }
         },
@@ -154,8 +217,12 @@ Graph Example:
                             "type": "string",
                             "description": "The name of the agent being added."
                         },
+                        "is_tool": {
+                            "type": "boolean",
+                            "description": "Whether the agent is a tool or not."
+                        },
                     },
-                    "required": ["agent_name"]
+                    "required": ["agent_name", "is_tool"]
                 }
             }
         },
@@ -182,7 +249,7 @@ Graph Example:
             "name": "update_agent_in_network",
             "class": "update_agent.UpdateAgent",
             "function": {
-                "description": "Updates an existing agent's instructions, relationships, or top-agent status.",
+                "description": "Updates an existing agent's relationships.",
                 "parameters": {
                     "type": "object",
                     "properties": {
@@ -193,7 +260,7 @@ Graph Example:
                         "new_down_chains": {
                             "type": "array",
                             "items": {"type": "string"},
-                            "description": "Replace the list of down-chain agents."
+                            "description": "Add or replace the list of down-chain agents."
                         },
                     },
                     "required": ["agent_name", "new_down_chains"]
@@ -206,6 +273,38 @@ Graph Example:
             "class": "get_agent_network_definition.GetAgentNetworkDefinition",
             "function": {
                 "description": "Get the agent network definition."
+            }
+        },
+
+        {
+            "name": "get_mcp_tool",
+            "class": "get_mcp_tool.GetMcpTool",
+            "function": {
+                "description": "Retrieve tools specification from specified MCP servers.",
+            }
+        },
+
+        {
+            "name": "get_subnetwork",
+            "class": "get_subnetwork.GetSubnetwork",
+            "function": {
+                "description": "Retrieve the definitions of all subnetworks available in the system.",
+            }
+        }
+
+        {
+            "name": "get_toolbox",
+            "class": "get_toolbox.GetToolbox",
+            "function": {
+                "description": "Retrieve the toolbox information from the 'toolbox_info.hocon' file and return it as a dictionary.",
+            }
+        },
+
+        {
+            "name": "validate_structure",
+            "class": "validate_structure.ValidateStructure",
+            "function": {
+                "description": "Validate the structure of the agent network to ensure it adheres to the defined rules and constraints.",
             }
         },
 

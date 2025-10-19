@@ -114,6 +114,9 @@
     #     pip install arxiv
     "arxiv_rag.hocon": false,
 
+    # To use this agent network, follow the instructions in ./docs/examples/visual_question_answering.md
+    "visual_question_answering.hocon": false,
+
 
     # Use cases
     "airline_policy.hocon": true,
