@@ -7,12 +7,15 @@
 # Purchase of a commercial license is mandatory for any use of the
 # neuro-san-studio SDK Software in commercial settings.
 #
+import logging
 from typing import Any
 from typing import Dict
 from typing import List
 from typing import Union
 
 from neuro_san.interfaces.coded_tool import CodedTool
+
+logger = logging.getLogger(__name__)
 
 
 class ManageEval(CodedTool):
@@ -48,10 +51,10 @@ class ManageEval(CodedTool):
             Note: This method also updates the sly_data dictionary with the new evaluation scores.
         """
         tool_name = self.__class__.__name__
-        print(f"========== Calling {tool_name} ==========")
-        print(f"\nargs: {args}")
+        logger.debug("========== Calling %s ==========", tool_name)
+        logger.debug("args: %s", args)
         # Parse the sly data
-        print(f"\nsly_data:\n{sly_data}")
+        # NOTE: sly_data may contain secrets - never log it
         # Get the evaluation from sly_data, if it exists
         if sly_data.get("evaluation") is None:
             updated_evaluation: Dict[str, Any] = self.eval_data
@@ -70,9 +73,9 @@ class ManageEval(CodedTool):
         sly_data["evaluation"] = updated_evaluation
 
         tool_response = {"updated_evaluation": updated_evaluation}
-        print("-----------------------")
-        print(f"{tool_name} response: ", tool_response)
-        print(f"========== Done with {tool_name} ==========")
+        logger.debug("-----------------------")
+        logger.debug("%s response: %s", tool_name, tool_response)
+        logger.debug("========== Done with %s ==========", tool_name)
         return tool_response
 
     @staticmethod
