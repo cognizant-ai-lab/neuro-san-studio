@@ -7,11 +7,14 @@
 # Purchase of a commercial license is mandatory for any use of the
 # neuro-san-studio SDK Software in commercial settings.
 #
+import logging
 from typing import Any
 from typing import Dict
 from typing import Union
 
 from neuro_san.interfaces.coded_tool import CodedTool
+
+logger = logging.getLogger(__name__)
 
 
 class OrderAPI(CodedTool):
@@ -43,15 +46,15 @@ class OrderAPI(CodedTool):
                 a string error message in the format:
                 "Error: <error message>"
         """
-        print(">>>>>>>>>>>>>>>>>>> OrderAPI >>>>>>>>>>>>>>>>>>")
+        logger.debug(">>>>>>>>>>>>>>>>>>> OrderAPI >>>>>>>>>>>>>>>>>>")
         # Client name is required to place an order.
         customer_name: str = args.get("customer_name", None)
         if not customer_name:
-            print("No customer name provided. Trying to get it from sly_data")
+            logger.debug("No customer name provided. Trying to get it from sly_data")
             customer_name = sly_data.get("username")
         if not customer_name:
             error = "Error: Please provide a valid customer name for the order."
-            print(error)
+            logger.debug(error)
             return error
 
         # Now we have a client name. Keep it in the sly_data if it wasn't there before.
@@ -62,25 +65,25 @@ class OrderAPI(CodedTool):
         shop: str = args.get("shop_name", None)
         if not shop:
             error = "Error: Please provide the name of the shop for the order."
-            print(error)
+            logger.debug(error)
             return error
         if shop not in OrderAPI.SHOPS:
             error = "Error: Please provide a valid shop name. Known shops are: " + ", ".join(OrderAPI.SHOPS)
-            print(error)
+            logger.debug(error)
             return error
 
         # Details of the order are required to place an order.
         order: str = args.get("order_details", None)
         if not order:
             error = "Error: Please provide the description of what to order."
-            print(error)
+            logger.debug(error)
             return error
 
         order_id = OrderAPI.FIRST_ORDER_ID[shop] + 1  # Simulating an order ID generation
 
         message = f"Order {order_id} placed successfully for {customer_name} at {shop}. Details: {order}"
-        print(message)
-        print(">>>>>>>>>>>>>>>>>>> DONE !!! >>>>>>>>>>>>>>>>>>")
+        logger.debug(message)
+        logger.debug(">>>>>>>>>>>>>>>>>>> DONE !!! >>>>>>>>>>>>>>>>>>")
         return message
 
     async def async_invoke(self, args: Dict[str, Any], sly_data: Dict[str, Any]) -> Union[Dict[str, Any], str]:

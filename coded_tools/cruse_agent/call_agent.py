@@ -8,6 +8,8 @@ from neuro_san.client.agent_session_factory import AgentSessionFactory
 from neuro_san.client.streaming_input_processor import StreamingInputProcessor
 from neuro_san.interfaces.coded_tool import CodedTool
 
+logger = logging.getLogger(__name__)
+
 CONNECTION_TYPE = "direct"
 HOST = "localhost"
 PORT = 30011
@@ -62,11 +64,10 @@ class CallAgent(CodedTool):
         if self.agent_name == "":
             return "Error: No select_agent in sly_data."
 
-        print(f"inquiry: {inquiry}")
-        print(f"mode: {mode}")
-        print(f"agent_name: {self.agent_name}")
+        logger.debug("inquiry: %s", inquiry)
+        logger.debug("mode: %s", mode)
+        logger.debug("agent_name: %s", self.agent_name)
 
-        logger = logging.getLogger(self.__class__.__name__)
         logger.info(">>>>>>>>>>>>>>>>>>>CallAgent>>>>>>>>>>>>>>>>>>")
         logger.info("inquiry: %s", str(inquiry))
         logger.info("mode: %s", str(mode))

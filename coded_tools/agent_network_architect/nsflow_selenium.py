@@ -10,6 +10,7 @@
 # END COPYRIGHT
 
 import asyncio
+import logging
 import os
 import time
 from typing import Any
@@ -17,6 +18,8 @@ from typing import Dict
 from typing import Optional
 
 from neuro_san.interfaces.coded_tool import CodedTool
+
+logger = logging.getLogger(__name__)
 
 # pylint: disable=import-error
 from selenium import webdriver
@@ -83,8 +86,8 @@ class NsflowSelenium(CodedTool):
         hocon_file = f"registries/{agent_name}.hocon"
 
         if not os.path.isfile(hocon_file):
-            print(f"Cannot find agent network HOCON file for '{agent_name}' from args.")
-            print("Attempting to get 'agent_name' from sly_data instead.")
+            logger.debug("Cannot find agent network HOCON file for '%s' from args.", agent_name)
+            logger.debug("Attempting to get 'agent_name' from sly_data instead.")
             agent_name = sly_data.get("agent_network_name")
             hocon_file = f"registries/{agent_name}.hocon"
 
@@ -170,10 +173,10 @@ def connect_run_agent_nsflow(
         # Wait for the response box (<span>{agent_name}</span>) to appear
         response = get_response(driver, wait, agent_name)
 
-        print(f"Agent response: {response}")
-        print(
-            f"Agent {agent_name} response detected, waiting "
-            f"{time_after_response_before_close} seconds before closing the browser."
+        logger.debug("Agent response: %s", response)
+        logger.debug(
+            "Agent %s response detected, waiting %s seconds before closing the browser.",
+            agent_name, time_after_response_before_close
         )
 
         time.sleep(time_after_response_before_close)
@@ -182,13 +185,13 @@ def connect_run_agent_nsflow(
 
     except TimeoutException as timeout_error:
         timeout_error_msg = "Timed out waiting for page to load or element to appear."
-        print(f"{timeout_error_msg}")
-        print(timeout_error)
+        logger.error("%s", timeout_error_msg)
+        logger.error(timeout_error)
         return timeout_error_msg
     except WebDriverException as webdriver_error:
         webdriver_error_msg = "WebDriver encountered an issue."
-        print(f"{webdriver_error_msg}")
-        print(webdriver_error)
+        logger.error("%s", webdriver_error_msg)
+        logger.error(webdriver_error)
         return webdriver_error_msg
 
     finally:
