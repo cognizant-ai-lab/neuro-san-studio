@@ -20,7 +20,7 @@
     
     "tools": [
         {
-            "name": "Arxiv RAG Assistant",
+            "name": "Arxiv_RAG_Assistant",
 
             "function": {
               "description": "Answer caller's query with answers from tools.",

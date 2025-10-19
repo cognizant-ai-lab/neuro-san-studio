@@ -33,7 +33,7 @@
         # call each other is defined within their own specs.
         # This could be a graph, potentially even with cycles.
         {
-            "name": "Gmail Assistant",
+            "name": "Gmail_Assistant",
             "function": {
                 description = "An assistant that helps the user manage their Gmail inbox, including reading, searching, drafting, and sending emails."
             },

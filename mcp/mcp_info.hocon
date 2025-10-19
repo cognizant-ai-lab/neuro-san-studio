@@ -1,0 +1,37 @@
+# Copyright (C) 2023-2025 Cognizant Digital Business, Evolutionary AI.
+# All Rights Reserved.
+# Issued under the Academic Public License.
+#
+# You can be released from the terms, and requirements of the Academic Public
+# License by purchasing a commercial license.
+# Purchase of a commercial license is mandatory for any use of the
+# neuro-san SDK Software in commercial settings.
+#
+# END COPYRIGHT
+
+
+# This file contains the MCP server configurations in the following format:
+#     "mcp_server_url_1": {
+#         "headers": {
+#                "Authorization": "Bearer <token>",
+#         }, # Optional: if the server requires authentication
+#         "tools": ["tool_1", "tool_2"]  # Optional: list of specific tools to load from this server. Load all tools if not specified.
+#     },
+
+{
+    "https://mcp.deepwiki.com/mcp": {
+        "tools": ["read_wiki_structure", "ask_question"]
+    },
+
+    # Uncomment this section to use GitHub Copilot MCP server.
+    # Make sure to set the environment variable GITHUB_TOKEN with a valid token.
+    # "https://api.githubcopilot.com/mcp": {
+    #     "headers": {
+    #        # ${GITHUB_TOKEN} is an environment variable that should contain a valid GitHub Copilot token.
+    #         "Authorization": "Bearer" ${GITHUB_TOKEN}
+    #     },
+    #     "tools": ["create_issue"]
+    #     # filter the tool to only create_issue. Note that there is a bug making this filtering not function properly in neuro-san==0.5.65,
+    #     # which will be fixed in the next release.
+    # },
+}

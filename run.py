@@ -230,23 +230,32 @@ class NeuroSanRunner:
 
     def start_process(self, command, process_name, log_file):
         """Start a subprocess and capture logs."""
-        creation_flags = subprocess.CREATE_NEW_PROCESS_GROUP if self.is_windows else 0
-
         # Initialize/clear the log file before starting
         with open(log_file, "w", encoding="utf-8") as log:
             log.write(f"Starting {process_name}...\n")
 
         # pylint: disable=consider-using-with
-        process = subprocess.Popen(
-            command,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
-            text=True,
-            bufsize=1,
-            universal_newlines=True,
-            start_new_session=not self.is_windows,
-            creationflags=creation_flags,
-        )
+        if self.is_windows:
+            # On Windows, don't use CREATE_NEW_PROCESS_GROUP to allow Ctrl+C propagation
+            process = subprocess.Popen(
+                command,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                text=True,
+                bufsize=1,
+                universal_newlines=True,
+            )
+        else:
+            # On Unix, use start_new_session for proper process group management
+            process = subprocess.Popen(
+                command,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                text=True,
+                bufsize=1,
+                universal_newlines=True,
+                start_new_session=True,
+            )
 
         print(f"Started {process_name} with PID {process.pid}")
 
@@ -390,6 +399,14 @@ class NeuroSanRunner:
             print("Cannot use --client-only and --server-only together.")
             sys.exit(1)
 
+        if use_flask:
+            # Check if flask web client is available
+            try:
+                import neuro_san_web_client  # pylint: disable=unused-import,import-outside-toplevel  # noqa: F401
+            except ImportError:
+                print("Flask web client is not available. Please install it with `pip install neuro-san-web-client`.")
+                sys.exit(1)
+
         port_conflicts = self._check_port_conflicts()
 
         # Exit early if any conflict is found
@@ -428,7 +445,11 @@ class NeuroSanRunner:
 
         # Set up signal handling for termination
         signal.signal(signal.SIGINT, self.signal_handler)  # Handle Ctrl+C
-        if not self.is_windows:
+        if self.is_windows:
+            signal.signal(
+                signal.SIGBREAK, self.signal_handler  # pylint: disable=no-member
+            )  # Handle Ctrl+Break on Windows
+        else:
             signal.signal(signal.SIGTERM, self.signal_handler)  # Handle kill command (not available on Windows)
 
         # Start all relevant processes
