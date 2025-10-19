@@ -7,12 +7,15 @@
 # Purchase of a commercial license is mandatory for any use of the
 # neuro-san-studio SDK Software in commercial settings.
 #
+import logging
 import os
 from typing import Any
 from typing import Dict
 
 import requests
 from neuro_san.interfaces.coded_tool import CodedTool
+
+logger = logging.getLogger(__name__)
 
 
 class NowAgentAPIGetAgents(CodedTool):
@@ -56,12 +59,11 @@ class NowAgentAPIGetAgents(CodedTool):
         servicenow_get_agents_query: str = self._get_env_variable("SERVICENOW_GET_AGENTS_QUERY")
         servicenow_user: str = self._get_env_variable("SERVICENOW_USER")
         servicenow_pwd: str = self._get_env_variable("SERVICENOW_PWD")
-        print(f"ServiceNow URL: {servicenow_url}")
-        print(f"user:{servicenow_user}")
-        print(f"pwd:{servicenow_pwd}")
+        logger.debug("ServiceNow URL: %s", servicenow_url)
+        # NOTE: Never log credentials (user/pwd)
 
         tool_name = self.__class__.__name__
-        print(f"========== Calling {tool_name} ==========")
+        logger.debug("========== Calling %s ==========", tool_name)
 
         # Build the ServiceNow API URL for agent discovery
         base_url = f"{servicenow_url}api/now/table/sn_aia_agent"
@@ -78,13 +80,13 @@ class NowAgentAPIGetAgents(CodedTool):
         # Check for HTTP codes other than 200
         if response.status_code != 200:
             error_msg = f"Status: {response.status_code}, Headers: {response.headers}"
-            print(error_msg)
+            logger.warning(error_msg)
             try:
                 error_response = response.json()
-                print(f"Error Response: {error_response}")
+                logger.warning("Error Response: %s", error_response)
             except (ValueError, TypeError):
                 error_response = response.text
-                print(f"Error Response: {error_response}")
+                logger.warning("Error Response: %s", error_response)
 
             return {
                 "result": [],
@@ -96,9 +98,9 @@ class NowAgentAPIGetAgents(CodedTool):
         # Decode the JSON response into a dictionary and use the data
         tool_response = response.json()
 
-        print("-----------------------")
-        print(f"{tool_name} tool response: ", tool_response)
-        print(f"========== Done with {tool_name} ==========")
+        logger.debug("-----------------------")
+        logger.debug("%s tool response: %s", tool_name, tool_response)
+        logger.debug("========== Done with %s ==========", tool_name)
         return tool_response
 
     @staticmethod
@@ -112,13 +114,13 @@ class NowAgentAPIGetAgents(CodedTool):
         Returns:
             str: Value of the environment variable, or None if not found
         """
-        print(f"NowAgent: getting {env_variable_name} from environment variables...")
+        logger.debug("NowAgent: getting %s from environment variables...", env_variable_name)
         env_var = os.getenv(env_variable_name, None)
         if env_var is None:
-            print(f"NowAgent: {env_variable_name} is NOT defined")
+            logger.debug("NowAgent: %s is NOT defined", env_variable_name)
         else:
-            print(f"NowAgent: {env_variable_name} FOUND in environment variables")
-        print(env_var)
+            logger.debug("NowAgent: %s FOUND in environment variables", env_variable_name)
+        # NOTE: Never log the actual env var value - it may contain secrets
         return env_var
 
     async def async_invoke(self, args: Dict[str, Any], sly_data: Dict[str, Any]) -> str:
