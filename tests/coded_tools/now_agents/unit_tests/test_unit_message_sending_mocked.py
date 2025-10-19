@@ -181,7 +181,9 @@ class TestNowAgentSendMessage(unittest.TestCase):
 
         # Verify the "NOT defined" message was logged
         not_defined_calls = [
-            call for call in mock_logger.debug.call_args_list if "NONEXISTENT_VAR is NOT defined" in str(call)
+            call
+            for call in mock_logger.debug.call_args_list
+            if "is NOT defined" in str(call) and "NONEXISTENT_VAR" in str(call)
         ]
         self.assertTrue(len(not_defined_calls) >= 1, "NOT defined message should be logged")
 
