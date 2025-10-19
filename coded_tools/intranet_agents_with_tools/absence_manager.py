@@ -54,8 +54,7 @@ class AbsenceManager:
 
         if client_id is None or client_secret is None or associate_id is None:
             logger.error(
-                "ERROR: AbsenceManager is NOT configured. "
-                "Please check your parameters or environment variables."
+                "ERROR: AbsenceManager is NOT configured. Please check your parameters or environment variables."
             )
             # The service is not configured. We cannot query the API, but we can still use a mock response.
             self.is_configured = False
@@ -245,14 +244,14 @@ if __name__ == "__main__":
     # Get absence types
     absence_types = absence_manager.get_absence_types(START_DATE)
     logger.debug("-----------------------")
-    logger.debug("Absence Types:", absence_types)
+    logger.debug("Absence Types: %s", absence_types)
 
     # Get absence details
     absence_details = absence_manager.get_absence_details(
         start_date="2023-10-01", end_date="2023-10-05", abs_pin="11074", partial_days="N", absence_reason="000"
     )
     logger.debug("-----------------------")
-    logger.debug("Absence Details:", absence_details)
+    logger.debug("Absence Details: %s", absence_details)
 
     # Post absence details
     a_response = absence_manager.post_absence_details(
@@ -274,18 +273,18 @@ if __name__ == "__main__":
         file_input="",
     )
     logger.debug("-----------------------")
-    logger.debug("Post Absence Response:", a_response)
+    logger.debug("Post Absence Response: %s", a_response)
 
     # Get cancel absence details
     cancel_details = absence_manager.get_cancel_absence_details(
         page_load="Y", start_date="", end_date="", abspin=11074, view_more="false"
     )
     logger.debug("-----------------------")
-    logger.debug("Cancel Absence Details:", cancel_details)
+    logger.debug("Cancel Absence Details: %s", cancel_details)
 
     # Post cancel absence details
     cancel_response = absence_manager.post_cancel_absence_details(
         abspin="11051", transaction_nbr="35366624", start_date="2024-11-08", end_date="2024-11-08", duration="1"
     )
     logger.debug("-----------------------")
-    logger.debug("Post Cancel Absence Response:", cancel_response)
+    logger.debug("Post Cancel Absence Response: %s", cancel_response)

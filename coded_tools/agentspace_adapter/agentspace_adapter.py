@@ -71,7 +71,6 @@ class AgentSpaceSearch(CodedTool):
         if search_query == "":
             return "Error: No search query provided."
 
-        logger = logging.getLogger(self.__class__.__name__)
         logger.info(">>>>>>>>>>>>>>>>>>>WebsiteSearch>>>>>>>>>>>>>>>>>>")
         logger.info("Search Query: %s", str(search_query))
         res = self.search_sample(search_query)
