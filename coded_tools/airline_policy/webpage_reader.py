@@ -7,6 +7,7 @@
 # Purchase of a commercial license is mandatory for any use of the
 # neuro-san-studio SDK Software in commercial settings.
 #
+import logging
 from typing import Any
 from typing import Dict
 from typing import Union
@@ -14,6 +15,8 @@ from typing import Union
 import requests
 from bs4 import BeautifulSoup
 from neuro_san.interfaces.coded_tool import CodedTool
+
+logger = logging.getLogger(__name__)
 
 
 class WebPageReader(CodedTool):
@@ -81,10 +84,10 @@ class WebPageReader(CodedTool):
         app_name: str = args.get("app_name", None)
         if app_name is None:
             return "Error: No app name provided."
-        print(">>>>>>>>>>>>>>>>>>> Extracting text >>>>>>>>>>>>>>>>>>")
+        logger.debug(">>>>>>>>>>>>>>>>>>> Extracting text >>>>>>>>>>>>>>>>>>")
         try:
             urls = self.airline_policy_urls.get(app_name, self.default_url)
-            print(f"Fetching details from: {urls}")
+            logger.debug("Fetching details from: %s", urls)
             if not isinstance(urls, list) or not urls:
                 return "Error: No URLs provided or invalid format. Expected a list of URLs."
 
@@ -103,7 +106,7 @@ class WebPageReader(CodedTool):
                     results[url] = full_text
                 except Exception as e:
                     results[url] = f"Error: Unable to process the URL. {str(e)}"
-            print(">>>>>>>>>>>>>>>>>>> Done! >>>>>>>>>>>>>>>>>>")
+            logger.debug(">>>>>>>>>>>>>>>>>>> Done! >>>>>>>>>>>>>>>>>>")
             return results
         except Exception as e:
             return f"Error: Unable to process the request. {str(e)}"

@@ -22,6 +22,8 @@ except ImportError as e:
 
 from neuro_san.interfaces.coded_tool import CodedTool
 
+logger = logging.getLogger(__name__)
+
 
 class AgentSpaceSearch(CodedTool):
     """
@@ -148,6 +150,6 @@ class AgentSpaceSearch(CodedTool):
 
         # Handle the response
         for response in page_result:
-            print(response)
+            logger.debug(response)
 
         return page_result

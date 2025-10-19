@@ -7,6 +7,7 @@
 # Purchase of a commercial license is mandatory for any use of the
 # neuro-san-studio SDK Software in commercial settings.
 #
+import logging
 import os
 from typing import Any
 from typing import Dict
@@ -14,6 +15,8 @@ from typing import Union
 
 from neuro_san.interfaces.coded_tool import CodedTool
 from pypdf import PdfReader
+
+logger = logging.getLogger(__name__)
 
 
 class ExtractDocs(CodedTool):
@@ -65,8 +68,8 @@ class ExtractDocs(CodedTool):
                 "Error: <error message>"
         """
         app_name: str = args.get("app_name", None)
-        print("############### PDF text reader ###############")
-        print(f"App name: {app_name}")
+        logger.debug("############### PDF text reader ###############")
+        logger.debug("App name: %s", app_name)
         if app_name is None:
             return "Error: No app name provided."
         directory = self.docs_path.get(app_name, self.default_path)
@@ -92,9 +95,9 @@ class ExtractDocs(CodedTool):
                     # Store in the dictionary using a relative path
                     rel_path = os.path.relpath(file_path, directory)
                     docs[rel_path] = content
-        print("############### Documents extraction done ###############")
+        logger.debug("############### Documents extraction done ###############")
         if not docs:
-            print("No PDF or text files found in the directory.")
+            logger.debug("No PDF or text files found in the directory.")
             return {"docs": {}}
         return {"files": docs}
 
@@ -117,7 +120,7 @@ class ExtractDocs(CodedTool):
                 text_output.append(page_text)
         except Exception as e:
             # In case there's an issue with reading the PDF
-            print(f"Error reading PDF {pdf_path}: {e}")
+            logger.error("Error reading PDF %s: %s", pdf_path, e)
             return ""
 
         return "".join(text_output)
@@ -134,5 +137,5 @@ class ExtractDocs(CodedTool):
                 return f.read()
         except Exception as e:
             # In case there's an issue with reading the text file
-            print(f"Error reading TXT {txt_path}: {e}")
+            logger.error("Error reading TXT %s: %s", txt_path, e)
             return ""

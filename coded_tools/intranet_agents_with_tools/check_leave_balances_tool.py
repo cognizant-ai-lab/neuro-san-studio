@@ -1,3 +1,4 @@
+import logging
 from typing import Any
 from typing import Dict
 from typing import Union
@@ -5,6 +6,8 @@ from typing import Union
 from neuro_san.interfaces.coded_tool import CodedTool
 
 from coded_tools.intranet_agents_with_tools.absence_manager import AbsenceManager
+
+logger = logging.getLogger(__name__)
 
 MOCK_RESPONSE = {
     "Absencemodel": [
@@ -66,19 +69,19 @@ class CheckLeaveBalancesTool(CodedTool):
                 "Error: <error message>"
         """
         start_date: str = args.get("start_date", "need-start-date")
-        print(">>>>>>>>>>>>>>>>>>> Checking Leave Balances >>>>>>>>>>>>>>>>>>")
-        print(f"Start date: {start_date}")
+        logger.debug(">>>>>>>>>>>>>>>>>>> Checking Leave Balances >>>>>>>>>>>>>>>>>>")
+        logger.debug("Start date: %s", start_date)
         if self.absence_manager.is_configured:
-            print("AbsenceManager is configured. Fetching absence types...")
+            logger.debug("AbsenceManager is configured. Fetching absence types...")
             absence_types = self.absence_manager.get_absence_types(start_date)
         else:
-            print("WARNING: AbsenceManager is not configured. Using mock response")
+            logger.warning("WARNING: AbsenceManager is not configured. Using mock response")
             absence_types = MOCK_RESPONSE
         absence_types["app_name"] = "Absence Management"
         absence_types["app_url"] = self.absence_manager.app_url
-        print("-----------------------")
-        print("Absence Types:", absence_types)
-        print(">>>>>>>>>>>>>>>>>>>DONE !!!>>>>>>>>>>>>>>>>>>")
+        logger.debug("-----------------------")
+        logger.debug("Absence Types: %s", absence_types)
+        logger.debug(">>>>>>>>>>>>>>>>>>>DONE !!!>>>>>>>>>>>>>>>>>>")
         return absence_types
 
     async def async_invoke(self, args: Dict[str, Any], sly_data: Dict[str, Any]) -> Union[Dict[str, Any], str]:
@@ -95,4 +98,4 @@ if __name__ == "__main__":
     # Get absence types
     START_DATE = "2024-11-22"
     an_absence_types = check_leave_balances_tool.invoke(args={"start_date": START_DATE}, sly_data={})
-    print(an_absence_types)
+    logger.debug(an_absence_types)
