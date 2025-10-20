@@ -50,8 +50,8 @@ format: venv-guard
 
 format-tests: venv-guard
         # Apply format changes from isort and black
-        isort run.py $(TESTS)
-        black run.py $(TESTS)
+        isort $(TESTS)
+        black $(TESTS)
 
 lint: venv-guard
         # Run format checks and fail if isort or black need changes
