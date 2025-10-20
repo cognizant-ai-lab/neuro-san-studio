@@ -197,6 +197,50 @@ def _discriminator_prompt(step_instruction: str, original_problem: str, context_
         f"CANDIDATES:\n{body}\n\n"
     )
 
+def _decomposition_discriminator_prompt(problem: str, decomp_candidates: List[List[str]]) -> str:
+    """
+    Ask composition_discriminator to choose the best decomposition (list of steps) for the problem.
+    Respond ONLY with the candidate number.
+    """
+    parts = []
+    for i, steps in enumerate(decomp_candidates, 1):
+        parts.append(f"{i})\n{_build_steps_block(steps)}")
+    body = "\n\n".join(parts)
+    return (
+        "You are the 'composition_discriminator'. Select the BEST decomposition for the problem.\n"
+        "Return ONLY the number of the chosen candidate.\n\n"
+        f"PROBLEM:\n{problem}\n\n"
+        f"DECOMPOSITION CANDIDATES:\n{body}\n"
+    )
+
+def _vote_among_decompositions(problem: str, decomp_candidates: List[List[str]]) -> int:
+    """
+    Vote among decomposition candidates using composition_discriminator.
+    Returns 0-based index of the winning decomposition.
+    """
+    prompt = _decomposition_discriminator_prompt(problem, decomp_candidates)
+    votes = [0] * len(decomp_candidates)
+    winner_idx: Optional[int] = None
+
+    for _ in range(NUMBER_OF_VOTES):
+        vresp = call_agent(composition_discriminator_session(), prompt)
+        vote_txt = _extract_final(vresp)
+        logging.info(f"[decomp-disc] vote raw: {vote_txt!r}")
+        try:
+            idx = int(vote_txt) - 1
+            if 0 <= idx < len(decomp_candidates):
+                votes[idx] += 1
+                logging.info(f"[decomp-disc] tally: {votes}")
+                if votes[idx] >= WINNING_VOTE_COUNT:
+                    winner_idx = idx
+                    logging.info(f"[decomp-disc] early winner: {winner_idx + 1}")
+                    break
+        except ValueError:
+            logging.warning(f"[decomp-disc] malformed vote ignored: {vote_txt!r}")
+
+    if winner_idx is None:
+        winner_idx = max(range(len(votes)), key=lambda i: votes[i])
+    return winner_idx
 
 def _vote_among_candidates(step_instruction: str, original_problem: str, context_history: List[str],
                            candidates: List[Tuple[str, str]]) -> int:
@@ -242,14 +286,28 @@ def multi_step_solve(problem: str) -> str:
     If no steps are found, falls back to a single atomic problem_solver call.
     """
     logging.info("[pipeline] starting multi-step solve")
-    decomp_resp = call_agent(multi_step_decomposer_session(), problem)
-    logging.info(f"[pipeline] decomp: {decomp_resp}")
-    steps = _extract_steps(decomp_resp)
-    logging.info(f"[pipeline] steps: {steps}")
 
-    if not steps:
-        logging.info("[pipeline] no steps parsed -> atomic solve")
+    # Collect multiple decompositions
+    decomp_candidates: List[List[str]] = []
+    for _ in range(SOLUTION_CANDIDATE_COUNT):
+        decomp_resp = call_agent(multi_step_decomposer_session(), problem)
+        logging.info(f"[pipeline] decomp resp: {decomp_resp}")
+        steps_i = _extract_steps(decomp_resp)
+        if steps_i:
+            decomp_candidates.append(steps_i)
+
+    if not decomp_candidates:
+        logging.info("[pipeline] no steps parsed from any candidate -> atomic solve")
         return call_agent(problem_solver_session(), problem)
+
+    # Vote among decompositions (or take the sole candidate)
+    if len(decomp_candidates) == 1:
+        steps = decomp_candidates[0]
+    else:
+        didx = _vote_among_decompositions(problem, decomp_candidates)
+        steps = decomp_candidates[didx]
+
+    logging.info(f"[pipeline] chosen steps: {steps}")
 
     context_history: List[str] = []  # store ALL prior outputs (step 1..k-1)
     last_full_response = ""          # full response of the chosen candidate of the last step
