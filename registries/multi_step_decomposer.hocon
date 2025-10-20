@@ -1,0 +1,60 @@
+
+# Copyright (C) 2023-2025 Cognizant Digital Business, Evolutionary AI.
+# All Rights Reserved.
+# Issued under the Academic Public License.
+#
+# You can be released from the terms, and requirements of the Academic Public
+# License by purchasing a commercial license.
+# Purchase of a commercial license is mandatory for any use of the
+# neuro-san SDK Software in commercial settings.
+#
+# END COPYRIGHT
+{
+llm_config {
+    class = "openai"
+#    model_name = "gpt-5"
+#    model_name = "gpt-4.1-mini"
+    model_name = "gpt-4o"
+}
+    "max_iterations": 40000, #3000
+    "max_execution_seconds": 7200, #600
+    "tools": [
+        {
+            "name": "multi_step_decomposer",
+            "function": {
+                "description": """
+You receive a problem and you break it into multiple sub-problems to solve in sequence in order to get to the solution.
+                """,
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "problem": {
+                            "type": "string",
+                            "description": "Description of a problem."
+                        },
+                    },
+                    "required": ["problem"]
+                }
+            },
+
+            "instructions": """
+You will receive a 'problem', and you will break it into a numbered list of a sequence of as many sub-problems as possible.
+Each sub-problem should be defined as a function of the output from solving the prior sub-problem.
+Come up with as many steps as reasonable, breaking the problem to very simple steps, each requiring one or two simple decisions.
+Each step should be defined as a function, only referring to its input:
+1. X1 = f1(input)
+2. X2 = f2(X1)
+3. X3 = f3(X2)
+...
+n. solution = fn(Xn-1)
+
+fi() should not depend on any input other than the output of the prior step.
+For example, f3 can only take X2 as its input and cannot directly take X1 as its input.
+Do not solve the steps, just define them.
+Each item on  the list will later be given to a different person to solve,
+and their solution to their respective step will be passed to the next person to solve the next step, until we reach the last step and get the final answer.
+Don't forget to create as many steps as reasonable, making the steps as simple as possible.
+""",
+        },
+     ]
+}
