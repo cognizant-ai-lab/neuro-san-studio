@@ -304,6 +304,8 @@
         }
     },
 
+    # To use tool, start by installing the required package:
+    #     pip install pymupdf >= 1.25.5
     "pdf_rag": {
         # This is a coded tool for RAG on PDF files.
         "class": "pdf_rag.PdfRag", 
@@ -320,6 +322,8 @@
         }
     },
 
+    # To use this tool, start by installing the required package:
+    #     pip install wikipedia
     "wikipedia_rag": {
         # This is a coded tool for RAG on Wikipedia pages.
         "class": "wikipedia_rag.WikipediaRag",
@@ -336,6 +340,8 @@
         }
     },
     
+    # To use this tool, start by installing the required package:
+    #     pip install arxiv
     "arxiv_rag": {
         # This is a coded tool for RAG on Arxiv Articles.
         "class": "arxiv_rag.ArxivRag",
