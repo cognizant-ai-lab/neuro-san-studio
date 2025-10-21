@@ -7,6 +7,12 @@ on:
   pull_request:
     branches:
       - main
+
+# Cancel concurrent runs if they are from the same branch
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref || github.head_ref }}
+  cancel-in-progress: true
+
 jobs:
   test:
     runs-on: ubuntu-latest
