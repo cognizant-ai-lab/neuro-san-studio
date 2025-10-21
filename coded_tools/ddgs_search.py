@@ -11,7 +11,8 @@
 
 import asyncio
 import logging
-from typing import Any, Union
+from typing import Any
+from typing import Union
 
 from ddgs import DDGS
 from neuro_san.interfaces.coded_tool import CodedTool

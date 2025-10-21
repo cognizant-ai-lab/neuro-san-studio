@@ -13,14 +13,17 @@
 
 import logging
 import os
-from typing import Any, Dict, List
+from typing import Any
+from typing import Dict
+from typing import List
 
 from langchain_community.document_loaders import PyMuPDFLoader
 from langchain_core.documents import Document
 from langchain_core.vectorstores import VectorStore
 from neuro_san.interfaces.coded_tool import CodedTool
 
-from coded_tools.base_rag import BaseRag, PostgresConfig
+from coded_tools.base_rag import BaseRag
+from coded_tools.base_rag import PostgresConfig
 
 INVALID_PATH_PATTERN = r"[<>:\"|?*\x00-\x1F]"
 

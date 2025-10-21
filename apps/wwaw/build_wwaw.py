@@ -1,22 +1,26 @@
 from argparse import ArgumentParser
 from hashlib import md5
 from os import makedirs
-from random import choices, uniform
+from random import choices
+from random import uniform
 from re import sub
-from string import ascii_lowercase, digits
+from string import ascii_lowercase
+from string import digits
 from time import sleep
-from typing import List, Optional, Tuple
-from urllib.parse import urljoin, urlparse
+from typing import List
+from typing import Optional
+from typing import Tuple
+from urllib.parse import urljoin
+from urllib.parse import urlparse
 
 from bs4 import BeautifulSoup
-from hocon_constants import (
-    HOCON_HEADER_REMAINDER,
-    HOCON_HEADER_START,
-    LEAF_NODE_AGENT_TEMPLATE,
-    REGULAR_AGENT_TEMPLATE,
-    TOP_AGENT_TEMPLATE,
-)
-from requests import RequestException, get
+from hocon_constants import HOCON_HEADER_REMAINDER
+from hocon_constants import HOCON_HEADER_START
+from hocon_constants import LEAF_NODE_AGENT_TEMPLATE
+from hocon_constants import REGULAR_AGENT_TEMPLATE
+from hocon_constants import TOP_AGENT_TEMPLATE
+from requests import RequestException
+from requests import get
 from tldextract import extract
 
 # Regex to replace all non-alphanumeric and non-hyphen characters with an empty string

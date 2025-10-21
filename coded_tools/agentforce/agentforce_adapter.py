@@ -10,7 +10,8 @@
 import json
 import os
 import uuid
-from typing import Any, Dict
+from typing import Any
+from typing import Dict
 
 import requests
 

@@ -7,14 +7,13 @@ from datetime import datetime
 
 # pylint: disable=import-error
 import schedule
-from flask import Flask, render_template
+from flask import Flask
+from flask import render_template
 from flask_socketio import SocketIO
 
-from apps.conscious_assistant.conscious_assistant import (
-    conscious_thinker,
-    set_up_conscious_assistant,
-    tear_down_conscious_assistant,
-)
+from apps.conscious_assistant.conscious_assistant import conscious_thinker
+from apps.conscious_assistant.conscious_assistant import set_up_conscious_assistant
+from apps.conscious_assistant.conscious_assistant import tear_down_conscious_assistant
 
 os.environ["AGENT_MANIFEST_FILE"] = "registries/manifest.hocon"
 os.environ["AGENT_TOOL_PATH"] = "coded_tools"

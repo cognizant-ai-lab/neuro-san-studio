@@ -11,7 +11,8 @@
 #
 # END COPYRIGHT
 
-from typing import Any, Dict
+from typing import Any
+from typing import Dict
 
 from langchain_mcp_adapters.client import MultiServerMCPClient
 from neuro_san.interfaces.coded_tool import CodedTool

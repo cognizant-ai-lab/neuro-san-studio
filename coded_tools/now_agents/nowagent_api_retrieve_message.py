@@ -9,7 +9,8 @@
 #
 import os
 import time
-from typing import Any, Dict
+from typing import Any
+from typing import Dict
 
 import requests
 from neuro_san.interfaces.coded_tool import CodedTool

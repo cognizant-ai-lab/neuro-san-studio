@@ -2,11 +2,14 @@ import json
 import logging
 import os
 from datetime import datetime
-from typing import Any, Dict
+from typing import Any
+from typing import Dict
 
 from neuro_san.interfaces.coded_tool import CodedTool
 
-from coded_tools.kwik_agents.list_topics import LONG_TERM_MEMORY_FILE, MEMORY_DATA_STRUCTURE, MEMORY_FILE_PATH
+from coded_tools.kwik_agents.list_topics import LONG_TERM_MEMORY_FILE
+from coded_tools.kwik_agents.list_topics import MEMORY_DATA_STRUCTURE
+from coded_tools.kwik_agents.list_topics import MEMORY_FILE_PATH
 
 
 class CommitToMemory(CodedTool):

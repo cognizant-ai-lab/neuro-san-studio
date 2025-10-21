@@ -14,7 +14,10 @@ import base64
 import mimetypes
 import os
 from email.message import EmailMessage
-from typing import Any, Dict, List, Optional
+from typing import Any
+from typing import Dict
+from typing import List
+from typing import Optional
 
 # pylint: disable=import-error
 from googleapiclient.errors import HttpError

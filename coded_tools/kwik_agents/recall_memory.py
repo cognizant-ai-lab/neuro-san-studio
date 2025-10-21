@@ -1,5 +1,6 @@
 import logging
-from typing import Any, Dict
+from typing import Any
+from typing import Dict
 
 from neuro_san.interfaces.coded_tool import CodedTool
 

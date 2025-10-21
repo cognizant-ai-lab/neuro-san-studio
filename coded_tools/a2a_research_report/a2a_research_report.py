@@ -19,14 +19,19 @@ Before running this coded tool
 # END COPYRIGHT
 
 import logging
-from typing import Any, Dict
+from typing import Any
+from typing import Dict
 from uuid import uuid4
 
 import httpx
 
 # pylint: disable=import-error
-from a2a.client import A2ACardResolver, Client, ClientConfig, ClientFactory
-from a2a.types import AgentCard, Message
+from a2a.client import A2ACardResolver
+from a2a.client import Client
+from a2a.client import ClientConfig
+from a2a.client import ClientFactory
+from a2a.types import AgentCard
+from a2a.types import Message
 from a2a.utils.constants import AGENT_CARD_WELL_KNOWN_PATH
 from neuro_san.interfaces.coded_tool import CodedTool
 

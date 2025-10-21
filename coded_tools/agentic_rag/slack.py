@@ -12,7 +12,9 @@
 # END COPYRIGHT
 
 import ast
-from typing import Any, Dict, Literal
+from typing import Any
+from typing import Dict
+from typing import Literal
 
 from langchain_community.tools.slack.get_channel import SlackGetChannel
 from langchain_community.tools.slack.get_message import SlackGetMessage

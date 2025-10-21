@@ -13,11 +13,17 @@ import asyncio
 import json
 import logging
 import os
-from typing import Any, Dict, List, Optional, Union
+from typing import Any
+from typing import Dict
+from typing import List
+from typing import Optional
+from typing import Union
 
 import requests
 from neuro_san.interfaces.coded_tool import CodedTool
-from requests import HTTPError, JSONDecodeError, RequestException
+from requests import HTTPError
+from requests import JSONDecodeError
+from requests import RequestException
 
 GOOGLE_SEARCH_URL = "https://www.googleapis.com/customsearch/v1"
 GOOGLE_SEARCH_TIMEOUT = 30.0

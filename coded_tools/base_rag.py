@@ -13,19 +13,25 @@ import asyncio
 import logging
 import os
 import re
-from abc import ABC, abstractmethod
+from abc import ABC
+from abc import abstractmethod
 from dataclasses import dataclass
-from typing import Any, List, Literal, Optional
+from typing import Any
+from typing import List
+from typing import Literal
+from typing import Optional
 
 # pylint: disable=import-error
-from asyncpg import InvalidCatalogNameError, InvalidPasswordError
+from asyncpg import InvalidCatalogNameError
+from asyncpg import InvalidPasswordError
 from langchain_community.vectorstores import InMemoryVectorStore
 from langchain_core.documents import Document
 from langchain_core.embeddings import Embeddings
 from langchain_core.vectorstores import VectorStore
 from langchain_core.vectorstores.base import VectorStoreRetriever
 from langchain_openai import OpenAIEmbeddings
-from langchain_postgres import PGEngine, PGVectorStore
+from langchain_postgres import PGEngine
+from langchain_postgres import PGVectorStore
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from sqlalchemy.exc import ProgrammingError
 

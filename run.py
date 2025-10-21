@@ -16,7 +16,8 @@ import subprocess
 import sys
 import threading
 import time
-from typing import Any, Dict
+from typing import Any
+from typing import Dict
 
 from dotenv import load_dotenv
 
