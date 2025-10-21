@@ -19,21 +19,15 @@ Before running this coded tool
 # END COPYRIGHT
 
 import logging
-from typing import Any
-from typing import Dict
+from typing import Any, Dict
 from uuid import uuid4
 
 import httpx
 
 # pylint: disable=import-error
-from a2a.client import A2ACardResolver
-from a2a.client import Client
-from a2a.client import ClientConfig
-from a2a.client import ClientFactory
-from a2a.types import AgentCard
-from a2a.types import Message
+from a2a.client import A2ACardResolver, Client, ClientConfig, ClientFactory
+from a2a.types import AgentCard, Message
 from a2a.utils.constants import AGENT_CARD_WELL_KNOWN_PATH
-
 from neuro_san.interfaces.coded_tool import CodedTool
 
 # Make sure that the port here matches the one in the server.
@@ -112,7 +106,7 @@ class A2aResearchReport(CodedTool):
 
             # Last response is typically the final message
             # Convert to a dictionary
-            result: dict[str, Any] = responses[-1].model_dump(mode='json', exclude_none=True)
+            result: dict[str, Any] = responses[-1].model_dump(mode="json", exclude_none=True)
             logger.info("Got the following response: %s", str(result))
 
             # Extract text from the response

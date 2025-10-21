@@ -8,9 +8,7 @@
 # neuro-san-studio SDK Software in commercial settings.
 #
 import json
-from typing import Any
-from typing import Dict
-from typing import Optional
+from typing import Any, Dict, Optional
 
 from neuro_san.interfaces.coded_tool import CodedTool
 

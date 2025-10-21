@@ -1,9 +1,6 @@
 import logging
 import os
-from typing import Any
-from typing import Dict
-from typing import Tuple
-from typing import Union
+from typing import Any, Dict, Tuple, Union
 
 from neuro_san.client.agent_session_factory import AgentSessionFactory
 from neuro_san.client.streaming_input_processor import StreamingInputProcessor

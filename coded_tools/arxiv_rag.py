@@ -10,8 +10,7 @@
 # END COPYRIGHT
 
 import logging
-from typing import Any
-from typing import Dict
+from typing import Any, Dict
 
 from langchain_community.retrievers import ArxivRetriever
 from neuro_san.interfaces.coded_tool import CodedTool

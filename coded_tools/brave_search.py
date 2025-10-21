@@ -13,17 +13,11 @@ import asyncio
 import json
 import logging
 import os
-from typing import Any
-from typing import Dict
-from typing import List
-from typing import Optional
-from typing import Union
+from typing import Any, Dict, List, Optional, Union
 
 import requests
 from neuro_san.interfaces.coded_tool import CodedTool
-from requests import HTTPError
-from requests import JSONDecodeError
-from requests import RequestException
+from requests import HTTPError, JSONDecodeError, RequestException
 
 BRAVE_URL = "https://api.search.brave.com/res/v1/web/search"
 BRAVE_TIMEOUT = 30.0

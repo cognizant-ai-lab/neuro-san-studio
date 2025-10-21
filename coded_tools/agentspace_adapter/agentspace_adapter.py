@@ -1,8 +1,6 @@
 import logging
 import os
-from typing import Any
-from typing import Dict
-from typing import Union
+from typing import Any, Dict, Union
 
 # Check if the google-cloud-discoveryengine package is installed
 try:

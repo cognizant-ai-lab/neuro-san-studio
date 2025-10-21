@@ -14,9 +14,7 @@
 import inspect
 import logging
 import os
-from typing import Any
-from typing import Dict
-from typing import List
+from typing import Any, Dict, List
 
 # pylint: disable=import-error
 from atlassian.errors import ApiPermissionError

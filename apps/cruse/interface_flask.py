@@ -4,16 +4,16 @@ import queue
 
 # pylint: disable=import-error
 import schedule
-from flask import Flask
-from flask import jsonify
-from flask import render_template
+from flask import Flask, jsonify, render_template
 from flask_socketio import SocketIO
 
-from apps.cruse.cruse_assistant import cruse
-from apps.cruse.cruse_assistant import get_available_systems
-from apps.cruse.cruse_assistant import parse_response_blocks
-from apps.cruse.cruse_assistant import set_up_cruse_assistant
-from apps.cruse.cruse_assistant import tear_down_cruse_assistant
+from apps.cruse.cruse_assistant import (
+    cruse,
+    get_available_systems,
+    parse_response_blocks,
+    set_up_cruse_assistant,
+    tear_down_cruse_assistant,
+)
 
 os.environ["AGENT_MANIFEST_FILE"] = "registries/manifest.hocon"
 os.environ["AGENT_TOOL_PATH"] = "coded_tools"

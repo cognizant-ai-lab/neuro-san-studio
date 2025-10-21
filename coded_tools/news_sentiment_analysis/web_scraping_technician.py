@@ -12,8 +12,7 @@
 import logging
 import os
 import time
-from typing import Any
-from typing import Dict
+from typing import Any, Dict
 
 # pylint: disable=import-error
 import backoff

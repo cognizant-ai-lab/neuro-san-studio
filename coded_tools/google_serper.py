@@ -9,9 +9,7 @@
 #
 # END COPYRIGHT
 
-from typing import Any
-from typing import Dict
-from typing import Union
+from typing import Any, Dict, Union
 
 from langchain_community.utilities import GoogleSerperAPIWrapper
 from neuro_san.interfaces.coded_tool import CodedTool

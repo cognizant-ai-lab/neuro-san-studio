@@ -13,8 +13,7 @@ import asyncio
 import json
 import os
 import webbrowser
-from typing import Any
-from typing import Dict
+from typing import Any, Dict
 
 from neuro_san.interfaces.coded_tool import CodedTool
 from neuro_san.internals.graph.persistence.agent_network_restorer import AgentNetworkRestorer
@@ -192,7 +191,7 @@ def generate_html(agent_name: str, network_dict: Dict[str, Any]):
             heightConstraint={"minimum": 80},
             font={"multi": "html"},
             title=tooltip,
-            level=level  # Explicitly set calculated hierarchy level
+            level=level,  # Explicitly set calculated hierarchy level
         )
 
     # Add edges

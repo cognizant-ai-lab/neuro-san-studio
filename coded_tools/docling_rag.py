@@ -21,8 +21,7 @@ from langchain_docling import DoclingLoader
 from neuro_san.interfaces.coded_tool import CodedTool
 from requests.exceptions import HTTPError
 
-from coded_tools.base_rag import BaseRag
-from coded_tools.base_rag import PostgresConfig
+from coded_tools.base_rag import BaseRag, PostgresConfig
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)

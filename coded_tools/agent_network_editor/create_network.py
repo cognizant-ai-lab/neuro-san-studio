@@ -94,7 +94,7 @@ class CreateNetwork(CodedTool):
         progress: dict[str, Any] = {
             # Agent network definition with added agents
             AGENT_NETWORK_DEFINITION: sly_data[AGENT_NETWORK_DEFINITION],
-            AGENT_NETWORK_NAME: sly_data[AGENT_NETWORK_NAME]
+            AGENT_NETWORK_NAME: sly_data[AGENT_NETWORK_NAME],
         }
         await progress_reporter.async_report_progress(progress)
 

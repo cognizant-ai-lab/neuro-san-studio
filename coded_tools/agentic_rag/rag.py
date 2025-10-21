@@ -11,9 +11,7 @@
 #
 # END COPYRIGHT
 
-from typing import Any
-from typing import Dict
-from typing import List
+from typing import Any, Dict, List
 
 from langchain_community.document_loaders import PyPDFLoader
 from langchain_community.vectorstores import InMemoryVectorStore
