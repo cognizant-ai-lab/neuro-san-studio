@@ -45,12 +45,12 @@ activate: ## Activate the venv
 
 format: venv-guard
 	# Apply format changes from isort and black
-	isort $(SOURCES)
+	isort $(SOURCES) $(ISORT_FLAGS)
 	black $(SOURCES)
 
 format-tests: venv-guard
 	# Apply format changes from isort and black
-	isort $(TESTS)
+	isort $(TESTS) $(ISORT_FLAGS)
 	black $(TESTS)
 
 lint: venv-guard
