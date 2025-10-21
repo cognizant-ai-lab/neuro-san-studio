@@ -7,6 +7,7 @@ on:
   pull_request:
     branches:
       - main
+
 jobs:
   test:
     runs-on: ubuntu-latest
@@ -49,17 +50,13 @@ jobs:
           source venv/bin/activate 
           pip freeze
 
-      - name: Run make lint
+      - name: Run make lint-check
+        # We run this check-only step to break the build if
+        # formatting changes are needed
         shell: bash
         run: |
           source venv/bin/activate 
-          make lint
-
-      - name: Run make lint test
-        shell: bash
-        run: | 
-          source venv/bin/activate
-          make lint-tests
+          make lint-check
 
       - name: Run make test
         shell: bash
