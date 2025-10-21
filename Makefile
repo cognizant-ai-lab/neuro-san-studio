@@ -49,12 +49,12 @@ format: venv-guard
 	black $(SOURCES)
 
 format-tests: venv-guard
-        # Apply format changes from isort and black
-        isort $(TESTS)
-        black $(TESTS)
+	# Apply format changes from isort and black
+	isort $(TESTS)
+	black $(TESTS)
 
 lint: venv-guard
-        # Run format checks and fail if isort or black need changes
+	# Run format checks and fail if isort or black need changes
 	isort $(SOURCES) $(ISORT_FLAGS) $(ISORT_CHECK)
 	black $(SOURCES) $(BLACK_CHECK)
 	flake8 $(SOURCES)
@@ -62,7 +62,7 @@ lint: venv-guard
 	pymarkdown --config ./.pymarkdownlint.yaml scan ./docs ./README.md
 
 lint-tests: venv-guard
-        # Run format checks and fail if isort or black need changes
+	# Run format checks and fail if isort or black need changes
 	isort $(TESTS) $(ISORT_FLAGS) $(ISORT_CHECK)
 	black $(TESTS) $(BLACK_CHECK)
 	flake8 $(TESTS)
