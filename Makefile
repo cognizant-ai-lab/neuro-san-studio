@@ -43,7 +43,7 @@ activate: ## Activate the venv
 		echo ""; \
 	fi
 
-format: venv-guard
+format-source: venv-guard
 	# Apply format changes from isort and black
 	isort $(SOURCES) $(ISORT_FLAGS)
 	black $(SOURCES)
@@ -53,7 +53,9 @@ format-tests: venv-guard
 	isort $(TESTS) $(ISORT_FLAGS)
 	black $(TESTS)
 
-lint: venv-guard
+format: format-source format-tests
+
+lint-check-source: venv-guard
 	# Run format checks and fail if isort or black need changes
 	isort $(SOURCES) $(ISORT_FLAGS) $(ISORT_CHECK)
 	black $(SOURCES) $(BLACK_CHECK)
@@ -61,14 +63,18 @@ lint: venv-guard
 	pylint $(SOURCES)/
 	pymarkdown --config ./.pymarkdownlint.yaml scan ./docs ./README.md
 
-lint-tests: venv-guard
+lint-check-tests: venv-guard
 	# Run format checks and fail if isort or black need changes
 	isort $(TESTS) $(ISORT_FLAGS) $(ISORT_CHECK)
 	black $(TESTS) $(BLACK_CHECK)
 	flake8 $(TESTS)
 	pylint $(TESTS)
 
-test: lint lint-tests ## Run tests with coverage
+lint-check: lint-check-source lint-check-tests
+
+lint: format lint-check
+
+test: lint ## Run tests with coverage
 	python -m pytest tests/ -v --cov=coded_tools,run.py
 
 help: ## Show this help message and exit
