@@ -26,6 +26,9 @@
     * [See also](#see-also)
   * [LLM Fallbacks](#llm-fallbacks)
   * [Reasoning Models](#reasoning-models)
+    * [OpenAI and AzureOpenAI](#openai-and-azureopenai-models)
+    * [Anthropic and Bedrock](#anthropic-and-bedrock-models)
+    * [Ollama](#ollama-models)
   * [Using custom or non-default LLMs](#using-custom-or-non-default-llms)
     * [Using the `class` Key](#using-the-class-key)
     * [Extending the default LLM info file](#extending-the-default-llm-info-file)
@@ -545,7 +548,7 @@ it will automatically fall back to Anthropic's `claude-3-7-sonnet` model:
 Some LLM providers offer reasoning models where reasoning or thinking behavior can be
 toggled or adjusted in the `llm_config` section of your agent network HOCON file.
 
-### OpenAI and AzureOpenAI
+### OpenAI and AzureOpenAI Models
 
 You can control the reasoning depth using the reasoning_effort field with one of the following values:
 `minimal`, `low`, `medium`, or `high`.
@@ -567,7 +570,7 @@ Example:
 
 For more detail, see [LangChain ChatOpenAI documentation](https://reference.langchain.com/python/integrations/langchain_openai/ChatOpenAI/#langchain_openai.chat_models.ChatOpenAI.reasoning_effort).
 
-### Anthropic and Bedrock
+### Anthropic and Bedrock Models
 
 Claude models support extended thinking, which allows them to use additional tokens for internal reasoning
 before generating a final answer.
@@ -611,9 +614,10 @@ Example:
 ```
 
 See
-[Langchain ChatAnthropic documentation](https://reference.langchain.com/python/integrations/langchain_anthropic/ChatAnthropic/?h=chat#langchain_anthropic.chat_models.ChatAnthropic.thinking) for more information.
+[Langchain ChatAnthropic documentation](https://reference.langchain.com/python/integrations/langchain_anthropic/ChatAnthropic/?h=chat#langchain_anthropic.chat_models.ChatAnthropic.thinking)
+for more information.
 
-### Ollama
+### Ollama Models
 
 For Ollama’s [supported reasoning models](https://ollama.com/search?c=thinking),
 you can control reasoning behavior using the `reasoning` field with one of the follwing values:
@@ -621,7 +625,7 @@ you can control reasoning behavior using the `reasoning` field with one of the f
 * `true`: Enables reasoning mode.
 * `false`: Disables reasoning mode.
 * `null` (default): Uses the model’s default reasoning behavior.
-* 'low', 'medium', 'high'. Enables reasoning with a custom intensity level. Currently, this is only supported `gpt-oss`. 
+* 'low', 'medium', 'high'. Enables reasoning with a custom intensity level. Currently, this is only supported `gpt-oss`.
 
 Example:
 
