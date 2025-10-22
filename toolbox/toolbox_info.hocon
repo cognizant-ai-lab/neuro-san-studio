@@ -432,13 +432,47 @@
     # Once you have the API key, set it using the SERPER_API_KEY environment variable.
     "google_serper": {
         "class": "google_serper.GoogleSerper",
-        "description": "Search the web using a keyword-based query.",
+        "description": """Search the web using Google Serper API with customizable parameters.
+        
+        Supports multiple search types (web, news, images, places) with geographic and language localization.
+        Returns structured search results with metadata for easy processing.
+        
+        Available parameters:
+        - query (required): The search term or question to look up online
+        - type (optional): Search type - 'search' (default, general web), 'news', 'images', or 'places'
+        - k (optional): Number of results to return (default: 10)
+        - gl (optional): Country code for geographic localization (default: 'us', e.g., 'uk', 'de', 'fr')
+        - hl (optional): Language code for search interface (default: 'en', e.g., 'es', 'fr', 'de')
+        - tbs (optional): Time-based search filter (e.g., 'qdr:d' for past day, 'qdr:w' for past week, 'qdr:m' for past month)
+        
+        Use this for: real-time web information, news searches, location-based queries, and when you need
+        fresh data not available in the AI model's training data.""",
         "parameters": {
             "type": "object",
             "properties": {
                 "query": {
                     "type": "string",
                     "description": "The search term or question to look up online."
+                },
+                "type": {
+                    "type": "string",
+                    "description": "Type of search: 'search' (general web), 'news', 'images', or 'places'. Default: 'search'"
+                },
+                "k": {
+                    "type": "object",
+                    "description": "Number of search results to retrieve. Default: 10"
+                },
+                "gl": {
+                    "type": "string",
+                    "description": "Country code to localize search results (e.g., 'us', 'uk', 'de'). Default: 'us'"
+                },
+                "hl": {
+                    "type": "string",
+                    "description": "Language code for the search interface (e.g., 'en', 'es', 'fr'). Default: 'en'"
+                },
+                "tbs": {
+                    "type": "string",
+                    "description": "Time-based search filter (e.g., 'qdr:d' for past day, 'qdr:w' for past week, 'qdr:m' for past month)"
                 }
             },
             "required": ["query"]
