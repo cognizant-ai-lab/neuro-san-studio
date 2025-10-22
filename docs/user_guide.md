@@ -770,8 +770,6 @@ You can also add new models or providers by extending the
 To load your own llm info file, you can specify its location using one of the following methods:
 
 * The `llm_info_file` key in your agent’s HOCON configuration
-    > **Note:** The `agent_llm_info_file` key has been **removed as of version 0.6.2**.  
-    > Please use `llm_info_file` instead.  
 * The `AGENT_LLM_INFO_FILE` environment variable (fallback if the above is not set)
 
 For more information on llm info file, please see [LLM Info HOCON File Reference](
@@ -971,9 +969,7 @@ To use tools from toolbox in your agent network, simply call them with field `to
 
 3. Make your own toolbox info file available to the agent system in one of the following ways
 
-   * Define the `toolbox_info_file` key in your agent’s HOCON configuration (preferred method)
-       > **Note:** The `agent_toolbox_info_file` key has been **removed as of version 0.6.2**.  
-       > Please use `toolbox_info_file` instead.  
+   * Define the `toolbox_info_file` key in your agent’s HOCON configuration
    * Set the `AGENT_TOOLBOX_INFO_FILE` environment variable as a fallback option
 
 For more information on toolbox, please see [Toolbox Info HOCON File Reference](
