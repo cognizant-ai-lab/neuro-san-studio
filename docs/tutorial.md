@@ -740,9 +740,7 @@ following the structure shown in the previous examples.
 
 * **Register the config file** by one of the following methods:
 
-    * Set the `toolbox_info_file` key
-        > **Note:** The `agent_toolbox_info_file` key has been **removed as of version 0.6.2**.  
-        > Please use `toolbox_info_file` instead.  
+    * Set the `toolbox_info_file` key 
     * Use the `AGENT_TOOLBOX_INFO_FILE` environment variable
 
 This setup allows you to introduce custom tools without modifying the built-in toolbox definitions.
