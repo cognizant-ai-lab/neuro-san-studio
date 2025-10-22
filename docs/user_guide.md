@@ -550,7 +550,7 @@ toggled or adjusted in the `llm_config` section of your agent network HOCON file
 
 ### OpenAI and AzureOpenAI Models
 
-You can control the reasoning depth using the reasoning_effort field with one of the following values:
+You can control the reasoning depth using the `reasoning_effort` field with one of the following values:
 `minimal`, `low`, `medium`, or `high`.
 
 > Note that `minimal` is only supported for `gpt-5` variants.
