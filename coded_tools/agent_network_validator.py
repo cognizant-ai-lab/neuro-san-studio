@@ -1,4 +1,3 @@
-
 # Copyright (C) 2023-2025 Cognizant Digital Business, Evolutionary AI.
 # All Rights Reserved.
 # Issued under the Academic Public License.
@@ -79,9 +78,7 @@ class AgentNetworkValidator:
         if missing_nodes:
             for agent, missing_tools in missing_nodes.items():
                 tools_str = ", ".join(f"'{tool}'" for tool in missing_tools)
-                errors.append(
-                    f"Agent '{agent}' references non-existent agent(s) in tools: {tools_str}"
-                )
+                errors.append(f"Agent '{agent}' references non-existent agent(s) in tools: {tools_str}")
 
         self.logger.warning(str(errors))
 
@@ -253,9 +250,7 @@ class AgentNetworkValidator:
         :param tool: The tool string to check
         :return: True if tool is a URL or path, False otherwise
         """
-        return (tool.startswith("/") or
-                tool.startswith("http://") or
-                tool.startswith("https://"))
+        return tool.startswith("/") or tool.startswith("http://") or tool.startswith("https://")
 
     def _dfs_reachability_traversal(self, agent: str, visited: set[str], reachable_agents: set[str]):
         """

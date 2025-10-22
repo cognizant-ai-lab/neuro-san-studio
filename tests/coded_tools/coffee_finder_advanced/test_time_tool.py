@@ -7,9 +7,9 @@
 # Purchase of a commercial license is mandatory for any use of the
 # neuro-san-studio SDK Software in commercial settings.
 #
+from datetime import datetime
 from unittest import TestCase
 
-from datetime import datetime
 from coded_tools.coffee_finder_advanced.time_tool import TimeTool
 
 

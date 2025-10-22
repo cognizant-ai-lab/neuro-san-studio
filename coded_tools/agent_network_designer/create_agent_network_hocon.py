@@ -7,8 +7,8 @@
 # Purchase of a commercial license is mandatory for any use of the
 # neuro-san-studio SDK Software in commercial settings.
 #
-from copy import deepcopy
 import logging
+from copy import deepcopy
 from typing import Any
 
 import aiofiles  # Import for asynchronous file operations
@@ -89,12 +89,7 @@ LEAF_NODE_AGENT_TEMPLATE = (
     "        },\n"
 )
 # pylint: disable=implicit-str-concat
-TOOLBOX_AGENT_TEMPLATE = (
-    "        {\n"
-    '            "name": "%s",\n'
-    '            "toolbox": "%s"\n'
-    "        },\n"
-)
+TOOLBOX_AGENT_TEMPLATE = "        {\n" '            "name": "%s",\n' '            "toolbox": "%s"\n' "        },\n"
 
 
 async def modify_registry(the_agent_network_hocon_str, the_agent_network_name):
@@ -116,7 +111,10 @@ async def modify_registry(the_agent_network_hocon_str, the_agent_network_name):
         manifest_content: str = await file.read()
 
     # Check if the entry already exists to avoid duplicates
-    if f'"{the_agent_network_name}.hocon"' in manifest_content or f'{the_agent_network_name}.hocon' in manifest_content:
+    if (
+        f'"{the_agent_network_name}.hocon"' in manifest_content
+        or f"{the_agent_network_name}.hocon" in manifest_content
+    ):
         return
 
     # Detect format: JSON (has braces) or HOCON (no braces)
@@ -129,8 +127,7 @@ async def modify_registry(the_agent_network_hocon_str, the_agent_network_name):
 
         if insert_position != -1:
             updated_content: str = (
-                manifest_content[:insert_position] + "\n" + manifest_entry + "\n"
-                + manifest_content[insert_position:]
+                manifest_content[:insert_position] + "\n" + manifest_entry + "\n" + manifest_content[insert_position:]
             )
     else:
         # HOCON format handling
@@ -191,8 +188,12 @@ class CreateAgentNetworkHocon(CodedTool):
 
         # Validate the agent network and return error message if there are any issues.
         validator = AgentNetworkValidator(network_def)
-        error_list: list[str] = validator.validate_network_structure() + validator.validate_network_keywords() \
-            + validator.validate_toolbox_agents() + validator.validate_url()
+        error_list: list[str] = (
+            validator.validate_network_structure()
+            + validator.validate_network_keywords()
+            + validator.validate_toolbox_agents()
+            + validator.validate_url()
+        )
         if error_list:
             error_msg = f"Error: {error_list}"
             logger.error(error_msg)

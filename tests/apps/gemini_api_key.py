@@ -1,7 +1,8 @@
 import os
 
-from neuro_san.internals.run_context.langchain.util.api_key_error_check import ApiKeyErrorCheck
 from google import genai
+from neuro_san.internals.run_context.langchain.util.api_key_error_check import ApiKeyErrorCheck
+
 
 # Method for Testing Gemini API key
 #  Reads the Gemini API key from an environment variable,
@@ -18,10 +19,7 @@ def test_gemini_api_key():
 
         # Create a Gemini model client with Gemini API key and send a simple prompt
         client = genai.Client(api_key=api_key)  # Or just use: "your-key-here"
-        response = client.models.generate_content(
-            model=model_name,
-            contents="What's the capital of France?"
-        )
+        response = client.models.generate_content(model=model_name, contents="What's the capital of France?")
 
         print("Successful call to Gemini")
         print(response.text)
