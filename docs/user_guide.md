@@ -542,7 +542,8 @@ it will automatically fall back to Anthropic's `claude-3-7-sonnet` model:
 
 ## Reasoning Models
 
-Some LLM providers offer reasoning models where reasoning or thinking behavior can be toggled or adjusted in the `llm_config` section of your agent network HOCON file.
+Some LLM providers offer reasoning models where reasoning or thinking behavior can be
+toggled or adjusted in the `llm_config` section of your agent network HOCON file.
 
 ### OpenAI and AzureOpenAI
 
@@ -554,7 +555,7 @@ You can control the reasoning depth using the reasoning_effort field with one of
 You can also control output detail using the `verbosity` field with one of the following values:
 `low`, `medium`, or `high`.
 
-#### Example:
+Example:
 
 ```hocon
     "llm_config": {
@@ -568,12 +569,13 @@ For more detail, see [LangChain ChatOpenAI documentation](https://reference.lang
 
 ### Anthropic and Bedrock
 
-Claude models support extended thinking, which allows them to use additional tokens for internal reasoning before generating a final answer.
+Claude models support extended thinking, which allows them to use additional tokens for internal reasoning
+before generating a final answer.
 This improves performance on complex tasks and can provide insight into the model’s reasoning process.
 
 For Anthropic models, extended thinking is configured with the `thinking` field.
 
-#### Example
+Example:
 
 ```hocon
     "llm_config": {
@@ -595,7 +597,7 @@ For Anthropic models, extended thinking is configured with the `thinking` field.
 
 These same models can also be accessed via AWS Bedrock. In that case, extended thinking is configured under `model_kwargs`.
 
-#### Example
+Example:
 
 ```hocon
     "llm_config": {
@@ -608,18 +610,20 @@ These same models can also be accessed via AWS Bedrock. In that case, extended t
     }
 ```
 
-See [Langchain ChatAnthropic documentation](https://reference.langchain.com/python/integrations/langchain_anthropic/ChatAnthropic/?h=chat#langchain_anthropic.chat_models.ChatAnthropic.thinking) for more information.
+See
+[Langchain ChatAnthropic documentation](https://reference.langchain.com/python/integrations/langchain_anthropic/ChatAnthropic/?h=chat#langchain_anthropic.chat_models.ChatAnthropic.thinking) for more information.
 
 ### Ollama
 
-For Ollama’s [supported reasoning models](https://ollama.com/search?c=thinking), you can control reasoning behavior using the `reasoning` field with one of the follwing values:
+For Ollama’s [supported reasoning models](https://ollama.com/search?c=thinking),
+you can control reasoning behavior using the `reasoning` field with one of the follwing values:
 
 * `true`: Enables reasoning mode.
 * `false`: Disables reasoning mode.
 * `null` (default): Uses the model’s default reasoning behavior.
 * 'low', 'medium', 'high'. Enables reasoning with a custom intensity level. Currently, this is only supported `gpt-oss`. 
 
-#### Example
+Example:
 
 ```hocon
     "llm_config": {
@@ -627,7 +631,9 @@ For Ollama’s [supported reasoning models](https://ollama.com/search?c=thinking
         "reasoning": true
     }
 ```
-For more information, see [Langchain ChatOllama documentation](https://reference.langchain.com/python/integrations/langchain_ollama/#langchain_ollama.ChatOllama.reasoning).
+
+For more information, see
+[Langchain ChatOllama documentation](https://reference.langchain.com/python/integrations/langchain_ollama/#langchain_ollama.ChatOllama.reasoning).
 
 ## Using custom or non-default LLMs
 
