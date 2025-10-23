@@ -479,4 +479,32 @@
         }
     },
 
+    # To use this search tool, obtain an API key from: https://www.tavily.com/
+    # Once you have the API key, set it using the TAVILY_API_KEY environment variable.
+    # Then install the langchain-tavily package:
+    "tavily_search": {
+        # This is the class of the tool to use
+        "class": "langchain_tavily.TavilySearch",
+
+        # This is where more info on the tool can be found.
+        "base_tool_info_url": "https://pypi.org/project/langchain-tavily/",
+
+        # Arguments for the tool's constructor.
+        # These arguments will be used when instantiating the tool unless overridden in the agent HOCON file.
+        "args": {
+            "max_results": 5,
+            "topic": "general",
+            "include_answer": false,
+            "include_raw_content": false,
+            "include_images": false,
+            "include_image_descriptions": false,
+            "include_favicon": false,
+            "search_depth": "basic",
+            "time_range": "day",
+            "include_domains": null,
+            "exclude_domains": null,
+            "country": null
+        }
+    },
+
 }
