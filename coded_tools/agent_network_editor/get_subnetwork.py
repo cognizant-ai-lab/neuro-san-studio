@@ -24,6 +24,7 @@ class GetSubnetwork(CodedTool):
     CodedTool implementation which provides a way to get subnetwork names and descriptions from the manifest file
     """
 
+    # pylint: disable=too-many-locals
     def invoke(self, args: dict[str, Any], sly_data: dict[str, Any]) -> dict[str, Any] | str:
         """
         :param args: An argument dictionary whose keys are the parameters
@@ -56,11 +57,22 @@ class GetSubnetwork(CodedTool):
         logger = logging.getLogger(self.__class__.__name__)
         os.environ["AGENT_MANIFEST_FILE"] = os.getenv("AGENT_MANIFEST_FILE", DEFAULT_MANIFEST_FILE)
         manifest_file: str | list[str] = os.environ["AGENT_MANIFEST_FILE"]
+
+        empty: dict[str, AgentNetwork] = {}
+        networks: dict[str, AgentNetwork] = {}
         try:
             logger.info(">>>>>>>>>>>>>>>>>>>Getting Subnetwork Descriptions from Manifest>>>>>>>>>>>>>>>>>>>")
             logger.info("Manifest file: %s", str(manifest_file))
-            networks: dict[str, AgentNetwork] = RegistryManifestRestorer().restore()
+
+            # What is returned is mapping from storage type -> (name -> AgentNetwork mapping)
+            networks_by_storage: dict[str, dict[str, AgentNetwork]] = RegistryManifestRestorer().restore()
             logger.info("Successfully loaded agent networks info from %s", str(manifest_file))
+
+            # Put all name -> AgentNetwork mappings into a single dictionary,
+            # as is expected by the rest of this tool.
+            for storage_type in ["public", "protected"]:
+                one_storage_dict: dict[str, AgentNetwork] = networks_by_storage.get(storage_type, empty)
+                networks.update(one_storage_dict)
         except FileNotFoundError as not_found_err:
             error_msg = f"Error: Failed to load agent networkds info from {manifest_file}. {str(not_found_err)}"
             logger.warning(error_msg)
