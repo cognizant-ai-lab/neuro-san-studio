@@ -482,6 +482,7 @@
     # To use this search tool, obtain an API key from: https://www.tavily.com/
     # Once you have the API key, set it using the TAVILY_API_KEY environment variable.
     # Then install the langchain-tavily package:
+    # pip install langchain-tavily
     "tavily_search": {
         # This is the class of the tool to use
         "class": "langchain_tavily.TavilySearch",
