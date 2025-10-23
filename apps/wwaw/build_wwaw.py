@@ -120,9 +120,9 @@ class WebAgentNetworkBuilder:
             # Split into chunks using explicit loop
             chunks = []
             for i in range(0, len(children), max_children):
-                chunks.append(children[i: i + max_children])
+                chunks.append(children[i : i + max_children])
 
-            chunks = [children[i: i + max_children] for i in range(0, len(children), max_children)]
+            chunks = [children[i : i + max_children] for i in range(0, len(children), max_children)]
             intermediate_names = self.create_intermediate_agents(parent, chunks, new_agents)
 
             # Overwrite the parent's down_chains with the new intermediate branches

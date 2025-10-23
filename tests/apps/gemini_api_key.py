@@ -4,7 +4,6 @@ from google import genai
 from neuro_san.internals.run_context.langchain.util.api_key_error_check import ApiKeyErrorCheck
 
 
-
 # Method for Testing Gemini API key
 #  Reads the Gemini API key from an environment variable,
 #  Creates a client, and submits a simple query ("What's the capital of France?").
