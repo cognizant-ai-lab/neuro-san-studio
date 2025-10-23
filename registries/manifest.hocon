@@ -57,7 +57,10 @@
     "agent_network_html_creator.hocon": true,
     "agentforce.hocon": true,
     "agentspace_adapter.hocon": false,
-    "pdf_rag.hocon": true,
+
+    # To use this agent network, start by installing the required package:
+    #     pip install pymupdf >= 1.25.5
+    "pdf_rag.hocon": false,
     "agentic_rag.hocon": false,
     "kwik_agents.hocon": false,
 
@@ -141,7 +144,7 @@
     "macys.hocon": true,
     "LinkedInJobSeekerSupportNetwork.hocon": true,
     # Experimental and research
-    "agent_network_designer.hocon": false,
+    "agent_network_designer.hocon": true,
     "agent_network_editor.hocon": true,
     "agent_network_instructions_editor.hocon": true,
     "agent_network_query_generator.hocon": true,
