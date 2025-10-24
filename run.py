@@ -526,9 +526,7 @@ class NeuroSanRunner:
         # Initialize Phoenix instrumentation if enabled
         if str(self.args["phoenix_enabled"]).lower() in ("true", "1", "yes", "on"):
             try:
-                from plugins.phoenix import (  # pylint: disable=import-outside-toplevel
-                    initialize_phoenix_if_enabled,
-                )
+                from plugins.phoenix import initialize_phoenix_if_enabled  # pylint: disable=import-outside-toplevel
 
                 initialize_phoenix_if_enabled()
             except ImportError:
