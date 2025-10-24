@@ -20,7 +20,7 @@
         },
         "console": {
             "class": "logging.StreamHandler",
-            "level": "INFO",
+            "level": "DEBUG",
             "formatter": "structured",
             "stream": "ext://sys.stdout"
         },
