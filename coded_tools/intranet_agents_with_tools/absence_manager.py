@@ -1,6 +1,9 @@
+import logging
 import os
 
 import requests
+
+logger = logging.getLogger(__name__)
 
 TIMEOUT_SECONDS = 10
 
@@ -21,36 +24,38 @@ class AbsenceManager:
         @param associate_id: an associate ID.
         """
         self.base_url = os.environ.get("MI_BASE_URL", None)
-        print(f"BASE_URL: {self.base_url}")
+        logger.debug("BASE_URL: %s", self.base_url)
 
         self.app_url = os.environ.get("MI_APP_URL", None)
-        print(f"APP_URL: {self.app_url}")
+        logger.debug("APP_URL: %s", self.app_url)
 
         # Get the client_id, client_secret, and associate_id from the environment variables
         if client_id is None:
-            print("AbsenceManager: no client_id provided, checking environment variables")
+            logger.debug("AbsenceManager: no client_id provided, checking environment variables")
             client_id = os.getenv("ABSENCE_MANAGER_CLIENT_ID", None)
             if client_id is None:
-                print("AbsenceManager: ABSENCE_MANAGER_CLIENT_ID is NOT defined")
+                logger.debug("AbsenceManager: ABSENCE_MANAGER_CLIENT_ID is NOT defined")
             else:
-                print("AbsenceManager: client_id found in environment variables")
+                logger.debug("AbsenceManager: client_id found in environment variables")
         if client_secret is None:
-            print("AbsenceManager: no client_secret provided, checking environment variables")
+            logger.debug("AbsenceManager: no client_secret provided, checking environment variables")
             client_secret = os.getenv("ABSENCE_MANAGER_CLIENT_SECRET", None)
             if client_secret is None:
-                print("AbsenceManager: ABSENCE_MANAGER_CLIENT_SECRET is NOT defined")
+                logger.debug("AbsenceManager: ABSENCE_MANAGER_CLIENT_SECRET is NOT defined")
             else:
-                print("AbsenceManager: client_secret found in environment variables")
+                logger.debug("AbsenceManager: client_secret found in environment variables")
         if associate_id is None:
-            print("AbsenceManager: no associate_id provided, checking environment variables")
+            logger.debug("AbsenceManager: no associate_id provided, checking environment variables")
             associate_id = os.getenv("ASSOCIATE_ID", None)
             if associate_id is None:
-                print("AbsenceManager: ASSOCIATE_ID is NOT defined")
+                logger.debug("AbsenceManager: ASSOCIATE_ID is NOT defined")
             else:
-                print("AbsenceManager: associate_id found in environment variables")
+                logger.debug("AbsenceManager: associate_id found in environment variables")
 
         if client_id is None or client_secret is None or associate_id is None:
-            print("ERROR: AbsenceManager is NOT configured. Please check your parameters or environment variables.")
+            logger.error(
+                "ERROR: AbsenceManager is NOT configured. Please check your parameters or environment variables."
+            )
             # The service is not configured. We cannot query the API, but we can still use a mock response.
             self.is_configured = False
         else:
@@ -178,7 +183,7 @@ class AbsenceManager:
             "FileInput": file_input,
             "CT_ADD_FLDS": [],
         }
-        print(payload)
+        logger.debug(payload)
         # payload = {"Begin_dt": "2024-12-02","End_dt": "2024-12-02","Abspin": 11074,"Duration": 1,"Current_bal": 31.00,"LeaveDescr": "Earned Leave","Absence_Reason": 0,"Partial_Days": "N","Partial_Hours": "","Partial_Hrs1": 0,"Partial_Hrs2": 0,"Comments": "TEST","FileName": "","FileExtn": "","Addattachment": "","FileInput": "","CT_ADD_FLDS": []}  # noqa: E501
         response = requests.post(url, headers=self.headers, json=payload, timeout=TIMEOUT_SECONDS)
         return response.json()
@@ -238,15 +243,15 @@ if __name__ == "__main__":
 
     # Get absence types
     absence_types = absence_manager.get_absence_types(START_DATE)
-    print("-----------------------")
-    print("Absence Types:", absence_types)
+    logger.debug("-----------------------")
+    logger.debug("Absence Types: %s", absence_types)
 
     # Get absence details
     absence_details = absence_manager.get_absence_details(
         start_date="2023-10-01", end_date="2023-10-05", abs_pin="11074", partial_days="N", absence_reason="000"
     )
-    print("-----------------------")
-    print("Absence Details:", absence_details)
+    logger.debug("-----------------------")
+    logger.debug("Absence Details: %s", absence_details)
 
     # Post absence details
     a_response = absence_manager.post_absence_details(
@@ -267,19 +272,19 @@ if __name__ == "__main__":
         file_extn="",
         file_input="",
     )
-    print("-----------------------")
-    print("Post Absence Response:", a_response)
+    logger.debug("-----------------------")
+    logger.debug("Post Absence Response: %s", a_response)
 
     # Get cancel absence details
     cancel_details = absence_manager.get_cancel_absence_details(
         page_load="Y", start_date="", end_date="", abspin=11074, view_more="false"
     )
-    print("-----------------------")
-    print("Cancel Absence Details:", cancel_details)
+    logger.debug("-----------------------")
+    logger.debug("Cancel Absence Details: %s", cancel_details)
 
     # Post cancel absence details
     cancel_response = absence_manager.post_cancel_absence_details(
         abspin="11051", transaction_nbr="35366624", start_date="2024-11-08", end_date="2024-11-08", duration="1"
     )
-    print("-----------------------")
-    print("Post Cancel Absence Response:", cancel_response)
+    logger.debug("-----------------------")
+    logger.debug("Post Cancel Absence Response: %s", cancel_response)

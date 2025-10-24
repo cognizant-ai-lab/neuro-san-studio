@@ -10,6 +10,8 @@ from neuro_san.client.streaming_input_processor import StreamingInputProcessor
 from neuro_san.interfaces.agent_session import AgentSession
 from neuro_san.interfaces.coded_tool import CodedTool
 
+logger = logging.getLogger(__name__)
+
 CONNECTION_TYPE = "direct"
 HOST = "localhost"
 PORT = 30012
@@ -59,8 +61,8 @@ class CallAgent(CodedTool):
         if not agent_name:
             return "Error: No 'agent_name' in args or 'selected_agent' in sly_data."
 
-        print(f"inquiry: {inquiry}")
-        print(f"agent_name: {agent_name}")
+        logger.debug("inquiry: %s", inquiry)
+        logger.debug("agent_name: %s", agent_name)
 
         # Optional args
         connection_type: str = args.get("connection_type", CONNECTION_TYPE)
@@ -69,7 +71,6 @@ class CallAgent(CodedTool):
         local_externals_direct: bool = args.get("local_external_direct", LOCAL_EXTERNALS_DIRECT)
         agent_thinking_path: str = args.get("agent_thinking_path", AGENT_THINKING_PATH)
 
-        logger = logging.getLogger(self.__class__.__name__)
         logger.info(">>>>>>>>>>>>>>>>>>>CallAgent>>>>>>>>>>>>>>>>>>")
         logger.info("inquiry: %s", str(inquiry))
         logger.info("agent_name: %s", str(agent_name))

@@ -11,6 +11,7 @@
 
 import asyncio
 import json
+import logging
 import os
 import webbrowser
 from typing import Any
@@ -19,6 +20,8 @@ from typing import Dict
 from neuro_san.interfaces.coded_tool import CodedTool
 from neuro_san.internals.graph.persistence.agent_network_restorer import AgentNetworkRestorer
 from pyvis.network import Network
+
+logger = logging.getLogger(__name__)
 
 
 class AgentNetworkHtmlGenerator(CodedTool):
@@ -58,8 +61,8 @@ class AgentNetworkHtmlGenerator(CodedTool):
         hocon_file = f"registries/{agent_name}.hocon"
 
         if not os.path.isfile(hocon_file):
-            print(f"Cannot find agent network HOCON file for '{agent_name}' from args.")
-            print("Attempting to get 'agent_name' from sly_data instead.")
+            logger.debug("Cannot find agent network HOCON file for '%s' from args.", agent_name)
+            logger.debug("Attempting to get 'agent_name' from sly_data instead.")
             agent_name = sly_data.get("agent_network_name")
             hocon_file = f"registries/{agent_name}.hocon"
 
@@ -67,13 +70,13 @@ class AgentNetworkHtmlGenerator(CodedTool):
         if not agent_name or not os.path.isfile(hocon_file):
             return f"Error: HOCON file not found for agent '{agent_name}'. Expected at: registries/{agent_name}.hocon"
 
-        print(f"Generating HTML file for {agent_name}")
+        logger.debug("Generating HTML file for %s", agent_name)
 
         # Create dict from hocon
         try:
             network_dict = AgentNetworkRestorer().restore("registries/" + agent_name + ".hocon").get_config()
         except FileNotFoundError as file_not_found_error:
-            print(file_not_found_error)
+            logger.error(file_not_found_error)
             return f"Trying to load {agent_name}.hocon: {file_not_found_error}."
 
         # Generate html
@@ -192,7 +195,7 @@ def generate_html(agent_name: str, network_dict: Dict[str, Any]):
             heightConstraint={"minimum": 80},
             font={"multi": "html"},
             title=tooltip,
-            level=level  # Explicitly set calculated hierarchy level
+            level=level,  # Explicitly set calculated hierarchy level
         )
 
     # Add edges

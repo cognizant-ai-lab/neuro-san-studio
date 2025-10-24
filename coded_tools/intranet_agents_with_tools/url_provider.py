@@ -1,8 +1,11 @@
+import logging
 import os
 from typing import Any
 from typing import Dict
 
 from neuro_san.interfaces.coded_tool import CodedTool
+
+logger = logging.getLogger(__name__)
 
 
 class URLProvider(CodedTool):
@@ -27,7 +30,7 @@ class URLProvider(CodedTool):
             "Travel and Expense": travel_and_expense_url,
             "GSD": gsd_url,
         }
-        print(f"Company URLs: {self.company_urls}")
+        logger.debug("Company URLs: %s", self.company_urls)
 
     def invoke(self, args: Dict[str, Any], sly_data: Dict[str, Any]) -> str:
         """
@@ -61,11 +64,11 @@ class URLProvider(CodedTool):
         app_name: str = args.get("app_name", None)
         if app_name is None:
             return "Error: No app name provided."
-        print(">>>>>>>>>>>>>>>>>>>URL Provider>>>>>>>>>>>>>>>>>>")
-        print(f"App name: {app_name}")
+        logger.debug(">>>>>>>>>>>>>>>>>>>URL Provider>>>>>>>>>>>>>>>>>>")
+        logger.debug("App name: %s", app_name)
         app_url = self.company_urls.get(app_name)
-        print(f"URL: {app_url}")
-        print(">>>>>>>>>>>>>>>>>>>DONE !!!>>>>>>>>>>>>>>>>>>")
+        logger.debug("URL: %s", app_url)
+        logger.debug(">>>>>>>>>>>>>>>>>>>DONE !!!>>>>>>>>>>>>>>>>>>")
         return app_url
 
     async def async_invoke(self, args: Dict[str, Any], sly_data: Dict[str, Any]) -> str:

@@ -25,6 +25,10 @@
       * [Example agent network](#example-agent-network)
     * [See also](#see-also)
   * [LLM Fallbacks](#llm-fallbacks)
+  * [Reasoning Models](#reasoning-models)
+    * [OpenAI and AzureOpenAI](#openai-and-azureopenai-models)
+    * [Anthropic and Bedrock](#anthropic-and-bedrock-models)
+    * [Ollama](#ollama-models)
   * [Using custom or non-default LLMs](#using-custom-or-non-default-llms)
     * [Using the `class` Key](#using-the-class-key)
     * [Extending the default LLM info file](#extending-the-default-llm-info-file)
@@ -539,6 +543,102 @@ it will automatically fall back to Anthropic's `claude-3-7-sonnet` model:
     },
 ```
 
+## Reasoning Models
+
+Some LLM providers offer reasoning models where reasoning or thinking behavior can be
+toggled or adjusted in the `llm_config` section of your agent network HOCON file.
+
+### OpenAI and AzureOpenAI Models
+
+You can control the reasoning depth using the `reasoning_effort` field with one of the following values:
+`minimal`, `low`, `medium`, or `high`.
+
+> Note that `minimal` is only supported for `gpt-5` variants.
+
+You can also control output detail using the `verbosity` field with one of the following values:
+`low`, `medium`, or `high`.
+
+Example:
+
+```hocon
+    "llm_config": {
+        "model_name": "gpt-5",
+        "reasoning_effort": "low",
+        "verbosity": "low"
+    }
+```
+
+For more detail, see [LangChain ChatOpenAI documentation](https://reference.langchain.com/python/integrations/langchain_openai/ChatOpenAI/#langchain_openai.chat_models.ChatOpenAI.reasoning_effort).
+
+### Anthropic and Bedrock Models
+
+Claude models support extended thinking, which allows them to use additional tokens for internal reasoning
+before generating a final answer.
+This improves performance on complex tasks and can provide insight into the model’s reasoning process.
+
+For Anthropic models, extended thinking is configured with the `thinking` field.
+
+Example:
+
+```hocon
+    "llm_config": {
+        "model_name": "claude-3-7-sonnet-20250219",
+        "thinking": {"type": "enabled", "budget_tokens": 10000}
+    }
+```
+
+> Ensure that budget_tokens is at least **1024** and less than the model’s maximum token limit.
+
+**Supported models for extended thinking:**
+
+* Claude Sonnet 4.5 (`claude-sonnet-4-5-20250929`)
+* Claude Sonnet 4 (`claude-sonnet-4-20250514`)
+* Claude Sonnet 3.7 (`claude-3-7-sonnet-20250219`)
+* Claude Haiku 4.5 (`claude-haiku-4-5-20251001`)
+* Claude Opus 4.1 (`claude-opus-4-1-20250805`)
+* Claude Opus 4 (`claude-opus-4-20250514`)
+
+These same models can also be accessed via AWS Bedrock. In that case, extended thinking is configured under `model_kwargs`.
+
+Example:
+
+```hocon
+    "llm_config": {
+            "model_name": "bedrock-us-claude-3-7-sonnet",
+            "credentials_profile_name": "<profile_name>",
+            "region_name": "us-west-2",
+        "model_kwargs": {
+            "thinking": {"type": "enabled", "budget_tokens": 1024}
+        }
+    }
+```
+
+See
+[Langchain ChatAnthropic documentation](https://reference.langchain.com/python/integrations/langchain_anthropic/ChatAnthropic/?h=chat#langchain_anthropic.chat_models.ChatAnthropic.thinking)
+for more information.
+
+### Ollama Models
+
+For Ollama’s [supported reasoning models](https://ollama.com/search?c=thinking),
+you can control reasoning behavior using the `reasoning` field with one of the follwing values:
+
+* `true`: Enables reasoning mode.
+* `false`: Disables reasoning mode.
+* `null` (default): Uses the model’s default reasoning behavior.
+* 'low', 'medium', 'high'. Enables reasoning with a custom intensity level. Currently, this is only supported `gpt-oss`.
+
+Example:
+
+```hocon
+    "llm_config": {
+        "model_name": "qwen3:8b",
+        "reasoning": true
+    }
+```
+
+For more information, see
+[Langchain ChatOllama documentation](https://reference.langchain.com/python/integrations/langchain_ollama/#langchain_ollama.ChatOllama.reasoning).
+
 ## Using custom or non-default LLMs
 
 If your desired model is not listed in the
@@ -670,10 +770,6 @@ You can also add new models or providers by extending the
 To load your own llm info file, you can specify its location using one of the following methods:
 
 * The `llm_info_file` key in your agent’s HOCON configuration
-    > **Note:** The `agent_llm_info_file` key has been **deprecated as of version 0.5.46**.  
-    > Please use `llm_info_file` instead.  
-    > `agent_llm_info_file` will remain supported until `neuro-san==0.6.0`.
-
 * The `AGENT_LLM_INFO_FILE` environment variable (fallback if the above is not set)
 
 For more information on llm info file, please see [LLM Info HOCON File Reference](
@@ -873,10 +969,7 @@ To use tools from toolbox in your agent network, simply call them with field `to
 
 3. Make your own toolbox info file available to the agent system in one of the following ways
 
-   * Define the `toolbox_info_file` key in your agent’s HOCON configuration (preferred method)
-       > **Note:** The `agent_toolbox_info_file` key has been **deprecated as of version 0.5.46**.  
-       > Please use `toolbox_info_file` instead.  
-       > `agent_toolbox_info_file` will remain supported until `neuro-san==0.6.0`.
+   * Define the `toolbox_info_file` key in your agent’s HOCON configuration
    * Set the `AGENT_TOOLBOX_INFO_FILE` environment variable as a fallback option
 
 For more information on toolbox, please see [Toolbox Info HOCON File Reference](

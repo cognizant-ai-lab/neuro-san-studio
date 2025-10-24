@@ -7,11 +7,14 @@
 # Purchase of a commercial license is mandatory for any use of the
 # neuro-san-studio SDK Software in commercial settings.
 #
+import logging
 from typing import Any
 from typing import Dict
 from typing import Union
 
 from neuro_san.interfaces.coded_tool import CodedTool
+
+logger = logging.getLogger(__name__)
 
 
 class Accountant(CodedTool):
@@ -33,18 +36,18 @@ class Accountant(CodedTool):
                  "running_cost": the updated running cost.
         """
         tool_name = self.__class__.__name__
-        print(f"========== Calling {tool_name} ==========")
+        logger.debug("========== Calling %s ==========", tool_name)
         # Parse the arguments
-        print(f"args: {args}")
+        logger.debug("args: %s", args)
         running_cost: float = float(args.get("running_cost"))
 
         # Increment the running cost
         updated_running_cost: float = running_cost + 3.0
 
         tool_response = {"running_cost": updated_running_cost}
-        print("-----------------------")
-        print(f"{tool_name} response: ", tool_response)
-        print(f"========== Done with {tool_name} ==========")
+        logger.debug("-----------------------")
+        logger.debug("%s response: %s", tool_name, tool_response)
+        logger.debug("========== Done with %s ==========", tool_name)
         return tool_response
 
     async def async_invoke(self, args: Dict[str, Any], sly_data: Dict[str, Any]) -> Union[Dict[str, Any], str]:

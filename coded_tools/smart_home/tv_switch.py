@@ -7,11 +7,14 @@
 # Purchase of a commercial license is mandatory for any use of the
 # neuro-san-studio SDK Software in commercial settings.
 #
+import logging
 from typing import Any
 from typing import Dict
 from typing import Union
 
 from neuro_san.interfaces.coded_tool import CodedTool
+
+logger = logging.getLogger(__name__)
 
 
 class TVSwitch(CodedTool):
@@ -24,7 +27,7 @@ class TVSwitch(CodedTool):
         Constructs a switch for a TV.
         """
         self.tv_status = "OFF"
-        print("... TV Switch initialized ...")
+        logger.debug("... TV Switch initialized ...")
 
     def invoke(self, args: Dict[str, Any], sly_data: Dict[str, Any]) -> Union[Dict[str, Any], str]:
         """
@@ -55,11 +58,11 @@ class TVSwitch(CodedTool):
                 a text string an error message in the format:
                 "Error: <error message>"
         """
-        print(">>>>>>>>>>>>>>>>>>>TV Switch>>>>>>>>>>>>>>>>>>")
+        logger.debug(">>>>>>>>>>>>>>>>>>>TV Switch>>>>>>>>>>>>>>>>>>")
         # message = self.do_it(args)  # Would use this method if we could keep a state in the CodedTool
-        print("--TV power button pressed--")
+        logger.debug("--TV power button pressed--")
         message = "Power button pressed on the TV remote."
-        print(">>>>>>>>>>>>>>>>>>>DONE !!!>>>>>>>>>>>>>>>>>>")
+        logger.debug(">>>>>>>>>>>>>>>>>>>DONE !!!>>>>>>>>>>>>>>>>>>")
         return message
 
     def do_it(self, args):
@@ -73,8 +76,8 @@ class TVSwitch(CodedTool):
         if desired_status is None:
             return "Error: No desired status provided."
 
-        print(f"Desired status: {desired_status}")
-        print(f"Current status: {self.tv_status}")
+        logger.debug("Desired status: %s", desired_status)
+        logger.debug("Current status: %s", self.tv_status)
         # if desired status equals current status, nothing to do
         if desired_status == self.tv_status:
             message = f"TV is already {desired_status}"

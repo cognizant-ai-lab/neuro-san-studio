@@ -8,12 +8,17 @@
 # neuro-san-studio SDK Software in commercial settings.
 #
 
+import logging
 import os
 import subprocess
 from pathlib import Path
-from typing import Any, Dict, Union
+from typing import Any
+from typing import Dict
+from typing import Union
 
 from neuro_san.interfaces.coded_tool import CodedTool
+
+logger = logging.getLogger(__name__)
 
 # Adjust these to your repo/paths
 working_directory = os.getcwd()
@@ -78,9 +83,9 @@ class VisualQuestionAnswering(CodedTool):
                 "Error: <error message>"
         """
         tool_name = self.__class__.__name__
-        print(f"========== Calling {tool_name} ==========")
+        logger.debug("========== Calling %s ==========", tool_name)
 
-        print(f"args: {args}")
+        logger.debug("args: %s", args)
         query: str = args.get("query", None)
         if query is None:
             return "Error: No query provided."
@@ -101,7 +106,7 @@ class VisualQuestionAnswering(CodedTool):
         model = os.path.join(MODEL_PATH, model_name)
 
         # Parse the sly data
-        print(f"sly_data: {sly_data}")
+        # NOTE: sly_data may contain secrets - never log it
         # Get the file path.
         file_path: str = str(sly_data.get("file_path", ""))
         if file_path == "":
@@ -114,7 +119,7 @@ class VisualQuestionAnswering(CodedTool):
         # Process image file
         #
         if extension in IMAGE_EXTENSIONS:
-            print("It's an image!")
+            logger.debug("It's an image!")
 
             # Call predict.py
             cmd = [
@@ -131,7 +136,7 @@ class VisualQuestionAnswering(CodedTool):
         # Process video file
         #
         elif extension in VIDEO_EXTENSIONS:
-            print("It's a video!")
+            logger.debug("It's a video!")
 
             # Call predict.py
             cmd = [
@@ -192,9 +197,9 @@ class VisualQuestionAnswering(CodedTool):
                 + payload["stderr"]
             )
 
-        print("-----------------------")
-        print(f"{tool_name} response: ", payload["stdout"])
-        print(f"========== Done with {tool_name} ==========")
+        logger.debug("-----------------------")
+        logger.debug("%s response: %s", tool_name, payload["stdout"])
+        logger.debug("========== Done with %s ==========", tool_name)
         return payload["stdout"]
 
     async def async_invoke(self, args: Dict[str, Any], sly_data: Dict[str, Any]) -> Union[Dict[str, Any], str]:

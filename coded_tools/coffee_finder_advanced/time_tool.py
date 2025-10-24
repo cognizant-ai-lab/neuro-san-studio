@@ -8,11 +8,14 @@
 # neuro-san-studio SDK Software in commercial settings.
 #
 import datetime
+import logging
 from typing import Any
 from typing import Dict
 from typing import Union
 
 from neuro_san.interfaces.coded_tool import CodedTool
+
+logger = logging.getLogger(__name__)
 
 
 class TimeTool(CodedTool):
@@ -29,15 +32,15 @@ class TimeTool(CodedTool):
 
         :return: the current time
         """
-        print(">>>>>>>>>>>>>>>>>>> TimeTool >>>>>>>>>>>>>>>>>>")
+        logger.debug(">>>>>>>>>>>>>>>>>>> TimeTool >>>>>>>>>>>>>>>>>>")
         sly_time = sly_data.get("time")
         if sly_time:
             response = sly_time
         else:
             # No time was provided in sly_data. Return the current time.
             response = datetime.datetime.now().strftime("%I:%M %p").lstrip("0")
-        print(f"Response: {response}")
-        print(">>>>>>>>>>>>>>>>>>> DONE !!! >>>>>>>>>>>>>>>>>>")
+        logger.debug("Response: %s", response)
+        logger.debug(">>>>>>>>>>>>>>>>>>> DONE !!! >>>>>>>>>>>>>>>>>>")
         return response
 
     async def async_invoke(self, args: Dict[str, Any], sly_data: Dict[str, Any]) -> Union[Dict[str, Any], str]:
