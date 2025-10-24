@@ -56,6 +56,7 @@ These configurations are automatically applied when running the relevant Makefil
 ## Logging
 
 To turn on debug logs for coded tools, export the following environment variable or set it in your `.env` file:
+
 ```shell
 AGENT_SERVICE_LOG_JSON=logging.json
 ```
