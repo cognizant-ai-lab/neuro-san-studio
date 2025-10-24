@@ -195,7 +195,7 @@ def generate_html(agent_name: str, network_dict: Dict[str, Any]):
             heightConstraint={"minimum": 80},
             font={"multi": "html"},
             title=tooltip,
-            level=level  # Explicitly set calculated hierarchy level
+            level=level,  # Explicitly set calculated hierarchy level
         )
 
     # Add edges

@@ -63,9 +63,7 @@ class ValidateStructure(CodedTool):
         # Validate the agent network and return error message if there are any issues.
         validator = AgentNetworkValidator(network_def)
         error_list: list[str] = (
-            validator.validate_network_structure()
-            + validator.validate_toolbox_agents()
-            + validator.validate_url()
+            validator.validate_network_structure() + validator.validate_toolbox_agents() + validator.validate_url()
         )
         if error_list:
             error_msg = f"Error: {error_list}"

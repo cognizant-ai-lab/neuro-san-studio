@@ -9,6 +9,10 @@
 # neuro-san SDK Software in commercial settings.
 #
 # END COPYRIGHT
+
+# To use this agent network, start by installing the required package:
+#     pip install pymupdf >= 1.25.5
+
 {
     "llm_config": {
         "model_name": "gpt-4o",
