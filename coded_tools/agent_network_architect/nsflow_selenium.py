@@ -176,7 +176,8 @@ def connect_run_agent_nsflow(
         logger.debug("Agent response: %s", response)
         logger.debug(
             "Agent %s response detected, waiting %s seconds before closing the browser.",
-            agent_name, time_after_response_before_close
+            agent_name,
+            time_after_response_before_close,
         )
 
         time.sleep(time_after_response_before_close)
