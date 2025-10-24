@@ -316,9 +316,7 @@ class NeuroSanRunner:
             # Use python -m form for better compatibility
             try:
                 self.phoenix_process = self.start_process(
-                    [sys.executable, "-m", "phoenix.server.main", "serve"],
-                    "Phoenix",
-                    "logs/phoenix.log"
+                    [sys.executable, "-m", "phoenix.server.main", "serve"], "Phoenix", "logs/phoenix.log"
                 )
                 # Wait for Phoenix to bind to port (with retry)
                 phoenix_ready = False
