@@ -7,11 +7,14 @@
 # Purchase of a commercial license is mandatory for any use of the
 # neuro-san-studio SDK Software in commercial settings.
 #
+import logging
 from typing import Any
 from typing import Dict
 from typing import Union
 
 from neuro_san.interfaces.coded_tool import CodedTool
+
+logger = logging.getLogger(__name__)
 
 
 class LightsSwitch(CodedTool):
@@ -25,7 +28,7 @@ class LightsSwitch(CodedTool):
         :param lights_name:
         """
         self.lights_name = lights_name
-        print(f"... {lights_name} lights switch initialized ...")
+        logger.debug("... %s lights switch initialized ...", lights_name)
 
     def invoke(self, args: Dict[str, Any], sly_data: Dict[str, Any]) -> Union[Dict[str, Any], str]:
         """
@@ -56,10 +59,10 @@ class LightsSwitch(CodedTool):
                 a text string an error message in the format:
                 "Error: <error message>"
         """
-        print(f">>>>>>>>>>>>>>>>>>> {self.lights_name} lights switch >>>>>>>>>>>>>>>>>>")
+        logger.debug(">>>>>>>>>>>>>>>>>>> %s lights switch >>>>>>>>>>>>>>>>>>", self.lights_name)
         message = f"{self.lights_name} lights switch pressed."
-        print(message)
-        print(">>>>>>>>>>>>>>>>>>>DONE !!!>>>>>>>>>>>>>>>>>>")
+        logger.debug(message)
+        logger.debug(">>>>>>>>>>>>>>>>>>>DONE !!!>>>>>>>>>>>>>>>>>>")
         return message
 
     async def async_invoke(self, args: Dict[str, Any], sly_data: Dict[str, Any]) -> Union[Dict[str, Any], str]:

@@ -153,7 +153,7 @@ class CalculatorCodedTool(CodedTool):
         :return: A dictionary with the operation result or an error message.
         """
         logger.info(f"********** {self.__class__.__name__} started **********")
-        print(f"args: {args}\n")
+        logger.debug("args: %s", args)
         operation = args.get("operation")
         operands = args.get("operands", [])
         if not operation:

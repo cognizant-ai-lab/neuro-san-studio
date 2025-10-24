@@ -95,13 +95,13 @@ class TestNowAgentSendMessage(unittest.TestCase):
         },
     )
     @patch("coded_tools.now_agents.nowagent_api_send_message.requests.post")
-    @patch("builtins.print")
-    def test_invoke_authentication_failure(self, mock_print, mock_post):
+    @patch("coded_tools.now_agents.nowagent_api_send_message.logger")
+    def test_invoke_authentication_failure(self, mock_logger, mock_post):
         """
         Test handling of authentication failure.
 
         This test verifies that the tool properly handles 401 authentication errors
-        from the ServiceNow API and prints error information.
+        from the ServiceNow API and logs error information.
         """
         # Mock 401 authentication error
         mock_response = Mock()
@@ -120,11 +120,13 @@ class TestNowAgentSendMessage(unittest.TestCase):
         self.assertEqual(result["status_code"], 401)
         self.assertIsNone(result["result"])
 
-        # Verify error information was printed
+        # Verify error information was logged
         error_calls = [
-            call for call in mock_print.call_args_list if "Status: 401" in str(call) or "Error Response:" in str(call)
+            call
+            for call in mock_logger.warning.call_args_list
+            if "Status: 401" in str(call) or "Error Response:" in str(call)
         ]
-        self.assertTrue(len(error_calls) >= 2, "Error messages should be printed")
+        self.assertTrue(len(error_calls) >= 2, "Error messages should be logged")
 
     @patch.dict(
         os.environ,
@@ -161,8 +163,8 @@ class TestNowAgentSendMessage(unittest.TestCase):
         self.assertIn("error_response", result)
         self.assertEqual(result["status_code"], 404)
 
-    @patch("builtins.print")
-    def test_get_env_variable(self, mock_print):
+    @patch("coded_tools.now_agents.nowagent_api_send_message.logger")
+    def test_get_env_variable(self, mock_logger):
         """
         Test environment variable retrieval.
 
@@ -173,15 +175,17 @@ class TestNowAgentSendMessage(unittest.TestCase):
             result = self.tool._get_env_variable("TEST_VAR")  # pylint: disable=protected-access
             self.assertEqual(result, "test_value")
 
-        # Test missing environment variable - should print NOT defined message
+        # Test missing environment variable - should log NOT defined message
         result = self.tool._get_env_variable("NONEXISTENT_VAR")  # pylint: disable=protected-access
         self.assertIsNone(result)
 
-        # Verify the "NOT defined" message was printed
+        # Verify the "NOT defined" message was logged
         not_defined_calls = [
-            call for call in mock_print.call_args_list if "NONEXISTENT_VAR is NOT defined" in str(call)
+            call
+            for call in mock_logger.debug.call_args_list
+            if "is NOT defined" in str(call) and "NONEXISTENT_VAR" in str(call)
         ]
-        self.assertTrue(len(not_defined_calls) >= 1, "NOT defined message should be printed")
+        self.assertTrue(len(not_defined_calls) >= 1, "NOT defined message should be logged")
 
     @patch.dict(
         os.environ,
