@@ -1,7 +1,6 @@
 {
     "../../registries/decomposer.hocon": true,
     "../../registries/solution_discriminator.hocon": true,
-    "../../registries/problem_solver.hocon": true,
     "../../registries/thinking_module_bench.hocon": true,
     "../../registries/composition_discriminator.hocon": true,
     "../../registries/multi_step_decomposer.hocon": true
