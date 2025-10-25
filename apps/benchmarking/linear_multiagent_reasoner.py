@@ -20,9 +20,9 @@ os.environ["AGENT_TOOL_PATH"] = "coded_tools"
 FINAL_TOKEN = ">>>>"  # agents end their final answer on the last line after this token
 
 # Tuning knobs
-NUMBER_OF_VOTES = 2              # votes per discriminator round
-WINNING_VOTE_COUNT = 2           # early stop threshold
-SOLUTION_CANDIDATE_COUNT = 2     # candidates per step
+WINNING_VOTE_COUNT = 2
+CANDIDATE_COUNT = (2 * WINNING_VOTE_COUNT) - 1
+NUMBER_OF_VOTES = (2 * WINNING_VOTE_COUNT) - 1
 
 AGENTS_PORT = 30011
 
@@ -289,7 +289,7 @@ def multi_step_solve(problem: str) -> str:
 
     # Collect multiple decompositions
     decomp_candidates: List[List[str]] = []
-    for _ in range(SOLUTION_CANDIDATE_COUNT):
+    for _ in range(CANDIDATE_COUNT):
         decomp_resp = call_agent(multi_step_decomposer_session(), problem)
         logging.info(f"[pipeline] decomp resp: {decomp_resp}")
         steps_i = _extract_steps(decomp_resp)
@@ -317,7 +317,7 @@ def multi_step_solve(problem: str) -> str:
 
         # Generate candidates using FULL history
         candidates: List[Tuple[str, str]] = []
-        for k in range(SOLUTION_CANDIDATE_COUNT):
+        for k in range(CANDIDATE_COUNT):
             prompt = _compose_step_prompt(
                 step_instruction=step_instruction,
                 original_problem=problem,
