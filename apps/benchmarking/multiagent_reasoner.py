@@ -18,11 +18,11 @@ os.environ["AGENT_TOOL_PATH"] = "coded_tools"
 FINAL_TOKEN = ">>>>"  # agents end their final answer on the last line after this token
 
 # Tuning knobs
-CANDIDATE_COUNT = 2
-NUMBER_OF_VOTES = 2
+MAX_DEPTH = 5
 WINNING_VOTE_COUNT = 2
-SOLUTION_CANDIDATE_COUNT = 2
-MAX_DEPTH = 1
+CANDIDATE_COUNT = (2 * WINNING_VOTE_COUNT) - 1
+NUMBER_OF_VOTES = (2 * WINNING_VOTE_COUNT) - 1
+SOLUTION_CANDIDATE_COUNT = (2 * WINNING_VOTE_COUNT) - 1
 
 
 AGENTS_PORT = 30011
@@ -56,8 +56,8 @@ def solution_discriminator_session() -> AgentSession:
 def composition_discriminator_session() -> AgentSession:
     return _get_session("composition_discriminator")
 
-def problem_solver_session() -> AgentSession:
-    return _get_session("problem_solver")
+def thinking_module_bench_session() -> AgentSession:
+    return _get_session("thinking_module_bench")
 
 # Unique temp file per *call*
 def _tmpfile(stem: str) -> str:
@@ -141,12 +141,12 @@ def _compose_prompt(c: str, s1: str, s2: str) -> str:
     We pass the original problem, the composition description, and the sub-solutions.
     """
     return (
-        f"Solve C(S1, S2) such that C={c}, S1={s1}, S2={s2}"
+        f"Solve C(P1, P2) such that C={c}, P1={s1}, P2={s2}"
     )
 
 def _solve_atomic(problem: str) -> str:
     """Single call to thinking_module_bench; returns the full agent response."""
-    return call_agent(problem_solver_session(), problem)
+    return call_agent(thinking_module_bench_session(), problem)
 
 def solve(problem: str, depth: int = 0, max_depth: int = MAX_DEPTH) -> str:
     """
@@ -188,10 +188,10 @@ def solve(problem: str, depth: int = 0, max_depth: int = MAX_DEPTH) -> str:
     solutions: list[str] = []
     finals: list[str] = []
     for k in range(SOLUTION_CANDIDATE_COUNT):
-        r = call_agent(problem_solver_session(), comp_prompt)
+        r = call_agent(thinking_module_bench_session(), comp_prompt)
         solutions.append(r)
         finals.append(_extract_final(r))
-        logging.info(f"[solve] depth={depth} composed candidate {k + 1}: {finals[-1]!r}")
+        logging.info(f"[solve] depth={depth} composed candidate {k + 1}: {finals[-1]}")
 
     # Vote among composed solutions using composition_discriminator
     numbered = "\n".join(f"{i + 1}. {ans}" for i, ans in enumerate(finals))
@@ -205,6 +205,8 @@ def solve(problem: str, depth: int = 0, max_depth: int = MAX_DEPTH) -> str:
         logging.info(f"[solve] depth={depth} solution vote: {vote_txt}")
         try:
             idx = int(vote_txt) - 1
+            if idx >= len(finals):
+                logging.error(f"Invalid solution index: {idx}")
             if 0 <= idx < len(finals):
                 votes[idx] += 1
                 logging.info(f"[solve] depth={depth} tally: {votes}")
@@ -259,6 +261,8 @@ def decompose(problem: str) -> tuple[str | None, str | None, str | None]:
         logging.info(f"[decompose] discriminator raw vote: {vote_txt}")
         try:
             idx = int(vote_txt) - 1
+            if idx >= len(candidates):
+                logging.error(f"Invalid vote index: {idx}")
             if 0 <= idx < len(candidates):
                 votes[idx] += 1
                 logging.info(f"[decompose] tally: {votes}")

@@ -13,6 +13,7 @@
 llm_config {
     class = "openai"
     model_name = "gpt-4.1-mini"
+    # temperature = "0.1"
 }
     "max_iterations": 40000, #3000
     "max_execution_seconds": 7200, #600
@@ -48,19 +49,19 @@ You are a solution discriminator. You receive a problem, 'P' and a number of dec
 3. P1=[p1_3], P2=[p2_3], C=[c_3]
 ...
 
- where each line is a decomposition candidate, P1 and P2 are the proposed subproblems,
-and C is the function that tells us how to put their solutions together to solve 'P'.
+where each line is a decomposition candidate, 'P1' and 'P2' are the proposed subproblems,
+and 'C' is the function that tells us how to put their solutions together.
 
-A decomposition may take the following form P1=[p1], P2=[None], C=[None]
-This means the 'problem' is not decomposed, which may be a valid option too.
+A decomposition may take the following form P1=[P], P2=[None], C=[None]
+This means 'P' is not decomposed, which may be a valid option too.
 
-You need to check each candidate for correctness, simplicity of the decompositions, as well as simplicity and correctness of C.
-Make sure P2 is not dependent on P1 and can be solved in isolation.
+You need to check each candidate for correctness, simplicity of the decompositions, as well as simplicity and correctness of 'C' without any ambiguity.
+Make sure 'P1' and 'P2' are independent and can be solved in isolation.
 If you have a candidate that suggests not decomposing 'P', and if 'P' is already simple enough or cannot be decomposed easily,
 then return that candidate number as your preference.
 
 First, review the various decomposition candidates carefully and tell me what you think about each one, in detail.
-Then, return your preferred decomposition number in the last line after >>>> with no extra explanation or formatting.
+Then, return your preferred decomposition index in the last line after >>>> with no extra explanation or formatting.
 """,
         },
      ]

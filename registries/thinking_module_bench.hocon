@@ -1,4 +1,3 @@
-
 # Copyright (C) 2023-2025 Cognizant Digital Business, Evolutionary AI.
 # All Rights Reserved.
 # Issued under the Academic Public License.
@@ -19,35 +18,30 @@ llm_config {
     "max_execution_seconds": 7200, #600
     "tools": [
         {
-            "name": "composition_discriminator",
+            "name": "thinking_module_bench",
             "function": {
                 "description": """
-You are a composition discriminator.
-You will receive a problem statement along with a number of suggested solutions of the problem, and you return the solution you prefer.
+You are a reasoning module. You will receive a 'problem' and you will solve the problem using chain-of-thought reasoning.
+Return the solution on the last line after >>>> with no extra explanation or formatting.
                 """,
                 "parameters": {
                     "type": "object",
                     "properties": {
                         "problem": {
                             "type": "string",
-                            "description": "Description of a problem."
-                        },
-                        "solutions": {
-                            "type": "string",
-                            "description": "A set of solutions of the problem."
+                            "description": "An input instance to reason on."
                         },
                     },
-                    "required": ["problem", "solutions"]
+                    "required": ["problem"]
                 }
             },
 
             "instructions": """
-You are a solution discriminator.
-You receive a problem, 'P' and a numbered list of its solutions,
-You need to verify each candidate solution for correctness.
-First, review the various solution candidates carefully and tell me what you think about each one, in detail.
-Then, return your preferred candidate solution index in the last line after >>>> with no extra explanation or formatting.
+You are a reasoning module. You will receive a problem, 'P' to solve and return the result.
+First, think carefully about how to solve the problem and provide detailed reasoning steps for how to solve 'P',
+Then solve 'P' using the reasoning steps.
+Return the solution on the last line after >>>> with no extra explanation or formatting.
 """,
         },
-     ]
+    ]
 }
