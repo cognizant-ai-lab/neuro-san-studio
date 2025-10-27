@@ -197,9 +197,23 @@ def solve(problem: str, depth: int = 0, max_depth: int = MAX_DEPTH) -> str:
     numbered = "\n".join(f"{i + 1}. {ans}" for i, ans in enumerate(finals))
     numbered = f"problem: {comp_prompt}, {numbered}"
     logging.info(f"[solve] depth={depth} composition_discriminator query: {numbered}")
+
     votes = [0] * len(finals)
     winner_idx = None
-    for _ in range(NUMBER_OF_VOTES):  # reuse existing vote knobs
+
+    def _ahead_by_winner(vs: list[int], need: int) -> int | None:
+        """Return index of early winner if exactly one leader is ahead by >= need; else None."""
+        if not vs:
+            return None
+        lead = max(vs)
+        leaders = [i for i, v in enumerate(vs) if v == lead]
+        if len(leaders) != 1:  # tie for lead => no early winner
+            return None
+        leader = leaders[0]
+        runner = max([v for i, v in enumerate(vs) if i != leader] or [0])
+        return leader if (lead - runner) >= need and lead > 0 else None
+
+    for _ in range(NUMBER_OF_VOTES):  # vote cap preserved
         vresp = call_agent(composition_discriminator_session(), f"{numbered}\n\n")
         vote_txt = _extract_final(vresp)
         logging.info(f"[solve] depth={depth} solution vote: {vote_txt}")
@@ -209,15 +223,17 @@ def solve(problem: str, depth: int = 0, max_depth: int = MAX_DEPTH) -> str:
                 logging.error(f"Invalid solution index: {idx}")
             if 0 <= idx < len(finals):
                 votes[idx] += 1
-                logging.info(f"[solve] depth={depth} tally: {votes}")
-                if votes[idx] >= WINNING_VOTE_COUNT:
-                    winner_idx = idx
-                    logging.info(f"[solve] depth={depth} early solution winner: {winner_idx + 1}")
+                early = _ahead_by_winner(votes, WINNING_VOTE_COUNT)
+                logging.info(f"[solve] depth={depth} tally: {votes} (early={None if early is None else early+1})")
+                if early is not None:
+                    winner_idx = early
+                    logging.info(f"[solve] depth={depth} early solution winner (ahead-by): {winner_idx + 1}")
                     break
         except ValueError:
             logging.warning(f"[solve] depth={depth} malformed vote ignored: {vote_txt!r}")
 
     if winner_idx is None:
+        # Majority fallback (argmax; first in tie wins)
         winner_idx = max(range(len(votes)), key=lambda i: votes[i])
 
     resp = solutions[winner_idx]
@@ -252,10 +268,21 @@ def decompose(problem: str) -> tuple[str | None, str | None, str | None]:
     # 2) Voting
     votes = [0] * len(candidates)
     winner_idx = None
-    for _ in range(NUMBER_OF_VOTES):
-        disc_prompt = (
-            f"{numbered}\n\n"
-        )
+
+    def _ahead_by_winner(vs: list[int], need: int) -> int | None:
+        """Return index of early winner if exactly one leader is ahead by >= need; else None."""
+        if not vs:
+            return None
+        lead = max(vs)
+        leaders = [ii for ii, v in enumerate(vs) if v == lead]
+        if len(leaders) != 1:
+            return None
+        leader = leaders[0]
+        runner = max([v for ii, v in enumerate(vs) if ii != leader] or [0])
+        return leader if (lead - runner) >= need and lead > 0 else None
+
+    for _ in range(NUMBER_OF_VOTES):  # vote cap preserved
+        disc_prompt = f"{numbered}\n\n"
         vresp = call_agent(solution_discriminator_session(), disc_prompt)
         vote_txt = _extract_final(vresp)
         logging.info(f"[decompose] discriminator raw vote: {vote_txt}")
@@ -265,17 +292,18 @@ def decompose(problem: str) -> tuple[str | None, str | None, str | None]:
                 logging.error(f"Invalid vote index: {idx}")
             if 0 <= idx < len(candidates):
                 votes[idx] += 1
-                logging.info(f"[decompose] tally: {votes}")
-                if votes[idx] >= WINNING_VOTE_COUNT:
-                    winner_idx = idx
-                    logging.info(f"[decompose] early winner: {winner_idx + 1}")
+                early = _ahead_by_winner(votes, WINNING_VOTE_COUNT)
+                logging.info(f"[decompose] tally: {votes} (early={None if early is None else early+1})")
+                if early is not None:
+                    winner_idx = early
+                    logging.info(f"[decompose] early winner (ahead-by): {winner_idx + 1}")
                     break
         except ValueError:
             logging.warning(f"[decompose] malformed vote ignored: {vote_txt!r}")
 
     if winner_idx is None:
-        # choose argmax (first tie-winner)
-        winner_idx = max(range(len(votes)), key=lambda v: votes[v])
+        # Majority fallback (argmax; first in tie wins)
+        winner_idx = max(range(len(votes)), key=lambda ii: votes[i])
 
     logging.info(f"[decompose] final winner: {winner_idx + 1} -> {candidates[winner_idx]}")
 
