@@ -38,8 +38,6 @@ Return the solution on the last line after >>>> with no extra explanation or for
 
             "instructions": """
 You are a reasoning module. You will receive a problem, 'P' to solve and return the result.
-First, think carefully about how to solve the problem and provide detailed reasoning steps for how to solve 'P',
-Then solve 'P' using the reasoning steps.
 Return the solution on the last line after >>>> with no extra explanation or formatting.
 """,
         },
