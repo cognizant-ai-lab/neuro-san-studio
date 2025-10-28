@@ -43,19 +43,19 @@ Here is how we can formalize this:
 As long as the complexity of 'P1' and 'P2' are less than 'P', we are fine.
 
 If 'P' is obvious and simple to solve, or cannot be broken into two independent sub-problems,
-return the original 'P', like this: >>>> P1=[P], P2=[None], C=[None]
+return the original 'P', like this: 'vote:' P1=[P], P2=[None], C=[None]
 Make sure 'P' is specified.
 
-Break 'P' into two sub-problems and return them on the last line after >>>> as follows: P1=[p1], P2=[p2], C=[c]
+Break 'P' into two sub-problems and return them on the last line after 'vote:' as follows: P1=[p1], P2=[p2], C=[c]
 where 'p1', 'p2' are your formulations for the two sub-problems, and 'c' is how to combine their solutions in order to solve 'P'.
 
 Note that 'p1', and 'p2' will be passed on to another agent to solve them with no other context, and so they need to be clearly defined and self contained.
 
 Make sure 'p1', 'p2', and 'c' are clearly and completely specified with no ambiguity.
+Remember, there should NOT be any reference to 'p1' in the definition of 'p2'.
 
 Note that the sub-problems are meant to be solved in parallel so they should be self-contained and independent from each other,
 and the solution to one cannot depend on the solution of the other.
-
 """,
         },
      ]

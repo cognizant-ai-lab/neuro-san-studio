@@ -15,7 +15,7 @@ _DECOMP_FIELD_RE = re.compile(r"(P1|P2|C)\s*=\s*\[(.*?)]", re.DOTALL)
 os.environ["AGENT_MANIFEST_FILE"] = "apps/benchmarking/manifest_solver.hocon"
 os.environ["AGENT_TOOL_PATH"] = "coded_tools"
 
-FINAL_TOKEN = ">>>>"  # agents end their final answer on the last line after this token
+FINAL_TOKEN = "vote:"  # agents end their final answer on the last line after this token
 
 # Tuning knobs
 MAX_DEPTH = 5
@@ -56,8 +56,8 @@ def solution_discriminator_session() -> AgentSession:
 def composition_discriminator_session() -> AgentSession:
     return _get_session("composition_discriminator")
 
-def thinking_module_bench_session() -> AgentSession:
-    return _get_session("thinking_module_bench")
+def problem_solver_session() -> AgentSession:
+    return _get_session("problem_solver")
 
 # Unique temp file per *call*
 def _tmpfile(stem: str) -> str:
@@ -83,15 +83,25 @@ def call_agent(agent_session: AgentSession, text: str, timeout_ms: float = 10000
     return resp
 
 def _extract_final(text: str, token: str = FINAL_TOKEN) -> str:
-    """Return the text after the last occurrence of FINAL_TOKEN, or entire string if not found."""
+    """Return the text after the last occurrence of token (case-insensitive),
+    or the last non-empty line if not found. Preserves original casing."""
     if not text:
         return ""
     lines = [ln.strip() for ln in text.splitlines() if ln.strip()]
-    # prefer last line that contains token; fallback to last line
+    if not lines:
+        return ""
+    tkn = (token or "").strip()
+    if not tkn:
+        return lines[-1]
+
+    tkn_lower = tkn.lower()
     for ln in reversed(lines):
-        if token in ln:
-            return ln.split(token, 1)[1].strip()
-    return lines[-1] if lines else ""
+        # Find LAST occurrence of token in this line (case-insensitive)
+        idx = ln.lower().rfind(tkn_lower)
+        if idx != -1:
+            return ln[idx + len(tkn):].strip()
+    return lines[-1]
+
 
 def _extract_decomposition_text(resp: str) -> str | None:
     """
@@ -145,8 +155,8 @@ def _compose_prompt(c: str, s1: str, s2: str) -> str:
     )
 
 def _solve_atomic(problem: str) -> str:
-    """Single call to thinking_module_bench; returns the full agent response."""
-    return call_agent(thinking_module_bench_session(), problem)
+    """Single call to problem_solver; returns the full agent response."""
+    return call_agent(problem_solver_session(), problem)
 
 def solve(problem: str, depth: int = 0, max_depth: int = MAX_DEPTH) -> str:
     """
@@ -180,7 +190,7 @@ def solve(problem: str, depth: int = 0, max_depth: int = MAX_DEPTH) -> str:
 
     logging.info(f"[solve] depth={depth} sub-answers -> s1_final={s1!r}, s2_final={s2!r}")
 
-    # Compose using thinking_module_bench
+    # Compose using problem_solver
     comp_prompt = _compose_prompt(c, s1, s2)
     logging.info(f"[solve] depth={depth} composing with C={c!r}")
 
@@ -188,7 +198,7 @@ def solve(problem: str, depth: int = 0, max_depth: int = MAX_DEPTH) -> str:
     solutions: list[str] = []
     finals: list[str] = []
     for k in range(SOLUTION_CANDIDATE_COUNT):
-        r = call_agent(thinking_module_bench_session(), comp_prompt)
+        r = call_agent(problem_solver_session(), comp_prompt)
         solutions.append(r)
         finals.append(_extract_final(r))
         logging.info(f"[solve] depth={depth} composed candidate {k + 1}: {finals[-1]}")
@@ -197,23 +207,9 @@ def solve(problem: str, depth: int = 0, max_depth: int = MAX_DEPTH) -> str:
     numbered = "\n".join(f"{i + 1}. {ans}" for i, ans in enumerate(finals))
     numbered = f"problem: {comp_prompt}, {numbered}"
     logging.info(f"[solve] depth={depth} composition_discriminator query: {numbered}")
-
     votes = [0] * len(finals)
     winner_idx = None
-
-    def _ahead_by_winner(vs: list[int], need: int) -> int | None:
-        """Return index of early winner if exactly one leader is ahead by >= need; else None."""
-        if not vs:
-            return None
-        lead = max(vs)
-        leaders = [i for i, v in enumerate(vs) if v == lead]
-        if len(leaders) != 1:  # tie for lead => no early winner
-            return None
-        leader = leaders[0]
-        runner = max([v for i, v in enumerate(vs) if i != leader] or [0])
-        return leader if (lead - runner) >= need and lead > 0 else None
-
-    for _ in range(NUMBER_OF_VOTES):  # vote cap preserved
+    for _ in range(NUMBER_OF_VOTES):  # reuse existing vote knobs
         vresp = call_agent(composition_discriminator_session(), f"{numbered}\n\n")
         vote_txt = _extract_final(vresp)
         logging.info(f"[solve] depth={depth} solution vote: {vote_txt}")
@@ -223,11 +219,10 @@ def solve(problem: str, depth: int = 0, max_depth: int = MAX_DEPTH) -> str:
                 logging.error(f"Invalid solution index: {idx}")
             if 0 <= idx < len(finals):
                 votes[idx] += 1
-                early = _ahead_by_winner(votes, WINNING_VOTE_COUNT)
-                logging.info(f"[solve] depth={depth} tally: {votes} (early={None if early is None else early+1})")
-                if early is not None:
-                    winner_idx = early
-                    logging.info(f"[solve] depth={depth} early solution winner (ahead-by): {winner_idx + 1}")
+                logging.info(f"[solve] depth={depth} tally: {votes}")
+                if votes[idx] >= WINNING_VOTE_COUNT:
+                    winner_idx = idx
+                    logging.info(f"[solve] depth={depth} early solution winner: {winner_idx + 1}")
                     break
         except ValueError:
             logging.warning(f"[solve] depth={depth} malformed vote ignored: {vote_txt!r}")

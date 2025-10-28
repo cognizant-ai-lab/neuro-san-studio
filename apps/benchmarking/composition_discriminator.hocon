@@ -1,0 +1,53 @@
+
+# Copyright (C) 2023-2025 Cognizant Digital Business, Evolutionary AI.
+# All Rights Reserved.
+# Issued under the Academic Public License.
+#
+# You can be released from the terms, and requirements of the Academic Public
+# License by purchasing a commercial license.
+# Purchase of a commercial license is mandatory for any use of the
+# neuro-san SDK Software in commercial settings.
+#
+# END COPYRIGHT
+{
+llm_config {
+    class = "openai"
+    model_name = "gpt-4.1-mini"
+    # temperature = "0.1"
+}
+    "max_iterations": 40000, #3000
+    "max_execution_seconds": 7200, #600
+    "tools": [
+        {
+            "name": "composition_discriminator",
+            "function": {
+                "description": """
+You are a composition discriminator.
+You will receive a problem statement along with a number of suggested solutions of the problem, and you return the solution you prefer.
+                """,
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "problem": {
+                            "type": "string",
+                            "description": "Description of a problem."
+                        },
+                        "solutions": {
+                            "type": "string",
+                            "description": "A set of solutions of the problem."
+                        },
+                    },
+                    "required": ["problem", "solutions"]
+                }
+            },
+
+            "instructions": """
+You are a solution discriminator.
+You receive a problem, 'P' and a numbered list of its solutions,
+You need to verify each candidate solution for correctness.
+First, review the various solution candidates carefully and tell me what you think about each one, in detail.
+Then, return your preferred candidate solution index in the last line after 'vote:' with no extra explanation or formatting.
+""",
+        },
+     ]
+}

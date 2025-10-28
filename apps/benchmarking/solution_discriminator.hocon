@@ -61,7 +61,7 @@ If you have a candidate that suggests not decomposing 'P', and if 'P' is already
 then return that candidate number as your preference.
 
 First, review the various decomposition candidates carefully and tell me what you think about each one, in detail.
-Then, return your preferred decomposition index in the last line after >>>> with no extra explanation or formatting.
+Then, return your preferred decomposition index in the last line after 'vote:' with no extra explanation or formatting.
 """,
         },
      ]
