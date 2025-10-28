@@ -76,6 +76,34 @@ class AgentBenchmarkRunner:
 
         # Will be created on start()
         self._session = None
+        self._progress_csv_file = None
+        self.sample_retries = 0
+
+    # --- streaming progress CSV helpers ---
+    def _ensure_progress_csv(self, fieldnames: List[str]):
+        if not hasattr(self, "_progress_csv_file") or self._progress_csv_file is None:
+            ts = time.strftime("%Y%m%d_%H%M%S")
+            self._progress_csv_path = f"results_progress_{ts}.csv"
+            self._progress_csv_file = open(self._progress_csv_path, "w", newline="", encoding="utf-8")
+            self._progress_csv_writer = csv.DictWriter(self._progress_csv_file, fieldnames=fieldnames)
+            self._progress_csv_writer.writeheader()
+            self._progress_csv_file.flush()
+            os.fsync(self._progress_csv_file.fileno())
+
+    def _append_progress_row(self, r: Dict[str, Any]):
+        if getattr(self, "_progress_csv_writer", None):
+            self._progress_csv_writer.writerow({
+                "id": r["id"],
+                "question": r["question"],
+                "gold": r["gold"],
+                "gold_extracted": r["gold_extracted"],
+                "response": r["response"],
+                "pred_extracted": r["pred_extracted"],
+                "correct": r["correct"],
+                "latency_sec": r["latency_sec"],
+            })
+            self._progress_csv_file.flush()
+            os.fsync(self._progress_csv_file.fileno())
 
     # ------------------ Lifecycle ------------------
 
@@ -101,6 +129,17 @@ class AgentBenchmarkRunner:
         if self._session is not None:
             self._session.close()
             self._session = None
+        # close progress CSV if open
+        if hasattr(self, "_progress_csv_file") and self._progress_csv_file:
+            try:
+                self._progress_csv_file.flush()
+                os.fsync(self._progress_csv_file.fileno())
+            except Exception:
+                pass
+            try:
+                self._progress_csv_file.close()
+            finally:
+                self._progress_csv_file = None
 
     # ------------------ Threads & Turns ------------------
 
@@ -396,6 +435,11 @@ class AgentBenchmarkRunner:
         latencies = []
         processed = 0
 
+        self._ensure_progress_csv([
+            "id", "question", "gold", "gold_extracted", "response",
+            "pred_extracted", "correct", "latency_sec"
+        ])
+
         if self.python_prog:
             # PROGRAM MODE: threads are perfect (each task is a blocking subprocess.run)
             exec_cls = ThreadPoolExecutor
@@ -440,6 +484,7 @@ class AgentBenchmarkRunner:
             for fut in as_completed(future_map):
                 r = fut.result()
                 results.append(r)
+                self._append_progress_row(r)
                 completed += 1
 
                 if r["status"] == "ok":
@@ -533,7 +578,7 @@ class AgentBenchmarkRunner:
         if limit is not None:
             items = items[:limit]
 
-            # make these accessible to helpers
+        # make these accessible to helpers
         self.sample_retries = sample_retries
 
         if getattr(self, "num_workers", 1) and self.num_workers > 1:
@@ -550,6 +595,11 @@ class AgentBenchmarkRunner:
         correct = 0
         latencies = []
         processed = 0  # items counted in denominator (may exclude persistent errors)
+
+        self._ensure_progress_csv([
+            "id", "question", "gold", "gold_extracted", "response",
+            "pred_extracted", "correct", "latency_sec"
+        ])
 
         for i, ex in enumerate(items, 1):
             attempt = 0
@@ -582,6 +632,8 @@ class AgentBenchmarkRunner:
 
             # accounting
             results.append(final_r)
+            self._append_progress_row(final_r)
+
             if final_r["status"] == "ok":
                 processed += 1
                 correct += int(final_r["correct"])
