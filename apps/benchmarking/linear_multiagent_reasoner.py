@@ -17,10 +17,10 @@ _STEP_LINE_RE = re.compile(r"^\s*(\d+)[.)]\s+(.*\S)\s*$", re.MULTILINE)
 os.environ["AGENT_MANIFEST_FILE"] = "apps/benchmarking/manifest_solver.hocon"
 os.environ["AGENT_TOOL_PATH"] = "coded_tools"
 
-FINAL_TOKEN = ">>>>"  # agents end their final answer on the last line after this token
+FINAL_TOKEN = "vote:"  # agents end their final answer on the last line after this token
 
 # Tuning knobs
-WINNING_VOTE_COUNT = 2
+WINNING_VOTE_COUNT = 8
 CANDIDATE_COUNT = (2 * WINNING_VOTE_COUNT) - 1
 NUMBER_OF_VOTES = (2 * WINNING_VOTE_COUNT) - 1
 
@@ -88,13 +88,18 @@ def call_agent(agent_session: AgentSession, text: str, timeout_ms: float = 10000
 
 
 def _extract_final(text: str, token: str = FINAL_TOKEN) -> str:
-    """Return the text after the last occurrence of FINAL_TOKEN, or last non-empty line."""
+    """Return the text after the last occurrence of FINAL_TOKEN (case-insensitive),
+    or last non-empty line if not found."""
     if not text:
         return ""
+    token_low = token.lower()
     lines = [ln.strip() for ln in text.splitlines() if ln.strip()]
     for ln in reversed(lines):
-        if token in ln:
-            return ln.split(token, 1)[1].strip()
+        ln_low = ln.lower()
+        if token_low in ln_low:
+            # find index of the match in a lowercase version, but slice original line
+            idx = ln_low.find(token_low)
+            return ln[idx + len(token):].strip()
     return lines[-1] if lines else ""
 
 
@@ -207,8 +212,6 @@ def _decomposition_discriminator_prompt(problem: str, decomp_candidates: List[Li
         parts.append(f"{i})\n{_build_steps_block(steps)}")
     body = "\n\n".join(parts)
     return (
-        "You are the 'composition_discriminator'. Select the BEST decomposition for the problem.\n"
-        "Return ONLY the number of the chosen candidate.\n\n"
         f"PROBLEM:\n{problem}\n\n"
         f"DECOMPOSITION CANDIDATES:\n{body}\n"
     )
