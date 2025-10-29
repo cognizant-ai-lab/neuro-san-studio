@@ -31,14 +31,4 @@
     "booking.hocon": true,
     "website_search.hocon": true,
     "LinkedInJobSeekerSupportNetwork.hocon": true,
-    # Vibecoding agent networks
-    "vibecoding_evaluator.hocon": true,
-    "vc_repo_evaluator.hocon": true,
-    "vc_text_innovation.hocon": true,
-    "vc_text_ux.hocon": true,
-    "vc_text_scalability.hocon": true,
-    "vc_text_market_potential.hocon": true,
-    "vc_text_ease_of_implementation.hocon": true,
-    "vc_text_financial_feasibility.hocon": true,
-    "vc_text_complexity.hocon": true,
 }
