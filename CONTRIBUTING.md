@@ -29,6 +29,7 @@ Before you begin contributing, please:
 2. Review the [User Guide](docs/user_guide.md) to understand how Neuro SAN works
 3. Check out the [Tutorial](docs/tutorial.md) to get hands-on experience
 4. Browse existing [Issues](https://github.com/cognizant-ai-lab/neuro-san-studio/issues) and [Pull Requests](https://github.com/cognizant-ai-lab/neuro-san-studio/pulls)
+5. Browse existing [Discussions](https://github.com/cognizant-ai-lab/neuro-san-studio/discussions) to see if your topic has already been addressed
 
 ## Development Environment Setup
 
@@ -114,7 +115,7 @@ We welcome various types of contributions:
 
 - Check the [Issues](https://github.com/cognizant-ai-lab/neuro-san-studio/issues) page for open issues
 - Look for issues labeled `good first issue` or `help wanted`
-- If you have a new idea, open an issue first to discuss it with maintainers
+- If you have a new idea, open a new [discussion](https://github.com/cognizant-ai-lab/neuro-san-studio/discussions) first to discuss it with maintainers
 
 ### Creating a Branch
 
@@ -211,7 +212,7 @@ Tests are configured in `pyproject.toml` under `[tool.pytest.ini_options]`.
 
 ### Commit Messages
 
-Write clear and descriptive commit messages. If your commit relates to a specific issue, mention the issue number at the beginning:
+Write clear and descriptive one-line summary commit messages, plus optional details if needed. If your commit relates to a specific issue, mention the issue number at the beginning:
 
 ```
 #123: Add feature to support custom LLM providers
@@ -229,6 +230,8 @@ Or for fixes:
 - Correct token validation logic
 - Add test coverage for edge cases
 ```
+
+One-line commit messages are usually sufficient, but if your commit is complex, consider adding a detailed description.
 
 ### Submitting a Pull Request
 
@@ -318,8 +321,8 @@ git rebase main
 ### Getting Help
 
 - **Documentation**: Check [docs/](docs/) for guides and tutorials
-- **Issues**: Search existing issues or create a new one
-- **Discussions**: Use GitHub Discussions for questions and ideas
+- **Issues**: Search existing [issues](https://github.com/cognizant-ai-lab/neuro-san-studio/issues) or create a new one
+- **Discussions**: Use [GitHub Discussions](https://github.com/cognizant-ai-lab/neuro-san-studio/discussions) for questions and ideas
 
 ### Communication Channels
 
