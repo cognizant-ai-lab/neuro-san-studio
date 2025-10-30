@@ -211,14 +211,23 @@ Tests are configured in `pyproject.toml` under `[tool.pytest.ini_options]`.
 
 ### Commit Messages
 
-Write clear and descriptive commit messages:
+Write clear and descriptive commit messages. If your commit relates to a specific issue, mention the issue number at the beginning:
 
 ```
-Add feature to support custom LLM providers
+#123: Add feature to support custom LLM providers
 
 - Implement provider interface
 - Add configuration options
 - Update documentation
+```
+
+Or for fixes:
+
+```
+#456: Fix authentication bug in agent network designer
+
+- Correct token validation logic
+- Add test coverage for edge cases
 ```
 
 ### Submitting a Pull Request
