@@ -62,6 +62,20 @@ Related to #
 - [ ] I have commented complex logic where necessary
 - [ ] My changes generate no new warnings or errors
 
+## Dependencies
+
+<!-- IMPORTANT: Read this section carefully if you're adding new dependencies -->
+
+**Modifying `./requirements.txt`:**
+- [ ] I have NOT modified `./requirements.txt`, OR
+- [ ] The new dependency is useful for everyone (core functionality, not specific to one coded tool/agent network/plugin)
+
+**If adding dependencies for a specific coded tool, agent network, or plugin:**
+- [ ] I have created a dedicated `requirements.txt` file in the appropriate directory (e.g., `coded_tools/my_tool/requirements.txt`)
+- [ ] I have documented the dependency requirements in the relevant documentation (README, docstrings, or `docs/`)
+
+**Note:** Only add to the main `./requirements.txt` if the library benefits all users. For tool-specific or network-specific dependencies, use a dedicated requirements file or clearly document them.
+
 ## Documentation
 
 - [ ] I have updated relevant documentation in `docs/`
