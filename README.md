@@ -323,6 +323,14 @@ For the development guide, check out [docs/dev_guide.md](docs/dev_guide.md).
 
 ## Community Projects
 
+### Applications
+
+* [Climate Change](https://github.com/cognizant-ai-lab/neuro-san-cc): a tool to answer questions about COP, the Paris Agreement or the Kyoto Protocol using UNFCCC documents.
+* [F1 fans eval](https://github.com/deepsaia/f1-fan-eval): an app that evaluates F1 fan submissions about why they are the biggest F1 fans.
+* [Vibe coding project evaluator](https://github.com/deepsaia/vibe-coding-eval): a scalable framework that evaluates vibe-coded projects on different criteria.
+
+### Utilities
+
 * [Neuro SAN Web Client](https://github.com/cognizant-ai-lab/neuro-san-web-client):
 a basic Flask web client interface for Neuro SAN.
 
