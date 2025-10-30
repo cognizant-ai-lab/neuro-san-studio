@@ -281,6 +281,7 @@ Configuration is in `.pymarkdownlint.yaml`.
 
 ### Logging
 
+Use the `logging` module for logging instead of `print`.
 To enable debug logs for coded tools, set:
 
 ```bash
