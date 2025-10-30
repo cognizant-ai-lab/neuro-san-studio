@@ -88,5 +88,5 @@ for setup requirements.
 
 * **[User Guide: Toolbox Section](user_guide.md#toolbox)** — Comprehensive guide on configuring and customizing tools
 * **[Toolbox Configuration Reference](../toolbox/toolbox_info.hocon)** — Complete tool definitions and parameters
-* <a href="https://github.com/cognizant-ai-lab/neuro-san/blob/main/neuro_san/internals/run_context/langchain/
-toolbox/toolbox_info.hocon">**Default Toolbox**</a> - NeuroSAN's default toolbox
+* **[Default Toolbox](https://github.com/cognizant-ai-lab/neuro-san/blob/main/neuro_san/\
+internals/run_context/langchain/toolbox/toolbox_info.hocon)** — NeuroSAN's default toolbox
