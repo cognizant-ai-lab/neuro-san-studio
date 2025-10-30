@@ -15,7 +15,11 @@ Thank you for your interest in contributing to Neuro SAN Studio! This document p
 
 ## Code of Conduct
 
-We are committed to providing a welcoming and inclusive environment for all contributors. Please be respectful and considerate in all interactions within the project.
+This project adheres to the [Contributor Covenant Code of Conduct v2.1](CODE_OF_CONDUCT.md). By participating, you are expected to uphold this code.
+
+We are committed to providing a welcoming and inclusive environment for all contributors, regardless of age, body size, visible or invisible disability, ethnicity, sex characteristics, gender identity and expression, level of experience, education, socio-economic status, nationality, personal appearance, race, religion, or sexual identity and orientation.
+
+Please report any unacceptable behavior to **labgithub@cognizant.com**.
 
 ## Getting Started
 
