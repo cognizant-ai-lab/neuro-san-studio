@@ -336,7 +336,10 @@ By contributing to Neuro SAN Studio, you agree that your contributions will be l
 If you have questions about contributing, please:
 
 1. Check existing documentation
-2. Search existing issues
-3. Open a new issue with the `question` label
+2. Search [GitHub Discussions](https://github.com/cognizant-ai-lab/neuro-san-studio/discussions) for similar questions
+3. Ask in [GitHub Discussions](https://github.com/cognizant-ai-lab/neuro-san-studio/discussions) - this is the best place for questions!
+4. Search existing issues (for bug reports only)
+
+For general support, see [SUPPORT.md](SUPPORT.md).
 
 Thank you for contributing to Neuro SAN Studio!
