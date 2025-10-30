@@ -1,10 +1,14 @@
 # Toolbox
 
-The **Toolbox** provides a centralized catalog of pre-configured tools that agents can use within the Neuro SAN Studio framework. It simplifies tool integration by offering ready-to-use implementations for common tasks like web search, document retrieval, email management, and code execution.
+The **Toolbox** provides a centralized catalog of pre-configured tools
+that agents can use within the Neuro SAN Studio framework.
+It simplifies tool integration by offering ready-to-use implementations for common tasks
+like web search, document retrieval, email management, and code execution.
 
 ## Using Toolbox Tools
 
 To use a tool from the toolbox in your agent network configuration, reference it by name in the `toolbox` field:
+
 ```hocon
 {
     "name": "your_agent_name"
@@ -76,7 +80,9 @@ Perform real-time web searches using various search engines and APIs.
 
 ## Configuration and Setup
 
-Each tool may require specific API keys, environment variables, or dependencies. Refer to the detailed configuration instructions in the [Toolbox HOCON file](../toolbox/toolbox_info.hocon) for setup requirements.
+Each tool may require specific API keys, environment variables, or dependencies.
+Refer to the detailed configuration instructions in the [Toolbox HOCON file](../toolbox/toolbox_info.hocon)
+for setup requirements.
 
 ## Learn More
 
