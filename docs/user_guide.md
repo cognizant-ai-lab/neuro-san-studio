@@ -26,9 +26,9 @@
     * [See also](#see-also)
   * [LLM Fallbacks](#llm-fallbacks)
   * [Reasoning Models](#reasoning-models)
-    * [OpenAI and AzureOpenAI](#openai-and-azureopenai-models)
-    * [Anthropic and Bedrock](#anthropic-and-bedrock-models)
-    * [Ollama](#ollama-models)
+    * [OpenAI and AzureOpenAI Models](#openai-and-azureopenai-models)
+    * [Anthropic and Bedrock Models](#anthropic-and-bedrock-models)
+    * [Ollama Models](#ollama-models)
   * [Using custom or non-default LLMs](#using-custom-or-non-default-llms)
     * [Using the `class` Key](#using-the-class-key)
     * [Extending the default LLM info file](#extending-the-default-llm-info-file)
@@ -45,8 +45,9 @@
     * [Adding tools in toolbox](#adding-tools-in-toolbox)
   * [Logging and debugging](#logging-and-debugging)
   * [Advanced](#advanced)
-    * [Subnetworks](#subnetworks)
     * [AAOSA](#aaosa)
+    * [External Agent Networks](#external-agent-networks)
+    * [Memory](#memory)
   * [Connect with other agent frameworks](#connect-with-other-agent-frameworks)
 
 <!-- TOC -->
@@ -70,7 +71,7 @@ like this:
 ```hocon
 {
     # ... other agent networks ... #
-    "music_nerd.hocon": true,
+    "basic/music_nerd.hocon": true,
     # ... other agent networks ... #
 }
 ```
@@ -79,7 +80,7 @@ This tells the server to load the `music_nerd.hocon` file from the same `/regist
 
 Setting the value to `false` would make the server ignore this agent network.
 
-Open [../registries/music_nerd.hocon](../registries/hello_world.hocon) and have a look at it.
+Open [../registries/basic/music_nerd.hocon](../registries/hello_world.hocon) and have a look at it.
 For now just note that it contains:
 
 * an `llm_config` section that specifies which LLM to use by default for the agents in this file
@@ -993,7 +994,7 @@ Furthermore, please install the build requirements in your virtual environment v
     pytest.set_trace()
     ```
 
-3. Start the client and server via `python3 -m run`, select `music_berd_pro` agent network, and ask a question like
+3. Start the client and server via `python3 -m run`, select `music_nerd_pro` agent network, and ask a question like
 `Where was John Lennon born?`. The code execution stops at the line where you added `pytest.set_trace` statement. You
 can step through the code, view variable values, etc. by typing commands in the terminal. For all the debugger options,
 please refer to pdb [documentation](https://ugoproto.github.io/ugo_py_doc/pdf/Python-Debugger-Cheatsheet.pdf)

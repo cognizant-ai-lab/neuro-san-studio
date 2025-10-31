@@ -4,4 +4,4 @@ A exact copy of [docs/examples/music_nerd.md](music_nerd.md) that uses an LLM th
 
 ## File
 
-[music_nerd_local.hocon](../../registries/music_nerd_local.hocon)
+[music_nerd_local.hocon](../../registries/basic/music_nerd_local.hocon)

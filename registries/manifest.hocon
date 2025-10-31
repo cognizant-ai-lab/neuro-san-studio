@@ -14,13 +14,13 @@
 
 
     # Basic examples
-    "music_nerd.hocon": true,
-    "music_nerd_local.hocon": true,
-    "music_nerd_pro.hocon": true,
-    "music_nerd_pro_local.hocon": true,
-    "music_nerd_pro_sly.hocon": true,
-    "music_nerd_pro_sly_local.hocon": true,
-    "music_nerd_llm_fallbacks.hocon": true,
+    "basic/music_nerd.hocon": true,
+    "basic/music_nerd_local.hocon": true,
+    "basic/music_nerd_pro.hocon": true,
+    "basic/music_nerd_pro_local.hocon": true,
+    "basic/music_nerd_pro_sly.hocon": true,
+    "basic/music_nerd_pro_sly_local.hocon": true,
+    "basic/music_nerd_llm_fallbacks.hocon": true,
     "hello_world.hocon": true,
     "advanced_calculator.hocon": false,
     "smart_home.hocon": true,
