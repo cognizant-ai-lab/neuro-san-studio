@@ -55,7 +55,7 @@
 ## Simple agent network
 
 The `music_nerd` agent network is the simplest agent network possible: it contains a single agent
-that answers questions about music since the 60s. See its description here: [docs/examples/music_nerd.md](../docs/examples/music_nerd.md).
+that answers questions about music since the 60s. See its description here: [docs/examples/music_nerd.md](examples/basic/music_nerd.md).
 
 The steps to start the server and the client are described in the [README](../README.md).
 When starting, the first thing the server will do is load the agent network configurations
@@ -229,7 +229,7 @@ and specify which model to use in the `model_name` field:
     }
 ```
 
-See [./examples/music_nerd.md](./examples/music_nerd.md) for an example.
+See [./examples/music_nerd.md](examples/basic/music_nerd.md) for an example.
 
 ### AzureOpenAI
 
@@ -508,7 +508,7 @@ For more information on logic of parsing the `base_url` see [Ollama python SDK](
 
 #### Example agent network
 
-See the [./examples/music_nerd_pro_local.md](./examples/music_nerd_pro_local.md) for a complete working example.
+See the [./examples/music_nerd_pro_local.md](examples/basic/music_nerd_pro_local.md) for a complete working example.
 
 For more information about how to use Ollama with LangChain,
 see [this page](https://python.langchain.com/docs/integrations/chat/ollama/)
@@ -524,7 +524,7 @@ Neuro-SAN supports LLM fallbacks, which allow you to specify a list of LLMs to u
 In the `llm_config` block, put each LLM configuration in a `fallbacks` list.
 The list of LLM configs is tried in order until one succeeds.
 
-In this example, as seen in [./examples/music_nerd_llm_fallbacks.md](./examples/music_nerd_llm_fallbacks.md),
+In this example, as seen in [./examples/music_nerd_llm_fallbacks.md](examples/basic/music_nerd_llm_fallbacks.md),
 the agent network will use OpenAI's `gpt-4o` model first,
 and if that fails (for example, due to rate limits or service outages),
 it will automatically fall back to Anthropic's `claude-3-7-sonnet` model:

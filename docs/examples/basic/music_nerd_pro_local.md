@@ -7,4 +7,4 @@ with Ollama.
 
 ## File
 
-[music_nerd_pro_local.hocon](../../registries/basic/music_nerd_pro_local.hocon)
+[music_nerd_pro_local.hocon](../../../registries/basic/music_nerd_pro_local.hocon)

@@ -8,7 +8,7 @@ It allows to test for:
 
 ## File
 
-[music_nerd.hocon](../../registries/basic/music_nerd.hocon)
+[music_nerd.hocon](../../../registries/basic/music_nerd.hocon)
 
 ## Description
 

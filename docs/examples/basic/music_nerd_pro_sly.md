@@ -12,7 +12,7 @@ It allows to test for:
 
 ## File
 
-[music_nerd_pro_sly.hocon](../../registries/basic/music_nerd_pro_sly.hocon)
+[music_nerd_pro_sly.hocon](../../../registries/basic/music_nerd_pro_sly.hocon)
 
 ## Description
 

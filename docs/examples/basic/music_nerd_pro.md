@@ -11,7 +11,7 @@ It allows to test for:
 
 ## File
 
-[music_nerd_pro.hocon](../../registries/basic/music_nerd_pro.hocon)
+[music_nerd_pro.hocon](../../../registries/basic/music_nerd_pro.hocon)
 
 ## Description
 

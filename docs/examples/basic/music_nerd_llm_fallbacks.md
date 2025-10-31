@@ -5,7 +5,7 @@ in its LLM config to try a different LLM if the first one fails.
 
 ## File
 
-[music_nerd_llm_fallbacks.hocon](../../registries/basic/music_nerd_llm_fallbacks.hocon)
+[music_nerd_llm_fallbacks.hocon](../../../registries/basic/music_nerd_llm_fallbacks.hocon)
 
 ## Description
 
