@@ -80,7 +80,7 @@ This tells the server to load the `music_nerd.hocon` file from the same `/regist
 
 Setting the value to `false` would make the server ignore this agent network.
 
-Open [../registries/basic/music_nerd.hocon](../registries/hello_world.hocon) and have a look at it.
+Open [../registries/basic/music_nerd.hocon](../registries/basic/music_nerd.hocon) and have a look at it.
 For now just note that it contains:
 
 * an `llm_config` section that specifies which LLM to use by default for the agents in this file
@@ -1030,7 +1030,7 @@ Agent-Oriented Natural Language Interface](https://citeseerx.ist.psu.edu/documen
 
 <!-- (https://citeseerx.ist.psu.edu/document?repid=rep1&type=pdf&doi=011fb718658d611294613286c0f4b143aed40f43) -->
 
-Look at [../registries/smart_home.hocon](../registries/smart_home.hocon) and in particular:
+Look at [../registries/basic/smart_home.hocon](../registries/basic/smart_home.hocon) and in particular:
 
 * aaosa_instructions
 * aaosa_call
