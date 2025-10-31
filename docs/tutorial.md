@@ -61,7 +61,7 @@ autonomously.
 The library comes with a **Flask Web Client** (`neuro_san_web_client`) so that users can interact with these multi-agent
 networks through a web-based UI. This entire setup is easily configurable using **HOCON** (`.hocon`) files.
 
-**Note**: This tutorial is written with the help of the agent network example [advanced_calculator.hocon](https://github.com/cognizant-ai-lab/neuro-san-studio/blob/registries/advanced_calculator.hocon).
+**Note**: This tutorial is written with the help of the agent network example [advanced_calculator.hocon](../registries/basic/advanced_calculator.hocon).
 
 ---
 
@@ -73,13 +73,15 @@ Below is a simplified view of the reference project structure. You can adapt it 
 .
 ├── README.md
 ├── coded_tools
-│   └── advanced_calculator
-│       └── calculator_tool.py
+│   └── basic
+│     └── advanced_calculator
+│         └── calculator_tool.py
 ├── logs
 │   ├── client.log
 │   └── server.log
 ├── registries
-│   ├── advanced_calculator.hocon
+│   ├── basic
+│   │      └── advanced_calculator.hocon
 │   └── manifest.hocon
 ├── requirements.txt
 ├── run.py

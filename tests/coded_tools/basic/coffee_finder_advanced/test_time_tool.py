@@ -10,7 +10,7 @@
 from datetime import datetime
 from unittest import TestCase
 
-from coded_tools.coffee_finder_advanced.time_tool import TimeTool
+from coded_tools.basic.coffee_finder_advanced.time_tool import TimeTool
 
 
 class TestTimeTool(TestCase):

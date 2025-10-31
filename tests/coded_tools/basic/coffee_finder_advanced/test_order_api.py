@@ -9,7 +9,7 @@
 #
 from unittest import TestCase
 
-from coded_tools.coffee_finder_advanced.order_api import OrderAPI
+from coded_tools.basic.coffee_finder_advanced.order_api import OrderAPI
 
 
 class TestOrderAPI(TestCase):
