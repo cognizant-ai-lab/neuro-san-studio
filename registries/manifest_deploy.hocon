@@ -29,6 +29,6 @@
     "macys.hocon": true,
     "carmax.hocon": true,
     "booking.hocon": true,
-    "website_search.hocon": true,
+    "ddgs_search.hocon": true,
     "LinkedInJobSeekerSupportNetwork.hocon": true,
 }
