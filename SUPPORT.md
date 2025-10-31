@@ -105,7 +105,8 @@ See our [Contributing Guide](CONTRIBUTING.md) for details.
 - **Neuro SAN Landing Page**: [Neuro SAN](https://www.cognizant.com/us/en/ai-lab/neuro-san)
 
 ### Community Projects
-- [Neuro SAN Web Client](https://github.com/cognizant-ai-lab/neuro-san-web-client) - Flask web interface
+
+See the [Community Projects](README.md#community-projects) page for a list of projects developed by the community.
 
 ---
 
