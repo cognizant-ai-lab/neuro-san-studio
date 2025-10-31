@@ -12,7 +12,7 @@ It's good for testing:
 
 ## File
 
-[coffee_finder.hocon](../../registries/coffee_finder.hocon)
+[coffee_finder.hocon](../../../registries/basic/coffee_finder.hocon)
 
 ## Description
 

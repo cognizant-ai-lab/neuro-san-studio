@@ -112,7 +112,7 @@ its `llm_config` to automatically try another LLM config if the first one fails.
 
 ### Coffee Finder
 
-[Coffee Finder](./examples/coffee_finder.md) is an agent network that helps
+[Coffee Finder](examples/basic/coffee_finder.md) is an agent network that helps
 users find coffee at any time of the day. It shows how multiple agents can
 provide the same service and how the AAOSA instructions can be used to choose
 the best option depending on the context.
@@ -121,7 +121,7 @@ the best option depending on the context.
 
 ### Coffee Finder Advanced
 
-[Coffee Finder Advanced](./examples/coffee_finder_advanced.md) is an agent network that helps
+[Coffee Finder Advanced](examples/basic/coffee_finder_advanced.md) is an agent network that helps
 users find places that sell coffee and place orders.
 This is a good example to:
 * Learn how to use the `AAOSA` instructions to find and choose between options.
