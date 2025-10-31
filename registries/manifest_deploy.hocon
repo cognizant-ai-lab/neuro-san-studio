@@ -23,7 +23,7 @@
     "telco_network_orchestration.hocon": true,
     "therapy_vignette_supervisors.hocon": true,
     "consumer_decision_assistant.hocon": true,
-    # The following agent networks are used as sub-networkds by consumer_decision_assistant.hocon
+    # The following agent networks are used as sub-networks by consumer_decision_assistant.hocon
     "airbnb.hocon": true,
     "expedia.hocon": true,
     "macys.hocon": true,
