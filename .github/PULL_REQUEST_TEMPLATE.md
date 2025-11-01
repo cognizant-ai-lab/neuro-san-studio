@@ -8,6 +8,7 @@ Fixes # <!-- Issue number, if applicable -->
 
 - [ ] Bug fix
 - [ ] New feature
+- [ ] Dependency upgrade
 - [ ] Refactoring / Improvement
 - [ ] Documentation
 - [ ] New agent / tool
