@@ -8,34 +8,25 @@ Fixes # <!-- Issue number, if applicable -->
 
 - [ ] Bug fix
 - [ ] New feature
-- [ ] Breaking change
+- [ ] Refactoring / Improvement
 - [ ] Documentation
-- [ ] New agent/tool
-- [ ] Other
+- [ ] New agent / tool
 
-## Testing
+## Checklist
 
 - [ ] Tested locally
 - [ ] Added/updated tests
-- [ ] `make test` passes
+- [ ] Updated relevant documentation
 
-<!-- Briefly describe how you tested this -->
+<!-- For new coded tools/agent networks, ensure proper documentation and examples are included -->
 
-## Dependencies
+## Python dependencies
 
 <!-- Only if you're modifying dependencies -->
 
 - [ ] No dependency changes, OR
 - [ ] Added to main `requirements.txt` (core functionality only), OR
-- [ ] Added to tool/network-specific `requirements.txt`
-
-## Checklist
-
-- [ ] Code follows style guidelines (`make lint`)
-- [ ] Added docstrings and comments
-- [ ] Updated relevant documentation
-
-<!-- For new coded tools/agent networks, ensure proper documentation and examples are included -->
+- [ ] Added to tool / network-specific `requirements.txt`
 
 ---
 
