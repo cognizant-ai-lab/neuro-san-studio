@@ -4,6 +4,10 @@
 
 Fixes # <!-- Issue number, if applicable -->
 
+## Screenshots / Logs / Examples (optional)
+
+<!-- Add screenshots, screen recordings, logs or examples if relevant -->
+
 ## Type of Change
 
 - [ ] Bug fix
