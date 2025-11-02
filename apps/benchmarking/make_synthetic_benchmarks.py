@@ -1,4 +1,7 @@
-import json, random, argparse
+import argparse
+import json
+import random
+
 
 def generate_long_multiplication(n, min_digits, max_digits, seed=0):
     rnd = random.Random(seed)
