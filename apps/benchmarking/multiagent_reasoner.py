@@ -115,10 +115,11 @@ def _parse_number(text: str) -> int | None:
     try:
         return int(cleaned)
     except ValueError:
-        numbers = re.findall(r"\d+", cleaned)
+        numbers: list[str] = re.findall(r"\d+", cleaned)
         if numbers:
             try:
-                return int(max(numbers, key=len))
+                longest: str = max(numbers, key=len)
+                return int(longest)
             except ValueError:
                 pass
     return None
@@ -183,16 +184,13 @@ def _extract_multiplication_problem(problem: str) -> tuple[int | None, int | Non
     return None, None
 
 
-def _classify_failure(trace: dict, expected: int, actual: int | None) -> list[str]:
+def _classify_failure(trace: dict, _expected: int, actual: int | None) -> list[str]:
     """Classify failure patterns based on trace data."""
     patterns = []
 
     if actual is None:
         patterns.append("malformed_final")
         return patterns
-
-    error_magnitude = abs(actual - expected) if actual is not None else None
-    relative_error = error_magnitude / expected if expected != 0 and error_magnitude is not None else None
 
     decomp_info = trace.get("decomposition")
     if decomp_info:
@@ -454,6 +452,14 @@ def main():
 
             failure_patterns = _classify_failure(trace, expected, actual)
 
+            diff = None if actual is None else actual - expected
+            abs_diff = None if actual is None else abs(actual - expected)
+            rel_error = (
+                None
+                if actual is None or expected == 0
+                else abs_diff / abs(expected)
+            )
+
             failure_record = {
                 "problem": problem,
                 "expected": expected,
@@ -461,6 +467,11 @@ def main():
                 "extracted_final": extracted_final,
                 "final_resp": final_resp,
                 "failure_patterns": failure_patterns,
+                "error": {
+                    "diff": diff,
+                    "abs_diff": abs_diff,
+                    "relative_error": rel_error,
+                },
                 "trace": trace,
                 "config": {
                     "WINNING_VOTE_COUNT": WINNING_VOTE_COUNT,
