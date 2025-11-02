@@ -191,6 +191,9 @@ def _classify_failure(trace: dict, expected: int, actual: int | None) -> list[st
         patterns.append("malformed_final")
         return patterns
 
+    error_magnitude = abs(actual - expected) if actual is not None else None
+    relative_error = error_magnitude / expected if expected != 0 and error_magnitude is not None else None
+
     decomp_info = trace.get("decomposition")
     if decomp_info:
         p2_text = decomp_info.get("p2", "")
@@ -206,7 +209,9 @@ def _classify_failure(trace: dict, expected: int, actual: int | None) -> list[st
 
         if c_text:
             has_add = any(word in c_text.lower() for word in ["add", "sum", "plus"])
-            has_subtract = any(word in c_text.lower() for word in ["subtract", "minus", "difference"])
+            has_subtract = any(
+                word in c_text.lower() for word in ["subtract", "minus", "difference"]
+            )
             if has_add and has_subtract:
                 patterns.append("ambiguous_composition_op")
 
@@ -419,15 +424,27 @@ def main():
         print("[ERROR] No input provided.", file=sys.stderr)
         sys.exit(1)
 
+    if LOG_FAILURES_JSONL:
+        log_dir = Path(LOG_FAILURES_JSONL).parent
+        log_dir.mkdir(parents=True, exist_ok=True)
+        logging.info(f"[main] Failure logging enabled: {LOG_FAILURES_JSONL}")
+
     final_resp = solve(problem, depth=0, max_depth=MAX_DEPTH)
 
     extracted_final = _extract_final(final_resp)
     logging.info(f"[main] final answer: {extracted_final!r}")
 
     a, b = _extract_multiplication_problem(problem)
-    if a is not None and b is not None and LOG_FAILURES_JSONL:
+    if a is None or b is None:
+        logging.info(
+            f"[main] Could not extract multiplication problem from: {problem[:100]}"
+        )
+    elif not LOG_FAILURES_JSONL:
+        logging.info("[main] LOG_FAILURES_JSONL not set; skipping failure logging")
+    else:
         expected = a * b
         actual = _parse_number(extracted_final)
+        logging.info(f"[main] Checking: expected={expected}, actual={actual}")
 
         if actual != expected:
             trace = {
@@ -455,7 +472,9 @@ def main():
             }
 
             if LOG_DIR:
-                failure_record["log_file"] = str(log_file) if "log_file" in locals() else None
+                failure_record["log_file"] = (
+                    str(log_file) if "log_file" in locals() else None
+                )
 
             try:
                 with open(LOG_FAILURES_JSONL, "a") as f:
@@ -463,6 +482,8 @@ def main():
                 logging.info(f"[main] Failure logged to {LOG_FAILURES_JSONL}")
             except Exception as e:
                 logging.error(f"[main] Failed to write failure log: {e}")
+        else:
+            logging.info(f"[main] Correct answer; not logging to {LOG_FAILURES_JSONL}")
 
     print(final_resp)
 
