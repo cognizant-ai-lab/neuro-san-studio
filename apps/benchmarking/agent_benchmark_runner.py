@@ -1,13 +1,21 @@
-import os
-import re
 import csv
 import json
-import time
-import random
-import subprocess
 import json as _json
-from typing import Dict, Any, Tuple, Optional, List, Callable, Iterable
-from concurrent.futures import ThreadPoolExecutor, ProcessPoolExecutor, as_completed
+import os
+import random
+import re
+import subprocess
+import time
+from concurrent.futures import ProcessPoolExecutor
+from concurrent.futures import ThreadPoolExecutor
+from concurrent.futures import as_completed
+from typing import Any
+from typing import Callable
+from typing import Dict
+from typing import Iterable
+from typing import List
+from typing import Optional
+from typing import Tuple
 
 # Neuro-SAN client
 from neuro_san.client.agent_session_factory import AgentSessionFactory
@@ -40,21 +48,21 @@ class AgentBenchmarkRunner:
     NUM_RE = re.compile(r"[-+]?\d[\d,]*(?:\.\d+)?")
 
     def __init__(
-            self,
-            agent_name: str = "thinking_module",
-            connection: str = "direct",
-            host: str = "localhost",
-            port: int = PORT,
-            local_externals_direct: bool = False,
-            agent_manifest_file: str = "apps/benchmarking/manifest_solver.hocon",
-            agent_tool_path: str = "coded_tools",
-            default_timeout_ms: float = 120_000.0,
-            chat_filter: Optional[Dict[str, Any]] = None,
-            dataset_loader: Optional[Callable[..., List[Dict[str, Any]]]] = None,
-            # add these two:
-            python_prog: Optional[str] = None,
-            python_prog_args: Optional[List[str]] = None,
-            num_workers: int = 1
+        self,
+        agent_name: str = "thinking_module",
+        connection: str = "direct",
+        host: str = "localhost",
+        port: int = PORT,
+        local_externals_direct: bool = False,
+        agent_manifest_file: str = "apps/benchmarking/manifest_solver.hocon",
+        agent_tool_path: str = "coded_tools",
+        default_timeout_ms: float = 120_000.0,
+        chat_filter: Optional[Dict[str, Any]] = None,
+        dataset_loader: Optional[Callable[..., List[Dict[str, Any]]]] = None,
+        # add these two:
+        python_prog: Optional[str] = None,
+        python_prog_args: Optional[List[str]] = None,
+        num_workers: int = 1,
     ):
         self.agent_name = agent_name
         self.connection = connection
@@ -92,16 +100,18 @@ class AgentBenchmarkRunner:
 
     def _append_progress_row(self, r: Dict[str, Any]):
         if getattr(self, "_progress_csv_writer", None):
-            self._progress_csv_writer.writerow({
-                "id": r["id"],
-                "question": r["question"],
-                "gold": r["gold"],
-                "gold_extracted": r["gold_extracted"],
-                "response": r["response"],
-                "pred_extracted": r["pred_extracted"],
-                "correct": r["correct"],
-                "latency_sec": r["latency_sec"],
-            })
+            self._progress_csv_writer.writerow(
+                {
+                    "id": r["id"],
+                    "question": r["question"],
+                    "gold": r["gold"],
+                    "gold_extracted": r["gold_extracted"],
+                    "response": r["response"],
+                    "pred_extracted": r["pred_extracted"],
+                    "correct": r["correct"],
+                    "latency_sec": r["latency_sec"],
+                }
+            )
             self._progress_csv_file.flush()
             os.fsync(self._progress_csv_file.fileno())
 
@@ -221,8 +231,7 @@ class AgentBenchmarkRunner:
             from datasets import load_dataset  # type: ignore
         except Exception as e:
             raise RuntimeError(
-                "HuggingFace `datasets` not available. Install it (`pip install datasets`) "
-                "or pass local_jsonl."
+                "HuggingFace `datasets` not available. Install it (`pip install datasets`) " "or pass local_jsonl."
             ) from e
 
         ds = load_dataset("gsm8k", "main")
@@ -231,30 +240,28 @@ class AgentBenchmarkRunner:
 
         out = []
         for i, row in enumerate(ds[split]):
-            out.append({"id": row.get("id", f"{split}-{i}"),
-                        "question": row["question"],
-                        "answer": row["answer"]})
+            out.append({"id": row.get("id", f"{split}-{i}"), "question": row["question"], "answer": row["answer"]})
         random.Random(seed).shuffle(out)
         return out
 
     # ------------------ Prompting ------------------
 
     def build_prompt(
-            self,
-            question: str,
-            *,
-            fewshot_prefix: Optional[str],
-            show_work: bool,
-            final_token: str = None,
-            answer_format: str = "number",
+        self,
+        question: str,
+        *,
+        fewshot_prefix: Optional[str],
+        show_work: bool,
+        final_token: str = None,
+        answer_format: str = "number",
     ) -> str:
         final_token = final_token or self.FINAL_ANSWER_TOKEN
 
         if answer_format == "list-json":
             instruction = (
                 "You are sorting a list of integers. Reason briefly, then follow the output format EXACTLY."
-                if show_work else
-                "Sort the list of integers correctly. Do NOT include your reasoning. Follow the output format EXACTLY."
+                if show_work
+                else "Sort the list of integers correctly. Do NOT include your reasoning. Follow the output format EXACTLY."
             )
             format_rule = (
                 f"OUTPUT FORMAT (must match exactly):\n"
@@ -271,8 +278,8 @@ class AgentBenchmarkRunner:
         else:
             instruction = (
                 "You are solving a numeric problem."
-                if show_work else
-                "Solve the problem correctly. You may use scratch work internally, but DO NOT include your full reasoning."
+                if show_work
+                else "Solve the problem correctly. You may use scratch work internally, but DO NOT include your full reasoning."
             )
             format_rule = f"At the end, output the final numeric answer on its own line as '{final_token} <number>'."
 
@@ -297,7 +304,7 @@ class AgentBenchmarkRunner:
         if not text:
             return None
         pos = text.rfind(final_token)
-        segment = text[pos + len(final_token):] if pos != -1 else text
+        segment = text[pos + len(final_token) :] if pos != -1 else text
         # find first '[' ... ']' in the tail
         try:
             start = segment.index("[")
@@ -365,7 +372,7 @@ class AgentBenchmarkRunner:
             return None
         pos = text.rfind(token)
         if pos != -1:
-            tail = text[pos + len(token):]
+            tail = text[pos + len(token) :]
             m = self.NUM_RE.search(tail)
             if m:
                 return self._normalize_number(m.group(0))
@@ -374,15 +381,15 @@ class AgentBenchmarkRunner:
             return self._normalize_number(all_nums[-1].group(0))
         return None
 
-    def _evaluate_item_with_retries(self, ex, *, per_item_timeout_ms, retries, final_token,
-                                    answer_format):
+    def _evaluate_item_with_retries(self, ex, *, per_item_timeout_ms, retries, final_token, answer_format):
         # identical to the inner loop you had in evaluate(); reused by both seq/parallel
         attempt = 0
         backoff = 0.5
         last = None
         while attempt <= self.sample_retries:
             r = self.evaluate_item(
-                ex["question"], ex["answer"],
+                ex["question"],
+                ex["answer"],
                 per_item_timeout_ms=per_item_timeout_ms,
                 retries=retries,
                 final_token=final_token,
@@ -400,7 +407,17 @@ class AgentBenchmarkRunner:
     @staticmethod
     def _agent_worker_payload(payload):
         """Isolated process/thread worker for AGENT mode (no --python-prog)."""
-        cfg, ex, fewshot_prefix, show_work, per_item_timeout_ms, retries, final_token, answer_format, sample_retries = payload
+        (
+            cfg,
+            ex,
+            fewshot_prefix,
+            show_work,
+            per_item_timeout_ms,
+            retries,
+            final_token,
+            answer_format,
+            sample_retries,
+        ) = payload
         runner = AgentBenchmarkRunner(
             agent_name=cfg["agent_name"],
             connection=cfg["connection"],
@@ -428,17 +445,15 @@ class AgentBenchmarkRunner:
         finally:
             runner.close()
 
-    def _evaluate_parallel(self, items, *, per_item_timeout_ms, retries, answer_format,
-                           final_token, progress_every):
+    def _evaluate_parallel(self, items, *, per_item_timeout_ms, retries, answer_format, final_token, progress_every):
         results = []
         correct = 0
         latencies = []
         processed = 0
 
-        self._ensure_progress_csv([
-            "id", "question", "gold", "gold_extracted", "response",
-            "pred_extracted", "correct", "latency_sec"
-        ])
+        self._ensure_progress_csv(
+            ["id", "question", "gold", "gold_extracted", "response", "pred_extracted", "correct", "latency_sec"]
+        )
 
         if self.python_prog:
             # PROGRAM MODE: threads are perfect (each task is a blocking subprocess.run)
@@ -453,6 +468,7 @@ class AgentBenchmarkRunner:
                     final_token=final_token,
                     answer_format=answer_format,
                 )
+
         else:
             # AGENT MODE: avoid sharing one session; spin isolated runner per task
             exec_cls = ProcessPoolExecutor
@@ -467,8 +483,10 @@ class AgentBenchmarkRunner:
                 "default_timeout_ms": self.default_timeout_ms,
                 "chat_filter": self.chat_filter,
             }
-            payloads = [(cfg, ex, per_item_timeout_ms, retries, final_token, answer_format,
-                         getattr(self, "sample_retries", 2)) for ex in items]
+            payloads = [
+                (cfg, ex, per_item_timeout_ms, retries, final_token, answer_format, getattr(self, "sample_retries", 2))
+                for ex in items
+            ]
 
             def submit_fn(payload):
                 return AgentBenchmarkRunner._agent_worker_payload(payload)
@@ -498,7 +516,8 @@ class AgentBenchmarkRunner:
                 if progress_every and (completed % progress_every == 0 or completed == total):
                     denom = processed if processed else 1
                     print(
-                        f"[{completed}/{total}] acc_so_far={correct / denom:.3f} last_latency={r['latency_sec']:.2f}s")
+                        f"[{completed}/{total}] acc_so_far={correct / denom:.3f} last_latency={r['latency_sec']:.2f}s"
+                    )
 
         denom = processed if processed else 1
         accuracy = correct / denom
@@ -516,14 +535,14 @@ class AgentBenchmarkRunner:
     # ------------------ Single Item Eval ------------------
 
     def evaluate_item(
-            self,
-            question: str,
-            gold: str,
-            *,
-            per_item_timeout_ms: Optional[float] = None,
-            retries: int = 0,
-            final_token: str = "####",
-            answer_format: str = "number",
+        self,
+        question: str,
+        gold: str,
+        *,
+        per_item_timeout_ms: Optional[float] = None,
+        retries: int = 0,
+        final_token: str = "####",
+        answer_format: str = "number",
     ) -> Dict[str, Any]:
         gold_parsed = self.parse_gold(gold, final_token=final_token, answer_format=answer_format)
         prompt = question.strip()
@@ -543,10 +562,9 @@ class AgentBenchmarkRunner:
         pred_parsed = self.parse_prediction(response or "", final_token=final_token, answer_format=answer_format)
 
         if answer_format == "list-json":
-            is_correct = (
-                        isinstance(pred_parsed, list) and isinstance(gold_parsed, list) and pred_parsed == gold_parsed)
+            is_correct = isinstance(pred_parsed, list) and isinstance(gold_parsed, list) and pred_parsed == gold_parsed
         else:
-            is_correct = (pred_parsed is not None and gold_parsed is not None and pred_parsed == gold_parsed)
+            is_correct = pred_parsed is not None and gold_parsed is not None and pred_parsed == gold_parsed
 
         return {
             "question": question,
@@ -563,17 +581,19 @@ class AgentBenchmarkRunner:
     # ------------------ Benchmark Loop ------------------
 
     def evaluate(
-            self,
-            data: Iterable[Dict[str, Any]],
-            *,
-            limit: Optional[int] = None,
-            per_item_timeout_ms: Optional[float] = None,
-            retries: int = 0,
-            progress_every: int = 10,
-            sample_retries: int = 2,  # NEW: per-sample reruns
-            retry_backoff_ms: int = 500,  # NEW: base backoff
-            exclude_errors: bool = False,  # NEW: control denominator
-            answer_format: str = "number", final_token: str = "####") -> Dict[str, Any]:
+        self,
+        data: Iterable[Dict[str, Any]],
+        *,
+        limit: Optional[int] = None,
+        per_item_timeout_ms: Optional[float] = None,
+        retries: int = 0,
+        progress_every: int = 10,
+        sample_retries: int = 2,  # NEW: per-sample reruns
+        retry_backoff_ms: int = 500,  # NEW: base backoff
+        exclude_errors: bool = False,  # NEW: control denominator
+        answer_format: str = "number",
+        final_token: str = "####",
+    ) -> Dict[str, Any]:
         items = list(data) if not isinstance(data, list) else data
         if limit is not None:
             items = items[:limit]
@@ -596,10 +616,9 @@ class AgentBenchmarkRunner:
         latencies = []
         processed = 0  # items counted in denominator (may exclude persistent errors)
 
-        self._ensure_progress_csv([
-            "id", "question", "gold", "gold_extracted", "response",
-            "pred_extracted", "correct", "latency_sec"
-        ])
+        self._ensure_progress_csv(
+            ["id", "question", "gold", "gold_extracted", "response", "pred_extracted", "correct", "latency_sec"]
+        )
 
         for i, ex in enumerate(items, 1):
             attempt = 0
@@ -645,8 +664,10 @@ class AgentBenchmarkRunner:
 
             if progress_every and (i % progress_every == 0 or i == len(items)):
                 denom = processed if processed > 0 else 1
-                print(f"[{i}/{len(items)}] acc_so_far={correct / denom:.3f} last_latency={final_r['latency_sec']:.2f}s "
-                      f"(attempts={attempt})")
+                print(
+                    f"[{i}/{len(items)}] acc_so_far={correct / denom:.3f} last_latency={final_r['latency_sec']:.2f}s "
+                    f"(attempts={attempt})"
+                )
 
         denom = processed if processed > 0 else 1
         accuracy = correct / denom
@@ -669,22 +690,33 @@ class AgentBenchmarkRunner:
         base_jsonl = f"results_{tag}_{ts}.jsonl"
 
         with open(base_csv, "w", newline="", encoding="utf-8") as f:
-            w = csv.DictWriter(f, fieldnames=[
-                "id", "question", "gold", "gold_extracted", "response",
-                "pred_extracted", "correct", "latency_sec"
-            ])
+            w = csv.DictWriter(
+                f,
+                fieldnames=[
+                    "id",
+                    "question",
+                    "gold",
+                    "gold_extracted",
+                    "response",
+                    "pred_extracted",
+                    "correct",
+                    "latency_sec",
+                ],
+            )
             w.writeheader()
             for r in payload["results"]:
-                w.writerow({
-                    "id": r["id"],
-                    "question": r["question"],
-                    "gold": r["gold"],
-                    "gold_extracted": r["gold_extracted"],
-                    "response": r["response"],
-                    "pred_extracted": r["pred_extracted"],
-                    "correct": r["correct"],
-                    "latency_sec": r["latency_sec"],
-                })
+                w.writerow(
+                    {
+                        "id": r["id"],
+                        "question": r["question"],
+                        "gold": r["gold"],
+                        "gold_extracted": r["gold_extracted"],
+                        "response": r["response"],
+                        "pred_extracted": r["pred_extracted"],
+                        "correct": r["correct"],
+                        "latency_sec": r["latency_sec"],
+                    }
+                )
 
         with open(base_jsonl, "w", encoding="utf-8") as f:
             meta = {k: v for k, v in payload.items() if k != "results"}
@@ -728,17 +760,27 @@ if __name__ == "__main__":
     ap.add_argument("--host", default="localhost", help="Agent host")
     ap.add_argument("--port", type=int, default=30011, help="Agent port")
 
-    ap.add_argument("--sample-retries", type=int, default=2,
-                    help="Max per-item reruns when the platform throws (default: 2)")
-    ap.add_argument("--retry-backoff-ms", type=int, default=500,
-                    help="Base backoff in ms between retries; doubles each attempt (default: 500)")
-    ap.add_argument("--exclude-errors", action="store_true",
-                    help="Exclude items that fail after all retries from accuracy denominator")
-    ap.add_argument("--answer-format", default="number",
-                    choices=["number", "list-json"],
-                    help="How to parse & compare final answers (default: number).")
-    ap.add_argument("--final-token", default="####",
-                    help="Marker token preceding the final answer (default: ####).")
+    ap.add_argument(
+        "--sample-retries", type=int, default=2, help="Max per-item reruns when the platform throws (default: 2)"
+    )
+    ap.add_argument(
+        "--retry-backoff-ms",
+        type=int,
+        default=500,
+        help="Base backoff in ms between retries; doubles each attempt (default: 500)",
+    )
+    ap.add_argument(
+        "--exclude-errors",
+        action="store_true",
+        help="Exclude items that fail after all retries from accuracy denominator",
+    )
+    ap.add_argument(
+        "--answer-format",
+        default="number",
+        choices=["number", "list-json"],
+        help="How to parse & compare final answers (default: number).",
+    )
+    ap.add_argument("--final-token", default="####", help="Marker token preceding the final answer (default: ####).")
     ap.add_argument("--python-prog", help="Path to a Python program to call instead of an agent")
     ap.add_argument("--python-prog-args", nargs="*", default=[], help="Args to pass to --python-prog")
     ap.add_argument("--num-workers", type=int, default=1, help="Parallel workers (default: 1)")

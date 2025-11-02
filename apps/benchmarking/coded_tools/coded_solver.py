@@ -19,8 +19,8 @@ HOST = "localhost"  # string
 PORT = 30012
 LOCAL_EXTERNALS_DIRECT = False
 AGENT_THINKING_PATH = "/tmp/agent_thinking.txt"  # Or wherever you want
-VOTE_WIN_COUNT = 2   # require this many identical answers to win early
-MAX_VOTING = 3       # max attempts
+VOTE_WIN_COUNT = 2  # require this many identical answers to win early
+MAX_VOTING = 3  # max attempts
 MAX_DEPTH = 3
 SOLUTION_START = ">>>>"
 
@@ -105,8 +105,7 @@ class CallAgent(CodedTool):
                 winner = parsed_answer
                 winner_votes = count
                 vote_logger.info(
-                    "Voting reached threshold: answer=%r votes=%d attempts=%d",
-                    winner, winner_votes, attempts
+                    "Voting reached threshold: answer=%r votes=%d attempts=%d", winner, winner_votes, attempts
                 )
                 print(f"answer={winner} votes={winner_votes} attempts={attempts}")
                 break  # IMPORTANT: stop once we hit the threshold
@@ -120,7 +119,9 @@ class CallAgent(CodedTool):
             final_votes = most_popular_votes
             vote_logger.info(
                 "Voting ended without threshold. Selected most popular: answer=%r votes=%d attempts=%d",
-                final_answer, final_votes, attempts
+                final_answer,
+                final_votes,
+                attempts,
             )
             print(f"Threshold not hit: answer={final_answer} votes={final_votes} attempts={attempts}")
 

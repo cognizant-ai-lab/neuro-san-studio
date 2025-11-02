@@ -1,4 +1,3 @@
-
 # Copyright (C) 2023-2025 Cognizant Digital Business, Evolutionary AI.
 # All Rights Reserved.
 # Issued under the Academic Public License.
@@ -17,7 +16,7 @@ class AgentNetworkValidator:
     """Validator for both structure and instructions of agent network definition."""
 
     def __init__(self, network: dict[str, dict[str, Any]]):
-        self.network = network        
+        self.network = network
 
     def validate_network_keywords(self, keyword: str) -> list[str]:
         """

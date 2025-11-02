@@ -7,8 +7,8 @@
 # Purchase of a commercial license is mandatory for any use of the
 # neuro-san-studio SDK Software in commercial settings.
 #
-from copy import deepcopy
 import logging
+from copy import deepcopy
 from typing import Any
 
 import aiofiles  # Import for asynchronous file operations
@@ -166,8 +166,9 @@ class CreateAgentNetworkHocon(CodedTool):
 
         # Validate the agent network and return error message if there are any issues.
         validator = AgentNetworkValidator(network_def)
-        error_list: list[str] = validator.validate_network_structure() + \
-            validator.validate_network_keywords("instructions")
+        error_list: list[str] = validator.validate_network_structure() + validator.validate_network_keywords(
+            "instructions"
+        )
         if error_list:
             error_msg = f"Error: {error_list}"
             logger.error(error_msg)

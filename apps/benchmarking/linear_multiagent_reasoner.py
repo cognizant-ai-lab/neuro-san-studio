@@ -1,11 +1,14 @@
-import os
-import sys
-import re
 import logging
+import os
+import re
+import sys
 import threading
-from typing import List, Tuple, Optional
+from typing import List
+from typing import Optional
+from typing import Tuple
 
-from neuro_san.client.agent_session_factory import AgentSessionFactory, AgentSession
+from neuro_san.client.agent_session_factory import AgentSession
+from neuro_san.client.agent_session_factory import AgentSessionFactory
 from neuro_san.client.streaming_input_processor import StreamingInputProcessor
 
 LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO").upper()
@@ -41,14 +44,15 @@ def _get_session(agent_name: str) -> AgentSession:
         sess = _sessions.get(agent_name)
         if sess is None:
             sess = _factory.create_session(
-                "direct", agent_name, "localhost", AGENTS_PORT, False,
-                {"user_id": os.environ.get("USER")}
+                "direct", agent_name, "localhost", AGENTS_PORT, False, {"user_id": os.environ.get("USER")}
             )
             _sessions[agent_name] = sess
         return sess
 
+
 def _build_steps_block(all_steps: List[str]) -> str:
     return "\n".join(f"{i+1}) {s}" for i, s in enumerate(all_steps))
+
 
 def multi_step_decomposer_session() -> AgentSession:
     return _get_session("multi_step_decomposer")
@@ -78,8 +82,7 @@ def call_agent(agent_session: AgentSession, text: str, timeout_ms: float = 10000
         "sly_data": None,
         "chat_filter": {"chat_filter_type": "MAXIMAL"},
     }
-    inp = StreamingInputProcessor("DEFAULT", _tmpfile("program_mode_thinking"),
-                                  agent_session, None)
+    inp = StreamingInputProcessor("DEFAULT", _tmpfile("program_mode_thinking"), agent_session, None)
     thread = inp.process_once(thread)
     logging.debug(f"call_agent({agent_session}): sending {len(text)} chars")
     resp = thread.get("last_chat_response") or ""
@@ -99,16 +102,17 @@ def _extract_final(text: str, token: str = FINAL_TOKEN) -> str:
         if token_low in ln_low:
             # find index of the match in a lowercase version, but slice original line
             idx = ln_low.find(token_low)
-            return ln[idx + len(token):].strip()
+            return ln[idx + len(token) :].strip()
     return lines[-1] if lines else ""
 
 
 # Replace the single-line matcher with a block matcher:
 _STEP_BLOCK_RE = re.compile(
-    r"^\s*(\d+)[.)]\s+(.*?)"          # step number + first line of the step
-    r"(?=^\s*\d+[.)]\s+|\Z)",         # up to (but not including) next step or end
-    re.MULTILINE | re.DOTALL
+    r"^\s*(\d+)[.)]\s+(.*?)"  # step number + first line of the step
+    r"(?=^\s*\d+[.)]\s+|\Z)",  # up to (but not including) next step or end
+    re.MULTILINE | re.DOTALL,
 )
+
 
 def _extract_steps(resp: str) -> List[str]:
     """
@@ -154,12 +158,9 @@ def _build_history_block(original_problem: str, context_history: List[str]) -> s
         parts.append(f"{i}) OUTPUT OF STEP {i}:\n{ctx}")
     return "\n\n".join(parts)
 
+
 def _compose_step_prompt(
-    step_instruction: str,
-    original_problem: str,
-    context_history: List[str],
-    all_steps: List[str],
-    step_index: int
+    step_instruction: str, original_problem: str, context_history: List[str], all_steps: List[str], step_index: int
 ) -> str:
     """
     Give problem_solver:
@@ -179,8 +180,10 @@ def _compose_step_prompt(
         f"HISTORY (all prior outputs):\n{history_block}\n"
     )
 
-def _discriminator_prompt(step_instruction: str, original_problem: str, context_history: List[str],
-                          candidates: List[Tuple[str, str]]) -> str:
+
+def _discriminator_prompt(
+    step_instruction: str, original_problem: str, context_history: List[str], candidates: List[Tuple[str, str]]
+) -> str:
     """
     Build the prompt for composition_discriminator.
     We include the full history so it can judge candidates that depend on earlier steps.
@@ -191,16 +194,11 @@ def _discriminator_prompt(step_instruction: str, original_problem: str, context_
 
     numbered = []
     for i, (_full_resp, next_ctx) in enumerate(candidates, 1):
-        numbered.append(
-            f"{i}:\n{next_ctx}"
-        )
+        numbered.append(f"{i}:\n{next_ctx}")
     body = "\n\n".join(numbered)
 
-    return (
-        f"history:\n{history_block}\n\n"
-        f"problem:\n{step_instruction}\n\n"
-        f"CANDIDATES:\n{body}\n\n"
-    )
+    return f"history:\n{history_block}\n\n" f"problem:\n{step_instruction}\n\n" f"CANDIDATES:\n{body}\n\n"
+
 
 def _decomposition_discriminator_prompt(problem: str, decomp_candidates: List[List[str]]) -> str:
     """
@@ -211,10 +209,8 @@ def _decomposition_discriminator_prompt(problem: str, decomp_candidates: List[Li
     for i, steps in enumerate(decomp_candidates, 1):
         parts.append(f"{i})\n{_build_steps_block(steps)}")
     body = "\n\n".join(parts)
-    return (
-        f"PROBLEM:\n{problem}\n\n"
-        f"DECOMPOSITION CANDIDATES:\n{body}\n"
-    )
+    return f"PROBLEM:\n{problem}\n\n" f"DECOMPOSITION CANDIDATES:\n{body}\n"
+
 
 def _vote_among_decompositions(problem: str, decomp_candidates: List[List[str]]) -> int:
     """
@@ -245,8 +241,10 @@ def _vote_among_decompositions(problem: str, decomp_candidates: List[List[str]])
         winner_idx = max(range(len(votes)), key=lambda i: votes[i])
     return winner_idx
 
-def _vote_among_candidates(step_instruction: str, original_problem: str, context_history: List[str],
-                           candidates: List[Tuple[str, str]]) -> int:
+
+def _vote_among_candidates(
+    step_instruction: str, original_problem: str, context_history: List[str], candidates: List[Tuple[str, str]]
+) -> int:
     """
     Run NUMBER_OF_VOTES votes with composition_discriminator using the full history.
     Returns 0-based index of the winning candidate.
@@ -313,7 +311,7 @@ def multi_step_solve(problem: str) -> str:
     logging.info(f"[pipeline] chosen steps: {steps}")
 
     context_history: List[str] = []  # store ALL prior outputs (step 1..k-1)
-    last_full_response = ""          # full response of the chosen candidate of the last step
+    last_full_response = ""  # full response of the chosen candidate of the last step
 
     for step_idx, step_instruction in enumerate(steps, 1):
         logging.info(f"[pipeline] step {step_idx}/{len(steps)}: {step_instruction}")

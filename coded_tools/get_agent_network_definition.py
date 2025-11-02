@@ -161,7 +161,7 @@ class GetAgentNetworkDefinition(CodedTool):
 
         # Clean and normalize the input
         custom_part: str = instructions.strip()
-        custom_part = re.sub(r'\s+', ' ', custom_part)  # Normalize whitespace
+        custom_part = re.sub(r"\s+", " ", custom_part)  # Normalize whitespace
 
         # Remove instruction prefix using regex
         custom_part = re.sub(prefix_pattern, "", custom_part).strip()
