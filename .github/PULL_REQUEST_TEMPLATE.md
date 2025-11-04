@@ -1,8 +1,15 @@
+<!-- Suggested template for pull requests. -->
+<!-- Feel free to remove sections that are not relevant / write your own -->
+
 ## Description
 
 <!-- Brief description of what this PR does and why -->
 
 Fixes # <!-- Issue number, if applicable -->
+
+## Impact
+
+<!-- Brief description of what the consequences of this PR are -->
 
 ## Screenshots / Logs / Examples (optional)
 
