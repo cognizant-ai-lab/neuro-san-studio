@@ -40,4 +40,7 @@ class ReservationsAgentNetworkPersistor(AgentNetworkPersistor):
         :return an object describing the location to which the object was persisted
         """
         _ = obj, file_reference
+
+        # More to come
+
         return None
