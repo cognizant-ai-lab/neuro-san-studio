@@ -323,9 +323,9 @@
     },
 
     "website_rag": {
-        # This is a coded tool for RAG on websites.
-        "class": "website_rag.WebsiteRag", 
-        "description": "Retrieve information from the given websites",
+        # This is a coded tool for RAG on webpages.
+        "class": "webpage_rag.WebpageRag", 
+        "description": "Retrieve information from the given webpages",
         "parameters": {
             "type": "object",
             "properties": {

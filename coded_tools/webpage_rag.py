@@ -13,10 +13,10 @@ import logging
 import os
 from typing import Any
 
+from langchain_community.document_loaders import WebBaseLoader
 from langchain_core.documents import Document
 from langchain_core.vectorstores import VectorStore
 
-from langchain_community.document_loaders import WebBaseLoader
 from neuro_san.interfaces.coded_tool import CodedTool
 from requests.exceptions import HTTPError
 
@@ -27,14 +27,14 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 
-class WebsiteRag(CodedTool, BaseRag):
+class WebpageRag(CodedTool, BaseRag):
     """
-    CodedTool implementation which provides a way to do RAG on websites.
+    CodedTool implementation which provides a way to do RAG on webpages.
     """
 
     async def async_invoke(self, args: dict[str, Any], sly_data: dict[str, Any]) -> str:
         """
-        Load documents from URL using WebBaseLoader, build a vector store, and run a query against it.
+        Load webpages from URLs using WebBaseLoader, build a vector store, and run a query against it.
         See https://docs.langchain.com/oss/python/integrations/document_loaders/web_base.
 
         :param args: Dictionary containing:
