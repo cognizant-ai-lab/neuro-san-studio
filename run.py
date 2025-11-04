@@ -420,7 +420,7 @@ class NeuroSanRunner:
                         print(f"  No process found on port {port}")
             except subprocess.CalledProcessError as e:
                 print(f"  Failed to kill process on port {port}: {e}")
-            except Exception as e:
+            except Exception as e:  # pylint: disable=broad-exception-caught
                 print(f"  Error handling port {port}: {e}")
 
     def conditional_start_servers(self):
