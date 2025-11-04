@@ -64,6 +64,7 @@ Retrieve and query information from various document sources.
 * **`confluence_rag`** — Query Confluence documentation and wiki pages
 * **`docling_rag`** — Extract and search content from multiple document formats
 * **`pdf_rag`** — Query PDF documents
+* **`website_rag`** - Query websites
 * **`wikipedia_rag`** — Retrieve information from Wikipedia articles
 
 ### Web Search
