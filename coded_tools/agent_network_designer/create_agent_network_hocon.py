@@ -7,17 +7,19 @@
 # Purchase of a commercial license is mandatory for any use of the
 # neuro-san-studio SDK Software in commercial settings.
 #
-import logging
-from copy import deepcopy
 from typing import Any
 
-import aiofiles  # Import for asynchronous file operations
+import logging
+
+from copy import deepcopy
+
 from neuro_san.interfaces.coded_tool import CodedTool
 
+from coded_tools.agent_network_designer.agent_network_persistor import AgentNetworkPersistor
+from coded_tools.agent_network_designer.agent_network_persistor_factory import AgentNetworkPersistorFactory
 from coded_tools.agent_network_validator import AgentNetworkValidator
 
 WRITE_TO_FILE = True
-OUTPUT_PATH = "registries/"
 AGENT_NETWORK_DEFINITION = "agent_network_definition"
 AGENT_NETWORK_NAME = "agent_network_name"
 HOCON_HEADER_START = (
@@ -92,53 +94,6 @@ LEAF_NODE_AGENT_TEMPLATE = (
 TOOLBOX_AGENT_TEMPLATE = "        {\n" '            "name": "%s",\n' '            "toolbox": "%s"\n' "        },\n"
 
 
-async def modify_registry(the_agent_network_hocon_str, the_agent_network_name):
-    """
-    Writes the agent network to a file and updates the manifest.hocon file.
-    :param the_agent_network_hocon_str: The agent network hocon string
-    :param the_agent_network_name: The file name, without the .hocon extension
-    """
-    # Write the agent network file
-    file_path: str = OUTPUT_PATH + the_agent_network_name + ".hocon"
-    async with aiofiles.open(file_path, "w") as file:
-        await file.write(the_agent_network_hocon_str)
-
-    # Update the manifest.hocon file
-    manifest_path: str = OUTPUT_PATH + "manifest.hocon"
-
-    # Read the current manifest content
-    async with aiofiles.open(manifest_path, "r") as file:
-        manifest_content: str = await file.read()
-
-    # Check if the entry already exists to avoid duplicates
-    if (
-        f'"{the_agent_network_name}.hocon"' in manifest_content
-        or f"{the_agent_network_name}.hocon" in manifest_content
-    ):
-        return
-
-    # Detect format: JSON (has braces) or HOCON (no braces)
-    is_json_format = "{" in manifest_content and "}" in manifest_content
-    updated_content: str = ""
-    if is_json_format:
-        # JSON format handling
-        manifest_entry: str = f'    "{the_agent_network_name}.hocon": true,'
-        insert_position: int = manifest_content.rfind("}")
-
-        if insert_position != -1:
-            updated_content: str = (
-                manifest_content[:insert_position] + "\n" + manifest_entry + "\n" + manifest_content[insert_position:]
-            )
-    else:
-        # HOCON format handling
-        manifest_entry = f'"{the_agent_network_name}.hocon" = true\n'
-        updated_content = manifest_content.rstrip() + "\n" + manifest_entry
-
-    # Write the updated content back to the manifest file
-    async with aiofiles.open(manifest_path, "w") as file:
-        await file.write(updated_content)
-
-
 class CreateAgentNetworkHocon(CodedTool):
     """
     CodedTool implementation which creates a full hocon of a designed agent network
@@ -208,8 +163,14 @@ class CreateAgentNetworkHocon(CodedTool):
         the_agent_network_hocon_str: str = self.get_agent_network_hocon(validator, the_agent_network_name)
 
         logger.info("The resulting agent network HOCON: \n %s", str(the_agent_network_hocon_str))
+
+        persistor_type: str = "null"
         if WRITE_TO_FILE:
-            await modify_registry(the_agent_network_hocon_str, the_agent_network_name)
+            persistor_type = "file"
+
+        persistor: AgentNetworkPersistor = AgentNetworkPersistorFactory.create_persistor(persistor_type)
+        persistor.persist(obj=the_agent_network_hocon_str, file_reference=the_agent_network_name)
+
         logger.info(">>>>>>>>>>>>>>>>>>>DONE !!!>>>>>>>>>>>>>>>>>>")
         return (
             f"The agent network HOCON file for {the_agent_network_name}"
