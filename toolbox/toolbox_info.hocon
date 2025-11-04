@@ -332,6 +332,13 @@
                 "query": {
                     "type": "string",
                     "description": "Query for retrieval"
+                },
+                "urls": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    },
+                    "description": "List of URLs to retrieve information from"
                 }
             },
             "required": ["query"]
