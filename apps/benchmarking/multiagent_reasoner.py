@@ -207,9 +207,7 @@ def _classify_failure(trace: dict, _expected: int, actual: int | None) -> list[s
 
         if c_text:
             has_add = any(word in c_text.lower() for word in ["add", "sum", "plus"])
-            has_subtract = any(
-                word in c_text.lower() for word in ["subtract", "minus", "difference"]
-            )
+            has_subtract = any(word in c_text.lower() for word in ["subtract", "minus", "difference"])
             if has_add and has_subtract:
                 patterns.append("ambiguous_composition_op")
 
@@ -267,35 +265,201 @@ def _solve_atomic(problem: str) -> str:
     return call_agent(problem_solver_session(), problem)
 
 
-def solve(problem: str, depth: int = 0, max_depth: int = MAX_DEPTH) -> str:
+def _flatten_tree(node: dict, result: list[dict] | None = None) -> list[dict]:
     """
-    Recursive solver:
-      - Try decompose & recurse (up to max_depth)
-      - If decomposition is absent/disabled/unhelpful, fall back to atomic solve
-    Returns the final agent response (which includes the {FINAL_TOKEN} line).
+    Flatten a trace tree into a list of nodes for easy jq querying.
+    Each node gets a flat representation with key fields.
     """
-    logging.info(f"[solve] depth={depth} problem: {problem[:120]}{'...' if len(problem) > 120 else ''}")
+    if result is None:
+        result = []
+
+    flat_node = {
+        "path": node.get("path", ""),
+        "depth": node.get("depth", 0),
+        "type": "atomic" if node.get("decomposition") is None else "decomposed",
+        "problem": node.get("problem", "")[:200],  # Truncate for size
+        "final": node.get("final", ""),
+        "final_num": node.get("final_num"),
+        "error": node.get("error"),
+    }
+
+    if node.get("decomposition"):
+        flat_node["decomposition_winner"] = node["decomposition"].get("chosen", "")[:100]
+
+    result.append(flat_node)
+
+    # Recurse on children
+    for child in node.get("children", []):
+        _flatten_tree(child, result)
+
+    return result
+
+
+def _annotate_failure(node: dict, expected: int | None = None) -> None:
+    """
+    Annotate each node in the tree with error information.
+    Recursively processes children first (post-order).
+    """
+    for child in node.get("children", []):
+        _annotate_failure(child, expected)
+
+    final_text = node.get("final", "")
+    node["final_num"] = _parse_number(final_text)
+
+    decomp_info = node.get("decomposition")
+
+    if decomp_info is None:
+        problem = node.get("problem", "")
+        a, b = _extract_multiplication_problem(problem)
+        if a is not None and b is not None:
+            expected_val = a * b
+            if node["final_num"] != expected_val:
+                node["error"] = {
+                    "code": "atomic_miscalc",
+                    "details": f"Expected {expected_val}, got {node['final_num']}",
+                    "expected": expected_val,
+                    "actual": node["final_num"],
+                }
+        elif node["final_num"] is None:
+            node["error"] = {
+                "code": "malformed_final",
+                "details": "Could not parse final answer",
+            }
+    else:
+        p2_text = decomp_info.get("p2", "")
+        c_text = decomp_info.get("c", "")
+
+        if p2_text and (
+            "result of P1" in p2_text
+            or "result of p1" in p2_text.lower()
+            or "use P1" in p2_text
+            or "use p1" in p2_text.lower()
+        ):
+            node["error"] = {
+                "code": "non_independent_subproblems",
+                "details": "P2 depends on P1 result",
+                "p2": p2_text[:100],
+            }
+
+        if c_text:
+            has_add = any(word in c_text.lower() for word in ["add", "sum", "plus"])
+            has_subtract = any(word in c_text.lower() for word in ["subtract", "minus", "difference"])
+            if has_add and has_subtract:
+                if node.get("error") is None:
+                    node["error"] = {
+                        "code": "ambiguous_composition_op",
+                        "details": "Composition operator is ambiguous",
+                        "c": c_text[:100],
+                    }
+
+        children = node.get("children", [])
+        if len(children) == 2 and node["final_num"] is not None:
+            s1_num = children[0].get("final_num")
+            s2_num = children[1].get("final_num")
+
+            if s1_num is not None and s2_num is not None and c_text:
+                c_lower = c_text.lower()
+                expected_comp = None
+                op_name = None
+
+                if any(word in c_lower for word in ["add", "sum", "plus", "+"]):
+                    expected_comp = s1_num + s2_num
+                    op_name = "addition"
+                elif any(word in c_lower for word in ["subtract", "minus", "difference", "-"]):
+                    expected_comp = s1_num - s2_num
+                    op_name = "subtraction"
+                elif any(word in c_lower for word in ["multiply", "product", "times", "*", "×"]):
+                    expected_comp = s1_num * s2_num
+                    op_name = "multiplication"
+                elif any(word in c_lower for word in ["divide", "quotient", "/"]):
+                    if s2_num != 0:
+                        expected_comp = s1_num // s2_num  # Integer division
+                        op_name = "division"
+
+                if expected_comp is not None and node["final_num"] != expected_comp:
+                    if node.get("error") is None:
+                        details = (
+                            f"Composition {op_name} error: {s1_num} op {s2_num} = "
+                            f"{expected_comp}, got {node['final_num']}"
+                        )
+                        node["error"] = {
+                            "code": "composed_miscalc",
+                            "details": details,
+                            "expected": expected_comp,
+                            "actual": node["final_num"],
+                            "operation": op_name,
+                        }
+
+        if node["final_num"] is None and node.get("error") is None:
+            node["error"] = {
+                "code": "malformed_final",
+                "details": "Could not parse final answer at decomposed node",
+            }
+
+
+def _find_failure_node(node: dict) -> tuple[str, dict] | None:
+    """
+    Find the deepest node with an error in the tree (post-order traversal).
+    Returns (path, error_dict) or None if no errors found.
+    """
+    for child in node.get("children", []):
+        failure = _find_failure_node(child)
+        if failure:
+            return failure
+
+    if node.get("error"):
+        return node.get("path", "unknown"), node["error"]
+
+    return None
+
+
+def _solve_trace(problem: str, depth: int, max_depth: int, path: str) -> tuple[str, dict]:
+    """
+    Internal recursive solver that returns (response, trace_node).
+    Builds a complete trace tree of the decomposition process.
+    """
+    logging.info(f"[solve] depth={depth} path={path} problem: {problem[:120]}{'...' if len(problem) > 120 else ''}")
+
+    node = {
+        "depth": depth,
+        "path": path,
+        "problem": problem,
+        "decomposition": None,
+        "children": [],
+        "sub_finals": None,
+        "composition": None,
+        "response": None,
+        "final": None,
+        "final_num": None,
+        "error": None,
+    }
 
     if depth >= max_depth:
-        logging.info(f"[solve] depth={depth} -> atomic (no decomp or max depth)")
-        return _solve_atomic(problem)
+        logging.info(f"[solve] depth={depth} -> atomic (max depth)")
+        resp = _solve_atomic(problem)
+        node["response"] = resp
+        node["final"] = _extract_final(resp)
+        return resp, node
 
-    p1, p2, c = decompose(problem)
+    p1, p2, c, decomp_meta = decompose(problem)
 
-    # No decomposition (or explicitly None)
     if not p1 or not p2 or not c:
-        logging.info(f"[solve] depth={depth} -> atomic (no decomp or max depth)")
-        return _solve_atomic(problem)
+        logging.info(f"[solve] depth={depth} -> atomic (no decomp)")
+        resp = _solve_atomic(problem)
+        node["response"] = resp
+        node["final"] = _extract_final(resp)
+        return resp, node
 
     logging.info(f"[solve] depth={depth} using decomposition")
+    node["decomposition"] = decomp_meta
 
-    # Recurse on sub-problems
-    s1_resp = solve(p1, depth + 1, max_depth)
-    s2_resp = solve(p2, depth + 1, max_depth)
+    s1_resp, s1_node = _solve_trace(p1, depth + 1, max_depth, f"{path}.0")
+    s2_resp, s2_node = _solve_trace(p2, depth + 1, max_depth, f"{path}.1")
+    node["children"] = [s1_node, s2_node]
 
-    # Extract final lines to feed into composition step
     s1 = _extract_final(s1_resp)
     s2 = _extract_final(s2_resp)
+    node["sub_finals"] = {"s1_final": s1, "s2_final": s2}
 
     logging.info(f"[solve] depth={depth} sub-answers -> s1_final={s1!r}, s2_final={s2!r}")
 
@@ -337,25 +501,59 @@ def solve(problem: str, depth: int = 0, max_depth: int = MAX_DEPTH) -> str:
         winner_idx = max(range(len(votes)), key=lambda i: votes[i])
 
     resp = solutions[winner_idx]
+    node["response"] = resp
+    node["final"] = finals[winner_idx]
+    node["composition"] = {
+        "c_text": c,
+        "composed_candidates": finals,
+        "composition_votes": votes,
+        "composition_winner_idx": winner_idx,
+        "final_choice": finals[winner_idx],
+    }
+
     logging.info(f"[solve] depth={depth} composed final (chosen): {finals[winner_idx]!r}")
 
-    if depth == 0 and not hasattr(_trace_data, "solve"):
-        _trace_data.solve = {
-            "s1_final": s1,
-            "s2_final": s2,
-            "c": c,
-            "composed_candidates": finals,
-            "composition_votes": votes,
-            "composition_winner_idx": winner_idx,
-        }
+    return resp, node
+
+
+def solve(problem: str, depth: int = 0, max_depth: int = MAX_DEPTH) -> str:
+    """
+    Recursive solver with tree tracing.
+    Returns the final agent response (which includes the {FINAL_TOKEN} line).
+    """
+    resp, node = _solve_trace(problem, depth, max_depth, "0")
+
+    _trace_data.tree = node
+
+    if depth == 0:
+        if node.get("decomposition"):
+            _trace_data.decomposition = {
+                "candidates": node["decomposition"].get("candidates", []),
+                "winner_idx": node["decomposition"].get("winner_idx", 0),
+                "votes": node["decomposition"].get("votes", []),
+                "p1": node["decomposition"].get("p1"),
+                "p2": node["decomposition"].get("p2"),
+                "c": node["decomposition"].get("c"),
+            }
+
+        if node.get("composition"):
+            _trace_data.solve = {
+                "s1_final": node["sub_finals"]["s1_final"] if node.get("sub_finals") else None,
+                "s2_final": node["sub_finals"]["s2_final"] if node.get("sub_finals") else None,
+                "c": node["composition"]["c_text"],
+                "composed_candidates": node["composition"]["composed_candidates"],
+                "composition_votes": node["composition"]["composition_votes"],
+                "composition_winner_idx": node["composition"]["composition_winner_idx"],
+            }
 
     return resp
 
 
-def decompose(problem: str) -> tuple[str | None, str | None, str | None]:
+def decompose(problem: str) -> tuple[str | None, str | None, str | None, dict]:
     """
     Collect CANDIDATE_COUNT decompositions from the 'decomposer' agent,
-    then run a voting round via 'solution_discriminator'. Returns (p1, p2, c).
+    then run a voting round via 'solution_discriminator'.
+    Returns (p1, p2, c, metadata_dict).
     """
     candidates: list[str] = []
     for _ in range(CANDIDATE_COUNT):
@@ -368,7 +566,7 @@ def decompose(problem: str) -> tuple[str | None, str | None, str | None]:
         logging.info(f"[decompose] candidate {i}: {c}")
 
     if not candidates:
-        return None, None, None
+        return None, None, None, {}
 
     numbered = "\n".join(f"{i+1}. {c}" for i, c in enumerate(candidates))
     numbered = f"problem: {problem}, {numbered}"
@@ -402,18 +600,17 @@ def decompose(problem: str) -> tuple[str | None, str | None, str | None]:
 
     p1, p2, c = _parse_decomposition(candidates[winner_idx])
 
-    if not hasattr(_trace_data, "decomposition"):
-        _trace_data.decomposition = {}
-    _trace_data.decomposition = {
+    metadata = {
         "candidates": candidates,
         "winner_idx": winner_idx,
         "votes": votes,
+        "chosen": candidates[winner_idx],
         "p1": p1,
         "p2": p2,
         "c": c,
     }
 
-    return p1, p2, c
+    return p1, p2, c, metadata
 
 
 def main():
@@ -427,6 +624,10 @@ def main():
         log_dir.mkdir(parents=True, exist_ok=True)
         logging.info(f"[main] Failure logging enabled: {LOG_FAILURES_JSONL}")
 
+    _trace_data.tree = None
+    _trace_data.decomposition = None
+    _trace_data.solve = None
+
     final_resp = solve(problem, depth=0, max_depth=MAX_DEPTH)
 
     extracted_final = _extract_final(final_resp)
@@ -434,9 +635,7 @@ def main():
 
     a, b = _extract_multiplication_problem(problem)
     if a is None or b is None:
-        logging.info(
-            f"[main] Could not extract multiplication problem from: {problem[:100]}"
-        )
+        logging.info(f"[main] Could not extract multiplication problem from: {problem[:100]}")
     elif not LOG_FAILURES_JSONL:
         logging.info("[main] LOG_FAILURES_JSONL not set; skipping failure logging")
     else:
@@ -445,6 +644,24 @@ def main():
         logging.info(f"[main] Checking: expected={expected}, actual={actual}")
 
         if actual != expected:
+            trace_tree = getattr(_trace_data, "tree", None)
+
+            if trace_tree:
+                _annotate_failure(trace_tree, expected)
+                trace_flat = _flatten_tree(trace_tree)
+                failure_node_info = _find_failure_node(trace_tree)
+
+                if failure_node_info:
+                    failure_node_path, failure_node_error = failure_node_info
+                    logging.info(f"[main] Failure identified at path={failure_node_path}: {failure_node_error}")
+                else:
+                    failure_node_path = None
+                    failure_node_error = None
+            else:
+                trace_flat = []
+                failure_node_path = None
+                failure_node_error = None
+
             trace = {
                 "decomposition": getattr(_trace_data, "decomposition", None),
                 "solve": getattr(_trace_data, "solve", None),
@@ -454,11 +671,7 @@ def main():
 
             diff = None if actual is None else actual - expected
             abs_diff = None if actual is None else abs(actual - expected)
-            rel_error = (
-                None
-                if actual is None or expected == 0
-                else abs_diff / abs(expected)
-            )
+            rel_error = None if actual is None or expected == 0 else abs_diff / abs(expected)
 
             failure_record = {
                 "problem": problem,
@@ -473,6 +686,10 @@ def main():
                     "relative_error": rel_error,
                 },
                 "trace": trace,
+                "trace_tree": trace_tree,
+                "trace_flat": trace_flat,
+                "failure_node_path": failure_node_path,
+                "failure_node_error": failure_node_error,
                 "config": {
                     "WINNING_VOTE_COUNT": WINNING_VOTE_COUNT,
                     "MAX_DEPTH": MAX_DEPTH,
@@ -483,9 +700,7 @@ def main():
             }
 
             if LOG_DIR:
-                failure_record["log_file"] = (
-                    str(log_file) if "log_file" in locals() else None
-                )
+                failure_record["log_file"] = str(log_file) if "log_file" in locals() else None
 
             try:
                 with open(LOG_FAILURES_JSONL, "a") as f:

@@ -23,7 +23,7 @@ class AgentNetworkValidator:
     def __init__(self, network: dict[str, dict[str, Any]]):
         self.logger = logging.getLogger(self.__class__.__name__)
         self.network = network
-        
+
     def validate_network_keywords(self) -> list[str]:
         """
         Validation of the agent network keywords. Currently, only required "instructions" for non-function agents.
