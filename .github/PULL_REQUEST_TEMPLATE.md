@@ -29,16 +29,9 @@ Fixes # <!-- Issue number, if applicable -->
 - [ ] Tested locally
 - [ ] Added/updated tests
 - [ ] Updated relevant documentation
+- [ ] Added dependencies to appropriate `requirements.txt` (tool-specific preferred; main only for core functionality)
 
 <!-- For new coded tools/agent networks, ensure proper documentation and examples are included -->
-
-## Python dependencies
-
-<!-- Only if you're modifying dependencies -->
-
-- [ ] No dependency changes, OR
-- [ ] Added to main `requirements.txt` (core functionality only), OR
-- [ ] Added to tool / network-specific `requirements.txt`
 
 ---
 
