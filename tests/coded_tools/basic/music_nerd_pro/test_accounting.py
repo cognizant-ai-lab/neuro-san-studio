@@ -9,7 +9,7 @@
 #
 from unittest import TestCase
 
-from coded_tools.music_nerd_pro.accounting import Accountant
+from coded_tools.basic.music_nerd_pro.accounting import Accountant
 
 
 class TestAccounting(TestCase):
