@@ -53,6 +53,14 @@ centralizes tool configurations in a single file instead of using separate confi
 These configurations are automatically applied when running the relevant Makefile commands (`make lint`,
 `make lint-tests`, `make test`).
 
+## Logging
+
+To turn on debug logs for coded tools, export the following environment variable or set it in your `.env` file:
+
+```shell
+AGENT_SERVICE_LOG_JSON=logging.json
+```
+
 ## Contribution Workflow
 
 This section outlines the recommended workflow for contributing to this project.

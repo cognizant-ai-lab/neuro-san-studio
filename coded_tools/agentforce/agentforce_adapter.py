@@ -8,12 +8,15 @@
 # neuro-san-studio SDK Software in commercial settings.
 #
 import json
+import logging
 import os
 import uuid
 from typing import Any
 from typing import Dict
 
 import requests
+
+logger = logging.getLogger(__name__)
 
 # Salesforce API URLs
 BASE_URL = "https://api.salesforce.com/einstein/ai-agent/v1"
@@ -61,7 +64,9 @@ class AgentforceAdapter:
             client_secret = AgentforceAdapter._get_env_variable("AGENTFORCE_CLIENT_SECRET")
 
         if my_domain_url is None or agent_id is None or client_id is None or client_secret is None:
-            print("ERROR: AgentforceAdapter is NOT configured. Please check your parameters or environment variables.")
+            logger.error(
+                "ERROR: AgentforceAdapter is NOT configured. Please check your parameters or environment variables."
+            )
             # The service is not configured. We cannot query the API, but we can still use mock responses.
             self.is_configured = False
         else:
@@ -75,12 +80,12 @@ class AgentforceAdapter:
 
     @staticmethod
     def _get_env_variable(env_variable_name: str) -> str:
-        print(f"AgentforceAdapter: getting {env_variable_name} from environment variables...")
+        logger.debug("AgentforceAdapter: getting %s from environment variables...", env_variable_name)
         env_var = os.getenv(env_variable_name, None)
         if env_var is None:
-            print(f"AgentforceAdapter: {env_variable_name} is NOT defined")
+            logger.debug("AgentforceAdapter: %s is NOT defined", env_variable_name)
         else:
-            print(f"AgentforceAdapter: {env_variable_name} FOUND in environment variables")
+            logger.debug("AgentforceAdapter: %s FOUND in environment variables", env_variable_name)
         return env_var
 
     def create_session(self) -> (str, str):
@@ -88,11 +93,11 @@ class AgentforceAdapter:
         Creates an Agentforce session.
         :return: A session id and an access token, as strings.
         """
-        print("AgentforceAdapter: create_session called")
+        logger.debug("AgentforceAdapter: create_session called")
         # Get an access token
         access_token = self._get_access_token()
         session_id = self._get_session(access_token)
-        print(f"    Session id: {session_id}")
+        logger.debug("    Session id: %s", session_id)
         return session_id, access_token
 
     def _get_access_token(self) -> str:
@@ -153,14 +158,14 @@ class AgentforceAdapter:
         :param access_token: The corresponding access token.
         :return: Nothing
         """
-        print("AgentforceAdapter: close_session called")
+        logger.debug("AgentforceAdapter: close_session called")
         session_url = f"{SESSIONS_URL}/{session_id}"
         headers = {
             "Authorization": f"Bearer {access_token}",
             "x-session-end-reason": "UserRequest",
         }
         requests.delete(session_url, headers=headers, timeout=TIMEOUT_SECONDS)
-        print(f"    Session {session_id} closed:")
+        logger.debug("    Session %s closed:", session_id)
 
     def post_message(self, message: str, session_id: str = None, access_token: str = None) -> Dict[str, Any]:
         """
@@ -181,7 +186,7 @@ class AgentforceAdapter:
         if session_id in (None, "None"):
             session_id, access_token = self.create_session()
         message_url = f"{SESSIONS_URL}/{session_id}/messages"
-        print(f"---- Message URL: {message_url}")
+        logger.debug("---- Message URL: %s", message_url)
         headers = {
             "Authorization": f"Bearer {access_token}",
             "Accept": "application/json",
@@ -198,11 +203,11 @@ class AgentforceAdapter:
         }
         # Convert data to json
         data_json = json.dumps(data)
-        print(f"---- Data JSON: {data_json}")
+        logger.debug("---- Data JSON: %s", data_json)
         response = requests.post(message_url, headers=headers, data=data_json, timeout=TIMEOUT_SECONDS)
-        print(f"---- Response: {response}")
-        print("---- Response JSON:")
-        print(response.json())
+        logger.debug("---- Response: %s", response)
+        logger.debug("---- Response JSON:")
+        logger.debug(response.json())
         response_dict = {
             "session_id": session_id,
             "access_token": access_token,

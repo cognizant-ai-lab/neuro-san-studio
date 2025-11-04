@@ -25,6 +25,10 @@
       * [Example agent network](#example-agent-network)
     * [See also](#see-also)
   * [LLM Fallbacks](#llm-fallbacks)
+  * [Reasoning Models](#reasoning-models)
+    * [OpenAI and AzureOpenAI Models](#openai-and-azureopenai-models)
+    * [Anthropic and Bedrock Models](#anthropic-and-bedrock-models)
+    * [Ollama Models](#ollama-models)
   * [Using custom or non-default LLMs](#using-custom-or-non-default-llms)
     * [Using the `class` Key](#using-the-class-key)
     * [Extending the default LLM info file](#extending-the-default-llm-info-file)
@@ -41,8 +45,9 @@
     * [Adding tools in toolbox](#adding-tools-in-toolbox)
   * [Logging and debugging](#logging-and-debugging)
   * [Advanced](#advanced)
-    * [Subnetworks](#subnetworks)
     * [AAOSA](#aaosa)
+    * [External Agent Networks](#external-agent-networks)
+    * [Memory](#memory)
   * [Connect with other agent frameworks](#connect-with-other-agent-frameworks)
 
 <!-- TOC -->
@@ -50,7 +55,7 @@
 ## Simple agent network
 
 The `music_nerd` agent network is the simplest agent network possible: it contains a single agent
-that answers questions about music since the 60s. See its description here: [docs/examples/music_nerd.md](../docs/examples/music_nerd.md).
+that answers questions about music since the 60s. See its description here: [docs/examples/music_nerd.md](examples/basic/music_nerd.md).
 
 The steps to start the server and the client are described in the [README](../README.md).
 When starting, the first thing the server will do is load the agent network configurations
@@ -66,7 +71,7 @@ like this:
 ```hocon
 {
     # ... other agent networks ... #
-    "music_nerd.hocon": true,
+    "basic/music_nerd.hocon": true,
     # ... other agent networks ... #
 }
 ```
@@ -75,7 +80,7 @@ This tells the server to load the `music_nerd.hocon` file from the same `/regist
 
 Setting the value to `false` would make the server ignore this agent network.
 
-Open [../registries/music_nerd.hocon](../registries/hello_world.hocon) and have a look at it.
+Open [../registries/basic/music_nerd.hocon](../registries/basic/music_nerd.hocon) and have a look at it.
 For now just note that it contains:
 
 * an `llm_config` section that specifies which LLM to use by default for the agents in this file
@@ -224,7 +229,7 @@ and specify which model to use in the `model_name` field:
     }
 ```
 
-See [./examples/music_nerd.md](./examples/music_nerd.md) for an example.
+See [./examples/music_nerd.md](examples/basic/music_nerd.md) for an example.
 
 ### AzureOpenAI
 
@@ -503,7 +508,7 @@ For more information on logic of parsing the `base_url` see [Ollama python SDK](
 
 #### Example agent network
 
-See the [./examples/music_nerd_pro_local.md](./examples/music_nerd_pro_local.md) for a complete working example.
+See the [./examples/music_nerd_pro_local.md](examples/basic/music_nerd_pro_local.md) for a complete working example.
 
 For more information about how to use Ollama with LangChain,
 see [this page](https://python.langchain.com/docs/integrations/chat/ollama/)
@@ -519,7 +524,7 @@ Neuro-SAN supports LLM fallbacks, which allow you to specify a list of LLMs to u
 In the `llm_config` block, put each LLM configuration in a `fallbacks` list.
 The list of LLM configs is tried in order until one succeeds.
 
-In this example, as seen in [./examples/music_nerd_llm_fallbacks.md](./examples/music_nerd_llm_fallbacks.md),
+In this example, as seen in [./examples/music_nerd_llm_fallbacks.md](examples/basic/music_nerd_llm_fallbacks.md),
 the agent network will use OpenAI's `gpt-4o` model first,
 and if that fails (for example, due to rate limits or service outages),
 it will automatically fall back to Anthropic's `claude-3-7-sonnet` model:
@@ -538,6 +543,102 @@ it will automatically fall back to Anthropic's `claude-3-7-sonnet` model:
         ]
     },
 ```
+
+## Reasoning Models
+
+Some LLM providers offer reasoning models where reasoning or thinking behavior can be
+toggled or adjusted in the `llm_config` section of your agent network HOCON file.
+
+### OpenAI and AzureOpenAI Models
+
+You can control the reasoning depth using the `reasoning_effort` field with one of the following values:
+`minimal`, `low`, `medium`, or `high`.
+
+> Note that `minimal` is only supported for `gpt-5` variants.
+
+You can also control output detail using the `verbosity` field with one of the following values:
+`low`, `medium`, or `high`.
+
+Example:
+
+```hocon
+    "llm_config": {
+        "model_name": "gpt-5",
+        "reasoning_effort": "low",
+        "verbosity": "low"
+    }
+```
+
+For more detail, see [LangChain ChatOpenAI documentation](https://reference.langchain.com/python/integrations/langchain_openai/ChatOpenAI/#langchain_openai.chat_models.ChatOpenAI.reasoning_effort).
+
+### Anthropic and Bedrock Models
+
+Claude models support extended thinking, which allows them to use additional tokens for internal reasoning
+before generating a final answer.
+This improves performance on complex tasks and can provide insight into the model’s reasoning process.
+
+For Anthropic models, extended thinking is configured with the `thinking` field.
+
+Example:
+
+```hocon
+    "llm_config": {
+        "model_name": "claude-3-7-sonnet-20250219",
+        "thinking": {"type": "enabled", "budget_tokens": 10000}
+    }
+```
+
+> Ensure that budget_tokens is at least **1024** and less than the model’s maximum token limit.
+
+**Supported models for extended thinking:**
+
+* Claude Sonnet 4.5 (`claude-sonnet-4-5-20250929`)
+* Claude Sonnet 4 (`claude-sonnet-4-20250514`)
+* Claude Sonnet 3.7 (`claude-3-7-sonnet-20250219`)
+* Claude Haiku 4.5 (`claude-haiku-4-5-20251001`)
+* Claude Opus 4.1 (`claude-opus-4-1-20250805`)
+* Claude Opus 4 (`claude-opus-4-20250514`)
+
+These same models can also be accessed via AWS Bedrock. In that case, extended thinking is configured under `model_kwargs`.
+
+Example:
+
+```hocon
+    "llm_config": {
+            "model_name": "bedrock-us-claude-3-7-sonnet",
+            "credentials_profile_name": "<profile_name>",
+            "region_name": "us-west-2",
+        "model_kwargs": {
+            "thinking": {"type": "enabled", "budget_tokens": 1024}
+        }
+    }
+```
+
+See
+[Langchain ChatAnthropic documentation](https://reference.langchain.com/python/integrations/langchain_anthropic/ChatAnthropic/?h=chat#langchain_anthropic.chat_models.ChatAnthropic.thinking)
+for more information.
+
+### Ollama Models
+
+For Ollama’s [supported reasoning models](https://ollama.com/search?c=thinking),
+you can control reasoning behavior using the `reasoning` field with one of the follwing values:
+
+* `true`: Enables reasoning mode.
+* `false`: Disables reasoning mode.
+* `null` (default): Uses the model’s default reasoning behavior.
+* 'low', 'medium', 'high'. Enables reasoning with a custom intensity level. Currently, this is only supported `gpt-oss`.
+
+Example:
+
+```hocon
+    "llm_config": {
+        "model_name": "qwen3:8b",
+        "reasoning": true
+    }
+```
+
+For more information, see
+[Langchain ChatOllama documentation](https://reference.langchain.com/python/integrations/langchain_ollama/#langchain_ollama.ChatOllama.reasoning).
 
 ## Using custom or non-default LLMs
 
@@ -670,10 +771,6 @@ You can also add new models or providers by extending the
 To load your own llm info file, you can specify its location using one of the following methods:
 
 * The `llm_info_file` key in your agent’s HOCON configuration
-    > **Note:** The `agent_llm_info_file` key has been **deprecated as of version 0.5.46**.  
-    > Please use `llm_info_file` instead.  
-    > `agent_llm_info_file` will remain supported until `neuro-san==0.6.0`.
-
 * The `AGENT_LLM_INFO_FILE` environment variable (fallback if the above is not set)
 
 For more information on llm info file, please see [LLM Info HOCON File Reference](
@@ -873,10 +970,7 @@ To use tools from toolbox in your agent network, simply call them with field `to
 
 3. Make your own toolbox info file available to the agent system in one of the following ways
 
-   * Define the `toolbox_info_file` key in your agent’s HOCON configuration (preferred method)
-       > **Note:** The `agent_toolbox_info_file` key has been **deprecated as of version 0.5.46**.  
-       > Please use `toolbox_info_file` instead.  
-       > `agent_toolbox_info_file` will remain supported until `neuro-san==0.6.0`.
+   * Define the `toolbox_info_file` key in your agent’s HOCON configuration
    * Set the `AGENT_TOOLBOX_INFO_FILE` environment variable as a fallback option
 
 For more information on toolbox, please see [Toolbox Info HOCON File Reference](
@@ -900,7 +994,7 @@ Furthermore, please install the build requirements in your virtual environment v
     pytest.set_trace()
     ```
 
-3. Start the client and server via `python3 -m run`, select `music_berd_pro` agent network, and ask a question like
+3. Start the client and server via `python3 -m run`, select `music_nerd_pro` agent network, and ask a question like
 `Where was John Lennon born?`. The code execution stops at the line where you added `pytest.set_trace` statement. You
 can step through the code, view variable values, etc. by typing commands in the terminal. For all the debugger options,
 please refer to pdb [documentation](https://ugoproto.github.io/ugo_py_doc/pdf/Python-Debugger-Cheatsheet.pdf)
@@ -936,7 +1030,7 @@ Agent-Oriented Natural Language Interface](https://citeseerx.ist.psu.edu/documen
 
 <!-- (https://citeseerx.ist.psu.edu/document?repid=rep1&type=pdf&doi=011fb718658d611294613286c0f4b143aed40f43) -->
 
-Look at [../registries/smart_home.hocon](../registries/smart_home.hocon) and in particular:
+Look at [../registries/basic/smart_home.hocon](../registries/basic/smart_home.hocon) and in particular:
 
 * aaosa_instructions
 * aaosa_call

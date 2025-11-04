@@ -8,6 +8,7 @@
 # neuro-san-studio SDK Software in commercial settings.
 #
 import json
+import logging
 from typing import Any
 from typing import Dict
 from typing import Optional
@@ -15,6 +16,8 @@ from typing import Optional
 from neuro_san.interfaces.coded_tool import CodedTool
 
 from coded_tools.agentforce.agentforce_adapter import AgentforceAdapter
+
+logger = logging.getLogger(__name__)
 
 MOCK_SESSION_ID = "06518755-b897-4311-afea-2aab1df77314"
 MOCK_SECRET = "1234567890"
@@ -71,24 +74,24 @@ class AgentforceAPI(CodedTool):
         with the Agentforce session_id and access_token.
         """  # noqa E501
         # Parse the arguments
-        print(f"args: {args}")
+        logger.debug("args: %s", args)
         inquiry: str = args.get("inquiry")
         # Get the session_id and access_token from the sly_data. Having a session_id means the user has already started
         # a conversation with Agentforce and wants to continue it.
-        print(f"sly_data: {sly_data}")
+        # NOTE: sly_data contains secrets (access_token) - never log it
         session_id: Optional[str] = sly_data.get("session_id", None)
         access_token: Optional[str] = sly_data.get("access_token", None)
 
         tool_name = self.__class__.__name__
-        print(f"========== Calling {tool_name} ==========")
-        print(f"    Inquiry: {inquiry}")
-        print(f"    Session ID: {session_id}")
+        logger.debug("========== Calling %s ==========", tool_name)
+        logger.debug("    Inquiry: %s", inquiry)
+        logger.debug("    Session ID: %s", session_id)
 
         if self.agentforce.is_configured:
-            print("AgentforceAdapter is configured. Fetching response...")
+            logger.debug("AgentforceAdapter is configured. Fetching response...")
             response = self.agentforce.post_message(inquiry, session_id, access_token)
         else:
-            print("WARNING: AgentforceAdapter is NOT configured. Using a mock response")
+            logger.warning("AgentforceAdapter is NOT configured. Using a mock response")
             if session_id in (None, "None"):
                 # No session yet. This is the first request the user makes
                 response = MOCK_RESPONSE_1
@@ -101,10 +104,10 @@ class AgentforceAPI(CodedTool):
         sly_data["access_token"] = response["access_token"]
         tool_response = response["response"]["messages"][0]["message"]
 
-        print("-----------------------")
-        print(f"{tool_name} tool response: ", tool_response)
-        print(f"Updated sly_data: {sly_data}")
-        print(f"========== Done with {tool_name} ==========")
+        logger.debug("-----------------------")
+        logger.debug("%s tool response: %s", tool_name, tool_response)
+        # NOTE: sly_data contains secrets - never log it
+        logger.debug("========== Done with %s ==========", tool_name)
         return tool_response
 
     async def async_invoke(self, args: Dict[str, Any], sly_data: Dict[str, Any]) -> str:

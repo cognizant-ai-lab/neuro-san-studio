@@ -22,6 +22,8 @@ except ImportError as e:
 
 from neuro_san.interfaces.coded_tool import CodedTool
 
+logger = logging.getLogger(__name__)
+
 
 class AgentSpaceSearch(CodedTool):
     """
@@ -69,7 +71,6 @@ class AgentSpaceSearch(CodedTool):
         if search_query == "":
             return "Error: No search query provided."
 
-        logger = logging.getLogger(self.__class__.__name__)
         logger.info(">>>>>>>>>>>>>>>>>>>WebsiteSearch>>>>>>>>>>>>>>>>>>")
         logger.info("Search Query: %s", str(search_query))
         res = self.search_sample(search_query)
@@ -148,6 +149,6 @@ class AgentSpaceSearch(CodedTool):
 
         # Handle the response
         for response in page_result:
-            print(response)
+            logger.debug(response)
 
         return page_result

@@ -1,3 +1,4 @@
+import logging
 from typing import Any
 from typing import Dict
 from typing import Union
@@ -5,6 +6,8 @@ from typing import Union
 from neuro_san.interfaces.coded_tool import CodedTool
 
 from coded_tools.intranet_agents_with_tools.url_provider import URLProvider
+
+logger = logging.getLogger(__name__)
 
 
 class ScheduleLeaveTool(CodedTool):
@@ -52,11 +55,11 @@ class ScheduleLeaveTool(CodedTool):
         start_date: str = args.get("start_date", "need-start-date")
         end_date: str = args.get("end_date", "need-end-date")
         confirmation_id = "Oli-42XB35-leave-scheduled-conf-id"
-        print(">>>>>>>>>>>>>>>>>>>SCHEDULING !!!>>>>>>>>>>>>>>>>>>")
-        print(f"Start date: {start_date}")
-        print(f"End date: {end_date}")
-        print(f"Confirmation ID: {confirmation_id}")
-        print(">>>>>>>>>>>>>>>>>>>DONE !!!>>>>>>>>>>>>>>>>>>")
+        logger.debug(">>>>>>>>>>>>>>>>>>>SCHEDULING !!!>>>>>>>>>>>>>>>>>>")
+        logger.debug("Start date: %s", start_date)
+        logger.debug("End date: %s", end_date)
+        logger.debug("Confirmation ID: %s", confirmation_id)
+        logger.debug(">>>>>>>>>>>>>>>>>>>DONE !!!>>>>>>>>>>>>>>>>>>")
         confirmation = {
             "Start date": start_date,
             "End date": end_date,

@@ -32,10 +32,12 @@ Here are a few examples ordered by level of complexity.
     * [Wikipedia RAG Assistant](#wikipedia-rag-assistant)
     * [ArXiv RAG Assistant](#arxiv-rag-assistant)
     * [ServiceNow AI Agents](#servicenow-ai-agents)
+    * [Visual Question Answering](#visual-question-answering)
   * [🏢 Industry-Specific Examples](#-industry-specific-examples)
     * [Intranet Agents](#intranet-agents)
     * [Intranet Agents With Tools](#intranet-agents-with-tools)
     * [Airline Policy 360 Assistant](#airline-policy-360-assistant)
+    * [Telco Network Orchestration](#telco-network-orchestration)
     * [Real Estate Agent](#real-estate-agent)
     * [Consumer Decision Assistant Agents](#consumer-decision-assistant-agents)
     * [Therapy Vignette Supervision](#therapy-vignette-supervision)
@@ -60,57 +62,57 @@ Introductory examples designed to help users get started with Neuro SAN.
 
 ### Music Nerd
 
-[Music Nerd](./examples/music_nerd.md) is a basic agent network with a single agent,
+[Music Nerd](examples/basic/music_nerd.md) is a basic agent network with a single agent,
 used as a "Hello world!" example. It can also be used to test for follow-up questions and deterministic answers.
 
 ### Music Nerd Pro
 
-[Music Nerd Pro](./examples/music_nerd_pro.md) is a simple agent network with a frontman agent and a "Coded Tool."
+[Music Nerd Pro](examples/basic/music_nerd_pro.md) is a simple agent network with a frontman agent and a "Coded Tool."
 This is a good way to learn about how to call Python code from an agent.
 
 **Tags:** `tool`
 
 ### Music Nerd Local
 
-[Music Nerd Local](./examples/music_nerd_local.md) is an exact copy of
-[Music Nerd](./examples/music_nerd.md) that uses an LLM that runs locally with Ollama.
+[Music Nerd Local](examples/basic/music_nerd_local.md) is an exact copy of
+[Music Nerd](examples/basic/music_nerd.md) that uses an LLM that runs locally with Ollama.
 
 **Tags:** `llm_config`
 
 ### Music Nerd Pro Local
 
-[Music Nerd Pro Local](./examples/music_nerd_pro_local.md) is an exact copy
-of [Music Nerd Pro](./examples/music_nerd_pro.md) that uses a **tool-calling** LLM that runs locally with Ollama.
+[Music Nerd Pro Local](examples/basic/music_nerd_pro_local.md) is an exact copy
+of [Music Nerd Pro](examples/basic/music_nerd_pro.md) that uses a **tool-calling** LLM that runs locally with Ollama.
 
 **Tags:** `tool`, `llm_config`
 
 ### Music Nerd Pro Sly
 
-[Music Nerd Pro Sly](./examples/music_nerd_pro_sly.md) is a copy of
-[Music Nerd Pro](./examples/music_nerd_pro.md) that uses `sly_data` to keep track of a variable.
+[Music Nerd Pro Sly](examples/basic/music_nerd_pro_sly.md) is a copy of
+[Music Nerd Pro](examples/basic/music_nerd_pro.md) that uses `sly_data` to keep track of a variable.
 This is a good way to learn about how to manage a state in a conversation.
 
 **Tags:** `tool`, `sly_data`
 
 ### Music Nerd Pro Sly Local
 
-[Music Nerd Pro Sly Local](./examples/music_nerd_pro_sly_local.md) is a copy of
-[Music Nerd Pro Sly](./examples/music_nerd_pro_sly.md) that uses
+[Music Nerd Pro Sly Local](examples/basic/music_nerd_pro_sly_local.md) is a copy of
+[Music Nerd Pro Sly](examples/basic/music_nerd_pro_sly.md) that uses
 a **tool-calling** LLM that runs locally with Ollama.
 
 **Tags:** `tool`, `sly_data`, `llm_config`
 
 ### Music Nerd LLM Fallbacks
 
-[Music Nerd LLM Fallbacks](./examples/music_nerd_llm_fallbacks.md) is a copy of
-[Music Nerd Pro](./examples/music_nerd_pro.md) that uses a `fallbacks` list in
+[Music Nerd LLM Fallbacks](examples/basic/music_nerd_llm_fallbacks.md) is a copy of
+[Music Nerd Pro](examples/basic/music_nerd_pro.md) that uses a `fallbacks` list in
 its `llm_config` to automatically try another LLM config if the first one fails.
 
 **Tags:** `llm_config` `llm_fallbacks`
 
 ### Coffee Finder
 
-[Coffee Finder](./examples/coffee_finder.md) is an agent network that helps
+[Coffee Finder](examples/basic/coffee_finder.md) is an agent network that helps
 users find coffee at any time of the day. It shows how multiple agents can
 provide the same service and how the AAOSA instructions can be used to choose
 the best option depending on the context.
@@ -119,7 +121,7 @@ the best option depending on the context.
 
 ### Coffee Finder Advanced
 
-[Coffee Finder Advanced](./examples/coffee_finder_advanced.md) is an agent network that helps
+[Coffee Finder Advanced](examples/basic/coffee_finder_advanced.md) is an agent network that helps
 users find places that sell coffee and place orders.
 This is a good example to:
 * Learn how to use the `AAOSA` instructions to find and choose between options.
@@ -259,6 +261,13 @@ procurement, and other enterprise processes.
 
 **Tags:** `tool`, `API`, `ServiceNow`, `Enterprise`
 
+### Visual Question Answering
+
+[Visual Question Answering](./examples/visual_question_answering.md) is an agent network that allows you to pose
+queries against images or videos. It uses Apple's ml-fastvlm library to answer the queries.
+
+**Tags:** `tool`, `Visual Question Answering`, `VQA`, `Vision Language Models`, `VLM`, `ml-fastvlm`
+
 ## 🏢 Industry-Specific Examples
 
 Examples tailored to specific industry applications.
@@ -286,6 +295,13 @@ real-world helpdesk with specialized teams, each handling a specific domain of a
 flights, international travel, and more.
 
 **Tags:** `tool`, `API`, `AAOSA`
+
+### Telco Network Orchestration
+
+[Telco Network Orchestration](examples/telco_network_orchestration.md) describes
+an agent-based network that models the orchestration of a large-scale
+telecommunications system for an Australian telco, encompassing monitoring,
+fault detection, and resource allocation.
 
 ### Real Estate Agent
 

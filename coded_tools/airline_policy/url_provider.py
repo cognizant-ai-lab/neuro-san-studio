@@ -7,11 +7,14 @@
 # Purchase of a commercial license is mandatory for any use of the
 # neuro-san-studio SDK Software in commercial settings.
 #
+import logging
 from typing import Any
 from typing import Dict
 from typing import Union
 
 from neuro_san.interfaces.coded_tool import CodedTool
+
+logger = logging.getLogger(__name__)
 
 
 class URLProvider(CodedTool):
@@ -73,9 +76,9 @@ class URLProvider(CodedTool):
         app_name: str = args.get("app_name", None)
         if app_name is None:
             return "Error: No app name provided."
-        print(">>>>>>>>>>>>>>>>>>>URL Provider>>>>>>>>>>>>>>>>>>")
-        print(f"App name: {app_name}")
+        logger.debug(">>>>>>>>>>>>>>>>>>>URL Provider>>>>>>>>>>>>>>>>>>")
+        logger.debug("App name: %s", app_name)
         app_url = self.airline_policy_urls.get(app_name)
-        print(f"URL: {app_url}")
-        print(">>>>>>>>>>>>>>>>>>>DONE !!!>>>>>>>>>>>>>>>>>>")
+        logger.debug("URL: %s", app_url)
+        logger.debug(">>>>>>>>>>>>>>>>>>>DONE !!!>>>>>>>>>>>>>>>>>>")
         return app_url

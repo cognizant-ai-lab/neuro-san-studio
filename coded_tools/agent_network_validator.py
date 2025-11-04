@@ -9,26 +9,37 @@
 #
 # END COPYRIGHT
 
+import logging
 from typing import Any
+
+from coded_tools.agent_network_editor.get_mcp_tool import GetMcpTool
+from coded_tools.agent_network_editor.get_subnetwork import GetSubnetwork
+from coded_tools.agent_network_editor.get_toolbox import GetToolbox
 
 
 class AgentNetworkValidator:
     """Validator for both structure and instructions of agent network definition."""
 
     def __init__(self, network: dict[str, dict[str, Any]]):
+        self.logger = logging.getLogger(self.__class__.__name__)
         self.network = network
-
-    def validate_network_keywords(self, keyword: str) -> list[str]:
+        
+    def validate_network_keywords(self) -> list[str]:
         """
-        Validation of the agent network keywords. Currently, the only required keyword is "instructions".
+        Validation of the agent network keywords. Currently, only required "instructions" for non-function agents.
 
-        :return: List of agents and missing keywords
+        :return: List of errors indicating agents and missing keywords
         """
         errors: list[str] = []
+
+        self.logger.info("Validating agent network keywords...")
+
         for agent_name, agent in self.network.items():
-            if not agent.get(keyword):
-                error_msg = f"{agent_name} has no key: {keyword}"
+            if agent.get("instructions") == "":
+                error_msg = f"{agent_name} 'instructions' cannot be empty."
                 errors.append(error_msg)
+
+        self.logger.warning(str(errors))
 
         return errors
 
@@ -39,6 +50,8 @@ class AgentNetworkValidator:
         :return: List of any issues found.
         """
         errors: list[str] = []
+
+        self.logger.info("Validating agent network structure...")
 
         # Find top agents
         top_agents = self._find_all_top_agents()
@@ -60,11 +73,72 @@ class AgentNetworkValidator:
             if unreachable_agents:
                 errors.append(f"Unreachable agents found: {sorted(unreachable_agents)}")
 
+        # Validate that agent tools have corresponding nodes
+        missing_nodes = self._find_missing_agent_nodes()
+        if missing_nodes:
+            for agent, missing_tools in missing_nodes.items():
+                tools_str = ", ".join(f"'{tool}'" for tool in missing_tools)
+                errors.append(f"Agent '{agent}' references non-existent agent(s) in tools: {tools_str}")
+
+        self.logger.warning(str(errors))
+
+        return errors
+
+    def validate_toolbox_agents(self) -> list[str]:
+        """
+        Make sure that the toolbox agents have matching tools in toolbox.
+
+        :return: List of error indicating any agents with no matching tools.
+        """
+        errors: list[str] = []
+
+        self.logger.info("Validating toolbox agents...")
+
+        # Get a dict of tools or error message if no toolbox found.
+        tools: dict[str, Any] | str = GetToolbox().invoke(None, None)
+
+        for agent_name, agent in self.network.items():
+            if agent.get("instructions") is None:  # This is a toolbox agent
+                if isinstance(tools, str):
+                    errors.append(f"Toolbox is unavailable. Cannot create Toolbox agent '{agent_name}'.")
+                if agent_name not in tools:
+                    errors.append(f"Toolbox agent '{agent_name}' has no matching tool in toolbox.")
+
+        return errors
+
+    def validate_url(self) -> list[str]:
+        """
+        Check if URL of MCP servers and subnetworks are valid.
+
+        :return: List of errors indicating invalid URL
+        """
+        errors: list[str] = []
+
+        # Gather all URLs from MCP servers and subnetworks.
+        subnetworks: dict[str, Any] | str = GetSubnetwork().invoke(None, None)
+        if isinstance(subnetworks, dict):
+            subnetworks: list = list(subnetworks.keys())
+        else:
+            subnetworks = []
+        mcp_servers: list[str] = GetMcpTool().mcp_servers
+        urls: list[str] = subnetworks + mcp_servers
+
+        self.logger.info("Validating URLs for MCP tools and subnetwork...")
+
+        for agent_name, agent in self.network.items():
+            if agent.get("tools"):
+                tools: list[str] = agent.get("tools")
+                if tools:
+                    for tool in tools:
+                        if self._is_url_or_path(tool) and tool not in urls:
+                            error_msg = f"Agent '{agent_name}' has invalid URL or path in tools: '{tool}'"
+                            errors.append(error_msg)
+
         return errors
 
     def _find_all_top_agents(self) -> set[str]:
         """
-        Find all top agents - agents that have down_chains but are not down_chains of others.
+        Find all top agents - agents that have down-chains but are not down-chains of others.
 
         :return: Set of top agent names
         """
@@ -72,7 +146,7 @@ class AgentNetworkValidator:
         has_down_chains = set()
 
         for agent_name, agent_config in self.network.items():
-            down_chains: list[str] = agent_config.get("down_chains", [])
+            down_chains: list[str] = agent_config.get("tools", [])
             if down_chains:
                 has_down_chains.add(agent_name)
                 as_down_chains.update(down_chains)
@@ -130,7 +204,7 @@ class AgentNetworkValidator:
         path.append(agent)
 
         # Step 5: Get all child agents (down_chains) of current agent
-        down_chains: list[str] = self.network.get(agent, {}).get("down_chains", [])
+        down_chains: list[str] = self.network.get(agent, {}).get("tools", [])
 
         # Step 6: Recursively visit each child agent
         for child_agent in down_chains:
@@ -169,6 +243,15 @@ class AgentNetworkValidator:
         # Step 6: Return the set of agents that cannot be reached from top agent
         return unreachable_agents
 
+    def _is_url_or_path(self, tool: str) -> bool:
+        """
+        Check if a tool string is a URL or file path (not an agent name).
+
+        :param tool: The tool string to check
+        :return: True if tool is a URL or path, False otherwise
+        """
+        return tool.startswith("/") or tool.startswith("http://") or tool.startswith("https://")
+
     def _dfs_reachability_traversal(self, agent: str, visited: set[str], reachable_agents: set[str]):
         """
         Perform DFS traversal to find all agents reachable from a specific starting agent.
@@ -188,12 +271,41 @@ class AgentNetworkValidator:
         reachable_agents.add(agent)
 
         # Step 4: Get all child agents (down_chains) of current agent
-        down_chains: list[str] = self.network.get(agent, {}).get("down_chains", [])
+        down_chains: list[str] = self.network.get(agent, {}).get("tools", [])
 
         # Step 5: Recursively visit each child agent to continue the traversal
         for child_agent in down_chains:
-            # Visit each child - the recursion will handle visited check and network existence
-            self._dfs_reachability_traversal(child_agent, visited, reachable_agents)
+            # Skip URL/path tools - they're not agents
+            if not self._is_url_or_path(child_agent):
+                # Visit each child - the recursion will handle visited check and network existence
+                self._dfs_reachability_traversal(child_agent, visited, reachable_agents)
+
+    def _find_missing_agent_nodes(self) -> dict[str, list[str]]:
+        """
+        Find agents referenced in "tools" lists that don't have corresponding nodes in the network.
+
+        :return: Dictionary mapping agent names to list of tools that reference non-existent agents
+                Format: {agent_name: [missing_tool1, missing_tool2, ...]}
+        """
+        missing_nodes: dict[str, list[str]] = {}
+
+        # Iterate through all agents in the network
+        for agent_name, agent_data in self.network.items():
+            tools = agent_data.get("tools", [])
+
+            # Check each tool in the agent's tools list
+            for tool in tools:
+                # Skip URL/path tools - they're not agents and don't need nodes
+                if self._is_url_or_path(tool):
+                    continue
+
+                # If tool is an agent reference but has no node in network, it's invalid
+                if tool not in self.network:
+                    if agent_name not in missing_nodes:
+                        missing_nodes[agent_name] = []
+                    missing_nodes[agent_name].append(tool)
+
+        return missing_nodes
 
     def get_top_agent(self) -> str:
         """

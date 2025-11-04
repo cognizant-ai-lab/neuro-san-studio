@@ -61,7 +61,7 @@ autonomously.
 The library comes with a **Flask Web Client** (`neuro_san_web_client`) so that users can interact with these multi-agent
 networks through a web-based UI. This entire setup is easily configurable using **HOCON** (`.hocon`) files.
 
-**Note**: This tutorial is written with the help of the agent network example [advanced_calculator.hocon](https://github.com/cognizant-ai-lab/neuro-san-studio/blob/registries/advanced_calculator.hocon).
+**Note**: This tutorial is written with the help of the agent network example [advanced_calculator.hocon](../registries/basic/advanced_calculator.hocon).
 
 ---
 
@@ -73,13 +73,15 @@ Below is a simplified view of the reference project structure. You can adapt it 
 .
 ├── README.md
 ├── coded_tools
-│   └── advanced_calculator
-│       └── calculator_tool.py
+│   └── basic
+│     └── advanced_calculator
+│         └── calculator_tool.py
 ├── logs
 │   ├── client.log
 │   └── server.log
 ├── registries
-│   ├── advanced_calculator.hocon
+│   ├── basic
+│   │      └── advanced_calculator.hocon
 │   └── manifest.hocon
 ├── requirements.txt
 ├── run.py
@@ -741,10 +743,6 @@ following the structure shown in the previous examples.
 * **Register the config file** by one of the following methods:
 
     * Set the `toolbox_info_file` key
-        > **Note:** The `agent_toolbox_info_file` key has been **deprecated as of version 0.5.46**.  
-        > Please use `toolbox_info_file` instead.  
-        > `agent_toolbox_info_file` will remain supported until `neuro-san==0.6.0`.
-
     * Use the `AGENT_TOOLBOX_INFO_FILE` environment variable
 
 This setup allows you to introduce custom tools without modifying the built-in toolbox definitions.

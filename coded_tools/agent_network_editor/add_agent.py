@@ -7,10 +7,10 @@
 # Purchase of a commercial license is mandatory for any use of the
 # neuro-san-studio SDK Software in commercial settings.
 #
-import asyncio
 import logging
 from typing import Any
 
+from neuro_san.interfaces.agent_progress_reporter import AgentProgressReporter
 from neuro_san.interfaces.coded_tool import CodedTool
 
 AGENT_NETWORK_DEFINITION = "agent_network_definition"
@@ -22,11 +22,12 @@ class AddAgent(CodedTool):
 
     Agent network definition is a structured representation of an agent network, expressed as a dictionary.
     Each key is an agent name, and its value is an object containing:
+    - a description of the agent
     - an instructions to the agent
     - a list of down-chain agents (agents reporting to it)
     """
 
-    def invoke(self, args: dict[str, Any], sly_data: dict[str, Any]) -> dict[str, Any] | str:
+    async def async_invoke(self, args: dict[str, Any], sly_data: dict[str, Any]) -> dict[str, Any] | str:
         """
         :param args: An argument dictionary whose keys are the parameters
                 to the coded tool and whose values are the values passed for them
@@ -34,6 +35,7 @@ class AddAgent(CodedTool):
 
                 The argument dictionary expects the following keys:
                     "agent_name": the name of the agent to add.
+                    "is_tool": whether the agent is a tool or not.
 
         :param sly_data: A dictionary whose keys are defined by the agent hierarchy,
                 but whose values are meant to be kept out of the chat stream.
@@ -62,16 +64,27 @@ class AddAgent(CodedTool):
         the_agent_name: str = args.get("agent_name", "")
         if the_agent_name == "":
             return "Error: No agent_name provided."
+        is_tool: bool = args.get("is_tool")
+        if is_tool is None:
+            return "Error: No is_tool provided."
 
         logger = logging.getLogger(self.__class__.__name__)
         logger.info(">>>>>>>>>>>>>>>>>>>Add Agent>>>>>>>>>>>>>>>>>>")
         logger.info("Agent Name: %s", str(the_agent_name))
+        logger.info("Is Tool: %s", str(is_tool))
         network_def[the_agent_name] = {}
+        if not is_tool:
+            network_def[the_agent_name]["instructions"] = ""
         logger.info("The resulting agent network definition: \n %s", str(network_def))
         sly_data[AGENT_NETWORK_DEFINITION] = network_def
+
+        # Report progress
+        progress_reporter: AgentProgressReporter = args.get("progress_reporter")
+        progress: dict[str, Any] = {
+            # Agent network definition with an added agent
+            AGENT_NETWORK_DEFINITION: network_def
+        }
+        await progress_reporter.async_report_progress(progress)
+
         logger.info(">>>>>>>>>>>>>>>>>>>DONE !!!>>>>>>>>>>>>>>>>>>")
         return network_def
-
-    async def async_invoke(self, args: dict[str, Any], sly_data: dict[str, Any]) -> dict[str, Any] | str:
-        """Run invoke asynchronously."""
-        return await asyncio.to_thread(self.invoke, args, sly_data)

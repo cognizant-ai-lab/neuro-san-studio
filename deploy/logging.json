@@ -46,6 +46,13 @@
                 "console"
             ],
             "propagate": "no"
+        },
+        "coded_tools": {
+            "level": "DEBUG",
+            "handlers": [
+                "console"
+            ],
+            "propagate": false
         }
     },
     "root": {

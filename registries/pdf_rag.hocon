@@ -9,6 +9,10 @@
 # neuro-san SDK Software in commercial settings.
 #
 # END COPYRIGHT
+
+# To use this agent network, start by installing the required package:
+#     pip install pymupdf >= 1.25.5
+
 {
     "llm_config": {
         "model_name": "gpt-4o",
@@ -26,7 +30,7 @@
         # call each other is defined within their own specs.
         # This could be a graph, potentially even with cycles.
         {
-            "name": "PDF RAG Assistant",
+            "name": "PDF_RAG_Assistant",
 
             # Note that there are no parameters defined for this guy's "function" key.
             # This is the primary way to identify this tool as a front-man,

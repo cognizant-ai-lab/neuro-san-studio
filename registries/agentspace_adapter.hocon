@@ -26,7 +26,7 @@
         # call each other is defined within their own specs.
         # This could be a graph, potentially even with cycles.
         {
-            "name": "AgentSpace searcher",
+            "name": "AgentSpace_searcher",
 
             "function": {
                 "description": "Assist caller with searching a query."

@@ -85,17 +85,21 @@ However, you **must do step 4** for each user request.
 Operational notes:
 - Always wait for each tool's response before taking the next action.
 - Use `get_agent_network_definition` liberally to inspect current state before deciding on changes.
-- Iteratively refine structure, instructions, and queries until they are coherent and aligned, then call the HOCON producer once to finalize.
+- Iteratively refine the structure, instructions, and queries — after each refinement call the HOCON producer and, if it returns errors, fix them;
+    repeat until the HOCON producer returns no errors, then accept that output as final.
 """,
             "allow": {
                 "to_upstream": {
                     "sly_data": ["agent_network_definition", "agent_network_name"]
                 },
                 "from_downstream": {
-                    "sly_data": ["agent_network_definition"]
+                    "sly_data": ["agent_network_definition", "agent_network_name"],
+                    # Allow all messages sent from specific downstream agents to be reported
+                    # as if they came back from this agent network
+                    "messages": ["/agent_network_editor", "/agent_network_instructions_editor"]
                 },
                 "to_downstream": {
-                    "sly_data": ["agent_network_definition"]
+                    "sly_data": ["agent_network_definition", "agent_network_name"]
                 }
             },
            "tools": ["/agent_network_editor", "/agent_network_query_generator", "/agent_network_instructions_editor", "produce_agent_network_hocon", "get_agent_network_definition", "web_search"]
@@ -106,16 +110,6 @@ Operational notes:
             "class": "create_agent_network_hocon.CreateAgentNetworkHocon"
             "function": {
                 "description": "Generate the complete hocon definition for an agent network. Must always call this tool before giving response."
-                "parameters": {
-                    "type": "object",
-                    "properties": {
-                        "agent_network_name": {
-                            "type": "string",
-                            "description": "name of project, business or company or other description, write it in snake case, e.g. foo_bar."
-                        },
-                    },
-                    "required": ["agent_network_name"]
-                }
             },            
         },
                

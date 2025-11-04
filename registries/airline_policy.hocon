@@ -34,7 +34,7 @@ Do not mention what you can NOT do. Only mention what you can do.
         # call each other is defined within their own specs.
         # This could be a graph, potentially even with cycles.
         {
-            "name": "Airline 360 Assistant",
+            "name": "Airline_360_Assistant",
 
             "function": {
                 # The description acts as an initial prompt. 
