@@ -16,8 +16,9 @@ import subprocess
 import sys
 import threading
 import time
-from typing import Any, Tuple
+from typing import Any
 from typing import Dict
+from typing import Tuple
 
 from dotenv import load_dotenv
 
@@ -363,7 +364,7 @@ class NeuroSanRunner:
             except (ConnectionRefusedError, TimeoutError, OSError):
                 return False
 
-    def _check_port_conflicts(self) -> Tuple[list[str],list[int]]:
+    def _check_port_conflicts(self) -> Tuple[list[str], list[int]]:
         """Check if any of the ports are in use."""
         port_conflicts = []
         conflicting_ports: list[int] = []
@@ -390,7 +391,6 @@ class NeuroSanRunner:
                 conflicting_ports.append(self.args["neuro_san_web_client_port"])
 
         return port_conflicts, conflicting_ports
-    
 
     def _kill_processes_on_ports(self, ports: list[int]):
         """Kill processes using the specified ports."""
@@ -400,10 +400,7 @@ class NeuroSanRunner:
                 if self.is_windows:
                     # Windows: Find and kill process using netstat and taskkill
                     result = subprocess.run(
-                        ["netstat", "-ano", "-p", "TCP"],
-                        capture_output=True,
-                        text=True,
-                        check=True
+                        ["netstat", "-ano", "-p", "TCP"], capture_output=True, text=True, check=True
                     )
                     for line in result.stdout.splitlines():
                         if f":{port}" in line and "LISTENING" in line:
@@ -413,14 +410,9 @@ class NeuroSanRunner:
                             break
                 else:
                     # Unix/Mac: Use lsof to find and kill process
-                    result = subprocess.run(
-                        ["lsof", "-ti", f":{port}"],
-                        capture_output=True,
-                        text=True,
-                        check=False
-                    )
+                    result = subprocess.run(["lsof", "-ti", f":{port}"], capture_output=True, text=True, check=False)
                     if result.stdout.strip():
-                        pids = result.stdout.strip().split('\n')
+                        pids = result.stdout.strip().split("\n")
                         for pid in pids:
                             subprocess.run(["kill", "-9", pid], check=True)
                             print(f"  Killed process {pid} on port {port}")
@@ -430,7 +422,6 @@ class NeuroSanRunner:
                 print(f"  Failed to kill process on port {port}: {e}")
             except Exception as e:
                 print(f"  Error handling port {port}: {e}")
-    
 
     def conditional_start_servers(self):
         """
@@ -462,11 +453,11 @@ class NeuroSanRunner:
             for msg in port_conflicts:
                 print(msg)
             print("=" * 50)
-            
+
             # Ask user if they want to kill the processes
             response = input("\nDo you want to kill the processes using these ports? (yes/no): ").strip().lower()
-            
-            if response in ['yes', 'y']:
+
+            if response in ["yes", "y"]:
                 self._kill_processes_on_ports(conflicting_ports)
                 print("\nProcesses killed. Continuing with startup...\n")
             else:
