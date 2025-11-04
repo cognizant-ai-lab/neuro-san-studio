@@ -322,6 +322,29 @@
         }
     },
 
+    "webpage_rag": {
+        # This is a coded tool for RAG on webpages.
+        "class": "webpage_rag.WebpageRag", 
+        "description": "Retrieve information from the given webpages",
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "query": {
+                    "type": "string",
+                    "description": "Query for retrieval"
+                },
+                "urls": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    },
+                    "description": "List of URLs to retrieve information from"
+                }
+            },
+            "required": ["query"]
+        }
+    }
+
     # To use this tool, start by installing the required package:
     #     pip install wikipedia
     "wikipedia_rag": {
