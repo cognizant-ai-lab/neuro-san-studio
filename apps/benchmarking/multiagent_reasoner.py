@@ -1,36 +1,56 @@
-import os
-import sys
-import re
+import json
 import logging
+import os
+import re
+import sys
 import threading
-from neuro_san.client.agent_session_factory import AgentSessionFactory, AgentSession
+import time
+from pathlib import Path
+
+from neuro_san.client.agent_session_factory import AgentSession
+from neuro_san.client.agent_session_factory import AgentSessionFactory
 from neuro_san.client.streaming_input_processor import StreamingInputProcessor
 
 LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO").upper()
 
 logging.basicConfig(level=LOG_LEVEL, format="[%(levelname)s] %(message)s", stream=sys.stderr)
+logger = logging.getLogger()
+
+LOG_DIR = os.getenv("LOG_DIR")
+if LOG_DIR:
+    Path(LOG_DIR).mkdir(parents=True, exist_ok=True)
+    log_file = Path(LOG_DIR) / f"mr_{os.getpid()}_{threading.get_ident()}_{int(time.time())}.log"
+    file_handler = logging.FileHandler(log_file)
+    file_handler.setLevel(LOG_LEVEL)
+    file_handler.setFormatter(logging.Formatter("[%(levelname)s] %(message)s"))
+    logger.addHandler(file_handler)
+    logging.info(f"Logging to {log_file}")
 
 _DECOMP_FIELD_RE = re.compile(r"(P1|P2|C)\s*=\s*\[(.*?)]", re.DOTALL)
 
 os.environ["AGENT_MANIFEST_FILE"] = "apps/benchmarking/manifest_solver.hocon"
 os.environ["AGENT_TOOL_PATH"] = "coded_tools"
 
-FINAL_TOKEN = "vote:"  # agents end their final answer on the last line after this token
+FINAL_TOKEN = os.getenv("FINAL_TOKEN", "vote:")  # agents end their final answer on the last line after this token
 
-# Tuning knobs
-MAX_DEPTH = 5
-WINNING_VOTE_COUNT = 2
+# Tuning knobs with environment variable overrides
+MAX_DEPTH = int(os.getenv("MAX_DEPTH", "5"))
+WINNING_VOTE_COUNT = int(os.getenv("WINNING_VOTE_COUNT", "2"))
 CANDIDATE_COUNT = (2 * WINNING_VOTE_COUNT) - 1
 NUMBER_OF_VOTES = (2 * WINNING_VOTE_COUNT) - 1
 SOLUTION_CANDIDATE_COUNT = (2 * WINNING_VOTE_COUNT) - 1
 
+LOG_FAILURES_JSONL = os.getenv("LOG_FAILURES_JSONL")
 
 AGENTS_PORT = 30011
+
+_trace_data = threading.local()
 
 # Global, shared across threads
 _factory_lock = threading.RLock()
 _factory: AgentSessionFactory | None = None
 _sessions: dict[str, AgentSession] = {}
+
 
 def _get_session(agent_name: str) -> AgentSession:
     """Return a shared, thread-safe session for the named agent."""
@@ -41,27 +61,32 @@ def _get_session(agent_name: str) -> AgentSession:
         sess = _sessions.get(agent_name)
         if sess is None:
             sess = _factory.create_session(
-                "direct", agent_name, "localhost", AGENTS_PORT, False,
-                {"user_id": os.environ.get("USER")}
+                "direct", agent_name, "localhost", AGENTS_PORT, False, {"user_id": os.environ.get("USER")}
             )
             _sessions[agent_name] = sess
         return sess
 
+
 def decomposer_session() -> AgentSession:
     return _get_session("decomposer")
+
 
 def solution_discriminator_session() -> AgentSession:
     return _get_session("solution_discriminator")
 
+
 def composition_discriminator_session() -> AgentSession:
     return _get_session("composition_discriminator")
+
 
 def problem_solver_session() -> AgentSession:
     return _get_session("problem_solver")
 
+
 # Unique temp file per *call*
 def _tmpfile(stem: str) -> str:
     return f"/tmp/{stem}_{os.getpid()}_{threading.get_ident()}.txt"
+
 
 def call_agent(agent_session: AgentSession, text: str, timeout_ms: float = 100000.0) -> str:
     """Call a single agent with given text, return its response."""
@@ -74,13 +99,31 @@ def call_agent(agent_session: AgentSession, text: str, timeout_ms: float = 10000
         "sly_data": None,
         "chat_filter": {"chat_filter_type": "MAXIMAL"},
     }
-    inp = StreamingInputProcessor("DEFAULT", _tmpfile("program_mode_thinking"),
-                                  agent_session, None)
+    inp = StreamingInputProcessor("DEFAULT", _tmpfile("program_mode_thinking"), agent_session, None)
     thread = inp.process_once(thread)
     logging.debug(f"call_agent({agent_session}): sending {len(text)} chars")
     resp = thread.get("last_chat_response") or ""
     logging.debug(f"call_agent({agent_session}): received {len(resp)} chars")
     return resp
+
+
+def _parse_number(text: str) -> int | None:
+    """Extract and parse a number from text, stripping commas/spaces/underscores."""
+    if not text:
+        return None
+    cleaned = text.strip().replace(",", "").replace("_", "").replace(" ", "")
+    try:
+        return int(cleaned)
+    except ValueError:
+        numbers: list[str] = re.findall(r"\d+", cleaned)
+        if numbers:
+            try:
+                longest: str = max(numbers, key=len)
+                return int(longest)
+            except ValueError:
+                pass
+    return None
+
 
 def _extract_final(text: str, token: str = FINAL_TOKEN) -> str:
     """Return the text after the last occurrence of token (case-insensitive),
@@ -99,7 +142,7 @@ def _extract_final(text: str, token: str = FINAL_TOKEN) -> str:
         # Find LAST occurrence of token in this line (case-insensitive)
         idx = ln.lower().rfind(tkn_lower)
         if idx != -1:
-            return ln[idx + len(tkn):].strip()
+            return ln[idx + len(tkn) :].strip()
     return lines[-1]
 
 
@@ -115,7 +158,7 @@ def _extract_decomposition_text(resp: str) -> str | None:
     if fields:
         p1 = fields.get("P1", "None")
         p2 = fields.get("P2", "None")
-        c  = fields.get("C",  "None")
+        c = fields.get("C", "None")
         return f"P1=[{p1}], P2=[{p2}], C=[{c}]"
 
     # Fallback: if the last line already contains the canonical string
@@ -124,17 +167,82 @@ def _extract_decomposition_text(resp: str) -> str | None:
         return tail
     return None
 
+
+def _extract_multiplication_problem(problem: str) -> tuple[int | None, int | None]:
+    """Extract A and B from 'What is A × B?' or similar formats."""
+    patterns = [
+        r"What is (\d+)\s*[×x*]\s*(\d+)",
+        r"(\d+)\s*[×x*]\s*(\d+)",
+    ]
+    for pattern in patterns:
+        match = re.search(pattern, problem, re.IGNORECASE)
+        if match:
+            try:
+                return int(match.group(1)), int(match.group(2))
+            except ValueError:
+                pass
+    return None, None
+
+
+def _classify_failure(trace: dict, _expected: int, actual: int | None) -> list[str]:
+    """Classify failure patterns based on trace data."""
+    patterns = []
+
+    if actual is None:
+        patterns.append("malformed_final")
+        return patterns
+
+    decomp_info = trace.get("decomposition")
+    if decomp_info:
+        p2_text = decomp_info.get("p2", "")
+        c_text = decomp_info.get("c", "")
+
+        if p2_text and (
+            "result of P1" in p2_text
+            or "result of p1" in p2_text.lower()
+            or "use P1" in p2_text
+            or "use p1" in p2_text.lower()
+        ):
+            patterns.append("non_independent_subproblems")
+
+        if c_text:
+            has_add = any(word in c_text.lower() for word in ["add", "sum", "plus"])
+            has_subtract = any(
+                word in c_text.lower() for word in ["subtract", "minus", "difference"]
+            )
+            if has_add and has_subtract:
+                patterns.append("ambiguous_composition_op")
+
+    solve_info = trace.get("solve")
+    if solve_info:
+        s1_final = solve_info.get("s1_final")
+        s2_final = solve_info.get("s2_final")
+
+        if s1_final is not None or s2_final is not None:
+            patterns.append("composed_miscalc")
+        else:
+            patterns.append("atomic_miscalc")
+    else:
+        patterns.append("atomic_miscalc")
+
+    if not patterns:
+        patterns.append("unknown_failure")
+
+    return patterns
+
+
 def _parse_decomposition(decomp_line: str) -> tuple[str | None, str | None, str | None]:
     """
     Parses: P1=[p1], P2=[p2], C=[c]
     Returns (p1, p2, c) with 'None' coerced to None.
     """
-    # very lightweight parse without regex backtracking headaches
-    parts = {seg.split("=", 1)[0].strip(): seg.split("=", 1)[1].strip()
-             for seg in decomp_line.split(",") if "=" in seg}
+    parts = {
+        seg.split("=", 1)[0].strip(): seg.split("=", 1)[1].strip() for seg in decomp_line.split(",") if "=" in seg
+    }
 
     def unbracket(s: str | None) -> str | None:
-        if not s: return None
+        if not s:
+            return None
         s = s.strip()
         if s.startswith("[") and s.endswith("]"):
             s = s[1:-1].strip()
@@ -145,18 +253,19 @@ def _parse_decomposition(decomp_line: str) -> tuple[str | None, str | None, str 
     c = unbracket(parts.get("C"))
     return p1, p2, c
 
+
 def _compose_prompt(c: str, s1: str, s2: str) -> str:
     """
     Build a prompt for the final composition solve: C(s1, s2).
     We pass the original problem, the composition description, and the sub-solutions.
     """
-    return (
-        f"Solve C(P1, P2) such that C={c}, P1={s1}, P2={s2}"
-    )
+    return f"Solve C(P1, P2) such that C={c}, P1={s1}, P2={s2}"
+
 
 def _solve_atomic(problem: str) -> str:
     """Single call to problem_solver; returns the full agent response."""
     return call_agent(problem_solver_session(), problem)
+
 
 def solve(problem: str, depth: int = 0, max_depth: int = MAX_DEPTH) -> str:
     """
@@ -190,11 +299,9 @@ def solve(problem: str, depth: int = 0, max_depth: int = MAX_DEPTH) -> str:
 
     logging.info(f"[solve] depth={depth} sub-answers -> s1_final={s1!r}, s2_final={s2!r}")
 
-    # Compose using problem_solver
     comp_prompt = _compose_prompt(c, s1, s2)
     logging.info(f"[solve] depth={depth} composing with C={c!r}")
 
-    # Generate multiple composed solutions
     solutions: list[str] = []
     finals: list[str] = []
     for k in range(SOLUTION_CANDIDATE_COUNT):
@@ -203,13 +310,12 @@ def solve(problem: str, depth: int = 0, max_depth: int = MAX_DEPTH) -> str:
         finals.append(_extract_final(r))
         logging.info(f"[solve] depth={depth} composed candidate {k + 1}: {finals[-1]}")
 
-    # Vote among composed solutions using composition_discriminator
     numbered = "\n".join(f"{i + 1}. {ans}" for i, ans in enumerate(finals))
     numbered = f"problem: {comp_prompt}, {numbered}"
     logging.info(f"[solve] depth={depth} composition_discriminator query: {numbered}")
     votes = [0] * len(finals)
     winner_idx = None
-    for _ in range(NUMBER_OF_VOTES):  # reuse existing vote knobs
+    for _ in range(NUMBER_OF_VOTES):
         vresp = call_agent(composition_discriminator_session(), f"{numbered}\n\n")
         vote_txt = _extract_final(vresp)
         logging.info(f"[solve] depth={depth} solution vote: {vote_txt}")
@@ -232,6 +338,17 @@ def solve(problem: str, depth: int = 0, max_depth: int = MAX_DEPTH) -> str:
 
     resp = solutions[winner_idx]
     logging.info(f"[solve] depth={depth} composed final (chosen): {finals[winner_idx]!r}")
+
+    if depth == 0 and not hasattr(_trace_data, "solve"):
+        _trace_data.solve = {
+            "s1_final": s1,
+            "s2_final": s2,
+            "c": c,
+            "composed_candidates": finals,
+            "composition_votes": votes,
+            "composition_winner_idx": winner_idx,
+        }
+
     return resp
 
 
@@ -240,11 +357,10 @@ def decompose(problem: str) -> tuple[str | None, str | None, str | None]:
     Collect CANDIDATE_COUNT decompositions from the 'decomposer' agent,
     then run a voting round via 'solution_discriminator'. Returns (p1, p2, c).
     """
-    # 1) Gather candidates
     candidates: list[str] = []
     for _ in range(CANDIDATE_COUNT):
         resp = call_agent(decomposer_session(), problem)
-        cand = _extract_decomposition_text(resp)  # expect "P1=[...], P2=[...], C=[...]"
+        cand = _extract_decomposition_text(resp)
         if cand:
             candidates.append(cand)
 
@@ -254,18 +370,14 @@ def decompose(problem: str) -> tuple[str | None, str | None, str | None]:
     if not candidates:
         return None, None, None
 
-    # Numbered list for the discriminator
     numbered = "\n".join(f"{i+1}. {c}" for i, c in enumerate(candidates))
     numbered = f"problem: {problem}, {numbered}"
     logging.info(f"[decompose] solution_discriminator query: {numbered}")
 
-    # 2) Voting
     votes = [0] * len(candidates)
     winner_idx = None
     for _ in range(NUMBER_OF_VOTES):
-        disc_prompt = (
-            f"{numbered}\n\n"
-        )
+        disc_prompt = f"{numbered}\n\n"
         vresp = call_agent(solution_discriminator_session(), disc_prompt)
         vote_txt = _extract_final(vresp)
         logging.info(f"[decompose] discriminator raw vote: {vote_txt}")
@@ -284,28 +396,108 @@ def decompose(problem: str) -> tuple[str | None, str | None, str | None]:
             logging.warning(f"[decompose] malformed vote ignored: {vote_txt!r}")
 
     if winner_idx is None:
-        # choose argmax (first tie-winner)
         winner_idx = max(range(len(votes)), key=lambda v: votes[v])
 
     logging.info(f"[decompose] final winner: {winner_idx + 1} -> {candidates[winner_idx]}")
 
     p1, p2, c = _parse_decomposition(candidates[winner_idx])
+
+    if not hasattr(_trace_data, "decomposition"):
+        _trace_data.decomposition = {}
+    _trace_data.decomposition = {
+        "candidates": candidates,
+        "winner_idx": winner_idx,
+        "votes": votes,
+        "p1": p1,
+        "p2": p2,
+        "c": c,
+    }
+
     return p1, p2, c
 
 
 def main():
-    # Read the full prompt (problem) from stdin
     problem = sys.stdin.read().strip()
     if not problem:
         print("[ERROR] No input provided.", file=sys.stderr)
         sys.exit(1)
 
+    if LOG_FAILURES_JSONL:
+        log_dir = Path(LOG_FAILURES_JSONL).parent
+        log_dir.mkdir(parents=True, exist_ok=True)
+        logging.info(f"[main] Failure logging enabled: {LOG_FAILURES_JSONL}")
+
     final_resp = solve(problem, depth=0, max_depth=MAX_DEPTH)
 
-    # Print EXACTLY what the benchmark runner should capture; include the agent’s full response
-    # (which is expected to end with the final line containing the FINAL_TOKEN).
-    logging.info(f"[main] final answer: {_extract_final(final_resp)!r}")
+    extracted_final = _extract_final(final_resp)
+    logging.info(f"[main] final answer: {extracted_final!r}")
+
+    a, b = _extract_multiplication_problem(problem)
+    if a is None or b is None:
+        logging.info(
+            f"[main] Could not extract multiplication problem from: {problem[:100]}"
+        )
+    elif not LOG_FAILURES_JSONL:
+        logging.info("[main] LOG_FAILURES_JSONL not set; skipping failure logging")
+    else:
+        expected = a * b
+        actual = _parse_number(extracted_final)
+        logging.info(f"[main] Checking: expected={expected}, actual={actual}")
+
+        if actual != expected:
+            trace = {
+                "decomposition": getattr(_trace_data, "decomposition", None),
+                "solve": getattr(_trace_data, "solve", None),
+            }
+
+            failure_patterns = _classify_failure(trace, expected, actual)
+
+            diff = None if actual is None else actual - expected
+            abs_diff = None if actual is None else abs(actual - expected)
+            rel_error = (
+                None
+                if actual is None or expected == 0
+                else abs_diff / abs(expected)
+            )
+
+            failure_record = {
+                "problem": problem,
+                "expected": expected,
+                "actual": actual,
+                "extracted_final": extracted_final,
+                "final_resp": final_resp,
+                "failure_patterns": failure_patterns,
+                "error": {
+                    "diff": diff,
+                    "abs_diff": abs_diff,
+                    "relative_error": rel_error,
+                },
+                "trace": trace,
+                "config": {
+                    "WINNING_VOTE_COUNT": WINNING_VOTE_COUNT,
+                    "MAX_DEPTH": MAX_DEPTH,
+                    "CANDIDATE_COUNT": CANDIDATE_COUNT,
+                    "NUMBER_OF_VOTES": NUMBER_OF_VOTES,
+                    "SOLUTION_CANDIDATE_COUNT": SOLUTION_CANDIDATE_COUNT,
+                },
+            }
+
+            if LOG_DIR:
+                failure_record["log_file"] = (
+                    str(log_file) if "log_file" in locals() else None
+                )
+
+            try:
+                with open(LOG_FAILURES_JSONL, "a") as f:
+                    f.write(json.dumps(failure_record) + "\n")
+                logging.info(f"[main] Failure logged to {LOG_FAILURES_JSONL}")
+            except Exception as e:
+                logging.error(f"[main] Failed to write failure log: {e}")
+        else:
+            logging.info(f"[main] Correct answer; not logging to {LOG_FAILURES_JSONL}")
+
     print(final_resp)
+
 
 if __name__ == "__main__":
     main()
