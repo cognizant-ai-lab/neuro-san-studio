@@ -322,7 +322,7 @@
         }
     },
 
-    "website_rag": {
+    "webpage_rag": {
         # This is a coded tool for RAG on webpages.
         "class": "webpage_rag.WebpageRag", 
         "description": "Retrieve information from the given webpages",
