@@ -16,7 +16,6 @@ from typing import Any
 from langchain_community.document_loaders import WebBaseLoader
 from langchain_core.documents import Document
 from langchain_core.vectorstores import VectorStore
-
 from neuro_san.interfaces.coded_tool import CodedTool
 from requests.exceptions import HTTPError
 
