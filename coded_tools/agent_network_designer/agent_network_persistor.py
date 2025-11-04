@@ -8,7 +8,12 @@
 # neuro-san-studio SDK Software in commercial settings.
 #
 
+# pylint: disable=too-few-public-methods
 class AgentNetworkPersistor:
+    """
+    Interface for persisting agent networks.
+    This default implementation does nothing.
+    """
 
     async def async_persist(self, obj: str, file_reference: str = None) -> str:
         """
@@ -21,4 +26,5 @@ class AgentNetworkPersistor:
                 implementation.
         :return an object describing the location to which the object was persisted
         """
+        _ = obj, file_reference
         return None

@@ -12,15 +12,19 @@ from coded_tools.agent_network_designer.agent_network_persistor import AgentNetw
 from coded_tools.agent_network_designer.file_system_agent_network_persistor import FileSystemAgentNetworkPersistor
 
 
+# pylint: disable=too-few-public-methods
 class AgentNetworkPersistorFactory:
+    """
+    Factory class for AgentNetworkPersistors.
+    """
 
     @staticmethod
     def create_persistor(persistor_type: str) -> AgentNetworkPersistor:
         """
         Creates a new persistor of the specified type.
 
-        :param persistor_type: The type of persistor to create.
-        :return: A new persistor of the specified type.
+        :param persistor_type: The string type of persistor to create.
+        :return: A new AgentNetworkPersistor of the specified type.
         """
         persistor: AgentNetworkPersistor = None
 

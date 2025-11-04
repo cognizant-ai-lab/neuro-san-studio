@@ -14,7 +14,12 @@ import aiofiles
 from coded_tools.agent_network_designer.agent_network_persistor import AgentNetworkPersistor
 
 
+# pylint: disable=too-few-public-methods
 class FileSystemAgentNetworkPersistor(AgentNetworkPersistor):
+    """
+    AgentNetworkPersistor implementation for saving agent networks to the file system
+    as a hocon file. Also modifies the local manifest file.
+    """
 
     OUTPUT_PATH: str = "registries/"
 

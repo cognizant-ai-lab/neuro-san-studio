@@ -160,8 +160,9 @@ class CreateAgentNetworkHocon(CodedTool):
         logger.info(">>>>>>>>>>>>>>>>>>>Create Agent Network Hocon>>>>>>>>>>>>>>>>>>")
         logger.info("Agent Network Name: %s", str(the_agent_network_name))
 
-        the_agent_network_hocon_str: str = self.get_agent_network_hocon(validator, the_agent_network_name)
-
+        the_agent_network_hocon_str: str = self.assemble_agent_network_hocon(validator.network,
+                                                                             validator.get_top_agent(),
+                                                                             the_agent_network_name)
         logger.info("The resulting agent network HOCON: \n %s", str(the_agent_network_hocon_str))
 
         persistor_type: str = "null"
@@ -169,7 +170,7 @@ class CreateAgentNetworkHocon(CodedTool):
             persistor_type = "file"
 
         persistor: AgentNetworkPersistor = AgentNetworkPersistorFactory.create_persistor(persistor_type)
-        persistor.persist(obj=the_agent_network_hocon_str, file_reference=the_agent_network_name)
+        await persistor.async_persist(obj=the_agent_network_hocon_str, file_reference=the_agent_network_name)
 
         logger.info(">>>>>>>>>>>>>>>>>>>DONE !!!>>>>>>>>>>>>>>>>>>")
         return (
@@ -177,18 +178,18 @@ class CreateAgentNetworkHocon(CodedTool):
             f"has been successfully created from the agent network definition: {network_def}."
         )
 
-    def get_agent_network_hocon(self, validator: AgentNetworkValidator, agent_network_name: str) -> str:
+    def assemble_agent_network_hocon(self, network_def: dict[str, Any],
+                                     top_agent_name: str,
+                                     agent_network_name: str) -> str:
         """
         Substitutes value from agent network definition into the template of agent network HOCON file
-        :param validator: Agent network validator.
+
+        :param network_def: Agent network definition
+        :param top_agent_name: The name of the top agent
         :param agent_network_name: The file name, without the .hocon extension
 
         :return: A full agent network HOCON as a string.
         """
-        network_def: dict[str, Any] = validator.network
-        # Make sure that the top agent is the first agent.
-        # Find or set the top agent
-        top_agent_name: str = validator.get_top_agent()
         # Move top agent to front
         if top_agent_name != next(iter(network_def)):
             top_agent: dict[str, Any] = network_def.pop(top_agent_name)
