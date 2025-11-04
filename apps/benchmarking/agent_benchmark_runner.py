@@ -136,20 +136,27 @@ class AgentBenchmarkRunner:
         )
 
     def close(self):
+        print(f"[DEBUG] Entering close() at {time.strftime('%Y-%m-%d %H:%M:%S')}")
         if self._session is not None:
             self._session.close()
             self._session = None
         # close progress CSV if open
         if hasattr(self, "_progress_csv_file") and self._progress_csv_file:
             try:
+                print(f"[DEBUG] Flushing progress CSV at {time.strftime('%Y-%m-%d %H:%M:%S')}")
                 self._progress_csv_file.flush()
+                print(f"[DEBUG] Fsyncing progress CSV at {time.strftime('%Y-%m-%d %H:%M:%S')}")
                 os.fsync(self._progress_csv_file.fileno())
+                print(f"[DEBUG] Fsync completed at {time.strftime('%Y-%m-%d %H:%M:%S')}")
             except Exception:
                 pass
             try:
+                print(f"[DEBUG] Closing progress CSV at {time.strftime('%Y-%m-%d %H:%M:%S')}")
                 self._progress_csv_file.close()
+                print(f"[DEBUG] Progress CSV closed at {time.strftime('%Y-%m-%d %H:%M:%S')}")
             finally:
                 self._progress_csv_file = None
+        print(f"[DEBUG] Exiting close() at {time.strftime('%Y-%m-%d %H:%M:%S')}")
 
     # ------------------ Threads & Turns ------------------
 
@@ -518,7 +525,10 @@ class AgentBenchmarkRunner:
                     print(
                         f"[{completed}/{total}] acc_so_far={correct / denom:.3f} last_latency={r['latency_sec']:.2f}s"
                     )
-
+            
+            print(f"[DEBUG] All {total} futures collected at {time.strftime('%Y-%m-%d %H:%M:%S')}")
+        
+        print(f"[DEBUG] Exited executor context at {time.strftime('%Y-%m-%d %H:%M:%S')}")
         denom = processed if processed else 1
         accuracy = correct / denom
         avg_latency = (sum(latencies) / len(latencies)) if latencies else 0.0
@@ -811,6 +821,7 @@ if __name__ == "__main__":
 
     try:
         # Evaluate
+        print(f"[DEBUG] Starting evaluate() at {time.strftime('%Y-%m-%d %H:%M:%S')}")
         payload = runner.evaluate(
             data,
             limit=None,
@@ -822,8 +833,11 @@ if __name__ == "__main__":
             answer_format=args.answer_format,
             final_token=args.final_token,
         )
+        print(f"[DEBUG] evaluate() returned at {time.strftime('%Y-%m-%d %H:%M:%S')}")
     finally:
+        print(f"[DEBUG] Calling runner.close() at {time.strftime('%Y-%m-%d %H:%M:%S')}")
         runner.close()
+        print(f"[DEBUG] runner.close() returned at {time.strftime('%Y-%m-%d %H:%M:%S')}")
 
     # Report
     print("\n=== RESULTS ===")
@@ -832,5 +846,7 @@ if __name__ == "__main__":
     print(f"Avg latency: {payload['avg_latency_sec']:.2f}s")
     print(f"P95 latency: {payload['p95_latency_sec']:.2f}s")
 
+    print(f"[DEBUG] Calling save_results() at {time.strftime('%Y-%m-%d %H:%M:%S')}")
     csv_path, jsonl_path = runner.save_results(payload, tag=args.task)
+    print(f"[DEBUG] save_results() returned at {time.strftime('%Y-%m-%d %H:%M:%S')}")
     print(f"\nSaved: {csv_path}\nSaved: {jsonl_path}")
