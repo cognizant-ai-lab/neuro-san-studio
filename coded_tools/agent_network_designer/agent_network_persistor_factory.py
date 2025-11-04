@@ -8,8 +8,13 @@
 # neuro-san-studio SDK Software in commercial settings.
 #
 
+from typing import Any
+
+from neuro_san.interfaces.reservationist import Reservationist
+
 from coded_tools.agent_network_designer.agent_network_persistor import AgentNetworkPersistor
 from coded_tools.agent_network_designer.file_system_agent_network_persistor import FileSystemAgentNetworkPersistor
+from coded_tools.agent_network_designer.reservations_agent_network_persistor import ReservationsAgentNetworkPersistor
 
 
 # pylint: disable=too-few-public-methods
@@ -19,7 +24,7 @@ class AgentNetworkPersistorFactory:
     """
 
     @staticmethod
-    def create_persistor(persistor_type: str) -> AgentNetworkPersistor:
+    def create_persistor(args: dict[str, Any], write_to_file: bool) -> AgentNetworkPersistor:
         """
         Creates a new persistor of the specified type.
 
@@ -27,12 +32,19 @@ class AgentNetworkPersistorFactory:
         :return: A new AgentNetworkPersistor of the specified type.
         """
         persistor: AgentNetworkPersistor = None
+        reservationist: Reservationist = None
 
-        if persistor_type == "filesystem":
+        if args:
+            reservationist = args.get("reservationist")
+
+        if write_to_file:
+            # If the write_to_file flag is True, then that's what we're doing.
             persistor = FileSystemAgentNetworkPersistor()
-        if persistor_type == "null":
-            persistor = AgentNetworkPersistor()
+        elif reservationist:
+            # If we have a reservationist as part of the args, use the ReservationsAgentNetworkPersistor
+            persistor = ReservationsAgentNetworkPersistor(reservationist)
         else:
-            raise ValueError(f"Unknown persistor type: {persistor_type}")
+            # Fallback null implementation
+            persistor = AgentNetworkPersistor()
 
         return persistor

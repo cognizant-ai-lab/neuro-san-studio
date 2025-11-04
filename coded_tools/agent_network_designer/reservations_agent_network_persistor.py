@@ -8,6 +8,8 @@
 # neuro-san-studio SDK Software in commercial settings.
 #
 
+from neuro_san.interfaces.reservationist import Reservationist
+
 from coded_tools.agent_network_designer.agent_network_persistor import AgentNetworkPersistor
 
 
@@ -17,6 +19,14 @@ class ReservationsAgentNetworkPersistor(AgentNetworkPersistor):
     AgentNetworkPersistor implementation that saves a temporary network
     using the neuro-san Reservations API
     """
+
+    def __init__(self, reservationist: Reservationist):
+        """
+        Creates a new persistor of the specified type.
+
+        :param reservationist: The Reservationist instance from the args of the calling CodedTool.
+        """
+        self.reservationist: Reservationist = reservationist
 
     async def async_persist(self, obj: str, file_reference: str = None) -> str:
         """

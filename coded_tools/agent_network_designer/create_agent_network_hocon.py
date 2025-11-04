@@ -165,11 +165,7 @@ class CreateAgentNetworkHocon(CodedTool):
                                                                              the_agent_network_name)
         logger.info("The resulting agent network HOCON: \n %s", str(the_agent_network_hocon_str))
 
-        persistor_type: str = "null"
-        if WRITE_TO_FILE:
-            persistor_type = "file"
-
-        persistor: AgentNetworkPersistor = AgentNetworkPersistorFactory.create_persistor(persistor_type)
+        persistor: AgentNetworkPersistor = AgentNetworkPersistorFactory.create_persistor(args, WRITE_TO_FILE)
         await persistor.async_persist(obj=the_agent_network_hocon_str, file_reference=the_agent_network_name)
 
         logger.info(">>>>>>>>>>>>>>>>>>>DONE !!!>>>>>>>>>>>>>>>>>>")
