@@ -83,6 +83,7 @@ LEAF_NODE_AGENT_TEMPLATE = (
 TOOLBOX_AGENT_TEMPLATE = "        {\n" '            "name": "%s",\n' '            "toolbox": "%s"\n' "        },\n"
 
 
+# pylint: disable=too-few-public-methods
 class HoconAgentNetworkAssembler(AgentNetworkAssembler):
     """
     AgentNetworkAssembler implementation which creates a full hocon of a designed agent network

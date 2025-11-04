@@ -10,6 +10,7 @@
 from typing import Any
 
 
+# pylint: disable=too-few-public-methods
 class AgentNetworkAssembler:
     """
     Interface for a policy class that assembles an agent network from an agent network definition
