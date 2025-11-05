@@ -46,7 +46,8 @@ class ReservationsAgentNetworkPersistor(AgentNetworkPersistor):
         """
         agent_spec: dict[str, Any] = obj
         agent_prefix: str = file_reference
-        lifetime_in_seconds: float = 60.0 * 60.0    # For now
+        # For now
+        lifetime_in_seconds: float = 60.0 * 60.0
 
         reservation: Reservation = None
         error: str = None
@@ -57,10 +58,12 @@ class ReservationsAgentNetworkPersistor(AgentNetworkPersistor):
         if error is not None:
             return error
 
-        agent_reservations: list[dict[str, Any]] = [{
-            "reservation_id": reservation.get_reservation_id(),
-            "lifetime_in_seconds": reservation.get_lifetime_in_seconds(),
-            "expiration_time_in_seconds": reservation.get_expiration_time_in_seconds(),
-        }]
+        agent_reservations: list[dict[str, Any]] = [
+            {
+                "reservation_id": reservation.get_reservation_id(),
+                "lifetime_in_seconds": reservation.get_lifetime_in_seconds(),
+                "expiration_time_in_seconds": reservation.get_expiration_time_in_seconds(),
+            }
+        ]
 
         return agent_reservations
