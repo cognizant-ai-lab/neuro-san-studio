@@ -25,8 +25,6 @@ from neuro_san.interfaces.coded_tool import CodedTool
 from coded_tools.base_rag import BaseRag
 from coded_tools.base_rag import PostgresConfig
 
-INVALID_PATH_PATTERN = r"[<>:\"|?*\x00-\x1F]"
-
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
