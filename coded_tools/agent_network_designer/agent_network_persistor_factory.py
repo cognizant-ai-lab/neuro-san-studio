@@ -43,7 +43,7 @@ class AgentNetworkPersistorFactory:
             persistor = FileSystemAgentNetworkPersistor()
         elif reservationist:
             # If we have a reservationist as part of the args, use the ReservationsAgentNetworkPersistor
-            persistor = ReservationsAgentNetworkPersistor(reservationist)
+            persistor = ReservationsAgentNetworkPersistor(args)
         else:
             # Fallback null implementation
             persistor = AgentNetworkPersistor()
