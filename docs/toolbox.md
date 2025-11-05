@@ -32,6 +32,12 @@ Execute Python code dynamically for data analysis, plotting, and computation.
 * **`anthropic_code_execution`** — Execute code using Anthropic's code execution tool
 * **`openai_code_interpreter`** — Execute code using OpenAI's code interpreter
 
+### Date and Time
+
+Provide current date and time for a specified timezone (default to UTC). This tool is in NeuroSAN's default toolbox.
+
+* **`get_current_date_time`** - Support both UTC offset and IANA timezone
+
 ### Email Management
 
 Send and manage emails through Gmail integration.

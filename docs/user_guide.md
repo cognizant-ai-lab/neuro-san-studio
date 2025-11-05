@@ -878,7 +878,6 @@ integration of **LangChain** and **custom-coded tools** in a agent network confi
 
 | Name               | Description                                           |
 | ------------------ | ----------------------------------------------------- |
-| `tavily_search`    | Web search via Tavily. |
 | `requests_get`     | HTTP GET requests.                                    |
 | `requests_post`    | HTTP POST requests.                                   |
 | `requests_patch`   | HTTP PATCH requests.                                  |
@@ -890,8 +889,7 @@ integration of **LangChain** and **custom-coded tools** in a agent network confi
 
 | Name             | Description                                                    |
 | ---------------- | -------------------------------------------------------------- |
-| `website_search` | Searches the internet via DuckDuckGo. |
-| `rag_retriever`  | Performs RAG (retrieval-augmented generation) from given URLs. |
+| `get_current_date_time` | Get current date and time for a specified timezone.     |
 
 ### Usage in agent network config
 
