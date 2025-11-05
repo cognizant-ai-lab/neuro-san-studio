@@ -72,7 +72,7 @@ in the RFP.
 
 ##### Required
 
-* `urls` (list): List of PDF URLs to use for RAG.
+* `urls` (list): List of PDF URLs or file paths to use for RAG.
 
 ##### Optional
 
@@ -82,6 +82,9 @@ the table instead of documents. Default to `vectorstore`
 * `save_vector_store` (bool): Save the vector store to a JSON file. For in-memory vector store only.
 * `vector_store_path`(str): Path to save/load the vector store
 (absolute or relative to `neuro-san-studio/coded_tools/pdf_rag/`). For in-memory vector store only
+
+    > If `vector_store_path` is defined, the tool attempts to load the specified vector store instead of generating a new one.
+At this time, the tool does not support appending additional input to an existing vector store.
 
 ---
 
