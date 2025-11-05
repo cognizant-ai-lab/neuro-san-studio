@@ -7,11 +7,9 @@
 # Purchase of a commercial license is mandatory for any use of the
 # neuro-san-studio SDK Software in commercial settings.
 #
-from typing import Any
-
 import logging
-
 from copy import deepcopy
+from typing import Any
 
 from neuro_san.interfaces.coded_tool import CodedTool
 

@@ -8,12 +8,10 @@
 # neuro-san-studio SDK Software in commercial settings.
 #
 from copy import deepcopy
-
 from typing import Any
 
 from leaf_common.config.file_of_class import FileOfClass
 from leaf_common.persistence.easy.easy_hocon_persistence import EasyHoconPersistence
-
 from neuro_san.internals.graph.filters.dictionary_common_defs_config_filter import DictionaryCommonDefsConfigFilter
 from neuro_san.internals.graph.filters.string_common_defs_config_filter import StringCommonDefsConfigFilter
 
