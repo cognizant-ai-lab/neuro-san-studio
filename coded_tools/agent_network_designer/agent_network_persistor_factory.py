@@ -28,7 +28,8 @@ class AgentNetworkPersistorFactory:
         """
         Creates a new persistor of the specified type.
 
-        :param persistor_type: The string type of persistor to create.
+        :param args: The args from the calling CodedTool.
+        :param write_to_file: True if the agent network should be written to a file.
         :return: A new AgentNetworkPersistor of the specified type.
         """
         persistor: AgentNetworkPersistor = None
