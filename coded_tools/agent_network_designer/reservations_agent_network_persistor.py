@@ -7,6 +7,7 @@
 # Purchase of a commercial license is mandatory for any use of the
 # neuro-san-studio SDK Software in commercial settings.
 #
+from typing import Any
 
 from neuro_san.interfaces.reservationist import Reservationist
 
@@ -28,7 +29,7 @@ class ReservationsAgentNetworkPersistor(AgentNetworkPersistor):
         """
         self.reservationist: Reservationist = reservationist
 
-    async def async_persist(self, obj: str, file_reference: str = None) -> str:
+    async def async_persist(self, obj: dict[str, Any], file_reference: str = None) -> str:
         """
         Persists the object passed in.
 

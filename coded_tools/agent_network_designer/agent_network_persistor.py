@@ -7,6 +7,8 @@
 # Purchase of a commercial license is mandatory for any use of the
 # neuro-san-studio SDK Software in commercial settings.
 #
+from typing import Any
+
 
 # pylint: disable=too-few-public-methods
 class AgentNetworkPersistor:
@@ -15,7 +17,7 @@ class AgentNetworkPersistor:
     This default implementation does nothing.
     """
 
-    async def async_persist(self, obj: str, file_reference: str = None) -> str:
+    async def async_persist(self, obj: Any, file_reference: str = None) -> str:
         """
         Persists the object passed in.
 
