@@ -16,9 +16,7 @@ class AgentNetworkAssembler:
     Interface for a policy class that assembles an agent network from an agent network definition
     """
 
-    def assemble_agent_network(self, network_def: dict[str, Any],
-                               top_agent_name: str,
-                               agent_network_name: str) -> Any:
+    def assemble_agent_network(self, network_def: dict[str, Any], top_agent_name: str, agent_network_name: str) -> Any:
         """
         Assemble the agent network from the definition.
 

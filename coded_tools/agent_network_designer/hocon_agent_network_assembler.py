@@ -95,9 +95,7 @@ class HoconAgentNetworkAssembler(AgentNetworkAssembler):
     - a list of down-chain agents (agents reporting to it)
     """
 
-    def assemble_agent_network(self, network_def: dict[str, Any],
-                               top_agent_name: str,
-                               agent_network_name: str) -> str:
+    def assemble_agent_network(self, network_def: dict[str, Any], top_agent_name: str, agent_network_name: str) -> str:
         """
         Substitutes value from agent network definition into the template of agent network HOCON file
 

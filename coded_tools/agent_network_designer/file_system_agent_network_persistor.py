@@ -67,9 +67,11 @@ class FileSystemAgentNetworkPersistor(AgentNetworkPersistor):
 
             if insert_position != -1:
                 updated_content: str = (
-                    manifest_content[:insert_position] + "\n" +
-                    manifest_entry + "\n" +
-                    manifest_content[insert_position:]
+                    manifest_content[:insert_position]
+                    + "\n"
+                    + manifest_entry
+                    + "\n"
+                    + manifest_content[insert_position:]
                 )
         else:
             # HOCON format handling

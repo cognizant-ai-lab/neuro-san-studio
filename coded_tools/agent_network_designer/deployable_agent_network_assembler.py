@@ -38,9 +38,9 @@ class DeployableAgentNetworkAssembler(AgentNetworkAssembler):
         aaosa_file: str = file_of_class.get_file_in_basis("../../registries/aaosa.hocon")
         self.aaosa_defs: dict[str, Any] = persistence.restore(file_reference=aaosa_file)
 
-    def assemble_agent_network(self, network_def: dict[str, Any],
-                               top_agent_name: str,
-                               agent_network_name: str) -> dict[str, Any]:
+    def assemble_agent_network(
+        self, network_def: dict[str, Any], top_agent_name: str, agent_network_name: str
+    ) -> dict[str, Any]:
         """
         Assemble the agent network from the definition.
 
@@ -74,9 +74,7 @@ class DeployableAgentNetworkAssembler(AgentNetworkAssembler):
                 "agent_instructions": agent_def.get("instructions"),
                 "agent_network_name": agent_network_name,
             }
-            value_replacements: dict[str, Any] = {
-                "tools": tools
-            }
+            value_replacements: dict[str, Any] = {"tools": tools}
 
             # Find what node template to use from the tools
             template_index: int = -1
@@ -95,16 +93,18 @@ class DeployableAgentNetworkAssembler(AgentNetworkAssembler):
 
             # Filter the appropriate node in the template based on what we gathered above.
             agent_spec_template: dict[str, Any] = deepcopy(self.template["tools"][template_index])
-            agent_spec: dict[str, Any] = self.filter_agent(agent_spec_template, string_replacements, value_replacements)
+            agent_spec: dict[str, Any] = self.filter_agent(
+                agent_spec_template, string_replacements, value_replacements
+            )
 
             # Add agent to tools
             agent_network["tools"].append(agent_spec)
 
         return agent_network
 
-    def filter_agent(self, agent_spec: dict[str, Any],
-                     string_replacements_in: dict[str, Any],
-                     value_replacements_in: dict[str, Any]) -> dict[str, Any]:
+    def filter_agent(
+        self, agent_spec: dict[str, Any], string_replacements_in: dict[str, Any], value_replacements_in: dict[str, Any]
+    ) -> dict[str, Any]:
         """
         Common filters
 
@@ -116,9 +116,7 @@ class DeployableAgentNetworkAssembler(AgentNetworkAssembler):
         search/replace that hocon does for us we have to do ourselves.
         """
         # Create a network spec so the ConfigFilters from neuro_san can work on it
-        network_spec: dict[str, Any] = {
-            "tools": [agent_spec]
-        }
+        network_spec: dict[str, Any] = {"tools": [agent_spec]}
 
         # Get commondefs from the template
         empty: dict[str, Any] = {}
@@ -128,7 +126,7 @@ class DeployableAgentNetworkAssembler(AgentNetworkAssembler):
         # ourselves because we are creating a dictionary and not a hocon file.
         string_replacements: dict[str, str] = {
             "aaosa_command": self.aaosa_defs.get("aaosa_command"),
-            "aaosa_instructions": self.aaosa_defs.get("aaosa_instructions")
+            "aaosa_instructions": self.aaosa_defs.get("aaosa_instructions"),
         }
         string_replacements.update(string_replacements_in)
         string_replacements.update(commondefs.get("replacement_strings", empty))

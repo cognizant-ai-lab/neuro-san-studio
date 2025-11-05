@@ -91,9 +91,9 @@ class CreateAgentNetworkHocon(CodedTool):
         logger.info("Agent Network Name: %s", str(the_agent_network_name))
 
         assembler: AgentNetworkAssembler = HoconAgentNetworkAssembler()
-        the_agent_network_hocon_str: str = assembler.assemble_agent_network(validator.network,
-                                                                            validator.get_top_agent(),
-                                                                            the_agent_network_name)
+        the_agent_network_hocon_str: str = assembler.assemble_agent_network(
+            validator.network, validator.get_top_agent(), the_agent_network_name
+        )
         logger.info("The resulting agent network HOCON: \n %s", str(the_agent_network_hocon_str))
 
         persistor: AgentNetworkPersistor = AgentNetworkPersistorFactory.create_persistor(args, WRITE_TO_FILE)
