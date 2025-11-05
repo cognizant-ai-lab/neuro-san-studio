@@ -98,7 +98,12 @@ class CreateAgentNetworkHocon(CodedTool):
         )
         logger.info("The resulting agent network: \n %s", str(persisted_content))
 
-        await persistor.async_persist(obj=persisted_content, file_reference=the_agent_network_name)
+        persisted_reference: str | dict[str, Any] = await persistor.async_persist(
+            obj=persisted_content, file_reference=the_agent_network_name
+        )
+
+        if isinstance(persisted_reference, dict):
+            sly_data["agent_reservations"] = persisted_reference
 
         logger.info(">>>>>>>>>>>>>>>>>>>DONE !!!>>>>>>>>>>>>>>>>>>")
         return (
