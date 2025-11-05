@@ -18,6 +18,7 @@ import threading
 import time
 from typing import Any
 from typing import Dict
+from typing import Tuple
 
 from dotenv import load_dotenv
 
@@ -363,27 +364,64 @@ class NeuroSanRunner:
             except (ConnectionRefusedError, TimeoutError, OSError):
                 return False
 
-    def _check_port_conflicts(self) -> list[str]:
+    def _check_port_conflicts(self) -> Tuple[list[str], list[int]]:
         """Check if any of the ports are in use."""
         port_conflicts = []
+        conflicting_ports: list[int] = []
 
         if not self.args["server_only"] and self.args["nsflow_host"] == "localhost":
             if self.is_port_open(self.args["nsflow_host"], self.args["nsflow_port"]):
                 port_conflicts.append(f"NSFlow client port {self.args['nsflow_port']} is already in use.")
+                conflicting_ports.append(self.args["nsflow_port"])
 
         if not self.args["client_only"] and self.args["server_host"] == "localhost":
             if self.is_port_open(self.args["server_host"], self.args["server_grpc_port"]):
                 port_conflicts.append(f"Neuro-San server grpc port {self.args['server_grpc_port']} is already in use.")
+                conflicting_ports.append(self.args["server_grpc_port"])
+
             if self.is_port_open(self.args["server_host"], self.args["server_http_port"]):
                 port_conflicts.append(f"Neuro-San server http port {self.args['server_http_port']} is already in use.")
+                conflicting_ports.append(self.args["server_http_port"])
 
         if self.args.get("use_flask_web_client"):
             if self.is_port_open("localhost", self.args["neuro_san_web_client_port"]):
                 port_conflicts.append(
                     f"Flask web client port {self.args['neuro_san_web_client_port']} is already in use."
                 )
+                conflicting_ports.append(self.args["neuro_san_web_client_port"])
 
-        return port_conflicts
+        return port_conflicts, conflicting_ports
+
+    def _kill_processes_on_ports(self, ports: list[int]):
+        """Kill processes using the specified ports."""
+        for port in ports:
+            print(f"Attempting to kill process on port {port}...")
+            try:
+                if self.is_windows:
+                    # Windows: Find and kill process using netstat and taskkill
+                    result = subprocess.run(
+                        ["netstat", "-ano", "-p", "TCP"], capture_output=True, text=True, check=True
+                    )
+                    for line in result.stdout.splitlines():
+                        if f":{port}" in line and "LISTENING" in line:
+                            pid = line.strip().split()[-1]
+                            subprocess.run(["taskkill", "/F", "/PID", pid], check=True)
+                            print(f"  Killed process {pid} on port {port}")
+                            break
+                else:
+                    # Unix/Mac: Use lsof to find and kill process
+                    result = subprocess.run(["lsof", "-ti", f":{port}"], capture_output=True, text=True, check=False)
+                    if result.stdout.strip():
+                        pids = result.stdout.strip().split("\n")
+                        for pid in pids:
+                            subprocess.run(["kill", "-9", pid], check=True)
+                            print(f"  Killed process {pid} on port {port}")
+                    else:
+                        print(f"  No process found on port {port}")
+            except subprocess.CalledProcessError as e:
+                print(f"  Failed to kill process on port {port}: {e}")
+            except Exception as e:  # pylint: disable=broad-exception-caught
+                print(f"  Error handling port {port}: {e}")
 
     def conditional_start_servers(self):
         """
@@ -407,15 +445,24 @@ class NeuroSanRunner:
                 print("Flask web client is not available. Please install it with `pip install neuro-san-web-client`.")
                 sys.exit(1)
 
-        port_conflicts = self._check_port_conflicts()
+        port_conflicts, conflicting_ports = self._check_port_conflicts()
 
         # Exit early if any conflict is found
         if port_conflicts:
             print("\n" + "=" * 50)
             for msg in port_conflicts:
                 print(msg)
-            print("=" * 50 + "\nExiting due to port conflicts.\n")
-            sys.exit(1)
+            print("=" * 50)
+
+            # Ask user if they want to kill the processes
+            response = input("\nDo you want to kill the processes using these ports? (yes/no): ").strip().lower()
+
+            if response in ["yes", "y"]:
+                self._kill_processes_on_ports(conflicting_ports)
+                print("\nProcesses killed. Continuing with startup...\n")
+            else:
+                print("\nExiting due to port conflicts.\n")
+                sys.exit(1)
 
         # Start services only if ports are free
         if not server_only:
