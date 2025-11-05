@@ -9,13 +9,20 @@
 #
 from typing import Any
 
+from coded_tools.agent_network_designer.agent_network_assembler import AgentNetworkAssembler
 
-# pylint: disable=too-few-public-methods
+
 class AgentNetworkPersistor:
     """
     Interface for persisting agent networks.
     This default implementation does nothing.
     """
+
+    def get_assembler(self) -> AgentNetworkAssembler:
+        """
+        :return: An assembler instance associated with this persistor
+        """
+        raise NotImplementedError
 
     async def async_persist(self, obj: Any, file_reference: str = None) -> str:
         """

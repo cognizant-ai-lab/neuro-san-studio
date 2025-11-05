@@ -16,7 +16,6 @@ from neuro_san.interfaces.coded_tool import CodedTool
 from coded_tools.agent_network_designer.agent_network_assembler import AgentNetworkAssembler
 from coded_tools.agent_network_designer.agent_network_persistor import AgentNetworkPersistor
 from coded_tools.agent_network_designer.agent_network_persistor_factory import AgentNetworkPersistorFactory
-from coded_tools.agent_network_designer.hocon_agent_network_assembler import HoconAgentNetworkAssembler
 from coded_tools.agent_network_validator import AgentNetworkValidator
 
 WRITE_TO_FILE = True
@@ -26,7 +25,7 @@ AGENT_NETWORK_NAME = "agent_network_name"
 
 class CreateAgentNetworkHocon(CodedTool):
     """
-    CodedTool implementation which creates a full hocon of a designed agent network
+    CodedTool implementation which creates a persisted representation of a designed agent network
     from the agent network definition in sly data.
 
     Agent network definition is a structured representation of an agent network, expressed as a dictionary.
@@ -59,7 +58,7 @@ class CreateAgentNetworkHocon(CodedTool):
 
         :return:
             In case of successful execution:
-                The full agent network hocon as a string.
+                The full agent network content as a string.
             otherwise:
                 a text string an error message in the format:
                 "Error: <error message>"
@@ -87,20 +86,22 @@ class CreateAgentNetworkHocon(CodedTool):
         # Get the agent network name from sly data
         the_agent_network_name: str = sly_data.get(AGENT_NETWORK_NAME)
 
-        logger.info(">>>>>>>>>>>>>>>>>>>Create Agent Network Hocon>>>>>>>>>>>>>>>>>>")
+        logger.info(">>>>>>>>>>>>>>>>>>>Create Agent Network>>>>>>>>>>>>>>>>>>")
         logger.info("Agent Network Name: %s", str(the_agent_network_name))
 
-        assembler: AgentNetworkAssembler = HoconAgentNetworkAssembler()
-        the_agent_network_hocon_str: str = assembler.assemble_agent_network(
+        # Get the persistor first, as that will determine how we want to assemble the agent network
+        persistor: AgentNetworkPersistor = AgentNetworkPersistorFactory.create_persistor(args, WRITE_TO_FILE)
+        assembler: AgentNetworkAssembler = persistor.get_assembler()
+
+        persisted_content: str = assembler.assemble_agent_network(
             validator.network, validator.get_top_agent(), the_agent_network_name
         )
-        logger.info("The resulting agent network HOCON: \n %s", str(the_agent_network_hocon_str))
+        logger.info("The resulting agent network: \n %s", str(persisted_content))
 
-        persistor: AgentNetworkPersistor = AgentNetworkPersistorFactory.create_persistor(args, WRITE_TO_FILE)
-        await persistor.async_persist(obj=the_agent_network_hocon_str, file_reference=the_agent_network_name)
+        await persistor.async_persist(obj=persisted_content, file_reference=the_agent_network_name)
 
         logger.info(">>>>>>>>>>>>>>>>>>>DONE !!!>>>>>>>>>>>>>>>>>>")
         return (
-            f"The agent network HOCON file for {the_agent_network_name}"
+            f"The agent network file for {the_agent_network_name}"
             f"has been successfully created from the agent network definition: {network_def}."
         )

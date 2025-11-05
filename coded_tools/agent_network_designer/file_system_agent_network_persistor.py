@@ -11,10 +11,11 @@
 # Import for asynchronous file operations
 import aiofiles
 
+from coded_tools.agent_network_designer.agent_network_assembler import AgentNetworkAssembler
 from coded_tools.agent_network_designer.agent_network_persistor import AgentNetworkPersistor
+from coded_tools.agent_network_designer.hocon_agent_network_assembler import HoconAgentNetworkAssembler
 
 
-# pylint: disable=too-few-public-methods
 class FileSystemAgentNetworkPersistor(AgentNetworkPersistor):
     """
     AgentNetworkPersistor implementation for saving agent networks to the file system
@@ -22,6 +23,12 @@ class FileSystemAgentNetworkPersistor(AgentNetworkPersistor):
     """
 
     OUTPUT_PATH: str = "registries/"
+
+    def get_assembler(self) -> AgentNetworkAssembler:
+        """
+        :return: An assembler instance associated with this persistor
+        """
+        return HoconAgentNetworkAssembler()
 
     async def async_persist(self, obj: str, file_reference: str = None) -> str:
         """

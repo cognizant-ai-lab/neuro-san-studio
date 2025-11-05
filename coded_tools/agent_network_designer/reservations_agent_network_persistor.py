@@ -12,10 +12,11 @@ from typing import Any
 from neuro_san.interfaces.reservation import Reservation
 from neuro_san.internals.reservations.reservation_util import ReservationUtil
 
+from coded_tools.agent_network_designer.agent_network_assembler import AgentNetworkAssembler
 from coded_tools.agent_network_designer.agent_network_persistor import AgentNetworkPersistor
+from coded_tools.agent_network_designer.deployable_agent_network_assembler import DeployableAgentNetworkAssembler
 
 
-# pylint: disable=too-few-public-methods
 class ReservationsAgentNetworkPersistor(AgentNetworkPersistor):
     """
     AgentNetworkPersistor implementation that saves a temporary network
@@ -30,6 +31,12 @@ class ReservationsAgentNetworkPersistor(AgentNetworkPersistor):
                     It should contain a Reservationist instance.
         """
         self.args: dict[str, Any] = args
+
+    def get_assembler(self) -> AgentNetworkAssembler:
+        """
+        :return: An assembler instance associated with this persistor
+        """
+        return DeployableAgentNetworkAssembler()
 
     async def async_persist(self, obj: dict[str, Any], file_reference: str = None) -> str | list[dict[str, Any]]:
         """
