@@ -114,9 +114,12 @@ Operational notes:
             "class": "create_agent_network.CreateAgentNetwork"
             "function": {
                 "description": "Generate the complete persisted definition for an agent network. Must always call this tool before giving response."
-            },            
+            },
+            "allow": {
+                "reservations": True
+            }
         },
-               
+
         {
             "name": "get_agent_network_definition",
             "class": "get_agent_network_definition.GetAgentNetworkDefinition",
@@ -139,6 +142,6 @@ Operational notes:
             "name": "web_search",
             "toolbox": "ddgs_search"
         },
-        
+
     ]
 }

@@ -120,7 +120,7 @@ class DeployableAgentNetworkAssembler(AgentNetworkAssembler):
 
         # Get commondefs from the template
         empty: dict[str, Any] = {}
-        commondefs: dict[str, Any] = self.template("commondefs", empty)
+        commondefs: dict[str, Any] = self.template.get("commondefs", empty)
 
         # Set up string replacements and include AAOSA stuff that we have to do
         # ourselves because we are creating a dictionary and not a hocon file.

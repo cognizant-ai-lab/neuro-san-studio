@@ -98,11 +98,13 @@ class CreateAgentNetwork(CodedTool):
         )
         logger.info("The resulting agent network: \n %s", str(persisted_content))
 
-        persisted_reference: str | dict[str, Any] = await persistor.async_persist(
+        persisted_reference: str | list[dict[str, Any]] = await persistor.async_persist(
             obj=persisted_content, file_reference=the_agent_network_name
         )
 
-        if isinstance(persisted_reference, dict):
+        logger.info("persisted_reference: %s", str(persisted_reference))
+        if isinstance(persisted_reference, list):
+            logger.info("===ADDING RESERVATIONS===")
             sly_data["agent_reservations"] = persisted_reference
 
         logger.info(">>>>>>>>>>>>>>>>>>>DONE !!!>>>>>>>>>>>>>>>>>>")
