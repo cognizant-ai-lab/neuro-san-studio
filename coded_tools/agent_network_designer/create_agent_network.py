@@ -23,7 +23,7 @@ AGENT_NETWORK_DEFINITION = "agent_network_definition"
 AGENT_NETWORK_NAME = "agent_network_name"
 
 
-class CreateAgentNetworkHocon(CodedTool):
+class CreateAgentNetwork(CodedTool):
     """
     CodedTool implementation which creates a persisted representation of a designed agent network
     from the agent network definition in sly data.

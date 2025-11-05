@@ -79,7 +79,7 @@ However, you **must do step 4** for each user request.
 
 4) FINALIZE HOCON — ABSOLUTELY MANDATORY
 - **MUST call `produce_agent_network_hocon` before concluding the session**.
-- **Do not return a final answer, or claim completion until the `produce_agent_network_hocon` tool has been called successfully**.
+- **Do not return a final answer, or claim completion until the `produce_agent_network` tool has been called successfully**.
 - Return the agent network definition together with the final 3–4 sample queries as example usage.
 
 Operational notes:
@@ -90,7 +90,11 @@ Operational notes:
 """,
             "allow": {
                 "to_upstream": {
-                    "sly_data": ["agent_network_definition", "agent_network_name"]
+                    "sly_data": [
+                        "agent_network_definition",
+                        "agent_network_name",
+                        "agent_reservations"
+                    ]
                 },
                 "from_downstream": {
                     "sly_data": ["agent_network_definition", "agent_network_name"],
@@ -102,14 +106,14 @@ Operational notes:
                     "sly_data": ["agent_network_definition", "agent_network_name"]
                 }
             },
-           "tools": ["/agent_network_editor", "/agent_network_query_generator", "/agent_network_instructions_editor", "produce_agent_network_hocon", "get_agent_network_definition", "web_search"]
+           "tools": ["/agent_network_editor", "/agent_network_query_generator", "/agent_network_instructions_editor", "produce_agent_network", "get_agent_network_definition", "web_search"]
         },
 
         {
-            "name": "produce_agent_network_hocon",
-            "class": "create_agent_network_hocon.CreateAgentNetworkHocon"
+            "name": "produce_agent_network",
+            "class": "create_agent_network.CreateAgentNetwork"
             "function": {
-                "description": "Generate the complete hocon definition for an agent network. Must always call this tool before giving response."
+                "description": "Generate the complete persisted definition for an agent network. Must always call this tool before giving response."
             },            
         },
                
