@@ -32,10 +32,10 @@ class ServerMainLoopWrapper:
             return
 
         try:
-            from plugins.phoenix.phoenix_init import initialize_phoenix_if_enabled
+            from plugins.phoenix.phoenix_initializer import PhoenixInitializer
 
             print("Initializing Phoenix in server process...")
-            initialize_phoenix_if_enabled()
+            PhoenixInitializer().initialize()
             print("Phoenix initialization complete.")
         except ImportError:
             print("Warning: Phoenix plugin not installed.")
