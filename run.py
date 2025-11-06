@@ -65,21 +65,10 @@ class NeuroSanRunner:
                 "AGENT_TOOLBOX_INFO_FILE", os.path.join(self.root_dir, "toolbox", "toolbox_info.hocon")
             ),
             "logs_dir": self.logs_dir,
-            # Phoenix / OpenTelemetry defaults
-            "phoenix_enabled": os.getenv("PHOENIX_ENABLED", "false"),
-            "otel_service_name": os.getenv("OTEL_SERVICE_NAME", "neuro-san-demos"),
-            "otel_service_version": os.getenv("OTEL_SERVICE_VERSION", "dev"),
-            "otel_exporter_otlp_traces_endpoint": os.getenv(
-                "OTEL_EXPORTER_OTLP_TRACES_ENDPOINT",
-                os.getenv("OTEL_EXPORTER_OTLP_ENDPOINT", "http://localhost:6006/v1/traces"),
-            ),
-            # Phoenix UI/collector configuration
-            "phoenix_host": os.getenv("PHOENIX_HOST", "127.0.0.1"),
-            "phoenix_port": int(os.getenv("PHOENIX_PORT", "6006")),
-            "phoenix_autostart": os.getenv("PHOENIX_AUTOSTART", "false"),
-            "phoenix_project_name": os.getenv("PHOENIX_PROJECT_NAME", "default"),
-            "phoenix_otel_register": os.getenv("PHOENIX_OTEL_REGISTER", "true"),
         }
+
+        # Add Phoenix configuration defaults
+        self.args.update(PhoenixInitializer.get_default_config())
 
         # Ensure logs directory exists
         os.makedirs(self.logs_dir, exist_ok=True)

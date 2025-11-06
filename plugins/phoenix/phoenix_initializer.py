@@ -45,6 +45,30 @@ class PhoenixInitializer:
         self.is_windows = os.name == "nt"
 
     @staticmethod
+    def get_default_config() -> dict:
+        """Get default Phoenix configuration from environment variables.
+
+        Returns:
+            Dictionary with default Phoenix configuration values
+        """
+        return {
+            # Phoenix / OpenTelemetry defaults
+            "phoenix_enabled": os.getenv("PHOENIX_ENABLED", "false"),
+            "otel_service_name": os.getenv("OTEL_SERVICE_NAME", "neuro-san-demos"),
+            "otel_service_version": os.getenv("OTEL_SERVICE_VERSION", "dev"),
+            "otel_exporter_otlp_traces_endpoint": os.getenv(
+                "OTEL_EXPORTER_OTLP_TRACES_ENDPOINT",
+                os.getenv("OTEL_EXPORTER_OTLP_ENDPOINT", "http://localhost:6006/v1/traces"),
+            ),
+            # Phoenix UI/collector configuration
+            "phoenix_host": os.getenv("PHOENIX_HOST", "127.0.0.1"),
+            "phoenix_port": int(os.getenv("PHOENIX_PORT", "6006")),
+            "phoenix_autostart": os.getenv("PHOENIX_AUTOSTART", "false"),
+            "phoenix_project_name": os.getenv("PHOENIX_PROJECT_NAME", "default"),
+            "phoenix_otel_register": os.getenv("PHOENIX_OTEL_REGISTER", "true"),
+        }
+
+    @staticmethod
     def _get_bool_env(var_name: str, default: bool) -> bool:
         """Parse a boolean environment variable.
 
@@ -60,7 +84,8 @@ class PhoenixInitializer:
             return default
         return val.strip().lower() in {"1", "true", "yes", "on"}
 
-    def _configure_tracer_provider(self) -> None:
+    @staticmethod
+    def _configure_tracer_provider() -> None:
         """Configure OpenTelemetry tracer provider with OTLP exporter.
 
         Sets up:
@@ -102,7 +127,8 @@ class PhoenixInitializer:
 
         trace.set_tracer_provider(provider)
 
-    def _instrument_sdks(self) -> None:
+    @staticmethod
+    def _instrument_sdks() -> None:
         """Instrument various AI/ML SDKs for tracing.
 
         Instruments:
