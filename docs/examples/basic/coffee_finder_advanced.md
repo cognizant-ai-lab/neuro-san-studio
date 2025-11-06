@@ -18,7 +18,7 @@ It's good for testing:
 
 ## File
 
-[coffee_finder_advanced.hocon](../../registries/coffee_finder_advanced.hocon)
+[coffee_finder_advanced.hocon](../../../registries/basic/coffee_finder_advanced.hocon)
 
 ## Description
 
@@ -26,7 +26,7 @@ Coffee Finder Advanced is an agent network that can suggest options for coffee l
 based on the time of day, place orders on behalf of the user and remember user preferences.
 Here is what it looks like:
 
-![Coffee Finder Advanced Network](../../docs/images/coffee_finder_advanced_network.png)
+![Coffee Finder Advanced Network](../../images/coffee_finder_advanced_network.png)
 
 ## Tools
 
@@ -35,8 +35,8 @@ Coffee Finder Advanced uses 2 simple tools:
 * Time, that's only used by CoffeeShop and FastFoodChain, as well as CoffeeFinder.
 The other 2 shops are open 24/7, so they don't need to use Time.
 
-Check their code in the [CodedTools](../../coded_tools/coffee_finder_advanced) folder.
-See for instance how [TimeTool](../../coded_tools/coffee_finder_advanced/time_tool.py) is implemented:
+Check their code in the [CodedTools](../../../coded_tools/basic/coffee_finder_advanced) folder.
+See for instance how [TimeTool](../../../coded_tools/basic/coffee_finder_advanced/time_tool.py) is implemented:
 * no args
 * first checks if `sly_data` contains a `time` key, and uses its value if present
 * otherwise, uses the current time
@@ -104,7 +104,7 @@ Pass `sly_data` with your message to override the current time in the Time tool.
 
 In the NSFlow UI, you can pass `sly_data` using the `sly_data` field under the `Message` field:
 
-![sly_data field](../../docs/images/sly_data.png)
+![sly_data field](../../images/sly_data.png)
 
 Let's see if the `Time` tool picks it up:
 

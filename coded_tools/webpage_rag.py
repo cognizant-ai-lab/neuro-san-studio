@@ -1,5 +1,3 @@
-"""Tool module for doing RAG from a pdf file"""
-
 # Copyright (C) 2023-2025 Cognizant Digital Business, Evolutionary AI.
 # All Rights Reserved.
 # Issued under the Academic Public License.
@@ -14,13 +12,12 @@
 import logging
 import os
 from typing import Any
-from typing import Dict
-from typing import List
 
-from langchain_community.document_loaders import PyMuPDFLoader
+from langchain_community.document_loaders import WebBaseLoader
 from langchain_core.documents import Document
 from langchain_core.vectorstores import VectorStore
 from neuro_san.interfaces.coded_tool import CodedTool
+from requests.exceptions import HTTPError
 
 from coded_tools.base_rag import BaseRag
 from coded_tools.base_rag import PostgresConfig
@@ -29,18 +26,19 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 
-class PdfRag(CodedTool, BaseRag):
+class WebpageRag(CodedTool, BaseRag):
     """
-    CodedTool implementation which provides a way to do RAG on pdf files
+    CodedTool implementation which provides a way to do RAG on webpages.
     """
 
-    async def async_invoke(self, args: Dict[str, Any], sly_data: Dict[str, Any]) -> str:
+    async def async_invoke(self, args: dict[str, Any], sly_data: dict[str, Any]) -> str:
         """
-        Load a PDF from URL, build a vector store, and run a query against it.
+        Load webpages from URLs using WebBaseLoader, build a vector store, and run a query against it.
+        See https://docs.langchain.com/oss/python/integrations/document_loaders/web_base.
 
         :param args: Dictionary containing:
           "query": search string
-          "urls": list of pdf files
+          "urls": list of urls
           "save_vector_store": save to JSON file if True
           "vector_store_path": relative path to this file
 
@@ -62,7 +60,7 @@ class PdfRag(CodedTool, BaseRag):
         """
         # Extract arguments from the input dictionary
         query: str = args.get("query", "")
-        urls: List[str] = args.get("urls", [])
+        urls: list[str] = args.get("urls", [])
 
         # Validate presence of required inputs
         if not query:
@@ -100,25 +98,26 @@ class PdfRag(CodedTool, BaseRag):
         # Run the query against the vector store
         return await self.query_vectorstore(vector_store, query)
 
-    async def load_documents(self, loader_args: Dict[str, Any]) -> List[Document]:
+    async def load_documents(self, loader_args: dict[str, Any]) -> list[Document]:
         """
-        Load PDF documents from URLs.
+        Load documents from URLs.
 
-        :param loader_args: Dictionary containing 'urls' (list of PDF file URLs)
-        :return: List of loaded PDF documents
+        :param loader_args: Dictionary containing 'urls' (list of file URLs)
+        :return: List of loaded documents
         """
-        docs: List[Document] = []
-        urls: List[str] = loader_args.get("urls", [])
+        docs: list[Document] = []
+        urls: list[str] = loader_args.get("urls", [])
 
-        for url in urls:
+        loader = WebBaseLoader(web_path=urls)
+        async for doc in loader.alazy_load():
             try:
-                loader = PyMuPDFLoader(file_path=url)
-                doc: List[Document] = await loader.aload()
-                docs.extend(doc)
-                logger.info("Successfully loaded PDF file from %s", url)
-            except FileNotFoundError:
-                logger.error("File not found: %s", url)
-            except ValueError as e:
-                logger.error("Invalid file path or unsupported input: %s – %s", url, e)
+                docs.append(doc)
+                logger.info("Successfully loaded PDF file from %s", doc.metadata.get("source", "unknown source"))
+            except HTTPError as http_e:
+                logger.error("HTTP error occurred: %s", http_e)
+            except FileNotFoundError as fnf_e:
+                logger.error("File not found: %s", fnf_e)
+            except ValueError as val_e:
+                logger.error("Value error: %s", val_e)
 
         return docs

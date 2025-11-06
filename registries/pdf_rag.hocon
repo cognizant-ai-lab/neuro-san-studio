@@ -55,6 +55,7 @@
                 # --- Required Argument ---
 
                 # List of PDF URLs to use for Retrieval-Augmented Generation (RAG)
+                # Items in the list can also be file paths, such as "/Users/Documents/example.pdf".
                 "urls": [
                     """https://www.replicon.com/wp-content/uploads/2016/06/RFP-Template_Replicon.pdf""",
                     """https://www.usac.org/wp-content/uploads/rural-health-care/documents/samples/LargeProjectScopeRFP.pdf"""
@@ -88,6 +89,9 @@
                 # Directory to save and load the vector store (use absolute path or path relative to "neuro-san-studio/coded_tools/pdf_rag/")
                 # Must be ".json". Only valid for in-memory vector store.
                 "vector_store_path": "vector_store.json"
+
+                # When "vector_store_path" is specified, the tool loads the existing vector store rather than creating a new one.
+                # Note: Updating or appending new data to an existing vector store is not yet supported.
             }
         },
     ]

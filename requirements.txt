@@ -1,9 +1,9 @@
 # Neuro SAN
-neuro-san==0.5.68
-nsflow==0.6.1
+neuro-san==0.6.5
+nsflow==0.6.2
 
 # For the airline_policy demo, to extract text from documents
-pypdf>=5.4.0
+pypdf>=6.1.3
 
 # To use a .env file for environment variables
 python-dotenv==1.0.1
