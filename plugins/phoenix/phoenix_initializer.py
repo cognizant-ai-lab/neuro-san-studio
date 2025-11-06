@@ -1,5 +1,10 @@
 import logging
 import os
+import signal
+import socket
+import subprocess
+import sys
+import time
 from typing import Optional
 
 try:
@@ -24,12 +29,20 @@ class PhoenixInitializer:
     - SDK instrumentation (OpenAI, LangChain, Anthropic, etc.)
     - Phoenix integration via phoenix.otel.register()
     - Process-local initialization state tracking
+    - Phoenix server process management (start/stop)
     """
 
-    def __init__(self) -> None:
-        """Initialize the PhoenixInitializer with uninitialized state."""
+    def __init__(self, config: Optional[dict] = None) -> None:
+        """Initialize the PhoenixInitializer with uninitialized state.
+
+        Args:
+            config: Optional configuration dictionary with phoenix settings
+        """
         self._initialized = False
         self._logger = logging.getLogger(__name__)
+        self.config = config or {}
+        self.phoenix_process = None
+        self.is_windows = os.name == "nt"
 
     @staticmethod
     def _get_bool_env(var_name: str, default: bool) -> bool:
@@ -217,4 +230,141 @@ class PhoenixInitializer:
             True if initialized, False otherwise
         """
         return self._initialized
+
+    def set_environment_variables(self) -> None:
+        """Set Phoenix and OpenTelemetry environment variables."""
+        # Phoenix / OpenTelemetry envs
+        os.environ["PHOENIX_ENABLED"] = str(self.config.get("phoenix_enabled", "false")).lower()
+        os.environ["OTEL_SERVICE_NAME"] = self.config.get("otel_service_name", "neuro-san-demos")
+        os.environ["OTEL_SERVICE_VERSION"] = self.config.get("otel_service_version", "dev")
+        os.environ["OTEL_EXPORTER_OTLP_TRACES_ENDPOINT"] = self.config.get(
+            "otel_exporter_otlp_traces_endpoint", "http://localhost:6006/v1/traces"
+        )
+
+        print(f"PHOENIX_ENABLED set to: {os.environ['PHOENIX_ENABLED']}")
+        print(f"OTEL_SERVICE_NAME set to: {os.environ['OTEL_SERVICE_NAME']}")
+        print(f"OTEL_SERVICE_VERSION set to: {os.environ['OTEL_SERVICE_VERSION']}")
+        print(f"OTEL_EXPORTER_OTLP_TRACES_ENDPOINT set to: {os.environ['OTEL_EXPORTER_OTLP_TRACES_ENDPOINT']}\n")
+
+        # Phoenix register settings
+        os.environ["PHOENIX_PROJECT_NAME"] = str(self.config.get("phoenix_project_name", "default"))
+        os.environ["PHOENIX_OTEL_REGISTER"] = str(self.config.get("phoenix_otel_register", "true")).lower()
+
+        print(f"PHOENIX_PROJECT_NAME set to: {os.environ['PHOENIX_PROJECT_NAME']}")
+        print(f"PHOENIX_OTEL_REGISTER set to: {os.environ['PHOENIX_OTEL_REGISTER']}\n")
+
+    @staticmethod
+    def is_port_open(host: str, port: int, timeout: float = 1.0) -> bool:
+        """Check if a port is open on a given host.
+
+        Args:
+            host: Host address to check
+            port: Port number to check
+            timeout: Connection timeout in seconds
+
+        Returns:
+            True if the port is open, False otherwise.
+        """
+        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
+            sock.settimeout(timeout)
+            try:
+                sock.connect((host, port))
+                return True
+            except (ConnectionRefusedError, TimeoutError, OSError):
+                return False
+
+    def start_process(self, command: list, log_file: str):
+        """Start a subprocess and return the process object.
+
+        Args:
+            command: Command to execute
+            log_file: Path to log file
+
+        Returns:
+            subprocess.Popen object
+        """
+        # Initialize/clear the log file before starting
+        with open(log_file, "w", encoding="utf-8") as log:
+            log.write("Starting Phoenix...\n")
+
+        # pylint: disable=consider-using-with
+        if self.is_windows:
+            # On Windows, don't use CREATE_NEW_PROCESS_GROUP to allow Ctrl+C propagation
+            process = subprocess.Popen(
+                command,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                text=True,
+                bufsize=1,
+                universal_newlines=True,
+            )
+        else:
+            # On Unix, use start_new_session for proper process group management
+            process = subprocess.Popen(
+                command,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                text=True,
+                bufsize=1,
+                universal_newlines=True,
+                start_new_session=True,
+            )
+
+        print(f"Started Phoenix with PID {process.pid}")
+        return process
+
+    def start_phoenix_server(self) -> None:
+        """Start Phoenix server (UI + OTLP HTTP collector) if enabled."""
+        if str(self.config.get("phoenix_autostart", "false")).lower() not in ("true", "1", "yes", "on"):
+            return
+        if str(self.config.get("phoenix_enabled", "false")).lower() not in ("true", "1", "yes", "on"):
+            return
+
+        print("Starting Phoenix (AI observability)...")
+        phoenix_host = self.config.get("phoenix_host", "127.0.0.1")
+        phoenix_port = self.config.get("phoenix_port", 6006)
+
+        # If something is already listening on PHOENIX_PORT, assume Phoenix is running and skip autostart
+        if self.is_port_open(phoenix_host, phoenix_port):
+            phoenix_url = f"http://{phoenix_host}:{phoenix_port}"
+            print(f"Phoenix detected at {phoenix_url} — skipping autostart.")
+        else:
+            # Disable gRPC on Windows (port binding issues)
+            os.environ["PHOENIX_GRPC_PORT"] = "0"
+
+            # Use python -m form for better compatibility
+            try:
+                self.phoenix_process = self.start_process(
+                    [sys.executable, "-m", "phoenix.server.main", "serve"], "logs/phoenix.log"
+                )
+
+                # Wait for Phoenix to bind to port (with retry)
+                phoenix_ready = False
+                for _ in range(10):  # Try for up to 10 seconds
+                    time.sleep(1)
+                    if self.is_port_open(phoenix_host, phoenix_port):
+                        phoenix_ready = True
+                        break
+
+                if phoenix_ready:
+                    print("Phoenix started successfully.")
+                else:
+                    print("Failed to start Phoenix automatically. Check logs/phoenix.log")
+            except Exception as exc:  # pylint: disable=broad-exception-caught
+                print(f"Failed to start Phoenix automatically: {exc}")
+
+        # Update OTLP endpoint env to point to this phoenix instance if not explicitly overridden
+        default_otlp = f"http://{phoenix_host}:{phoenix_port}/v1/traces"
+        if os.getenv("OTEL_EXPORTER_OTLP_TRACES_ENDPOINT") in (None, "", "http://localhost:6006/v1/traces"):
+            os.environ["OTEL_EXPORTER_OTLP_TRACES_ENDPOINT"] = default_otlp
+            print(f"OTEL_EXPORTER_OTLP_TRACES_ENDPOINT updated to: {default_otlp}")
+
+    def stop_phoenix_server(self) -> None:
+        """Stop the Phoenix process if it's running."""
+        if self.phoenix_process:
+            print(f"Stopping PHOENIX (PID {self.phoenix_process.pid})...")
+            if self.is_windows:
+                self.phoenix_process.terminate()
+            else:
+                os.killpg(os.getpgid(self.phoenix_process.pid), signal.SIGKILL)
 

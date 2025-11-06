@@ -22,6 +22,8 @@ from typing import Tuple
 
 from dotenv import load_dotenv
 
+from plugins.phoenix.phoenix_initializer import PhoenixInitializer
+
 
 class NeuroSanRunner:
     """Command-line tool to run the Neuro SAN server and web client."""
@@ -91,7 +93,9 @@ class NeuroSanRunner:
         self.server_process = None
         self.flask_webclient_process = None
         self.nsflow_process = None
-        self.phoenix_process = None
+
+        # Initialize Phoenix manager
+        self.phoenix_initializer = PhoenixInitializer(self.args)
 
     def load_env_variables(self):
         """Load .env file from project root and set variables."""
@@ -184,20 +188,8 @@ class NeuroSanRunner:
         print(f"NEURO_SAN_SERVER_CONNECTION set to: {os.environ['NEURO_SAN_SERVER_CONNECTION']}")
         print(f"AGENT_MANIFEST_UPDATE_PERIOD_SECONDS set to: {os.environ['AGENT_MANIFEST_UPDATE_PERIOD_SECONDS']}\n")
 
-        # Phoenix / OpenTelemetry envs
-        os.environ["PHOENIX_ENABLED"] = str(self.args["phoenix_enabled"]).lower()
-        os.environ["OTEL_SERVICE_NAME"] = self.args["otel_service_name"]
-        os.environ["OTEL_SERVICE_VERSION"] = self.args["otel_service_version"]
-        os.environ["OTEL_EXPORTER_OTLP_TRACES_ENDPOINT"] = self.args["otel_exporter_otlp_traces_endpoint"]
-        print(f"PHOENIX_ENABLED set to: {os.environ['PHOENIX_ENABLED']}")
-        print(f"OTEL_SERVICE_NAME set to: {os.environ['OTEL_SERVICE_NAME']}")
-        print(f"OTEL_SERVICE_VERSION set to: {os.environ['OTEL_SERVICE_VERSION']}")
-        print(f"OTEL_EXPORTER_OTLP_TRACES_ENDPOINT set to: {os.environ['OTEL_EXPORTER_OTLP_TRACES_ENDPOINT']}\n")
-        # Phoenix register settings
-        os.environ["PHOENIX_PROJECT_NAME"] = str(self.args["phoenix_project_name"])
-        os.environ["PHOENIX_OTEL_REGISTER"] = str(self.args["phoenix_otel_register"]).lower()
-        print(f"PHOENIX_PROJECT_NAME set to: {os.environ['PHOENIX_PROJECT_NAME']}")
-        print(f"PHOENIX_OTEL_REGISTER set to: {os.environ['PHOENIX_OTEL_REGISTER']}\n")
+        # Phoenix / OpenTelemetry envs - delegate to PhoenixInitializer
+        self.phoenix_initializer.set_environment_variables(self.args)
 
         # Client-only env variables
         if not self.args["server_only"]:
@@ -300,45 +292,7 @@ class NeuroSanRunner:
 
     def start_phoenix(self):
         """Start Phoenix server (UI + OTLP HTTP collector) if enabled."""
-        if str(self.args["phoenix_autostart"]).lower() not in ("true", "1", "yes", "on"):
-            return
-        if str(self.args["phoenix_enabled"]).lower() not in ("true", "1", "yes", "on"):
-            return
-
-        print("Starting Phoenix (AI observability)...")
-        # If something is already listening on PHOENIX_PORT, assume Phoenix is running and skip autostart
-        if self.is_port_open(self.args["phoenix_host"], self.args["phoenix_port"]):
-            phoenix_url = f"http://{self.args['phoenix_host']}:{self.args['phoenix_port']}"
-            print(f"Phoenix detected at {phoenix_url} — skipping autostart.")
-        else:
-            # Disable gRPC on Windows (port binding issues)
-            os.environ["PHOENIX_GRPC_PORT"] = "0"
-
-            # Use python -m form for better compatibility
-            try:
-                self.phoenix_process = self.start_process(
-                    [sys.executable, "-m", "phoenix.server.main", "serve"], "Phoenix", "logs/phoenix.log"
-                )
-                # Wait for Phoenix to bind to port (with retry)
-                phoenix_ready = False
-                for _ in range(10):  # Try for up to 10 seconds
-                    time.sleep(1)
-                    if self.is_port_open(self.args["phoenix_host"], self.args["phoenix_port"]):
-                        phoenix_ready = True
-                        break
-
-                if phoenix_ready:
-                    print("Phoenix started successfully.")
-                else:
-                    print("Failed to start Phoenix automatically. Check logs/phoenix.log")
-            except Exception as e:  # pylint: disable=broad-exception-caught
-                print(f"Failed to start Phoenix automatically: {e}")
-
-        # Update OTLP endpoint env to point to this phoenix instance if not explicitly overridden
-        default_otlp = f"http://{self.args['phoenix_host']}:{self.args['phoenix_port']}/v1/traces"
-        if os.getenv("OTEL_EXPORTER_OTLP_TRACES_ENDPOINT") in (None, "", "http://localhost:6006/v1/traces"):
-            os.environ["OTEL_EXPORTER_OTLP_TRACES_ENDPOINT"] = default_otlp
-            print(f"OTEL_EXPORTER_OTLP_TRACES_ENDPOINT updated to: {default_otlp}")
+        self.phoenix_initializer.start_phoenix_server()
 
     def start_neuro_san(self):
         """Start the Neuro SAN server."""
@@ -420,12 +374,8 @@ class NeuroSanRunner:
             else:
                 os.killpg(os.getpgid(self.nsflow_process.pid), signal.SIGKILL)
 
-        if self.phoenix_process:
-            print(f"Stopping PHOENIX (PID {self.phoenix_process.pid})...")
-            if self.is_windows:
-                self.phoenix_process.terminate()
-            else:
-                os.killpg(os.getpgid(self.phoenix_process.pid), signal.SIGKILL)
+        # Stop Phoenix using the initializer
+        self.phoenix_initializer.stop_phoenix_server()
 
         sys.exit(0)
 
