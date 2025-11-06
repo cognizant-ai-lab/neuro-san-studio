@@ -102,9 +102,7 @@ class CreateAgentNetwork(CodedTool):
             obj=persisted_content, file_reference=the_agent_network_name
         )
 
-        logger.info("persisted_reference: %s", str(persisted_reference))
         if isinstance(persisted_reference, list):
-            logger.info("===ADDING RESERVATIONS===")
             sly_data["agent_reservations"] = persisted_reference
 
         logger.info(">>>>>>>>>>>>>>>>>>>DONE !!!>>>>>>>>>>>>>>>>>>")
