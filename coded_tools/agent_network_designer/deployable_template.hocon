@@ -1,0 +1,101 @@
+# Copyright (C) 2023-2025 Cognizant Digital Business, Evolutionary AI.
+# All Rights Reserved.
+# Issued under the Academic Public License.
+#
+# You can be released from the terms, and requirements of the Academic Public
+# License by purchasing a commercial license.
+# Purchase of a commercial license is mandatory for any use of the
+# neuro-san-studio SDK Software in commercial settings.
+#
+
+# Template for assembly of agent_network_designer networks that are deployable
+# via neuro-san Reservations. Any tool in the tools section might be replicated
+# and {strings} replaced with salient information from the agent_network_designer.
+# Note that we are not including aaosa.hocon in here as we have to do subsitutions in code
+# in order for the networks to be deployment-ready.
+
+{
+    # Every network will have an llm_config
+    "llm_config": {
+        "model_name": "gpt-4.0"
+    },
+
+    # These are common commondefs for every agent_network_designer-created network
+    # In the final deployable network, {strings} and "values" will be replaced
+    # and this section will disappear.
+    "commondefs": {
+        "replacement_strings": {
+            "instructions_prefix": """
+You are part of a team of assistants in {agent_network_name}.
+Only answer inquiries that are directly within your area of expertise.
+Do not try to help for other matters.
+Do not mention what you can NOT do. Only mention what you can do.
+""",
+            "demo_mode": """
+You are part of a demo system, so when queried, make up a realistic response as if you
+are actually grounded in real data or you are operating a real application API or microservice.
+""",
+        }
+    },
+
+    # Every network will have a list of tools
+    # These are merely templates for the kinds of nodes that will show up in
+    # a network definition.
+    "tools": [
+
+        # Top agent template
+        {
+            "name": "{agent_name}",
+            "function": {
+                "description": "An assistant that answer inquiries from the user."
+            },
+            "instructions": """
+{instructions_prefix}
+
+Never express irrelevance unless you have first consulted all your tools.
+Once you have determined the relevant tools, do not express that to the user, rather,
+call all the relevant tools and make sure the command is fully serviced and express the end result.
+
+{agent_instructions}
+
+{aaosa_instructions}
+""",
+            "tools": "tools"
+        },
+
+        # Regular agent template
+        {
+            "name": "{agent_name}",
+            "function": "aaosa_call",
+            "instructions": """
+{instructions_prefix}
+
+{agent_instructions}
+
+{aaosa_instructions}
+""",
+            "command": "{aaosa_command}",
+            "tools": "tools"
+        },
+
+        # Leaf agent template
+        {
+            "name": "{agent_name}",
+            "function": "aaosa_call",
+            "instructions": """
+{instructions_prefix}
+
+{demo_mode}
+
+{agent_instructions}
+"""
+        },
+
+        # Toolbox agent template
+        {
+            "name": "{agent_name}",
+            # Toolbox name is the same as agent name
+            "toolbox": "{agent_name}"
+        }
+    ]
+}
