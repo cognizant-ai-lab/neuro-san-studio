@@ -18,9 +18,12 @@ from coded_tools.agent_network_designer.agent_network_persistor import AgentNetw
 from coded_tools.agent_network_designer.agent_network_persistor_factory import AgentNetworkPersistorFactory
 from coded_tools.agent_network_validator import AgentNetworkValidator
 
-WRITE_TO_FILE = True
-AGENT_NETWORK_DEFINITION = "agent_network_definition"
-AGENT_NETWORK_NAME = "agent_network_name"
+# To use reservations, turn this boolean to False and
+# export AGENT_TEMPORARY_NETWORK_UPDATE_PERIOD_SECONDS=5
+WRITE_TO_FILE: bool = True
+
+AGENT_NETWORK_DEFINITION: str = "agent_network_definition"
+AGENT_NETWORK_NAME: str = "agent_network_name"
 
 
 class CreateAgentNetwork(CodedTool):
