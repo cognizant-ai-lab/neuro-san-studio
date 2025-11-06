@@ -347,7 +347,7 @@ class NeuroSanRunner:
             sys.executable,
             "-u",
             "-m",
-            "neuro_san.service.main_loop.server_main_loop",
+            "servers.neuro_san.neuro_san_server_wrapper",
             "--port",
             str(self.args["server_grpc_port"]),
             "--http_port",
@@ -567,18 +567,6 @@ class NeuroSanRunner:
 
         # Set environment variables
         self.set_environment_variables()
-
-        # Initialize Phoenix instrumentation if enabled
-        if str(self.args["phoenix_enabled"]).lower() in ("true", "1", "yes", "on"):
-            try:
-                from plugins.phoenix import initialize_phoenix_if_enabled  # pylint: disable=import-outside-toplevel
-
-                initialize_phoenix_if_enabled()
-            except ImportError:
-                print("Warning: Phoenix plugin not installed.")
-                print("Install with: pip install -r plugins/phoenix/requirements.txt")
-            except Exception as e:  # pylint: disable=broad-exception-caught
-                print(f"Warning: Phoenix initialization failed: {e}")
 
         # Ensure logs directory exists
         os.makedirs("logs", exist_ok=True)
