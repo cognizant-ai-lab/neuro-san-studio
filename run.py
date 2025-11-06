@@ -21,7 +21,6 @@ from typing import Dict
 from typing import Tuple
 
 from dotenv import load_dotenv
-
 from plugins.phoenix.phoenix_initializer import PhoenixInitializer
 
 
@@ -170,7 +169,7 @@ class NeuroSanRunner:
 
         return vars(args)
 
-    def set_environment_variables(self):  # pylint: disable=too-many-statements
+    def set_environment_variables(self):
         """Set required environment variables, optionally using neuro-san defaults."""
         print("\n" + "=" * 50 + "\n")
         print("Setting environment variables...\n")
@@ -189,7 +188,7 @@ class NeuroSanRunner:
         print(f"AGENT_MANIFEST_UPDATE_PERIOD_SECONDS set to: {os.environ['AGENT_MANIFEST_UPDATE_PERIOD_SECONDS']}\n")
 
         # Phoenix / OpenTelemetry envs - delegate to PhoenixInitializer
-        self.phoenix_initializer.set_environment_variables(self.args)
+        self.phoenix_initializer.set_environment_variables()
 
         # Client-only env variables
         if not self.args["server_only"]:

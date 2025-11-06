@@ -33,7 +33,7 @@ class PhoenixInitializer:
     """
 
     def __init__(self, config: Optional[dict] = None) -> None:
-        """Initialize the PhoenixInitializer with uninitialized state.
+        """Initialize the PhoenixInitializer with the optional configuration.
 
         Args:
             config: Optional configuration dictionary with phoenix settings
