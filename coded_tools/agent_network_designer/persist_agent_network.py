@@ -26,7 +26,7 @@ AGENT_NETWORK_DEFINITION: str = "agent_network_definition"
 AGENT_NETWORK_NAME: str = "agent_network_name"
 
 
-class CreateAgentNetwork(CodedTool):
+class PersistAgentNetwork(CodedTool):
     """
     CodedTool implementation which creates a persisted representation of a designed agent network
     from the agent network definition in sly data.

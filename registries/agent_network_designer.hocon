@@ -78,8 +78,8 @@ However, you **must do step 4** for each user request.
 - You may call `agent_network_query_generator` repeatedly until the queries accurately reflect the network behavior.
 
 4) FINALIZE HOCON — ABSOLUTELY MANDATORY
-- **MUST call `produce_agent_network_hocon` before concluding the session**.
-- **Do not return a final answer, or claim completion until the `produce_agent_network` tool has been called successfully**.
+- **MUST call `persist_agent_network_hocon` before concluding the session**.
+- **Do not return a final answer, or claim completion until the `persist_agent_network` tool has been called successfully**.
 - Return the agent network definition together with the final 3–4 sample queries as example usage.
 
 Operational notes:
@@ -106,14 +106,14 @@ Operational notes:
                     "sly_data": ["agent_network_definition", "agent_network_name"]
                 }
             },
-           "tools": ["/agent_network_editor", "/agent_network_query_generator", "/agent_network_instructions_editor", "produce_agent_network", "get_agent_network_definition", "web_search"]
+           "tools": ["/agent_network_editor", "/agent_network_query_generator", "/agent_network_instructions_editor", "persist_agent_network", "get_agent_network_definition", "web_search"]
         },
 
         {
-            "name": "produce_agent_network",
-            "class": "create_agent_network.CreateAgentNetwork"
+            "name": "persist_agent_network",
+            "class": "persist_agent_network.PersistAgentNetwork"
             "function": {
-                "description": "Generate the complete persisted definition for an agent network. Must always call this tool before giving response."
+                "description": "Generate the complete persisted definition for an agent network and save it. Must always call this tool before giving response."
             },
             "allow": {
                 "reservations": True
