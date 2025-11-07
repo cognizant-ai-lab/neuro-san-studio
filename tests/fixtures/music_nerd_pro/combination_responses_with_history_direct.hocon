@@ -1,0 +1,62 @@
+# Copyright (C) 2023-2025 Cognizant Digital Business, Evolutionary AI.
+# All Rights Reserved.
+# Issued under the Academic Public License.
+#
+# You can be released from the terms, and requirements of the Academic Public
+# License by purchasing a commercial license.
+# Purchase of a commercial license is mandatory for any use of the
+# neuro-san SDK Software in commercial settings.
+#
+# END COPYRIGHT
+
+# This file defines everything necessary for a data-driven test.
+{
+    # Describes what agent to test against.
+    "agent": "music_nerd_pro",
+
+    # Connect to the agent via a server
+    "connections": ["direct"],
+
+    # Interactions are a series of dictionaries with request elements paired with
+    # descriptions of response checks.
+    "interactions": [
+        {
+            # This is what we send as input to streaming_chat()
+            "text": "Who did Yellow Submarine?",
+
+            # The response block treats how we are going to test what comes back
+            "response": {
+                # Structure block says how we are going to examine the structure
+                # (dictionary) returned as part of the response.               
+                "structure": {
+                    # "answer" is a key that is supposed to be in the dictionary.
+                    "answer": {
+                        # Keywords says we are going to look for exact matches for each
+                        # element in a list of strings.  All elements need to show up
+                        # in order to pass.
+                        "keywords": "Beatles"
+                    },
+                    "running_cost": {
+                        "value": 3.0
+                    }
+                }
+            }
+        },
+        {
+            # This next interaction block tests the ability for an agent
+            # to continue its conversation with the context from the previous
+            # interaction.
+            "text": "Where were they from?",
+            "response": {
+                "structure": {
+                    "answer": {
+                        "keywords": "Liverpool"
+                    },
+                    "running_cost": {
+                        "value": 6.0
+                    }
+                }
+            }
+        }
+    ]
+}
