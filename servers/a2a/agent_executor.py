@@ -1,9 +1,3 @@
-
-"""
-crewAI agent executor for an A2A server example
-See https://github.com/google/a2a-python/tree/main/examples
-"""
-
 # Copyright © 2025 Cognizant Technology Solutions Corp, www.cognizant.com.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -19,6 +13,11 @@ See https://github.com/google/a2a-python/tree/main/examples
 # limitations under the License.
 #
 # END COPYRIGHT
+
+"""
+crewAI agent executor for an A2A server example
+See https://github.com/google/a2a-python/tree/main/examples
+"""
 
 from typing_extensions import override
 
