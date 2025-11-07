@@ -90,7 +90,7 @@ class NeuroSanRunner:
         self.nsflow_process = None
 
         # Initialize Phoenix manager
-        self.phoenix_initializer = PhoenixPlugin(self.args)
+        self.phoenix_plugin = PhoenixPlugin(self.args)
 
     def load_env_variables(self):
         """Load .env file from project root and set variables."""
@@ -184,7 +184,7 @@ class NeuroSanRunner:
         print(f"AGENT_MANIFEST_UPDATE_PERIOD_SECONDS set to: {os.environ['AGENT_MANIFEST_UPDATE_PERIOD_SECONDS']}\n")
 
         # Phoenix / OpenTelemetry envs - delegate to PhoenixPlugin
-        self.phoenix_initializer.set_environment_variables()
+        self.phoenix_plugin.set_environment_variables()
 
         # Client-only env variables
         if not self.args["server_only"]:
@@ -287,7 +287,7 @@ class NeuroSanRunner:
 
     def start_phoenix(self):
         """Start Phoenix server (UI + OTLP HTTP collector) if enabled."""
-        self.phoenix_initializer.start_phoenix_server()
+        self.phoenix_plugin.start_phoenix_server()
 
     def start_neuro_san(self):
         """Start the Neuro SAN server."""
@@ -370,7 +370,7 @@ class NeuroSanRunner:
                 os.killpg(os.getpgid(self.nsflow_process.pid), signal.SIGKILL)
 
         # Stop Phoenix using the initializer
-        self.phoenix_initializer.stop_phoenix_server()
+        self.phoenix_plugin.stop_phoenix_server()
 
         sys.exit(0)
 
