@@ -13,7 +13,7 @@
 # limitations under the License.
 #
 # END COPYRIGHT
-# END COPYRIGHT
+
 {
     "llm_config": {
         "model_name": "gpt-4o",
