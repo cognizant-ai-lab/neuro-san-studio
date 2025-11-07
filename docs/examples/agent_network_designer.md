@@ -15,7 +15,7 @@ Simply provide the frontman agent with the name of an organization or a descript
 
 Note that
 
-- This demo will write a file to your directory and modify your manifest.hocon file. To disable this behavior, set `WRITE_TO_FILE` to `False` in [create_agent_network_hocon.py](../../coded_tools/agent_network_designer/create_agent_network_hocon.py)
+- This demo will write a file to your directory and modify your manifest.hocon file. To disable this behavior, set `WRITE_TO_FILE` to `False` in [persist_agent_network.py](../../coded_tools/agent_network_designer/persist_agent_network.py)
 
 - The generated agents are not grounded by default — they only simulate grounded behavior. You can remove or edit the `demo_mode` and `instruction_prefix` settings once you connect the agents to real systems such as APIs or databases via the `Toolbox` or `MCP`.
 
@@ -44,7 +44,7 @@ generates or refines the `instructions` for each agent in the network.
 [`agent_network_query_generator`](../../registries/agent_network_query_generator.hocon)
  subnetwork to produce example usage queries for the new agent network.
 
-4. Finally, the [create_agent_network_hocon.py](../../coded_tools/agent_network_designer/create_agent_network_hocon.py) coded tool converts the `agent_network_definition` into a HOCON file and saves it to disk.
+4. Finally, the [persist_agent_network.py](../../coded_tools/agent_network_designer/persist_agent_network.py) coded tool converts the `agent_network_definition` into a HOCON file and saves it to disk.
 
     The **`agent_network_definition`** is a dictionary mapping agent names to their configurations
 (e.g., instructions, tools, or other agents they can call).
@@ -329,7 +329,7 @@ specifically given the hocon file name in the user prompt
 - Used for state inspection throughout workflow
 
 `produce_agent_network_hocon`
-- Generates the complete HOCON-formatted configuration file by calling `create_agent_network_hocon`
+- Generates the complete HOCON-formatted configuration file by calling `persist_agent_network`
 - Validates the network definition for correctness and completeness
 - Saves output to local registries directory
 - Updates the local manifest.hocon file
