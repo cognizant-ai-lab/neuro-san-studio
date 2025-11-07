@@ -1,12 +1,19 @@
-# Copyright (C) 2023-2025 Cognizant Digital Business, Evolutionary AI.
-# All Rights Reserved.
-# Issued under the Academic Public License.
+# Copyright © 2025 Cognizant Technology Solutions Corp, www.cognizant.com.
 #
-# You can be released from the terms, and requirements of the Academic Public
-# License by purchasing a commercial license.
-# Purchase of a commercial license is mandatory for any use of the
-# neuro-san-studio SDK Software in commercial settings.
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
 #
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
+# END COPYRIGHT
+
 import argparse
 import glob
 import os
@@ -64,6 +71,20 @@ class NeuroSanRunner:
                 "AGENT_TOOLBOX_INFO_FILE", os.path.join(self.root_dir, "toolbox", "toolbox_info.hocon")
             ),
             "logs_dir": self.logs_dir,
+            # Phoenix / OpenTelemetry defaults
+            "phoenix_enabled": os.getenv("PHOENIX_ENABLED", "false"),
+            "otel_service_name": os.getenv("OTEL_SERVICE_NAME", "neuro-san-demos"),
+            "otel_service_version": os.getenv("OTEL_SERVICE_VERSION", "dev"),
+            "otel_exporter_otlp_traces_endpoint": os.getenv(
+                "OTEL_EXPORTER_OTLP_TRACES_ENDPOINT",
+                os.getenv("OTEL_EXPORTER_OTLP_ENDPOINT", "http://localhost:6006/v1/traces"),
+            ),
+            # Phoenix UI/collector configuration
+            "phoenix_host": os.getenv("PHOENIX_HOST", "127.0.0.1"),
+            "phoenix_port": int(os.getenv("PHOENIX_PORT", "6006")),
+            "phoenix_autostart": os.getenv("PHOENIX_AUTOSTART", "false"),
+            "phoenix_project_name": os.getenv("PHOENIX_PROJECT_NAME", "default"),
+            "phoenix_otel_register": os.getenv("PHOENIX_OTEL_REGISTER", "true"),
         }
 
         # Ensure logs directory exists
@@ -77,6 +98,7 @@ class NeuroSanRunner:
         self.server_process = None
         self.flask_webclient_process = None
         self.nsflow_process = None
+        self.phoenix_process = None
 
     def load_env_variables(self):
         """Load .env file from project root and set variables."""
@@ -151,7 +173,7 @@ class NeuroSanRunner:
 
         return vars(args)
 
-    def set_environment_variables(self):
+    def set_environment_variables(self):  # pylint: disable=too-many-statements
         """Set required environment variables, optionally using neuro-san defaults."""
         print("\n" + "=" * 50 + "\n")
         print("Setting environment variables...\n")
@@ -168,6 +190,21 @@ class NeuroSanRunner:
         print(f"AGENT_TOOLBOX_INFO_FILE set to: {os.environ['AGENT_TOOLBOX_INFO_FILE']}")
         print(f"NEURO_SAN_SERVER_CONNECTION set to: {os.environ['NEURO_SAN_SERVER_CONNECTION']}")
         print(f"AGENT_MANIFEST_UPDATE_PERIOD_SECONDS set to: {os.environ['AGENT_MANIFEST_UPDATE_PERIOD_SECONDS']}\n")
+
+        # Phoenix / OpenTelemetry envs
+        os.environ["PHOENIX_ENABLED"] = str(self.args["phoenix_enabled"]).lower()
+        os.environ["OTEL_SERVICE_NAME"] = self.args["otel_service_name"]
+        os.environ["OTEL_SERVICE_VERSION"] = self.args["otel_service_version"]
+        os.environ["OTEL_EXPORTER_OTLP_TRACES_ENDPOINT"] = self.args["otel_exporter_otlp_traces_endpoint"]
+        print(f"PHOENIX_ENABLED set to: {os.environ['PHOENIX_ENABLED']}")
+        print(f"OTEL_SERVICE_NAME set to: {os.environ['OTEL_SERVICE_NAME']}")
+        print(f"OTEL_SERVICE_VERSION set to: {os.environ['OTEL_SERVICE_VERSION']}")
+        print(f"OTEL_EXPORTER_OTLP_TRACES_ENDPOINT set to: {os.environ['OTEL_EXPORTER_OTLP_TRACES_ENDPOINT']}\n")
+        # Phoenix register settings
+        os.environ["PHOENIX_PROJECT_NAME"] = str(self.args["phoenix_project_name"])
+        os.environ["PHOENIX_OTEL_REGISTER"] = str(self.args["phoenix_otel_register"]).lower()
+        print(f"PHOENIX_PROJECT_NAME set to: {os.environ['PHOENIX_PROJECT_NAME']}")
+        print(f"PHOENIX_OTEL_REGISTER set to: {os.environ['PHOENIX_OTEL_REGISTER']}\n")
 
         # Client-only env variables
         if not self.args["server_only"]:
@@ -268,6 +305,48 @@ class NeuroSanRunner:
 
         return process
 
+    def start_phoenix(self):
+        """Start Phoenix server (UI + OTLP HTTP collector) if enabled."""
+        if str(self.args["phoenix_autostart"]).lower() not in ("true", "1", "yes", "on"):
+            return
+        if str(self.args["phoenix_enabled"]).lower() not in ("true", "1", "yes", "on"):
+            return
+
+        print("Starting Phoenix (AI observability)...")
+        # If something is already listening on PHOENIX_PORT, assume Phoenix is running and skip autostart
+        if self.is_port_open(self.args["phoenix_host"], self.args["phoenix_port"]):
+            phoenix_url = f"http://{self.args['phoenix_host']}:{self.args['phoenix_port']}"
+            print(f"Phoenix detected at {phoenix_url} — skipping autostart.")
+        else:
+            # Disable gRPC on Windows (port binding issues)
+            os.environ["PHOENIX_GRPC_PORT"] = "0"
+
+            # Use python -m form for better compatibility
+            try:
+                self.phoenix_process = self.start_process(
+                    [sys.executable, "-m", "phoenix.server.main", "serve"], "Phoenix", "logs/phoenix.log"
+                )
+                # Wait for Phoenix to bind to port (with retry)
+                phoenix_ready = False
+                for _ in range(10):  # Try for up to 10 seconds
+                    time.sleep(1)
+                    if self.is_port_open(self.args["phoenix_host"], self.args["phoenix_port"]):
+                        phoenix_ready = True
+                        break
+
+                if phoenix_ready:
+                    print("Phoenix started successfully.")
+                else:
+                    print("Failed to start Phoenix automatically. Check logs/phoenix.log")
+            except Exception as e:  # pylint: disable=broad-exception-caught
+                print(f"Failed to start Phoenix automatically: {e}")
+
+        # Update OTLP endpoint env to point to this phoenix instance if not explicitly overridden
+        default_otlp = f"http://{self.args['phoenix_host']}:{self.args['phoenix_port']}/v1/traces"
+        if os.getenv("OTEL_EXPORTER_OTLP_TRACES_ENDPOINT") in (None, "", "http://localhost:6006/v1/traces"):
+            os.environ["OTEL_EXPORTER_OTLP_TRACES_ENDPOINT"] = default_otlp
+            print(f"OTEL_EXPORTER_OTLP_TRACES_ENDPOINT updated to: {default_otlp}")
+
     def start_neuro_san(self):
         """Start the Neuro SAN server."""
         print("Starting Neuro SAN server...")
@@ -347,6 +426,13 @@ class NeuroSanRunner:
                 self.nsflow_process.terminate()
             else:
                 os.killpg(os.getpgid(self.nsflow_process.pid), signal.SIGKILL)
+
+        if self.phoenix_process:
+            print(f"Stopping PHOENIX (PID {self.phoenix_process.pid})...")
+            if self.is_windows:
+                self.phoenix_process.terminate()
+            else:
+                os.killpg(os.getpgid(self.phoenix_process.pid), signal.SIGKILL)
 
         sys.exit(0)
 
@@ -465,6 +551,8 @@ class NeuroSanRunner:
                 sys.exit(1)
 
         # Start services only if ports are free
+        # 1) Phoenix first so other services point OTLP to it
+        self.start_phoenix()
         if not server_only:
             if use_flask:
                 if not no_html:
@@ -486,6 +574,18 @@ class NeuroSanRunner:
 
         # Set environment variables
         self.set_environment_variables()
+
+        # Initialize Phoenix instrumentation if enabled
+        if str(self.args["phoenix_enabled"]).lower() in ("true", "1", "yes", "on"):
+            try:
+                from plugins.phoenix import initialize_phoenix_if_enabled  # pylint: disable=import-outside-toplevel
+
+                initialize_phoenix_if_enabled()
+            except ImportError:
+                print("Warning: Phoenix plugin not installed.")
+                print("Install with: pip install -r plugins/phoenix/requirements.txt")
+            except Exception as e:  # pylint: disable=broad-exception-caught
+                print(f"Warning: Phoenix initialization failed: {e}")
 
         # Ensure logs directory exists
         os.makedirs("logs", exist_ok=True)
