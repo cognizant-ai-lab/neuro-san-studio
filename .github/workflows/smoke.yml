@@ -1,0 +1,112 @@
+name: Smoke Tests
+
+permissions:
+    contents: read
+
+on:
+  schedule:
+    - cron: '0 12 * * *'  # 12:00 PM UTC = 4:00 AM PT (standard)
+  workflow_dispatch:      # enables manual triggering
+
+jobs:
+  smoke-test:
+    runs-on: ubuntu-latest
+
+    # ─── Job‑level ENV ─────────────────────────────────────────
+    # every step below will have these in its shell environment
+    env:
+      AWS_ACCESS_KEY_ID:     ${{ secrets.AWS_ACCESS_KEY_ID }}
+      AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+      AWS_REGION:            ${{ vars.AWS_REGION }}
+    
+    # 🚀 Ollama Service runs alongside main container
+    services:
+      ollama:
+        image: ollama/ollama
+        ports:
+          - 11434:11434
+
+    # 🔧 Your actual job container
+
+    # don't run this job in sync'd clones
+    if: github.repository == 'cognizant-ai-lab/neuro-san'
+    container:
+      image: python:3.12-slim
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Check for NVIDIA GPU
+        shell: bash
+        run: |
+          build_scripts/check_gpu.sh
+      
+      - name: check available memory
+        shell: bash
+        run: |
+          build_scripts/check_memory.sh
+
+      - name: Install dependencies
+        run: |
+          apt-get update && apt-get install -y curl shellcheck
+          pip install -r requirements-build.txt
+          pip install -r requirements.txt
+
+      - name: Set Ollama model to be used for related test case
+        shell: bash
+        run: |
+          build_scripts/set_ollama_model.sh
+
+      - name: Check access to Bedrock models
+        shell: bash
+        run: |
+          build_scripts/check_list_bedrock_models_profile_single.sh
+      
+      - name: Show installed packages
+        run: pip freeze
+
+      - name: Start server & run smoke tests & print server-log if any failure
+        shell: bash
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          GOOGLE_API_KEY: ${{ secrets.GOOGLE_API_KEY }}
+          AZURE_OPENAI_API_KEY: ${{ secrets.AZURE_OPENAI_API_KEY }}
+          AZURE_OPENAI_ENDPOINT: ${{ vars.AZURE_OPENAI_ENDPOINT }}
+          OPENAI_API_VERSION: ${{ vars.OPENAI_API_VERSION }}
+          AGENT_TOOL_PATH: "./neuro_san/coded_tools"
+          PYTHONPATH: ${{ env.PYTHONPATH }}:.
+        run: |
+          build_scripts/server_start.sh
+
+          if ! pytest -s --verbose -m "smoke" --timer-top-n 100 -n auto; then
+            echo "===================================================="
+            echo "===================================================="
+            echo "=== Server_Sevice_Agent.LOG ==="
+            cat agent.log || echo "(no agent.log found)"
+            echo "===================================================="
+            exit 1
+          fi
+
+      - name: Notify Slack on success
+        if: success()
+        uses: slackapi/slack-github-action@v1.24.0
+        with:
+          payload: |
+            {
+              "text": "✅ *Smoke Tests Passed* for `${{ github.repository }}` on `${{ github.ref_name }}`"
+            }
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+
+      - name: Notify Slack on failure
+        if: failure()
+        uses: slackapi/slack-github-action@v1.24.0
+        with:
+          payload: |
+            {
+              "text": "❌ *Smoke Tests Failed* for `${{ github.repository }}` on `${{ github.ref_name }}`"
+            }
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
