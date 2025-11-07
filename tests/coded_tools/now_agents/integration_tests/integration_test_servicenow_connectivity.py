@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Test basic ServiceNow instance accessibility"""
+
 # Copyright © 2025 Cognizant Technology Solutions Corp, www.cognizant.com.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -15,6 +15,9 @@
 # limitations under the License.
 #
 # END COPYRIGHT
+
+"""Test basic ServiceNow instance accessibility"""
+
 import sys
 
 import requests

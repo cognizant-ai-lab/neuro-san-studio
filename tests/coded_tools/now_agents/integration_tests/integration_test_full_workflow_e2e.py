@@ -1,10 +1,5 @@
 #!/usr/bin/env python3
-"""
-ServiceNow Agents Integration Test Script
 
-This script tests the ServiceNow agents integration with the provided credentials.
-It validates connectivity, agent discovery, and basic interaction functionality.
-"""
 # Copyright © 2025 Cognizant Technology Solutions Corp, www.cognizant.com.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -20,6 +15,14 @@ It validates connectivity, agent discovery, and basic interaction functionality.
 # limitations under the License.
 #
 # END COPYRIGHT
+
+"""
+ServiceNow Agents Integration Test Script
+
+This script tests the ServiceNow agents integration with the provided credentials.
+It validates connectivity, agent discovery, and basic interaction functionality.
+"""
+
 import os
 import sys
 from pathlib import Path

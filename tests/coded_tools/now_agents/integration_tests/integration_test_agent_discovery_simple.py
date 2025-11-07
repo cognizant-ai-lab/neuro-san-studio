@@ -1,9 +1,5 @@
 #!/usr/bin/env python3
-"""
-Simple ServiceNow Agents Integration Test Script
 
-This script tests the ServiceNow agents integration with the provided credentials.
-"""
 # Copyright © 2025 Cognizant Technology Solutions Corp, www.cognizant.com.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -19,6 +15,12 @@ This script tests the ServiceNow agents integration with the provided credential
 # limitations under the License.
 #
 # END COPYRIGHT
+
+"""
+Simple ServiceNow Agents Integration Test Script
+
+This script tests the ServiceNow agents integration with the provided credentials.
+"""
 
 import os
 import sys

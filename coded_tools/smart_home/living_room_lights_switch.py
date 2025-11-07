@@ -13,6 +13,7 @@
 # limitations under the License.
 #
 # END COPYRIGHT
+
 from coded_tools.smart_home.lights_switch import LightsSwitch
 
 

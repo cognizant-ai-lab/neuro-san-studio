@@ -1,5 +1,3 @@
-"""Tool module for doing RAG from a pdf file"""
-
 # Copyright © 2025 Cognizant Technology Solutions Corp, www.cognizant.com.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -15,6 +13,8 @@
 # limitations under the License.
 #
 # END COPYRIGHT
+
+"""Tool module for doing RAG from a pdf file"""
 
 import logging
 import os

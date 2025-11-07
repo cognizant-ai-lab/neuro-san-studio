@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Debug ServiceNow credentials"""
+
 # Copyright © 2025 Cognizant Technology Solutions Corp, www.cognizant.com.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -15,6 +15,8 @@
 # limitations under the License.
 #
 # END COPYRIGHT
+
+"""Debug ServiceNow credentials"""
 
 import os
 from pathlib import Path

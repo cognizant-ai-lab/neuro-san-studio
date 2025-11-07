@@ -1,14 +1,3 @@
-
-"""
-A2A server example
-See https://github.com/google/a2a-python/tree/main/examples
-and https://google.github.io/A2A/specification
-
-Before running this server
- - `pip install a2a-sdk crewai`
- - run server by `python server.py`
-"""
-
 # Copyright © 2025 Cognizant Technology Solutions Corp, www.cognizant.com.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -24,6 +13,16 @@ Before running this server
 # limitations under the License.
 #
 # END COPYRIGHT
+
+"""
+A2A server example
+See https://github.com/google/a2a-python/tree/main/examples
+and https://google.github.io/A2A/specification
+
+Before running this server
+ - `pip install a2a-sdk crewai`
+ - run server by `python server.py`
+"""
 
 # pylint: disable=import-error
 import click

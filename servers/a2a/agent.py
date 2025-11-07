@@ -1,8 +1,3 @@
-
-"""
-crewAI agents for an A2A server example
-"""
-
 # Copyright © 2025 Cognizant Technology Solutions Corp, www.cognizant.com.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -18,6 +13,10 @@ crewAI agents for an A2A server example
 # limitations under the License.
 #
 # END COPYRIGHT
+
+"""
+crewAI agents for an A2A server example
+"""
 
 # pylint: disable=import-error
 from crewai import Agent

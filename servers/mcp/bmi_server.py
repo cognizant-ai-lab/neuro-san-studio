@@ -1,6 +1,3 @@
-
-"""Example of MCP server"""
-
 # Copyright © 2025 Cognizant Technology Solutions Corp, www.cognizant.com.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -16,6 +13,8 @@
 # limitations under the License.
 #
 # END COPYRIGHT
+
+"""Example of MCP server"""
 
 from mcp.server.fastmcp import FastMCP
 
