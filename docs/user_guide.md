@@ -496,15 +496,13 @@ Examples:
 
 Note:
 
-* `base_url` **must starts** with `http://` or `https://`
+* `base_url` **must starts** with `http://` or `https://`, otherwise the server defaults to `http://localhost:11434`.
 
 * if the port is omitted:
 
     * `http` → port 80
 
     * `https` → port 443
-
-* If `base_url` does not start with `http://` or `https://`, the server defaults to `http://localhost:11434`.
 
 You can also set the environment variable `OLLAMA_HOST`, but `base_url` takes precedence.
 
