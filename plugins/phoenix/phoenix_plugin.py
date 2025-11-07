@@ -20,7 +20,7 @@ except Exception:  # pragma: no cover
     OTLPSpanExporter = None  # type: ignore
 
 
-class PhoenixInitializer:
+class PhoenixPlugin:
     """
     Manages Phoenix/OpenTelemetry initialization for tracing and observability.
 
@@ -33,7 +33,7 @@ class PhoenixInitializer:
     """
 
     def __init__(self, config: Optional[dict] = None) -> None:
-        """Initialize the PhoenixInitializer with the optional configuration.
+        """Initialize the PhoenixPlugin with the optional configuration.
 
         Args:
             config: Optional configuration dictionary with phoenix settings

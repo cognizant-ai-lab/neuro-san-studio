@@ -28,7 +28,7 @@ from typing import Dict
 from typing import Tuple
 
 from dotenv import load_dotenv
-from plugins.phoenix.phoenix_initializer import PhoenixInitializer
+from plugins.phoenix.phoenix_plugin import PhoenixPlugin
 
 
 class NeuroSanRunner:
@@ -75,7 +75,7 @@ class NeuroSanRunner:
         }
 
         # Add Phoenix configuration defaults
-        self.args.update(PhoenixInitializer.get_default_config())
+        self.args.update(PhoenixPlugin.get_default_config())
 
         # Ensure logs directory exists
         os.makedirs(self.logs_dir, exist_ok=True)
@@ -90,7 +90,7 @@ class NeuroSanRunner:
         self.nsflow_process = None
 
         # Initialize Phoenix manager
-        self.phoenix_initializer = PhoenixInitializer(self.args)
+        self.phoenix_initializer = PhoenixPlugin(self.args)
 
     def load_env_variables(self):
         """Load .env file from project root and set variables."""
@@ -183,7 +183,7 @@ class NeuroSanRunner:
         print(f"NEURO_SAN_SERVER_CONNECTION set to: {os.environ['NEURO_SAN_SERVER_CONNECTION']}")
         print(f"AGENT_MANIFEST_UPDATE_PERIOD_SECONDS set to: {os.environ['AGENT_MANIFEST_UPDATE_PERIOD_SECONDS']}\n")
 
-        # Phoenix / OpenTelemetry envs - delegate to PhoenixInitializer
+        # Phoenix / OpenTelemetry envs - delegate to PhoenixPlugin
         self.phoenix_initializer.set_environment_variables()
 
         # Client-only env variables
