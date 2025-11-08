@@ -486,25 +486,28 @@ Here’s a ready-to-use `llm_config` block—just replace `<HOST>` with your set
 
 Examples:
 
-* Local (default): omit `base_url` or use `127.0.0.1`
+* Local (default): omit `base_url` or use `http://127.0.0.1:11434`
 
-* Remote VM: `<HOST>` → `192.168.1.10`
+* Remote VM: `http://192.168.1.10:11434`
 
-* Public DNS: `<HOST>` → `example.com`
+* Public DNS: `http://example.com:11434`
 
-* Docker Compose: `<HOST>` → container name (ensure port `11434` is exposed)
+* Docker Compose: `http://<container name>:11434` (ensure port `11434` is exposed)
 
-Just paste the block and update `<HOST>` to match your environment.
+Note:
 
-> If you omit the port, and `base_url` starts with
+* `base_url` **must starts** with `http://` or `https://`, otherwise the server defaults to `http://localhost:11434`.
 
-* `http` → port 80
+* if the port is omitted:
 
-* `https` → port 443
+    * `http` → port 80
 
-* neither → defaults to `http://<base_url>:11434`
+    * `https` → port 443
 
-For more information on logic of parsing the `base_url` see [Ollama python SDK](https://github.com/ollama/ollama-python/blob/main/ollama/_client.py#L1173)
+You can also set the environment variable `OLLAMA_HOST`, but `base_url` takes precedence.
+
+For more information on logic of parsing the `base_url`
+see [Ollama python SDK](https://github.com/ollama/ollama-python/blob/main/ollama/_client.py#L1274)
 
 #### Example agent network
 
