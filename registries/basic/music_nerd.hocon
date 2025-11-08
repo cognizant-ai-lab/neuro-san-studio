@@ -14,6 +14,16 @@
 #
 # END COPYRIGHT
 {
+    # Optional metadata describing this agent network
+    "metadata": {
+        "description": "Agent network with a single agent, used as a 'Hello world!' example, that can answer questions about music and follow up."
+        "tags": []
+        "sample_queries": [
+            "Which band wrote Yellow Submarine?",
+            "Where are they from?",
+        ]
+    }
+
     "llm_config": {
         "model_name": "gpt-4o",
     },
