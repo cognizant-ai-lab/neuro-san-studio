@@ -24,7 +24,7 @@ from parameterized import parameterized
 from neuro_san.test.unittest.dynamic_hocon_unit_tests import DynamicHoconUnitTests
 
 
-class TestSmokeTestHocons(TestCase):
+class TestIntegrationTestHocons(TestCase):
     """
     Data-driven dynamic test cases where each test case is specified by a single hocon file.
     """
@@ -33,7 +33,7 @@ class TestSmokeTestHocons(TestCase):
     # We pass it our source file location and a relative path to the common
     # root of the test hocon files listed in the @parameterized.expand()
     # annotation below so the instance can find the hocon test cases listed.
-    DYNAMIC = DynamicHoconUnitTests(__file__, path_to_basis="../../fixtures")
+    DYNAMIC = DynamicHoconUnitTests(__file__, path_to_basis="../fixtures")
 
     @parameterized.expand(DynamicHoconUnitTests.from_hocon_list([
         # These can be in any order.
@@ -43,10 +43,9 @@ class TestSmokeTestHocons(TestCase):
 
         # List more hocon files as they become available here.
     ]))
-    @pytest.mark.timeout(30)  # 30 seconds for this test
-    @pytest.mark.smoke
-    @pytest.mark.needs_server
-    def test_hocon_with_server(self, test_name: str, test_hocon: str):
+    @pytest.mark.timeout(90)  # 90 seconds for this test
+    @pytest.mark.integration
+    def test_hocon(self, test_name: str, test_hocon: str):
         """
         Test method for a single parameterized test case specified by a hocon file.
         Arguments to this method are given by the iteration that happens as a result
