@@ -297,7 +297,8 @@ The Makefile provides convenient commands for development (macOS/Linux):
 - `make activate` - Get activation instructions
 - `make lint` - Run code formatting and linting
 - `make lint-tests` - Run linting on tests
-- `make test` - Run all tests with coverage
+- `make test` - Run all tests with coverage except integration test
+- `make test-integration` - Run only integration
 
 ## Keeping Your Fork Updated
 
