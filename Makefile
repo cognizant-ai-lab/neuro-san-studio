@@ -78,7 +78,7 @@ test: lint ## Run tests with coverage
 	python -m pytest tests/ -v --cov=coded_tools,run.py
 
 test-integration: install
-	@. venv/bin/activate && 
+	@. venv/bin/activate && pytest -s -m "integration"
 
 help: ## Show this help message and exit
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | \
