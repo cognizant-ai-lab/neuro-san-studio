@@ -20,6 +20,15 @@
 {
     include "registries/aaosa.hocon"
     
+    "metadata": {
+        "description": "Multi-agent system that analyzes news articles from The New York Times, The Guardian, and Al Jazeera to reveal how topics, events, or individuals are emotionally framed across diverse geopolitical perspectives. Uses keyword-driven VADER sentiment analysis to generate data-backed insights highlighting variations in tone, polarity, and narrative emphasis.",
+        "tags": ["sentiment_analysis", "tool", "AAOSA"],
+        "sample_queries": [
+            "Perform sentiment analysis on news related to space in different sources across the globe.",
+            "Compare how different news outlets cover climate change.",
+            "Analyze the sentiment of election coverage across NYT, Guardian, and Al Jazeera.",
+        ]
+    },
     "llm_config": {
         "model_name": "gpt-4o",
     },
