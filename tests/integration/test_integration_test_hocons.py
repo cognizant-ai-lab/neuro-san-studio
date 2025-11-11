@@ -1,4 +1,3 @@
-
 # Copyright © 2023-2025 Cognizant Technology Solutions Corp, www.cognizant.com.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -18,10 +17,8 @@
 from unittest import TestCase
 
 import pytest
-
-from parameterized import parameterized
-
 from neuro_san.test.unittest.dynamic_hocon_unit_tests import DynamicHoconUnitTests
+from parameterized import parameterized
 
 
 class TestIntegrationTestHocons(TestCase):
@@ -35,14 +32,17 @@ class TestIntegrationTestHocons(TestCase):
     # annotation below so the instance can find the hocon test cases listed.
     DYNAMIC = DynamicHoconUnitTests(__file__, path_to_basis="../fixtures")
 
-    @parameterized.expand(DynamicHoconUnitTests.from_hocon_list([
-        # These can be in any order.
-        # Ideally more basic functionality will come first.
-        # Barring that, try to stick to alphabetical order.
-        "music_nerd_pro/combination_responses_with_history_direct.hocon",
-
-        # List more hocon files as they become available here.
-    ]))
+    @parameterized.expand(
+        DynamicHoconUnitTests.from_hocon_list(
+            [
+                # These can be in any order.
+                # Ideally more basic functionality will come first.
+                # Barring that, try to stick to alphabetical order.
+                "music_nerd_pro/combination_responses_with_history_direct.hocon",
+                # List more hocon files as they become available here.
+            ]
+        )
+    )
     @pytest.mark.timeout(90)  # 90 seconds for this test
     @pytest.mark.integration
     def test_hocon(self, test_name: str, test_hocon: str):

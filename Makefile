@@ -77,6 +77,9 @@ lint: format lint-check
 test: lint ## Run tests with coverage
 	python -m pytest tests/ -v --cov=coded_tools,run.py
 
+test-integration: install
+	@. venv/bin/activate && 
+
 help: ## Show this help message and exit
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | \
 	awk 'BEGIN {FS = ":.*?## "}; {printf "\033[36m%-20s\033[m %s\n", $$1, $$2}'

@@ -1,4 +1,3 @@
-
 # Copyright © 2023-2025 Cognizant Technology Solutions Corp, www.cognizant.com.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -14,13 +13,11 @@
 # limitations under the License.
 #
 # END COPYRIGHT
+from logging import Logger
+from logging import getLogger
 from typing import Any
 from typing import Dict
 from typing import Union
-
-
-from logging import getLogger
-from logging import Logger
 
 from neuro_san.interfaces.coded_tool import CodedTool
 
@@ -55,9 +52,7 @@ class Accountant(CodedTool):
         # This would make a little hard if the LLM wanted to guess
         updated_running_cost: float = running_cost + 3.0
 
-        tool_response = {
-            "running_cost": updated_running_cost
-        }
+        tool_response = {"running_cost": updated_running_cost}
         logger.debug("-----------------------")
         logger.debug("%s response: %s", tool_name, tool_response)
         logger.debug("========== Done with %s ==========", tool_name)
