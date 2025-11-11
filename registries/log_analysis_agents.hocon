@@ -16,6 +16,16 @@
 {
     include "registries/aaosa.hocon"
     
+    "metadata": {
+        "description": "Multi-agent system for analyzing agent interaction logs to validate quality, response time, cost efficiency, success rates, and responsible AI compliance. Called from log_analyzer app to review all agent interactions in log files and produce comprehensive validation reports. Evaluates agent behavior across multiple dimensions including quality standards, performance metrics, and ethical guidelines.",
+        "tags": ["log_analysis",  "AAOSA"],
+        "sample_queries": [
+            "Analyze the quality of agent responses in the latest log file",
+            "Review response time performance across all agent interactions",
+            "Generate a comprehensive validation report for agent behavior",
+        ]
+    },
+    
     "llm_config": {
         "model_name": "gpt-4o",
     },

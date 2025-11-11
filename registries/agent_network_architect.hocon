@@ -40,6 +40,16 @@
     #     python -m run --server-grpc-port 30012 --server-http-port 8081 --nsflow-port 4174
 
 {
+    "metadata": {
+        "description": "Multi-agent system that automates the design, visualization, testing, and sharing of agent networks. Invokes agent_network_designer to generate HOCON configuration, creates HTML visualizations, demonstrates network functionality via Selenium testing, and sends results via email with attachments. Requires Chrome browser, Gmail API setup, and Selenium configuration.",
+        "tags": ["agent_network", "email", "tool", "experimental"],
+        "sample_queries": [
+            "Design an agent network for a retail company and email it to john@example.com",
+            "Create a multi-agent system for healthcare management and test it with a sample query",
+            "Build and visualize an agent network for university administration",
+        ]
+    },
+    
     "llm_config": {
         "model_name": "gpt-4o",
     },
