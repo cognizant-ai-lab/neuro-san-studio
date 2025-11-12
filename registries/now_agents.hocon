@@ -18,6 +18,18 @@
     "llm_config": {
         "model_name": "gpt-4o",
     },
+
+    # Optional metadata describing this agent network
+    "metadata": {
+        "description": "ServiceNow AI Agents integration that enables natural language interaction with ServiceNow's Agentic AI platform, providing discovery, communication, and response retrieval for 100+ specialized AI agents.",
+        "tags": ["servicenow", "tool"],
+        "sample_queries": [
+            "I need help with a password reset request",
+            "Show me available ServiceNow AI agents",
+            "Help me create an incident ticket for network issues",
+        ]
+    },
+
     "tools": [
         # These tool definitions do not have to be in any particular order
         # How they are linked and call each other is defined within their

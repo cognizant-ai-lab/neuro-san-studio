@@ -21,6 +21,18 @@
     "llm_config": {
         "model_name": "gpt-4o",
     },
+
+    # Optional metadata describing this agent network
+    "metadata": {
+        "description": "PDF RAG assistant that answers user queries using Retrieval-Augmented Generation over PDF files, supporting both in-memory and PostgreSQL vector stores.",
+        "tags": ["rag", "pdf", "tool"],
+        "sample_queries": [
+            "What is the evaluation criteria in the RFP?",
+            "Summarize the main points from the PDF documents",
+            "What are the technical requirements mentioned in the document?",
+        ]
+    },
+
     "tools": [
         # This first agent definition is regarded as the "Front Man", which
         # does all the talking to the outside world/client.

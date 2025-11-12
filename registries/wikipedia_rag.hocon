@@ -22,6 +22,17 @@
         "model_name": "gpt-4o",
     },
 
+    # Optional metadata describing this agent network
+    "metadata": {
+        "description": "Wikipedia RAG assistant that retrieves and answers queries using relevant Wikipedia articles, supporting multiple languages and configurable retrieval parameters.",
+        "tags": ["rag", "wikipedia", "tool"],
+        "sample_queries": [
+            "Compare ResNet, DenseNet, and EfficientNet for image classification",
+            "Tell me about the history of artificial intelligence",
+            "What is quantum computing?",
+        ]
+    },
+
     "tools": [
         {
             "name": "Wikipedia_RAG_Assistant",

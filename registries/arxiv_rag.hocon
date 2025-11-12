@@ -21,6 +21,17 @@
     "llm_config": {
         "model_name": "gpt-4o",
     },
+
+    # Optional metadata describing this agent network
+    "metadata": {
+        "description": "ArXiv RAG assistant that retrieves and answers queries using academic papers from arXiv.org, supporting full PDF text or abstracts with configurable retrieval parameters.",
+        "tags": ["rag", "arxiv", "tool"],
+        "sample_queries": [
+            "Please give me a list of research papers on LORA",
+            "Find recent papers about transformer architectures",
+            "What are the latest developments in quantum machine learning?",
+        ]
+    },
     
     "tools": [
         {

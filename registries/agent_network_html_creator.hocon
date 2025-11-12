@@ -17,23 +17,22 @@
 # This agent network create a html file for a specified agent netowrk, and open the file in Chrome browser.
 # Requirement: Chrome browser.
 
-# Optional metadata describing this agent network
-
-
 {
-    "metadata": {
-        "description": "Agent network that generates an HTML visualization of a specified agent network and opens it in the Chrome browser for interactive exploration.",
-        "tags": ["agent-network"],
-        "sample_queries": [
-            "Create an HTML visualization for the coffee finder agent network",
-            "Generate a visual graph of the Gmail assistant network",
-            "Show me the agent network structure in HTML format"
-        ]
-    },
-
     "llm_config": {
         "model_name": "gpt-4o",
     },
+
+    # Optional metadata describing this agent network
+    "metadata": {
+        "description": "Agent network that generates an HTML visualization of a specified agent network and opens it in the Chrome browser for interactive exploration.",
+        "tags": ["agent-network", "tool"],
+        "sample_queries": [
+            "Create an HTML visualization for the coffee finder agent network",
+            "Generate a visual graph of the Gmail assistant network",
+            "Show me the agent network structure in HTML format",
+        ]
+    },
+
     "tools": [
         # This first agent definition is regarded as the "Front Man", which
         # does all the talking to the outside world/client.
