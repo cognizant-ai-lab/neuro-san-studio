@@ -14,8 +14,15 @@
 #
 # END COPYRIGHT
 
-from unittest import TestCase
+# This file defines everything necessary for a data-driven test.
+# The schema specifications for this file are documented here:
+# https://github.com/cognizant-ai-lab/neuro-san/blob/main/docs/test_case_hocon_reference.md
+#
+# You can run this test by doing the following:
+# https://github.com/cognizant-ai-lab/neuro-san-studio/blob/main/CONTRIBUTING.md
 
+
+from unittest import TestCase
 import pytest
 from neuro_san.test.unittest.dynamic_hocon_unit_tests import DynamicHoconUnitTests
 from parameterized import parameterized
