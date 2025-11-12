@@ -21,10 +21,24 @@
 # Once you've downloaded the credentials.json file and put it in the top level of this repo,
 # you can start using the agent network.
 
+
+
 {
     "llm_config": {
         "model_name": "gpt-4o",
     },
+
+    # Optional metadata describing this agent network
+    "metadata": {
+        "description": "Gmail assistant that helps users manage their Gmail accounts efficiently through natural language commands, including searching, reading, drafting, and sending emails with or without attachments.",
+        "tags": ["google", "tool"],
+        "sample_queries": [
+            "Can you check if I received an email from Jane yesterday?",
+            "Search for emails about the quarterly report",
+            "Send a follow-up email to the team with the project files attached",
+        ]
+    },
+
     "tools": [
         # This first agent definition is regarded as the "Front Man", which
         # does all the talking to the outside world/client.

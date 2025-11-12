@@ -23,10 +23,24 @@
 # See https://docs.anthropic.com/en/docs/agents-and-tools/tool-use/overview and
 # https://python.langchain.com/docs/integrations/chat/anthropic/#built-in-tools
 
+
+
 {
     "llm_config": {
         "model_name": "gpt-4o",
     },
+
+    # Optional metadata describing this agent network
+    "metadata": {
+        "description": "Code execution assistant that leverages Anthropic's built-in code execution tool to run Python code, generate visualizations, perform data analysis, and create files through natural language commands.",
+        "tags": ["tool", "anthropic", "code-execution"],
+        "sample_queries": [
+            "Create a bar chart showing sales data for Q1 2025",
+            "Analyze this dataset and find correlations between variables",
+            "Generate a line plot showing the trend of monthly revenue",
+        ]
+    },
+
     "tools": [
         # This first agent definition is regarded as the "Front Man", which
         # does all the talking to the outside world/client.

@@ -27,6 +27,18 @@
     "llm_config": {
         "model_name": "gpt-4o",
     },
+
+    # Optional metadata describing this agent network
+    "metadata": {
+        "description": "Code interpreter assistant that leverages OpenAI's built-in code interpreter tool to run Python code, generate visualizations, perform data analysis, and create computational solutions through natural language commands.",
+        "tags": ["openai", "tool", "code-interpreter"],
+        "sample_queries": [
+            "Analyze this sales data and create a comprehensive report with visualizations",
+            "Solve this mathematical problem using Python code",
+            "Generate visualizations showing quarterly performance trends",
+        ]
+    },
+
     "tools": [
         # This first agent definition is regarded as the "Front Man", which
         # does all the talking to the outside world/client.
