@@ -78,7 +78,7 @@ test: lint ## Run tests with coverage
 	python -m pytest tests/ -v --cov=coded_tools,run.py -m "not integration"
 
 test-integration: install
-	@. venv/bin/activate && export AGENT_TOOL_PATH=tests/coded_tools/ && pytest -s -m "integration"
+	@. venv/bin/activate && export PYTHONPATH=`pwd` && export AGENT_TOOL_PATH=tests/coded_tools/ && export AGENT_MANIFEST_FILE=tests/registries/manifest.hocon && pytest -s -m "integration"
 
 help: ## Show this help message and exit
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | \
