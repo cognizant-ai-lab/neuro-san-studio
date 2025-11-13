@@ -2,53 +2,54 @@
 
 <!-- TOC -->
 
-* [User guide](#user-guide)
-  * [Simple agent network](#simple-agent-network)
-  * [Hocon files](#hocon-files)
-    * [Import and substitution](#import-and-substitution)
-    * [Manifest](#manifest)
-    * [Agent network](#agent-network)
-      * [Agent specifications](#agent-specifications)
-      * [Tool specifications](#tool-specifications)
-      * [LLM specifications](#llm-specifications)
-  * [LLM configuration](#llm-configuration)
-    * [OpenAI](#openai)
-    * [AzureOpenAI](#azureopenai)
-    * [Anthropic](#anthropic)
-    * [Bedrock](#bedrock)
-      * [Default Bedrock models](#default-bedrock-models)
-    * [Gemini](#gemini)
-    * [Ollama](#ollama)
-      * [Prerequisites](#prerequisites)
-      * [Configuration](#configuration)
-      * [Using Ollama in Docker or Remote Server](#using-ollama-in-docker-or-remote-server)
-      * [Example agent network](#example-agent-network)
-    * [See also](#see-also)
-  * [LLM Fallbacks](#llm-fallbacks)
-  * [Reasoning Models](#reasoning-models)
-    * [OpenAI and AzureOpenAI Models](#openai-and-azureopenai-models)
-    * [Anthropic and Bedrock Models](#anthropic-and-bedrock-models)
-    * [Ollama Models](#ollama-models)
-  * [Using custom or non-default LLMs](#using-custom-or-non-default-llms)
-    * [Using the `class` Key](#using-the-class-key)
-    * [Extending the default LLM info file](#extending-the-default-llm-info-file)
-      * [Registering custom LLM info file](#registering-custom-llm-info-file)
-  * [Coded tools](#coded-tools)
-    * [Simple tool](#simple-tool)
-    * [API calling tool](#api-calling-tool)
-    * [Sly data](#sly-data)
-  * [Toolbox](#toolbox)
-    * [Default tools in toolbox](#default-tools-in-toolbox)
-      * [Langchain tools in toolbox](#langchain-tools-in-toolbox)
-      * [Coded tools in toolbox](#coded-tools-in-toolbox)
-    * [Usage in agent network config](#usage-in-agent-network-config)
-    * [Adding tools in toolbox](#adding-tools-in-toolbox)
-  * [Logging and debugging](#logging-and-debugging)
-  * [Advanced](#advanced)
-    * [AAOSA](#aaosa)
-    * [External Agent Networks](#external-agent-networks)
-    * [Memory](#memory)
-  * [Connect with other agent frameworks](#connect-with-other-agent-frameworks)
+- [User guide](#user-guide)
+  - [Simple agent network](#simple-agent-network)
+  - [Hocon files](#hocon-files)
+    - [Import and substitution](#import-and-substitution)
+    - [Manifest](#manifest)
+    - [Agent network](#agent-network)
+      - [Agent specifications](#agent-specifications)
+      - [Tool specifications](#tool-specifications)
+      - [LLM specifications](#llm-specifications)
+  - [LLM configuration](#llm-configuration)
+    - [OpenAI](#openai)
+    - [AzureOpenAI](#azureopenai)
+    - [Anthropic](#anthropic)
+    - [Bedrock](#bedrock)
+      - [Default Bedrock models](#default-bedrock-models)
+    - [Gemini](#gemini)
+    - [Ollama](#ollama)
+      - [Prerequisites](#prerequisites)
+      - [Configuration](#configuration)
+      - [Using Ollama in Docker or Remote Server](#using-ollama-in-docker-or-remote-server)
+      - [Example agent network](#example-agent-network)
+    - [See also](#see-also)
+  - [LLM Fallbacks](#llm-fallbacks)
+  - [Reasoning Models](#reasoning-models)
+    - [OpenAI and AzureOpenAI Models](#openai-and-azureopenai-models)
+    - [Anthropic and Bedrock Models](#anthropic-and-bedrock-models)
+    - [Ollama Models](#ollama-models)
+  - [Using custom or non-default LLMs](#using-custom-or-non-default-llms)
+    - [Using the `class` Key](#using-the-class-key)
+    - [Extending the default LLM info file](#extending-the-default-llm-info-file)
+      - [Registering custom LLM info file](#registering-custom-llm-info-file)
+  - [Coded tools](#coded-tools)
+    - [Simple tool](#simple-tool)
+    - [API calling tool](#api-calling-tool)
+    - [Sly data](#sly-data)
+  - [Toolbox](#toolbox)
+    - [Default tools in toolbox](#default-tools-in-toolbox)
+      - [Langchain tools in toolbox](#langchain-tools-in-toolbox)
+      - [Coded tools in toolbox](#coded-tools-in-toolbox)
+    - [Usage in agent network config](#usage-in-agent-network-config)
+    - [Adding tools in toolbox](#adding-tools-in-toolbox)
+  - [Logging](#logging)
+  - [Debugging](#debugging)
+  - [Advanced](#advanced)
+    - [AAOSA](#aaosa)
+    - [External Agent Networks](#external-agent-networks)
+    - [Memory](#memory)
+  - [Connect with other agent frameworks](#connect-with-other-agent-frameworks)
 
 <!-- TOC -->
 
@@ -977,7 +978,18 @@ To use tools from toolbox in your agent network, simply call them with field `to
 For more information on toolbox, please see [Toolbox Info HOCON File Reference](
     https://github.com/cognizant-ai-lab/neuro-san/blob/main/docs/toolbox_info_hocon_reference.md) documentation.
 
-## Logging and debugging
+## Logging
+
+The client and server logs will be saved to `logs/nsflow.log` and `logs/server.log` respectively.
+
+Note:
+- All console logs are color-coded and pretty-formatted using the rich based log bridge plugin.
+- Enable or disable rich logs via setting an env variable `LOGBRIDGE_ENABLED` on terminal or in your .env file.
+  By default the value is set to `true`.
+- Any updates to console logs can be managed via this plugin at `plugins/log_bridge/`.
+- Use the `log_cfg` dict located at `plugins/log_bridge/process_log_bridge.py` to configure the formatting of logs.
+
+## Debugging
 
 1. To debug your code, set up your environment per these [instructions](https://github.com/cognizant-ai-lab/neuro-san-studio).
 Furthermore, please install the build requirements in your virtual environment via the following commands:
@@ -1000,7 +1012,6 @@ Furthermore, please install the build requirements in your virtual environment v
 can step through the code, view variable values, etc. by typing commands in the terminal. For all the debugger options,
 please refer to pdb [documentation](https://ugoproto.github.io/ugo_py_doc/pdf/Python-Debugger-Cheatsheet.pdf)
 
-The client and server logs will be saved to `logs/nsflow.log` and `logs/server.log` respectively.
 
 ## Advanced
 
