@@ -94,6 +94,27 @@ class ProcessLogBridge:
     def __init__(
         self, level: str = "INFO", runner_log_file: Optional[str] = None, config: Optional[Dict[str, Any]] = None
     ):
+        """
+        Initialize the logging bridge.
+
+        :params:
+            level (str):
+                The minimum log severity for console output.
+                Defaults to `"INFO"`.
+            runner_log_file (str | None):
+                Optional path to a file where all logs
+                (from all attached processes) will be written.
+                If provided, a `TimedRotatingFileHandler` is configured.
+            config (dict | None):
+                Optional override configuration that merges with
+                the built-in `log_cfg`. Supports overriding theme,
+                rich handler settings, and file handler settings.
+
+        Notes:
+            - Creates a Rich console.
+            - Reconfigures the root logger with rich + optional file handlers.
+            - Initializes per-stream state storage for subprocess drains.
+        """
         self.level_name = level.upper()
         self.runner_log_file = runner_log_file
         cfg = copy.deepcopy(log_cfg)
@@ -165,6 +186,17 @@ class ProcessLogBridge:
     def attach_process_logger(self, process, process_name: str, log_file: str) -> None:
         """
         Drain stdout/stderr in background threads, pretty-print to terminal, mirror raw to file.
+        Spawns background threads that:
+        - Continuously read from `process.stdout` and `process.stderr`.
+        - Pretty-print parsed output to the console.
+        - Mirror raw lines to the specified log file.
+        :param process: A running subprocess object with `.stdout` and `.stderr`
+            file-like streams opened in text mode.
+        :param process_name (str): Logical label for this process. Used as logger name prefix.
+        :param log_file (str): File to write raw mirror logs to. Created if missing.
+        Notes:
+            - Two threads are spawned: one for stdout, one for stderr.
+            - Per-stream state (buffer, JSON reassembly, tee handle) is created.
         """
         Path(log_file).parent.mkdir(parents=True, exist_ok=True)
         tee_out = open(log_file, "a", encoding="utf-8")
@@ -180,19 +212,49 @@ class ProcessLogBridge:
     # ---------- helpers: logging/time ----------
     @classmethod
     def _now_local(cls) -> datetime:
+        """
+        :return: datetime: The current timezone-aware local datetime.
+        """
         return datetime.now().astimezone()
 
     def _rich_time_text(self, record=None, date=None):
+        """
+        :param record: Unused, but required for compatibility with RichHandler's
+                `log_time_format` signature.
+        :param date: Unused. Rich passes this parameter but it is not needed.
+        :return: Text: A Rich `Text` object containing a formatted timestamp using
+                the configured `self._time_style_key`.
+        """
         now = self._now_local()
         return Text(f"[{now.strftime('%Y-%m-%d %H:%M:%S')} {now.tzname()}]", style=self._time_style_key)
 
     class _TZFormatter(logging.Formatter):
+        """
+        File-handler formatter that emits timezone-aware timestamps.
+        :extend: logging.Formatter
+        """
         def formatTime(self, record, datefmt=None):
+            """
+            :param: record: A log record.
+            :param datefmt (str | None): Ignored. Exists for Formatter API compatibility.
+            :return: str: Timestamp formatted as `"YYYY-MM-DD HH:MM:SS <TZNAME>"`.
+            """
             dt = datetime.fromtimestamp(record.created).astimezone()
             return f"{dt.strftime('%Y-%m-%d %H:%M:%S')} {dt.tzname()}"
 
     # ---------- helpers: per-stream state ----------
     def _make_stream_state(self, process_name: str, tee: TextIO) -> Dict[str, Any]:
+        """
+        Create an initial per-stream state dictionary.
+        :param process_name (str): Logical name for the process whose output is being handled.
+        :param tee (TextIO): Writable file-like object used to mirror raw log lines.
+        :return: dict: A dict containing:
+                    - "tee": file handle for mirroring.
+                    - "buffer": list used for multiline JSON reassembly.
+                    - "balance": brace balance counter.
+                    - "collecting": whether multi-line JSON parsing is active.
+                    - "logger": Python logger for this process's output.
+        """
         return {
             "tee": tee,
             "buffer": [],
@@ -203,6 +265,12 @@ class ProcessLogBridge:
 
     @staticmethod
     def _write_tee(state: Dict[str, Any], raw: str) -> None:
+        """
+        Write a raw log line to the tee file handle.
+        :param state (dict): A per-stream state dictionary.
+        :param raw (str): The raw line to mirror.
+        Notes: Exceptions are silently ignored so logging never causes crashes.
+        """
         try:
             state["tee"].write(f"{raw}\n")
         except Exception:
@@ -210,6 +278,11 @@ class ProcessLogBridge:
 
     @staticmethod
     def _close_stream(state: Dict[str, Any]) -> None:
+        """
+        Flush and close the tee file handle for a stream.
+        :param state (dict): A per-stream state dictionary.
+        Notes: Errors during closure are ignored.
+        """
         try:
             state["tee"].flush()
             state["tee"].close()
@@ -218,6 +291,17 @@ class ProcessLogBridge:
 
     # ---------- pipe draining ----------
     def _drain_pipe(self, pipe, process_name: str, stream_tag: str) -> None:
+        """
+        Continuously read from a subprocess pipe and process each line.
+        This method:
+        - Retrieves the per-stream state.
+        - Reads lines until EOF.
+        - Passes each line to `_handle_line()`.
+        - Cleans up the pipe and tee file when finished.
+        :param pipe: A file-like object (stdout or stderr from a subprocess).
+        :param process_name (str): Label for the process.
+        :param stream_tag (str): `"STDOUT"` or `"STDERR"`—used as part of the state key.
+        """
         key = (process_name, stream_tag)
         state = self._streams[key]
         try:
@@ -232,6 +316,16 @@ class ProcessLogBridge:
 
     # ---------- line handling ----------
     def _handle_line(self, state: Dict[str, Any], line: str) -> None:
+        """
+        Handle a single log line from a process.
+        Steps:
+            1. Mirror raw line to tee file.
+            2. Attempt strict or fragmentary JSON parsing.
+            3. Otherwise apply multiline JSON reassembly logic.
+            4. If none apply, log as plain text.
+        :param state (dict): The per-stream state dict.
+        :param line (str): The raw line to process.
+        """
         if line == "":
             self._write_tee(state, line)
             return
@@ -265,6 +359,11 @@ class ProcessLogBridge:
     # ---------- reassembler (stateful, no extra classes) ----------
     @staticmethod
     def _count_braces_outside_quotes(s: str) -> int:
+        """
+        Count net brace balance `{` minus `}` ignoring quoted strings.
+        :param s (str): A text line.
+        :return int: Net count (`+1` for `{`, `-1` for `}`), ignoring content inside double quotes.
+        """
         depth = 0
         in_str = False
         esc = False
@@ -287,6 +386,12 @@ class ProcessLogBridge:
         return depth
 
     def _reasm_start_if_jsonish(self, state: Dict[str, Any], line: str) -> bool:
+        """
+        Begin multiline JSON collection if line contains an opening brace.
+        :param state (dict): The per-stream state.
+        :param line (str): The raw line.
+        :return bool: True if collection has begun, False otherwise.
+        """
         if "{" in line:
             state["buffer"] = [line]
             state["balance"] = self._count_braces_outside_quotes(line)
@@ -295,11 +400,25 @@ class ProcessLogBridge:
         return False
 
     def _reasm_add(self, state: Dict[str, Any], line: str) -> None:
+        """
+        Append a line to the JSON reassembly buffer.
+        :param state (dict): Per-stream state dictionary.
+        :param line (str): The next line in the JSON block.
+        """
         state["buffer"].append(line)
         state["balance"] += self._count_braces_outside_quotes(line)
 
     @staticmethod
     def _reasm_should_flush(state: Dict[str, Any], line: str) -> bool:
+        """
+        Determine whether collected JSON should be flushed.
+        Flush when:
+            - Brace balance <= 0, or
+            - The line ends a request block containing `"request_id"`.
+        :param state (dict): Per-stream state.
+        :param line (str): The line just added.
+        :return bool: True if buffer should be flushed.
+        """
         if state["balance"] <= 0:
             return True
         if '"request_id"' in line and line.rstrip().endswith("}"):
@@ -308,6 +427,11 @@ class ProcessLogBridge:
 
     @staticmethod
     def _reasm_flush(state: Dict[str, Any]) -> str:
+        """
+        Flush collected JSON text and reset reassembly state.
+        :param state (dict): The per-stream reassembly state.
+        :return str: The combined block as a single string.
+        """
         text = "\n".join(state["buffer"]).strip()
         state["buffer"].clear()
         state["balance"] = 0
@@ -316,10 +440,26 @@ class ProcessLogBridge:
 
     # ---------- severity ----------
     def _infer_level_from_message_type(self, record: Dict[str, Any]) -> int:
+        """
+        Infer logging level from a JSON record's `message_type` field.
+        :param record (dict): Parsed JSON record containing `"message_type"`.
+        :return int: A logging level constant (e.g., logging.INFO, logging.ERROR).
+        """
         mt = str(record.get("message_type", "")).strip().lower()
         return self._MESSAGE_TYPE_TO_LEVEL.get(mt, logging.INFO)
 
     def _infer_level_from_text(self, line: str, default: int = logging.INFO) -> int:
+        """
+        Infer a log level from textual content.
+        Rules:
+            - If the line contains a severity word (INFO, WARNING, ERROR, etc.)
+              that level is returned.
+            - If the line looks like a traceback, ERROR is returned.
+            - Otherwise, the provided default is used.
+        :param line (str): The raw text line.
+        :param default (int): Fallback level.
+        :return int: Logging level constant.
+        """
         if not line:
             return default
         m = self._LEVEL_WORD.search(line)
@@ -333,6 +473,11 @@ class ProcessLogBridge:
     # ---------- json helpers ----------
     @staticmethod
     def _pretty_json(obj: Any) -> str:
+        """
+        Pretty-print a JSON object.
+        :param obj (Any): Any JSON-serializable object.
+        :return str: Indented JSON, or `str(obj)` on failure.
+        """
         try:
             return json.dumps(obj, indent=2, ensure_ascii=False)
         except Exception:
@@ -340,6 +485,14 @@ class ProcessLogBridge:
 
     @staticmethod
     def _try_parse_json_fragment(text: str) -> Optional[Dict[str, Any]]:
+        """
+        Try to parse a JSON dictionary from a text line.
+        Attempts:
+            1. Full strict `json.loads(text)`
+            2. Extract fragment between first `{` and last `}` and parse that.
+        :param text (str): Input line.
+        :return dict | None: Parsed JSON as a dictionary, or None if not parseable.
+        """
         if not text:
             return None
         # strict
@@ -362,6 +515,16 @@ class ProcessLogBridge:
 
     @staticmethod
     def _lenient_inner_json_parse(val: Any) -> Optional[Any]:
+        """
+        Attempt lenient JSON parsing of a string containing nested JSON.
+        Strategy:
+            - If value is not a string, return None.
+            - If it doesn't begin with `{` or `[`, return None.
+            - Try strict `json.loads()`.
+            - Otherwise, clean escape sequences and attempt again.
+        :param val (Any): Possibly nested JSON-like string.
+        :return Any | None: Parsed JSON object, or None if not parseable.
+        """
         if not isinstance(val, str):
             return None
         s = val.strip()
@@ -385,6 +548,16 @@ class ProcessLogBridge:
 
     # ---------- special NeuroSan block ----------
     def _rebuild_neurosan_request_reporting(self, text_block: str) -> Optional[Dict[str, Any]]:
+        """
+        Detect and rebuild NeuroSan request-reporting blocks.
+        These blocks appear in raw logs as text containing:
+            `Request reporting: { ...nested_json... }"`
+        This method extracts:
+            - The inner JSON payload.
+            - Additional metadata fields such as user_id, source, Timestamp, etc.
+        :param text_block (str): Full text block potentially containing request-reporting info.
+        :return dict | None: A reconstructed JSON dictionary if matched, or None otherwise.
+        """
         m = self._REQUEST_REPORTING_INNER.search(text_block)
         if not m:
             return None
@@ -405,6 +578,15 @@ class ProcessLogBridge:
 
     # ---------- traceback helpers ----------
     def _normalize_traceback_str(self, message: str) -> str:
+        """
+        Normalize traceback strings for consistent pretty-printing.
+        Steps:
+            - Unescape newline/tab sequences.
+            - Insert strategic newlines around typical traceback markers.
+            - Collapse excessive blank lines.
+        :param message (str): Raw traceback-like text.
+        :return str: Cleaned, readable traceback text.
+        """
         message = message or ""
         message = message.replace("\\r", "\r").replace("\\t", "\t").replace("\\n", "\n").replace('\\"', '"')
         for old, new in [
@@ -425,15 +607,37 @@ class ProcessLogBridge:
         return message.strip()
 
     def _looks_like_traceback(self, s: str) -> bool:
+        """
+        Detect whether a string resembles a Python traceback.
+        :param s (str): Input text.
+        :return bool: True if the text appears to contain traceback markers.
+        """
         if self._TB_START in (s or ""):
             return True
         return bool(re.search(r'File ".*?", line \d+(?:, in .*)?', s or ""))
 
     # ---------- emitters ----------
     def _src_header(self, process_name: str, source: Optional[str]) -> str:
+        """
+        Build a source header combining process name and optional source tag.
+        :param process_name (str): Name of the originating process.
+        :param source (str | None): Optional metadata source.
+        :return str: `"proc_name:source"` or `"proc_name"` if no source.
+        """
         return f"{process_name}:{source}" if source else process_name
 
     def _emit_json_block(self, state: Dict[str, Any], record: Dict[str, Any]) -> None:
+        """
+        Emit a fully parsed JSON record to the logger.
+        Steps:
+            1. Infer log level from `message_type`.
+            2. Build header including process name and optional source.
+            3. Parse nested JSON inside the `"message"` field (if present).
+            4. Pretty-print JSON.
+            5. If the message looks like traceback text, print a Rich-formatted traceback.
+        :param state (dict): Per-stream logging state.
+        :param record (dict): Parsed JSON dictionary representing the log event.
+        """
         level = self._infer_level_from_message_type(record)
         src = str(record.get("source") or "").strip() or None
         header = self._src_header(state["logger"].name, src)
@@ -456,11 +660,26 @@ class ProcessLogBridge:
                 self.console.print(Syntax(tb_text, "pytb", word_wrap=False))
 
     def _emit_text_line(self, state: Dict[str, Any], line: str) -> None:
+        """
+        Emit a plain text line to the logger.
+        :param state (dict): Per-stream logging state.
+        :param line (str): Raw log line.
+        Notes: Severity is inferred automatically via `_infer_level_from_text()`.
+        """
         level = self._infer_level_from_text(line, logging.INFO)
         header = self._src_header(state["logger"].name, None)
         self._log(state, level, header + " - " + line)
 
     def _emit_collected(self, state: Dict[str, Any], block: str) -> None:
+        """
+        Emit a reconstructed multiline block.
+        Decision logic:
+            - If block parses as JSON → emit as JSON.
+            - If it matches NeuroSan request-reporting → rebuild + emit.
+            - Otherwise → treat as text (flatten whitespace).
+        :param state (dict): Per-stream state.
+        :param block (str): Reassembled multiline block.
+        """
         obj = self._try_parse_json_fragment(block)
         if obj is not None:
             self._emit_json_block(state, obj)
@@ -477,6 +696,13 @@ class ProcessLogBridge:
     # ---------- logging wrapper ----------
     @staticmethod
     def _log(state: Dict[str, Any], level: int, msg: str) -> None:
+        """
+        Log a message using the appropriate logger method.
+        :param state (dict): Per-stream state containing a logger.
+        :param level (int): Logging level constant.
+        :param msg (str): Message to emit.
+        Notes: Calls the appropriate severity method (debug/info/warning/error/...).
+        """
         lg = state["logger"]
         if level >= logging.CRITICAL:
             lg.critical(msg)
