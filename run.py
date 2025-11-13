@@ -28,6 +28,7 @@ from typing import Dict
 from typing import Tuple
 
 from dotenv import load_dotenv
+from plugins.log_bridge.process_log_bridge import ProcessLogBridge
 from plugins.phoenix.phoenix_plugin import PhoenixPlugin
 
 
@@ -57,12 +58,13 @@ class NeuroSanRunner:
             "default_sly_data": str(os.getenv("DEFAULT_SLY_DATA", "")),
             "nsflow_host": os.getenv("NSFLOW_HOST", "localhost"),
             "nsflow_port": int(os.getenv("NSFLOW_PORT", "4173")),
-            "nsflow_log_level": os.getenv("NSFLOW_LOG_LEVEL", "info"),
+            "log_level": os.getenv("STUDIO_LOG_LEVEL", "info"),
             "vite_api_protocol": os.getenv("VITE_API_PROTOCOL", "http"),
             "vite_ws_protocol": os.getenv("VITE_WS_PROTOCOL", "ws"),
             "neuro_san_web_client_port": int(os.getenv("NEURO_SAN_WEB_CLIENT_PORT", "5003")),
             "thinking_file": os.getenv("THINKING_FILE", self.thinking_file),
             "thinking_dir": os.getenv("THINKING_DIR", self.thinking_dir),
+            "logbridge_enabled": os.getenv("LOGBRIDGE_ENABLED", "true"),
             # Ensure all paths are resolved relative to `self.root_dir`
             "agent_manifest_file": os.getenv(
                 "AGENT_MANIFEST_FILE", os.path.join(self.root_dir, "registries", "manifest.hocon")
@@ -81,6 +83,11 @@ class NeuroSanRunner:
         os.makedirs(self.logs_dir, exist_ok=True)
         os.makedirs(self.thinking_dir, exist_ok=True)
 
+        if self.args.get("logbridge_enabled"):
+            self.log_bridge = ProcessLogBridge(
+                level=self.args.get("log_level", "info"),
+                runner_log_file=os.path.join(self.args["logs_dir"], "runner.log"),
+            )
         # Parse command-line arguments
         self.args.update(self.parse_args())
 
@@ -277,11 +284,15 @@ class NeuroSanRunner:
 
         print(f"Started {process_name} with PID {process.pid}")
 
-        # Start streaming logs in separate threads
-        stdout_thread = threading.Thread(target=self.stream_output, args=(process.stdout, log_file, process_name))
-        stderr_thread = threading.Thread(target=self.stream_output, args=(process.stderr, log_file, process_name))
-        stdout_thread.start()
-        stderr_thread.start()
+        if self.args.get("logbridge_enabled"):
+            # Let log_bridge own reading/parsing/printing/writing
+            self.log_bridge.attach_process_logger(process, process_name, log_file)
+        else:
+            # Start streaming logs in separate threads
+            stdout_thread = threading.Thread(target=self.stream_output, args=(process.stdout, log_file, process_name))
+            stderr_thread = threading.Thread(target=self.stream_output, args=(process.stderr, log_file, process_name))
+            stdout_thread.start()
+            stderr_thread.start()
 
         return process
 
