@@ -18,7 +18,7 @@ import os
 from neuro_san.service.main_loop.server_main_loop import ServerMainLoop
 
 
-class ServerMainLoopWrapper:
+class NeuroSanServerWrapper:
     """Wrapper that initializes plugins before starting the Neuro SAN server."""
 
     def __init__(self):
@@ -55,5 +55,5 @@ class ServerMainLoopWrapper:
 
 
 if __name__ == "__main__":
-    wrapper = ServerMainLoopWrapper()
+    wrapper = NeuroSanServerWrapper()
     wrapper.run()
