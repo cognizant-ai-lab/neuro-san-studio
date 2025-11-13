@@ -175,7 +175,7 @@ require to run the follow steps 1st:
 - ". venv/bin/activate"
 - export PYTHONPATH=`pwd`
 - export AGENT_TOOL_PATH=tests/coded_tools/ 
-- export AGENT_TOOL_PATH=tests/coded_tools/
+- export AGENT_MANIFEST_FILE=tests/registries/manifest.hocon
 
 ```
 
