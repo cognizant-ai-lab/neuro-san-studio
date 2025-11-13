@@ -167,6 +167,16 @@ make lint               # Run linting on source code
 make lint-tests         # Run linting on test code
 make test               # Run all tests with coverage except integration test
 make test-integration   # run integration test
+
+Run pytest -s -m "integration"
+require to run the follow steps 1st:
+- goto top level neuro-san-studio
+- make install
+- ". venv/bin/activate"
+- export PYTHONPATH=`pwd`
+- export AGENT_TOOL_PATH=tests/coded_tools/ 
+- export AGENT_TOOL_PATH=tests/coded_tools/
+
 ```
 
 For Windows (manual):
