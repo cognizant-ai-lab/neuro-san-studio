@@ -84,8 +84,8 @@ Setting the value to `false` would make the server ignore this agent network.
 Open [../registries/basic/music_nerd.hocon](../registries/basic/music_nerd.hocon) and have a look at it.
 For now just note that it contains:
 
-* an `llm_config` section that specifies which LLM to use by default for the agents in this file
-* a `tools` section that contains a single agent, the "frontman", called `MusicNerd`
+- an `llm_config` section that specifies which LLM to use by default for the agents in this file
+- a `tools` section that contains a single agent, the "frontman", called `MusicNerd`
 
 Read the instructions of the agent to see what it does.
 Feel free to modify the instructions to see how it affects the agent's behavior.
@@ -206,8 +206,8 @@ For a full description of the fields, please refer to the [Agent Network HOCON F
 The `llm_config` section in the agent network configuration file defines which LLM should be used by the agents.
 
 You can specify it at two levels:
-* **Network-level**: Applies to all agents in the file.
-* **Agent-level**: Overrides the network-level configuration for a specific agent.
+- **Network-level**: Applies to all agents in the file.
+- **Agent-level**: Overrides the network-level configuration for a specific agent.
 
 Neuro-SAN includes several predefined LLM providers and models. To use one of these, set the `model_name` key to
 the name of the model you want. In addition, model-specific parameters (such as `temperature`, `max_tokens`, etc.)
@@ -236,30 +236,30 @@ See [./examples/music_nerd.md](examples/basic/music_nerd.md) for an example.
 
 To create an Azure OpenAI resource
 
-* Go to Azure [portal](https://portal.azure.com/)
-* Click on `Create a resource`
-* Search for `Azure OpenAI`
-* Select `Azure OpenAI`, then click Create  
+- Go to Azure [portal](https://portal.azure.com/)
+- Click on `Create a resource`
+- Search for `Azure OpenAI`
+- Select `Azure OpenAI`, then click Create  
 
 After your Azure OpenAI resource is created, you must deploy a model
 
-* Go to Azure [portal](https://portal.azure.com/)
-* Under `Resources`, select your Azure OpenAI resource
-* Click on `Go to Azure AI Foundry portal`
-* Click on `Create new deployment`
-* Choose a model (e.g., `gpt-4o`), then pick a deployment name (e.g., `my-gpt4o`), and click `Deploy`
-* Find the `api_version` on the deployed model page (e.g., "2024-12-01-preview")
-* Optionally, set environment variables to the value of the deployment name and API version
+- Go to Azure [portal](https://portal.azure.com/)
+- Under `Resources`, select your Azure OpenAI resource
+- Click on `Go to Azure AI Foundry portal`
+- Click on `Create new deployment`
+- Choose a model (e.g., `gpt-4o`), then pick a deployment name (e.g., `my-gpt4o`), and click `Deploy`
+- Find the `api_version` on the deployed model page (e.g., "2024-12-01-preview")
+- Optionally, set environment variables to the value of the deployment name and API version
 
     export AZURE_OPENAI_DEPLOYMENT_NAME="Your deployment name"\
     export OPENAI_API_VERSION="Your OpenAI API version"
 
 Finally, get your API key and endpoint
 
-* Go to Azure [portal](https://portal.azure.com/)
-* Under `Resources`, select your Azure OpenAI resource
-* Click on `Click here to view endpoints`
-* Optionally, set environment variables to the value of the API key and the endpoint
+- Go to Azure [portal](https://portal.azure.com/)
+- Under `Resources`, select your Azure OpenAI resource
+- Click on `Click here to view endpoints`
+- Optionally, set environment variables to the value of the API key and the endpoint
 
     export AZURE_OPENAI_API_KEY="your Azure OpenAI API key"\
     export AZURE_OPENAI_ENDPOINT="https://your_base_url.openai.azure.com"
@@ -323,11 +323,11 @@ followed by guidance on how to select and configure models.
 
     You can set the following environment variables directly:
 
-   * `AWS_ACCESS_KEY_ID`
+   - `AWS_ACCESS_KEY_ID`
 
-   * `AWS_SECRET_ACCESS_KEY`
+   - `AWS_SECRET_ACCESS_KEY`
 
-   * `AWS_REGION` or `AWS_DEFAULT_REGION`
+   - `AWS_REGION` or `AWS_DEFAULT_REGION`
 
     > Note: You may set `region_name` in the `llm_config` of the agent network HOCON file instead
 
@@ -342,9 +342,9 @@ followed by guidance on how to select and configure models.
 
     If `credentials_profile_name` is not specified in the `llm_config` of the HOCON file:
 
-   * The default profile will be used.
+   - The default profile will be used.
 
-   * On EC2 instance, credentials may be automatically loaded from the Instance Metadata Service (IMDS).
+   - On EC2 instance, credentials may be automatically loaded from the Instance Metadata Service (IMDS).
 
     See the full AWS credential resolution order
     [here](https://boto3.amazonaws.com/v1/documentation/api/latest/guide/credentials.html)
@@ -376,19 +376,19 @@ region is not set in your AWS profile.
 
 The default supported Bedrock model names currently include:
 
-* `bedrock-us-claude-opus-4`
+- `bedrock-us-claude-opus-4`
 
-* `bedrock-us-claude-sonnet-4`
+- `bedrock-us-claude-sonnet-4`
 
-* `bedrock-us-claude-3-7-sonnet`
+- `bedrock-us-claude-3-7-sonnet`
 
 These models require access to one of the following AWS regions:
 
-* `us-east-1`
+- `us-east-1`
 
-* `us-east-2`
+- `us-east-2`
 
-* `us-west-2`
+- `us-west-2`
 
 If these are not available in your account, you can still use other Bedrock models available to you by
 [using the class key](#using-the-class-key).
@@ -487,23 +487,23 @@ Here’s a ready-to-use `llm_config` block—just replace `<HOST>` with your set
 
 Examples:
 
-* Local (default): omit `base_url` or use `http://127.0.0.1:11434`
+- Local (default): omit `base_url` or use `http://127.0.0.1:11434`
 
-* Remote VM: `http://192.168.1.10:11434`
+- Remote VM: `http://192.168.1.10:11434`
 
-* Public DNS: `http://example.com:11434`
+- Public DNS: `http://example.com:11434`
 
-* Docker Compose: `http://<container name>:11434` (ensure port `11434` is exposed)
+- Docker Compose: `http://<container name>:11434` (ensure port `11434` is exposed)
 
 Note:
 
-* `base_url` **must starts** with `http://` or `https://`, otherwise the server defaults to `http://localhost:11434`.
+- `base_url` **must starts** with `http://` or `https://`, otherwise the server defaults to `http://localhost:11434`.
 
-* if the port is omitted:
+- if the port is omitted:
 
-    * `http` → port 80
+    - `http` → port 80
 
-    * `https` → port 443
+    - `https` → port 443
 
 You can also set the environment variable `OLLAMA_HOST`, but `base_url` takes precedence.
 
@@ -596,12 +596,12 @@ Example:
 
 **Supported models for extended thinking:**
 
-* Claude Sonnet 4.5 (`claude-sonnet-4-5-20250929`)
-* Claude Sonnet 4 (`claude-sonnet-4-20250514`)
-* Claude Sonnet 3.7 (`claude-3-7-sonnet-20250219`)
-* Claude Haiku 4.5 (`claude-haiku-4-5-20251001`)
-* Claude Opus 4.1 (`claude-opus-4-1-20250805`)
-* Claude Opus 4 (`claude-opus-4-20250514`)
+- Claude Sonnet 4.5 (`claude-sonnet-4-5-20250929`)
+- Claude Sonnet 4 (`claude-sonnet-4-20250514`)
+- Claude Sonnet 3.7 (`claude-3-7-sonnet-20250219`)
+- Claude Haiku 4.5 (`claude-haiku-4-5-20251001`)
+- Claude Opus 4.1 (`claude-opus-4-1-20250805`)
+- Claude Opus 4 (`claude-opus-4-20250514`)
 
 These same models can also be accessed via AWS Bedrock. In that case, extended thinking is configured under `model_kwargs`.
 
@@ -627,10 +627,10 @@ for more information.
 For Ollama’s [supported reasoning models](https://ollama.com/search?c=thinking),
 you can control reasoning behavior using the `reasoning` field with one of the follwing values:
 
-* `true`: Enables reasoning mode.
-* `false`: Disables reasoning mode.
-* `null` (default): Uses the model’s default reasoning behavior.
-* 'low', 'medium', 'high'. Enables reasoning with a custom intensity level. Currently, this is only supported `gpt-oss`.
+- `true`: Enables reasoning mode.
+- `false`: Disables reasoning mode.
+- `null` (default): Uses the model’s default reasoning behavior.
+- 'low', 'medium', 'high'. Enables reasoning with a custom intensity level. Currently, this is only supported `gpt-oss`.
 
 Example:
 
@@ -730,7 +730,7 @@ You can also add new models or providers by extending the
 
 2. Adding custom providers
 
-* Adding model and class in llm info file
+- Adding model and class in llm info file
 
     To support a custom provider, define the `class` value (e.g. `groq`), the model config, and also extend the
     `classes` section:
@@ -752,16 +752,16 @@ You can also add new models or providers by extending the
 
     You can then reference the new provider class (`groq` in this case) in any `llm_config`.
 
-* Implementing a custom factory
+- Implementing a custom factory
 
     You’ll need to implement a factory class that matches the path you specified in `factories`.
 
-    * Your factory must subclass [`LangChainLlmFactory`](https://github.com/cognizant-ai-lab/neuro-san/blob/main/neuro_san/internals/run_context/langchain/llms/langchain_llm_factory.py)
-    * It must implement a `create_base_chat_model(config, callbacks)` method
-        * `config` will contain:
-            * `model_name`
-            * `class` (e.g. `groq`)
-            * Parameters defined under `classes.groq
+    - Your factory must subclass [`LangChainLlmFactory`](https://github.com/cognizant-ai-lab/neuro-san/blob/main/neuro_san/internals/run_context/langchain/llms/langchain_llm_factory.py)
+    - It must implement a `create_base_chat_model(config, callbacks)` method
+        - `config` will contain:
+            - `model_name`
+            - `class` (e.g. `groq`)
+            - Parameters defined under `classes.groq
         `callbacks` is typically used for token counting
 
     <!-- markdownlint-disable MD013 -->
@@ -774,8 +774,8 @@ You can also add new models or providers by extending the
 
 To load your own llm info file, you can specify its location using one of the following methods:
 
-* The `llm_info_file` key in your agent’s HOCON configuration
-* The `AGENT_LLM_INFO_FILE` environment variable (fallback if the above is not set)
+- The `llm_info_file` key in your agent’s HOCON configuration
+- The `AGENT_LLM_INFO_FILE` environment variable (fallback if the above is not set)
 
 For more information on llm info file, please see [LLM Info HOCON File Reference](
     https://github.com/cognizant-ai-lab/neuro-san/blob/main/docs/llm_info_hocon_reference.md) documentation.
@@ -910,10 +910,10 @@ To use tools from toolbox in your agent network, simply call them with field `to
 
 1. Create the toolbox configuration file. This can be either HOCON or JSON files.
 2. Define the tools
-   * langchain tools
-       * Each tool or toolkit must have a `class` key.
-       * The specified class must be available in the server's `PYTHONPATH`.
-       * Additional dependencies (outside of `langchain_community`) must be installed separately.
+   - langchain tools
+       - Each tool or toolkit must have a `class` key.
+       - The specified class must be available in the server's `PYTHONPATH`.
+       - Additional dependencies (outside of `langchain_community`) must be installed separately.
 
         Example:
 
@@ -936,11 +936,11 @@ To use tools from toolbox in your agent network, simply call them with field `to
             }
         ```
 
-   * coded tools
-       * Similar to how one can define it in agent network config file
-       * `description` let the agent know what the tool does.
-       * `parameters` are arguments' definitions and types. This is optional.
-       * `class` specifies the tool's implementation as **module.ClassName** where the module can be found in `AGENT_TOOL_PATH`.
+   - coded tools
+       - Similar to how one can define it in agent network config file
+       - `description` let the agent know what the tool does.
+       - `parameters` are arguments' definitions and types. This is optional.
+       - `class` specifies the tool's implementation as **module.ClassName** where the module can be found in `AGENT_TOOL_PATH`.
 
         Example:
 
@@ -972,8 +972,8 @@ To use tools from toolbox in your agent network, simply call them with field `to
 
 3. Make your own toolbox info file available to the agent system in one of the following ways
 
-   * Define the `toolbox_info_file` key in your agent’s HOCON configuration
-   * Set the `AGENT_TOOLBOX_INFO_FILE` environment variable as a fallback option
+   - Define the `toolbox_info_file` key in your agent’s HOCON configuration
+   - Set the `AGENT_TOOLBOX_INFO_FILE` environment variable as a fallback option
 
 For more information on toolbox, please see [Toolbox Info HOCON File Reference](
     https://github.com/cognizant-ai-lab/neuro-san/blob/main/docs/toolbox_info_hocon_reference.md) documentation.
@@ -1012,10 +1012,9 @@ Furthermore, please install the build requirements in your virtual environment v
 can step through the code, view variable values, etc. by typing commands in the terminal. For all the debugger options,
 please refer to pdb [documentation](https://ugoproto.github.io/ugo_py_doc/pdf/Python-Debugger-Cheatsheet.pdf)
 
-
 ## Advanced
 
-* Tools' arguments can be overidden in the agent network config file using the `args` key.
+- Tools' arguments can be overidden in the agent network config file using the `args` key.
 
 Example:
 
@@ -1044,9 +1043,9 @@ Agent-Oriented Natural Language Interface](https://citeseerx.ist.psu.edu/documen
 
 Look at [../registries/basic/smart_home.hocon](../registries/basic/smart_home.hocon) and in particular:
 
-* aaosa_instructions
-* aaosa_call
-* aaosa_command
+- aaosa_instructions
+- aaosa_call
+- aaosa_command
 
 ### External Agent Networks
 
@@ -1078,13 +1077,13 @@ TBD
 
 ## Connect with other agent frameworks
 
-* MCP: [MCP BMI SSE](./examples/mcp_bmi_sse.md) is an example of an agent network that uses [MCP](https://www.anthropic.com/news/model-context-protocol)
+- MCP: [MCP BMI SSE](./examples/mcp_bmi_sse.md) is an example of an agent network that uses [MCP](https://www.anthropic.com/news/model-context-protocol)
 to call an agent that calculates the body mass index (BMI).
-* A2A: [A2A research report](./examples/a2a_research_report.md) is an example of an agent network that uses a coded tool
+- A2A: [A2A research report](./examples/a2a_research_report.md) is an example of an agent network that uses a coded tool
 as an A2A client to connect to CrewAI agents running in an A2A server to write a report on a provided topic.
-* CrewAI: see the A2A example above.
-* Agentforce: [Agentforce](./examples/agentforce.md) is an agent network that delegates queries to a [Salesforce Agentforce](https://www.salesforce.com/agentforce/)
+- CrewAI: see the A2A example above.
+- Agentforce: [Agentforce](./examples/agentforce.md) is an agent network that delegates queries to a [Salesforce Agentforce](https://www.salesforce.com/agentforce/)
 agent to interact with a CRM system.
-* Agentspace: [Agentspace_adapter](./examples/agentspace_adapter.md) is an agent network adapter that delegates queries
+- Agentspace: [Agentspace_adapter](./examples/agentspace_adapter.md) is an agent network adapter that delegates queries
 to a [Google Agentspace](https://cloud.google.com/agentspace/agentspace-enterprise/docs/overview) agent to interact with
 different data store connectors on google cloud.
