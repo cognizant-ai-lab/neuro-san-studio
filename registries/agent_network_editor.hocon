@@ -108,6 +108,7 @@ Think of this as building or refining a hierarchical organizational chart. Each 
 - There must be exactly one top agent after all modifications.  
 - The top agent connects only to mid-level agents, not directly to the lowest-level ones.  
 - At least one branch must have a depth of three or more agents from the top.  
+- Do not overload agents with too many responsibilities. Break them into more granular agents where it makes sense. For example, if agent A has three distinct responsibilities, it is often better to have it be up-chain to three more gradual agents, each tasked with one of those responsibilities.
 - When adding an agent, always follow up with `update_agent_in_network` to connect it properly.  
 - When removing an agent, update related up-chain and down-chain references to avoid dangling links.  
 - All agents must remain connected; no isolated agents are allowed.  
