@@ -19,7 +19,7 @@
 # https://github.com/cognizant-ai-lab/neuro-san/blob/main/docs/test_case_hocon_reference.md
 #
 # You can run this test by doing the following:
-# https://github.com/cognizant-ai-lab/neuro-san-studio/blob/main/CONTRIBUTING.md
+# https://github.dev/cognizant-ai-lab/neuro-san-studio/blob/355_add_smoke_test_using_music_pro_hocon/CONTRIBUTING.md#testing-guidelines
 
 
 from unittest import TestCase
