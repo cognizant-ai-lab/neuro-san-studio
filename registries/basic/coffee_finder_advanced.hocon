@@ -16,6 +16,21 @@
 
 include "registries/aaosa_basic.hocon"
 
+# Optional metadata describing this agent network
+metadata {
+    description =
+"""Agent network that helps users find places that sell coffee and place orders.
+It checks the current time, places orders and remembers user preferences."""
+    tags = ["AAOSA", "tool", "time", "sly_data", "memory"]
+    sample_queries = [
+        "Where can I get coffee?",
+        "Get me black coffee from Henry's",
+        "My name is Mike",
+        "What time is it?",
+        "Mike here. Get me the same as usual",
+    ]
+}
+
 llm_config {
     class = "openai"
     model_name = "gpt-4.1"
