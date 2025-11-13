@@ -163,9 +163,10 @@ This project follows these coding standards:
 
 For macOS/Linux:
 ```bash
-make lint       # Run linting on source code
-make lint-tests # Run linting on test code
-make test       # Run all tests with coverage
+make lint               # Run linting on source code
+make lint-tests         # Run linting on test code
+make test               # Run all tests with coverage except integration test
+make test-integration   # run integration test
 ```
 
 For Windows (manual):
@@ -298,7 +299,7 @@ The Makefile provides convenient commands for development (macOS/Linux):
 - `make lint` - Run code formatting and linting
 - `make lint-tests` - Run linting on tests
 - `make test` - Run all tests with coverage except integration test
-- `make test-integration` - Run only integration
+- `make test-integration` - Run integration test
 
 ## Keeping Your Fork Updated
 
