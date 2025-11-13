@@ -15,7 +15,7 @@
 # END COPYRIGHT
 
 # This file defines everything necessary for a data-driven test.
-# This file are documented here to run this test:
+# This file is documented here to run this test:
 # https://github.com/cognizant-ai-lab/neuro-san/blob/main/docs/test_case_hocon_reference.md
 #
 # You can run this test by doing the following:
