@@ -33,6 +33,12 @@ HOCON_HEADER_START = (
     "# The path to this substitution file is **relative to the top-level directory**,\n"
     "# so running the script from elsewhere may result in file not found errors.\n"
     '    include "registries/aaosa.hocon"\n'
+    "# Optional metadata describing this agent network\n"
+    '    "meta_data": {\n'
+    '        "sample_queries": [\n'
+    "            %s\n"
+    "        ]\n"
+    "    },\n"
     '    "llm_config": {\n'
     '        "model_name": "gpt-4o",\n'
     "    },\n"
@@ -102,13 +108,20 @@ class HoconAgentNetworkAssembler(AgentNetworkAssembler):
     - a list of down-chain agents (agents reporting to it)
     """
 
-    def assemble_agent_network(self, network_def: dict[str, Any], top_agent_name: str, agent_network_name: str) -> str:
+    def assemble_agent_network(
+            self,
+            network_def: dict[str, Any],
+            top_agent_name: str,
+            agent_network_name: str,
+            sample_queries: list[str]
+    ) -> str:
         """
         Substitutes value from agent network definition into the template of agent network HOCON file
 
         :param network_def: Agent network definition
         :param top_agent_name: The name of the top agent
         :param agent_network_name: The file name, without the .hocon extension
+        :param sample_queries: List of sample queries for the agent network
 
         :return: A full agent network HOCON as a string.
         """
@@ -117,7 +130,10 @@ class HoconAgentNetworkAssembler(AgentNetworkAssembler):
             top_agent: dict[str, Any] = network_def.pop(top_agent_name)
             network_def = {top_agent_name: top_agent, **network_def}
 
-        agent_network_hocon: str = HOCON_HEADER_START + agent_network_name + HOCON_HEADER_REMAINDER
+        # Format sample queries as HOCON list elements
+        formatted_queries: str = self._format_sample_queries(sample_queries)
+
+        agent_network_hocon: str = HOCON_HEADER_START % formatted_queries + agent_network_name + HOCON_HEADER_REMAINDER
 
         for agent_name, agent in network_def.items():
             tools = ""
@@ -153,3 +169,19 @@ class HoconAgentNetworkAssembler(AgentNetworkAssembler):
 
         agent_network_hocon += "]\n}\n"
         return agent_network_hocon
+
+    def _format_sample_queries(self, sample_queries: list[str]) -> str:
+        """
+        Format sample queries as HOCON list elements.
+
+        :param sample_queries: List of sample queries for the agent network
+
+        :return: Formatted sample queries as a string.
+        """
+        formatted_queries = ""
+        if sample_queries:
+            parts = []
+            for query in sample_queries:
+                parts.append(f'"{query}"')
+            formatted_queries = ",\n            ".join(parts)
+        return formatted_queries

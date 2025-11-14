@@ -93,18 +93,20 @@ class PersistAgentNetwork(CodedTool):
             logger.error(error_msg)
             return error_msg
 
+        # Get sample queries from args
+        sample_queries: list[str] = args.get("sample_queries")
+
         # Get the agent network name from sly data
         the_agent_network_name: str = sly_data.get(AGENT_NETWORK_NAME)
 
         logger.info(">>>>>>>>>>>>>>>>>>>Create Agent Network>>>>>>>>>>>>>>>>>>")
         logger.info("Agent Network Name: %s", str(the_agent_network_name))
-        print(f"\n\n{args=}\n\n")
         # Get the persistor first, as that will determine how we want to assemble the agent network
         persistor: AgentNetworkPersistor = AgentNetworkPersistorFactory.create_persistor(args, WRITE_TO_FILE)
         assembler: AgentNetworkAssembler = persistor.get_assembler()
 
         persisted_content: str = assembler.assemble_agent_network(
-            validator.network, validator.get_top_agent(), the_agent_network_name
+            validator.network, validator.get_top_agent(), the_agent_network_name, sample_queries
         )
         logger.info("The resulting agent network: \n %s", str(persisted_content))
 
