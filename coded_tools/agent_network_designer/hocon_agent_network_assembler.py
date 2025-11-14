@@ -109,7 +109,7 @@ class HoconAgentNetworkAssembler(AgentNetworkAssembler):
     """
 
     def assemble_agent_network(
-            self, network_def: dict[str, Any], top_agent_name: str, agent_network_name: str, sample_queries: list[str]
+        self, network_def: dict[str, Any], top_agent_name: str, agent_network_name: str, sample_queries: list[str]
     ) -> str:
         """
         Substitutes value from agent network definition into the template of agent network HOCON file
