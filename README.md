@@ -1,11 +1,10 @@
-# Neuro San
+# Neuro San Studio
 
-<!-- pyml disable-next-line no-inline-html -->
-<h2 align="center">Neuro SAN Studio</h2>
-<p align="center">
-  A playground for <a href="https://github.com/cognizant-ai-lab/neuro-san">Neuro SAN</a> - this repo includes working
-  examples to get started, explore, extend, and experiment with custom multi-agent networks!
-</p>
+**Your launchpad for building intelligent multi-agent systems.** Neuro SAN Studio is a hands-on playground for the
+[Neuro SAN](https://github.com/cognizant-ai-lab/neuro-san) framework, featuring ready-to-run examples, tutorials, and
+tools that let you design, test, and deploy sophisticated agent networks in minutes—not months. Whether you're a
+researcher exploring adaptive AI systems, a developer prototyping production solutions, or a domain expert configuring
+agents without code, this studio handles the orchestration complexity so you can focus on solving real problems.
 
 <!-- pyml disable-next-line no-inline-html -->
 <p align="center">
