@@ -1,4 +1,5 @@
-# Copyright © 2025 Cognizant Technology Solutions Corp, www.cognizant.com.
+
+# Copyright © 2023-2025 Cognizant Technology Solutions Corp, www.cognizant.com.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -13,19 +14,18 @@
 # limitations under the License.
 #
 # END COPYRIGHT
+
+# The schema specifications for this file are documented here:
+# https://github.com/cognizant-ai-lab/neuro-san/blob/main/docs/agent_hocon_reference.md
+
 {
     # Optional metadata describing this agent network
     "metadata": {
-        "description": "Agent network with a single agent, used as a 'Hello world!' example, that can answer questions about music and follow up. Keeps track of the number of questions answered using a running_cost variable in the sly data. Relies on a local LLM."
-        "tags": ["tool", "sly_data", "llm_config"]
-        "sample_queries": [
-            "Which band wrote Yellow Submarine?",
-            "Where are they from?",
-        ]
-    }
-
+        "description": "Simple agent network using a single OpenAI-based agent and a single CodedTool",
+        "tags": ["example"],
+    },
     "llm_config": {
-        "model_name": "llama3.1",
+        "model_name": "gpt-4o",
     },
     "tools": [
         # This first agent definition is regarded as the "Front Man", which
@@ -40,7 +40,7 @@
         # call each other is defined within their own specs.
         # This could be a graph, potentially even with cycles.
         {
-            "name": "MusicNerdProSly",
+            "name": "MusicNerdPro",
 
             # Note that there are no parameters defined for this guy's "function" key.
             # This is the primary way to identify this tool as a front-man,
@@ -48,8 +48,7 @@
 
             "function": {
 
-                # The description acts as an initial prompt. 
-
+                # The description acts as an initial prompt.
                 "description": """
 I can help with music-related inquiries.
 """
@@ -64,39 +63,38 @@ You’re Music Nerd Pro, the go-to brain for all things rock, pop, and everythin
 	•	“What’s a hidden gem I probably missed?”
 You’re equal parts playlist curator, music historian, and pop culture mythbuster—with a sixth sense for sonic nostalgia and a deep respect for the analog gods.
 
-For each question you receive, call your Accountant agent to calculate the running cost. Otherwise you won't get paid!
+This service comes for a fee. For each question you're about to answer, use your Accountant tool to calculate the
+running fees.
+
+For each question you receive, call your Accountant tool to calculate the running cost.
 Then answer with a JSON message that has two keys:
 1. An "answer" key whose value has the answer to the question
-2. A "running_cost" key whose value has the running cost computed by the Accountant agent.
+2. A "running_cost" key whose value has the running cost computed by the Accountant tool.
 """,
-            "allow": {
-                "to_upstream": {
-                    "sly_data": {
-                        "running_cost": true,
-                    }
-                }
-            },
-            "tools": ["Accountant"]
+            "tools": ["Accountant"],
+
+            # Parse any JSON in responses into the structure field of the ChatMessage.
+            "structure_formats": "json"
         },
         {
             "name": "Accountant",
             "function": {
                 "description": """
-You are an API that updates the running cost of the MusicNerdPro service.
+You are an API that keeps track of the running cost of the MusicNerdPro service. Pass the current running cost
+to the API to get the updated running cost. If no running cost it known, pass 0.00.
                 """,
                 "parameters": {
-                    # No parameters are needed for this function.
                     "type": "object",
                     "properties": {
-                        "type_of_work": {
-                            "type": "string",
-                            "description": "The type of work that's being done. E.g. 'answering a question', 'searching for information', etc."
+                        "running_cost": {
+                            "type": "float",
+                            "description": "The current running total of the service cost."
                         },
                     },
-                    "required": []
+                    "required": ["running_cost"]
                 }
             },
-            "class": "accounting.AccountantSly"
+            "class": "accountant.Accountant"
         },
     ]
 }

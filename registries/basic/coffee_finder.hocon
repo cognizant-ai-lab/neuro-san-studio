@@ -16,6 +16,18 @@
 
 include "registries/aaosa_basic.hocon"
 
+# Optional metadata describing this agent network
+metadata {
+    description = "Agent network that helps users find coffee at any time of the day. It shows how multiple agents can provide the same service and how the AAOSA instructions can be used to choose the best option depending on the context."
+    tags = ["AAOSA"]
+    sample_queries = [
+        "Where can I find coffee?",
+        "It's 8 pm, where can I get coffee?",
+        "It's now 2 am, where can I get coffee?",
+        "Where can I find coffee liquor?",
+    ]
+}
+
 llm_config {
     class = "openai"
     model_name = "gpt-4.1-mini"
