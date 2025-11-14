@@ -35,7 +35,7 @@
     #        # ${GITHUB_TOKEN} is an environment variable that should contain a valid GitHub Copilot token.
     #         "Authorization": "Bearer" ${GITHUB_TOKEN}
     #     },
-    #     "tools": ["create_issue"]
+    #     "tools": ["issue_write"]
     #     # filter the tool to only create_issue. Note that there is a bug making this filtering not function properly in neuro-san==0.5.65,
     #     # which will be fixed in the next release.
     # },
