@@ -49,6 +49,10 @@ python_files = "test_*.py"
 python_classes = "Test*"
 python_functions = "test_*"
 addopts = "--verbose --cov=. --cov-report=term-missing --no-cov-on-fail"
+markers = [
+    "existing_marker: ...",
+    "integration: integration tests that may be slow or hit external services",
+]
 
 [tool.coverage.run]
 omit = ["tests/*", "*/venv/*"]
