@@ -16,6 +16,16 @@
 {
     include "registries/aaosa.hocon"
 
+ 
+    "metadata": {
+        "description": "Multi-agent system that mimics the intranet of a major corporation. Allows you to interact with and get information from various departments such as IT, Finance, Legal, HR, and Procurement. The top-level agent receives a question and, in coordination with down-chain agents, provides comprehensive answers.",
+        "tags": ["AAOSA", "industry"],
+        "sample_queries": [
+            "I recently got married",
+            "How do I check my pay stub?",
+        ]
+    }
+
     "llm_config": {
         "model_name": "gpt-4o",
     },

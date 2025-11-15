@@ -27,6 +27,18 @@
     "llm_config": {
         "model_name": "gpt-4o",
     },
+
+    # Optional metadata describing this agent network
+    "metadata": {
+        "description": "Web search assistant that leverages OpenAI's built-in web search tool to retrieve accurate, up-to-date information from across the internet through natural language queries.",
+        "tags": ["web-search", "openai", "tool"],
+        "sample_queries": [
+            "Find recent news about AI developments",
+            "Search for information about renewable energy trends",
+            "What are the latest developments in quantum computing research?",
+        ]
+    },
+
     "tools": [
         # This first agent definition is regarded as the "Front Man", which
         # does all the talking to the outside world/client.

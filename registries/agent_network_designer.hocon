@@ -14,6 +14,16 @@
 #
 # END COPYRIGHT
 {
+    "metadata": {
+        "description": "Multi-agent system designed to create or modify other multi-agent systems. Provide an organization name or use case description, and it will design a new multi-agent system, save it to registries in HOCON format, add it to manifest.hocon, and generate example usage queries. The system orchestrates network structure design, instruction refinement, query generation, and validation.",
+        "tags": ["experimental", "tool"],
+        "sample_queries": [
+            "Create a network for UNHCR back-office",
+            "Design an agent network for a hospital management system",
+            "Build a multi-agent system for e-commerce customer support",
+        ]
+    },
+    
     "llm_config": {
         "model_name": "gpt-4o",
     },
@@ -118,6 +128,18 @@ Operational notes:
             "class": "persist_agent_network.PersistAgentNetwork"
             "function": {
                 "description": "Generate the complete persisted definition for an agent network and save it. Must always call this tool before giving response."
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "sample_queries": {
+                            "type": "array",
+                            "items": {
+                                "type": "string"
+                            },
+                            "description": "List of sample queries"
+                        }
+                    }
+                }
             },
             "allow": {
                 "reservations": True

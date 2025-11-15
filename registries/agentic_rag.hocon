@@ -17,6 +17,18 @@
     "llm_config": {
         "model_name": "gpt-4o",
     },
+
+    # Optional metadata describing this agent network
+    "metadata": {
+        "description": "Agentic RAG assistant that intelligently retrieves and integrates content from websites, document-based knowledge, and Slack channels to answer user queries through modular tool orchestration.",
+        "tags": ["rag", "slack", "tool"],
+        "sample_queries": [
+            "What is the evaluation criteria in the RFP?",
+            "Search for recent information about AI developments and check our team's Slack discussion",
+            "Find details from the project documents and related web sources",
+        ]
+    },
+
     "tools": [
         # This first agent definition is regarded as the "Front Man", which
         # does all the talking to the outside world/client.

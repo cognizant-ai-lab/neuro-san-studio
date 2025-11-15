@@ -24,6 +24,18 @@
     "llm_config": {
         "model_name": "gpt-4o",
     },
+
+    # Optional metadata describing this agent network
+    "metadata": {
+        "description": "Confluence RAG assistant that answers user queries using Retrieval-Augmented Generation on Confluence pages, supporting page and space loading with optional attachment processing.",
+        "tags": ["rag", "confluence", "tool"],
+        "sample_queries": [
+            "What information is on the team wiki page?",
+            "Summarize the documentation in the project space",
+            "Find details about the API guidelines in Confluence",
+        ]
+    },
+
     "tools": [
         # This first agent definition is regarded as the "Front Man", which
         # does all the talking to the outside world/client.
