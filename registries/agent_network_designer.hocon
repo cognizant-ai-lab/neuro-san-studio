@@ -128,6 +128,18 @@ Operational notes:
             "class": "persist_agent_network.PersistAgentNetwork"
             "function": {
                 "description": "Generate the complete persisted definition for an agent network and save it. Must always call this tool before giving response."
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "sample_queries": {
+                            "type": "array",
+                            "items": {
+                                "type": "string"
+                            },
+                            "description": "List of sample queries"
+                        }
+                    }
+                }
             },
             "allow": {
                 "reservations": True
