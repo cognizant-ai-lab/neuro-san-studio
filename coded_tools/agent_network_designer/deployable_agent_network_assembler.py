@@ -46,7 +46,7 @@ class DeployableAgentNetworkAssembler(AgentNetworkAssembler):
         self.aaosa_defs: dict[str, Any] = persistence.restore(file_reference=aaosa_file)
 
     def assemble_agent_network(
-        self, network_def: dict[str, Any], top_agent_name: str, agent_network_name: str
+        self, network_def: dict[str, Any], top_agent_name: str, agent_network_name: str, sample_queries: list[str]
     ) -> dict[str, Any]:
         """
         Assemble the agent network from the definition.
@@ -54,6 +54,7 @@ class DeployableAgentNetworkAssembler(AgentNetworkAssembler):
         :param network_def: Agent network definition
         :param top_agent_name: The name of the top agent
         :param agent_network_name: The file name, without the .hocon extension
+        :param sample_queries: List of sample queries for the agent network
 
         :return: Some representation of the agent network
         """
@@ -66,6 +67,10 @@ class DeployableAgentNetworkAssembler(AgentNetworkAssembler):
         agent_network: dict[str, Any] = deepcopy(self.template)
         agent_network["tools"] = []
         del agent_network["commondefs"]
+
+        # Add metadata if sample queries are provided
+        if sample_queries:
+            agent_network["metadata"] = {"sample_queries": sample_queries}
 
         agent_name: str = None
         agent_def: dict[str, Any] = {}
