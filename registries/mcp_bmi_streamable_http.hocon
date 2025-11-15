@@ -17,6 +17,18 @@
     "llm_config": {
         "model_name": "gpt-4o",
     },
+
+    # Optional metadata describing this agent network
+    "metadata": {
+        "description": "Agent network that connects LLM to an MCP server using streamable HTTP transport to calculate BMI, demonstrating how to integrate MCP servers in coded tools.",
+        "tags": ["mcp", "tool"],
+        "sample_queries": [
+            "Calculate my BMI if I weigh 70kg and I'm 1.75 meters tall",
+            "What is the BMI for someone who weighs 85kg and is 1.8m tall?",
+            "Calculate BMI for weight 65kg and height 1.65m",
+        ]
+    },
+
     "tools": [
         # This first agent definition is regarded as the "Front Man", which
         # does all the talking to the outside world/client.
