@@ -43,10 +43,10 @@ Please use our issue templates:
 ## Community Resources
 
 - **YouTube**: [Decision AI](https://www.youtube.com/@decision-ai) - Tutorials and demos
-- **Twitter/X**: [@decision__ai](https://x.com/decision__ai) - Updates and announcements
+- **X**: [@decision__ai](https://x.com/decision__ai) - Updates and announcements
 - **LinkedIn**: [Cognizant AI Lab](https://www.linkedin.com/showcase/cognizant-ai-lab) - Professional updates
-- **Blog**: [Medium](https://medium.com/@evolutionmlmail) - Technical articles and insights
 - **DeepWiki**: [Neuro SAN Studio](https://deepwiki.com/cognizant-ai-lab/neuro-san-studio) - AI-powered documentation search
+- **Community Projects**: See the [Community Projects](README.md#community-projects) section in our README for projects developed by the community
 
 ## Neuro SAN Library
 
@@ -103,10 +103,6 @@ See our [Contributing Guide](CONTRIBUTING.md) for details.
 ### Cognizant AI Lab
 - **Website**: [Cognizant AI Lab](https://www.cognizant.com/us/en/ai-lab)
 - **Neuro SAN Landing Page**: [Neuro SAN](https://www.cognizant.com/us/en/ai-lab/neuro-san)
-
-### Community Projects
-
-See the [Community Projects](README.md#community-projects) page for a list of projects developed by the community.
 
 ---
 

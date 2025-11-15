@@ -340,22 +340,10 @@ a basic Flask web client interface for Neuro SAN.
 
 ## Links
 
-* YouTube: [Decision AI](https://www.youtube.com/@decision-ai)
 * Website: [Cognizant AI Lab](https://www.cognizant.com/us/en/ai-lab)
-* Twitter: [x.com/decision__ai](https://x.com/decision__ai)
+* YouTube: [Decision AI](https://www.youtube.com/@decision-ai)
+* X: [x.com/decision__ai](https://x.com/decision__ai)
 * LinkedIn: [Cognizant AI Lab](https://www.linkedin.com/showcase/cognizant-ai-lab)
-* Medium blog: [medium.com/@evolutionmlmail](https://medium.com/@evolutionmlmail)
-
----
-
-## Blog posts
-
-* [Code versus Model in Multi-Agentic Systems](https://medium.com/@evolutionmlmail/code-versus-model-in-multi-agentic-systems-e33cf581e32b):
-dives into how to design reliable multi-agent systems by dividing responsibilities between LLM reasoning
-and coded tools.
-* [Neuro SAN Is All You Need — A Data-Driven Multi-Agent Orchestration Framework](https://medium.com/@evolutionmlmail/neuro-san-is-all-you-need-a-data-driven-multi-agent-orchestration-framework-563fbd31a735):
-explores Neuro SAN's architecture, configuration model, adaptive communication protocol (AAOSA),
-and how it enables secure, extensible agent collaboration without hardcoded logic.
 
 ---
 
