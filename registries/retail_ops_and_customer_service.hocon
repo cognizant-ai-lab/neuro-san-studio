@@ -16,6 +16,16 @@
 {
     include "registries/aaosa.hocon"
     
+    "metadata": {
+        "description": "Modular multi-agent system for automating customer support in retail. Simulates a helpdesk with agents managing orders, returns, refunds, product information, and escalations. Uses domain-specific delegation to provide personalized support while adhering to company policies. Currently runs in demo mode and is designed for easy connection to live systems.",
+        "tags": ["retail", "AAOSA"],
+        "sample_queries": [
+            "I recently placed an order for a MacBook Pro and a Magic Mouse from your website. However, I received a Trackpad instead of the Magic Mouse.",
+            "What's the status of my order #123456?",
+            "I need to return a defective product and get a refund.",
+        ]
+    },
+
     "llm_config": {
         "model_name": "gpt-4o",
     },

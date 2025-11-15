@@ -26,6 +26,16 @@
     # so running the script from elsewhere may result in file not found errors.
     include "registries/aaosa.hocon"
 
+    "metadata": {
+        "description": "Multi-agent system that mimics the intranet of a major corporation with integrated tools. Allows you to interact with and get information from various departments such as IT, Finance, Legal, HR, and Procurement. The top-level agent receives a question and, in coordination with down-chain agents and functional tools, provides comprehensive answers. Some agents call coded tools, including HR agents that integrate with HCM APIs for absence management and leave scheduling.",
+        "tags": ["AAOSA", "enterprise", "tool", "HCM", "API-integration"],
+        "sample_queries": [
+            "How many days of vacation do I have left?",
+            "Schedule vacation from December 20 to December 31",
+            "I need to take a sick day tomorrow",
+        ]
+    }
+    
     "llm_config": {
         "model_name": "gpt-4o"
     },

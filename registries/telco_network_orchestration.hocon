@@ -15,6 +15,16 @@
 # END COPYRIGHT
 
 {
+    "metadata": {
+        "description": "Simulates a large-scale telecommunication network orchestration system, including monitoring, fault detection and resource allocation, for a telco company in Australia. The network is organized into regions (NSW: New South Wales, VIC: Victoria, QLD: Queensland), each with a site manager and a set of nodes. The agents are NOT grounded and will simulate access to the network's systems instead.",
+        "tags": ["AAOSA", "telecommunications", "network-orchestration", "monitoring", "fault-detection", "resource-allocation", "simulation"],
+        "sample_queries": [
+            "What severe incidents occurred in the last 24 hours, and how were they mitigated?",
+            "We have a major event in Sydney this weekend. Can we reconfigure the network accordingly?",
+            "What is the current network status across all regions?",
+        ]
+    }
+
     "llm_config": {
         "model_name": "gpt-4o",
         "verbose": true

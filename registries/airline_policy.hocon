@@ -16,6 +16,16 @@
 {
     include "registries/aaosa.hocon"
     
+    "metadata": {
+        "description": "Sophisticated multi-agent system designed to manage and respond to customer inquiries by referring to airline policies with structured delegation. Mimics a real-world airline helpdesk with specialized teams handling specific domains such as baggage, flights, and international travel. Uses document intelligence tools to extract policy information from PDFs and provides official URLs for additional resources.",
+        "tags": ["AAOSA", "customer-service", "airline", "policy-management", "document-intelligence", "helpdesk", "tool"],
+        "sample_queries": [
+            "Can I carry my guitar as a cabin item on my flight to Madrid?",
+            "What are the baggage allowances for Basic Economy?",
+            "How many checked bags can I bring on an international flight?",
+        ]
+    }
+    
     "llm_config": {
         "model_name": "gpt-4o",
     },

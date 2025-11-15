@@ -27,6 +27,15 @@
 
     include "registries/aaosa.hocon"
     
+    "metadata": {
+        "description": "Hierarchically organized multi-agent system simulating full-spectrum banking support across account servicing, fraud detection, credit underwriting, wealth management, and investment advisory. Specialized agents coordinate to deliver precise, compliant, and context-aware outputs across banking functions. Currently operates in demo mode.",
+        "tags": ["banking", "AAOSA"],
+        "sample_queries": [
+            "I'm planning to invest $5,000 every month for the next 12 months. Can you suggest a strategy for moderate risk profile?",
+            "Can you provide guidelines on how to avoid investment fraud and identify red flags?",
+            "I need help with a mortgage application for a small business property.",
+        ]
+    },
     "llm_config": {
         "model_name": "gpt-4o",
     },

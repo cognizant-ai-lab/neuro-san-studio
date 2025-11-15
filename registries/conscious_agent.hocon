@@ -14,6 +14,16 @@
 #
 # END COPYRIGHT
 {
+    "metadata": {
+        "description": "Multi-agent system that runs continuously in the background, autonomously thinking and potentially initiating conversations. Called from Flask app, it remembers facts from conversations and stores them in persistent memory. Can retrieve relevant memories, generate thoughts, and decide when to speak or remain silent. Reuses kwik_agents coded tools for memory operations.",
+        "tags": ["memory", "flask", "sly_data", "tool"],
+        "sample_queries": [
+            "What have you been thinking about?",
+            "Tell me what you remember about our previous conversations",
+            "What are your thoughts on AI consciousness?",
+        ]
+    },
+
     "llm_config": {
         "model_name": "gpt-4.1-2025-04-14",
     },

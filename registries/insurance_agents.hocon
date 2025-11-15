@@ -16,6 +16,16 @@
 {
     include "registries/aaosa.hocon"
     
+    "metadata": {
+        "description": "Modular multi-agent framework designed to automate underwriting and claims workflows for insurance operations. Replicates real-world insurance operations desk functions, coordinating across multiple teams including ACORD form validation, risk assessment, underwriting decision generation, and claims intake. Currently runs in demo mode.",
+        "tags": ["insurance", "AAOSA"],
+        "sample_queries": [
+            "How does the underwriting process work for business insurance policies?",
+            "Can you provide a breakdown of the approved coverage and limits for claim ID 67890?",
+            "I need to file a new insurance claim for property damage.",
+        ]
+    },
+    
     "llm_config": {
         "model_name": "gpt-4o",
     },
