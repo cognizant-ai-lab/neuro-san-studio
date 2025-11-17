@@ -31,6 +31,16 @@
 
     include "registries/aaosa.hocon"
 
+    "metadata": {
+        "description": "Context Reactive User Experience (CRUSE) agentic interface that determines user intent from interaction context and dynamically generates UI elements. Called from Flask app to provide form-augmented interface interaction. Can attach to any agent network to enable context-reactive user experience with automatically generated forms based on conversation state.",
+        "tags": ["tool", "AAOSA"],
+        "sample_queries": [
+            "I'd like to take next week off",
+            "Our office network is down. I'd like to tether to my personal phone",
+            "I need to return a pair of jeans I bought at the store"
+        ]
+    },
+    
     "llm_config": {
         "model_name": "gpt-4o",
     },

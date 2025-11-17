@@ -17,6 +17,18 @@
     "llm_config": {
         "model_name": "gpt-4o",
     },
+
+    # Optional metadata describing this agent network
+    "metadata": {
+        "description": "Visual Question Answering (VQA) agent that answers questions about image and video files using Apple's ml-fastvlm library, with answers returned in JSON format.",
+        "tags": ["vision", "tool"],
+        "sample_queries": [
+            "How many people are in the image?",
+            "What animal is in the video?",
+            "Describe what you see in this image",
+        ]
+    },
+
     "tools": [
         # This first agent definition is regarded as the "Front Man", which
         # does all the talking to the outside world/client.

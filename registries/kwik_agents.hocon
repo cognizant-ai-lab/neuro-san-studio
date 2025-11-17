@@ -15,6 +15,16 @@
 # END COPYRIGHT
 
 {
+    "metadata": {
+        "description": "Multi-agent system with memory capabilities that can remember new facts and recall them during conversations. Stores memories organized by topics in sly_data with optional file persistence. Demonstrates agent-oriented software for memory storage and retrieval with timestamped entries.",
+        "tags": ["memory", "sly_data", "tool", "experimental"],
+        "sample_queries": [
+            "Bill has a dog named Max",
+            "What do you know about Bill?",
+            "Remember that Alice lives in San Francisco and works as a software engineer",
+        ]
+    },
+    
     "llm_config": {
         "model_name": "gpt-4.1-2025-04-14",
     },

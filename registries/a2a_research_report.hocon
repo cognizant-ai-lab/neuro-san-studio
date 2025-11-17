@@ -28,6 +28,18 @@
     "llm_config": {
         "model_name": "gpt-4o",
     },
+
+    # Optional metadata describing this agent network
+    "metadata": {
+        "description": "Agent network that uses coded tool as an A2A client to connect to crewAI agents running in an A2A server, demonstrating Agent2Agent protocol implementation for research report generation.",
+        "tags": ["crewai", "tool"],
+        "sample_queries": [
+            "Write a research report on artificial intelligence trends",
+            "Generate a report about renewable energy developments",
+            "Create bullet points on quantum computing research",
+        ]
+    },
+
     "tools": [
         # This first agent definition is regarded as the "Front Man", which
         # does all the talking to the outside world/client.

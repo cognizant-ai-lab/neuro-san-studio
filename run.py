@@ -58,7 +58,7 @@ class NeuroSanRunner:
             "default_sly_data": str(os.getenv("DEFAULT_SLY_DATA", "")),
             "nsflow_host": os.getenv("NSFLOW_HOST", "localhost"),
             "nsflow_port": int(os.getenv("NSFLOW_PORT", "4173")),
-            "log_level": os.getenv("STUDIO_LOG_LEVEL", "info"),
+            "log_level": os.getenv("LOG_LEVEL", "info"),
             "vite_api_protocol": os.getenv("VITE_API_PROTOCOL", "http"),
             "vite_ws_protocol": os.getenv("VITE_WS_PROTOCOL", "ws"),
             "neuro_san_web_client_port": int(os.getenv("NEURO_SAN_WEB_CLIENT_PORT", "5003")),
@@ -83,14 +83,14 @@ class NeuroSanRunner:
         os.makedirs(self.logs_dir, exist_ok=True)
         os.makedirs(self.thinking_dir, exist_ok=True)
 
+        # Parse command-line arguments
+        self.args.update(self.parse_args())
+
         if self.args.get("logbridge_enabled"):
             self.log_bridge = ProcessLogBridge(
                 level=self.args.get("log_level", "info"),
                 runner_log_file=os.path.join(self.args["logs_dir"], "runner.log"),
             )
-        # Parse command-line arguments
-        self.args.update(self.parse_args())
-
         # Process references
         self.server_process = None
         self.flask_webclient_process = None
@@ -143,6 +143,9 @@ class NeuroSanRunner:
             help="Port number for the web client",
         )
         parser.add_argument(
+            "--log-level", type=str, default=self.args["log_level"], help="Log level for all processes"
+        )
+        parser.add_argument(
             "--thinking-file", type=str, default=self.args["thinking_file"], help="Path to the agent thinking file"
         )
         parser.add_argument("--no-html", action="store_true", help="Don't generate html for network diagrams")
@@ -183,6 +186,7 @@ class NeuroSanRunner:
         os.environ["AGENT_TOOLBOX_INFO_FILE"] = self.args["agent_toolbox_info_file"]
         os.environ["NEURO_SAN_SERVER_CONNECTION"] = self.args["server_connection"]
         os.environ["AGENT_MANIFEST_UPDATE_PERIOD_SECONDS"] = str(self.args["manifest_update_period_seconds"])
+        os.environ["LOG_LEVEL"] = self.args["log_level"]
         print(f"PYTHONPATH set to: {os.environ['PYTHONPATH']}")
         print(f"AGENT_MANIFEST_FILE set to: {os.environ['AGENT_MANIFEST_FILE']}")
         print(f"AGENT_TOOL_PATH set to: {os.environ['AGENT_TOOL_PATH']}")

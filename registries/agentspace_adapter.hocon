@@ -17,6 +17,18 @@
     "llm_config": {
         "model_name": "gpt-4o",
     },
+
+    # Optional metadata describing this agent network
+    "metadata": {
+        "description": "Agent network that delegates to a Google Agentspace agent to interact with different data store connectors on Google Cloud and answer questions about configured data sources.",
+        "tags": ["google", "agentspace", "tool"],
+        "sample_queries": [
+            "What is the percent representation of each state in the customer profile data?",
+            "Search for information about product sales in Q3",
+            "Query the customer database for recent transactions",
+        ]
+    },
+
     "tools": [
         # This first agent definition is regarded as the "Front Man", which
         # does all the talking to the outside world/client.

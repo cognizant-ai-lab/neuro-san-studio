@@ -13,10 +13,24 @@
 # limitations under the License.
 #
 # END COPYRIGHT
+
 {
     "llm_config": {
         "model_name": "gpt-4o",
     },
+
+    # Optional metadata describing this agent network
+    "metadata": {
+        "description": "Agent network that delegates to a Salesforce Agentforce agent to interact with a CRM system, managing session state and API communication automatically.",
+        "tags": ["salesforce", "tool"],
+        "sample_queries": [
+            "Can you give me a list of Jane Doe's most recent cases?",
+            "What are the open opportunities for this account?",
+            "Show me the customer support tickets for account ABC123",
+        ]
+    },
+
+
     "tools": [
         # This first agent definition is regarded as the "Front Man", which
         # does all the talking to the outside world/client.
