@@ -34,7 +34,7 @@ HOCON_HEADER_START = (
     "# so running the script from elsewhere may result in file not found errors.\n"
     '    include "registries/aaosa.hocon"\n'
     "# Optional metadata describing this agent network\n"
-    '    "meta_data": {\n'
+    '    "metadata": {\n'
     '        "sample_queries": [\n'
     "            %s\n"
     "        ]\n"
