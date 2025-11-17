@@ -1,0 +1,95 @@
+name: Test
+
+on:
+  release:
+    types: [published]   # or [created, published, prereleased] if you prefer
+  workflow_dispatch:      # adds the "Run workflow" button in Actions
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    if: >
+      (github.event_name == 'push' && github.ref != 'refs/heads/main') ||
+      (github.event_name == 'pull_request' && github.base_ref == 'main')
+    container:
+      image: python:3.13-slim
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      
+      - name: Check if PR is from a fork
+        id: fork_check
+        run: |
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            if [ "${{ github.event.pull_request.head.repo.full_name }}" != "${{ github.repository }}" ]; then
+              echo "is_fork=true" >> $GITHUB_OUTPUT
+            else
+              echo "is_fork=false" >> $GITHUB_OUTPUT
+            fi
+          else
+          # Not a PR — so it's not a fork
+            echo "is_fork=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Install dependencies
+        shell: bash
+        run: |
+          apt-get update && apt-get install -y shellcheck make
+          python -m venv venv
+          source venv/bin/activate
+          pip install -r requirements-build.txt
+          pip install -r requirements.txt
+
+      - name: Show installed packages
+        shell: bash
+        run: |
+          source venv/bin/activate 
+          pip freeze
+
+      - name: Run make lint-check
+        # We run this check-only step to break the build if
+        # formatting changes are needed
+        shell: bash
+        run: |
+          source venv/bin/activate 
+          make lint-check
+
+      - name: Run test-integration
+        shell: bash
+        run: |
+          source venv/bin/activate 
+          pytest -s -m "integration"
+        env:
+          PYTHONPATH: ${{ env.PYTHONPATH }}:"."
+          AGENT_TOOL_PATH: "tests/coded_tools/"
+          GENT_MANIFEST_FILE: "tests/registries/manifest.hocon"
+
+      - name: Check README renders correctly on PyPI
+        shell: bash
+        run: |
+          source venv/bin/activate
+          pip install readme_renderer readme_renderer[md]
+          python -m readme_renderer README.md
+
+      - name: Notify Slack on success
+        if: success() && steps.fork_check.outputs.is_fork == 'false'
+        uses: slackapi/slack-github-action@v1.24.0
+        with:
+          payload: |
+            {
+              "text": "✅ Integration Passed* for `${{ github.repository }}` on `${{ github.ref_name }}`"
+            }
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+
+      - name: Notify Slack on failure
+        if: failure() && steps.fork_check.outputs.is_fork == 'false'
+        uses: slackapi/slack-github-action@v1.24.0
+        with:
+          payload: |
+            {
+              "text": "❌ Integration Failed* for `${{ github.repository }}` on `${{ github.ref_name }}`"
+            }
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
