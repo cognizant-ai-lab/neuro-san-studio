@@ -16,7 +16,7 @@
 
 {
     "llm_config": {
-        "model_name": "gpt-4o",
+        "model_name": "bedrock-us-claude-sonnet-4",
     },
     "tools": [
         # These tool definitions do not have to be in any particular order

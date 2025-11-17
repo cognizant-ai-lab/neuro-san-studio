@@ -28,11 +28,11 @@
         "fallbacks": [
             {
                 # Try OpenAI first
-                "model_name": "gpt-4o",
+                "model_name": "bedrock-us-claude-sonnet-4",
             },
             {
                 # Fall back to Anthropic Claude if OpenAI is unavailable.
-                "model_name": "claude-3-7-sonnet",
+                "model_name": "bedrock-us-claude-sonnet-4",
             }
         ]
     },

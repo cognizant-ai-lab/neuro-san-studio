@@ -17,7 +17,7 @@
     include "registries/aaosa.hocon"
     
     "llm_config": {
-        "model_name": "gpt-4o"
+        "model_name": "bedrock-us-claude-sonnet-4"
     },
     "instructions_prefix": """
     You are part of a LinkedInJobSeekerSupportNetwork of assistants.

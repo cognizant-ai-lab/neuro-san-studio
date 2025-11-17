@@ -52,3 +52,8 @@ addopts = "--verbose --cov=. --cov-report=term-missing --no-cov-on-fail"
 
 [tool.coverage.run]
 omit = ["tests/*", "*/venv/*"]
+
+[dependency-groups]
+dev = [
+    "langchain-aws>=1.0.0",
+]

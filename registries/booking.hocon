@@ -18,7 +18,7 @@
    include "registries/aaosa.hocon"
    
     "llm_config": {
-        "model_name": "gpt-4o"
+        "model_name": "bedrock-us-claude-sonnet-4"
     },
     "max_iterations": 2000,
     "max_execution_seconds": 600,

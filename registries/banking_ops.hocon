@@ -28,7 +28,7 @@
     include "registries/aaosa.hocon"
     
     "llm_config": {
-        "model_name": "gpt-4o",
+        "model_name": "bedrock-us-claude-sonnet-4",
     },
     "demo_mode": """You are part of a demo system, so when queried, make up a realistic response as if you are actually grounded in real data or you are operating 
     a real application API or microservice.""",

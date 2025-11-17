@@ -204,4 +204,6 @@
     "agent_network_architect.hocon": false,
     "news_sentiment_analysis.hocon": false,
     "now_agents.hocon": true,
+    "corporate_relationship_management.hocon":true,
+    "hokuriku_bank_corporate_relationship_management.hocon":true,
 }

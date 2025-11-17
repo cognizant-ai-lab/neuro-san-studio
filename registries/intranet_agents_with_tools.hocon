@@ -27,7 +27,7 @@
     include "registries/aaosa.hocon"
 
     "llm_config": {
-        "model_name": "gpt-4o"
+        "model_name": "bedrock-us-claude-sonnet-4"
     },
     "instructions_prefix": """
     You are in charge of a portion of company's intranet. The intranet is also known as MyIntranet.
