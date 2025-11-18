@@ -19,6 +19,7 @@ import logging
 from typing import Any
 from typing import Union
 
+# pylint: disable=import-error
 from ddgs import DDGS
 from neuro_san.interfaces.coded_tool import CodedTool
 
