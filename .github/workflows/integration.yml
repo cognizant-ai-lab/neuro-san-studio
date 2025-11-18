@@ -51,7 +51,7 @@ jobs:
         env:
           PYTHONPATH: ${{ env.PYTHONPATH }}:"."
           AGENT_TOOL_PATH: "tests/coded_tools/"
-          GENT_MANIFEST_FILE: "tests/registries/manifest.hocon"
+          AGENT_MANIFEST_FILE: "tests/registries/manifest.hocon"
 
       - name: Notify Slack on failure
         if: failure() && steps.fork_check.outputs.is_fork == 'false'
