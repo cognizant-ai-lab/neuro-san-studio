@@ -35,8 +35,6 @@ jobs:
       - name: Install dependencies
         shell: bash
         run: |
-          python -m venv venv
-          source venv/bin/activate
           make install
 
       - name: Show installed packages
