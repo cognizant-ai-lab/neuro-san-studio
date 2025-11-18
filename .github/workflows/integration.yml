@@ -37,9 +37,7 @@ jobs:
         run: |
           python -m venv venv
           source venv/bin/activate
-          pip install --upgrade pip
-          pip install -r requirements-build.txt
-          pip install -r requirements.txt
+          make install
 
       - name: Show installed packages
         shell: bash
