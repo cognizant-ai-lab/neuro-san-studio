@@ -105,7 +105,9 @@ class PersistAgentNetwork(CodedTool):
         logger.info(">>>>>>>>>>>>>>>>>>>Create Agent Network>>>>>>>>>>>>>>>>>>")
         logger.info("Agent Network Name: %s", str(the_agent_network_name))
         # Get the persistor first, as that will determine how we want to assemble the agent network
-        persistor: AgentNetworkPersistor = AgentNetworkPersistorFactory.create_persistor(args, WRITE_TO_FILE, DEMO_MODE)
+        persistor: AgentNetworkPersistor = AgentNetworkPersistorFactory.create_persistor(
+            args, WRITE_TO_FILE, DEMO_MODE
+        )
         assembler: AgentNetworkAssembler = persistor.get_assembler()
 
         persisted_content: str = assembler.assemble_agent_network(

@@ -138,71 +138,6 @@ class HoconAgentNetworkAssembler(AgentNetworkAssembler):
 
         return header + "".join(body) + "]\n}\n"
 
-        # # Move top agent to front
-        # if top_agent_name != next(iter(network_def)):
-        #     top_agent: dict[str, Any] = network_def.pop(top_agent_name)
-        #     network_def = {top_agent_name: top_agent, **network_def}
-
-        # # Format sample queries as HOCON list elements
-        # formatted_queries: str = self._format_sample_queries(sample_queries)
-
-        # # Prepare demo_mode block
-        # if self.demo_mode:
-        #     demo_mode_block = (
-        #         '   "demo_mode": "You are part of a demo system, so when queried, make up a realistic '
-        #         'response as if you are actually grounded in real data or you are operating a real '
-        #         'application API or microservice.",\n'
-        #     )
-        # else:
-        #     demo_mode_block = ""
-
-        # agent_network_hocon: str = (
-        #     HOCON_HEADER_START % formatted_queries
-        #     + agent_network_name
-        #     + HOCON_HEADER_REMAINDER % demo_mode_block
-        # )
-
-        # for agent_name, agent in network_def.items():
-        #     tools = ""
-        #     if agent.get("tools"):
-        #         for j, down_chain in enumerate(agent["tools"]):
-        #             tools = tools + '"' + down_chain + '"'
-        #             if j < len(agent["tools"]) - 1:
-        #                 tools = tools + ","
-
-        #     if agent_name == top_agent_name:  # top agent
-        #         an_agent = TOP_AGENT_TEMPLATE % (
-        #             agent_name,
-        #             agent["instructions"],
-        #             tools,
-        #         )
-        #     elif agent.get("tools"):
-        #         an_agent = REGULAR_AGENT_TEMPLATE % (
-        #             agent_name,
-        #             agent["instructions"],
-        #             tools,
-        #         )
-        #     elif agent.get("instructions"):  # leaf node agent
-        #         if self.demo_mode:
-        #             demo_prefix = "${demo_mode}"
-        #         else:
-        #             demo_prefix = ""
-
-        #         an_agent = LEAF_NODE_AGENT_TEMPLATE % (
-        #             agent_name,
-        #             demo_prefix,
-        #             agent["instructions"],
-        #         )
-        #     else:
-        #         an_agent = TOOLBOX_AGENT_TEMPLATE % (
-        #             agent_name,
-        #             agent_name,  # toolbox name is the same as agent name
-        #         )
-        #     agent_network_hocon += an_agent
-
-        # agent_network_hocon += "]\n}\n"
-        # return agent_network_hocon
-
     def _move_top_agent_first(self, network_def: dict[str, Any], top_agent_name: str) -> dict[str, Any]:
         """
         Ensure the top agent is the first item in the ordered dict.
@@ -246,17 +181,13 @@ class HoconAgentNetworkAssembler(AgentNetworkAssembler):
 
         demo_mode_block = (
             '   "demo_mode": "You are part of a demo system, so when queried, make up a realistic '
-            'response as if you are actually grounded in real data or you are operating a real '
+            "response as if you are actually grounded in real data or you are operating a real "
             'application API or microservice.",\n'
             if self.demo_mode
             else ""
         )
 
-        return (
-            HOCON_HEADER_START % formatted_queries
-            + agent_network_name
-            + HOCON_HEADER_REMAINDER % demo_mode_block
-        )
+        return HOCON_HEADER_START % formatted_queries + agent_network_name + HOCON_HEADER_REMAINDER % demo_mode_block
 
     def _render_agent_block(self, agent_name: str, agent: dict[str, Any], top_agent_name: str) -> str:
         """
