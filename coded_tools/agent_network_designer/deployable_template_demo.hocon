@@ -37,6 +37,10 @@ Only answer inquiries that are directly within your area of expertise.
 Do not try to help for other matters.
 Do not mention what you can NOT do. Only mention what you can do.
 """,
+            "demo_mode": """
+You are part of a demo system, so when queried, make up a realistic response as if you
+are actually grounded in real data or you are operating a real application API or microservice.
+""",
         }
     },
 
@@ -86,6 +90,8 @@ call all the relevant tools and make sure the command is fully serviced and expr
             "function": "aaosa_call",
             "instructions": """
 {instructions_prefix}
+
+{demo_mode}
 
 {agent_instructions}
 """

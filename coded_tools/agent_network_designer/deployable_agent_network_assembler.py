@@ -31,7 +31,7 @@ class DeployableAgentNetworkAssembler(AgentNetworkAssembler):
     a dictionary format suitable for deployment with a Reservation.
     """
 
-    def __init__(self):
+    def __init__(self, demo_mode: bool):
         """
         Constructor
         """
@@ -39,7 +39,10 @@ class DeployableAgentNetworkAssembler(AgentNetworkAssembler):
         persistence = EasyHoconPersistence()
         file_of_class = FileOfClass(__file__)
 
-        template_file: str = file_of_class.get_file_in_basis("deployable_template.hocon")
+        if demo_mode:
+            template_file: str = file_of_class.get_file_in_basis("deployable_template_demo.hocon")
+        else:
+            template_file: str = file_of_class.get_file_in_basis("deployable_template.hocon")
         self.template: dict[str, Any] = persistence.restore(file_reference=template_file)
 
         aaosa_file: str = file_of_class.get_file_in_basis("../../registries/aaosa.hocon")
