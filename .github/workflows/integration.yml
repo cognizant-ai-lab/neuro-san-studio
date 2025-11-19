@@ -40,8 +40,8 @@ jobs:
           source venv/bin/activate 
           pytest -s -m "integration"
         env:
-          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
-          OPENAI_API_VERSION: ${{ vars.OPENAI_API_VERSION }}
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY_ }}
+          OPENAI_API_VERSION: ${{ vars.OPENAI_API_VERSION_ }}
           PYTHONPATH: ${{ env.PYTHONPATH }}:"."
           AGENT_TOOL_PATH: "tests/coded_tools/"
           AGENT_MANIFEST_FILE: "tests/registries/manifest.hocon"
