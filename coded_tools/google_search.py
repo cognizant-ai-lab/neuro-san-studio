@@ -29,6 +29,7 @@ from neuro_san.interfaces.coded_tool import CodedTool
 from requests import HTTPError
 from requests import JSONDecodeError
 from requests import RequestException
+from requests import Timeout
 
 GOOGLE_SEARCH_URL = "https://www.googleapis.com/customsearch/v1"
 GOOGLE_SEARCH_TIMEOUT = 30.0
@@ -145,6 +146,8 @@ class GoogleSearch(CodedTool):
         logger.info("GoogleSearch Results: %s", json.dumps(results, indent=4))
 
         results_list: List[Dict[str, Any]] = []
+        # Loop over each item in the list located at results["items"]
+        # but safely, without throwing errors if "tems" is missing
         # If there are results from search, get "title", "link", "description", and "snippet"
         # from each result. For a list of available fields in a response to a custom search request
         # go to https://developers.google.com/custom-search/v1/reference/rest/v1/Search
@@ -159,7 +162,9 @@ class GoogleSearch(CodedTool):
         return results_list
 
     async def async_invoke(self, args: Dict[str, Any], sly_data: Dict[str, Any]) -> Union[Dict[str, Any], str]:
-        """Run invoke asynchronously."""
+        """
+        Run self.invoke(args, sly_data) in a thread so it won’t block the async event loop, and wait for it to finish
+        """
         return await asyncio.to_thread(self.invoke, args, sly_data)
 
     def google_search(
@@ -179,11 +184,23 @@ class GoogleSearch(CodedTool):
         """
         results: Dict[str, Any] = {}
         try:
+            # Attaches URL query parameters to the request.
+            # Example:
+            #   {"q": "python", "num": 10}
+            # becomes:
+            #   ?q=python&num=10
             response = requests.get(google_url, params=google_search_params, timeout=google_timeout)
+            # This line checks whether the HTTP request succeeded.
+            # If the status code is:
+            #   200–299 → OK, nothing happens.
+            #   400–499 → Client error → raises requests.exceptions.HTTPError
+            #   500–599 → Server error → raises requests.exceptions.HTTPError
             response.raise_for_status()
             results = response.json()
         except HTTPError as http_err:
             logging.error("HTTP error occurred: %s - Status code: %s", http_err, response.status_code)
+        except Timeout as time_out_err:
+            logging.error("Timeout error occurred: %s - Status code: %s", time_out_err, response.status_code)
         except JSONDecodeError as json_err:
             logging.error("JSON decode error: %s", json_err)
         except RequestException as req_err:
