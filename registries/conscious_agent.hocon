@@ -1,15 +1,29 @@
-
-# Copyright (C) 2023-2025 Cognizant Digital Business, Evolutionary AI.
-# All Rights Reserved.
-# Issued under the Academic Public License.
+# Copyright © 2025 Cognizant Technology Solutions Corp, www.cognizant.com.
 #
-# You can be released from the terms, and requirements of the Academic Public
-# License by purchasing a commercial license.
-# Purchase of a commercial license is mandatory for any use of the
-# neuro-san SDK Software in commercial settings.
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
 #
 # END COPYRIGHT
 {
+    "metadata": {
+        "description": "Multi-agent system that runs continuously in the background, autonomously thinking and potentially initiating conversations. Called from Flask app, it remembers facts from conversations and stores them in persistent memory. Can retrieve relevant memories, generate thoughts, and decide when to speak or remain silent. Reuses kwik_agents coded tools for memory operations.",
+        "tags": ["memory", "flask", "sly_data", "tool"],
+        "sample_queries": [
+            "What have you been thinking about?",
+            "Tell me what you remember about our previous conversations",
+            "What are your thoughts on AI consciousness?",
+        ]
+    },
+
     "llm_config": {
         "model_name": "gpt-4.1-2025-04-14",
     },

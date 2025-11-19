@@ -1,14 +1,30 @@
-# Copyright (C) 2023-2025 Cognizant Digital Business, Evolutionary AI.
-# All Rights Reserved.
-# Issued under the Academic Public License.
+# Copyright © 2025 Cognizant Technology Solutions Corp, www.cognizant.com.
 #
-# You can be released from the terms, and requirements of the Academic Public
-# License by purchasing a commercial license.
-# Purchase of a commercial license is mandatory for any use of the
-# neuro-san-studio SDK Software in commercial settings.
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
 #
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
+# END COPYRIGHT
 {
     include "registries/aaosa.hocon"
+    
+    "metadata": {
+        "description": "Sophisticated multi-agent system designed to manage and respond to customer inquiries by referring to airline policies with structured delegation. Mimics a real-world airline helpdesk with specialized teams handling specific domains such as baggage, flights, and international travel. Uses document intelligence tools to extract policy information from PDFs and provides official URLs for additional resources.",
+        "tags": ["AAOSA", "customer-service", "airline", "policy-management", "document-intelligence", "helpdesk", "tool"],
+        "sample_queries": [
+            "Can I carry my guitar as a cabin item on my flight to Madrid?",
+            "What are the baggage allowances for Basic Economy?",
+            "How many checked bags can I bring on an international flight?",
+        ]
+    }
     
     "llm_config": {
         "model_name": "gpt-4o",

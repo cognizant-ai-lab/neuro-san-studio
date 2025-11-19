@@ -1,11 +1,16 @@
-# Copyright (C) 2023-2025 Cognizant Digital Business, Evolutionary AI.
-# All Rights Reserved.
-# Issued under the Academic Public License.
+# Copyright © 2025 Cognizant Technology Solutions Corp, www.cognizant.com.
 #
-# You can be released from the terms, and requirements of the Academic Public
-# License by purchasing a commercial license.
-# Purchase of a commercial license is mandatory for any use of the
-# neuro-san SDK Software in commercial settings.
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
 #
 # END COPYRIGHT
 {
@@ -14,18 +19,18 @@
 
 
     # Basic examples
-    "music_nerd.hocon": true,
-    "music_nerd_local.hocon": true,
-    "music_nerd_pro.hocon": true,
-    "music_nerd_pro_local.hocon": true,
-    "music_nerd_pro_sly.hocon": true,
-    "music_nerd_pro_sly_local.hocon": true,
-    "music_nerd_llm_fallbacks.hocon": true,
-    "hello_world.hocon": true,
-    "advanced_calculator.hocon": false,
-    "smart_home.hocon": true,
-    "coffee_finder.hocon": true,
-    "coffee_finder_advanced.hocon": true,
+    "basic/music_nerd.hocon": true,
+    "basic/music_nerd_local.hocon": true,
+    "basic/music_nerd_pro.hocon": true,
+    "basic/music_nerd_pro_local.hocon": true,
+    "basic/music_nerd_pro_sly.hocon": true,
+    "basic/music_nerd_pro_sly_local.hocon": true,
+    "basic/music_nerd_llm_fallbacks.hocon": true,
+    "basic/hello_world.hocon": true,
+    "basic/advanced_calculator.hocon": false,
+    "basic/smart_home.hocon": true,
+    "basic/coffee_finder.hocon": true,
+    "basic/coffee_finder_advanced.hocon": true,
 
     # Tool integration examples
 
@@ -135,7 +140,7 @@
     "telco_network_orchestration.hocon": true,
     "therapy_vignette_supervisors.hocon": true,
     "consumer_decision_assistant.hocon": true,
-    # The following agent networks are used as sub-networkds by consumer_decision_assistant.hocon
+    # The following agent networks are used as sub-networks by consumer_decision_assistant.hocon
     "airbnb.hocon": true,
     "booking.hocon": true,
     "carmax.hocon": true,
@@ -145,9 +150,24 @@
     "LinkedInJobSeekerSupportNetwork.hocon": true,
     # Experimental and research
     "agent_network_designer.hocon": true,
-    "agent_network_editor.hocon": true,
-    "agent_network_instructions_editor.hocon": true,
-    "agent_network_query_generator.hocon": true,
+    "agent_network_editor.hocon": {
+        # This is a support network for agent_network_designer
+        # We want it served up, but not listed as a public agent network
+        "serve": true,
+        "public": false
+    },
+    "agent_network_instructions_editor.hocon": {
+        # This is a support network for agent_network_designer
+        # We want it served up, but not listed as a public agent network
+        "serve": true,
+        "public": false
+    },
+    "agent_network_query_generator.hocon": { 
+        # This is a support network for agent_network_designer
+        # We want it served up, but not listed as a public agent network
+        "serve": true,
+        "public": false
+    },
     "six_thinking_hats.hocon": true,
     # Set the following agent network to true before running apps/cruse/interface_flask.py
     "cruse_agent.hocon": false,

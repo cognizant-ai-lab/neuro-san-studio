@@ -1,0 +1,58 @@
+name: Integration Test
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    container:
+      image: python:3.13-slim
+
+    steps:
+      - name: Checkout (release tag)
+        if: github.event_name == 'release'
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.release.tag_name }}
+
+      - name: Checkout (manual)
+        if: github.event_name != 'release'
+        uses: actions/checkout@v4
+
+      - name: Install dependencies
+        shell: bash
+        run: |
+          apt-get update && apt-get install -y make
+          make install
+
+      - name: Show installed packages
+        shell: bash
+        run: |
+          source venv/bin/activate 
+          pip freeze
+
+      - name: Run test-integration
+        shell: bash
+        run: |
+          source venv/bin/activate 
+          pytest -s -m "integration"
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          OPENAI_API_VERSION: ${{ vars.OPENAI_API_VERSION }}
+          PYTHONPATH: ${{ env.PYTHONPATH }}:"."
+          AGENT_TOOL_PATH: "tests/coded_tools/"
+          AGENT_MANIFEST_FILE: "tests/registries/manifest.hocon"
+
+      - name: Notify Slack on failure
+        if: failure()
+        uses: slackapi/slack-github-action@v1.24.0
+        with:
+          payload: |
+            {
+              "text": "❌ Integration failed for `${{ github.repository }}` on `${{ github.ref_name }}`"
+            }
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}

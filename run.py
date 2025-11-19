@@ -1,12 +1,19 @@
-# Copyright (C) 2023-2025 Cognizant Digital Business, Evolutionary AI.
-# All Rights Reserved.
-# Issued under the Academic Public License.
+# Copyright © 2025 Cognizant Technology Solutions Corp, www.cognizant.com.
 #
-# You can be released from the terms, and requirements of the Academic Public
-# License by purchasing a commercial license.
-# Purchase of a commercial license is mandatory for any use of the
-# neuro-san-studio SDK Software in commercial settings.
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
 #
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
+# END COPYRIGHT
+
 import argparse
 import glob
 import os
@@ -18,8 +25,11 @@ import threading
 import time
 from typing import Any
 from typing import Dict
+from typing import Tuple
 
 from dotenv import load_dotenv
+from plugins.log_bridge.process_log_bridge import ProcessLogBridge
+from plugins.phoenix.phoenix_plugin import PhoenixPlugin
 
 
 class NeuroSanRunner:
@@ -48,12 +58,13 @@ class NeuroSanRunner:
             "default_sly_data": str(os.getenv("DEFAULT_SLY_DATA", "")),
             "nsflow_host": os.getenv("NSFLOW_HOST", "localhost"),
             "nsflow_port": int(os.getenv("NSFLOW_PORT", "4173")),
-            "nsflow_log_level": os.getenv("NSFLOW_LOG_LEVEL", "info"),
+            "log_level": os.getenv("LOG_LEVEL", "info"),
             "vite_api_protocol": os.getenv("VITE_API_PROTOCOL", "http"),
             "vite_ws_protocol": os.getenv("VITE_WS_PROTOCOL", "ws"),
             "neuro_san_web_client_port": int(os.getenv("NEURO_SAN_WEB_CLIENT_PORT", "5003")),
             "thinking_file": os.getenv("THINKING_FILE", self.thinking_file),
             "thinking_dir": os.getenv("THINKING_DIR", self.thinking_dir),
+            "logbridge_enabled": os.getenv("LOGBRIDGE_ENABLED", "true"),
             # Ensure all paths are resolved relative to `self.root_dir`
             "agent_manifest_file": os.getenv(
                 "AGENT_MANIFEST_FILE", os.path.join(self.root_dir, "registries", "manifest.hocon")
@@ -65,6 +76,9 @@ class NeuroSanRunner:
             "logs_dir": self.logs_dir,
         }
 
+        # Add Phoenix configuration defaults
+        self.args.update(PhoenixPlugin.get_default_config())
+
         # Ensure logs directory exists
         os.makedirs(self.logs_dir, exist_ok=True)
         os.makedirs(self.thinking_dir, exist_ok=True)
@@ -72,10 +86,18 @@ class NeuroSanRunner:
         # Parse command-line arguments
         self.args.update(self.parse_args())
 
+        if self.args.get("logbridge_enabled"):
+            self.log_bridge = ProcessLogBridge(
+                level=self.args.get("log_level", "info"),
+                runner_log_file=os.path.join(self.args["logs_dir"], "runner.log"),
+            )
         # Process references
         self.server_process = None
         self.flask_webclient_process = None
         self.nsflow_process = None
+
+        # Initialize Phoenix manager
+        self.phoenix_plugin = PhoenixPlugin(self.args)
 
     def load_env_variables(self):
         """Load .env file from project root and set variables."""
@@ -121,6 +143,9 @@ class NeuroSanRunner:
             help="Port number for the web client",
         )
         parser.add_argument(
+            "--log-level", type=str, default=self.args["log_level"], help="Log level for all processes"
+        )
+        parser.add_argument(
             "--thinking-file", type=str, default=self.args["thinking_file"], help="Path to the agent thinking file"
         )
         parser.add_argument("--no-html", action="store_true", help="Don't generate html for network diagrams")
@@ -161,12 +186,16 @@ class NeuroSanRunner:
         os.environ["AGENT_TOOLBOX_INFO_FILE"] = self.args["agent_toolbox_info_file"]
         os.environ["NEURO_SAN_SERVER_CONNECTION"] = self.args["server_connection"]
         os.environ["AGENT_MANIFEST_UPDATE_PERIOD_SECONDS"] = str(self.args["manifest_update_period_seconds"])
+        os.environ["LOG_LEVEL"] = self.args["log_level"]
         print(f"PYTHONPATH set to: {os.environ['PYTHONPATH']}")
         print(f"AGENT_MANIFEST_FILE set to: {os.environ['AGENT_MANIFEST_FILE']}")
         print(f"AGENT_TOOL_PATH set to: {os.environ['AGENT_TOOL_PATH']}")
         print(f"AGENT_TOOLBOX_INFO_FILE set to: {os.environ['AGENT_TOOLBOX_INFO_FILE']}")
         print(f"NEURO_SAN_SERVER_CONNECTION set to: {os.environ['NEURO_SAN_SERVER_CONNECTION']}")
         print(f"AGENT_MANIFEST_UPDATE_PERIOD_SECONDS set to: {os.environ['AGENT_MANIFEST_UPDATE_PERIOD_SECONDS']}\n")
+
+        # Phoenix / OpenTelemetry envs - delegate to PhoenixPlugin
+        self.phoenix_plugin.set_environment_variables()
 
         # Client-only env variables
         if not self.args["server_only"]:
@@ -259,13 +288,21 @@ class NeuroSanRunner:
 
         print(f"Started {process_name} with PID {process.pid}")
 
-        # Start streaming logs in separate threads
-        stdout_thread = threading.Thread(target=self.stream_output, args=(process.stdout, log_file, process_name))
-        stderr_thread = threading.Thread(target=self.stream_output, args=(process.stderr, log_file, process_name))
-        stdout_thread.start()
-        stderr_thread.start()
+        if self.args.get("logbridge_enabled"):
+            # Let log_bridge own reading/parsing/printing/writing
+            self.log_bridge.attach_process_logger(process, process_name, log_file)
+        else:
+            # Start streaming logs in separate threads
+            stdout_thread = threading.Thread(target=self.stream_output, args=(process.stdout, log_file, process_name))
+            stderr_thread = threading.Thread(target=self.stream_output, args=(process.stderr, log_file, process_name))
+            stdout_thread.start()
+            stderr_thread.start()
 
         return process
+
+    def start_phoenix(self):
+        """Start Phoenix server (UI + OTLP HTTP collector) if enabled."""
+        self.phoenix_plugin.start_phoenix_server()
 
     def start_neuro_san(self):
         """Start the Neuro SAN server."""
@@ -274,7 +311,7 @@ class NeuroSanRunner:
             sys.executable,
             "-u",
             "-m",
-            "neuro_san.service.main_loop.server_main_loop",
+            "servers.neuro_san.neuro_san_server_wrapper",
             "--port",
             str(self.args["server_grpc_port"]),
             "--http_port",
@@ -347,6 +384,9 @@ class NeuroSanRunner:
             else:
                 os.killpg(os.getpgid(self.nsflow_process.pid), signal.SIGKILL)
 
+        # Stop Phoenix using the initializer
+        self.phoenix_plugin.stop_phoenix_server()
+
         sys.exit(0)
 
     def is_port_open(self, host: str, port: int, timeout=1.0) -> bool:
@@ -363,27 +403,64 @@ class NeuroSanRunner:
             except (ConnectionRefusedError, TimeoutError, OSError):
                 return False
 
-    def _check_port_conflicts(self) -> list[str]:
+    def _check_port_conflicts(self) -> Tuple[list[str], list[int]]:
         """Check if any of the ports are in use."""
         port_conflicts = []
+        conflicting_ports: list[int] = []
 
         if not self.args["server_only"] and self.args["nsflow_host"] == "localhost":
             if self.is_port_open(self.args["nsflow_host"], self.args["nsflow_port"]):
                 port_conflicts.append(f"NSFlow client port {self.args['nsflow_port']} is already in use.")
+                conflicting_ports.append(self.args["nsflow_port"])
 
         if not self.args["client_only"] and self.args["server_host"] == "localhost":
             if self.is_port_open(self.args["server_host"], self.args["server_grpc_port"]):
                 port_conflicts.append(f"Neuro-San server grpc port {self.args['server_grpc_port']} is already in use.")
+                conflicting_ports.append(self.args["server_grpc_port"])
+
             if self.is_port_open(self.args["server_host"], self.args["server_http_port"]):
                 port_conflicts.append(f"Neuro-San server http port {self.args['server_http_port']} is already in use.")
+                conflicting_ports.append(self.args["server_http_port"])
 
         if self.args.get("use_flask_web_client"):
             if self.is_port_open("localhost", self.args["neuro_san_web_client_port"]):
                 port_conflicts.append(
                     f"Flask web client port {self.args['neuro_san_web_client_port']} is already in use."
                 )
+                conflicting_ports.append(self.args["neuro_san_web_client_port"])
 
-        return port_conflicts
+        return port_conflicts, conflicting_ports
+
+    def _kill_processes_on_ports(self, ports: list[int]):
+        """Kill processes using the specified ports."""
+        for port in ports:
+            print(f"Attempting to kill process on port {port}...")
+            try:
+                if self.is_windows:
+                    # Windows: Find and kill process using netstat and taskkill
+                    result = subprocess.run(
+                        ["netstat", "-ano", "-p", "TCP"], capture_output=True, text=True, check=True
+                    )
+                    for line in result.stdout.splitlines():
+                        if f":{port}" in line and "LISTENING" in line:
+                            pid = line.strip().split()[-1]
+                            subprocess.run(["taskkill", "/F", "/PID", pid], check=True)
+                            print(f"  Killed process {pid} on port {port}")
+                            break
+                else:
+                    # Unix/Mac: Use lsof to find and kill process
+                    result = subprocess.run(["lsof", "-ti", f":{port}"], capture_output=True, text=True, check=False)
+                    if result.stdout.strip():
+                        pids = result.stdout.strip().split("\n")
+                        for pid in pids:
+                            subprocess.run(["kill", "-9", pid], check=True)
+                            print(f"  Killed process {pid} on port {port}")
+                    else:
+                        print(f"  No process found on port {port}")
+            except subprocess.CalledProcessError as e:
+                print(f"  Failed to kill process on port {port}: {e}")
+            except Exception as e:  # pylint: disable=broad-exception-caught
+                print(f"  Error handling port {port}: {e}")
 
     def conditional_start_servers(self):
         """
@@ -407,17 +484,28 @@ class NeuroSanRunner:
                 print("Flask web client is not available. Please install it with `pip install neuro-san-web-client`.")
                 sys.exit(1)
 
-        port_conflicts = self._check_port_conflicts()
+        port_conflicts, conflicting_ports = self._check_port_conflicts()
 
         # Exit early if any conflict is found
         if port_conflicts:
             print("\n" + "=" * 50)
             for msg in port_conflicts:
                 print(msg)
-            print("=" * 50 + "\nExiting due to port conflicts.\n")
-            sys.exit(1)
+            print("=" * 50)
+
+            # Ask user if they want to kill the processes
+            response = input("\nDo you want to kill the processes using these ports? (yes/no): ").strip().lower()
+
+            if response in ["yes", "y"]:
+                self._kill_processes_on_ports(conflicting_ports)
+                print("\nProcesses killed. Continuing with startup...\n")
+            else:
+                print("\nExiting due to port conflicts.\n")
+                sys.exit(1)
 
         # Start services only if ports are free
+        # 1) Phoenix first so other services point OTLP to it
+        self.start_phoenix()
         if not server_only:
             if use_flask:
                 if not no_html:

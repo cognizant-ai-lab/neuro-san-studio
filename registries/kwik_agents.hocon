@@ -1,15 +1,30 @@
-
-# Copyright (C) 2023-2025 Cognizant Digital Business, Evolutionary AI.
-# All Rights Reserved.
-# Issued under the Academic Public License.
+# Copyright © 2025 Cognizant Technology Solutions Corp, www.cognizant.com.
 #
-# You can be released from the terms, and requirements of the Academic Public
-# License by purchasing a commercial license.
-# Purchase of a commercial license is mandatory for any use of the
-# neuro-san SDK Software in commercial settings.
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
 #
 # END COPYRIGHT
+
 {
+    "metadata": {
+        "description": "Multi-agent system with memory capabilities that can remember new facts and recall them during conversations. Stores memories organized by topics in sly_data with optional file persistence. Demonstrates agent-oriented software for memory storage and retrieval with timestamped entries.",
+        "tags": ["memory", "sly_data", "tool", "experimental"],
+        "sample_queries": [
+            "Bill has a dog named Max",
+            "What do you know about Bill?",
+            "Remember that Alice lives in San Francisco and works as a software engineer",
+        ]
+    },
+    
     "llm_config": {
         "model_name": "gpt-4.1-2025-04-14",
     },

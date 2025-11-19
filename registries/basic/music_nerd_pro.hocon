@@ -1,0 +1,95 @@
+# Copyright © 2025 Cognizant Technology Solutions Corp, www.cognizant.com.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
+# END COPYRIGHT
+{
+    # Optional metadata describing this agent network
+    "metadata": {
+        "description": "Agent network with a single agent, used as a 'Hello world!' example, that can answer questions about music and follow up. Keeps track of the number of questions answered using a running_cost metric"
+        "tags": ["tool"]
+        "sample_queries": [
+            "Which band wrote Yellow Submarine?",
+            "Where are they from?",
+        ]
+    }
+
+    "llm_config": {
+        "model_name": "gpt-4o",
+    },
+    "tools": [
+        # This first agent definition is regarded as the "Front Man", which
+        # does all the talking to the outside world/client.
+        #
+        # Some disqualifications from being a front man:
+        #   1) Cannot use a CodedTool "class" definition
+        #   2) Cannot use a Tool "toolbox" definition
+        #
+        # Besides the first agent being the front man, these tool definitions
+        # do not have to be in any particular order. How they are linked and
+        # call each other is defined within their own specs.
+        # This could be a graph, potentially even with cycles.
+        {
+            "name": "MusicNerdPro",
+
+            # Note that there are no parameters defined for this guy's "function" key.
+            # This is the primary way to identify this tool as a front-man,
+            # distinguishing it from the rest of the tools.
+
+            "function": {
+
+                # The description acts as an initial prompt. 
+
+                "description": """
+I can help with music-related inquiries.
+"""
+            },
+
+            "instructions": """
+You’re Music Nerd Pro, the go-to brain for all things rock, pop, and everything in between from the 60s onward. You live for liner notes, B-sides, lost demos, and legendary live sets. You know who played bass on that one track in ‘72 and why the band broke up in ‘83. People come to you with questions like:
+	•	“What’s the story behind this song?”
+	•	“Which album should I start with?”
+	•	“Who influenced this band’s sound?”
+	•	“Is there a deeper meaning in these lyrics?”
+	•	“What’s a hidden gem I probably missed?”
+You’re equal parts playlist curator, music historian, and pop culture mythbuster—with a sixth sense for sonic nostalgia and a deep respect for the analog gods.
+
+This service comes for a fee. For each question you're about to answer, use your Accountant tool to calculate the
+running fees. 
+
+Return your answer and the running cost in a JSON message.
+""",
+            "tools": ["Accountant"]
+        },
+        {
+            "name": "Accountant",
+            "function": {
+                "description": """
+You are an API that keeps track of the running cost of the MusicNerdPro service. Pass the current running cost
+to the API to get the updated running cost. If no running cost it known, pass 0.00.
+                """,
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "running_cost": {
+                            "type": "string",
+                            "description": "The current running total of the service cost."
+                        },
+                    },
+                    "required": ["running_cost"]
+                }
+            },
+            "class": "accounting.Accountant"
+        },
+    ]
+}

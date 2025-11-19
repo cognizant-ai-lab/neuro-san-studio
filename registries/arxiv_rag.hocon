@@ -1,12 +1,16 @@
-
-# Copyright (C) 2023-2025 Cognizant Digital Business, Evolutionary AI.
-# All Rights Reserved.
-# Issued under the Academic Public License.
+# Copyright © 2025 Cognizant Technology Solutions Corp, www.cognizant.com.
 #
-# You can be released from the terms, and requirements of the Academic Public
-# License by purchasing a commercial license.
-# Purchase of a commercial license is mandatory for any use of the
-# neuro-san SDK Software in commercial settings.
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
 #
 # END COPYRIGHT
 
@@ -16,6 +20,17 @@
 {
     "llm_config": {
         "model_name": "gpt-4o",
+    },
+
+    # Optional metadata describing this agent network
+    "metadata": {
+        "description": "ArXiv RAG assistant that retrieves and answers queries using academic papers from arXiv.org, supporting full PDF text or abstracts with configurable retrieval parameters.",
+        "tags": ["rag", "arxiv", "tool"],
+        "sample_queries": [
+            "Please give me a list of research papers on LORA",
+            "Find recent papers about transformer architectures",
+            "What are the latest developments in quantum machine learning?",
+        ]
     },
     
     "tools": [

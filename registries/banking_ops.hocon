@@ -1,11 +1,16 @@
-# Copyright (C) 2023-2025 Cognizant Digital Business, Evolutionary AI.
-# All Rights Reserved.
-# Issued under the Academic Public License.
+# Copyright © 2025 Cognizant Technology Solutions Corp, www.cognizant.com.
 #
-# You can be released from the terms, and requirements of the Academic Public
-# License by purchasing a commercial license.
-# Purchase of a commercial license is mandatory for any use of the
-# neuro-san SDK Software in commercial settings.
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
 #
 # END COPYRIGHT
 {
@@ -22,6 +27,15 @@
 
     include "registries/aaosa.hocon"
     
+    "metadata": {
+        "description": "Hierarchically organized multi-agent system simulating full-spectrum banking support across account servicing, fraud detection, credit underwriting, wealth management, and investment advisory. Specialized agents coordinate to deliver precise, compliant, and context-aware outputs across banking functions. Currently operates in demo mode.",
+        "tags": ["banking", "AAOSA"],
+        "sample_queries": [
+            "I'm planning to invest $5,000 every month for the next 12 months. Can you suggest a strategy for moderate risk profile?",
+            "Can you provide guidelines on how to avoid investment fraud and identify red flags?",
+            "I need help with a mortgage application for a small business property.",
+        ]
+    },
     "llm_config": {
         "model_name": "gpt-4o",
     },

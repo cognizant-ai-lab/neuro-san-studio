@@ -1,11 +1,10 @@
-# Neuro San
+# Neuro SAN Studio
 
-<!-- pyml disable-next-line no-inline-html -->
-<h2 align="center">Neuro SAN Studio</h2>
-<p align="center">
-  A playground for <a href="https://github.com/cognizant-ai-lab/neuro-san">Neuro SAN</a> - this repo includes working
-  examples to get started, explore, extend, and experiment with custom multi-agent networks!
-</p>
+**Your launchpad for building intelligent multi-agent systems.** Neuro SAN Studio is a hands-on playground for the
+[Neuro SAN](https://github.com/cognizant-ai-lab/neuro-san) framework, featuring ready-to-run examples, tutorials, and
+tools that let you design, test, and deploy sophisticated agent networks in minutes—not months. Whether you're a
+researcher exploring adaptive AI systems, a developer prototyping production solutions, or a domain expert configuring
+agents without code, this studio handles the orchestration complexity so you can focus on solving real problems.
 
 <!-- pyml disable-next-line no-inline-html -->
 <p align="center">
@@ -323,6 +322,17 @@ For the development guide, check out [docs/dev_guide.md](docs/dev_guide.md).
 
 ## Community Projects
 
+### Applications
+
+* [Climate Change](https://github.com/cognizant-ai-lab/neuro-san-cc):
+a tool to answer questions about COP, the Paris Agreement or the Kyoto Protocol using UNFCCC documents.
+* [F1 fans eval](https://github.com/deepsaia/f1-fan-eval):
+an app that evaluates F1 fan submissions about why they are the biggest F1 fans.
+* [Vibe coding project evaluator](https://github.com/deepsaia/vibe-coding-eval):
+a scalable framework that evaluates vibe-coded projects on different criteria.
+
+### Utilities
+
 * [Neuro SAN Web Client](https://github.com/cognizant-ai-lab/neuro-san-web-client):
 a basic Flask web client interface for Neuro SAN.
 
@@ -330,22 +340,10 @@ a basic Flask web client interface for Neuro SAN.
 
 ## Links
 
-* YouTube: [Decision AI](https://www.youtube.com/@decision-ai)
 * Website: [Cognizant AI Lab](https://www.cognizant.com/us/en/ai-lab)
-* Twitter: [x.com/decision__ai](https://x.com/decision__ai)
+* YouTube: [Decision AI](https://www.youtube.com/@decision-ai)
+* X: [x.com/decision__ai](https://x.com/decision__ai)
 * LinkedIn: [Cognizant AI Lab](https://www.linkedin.com/showcase/cognizant-ai-lab)
-* Medium blog: [medium.com/@evolutionmlmail](https://medium.com/@evolutionmlmail)
-
----
-
-## Blog posts
-
-* [Code versus Model in Multi-Agentic Systems](https://medium.com/@evolutionmlmail/code-versus-model-in-multi-agentic-systems-e33cf581e32b):
-dives into how to design reliable multi-agent systems by dividing responsibilities between LLM reasoning
-and coded tools.
-* [Neuro SAN Is All You Need — A Data-Driven Multi-Agent Orchestration Framework](https://medium.com/@evolutionmlmail/neuro-san-is-all-you-need-a-data-driven-multi-agent-orchestration-framework-563fbd31a735):
-explores Neuro SAN's architecture, configuration model, adaptive communication protocol (AAOSA),
-and how it enables secure, extensible agent collaboration without hardcoded logic.
 
 ---
 

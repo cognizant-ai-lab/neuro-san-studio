@@ -1,4 +1,30 @@
+# Copyright © 2025 Cognizant Technology Solutions Corp, www.cognizant.com.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
+# END COPYRIGHT
+
 {
+    "metadata": {
+        "description": "Simulates a large-scale telecommunication network orchestration system, including monitoring, fault detection and resource allocation, for a telco company in Australia. The network is organized into regions (NSW: New South Wales, VIC: Victoria, QLD: Queensland), each with a site manager and a set of nodes. The agents are NOT grounded and will simulate access to the network's systems instead.",
+        "tags": ["AAOSA", "telecommunications", "network-orchestration", "monitoring", "fault-detection", "resource-allocation", "simulation"],
+        "sample_queries": [
+            "What severe incidents occurred in the last 24 hours, and how were they mitigated?",
+            "We have a major event in Sydney this weekend. Can we reconfigure the network accordingly?",
+            "What is the current network status across all regions?",
+        ]
+    }
+
     "llm_config": {
         "model_name": "gpt-4o",
         "verbose": true
