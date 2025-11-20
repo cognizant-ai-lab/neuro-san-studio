@@ -167,6 +167,8 @@ Available as a tool in toolbox\_info.hocon
 
 ## Comparison of Search Tools
 
+<!-- pyml disable no-inline-html -->
+<!-- pyml disable line-length -->
 | Search Tool | What It Is | Search Engine? | Data Source / Index | Public API ? |
 | --- | --- | --- | --- | --- |
 | Anthropic | built-in web search system used by Claude | No | Uses external APIs (e.g., Bing, Brave) | No |
@@ -176,9 +178,13 @@ Available as a tool in toolbox\_info.hocon
 | Serper | Third-party Google Search API service that scrapes Google Search results in JSON format | No | Real Google Search results via scraping | Yes |
 | OpenAI | Built-in web search system used by ChatGP | No | Uses Bing API + other sources | No |
 | Tavily | Search API designed specifically for LLMs, AI agents, and automation | No | Mix of search providers + own crawlers + extraction pipeline | Yes |
+<!-- pyml enable line-length -->
+<!-- pyml enable no-inline-html -->
 
 The cost and rate limit comparison is provided in the table below.
 
+<!-- pyml disable no-inline-html -->
+<!-- pyml disable line-length -->
 | Search Tool | Free Tier | Paid Tier(s) |
 | --- | --- | --- |
 | Anthropic Search | Yes<br> (Internal to Claude)<br>Check Anthropic rate limits | Yes<br> (Internal to Claude)<br>Check Anthropic rate limits |
@@ -188,3 +194,5 @@ The cost and rate limit comparison is provided in the table below.
 | Google Serper | Yes<br>2,500 queries (one-time) | Yes<br>$0.30 per 1,000 queries |
 | OpenAI Search | Yes (Internal to ChatGPT)<br>Check OpenAI rate limits | Yes (Internal to ChatGPT)<br> |
 | Tavily Search | Yes<br>1,000 API credits/month | Yes<br>E.g.: $30/month for 4,000 credits<br>pay-as-you-go: $0.008 per credit |
+<!-- pyml enable line-length -->
+<!-- pyml enable no-inline-html -->
