@@ -69,7 +69,7 @@ Commercial support is available for:
 - Training and workshops
 - Commercial licensing inquiries
 
-**Note**: This project is licensed under the [Academic Public License](LICENSE.txt), which requires a commercial license for for-profit use. Please contact us to discuss commercial licensing options.
+**Note**: This project is licensed under the [Apache 2.0 License](LICENSE), which requires a commercial license for for-profit use. Please contact us to discuss commercial licensing options.
 
 ## Security Issues
 
