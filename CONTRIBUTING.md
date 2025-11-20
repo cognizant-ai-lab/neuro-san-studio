@@ -354,7 +354,7 @@ git rebase main
 
 ## License
 
-By contributing to Neuro SAN Studio, you agree that your contributions will be licensed under the project's [Apache 2.0 License](LICENSE). Commercial use requires a commercial license from Cognizant Technology Solutions Corp.
+By contributing to Neuro SAN Studio, you agree that your contributions will be licensed under the project's [Apache 2.0 License](LICENSE.txt). Commercial use requires a commercial license from Cognizant Technology Solutions Corp.
 
 ## Questions?
 
