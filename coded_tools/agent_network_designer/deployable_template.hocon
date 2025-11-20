@@ -20,6 +20,7 @@
 # Note that we are not including aaosa.hocon in here as we have to do subsitutions in code
 # in order for the networks to be deployment-ready.
 
+# This file serves as the base template for deployable agent networks.
 {
     # Every network will have an llm_config
     "llm_config": {
@@ -37,6 +38,7 @@ Only answer inquiries that are directly within your area of expertise.
 Do not try to help for other matters.
 Do not mention what you can NOT do. Only mention what you can do.
 """,
+            # For the base template, demo_mode is empty.
             "demo_mode": "",
         }
     },
