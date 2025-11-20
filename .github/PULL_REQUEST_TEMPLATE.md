@@ -35,4 +35,4 @@ Fixes # <!-- Issue number, if applicable -->
 
 ---
 
-**By submitting this pull request, I confirm that my contribution is made under the terms of the project's [Apache 2.0 License](../LICENSE).**
+**By submitting this pull request, I confirm that my contribution is made under the terms of the project's [Apache 2.0 License](../LICENSE.txt).**
