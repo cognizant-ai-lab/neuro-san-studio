@@ -30,11 +30,19 @@ class FileSystemAgentNetworkPersistor(AgentNetworkPersistor):
 
     OUTPUT_PATH: str = "registries/"
 
+    def __init__(self, demo_mode: bool):
+        """
+        Creates a new persistor of the specified type.
+
+        :param demo_mode: Whether to include demo mode instructions for agents
+        """
+        self.demo_mode: bool = demo_mode
+
     def get_assembler(self) -> AgentNetworkAssembler:
         """
         :return: An assembler instance associated with this persistor
         """
-        return HoconAgentNetworkAssembler()
+        return HoconAgentNetworkAssembler(self.demo_mode)
 
     async def async_persist(self, obj: str, file_reference: str = None) -> str:
         """

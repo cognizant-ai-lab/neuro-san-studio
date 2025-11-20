@@ -20,10 +20,11 @@
 # Note that we are not including aaosa.hocon in here as we have to do subsitutions in code
 # in order for the networks to be deployment-ready.
 
+# This file serves as the base template for deployable agent networks.
 {
     # Every network will have an llm_config
     "llm_config": {
-        "model_name": "gpt-4.0"
+        "model_name": "gpt-4o"
     },
 
     # These are common commondefs for every agent_network_designer-created network
@@ -37,10 +38,8 @@ Only answer inquiries that are directly within your area of expertise.
 Do not try to help for other matters.
 Do not mention what you can NOT do. Only mention what you can do.
 """,
-            "demo_mode": """
-You are part of a demo system, so when queried, make up a realistic response as if you
-are actually grounded in real data or you are operating a real application API or microservice.
-""",
+            # For the base template, demo_mode is empty.
+            "demo_mode": "",
         }
     },
 

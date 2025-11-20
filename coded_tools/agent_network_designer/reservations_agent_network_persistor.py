@@ -30,7 +30,7 @@ class ReservationsAgentNetworkPersistor(AgentNetworkPersistor):
     using the neuro-san Reservations API
     """
 
-    def __init__(self, args: dict[str, Any]):
+    def __init__(self, args: dict[str, Any], demo_mode: bool):
         """
         Creates a new persistor of the specified type.
 
@@ -38,12 +38,13 @@ class ReservationsAgentNetworkPersistor(AgentNetworkPersistor):
                     It should contain a Reservationist instance.
         """
         self.args: dict[str, Any] = args
+        self.demo_mode: bool = demo_mode
 
     def get_assembler(self) -> AgentNetworkAssembler:
         """
         :return: An assembler instance associated with this persistor
         """
-        return DeployableAgentNetworkAssembler()
+        return DeployableAgentNetworkAssembler(self.demo_mode)
 
     async def async_persist(self, obj: dict[str, Any], file_reference: str = None) -> str | list[dict[str, Any]]:
         """

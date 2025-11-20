@@ -43,7 +43,7 @@ Please use our issue templates:
 ## Community Resources
 
 - **YouTube**: [Decision AI](https://www.youtube.com/@decision-ai) - Tutorials and demos
-- **X**: [@decision__ai](https://x.com/decision__ai) - Updates and announcements
+- **X**: [@cognizantailab](https://x.com/cognizantailab) - Updates and announcements
 - **LinkedIn**: [Cognizant AI Lab](https://www.linkedin.com/showcase/cognizant-ai-lab) - Professional updates
 - **DeepWiki**: [Neuro SAN Studio](https://deepwiki.com/cognizant-ai-lab/neuro-san-studio) - AI-powered documentation search
 - **Community Projects**: See the [Community Projects](README.md#community-projects) section in our README for projects developed by the community
@@ -58,7 +58,7 @@ For questions specific to the core Neuro SAN library:
 
 ## Commercial Support
 
-If you're interested in commercial licensing, enterprise support, or custom development:
+If you're interested in commercial enterprise support, or custom development:
 
 📧 **Email**: labgithub@cognizant.com
 
@@ -67,9 +67,8 @@ Commercial support is available for:
 - Custom agent network development
 - Integration with proprietary systems
 - Training and workshops
-- Commercial licensing inquiries
 
-**Note**: This project is licensed under the [Academic Public License](LICENSE.txt), which requires a commercial license for for-profit use. Please contact us to discuss commercial licensing options.
+**Note**: This project is licensed under the [Apache 2.0 License](LICENSE.txt)
 
 ## Security Issues
 

@@ -30,12 +30,13 @@ class AgentNetworkPersistorFactory:
     """
 
     @staticmethod
-    def create_persistor(args: dict[str, Any], write_to_file: bool) -> AgentNetworkPersistor:
+    def create_persistor(args: dict[str, Any], write_to_file: bool, demo_mode: bool) -> AgentNetworkPersistor:
         """
         Creates a new persistor of the specified type.
 
         :param args: The args from the calling CodedTool.
         :param write_to_file: True if the agent network should be written to a file.
+        :param demo_mode: Whether to include demo mode instructions for agents
         :return: A new AgentNetworkPersistor of the specified type.
         """
         persistor: AgentNetworkPersistor = None
@@ -46,10 +47,10 @@ class AgentNetworkPersistorFactory:
 
         if write_to_file:
             # If the write_to_file flag is True, then that's what we're doing.
-            persistor = FileSystemAgentNetworkPersistor()
+            persistor = FileSystemAgentNetworkPersistor(demo_mode)
         elif reservationist:
             # If we have a reservationist as part of the args, use the ReservationsAgentNetworkPersistor
-            persistor = ReservationsAgentNetworkPersistor(args)
+            persistor = ReservationsAgentNetworkPersistor(args, demo_mode)
         else:
             # Fallback null implementation
             persistor = AgentNetworkPersistor()
