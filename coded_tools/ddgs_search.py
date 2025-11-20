@@ -92,5 +92,7 @@ class DdgsSearch(CodedTool):
         return results
 
     async def async_invoke(self, args: dict[str, Any], sly_data: dict[str, Any]) -> Union[dict[str, Any], str]:
-        """Run invoke asynchronously."""
+        """
+        Run self.invoke(args, sly_data) in a thread so it won’t block the async event loop, and wait for it to finish
+        """
         return await asyncio.to_thread(self.invoke, args, sly_data)

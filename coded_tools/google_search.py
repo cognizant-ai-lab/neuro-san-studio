@@ -147,7 +147,7 @@ class GoogleSearch(CodedTool):
 
         results_list: List[Dict[str, Any]] = []
         # Loop over each item in the list located at results["items"]
-        # but safely, without throwing errors if "tems" is missing
+        # but safely, without throwing errors if "items" is missing
         # If there are results from search, get "title", "link", "description", and "snippet"
         # from each result. For a list of available fields in a response to a custom search request
         # go to https://developers.google.com/custom-search/v1/reference/rest/v1/Search
