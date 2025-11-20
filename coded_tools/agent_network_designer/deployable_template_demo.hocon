@@ -21,11 +21,18 @@
 # in order for the networks to be deployment-ready.
 
 {
+    # This line references the base deployable template.
     include "coded_tools/agent_network_designer/deployable_template.hocon"
 
-    commondefs {
-        replacement_strings {
-            demo_mode = """
+    # This part looks through the base template until it finds
+    # the "commondefs" -> "replacement_strings" section and
+    # replaces the "demo_mode" string with a demo-specific string.
+    # Note that if "demo_mode" is not int the base template, this will
+    # simply add it. It has no effect on any other fields of "commondefs"
+    # or other parts of the template.
+    "commondefs": {
+        "replacement_strings": {
+            "demo_mode": """
 You are part of a demo system, so when queried, make up a realistic response as if you
 are actually grounded in real data or you are operating a real application API or microservice.
 """
