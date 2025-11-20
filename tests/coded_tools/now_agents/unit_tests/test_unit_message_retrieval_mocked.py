@@ -58,7 +58,7 @@ class TestNowAgentRetrieveMessage(unittest.TestCase):
             "SERVICENOW_PWD": "test_password",
         },
     )
-    @patch("coded_tools.now_agents.nowagent_api_retrieve_message.requests.get")
+    @patch("coded_tools.tools.now_agents.nowagent_api_retrieve_message.requests.get")
     def test_invoke_success_immediate_response(self, mock_get):
         """
         Test successful message retrieval with immediate response.
@@ -96,8 +96,8 @@ class TestNowAgentRetrieveMessage(unittest.TestCase):
             "SERVICENOW_PWD": "test_password",
         },
     )
-    @patch("coded_tools.now_agents.nowagent_api_retrieve_message.requests.get")
-    @patch("coded_tools.now_agents.nowagent_api_retrieve_message.time.sleep")
+    @patch("coded_tools.tools.now_agents.nowagent_api_retrieve_message.requests.get")
+    @patch("coded_tools.tools.now_agents.nowagent_api_retrieve_message.time.sleep")
     def test_invoke_success_with_retries(self, mock_sleep, mock_get):
         """
         Test successful message retrieval after retries.
@@ -135,8 +135,8 @@ class TestNowAgentRetrieveMessage(unittest.TestCase):
             "SERVICENOW_PWD": "test_password",
         },
     )
-    @patch("coded_tools.now_agents.nowagent_api_retrieve_message.requests.get")
-    @patch("coded_tools.now_agents.nowagent_api_retrieve_message.time.sleep")
+    @patch("coded_tools.tools.now_agents.nowagent_api_retrieve_message.requests.get")
+    @patch("coded_tools.tools.now_agents.nowagent_api_retrieve_message.time.sleep")
     def test_invoke_max_retries_reached(self, mock_sleep, mock_get):
         """
         Test behavior when maximum retries are reached without response.
@@ -196,7 +196,7 @@ class TestNowAgentRetrieveMessage(unittest.TestCase):
             "SERVICENOW_PWD": "test_password",
         },
     )
-    @patch("coded_tools.now_agents.nowagent_api_retrieve_message.requests.get")
+    @patch("coded_tools.tools.now_agents.nowagent_api_retrieve_message.requests.get")
     def test_async_invoke(self, mock_get):
         """
         Test asynchronous invoke method.

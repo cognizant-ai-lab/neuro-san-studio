@@ -50,7 +50,7 @@ class TestNowAgentSendMessage(unittest.TestCase):
             "SERVICENOW_PWD": "test_password",
         },
     )
-    @patch("coded_tools.now_agents.nowagent_api_send_message.requests.post")
+    @patch("coded_tools.tools.now_agents.nowagent_api_send_message.requests.post")
     def test_invoke_success(self, mock_post):
         """
         Test successful message sending to ServiceNow agent.
@@ -100,8 +100,8 @@ class TestNowAgentSendMessage(unittest.TestCase):
             "SERVICENOW_PWD": "test_password",
         },
     )
-    @patch("coded_tools.now_agents.nowagent_api_send_message.requests.post")
-    @patch("coded_tools.now_agents.nowagent_api_send_message.logger")
+    @patch("coded_tools.tools.now_agents.nowagent_api_send_message.requests.post")
+    @patch("coded_tools.tools.now_agents.nowagent_api_send_message.logger")
     def test_invoke_authentication_failure(self, mock_logger, mock_post):
         """
         Test handling of authentication failure.
@@ -143,7 +143,7 @@ class TestNowAgentSendMessage(unittest.TestCase):
             "SERVICENOW_PWD": "test_password",
         },
     )
-    @patch("coded_tools.now_agents.nowagent_api_send_message.requests.post")
+    @patch("coded_tools.tools.now_agents.nowagent_api_send_message.requests.post")
     def test_invoke_missing_agent_id(self, mock_post):
         """
         Test handling of missing agent_id parameter.
@@ -169,7 +169,7 @@ class TestNowAgentSendMessage(unittest.TestCase):
         self.assertIn("error_response", result)
         self.assertEqual(result["status_code"], 404)
 
-    @patch("coded_tools.now_agents.nowagent_api_send_message.logger")
+    @patch("coded_tools.tools.now_agents.nowagent_api_send_message.logger")
     def test_get_env_variable(self, mock_logger):
         """
         Test environment variable retrieval.
@@ -202,7 +202,7 @@ class TestNowAgentSendMessage(unittest.TestCase):
             "SERVICENOW_PWD": "test_password",
         },
     )
-    @patch("coded_tools.now_agents.nowagent_api_send_message.requests.post")
+    @patch("coded_tools.tools.now_agents.nowagent_api_send_message.requests.post")
     def test_async_invoke(self, mock_post):
         """
         Test asynchronous invoke method.

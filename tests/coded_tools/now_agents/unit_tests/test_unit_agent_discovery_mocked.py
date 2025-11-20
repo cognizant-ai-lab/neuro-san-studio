@@ -59,7 +59,7 @@ class TestNowAgentAPIGetAgents(unittest.TestCase):
             "SERVICENOW_PWD": "test_password",
         },
     )
-    @patch("coded_tools.now_agents.nowagent_api_get_agents.requests.get")
+    @patch("coded_tools.tools.now_agents.nowagent_api_get_agents.requests.get")
     def test_invoke_success(self, mock_get):
         """
         Test successful agent discovery.
@@ -98,8 +98,8 @@ class TestNowAgentAPIGetAgents(unittest.TestCase):
             "SERVICENOW_PWD": "test_password",
         },
     )
-    @patch("coded_tools.now_agents.nowagent_api_get_agents.requests.get")
-    @patch("coded_tools.now_agents.nowagent_api_get_agents.logger")
+    @patch("coded_tools.tools.now_agents.nowagent_api_get_agents.requests.get")
+    @patch("coded_tools.tools.now_agents.nowagent_api_get_agents.logger")
     def test_invoke_authentication_failure(self, mock_logger, mock_get):
         """
         Test handling of authentication failure.
@@ -141,7 +141,7 @@ class TestNowAgentAPIGetAgents(unittest.TestCase):
             "SERVICENOW_PWD": "test_password",
         },
     )
-    @patch("coded_tools.now_agents.nowagent_api_get_agents.requests.get")
+    @patch("coded_tools.tools.now_agents.nowagent_api_get_agents.requests.get")
     def test_invoke_empty_results(self, mock_get):
         """
         Test handling of empty agent results.
@@ -160,7 +160,7 @@ class TestNowAgentAPIGetAgents(unittest.TestCase):
         # Verify empty results are handled correctly
         self.assertEqual(result["result"], [])
 
-    @patch("coded_tools.now_agents.nowagent_api_get_agents.logger")
+    @patch("coded_tools.tools.now_agents.nowagent_api_get_agents.logger")
     def test_get_env_variable(self, mock_logger):
         """
         Test environment variable retrieval.
@@ -193,7 +193,7 @@ class TestNowAgentAPIGetAgents(unittest.TestCase):
             "SERVICENOW_PWD": "test_password",
         },
     )
-    @patch("coded_tools.now_agents.nowagent_api_get_agents.requests.get")
+    @patch("coded_tools.tools.now_agents.nowagent_api_get_agents.requests.get")
     def test_async_invoke(self, mock_get):
         """
         Test asynchronous invoke method.
