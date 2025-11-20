@@ -342,7 +342,7 @@ a basic Flask web client interface for Neuro SAN.
 
 * Website: [Cognizant AI Lab](https://www.cognizant.com/us/en/ai-lab)
 * YouTube: [Decision AI](https://www.youtube.com/@decision-ai)
-* X: [x.com/decision__ai](https://x.com/decision__ai)
+* X: [@cognizantailab](https://x.com/cognizantailab)
 * LinkedIn: [Cognizant AI Lab](https://www.linkedin.com/showcase/cognizant-ai-lab)
 
 ---
