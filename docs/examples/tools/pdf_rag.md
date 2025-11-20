@@ -6,7 +6,7 @@ The **PDF RAG Assistant** answers user queries using Retrieval-Augmented Generat
 
 ## File
 
-[pdf_rag.hocon](../../registries/pdf_rag.hocon)
+[pdf_rag.hocon](../../../registries/tools/pdf_rag.hocon)
 
 ---
 

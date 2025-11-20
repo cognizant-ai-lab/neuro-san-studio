@@ -10,7 +10,7 @@ This system demonstrates how tool-based delegation can automate and streamline e
 
 ## File
 
-[gmail.hocon](../../registries/gmail.hocon)
+[gmail.hocon](../../../registries/tools/gmail.hocon)
 
 ---
 

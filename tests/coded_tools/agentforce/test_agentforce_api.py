@@ -16,11 +16,11 @@
 
 from unittest import TestCase
 
-from coded_tools.agentforce.agentforce_api import MOCK_RESPONSE_1
-from coded_tools.agentforce.agentforce_api import MOCK_RESPONSE_2
-from coded_tools.agentforce.agentforce_api import MOCK_SECRET
-from coded_tools.agentforce.agentforce_api import MOCK_SESSION_ID
-from coded_tools.agentforce.agentforce_api import AgentforceAPI
+from coded_tools.tools.agentforce.agentforce_api import MOCK_RESPONSE_1
+from coded_tools.tools.agentforce.agentforce_api import MOCK_RESPONSE_2
+from coded_tools.tools.agentforce.agentforce_api import MOCK_SECRET
+from coded_tools.tools.agentforce.agentforce_api import MOCK_SESSION_ID
+from coded_tools.tools.agentforce.agentforce_api import AgentforceAPI
 
 
 class TestAgentforceAPI(TestCase):

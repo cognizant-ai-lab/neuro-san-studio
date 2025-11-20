@@ -6,7 +6,7 @@ The **Code Execution Assistant** is a task-oriented agentic system designed to h
 
 ## File
 
-[anthropic_code_execution.hocon](../../registries/anthropic_code_execution.hocon)
+[anthropic_code_execution.hocon](../../../registries/tools/anthropic_code_execution.hocon)
 
 ---
 

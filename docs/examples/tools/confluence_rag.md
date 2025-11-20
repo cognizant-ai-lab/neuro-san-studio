@@ -6,7 +6,7 @@ The **Confluence RAG Assistant** answers user queries using Retrieval-Augmented 
 
 ## File
 
-[confluence_rag.hocon](../../registries/confluence_rag.hocon)
+[confluence_rag.hocon](../../../registries/tools/confluence_rag.hocon)
 
 ---
 

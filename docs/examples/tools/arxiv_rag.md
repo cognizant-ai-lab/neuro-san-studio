@@ -6,7 +6,7 @@ The **ArXiv RAG Assistant** answers user queries using Retrieval-Augmented Gener
 
 ## File
 
-[arxiv_rag.hocon](../../registries/arxiv_rag.hocon)
+[arxiv_rag.hocon](../../../registries/tools/arxiv_rag.hocon)
 
 ---
 

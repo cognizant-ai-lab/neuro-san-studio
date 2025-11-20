@@ -6,7 +6,7 @@ The **Wikipedia RAG Assistant** answers user queries using Retrieval-Augmented G
 
 ## File
 
-[wikipedia_rag.hocon](../../registries/wikipedia_rag.hocon)
+[wikipedia_rag.hocon](../../../registries/tools/wikipedia_rag.hocon)
 
 ---
 

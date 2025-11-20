@@ -20,7 +20,7 @@ import unittest
 from unittest.mock import Mock
 from unittest.mock import patch
 
-from coded_tools.now_agents.nowagent_api_retrieve_message import NowAgentRetrieveMessage
+from coded_tools.tools.now_agents.nowagent_api_retrieve_message import NowAgentRetrieveMessage
 
 # Mock response data for testing
 MOCK_RETRIEVE_RESPONSE = {

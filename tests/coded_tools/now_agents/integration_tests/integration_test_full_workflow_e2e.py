@@ -30,9 +30,9 @@ from pathlib import Path
 import requests
 from dotenv import load_dotenv
 
-from coded_tools.now_agents.nowagent_api_get_agents import NowAgentAPIGetAgents
-from coded_tools.now_agents.nowagent_api_retrieve_message import NowAgentRetrieveMessage
-from coded_tools.now_agents.nowagent_api_send_message import NowAgentSendMessage
+from coded_tools.tools.now_agents.nowagent_api_get_agents import NowAgentAPIGetAgents
+from coded_tools.tools.now_agents.nowagent_api_retrieve_message import NowAgentRetrieveMessage
+from coded_tools.tools.now_agents.nowagent_api_send_message import NowAgentSendMessage
 
 # Add the project root to Python path (need to go up 5 levels:
 # integration_tests -> now_agents -> coded_tools -> tests ->

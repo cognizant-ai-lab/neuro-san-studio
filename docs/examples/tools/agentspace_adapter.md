@@ -8,7 +8,7 @@ See the [Agentspace documentation](https://cloud.google.com/agentspace/agentspac
 
 ## File
 
-[agentspace_adapter.hocon](../../registries/agentspace_adapter.hocon)
+[agentspace_adapter.hocon](../../../registries/tools/agentspace_adapter.hocon)
 
 ---
 

@@ -7,7 +7,7 @@ for more details.
 
 ## File
 
-[agentforce.hocon](../../registries/agentforce.hocon)
+[agentforce.hocon](../../../registries/tools/agentforce.hocon)
 
 ## Description
 

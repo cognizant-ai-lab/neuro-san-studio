@@ -43,7 +43,7 @@ pip install opencv-python==4.8.0.74
 
 ## File
 
-[visual_question_answering.hocon](../../registries/visual_question_answering.hocon)
+[visual_question_answering.hocon](../../../registries/tools/visual_question_answering.hocon)
 
 ## Description
 

@@ -6,7 +6,7 @@ The **OpenAI Code Interpreter** is a task-oriented agentic system designed to he
 
 ## File
 
-[openai_code_interpreter.hocon](../../registries/openai_code_interpreter.hocon)
+[openai_code_interpreter.hocon](../../../registries/tools/openai_code_interpreter.hocon)
 
 ---
 

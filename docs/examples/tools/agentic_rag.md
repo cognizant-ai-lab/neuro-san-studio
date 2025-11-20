@@ -11,7 +11,7 @@ enterprise question-answering.
 
 ## File
 
-[agentic_rag.hocon](../../registries/agentic_rag.hocon)
+[agentic_rag.hocon](../../../registries/tools/agentic_rag.hocon)
 
 ---
 

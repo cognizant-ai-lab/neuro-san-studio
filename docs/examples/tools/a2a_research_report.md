@@ -8,7 +8,7 @@ of this agent network is to show how one can connect to A2A server using coded t
 
 ## File
 
-[a2a_research_report.hocon](../../registries/a2a_research_report.hocon)
+[a2a_research_report.hocon](../../../registries/tools/a2a_research_report.hocon)
 
 ---
 
@@ -39,7 +39,7 @@ of this agent network is to show how one can connect to A2A server using coded t
 
 - Act as an A2A client to the crewAI agents in an A2A server.
 - Sends the request and receives the response.
-- Source: [`a2a_research_report.py`](../../coded_tools/a2a_research_report/a2a_research_report.py)
+- Source: [`a2a_research_report.py`](../../../coded_tools/tools/a2a_research_report/a2a_research_report.py)
 
 ### A2A Server
 

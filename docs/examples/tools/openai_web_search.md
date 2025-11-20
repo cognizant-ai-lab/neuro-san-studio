@@ -6,7 +6,7 @@ The **OpenAI Web Search** is a task-oriented agentic system designed to help use
 
 ## File
 
-[openai_web_search.hocon](../../registries/openai_web_search.hocon)
+[openai_web_search.hocon](../../../registries/tools/openai_web_search.hocon)
 
 ---
 

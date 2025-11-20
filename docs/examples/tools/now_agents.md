@@ -232,7 +232,7 @@ tests/coded_tools/now_agents/
 
 ## Learn More
 
-For complete implementation details, API reference, and advanced configuration options, see the [module documentation](../../coded_tools/now_agents/README.md).
+For complete implementation details, API reference, and advanced configuration options, see the [module documentation](../../../coded_tools/tools/now_agents/README.md).
 
 ---
 

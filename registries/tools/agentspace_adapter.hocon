@@ -83,7 +83,7 @@ Query an Agentspace agent to assist and answer the search query.
                     "required": ["search_query"]
                 }
             },
-            "class": "agentspace_adapter.AgentSpaceSearch",
+            "class": "tools.agentspace_adapter.AgentSpaceSearch",
         },
     ]
 }

@@ -20,7 +20,7 @@ import unittest
 from unittest.mock import Mock
 from unittest.mock import patch
 
-from coded_tools.now_agents.nowagent_api_get_agents import NowAgentAPIGetAgents
+from coded_tools.tools.now_agents.nowagent_api_get_agents import NowAgentAPIGetAgents
 
 # Mock response data for testing
 MOCK_AGENTS_RESPONSE = {

@@ -21,7 +21,7 @@ import unittest
 from unittest.mock import Mock
 from unittest.mock import patch
 
-from coded_tools.now_agents.nowagent_api_send_message import NowAgentSendMessage
+from coded_tools.tools.now_agents.nowagent_api_send_message import NowAgentSendMessage
 
 # Mock response data for testing
 MOCK_SEND_RESPONSE = {"metadata": {"user_id": "test_user_123", "session_id": "session_456"}, "status": "message_sent"}

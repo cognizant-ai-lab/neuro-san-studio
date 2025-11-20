@@ -6,7 +6,7 @@ The **Anthropic Web Search** is a task-oriented agentic system designed to help 
 
 ## File
 
-[anthropic_web_search.hocon](../../registries/anthropic_web_search.hocon)
+[anthropic_web_search.hocon](../../../registries/tools/anthropic_web_search.hocon)
 
 ---
 

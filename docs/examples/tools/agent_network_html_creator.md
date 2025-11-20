@@ -7,7 +7,7 @@ browser.
 
 ## File
 
-[agent_network_html_creator.hocon](../../registries/agent_network_html_creator.hocon)
+[agent_network_html_creator.hocon](../../../registries/tools/agent_network_html_creator.hocon)
 
 ---
 

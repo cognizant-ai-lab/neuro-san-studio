@@ -18,31 +18,29 @@ import logging
 from typing import Any
 from typing import Dict
 
-from langchain_community.retrievers import ArxivRetriever
+from langchain_community.retrievers import WikipediaRetriever
 from neuro_san.interfaces.coded_tool import CodedTool
 
-from .base_rag import BaseRag
+from coded_tools.base_rag import BaseRag
 
-logging.basicConfig(level=logging.INFO)
+logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(__name__)
 
 
-class ArxivRag(CodedTool):
+class WikipediaRag(CodedTool):
     """
-    CodedTool implementation which provides a way to do RAG on arXiv papers.
+    CodedTool implementation which provides a way to do RAG on Wikipedia articles.
     """
 
     async def async_invoke(self, args: Dict[str, Any], sly_data: Dict[str, Any]) -> str:
         """
-        Load arXiv papers based on queries, build an in-memory vector store, and run a query against it.
+        Retrieves relevant Wikipedia articles based on the provided query.
 
         :param args: Dictionary containing:
             "query": search string
+            "lang": language code for Wikipedia articles (default is "en")
             "top_k_results": number of top results to return (default is 3)
-            "get_full_documents": whether to pull full paper text or only abstracts/summaries (default is True)
             "doc_content_chars_max": maximum number of characters to keep in each document (default is 4000)
-            "load_all_available_meta": whether to load all available metadata (default is False)
-            "continue_on_failure": whether to continue processing if an error occurs (default is True)
 
         :param sly_data: A dictionary whose keys are defined by the agent
             hierarchy, but whose values are meant to be kept out of the
@@ -58,23 +56,21 @@ class ArxivRag(CodedTool):
             Keys expected for this implementation are:
                 None
 
-        :return: Result of the query against the vector store.
+        :return: A string containing the concatenated content of the retrieved documents.
         """
         # Extract arguments from the input dictionary
-        query: str = args.get("query", "").replace("<|endoftext|>", "")
+        query: str = args.get("query", "")
 
         # Validate presence of required inputs
         if not query:
             logger.error("Missing required input: 'query' (retrieval question).")
-            return "❌ Missing required1 input: 'query'."
+            return "❌ Missing required input: 'query'."
 
-        # Initialize ArxivRetriever with the provided arguments
-        retriever = ArxivRetriever(
+        # Initialize WikipediaRetriever with the provided arguments
+        retriever = WikipediaRetriever(
+            lang=str(args.get("lang", "en")),
             top_k_results=int(args.get("top_k_results", 3)),
-            get_full_documents=bool(args.get("get_full_documents", True)),
             doc_content_chars_max=int(args.get("doc_content_chars_max", 4000)),
-            load_all_available_meta=bool(args.get("load_all_available_meta", False)),
-            continue_on_failure=bool(args.get("continue_on_failure", True)),
         )
 
         return await BaseRag.query_retriever(retriever, query)
