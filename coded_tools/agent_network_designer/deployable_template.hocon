@@ -23,7 +23,7 @@
 {
     # Every network will have an llm_config
     "llm_config": {
-        "model_name": "gpt-4.0"
+        "model_name": "gpt-4o"
     },
 
     # These are common commondefs for every agent_network_designer-created network
@@ -37,6 +37,7 @@ Only answer inquiries that are directly within your area of expertise.
 Do not try to help for other matters.
 Do not mention what you can NOT do. Only mention what you can do.
 """,
+            "demo_mode": "",
         }
     },
 
@@ -86,6 +87,8 @@ call all the relevant tools and make sure the command is fully serviced and expr
             "function": "aaosa_call",
             "instructions": """
 {instructions_prefix}
+
+{demo_mode}
 
 {agent_instructions}
 """
