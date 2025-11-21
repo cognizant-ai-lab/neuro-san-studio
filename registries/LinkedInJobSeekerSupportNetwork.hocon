@@ -140,7 +140,7 @@ As the Application Specialist agent, your primary focus is on assisting job seek
             Searches linkedin.com using search terms that would help respond to the inquiry.
         """,
         "command": "Call the API to get a list of URLs for available options.",
-        "tools": ["/ddgs_search"]
+        "tools": ["/tools/ddgs_search"]
     },
     {
             "name": "content_creator",
