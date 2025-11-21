@@ -29,7 +29,7 @@
     # https://python.langchain.com/docs/integrations/chat/anthropic/#built-in-tools
 
     "anthropic_search": {
-        "class": "anthropic_web_search.AnthropicWebSearch",
+        "class": "tools.anthropic_web_search.AnthropicWebSearch",
         "description": "Tool that provides web search capabilities",
         "parameters": {
             "type": "object",
@@ -43,7 +43,7 @@
         }
     },
     "anthropic_code_execution": {
-        "class": "anthropic_code_execution.AnthropicCodeExecution",
+        "class": "tools.anthropic_code_execution.AnthropicCodeExecution",
         "description": "Executes Python code and performs tasks such as plotting, data analysis, or math using the Anthropic Code Execution tool.",
         "parameters": {
             "type": "object",
@@ -227,7 +227,7 @@
     # https://python.langchain.com/docs/integrations/chat/openai/#responses-api
 
     "openai_search": {
-        "class": "openai_web_search.OpenAIWebSearch",
+        "class": "tools.openai_web_search.OpenAIWebSearch",
         "description": "Tool that provides web search capabilities",
         "parameters": {
             "type": "object",
@@ -241,7 +241,7 @@
         }
     },
     "openai_code_interpreter": {
-        "class": "openai_code_interpreter.OpenAICodeInterpreter",
+        "class": "tools.openai_code_interpreter.OpenAICodeInterpreter",
         "description": "Executes Python code and performs tasks such as plotting, data analysis, or math using the OpenAI Code Interpreter tool.",
         "parameters": {
             "type": "object",
@@ -275,7 +275,7 @@
     # as environment variable "JIRA_USERNAME" and "JIRA_API_TOKEN", respectively.
     "confluence_rag": {
         # This is a coded tool for RAG on confluence pages.
-        "class": "confluence_rag.ConfluenceRag",
+        "class": "tools.confluence_rag.ConfluenceRag",
         "description": "Retrieve information from the given confluence documents",
         "parameters": {
             "type": "object",
@@ -313,7 +313,7 @@
     #     pip install pymupdf >= 1.25.5
     "pdf_rag": {
         # This is a coded tool for RAG on PDF files.
-        "class": "pdf_rag.PdfRag", 
+        "class": "tools.pdf_rag.PdfRag", 
         "description": "Retrieve information from the given PDF files",
         "parameters": {
             "type": "object",
@@ -354,7 +354,7 @@
     #     pip install wikipedia
     "wikipedia_rag": {
         # This is a coded tool for RAG on Wikipedia pages.
-        "class": "wikipedia_rag.WikipediaRag",
+        "class": "tools.wikipedia_rag.WikipediaRag",
         "description": "Retrieve information from Wikipedia and answer a query using RAG.",
         "parameters": {
             "type": "object",
@@ -372,7 +372,7 @@
     #     pip install arxiv
     "arxiv_rag": {
         # This is a coded tool for RAG on Arxiv Articles.
-        "class": "arxiv_rag.ArxivRag",
+        "class": "tools.arxiv_rag.ArxivRag",
         "description": "Retrieve information from arXiv and answer a query using RAG.",
         "parameters": {
             "type": "object",

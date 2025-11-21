@@ -39,7 +39,7 @@
     # You can optionally set a custom search URL via the BRAVE_URL environment variable.
     # If BRAVE_URL is not set, the default is: https://api.search.brave.com/res/v1/web/search?q=
     # You can also configure the request timeout (in seconds) using BRAVE_TIMEOUT; the default is 30 seconds.
-    "brave_search.hocon": false,
+    "tools/brave_search.hocon": false,
 
     # To use this search tool, you must
     #
@@ -57,7 +57,7 @@
     #
     # You can optionally set a custom search URL and a custom timeout via the GOOGLE_SEARCH_URL and GOOGLE_SEARCH_TIMEOUT environment variables.
     # Otherwise, the default values of "https://www.googleapis.com/customsearch/v1" and "30" are used, respectively
-    "google_search.hocon": false,
+    "tools/google_search.hocon": false,
 
     "tools/agent_network_html_creator.hocon": true,
     "tools/agentforce.hocon": true,
@@ -144,7 +144,7 @@
     "airbnb.hocon": true,
     "booking.hocon": true,
     "carmax.hocon": true,
-    "ddgs_search.hocon": true,
+    "tools/ddgs_search.hocon": true,
     "expedia.hocon": true,
     "macys.hocon": true,
     "LinkedInJobSeekerSupportNetwork.hocon": true,
