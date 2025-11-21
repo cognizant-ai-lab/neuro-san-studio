@@ -16,7 +16,7 @@
 
 from typing import Any
 
-from coded_tools.agent_network_designer.agent_network_assembler import AgentNetworkAssembler
+from .agent_network_assembler import AgentNetworkAssembler
 
 HOCON_HEADER_START = (
     "{\n"

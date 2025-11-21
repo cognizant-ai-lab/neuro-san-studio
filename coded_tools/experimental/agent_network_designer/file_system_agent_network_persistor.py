@@ -17,9 +17,9 @@
 # Import for asynchronous file operations
 import aiofiles
 
-from coded_tools.agent_network_designer.agent_network_assembler import AgentNetworkAssembler
-from coded_tools.agent_network_designer.agent_network_persistor import AgentNetworkPersistor
-from coded_tools.agent_network_designer.hocon_agent_network_assembler import HoconAgentNetworkAssembler
+from .agent_network_assembler import AgentNetworkAssembler
+from .agent_network_persistor import AgentNetworkPersistor
+from .hocon_agent_network_assembler import HoconAgentNetworkAssembler
 
 
 class FileSystemAgentNetworkPersistor(AgentNetworkPersistor):
