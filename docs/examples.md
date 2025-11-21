@@ -137,7 +137,7 @@ Examples that demonstrate how to integrate external tools and services.
 
 ### Anthropic Code Execution
 
-[Code Execution Assistant](./examples/tools/anthropic_code_execution.md) is a task-oriented agentic system designed to help
+[Code Execution Assistant](examples/tools/anthropic_code_execution.md) is a task-oriented agentic system designed to help
 users execute code and perform computational tasks efficiently. It leverages Anthropic's built-in code execution tool
 through a specialized toolkit, providing users with the ability to run Python code, generate visualizations,
 perform data analysis, and create files through natural language commands.
@@ -146,7 +146,7 @@ perform data analysis, and create files through natural language commands.
 
 ### Anthropic Web Search
 
-[Anthropic Web Search](./examples/tools/anthropic_web_search.md) is a task-oriented agentic system designed to help users
+[Anthropic Web Search](examples/tools/anthropic_web_search.md) is a task-oriented agentic system designed to help users
 search and retrieve information from the web efficiently. It leverages Anthropic's built-in web search tool through
 a specialized toolkit, providing users with accurate, up-to-date information from across the internet through
 natural language queries.
@@ -155,7 +155,7 @@ natural language queries.
 
 ### OpenAI Code Interpreter
 
-[OpenAI Code Interpreter](./examples/tools/openai_code_interpreter.md) is a task-oriented agentic system designed to help
+[OpenAI Code Interpreter](examples/tools/openai_code_interpreter.md) is a task-oriented agentic system designed to help
 users execute code and perform computational tasks efficiently. It leverages OpenAI's built-in code interpreter tool
 through a specialized toolkit, providing users with the ability to run Python code, generate visualizations,
 perform data analysis, and create computational solutions through natural language commands.
@@ -164,7 +164,7 @@ perform data analysis, and create computational solutions through natural langua
 
 ### OpenAI Web Search
 
-[OpenAI Web Search](./examples/tools/openai_web_search.md) is a task-oriented agentic system designed to help users search
+[OpenAI Web Search](examples/tools/openai_web_search.md) is a task-oriented agentic system designed to help users search
 and retrieve information from the web efficiently. It leverages OpenAI's built-in web search tool through a specialized
 toolkit, providing users with accurate, up-to-date information from across the internet through
 natural language queries.
@@ -173,14 +173,14 @@ natural language queries.
 
 ### Gmail Assistant
 
-[Gmail Assistant](./examples/tools/gmail.md) is a conversational agent that helps users manage their Gmail inbox using natural
+[Gmail Assistant](examples/tools/gmail.md) is a conversational agent that helps users manage their Gmail inbox using natural
 language. It can search, read, draft, and send emails by delegating tasks to specialized tools in the Gmail Toolkit.
 
 **Tags:** `tool`, `Gmail`, `API`
 
 ### Agent Network HTML Creator
 
-[Agent Network HTML Creator](./examples/tools/agent_network_html_creator.md) visualizes the structure of a specified multi-agent
+[Agent Network HTML Creator](examples/tools/agent_network_html_creator.md) visualizes the structure of a specified multi-agent
 system by generating an interactive HTML graph and opening it in Chrome. It helps users quickly understand the relationships
 and roles of agents within the network.
 
@@ -188,28 +188,28 @@ and roles of agents within the network.
 
 ### Agentforce
 
-[Agentforce](./examples/tools/agentforce.md) is an agent network that delegates to a Salesforce Agentforce agent
+[Agentforce](examples/tools/agentforce.md) is an agent network that delegates to a Salesforce Agentforce agent
 to interact with a CRM system.
 
 **Tags:** `tool`, `API`
 
 ### Agentspace
 
-[Agentspace](./examples/tools/agentspace_adapter.md) is an agent network that delegates to a Google Agentspace agent to
+[Agentspace](examples/tools/agentspace_adapter.md) is an agent network that delegates to a Google Agentspace agent to
 interact with different datastore connectors on Google Cloud.
 
 **Tags:** `tool`, `API`
 
 ### MCP BMI STREAMABLE HTTP
 
-[MCP BMI STREAMABLE HTTP](./examples/tools/mcp_bmi_streamable_http.md) is an agent that calls a tool in MCP server via
+[MCP BMI STREAMABLE HTTP](examples/tools/mcp_bmi_streamable_http.md) is an agent that calls a tool in MCP server via
 streamable http to calculate BMI. It serves as an example of how to connect to MCP servers in coded tools.
 
 **Tags:** `tool`, `MCP`
 
 ### A2A RESEARCH REPORT
 
-[A2A RESEARCH REPORT](./examples/tools/a2a_research_report.md) is an agent that uses a coded tool as an A2A client to connect
+[A2A RESEARCH REPORT](examples/tools/a2a_research_report.md) is an agent that uses a coded tool as an A2A client to connect
 to crewAI agents in an A2A server to write a report on a provided topic. This is an example of how to link
 neuro-san with other agentic frameworks.
 
@@ -217,7 +217,7 @@ neuro-san with other agentic frameworks.
 
 ### PDF RAG Assistant
 
-[PDF RAG Assistant](./examples/tools/pdf_rag.md) is an agent-based system that answers user queries by retrieving information
+[PDF RAG Assistant](examples/tools/pdf_rag.md) is an agent-based system that answers user queries by retrieving information
 from specified PDF files using Retrieval-Augmented Generation (RAG). It processes input through a frontman agent and a
 PDF retrieval tool, enabling accurate responses from static documents.
 
@@ -225,14 +225,14 @@ PDF retrieval tool, enabling accurate responses from static documents.
 
 ### Confluence RAG Assistant
 
-[Confluence RAG Assistant](./examples/tools/confluence_rag.md) answers user queries using RAG over Confluence pages by loading
+[Confluence RAG Assistant](examples/tools/confluence_rag.md) answers user queries using RAG over Confluence pages by loading
 page content (and optional attachments), building a vector store, and retrieving relevant info to respond.
 
 **Tags** `tool`, `RAG`
 
 ### Agentic RAG Assistant
 
-[Agentic RAG Assistant](./examples/tools/agentic_rag.md) is a modular multi-agent system that answers user queries by
+[Agentic RAG Assistant](examples/tools/agentic_rag.md) is a modular multi-agent system that answers user queries by
 retrieving information from the web, PDF documents, and Slack channels. It mimics a smart assistant that delegates tasks
 to specialized tools and compiles responses into clear, helpful answers.
 
@@ -240,21 +240,21 @@ to specialized tools and compiles responses into clear, helpful answers.
 
 ### Wikipedia RAG Assistant
 
-[Wikipedia RAG Assistant](./examples/tools/wikipedia_rag.md) answers user queries by searching Wikipedia, fetching the most
+[Wikipedia RAG Assistant](examples/tools/wikipedia_rag.md) answers user queries by searching Wikipedia, fetching the most
 relevant articles, and synthesizing their content into accurate, detailed answers (no vector store required).
 
 **Tags:** `tool`, `RAG`
 
 ### ArXiv RAG Assistant
 
-[ArXiv RAG Assistant](./examples/tools/arxiv_rag.md) is an agent-based system that queries arXiv, pulls the best-matching
+[ArXiv RAG Assistant](examples/tools/arxiv_rag.md) is an agent-based system that queries arXiv, pulls the best-matching
 research papers (abstracts or full text) and produces accurate responses to user queries (no vector store needed).
 
 **Tags:** `tool`, `RAG`
 
 ### ServiceNow AI Agents
 
-[ServiceNow AI Agents](./examples/tools/now_agents.md) is a comprehensive integration system that enables natural language
+[ServiceNow AI Agents](examples/tools/now_agents.md) is a comprehensive integration system that enables natural language
 interaction with ServiceNow's Agentic AI platform. It provides discovery, communication, and response retrieval
 capabilities for 100+ specialized AI agents within ServiceNow instances for IT service management, HR operations,
 procurement, and other enterprise processes.
@@ -263,7 +263,7 @@ procurement, and other enterprise processes.
 
 ### Visual Question Answering
 
-[Visual Question Answering](./examples/tools/visual_question_answering.md) is an agent network that allows you to pose
+[Visual Question Answering](examples/tools/visual_question_answering.md) is an agent network that allows you to pose
 queries against images or videos. It uses Apple's ml-fastvlm library to answer the queries.
 
 **Tags:** `tool`, `Visual Question Answering`, `VQA`, `Vision Language Models`, `VLM`, `ml-fastvlm`
