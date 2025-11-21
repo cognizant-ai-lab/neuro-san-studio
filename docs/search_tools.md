@@ -213,8 +213,17 @@ The cost and rate limit comparison is provided in the table below.
 | Brave Search | Yes<br> 1 request/second<br>2,000 request /month | Base AI: $5 per 1,000 requests<br>20 requests/second<br>20 million queries/month<br>Pro AI: $9 per 1,000 requests<br>50 requests/second<br>Unlimited queries/month |
 | DDGS | Yes<br>Rate limit: backend specific | No |
 | Google Search | Yes<br>100 searches/day | Yes<br>$5 for 1,000 queries<br>10,000 queries/day |
-| Google Serper | Yes<br>2,500 queries (one-time) | Yes<br>$0.30 per 1,000 queries |
-| OpenAI Search | Yes (Internal to ChatGPT)<br>Check OpenAI rate limits | Yes (Internal to ChatGPT)<br> |
-| Tavily Search | Yes<br>1,000 API credits/month | Yes<br>E.g.: $30/month for 4,000 credits<br>pay-as-you-go: $0.008 per credit |
+| Google Serper | Yes<br>2,500 queries (one-time) | Yes<br>$50, 50k queries, 50 queries/sec |
+| OpenAI Search | Yes (Internal to ChatGPT)<br>Check OpenAI rate limits | Yes (Internal to ChatGPT)<br>Check OpenAI rate limits |
+| Tavily Search | Yes<br>1,000 API credits/month | Yes<br>Pay-as-you-go: $0.008 per credit<br>Monthly plans: $0.0075 - $0.005 per credit |
 <!-- pyml enable line-length -->
 <!-- pyml enable no-inline-html -->
+
+Below please find links for cost and rate limit comparison data:
+
+<!-- pyml disable line-length -->
+1. [Brave Search](https://brave.com/search/api/)
+2. [Google Search](https://support.google.com/programmable-search/answer/9069107?hl=en)
+3. [Google Serper](https://serper.dev/)
+4. [Tavily Search](https://docs.tavily.com/documentation/api-credits?gad_source=1&gad_campaignid=23241003995&gbraid=0AAAABB_ZBWqzEiEMi0w05vAdKVALUXxQa&gclid=CjwKCAiAuIDJBhBoEiwAxhgyFmruBLFFRvuAQNz0B_bQv-0CV1pxKxmZ_nosoMIQLJ9kMkDiyxJ1OhoC5f0QAvD_BwE)
+<!-- pyml enable line-length -->
