@@ -295,7 +295,7 @@
         # This is a coded tool for RAG on multiple file format.
         # See https://python.langchain.com/docs/integrations/document_loaders/docling/ and
         # https://docling-project.github.io/docling/
-        "class": "docling_rag.DoclingRag", 
+        "class": "tools.docling_rag.DoclingRag",
         "description": "Retrieve information from the given files",
         "parameters": {
             "type": "object",
@@ -329,7 +329,7 @@
 
     "webpage_rag": {
         # This is a coded tool for RAG on webpages.
-        "class": "webpage_rag.WebpageRag", 
+        "class": "tools.webpage_rag.WebpageRag",
         "description": "Retrieve information from the given webpages",
         "parameters": {
             "type": "object",
