@@ -225,5 +225,5 @@ Below please find links for cost and rate limit comparison data:
 1. [Brave Search](https://brave.com/search/api/)
 2. [Google Search](https://support.google.com/programmable-search/answer/9069107?hl=en)
 3. [Google Serper](https://serper.dev/)
-4. [Tavily Search](https://docs.tavily.com/documentation/api-credits?gad_source=1&gad_campaignid=23241003995&gbraid=0AAAABB_ZBWqzEiEMi0w05vAdKVALUXxQa&gclid=CjwKCAiAuIDJBhBoEiwAxhgyFmruBLFFRvuAQNz0B_bQv-0CV1pxKxmZ_nosoMIQLJ9kMkDiyxJ1OhoC5f0QAvD_BwE)
+4. [Tavily Search](https://www.tavily.com/#pricing)
 <!-- pyml enable line-length -->
