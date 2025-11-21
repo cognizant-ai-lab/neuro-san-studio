@@ -130,6 +130,7 @@ you can quote only the non-substituted parts:
 ```
 
 Also not that if you're using json notation you need to put the include with the curly braces:
+
 ```hocon
 {
     include "registries/aaosa.hocon"
