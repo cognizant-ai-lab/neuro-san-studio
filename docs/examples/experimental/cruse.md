@@ -7,7 +7,7 @@
 
 ## File
 
-[cruse_agent.hocon](../../registries/cruse_agent.hocon)
+[cruse_agent.hocon](../../registries/experimental/cruse_agent.hocon)
 
 ---
 

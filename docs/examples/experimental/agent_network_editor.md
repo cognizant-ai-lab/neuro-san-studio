@@ -1,6 +1,6 @@
 # Agent Network Editor
 
-The **Agent Network Editor** is a multi-agent system for create or modify `agent_network_definition`. It serves as a subnetwork within the [`agent_network_designer`](../../registries/agent_network_designer.hocon), focusing specifically on building and editing the structure (graph) of the agent network. It is responsible for generating and editing the structure of an agent network according to given specifications.
+The **Agent Network Editor** is a multi-agent system for create or modify `agent_network_definition`. It serves as a subnetwork within the [`agent_network_designer`](../../registries/experimental/agent_network_designer.hocon), focusing specifically on building and editing the structure (graph) of the agent network. It is responsible for generating and editing the structure of an agent network according to given specifications.
 It operates autonomously within its defined scope — responding only to queries related to network structure and relationships between agents.
 
 This network is also highly useful for testing and experimenting with how agent structures are formed.
@@ -68,7 +68,7 @@ Subnetworks always start with "/" while MCP tools are represented by the server'
 
 ## File
 
-[agent_network_editor.hocon](../../registries/agent_network_editor.hocon)
+[agent_network_editor.hocon](../../registries/experimental/agent_network_editor.hocon)
 
 ---
 

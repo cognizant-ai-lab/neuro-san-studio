@@ -149,32 +149,32 @@
     "macys.hocon": true,
     "LinkedInJobSeekerSupportNetwork.hocon": true,
     # Experimental and research
-    "agent_network_designer.hocon": true,
-    "agent_network_editor.hocon": {
+    "experimental/agent_network_designer.hocon": true,
+    "experimental/agent_network_editor.hocon": {
         # This is a support network for agent_network_designer
         # We want it served up, but not listed as a public agent network
         "serve": true,
         "public": false
     },
-    "agent_network_instructions_editor.hocon": {
+    "experimental/agent_network_instructions_editor.hocon": {
         # This is a support network for agent_network_designer
         # We want it served up, but not listed as a public agent network
         "serve": true,
         "public": false
     },
-    "agent_network_query_generator.hocon": { 
+    "experimental/agent_network_query_generator.hocon": { 
         # This is a support network for agent_network_designer
         # We want it served up, but not listed as a public agent network
         "serve": true,
         "public": false
     },
-    "six_thinking_hats.hocon": true,
+    "experimental/six_thinking_hats.hocon": true,
     # Set the following agent network to true before running apps/cruse/interface_flask.py
-    "cruse_agent.hocon": false,
+    "experimental/cruse_agent.hocon": false,
     # Set the following agent network to true before running apps/conscious_assistant/interface_flask.py
-    "conscious_agent.hocon": false,
+    "experimental/conscious_agent.hocon": false,
     # Set the following agent network to true before running apps/log_analyzer/log_analyzer.py
-    "log_analysis_agents.hocon": false,
+    "experimental/log_analysis_agents.hocon": false,
 
     # Demos
 
@@ -201,7 +201,7 @@
     #   The default ports are 30011 for gRPC, 8080 for HTTP, and 4173 for nsflow.
     #   For example, you can run:
     #     python -m run --server-grpc-port 30012 --server-http-port 8081 --nsflow-port 4174
-    "agent_network_architect.hocon": false,
-    "news_sentiment_analysis.hocon": false,
+    "experimental/agent_network_architect.hocon": false,
+    "experimental/news_sentiment_analysis.hocon": false,
     "now_agents.hocon": true,
 }

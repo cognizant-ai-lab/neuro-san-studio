@@ -10,7 +10,7 @@ token consumption.
 
 ## File
 
-[log_analysis_agents.hocon](../../registries/log_analysis_agents.hocon)
+[log_analysis_agents.hocon](../../registries/experimental/log_analysis_agents.hocon)
 
 ---
 
