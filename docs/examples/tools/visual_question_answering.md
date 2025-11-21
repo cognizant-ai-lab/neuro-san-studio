@@ -10,7 +10,8 @@ i.e. an agent that calls Python code. The agent network allows for:
 
 ## Prerequisite: Set up Visual Question Answering (VQA)
 
-1. Clone `ml-fastvlm` repository in the same folder as `neuro-san-studio`. E.g., both `neuro-san-studio` and `ml-fastvlm` are cloned in `~/MyProjects` folder.
+1. Clone `ml-fastvlm` repository in the same folder as `neuro-san-studio`. E.g., both `neuro-san-studio` and
+`ml-fastvlm` are cloned in `~/MyProjects` folder.
 
 ```bash
 git clone https://github.com/kxk302/ml-fastvlm.git
@@ -41,6 +42,14 @@ pip install -e .
 pip install opencv-python==4.8.0.74
 ```
 
+6. To download all the pretrained checkpoints, run the command below (note that this might take some
+time depending on your connection so might be good to grab ☕️ while you wait). Files will be downloaded
+to the `checkpoints` directory.
+
+```bash
+bash get_models.sh
+```
+
 ## File
 
 [visual_question_answering.hocon](../../../registries/tools/visual_question_answering.hocon)
@@ -67,7 +76,6 @@ AI: { "answer": "There are 14 people in the image." }
 ```
 
 Expectation: the answer should say the number of people in the image.
-
 
 Video question: specify the location of a video file in `sly_data`. The video contains an animal.
 

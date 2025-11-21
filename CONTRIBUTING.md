@@ -348,13 +348,13 @@ git rebase main
 - **Main Library**: [Neuro SAN](https://github.com/cognizant-ai-lab/neuro-san)
 - **YouTube**: [Decision AI](https://www.youtube.com/@decision-ai)
 - **Website**: [Cognizant AI Lab](https://www.cognizant.com/us/en/ai-lab)
-- **Twitter**: [@decision__ai](https://x.com/decision__ai)
+- **X**: [@cognizantailab](https://x.com/cognizantailab)
 - **LinkedIn**: [Cognizant AI Lab](https://www.linkedin.com/showcase/cognizant-ai-lab)
 - **Blog**: [Medium](https://medium.com/@evolutionmlmail)
 
 ## License
 
-By contributing to Neuro SAN Studio, you agree that your contributions will be licensed under the project's [Academic Public License](LICENSE.txt). Commercial use requires a commercial license from Cognizant Technology Solutions Corp.
+By contributing to Neuro SAN Studio, you agree that your contributions will be licensed under the project's [Apache 2.0 License](LICENSE.txt).
 
 ## Questions?
 

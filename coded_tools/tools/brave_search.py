@@ -29,6 +29,7 @@ from neuro_san.interfaces.coded_tool import CodedTool
 from requests import HTTPError
 from requests import JSONDecodeError
 from requests import RequestException
+from requests import Timeout
 
 BRAVE_URL = "https://api.search.brave.com/res/v1/web/search"
 BRAVE_TIMEOUT = 30.0
@@ -123,7 +124,9 @@ class BraveSearch(CodedTool):
         # If there are results from search, get "title", "url", "description", and "extra_snippets"
         # from each result
         if results:
-            for result in results.get("web", {}).get("results"):
+            # Loop over each item in the list located at results["web"]["results"],
+            # but safely, without throwing errors if "web" or "results" is missing
+            for result in results.get("web", {}).get("results", []):
                 result_dict: Dict[str, str] = {}
                 result_dict["title"] = result.get("title")
                 result_dict["url"] = result.get("url")
@@ -134,7 +137,9 @@ class BraveSearch(CodedTool):
         return results_list
 
     async def async_invoke(self, args: Dict[str, Any], sly_data: Dict[str, Any]) -> Union[Dict[str, Any], str]:
-        """Run invoke asynchronously."""
+        """
+        Run self.invoke(args, sly_data) in a thread so it won’t block the async event loop, and wait for it to finish
+        """
         return await asyncio.to_thread(self.invoke, args, sly_data)
 
     def brave_search(
@@ -152,17 +157,32 @@ class BraveSearch(CodedTool):
 
         :return: The parsed JSON response from the Brave Search API as a dictionary.
         """
+        # HTTP request header
+        # You want to receive JSON data, and
+        # You want to authenticate with your API key
         headers = {
             "Accept": "application/json",
             "X-Subscription-Token": self.brave_api_key,
         }
         results: Dict[str, Any] = {}
         try:
+            # Attaches URL query parameters to the request.
+            # Example:
+            #   {"q": "python", "count": 10}
+            # becomes:
+            #   ?q=python&count=10
             response = requests.get(brave_url, headers=headers, params=brave_search_params, timeout=brave_timeout)
+            # This line checks whether the HTTP request succeeded.
+            # If the status code is:
+            #   200–299 → OK, nothing happens.
+            #   400–499 → Client error → raises requests.exceptions.HTTPError
+            #   500–599 → Server error → raises requests.exceptions.HTTPError
             response.raise_for_status()
             results = response.json()
         except HTTPError as http_err:
             logging.error("HTTP error occurred: %s - Status code: %s", http_err, response.status_code)
+        except Timeout as time_out_err:
+            logging.error("Timeout error occurred: %s - Status code: %s", time_out_err, response.status_code)
         except JSONDecodeError as json_err:
             logging.error("JSON decode error: %s", json_err)
         except RequestException as req_err:
