@@ -16,8 +16,8 @@ In this document, we will go over each search tools listed above and will also d
 
 Anthropic Search is the built-in web search system used by Claude, designed to let the model access fresh, real-time
 information from the internet in a safe, transparent way. It is not a standalone public product (like Google or Bing).
-Instead, it is a search layer integrated into Claude, combining multiple web search APIs (E.g., Bing or Brave,
-depending on partnership and availability).
+Instead, it is a search layer integrated into Claude, combining multiple web search APIs (E.g., Brave, depending on
+partnership and availability).
 
 ![Anthropic](./images/Anthropic.png)
 
@@ -29,7 +29,10 @@ langchain-anthropic>=0.3.13 installed in your virtual environment.
 
 _Example Usage in Neuro San Studio_:
 
-anthropic\_web_search.hocon, available as a tool in toolbox\_info.hocon
+<!-- pyml disable line-length -->
+[anthropic\_web_search.hocon](https://github.com/cognizant-ai-lab/neuro-san-studio/blob/main/coded_tools/anthropic_web_search.py),
+available as a tool in [toolbox\_info.hocon](https://github.com/cognizant-ai-lab/neuro-san-studio/blob/main/toolbox/toolbox_info.hocon)
+<!-- pyml enable line-length -->
 
 ## Brave Search
 
@@ -56,7 +59,11 @@ can also configure the request timeout (in seconds) using `BRAVE_TIMEOUT`; the d
 
 _Example Usage in Neuro San Studio:_
 
-brave\_search.hocon, available as a tool in toolbox\_info.hocon , real\_estate.hocon
+<!-- pyml disable line-length -->
+[brave\_search.hocon](https://github.com/cognizant-ai-lab/neuro-san-studio/blob/main/registries/brave_search.hocon),
+[real\_estate.hocon](https://github.com/cognizant-ai-lab/neuro-san-studio/blob/main/registries/real_estate.hocon),
+available as a tool in toolbox\_info.hocon](https://github.com/cognizant-ai-lab/neuro-san-studio/blob/main/toolbox/toolbox_info.hocon)
+<!-- pyml enable line-length -->
 
 ## Dux Distributed Global Search (DDGS)
 
@@ -78,8 +85,16 @@ Instead, it scrapes:
 
 _Example Usage in Neuro San Studio_:
 
-ddgs_search.hocon, available as a tool in toolbox\_info.hocon, agent\_netowork\_designer.hocon, agentic\_rag.hocon,
-airbnb.hocon, booking.hocon, carmax.hocon, expedia.hocon, LinkedInJobSeekerSupportNetwork.hocon
+[ddgs_search.hocon](https://github.com/cognizant-ai-lab/neuro-san-studio/blob/main/registries/ddgs_search.hocon),
+[agent\_netowork\_designer.hocon](https://github.com/cognizant-ai-lab/neuro-san-studio/blob/main/registries/agent_network_designer.hocon),
+[agentic\_rag.hocon](https://github.com/cognizant-ai-lab/neuro-san-studio/blob/main/registries/agentic_rag.hocon),
+[airbnb.hocon](https://github.com/cognizant-ai-lab/neuro-san-studio/blob/main/registries/airbnb.hocon),
+[booking.hocon](https://github.com/cognizant-ai-lab/neuro-san-studio/blob/main/registries/booking.hocon),
+[carmax.hocon](https://github.com/cognizant-ai-lab/neuro-san-studio/blob/main/registries/carmax.hocon),
+[expedia.hocon](https://github.com/cognizant-ai-lab/neuro-san-studio/blob/main/registries/expedia.hocon),
+[LinkedInJobSeekerSupportNetwork.hocon](https://github.com/cognizant-ai-lab/neuro-san-studio/blob/main/registries/LinkedInJobSeekerSupportNetwork.hocon),
+available as a tool in
+[toolbox\_info.hocon](https://github.com/cognizant-ai-lab/neuro-san-studio/blob/main/toolbox/toolbox_info.hocon)
 
 ## Google Custom Search Engine
 
@@ -109,7 +124,10 @@ To use this search tool, you must
 
 _Example Usage in Neuro San Studio_:
 
-google\_search.hocon, available as a tool in toolbox\_info.hocon
+<!-- pyml disable line-length -->
+[google\_search.hocon](https://github.com/cognizant-ai-lab/neuro-san-studio/blob/main/registries/google_search.hocon),
+available as a tool in [toolbox\_info.hocon](https://github.com/cognizant-ai-lab/neuro-san-studio/blob/main/toolbox/toolbox_info.hocon)
+<!-- pyml enable line-length -->
 
 ## Google Serper
 
@@ -127,13 +145,14 @@ key, set it using the SERPER\_API\_KEY environment variable.
 
 _Example Usage in Neuro San Studio_:
 
-Available as a tool in toolbox\_info.hocon_
+Available as a tool in [toolbox\_info.hocon](https://github.com/cognizant-ai-lab/neuro-san-studio/blob/main/toolbox/toolbox_info.hocon)
 
 ## OpenAI Search
 
 OpenAI Search is the built-in web search system used by ChatGPT. It is not a standalone search engine like Google/Bing,
 nor a public “OpenAI Search API”. It is an internal retrieval system that lets ChatGPT access fresh, real-time
-information from the internet when you ask it to “search the web”. It uses partner search engine like Bing Search API.
+information from the internet when you ask it to “search the web”. It’s not publicly confirmed exactly which
+underlying search engine OpenAI uses for all of its web-search features.
 
 _Environment Variables:_
 
@@ -144,7 +163,10 @@ virtual environment.
 
 _Example Usage in Neuro San Studio:_
 
-openai\_web\_search.hocon, available as a tool in toolbox\_info.hocon
+<!-- pyml disable line-length -->
+[openai\_web\_search.hocon](https://github.com/cognizant-ai-lab/neuro-san-studio/blob/main/registries/openai_web_search.hocon),
+available as a tool in [toolbox\_info.hocon](https://github.com/cognizant-ai-lab/neuro-san-studio/blob/main/toolbox/toolbox_info.hocon)
+<!-- pyml enable line-length -->
 
 ## Tavily Search
 
@@ -163,7 +185,7 @@ in your virtual environment.
 
 _Example Usage in Neuro San Studio_:
 
-Available as a tool in toolbox\_info.hocon
+Available as a tool in [toolbox\_info.hocon](https://github.com/cognizant-ai-lab/neuro-san-studio/blob/main/toolbox/toolbox_info.hocon)
 
 ## Comparison of Search Tools
 
