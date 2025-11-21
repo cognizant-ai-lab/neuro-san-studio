@@ -49,14 +49,14 @@ Do not mention what you can NOT do. Only mention what you can do.
         # call each other is defined within their own specs.
         # This could be a graph, potentially even with cycles.
         {
-            "name": "RealEstate.ai",
+            "name": "RealEstateAgent",
 
             "function": {
 
                 # The description acts as an initial prompt. 
 
                 "description": """
-                Your name is RealEstate.ai. You respond to user inquiries related to purchasing a property.
+                Your name is RealEstateAgent. You respond to user inquiries related to purchasing a property.
                 Your down-chain agents (or tools) will help you determine your scope of operations.
                 """
             },
