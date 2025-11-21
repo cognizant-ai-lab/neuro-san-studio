@@ -60,7 +60,7 @@
     # ---------- Agent Network Tools ----------
 
     "call_agent": {
-        "class": "call_agent.CallAgent",
+        "class": "tools.call_agent.CallAgent",
         "description": "Call the agent to respond to inquiry.",
         "parameters": {
             "type": "object",
@@ -80,7 +80,7 @@
 
     # This tool uses pyvis to generate a html, and open it in chrome browser.
     "agent_network_html_generator": {
-        "class": "agent_network_html_generator.AgentNetworkHtmlGenerator"
+        "class": "tools.agent_network_html_generator.AgentNetworkHtmlGenerator"
         "description": "Generate a html file from agent network hocon",
         "parameters": {
             "type": "object",
@@ -111,7 +111,7 @@
 
     "send_gmail_message_with_attachment": {
         # This is the coded tool for sending an email with attachment
-        "class": "gmail_attachment.GmailAttachment"
+        "class": "tools.gmail_attachment.GmailAttachment"
         "description": "Send an email with attachment",
         "parameters": {
             "type": "object",
@@ -394,7 +394,7 @@
     # If BRAVE_URL is not set, the default is: https://api.search.brave.com/res/v1/web/search?q=
     # You can also configure the request timeout (in seconds) using BRAVE_TIMEOUT; the default is 30 seconds.
     "brave_search": {
-        "class": "brave_search.BraveSearch",
+        "class": "tools.brave_search.BraveSearch",
         "description": "Performs a web search using Brave Search.",
         "parameters": {
             "type": "object",
@@ -411,7 +411,7 @@
     # This search tool requires no API key.
     # Reference: https://github.com/deedy5/ddgs
     "ddgs_search": {
-        "class": "ddgs_search.DdgsSearch",
+        "class": "tools.ddgs_search.DdgsSearch",
         "description": "Performs a web search using DDGS Search.",
         "parameters": {
             "type": "object",
@@ -442,7 +442,7 @@
     # You can optionally set a custom search URL and a custom timeout via the GOOGLE_SEARCH_URL and GOOGLE_SEARCH_TIMEOUT environment variables.
     # Otherwise, the default values of "https://www.googleapis.com/customsearch/v1" and "30" are used, respectively
     "google_search": {
-        "class": "google_search.GoogleSearch",
+        "class": "tools.google_search.GoogleSearch",
         "description": "Performs a web search using Google Search.",
         "parameters": {
             "type": "object",
@@ -459,7 +459,7 @@
     # To use this search tool, obtain an API key from: https://serper.dev/
     # Once you have the API key, set it using the SERPER_API_KEY environment variable.
     "google_serper": {
-        "class": "google_serper.GoogleSerper",
+        "class": "tools.google_serper.GoogleSerper",
         "description": """Search the web using Google Serper API with customizable parameters.
         
         Supports multiple search types (web, news, images, places) with geographic and language localization.
