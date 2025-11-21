@@ -126,20 +126,20 @@
     "visual_question_answering.hocon": false,
 
 
-    # Use cases
-    "airline_policy.hocon": true,
-    "banking_ops.hocon": true,
+    # Industry examples
+    "industry/airline_policy.hocon": true,
+    "industry/banking_ops.hocon": true,
     "cpg_agents.hocon": true,
     "insurance_agents.hocon": false,  # This is a deprecated version of insurance_underwriting_agents.hocon
-    "insurance_underwriting_agents.hocon": true,
-    "intranet_agents.hocon": false,  # This is a deprecated version of intranet_agents_with_tools.hocon
-    "intranet_agents_with_tools.hocon": true,
-    "real_estate.hocon": false,
-    "retail_ops_and_customer_service.hocon": true,
-    "telco_network_support.hocon": true,
-    "telco_network_orchestration.hocon": true,
-    "therapy_vignette_supervisors.hocon": true,
-    "consumer_decision_assistant.hocon": true,
+    "industry/insurance_underwriting_agents.hocon": true,
+    "industry/intranet_agents.hocon": false,  # This is a deprecated version of intranet_agents_with_tools.hocon
+    "industry/intranet_agents_with_tools.hocon": true,
+    "industry/real_estate.hocon": false,
+    "industry/retail_ops_and_customer_service.hocon": true,
+    "industry/telco_network_support.hocon": true,
+    "industry/telco_network_orchestration.hocon": true,
+    "industry/therapy_vignette_supervisors.hocon": true,
+    "industry/consumer_decision_assistant.hocon": true,
     # The following agent networks are used as sub-networks by consumer_decision_assistant.hocon
     "airbnb.hocon": true,
     "booking.hocon": true,
@@ -202,6 +202,6 @@
     #   For example, you can run:
     #     python -m run --server-grpc-port 30012 --server-http-port 8081 --nsflow-port 4174
     "agent_network_architect.hocon": false,
-    "news_sentiment_analysis.hocon": false,
+    "industry/news_sentiment_analysis.hocon": false,
     "now_agents.hocon": true,
 }

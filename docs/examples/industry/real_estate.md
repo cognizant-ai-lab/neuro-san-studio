@@ -6,7 +6,7 @@ the down-chain agents call coded tools. For example, the Listing agent calls the
 
 ## File
 
-[real_estate.hocon](../../registries/real_estate.hocon)
+[real_estate.hocon](../../../registries/industry/real_estate.hocon)
 
 ---
 

@@ -6,7 +6,7 @@ The **Retail Operations and Customer Service Assistant** is a modular multi-agen
 
 ## File
 
-[retail_ops_and_consumer_service.hocon](../../registries/retail_ops_and_customer_service.hocon)
+[retail_ops_and_customer_service.hocon](../../../registries/industry/retail_ops_and_customer_service.hocon)
 
 ---
 

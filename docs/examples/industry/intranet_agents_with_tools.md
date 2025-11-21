@@ -7,7 +7,7 @@ call coded tools. The HR agent calls the HCM [APIs](https://docs.oracle.com/en/c
 
 ## File
 
-[intranet_agents_with_tools.hocon](../../registries/intranet_agents_with_tools.hocon)
+[intranet_agents_with_tools.hocon](../../../registries/industry/intranet_agents_with_tools.hocon)
 
 ---
 

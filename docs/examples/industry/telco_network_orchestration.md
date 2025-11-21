@@ -4,7 +4,7 @@ This agent network simulates a large-scale telecommunication network orchestrati
 
 ## File
 
-[telco_network_orchestration.hocon](../../registries/telco_network_orchestration.hocon)
+[telco_network_orchestration.hocon](../../../registries/industry/telco_network_orchestration.hocon)
 
 ## Description
 
