@@ -21,7 +21,7 @@ from typing import Dict
 from langchain_community.retrievers import ArxivRetriever
 from neuro_san.interfaces.coded_tool import CodedTool
 
-from coded_tools.base_rag import BaseRag
+from coded_tools.tools.base_rag import BaseRag
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)

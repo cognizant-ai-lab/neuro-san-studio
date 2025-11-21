@@ -27,8 +27,8 @@ from langchain_core.documents import Document
 from langchain_core.vectorstores import VectorStore
 from neuro_san.interfaces.coded_tool import CodedTool
 
-from coded_tools.base_rag import BaseRag
-from coded_tools.base_rag import PostgresConfig
+from coded_tools.tools.base_rag import BaseRag
+from coded_tools.tools.base_rag import PostgresConfig
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
