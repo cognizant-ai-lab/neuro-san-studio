@@ -3,6 +3,7 @@ profile = "black"
 src_paths = ["apps", "coded_tools", "tests"]
 line_length = 119
 known_first_party = ["apps"]
+force_single_line = true
 
 [tool.flake8]
 extend-ignore = ["W503", "E203"]
