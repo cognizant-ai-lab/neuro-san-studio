@@ -10,7 +10,7 @@ a limited daily search quota.
 
 ## File
 
-[consumer_decision_assistant.hocon](../../registries/consumer_decision_assistant.hocon)
+[consumer_decision_assistant.hocon](../../../registries/industry/consumer_decision_assistant.hocon)
 
 ---
 

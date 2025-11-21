@@ -21,7 +21,7 @@ from typing import Union
 
 from neuro_san.interfaces.coded_tool import CodedTool
 
-from coded_tools.intranet_agents_with_tools.absence_manager import AbsenceManager
+from coded_tools.industry.intranet_agents_with_tools.absence_manager import AbsenceManager
 
 logger = logging.getLogger(__name__)
 

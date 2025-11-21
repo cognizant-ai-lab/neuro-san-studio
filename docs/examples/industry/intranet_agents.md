@@ -6,7 +6,7 @@ receives a question, and in coordination with down-chain agents, provides an ans
 
 ## File
 
-[intranet_agents.hocon](../../registries/intranet_agents.hocon)
+[intranet_agents.hocon](../../../registries/industry/intranet_agents.hocon)
 
 ---
 

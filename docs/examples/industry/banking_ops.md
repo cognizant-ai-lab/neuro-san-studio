@@ -9,7 +9,7 @@ The system currently operates in demo mode and can be grounded in real data and 
 
 ## File
 
-[banking_ops_aaosa.hocon](../../registries/banking_ops_aaosa.hocon)
+[banking_ops.hocon](../../../registries/industry/banking_ops.hocon)
 
 ---
 
