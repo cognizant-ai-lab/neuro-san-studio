@@ -7,7 +7,7 @@ The **News Sentiment Analysis Assistant** is a modular, multi-agent system that 
 
 ## File
 
-[news_sentiment_analysis.hocon](../../registries/news_sentiment_analysis.hocon)
+[news_sentiment_analysis.hocon](../../registries/experimental/news_sentiment_analysis.hocon)
 
 ---
 ## Prerequisites
@@ -18,7 +18,7 @@ This agent is **disabled by default**. To enable and use it:
 
 Install the following dependencies:
 ```bash
-pip install -r coded_tools/news_sentiment_analysis/requirements.txt
+pip install -r coded_tools/experimental/news_sentiment_analysis/requirements.txt
 ```
 ### 2. Get API Keys
 

@@ -13,7 +13,7 @@ The **Conscious Agent** is a basic multi-agent system that is called from the [c
 
 ## File
 
-[conscious_agent.hocon](../../registries/conscious_agent.hocon)
+[conscious_agent.hocon](../../registries/experimental/conscious_agent.hocon)
 
 ---
 

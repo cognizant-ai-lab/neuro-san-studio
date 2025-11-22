@@ -22,7 +22,7 @@ from leaf_common.persistence.easy.easy_hocon_persistence import EasyHoconPersist
 from neuro_san.internals.graph.filters.dictionary_common_defs_config_filter import DictionaryCommonDefsConfigFilter
 from neuro_san.internals.graph.filters.string_common_defs_config_filter import StringCommonDefsConfigFilter
 
-from coded_tools.agent_network_designer.agent_network_assembler import AgentNetworkAssembler
+from .agent_network_assembler import AgentNetworkAssembler
 
 
 class DeployableAgentNetworkAssembler(AgentNetworkAssembler):
