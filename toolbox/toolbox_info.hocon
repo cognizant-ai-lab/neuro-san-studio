@@ -29,7 +29,7 @@
     # https://python.langchain.com/docs/integrations/chat/anthropic/#built-in-tools
 
     "anthropic_search": {
-        "class": "anthropic_web_search.AnthropicWebSearch",
+        "class": "tools.anthropic_web_search.AnthropicWebSearch",
         "description": "Tool that provides web search capabilities",
         "parameters": {
             "type": "object",
@@ -43,7 +43,7 @@
         }
     },
     "anthropic_code_execution": {
-        "class": "anthropic_code_execution.AnthropicCodeExecution",
+        "class": "tools.anthropic_code_execution.AnthropicCodeExecution",
         "description": "Executes Python code and performs tasks such as plotting, data analysis, or math using the Anthropic Code Execution tool.",
         "parameters": {
             "type": "object",
@@ -60,7 +60,7 @@
     # ---------- Agent Network Tools ----------
 
     "call_agent": {
-        "class": "call_agent.CallAgent",
+        "class": "tools.call_agent.CallAgent",
         "description": "Call the agent to respond to inquiry.",
         "parameters": {
             "type": "object",
@@ -80,7 +80,7 @@
 
     # This tool uses pyvis to generate a html, and open it in chrome browser.
     "agent_network_html_generator": {
-        "class": "agent_network_html_generator.AgentNetworkHtmlGenerator"
+        "class": "tools.agent_network_html_generator.AgentNetworkHtmlGenerator"
         "description": "Generate a html file from agent network hocon",
         "parameters": {
             "type": "object",
@@ -111,7 +111,7 @@
 
     "send_gmail_message_with_attachment": {
         # This is the coded tool for sending an email with attachment
-        "class": "gmail_attachment.GmailAttachment"
+        "class": "tools.gmail_attachment.GmailAttachment"
         "description": "Send an email with attachment",
         "parameters": {
             "type": "object",
@@ -227,7 +227,7 @@
     # https://python.langchain.com/docs/integrations/chat/openai/#responses-api
 
     "openai_search": {
-        "class": "openai_web_search.OpenAIWebSearch",
+        "class": "tools.openai_web_search.OpenAIWebSearch",
         "description": "Tool that provides web search capabilities",
         "parameters": {
             "type": "object",
@@ -241,7 +241,7 @@
         }
     },
     "openai_code_interpreter": {
-        "class": "openai_code_interpreter.OpenAICodeInterpreter",
+        "class": "tools.openai_code_interpreter.OpenAICodeInterpreter",
         "description": "Executes Python code and performs tasks such as plotting, data analysis, or math using the OpenAI Code Interpreter tool.",
         "parameters": {
             "type": "object",
@@ -275,7 +275,7 @@
     # as environment variable "JIRA_USERNAME" and "JIRA_API_TOKEN", respectively.
     "confluence_rag": {
         # This is a coded tool for RAG on confluence pages.
-        "class": "confluence_rag.ConfluenceRag",
+        "class": "tools.confluence_rag.ConfluenceRag",
         "description": "Retrieve information from the given confluence documents",
         "parameters": {
             "type": "object",
@@ -295,7 +295,7 @@
         # This is a coded tool for RAG on multiple file format.
         # See https://python.langchain.com/docs/integrations/document_loaders/docling/ and
         # https://docling-project.github.io/docling/
-        "class": "docling_rag.DoclingRag", 
+        "class": "tools.docling_rag.DoclingRag",
         "description": "Retrieve information from the given files",
         "parameters": {
             "type": "object",
@@ -313,7 +313,7 @@
     #     pip install pymupdf >= 1.25.5
     "pdf_rag": {
         # This is a coded tool for RAG on PDF files.
-        "class": "pdf_rag.PdfRag", 
+        "class": "tools.pdf_rag.PdfRag", 
         "description": "Retrieve information from the given PDF files",
         "parameters": {
             "type": "object",
@@ -329,7 +329,7 @@
 
     "webpage_rag": {
         # This is a coded tool for RAG on webpages.
-        "class": "webpage_rag.WebpageRag", 
+        "class": "tools.webpage_rag.WebpageRag",
         "description": "Retrieve information from the given webpages",
         "parameters": {
             "type": "object",
@@ -354,7 +354,7 @@
     #     pip install wikipedia
     "wikipedia_rag": {
         # This is a coded tool for RAG on Wikipedia pages.
-        "class": "wikipedia_rag.WikipediaRag",
+        "class": "tools.wikipedia_rag.WikipediaRag",
         "description": "Retrieve information from Wikipedia and answer a query using RAG.",
         "parameters": {
             "type": "object",
@@ -372,7 +372,7 @@
     #     pip install arxiv
     "arxiv_rag": {
         # This is a coded tool for RAG on Arxiv Articles.
-        "class": "arxiv_rag.ArxivRag",
+        "class": "tools.arxiv_rag.ArxivRag",
         "description": "Retrieve information from arXiv and answer a query using RAG.",
         "parameters": {
             "type": "object",
@@ -394,7 +394,7 @@
     # If BRAVE_URL is not set, the default is: https://api.search.brave.com/res/v1/web/search?q=
     # You can also configure the request timeout (in seconds) using BRAVE_TIMEOUT; the default is 30 seconds.
     "brave_search": {
-        "class": "brave_search.BraveSearch",
+        "class": "tools.brave_search.BraveSearch",
         "description": "Performs a web search using Brave Search.",
         "parameters": {
             "type": "object",
@@ -411,7 +411,7 @@
     # This search tool requires no API key.
     # Reference: https://github.com/deedy5/ddgs
     "ddgs_search": {
-        "class": "ddgs_search.DdgsSearch",
+        "class": "tools.ddgs_search.DdgsSearch",
         "description": "Performs a web search using DDGS Search.",
         "parameters": {
             "type": "object",
@@ -442,7 +442,7 @@
     # You can optionally set a custom search URL and a custom timeout via the GOOGLE_SEARCH_URL and GOOGLE_SEARCH_TIMEOUT environment variables.
     # Otherwise, the default values of "https://www.googleapis.com/customsearch/v1" and "30" are used, respectively
     "google_search": {
-        "class": "google_search.GoogleSearch",
+        "class": "tools.google_search.GoogleSearch",
         "description": "Performs a web search using Google Search.",
         "parameters": {
             "type": "object",
@@ -459,7 +459,7 @@
     # To use this search tool, obtain an API key from: https://serper.dev/
     # Once you have the API key, set it using the SERPER_API_KEY environment variable.
     "google_serper": {
-        "class": "google_serper.GoogleSerper",
+        "class": "tools.google_serper.GoogleSerper",
         "description": """Search the web using Google Serper API with customizable parameters.
         
         Supports multiple search types (web, news, images, places) with geographic and language localization.

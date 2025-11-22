@@ -1,0 +1,103 @@
+# Copyright © 2025 Cognizant Technology Solutions Corp, www.cognizant.com.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
+# END COPYRIGHT
+
+{
+    "llm_config": {
+        "model_name": "gpt-4o",
+    },
+
+    # Optional metadata describing this agent network
+    "metadata": {
+        "description": "Agent network that delegates to a Salesforce Agentforce agent to interact with a CRM system, managing session state and API communication automatically.",
+        "tags": ["salesforce", "tool"],
+        "sample_queries": [
+            "Can you give me a list of Jane Doe's most recent cases?",
+            "What are the open opportunities for this account?",
+            "Show me the customer support tickets for account ABC123",
+        ]
+    },
+
+
+    "tools": [
+        # This first agent definition is regarded as the "Front Man", which
+        # does all the talking to the outside world/client.
+        #
+        # Some disqualifications from being a front man:
+        #   1) Cannot use a CodedTool "class" definition
+        #   2) Cannot use a Tool "toolbox" definition
+        #
+        # Besides the first agent being the front man, these tool definitions
+        # do not have to be in any particular order. How they are linked and
+        # call each other is defined within their own specs.
+        # This could be a graph, potentially even with cycles.
+        {
+            "name": "Agentforce",
+
+            "function": {
+                # The description acts as an initial prompt
+                "description": "Assist the user with queries related to Salesforce CRM or Agentforce."
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "inquiry": {
+                            "type": "string",
+                            "description": """
+    An inquiry from a user.
+    """
+                        },
+                    },
+                    "required": ["inquiry"]
+                }
+            },
+            "instructions": """
+You are the `Agentforce` agent.
+Before using a tool, explain your reasoning.
+Use your tools to respond to the inquiry.
+""",
+            # Specify the sly data that should come back from the tools to the client.
+            # The session is initiated by the tool, and the client must re-use it to continue the conversation.
+            "allow": {
+                "to_upstream": {
+                    "sly_data": {
+                        "session_id": true,
+                        "access_token": true,
+                    }
+                }
+            }
+            "tools": ["Agentforce_API"]
+        },
+        {
+            "name": "Agentforce_API",
+            "function": {
+                "description": """
+Assist caller with the answer or solution to their inquiry by using your tool.
+```
+                """,
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "inquiry": {
+                            "type": "string",
+                            "description": "The inquiry for which response is sought."
+                        },
+                    },
+                    "required": ["inquiry"]
+                }
+            },
+            "class": "tools.agentforce_api.AgentforceAPI"
+        },
+    ]
+}
