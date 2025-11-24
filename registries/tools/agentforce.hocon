@@ -97,7 +97,7 @@ Assist caller with the answer or solution to their inquiry by using your tool.
                     "required": ["inquiry"]
                 }
             },
-            "class": "tools.agentforce_api.AgentforceAPI"
+            "class": "agentforce_api.AgentforceAPI"
         },
     ]
 }

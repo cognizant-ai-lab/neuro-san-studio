@@ -83,7 +83,7 @@
                     "required": ["topic"]
                 }
             },
-            "class": "tools.a2a_research_report.A2aResearchReport"
+            "class": "a2a_research_report.A2aResearchReport"
         },
     ]
 }
