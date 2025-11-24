@@ -13,7 +13,7 @@
 # limitations under the License.
 #
 # END COPYRIGHT
-
+import asyncio
 import json
 import logging
 import math
@@ -170,3 +170,9 @@ class CalculatorCodedTool(CodedTool):
         logger.info("Performed %s on %s -> Result: %s", operation, operands, result)
         logger.info("********** %s completed **********", self.__class__.__name__)
         return {"operation": operation, "result": result}
+
+    async def async_invoke(self, args: dict[str, Any], sly_data: dict[str, Any]) -> Union[dict[str, Any], str]:
+        """
+        Run self.invoke(args, sly_data) in a thread so it won’t block the async event loop, and wait for it to finish
+        """
+        return await asyncio.to_thread(self.invoke, args, sly_data)
