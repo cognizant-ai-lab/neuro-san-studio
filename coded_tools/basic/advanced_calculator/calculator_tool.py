@@ -159,7 +159,7 @@ class CalculatorCodedTool(CodedTool):
         :param sly_data: Additional context information (unused here).
         :return: A dictionary with the operation result or an error message.
         """
-        logger.info(f"********** {self.__class__.__name__} started **********")
+        logger.info("********** %s started **********", self.__class__.__name__)
         logger.debug("args: %s", args)
         operation = args.get("operation")
         operands = args.get("operands", [])
@@ -167,6 +167,6 @@ class CalculatorCodedTool(CodedTool):
             logger.error("Missing operation in request")
             return json.dumps({"error": "Missing operation"})
         result = self.process_operation(operation, operands)
-        logger.info(f"Performed {operation} on {operands} -> Result: {result}")
-        logger.info(f"********** {self.__class__.__name__} completed **********")
+        logger.info("Performed %s on %s -> Result: %s", operation, operands, result)
+        logger.info("********** %s completed **********", self.__class__.__name__)
         return {"operation": operation, "result": result}
