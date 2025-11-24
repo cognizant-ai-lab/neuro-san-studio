@@ -118,13 +118,13 @@ class CalculatorCodedTool(CodedTool):
             if len(operands) > required:
                 try:
                     intermediate = func(*operands[:required])
-                except Exception as e:
+                except (ValueError, TypeError, ZeroDivisionError, OverflowError, ArithmeticError) as e:
                     return f"Error: {str(e)}"
                 # Combine the intermediate result with the remaining operands.
                 operands = [intermediate] + operands[required:]
             try:
                 return func(*operands)
-            except Exception as e:
+            except (ValueError, TypeError, ZeroDivisionError, OverflowError, ArithmeticError) as e:
                 return f"Error: {str(e)}"
 
         # For composite operations (with underscores), split into sub-operations.
@@ -139,13 +139,13 @@ class CalculatorCodedTool(CodedTool):
             if len(result) > required:
                 try:
                     intermediate = func(*result[:required])
-                except Exception as e:
+                except (ValueError, TypeError, ZeroDivisionError, OverflowError, ArithmeticError) as e:
                     return f"Error: {str(e)}"
                 result = [intermediate] + result[required:]
             else:
                 try:
                     result = [func(*result)]
-                except Exception as e:
+                except (ValueError, TypeError, ZeroDivisionError, OverflowError, ArithmeticError) as e:
                     return f"Error: {str(e)}"
         return result[0]  # Final computed result
 
