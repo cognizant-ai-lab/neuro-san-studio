@@ -37,7 +37,7 @@ class CalculatorCodedTool(CodedTool):
 
         # Define available operations, each mapped to a two-element list:
         # [expected number of arguments, function]
-        self.MATH_FUNCTIONS = {
+        self.math_functions = {
             "add": [2, lambda a, b: a + b],
             "subtract": [2, lambda a, b: a - b],
             "multiply": [2, lambda a, b: a * b],
@@ -112,9 +112,9 @@ class CalculatorCodedTool(CodedTool):
         """
         # If the operation is a single one (no underscores), handle it directly.
         if "_" not in operation:
-            if operation not in self.MATH_FUNCTIONS:
+            if operation not in self.math_functions:
                 return f"Error: Unsupported operation '{operation}'"
-            required, func = self.MATH_FUNCTIONS[operation]
+            required, func = self.math_functions[operation]
             if len(operands) > required:
                 try:
                     intermediate = func(*operands[:required])
@@ -133,9 +133,9 @@ class CalculatorCodedTool(CodedTool):
 
         # Process each sub-operation in reverse order (innermost operation first).
         for sub_op in reversed(sub_operations):
-            if sub_op not in self.MATH_FUNCTIONS:
+            if sub_op not in self.math_functions:
                 return f"Error: Unsupported operation '{sub_op}'"
-            required, func = self.MATH_FUNCTIONS[sub_op]
+            required, func = self.math_functions[sub_op]
             if len(result) > required:
                 try:
                     intermediate = func(*result[:required])
