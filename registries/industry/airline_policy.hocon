@@ -270,7 +270,7 @@ You MUST call this tool to read the text content of PDF.
                     "required": ["app_name"]
                 }
             },
-            "class": "industry.airline_policy.extract_docs.ExtractDocs"
+            "class": "airline_policy.extract_docs.ExtractDocs"
         },
         {
             "name": "URLProvider",
@@ -291,7 +291,7 @@ You MUST call this tool to get the URL of an app or website.
                     "required": ["app_name"]
                 }
             },
-            "class": "industry.airline_policy.url_provider.URLProvider"
+            "class": "airline_policy.url_provider.URLProvider"
         },
     ]
 }

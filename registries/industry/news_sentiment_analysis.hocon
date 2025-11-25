@@ -126,7 +126,7 @@
                     "required": ["keywords", "source"]
                 }
             },
-            "class": "industry.news_sentiment_analysis.web_scraping_technician.WebScrapingTechnician"
+            "class": "news_sentiment_analysis.web_scraping_technician.WebScrapingTechnician"
         },
         {
             "name": "sentiment_analysis_expert",
@@ -149,7 +149,7 @@
                     "required": ["keywords", "source"]
                 }
             },
-            "class": "industry.news_sentiment_analysis.sentiment_analysis.SentimentAnalysis"
+            "class": "news_sentiment_analysis.sentiment_analysis.SentimentAnalysis"
         },
     ]
 }
