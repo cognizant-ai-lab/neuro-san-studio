@@ -12,7 +12,7 @@ of agent networks. It performs the following key actions:
 
 ## File
 
-[agent_network_architect.hocon](../../registries/agent_network_architect.hocon)
+[agent_network_architect.hocon](../../registries/experimental/agent_network_architect.hocon)
 
 ---
 

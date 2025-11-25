@@ -14,18 +14,23 @@
 #
 # END COPYRIGHT
 
+import json
 import logging
+import os
+from datetime import datetime
 from typing import Any
 from typing import Dict
 
 from neuro_san.interfaces.coded_tool import CodedTool
 
-from coded_tools.kwik_agents.list_topics import MEMORY_DATA_STRUCTURE
+from coded_tools.experimental.kwik_agents.list_topics import LONG_TERM_MEMORY_FILE
+from coded_tools.experimental.kwik_agents.list_topics import MEMORY_DATA_STRUCTURE
+from coded_tools.experimental.kwik_agents.list_topics import MEMORY_FILE_PATH
 
 
-class RecallMemory(CodedTool):
+class CommitToMemory(CodedTool):
     """
-    A CodedTool that retrieves facts related to a topic from memory.
+    A CodedTool that saves facts related to a topic to memory.
     """
 
     def __init__(self):
@@ -38,7 +43,8 @@ class RecallMemory(CodedTool):
                 by the calling agent.  This dictionary is to be treated as read-only.
 
                 The argument dictionary expects the following keys:
-                    "topic" A topic for which to retrieve relevant facts.
+                    "new_fact" a brief description of the new fact to remember.
+                    "topic" a topic for this new fact to be stored under.
 
         :param sly_data: A dictionary whose keys are defined by the agent hierarchy,
                 but whose values are meant to be kept out of the chat stream.
@@ -62,16 +68,23 @@ class RecallMemory(CodedTool):
         """
         self.topic_memory = sly_data.get(MEMORY_DATA_STRUCTURE, None)
         if not self.topic_memory:
-            return "NO TOPICS YET!"
+            if LONG_TERM_MEMORY_FILE:
+                self.read_memory_from_file()
+            else:
+                self.topic_memory = {}
+        the_new_fact: str = args.get("new_fact", "")
+        if the_new_fact == "":
+            return "Error: No new_fact provided."
         the_topic: str = args.get("topic", "")
         if the_topic == "":
             return "Error: No topic provided."
 
         logger = logging.getLogger(self.__class__.__name__)
-        logger.info(">>>>>>>>>>>>>>>>>>>RecallMemory>>>>>>>>>>>>>>>>>>")
+        logger.info(">>>>>>>>>>>>>>>>>>>CommitToMemory>>>>>>>>>>>>>>>>>>")
+        logger.info("New Fact: %s", str(the_new_fact))
         logger.info("Topic: %s", str(the_topic))
-        the_memory_str = self.recall_memory(the_topic)
-        logger.info("Memories on this topic: \n %s", str(the_memory_str))
+        the_memory_str = self.add_memory(the_topic, the_new_fact)
+        logger.info("Memory on this topic: \n %s", str(the_memory_str))
         sly_data[MEMORY_DATA_STRUCTURE] = self.topic_memory
         logger.info(">>>>>>>>>>>>>>>>>>>DONE !!!>>>>>>>>>>>>>>>>>>")
         return the_memory_str
@@ -82,16 +95,48 @@ class RecallMemory(CodedTool):
         """
         return self.invoke(args, sly_data)
 
-    def recall_memory(self, topic: str) -> str:
+    def write_memory_to_file(self):
         """
-        Recall all facts related to this topic from memory.
+        Writes the topic memory dictionary to a JSON file.
+        """
+        file_path = MEMORY_FILE_PATH + MEMORY_DATA_STRUCTURE + ".json"
+        os.makedirs(os.path.dirname(file_path), exist_ok=True)
+        with open(file_path, "w", encoding="utf-8") as file:
+            file.write(json.dumps(self.topic_memory, indent=2))
+
+    def read_memory_from_file(self):
+        """
+        Reads the topic memory dictionary from a JSON file if it exists.
+        Otherwise initializes an empty dictionary.
+        """
+        file_path = MEMORY_FILE_PATH + MEMORY_DATA_STRUCTURE + ".json"
+        if os.path.exists(file_path):
+            with open(file_path, "r", encoding="utf-8") as file:
+                content = file.read()
+                self.topic_memory = json.loads(content) if content else {}
+        else:
+            self.topic_memory = {}
+
+    def add_memory(self, topic: str, new_fact: str) -> str:
+        """
+        Adds a new fact to memory and saves the memory dictionary to a JSON file.
 
         Parameters:
-        - topic (str): A topic to retrieve memories for.
+        - topic (str): A topic to store the memory under.
+        - new_fact (str): The new fact to remember.
 
         Returns:
-        - str: The list of memories related to the topic, or an empty string if the topic doesn't exist.
+        - str: The updated memory string for the given topic.
         """
-        if topic in self.topic_memory:
-            return self.topic_memory[topic]
-        return "NO RELATED MEMORIES!"
+
+        time_stamp = f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] "
+
+        if topic not in self.topic_memory or not self.topic_memory[topic]:
+            self.topic_memory[topic] = time_stamp + new_fact
+        else:
+            self.topic_memory[topic] = self.topic_memory[topic] + "\n" + time_stamp + new_fact
+
+        if LONG_TERM_MEMORY_FILE:
+            self.write_memory_to_file()
+
+        return self.topic_memory[topic]

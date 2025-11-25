@@ -19,9 +19,9 @@ from typing import Any
 from neuro_san.interfaces.reservation import Reservation
 from neuro_san.internals.reservations.reservation_util import ReservationUtil
 
-from coded_tools.agent_network_designer.agent_network_assembler import AgentNetworkAssembler
-from coded_tools.agent_network_designer.agent_network_persistor import AgentNetworkPersistor
-from coded_tools.agent_network_designer.deployable_agent_network_assembler import DeployableAgentNetworkAssembler
+from .agent_network_assembler import AgentNetworkAssembler
+from .agent_network_persistor import AgentNetworkPersistor
+from .deployable_agent_network_assembler import DeployableAgentNetworkAssembler
 
 
 class ReservationsAgentNetworkPersistor(AgentNetworkPersistor):
