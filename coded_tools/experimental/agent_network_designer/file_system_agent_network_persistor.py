@@ -15,6 +15,8 @@
 # END COPYRIGHT
 
 # Import for asynchronous file operations
+import os
+
 import aiofiles
 
 from .agent_network_assembler import AgentNetworkAssembler
@@ -57,10 +59,13 @@ class FileSystemAgentNetworkPersistor(AgentNetworkPersistor):
         """
 
         the_agent_network_hocon_str: str = obj
+        # This agent network name already includes any subdirectory specified.
         the_agent_network_name: str = file_reference
 
         # Write the agent network file
         file_path: str = self.OUTPUT_PATH + the_agent_network_name + ".hocon"
+        # Create parent directory automatically if necessary
+        os.makedirs(os.path.dirname(file_path), exist_ok=True)
         async with aiofiles.open(file_path, "w") as file:
             await file.write(the_agent_network_hocon_str)
 

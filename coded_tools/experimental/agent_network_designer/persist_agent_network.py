@@ -35,6 +35,7 @@ DEMO_MODE: bool = True
 
 AGENT_NETWORK_DEFINITION: str = "agent_network_definition"
 AGENT_NETWORK_NAME: str = "agent_network_name"
+SUBDIRECTORY: str = "generated/"
 
 
 class PersistAgentNetwork(CodedTool):
@@ -102,6 +103,10 @@ class PersistAgentNetwork(CodedTool):
 
         # Get the agent network name from sly data
         the_agent_network_name: str = sly_data.get(AGENT_NETWORK_NAME)
+        # Prepend subdirectory to the agent network name before persisting
+        # This is needed for the NSflow launcher to connect to the right network.
+        the_agent_network_name = SUBDIRECTORY + the_agent_network_name
+        sly_data[AGENT_NETWORK_NAME] = the_agent_network_name
 
         logger.info(">>>>>>>>>>>>>>>>>>>Create Agent Network>>>>>>>>>>>>>>>>>>")
         logger.info("Agent Network Name: %s", str(the_agent_network_name))
