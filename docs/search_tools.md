@@ -60,7 +60,7 @@ can also configure the request timeout (in seconds) using `BRAVE_TIMEOUT`; the d
 _Example Usage in Neuro San Studio:_
 
 <!-- pyml disable line-length -->
-[brave\_search.hocon](https://github.com/cognizant-ai-lab/neuro-san-studio/blob/main/registries/brave_search.hocon),
+[brave\_search.hocon](https://github.com/cognizant-ai-lab/neuro-san-studio/blob/main/registries/tools/brave_search.hocon),
 [real\_estate.hocon](https://github.com/cognizant-ai-lab/neuro-san-studio/blob/main/registries/real_estate.hocon),
 available as a tool in toolbox\_info.hocon](https://github.com/cognizant-ai-lab/neuro-san-studio/blob/main/toolbox/toolbox_info.hocon)
 <!-- pyml enable line-length -->
@@ -85,7 +85,7 @@ Instead, it scrapes:
 
 _Example Usage in Neuro San Studio_:
 
-[ddgs_search.hocon](https://github.com/cognizant-ai-lab/neuro-san-studio/blob/main/registries/ddgs_search.hocon),
+[ddgs_search.hocon](https://github.com/cognizant-ai-lab/neuro-san-studio/blob/main/registries/tools/ddgs_search.hocon),
 [agent\_netowork\_designer.hocon](https://github.com/cognizant-ai-lab/neuro-san-studio/blob/main/registries/agent_network_designer.hocon),
 [agentic\_rag.hocon](https://github.com/cognizant-ai-lab/neuro-san-studio/blob/main/registries/agentic_rag.hocon),
 [airbnb.hocon](https://github.com/cognizant-ai-lab/neuro-san-studio/blob/main/registries/airbnb.hocon),
@@ -125,7 +125,7 @@ To use this search tool, you must
 _Example Usage in Neuro San Studio_:
 
 <!-- pyml disable line-length -->
-[google\_search.hocon](https://github.com/cognizant-ai-lab/neuro-san-studio/blob/main/registries/google_search.hocon),
+[google\_search.hocon](https://github.com/cognizant-ai-lab/neuro-san-studio/blob/main/registries/tools/google_search.hocon),
 available as a tool in [toolbox\_info.hocon](https://github.com/cognizant-ai-lab/neuro-san-studio/blob/main/toolbox/toolbox_info.hocon)
 <!-- pyml enable line-length -->
 
