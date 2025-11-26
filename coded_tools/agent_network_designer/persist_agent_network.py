@@ -15,7 +15,6 @@
 # END COPYRIGHT
 
 import logging
-
 from copy import deepcopy
 from typing import Any
 
