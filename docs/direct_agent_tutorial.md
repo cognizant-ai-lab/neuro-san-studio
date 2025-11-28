@@ -12,7 +12,8 @@ This tutorial maybe useful, if you:
 
 ## What you'll learn
 
-By the end of this tutorial, you'll know how to:
+By the end of this tutorial, you will know how to:
+
 1. Create and configure a basic agent
 2. Register your agent with neuro-san
 3. Invoke agents directly from Python code
@@ -23,14 +24,14 @@ By the end of this tutorial, you'll know how to:
 
 Before starting, ensure you have:
 - Setup your neuro-san environment -> [README](https://github.com/cognizant-ai-lab/neuro-san-studio/blob/main/README.md)
-- API keys for your chosen LLM provider (e.g., OpenAI for GPT-4o)
+- API keys for your chosen LLM provider (such as OpenAI for GPT-4o)
 - An empty folder to work in
 
 ## Setup
 
 First, import the necessary libraries:
 
-```python
+```py
 import os
 from pprint import pprint
 import warnings
@@ -41,13 +42,16 @@ warnings.filterwarnings('ignore', category=RuntimeWarning)
 
 ## Step 1: Create a Basic Agent
 
-An agent in neuro-san is defined using a HOCON configuration file. Let's create a simple "hello_world" agent that greets users.
+An agent in neuro-san is defined using a HOCON configuration file. Let's create a simple
+"hello_world" agent that greets users.
 
-**Note:** This example uses the `gpt-4o` model. You can substitute it with any available model (e.g., `gpt-3.5-turbo`, `claude-3-sonnet`, etc.). Make sure your API keys are set in your environment variables.
+**Note:** This example uses the `gpt-4o` model. You can substitute it with any available
+model (e.g., `gpt-3.5-turbo`, `claude-3-sonnet`, etc.). Make sure your API keys are
+set in your environment variables.
 
 > **Tip:** If you already have a working agent and manifest, you can skip to Step 3.
 
-```python
+```py
 # Define the agent configuration in HOCON format
 basic_agent_hocon = '''
 {
@@ -90,7 +94,7 @@ print(f"✓ Created agent configuration: ./registries/{agent_file_name}")
 
 neuro-san uses a `manifest.hocon` file to discover available agents. Let's create this manifest and register our agent.
 
-```python
+```py
 # Define the manifest that lists all available agents
 manifest_hocon = '''
 {
@@ -112,7 +116,7 @@ print("✓ Created manifest: ./registries/manifest.hocon")
 
 Next, tell neuro-san where to find the manifest:
 
-```python
+```py
 # Set the manifest location as an environment variable
 os.environ['AGENT_MANIFEST_FILE'] = './registries/manifest.hocon'
 
@@ -125,7 +129,7 @@ Now for the exciting part! Let's create a session and talk to our agent!
 
 ### 3.1: Create a Session
 
-```python
+```py
 from neuro_san.client.agent_session_factory import DirectAgentSessionFactory
 
 # Create a factory for building agent sessions
@@ -146,7 +150,7 @@ print(f"✓ Created session with agent: {agent_name}")
 
 ### 3.2: Prepare Your Message
 
-```python
+```py
 # Define the message you want to send to the agent
 user_message = 'Hello how are you!?'
 
@@ -162,7 +166,7 @@ request_payload = {
 
 The agent returns a streaming response. Let's collect all the messages:
 
-```python
+```py
 # Get the streaming response (returns a generator)
 stream = session.streaming_chat(request_payload)
 
@@ -180,7 +184,8 @@ print(f"Agent Response: {msg[-1]['response']['text']}")
 ```
 
 **Expected output:**
-```
+
+```txt
 Agent Response: Hello! I'm doing well, thank you for asking. How about you?
 ```
 
@@ -188,7 +193,7 @@ Agent Response: Hello! I'm doing well, thank you for asking. How about you?
 
 To see all the details of what the agent returned:
 
-```python
+```py
 pprint(msg)
 ```
 
@@ -196,7 +201,7 @@ pprint(msg)
 
 The response includes rich metadata about the conversation, including:
 
-```
+```txt
 [{'response': {'chat_context': {'chat_histories': [{'messages': [{'origin': [{'instantiation_index': 1,
                                                                               'tool': 'HelloWorldAgent'}],
                                                                   'text': 'Hello '
@@ -238,7 +243,7 @@ The response includes rich metadata about the conversation, including:
 
 Instead of repeating all that code every time, let's wrap it in a convenient function:
 
-```python
+```py
 from neuro_san.client.agent_session_factory import DirectAgentSessionFactory
 
 
@@ -286,7 +291,7 @@ def invoke_agent(agent_name: str, user_text: str, sly_data=None):
 
 Now invoking an agent is just one line of code:
 
-```python
+```py
 # Invoke the agent with a simple message
 response = invoke_agent('hello_world', 'Hello! How are you?')
 
@@ -295,13 +300,15 @@ print(response['response']['text'])
 ```
 
 **Expected output:**
-```
+
+```txt
 Hello! I'm doing great, thank you for asking. How about you? How's your day going?
 ```
 
 ## Step 5: Using HTTP Requests (Alternative Method)
 
-If you prefer running neuro-san as a separate server process, you can interact with it via HTTP requests instead of direct invocation.
+If you prefer running neuro-san as a separate server process, you can interact with it
+via HTTP requests instead of direct invocation.
 
 ### 5.1: Start the Server
 
@@ -317,7 +324,7 @@ The server will start on `http://localhost:8080` by default.
 
 Now you can send requests to your agent via HTTP:
 
-```python
+```py
 import requests
 
 # Define the agent and message
@@ -361,7 +368,9 @@ Congratulations! You've learned how to:
 
 ## Further Reading
 
-This tutorial is based on the [agent_cli](https://github.com/cognizant-ai-lab/neuro-san/blob/main/neuro_san/client/agent_cli.py) code. You can go through it to better your understanding.
+This tutorial is based on the
+[agent_cli](https://github.com/cognizant-ai-lab/neuro-san/blob/main/neuro_san/client/agent_cli.py)
+code. You can go through it for a better understanding.
 
 ## Troubleshooting
 
@@ -377,4 +386,3 @@ This tutorial is based on the [agent_cli](https://github.com/cognizant-ai-lab/ne
 **Import errors?**
 - Make sure neuro-san is installed: `pip install neuro-san`
 - Check your Python environment is activated
-
