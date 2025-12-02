@@ -2,7 +2,7 @@
 
 This tutorial will teach you how to use a neuro-san agent network as a Python library using the "direct" session feature.
 
-## Who is this for?
+## Who is this for ?
 
 This tutorial maybe useful, if you:
 
