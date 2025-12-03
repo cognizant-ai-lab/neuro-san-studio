@@ -17,8 +17,8 @@ venv: # Set up a virtual environment in project
 	fi
 
 venv-guard: 
-	@if [ -z "$$VIRTUAL_ENV" ] && [ -z "$$CONDA_DEFAULT_ENV" ] && [ -z "$$(pipenv --venv 2>/dev/null)" ] \
-	  && [ -z "$$(uv venv list 2>/dev/null)" ] && ! command -v poetry &> /dev/null; then \
+	@if [ -z "$$VIRTUAL_ENV" ] && [ -z "$$CONDA_DEFAULT_ENV" ] && \
+	  ! (pipenv --venv >/dev/null 2>&1) && ! (uv venv list >/dev/null 2>&1); then \
 		echo ""; \
 		echo "Error: this task must run inside a Python virtual environment."; \
 		echo "Supported solutions: venv, virtualenv, Poetry, Pipenv, Conda, or uv"; \
