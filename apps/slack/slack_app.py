@@ -140,7 +140,7 @@ class CommandParser:
     @staticmethod
     def strip_bot_mention(text: str) -> str:
         """Remove bot mention from text."""
-        return re.sub(r'<@[A-Z0-9]+(?:\|[^>]+)?>', '', text).strip()
+        return re.sub(r"<@[A-Z0-9]+(?:\|[^>]+)?>", "", text).strip()
 
     @classmethod
     def parse(cls, text: str, logger: Any) -> NetworkCommand:
@@ -326,14 +326,14 @@ class NetworkHandler:
 
     def _store_context(self, data: dict[str, Any], conversation_key: str, logger: Any) -> None:
         """Store chat context from response."""
-        context = data.get('response', {}).get('chat_context')
+        context = data.get("response", {}).get("chat_context")
         if context:
             self.manager.set_context(conversation_key, context)
             logger.info(f"Stored context for {conversation_key}")
 
     def _send_response(self, text: str, data: dict[str, Any], msg_ctx: MessageContext) -> None:
         """Send response with optional sly_data."""
-        returned_sly = data.get('response', {}).get('sly_data', {})
+        returned_sly = data.get("response", {}).get("sly_data", {})
         sly_text = ""
 
         if returned_sly:
@@ -352,30 +352,30 @@ network_handler = NetworkHandler(conversation_manager, api_client)
 def handle_message_events(body: dict[str, Any], logger: Any, say: Say) -> None:
     """Handle regular messages - works in DMs without @mention."""
     try:
-        event = body.get('event', {})
+        event = body.get("event", {})
 
         # Skip bot messages and app_mention subtypes
-        if event.get('bot_id') or event.get('subtype') == 'app_mention':
+        if event.get("bot_id") or event.get("subtype") == "app_mention":
             return
 
-        text = event.get('text', '')
-        channel_type = event.get('channel_type', '')
-        is_dm = channel_type in ['im', 'mpim']
+        text = event.get("text", "")
+        channel_type = event.get("channel_type", "")
+        is_dm = channel_type in ["im", "mpim"]
 
         # Skip channel messages with @mentions
-        if '<@' in text and not is_dm:
+        if "<@" in text and not is_dm:
             return
 
         # Create contexts
         thread_ctx = ThreadContext(
-            channel_id=event.get('channel'),
-            thread_ts=event.get('thread_ts'),
-            message_ts=event.get('ts')
+            channel_id=event.get("channel"),
+            thread_ts=event.get("thread_ts"),
+            message_ts=event.get("ts")
         )
         msg_ctx = MessageContext(thread_ctx, say, logger)
 
         # Strip @mention if present
-        message_text = CommandParser.strip_bot_mention(text) if '<@' in text else text
+        message_text = CommandParser.strip_bot_mention(text) if "<@" in text else text
         message_text = message_text.strip()
 
         if not message_text:
@@ -408,13 +408,13 @@ def handle_app_mentions(event: dict[str, Any], say: Say, logger: Any) -> None:
         logger.info("Received app_mention")
 
         thread_ctx = ThreadContext(
-            channel_id=event.get('channel'),
-            thread_ts=event.get('thread_ts'),
-            message_ts=event.get('ts')
+            channel_id=event.get("channel"),
+            thread_ts=event.get("thread_ts"),
+            message_ts=event.get("ts")
         )
         msg_ctx = MessageContext(thread_ctx, say, logger)
 
-        raw_text = event.get('text', '').strip()
+        raw_text = event.get("text", "").strip()
         if not raw_text:
             say(text="No text in mention!", thread_ts=thread_ctx.conversation_thread)
             return
@@ -430,7 +430,7 @@ def handle_app_mentions(event: dict[str, Any], say: Say, logger: Any) -> None:
     # pylint: disable=broad-exception-caught
     except Exception as e:
         logger.error(f"Error in handle_app_mentions: {e}", exc_info=True)
-        say(text=f"Error: {e}", thread_ts=event.get('thread_ts') or event.get('ts'))
+        say(text=f"Error: {e}", thread_ts=event.get("thread_ts") or event.get("ts"))
 
 
 @app.command("/list_networks")
@@ -441,7 +441,7 @@ def list_networks(ack: Ack, respond: Any, logger: Any) -> None:
     try:
         logger.info("Fetching networks")
         data = api_client.call("list")
-        agents = data.get('agents', [])
+        agents = data.get("agents", [])
 
         if not agents:
             respond("No networks available.")
@@ -452,10 +452,10 @@ def list_networks(ack: Ack, respond: Any, logger: Any) -> None:
         lines = ["*Available Networks:*\n"]
 
         for agent in agents:
-            name = agent.get('agent_name', 'Unknown')
-            desc = ' '.join(agent.get('description', 'No description').split())
-            tags = agent.get('tags', [])
-            tags_str = f" `{', '.join(tags)}`" if tags else ""
+            name = agent.get("agent_name", "Unknown")
+            desc = " ".join(agent.get("description", "No description").split())
+            tags = agent.get("tags", [])
+            tags_str = f" `{", ".join(tags)}`" if tags else ""
 
             lines.extend([f"• *{name}*{tags_str}", f"  {desc}", ""])
 
