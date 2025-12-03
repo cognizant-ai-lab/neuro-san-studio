@@ -15,18 +15,19 @@
 #
 # END COPYRIGHT
 
+import json
 import logging
 import os
 import re
-import json
 from dataclasses import dataclass
 from typing import Any
+
+from dotenv import load_dotenv
 from requests import get
 from requests import post
 from requests.exceptions import HTTPError
 from requests.exceptions import RequestException
 
-from dotenv import load_dotenv
 # pylint: disable=import-error
 from slack_bolt import Ack
 from slack_bolt import App
