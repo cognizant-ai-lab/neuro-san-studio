@@ -1,4 +1,3 @@
-
 # Copyright © 2025 Cognizant Technology Solutions Corp, www.cognizant.com.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -35,10 +34,7 @@ from slack_bolt import Say
 from slack_bolt.adapter.socket_mode import SocketModeHandler
 
 # Configure logging
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
-)
+logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
 
 # Initialize app
 load_dotenv()
@@ -49,6 +45,7 @@ NEURO_SAN_SERVER_HTTP_PORT: str = os.environ.get("NEURO_SAN_SERVER_HTTP_PORT", "
 @dataclass
 class ThreadContext:
     """Store thread-specific context data."""
+
     channel_id: str
     thread_ts: str | None
     message_ts: str
@@ -67,6 +64,7 @@ class ThreadContext:
 @dataclass
 class NetworkCommand:
     """Parsed network command data."""
+
     network_name: str
     input_prompt: str | None = None
     sly_data: dict[str, Any] | None = None
@@ -75,6 +73,7 @@ class NetworkCommand:
 @dataclass
 class MessageContext:
     """Complete message context including thread and Slack functions."""
+
     thread_ctx: ThreadContext
     say: Say
     logger: Any
@@ -115,10 +114,7 @@ class ConversationManager:
     def clear_old_contexts(self, thread_ctx: ThreadContext, network_name: str, logger: Any) -> None:
         """Clear contexts from different networks in the same thread."""
         prefix = f"{thread_ctx.channel_id}:{thread_ctx.conversation_thread}"
-        keys_to_delete = [
-            k for k in self.contexts
-            if k.startswith(prefix) and not k.endswith(f":{network_name}")
-        ]
+        keys_to_delete = [k for k in self.contexts if k.startswith(prefix) and not k.endswith(f":{network_name}")]
 
         for key in keys_to_delete:
             del self.contexts[key]
@@ -164,9 +160,7 @@ class CommandParser:
                 json_str = sly_match.group(1)
                 sly_data = json.loads(cls.strip_urls(json_str))
                 logger.info(f"Parsed sly_data: {sly_data}")
-                remaining_text = (
-                    text[:sly_match.start()].strip() + " " + text[sly_match.end():].strip()
-                ).strip()
+                remaining_text = (text[: sly_match.start()].strip() + " " + text[sly_match.end() :].strip()).strip()
             except json.JSONDecodeError as e:
                 logger.warning(f"Failed to parse sly_data: {e}")
 
@@ -265,10 +259,7 @@ class NetworkHandler:
             msg_ctx.say(text=f"Error calling API: {e}", thread_ts=msg_ctx.thread_ctx.conversation_thread)
 
     def _acknowledge_connection(
-        self,
-        msg_ctx: MessageContext,
-        network_name: str,
-        sly_data: dict[str, Any] | None
+        self, msg_ctx: MessageContext, network_name: str, sly_data: dict[str, Any] | None
     ) -> None:
         """Acknowledge new network connection."""
         sly_msg = f" with sly_data: `{json.dumps(sly_data)}`" if sly_data else ""
@@ -276,22 +267,18 @@ class NetworkHandler:
         if self.client.test_connection(network_name):
             msg_ctx.say(
                 text=f"Connected to *{network_name}*{sly_msg}. Please provide your input.",
-                thread_ts=msg_ctx.thread_ctx.conversation_thread
+                thread_ts=msg_ctx.thread_ctx.conversation_thread,
             )
             msg_ctx.logger.info(f"Connected to network: {network_name}")
         else:
             msg_ctx.say(
                 text=f"*{network_name}* is invalid. Please provide a valid agent network to open a new thread.",
-                thread_ts=msg_ctx.thread_ctx.conversation_thread
+                thread_ts=msg_ctx.thread_ctx.conversation_thread,
             )
             msg_ctx.logger.warning(f"Invalid network: {network_name}")
 
     def _build_payload(
-        self,
-        message: str,
-        context: dict[str, Any],
-        sly_data: dict[str, Any] | None,
-        logger: Any
+        self, message: str, context: dict[str, Any], sly_data: dict[str, Any] | None, logger: Any
     ) -> dict[str, Any]:
         """Build API request payload."""
         payload = {"user_message": {"text": message}}
@@ -368,9 +355,7 @@ def handle_message_events(body: dict[str, Any], logger: Any, say: Say) -> None:
 
         # Create contexts
         thread_ctx = ThreadContext(
-            channel_id=event.get("channel"),
-            thread_ts=event.get("thread_ts"),
-            message_ts=event.get("ts")
+            channel_id=event.get("channel"), thread_ts=event.get("thread_ts"), message_ts=event.get("ts")
         )
         msg_ctx = MessageContext(thread_ctx, say, logger)
 
@@ -392,10 +377,7 @@ def handle_message_events(body: dict[str, Any], logger: Any, say: Say) -> None:
                 command = CommandParser.parse(message_text, logger)
                 network_handler.setup_new_network(msg_ctx, command)
         else:
-            say(
-                text="Please @mention me with a network name",
-                thread_ts=thread_ctx.conversation_thread
-            )
+            say(text="Please @mention me with a network name", thread_ts=thread_ctx.conversation_thread)
     # pylint: disable=broad-exception-caught
     except Exception as e:
         logger.error(f"Error in handle_message_events: {e}", exc_info=True)
@@ -408,9 +390,7 @@ def handle_app_mentions(event: dict[str, Any], say: Say, logger: Any) -> None:
         logger.info("Received app_mention")
 
         thread_ctx = ThreadContext(
-            channel_id=event.get("channel"),
-            thread_ts=event.get("thread_ts"),
-            message_ts=event.get("ts")
+            channel_id=event.get("channel"), thread_ts=event.get("thread_ts"), message_ts=event.get("ts")
         )
         msg_ctx = MessageContext(thread_ctx, say, logger)
 
@@ -471,7 +451,8 @@ def neuro_san_help(ack: Ack, respond: Any) -> None:
     """Provide usage instructions."""
     ack()
 
-    respond("""*How to use Neuro-SAN:*
+    respond(
+        """*How to use Neuro-SAN:*
 
 *Format:*
 • `<network_name>`
@@ -488,7 +469,8 @@ def neuro_san_help(ack: Ack, respond: Any) -> None:
 • DMs: Just type the command
 • Channels: Mention bot `@BotName <command>`
 • Each thread keeps independent context
-""")
+"""
+    )
 
 
 if __name__ == "__main__":
