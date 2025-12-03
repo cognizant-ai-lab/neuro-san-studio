@@ -335,6 +335,8 @@ a scalable framework that evaluates vibe-coded projects on different criteria.
 
 * [Neuro SAN Web Client](https://github.com/cognizant-ai-lab/neuro-san-web-client):
 a basic Flask web client interface for Neuro SAN.
+* [Neuro SAN Slack app](./apps/slack/README.md)
+a Slack integration that lets you interact with Neuro SAN directly from your workspace.
 
 ---
 
