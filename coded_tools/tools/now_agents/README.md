@@ -262,7 +262,7 @@ OPENAI_API_KEY="your-openai-api-key"
 ### Comprehensive Test Suite
 The module includes a complete test suite with 100% code coverage:
 
-**Location**: `../../tests/coded_tools/tools/now_agents/`
+**Location**: `../../../tests/coded_tools/tools/now_agents/`
 
 **Structure**:
 ```
@@ -389,7 +389,7 @@ Result: {"result": []} (from retrieve_message)
 
 - [ServiceNow Agentic AI Documentation](https://docs.servicenow.com/bundle/vancouver-ai/page/administer/agentic-ai/concept/agentic-ai.html)
 - [ServiceNow REST API Reference](https://docs.servicenow.com/bundle/vancouver-application-development/page/integrate/inbound-rest/concept/c_RESTAPI.html)  
-- [Test Suite Documentation](../../tests/coded_tools/tools/now_agents/README.md)
+- [Test Suite Documentation](../../../tests/coded_tools/tools/now_agents/README.md)
 
 ---
 
