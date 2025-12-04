@@ -52,5 +52,5 @@ Warning: Do not commit this `.env` file to your version control system (e.g., Gi
 
 ## Debugging hints
 
-You can use the [tests/coded_tools/agentforce/test_agentforce_adapter.py](../../tests/coded_tools/agentforce/test_agentforce_adapter.py)
+You can use the [tests/coded_tools/tools/agentforce/test_agentforce_adapter.py](../../../tests/coded_tools/tools/agentforce/test_agentforce_adapter.py)
 unit tests to check your Agentforce connectivity.
