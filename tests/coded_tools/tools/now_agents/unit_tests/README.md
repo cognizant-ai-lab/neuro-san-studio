@@ -41,13 +41,13 @@ Fast, isolated tests using mocks. No external dependencies required.
 
 ```bash
 # Run all unit tests
-python -m pytest tests/coded_tools/now_agents/unit_tests/ -v
+python -m pytest tests/coded_tools/tools/now_agents/unit_tests/ -v
 
 # Run with coverage report
-python -m pytest tests/coded_tools/now_agents/unit_tests/ --cov=coded_tools.now_agents --cov-report=term-missing
+python -m pytest tests/coded_tools/tools/now_agents/unit_tests/ --cov=coded_tools.tools.now_agents --cov-report=term-missing
 
 # Run single test file
-python -m pytest tests/coded_tools/now_agents/unit_tests/test_unit_agent_discovery_mocked.py -v
+python -m pytest tests/coded_tools/tools/now_agents/unit_tests/test_unit_agent_discovery_mocked.py -v
 ```
 
 ## Test Design Philosophy

@@ -6,7 +6,7 @@ Real API tests that validate actual ServiceNow connectivity and workflows.
 
 ## Files in this directory:
 
-### `test_integration_servicenow_connectivity.py`
+### `integration_test_servicenow_connectivity.py`
 **Purpose**: Tests basic ServiceNow instance accessibility  
 **Requirements**: None (no authentication needed)  
 **What it tests**:
@@ -14,7 +14,7 @@ Real API tests that validate actual ServiceNow connectivity and workflows.
 - ✅ Login page responds correctly
 - ✅ API endpoints return expected authentication requirements
 
-**Run**: `python tests/coded_tools/now_agents/integration_tests/test_integration_servicenow_connectivity.py`
+**Run**: `python tests/coded_tools/tools/now_agents/integration_tests/integration_test_servicenow_connectivity.py`
 
 ### `debug_servicenow_credentials.py`  
 **Purpose**: Validates ServiceNow credentials and permissions  
@@ -25,9 +25,9 @@ Real API tests that validate actual ServiceNow connectivity and workflows.
 - Permission to access required tables
 - Detailed error reporting for troubleshooting
 
-**Run**: `python tests/coded_tools/now_agents/integration_tests/debug_servicenow_credentials.py`
+**Run**: `python tests/coded_tools/tools/now_agents/integration_tests/debug_servicenow_credentials.py`
 
-### `test_integration_agent_discovery_simple.py`
+### `integration_test_agent_discovery_simple.py`
 **Purpose**: Simple test of ServiceNow agent discovery  
 **Requirements**: ServiceNow credentials + permissions  
 **What it tests**:
@@ -35,9 +35,9 @@ Real API tests that validate actual ServiceNow connectivity and workflows.
 - Basic connectivity and authentication
 - Agent data parsing and validation
 
-**Run**: `python tests/coded_tools/now_agents/integration_tests/test_integration_agent_discovery_simple.py`
+**Run**: `python tests/coded_tools/tools/now_agents/integration_tests/integration_test_agent_discovery_simple.py`
 
-### `test_integration_agent_discovery_debug.py`
+### `integration_test_agent_discovery_debug.py`
 **Purpose**: Agent discovery with detailed debug output  
 **Requirements**: ServiceNow credentials + permissions  
 **What it tests**:
@@ -45,9 +45,9 @@ Real API tests that validate actual ServiceNow connectivity and workflows.
 - Environment variable troubleshooting
 - Detailed error reporting and stack traces
 
-**Run**: `python tests/coded_tools/now_agents/integration_tests/test_integration_agent_discovery_debug.py`
+**Run**: `python tests/coded_tools/tools/now_agents/integration_tests/integration_test_agent_discovery_debug.py`
 
-### `test_integration_full_workflow_e2e.py`
+### `integration_test_full_workflow_e2e.py`
 **Purpose**: Complete end-to-end workflow test  
 **Requirements**: ServiceNow credentials + full permissions  
 **What it tests**:
@@ -56,7 +56,7 @@ Real API tests that validate actual ServiceNow connectivity and workflows.
 - Real timeout and retry behavior
 - Complete integration validation
 
-**Run**: `python tests/coded_tools/now_agents/integration_tests/test_integration_full_workflow_e2e.py`
+**Run**: `python tests/coded_tools/tools/now_agents/integration_tests/integration_test_full_workflow_e2e.py`
 
 ## Setup Requirements
 
@@ -100,11 +100,11 @@ If you encounter **403 Forbidden** errors with different ServiceNow credentials:
 
 ## Recommended Test Order
 
-1. **Start here**: `test_integration_servicenow_connectivity.py` (no credentials needed)
+1. **Start here**: `integration_test_servicenow_connectivity.py` (no credentials needed)
 2. **Check setup**: `debug_servicenow_credentials.py` (validates credentials)  
-3. **Simple test**: `test_integration_agent_discovery_simple.py` (basic functionality)
-4. **Debug issues**: `test_integration_agent_discovery_debug.py` (detailed output)
-5. **Full validation**: `test_integration_full_workflow_e2e.py` (complete workflow)
+3. **Simple test**: `integration_test_agent_discovery_simple.py` (basic functionality)
+4. **Debug issues**: `integration_test_agent_discovery_debug.py` (detailed output)
+5. **Full validation**: `integration_test_full_workflow_e2e.py` (complete workflow)
 
 ## Expected Behavior When Fixed
 
