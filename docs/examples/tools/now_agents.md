@@ -64,7 +64,7 @@ SERVICENOW_GET_AGENTS_QUERY="active=true"
 ### Basic Agent Discovery
 
 ```python
-from coded_tools.now_agents import NowAgentAPIGetAgents
+from coded_tools.tools.now_agents import NowAgentAPIGetAgents
 
 # Discover available ServiceNow AI agents
 get_agents = NowAgentAPIGetAgents()
@@ -78,7 +78,7 @@ for agent in result['result']:
 ### Complete Agent Interaction
 
 ```python
-from coded_tools.now_agents import (
+from coded_tools.tools.now_agents import (
     NowAgentAPIGetAgents,
     NowAgentSendMessage, 
     NowAgentRetrieveMessage
@@ -134,22 +134,22 @@ The module includes comprehensive testing with 100% code coverage:
 ### Unit Tests (Fast, Mocked)
 ```bash
 # Run all unit tests
-python -m pytest tests/coded_tools/now_agents/unit_tests/ -v
+python -m pytest tests/coded_tools/tools/now_agents/unit_tests/ -v
 
 # Generate coverage report  
-python -m pytest tests/coded_tools/now_agents/unit_tests/ --cov=coded_tools.now_agents --cov-report=html
+python -m pytest tests/coded_tools/tools/now_agents/unit_tests/ --cov=coded_tools.tools.now_agents --cov-report=html
 ```
 
 ### Integration Tests (Real ServiceNow API)
 ```bash
 # Test basic connectivity
-python tests/coded_tools/now_agents/integration_tests/test_integration_servicenow_connectivity.py
+python tests/coded_tools/tools/now_agents/integration_tests/test_integration_servicenow_connectivity.py
 
 # Test agent discovery
-python tests/coded_tools/now_agents/integration_tests/test_integration_agent_discovery_simple.py
+python tests/coded_tools/tools/now_agents/integration_tests/test_integration_agent_discovery_simple.py
 
 # Full end-to-end workflow
-python tests/coded_tools/now_agents/integration_tests/test_integration_full_workflow_e2e.py
+python tests/coded_tools/tools/now_agents/integration_tests/test_integration_full_workflow_e2e.py
 ```
 
 ## Key Features
@@ -198,7 +198,7 @@ Most ServiceNow AI agents require existing business context (tickets, incidents,
 **403 Forbidden Errors:**
 ```bash
 # Test your credentials
-python tests/coded_tools/now_agents/integration_tests/debug_servicenow_credentials.py
+python tests/coded_tools/tools/now_agents/integration_tests/debug_servicenow_credentials.py
 ```
 
 **No Agents Discovered:**
@@ -214,7 +214,7 @@ python tests/coded_tools/now_agents/integration_tests/debug_servicenow_credentia
 ## Files Structure
 
 ```
-coded_tools/now_agents/
+coded_tools/tools/now_agents/
 ├── __init__.py                              # Module exports
 ├── nowagent_api_get_agents.py              # Agent discovery
 ├── nowagent_api_send_message.py            # Message sending  
@@ -224,7 +224,7 @@ coded_tools/now_agents/
 registries/
 └── now_agents.hocon                         # Agent network configuration
 
-tests/coded_tools/now_agents/
+tests/coded_tools/tools/now_agents/
 ├── unit_tests/                              # Mocked tests (100% coverage)
 ├── integration_tests/                       # Real API tests
 └── README.md                               # Testing guide

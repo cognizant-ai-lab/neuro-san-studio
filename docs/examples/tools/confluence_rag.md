@@ -70,7 +70,7 @@ For a full list of options and supported file types, refer to the
 [LangChain ConfluenceLoader documentation](https://python.langchain.com/api_reference/_modules/langchain_community/document_loaders/confluence.html#ConfluenceLoader).
 
 - `save_vector_store` (bool): Save the vector store to a JSON file.
-- `vector_store_path`(str): Path to save/load the vector store (absolute or relative to `neuro-san-studio/coded_tools/pdf_rag/`).
+- `vector_store_path`(str): Path to save/load the vector store (absolute or relative to `neuro-san-studio/coded_tools/tools/pdf_rag/`).
 
 ---
 

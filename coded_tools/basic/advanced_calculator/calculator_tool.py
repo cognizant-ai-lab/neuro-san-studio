@@ -13,7 +13,7 @@
 # limitations under the License.
 #
 # END COPYRIGHT
-
+import asyncio
 import json
 import logging
 import math
@@ -37,7 +37,7 @@ class CalculatorCodedTool(CodedTool):
 
         # Define available operations, each mapped to a two-element list:
         # [expected number of arguments, function]
-        self.MATH_FUNCTIONS = {
+        self.math_functions = {
             "add": [2, lambda a, b: a + b],
             "subtract": [2, lambda a, b: a - b],
             "multiply": [2, lambda a, b: a * b],
@@ -102,6 +102,7 @@ class CalculatorCodedTool(CodedTool):
             "radians": [1, math.radians],
         }
 
+    # pylint: disable=too-many-return-statements
     def process_operation(self, operation: str, operands: list) -> Union[str, float]:
         """
         Processes an operation dynamically.
@@ -112,19 +113,19 @@ class CalculatorCodedTool(CodedTool):
         """
         # If the operation is a single one (no underscores), handle it directly.
         if "_" not in operation:
-            if operation not in self.MATH_FUNCTIONS:
+            if operation not in self.math_functions:
                 return f"Error: Unsupported operation '{operation}'"
-            required, func = self.MATH_FUNCTIONS[operation]
+            required, func = self.math_functions[operation]
             if len(operands) > required:
                 try:
                     intermediate = func(*operands[:required])
-                except Exception as e:
+                except (ValueError, TypeError, ZeroDivisionError, OverflowError, ArithmeticError) as e:
                     return f"Error: {str(e)}"
                 # Combine the intermediate result with the remaining operands.
                 operands = [intermediate] + operands[required:]
             try:
                 return func(*operands)
-            except Exception as e:
+            except (ValueError, TypeError, ZeroDivisionError, OverflowError, ArithmeticError) as e:
                 return f"Error: {str(e)}"
 
         # For composite operations (with underscores), split into sub-operations.
@@ -133,19 +134,19 @@ class CalculatorCodedTool(CodedTool):
 
         # Process each sub-operation in reverse order (innermost operation first).
         for sub_op in reversed(sub_operations):
-            if sub_op not in self.MATH_FUNCTIONS:
+            if sub_op not in self.math_functions:
                 return f"Error: Unsupported operation '{sub_op}'"
-            required, func = self.MATH_FUNCTIONS[sub_op]
+            required, func = self.math_functions[sub_op]
             if len(result) > required:
                 try:
                     intermediate = func(*result[:required])
-                except Exception as e:
+                except (ValueError, TypeError, ZeroDivisionError, OverflowError, ArithmeticError) as e:
                     return f"Error: {str(e)}"
                 result = [intermediate] + result[required:]
             else:
                 try:
                     result = [func(*result)]
-                except Exception as e:
+                except (ValueError, TypeError, ZeroDivisionError, OverflowError, ArithmeticError) as e:
                     return f"Error: {str(e)}"
         return result[0]  # Final computed result
 
@@ -159,7 +160,7 @@ class CalculatorCodedTool(CodedTool):
         :param sly_data: Additional context information (unused here).
         :return: A dictionary with the operation result or an error message.
         """
-        logger.info(f"********** {self.__class__.__name__} started **********")
+        logger.info("********** %s started **********", self.__class__.__name__)
         logger.debug("args: %s", args)
         operation = args.get("operation")
         operands = args.get("operands", [])
@@ -167,6 +168,12 @@ class CalculatorCodedTool(CodedTool):
             logger.error("Missing operation in request")
             return json.dumps({"error": "Missing operation"})
         result = self.process_operation(operation, operands)
-        logger.info(f"Performed {operation} on {operands} -> Result: {result}")
-        logger.info(f"********** {self.__class__.__name__} completed **********")
+        logger.info("Performed %s on %s -> Result: %s", operation, operands, result)
+        logger.info("********** %s completed **********", self.__class__.__name__)
         return {"operation": operation, "result": result}
+
+    async def async_invoke(self, args: dict[str, Any], sly_data: dict[str, Any]) -> Union[dict[str, Any], str]:
+        """
+        Run self.invoke(args, sly_data) in a thread so it won’t block the async event loop, and wait for it to finish
+        """
+        return await asyncio.to_thread(self.invoke, args, sly_data)

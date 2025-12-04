@@ -5,7 +5,7 @@ Complete integration module for ServiceNow AI agents with the Neuro SAN framewor
 ## 📁 Module Structure
 
 ```
-coded_tools/now_agents/
+coded_tools/tools/now_agents/
 ├── __init__.py                              # Module initialization and exports
 ├── nowagent_api_get_agents.py              # Agent discovery functionality  
 ├── nowagent_api_send_message.py            # Message sending to agents
@@ -150,7 +150,7 @@ coded_tools/now_agents/
 
 ### Basic Agent Discovery
 ```python
-from coded_tools.now_agents import NowAgentAPIGetAgents
+from coded_tools.tools.now_agents import NowAgentAPIGetAgents
 
 # Initialize the discovery tool
 get_agents = NowAgentAPIGetAgents()
@@ -169,7 +169,7 @@ for agent in agents:
 
 ### Complete Agent Interaction Workflow
 ```python
-from coded_tools.now_agents import (
+from coded_tools.tools.now_agents import (
     NowAgentAPIGetAgents, 
     NowAgentSendMessage, 
     NowAgentRetrieveMessage
@@ -213,7 +213,7 @@ if agents:
 
 ### Error Handling Example
 ```python
-from coded_tools.now_agents import NowAgentAPIGetAgents
+from coded_tools.tools.now_agents import NowAgentAPIGetAgents
 
 try:
     get_agents = NowAgentAPIGetAgents()
@@ -262,11 +262,11 @@ OPENAI_API_KEY="your-openai-api-key"
 ### Comprehensive Test Suite
 The module includes a complete test suite with 100% code coverage:
 
-**Location**: `../../tests/coded_tools/now_agents/`
+**Location**: `../../tests/coded_tools/tools/now_agents/`
 
 **Structure**:
 ```
-tests/coded_tools/now_agents/
+tests/coded_tools/tools/now_agents/
 ├── unit_tests/                              # Fast, mocked tests (100% coverage)
 │   ├── test_unit_agent_discovery_mocked.py
 │   ├── test_unit_message_sending_mocked.py  
@@ -282,16 +282,16 @@ tests/coded_tools/now_agents/
 ### Quick Test Commands
 ```bash
 # Run all unit tests (fast, no credentials needed)
-python -m pytest tests/coded_tools/now_agents/unit_tests/ -v
+python -m pytest tests/coded_tools/tools/now_agents/unit_tests/ -v
 
 # Test ServiceNow connectivity (no auth required)  
-python tests/coded_tools/now_agents/integration_tests/test_integration_servicenow_connectivity.py
+python tests/coded_tools/tools/now_agents/integration_tests/test_integration_servicenow_connectivity.py
 
 # Test agent discovery (requires credentials)
-python tests/coded_tools/now_agents/integration_tests/test_integration_agent_discovery_simple.py
+python tests/coded_tools/tools/now_agents/integration_tests/test_integration_agent_discovery_simple.py
 
 # Full end-to-end workflow test
-python tests/coded_tools/now_agents/integration_tests/test_integration_full_workflow_e2e.py
+python tests/coded_tools/tools/now_agents/integration_tests/test_integration_full_workflow_e2e.py
 ```
 
 ### Test Results Summary
@@ -346,7 +346,7 @@ Error: Status 401/403 - Authentication failed
 1. Verify ServiceNow credentials are correct and active
 2. Check user has required permissions (`sn_aia_agent.read`, etc.)
 3. Ensure API access is enabled for the user
-4. Test credentials with: `python tests/coded_tools/now_agents/integration_tests/debug_servicenow_credentials.py`
+4. Test credentials with: `python tests/coded_tools/tools/now_agents/integration_tests/debug_servicenow_credentials.py`
 
 ### No Agents Found
 ```
@@ -365,7 +365,7 @@ Error: Connection timeout or network error
 **Solutions**:  
 1. Verify ServiceNow instance URL is accessible
 2. Check network connectivity and firewall rules
-3. Test basic connectivity: `python tests/coded_tools/now_agents/integration_tests/test_integration_servicenow_connectivity.py`
+3. Test basic connectivity: `python tests/coded_tools/tools/now_agents/integration_tests/test_integration_servicenow_connectivity.py`
 
 ### Empty Agent Responses
 ```
@@ -389,7 +389,7 @@ Result: {"result": []} (from retrieve_message)
 
 - [ServiceNow Agentic AI Documentation](https://docs.servicenow.com/bundle/vancouver-ai/page/administer/agentic-ai/concept/agentic-ai.html)
 - [ServiceNow REST API Reference](https://docs.servicenow.com/bundle/vancouver-application-development/page/integrate/inbound-rest/concept/c_RESTAPI.html)  
-- [Test Suite Documentation](../../tests/coded_tools/now_agents/README.md)
+- [Test Suite Documentation](../../tests/coded_tools/tools/now_agents/README.md)
 
 ---
 

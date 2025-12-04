@@ -15,6 +15,8 @@
 # END COPYRIGHT
 
 # Import for asynchronous file operations
+import os
+
 import aiofiles
 
 from coded_tools.agent_network_designer.agent_network_assembler import AgentNetworkAssembler
@@ -28,7 +30,7 @@ class FileSystemAgentNetworkPersistor(AgentNetworkPersistor):
     as a hocon file. Also modifies the local manifest file.
     """
 
-    OUTPUT_PATH: str = "registries/"
+    OUTPUT_PATH: str = "registries"
 
     def __init__(self, demo_mode: bool):
         """
@@ -57,15 +59,18 @@ class FileSystemAgentNetworkPersistor(AgentNetworkPersistor):
         """
 
         the_agent_network_hocon_str: str = obj
+        # This agent network name already includes any subdirectory specified.
         the_agent_network_name: str = file_reference
 
         # Write the agent network file
-        file_path: str = self.OUTPUT_PATH + the_agent_network_name + ".hocon"
+        file_path: str = os.path.join(self.OUTPUT_PATH, the_agent_network_name + ".hocon")
+        # Create parent directory automatically if necessary
+        os.makedirs(os.path.dirname(file_path), exist_ok=True)
         async with aiofiles.open(file_path, "w") as file:
             await file.write(the_agent_network_hocon_str)
 
         # Update the manifest.hocon file
-        manifest_path: str = self.OUTPUT_PATH + "manifest.hocon"
+        manifest_path: str = os.path.join(self.OUTPUT_PATH, "manifest.hocon")
 
         # Read the current manifest content
         async with aiofiles.open(manifest_path, "r") as file:
