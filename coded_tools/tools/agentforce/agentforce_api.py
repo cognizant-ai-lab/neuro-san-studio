@@ -49,7 +49,7 @@ MOCK_RESPONSE_2 = {
 class AgentforceAPI(CodedTool):
     """
     A tool to interact with Agentforce agents using the Agentforce API.
-    Example usage: See tests/coded_tools/agentforce/test_agentforce_api.py
+    Example usage: See tests/coded_tools/tools/agentforce/test_agentforce_api.py
     """
 
     def __init__(self):
@@ -124,4 +124,4 @@ class AgentforceAPI(CodedTool):
         return self.invoke(args, sly_data)
 
 
-# Example usage: See tests/coded_tools/agentforce/test_agentforce_api.py
+# Example usage: See tests/coded_tools/tools/agentforce/test_agentforce_api.py

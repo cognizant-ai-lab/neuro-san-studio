@@ -81,7 +81,7 @@ By following these steps and fulfilling the requirements, you can successfully n
    * Listing agent: Handles tasks realted to property listings
    * Appraiser agent: Handles tasks realted to appraising a property
    * Mortgage agent: Handles tasks related to getting a mortgage loan
-   * Inspection agent: Handles tasks related to property inspection. Calls Brave search agent network (/brave_search) to
+   * Inspection agent: Handles tasks related to property inspection. Calls Brave search agent network (/tools/brave_search) to
    perform web search
    * Legal agent: Handles legal tasks for property transactions
 
@@ -93,7 +93,7 @@ By following these steps and fulfilling the requirements, you can successfully n
 
 3. **Listing agent**
    * Handles tasks related to property listings
-   * Calls Brave search agent network (/brave_search) to perform web search
+   * Calls Brave search agent network (/tools/brave_search) to perform web search
 
 ---
 

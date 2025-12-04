@@ -5,7 +5,7 @@ Complete test suite for ServiceNow AI agents integration with clear separation b
 ## 📁 Directory Structure
 
 ```
-tests/coded_tools/now_agents/
+tests/coded_tools/tools/now_agents/
 ├── unit_tests/                              # Fast, isolated, mocked tests
 │   ├── test_unit_agent_discovery_mocked.py     # Agent discovery with API mocks
 │   ├── test_unit_message_sending_mocked.py     # Message sending with API mocks
@@ -31,10 +31,10 @@ tests/coded_tools/now_agents/
 ### Run All Tests
 ```bash
 # From project root - Run all unit tests (fast, no credentials needed)
-python -m pytest tests/coded_tools/now_agents/unit_tests/ -v
+python -m pytest tests/coded_tools/tools/now_agents/unit_tests/ -v
 
 # Run all integration tests (requires ServiceNow credentials)
-python -m pytest tests/coded_tools/now_agents/integration_tests/ -v
+python -m pytest tests/coded_tools/tools/now_agents/integration_tests/ -v
 ```
 
 ## 🧪 Unit Tests (Mocked)
@@ -47,19 +47,19 @@ python -m pytest tests/coded_tools/now_agents/integration_tests/ -v
 ### Individual Unit Tests
 ```bash
 # Test agent discovery functionality (mocked API calls)
-python -m pytest tests/coded_tools/now_agents/unit_tests/test_unit_agent_discovery_mocked.py -v
+python -m pytest tests/coded_tools/tools/now_agents/unit_tests/test_unit_agent_discovery_mocked.py -v
 
 # Test message sending functionality (mocked API calls)
-python -m pytest tests/coded_tools/now_agents/unit_tests/test_unit_message_sending_mocked.py -v
+python -m pytest tests/coded_tools/tools/now_agents/unit_tests/test_unit_message_sending_mocked.py -v
 
 # Test message retrieval with retry logic (mocked API calls)
-python -m pytest tests/coded_tools/now_agents/unit_tests/test_unit_message_retrieval_mocked.py -v
+python -m pytest tests/coded_tools/tools/now_agents/unit_tests/test_unit_message_retrieval_mocked.py -v
 ```
 
 ### Unit Test Coverage Report
 ```bash
 # Generate detailed coverage report
-python -m pytest tests/coded_tools/now_agents/unit_tests/ --cov=coded_tools.now_agents --cov-report=html
+python -m pytest tests/coded_tools/tools/now_agents/unit_tests/ --cov=coded_tools.tools.now_agents --cov-report=html
 # Open htmlcov/index.html for detailed report
 ```
 
@@ -103,19 +103,19 @@ The ServiceNow user needs access to:
 
 ```bash
 # Test basic ServiceNow instance connectivity (no auth needed)
-python tests/coded_tools/now_agents/integration_tests/test_integration_servicenow_connectivity.py
+python tests/coded_tools/tools/now_agents/integration_tests/test_integration_servicenow_connectivity.py
 
 # Validate ServiceNow credentials and permissions
-python tests/coded_tools/now_agents/integration_tests/debug_servicenow_credentials.py
+python tests/coded_tools/tools/now_agents/integration_tests/debug_servicenow_credentials.py
 
 # Simple agent discovery test with minimal output
-python tests/coded_tools/now_agents/integration_tests/test_integration_agent_discovery_simple.py
+python tests/coded_tools/tools/now_agents/integration_tests/test_integration_agent_discovery_simple.py
 
 # Agent discovery with detailed debug information
-python tests/coded_tools/now_agents/integration_tests/test_integration_agent_discovery_debug.py
+python tests/coded_tools/tools/now_agents/integration_tests/test_integration_agent_discovery_debug.py
 
 # Full end-to-end workflow: discover → send message → retrieve response
-python tests/coded_tools/now_agents/integration_tests/test_integration_full_workflow_e2e.py
+python tests/coded_tools/tools/now_agents/integration_tests/test_integration_full_workflow_e2e.py
 ```
 
 ### What Integration Tests Cover
@@ -152,9 +152,9 @@ If you encounter **403 Forbidden** errors when running integration tests:
    - `sn_aia_external_agent_execution.create` - Send messages to agents
    - Access to Agentic AI API endpoints (`/api/sn_aia/agenticai/v1/`)
 
-2. **Test credentials** using: `python tests/coded_tools/now_agents/integration_tests/debug_servicenow_credentials.py`
+2. **Test credentials** using: `python tests/coded_tools/tools/now_agents/integration_tests/debug_servicenow_credentials.py`
 
-3. **Verify basic connectivity** first: `python tests/coded_tools/now_agents/integration_tests/test_integration_servicenow_connectivity.py`
+3. **Verify basic connectivity** first: `python tests/coded_tools/tools/now_agents/integration_tests/test_integration_servicenow_connectivity.py`
 
 **Note**: The current test credentials have been configured with proper permissions and work successfully.
 
@@ -175,19 +175,19 @@ If you encounter **403 Forbidden** errors when running integration tests:
 ### Unit Test Issues
 ```bash
 # If unit tests fail, check imports and paths
-python -c "from coded_tools.now_agents.nowagent_api_get_agents import NowAgentAPIGetAgents; print('Imports OK')"
+python -c "from coded_tools.tools.now_agents.nowagent_api_get_agents import NowAgentAPIGetAgents; print('Imports OK')"
 
 # Run with verbose output for debugging
-python -m pytest tests/coded_tools/now_agents/unit_tests/ -v -s
+python -m pytest tests/coded_tools/tools/now_agents/unit_tests/ -v -s
 ```
 
 ### Integration Test Issues
 ```bash
 # Test basic connectivity first
-python tests/coded_tools/now_agents/integration_tests/test_integration_servicenow_connectivity.py
+python tests/coded_tools/tools/now_agents/integration_tests/test_integration_servicenow_connectivity.py
 
 # Check credentials
-python tests/coded_tools/now_agents/integration_tests/debug_servicenow_credentials.py
+python tests/coded_tools/tools/now_agents/integration_tests/debug_servicenow_credentials.py
 
 # Verify .env file exists and has required variables
 ls .env && grep -E "SERVICENOW_(INSTANCE_URL|USER|PWD)" .env
@@ -209,20 +209,20 @@ ls .env && grep -E "SERVICENOW_(INSTANCE_URL|USER|PWD)" .env
 ### Before Committing
 ```bash
 # Ensure all unit tests pass with full coverage
-python -m pytest tests/coded_tools/now_agents/unit_tests/ --cov=coded_tools.now_agents --cov-fail-under=100
+python -m pytest tests/coded_tools/tools/now_agents/unit_tests/ --cov=coded_tools.tools.now_agents --cov-fail-under=100
 
 # Test integration tests if ServiceNow access available
-python -m pytest tests/coded_tools/now_agents/integration_tests/ -v
+python -m pytest tests/coded_tools/tools/now_agents/integration_tests/ -v
 ```
 
 ### CI/CD Integration
 ```yaml
 # Example GitHub Actions configuration
 - name: Run Unit Tests
-  run: python -m pytest tests/coded_tools/now_agents/unit_tests/ --cov=coded_tools.now_agents --cov-fail-under=100
+  run: python -m pytest tests/coded_tools/tools/now_agents/unit_tests/ --cov=coded_tools.tools.now_agents --cov-fail-under=100
 
 - name: Run Integration Tests
-  run: python -m pytest tests/coded_tools/now_agents/integration_tests/ -v
+  run: python -m pytest tests/coded_tools/tools/now_agents/integration_tests/ -v
   env:
     SERVICENOW_INSTANCE_URL: ${{ secrets.SERVICENOW_INSTANCE_URL }}
     SERVICENOW_USER: ${{ secrets.SERVICENOW_USER }}

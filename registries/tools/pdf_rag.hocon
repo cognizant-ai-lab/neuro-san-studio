@@ -102,7 +102,7 @@
                 # Set to true to save the generated vector store as a JSON file. Only valid for in-memory vector store.
                 "save_vector_store": true,
 
-                # Directory to save and load the vector store (use absolute path or path relative to "neuro-san-studio/coded_tools/pdf_rag/")
+                # Directory to save and load the vector store (use absolute path or path relative to "neuro-san-studio/coded_tools/tools/pdf_rag/")
                 # Must be ".json". Only valid for in-memory vector store.
                 "vector_store_path": "vector_store.json"
 
