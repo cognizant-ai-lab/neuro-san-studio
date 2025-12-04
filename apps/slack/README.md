@@ -140,7 +140,7 @@ python -m neuro_san.service.main_loop.server_main_loop
 ## Step 11: Run the Bot
 
 ```bash
-python -m apps.slack.slack_app
+python -m apps.slack.main
 ```
 
 You should see:
