@@ -46,23 +46,27 @@ class ProgressHandler:
         """
         progress_reporter: AgentProgressReporter = args.get("progress_reporter")
 
+        use_key: str = AGENT_NETWORK_DEFINITION
         use_network_definition: dict[str, Any] = network_definition
 
         agent_progress_style: str = environ.get("AGENT_PROGRESS_STYLE", "internal")
         if agent_progress_style == "connectivity":
             # The idea here is that a multi-user MAUI server can turn on this env variable
             # so that agent network progress progress is converted to connectivity-style data format
-            # that it already knows how to render.
+            # that it already knows how to render.  Using the different key name allows the AGENT_PROGRESS
+            # dictionary to look just like a ConnectivityResponse from the service.
+            use_key: str = "connectivity_info"
             use_network_definition = ProgressHandler._convert_to_connectivity_style(network_definition)
 
         elif agent_progress_style == "internal":
             # Report the internal structure used by Agent Network Designer and pals.
             # This is what was used in the first iterations with nsflow.
+            use_key: str = AGENT_NETWORK_DEFINITION
             use_network_definition: dict[str, Any] = network_definition
 
         progress: dict[str, Any] = {
             # Agent network definition with an added agent
-            AGENT_NETWORK_DEFINITION: use_network_definition
+            use_key: use_network_definition
         }
 
         # Optionally add agent network name
