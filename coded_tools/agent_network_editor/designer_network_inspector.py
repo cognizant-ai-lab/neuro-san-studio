@@ -63,6 +63,7 @@ class DesignerNetworkInspector(AgentNetworkInspector):
                  This guy will be user facing.  If there are none or > 1,
                  an exception will be raised.
         """
+        # The validator stuff uses the same internal network dictionary format
         validator = UnreachableNodesNetworkValidator()
         front_men: set[str] = validator.find_all_top_agents(self.network_def)
         if len(front_men) == 0:
