@@ -67,6 +67,7 @@
     #     pip install pymupdf >= 1.25.5
     "tools/pdf_rag.hocon": false,
     "tools/agentic_rag.hocon": false,
+    "experimental/kwik_agents.hocon": false,
 
     # Requirement to use this agent network:
     # - langchain-openai >= 0.3.26
@@ -147,32 +148,33 @@
     "industry/expedia.hocon": true,
     "industry/macys.hocon": true,
     "industry/LinkedInJobSeekerSupportNetwork.hocon": true,
-
-    "six_thinking_hats.hocon": true,
     # Experimental and research
     "experimental/agent_network_designer.hocon": true,
-    "experimental/kwik_agents.hocon": false,
+    "experimental/agent_network_editor.hocon": {
+        # This is a support network for agent_network_designer
+        # We want it served up, but not listed as a public agent network
+        "serve": true,
+        "public": false
+    },
+    "experimental/agent_network_instructions_editor.hocon": {
+        # This is a support network for agent_network_designer
+        # We want it served up, but not listed as a public agent network
+        "serve": true,
+        "public": false
+    },
+    "experimental/agent_network_query_generator.hocon": { 
+        # This is a support network for agent_network_designer
+        # We want it served up, but not listed as a public agent network
+        "serve": true,
+        "public": false
+    },
+    "six_thinking_hats.hocon": true,
     # Set the following agent network to true before running apps/cruse/interface_flask.py
     "experimental/cruse_agent.hocon": false,
     # Set the following agent network to true before running apps/conscious_assistant/interface_flask.py
     "experimental/conscious_agent.hocon": false,
     # Set the following agent network to true before running apps/log_analyzer/log_analyzer.py
     "experimental/log_analysis_agents.hocon": false,
-
-    # Support networks for agent_network_designer
-    # These are served but not listed as public agent networks
-    "experimental/agent_network_editor.hocon": {
-        "serve": true,
-        "public": false
-    },
-    "experimental/agent_network_instructions_editor.hocon": {
-        "serve": true,
-        "public": false
-    },
-    "experimental/agent_network_query_generator.hocon": { 
-        "serve": true,
-        "public": false
-    },
 
     # Demos
 
