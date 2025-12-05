@@ -21,7 +21,7 @@ transport method. The main purpose is to show how one can connect to mcp server 
       python bmi_server.py
       ```
 
-    Located at: [`bmi_server.py`](../../servers/mcp/bmi_server.py)
+    Located at: [`bmi_server.py`](../../../servers/mcp/bmi_server.py)
 
 ---
 
@@ -37,7 +37,7 @@ transport method. The main purpose is to show how one can connect to mcp server 
 
 - Connects to the MCP server using `langchain-mcp-adapters`.
 - Sends the request and receives the response.
-- Source: [`bmi_calculator.py`](../../../coded_tools/tools/mcp_bmi_sse/bmi_calculator.py)
+- Source: [`bmi_calculator.py`](../../../coded_tools/tools/mcp_bmi_streamable_http/bmi_calculator.py)
 
 ### MCP Server
 
@@ -46,7 +46,7 @@ transport method. The main purpose is to show how one can connect to mcp server 
     - **Description**: From docstring
     - **Arguments Schema**: From type hints
 - Default port: `8000` (can be customized)
-- Source: [`bmi_server.py`](../../servers/mcp/bmi_server.py)
+- Source: [`bmi_server.py`](../../../servers/mcp/bmi_server.py)
 
 ---
 
