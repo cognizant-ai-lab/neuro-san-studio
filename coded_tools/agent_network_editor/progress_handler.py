@@ -18,6 +18,7 @@ from os import environ
 from typing import Any
 
 from neuro_san.interfaces.agent_progress_reporter import AgentProgressReporter
+
 # Reaching into neuro_san internals because we expect to know the gory details here because
 # we are building agent networks.  This is not normally a recommended practice.
 from neuro_san.internals.chat.connectivity_reporter import ConnectivityReporter
