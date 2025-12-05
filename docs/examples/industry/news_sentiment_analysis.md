@@ -7,7 +7,7 @@ The **News Sentiment Analysis Assistant** is a modular, multi-agent system that 
 
 ## File
 
-[news_sentiment_analysis.hocon](../../registries/news_sentiment_analysis.hocon)
+[news_sentiment_analysis.hocon](../../../registries/industry/news_sentiment_analysis.hocon)
 
 ---
 ## Prerequisites

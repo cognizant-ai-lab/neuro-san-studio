@@ -8,7 +8,7 @@ The system is currently running in demo mode, demonstrating how agents would wor
 
 ## File
 
-[insurance_underwriting_agents.hocon](../../registries/insurance_underwriting_agents.hocon)
+[insurance_underwriting_agents.hocon](../../../registries/industry/insurance_underwriting_agents.hocon)
 
 ---
 

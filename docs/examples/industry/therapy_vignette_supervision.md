@@ -5,7 +5,7 @@ treatment plan which is the result of consensus amongst a number of different th
 
 ## File
 
-[TherapyVignetteSupervisors.hocon](../../registries/therapy_vignette_supervisors.hocon)
+[therapy_vignette_supervisors.hocon](../../../registries/industry/therapy_vignette_supervisors.hocon)
 
 ---
 

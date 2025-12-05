@@ -274,22 +274,22 @@ Examples tailored to specific industry applications.
 
 ### Intranet Agents
 
-[Intranet Agents](examples/intranet_agents.md) is a multi-agent system that mimics the intranet of a major corporation.
+[Intranet Agents](examples/industry/intranet_agents.md) is a multi-agent system that mimics the intranet of a major corporation.
 It allows you to interact and get information from various departments such as IT, Finance, Legal, HR, etc.
 
 **Tags:** `AAOSA`
 
 ### Intranet Agents With Tools
 
-[Intranet Agents With Tools](examples/intranet_agents_with_tools.md) is a multi-agent system that mimics the intranet of
-a major corporation. It allows you to interact and get information from various departments such as IT, Finance, Legal,
-HR, etc. Some of the down-chain agents call coded tools.
+[Intranet Agents With Tools](examples/industry/intranet_agents_with_tools.md) is a multi-agent system that mimics the
+intranet of a major corporation. It allows you to interact and get information from various departments such as IT,
+Finance, Legal, HR, etc. Some of the down-chain agents call coded tools.
 
 **Tags:** `tool`, `API`, `AAOSA`
 
 ### Airline Policy 360 Assistant
 
-[Airline Policy 360 Assistant](./examples/airline_policy.md) is a sophisticated multi-agent system designed to manage
+[Airline Policy 360 Assistant](examples/industry/airline_policy.md) is a sophisticated multi-agent system designed to manage
 and respond to customer inquiries by referring to related airline policies with structured delegation. It mimics a
 real-world helpdesk with specialized teams, each handling a specific domain of airline policies such as baggage,
 flights, international travel, and more.
@@ -298,14 +298,14 @@ flights, international travel, and more.
 
 ### Telco Network Orchestration
 
-[Telco Network Orchestration](examples/telco_network_orchestration.md) describes
+[Telco Network Orchestration](examples/industry/telco_network_orchestration.md) describes
 an agent-based network that models the orchestration of a large-scale
 telecommunications system for an Australian telco, encompassing monitoring,
 fault detection, and resource allocation.
 
 ### Real Estate Agent
 
-[Real Estate Agent](examples/real_estate.md) is a multi-agent system that provides help with real estate transaction
+[Real Estate Agent](examples/industry/real_estate.md) is a multi-agent system that provides help with real estate transaction
 inquiries. The top-level "front-man" agent receives a question, and in coordination with down-chain agents, provides an
 answer. Some of the down-chain agents call coded tools.
 
@@ -313,22 +313,22 @@ answer. Some of the down-chain agents call coded tools.
 
 ### Consumer Decision Assistant Agents
 
-[Consumer Decision Assistant](examples/consumer_decision_assistant.md) is a multi-agent system that calls other (B2C)
-multi-agent systems that are not necessarily aligned.
+[Consumer Decision Assistant](examples/industry/consumer_decision_assistant.md) is a multi-agent system that calls other
+(B2C) multi-agent systems that are not necessarily aligned.
 
 **Tags:** `tool`, `AAOSA`,  `external_network`
 
 ### Therapy Vignette Supervision
 
-[Therapy Vignette Supervision](examples/therapy_vignette_supervision.md) is an agentic therapy supervision group. Give
-it a therapy vignette, and it will produce a consensus treatment plan after the various therapy experts offer their
-opinion.
+[Therapy Vignette Supervision](examples/industry/therapy_vignette_supervision.md) is an agentic therapy supervision
+group. Give it a therapy vignette, and it will produce a consensus treatment plan after the various therapy experts
+offer their opinion.
 
 **Tags:** `AAOSA`
 
 ### Banking Operations
 
-[Banking Operations](examples/banking_ops.md) is a multi-agent system that simulates an end-to-end banking support
+[Banking Operations](examples/industry/banking_ops.md) is a multi-agent system that simulates an end-to-end banking support
 framework covering account servicing, fraud prevention, credit underwriting, and wealth management. Specialized agents
 collaborate to deliver bank policy-compliant responses to users, with the system currently operating in demo mode.
 
@@ -336,7 +336,7 @@ collaborate to deliver bank policy-compliant responses to users, with the system
 
 ### Retail Operations and Customer Service Assistant
 
-[Retail Operations and Customer Service Assistant](examples/retail_ops_and_customer_service.md) is a modular,
+[Retail Operations and Customer Service Assistant](examples/industry/retail_ops_and_customer_service.md) is a modular,
 multi-agent system that simulates a real-world helpdesk, automating the management of orders, returns, refunds, and
 product queries while ensuring compliance with company policies. It uses domain-specific task delegation across
 specialized agents, each handling a particular query or retail operation, and is currently in demo mode.
@@ -345,16 +345,17 @@ specialized agents, each handling a particular query or retail operation, and is
 
 ### Insurance Underwriting Agents
 
-[Insurance Underwriting Agent](examples/insurance_underwriting_agents.md) is a hierarchical, multi-agent system that
-automates Hartford’s business insurance workflows, replicating a real-world operations desk. It seamlessly coordinates
-information flow across multiple agents (teams), managing underwriting and claims processes. Key tasks include ACORD form
-validation, risk assessment, underwriting decisions, and claims intake. The system is currently in demo mode.
+[Insurance Underwriting Agent](examples/industry/insurance_underwriting_agents.md) is a hierarchical, multi-agent system
+that automates Hartford's business insurance workflows, replicating a real-world operations desk. It seamlessly
+coordinates information flow across multiple agents (teams), managing underwriting and claims processes. Key tasks
+include ACORD form validation, risk assessment, underwriting decisions, and claims intake. The system is currently in
+demo mode.
 
 **Tags:** `AAOSA`
 
 ### Sentiment Analysis of News Sources
 
-[Sentiment Analysis of News Sources](examples/news_sentiment_analysis.md) is a multi-agent system that analyzes
+[Sentiment Analysis of News Sources](examples/industry/news_sentiment_analysis.md) is a multi-agent system that analyzes
 news coverage from The New York Times, The Guardian, and Al Jazeera to reveal emotional framing across geopolitical
 perspectives. Using keyword-driven sentiment analysis, it automates news retrieval, sentiment scoring, and report
 generation to provide concise, data-backed insights on sentiment polarity, tone variations, and media bias.

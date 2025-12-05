@@ -200,7 +200,7 @@ Detailed Step-by-Step Responsibilities:
    - If the user requests adjustments (e.g., tighter budget constraints or adding/removing specific features), revisit steps to refine the research and output accordingly.
             """,
             "command": "Respond to inquiry using the tools.",
-            "tools": ["/macys", "/carmax"]
+            "tools": ["/industry/macys", "/industry/carmax"]
         },
         {
             "name": "price_comparison_agent",
@@ -255,7 +255,7 @@ Limitations:
 - Do not engage in purchasing; your role is limited to price research and comparison.
             """,
             "command": "Respond to inquiry using the tools.",
-            "tools": ["/macys", "/carmax"]
+            "tools": ["/industry/macys", "/industry/carmax"]
         },
         {
             "name": "travel_decision_specialist",
@@ -354,7 +354,7 @@ Here’s a step-by-step breakdown of your responsibilities:
    - Be ready to refine results based on user feedback, such as adding or removing certain destinations from consideration or delving deeper into specific aspects of a particular destination.  
             """,
             "command": "Respond to inquiry using the tools.",
-            "tools": ["/airbnb", "/expedia", "/booking"]
+            "tools": ["/industry/airbnb", "/industry/expedia", "/industry/booking"]
         },
         {
             "name": "travel_cost_analyzer",
@@ -417,7 +417,7 @@ Step-by-Step Responsibilities:
    - Ensure updates reflect real-time prices and availability.
             """,
             "command": "Respond to inquiry using the tools.",
-            "tools": ["/airbnb", "/expedia", "/booking"]
+            "tools": ["/industry/airbnb", "/industry/expedia", "/industry/booking"]
         },
         {
             "name": "financial_decision_specialist",
@@ -671,7 +671,7 @@ Scope of Work:
 - Presentation: Generate structured, user-friendly reports with job opportunities and employer profiles.
             """,
             "command": ${aaosa_command}
-            "tools": ["/LinkedInJobSeekerSupportNetwork"]
+            "tools": ["/industry/LinkedInJobSeekerSupportNetwork"]
         },
         {
             "name": "skill_development_advisor",

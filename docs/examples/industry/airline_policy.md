@@ -10,7 +10,7 @@ This demo can be modified and extended to other domains as needed.
 
 ## File
 
-[airline_policy.hocon](../../registries/airline_policy.hocon)
+[airline_policy.hocon](../../../registries/industry/airline_policy.hocon)
 
 ---
 

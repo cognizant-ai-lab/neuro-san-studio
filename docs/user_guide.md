@@ -1084,7 +1084,7 @@ at IP address `192.168.1.1` and port `8080`.
 
 This enables entire ecosystems of agent webs.
 
-Look at [Consumer Decision Assistant](examples/consumer_decision_assistant.md) for an example.
+Look at [Consumer Decision Assistant](examples/industry/consumer_decision_assistant.md) for an example.
 
 ### Memory
 
