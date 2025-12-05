@@ -328,6 +328,8 @@ For the development guide, check out [docs/dev_guide.md](docs/dev_guide.md).
 a tool to answer questions about COP, the Paris Agreement or the Kyoto Protocol using UNFCCC documents.
 * [F1 fans eval](https://github.com/deepsaia/f1-fan-eval):
 an app that evaluates F1 fan submissions about why they are the biggest F1 fans.
+* [PDF Knowledge Assistant](https://github.com/M-Elsaied/neuro-san-studio/tree/pdf-knowledge-base/apps/pdf_knowledge_assistant):
+a Flask web app that queries PDFs using RAG with topic-based long-term memory synthesis across documents.
 * [Vibe coding project evaluator](https://github.com/deepsaia/vibe-coding-eval):
 a scalable framework that evaluates vibe-coded projects on different criteria.
 

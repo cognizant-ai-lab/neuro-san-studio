@@ -23,7 +23,7 @@ of this agent network is to show how one can connect to A2A server using coded t
     python server.py
     ```
 
-    Located at: [`server.py`](../../servers/a2a/server.py)
+    Located at: [`server.py`](../../../servers/a2a/server.py)
 
 ---
 
@@ -48,7 +48,7 @@ of this agent network is to show how one can connect to A2A server using coded t
     - **agent_executor.py**: run agent and prepare response message
     - **server.py**: connect to client and return response
 - Default port: `9999` (can be customized)
-- Source: [`server.py`](../../servers/a2a/server.py)
+- Source: [`server.py`](../../../servers/a2a/server.py)
 
 ---
 

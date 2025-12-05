@@ -10,7 +10,7 @@ a limited daily search quota.
 
 ## File
 
-[consumer_decision_assistant.hocon](../../registries/consumer_decision_assistant.hocon)
+[consumer_decision_assistant.hocon](../../../registries/industry/consumer_decision_assistant.hocon)
 
 ---
 
@@ -47,13 +47,13 @@ TBD
 ### Agents calling other agent networks
 
 1. **product_researcher**
-   - This agent calls the [macys](../../registries/macys.hocon) and the [carmax](../../registries/carmax.hocon) agent
+   - This agent calls the [macys](../../../registries/industry/macys.hocon) and the [carmax](../../../registries/industry/carmax.hocon) agent
    network front-men.
 
 2. **destination_researcher** and **travel_cost_analyzer**
-   - These agents call the [booking](../../registries/booking.hocon), [expedia](../../registries/expedia.hocon) and
- the [airbnb](../../registries/airbnb.hocon) agent network front-men.
+   - These agents call the [booking](../../../registries/industry/booking.hocon), [expedia](../../../registries/industry/expedia.hocon) and
+ the [airbnb](../../../registries/industry/airbnb.hocon) agent network front-men.
 
 3. **job_opportunity_researcher**
-   - This agent calls the [LinkedInJobSeekerSupportNetwork](../../registries/LinkedInJobSeekerSupportNetwork.hocon) agent
+   - This agent calls the [LinkedInJobSeekerSupportNetwork](../../../registries/industry/LinkedInJobSeekerSupportNetwork.hocon) agent
    network front-man.
