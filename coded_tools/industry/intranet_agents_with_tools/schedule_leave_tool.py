@@ -21,7 +21,7 @@ from typing import Union
 
 from neuro_san.interfaces.coded_tool import CodedTool
 
-from coded_tools.intranet_agents_with_tools.url_provider import URLProvider
+from coded_tools.industry.intranet_agents_with_tools.url_provider import URLProvider
 
 logger = logging.getLogger(__name__)
 
