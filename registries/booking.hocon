@@ -486,7 +486,7 @@ Returns the URL to various Booking.com accommodation and travel options.
             Searches booking.com using search terms that would help respond to the inquiry.
         """,
         "command": "Call the API to get a list of URLs for available options.",
-        "tools": ["/ddgs_search"]
+        "tools": ["/tools/ddgs_search"]
     },
     ]
 }
