@@ -101,10 +101,11 @@ HOCON files support importing content from other HOCON files using the unquoted 
 whitespace and the path to the imported file as a quoted string:
 
 ```hocon
-include "config.hocon"
+include "registries/aaosa.hocon"
 ```
 
-> **Note**: The file path in include should be an **absolute path** to ensure it can be resolved correctly.
+> **Note**: The file path in include should be an **absolute path**
+> or relative to the **root folder** to ensure it can be resolved correctly.
 
 HOCON supports value substitution by referencing previously defined configuration values. This allows constants to be
 defined once and reused throughout the file.
@@ -128,7 +129,21 @@ you can quote only the non-substituted parts:
 "instructions": ${instruction_prefix} "main instruction" ${instruction_suffix}
 ```
 
-You can see a working example here: [../registries/smart_home_include.hocon](../registries/smart_home_include.hocon).
+Also not that if you're using json notation you need to put the include with the curly braces:
+
+```hocon
+{
+    include "registries/aaosa.hocon"
+
+    ...
+            "function": ${aaosa_call}
+    ...
+}
+```
+
+You can see working examples here:
+- Using json notation: [registries/basic/smart_home.hocon](../registries/basic/smart_home.hocon)
+- Using hocon notation: [registries/basic/coffee_finder.hocon](../registries/basic/coffee_finder.hocon)
 
 For more details, please see [https://github.com/lightbend/config/blob/main/HOCON.md#substitutions](https://github.com/lightbend/config/blob/main/HOCON.md#substitutions)
 
@@ -1000,7 +1015,7 @@ Furthermore, please install the build requirements in your virtual environment v
     ```
 
 2. Suppose you want to debug the coded tool for `music_nerd_pro` agent network. Add the following lines of code to the
-`music_nerd_pro`'s coded tool Python file (E.g., to the first line of `invoke` method in `Accountant` [class](https://github.com/cognizant-ai-lab/neuro-san-studio/blob/main/coded_tools/music_nerd_pro/accounting.py)
+`music_nerd_pro`'s coded tool Python file (E.g., to the first line of `invoke` method in `Accountant` [class](https://github.com/cognizant-ai-lab/neuro-san-studio/blob/main/coded_tools/basic/music_nerd_pro/accounting.py)
 
     ```python
     import pytest

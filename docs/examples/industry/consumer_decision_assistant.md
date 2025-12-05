@@ -51,8 +51,8 @@ TBD
    network front-men.
 
 2. **destination_researcher** and **travel_cost_analyzer**
-   - These agents call the [booking](../../registries/booking.hocon), [expedia](../../registries/expedia.hocon) and the [airbnb]
-   (../../registries/airbnb.hocon) agent network front-men.
+   - These agents call the [booking](../../registries/booking.hocon), [expedia](../../registries/expedia.hocon) and
+ the [airbnb](../../registries/airbnb.hocon) agent network front-men.
 
 3. **job_opportunity_researcher**
    - This agent calls the [LinkedInJobSeekerSupportNetwork](../../registries/LinkedInJobSeekerSupportNetwork.hocon) agent

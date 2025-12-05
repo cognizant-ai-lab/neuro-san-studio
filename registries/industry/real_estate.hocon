@@ -49,14 +49,14 @@ Do not mention what you can NOT do. Only mention what you can do.
         # call each other is defined within their own specs.
         # This could be a graph, potentially even with cycles.
         {
-            "name": "RealEstate.ai",
+            "name": "RealEstateAgent",
 
             "function": {
 
                 # The description acts as an initial prompt. 
 
                 "description": """
-                Your name is RealEstate.ai. You respond to user inquiries related to purchasing a property.
+                Your name is RealEstateAgent. You respond to user inquiries related to purchasing a property.
                 Your down-chain agents (or tools) will help you determine your scope of operations.
                 """
             },
@@ -119,7 +119,7 @@ You represent the property seller. You list property details, set pricing and ne
             "instructions": """
 Use your tool to respond to the inquiry.
 """,
-            "tools": ["/brave_search"]
+            "tools": ["/tools/brave_search"]
 
             "allow": {
                 "from_downstream": {
@@ -128,7 +128,7 @@ Use your tool to respond to the inquiry.
                     # illustrative purposes and debugging, it's useful to have on.
                     # Most agents would not want to have this reporting on
                     # in a production environment.
-                    "reporting": [ "/brave_search" ]
+                    "reporting": [ "/tools/brave_search" ]
                 }
             }
         },
@@ -169,7 +169,7 @@ You handle loan pre-approval and financing options. You assess buyer's creditwor
             "instructions": """
 Use your tool to respond to the inquiry.
 """,
-            "tools": ["/brave_search"]
+            "tools": ["/tools/brave_search"]
 
             "allow": {
                 "from_downstream": {
@@ -178,7 +178,7 @@ Use your tool to respond to the inquiry.
                     # illustrative purposes and debugging, it's useful to have on.
                     # Most agents would not want to have this reporting on
                     # in a production environment.
-                    "reporting": [ "/brave_search" ]
+                    "reporting": [ "/tools/brave_search" ]
                 }
             }
         },
