@@ -1094,8 +1094,8 @@ TBD
 
 - MCP: [MCP BMI SSE](./examples/tools/mcp_bmi_streamable_http.md) is an example of an agent network that uses [MCP](https://www.anthropic.com/news/model-context-protocol)
 to call an agent that calculates the body mass index (BMI).
-- A2A: [A2A research report](./examples/tools/a2a_research_report.md) is an example of an agent network that uses a coded tool
-as an A2A client to connect to CrewAI agents running in an A2A server to write a report on a provided topic.
+- A2A: [A2A research report](./examples/tools/a2a_research_report.md) is an example of an agent network that uses
+a coded tool as an A2A client to connect to CrewAI agents running in an A2A server to write a report on a provided topic.
 - CrewAI: see the A2A example above.
 - Agentforce: [Agentforce](./examples/tools/agentforce.md) is an agent network that delegates queries to a [Salesforce Agentforce](https://www.salesforce.com/agentforce/)
 agent to interact with a CRM system.
