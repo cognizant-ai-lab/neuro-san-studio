@@ -17,6 +17,8 @@
 from typing import Any
 
 from neuro_san.internals.run_context.interfaces.agent_network_inspector import AgentNetworkInspector
+from neuro_san.internals.validation.network.unreachable_nodes_network_validator \
+    import UnreachableNodesNetworkValidator
 
 
 class DesignerNetworkInspector(AgentNetworkInspector):
@@ -37,21 +39,23 @@ class DesignerNetworkInspector(AgentNetworkInspector):
         """
         :return: The entire config dictionary given to the instance.
         """
-        raise NotImplementedError
+        # 12/05/25: We are only using this for purposes of passing to the ConnectivityReporter,
+        #           so just return None
+        return None
 
     def get_agent_tool_spec(self, name: str) -> dict[str, Any]:
         """
         :param name: The name of the agent tool to get out of the registry
         :return: The dictionary representing the spec registered agent
         """
-        raise NotImplementedError
+        return self.network_def.get(name)
 
     def get_name_from_spec(self, agent_spec: dict[str, Any]) -> str:
         """
         :param agent_spec: A single agent to register
         :return: The agent name as per the spec
         """
-        raise NotImplementedError
+        return agent_spec.get("name")
 
     def find_front_man(self) -> str:
         """
@@ -59,4 +63,10 @@ class DesignerNetworkInspector(AgentNetworkInspector):
                  This guy will be user facing.  If there are none or > 1,
                  an exception will be raised.
         """
-        raise NotImplementedError
+        validator = UnreachableNodesNetworkValidator()
+        front_men: set[str] = validator.find_all_top_agents(self.network_def)
+        if len(front_men) == 0:
+            return None
+
+        front_man: str = list(front_men)[0]
+        return front_man
