@@ -36,7 +36,7 @@ class ProgressHandler:
     """
 
     @staticmethod
-    async def report_progress(args: dict[str, Any], network_definition: dict[str, Any], name: str = None) -> None:
+    async def report_progress(args: dict[str, Any], network_definition: dict[str, Any], name: str = None):
         """
         Common handler for progress progress during the building of agent networks
 
