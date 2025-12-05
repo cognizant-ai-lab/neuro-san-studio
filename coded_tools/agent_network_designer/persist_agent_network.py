@@ -23,7 +23,10 @@ from neuro_san.interfaces.coded_tool import CodedTool
 from coded_tools.agent_network_designer.agent_network_assembler import AgentNetworkAssembler
 from coded_tools.agent_network_designer.agent_network_persistor import AgentNetworkPersistor
 from coded_tools.agent_network_designer.agent_network_persistor_factory import AgentNetworkPersistorFactory
+from coded_tools.agent_network_editor.constants import AGENT_NETWORK_DEFINITION
+from coded_tools.agent_network_editor.constants import AGENT_NETWORK_NAME
 from coded_tools.agent_network_validator import AgentNetworkValidator
+
 
 # To use reservations, turn this boolean to False and
 # export AGENT_TEMPORARY_NETWORK_UPDATE_PERIOD_SECONDS=5
@@ -32,8 +35,6 @@ WRITE_TO_FILE: bool = True
 # Turn this to False if the agents are grouped and don't need demo mode instructions
 DEMO_MODE: bool = True
 
-AGENT_NETWORK_DEFINITION: str = "agent_network_definition"
-AGENT_NETWORK_NAME: str = "agent_network_name"
 SUBDIRECTORY: str = "generated/"
 
 
