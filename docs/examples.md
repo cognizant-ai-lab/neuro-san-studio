@@ -368,7 +368,7 @@ Cutting-edge examples for research and experimentation.
 
 ### Agent Network Designer
 
-[Agent Network Designer](examples/agent_network_designer.md) is a multi-agent system to create multi-agent systems.
+[Agent Network Designer](examples/experimental/agent_network_designer.md) is a multi-agent system to create multi-agent systems.
 Enter the name of an organization or describe the use-case and will create an agent network hocon for you and save it to
 your registries directory and give you some usage examples.
 
@@ -376,7 +376,8 @@ your registries directory and give you some usage examples.
 
 ### Agent Network Architect
 
-[Agent Network Architect](examples/agent_network_architect.md) is an automated, multi-agent system that designs, visualizes,
+[Agent Network Architect](examples/experimental/agent_network_architect.md) is an automated, multi-agent system that
+designs, visualizes,
 tests, and shares agent networks. It begins by generating a .hocon configuration file using an external designer agent, then
 creates an interactive HTML graph of the network, runs a live demonstration using Selenium with Nsflow, and optionally emails
 the results. This network streamlines the end-to-end workflow for building and showcasing agent systems.
@@ -385,13 +386,14 @@ the results. This network streamlines the end-to-end workflow for building and s
 
 ### KWIK Agents
 
-[KWIK_agents](examples/kwik_agents.md) is a basic multi-agent system with memory.
+[KWIK_agents](examples/experimental/kwik_agents.md) is a basic multi-agent system with memory.
 
 **Tags:** `tool`, `memory`
 
 ### CRUSE
 
-[CRUSE](examples/cruse.md) is an agent that can dynamically attach to any agent in your registry and make it run with a
+[CRUSE](examples/experimental/cruse.md) is an agent that can dynamically attach to any agent in your registry and make
+it run with a
 context reactive user experience. This is a good example of how to switch down-chain agents dynamically using coded
 tools and sly_data.
 
@@ -399,14 +401,15 @@ tools and sly_data.
 
 ### Conscious Assistant
 
-[Conscious Agent](examples/conscious_agent.md) is a multi-agent system used within the conscious assistant and
+[Conscious Agent](examples/experimental/conscious_agent.md) is a multi-agent system used within the conscious assistant and
 serves as a good example of how to run an agent permanently.
 
 **Tags:** `tool`, `memory`, `app`
 
 ### Log Analyzer
 
-[Log Analyzer](examples/log_analyzer.md) is a multi-agent system used within the log analyzer app and serves as a
+[Log Analyzer](examples/experimental/log_analyzer.md) is a multi-agent system used within the log analyzer app and
+serves as a
 good example of how to run an agent network on an agent network log for various validations.
 
 **Tags:** `AAOSA`, `app`

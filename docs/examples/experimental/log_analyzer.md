@@ -1,6 +1,6 @@
 # Log Analyzer
 
-The **Log Analyzer** is a basic multi-agent system that is called from the [log_analyzer.py](../../apps/log_analyzer/log_analyzer.py)
+The **Log Analyzer** is a basic multi-agent system that is called from the [log_analyzer.py](../../../apps/log_analyzer/log_analyzer.py)
 app.
 
 **Note**: Running the app will call the agents on all log files and log entries within the files and can rack up on your
@@ -10,7 +10,7 @@ token consumption.
 
 ## File
 
-[log_analysis_agents.hocon](../../registries/experimental/log_analysis_agents.hocon)
+[log_analysis_agents.hocon](../../../registries/experimental/log_analysis_agents.hocon)
 
 ---
 
@@ -27,7 +27,7 @@ token consumption.
 
 ## Description
 
-Once you run the [log_analyzer.py](../../apps/log_analyzer/log_analyzer.py) app, it will review all agent interactions in
+Once you run the [log_analyzer.py](../../../apps/log_analyzer/log_analyzer.py) app, it will review all agent interactions in
 all log files located in the directory in the AGENT_THINKING_LOGS_DIRECTORY constant at the top of the python file, and it
 will produce a report based on the analysis.
 

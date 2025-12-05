@@ -17,24 +17,24 @@ Note that
 
 - This demo writes a file to your local directory and updates your `manifest.hocon`. To disable this behavior,
 set `WRITE_TO_FILE` to `False` in
-[persist_agent_network.py](../../coded_tools/experimental/agent_network_designer/persist_agent_network.py)
+[persist_agent_network.py](../../../coded_tools/experimental/agent_network_designer/persist_agent_network.py)
 
 - By default, the parent directory for the generated network (where your `manifest.hocon` should be located)
 is registries. You can change this by setting `OUTPUT_PATH` in
-[file_system_agent_network_persistor.py](../../coded_tools/experimental/agent_network_designer/file_system_agent_network_persistor.py)
+[file_system_agent_network_persistor.py](../../../coded_tools/experimental/agent_network_designer/file_system_agent_network_persistor.py)
 
 - All generated agent networks are stored in a `generated` subdirectory under the specified `OUTPUT_PATH`.
 
 - The generated agents are not grounded by default—they only simulate grounded behavior.
 Once you connect the agents to real systems (e.g., APIs or databases) via the `Toolbox` or `MCP`,
 you can disable demo mode by setting DEMO_MODE in
-[persist_agent_network.py](../../coded_tools/agent_network_designer/persist_agent_network.py)
+[persist_agent_network.py](../../../coded_tools/experimental/agent_network_designer/persist_agent_network.py)
 
 ---
 
 ## File
 
-[agent_network_designer.hocon](../../registries/experimental/agent_network_designer.hocon)
+[agent_network_designer.hocon](../../../registries/experimental/agent_network_designer.hocon)
 
 ---
 
@@ -43,19 +43,19 @@ you can disable demo mode by setting DEMO_MODE in
 The Agent Network Designer operates as a structured, hierarchical network, following a well-defined sequence of steps:
 
 1. The frontman agent receives a design request and delegates it to the
-[`agent_network_editor`](../../registries/experimental/agent_network_editor.hocon)
+[`agent_network_editor`](../../../registries/experimental/agent_network_editor.hocon)
  subnetwork.
 This component creates or modifies the structure (graph) of the network.
 
-2. Next, the [`agent_network_instructions_editor`](../../registries/experimental/agent_network_instructions_editor.hocon)
+2. Next, the [`agent_network_instructions_editor`](../../../registries/experimental/agent_network_instructions_editor.hocon)
  subnetwork
 generates or refines the `instructions` for each agent in the network.
 
 3. Once the structure and instructions are defined, the frontman calls the
-[`agent_network_query_generator`](../../registries/experimental/agent_network_query_generator.hocon)
+[`agent_network_query_generator`](../../../registries/experimental/agent_network_query_generator.hocon)
  subnetwork to produce example usage queries for the new agent network.
 
-4. Finally, the [persist_agent_network.py](../../coded_tools/experimental/agent_network_designer/persist_agent_network.py) coded tool converts the `agent_network_definition` into a HOCON file and saves it to disk.
+4. Finally, the [persist_agent_network.py](../../../coded_tools/experimental/agent_network_designer/persist_agent_network.py) coded tool converts the `agent_network_definition` into a HOCON file and saves it to disk.
 
     The **`agent_network_definition`** is a dictionary mapping agent names to their configurations
 (e.g., instructions, tools, or other agents they can call).
