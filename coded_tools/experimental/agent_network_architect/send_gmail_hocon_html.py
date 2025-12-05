@@ -22,7 +22,7 @@ from typing import List
 
 from neuro_san.interfaces.coded_tool import CodedTool
 
-from coded_tools.gmail_attachment import GmailAttachment
+from coded_tools.tools.gmail_attachment import GmailAttachment
 
 
 class SendGmailHoconHtml(CodedTool):
