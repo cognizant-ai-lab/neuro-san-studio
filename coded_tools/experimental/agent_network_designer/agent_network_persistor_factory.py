@@ -18,9 +18,13 @@ from typing import Any
 
 from neuro_san.interfaces.reservationist import Reservationist
 
-from .agent_network_persistor import AgentNetworkPersistor
-from .file_system_agent_network_persistor import FileSystemAgentNetworkPersistor
-from .reservations_agent_network_persistor import ReservationsAgentNetworkPersistor
+from coded_tools.experimental.agent_network_designer.agent_network_persistor import AgentNetworkPersistor
+from coded_tools.experimental.agent_network_designer.file_system_agent_network_persistor import (
+    FileSystemAgentNetworkPersistor,
+)
+from coded_tools.experimental.agent_network_designer.reservations_agent_network_persistor import (
+    ReservationsAgentNetworkPersistor,
+)
 
 
 # pylint: disable=too-few-public-methods

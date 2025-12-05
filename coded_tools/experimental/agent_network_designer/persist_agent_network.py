@@ -21,10 +21,11 @@ from typing import Any
 from neuro_san.interfaces.coded_tool import CodedTool
 
 from coded_tools.agent_network_validator import AgentNetworkValidator
-
-from .agent_network_assembler import AgentNetworkAssembler
-from .agent_network_persistor import AgentNetworkPersistor
-from .agent_network_persistor_factory import AgentNetworkPersistorFactory
+from coded_tools.experimental.agent_network_designer.agent_network_assembler import AgentNetworkAssembler
+from coded_tools.experimental.agent_network_designer.agent_network_persistor import AgentNetworkPersistor
+from coded_tools.experimental.agent_network_designer.agent_network_persistor_factory import (
+    AgentNetworkPersistorFactory,
+)
 
 # To use reservations, turn this boolean to False and
 # export AGENT_TEMPORARY_NETWORK_UPDATE_PERIOD_SECONDS=5

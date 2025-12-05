@@ -16,7 +16,7 @@
 
 from typing import Any
 
-from .agent_network_assembler import AgentNetworkAssembler
+from coded_tools.experimental.agent_network_designer.agent_network_assembler import AgentNetworkAssembler
 
 
 class AgentNetworkPersistor:
