@@ -21,7 +21,7 @@ transport method. The main purpose is to show how one can connect to mcp server 
       python bmi_server.py
       ```
 
-    Located at: [`bmi_server.py`](../../servers/mcp/bmi_server.py)
+    Located at: [`bmi_server.py`](../../../servers/mcp/bmi_server.py)
 
 ---
 
@@ -46,7 +46,7 @@ transport method. The main purpose is to show how one can connect to mcp server 
     - **Description**: From docstring
     - **Arguments Schema**: From type hints
 - Default port: `8000` (can be customized)
-- Source: [`bmi_server.py`](../../servers/mcp/bmi_server.py)
+- Source: [`bmi_server.py`](../../../servers/mcp/bmi_server.py)
 
 ---
 

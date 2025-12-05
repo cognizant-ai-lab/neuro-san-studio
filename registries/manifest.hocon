@@ -126,38 +126,28 @@
     "tools/visual_question_answering.hocon": false,
 
 
-    # Industry examples
+    # Use cases
     "industry/airline_policy.hocon": true,
     "industry/banking_ops.hocon": true,
-    "insurance_agents.hocon": false,  # This is a deprecated version of insurance_underwriting_agents.hocon
+    "cpg_agents.hocon": true,
+    "industry/insurance_agents.hocon": false,  # This is a deprecated version of insurance_underwriting_agents.hocon
     "industry/insurance_underwriting_agents.hocon": true,
     "industry/intranet_agents.hocon": false,  # This is a deprecated version of intranet_agents_with_tools.hocon
     "industry/intranet_agents_with_tools.hocon": true,
     "industry/real_estate.hocon": false,
     "industry/retail_ops_and_customer_service.hocon": true,
+    "industry/telco_network_support.hocon": true,
     "industry/telco_network_orchestration.hocon": true,
     "industry/therapy_vignette_supervisors.hocon": true,
     "industry/consumer_decision_assistant.hocon": true,
     # The following agent networks are used as sub-networks by consumer_decision_assistant.hocon
-    "airbnb.hocon": true,
-    "booking.hocon": true,
-    "carmax.hocon": true,
-    "tools/ddgs_search.hocon": true,
-    "expedia.hocon": true,
-    "macys.hocon": true,
-    "LinkedInJobSeekerSupportNetwork.hocon": true,
     "industry/airbnb.hocon": true,
     "industry/booking.hocon": true,
     "industry/carmax.hocon": true,
+    "tools/ddgs_search.hocon": true,
     "industry/expedia.hocon": true,
     "industry/macys.hocon": true,
     "industry/LinkedInJobSeekerSupportNetwork.hocon": true,
-    
-    # Other agent networks
-    "cpg_agents.hocon": true,
-    "keybank.hocon": true,
-    "telco_network_support.hocon": true,
-    
     # Experimental and research
     "agent_network_designer.hocon": true,
     "agent_network_editor.hocon": {
