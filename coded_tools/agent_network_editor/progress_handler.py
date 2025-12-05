@@ -29,6 +29,7 @@ from coded_tools.agent_network_editor.constants import AGENT_NETWORK_NAME
 from coded_tools.agent_network_editor.designer_network_inspector import DesignerNetworkInspector
 
 
+# pylint: disable=too-few-public-methods
 class ProgressHandler:
     """
     Common handler for progress progress during the building of agent networks
@@ -70,7 +71,8 @@ class ProgressHandler:
 
         await progress_reporter.async_report_progress(progress)
 
-    def _convert_to_connectivity_style(self, network_definition: dict[str, Any]) -> list[dict[str, Any]]:
+    @staticmethod
+    def _convert_to_connectivity_style(network_definition: dict[str, Any]) -> list[dict[str, Any]]:
 
         connectivity: list[dict[str, Any]] = []
 
