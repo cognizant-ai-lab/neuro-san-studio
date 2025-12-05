@@ -14,9 +14,8 @@
 #
 # END COPYRIGHT
 
-from typing import Any
-
 from os import environ
+from typing import Any
 
 from neuro_san.interfaces.agent_progress_reporter import AgentProgressReporter
 # Reaching into neuro_san internals because we expect to know the gory details here because

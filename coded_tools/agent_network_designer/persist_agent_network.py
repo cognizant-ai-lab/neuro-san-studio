@@ -27,7 +27,6 @@ from coded_tools.agent_network_editor.constants import AGENT_NETWORK_DEFINITION
 from coded_tools.agent_network_editor.constants import AGENT_NETWORK_NAME
 from coded_tools.agent_network_validator import AgentNetworkValidator
 
-
 # To use reservations, turn this boolean to False and
 # export AGENT_TEMPORARY_NETWORK_UPDATE_PERIOD_SECONDS=5
 WRITE_TO_FILE: bool = True

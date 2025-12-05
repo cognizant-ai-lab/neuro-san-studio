@@ -17,8 +17,7 @@
 from typing import Any
 
 from neuro_san.internals.run_context.interfaces.agent_network_inspector import AgentNetworkInspector
-from neuro_san.internals.validation.network.unreachable_nodes_network_validator \
-    import UnreachableNodesNetworkValidator
+from neuro_san.internals.validation.network.unreachable_nodes_network_validator import UnreachableNodesNetworkValidator
 
 
 class DesignerNetworkInspector(AgentNetworkInspector):
