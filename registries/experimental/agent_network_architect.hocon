@@ -173,7 +173,7 @@ Always ask for clarification if the user's intent is ambiguous.
             # "send_gmail_hocon_html" is a coded tool that send email with attachment.
             # This tool is mainlly designed for sending an email with hocon and html as attachment since it will fallback
             # to sending the hocon and html file of the agent network if the attachment provided in args is invalid.
-            # The code of this tool can be found at coded_tools/agent_network_architect/send_gmail_hocon_html.py
+            # The code of this tool can be found at coded_tools/experimental/agent_network_architect/send_gmail_hocon_html.py
             "class": "send_gmail_hocon_html.SendGmailHoconHtml"
             "function": {
                 "description": "Send an email to specified email addresses",
