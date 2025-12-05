@@ -1015,7 +1015,7 @@ Furthermore, please install the build requirements in your virtual environment v
     ```
 
 2. Suppose you want to debug the coded tool for `music_nerd_pro` agent network. Add the following lines of code to the
-`music_nerd_pro`'s coded tool Python file (E.g., to the first line of `invoke` method in `Accountant` [class](https://github.com/cognizant-ai-lab/neuro-san-studio/blob/main/coded_tools/music_nerd_pro/accounting.py)
+`music_nerd_pro`'s coded tool Python file (E.g., to the first line of `invoke` method in `Accountant` [class](https://github.com/cognizant-ai-lab/neuro-san-studio/blob/main/coded_tools/basic/music_nerd_pro/accounting.py)
 
     ```python
     import pytest
@@ -1084,7 +1084,7 @@ at IP address `192.168.1.1` and port `8080`.
 
 This enables entire ecosystems of agent webs.
 
-Look at [Consumer Decision Assistant](examples/consumer_decision_assistant.md) for an example.
+Look at [Consumer Decision Assistant](examples/industry/consumer_decision_assistant.md) for an example.
 
 ### Memory
 
