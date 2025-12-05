@@ -19,9 +19,14 @@ from typing import Any
 from os import environ
 
 from neuro_san.interfaces.agent_progress_reporter import AgentProgressReporter
+# Reaching into neuro_san internals because we expect to know the gory details here because
+# we are building agent networks.  This is not normally a recommended practice.
+from neuro_san.internals.chat.connectivity_reporter import ConnectivityReporter
+from neuro_san.internals.run_context.interfaces.agent_network_inspector import AgentNetworkInspector
 
 from coded_tools.agent_network_editor.constants import AGENT_NETWORK_DEFINITION
 from coded_tools.agent_network_editor.constants import AGENT_NETWORK_NAME
+from coded_tools.agent_network_editor.designer_network_inspector import DesignerNetworkInspector
 
 
 class ProgressHandler:
@@ -65,7 +70,13 @@ class ProgressHandler:
 
         await progress_reporter.async_report_progress(progress)
 
-    def _convert_to_connectivity_style(self, network_definition: dict[str, Any]) -> dict[str, Any]:
+    def _convert_to_connectivity_style(self, network_definition: dict[str, Any]) -> list[dict[str, Any]]:
 
-        connectivity: dict[str, Any] = {}
+        connectivity: list[dict[str, Any]] = []
+
+        inspector: AgentNetworkInspector = DesignerNetworkInspector(network_definition)
+
+        reporter: ConnectivityReporter = ConnectivityReporter(inspector)
+        connectivity = reporter.report_network_connectivity()
+
         return connectivity
