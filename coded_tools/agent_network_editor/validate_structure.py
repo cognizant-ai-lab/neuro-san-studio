@@ -22,7 +22,7 @@ from neuro_san.interfaces.coded_tool import CodedTool
 
 from coded_tools.agent_network_validator import AgentNetworkValidator
 
-AGENT_NETWORK_DEFINITION = "agent_network_definition"
+from neuro_san_studio.coded_tools.agent_network_editor.constants import AGENT_NETWORK_DEFINITION
 
 
 class ValidateStructure(CodedTool):
