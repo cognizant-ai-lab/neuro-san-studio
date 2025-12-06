@@ -30,7 +30,7 @@ from coded_tools.agent_network_validator import AgentNetworkValidator
 
 # To use reservations, turn this environment variable to true and also
 # export AGENT_TEMPORARY_NETWORK_UPDATE_PERIOD_SECONDS=5
-WRITE_TO_FILE: bool = environ.get("AGENT_NETWORK_DESIGNER_USE_RESERVATIONS", "false") == "false"
+WRITE_TO_FILE: bool = environ.get("AGENT_NETWORK_DESIGNER_USE_RESERVATIONS", "false") != "true"
 
 # Turn this to False if the agents are grouped and don't need demo mode instructions
 DEMO_MODE: bool = True
