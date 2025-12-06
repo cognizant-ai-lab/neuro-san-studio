@@ -49,7 +49,7 @@ class ProgressHandler:
         use_key: str = AGENT_NETWORK_DEFINITION
         use_network_definition: dict[str, Any] = network_definition
 
-        agent_progress_style: str = environ.get("AGENT_PROGRESS_STYLE", "internal")
+        agent_progress_style: str = environ.get("AGENT_NETWORK_DESIGNER_PROGRESS_STYLE", "internal")
         if agent_progress_style == "connectivity":
             # The idea here is that a multi-user MAUI server can turn on this env variable
             # so that agent network progress progress is converted to connectivity-style data format
