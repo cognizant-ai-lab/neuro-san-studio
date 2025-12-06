@@ -1084,7 +1084,7 @@ at IP address `192.168.1.1` and port `8080`.
 
 This enables entire ecosystems of agent webs.
 
-Look at [Consumer Decision Assistant](examples/consumer_decision_assistant.md) for an example.
+Look at [Consumer Decision Assistant](examples/industry/consumer_decision_assistant.md) for an example.
 
 ### Memory
 
@@ -1092,13 +1092,13 @@ TBD
 
 ## Connect with other agent frameworks
 
-- MCP: [MCP BMI SSE](./examples/mcp_bmi_sse.md) is an example of an agent network that uses [MCP](https://www.anthropic.com/news/model-context-protocol)
+- MCP: [MCP BMI SSE](./examples/tools/mcp_bmi_streamable_http.md) is an example of an agent network that uses [MCP](https://www.anthropic.com/news/model-context-protocol)
 to call an agent that calculates the body mass index (BMI).
-- A2A: [A2A research report](./examples/a2a_research_report.md) is an example of an agent network that uses a coded tool
-as an A2A client to connect to CrewAI agents running in an A2A server to write a report on a provided topic.
+- A2A: [A2A research report](./examples/tools/a2a_research_report.md) is an example of an agent network that uses
+a coded tool as an A2A client to connect to CrewAI agents running in an A2A server to write a report on a provided topic.
 - CrewAI: see the A2A example above.
-- Agentforce: [Agentforce](./examples/agentforce.md) is an agent network that delegates queries to a [Salesforce Agentforce](https://www.salesforce.com/agentforce/)
+- Agentforce: [Agentforce](./examples/tools/agentforce.md) is an agent network that delegates queries to a [Salesforce Agentforce](https://www.salesforce.com/agentforce/)
 agent to interact with a CRM system.
-- Agentspace: [Agentspace_adapter](./examples/agentspace_adapter.md) is an agent network adapter that delegates queries
+- Agentspace: [Agentspace_adapter](./examples/tools/agentspace_adapter.md) is an agent network adapter that delegates queries
 to a [Google Agentspace](https://cloud.google.com/agentspace/agentspace-enterprise/docs/overview) agent to interact with
 different data store connectors on google cloud.
