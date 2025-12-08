@@ -579,9 +579,15 @@ In this example:
 
 #### Changing the System Default Model
 
-Alternatively, you can change the system-wide default model used by Neuro-SAN by modifying the `default_model_name` value in the [default LLM info file](https://github.com/cognizant-ai-lab/neuro-san/blob/main/neuro_san/internals/run_context/langchain/llms/default_llm_info.hocon#L1005).
+Alternatively, you can change the system-wide default model used by Neuro-SAN by modifying the `default_model_name`
+value in the
+<!-- pyml disable line-length -->
+[default LLM info file](https://github.com/cognizant-ai-lab/neuro-san/blob/main/neuro_san/internals/run_context/langchain/llms/default_llm_info.hocon#L1005).
+<!-- pyml enable line-length -->
 
-> **Tip**: Using environment variable substitution is particularly useful when you want to quickly test different models across multiple agent networks without modifying each configuration file individually. Simply set the `MODEL_NAME` environment variable before starting the server:
+> **Tip**: Using environment variable substitution is particularly useful when you want to quickly test different
+models across multiple agent networks without modifying each configuration file individually.
+Simply set the `MODEL_NAME` environment variable before starting the server:
 >
 > ```bash
 > export MODEL_NAME="claude-3-7-sonnet"
