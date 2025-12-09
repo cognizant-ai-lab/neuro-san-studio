@@ -168,7 +168,7 @@
 
 
     # Use cases
-    "industry/airline_policy.hocon": true,      # Default setting for most devs and tire-kickers.
+    "industry/airline_policy.hocon": true,
     "industry/banking_ops.hocon": true,
     "cpg_agents.hocon": true,
     "industry/insurance_agents.hocon": false,  # This is a deprecated version of insurance_underwriting_agents.hocon
