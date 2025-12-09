@@ -14,23 +14,54 @@
 #
 # END COPYRIGHT
 {
-    # Currently we list each hocon file we want to serve as a key with a boolean value.
-    # Eventually we might have a dictionary value with server specifications for each.
+    # Currently we list each hocon file we want to publicly serve as a key with a boolean value.
+    # It is also possible to expand this boolean to a dictionary for finer-grained deployment control.
+    # See https://github.com/cognizant-ai-lab/neuro-san/blob/main/docs/manifest_hocon_reference.md
+    # for more details.
+
+    # Some of these hocon files have 2 entries to allow for dynamic deployment configuration
+    # via environment variables.  In these cases, the first entry is for the generic
+    # developer/tire-kicker case where users have access to this repo, and the environment
+    # variable allows for a targeted deployment for a multi-user experience.
+
+    # Your own manfiest.hocon file(s) really only needs the single boolean entry for most cases.
 
 
     # Basic examples
     "basic/music_nerd.hocon": true,
+    "basic/music_nerd.hocon": ${?NOT_FOR_MULTI_USER_EXPERIENCE},
+
     "basic/music_nerd_local.hocon": true,
+    "basic/music_nerd_local.hocon": ${?NOT_FOR_MULTI_USER_EXPERIENCE},
+
     "basic/music_nerd_pro.hocon": true,
+    "basic/music_nerd_pro.hocon": ${?NOT_FOR_MULTI_USER_EXPERIENCE},
+
     "basic/music_nerd_pro_local.hocon": true,
+    "basic/music_nerd_pro_local.hocon": ${?NOT_FOR_MULTI_USER_EXPERIENCE},
+
     "basic/music_nerd_pro_sly.hocon": true,
+    "basic/music_nerd_pro_sly.hocon": ${?NOT_FOR_MULTI_USER_EXPERIENCE},
+
     "basic/music_nerd_pro_sly_local.hocon": true,
+    "basic/music_nerd_pro_sly_local.hocon": ${?NOT_FOR_MULTI_USER_EXPERIENCE},
+
     "basic/music_nerd_llm_fallbacks.hocon": true,
+    "basic/music_nerd_llm_fallbacks.hocon": ${?NOT_FOR_MULTI_USER_EXPERIENCE},
+
     "basic/hello_world.hocon": true,
+    "basic/hello_world.hocon": ${?NOT_FOR_MULTI_USER_EXPERIENCE},
+
     "basic/advanced_calculator.hocon": false,
+
     "basic/smart_home.hocon": true,
+    "basic/smart_home.hocon": ${?NOT_FOR_MULTI_USER_EXPERIENCE},
+
     "basic/coffee_finder.hocon": true,
+    "basic/coffee_finder.hocon": ${?NOT_FOR_MULTI_USER_EXPERIENCE},
+
     "basic/coffee_finder_advanced.hocon": true,
+    "basic/coffee_finder_advanced.hocon": ${?NOT_FOR_MULTI_USER_EXPERIENCE},
 
     # Tool integration examples
 
@@ -60,7 +91,11 @@
     "tools/google_search.hocon": false,
 
     "tools/agent_network_html_creator.hocon": true,
+    "tools/agent_network_html_creator.hocon": ${?NOT_FOR_MULTI_USER_EXPERIENCE},
+
     "tools/agentforce.hocon": true,
+    "tools/agentforce.hocon": ${?NOT_FOR_MULTI_USER_EXPERIENCE},
+
     "tools/agentspace_adapter.hocon": false,
 
     # To use this agent network, start by installing the required package:
@@ -75,7 +110,10 @@
     # See https://platform.openai.com/docs/guides/tools?api-mode=responses and
     # https://python.langchain.com/docs/integrations/chat/openai/#responses-api
     "tools/openai_web_search.hocon": true,
+    "tools/openai_web_search.hocon": ${?NOT_FOR_MULTI_USER_EXPERIENCE},
+
     "tools/openai_code_interpreter.hocon": true,
+    "tools/openai_code_interpreter.hocon": ${?NOT_FOR_MULTI_USER_EXPERIENCE},
 
     # Requirement to use this agent network:
     # - langchain-anthropic>=0.3.13
@@ -83,7 +121,10 @@
     # See https://docs.anthropic.com/en/docs/agents-and-tools/tool-use/overview and
     # https://python.langchain.com/docs/integrations/chat/anthropic/#built-in-tools
     "tools/anthropic_web_search.hocon": true,
+    "tools/anthropic_web_search.hocon": ${?NOT_FOR_MULTI_USER_EXPERIENCE},
+
     "tools/anthropic_code_execution.hocon": true,
+    "tools/anthropic_code_execution.hocon": ${?NOT_FOR_MULTI_USER_EXPERIENCE},
 
     # To use this agent network, start by installing the required package:
     #     pip install atlassian-python-api
@@ -127,7 +168,7 @@
 
 
     # Use cases
-    "industry/airline_policy.hocon": true,
+    "industry/airline_policy.hocon": true,      # Default setting for most devs and tire-kickers.
     "industry/banking_ops.hocon": true,
     "cpg_agents.hocon": true,
     "industry/insurance_agents.hocon": false,  # This is a deprecated version of insurance_underwriting_agents.hocon
@@ -148,27 +189,34 @@
     "industry/expedia.hocon": true,
     "industry/macys.hocon": true,
     "industry/LinkedInJobSeekerSupportNetwork.hocon": true,
+
     # Experimental and research
     "agent_network_designer.hocon": true,
+    "agent_network_designer.hocon": ${?NOT_FOR_MULTI_USER_EXPERIENCE},
     "agent_network_editor.hocon": {
         # This is a support network for agent_network_designer
         # We want it served up, but not listed as a public agent network
         "serve": true,
+        "serve": ${?NOT_FOR_MULTI_USER_EXPERIENCE},
         "public": false
     },
     "agent_network_instructions_editor.hocon": {
         # This is a support network for agent_network_designer
         # We want it served up, but not listed as a public agent network
         "serve": true,
+        "serve": ${?NOT_FOR_MULTI_USER_EXPERIENCE},
         "public": false
     },
     "agent_network_query_generator.hocon": { 
         # This is a support network for agent_network_designer
         # We want it served up, but not listed as a public agent network
         "serve": true,
+        "serve": ${?NOT_FOR_MULTI_USER_EXPERIENCE},
         "public": false
     },
+
     "six_thinking_hats.hocon": true,
+    "six_thinking_hats.hocon": ${?NOT_FOR_MULTI_USER_EXPERIENCE},
     # Set the following agent network to true before running apps/cruse/interface_flask.py
     "cruse_agent.hocon": false,
     # Set the following agent network to true before running apps/conscious_assistant/interface_flask.py
@@ -204,4 +252,5 @@
     "agent_network_architect.hocon": false,
     "industry/news_sentiment_analysis.hocon": false,
     "tools/now_agents.hocon": true,
+    "tools/now_agents.hocon": ${?NOT_FOR_MULTI_USER_EXPERIENCE},
 }
