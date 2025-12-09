@@ -24,8 +24,9 @@
 # registries and code lives so as to properly import them into the Dockerfile.
 #
 
+# If either of these change, also change the env var in run.sh
 export SERVICE_TAG=${SERVICE_TAG:-neuro-san-studio}
-export SERVICE_VERSION=${SERVICE_VERSION:-0.0.9}
+export SERVICE_VERSION=${SERVICE_VERSION:-0.0.1}
 
 function check_directory() {
     working_dir=$(pwd)

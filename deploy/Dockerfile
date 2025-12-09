@@ -118,7 +118,7 @@ ENV PYTHONPATH=${APP_SOURCE}
 
 # Where to find the tool registry manifest file which lists all the agent hocon
 # files to serve up from this server instance.
-ENV AGENT_MANIFEST_FILE=${APP_SOURCE}/registries/manifest_deploy.hocon
+ENV AGENT_MANIFEST_FILE=${APP_SOURCE}/registries/manifest.hocon
 
 # An llm_info hocon file with user-provided llm descriptions that are to be used
 # in addition to the neuro-san defaults.
@@ -169,6 +169,14 @@ ENV AGENT_MAX_CONCURRENT_REQUESTS=10
 # Number of requests served before the server shuts down in an orderly fashion.
 # This is useful for testing response handling in clusters with duplicated pods.
 ENV AGENT_REQUEST_LIMIT=1000000
+
+# Set to false if we are building the container for a multi-user experience
+# This will disable some agent networks that are not ready/intended for a multi-user
+# experience which would otherwise appear in the manifest.
+# The setting of false here might seem counterintuitive, but what we are really optimizing
+# for is the smoothest possible single-developer experience who will not have this set
+# and whose manifest will have these other networks turned on.
+ENV NOT_FOR_MULTI_USER_EXPERIENCE=false
 
 # ENTRYPOINT ls ${APP_SOURCE}
 ENTRYPOINT "${APP_ENTRYPOINT}"

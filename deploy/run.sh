@@ -20,6 +20,10 @@
 # Usage: run.sh <CONTAINER_VERSION>
 #
 
+# If either of these change, also change the env var in build.sh
+export SERVICE_TAG=${SERVICE_TAG:-neuro-san-studio}
+export SERVICE_VERSION=${SERVICE_VERSION:-0.0.1}
+
 function check_directory() {
     working_dir=$(pwd)
     if [ "neuro-san-studio" == "$(basename "${working_dir}")" ]
@@ -36,7 +40,7 @@ function run() {
 
     # RUN_JSON_INPUT_DIR will go away when an actual GRPC service exists
     # for receiving the input. For now it's a mounted directory.
-    CONTAINER_VERSION="0.0.1"
+    CONTAINER_VERSION=${SERVICE_VERSION}
     echo "Using CONTAINER_VERSION ${CONTAINER_VERSION}"
     echo "Using args '$*'"
 
@@ -72,7 +76,7 @@ function run() {
         -e TOOL_REGISTRY_FILE=$1 \
         -p $SERVICE_PORT:$SERVICE_PORT \
         -p $SERVICE_HTTP_PORT:$SERVICE_HTTP_PORT \
-            neuro-san/neuro-san-studio:$CONTAINER_VERSION"
+            neuro-san/${SERVICE_TAG}:$CONTAINER_VERSION"
 
     if [ "${OS}" == "Darwin" ];then
         # Host networking does not work for non-Linux operating systems
