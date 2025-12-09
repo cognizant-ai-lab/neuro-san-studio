@@ -127,12 +127,15 @@ To substitute a nested value inside an object or dictionary, use dot notation:
 ```
 
 You can also substitute environment variables:
+
 ```hocon
 "api_key": ${API_KEY}
 "database_url": ${DATABASE_URL}
 ```
 
-For optional substitutions, use `${?...}` syntax. If the value is not found, the entire line will be ignored rather than causing an error:
+For optional substitutions, use `${?...}` syntax. If the value is not found, the entire line will be ignored rather
+than causing an error:
+
 ```hocon
 "optional_setting": ${?OPTIONAL_CONFIG}
 "feature_flag": ${?ENABLE_FEATURE}
@@ -550,11 +553,14 @@ see [this page](https://python.langchain.com/docs/integrations/chat/ollama/)
 
 ### Configuring Default Models with Environment Variables
 
-You can easily switch LLM models across all agent networks that share the same configuration by using environment variable substitution in your HOCON files.
+You can easily switch LLM models across all agent networks that share the same configuration by
+using environment variable substitution in your HOCON files.
 
 #### Using Optional Environment Variable Substitution
 
-In your agent network's `llm_config`, use the `${?MODEL_NAME}` syntax to allow overriding the model via an environment variable:
+In your agent network's `llm_config`, use the `${?MODEL_NAME}` syntax to allow overriding the
+model via an environment variable:
+
 ```hocon
 "llm_config": {
     "model_name": ${?MODEL_NAME}
@@ -565,7 +571,9 @@ If the `MODEL_NAME` environment variable is not set, this will default to `gpt-4
 
 #### Setting Your Own Default Model
 
-To specify a custom default model that will be used when the environment variable is not set, define `model_name` twice:
+To specify a custom default model that will be used when the environment variable is not set,
+define `model_name` twice:
+
 ```hocon
 "llm_config": {
     "model_name": "claude-3-7-sonnet",
