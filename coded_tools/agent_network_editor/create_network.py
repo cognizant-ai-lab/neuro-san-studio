@@ -17,11 +17,11 @@
 import logging
 from typing import Any
 
-from neuro_san.interfaces.agent_progress_reporter import AgentProgressReporter
 from neuro_san.interfaces.coded_tool import CodedTool
 
-AGENT_NETWORK_DEFINITION = "agent_network_definition"
-AGENT_NETWORK_NAME = "agent_network_name"
+from coded_tools.agent_network_editor.constants import AGENT_NETWORK_DEFINITION
+from coded_tools.agent_network_editor.constants import AGENT_NETWORK_NAME
+from coded_tools.agent_network_editor.progress_handler import ProgressHandler
 
 
 class CreateNetwork(CodedTool):
@@ -96,14 +96,7 @@ class CreateNetwork(CodedTool):
         # Put the agent network name in the sly data
         sly_data[AGENT_NETWORK_NAME] = agent_network_name
 
-        # Report progress
-        progress_reporter: AgentProgressReporter = args.get("progress_reporter")
-        progress: dict[str, Any] = {
-            # Agent network definition with added agents
-            AGENT_NETWORK_DEFINITION: sly_data[AGENT_NETWORK_DEFINITION],
-            AGENT_NETWORK_NAME: sly_data[AGENT_NETWORK_NAME],
-        }
-        await progress_reporter.async_report_progress(progress)
+        await ProgressHandler.report_progress(args, sly_data[AGENT_NETWORK_DEFINITION], sly_data[AGENT_NETWORK_NAME])
 
         logger.info(">>>>>>>>>>>>>>>>>>>DONE !!!>>>>>>>>>>>>>>>>>>")
         return sly_data[AGENT_NETWORK_DEFINITION]
