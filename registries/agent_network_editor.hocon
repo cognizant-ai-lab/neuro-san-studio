@@ -49,19 +49,19 @@
                             "description": "Indicates whether to build a brand new agent network (`create`) or to edit the existing one (`modify`)."
                         },
                         "toolbox": {
-                            "type": "bool",
-                            "description": "Indicates whether to use toolbox (default: True)"
+                            "type": "boolean",
+                            "description": "Indicates whether to use toolbox (default: true)"
                         },
                         "subnetwork": {
-                            "type": "bool",
-                            "description": "Indicates whether to use subnetwork (default: True)"
+                            "type": "boolean",
+                            "description": "Indicates whether to use subnetworks (external agents) (default: true)"
                         },
                         "mcp_tool": {
-                            "type": "bool",
-                            "description": "Indicates whether to use MCP tools (default: True)"
+                            "type": "boolean",
+                            "description": "Indicates whether to use MCP tools (default: true)"
                         }
                     },
-                    "required": ["agent_network_description", "mode"]
+                    "required": ["agent_network_description", "mode", "toolbox", "subnetwork", "mcp_tool"]
                 }
             },
             "instructions": """
@@ -75,13 +75,13 @@ These calls provide the list of available tools for use in the network:
 - `get_mcp_tool` returns a dictionary where each key is an MCP server URL and the value is the capabilities of the tools provided by that server.
 
 When adding tools to the network, follow this priority order depending on which tool flags are enabled:
-1. Subnetworks first (only if subnetwork=True):
+1. Subnetworks first (only if subnetwork=true):
     - If a subnetwork is available from `get_subnetwork`, add the name of the subnetwork to the agent’s tools list.
     - Do not create a node for subnetworks.
-2. Toolbox tools second (only if toolbox=True):
+2. Toolbox tools second (only if toolbox=true):
     - Add the name of tools from `get_toolbox` to the agent’s tools list.
     - Create nodes for these tools.
-3. MCP tools last (only if mcp_tool=True):
+3. MCP tools last (only if mcp_tool=true):
     - MCP tools can be added by adding MCP server URL from `get_mcp_tool` to an agent’s tools list.
     - Do not create nodes for MCP tools.
 
