@@ -22,9 +22,10 @@ from typing import Any
 from leaf_common.persistence.easy.easy_hocon_persistence import EasyHoconPersistence
 from neuro_san.interfaces.coded_tool import CodedTool
 
-AGENT_NETWORK_DEFINITION = "agent_network_definition"
-AGENT_NETWORK_HOCON_FILE = "agent_network_hocon_file"
-AGENT_NETWORK_NAME = "agent_network_name"
+from coded_tools.agent_network_editor.constants import AGENT_NETWORK_DEFINITION
+from coded_tools.agent_network_editor.constants import AGENT_NETWORK_NAME
+
+AGENT_NETWORK_HOCON_FILE: str = "agent_network_hocon_file"
 
 
 class GetAgentNetworkDefinition(CodedTool):
