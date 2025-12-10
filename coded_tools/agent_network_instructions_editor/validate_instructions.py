@@ -68,7 +68,7 @@ class ValidateInstructions(CodedTool):
         logger.info(">>>>>>>>>>>>>>>>>>>Validate Agent Network Instructions>>>>>>>>>>>>>>>>>>")
         # Validate the agent network and return error message if there are any issues.
         validator = KeywordNetworkValidator()
-        error_list: list[str] = validator.validate_name_to_spec_dict(network_def)
+        error_list: list[str] = validator.validate(network_def)
         if error_list:
             error_msg = f"Error: {error_list}"
             logger.error(error_msg)
