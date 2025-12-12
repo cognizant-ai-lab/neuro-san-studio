@@ -1,4 +1,4 @@
-# Direct Agent Tutorial
+# Neuro-SAN integration Quick Start
 
 This tutorial will teach you how to use a neuro-san agent network as a Python library using the "direct" session feature.
 
@@ -23,7 +23,7 @@ By the end of this tutorial, you will know how to:
 ## Prerequisites
 
 Before starting, ensure you have:
-- Setup your neuro-san environment -> [README](https://github.com/cognizant-ai-lab/neuro-san-studio/blob/main/README.md)
+- Setup your neuro-san environment -> [README](../README.md)
 - API keys for your chosen LLM provider (such as OpenAI for GPT-4o)
 - An empty folder to work in
 
