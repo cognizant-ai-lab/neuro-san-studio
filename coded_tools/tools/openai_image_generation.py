@@ -14,12 +14,13 @@
 #
 # END COPYRIGHT
 
-from base64 import b64decode
 import logging
+import webbrowser
+
+from base64 import b64decode
 from pathlib import Path
 from tempfile import NamedTemporaryFile
 from typing import Any
-import webbrowser
 
 from neuro_san.interfaces.coded_tool import CodedTool
 
