@@ -65,37 +65,8 @@
 
     # To use this agent network, start by installing the required package:
     #     pip install pymupdf >= 1.25.5
-<<<<<<< HEAD
-<<<<<<< HEAD
-    "pdf_rag.hocon": false,
-    "agentic_rag.hocon": false,
-||||||| 5844eb8
-    "pdf_rag.hocon": false,
-    "agentic_rag.hocon": false,
-    "kwik_agents.hocon": false,
-=======
-||||||| merged common ancestors
-<<<<<<<<< Temporary merge branch 1
-    "pdf_rag.hocon": false,
-    "agentic_rag.hocon": false,
-||||||||| 5844eb8
-    "pdf_rag.hocon": false,
-    "agentic_rag.hocon": false,
-    "kwik_agents.hocon": false,
-=========
-=======
->>>>>>> 6614b1b10ae18883561c23a27257d9abbd74acd4
     "tools/pdf_rag.hocon": false,
     "tools/agentic_rag.hocon": false,
-<<<<<<< HEAD
-    "kwik_agents.hocon": false,
->>>>>>> origin/main
-||||||| merged common ancestors
-    "kwik_agents.hocon": false,
->>>>>>>>> Temporary merge branch 2
-=======
-    "experimental/kwik_agents.hocon": false,
->>>>>>> 6614b1b10ae18883561c23a27257d9abbd74acd4
 
     # Requirement to use this agent network:
     # - langchain-openai >= 0.3.26
