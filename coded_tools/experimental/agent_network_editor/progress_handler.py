@@ -24,9 +24,9 @@ from neuro_san.interfaces.agent_progress_reporter import AgentProgressReporter
 from neuro_san.internals.chat.connectivity_reporter import ConnectivityReporter
 from neuro_san.internals.run_context.interfaces.agent_network_inspector import AgentNetworkInspector
 
-from coded_tools.agent_network_editor.constants import AGENT_NETWORK_DEFINITION
-from coded_tools.agent_network_editor.constants import AGENT_NETWORK_NAME
-from coded_tools.agent_network_editor.designer_network_inspector import DesignerNetworkInspector
+from coded_tools.experimental.agent_network_editor.constants import AGENT_NETWORK_DEFINITION
+from coded_tools.experimental.agent_network_editor.constants import AGENT_NETWORK_NAME
+from coded_tools.experimental.agent_network_editor.designer_network_inspector import DesignerNetworkInspector
 
 
 # pylint: disable=too-few-public-methods

@@ -21,7 +21,7 @@ from typing import Any
 from neuro_san.interfaces.coded_tool import CodedTool
 from neuro_san.internals.validation.network.keyword_network_validator import KeywordNetworkValidator
 
-from coded_tools.agent_network_editor.constants import AGENT_NETWORK_DEFINITION
+from coded_tools.experimental.agent_network_editor.constants import AGENT_NETWORK_DEFINITION
 
 
 class ValidateInstructions(CodedTool):

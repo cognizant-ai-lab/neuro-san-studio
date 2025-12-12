@@ -22,8 +22,8 @@ from typing import Any
 from leaf_common.persistence.easy.easy_hocon_persistence import EasyHoconPersistence
 from neuro_san.interfaces.coded_tool import CodedTool
 
-from coded_tools.agent_network_editor.constants import AGENT_NETWORK_DEFINITION
-from coded_tools.agent_network_editor.constants import AGENT_NETWORK_NAME
+from coded_tools.experimental.agent_network_editor.constants import AGENT_NETWORK_DEFINITION
+from coded_tools.experimental.agent_network_editor.constants import AGENT_NETWORK_NAME
 
 AGENT_NETWORK_HOCON_FILE: str = "agent_network_hocon_file"
 
