@@ -19,6 +19,7 @@ Here are a few examples ordered by level of complexity.
     * [Anthropic Code Execution](#anthropic-code-execution)
     * [Anthropic Web Search](#anthropic-web-search)
     * [OpenAI Code Interpreter](#openai-code-interpreter)
+    * [OpenAI Image Generation](#openai-image-generation)
     * [OpenAI Web Search](#openai-web-search)
     * [Gmail Assistant](#gmail-assistant)
     * [Agent Network HTML Creator](#agent-network-html-creator)
@@ -159,6 +160,12 @@ natural language queries.
 users execute code and perform computational tasks efficiently. It leverages OpenAI's built-in code interpreter tool
 through a specialized toolkit, providing users with the ability to run Python code, generate visualizations,
 perform data analysis, and create computational solutions through natural language commands.
+
+**Tags:** `tool`, `OpenAI`
+
+### OpenAI Image Generation
+
+[OpenAI Image Generation](examples/tools/openai_image_generation.md) is an AI assistant that creates images from text descriptions. Users describe what they want to see in natural language, and the system generates and displays the corresponding image in their browser, with optional disk storage for generated images.
 
 **Tags:** `tool`, `OpenAI`
 

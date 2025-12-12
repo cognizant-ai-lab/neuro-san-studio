@@ -254,6 +254,22 @@
             "required": ["query"]
         }
     },
+    "openai_image_generation": {
+        "class": "tools.openai_image_generation.OpenAIImageGeneration",
+        "description": "Tool that generates image using OpenAI tool",
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "query": {
+                    "type": "string",
+                    "description": "The prompt for image generation."
+                    # Note that the model may revise the prompt before generate the image.
+                    # Check the log for the revised prompt.
+                },
+            },
+            "required": ["query"]
+        }
+    },
         
     # ---------- RAG Tools ----------
     #

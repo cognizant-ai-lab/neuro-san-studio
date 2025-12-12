@@ -1,0 +1,93 @@
+# Copyright © 2025 Cognizant Technology Solutions Corp, www.cognizant.com.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
+# END COPYRIGHT
+
+# The schema specifications for this file are documented here:
+# https://github.com/cognizant-ai-lab/neuro-san/blob/main/docs/agent_hocon_reference.md
+
+# Requirement to use this agent network:
+# - langchain-openai >= 0.3.26
+# - OPENAI_API_KEY
+# See https://platform.openai.com/docs/guides/tools?api-mode=responses and
+# https://python.langchain.com/docs/integrations/chat/openai/#responses-api
+
+{
+    "llm_config": {
+        "model_name": "gpt-4o",
+    },
+
+    # Optional metadata describing this agent network
+    "metadata": {
+        "description": "Image generation assistant that leverages OpenAI's built-in image generation tool",
+        "tags": ["image generation", "openai", "tool"],
+        "sample_queries": [
+            "Generate an image of gray tabby cat hugging an otter with an orange scarf",
+            "Draw a picture of a cute fuzzy cat with an umbrella",
+            "Create an image of a cat sleeping like a human baby",
+        ]
+    },
+
+    "tools": [
+        # This first agent definition is regarded as the "Front Man", which
+        # does all the talking to the outside world/client.
+        #
+        # Some disqualifications from being a front man:
+        #   1) Cannot use a CodedTool "class" definition
+        #   2) Cannot use a Tool "toolbox" definition
+        #
+        # Besides the first agent being the front man, these tool definitions
+        # do not have to be in any particular order. How they are linked and
+        # call each other is defined within their own specs.
+        # This could be a graph, potentially even with cycles.
+        {
+            "name": "image_generator",
+
+            "function": {
+                # The description acts as an initial prompt. 
+                "description": "Assist caller in image generation.",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "user_inquiry": {
+                            "type": "string",
+                            "description": "A prompt from a user."
+                        },
+                    },
+                    "required": ["user_inquiry"]
+                }
+            },
+
+            "instructions": "Use your tool to generate image.",
+            "tools": ["openai_image_generation"]
+        },
+        {
+            "name": "openai_image_generation",            
+            "toolbox": "openai_image_generation",
+
+            # --- Optional Arguments ---
+            "args": {
+                # OpenAI model calls the built-in web search tool. Default to gpt-4o-2024-08-06.
+                "openai_model": "gpt-5"
+                # Whether to save image on disk
+                "save_image_file": true
+                # Additinal arguments can be passed below
+                # For more information, please see https://platform.openai.com/docs/guides/tools-image-generation
+                "additional_kwargs": {
+                    "quality": "medium"
+                }
+            }
+        },
+    ]
+}
