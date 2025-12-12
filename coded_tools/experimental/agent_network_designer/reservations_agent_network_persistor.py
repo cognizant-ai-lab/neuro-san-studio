@@ -60,7 +60,8 @@ class ReservationsAgentNetworkPersistor(AgentNetworkPersistor):
                 Otherwise, it is a list of agent reservation dictionaries.
         """
         agent_spec: dict[str, Any] = obj
-        agent_prefix: str = file_reference
+        # Remove the generated/ prefix
+        agent_prefix: str = file_reference.replace("generated/", "")
         # For now
         lifetime_in_seconds: float = 60.0 * 60.0
 

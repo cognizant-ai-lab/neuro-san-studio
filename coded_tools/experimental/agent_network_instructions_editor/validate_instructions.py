@@ -19,10 +19,9 @@ import logging
 from typing import Any
 
 from neuro_san.interfaces.coded_tool import CodedTool
+from neuro_san.internals.validation.network.keyword_network_validator import KeywordNetworkValidator
 
-from coded_tools.agent_network_validator import AgentNetworkValidator
-
-AGENT_NETWORK_DEFINITION = "agent_network_definition"
+from coded_tools.agent_network_editor.constants import AGENT_NETWORK_DEFINITION
 
 
 class ValidateInstructions(CodedTool):
@@ -68,8 +67,8 @@ class ValidateInstructions(CodedTool):
 
         logger.info(">>>>>>>>>>>>>>>>>>>Validate Agent Network Instructions>>>>>>>>>>>>>>>>>>")
         # Validate the agent network and return error message if there are any issues.
-        validator = AgentNetworkValidator(network_def)
-        error_list: list[str] = validator.validate_network_keywords()
+        validator = KeywordNetworkValidator()
+        error_list: list[str] = validator.validate(network_def)
         if error_list:
             error_msg = f"Error: {error_list}"
             logger.error(error_msg)

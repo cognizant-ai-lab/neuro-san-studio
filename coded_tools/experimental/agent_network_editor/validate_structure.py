@@ -19,10 +19,14 @@ import logging
 from typing import Any
 
 from neuro_san.interfaces.coded_tool import CodedTool
+from neuro_san.internals.validation.network.structure_network_validator import StructureNetworkValidator
+from neuro_san.internals.validation.network.toolbox_network_validator import ToolboxNetworkValidator
+from neuro_san.internals.validation.network.url_network_validator import UrlNetworkValidator
 
-from coded_tools.agent_network_validator import AgentNetworkValidator
-
-AGENT_NETWORK_DEFINITION = "agent_network_definition"
+from coded_tools.agent_network_editor.constants import AGENT_NETWORK_DEFINITION
+from coded_tools.agent_network_editor.get_mcp_tool import GetMcpTool
+from coded_tools.agent_network_editor.get_subnetwork import GetSubnetwork
+from coded_tools.agent_network_editor.get_toolbox import GetToolbox
 
 
 class ValidateStructure(CodedTool):
@@ -68,9 +72,21 @@ class ValidateStructure(CodedTool):
 
         logger.info(">>>>>>>>>>>>>>>>>>>Validate Agent Network Structure>>>>>>>>>>>>>>>>>>")
         # Validate the agent network and return error message if there are any issues.
-        validator = AgentNetworkValidator(network_def)
+
+        # Get a dict of tools or error message if no toolbox found.
+        tools: dict[str, Any] | str = GetToolbox().invoke(None, None)
+        # Gather all URLs from MCP servers and subnetworks.
+        subnetworks: dict[str, Any] | str = GetSubnetwork().invoke(None, None)
+        if isinstance(subnetworks, dict):
+            subnetworks: list[str] = list(subnetworks.keys())
+        else:
+            subnetworks = []
+        mcp_servers: list[str] = GetMcpTool().mcp_servers
+
         error_list: list[str] = (
-            validator.validate_network_structure() + validator.validate_toolbox_agents() + validator.validate_url()
+            StructureNetworkValidator().validate(network_def)
+            + ToolboxNetworkValidator(tools).validate(network_def)
+            + UrlNetworkValidator(subnetworks, mcp_servers).validate(network_def)
         )
         if error_list:
             error_msg = f"Error: {error_list}"

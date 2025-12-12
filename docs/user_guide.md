@@ -23,6 +23,10 @@
       - [Configuration](#configuration)
       - [Using Ollama in Docker or Remote Server](#using-ollama-in-docker-or-remote-server)
       - [Example agent network](#example-agent-network)
+    - [Configuring Default Models with Environment Variables](#configuring-default-models-with-environment-variables)
+      - [Using Optional Environment Variable Substitution](#using-optional-environment-variable-substitution)
+      - [Setting Your Own Default Model](#setting-your-own-default-model)
+      - [Changing the System Default Model](#changing-the-system-default-model)
     - [See also](#see-also)
   - [LLM Fallbacks](#llm-fallbacks)
   - [Reasoning Models](#reasoning-models)
@@ -120,6 +124,21 @@ To substitute a nested value inside an object or dictionary, use dot notation:
 
 ```hocon
 "name": ${info.name}
+```
+
+You can also substitute environment variables:
+
+```hocon
+"api_key": ${API_KEY}
+"database_url": ${DATABASE_URL}
+```
+
+For optional substitutions, use `${?...}` syntax. If the value is not found, the entire line will be ignored rather
+than causing an error:
+
+```hocon
+"optional_setting": ${?OPTIONAL_CONFIG}
+"feature_flag": ${?ENABLE_FEATURE}
 ```
 
 Note that substitutions are **not parsed inside quoted strings**. If you need to include a substitution within a string,
@@ -531,6 +550,57 @@ See the [./examples/music_nerd_pro_local.md](examples/basic/music_nerd_pro_local
 
 For more information about how to use Ollama with LangChain,
 see [this page](https://python.langchain.com/docs/integrations/chat/ollama/)
+
+### Configuring Default Models with Environment Variables
+
+You can easily switch LLM models across all agent networks that share the same configuration by
+using environment variable substitution in your HOCON files.
+
+#### Using Optional Environment Variable Substitution
+
+In your agent network's `llm_config`, use the `${?MODEL_NAME}` syntax to allow overriding the
+model via an environment variable:
+
+```hocon
+"llm_config": {
+    "model_name": ${?MODEL_NAME}
+}
+```
+
+If the `MODEL_NAME` environment variable is not set, this will default to `gpt-4o` (the system default).
+
+#### Setting Your Own Default Model
+
+To specify a custom default model that will be used when the environment variable is not set,
+define `model_name` twice:
+
+```hocon
+"llm_config": {
+    "model_name": "claude-3-7-sonnet",
+    "model_name": ${?MODEL_NAME}
+}
+```
+
+In this example:
+- If `MODEL_NAME` is set, it will use that model
+- If `MODEL_NAME` is not set, it will use `claude-3-7-sonnet`
+
+#### Changing the System Default Model
+
+Alternatively, you can change the system-wide default model used by Neuro-SAN by modifying the `default_model_name`
+value in the
+<!-- pyml disable line-length -->
+[default LLM info file](https://github.com/cognizant-ai-lab/neuro-san/blob/main/neuro_san/internals/run_context/langchain/llms/default_llm_info.hocon#L1005).
+<!-- pyml enable line-length -->
+
+> **Tip**: Using environment variable substitution is particularly useful when you want to quickly test different
+models across multiple agent networks without modifying each configuration file individually.
+Simply set the `MODEL_NAME` environment variable before starting the server:
+>
+> ```bash
+> export MODEL_NAME="claude-3-7-sonnet"
+> python -m run
+> ```
 
 ### See also
 
@@ -1015,7 +1085,7 @@ Furthermore, please install the build requirements in your virtual environment v
     ```
 
 2. Suppose you want to debug the coded tool for `music_nerd_pro` agent network. Add the following lines of code to the
-`music_nerd_pro`'s coded tool Python file (E.g., to the first line of `invoke` method in `Accountant` [class](https://github.com/cognizant-ai-lab/neuro-san-studio/blob/main/coded_tools/music_nerd_pro/accounting.py)
+`music_nerd_pro`'s coded tool Python file (E.g., to the first line of `invoke` method in `Accountant` [class](https://github.com/cognizant-ai-lab/neuro-san-studio/blob/main/coded_tools/basic/music_nerd_pro/accounting.py)
 
     ```python
     import pytest
@@ -1084,7 +1154,7 @@ at IP address `192.168.1.1` and port `8080`.
 
 This enables entire ecosystems of agent webs.
 
-Look at [Consumer Decision Assistant](examples/consumer_decision_assistant.md) for an example.
+Look at [Consumer Decision Assistant](examples/industry/consumer_decision_assistant.md) for an example.
 
 ### Memory
 
@@ -1092,13 +1162,13 @@ TBD
 
 ## Connect with other agent frameworks
 
-- MCP: [MCP BMI SSE](./examples/mcp_bmi_sse.md) is an example of an agent network that uses [MCP](https://www.anthropic.com/news/model-context-protocol)
+- MCP: [MCP BMI SSE](./examples/tools/mcp_bmi_streamable_http.md) is an example of an agent network that uses [MCP](https://www.anthropic.com/news/model-context-protocol)
 to call an agent that calculates the body mass index (BMI).
-- A2A: [A2A research report](./examples/a2a_research_report.md) is an example of an agent network that uses a coded tool
-as an A2A client to connect to CrewAI agents running in an A2A server to write a report on a provided topic.
+- A2A: [A2A research report](./examples/tools/a2a_research_report.md) is an example of an agent network that uses
+a coded tool as an A2A client to connect to CrewAI agents running in an A2A server to write a report on a provided topic.
 - CrewAI: see the A2A example above.
-- Agentforce: [Agentforce](./examples/agentforce.md) is an agent network that delegates queries to a [Salesforce Agentforce](https://www.salesforce.com/agentforce/)
+- Agentforce: [Agentforce](./examples/tools/agentforce.md) is an agent network that delegates queries to a [Salesforce Agentforce](https://www.salesforce.com/agentforce/)
 agent to interact with a CRM system.
-- Agentspace: [Agentspace_adapter](./examples/agentspace_adapter.md) is an agent network adapter that delegates queries
+- Agentspace: [Agentspace_adapter](./examples/tools/agentspace_adapter.md) is an agent network adapter that delegates queries
 to a [Google Agentspace](https://cloud.google.com/agentspace/agentspace-enterprise/docs/overview) agent to interact with
 different data store connectors on google cloud.

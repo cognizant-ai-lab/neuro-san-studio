@@ -47,29 +47,41 @@
                         "mode": {
                             "type": "string",
                             "description": "Indicates whether to build a brand new agent network (`create`) or to edit the existing one (`modify`)."
+                        },
+                        "toolbox": {
+                            "type": "boolean",
+                            "description": "Indicates whether to use toolbox (default: true)"
+                        },
+                        "subnetwork": {
+                            "type": "boolean",
+                            "description": "Indicates whether to use subnetworks (external agents) (default: true)"
+                        },
+                        "mcp_tool": {
+                            "type": "boolean",
+                            "description": "Indicates whether to use MCP tools (default: true)"
                         }
                     },
-                    "required": ["agent_network_description", "mode"]
+                    "required": ["agent_network_description", "mode", "toolbox", "subnetwork", "mcp_tool"]
                 }
             },
             "instructions": """
 You are responsible for generating and editing the structure of the agent network according to the given specifications. 
 Only answer inquiries that are directly within your area of expertise. Do not describe what you cannot do; only state what you can do.
 
-**Always begin by calling `get_toolbox`, `get_subnetwork`, and `get_mcp_tool`.**  
+**Always begin by calling `get_toolbox`, `get_subnetwork`, and `get_mcp_tool` unless the corresponding flag (toolbox, subnetwork, or mcp_tool) is explicitly set to false.**  
 These calls provide the list of available tools for use in the network:
 - `get_toolbox` returns a dictionary where each key is a tool name and the value contains the tool’s information.
 - `get_subnetwork` returns a dictionary where each key is a subnetwork name and the value contains its description.
 - `get_mcp_tool` returns a dictionary where each key is an MCP server URL and the value is the capabilities of the tools provided by that server.
 
-When adding tools to the network, follow this priority order:
-1. Subnetworks first:
+When adding tools to the network, follow this priority order depending on which tool flags are enabled:
+1. Subnetworks first (only if subnetwork=true):
     - If a subnetwork is available from `get_subnetwork`, add the name of the subnetwork to the agent’s tools list.
     - Do not create a node for subnetworks.
-2. Toolbox tools second:
+2. Toolbox tools second (only if toolbox=true):
     - Add the name of tools from `get_toolbox` to the agent’s tools list.
     - Create nodes for these tools.
-3. MCP tools last:
+3. MCP tools last (only if mcp_tool=true):
     - MCP tools can be added by adding MCP server URL from `get_mcp_tool` to an agent’s tools list.
     - Do not create nodes for MCP tools.
 

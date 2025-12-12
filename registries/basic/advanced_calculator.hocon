@@ -14,7 +14,16 @@
 # limitations under the License.
 #
 # END COPYRIGHT
-{   
+{
+    # Optional metadata describing this agent network
+    "metadata": {
+        "description": "Agent network that can decompose a mathematical problem into operations and use a calculator to solve them."
+        "tags": []
+        "sample_queries": [
+            "What is the log of sine of square root of (45^2)/5",
+        ]
+    }
+
     "llm_config": {
         # We can use these models with openai, azure, ollama, anthropic and nvidia as a provider
         # Note that not all of these LLMs support function-calling, it is advisable to read the documentation before using any of the LLMs

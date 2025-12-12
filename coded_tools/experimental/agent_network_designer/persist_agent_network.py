@@ -16,25 +16,32 @@
 
 import logging
 from copy import deepcopy
+from os import environ
 from typing import Any
 
 from neuro_san.interfaces.coded_tool import CodedTool
+from neuro_san.internals.validation.network.keyword_network_validator import KeywordNetworkValidator
+from neuro_san.internals.validation.network.structure_network_validator import StructureNetworkValidator
+from neuro_san.internals.validation.network.toolbox_network_validator import ToolboxNetworkValidator
+from neuro_san.internals.validation.network.unreachable_nodes_network_validator import UnreachableNodesNetworkValidator
+from neuro_san.internals.validation.network.url_network_validator import UrlNetworkValidator
 
-from coded_tools.agent_network_validator import AgentNetworkValidator
+from coded_tools.experimental.agent_network_designer.agent_network_assembler import AgentNetworkAssembler
+from coded_tools.experimental.agent_network_designer.agent_network_persistor import AgentNetworkPersistor
+from coded_tools.experimental.agent_network_designer.agent_network_persistor_factory import AgentNetworkPersistorFactory
+from coded_tools.experimental.agent_network_editor.constants import AGENT_NETWORK_DEFINITION
+from coded_tools.experimental.agent_network_editor.constants import AGENT_NETWORK_NAME
+from coded_tools.experimental.agent_network_editor.get_mcp_tool import GetMcpTool
+from coded_tools.experimental.agent_network_editor.get_subnetwork import GetSubnetwork
+from coded_tools.experimental.agent_network_editor.get_toolbox import GetToolbox
 
-from .agent_network_assembler import AgentNetworkAssembler
-from .agent_network_persistor import AgentNetworkPersistor
-from .agent_network_persistor_factory import AgentNetworkPersistorFactory
-
-# To use reservations, turn this boolean to False and
+# To use reservations, turn this environment variable to true and also
 # export AGENT_TEMPORARY_NETWORK_UPDATE_PERIOD_SECONDS=5
-WRITE_TO_FILE: bool = True
+WRITE_TO_FILE: bool = environ.get("AGENT_NETWORK_DESIGNER_USE_RESERVATIONS", "false") != "true"
 
 # Turn this to False if the agents are grouped and don't need demo mode instructions
 DEMO_MODE: bool = True
 
-AGENT_NETWORK_DEFINITION: str = "agent_network_definition"
-AGENT_NETWORK_NAME: str = "agent_network_name"
 SUBDIRECTORY: str = "generated/"
 
 
@@ -86,12 +93,18 @@ class PersistAgentNetwork(CodedTool):
             return "Error: No network in sly data!"
 
         # Validate the agent network and return error message if there are any issues.
-        validator = AgentNetworkValidator(network_def)
+        # Gather all external agents (subnetworks) into a list.
+        subnetworks: dict[str, Any] | str = GetSubnetwork().invoke(None, None)
+        if isinstance(subnetworks, dict):
+            subnetworks: list[str] = list(subnetworks.keys())
+        else:
+            subnetworks = []
+
         error_list: list[str] = (
-            validator.validate_network_structure()
-            + validator.validate_network_keywords()
-            + validator.validate_toolbox_agents()
-            + validator.validate_url()
+            StructureNetworkValidator().validate(network_def)
+            + KeywordNetworkValidator().validate(network_def)
+            + ToolboxNetworkValidator(GetToolbox().invoke(None, None)).validate(network_def)
+            + UrlNetworkValidator(subnetworks, GetMcpTool().mcp_servers).validate(network_def)
         )
         if error_list:
             error_msg = f"Error: {error_list}"
@@ -104,8 +117,11 @@ class PersistAgentNetwork(CodedTool):
         # Get the agent network name from sly data
         the_agent_network_name: str = sly_data.get(AGENT_NETWORK_NAME)
         # Prepend subdirectory to the agent network name before persisting
+        # if not already present.
         # This is needed for the NSflow launcher to connect to the right network.
-        the_agent_network_name = SUBDIRECTORY + the_agent_network_name
+        if not the_agent_network_name.startswith(SUBDIRECTORY):
+            # Neuro-SAN only allows '/' as path separator in agent network names.
+            the_agent_network_name = SUBDIRECTORY + the_agent_network_name
         sly_data[AGENT_NETWORK_NAME] = the_agent_network_name
 
         logger.info(">>>>>>>>>>>>>>>>>>>Create Agent Network>>>>>>>>>>>>>>>>>>")
@@ -115,9 +131,9 @@ class PersistAgentNetwork(CodedTool):
             args, WRITE_TO_FILE, DEMO_MODE
         )
         assembler: AgentNetworkAssembler = persistor.get_assembler()
-
+        top_agent_name: str = UnreachableNodesNetworkValidator().find_all_top_agents(network_def).pop()
         persisted_content: str = assembler.assemble_agent_network(
-            validator.network, validator.get_top_agent(), the_agent_network_name, sample_queries
+            network_def, top_agent_name, the_agent_network_name, sample_queries
         )
         logger.info("The resulting agent network: \n %s", str(persisted_content))
 

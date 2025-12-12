@@ -39,7 +39,7 @@
     # You can optionally set a custom search URL via the BRAVE_URL environment variable.
     # If BRAVE_URL is not set, the default is: https://api.search.brave.com/res/v1/web/search?q=
     # You can also configure the request timeout (in seconds) using BRAVE_TIMEOUT; the default is 30 seconds.
-    "brave_search.hocon": false,
+    "tools/brave_search.hocon": false,
 
     # To use this search tool, you must
     #
@@ -57,32 +57,43 @@
     #
     # You can optionally set a custom search URL and a custom timeout via the GOOGLE_SEARCH_URL and GOOGLE_SEARCH_TIMEOUT environment variables.
     # Otherwise, the default values of "https://www.googleapis.com/customsearch/v1" and "30" are used, respectively
-    "google_search.hocon": false,
+    "tools/google_search.hocon": false,
 
-    "agent_network_html_creator.hocon": true,
-    "agentforce.hocon": true,
-    "agentspace_adapter.hocon": false,
+    "tools/agent_network_html_creator.hocon": true,
+    "tools/agentforce.hocon": true,
+    "tools/agentspace_adapter.hocon": false,
 
     # To use this agent network, start by installing the required package:
     #     pip install pymupdf >= 1.25.5
+<<<<<<< HEAD
     "pdf_rag.hocon": false,
     "agentic_rag.hocon": false,
+||||||| 5844eb8
+    "pdf_rag.hocon": false,
+    "agentic_rag.hocon": false,
+    "kwik_agents.hocon": false,
+=======
+    "tools/pdf_rag.hocon": false,
+    "tools/agentic_rag.hocon": false,
+    "kwik_agents.hocon": false,
+>>>>>>> origin/main
 
     # Requirement to use this agent network:
     # - langchain-openai >= 0.3.26
     # - OPENAI_API_KEY
     # See https://platform.openai.com/docs/guides/tools?api-mode=responses and
     # https://python.langchain.com/docs/integrations/chat/openai/#responses-api
-    "openai_web_search.hocon": true,
-    "openai_code_interpreter.hocon": true,
+    "tools/openai_web_search.hocon": true,
+    "tools/openai_code_interpreter.hocon": true,
+    "tools/openai_image_generation.hocon": true,
 
     # Requirement to use this agent network:
     # - langchain-anthropic>=0.3.13
     # - ANTHROPIC_API_KEY
     # See https://docs.anthropic.com/en/docs/agents-and-tools/tool-use/overview and
     # https://python.langchain.com/docs/integrations/chat/anthropic/#built-in-tools
-    "anthropic_web_search.hocon": true,
-    "anthropic_code_execution.hocon": true,
+    "tools/anthropic_web_search.hocon": true,
+    "tools/anthropic_code_execution.hocon": true,
 
     # To use this agent network, start by installing the required package:
     #     pip install atlassian-python-api
@@ -91,19 +102,19 @@
     # For details, see https://python.langchain.com/api_reference/_modules/langchain_community/document_loaders/confluence.html#ConfluenceLoader
     # Set "username" and "api_key" in the agent network hocon or
     # as environment variable "JIRA_USERNAME" and "JIRA_API_TOKEN", respectively.
-    "confluence_rag.hocon": false,
+    "tools/confluence_rag.hocon": false,
 
     # Before turning on and running the following agent network, make sure that:
     # The MCP server is running.
     # The server can be found at servers/MCP/bmi_server.py and run using the following command
     # python bmi_server.py
-    "mcp_bmi_streamable_http.hocon": false,
+    "tools/mcp_bmi_streamable_http.hocon": false,
 
     # The following agent network is an example of Agent2Agent (A2A) Protocol implementation:
     # Make sure to pip install a2a-sdk crewai and start the server by python server.py before turning the agent on.
     # The A2Aserver can be found at servers/A2A/server.py and run by command
     # python server.py
-    "a2a_research_report.hocon": false,
+    "tools/a2a_research_report.hocon": false,
 
     # To use this agent network, you will need to
     # - pip install -U langchain-google-community\[gmail\]
@@ -111,43 +122,44 @@
     # https://developers.google.com/workspace/gmail/api/quickstart/python#authorize_credentials_for_a_desktop_application.
     # Once you've downloaded the credentials.json file and put it in the top level of this repo,
     # you can start using the agent network.
-    "gmail.hocon": false,
+    "tools/gmail.hocon": false,
 
     # To use this agent network, start by installing the required package:
     #     pip install wikipedia
-    "wikipedia_rag.hocon": false,
+    "tools/wikipedia_rag.hocon": false,
 
     # To use this agent network, start by installing the required package:
     #     pip install arxiv
-    "arxiv_rag.hocon": false,
+    "tools/arxiv_rag.hocon": false,
 
     # To use this agent network, follow the instructions in ./docs/examples/visual_question_answering.md
-    "visual_question_answering.hocon": false,
+    "tools/visual_question_answering.hocon": false,
 
 
     # Use cases
-    "airline_policy.hocon": true,
-    "banking_ops.hocon": true,
+    "industry/airline_policy.hocon": true,
+    "industry/banking_ops.hocon": true,
     "cpg_agents.hocon": true,
-    "insurance_agents.hocon": false,  # This is a deprecated version of insurance_underwriting_agents.hocon
-    "insurance_underwriting_agents.hocon": true,
-    "intranet_agents.hocon": false,  # This is a deprecated version of intranet_agents_with_tools.hocon
-    "intranet_agents_with_tools.hocon": true,
-    "real_estate.hocon": false,
-    "retail_ops_and_customer_service.hocon": true,
-    "telco_network_support.hocon": true,
-    "telco_network_orchestration.hocon": true,
-    "therapy_vignette_supervisors.hocon": true,
-    "consumer_decision_assistant.hocon": true,
+    "industry/insurance_agents.hocon": false,  # This is a deprecated version of insurance_underwriting_agents.hocon
+    "industry/insurance_underwriting_agents.hocon": true,
+    "industry/intranet_agents.hocon": false,  # This is a deprecated version of intranet_agents_with_tools.hocon
+    "industry/intranet_agents_with_tools.hocon": true,
+    "industry/real_estate.hocon": false,
+    "industry/retail_ops_and_customer_service.hocon": true,
+    "industry/telco_network_support.hocon": true,
+    "industry/telco_network_orchestration.hocon": true,
+    "industry/therapy_vignette_supervisors.hocon": true,
+    "industry/consumer_decision_assistant.hocon": true,
     # The following agent networks are used as sub-networks by consumer_decision_assistant.hocon
-    "airbnb.hocon": true,
-    "booking.hocon": true,
-    "carmax.hocon": true,
-    "ddgs_search.hocon": true,
-    "expedia.hocon": true,
-    "macys.hocon": true,
-    "LinkedInJobSeekerSupportNetwork.hocon": true,
+    "industry/airbnb.hocon": true,
+    "industry/booking.hocon": true,
+    "industry/carmax.hocon": true,
+    "tools/ddgs_search.hocon": true,
+    "industry/expedia.hocon": true,
+    "industry/macys.hocon": true,
+    "industry/LinkedInJobSeekerSupportNetwork.hocon": true,
     "six_thinking_hats.hocon": true,
+
     # Experimental and research
     "experimental/agent_network_designer.hocon": true,
     "experimental/kwik_agents.hocon": false,
@@ -199,6 +211,6 @@
     #   For example, you can run:
     #     python -m run --server-grpc-port 30012 --server-http-port 8081 --nsflow-port 4174
     "experimental/agent_network_architect.hocon": false,
-    "news_sentiment_analysis.hocon": false,
-    "now_agents.hocon": true,
+    "industry/news_sentiment_analysis.hocon": false,
+    "tools/now_agents.hocon": true,
 }
