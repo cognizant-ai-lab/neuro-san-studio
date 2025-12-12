@@ -213,7 +213,7 @@ you also link to or embed the coded tool).
 ```
 
 **Note**: You can also automatically create simple agent networks using our example agent_network_designer agent network
-(see: [agent_network_designer.md](examples/agent_network_designer.md))
+(see: [agent_network_designer.md](examples/experimental/agent_network_designer.md))
 
 #### Step 2: Run the server with this `.hocon` file. You can do so by
 

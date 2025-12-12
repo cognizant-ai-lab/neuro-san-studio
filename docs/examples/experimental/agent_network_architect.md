@@ -12,7 +12,7 @@ of agent networks. It performs the following key actions:
 
 ## File
 
-[agent_network_architect.hocon](../../registries/experimental/agent_network_architect.hocon)
+[agent_network_architect.hocon](../../../registries/experimental/agent_network_architect.hocon)
 
 ---
 
@@ -65,7 +65,7 @@ To run this agent, ensure the following are installed and configured:
 
 1. **agent_network_designer**
     - Generates a `.hocon` file based on an agent name or use case.
-    - Saves the file to the [registries](../../registries/) and update the [manifest](../../registries/manifest.hocon).
+    - Saves the file to the [registries](../../../registries/) and update the [manifest](../../../registries/manifest.hocon).
     - Returns the created agent network and sample queries for testing.
 
 2. **agent_network_html_generator**

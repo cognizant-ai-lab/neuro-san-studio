@@ -1,6 +1,6 @@
 # Agent Network Editor
 
-The **Agent Network Editor** is a multi-agent system for create or modify `agent_network_definition`. It serves as a subnetwork within the [`agent_network_designer`](../../registries/experimental/agent_network_designer.hocon), focusing specifically on building and editing the structure (graph) of the agent network. It is responsible for generating and editing the structure of an agent network according to given specifications.
+The **Agent Network Editor** is a multi-agent system for create or modify `agent_network_definition`. It serves as a subnetwork within the [`agent_network_designer`](../../../registries/experimental/agent_network_designer.hocon), focusing specifically on building and editing the structure (graph) of the agent network. It is responsible for generating and editing the structure of an agent network according to given specifications.
 It operates autonomously within its defined scope — responding only to queries related to network structure and relationships between agents.
 
 This network is also highly useful for testing and experimenting with how agent structures are formed.
@@ -68,7 +68,7 @@ Subnetworks always start with "/" while MCP tools are represented by the server'
 
 ## File
 
-[agent_network_editor.hocon](../../registries/experimental/agent_network_editor.hocon)
+[agent_network_editor.hocon](../../../registries/experimental/agent_network_editor.hocon)
 
 ---
 
@@ -83,17 +83,17 @@ At the start of each session, the editor always call the following functions to 
 - `get_toolbox`
     — returns a dictionary where each key is a tool name and the value contains tool description.
     - The available toolbox can be set with environment variable `AGENT_TOOLBOX_INFO_FILE`. If not provided,
-    [toolbox_info.hocon](../../toolbox/toolbox_info.hocon) will be used.
+    [toolbox_info.hocon](../../../toolbox/toolbox_info.hocon) will be used.
 
 - `get_subnetwork`
     — returns a dictionary of subnetworks, mapping each name to its frontman's description.
     - The available manifest can be set with environment variable `AGENT_MANIFEST_FILE`. If omitted,
-    [manifest.hocon](../../registries/manifest.hocon) will be used.
+    [manifest.hocon](../../../registries/manifest.hocon) will be used.
 
 - `get_mcp_tool`
     — returns a dictionary of MCP server URLs and the capabilities of tools provided by each server.
     - The available MCP servers can be set with environment variable `MCP_CLIENTS_INFO_FILE`. If not provided,
-    [mcp_info.hocon](../../mcp/mcp_info.hocon) will be used.
+    [mcp_info.hocon](../../../mcp/mcp_info.hocon) will be used.
 
 These sources define what can be included in the agent network.
 
