@@ -19,9 +19,9 @@ from typing import Any
 
 from neuro_san.interfaces.coded_tool import CodedTool
 
-from coded_tools.agent_network_editor.constants import AGENT_NETWORK_DEFINITION
-from coded_tools.agent_network_editor.constants import AGENT_NETWORK_NAME
-from coded_tools.agent_network_editor.progress_handler import ProgressHandler
+from coded_tools.experimental.agent_network_editor.constants import AGENT_NETWORK_DEFINITION
+from coded_tools.experimental.agent_network_editor.constants import AGENT_NETWORK_NAME
+from coded_tools.experimental.agent_network_editor.progress_handler import ProgressHandler
 
 
 class CreateNetwork(CodedTool):

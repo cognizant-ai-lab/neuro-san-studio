@@ -19,15 +19,20 @@ import logging
 from typing import Any
 
 from neuro_san.interfaces.coded_tool import CodedTool
-from neuro_san.internals.validation.network.keyword_network_validator import KeywordNetworkValidator
+from neuro_san.internals.validation.network.structure_network_validator import StructureNetworkValidator
+from neuro_san.internals.validation.network.toolbox_network_validator import ToolboxNetworkValidator
+from neuro_san.internals.validation.network.url_network_validator import UrlNetworkValidator
 
-from coded_tools.agent_network_editor.constants import AGENT_NETWORK_DEFINITION
+from coded_tools.experimental.agent_network_editor.constants import AGENT_NETWORK_DEFINITION
+from coded_tools.experimental.agent_network_editor.get_mcp_tool import GetMcpTool
+from coded_tools.experimental.agent_network_editor.get_subnetwork import GetSubnetwork
+from coded_tools.experimental.agent_network_editor.get_toolbox import GetToolbox
 
 
-class ValidateInstructions(CodedTool):
+class ValidateStructure(CodedTool):
     """
-    CodedTool implementation which validates the instructions of the agent network
-    to ensure that each non-tool agent has it.
+    CodedTool implementation which validates the structure of the agent network
+    to ensure it adheres to the defined rules and constraints.
     """
 
     def invoke(self, args: dict[str, Any], sly_data: dict[str, Any]) -> str:
@@ -65,16 +70,30 @@ class ValidateInstructions(CodedTool):
         if not network_def:
             return "Error: No network in sly data!"
 
-        logger.info(">>>>>>>>>>>>>>>>>>>Validate Agent Network Instructions>>>>>>>>>>>>>>>>>>")
+        logger.info(">>>>>>>>>>>>>>>>>>>Validate Agent Network Structure>>>>>>>>>>>>>>>>>>")
         # Validate the agent network and return error message if there are any issues.
-        validator = KeywordNetworkValidator()
-        error_list: list[str] = validator.validate(network_def)
+
+        # Get a dict of tools or error message if no toolbox found.
+        tools: dict[str, Any] | str = GetToolbox().invoke(None, None)
+        # Gather all URLs from MCP servers and subnetworks.
+        subnetworks: dict[str, Any] | str = GetSubnetwork().invoke(None, None)
+        if isinstance(subnetworks, dict):
+            subnetworks: list[str] = list(subnetworks.keys())
+        else:
+            subnetworks = []
+        mcp_servers: list[str] = GetMcpTool().mcp_servers
+
+        error_list: list[str] = (
+            StructureNetworkValidator().validate(network_def)
+            + ToolboxNetworkValidator(tools).validate(network_def)
+            + UrlNetworkValidator(subnetworks, mcp_servers).validate(network_def)
+        )
         if error_list:
             error_msg = f"Error: {error_list}"
             logger.error(error_msg)
             return error_msg
 
-        success_msg = "No error found."
+        success_msg = "No structure error found in the agent network."
         logger.info(success_msg)
         return success_msg
 

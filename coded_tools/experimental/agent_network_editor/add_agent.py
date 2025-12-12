@@ -19,14 +19,13 @@ from typing import Any
 
 from neuro_san.interfaces.coded_tool import CodedTool
 
-from coded_tools.agent_network_editor.constants import AGENT_NETWORK_DEFINITION
-from coded_tools.agent_network_editor.progress_handler import ProgressHandler
+from coded_tools.experimental.agent_network_editor.constants import AGENT_NETWORK_DEFINITION
+from coded_tools.experimental.agent_network_editor.progress_handler import ProgressHandler
 
 
-class SetAgentInstructions(CodedTool):
+class AddAgent(CodedTool):
     """
-    CodedTool implementation which creates or modifies the instructions of an agent
-    of an agent network definition in sly data.
+    CodedTool implementation which adds an agent to the agent network definition in the sly data.
 
     Agent network definition is a structured representation of an agent network, expressed as a dictionary.
     Each key is an agent name, and its value is an object containing:
@@ -35,15 +34,15 @@ class SetAgentInstructions(CodedTool):
     - a list of down-chain agents (agents reporting to it)
     """
 
-    async def async_invoke(self, args: dict[str, Any], sly_data: dict[str, Any]) -> str:
+    async def async_invoke(self, args: dict[str, Any], sly_data: dict[str, Any]) -> dict[str, Any] | str:
         """
         :param args: An argument dictionary whose keys are the parameters
                 to the coded tool and whose values are the values passed for them
                 by the calling agent.  This dictionary is to be treated as read-only.
 
                 The argument dictionary expects the following keys:
-                    "agent_name": the name of the agent to update instructions.
-                    "new_instructions": the new value of instructions.
+                    "agent_name": the name of the agent to add.
+                    "is_tool": whether the agent is a tool or not.
 
         :param sly_data: A dictionary whose keys are defined by the agent hierarchy,
                 but whose values are meant to be kept out of the chat stream.
@@ -60,33 +59,30 @@ class SetAgentInstructions(CodedTool):
 
         :return:
             In case of successful execution:
-                a text string indicating the new value of "instructions" of the agent.
+                the agent network definition as a dictionary.
             otherwise:
-                a text string an error message in the format:
+                a text string of an error message in the format:
                 "Error: <error message>"
         """
         network_def: dict[str, Any] = sly_data.get(AGENT_NETWORK_DEFINITION)
         if not network_def:
-            return "Error: No network in sly data!"
+            network_def = {}
 
-        the_agent_name: str = args.get("agent_name")
-        if not the_agent_name:
+        the_agent_name: str = args.get("agent_name", "")
+        if the_agent_name == "":
             return "Error: No agent_name provided."
-        if the_agent_name not in network_def:
-            return f"Error: Agent not found: {the_agent_name}"
-        if network_def[the_agent_name].get("instructions") is None:
-            return f"Error: Agent has no instructions field: {the_agent_name}. It is a function agent."
-
-        new_instructions: str = args.get("new_instructions")
-        if not new_instructions:
-            return "Error: No agent instructions provided."
+        is_tool: bool = args.get("is_tool")
+        if is_tool is None:
+            return "Error: No is_tool provided."
 
         logger = logging.getLogger(self.__class__.__name__)
-        logger.info(">>>>>>>>>>>>>>>>>>>Set Agent Instructions>>>>>>>>>>>>>>>>>>")
-        logger.info("Agent Name: %s", the_agent_name)
-        logger.info("Instructions: %s", new_instructions)
-        network_def[the_agent_name]["instructions"] = new_instructions
-        logger.info("The resulting agent network: \n %s", str(network_def))
+        logger.info(">>>>>>>>>>>>>>>>>>>Add Agent>>>>>>>>>>>>>>>>>>")
+        logger.info("Agent Name: %s", str(the_agent_name))
+        logger.info("Is Tool: %s", str(is_tool))
+        network_def[the_agent_name] = {}
+        if not is_tool:
+            network_def[the_agent_name]["instructions"] = ""
+        logger.info("The resulting agent network definition: \n %s", str(network_def))
         sly_data[AGENT_NETWORK_DEFINITION] = network_def
 
         await ProgressHandler.report_progress(args, network_def)
