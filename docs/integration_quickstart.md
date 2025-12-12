@@ -1,4 +1,4 @@
-# Neuro-SAN integration Quick Start
+# Neuro-SAN Integration Quick Start
 
 This tutorial will teach you how to use a neuro-san agent network as a Python library using the "direct" session feature.
 
