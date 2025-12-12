@@ -88,7 +88,7 @@ class OpenAITool:
             # Invoke with the provided query and tool,
             # "tool_choice" is set to "required" to force the model to use tool.
             result: AIMessage = await openai_llm.ainvoke(query, tools=[tool], tool_choice="required")
-            content: list[dict[str, Any]] = result.content
+            content: list[dict[str, Any]] = result.content_blocks
             OpenAITool.logger.info("Result from OpenAI Tool: %s", content)
             return content
 

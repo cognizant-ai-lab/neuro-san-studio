@@ -76,6 +76,7 @@
     # https://python.langchain.com/docs/integrations/chat/openai/#responses-api
     "tools/openai_web_search.hocon": true,
     "tools/openai_code_interpreter.hocon": true,
+    "tools/openai_image_generation.hocon": true,
 
     # Requirement to use this agent network:
     # - langchain-anthropic>=0.3.13
