@@ -16,7 +16,6 @@
 
 import logging
 import webbrowser
-
 from base64 import b64decode
 from pathlib import Path
 from tempfile import NamedTemporaryFile
