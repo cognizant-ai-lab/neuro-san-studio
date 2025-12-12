@@ -32,6 +32,7 @@ class OpenAIImageGeneration(CodedTool):
 
     See https://platform.openai.com/docs/guides/tools?api-mode=responses
     """
+
     def __init__(self):
         self.logger = logging.getLogger(__name__)
 
@@ -125,7 +126,7 @@ class OpenAIImageGeneration(CodedTool):
         # Log revised prompt
         self.logger.info(
             "The image was generated using the following revised prompt: %s",
-            image_block.get('extra', {}).get('revised_prompt')
+            image_block.get("extra", {}).get("revised_prompt"),
         )
 
         # Save permanent file if requested
