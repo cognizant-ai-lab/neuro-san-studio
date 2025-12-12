@@ -165,9 +165,9 @@ perform data analysis, and create computational solutions through natural langua
 
 ### OpenAI Image Generation
 
-[OpenAI Image Generation](examples/tools/openai_image_generation.md) is an AI assistant that creates 
-images from text descriptions. Users describe what they want to see in natural language, and the 
-system generates and displays the corresponding image in their browser, with optional disk storage 
+[OpenAI Image Generation](examples/tools/openai_image_generation.md) is an AI assistant that creates
+images from text descriptions. Users describe what they want to see in natural language, and the
+system generates and displays the corresponding image in their browser, with optional disk storage
 for generated images.
 
 **Tags:** `tool`, `OpenAI`
