@@ -183,7 +183,6 @@ frames and generating detailed descriptions using vision-capable language models
 
 **Tags:** `tool`, `OpenAI`
 
-
 ### OpenAI Web Search
 
 [OpenAI Web Search](examples/tools/openai_web_search.md) is a task-oriented agentic system designed to help users search
