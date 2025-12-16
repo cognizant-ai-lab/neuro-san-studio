@@ -1,6 +1,8 @@
 # OpenAI Video Generation
 
-The **OpenAI Video Generation** is a task-oriented agentic system designed to help users create, remix, and describe videos through natural language descriptions. It leverages OpenAI's built-in video generation tool through a specialized toolkit, providing users with AI-generated videos based on their creative prompts and specifications.
+The **OpenAI Video Generation** is a task-oriented agentic system designed to help users create, remix, and describe
+videos through natural language descriptions. It leverages OpenAI's built-in video generation tool through a
+specialized toolkit, providing users with AI-generated videos based on their creative prompts and specifications.
 
 ---
 
@@ -12,9 +14,14 @@ The **OpenAI Video Generation** is a task-oriented agentic system designed to he
 
 ## Description
 
-At the core of the system is the Video Generator agent, which serves as the primary interface between the user and OpenAI's built-in video generation capabilities. When a user gives an instruction—such as "generate a video of a gray tabby cat hugging an otter with an orange scarf" or "create a video of a cute fuzzy cat with an umbrella under the rain"—the agent intelligently routes the request to the appropriate video generation tool. The generated video is automatically displayed in the user's browser and can optionally be saved to disk.
+At the core of the system is the Video Generator agent, which serves as the primary interface between the user and
+OpenAI's built-in video generation capabilities. When a user gives an instruction—such as "generate a video of a gray
+tabby cat hugging an otter with an orange scarf" or "create a video of a cute fuzzy cat with an umbrella under the
+rain"—the agent intelligently routes the request to the appropriate video generation tool. The generated video is
+automatically displayed in the user's browser and can optionally be saved to disk.
 
-The system also includes a Video Describer tool that analyzes generated videos by extracting frames and using vision-capable language models to provide detailed descriptions of the video content.
+The system also includes a Video Describer tool that analyzes generated videos by extracting frames and using
+vision-capable language models to provide detailed descriptions of the video content.
 
 ---
 
@@ -63,7 +70,9 @@ Describe what's in the video you just created
 ### AI (Video Generator)
 
 ```text
-The video shows a gray tabby cat warmly embracing an otter that is wearing a bright orange scarf. The scene captures a heartwarming moment between these two adorable animals, with gentle movements and affectionate interaction throughout the clip.
+The video shows a gray tabby cat warmly embracing an otter that is wearing a bright orange scarf. The scene captures a
+heartwarming moment between these two adorable animals, with gentle movements and affectionate interaction throughout
+the clip.
 ```
 
 ---
@@ -84,7 +93,8 @@ The video shows a gray tabby cat warmly embracing an otter that is wearing a bri
 
 #### openai_video_generation
 
-This agent is a coded tool that can be called from the toolbox with the name `openai_video_generation`, which leverages OpenAI's built-in video generation capabilities.
+This agent is a coded tool that can be called from the toolbox with the name `openai_video_generation`, which leverages
+OpenAI's built-in video generation capabilities.
 
 ##### Tool Arguments and Parameters
 
@@ -100,15 +110,18 @@ This agent is a coded tool that can be called from the toolbox with the name `op
 
 - `seconds`: Clip duration in seconds (allowed values: "4", "8", "12"; defaults to "4")
 
-- `size`: Output resolution formatted as width x height (allowed values: "720x1280", "1280x720", "1024x1792", "1792x1024"; defaults to "720x1280")
+- `size`: Output resolution formatted as width x height (allowed values: "720x1280", "1280x720", "1024x1792",
+"1792x1024"; defaults to "720x1280")
 
-For additional parameters, see [OpenAI Video Generation API Reference](https://platform.openai.com/docs/api-reference/videos)
+For additional parameters, see
+[OpenAI Video Generation API Reference](https://platform.openai.com/docs/api-reference/videos)
 
 Note: `input_reference` is not currently supported.
 
 #### video_describer
 
-This coded tool analyzes video content by extracting frames and using a vision-capable language model to describe what happens in the video.
+This coded tool analyzes video content by extracting frames and using a vision-capable language model to describe what
+happens in the video.
 
 ##### Tool Arguments and Parameters
 
@@ -170,7 +183,8 @@ When developing or debugging the OpenAI Video Generation Assistant, keep the fol
 
 - **Video Generation Access**: Confirm your account has access to the video generation tool.
 
-- **Tool Registration**: Ensure the `openai_video_generation` toolbox is correctly registered and mapped to the OpenAIVideoGeneration coded tool.
+- **Tool Registration**: Ensure the `openai_video_generation` toolbox is correctly registered and mapped to the
+OpenAIVideoGeneration coded tool.
 
 - **LangChain Version**: Verify langchain-openai>=0.3.26 is installed for proper integration.
 
@@ -180,7 +194,8 @@ When developing or debugging the OpenAI Video Generation Assistant, keep the fol
 
 - **File Permissions**: If `save_video_file` is enabled, verify write permissions in the target directory.
 
-- **Timeout Configuration**: The default timeout is 600 seconds; adjust `max_execution_seconds` if needed for longer videos.
+- **Timeout Configuration**: The default timeout is 600 seconds; adjust `max_execution_seconds` if needed for longer
+videos.
 
 - **Polling Interval**: Status checks occur every 5 seconds; monitor logs for progress updates.
 
@@ -216,20 +231,20 @@ When developing or debugging the OpenAI Video Generation Assistant, keep the fol
 
 ## Resources
 
-- [OpenAI Video Generation Guide](https://platform.openai.com/docs/guides/video-generation)  
+- [OpenAI Video Generation Guide](https://platform.openai.com/docs/guides/video-generation)
   Complete guide to OpenAI's video generation capabilities and best practices.
 
-- [OpenAI Video API Reference](https://platform.openai.com/docs/api-reference/videos)  
+- [OpenAI Video API Reference](https://platform.openai.com/docs/api-reference/videos)
   Detailed specifications and parameters for OpenAI's video generation API.
 
-- [LangChain OpenAI Integration](https://python.langchain.com/docs/integrations/chat/openai/)  
+- [LangChain OpenAI Integration](https://python.langchain.com/docs/integrations/chat/openai/)
   Documentation on using OpenAI's services within the LangChain framework.
 
-- [OpenAI API Reference](https://platform.openai.com/docs/api-reference)  
+- [OpenAI API Reference](https://platform.openai.com/docs/api-reference)
   Complete API reference for OpenAI's services and endpoints.
 
-- [Coded Tools Implementation Guide](https://github.com/cognizant-ai-lab/neuro-san-studio/blob/main/docs/user_guide.md#coded-tools)  
+- [Coded Tools Implementation Guide](https://github.com/cognizant-ai-lab/neuro-san-studio/blob/main/docs/user_guide.md#coded-tools)
   Learn how to implement and integrate custom coded tools in Neuro-SAN Studio.
 
-- [Agent HOCON Reference](https://github.com/cognizant-ai-lab/neuro-san/blob/main/docs/agent_hocon_reference.md)  
+- [Agent HOCON Reference](https://github.com/cognizant-ai-lab/neuro-san/blob/main/docs/agent_hocon_reference.md)
   Schema specifications for agent configuration files.
