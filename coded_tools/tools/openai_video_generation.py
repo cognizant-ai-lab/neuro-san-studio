@@ -14,23 +14,20 @@
 #
 # END COPYRIGHT
 
+import asyncio
 import logging
 import os
-import asyncio
 import webbrowser
 from pathlib import Path
-from typing import Any
 from tempfile import NamedTemporaryFile
-import aiohttp
+from typing import Any
 
+import aiohttp
 from neuro_san.interfaces.coded_tool import CodedTool
 
 URL_ENDPOINT = "https://api.openai.com/v1/videos"
 API_KEY = os.getenv("OPENAI_API_KEY")
-HEADERS = {
-    "Authorization": f"Bearer {API_KEY}",
-    "Content-Type": "application/json"
-}
+HEADERS = {"Authorization": f"Bearer {API_KEY}", "Content-Type": "application/json"}
 POLL_INTERVAL = 5  # seconds between status checks
 TIMEOUT = 600  # maximum wait time in seconds
 
@@ -88,15 +85,11 @@ class OpenAIVideoGeneration(CodedTool):
             if video_id:
                 # Remix existing video
                 self.logger.info("Starting video remix for ID: %s", video_id)
-                video_id = await self._remix_video(
-                    session, video_id, query
-                )
+                video_id = await self._remix_video(session, video_id, query)
             else:
                 self.logger.info("Starting new video generation.")
                 # Start video generation job
-                video_id = await self._create_video(
-                    session, query, openai_model, size, seconds
-                )
+                video_id = await self._create_video(session, query, openai_model, size, seconds)
 
             if not video_id:
                 # pylint: disable=broad-exception-raised
@@ -111,9 +104,7 @@ class OpenAIVideoGeneration(CodedTool):
                 return f"Error: Video generation failed - {error_msg}"
 
             # Download and display video
-            video_path = await self._display_video(
-                session, video_id, save_video_file, open_in_browser
-            )
+            video_path = await self._display_video(session, video_id, save_video_file, open_in_browser)
 
             if video_path:
                 return f"Video generation completed with id {video_id}. Saved to: {video_path}"
@@ -124,31 +115,17 @@ class OpenAIVideoGeneration(CodedTool):
     # pylint: disable=too-many-arguments
     # pylint: disable=too-many-positional-arguments
     async def _create_video(
-        self,
-        session: aiohttp.ClientSession,
-        query: str,
-        model: str,
-        size: str,
-        seconds: str
+        self, session: aiohttp.ClientSession, query: str, model: str, size: str, seconds: str
     ) -> str | None:
         """
         Create a video generation job.
 
         :return: Video ID if successful, None otherwise
         """
-        payload = {
-            "prompt": query,
-            "model": model,
-            "size": size,
-            "seconds": str(seconds)
-        }
+        payload = {"prompt": query, "model": model, "size": size, "seconds": str(seconds)}
 
         try:
-            async with session.post(
-                URL_ENDPOINT,
-                headers=HEADERS,
-                json=payload
-            ) as response:
+            async with session.post(URL_ENDPOINT, headers=HEADERS, json=payload) as response:
                 response.raise_for_status()
                 data = await response.json()
                 self.logger.info("Video creation response: %s", data)
@@ -175,11 +152,7 @@ class OpenAIVideoGeneration(CodedTool):
         }
 
         try:
-            async with session.post(
-                f"{URL_ENDPOINT}/{video_id}/remix",
-                headers=HEADERS,
-                json=payload
-            ) as response:
+            async with session.post(f"{URL_ENDPOINT}/{video_id}/remix", headers=HEADERS, json=payload) as response:
                 response.raise_for_status()
                 data = await response.json()
                 self.logger.info("Video remix response: %s", data)
@@ -190,21 +163,15 @@ class OpenAIVideoGeneration(CodedTool):
             self.logger.error("Exception details: %s", data)
             return None
 
-    async def _get_status(
-        self, session: aiohttp.ClientSession, video_id: str
-    ) -> dict[str, Any]:
+    async def _get_status(self, session: aiohttp.ClientSession, video_id: str) -> dict[str, Any]:
         """
         Get the current status of a video generation job.
         """
-        async with session.get(
-            f"{URL_ENDPOINT}/{video_id}", headers=HEADERS
-        ) as response:
+        async with session.get(f"{URL_ENDPOINT}/{video_id}", headers=HEADERS) as response:
             response.raise_for_status()
             return await response.json()
 
-    async def _poll_status(
-        self, session: aiohttp.ClientSession, video_id: str
-    ) -> dict[str, Any]:
+    async def _poll_status(self, session: aiohttp.ClientSession, video_id: str) -> dict[str, Any]:
         """
         Poll the status of video generation until it is complete or times out.
 
@@ -217,9 +184,7 @@ class OpenAIVideoGeneration(CodedTool):
         while True:
             elapsed = asyncio.get_event_loop().time() - start_time
             if elapsed > TIMEOUT:
-                raise asyncio.TimeoutError(
-                    f"Video generation exceeded timeout of {TIMEOUT}s"
-                )
+                raise asyncio.TimeoutError(f"Video generation exceeded timeout of {TIMEOUT}s")
 
             status_data = await self._get_status(session, video_id)
             status = status_data.get("status")
@@ -241,7 +206,7 @@ class OpenAIVideoGeneration(CodedTool):
         session: aiohttp.ClientSession,
         video_id: str,
         save_video_file: bool = False,
-        open_in_browser: bool = True
+        open_in_browser: bool = True,
     ) -> str | None:
         """
         Download video from OpenAI, save it, and optionally open in browser.
@@ -253,10 +218,7 @@ class OpenAIVideoGeneration(CodedTool):
         :return: Path to saved video file, or None on error
         """
         try:
-            async with session.get(
-                f"{URL_ENDPOINT}/{video_id}/content",
-                headers=HEADERS
-            ) as response:
+            async with session.get(f"{URL_ENDPOINT}/{video_id}/content", headers=HEADERS) as response:
                 response.raise_for_status()
                 video_data = await response.read()
 

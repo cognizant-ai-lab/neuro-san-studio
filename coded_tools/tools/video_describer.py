@@ -14,14 +14,14 @@
 #
 # END COPYRIGHT
 
+import base64
 import logging
 from typing import Any
-import base64
+
 # pylint: disable=import-error
 import cv2
 from langchain_core.messages import HumanMessage
 from langchain_openai import ChatOpenAI
-
 from neuro_san.interfaces.coded_tool import CodedTool
 
 INSTRUCTIONS = "Describe the content of the video in detail."
@@ -87,7 +87,7 @@ class VideoDescriber(CodedTool):
                     "mime_type": "image/jpeg",
                 }
                 for frame in base64_frames
-            ]
+            ],
         ]
 
         message = HumanMessage(content=content)
