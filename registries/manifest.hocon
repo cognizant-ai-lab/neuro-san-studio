@@ -77,6 +77,8 @@
     "tools/openai_web_search.hocon": true,
     "tools/openai_code_interpreter.hocon": true,
     "tools/openai_image_generation.hocon": true,
+    # This network also requires opencv-python
+    "tools/openai_video_generation.hocon": true,
 
     # Requirement to use this agent network:
     # - langchain-anthropic>=0.3.13
