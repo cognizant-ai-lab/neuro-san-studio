@@ -19,6 +19,7 @@
 
 # Requirement to use this agent network:
 # - OPENAI_API_KEY
+# - opencv-python
 # See https://platform.openai.com/docs/guides/video-generation
 
 {
