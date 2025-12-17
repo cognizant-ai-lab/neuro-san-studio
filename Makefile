@@ -84,7 +84,7 @@ lint-check: lint-check-source lint-check-tests
 lint: format lint-check
 
 test: lint ## Run tests with coverage
-	python -m pytest tests/ -v --cov=coded_tools,run.py -m "not integration"
+	python -m pytest tests/ -v --cov=coded_tools,run.py -m "not integration_*"
 
 test-integration: install
 	@. venv/bin/activate && \

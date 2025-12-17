@@ -51,6 +51,7 @@ class TestIntegrationTestHocons(TestCase):
             ]
         )
     )
+    @pytest.mark.integration
     @pytest.mark.integration_basic
     def test_hocon_industry(self, test_name: str, test_hocon: str):
         """
@@ -79,6 +80,7 @@ class TestIntegrationTestHocons(TestCase):
             ]
         )
     )
+    @pytest.mark.integration
     @pytest.mark.integration_industry
     def test_hocon_basic(self, test_name: str, test_hocon: str):
         """
