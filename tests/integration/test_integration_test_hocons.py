@@ -40,14 +40,17 @@ class TestIntegrationTestHocons(TestCase):
     # annotation below so the instance can find the hocon test cases listed.
     DYNAMIC = DynamicHoconUnitTests(__file__, path_to_basis="../fixtures")
 
-    @parameterized.expand(DynamicHoconUnitTests.from_hocon_list([
-        # These can be in any order.
-        # Ideally more basic functionality will come first.
-        # Barring that, try to stick to alphabetical order.
-        "basic/music_nerd_pro/combination_responses_with_history_direct.hocon",
-
-        # List more hocon files as they become available here.
-    ]))
+    @parameterized.expand(
+        DynamicHoconUnitTests.from_hocon_list(
+            [
+                # These can be in any order.
+                # Ideally more basic functionality will come first.
+                # Barring that, try to stick to alphabetical order.
+                "basic/music_nerd_pro/combination_responses_with_history_direct.hocon",
+                # List more hocon files as they become available here.
+            ]
+        )
+    )
     @pytest.mark.integration_basic
     def test_hocon_industry(self, test_name: str, test_hocon: str):
         """
@@ -63,16 +66,19 @@ class TestIntegrationTestHocons(TestCase):
         # include the file basis implied by the __file__ and path_to_basis above.
         self.DYNAMIC.one_test_hocon(self, test_name, test_hocon)
 
-    @parameterized.expand(DynamicHoconUnitTests.from_hocon_list([
-        # These can be in any order.
-        # Ideally more basic functionality will come first.
-        # Barring that, try to stick to alphabetical order.
-        "industry/airline_policy/basic_eco_carryon_baggage.hocon",
-        "industry/airline_policy/basic_eco_carryon_person_item.hocon",
-        "industry/airline_policy/basic_eco_checkin_baggage.hocon",
-
-        # List more hocon files as they become available here.
-    ]))
+    @parameterized.expand(
+        DynamicHoconUnitTests.from_hocon_list(
+            [
+                # These can be in any order.
+                # Ideally more basic functionality will come first.
+                # Barring that, try to stick to alphabetical order.
+                "industry/airline_policy/basic_eco_carryon_baggage.hocon",
+                "industry/airline_policy/basic_eco_carryon_person_item.hocon",
+                "industry/airline_policy/basic_eco_checkin_baggage.hocon",
+                # List more hocon files as they become available here.
+            ]
+        )
+    )
     @pytest.mark.integration_industry
     def test_hocon_basic(self, test_name: str, test_hocon: str):
         """
