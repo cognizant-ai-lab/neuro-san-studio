@@ -49,7 +49,8 @@ class TestIntegrationTestHocons(TestCase):
                 "basic/music_nerd_pro/combination_responses_with_history_direct.hocon",
                 # List more hocon files as they become available here.
             ]
-        )
+        ),
+        skip_on_empty=True,
     )
     @pytest.mark.integration
     @pytest.mark.integration_basic
@@ -78,7 +79,8 @@ class TestIntegrationTestHocons(TestCase):
                 "industry/airline_policy/basic_eco_checkin_baggage.hocon",
                 # List more hocon files as they become available here.
             ]
-        )
+        ),
+        skip_on_empty=True,
     )
     @pytest.mark.integration
     @pytest.mark.integration_industry

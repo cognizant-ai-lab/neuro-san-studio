@@ -91,7 +91,7 @@ test-integration: install
 	export PYTHONPATH=`pwd` && \
 	export AGENT_TOOL_PATH=coded_tools/ && \
 	export AGENT_MANIFEST_FILE=registries/manifest.hocon && \
-	pytest -s -m "integration_basic or integration_industry" --timer-top-n 100
+	pytest -s -m "integration" --timer-top-n 100
 
 help: ## Show this help message and exit
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | \
