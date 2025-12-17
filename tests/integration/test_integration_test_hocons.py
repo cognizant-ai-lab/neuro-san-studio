@@ -46,13 +46,12 @@ class TestIntegrationTestHocons(TestCase):
                 # These can be in any order.
                 # Ideally more basic functionality will come first.
                 # Barring that, try to stick to alphabetical order.
-                "music_nerd_pro/combination_responses_with_history_direct.hocon",
+                "basic/music_nerd_pro/combination_responses_with_history_direct.hocon",
                 # List more hocon files as they become available here.
             ]
         )
     )
-    @pytest.mark.timeout(90)  # 90 seconds for this test
-    @pytest.mark.integration
+    @pytest.mark.integration_basic
     def test_hocon(self, test_name: str, test_hocon: str):
         """
         Test method for a single parameterized test case specified by a hocon file.
@@ -66,3 +65,32 @@ class TestIntegrationTestHocons(TestCase):
         # This will expand the test_hocon file name from the expanded list to
         # include the file basis implied by the __file__ and path_to_basis above.
         self.DYNAMIC.one_test_hocon(self, test_name, test_hocon)
+
+    @parameterized.expand(
+        DynamicHoconUnitTests.from_hocon_list(
+            [
+                # These can be in any order.
+                # Ideally more basic functionality will come first.
+                # Barring that, try to stick to alphabetical order.
+                "industry/airline_policy/basic_eco_carryon_baggage.hocon",
+                "industry/airline_policy/basic_eco_carryon_person_item.hocon",
+                "industry/airline_policy/basic_eco_checkin_baggage.hocon",
+                # List more hocon files as they become available here.
+            ]
+        )
+    )
+    @pytest.mark.integration_industry
+    def test_hocon(self, test_name: str, test_hocon: str):
+        """
+        Test method for a single parameterized test case specified by a hocon file.
+        Arguments to this method are given by the iteration that happens as a result
+        of the magic of the @parameterized.expand annotation above.
+
+        :param test_name: The name of a single test.
+        :param test_hocon: The hocon file of a single data-driven test case.
+        """
+        # Call the guts of the dynamic test driver.
+        # This will expand the test_hocon file name from the expanded list to
+        # include the file basis implied by the __file__ and path_to_basis above.
+        self.DYNAMIC.one_test_hocon(self, test_name, test_hocon)
+
