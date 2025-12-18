@@ -54,7 +54,7 @@ class TestIntegrationTestHocons(TestCase):
     )
     @pytest.mark.integration
     @pytest.mark.integration_basic
-    def test_hocon_industry(self, test_name: str, test_hocon: str):
+    def test_hocon_basic(self, test_name: str, test_hocon: str):
         """
         Test method for a single parameterized test case specified by a hocon file.
         Arguments to this method are given by the iteration that happens as a result
@@ -84,7 +84,7 @@ class TestIntegrationTestHocons(TestCase):
     )
     @pytest.mark.integration
     @pytest.mark.integration_industry
-    def test_hocon_basic(self, test_name: str, test_hocon: str):
+    def test_hocon_industry(self, test_name: str, test_hocon: str):
         """
         Test method for a single parameterized test case specified by a hocon file.
         Arguments to this method are given by the iteration that happens as a result
