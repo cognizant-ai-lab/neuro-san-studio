@@ -1185,22 +1185,25 @@ TBD
 
 #### Run test
 
-These test cases are organized to mirror the same grouping structure defined in the network prompting logic. As a result, there are three supported ways to execute the tests, each corresponding to a specific grouping strategy.
+These test cases are organized to mirror the same grouping structure defined in the network prompting logic.
+As a result, there are three supported ways to execute the tests,
+each corresponding to a specific grouping strategy.
 
-This design ensures the network prompting logic behaves as intended across different execution scopes, with ongoing additions of test cases to improve coverage.
+This design ensures the network prompting logic behaves as intended across different execution scopes,
+with ongoing additions of test cases to improve coverage.
 
 Please select the execution option that best aligns with the level of validation you want to perform.
 
 - Run all integration test cases:
-    
+
     Example:
-    
+
     ```bash
     pytest -s -m "integration" --timer-top-n 100
     ```
 
 - Run by a group or groups of those test cases:
-    
+  
     pytest -s -m "<name of test 1st group, 2nd, 3rd, etc.>" --timer-top-n 100
 
     Example:
@@ -1211,11 +1214,14 @@ Please select the execution option that best aligns with the level of validation
 
 - Run a single test case:
 
-    pytest -s <"relative path to test hocon">::<"test class name">::<"test function name">_<"the order of test start from zero">_<"relative path to test case & replace to "_" vs. "/"">
+    pytest -s <"relative path to test hocon">::
+    <"test class name">::
+    <"test function name">_
+    <"the order of test start from zero">_
+    <"relative path to test case & replace to "_" vs. "/"">
 
     Example:
 
     ```bash
     pytest -s ./tests/integration/test_integration_test_hocons.py::TestIntegrationTestHocons::test_hocon_industry_0_industry_airline_policy_basic_eco_carryon_baggage
     ```
-   
