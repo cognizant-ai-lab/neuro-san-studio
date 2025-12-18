@@ -78,7 +78,8 @@
     "tools/openai_code_interpreter.hocon": true,
     "tools/openai_image_generation.hocon": true,
     # This network also requires opencv-python
-    "tools/openai_video_generation.hocon": true,
+    # See docs/examples/tools/openai_video_generation.hocon#Prerequisites for more information.
+    "tools/openai_video_generation.hocon": false,
 
     # Requirement to use this agent network:
     # - langchain-anthropic>=0.3.13

@@ -171,7 +171,7 @@ images from text descriptions. Users describe what they want to see in natural l
 system generates and displays the corresponding image in their browser, with optional disk storage
 for generated images.
 
-**Tags:** `tool`, `OpenAI`
+**Tags:** `tool`, `image`, `OpenAI`
 
 ### OpenAI Video Generation
 
@@ -181,7 +181,7 @@ coordinates with two tools: an OpenAI video generation tool (using Sora models) 
 with configurable durations and resolutions, and a Video Describer tool that analyzes video content by extracting
 frames and generating detailed descriptions using vision-capable language models.
 
-**Tags:** `tool`, `OpenAI`
+**Tags:** `tool`, `video`, `OpenAI`
 
 ### OpenAI Web Search
 
