@@ -270,6 +270,24 @@
             "required": ["query"]
         }
     },
+    "openai_video_generation": {
+        "class": "tools.openai_video_generation.OpenAIVideoGeneration",
+        "description": "Tool that generates video using OpenAI models",
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "query": {
+                    "type": "string",
+                    "description": "The prompt for video generation."
+                },
+                "video_id": {
+                    "type": "string",
+                    "description": "The ID of an existing video to remix. If provided, the video will be remixed based on the prompt."
+                }
+            },
+            "required": ["query"]
+        }
+    },
         
     # ---------- RAG Tools ----------
     #

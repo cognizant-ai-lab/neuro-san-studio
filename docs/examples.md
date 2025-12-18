@@ -20,6 +20,7 @@ Here are a few examples ordered by level of complexity.
     * [Anthropic Web Search](#anthropic-web-search)
     * [OpenAI Code Interpreter](#openai-code-interpreter)
     * [OpenAI Image Generation](#openai-image-generation)
+    * [OpenAI Video Generation](#openai-video-generation)
     * [OpenAI Web Search](#openai-web-search)
     * [Gmail Assistant](#gmail-assistant)
     * [Agent Network HTML Creator](#agent-network-html-creator)
@@ -170,7 +171,17 @@ images from text descriptions. Users describe what they want to see in natural l
 system generates and displays the corresponding image in their browser, with optional disk storage
 for generated images.
 
-**Tags:** `tool`, `OpenAI`
+**Tags:** `tool`, `image`, `OpenAI`
+
+### OpenAI Video Generation
+
+[OpenAI Video Generation](examples/tools/openai_video_generation.md) is a multi-agent system that allows users to
+create, remix, and describe videos through natural language commands. It consists of a Video Generator agent that
+coordinates with two tools: an OpenAI video generation tool (using Sora models) that creates videos from text prompts
+with configurable durations and resolutions, and a Video Describer tool that analyzes video content by extracting
+frames and generating detailed descriptions using vision-capable language models.
+
+**Tags:** `tool`, `video`, `OpenAI`
 
 ### OpenAI Web Search
 

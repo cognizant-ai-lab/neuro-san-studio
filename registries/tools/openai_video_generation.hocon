@@ -1,0 +1,131 @@
+# Copyright © 2025 Cognizant Technology Solutions Corp, www.cognizant.com.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
+# END COPYRIGHT
+
+# The schema specifications for this file are documented here:
+# https://github.com/cognizant-ai-lab/neuro-san/blob/main/docs/agent_hocon_reference.md
+
+# Requirement to use this agent network:
+# - OPENAI_API_KEY
+# - opencv-python
+# See https://platform.openai.com/docs/guides/video-generation
+
+{
+    "llm_config": {
+        "model_name": "gpt-4o",
+    },
+
+    # Video generation can take longer than usual LLM responses. Hence, we set
+    "max_execution_seconds": 600,
+
+    # Optional metadata describing this agent network
+    "metadata": {
+        "description": "Video generation assistant that leverages OpenAI's built-in video generation tool",
+        "tags": ["video generation", "openai", "tool"],
+        "sample_queries": [
+            "Generate an video of gray tabby cat hugging an otter with an orange scarf",
+            "Create a video of a cute fuzzy cat with an umbrella under the rain",
+            "Create a video of a cat sleeping like a human baby",
+        ]
+    },
+
+    "tools": [
+        # This first agent definition is regarded as the "Front Man", which
+        # does all the talking to the outside world/client.
+        #
+        # Some disqualifications from being a front man:
+        #   1) Cannot use a CodedTool "class" definition
+        #   2) Cannot use a Tool "toolbox" definition
+        #
+        # Besides the first agent being the front man, these tool definitions
+        # do not have to be in any particular order. How they are linked and
+        # call each other is defined within their own specs.
+        # This could be a graph, potentially even with cycles.
+        {
+            "name": "video_generator",
+
+            "function": {
+                # The description acts as an initial prompt. 
+                "description": "Assist caller in video generation.",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "user_inquiry": {
+                            "type": "string",
+                            "description": "A prompt from a user."
+                        },
+                    },
+                    "required": ["user_inquiry"]
+                }
+            },
+
+            "instructions": """Use your tool to generate, remix, or describe a video.
+If the user ask you to generate or modify a video, you MUST provide the local file URL using the `file:///` scheme pointing to the generated video in the response.
+If the user ask you to describe a video, you MUST call your video_describer tool to get the description first before responding to the user.
+""",
+            "tools": ["openai_video_generation", "video_describer"]
+        },
+        {
+            "name": "openai_video_generation",            
+            "toolbox": "openai_video_generation",
+
+            # --- Optional Arguments ---
+            "args": {
+                # The video generation model to use (allowed values: "sora-2", "sora-2-pro"). Defaults to "sora-2".
+                "openai_model": "sora-2",
+
+                # Whether to save video on disk. Defaults to false.
+                "save_video_file": true,
+
+                # Whether to open the video in the browser after generation. Defaults to false.
+                "open_in_browser": true,
+
+                # Additinal arguments can be passed below
+
+                # Clip duration in seconds (allowed values: "4", "8", "12"). Defaults to 4 seconds.
+                "seconds": "4",
+
+                # Output resolution formatted as width x height (allowed values: 720x1280, 1280x720, 1024x1792, 1792x1024). Defaults to 720x1280.
+                "size": "720x1280"
+
+                # For more information, please see https://platform.openai.com/docs/api-reference/videos
+                # Note that "input_reference" is not currently supported.
+            }
+        },
+        {
+            "name": "video_describer",
+            "class": "tools.video_describer.VideoDescriber",
+            "function": {
+                "description": "Use this tool to describe the content of a video file.",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "file_path": {
+                            "type": "string",
+                            "description": "The local file path to the video to be described."
+                        },
+                    },
+                    "required": ["file_path"]
+                }
+            },
+
+            # --- Optional Arguments ---
+            "args": {
+                # OpenAI model to describe the video. Must allow image input. Default to gpt-4o.
+                "openai_model": "gpt-4o"
+            }
+        }
+    ]
+}

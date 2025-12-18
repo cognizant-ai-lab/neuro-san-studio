@@ -78,7 +78,7 @@
 
             # --- Optional Arguments ---
             "args": {
-                # OpenAI model calls the built-in web search tool. Default to gpt-4o-2024-08-06.
+                # OpenAI model calls the built-in image generation tool. Default to gpt-4o-2024-08-06.
                 "openai_model": "gpt-5"
                 # Whether to save image on disk
                 "save_image_file": true
