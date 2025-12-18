@@ -88,7 +88,7 @@ to the API to get the updated running cost. If no running cost it known, pass 0.
                     "required": ["running_cost"]
                 }
             },
-            "class": "accounting.Accountant"
+            "class": "Accountant.Accountant"
         },
     ]
 }
