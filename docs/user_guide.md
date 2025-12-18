@@ -1211,7 +1211,7 @@ Please select the execution option that best aligns with the level of validation
 
 - Run a single test case:
 
-    pytest -s <relative path to test hocon>::<test class name>::<test function name>_<the order of test start from zero>_<relative path to test case & replace to "_" vs. "/">
+    pytest -s <"relative path to test hocon">::<"test class name">::<"test function name">_<"the order of test start from zero">_<"relative path to test case & replace to "_" vs. "/"">
 
     Example:
 
