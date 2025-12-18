@@ -54,6 +54,8 @@
     - [External Agent Networks](#external-agent-networks)
     - [Memory](#memory)
   - [Connect with other agent frameworks](#connect-with-other-agent-frameworks)
+  - [Test](#test)
+    - [Integration Test](#integration-test)
 
 <!-- TOC -->
 
@@ -1172,3 +1174,48 @@ agent to interact with a CRM system.
 - Agentspace: [Agentspace_adapter](./examples/tools/agentspace_adapter.md) is an agent network adapter that delegates queries
 to a [Google Agentspace](https://cloud.google.com/agentspace/agentspace-enterprise/docs/overview) agent to interact with
 different data store connectors on google cloud.
+
+## Test
+
+### Integration Test
+
+#### Add test case
+
+TBD
+
+#### Run test
+
+These test cases are organized to mirror the same grouping structure defined in the network prompting logic. As a result, there are three supported ways to execute the tests, each corresponding to a specific grouping strategy.
+
+This design ensures the network prompting logic behaves as intended across different execution scopes, with ongoing additions of test cases to improve coverage.
+
+Please select the execution option that best aligns with the level of validation you want to perform.
+
+- Run all integration test cases:
+    
+    Example:
+    
+    ```bash
+    pytest -s -m "integration" --timer-top-n 100
+    ```
+
+- Run by a group or groups of those test cases:
+    
+    pytest -s -m "<name of test 1st group, 2nd, 3rd, etc.>" --timer-top-n 100
+
+    Example:
+
+    ```bash
+    pytest -s -m "integration_basic" --timer-top-n 100
+    ```
+
+- Run a single test case:
+
+    pytest -s <relative path to test hocon>::<test class name>::<test function name>_<the order of test start from zero>_<relative path to test case & replace to "_" vs. "/">
+
+    Example:
+
+    ```bash
+    pytest -s ./tests/integration/test_integration_test_hocons.py::TestIntegrationTestHocons::test_hocon_industry_0_industry_airline_policy_basic_eco_carryon_baggage
+    ```
+   
