@@ -22,6 +22,7 @@ Here are a few examples ordered by level of complexity.
     * [OpenAI Image Generation](#openai-image-generation)
     * [OpenAI Video Generation](#openai-video-generation)
     * [OpenAI Web Search](#openai-web-search)
+    * [Gemini Image Generation](#gemini-image-generation)
     * [Gmail Assistant](#gmail-assistant)
     * [Agent Network HTML Creator](#agent-network-html-creator)
     * [Agentforce](#agentforce)
@@ -191,6 +192,12 @@ toolkit, providing users with accurate, up-to-date information from across the i
 natural language queries.
 
 **Tags:** `tool`, `OpenAI`
+
+### Gemini Image Generation
+
+[Gemini Image Generation](examples/tools/gemini_image_generation.md) is a single-agent system that enables users to create images through natural language prompts using Google's Gemini models. It consists of an Image Generator agent that interfaces with Gemini's image generation tool, supporting two models: the efficient `gemini-2.5-flash-image` for everyday use and the advanced `gemini-3-pro-image-preview` which offers higher resolutions (up to 4K), multiple aspect ratios, and optional Google Search integration for enhanced context.
+
+**Tags** `tool`, `image`, `Gemini`
 
 ### Gmail Assistant
 

@@ -158,6 +158,41 @@
         }
     },
 
+    # ---------- Gemini Image Generation Tools ----------
+    # Requirement to use this agent network:
+    # - google-genai
+    # - GOOGLE_API_KEY
+    # See 
+    # - https://ai.google.dev/gemini-api/docs
+    # - https://ai.google.dev/gemini-api/docs/nanobanana
+    # - https://ai.google.dev/gemini-api/docs/image-generation
+    "gemini_image_generation": {
+        "class": "tools.gemini_image_generation.GeminiImageGeneration",
+        "description": "Tool that generates image using Gemini models",
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "query": {
+                    "type": "string",
+                    "description": "The prompt for image generation."
+                },
+                "aspect_ratio": {
+                    "type": "string",
+                    "description": "Aspect ratio of the generated image (allowed values: 1:1, 2:3, 3:2, 3:4, 4:3, 4:5, 5:4, 9:16, 16:9, 21:9)."
+                },
+                "image_size": {
+                    "type": "string",
+                    "description": "Size of the generated image (allowed values: 1K, 2K, and 4K)."
+                },
+                "google_search": {
+                    "type": "boolean",
+                    "description": "Whether to use Google search to find information related to the query."
+                }
+            },
+            "required": ["query"]
+        }
+    },
+
     # ---------- Jira Tools ----------
     # Requirements to use this tool:
     # pip install atlassian-python-api
