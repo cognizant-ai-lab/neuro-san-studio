@@ -195,7 +195,11 @@ natural language queries.
 
 ### Gemini Image Generation
 
-[Gemini Image Generation](examples/tools/gemini_image_generation.md) is a single-agent system that enables users to create images through natural language prompts using Google's Gemini models. It consists of an Image Generator agent that interfaces with Gemini's image generation tool, supporting two models: the efficient `gemini-2.5-flash-image` for everyday use and the advanced `gemini-3-pro-image-preview` which offers higher resolutions (up to 4K), multiple aspect ratios, and optional Google Search integration for enhanced context.
+[Gemini Image Generation](examples/tools/gemini_image_generation.md) is a single-agent system that enables users to
+create images through natural language prompts using Google's Gemini models. It consists of an Image Generator agent
+that interfaces with Gemini's image generation tool, supporting two models: the efficient `gemini-2.5-flash-image` for
+everyday use and the advanced `gemini-3-pro-image-preview` which offers higher resolutions (up to 4K), multiple aspect
+ratios, and optional Google Search integration for enhanced context.
 
 **Tags** `tool`, `image`, `Gemini`
 

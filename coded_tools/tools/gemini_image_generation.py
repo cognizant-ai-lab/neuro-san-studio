@@ -16,17 +16,17 @@
 
 import logging
 import os
+import webbrowser
 from pathlib import Path
 from tempfile import NamedTemporaryFile
 from typing import Any
-import webbrowser
+
 # pylint: disable=import-error
 from google.genai import Client
+from google.genai.types import Blob
 from google.genai.types import GenerateContentConfig
 from google.genai.types import GenerateContentResponse
 from google.genai.types import ImageConfig
-from google.genai.types import Blob
-
 from neuro_san.interfaces.coded_tool import CodedTool
 
 
@@ -83,13 +83,10 @@ class GeminiImageGeneration(CodedTool):
         """
 
         # Extract arguments
-        (query, gemini_model, open_in_browser,
-         save_image_file, image_config, tools) = self.extract_arguments(args)
+        (query, gemini_model, open_in_browser, save_image_file, image_config, tools) = self.extract_arguments(args)
 
         # Call Gemini model for image generation
-        response: GenerateContentResponse = await self.get_response(
-            query, gemini_model, image_config, tools
-        )
+        response: GenerateContentResponse = await self.get_response(query, gemini_model, image_config, tools)
 
         # Extract text and image blocks
         text: str = ""
@@ -106,8 +103,7 @@ class GeminiImageGeneration(CodedTool):
         return text or "Image generation completed."
 
     def extract_arguments(
-            self,
-            args: dict[str, Any]
+        self, args: dict[str, Any]
     ) -> tuple[str, str, bool, bool, dict[str, Any], list[dict[str, Any]]]:
         """
         Extract arguments from the args dictionary.
@@ -152,11 +148,7 @@ class GeminiImageGeneration(CodedTool):
         return query, gemini_model, open_in_browser, save_image_file, image_config, tools
 
     async def get_response(
-            self,
-            query: str,
-            gemini_model: str,
-            image_config: dict[str, Any],
-            tools: list[dict[str, Any]]
+        self, query: str, gemini_model: str, image_config: dict[str, Any], tools: list[dict[str, Any]]
     ) -> GenerateContentResponse:
         """
         Asynchronous version of the Gemini image generation call.
@@ -174,12 +166,8 @@ class GeminiImageGeneration(CodedTool):
             model=gemini_model,
             contents=query,
             config=GenerateContentConfig(
-                response_modalities=['Text', 'Image'],
-                image_config=ImageConfig(
-                    **image_config
-                ),
-                tools=tools
-            )
+                response_modalities=["Text", "Image"], image_config=ImageConfig(**image_config), tools=tools
+            ),
         )
         return response
 
