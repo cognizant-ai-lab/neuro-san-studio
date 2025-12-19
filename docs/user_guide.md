@@ -1180,14 +1180,14 @@ different data store connectors on google cloud.
 ### Unit test
 
 - Run the unit test:
- 
- Example:
+
+    Example:
 
     ```bash
     make test
     ```
 
- Example:
+    Example:
 
     ```bash
     python -m pytest tests/ -v --cov=coded_tools,run.py -m "not integration"
