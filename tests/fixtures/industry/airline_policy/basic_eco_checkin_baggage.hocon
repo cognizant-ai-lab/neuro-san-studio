@@ -31,7 +31,7 @@
     # a test is intermitently failing. Sometimes it's the agent prompt, but
     # sometimes it's the test itself.
     # Note: This number was increased for network failure identification and should be reverted afterward to 1/1.
-    "success_ratio": "3/3",
+    "success_ratio": "1/1",
 
     # Interactions are a series of dictionaries with request elements paired with
     # descriptions of response checks.
@@ -39,7 +39,7 @@
         {
             # This is what we send as input to streaming_chat()
             "text": """
-On domestic basic economy flights, how many checked bags are included at no fee for passengers without membership or elite status?
+On a domestic basic economy flight, do I get a free check-in bag?
 """,
 
             # The response block treats how we are going to test what comes back
@@ -52,7 +52,7 @@ On domestic basic economy flights, how many checked bags are included at no fee 
                     # matches up to our description of acceptance criteria.
                     # Each component of the list needs to pass muster in order to pass.
                     "gist": ["""
-- Confirms that Basic Economy doesn't include fee-checked bags.
+Confirms that on domestic Basic Economy flights, passengers must pay an additional fee to check in a bag.
                              """]
                 }
             }
