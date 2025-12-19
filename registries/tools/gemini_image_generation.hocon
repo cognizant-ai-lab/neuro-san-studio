@@ -1,0 +1,104 @@
+# Copyright © 2025 Cognizant Technology Solutions Corp, www.cognizant.com.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
+# END COPYRIGHT
+
+# The schema specifications for this file are documented here:
+# https://github.com/cognizant-ai-lab/neuro-san/blob/main/docs/agent_hocon_reference.md
+
+# Requirement to use this agent network:
+# - google-genai package installed
+# - GOOGLE_API_KEY or GEMINI_API_KEY environment variable set
+# See https://ai.google.dev/gemini-api/docs
+
+{
+    "llm_config": {
+        "model_name": "gpt-4o",
+    },
+
+    # Optional metadata describing this agent network
+    "metadata": {
+        "description": "Image generation assistant that leverages Gemini's image generation capabilities.",
+        "tags": ["image generation", "gemini", "tool"],
+        "sample_queries": [
+            "Generate an image of gray tabby cat hugging an otter with an orange scarf",
+            "Draw a picture of a cute fuzzy cat with an umbrella",
+            "Create an image of a cat sleeping like a human baby",
+        ]
+    },
+
+    "tools": [
+        # This first agent definition is regarded as the "Front Man", which
+        # does all the talking to the outside world/client.
+        #
+        # Some disqualifications from being a front man:
+        #   1) Cannot use a CodedTool "class" definition
+        #   2) Cannot use a Tool "toolbox" definition
+        #
+        # Besides the first agent being the front man, these tool definitions
+        # do not have to be in any particular order. How they are linked and
+        # call each other is defined within their own specs.
+        # This could be a graph, potentially even with cycles.
+        {
+            "name": "image_generator",
+
+            "function": {
+                # The description acts as an initial prompt. 
+                "description": "Assist caller in image generation.",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "user_inquiry": {
+                            "type": "string",
+                            "description": "A prompt from a user."
+                        },
+                    },
+                    "required": ["user_inquiry"]
+                }
+            },
+
+            "instructions": "Use your tool to generate image.",
+            "tools": ["gemini_image_generation"]
+        },
+        {
+            "name": "gemini_image_generation",            
+            "toolbox": "gemini_image_generation",
+
+            # --- Optional Arguments ---
+            "args": {
+                # Gemini model to call the tool (allowed values: "gemini-2.5-flash-image" and "gemini-3-pro-image-preview").
+                # Default to gemini-2.5-flash-image.
+                "gemini_model": "gemini-3-pro-image-preview",
+                # Whether to save image on disk. Defaults to false.
+                "save_image_file": true,
+                # Whether to open the generated image in the browser. Defaults to false.
+                "open_in_browser": true,
+
+                # Additinal arguments can be passed below
+                # These arguments are normally defined by the agent but can be overridden here.
+
+                # Aspect ratio for the generated image (allowed values: "1:1","2:3","3:2","3:4","4:3","4:5","5:4","9:16","16:9","21:9").
+                "aspect_ratio": "16:9",
+                # Size of the generated image (allowed values: "1K", "2K", and "4K").
+                # Only available for gemini-3-pro-image-preview.
+                "image_size": "1K",
+                # Whether to use Google Search to for image generation. Defaults to false.
+                # Only available for gemini-3-pro-image-preview.
+                "google_search": false
+
+                # For more information, please see https://ai.google.dev/gemini-api/docs/image-generation
+            }
+        },
+    ]
+}
