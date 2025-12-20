@@ -162,7 +162,8 @@
     # Requirement to use this agent network:
     # - google-genai
     # - GOOGLE_API_KEY
-    # See 
+    # Note: If `langchain-google-genai` is already installed in your environment, `google-genai` is already included.
+    # See also:
     # - https://ai.google.dev/gemini-api/docs
     # - https://ai.google.dev/gemini-api/docs/nanobanana
     # - https://ai.google.dev/gemini-api/docs/image-generation
