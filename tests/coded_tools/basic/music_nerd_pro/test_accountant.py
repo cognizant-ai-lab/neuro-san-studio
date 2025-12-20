@@ -19,9 +19,9 @@ from unittest import TestCase
 from coded_tools.basic.music_nerd_pro.accountant import Accountant
 
 
-class TestAccounting(TestCase):
+class TestAccountant(TestCase):
     """
-    Unit tests for Accounting class.
+    Unit tests for Accountant class.
     """
 
     def test_invoke(self):
