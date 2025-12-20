@@ -1187,7 +1187,9 @@ To run the unit test, use the following command:
 ```bash
 make test
 ```
+
 or
+
 ```bash
 python -m pytest tests/ -v --cov=coded_tools,run.py -m "not integration"
 ```
