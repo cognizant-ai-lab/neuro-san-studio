@@ -55,7 +55,10 @@
     - [Memory](#memory)
   - [Connect with other agent frameworks](#connect-with-other-agent-frameworks)
   - [Test](#test)
+    - [Unit test](#unit-test)
     - [Integration Test](#integration-test)
+      - [Add test case](#add-test-case)
+      - [Run test](#run-test)
 
 <!-- TOC -->
 
