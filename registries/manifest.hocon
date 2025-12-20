@@ -89,6 +89,13 @@
     "tools/anthropic_web_search.hocon": true,
     "tools/anthropic_code_execution.hocon": true,
 
+    # Requirement to use this agent network:
+    # - google-genai
+    # - GOOGLE_API_KEY
+    # See https://ai.google.dev/gemini-api/docs
+    # Note: If `langchain-google-genai` is already installed in your environment, `google-genai` is already included.
+    "tools/gemini_image_generation.hocon": false,
+
     # To use this agent network, start by installing the required package:
     #     pip install atlassian-python-api
     #
