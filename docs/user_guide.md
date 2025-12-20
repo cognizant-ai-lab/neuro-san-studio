@@ -1182,19 +1182,15 @@ different data store connectors on google cloud.
 
 ### Unit test
 
-- Run the unit test:
+To run the unit test, use the following command:
 
-    Example:
-
-    ```bash
-    make test
-    ```
-
-    Example:
-
-    ```bash
-    python -m pytest tests/ -v --cov=coded_tools,run.py -m "not integration"
-    ```
+```bash
+make test
+```
+or
+```bash
+python -m pytest tests/ -v --cov=coded_tools,run.py -m "not integration"
+```
 
 ### Integration Test
 
@@ -1212,6 +1208,8 @@ This design ensures the network prompting logic behaves as intended across diffe
 with ongoing additions of test cases to improve coverage.
 
 Please select the execution option that best aligns with the level of validation you want to perform.
+
+`--timer-top-n 100` flag is optional. It shows the top 100 slowest test cases.
 
 - Run all integration test cases:
 
