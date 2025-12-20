@@ -21,6 +21,7 @@
 # - google-genai package installed
 # - GOOGLE_API_KEY or GEMINI_API_KEY environment variable set
 # See https://ai.google.dev/gemini-api/docs
+# Note: If `langchain-google-genai` is already installed in your environment, `google-genai` is already included.
 
 {
     "llm_config": {
