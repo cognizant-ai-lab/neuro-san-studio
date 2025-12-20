@@ -20,9 +20,9 @@ tabby cat hugging an otter with an orange scarf" or "draw a picture of a cute fu
 intelligently routes the request to the appropriate image generation tool. The generated image is automatically
 displayed in the user's browser and can optionally be saved to disk.
 
-The system supports multiple Gemini models including the efficient `gemini-2.5-flash-image` (`Nano Banana`) and the advanced
-`gemini-3-pro-image-preview` (`Nano Banana Pro`), which offers additional features like Google Search integration and higher resolution
-options.
+The system supports multiple Gemini models including the efficient `gemini-2.5-flash-image` (`Nano Banana`) and the
+advanced `gemini-3-pro-image-preview` (`Nano Banana Pro`), which offers additional features like Google Search
+integration and higher resolution options.
 
 ---
 
