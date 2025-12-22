@@ -26,6 +26,7 @@ class ThemeTemplateProvider(CodedTool):
     CodedTool implementation which provides comprehensive background schema templates
     for generating dynamic (css-doodle) and static (Gradient) backgrounds based on agent context.
     """
+
     COLOR_PALETTES = COLOR_PALETTES
     CSS_DOODLE_TEMPLATES = CSS_DOODLE_TEMPLATES
     GRADIENT_TEMPLATES = GRADIENT_TEMPLATES

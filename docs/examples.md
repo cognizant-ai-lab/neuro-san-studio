@@ -129,10 +129,10 @@ the best option depending on the context.
 [Coffee Finder Advanced](examples/basic/coffee_finder_advanced.md) is an agent network that helps
 users find places that sell coffee and place orders.
 This is a good example to:
-* Learn how to use the `AAOSA` instructions to find and choose between options.
-* Learn how agents can ask for clarification and follow up with questions.
-* Learn how to use tools to call Python code.
-* Learn how agents can ask for additional information.
+- Learn how to use the `AAOSA` instructions to find and choose between options.
+- Learn how agents can ask for clarification and follow up with questions.
+- Learn how to use tools to call Python code.
+- Learn how agents can ask for additional information.
 
 **Tags:** `AAOSA` `tool` `time` `sly_data` `memory`
 
@@ -419,13 +419,19 @@ the results. This network streamlines the end-to-end workflow for building and s
 
 ### CRUSE Theme Agent
 
-[CRUSE Theme Agent](examples/cruse_theme_agent.md) is an agent that can dynamically generate a json schema for any agent (or given context). This json schema can be read by a UI component in the downstream to generate dynamic themes. Currently this is limited to only css-based schema. It can be extende to add an agent like Dall-E or nano-banana to generate more dynamic backgrounds.
+[CRUSE Theme Agent](examples/cruse_theme_agent.md) is an agent that can dynamically generate a json schema for any agent
+ (or given context). This json schema can be read by a UI component in the downstream to generate dynamic themes.
+ Currently this is limited to only css-based schema. It can be extended to have another sub-agent like Dall-E or nano-banana
+ to generate more dynamic backgrounds.
 
 **Tags:** `CRUSE`, `tool`, `ui`, `theme`, `background`
 
 ### CRUSE Widget Agent
 
-[CRUSE Widget Agent](examples/cruse_widget_agent.md) is also a CRUSE agent that can dynamically generate a json schema that represents an action card. This is useful in generating an input form-like interface by a UI component. There are several field elements that are available to generate schema for a widget: boolean, checkbox, date, multi-select, number, radio-group, rating, select, text area, slider. This is also extensible.
+[CRUSE Widget Agent](examples/cruse_widget_agent.md) is also a CRUSE agent that can dynamically generate a json schema
+ that represents an action card. This is useful in generating an input form-like interface by a UI component.
+ There are several field elements that are available to generate schema for a widget: boolean, checkbox, date, multi-select,
+  number, radio-group, rating, select, text area, slider. This is also extensible.
 
 **Tags:** `CRUSE`, `tool`, `ui`, `widget`
 

@@ -61,7 +61,7 @@ class WidgetTemplateProvider(CodedTool):
                 }
             },
             "required": ["field_name"],  # List of required field names
-        }
+        },
     }
 
     # Widget type examples for reference
@@ -72,61 +72,51 @@ class WidgetTemplateProvider(CodedTool):
             "description": "Enter your full name",
             "examples": ["John Doe"],
             "minLength": 2,
-            "maxLength": 100
+            "maxLength": 100,
         },
         "textarea_field": {
             "type": "string",
             "title": "Comments",
             "description": "Additional notes or comments",
-            "x-ui": {"widget": "textarea"}
+            "x-ui": {"widget": "textarea"},
         },
         "number_field": {
             "type": "number",
             "title": "Amount",
             "description": "Enter amount",
             "minimum": 0,
-            "maximum": 10000
+            "maximum": 10000,
         },
         "boolean_field": {
             "type": "boolean",
             "title": "I agree to terms",
-            "description": "Check to agree to terms and conditions"
+            "description": "Check to agree to terms and conditions",
         },
-        "checkbox_field": {
-            "type": "boolean",
-            "title": "Subscribe to newsletter",
-            "x-ui": {"widget": "checkbox"}
-        },
+        "checkbox_field": {"type": "boolean", "title": "Subscribe to newsletter", "x-ui": {"widget": "checkbox"}},
         "select_field": {
             "type": "string",
             "title": "Department",
             "description": "Select your department",
-            "enum": ["Engineering", "Sales", "Marketing", "HR"]
+            "enum": ["Engineering", "Sales", "Marketing", "HR"],
         },
         "radio_field": {
             "type": "string",
             "title": "Priority",
             "enum": ["Low", "Medium", "High"],
-            "x-ui": {"widget": "radio"}
+            "x-ui": {"widget": "radio"},
         },
         "multiselect_field": {
             "type": "array",
             "title": "Skills",
             "description": "Select all that apply",
-            "items": {
-                "type": "string",
-                "enum": ["Python", "JavaScript", "Java", "C++"]
-            }
+            "items": {"type": "string", "enum": ["Python", "JavaScript", "Java", "C++"]},
         },
         "date_field": {
             "type": "string",
             "format": "date",
             "title": "Start Date",
             "description": "Select start date",
-            "x-ui": {
-                "minDate": "2024-01-01",
-                "maxDate": "2025-12-31"
-            }
+            "x-ui": {"minDate": "2024-01-01", "maxDate": "2025-12-31"},
         },
         "slider_field": {
             "type": "number",
@@ -134,14 +124,14 @@ class WidgetTemplateProvider(CodedTool):
             "minimum": 0,
             "maximum": 10,
             "multipleOf": 1,
-            "x-ui": {"widget": "slider"}
+            "x-ui": {"widget": "slider"},
         },
         "rating_field": {
             "type": "number",
             "title": "Satisfaction",
             "minimum": 1,
             "maximum": 5,
-            "x-ui": {"widget": "rating"}
+            "x-ui": {"widget": "rating"},
         },
         "file_upload_single": {
             "type": "string",
@@ -151,8 +141,8 @@ class WidgetTemplateProvider(CodedTool):
                 "widget": "file",
                 "accept": ".pdf,.doc,.docx,.jpg,.jpeg,.png,.csv,.txt,.json,.hocon",
                 "maxFiles": 1,
-                "maxSize": 26214400  # 25MB in bytes
-            }
+                "maxSize": 26214400,  # 25MB in bytes
+            },
         },
         "file_upload_multiple": {
             "type": "array",
@@ -163,32 +153,112 @@ class WidgetTemplateProvider(CodedTool):
                 "widget": "file",
                 "accept": ".pdf,.doc,.docx,.jpg,.jpeg,.png,.csv,.txt,.json,.hocon",
                 "maxFiles": 5,
-                "maxSize": 26214400  # 25MB in bytes per file
-            }
-        }
+                "maxSize": 26214400,  # 25MB in bytes per file
+            },
+        },
     }
 
     # Icon guidance with creative examples
     ICON_GUIDANCE = {
-        "icon_library": "Full Material Design Icons library available at: https://github.com/google/material-design-icons/blob/master/font/MaterialIcons-Regular.codepoints",
-        "naming_convention": "Icons use snake_case in the library but should be converted to PascalCase (e.g., 'beach_access' → 'BeachAccess', 'flight_takeoff' → 'FlightTakeoff')",
+        "icon_library": """Full Material Design Icons library available at:
+        https://github.com/google/material-design-icons/blob/master/font/MaterialIcons-Regular.codepoints""",
+        "naming_convention": """Icons use snake_case in the library but should be converted to PascalCase
+        (e.g., 'beach_access' → 'BeachAccess', 'flight_takeoff' → 'FlightTakeoff')""",
         "creative_examples": {
             "Vacation & Time Off": ["BeachAccess", "Surfing", "Pool", "AcUnit", "WbSunny", "Flight", "Luggage"],
-            "Travel & Transportation": ["FlightTakeoff", "FlightLand", "Luggage", "Hotel", "DirectionsCar", "Train", "Sailboat"],
-            "Food & Dining": ["Restaurant", "LocalCafe", "Cake", "LocalPizza", "Icecream", "EmojiFoodBeverage", "RamenDining"],
-            "Health & Wellness": ["FitnessCenter", "Spa", "SelfImprovement", "Psychology", "Favorite", "LocalHospital", "Healing"],
-            "Finance & Banking": ["AccountBalance", "Savings", "TrendingUp", "MonetizationOn", "CreditCard", "Receipt", "AttachMoney"],
+            "Travel & Transportation": [
+                "FlightTakeoff",
+                "FlightLand",
+                "Luggage",
+                "Hotel",
+                "DirectionsCar",
+                "Train",
+                "Sailboat",
+            ],
+            "Food & Dining": [
+                "Restaurant",
+                "LocalCafe",
+                "Cake",
+                "LocalPizza",
+                "Icecream",
+                "EmojiFoodBeverage",
+                "RamenDining",
+            ],
+            "Health & Wellness": [
+                "FitnessCenter",
+                "Spa",
+                "SelfImprovement",
+                "Psychology",
+                "Favorite",
+                "LocalHospital",
+                "Healing",
+            ],
+            "Finance & Banking": [
+                "AccountBalance",
+                "Savings",
+                "TrendingUp",
+                "MonetizationOn",
+                "CreditCard",
+                "Receipt",
+                "AttachMoney",
+            ],
             "Home & Living": ["Weekend", "Bed", "Shower", "KitchenOutlined", "Chair", "DoorFront", "Checkroom"],
-            "Entertainment": ["Theaters", "Museum", "Casino", "SportsEsports", "MusicNote", "Celebration", "Nightlife"],
+            "Entertainment": [
+                "Theaters",
+                "Museum",
+                "Casino",
+                "SportsEsports",
+                "MusicNote",
+                "Celebration",
+                "Nightlife",
+            ],
             "Nature & Outdoors": ["Park", "Hiking", "NaturePeople", "Forest", "Landscape", "Pets", "Eco"],
-            "Shopping & Retail": ["ShoppingBag", "Storefront", "LocalOffer", "Loyalty", "CardGiftcard", "ShoppingCart"],
-            "Work & Productivity": ["WorkOutline", "Apartment", "BusinessCenter", "Laptop", "Badge", "Groups", "Assignment"],
+            "Shopping & Retail": [
+                "ShoppingBag",
+                "Storefront",
+                "LocalOffer",
+                "Loyalty",
+                "CardGiftcard",
+                "ShoppingCart",
+            ],
+            "Work & Productivity": [
+                "WorkOutline",
+                "Apartment",
+                "BusinessCenter",
+                "Laptop",
+                "Badge",
+                "Groups",
+                "Assignment",
+            ],
             "Communication": ["Forum", "Chat", "Call", "VideoCall", "Email", "Feedback", "Announcement"],
-            "Events & Celebrations": ["Celebration", "Cake", "CardGiftcard", "Redeem", "LocalActivity", "ConfirmationNumber"],
+            "Events & Celebrations": [
+                "Celebration",
+                "Cake",
+                "CardGiftcard",
+                "Redeem",
+                "LocalActivity",
+                "ConfirmationNumber",
+            ],
             "Education": ["School", "AutoStories", "Science", "Calculate", "HistoryEdu", "Psychology", "MenuBook"],
             "Technology": ["Devices", "Computer", "PhoneIphone", "DeveloperMode", "Cloud", "Storage", "Terminal"],
-            "Security & Safety": ["Security", "Shield", "Lock", "Fingerprint", "VerifiedUser", "AdminPanelSettings", "GppGood"],
-            "Documents & Files": ["Description", "Folder", "UploadFile", "CloudUpload", "FileCopy", "AttachFile", "PictureAsPdf"]
+            "Security & Safety": [
+                "Security",
+                "Shield",
+                "Lock",
+                "Fingerprint",
+                "VerifiedUser",
+                "AdminPanelSettings",
+                "GppGood",
+            ],
+            "Documents & Files": [
+                "Description",
+                "Folder",
+                "UploadFile",
+                "CloudUpload",
+                "FileCopy",
+                "AttachFile",
+                "PictureAsPdf",
+            ],
         },
         "selection_principles": [
             "Choose icons that capture the ESSENCE of the request, not just literal meaning",
@@ -197,8 +267,8 @@ class WidgetTemplateProvider(CodedTool):
             "For meeting rooms, prefer 'MeetingRoom' over generic 'Room'",
             "For sick leave, prefer 'LocalHospital' or 'Healing' over generic 'CalendarMonth'",
             "Be creative and contextual - make the icon visually appealing and memorable",
-            "The frontend dynamically resolves any valid Material Design icon name"
-        ]
+            "The frontend dynamically resolves any valid Material Design icon name",
+        ],
     }
 
     def invoke(self, args: Dict[str, Any], sly_data: Dict[str, Any]) -> str:
@@ -247,7 +317,7 @@ class WidgetTemplateProvider(CodedTool):
                     "date - Date picker (format: 'date' or 'date-time')",
                     "slider - Range slider (number with minimum, maximum, multipleOf)",
                     "rating - Star rating (number with x-ui.widget: 'rating')",
-                    "file - File upload with drag-and-drop (use x-ui.widget: 'file' with accept, maxFiles, maxSize)"
+                    "file - File upload with drag-and-drop (use x-ui.widget: 'file' with accept, maxFiles, maxSize)",
                 ],
                 "key_points": [
                     "Replace <PLACEHOLDERS> with actual values from conversation",
@@ -259,8 +329,8 @@ class WidgetTemplateProvider(CodedTool):
                     "Field descriptions are shown as help text once - avoid redundancy",
                     "Use format: 'date' for date pickers (no additional validation needed)",
                     "Only add validation (minDate, maxDate) when business logic requires it",
-                    "Icons are displayed prominently - choose ones that match the widget purpose"
-                ]
+                    "Icons are displayed prominently - choose ones that match the widget purpose",
+                ],
             }
 
         return json.dumps(result, indent=2)
