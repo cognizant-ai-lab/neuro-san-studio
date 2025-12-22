@@ -430,8 +430,8 @@ the results. This network streamlines the end-to-end workflow for building and s
 
 [CRUSE Widget Agent](examples/cruse_widget_agent.md) is also a CRUSE agent that can dynamically generate a json schema
  that represents an action card. This is useful in generating an input form-like interface by a UI component.
- There are several field elements that are available to generate schema for a widget: boolean, checkbox, date, multi-select,
-  number, radio-group, rating, select, text area, slider. This is also extensible.
+ Currently supported set of fields for a widget include: boolean, checkbox, date, multi-select,
+  number, radio-group, rating, select, text area, slider.
 
 **Tags:** `CRUSE`, `tool`, `ui`, `widget`
 
