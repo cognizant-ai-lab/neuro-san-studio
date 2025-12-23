@@ -75,8 +75,12 @@ class TestIntegrationTestHocons(TestCase):
                 # Ideally more basic functionality will come first.
                 # Barring that, try to stick to alphabetical order.
                 "industry/airline_policy/basic_eco_carryon_baggage.hocon",
+                "industry/airline_policy/basic_eco_checkin_baggage_at_gate_fee.hocon",
                 "industry/airline_policy/basic_eco_checkin_baggage.hocon",
+                "industry/airline_policy/general_carryon_other_items",
+                "industry/airline_policy/general_carryon_baggage_size.hocon",
                 "industry/airline_policy/general_carryon_person_item.hocon",
+                "industry/airline_policy/general_carryon_person_item_size.hocon",
                 # List more hocon files as they become available here.
             ]
         ),
