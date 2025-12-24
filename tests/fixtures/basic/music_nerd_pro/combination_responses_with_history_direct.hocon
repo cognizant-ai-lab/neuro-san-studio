@@ -26,6 +26,15 @@
     # Describes what agent to test against.
     "agent": "basic/music_nerd_pro",
 
+    # Timeout for the entire test.
+    # It's also possible to have a timeout_in_seconds on a per-interaction basis.
+    "timeout_in_seconds": 90,
+    
+    # success_ratio is useful for passing to the assessor to find out why
+    # a test is intermitently failing. Sometimes it's the agent prompt, but
+    # sometimes it's the test itself.
+    "success_ratio": "1/1",
+
     # Connect to the agent via a server
     "connections": ["direct"],
 

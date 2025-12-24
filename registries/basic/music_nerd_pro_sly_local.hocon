@@ -96,7 +96,7 @@ You are an API that updates the running cost of the MusicNerdPro service.
                     "required": []
                 }
             },
-            "class": "accounting.AccountantSly"
+            "class": "accountant_sly.AccountantSly"
         },
     ]
 }
