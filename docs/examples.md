@@ -4,58 +4,60 @@ Here are a few examples ordered by level of complexity.
 
 <!-- TOC -->
 
-* [Examples](#examples)
-  * [🔰 Basic Examples](#-basic-examples)
-    * [Music Nerd](#music-nerd)
-    * [Music Nerd Pro](#music-nerd-pro)
-    * [Music Nerd Local](#music-nerd-local)
-    * [Music Nerd Pro Local](#music-nerd-pro-local)
-    * [Music Nerd Pro Sly](#music-nerd-pro-sly)
-    * [Music Nerd Pro Sly Local](#music-nerd-pro-sly-local)
-    * [Music Nerd LLM Fallbacks](#music-nerd-llm-fallbacks)
-    * [Coffee Finder](#coffee-finder)
-    * [Coffee Finder Advanced](#coffee-finder-advanced)
-  * [🧰 Tool Integration Examples](#-tool-integration-examples)
-    * [Anthropic Code Execution](#anthropic-code-execution)
-    * [Anthropic Web Search](#anthropic-web-search)
-    * [OpenAI Code Interpreter](#openai-code-interpreter)
-    * [OpenAI Image Generation](#openai-image-generation)
-    * [OpenAI Video Generation](#openai-video-generation)
-    * [OpenAI Web Search](#openai-web-search)
-    * [Gemini Image Generation](#gemini-image-generation)
-    * [Gmail Assistant](#gmail-assistant)
-    * [Agent Network HTML Creator](#agent-network-html-creator)
-    * [Agentforce](#agentforce)
-    * [Agentspace](#agentspace)
-    * [MCP BMI STREAMABLE HTTP](#mcp-bmi-streamable-http)
-    * [A2A RESEARCH REPORT](#a2a-research-report)
-    * [PDF RAG Assistant](#pdf-rag-assistant)
-    * [Confluence RAG Assistant](#confluence-rag-assistant)
-    * [Agentic RAG Assistant](#agentic-rag-assistant)
-    * [Wikipedia RAG Assistant](#wikipedia-rag-assistant)
-    * [ArXiv RAG Assistant](#arxiv-rag-assistant)
-    * [ServiceNow AI Agents](#servicenow-ai-agents)
-    * [Visual Question Answering](#visual-question-answering)
-  * [🏢 Industry-Specific Examples](#-industry-specific-examples)
-    * [Intranet Agents](#intranet-agents)
-    * [Intranet Agents With Tools](#intranet-agents-with-tools)
-    * [Airline Policy 360 Assistant](#airline-policy-360-assistant)
-    * [Telco Network Orchestration](#telco-network-orchestration)
-    * [Real Estate Agent](#real-estate-agent)
-    * [Consumer Decision Assistant Agents](#consumer-decision-assistant-agents)
-    * [Therapy Vignette Supervision](#therapy-vignette-supervision)
-    * [Banking Operations](#banking-operations)
-    * [Retail Operations and Customer Service Assistant](#retail-operations-and-customer-service-assistant)
-    * [Insurance Underwriting Agents](#insurance-underwriting-agents)
-    * [Sentiment Analysis of News Sources](#sentiment-analysis-of-news-sources)
-  * [🧪 Experimental and Research](#-experimental-and-research)
-    * [Agent Network Designer](#agent-network-designer)
-    * [Agent Network Architect](#agent-network-architect)
-    * [KWIK Agents](#kwik-agents)
-    * [CRUSE](#cruse)
-    * [Conscious Assistant](#conscious-assistant)
-    * [Log Analyzer](#log-analyzer)
-    * [WWAW](#wwaw)
+- [Examples](#examples)
+  - [🔰 Basic Examples](#-basic-examples)
+    - [Music Nerd](#music-nerd)
+    - [Music Nerd Pro](#music-nerd-pro)
+    - [Music Nerd Local](#music-nerd-local)
+    - [Music Nerd Pro Local](#music-nerd-pro-local)
+    - [Music Nerd Pro Sly](#music-nerd-pro-sly)
+    - [Music Nerd Pro Sly Local](#music-nerd-pro-sly-local)
+    - [Music Nerd LLM Fallbacks](#music-nerd-llm-fallbacks)
+    - [Coffee Finder](#coffee-finder)
+    - [Coffee Finder Advanced](#coffee-finder-advanced)
+  - [🧰 Tool Integration Examples](#-tool-integration-examples)
+    - [Anthropic Code Execution](#anthropic-code-execution)
+    - [Anthropic Web Search](#anthropic-web-search)
+    - [OpenAI Code Interpreter](#openai-code-interpreter)
+    - [OpenAI Image Generation](#openai-image-generation)
+    - [OpenAI Video Generation](#openai-video-generation)
+    - [OpenAI Web Search](#openai-web-search)
+    - [Gemini Image Generation](#gemini-image-generation)
+    - [Gmail Assistant](#gmail-assistant)
+    - [Agent Network HTML Creator](#agent-network-html-creator)
+    - [Agentforce](#agentforce)
+    - [Agentspace](#agentspace)
+    - [MCP BMI STREAMABLE HTTP](#mcp-bmi-streamable-http)
+    - [A2A RESEARCH REPORT](#a2a-research-report)
+    - [PDF RAG Assistant](#pdf-rag-assistant)
+    - [Confluence RAG Assistant](#confluence-rag-assistant)
+    - [Agentic RAG Assistant](#agentic-rag-assistant)
+    - [Wikipedia RAG Assistant](#wikipedia-rag-assistant)
+    - [ArXiv RAG Assistant](#arxiv-rag-assistant)
+    - [ServiceNow AI Agents](#servicenow-ai-agents)
+    - [Visual Question Answering](#visual-question-answering)
+  - [🏢 Industry-Specific Examples](#-industry-specific-examples)
+    - [Intranet Agents](#intranet-agents)
+    - [Intranet Agents With Tools](#intranet-agents-with-tools)
+    - [Airline Policy 360 Assistant](#airline-policy-360-assistant)
+    - [Telco Network Orchestration](#telco-network-orchestration)
+    - [Real Estate Agent](#real-estate-agent)
+    - [Consumer Decision Assistant Agents](#consumer-decision-assistant-agents)
+    - [Therapy Vignette Supervision](#therapy-vignette-supervision)
+    - [Banking Operations](#banking-operations)
+    - [Retail Operations and Customer Service Assistant](#retail-operations-and-customer-service-assistant)
+    - [Insurance Underwriting Agents](#insurance-underwriting-agents)
+    - [Sentiment Analysis of News Sources](#sentiment-analysis-of-news-sources)
+  - [🧪 Experimental and Research](#-experimental-and-research)
+    - [Agent Network Designer](#agent-network-designer)
+    - [Agent Network Architect](#agent-network-architect)
+    - [CRUSE Theme Agent](#cruse-theme-agent)
+    - [CRUSE Widget Agent](#cruse-widget-agent)
+    - [KWIK Agents](#kwik-agents)
+    - [CRUSE](#cruse)
+    - [Conscious Assistant](#conscious-assistant)
+    - [Log Analyzer](#log-analyzer)
+    - [WWAW](#wwaw)
 
 <!-- TOC -->
 
@@ -127,10 +129,10 @@ the best option depending on the context.
 [Coffee Finder Advanced](examples/basic/coffee_finder_advanced.md) is an agent network that helps
 users find places that sell coffee and place orders.
 This is a good example to:
-* Learn how to use the `AAOSA` instructions to find and choose between options.
-* Learn how agents can ask for clarification and follow up with questions.
-* Learn how to use tools to call Python code.
-* Learn how agents can ask for additional information.
+- Learn how to use the `AAOSA` instructions to find and choose between options.
+- Learn how agents can ask for clarification and follow up with questions.
+- Learn how to use tools to call Python code.
+- Learn how agents can ask for additional information.
 
 **Tags:** `AAOSA` `tool` `time` `sly_data` `memory`
 
@@ -414,6 +416,24 @@ creates an interactive HTML graph of the network, runs a live demonstration usin
 the results. This network streamlines the end-to-end workflow for building and showcasing agent systems.
 
 **Tags:** `tool`, `external_network`, `HTML`, `nsflow`, `Gmail`
+
+### CRUSE Theme Agent
+
+[CRUSE Theme Agent](examples/cruse_theme_agent.md) is an agent that can dynamically generate a json schema for any agent
+ (or given context). This json schema can be read by a UI component in the downstream to generate dynamic themes.
+ Currently this is limited to only css-based schema. It can be extended to have another sub-agent like Dall-E or nano-banana
+ to generate more dynamic backgrounds.
+
+**Tags:** `CRUSE`, `tool`, `ui`, `theme`, `background`
+
+### CRUSE Widget Agent
+
+[CRUSE Widget Agent](examples/cruse_widget_agent.md) is also a CRUSE agent that can dynamically generate a json schema
+ that represents an action card. This is useful in generating an input form-like interface by a UI component.
+ Currently supported set of fields for a widget include: boolean, checkbox, date, multi-select,
+  number, radio-group, rating, select, text area, slider.
+
+**Tags:** `CRUSE`, `tool`, `ui`, `widget`
 
 ### KWIK Agents
 

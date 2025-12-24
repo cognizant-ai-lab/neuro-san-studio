@@ -215,4 +215,7 @@
     "agent_network_architect.hocon": false,
     "industry/news_sentiment_analysis.hocon": false,
     "tools/now_agents.hocon": true,
+
+    "cruse_theme_agent.hocon": true,
+    "cruse_widget_agent.hocon": true
 }
