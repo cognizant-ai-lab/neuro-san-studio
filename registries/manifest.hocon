@@ -216,6 +216,16 @@
     "industry/news_sentiment_analysis.hocon": false,
     "tools/now_agents.hocon": true,
 
-    "cruse_theme_agent.hocon": true,
-    "cruse_widget_agent.hocon": true
+    "cruse_theme_agent.hocon": {
+        # This is a support network for Cruse Interface
+        # We want it served up, but not listed as a public agent network
+        "serve": true,
+        "public": false
+    },
+    "cruse_widget_agent.hocon": {
+        # This is a support network for Cruse Interface
+        # We want it served up, but not listed as a public agent network
+        "serve": true,
+        "public": false
+    },
 }
