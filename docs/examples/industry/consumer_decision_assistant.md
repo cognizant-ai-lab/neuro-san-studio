@@ -53,7 +53,7 @@ and budget.
 2 nights, 2 guests, need parking and Wi-Fi. Hotel or vacation rental is fine.
 ```
 
-### AI (decision_consultant)
+### AI (decision_consultant : travel_decision_specialist)
 
 ```text
 I've researched accommodation options in downtown Santa Cruz for 2 nights this weekend for 2 guests with parking and
@@ -105,7 +105,7 @@ Would you like me to provide booking links or additional details about any of th
 ### Primary Domains (Tools called by the Frontman)
 
 1. **retail_decision_specialist**
-   - Assists with retail purchase decisions for electronics, home goods, and clothing.
+   - Assists with retail purchase decisions all the way from home goods to cars.
    - Delegates to:
      - `product_researcher` - Researches products via external networks: [macys](../../../registries/industry/macys.hocon), [carmax](../../../registries/industry/carmax.hocon)
      - `price_comparison_agent` - Compares prices across retailers via: [macys](../../../registries/industry/macys.hocon), [carmax](../../../registries/industry/carmax.hocon)
@@ -154,3 +154,32 @@ The system integrates with six external B2C business agent networks:
 6. **[LinkedInJobSeekerSupportNetwork](../../../registries/industry/LinkedInJobSeekerSupportNetwork.hocon)** - Job search and career information
 
 **Note**: Agents interacting with external networks are instructed to protect consumer interests, as these networks represent corporate entities whose goals may not fully align with the user's needs.
+
+---
+
+## External Dependencies
+
+**DuckDuckGo Search API** (`/tools/ddgs_search`)
+
+The downstream B2C business networks rely on the DuckDuckGo search API to simulate web searches and return information:
+
+- **Networks using DuckDuckGo**: airbnb, booking, expedia, carmax, LinkedInJobSeekerSupportNetwork (5 out of 6)
+- **Network NOT using DuckDuckGo**: macys (uses internal knowledge/simulation only)
+- **Quota Limitation**: Subject to DuckDuckGo's daily search quota limits
+- **Purpose**: Simulates web searches to return URLs and business information in response to consumer queries
+
+**Important**: If DuckDuckGo quota limits are reached, the affected downstream networks may fail to provide search results, impacting the consumer decision assistant's ability to research options across travel, career, and automotive domains.
+
+---
+
+## Testing
+
+This agent network includes comprehensive test coverage:
+
+[consumer_decision_assistant_comprehensive.hocon](../../../tests/fixtures/industry/consumer_decision_assistant_comprehensive.hocon) - Tests all major domain specialists (travel, automotive, career, retail) with independent single-turn questions
+
+Run tests using:
+```bash
+# Run comprehensive domain test
+pytest tests/integration/test_integration_test_hocons.py -k "comprehensive"
+```
