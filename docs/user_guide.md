@@ -506,9 +506,9 @@ See [agent network documentation](https://github.com/cognizant-ai-lab/neuro-san/
 for more details.
 
 <!-- pyml disable line-length -->
-Note that if your ollama model is not listed in 
-[default_LLM_info.hocon file](https://github.com/cognizant-ai-lab/neuro-san/blob/main/neuro_san/internals/run_context/langchain/llms/default_llm_info.hocon#L1005) it might throw an 404 error, in which case explicitly adding the class should help.
+Note that if your ollama model is not listed in [default_LLM_info.hocon file](https://github.com/cognizant-ai-lab/neuro-san/blob/main/neuro_san/internals/run_context/langchain/llms/default_llm_info.hocon#L1005) it might throw an 404 error, in which case explicitly adding the class should help.
 <!-- pyml enable line-length -->
+
 ```hocon
     "llm_config": {
             "class" : "ollama",
