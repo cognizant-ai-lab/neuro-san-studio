@@ -505,6 +505,19 @@ you can increase it by setting the `max_execution_seconds` key in the agent netw
 See [agent network documentation](https://github.com/cognizant-ai-lab/neuro-san/blob/main/docs/agent_hocon_reference.md#max_execution_seconds)
 for more details.
 
+<!-- pyml disable line-length -->
+Note that if your ollama model is not listed in 
+[default_LLM_info.hocon file](https://github.com/cognizant-ai-lab/neuro-san/blob/main/neuro_san/internals/run_context/langchain/llms/default_llm_info.hocon#L1005) it might throw an 404 error, in which case explicitly adding the class should help.
+<!-- pyml enable line-length -->
+```hocon
+    "llm_config": {
+            "class" : "ollama",
+            "model_name": "llama3.1:8b",
+        }
+```
+
+For more information about using unlisted ollama models with neuro-san, please refer to the [agent hocon reference](https://github.com/cognizant-ai-lab/neuro-san/blob/main/docs/agent_hocon_reference.md#model_name).
+
 #### Using Ollama in Docker or Remote Server
 
 By default, Ollama listens on `http://127.0.0.1:11434`. However, if you are running Ollama inside Docker or
