@@ -37,6 +37,20 @@ This agent is **disabled by default**. To test it,
   pip install -U langchain-google-community\[gmail\]
   ```
 
+Here are the package versions from the last successful test:
+
+```
+google-api-core==2.28.1
+google-api-python-client==2.187.0
+google-auth==2.41.1
+google-auth-httplib2==0.3.0
+google-auth-oauthlib==1.2.3
+google-cloud-core==2.5.0
+google-cloud-modelarmor==0.3.0
+googleapis-common-protos==1.72.0
+langchain-google-community==3.0.2
+```
+
 - Get `credentials.json` by following the instructions from [authorize_credentials_for_a_desktop_application.](
     https://developers.google.com/workspace/gmail/api/quickstart/python#authorize_credentials_for_a_desktop_application)
     and place it at the top level of the repo.
