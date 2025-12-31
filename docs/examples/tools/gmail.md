@@ -37,7 +37,7 @@ This agent is **disabled by default**. To test it,
   pip install -U langchain-google-community\[gmail\]
   ```
 
-Here are the package versions from the last successful test:
+Here are the package versions from the last successful test (neuro-san==0.6.21):
 
 ```
 google-api-core==2.28.1
