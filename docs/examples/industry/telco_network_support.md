@@ -56,64 +56,38 @@ Started yesterday around 2 PM. Drops last about 5-10 minutes. Address is 123 Mai
 ### AI (customer_support_rep)
 
 ```text
-Thank you for the detailed information. I've initiated a diagnostic investigation for your location at 123 Main Street, Suite 500. Here's what we're doing:
+To address the intermittent connectivity issues at your downtown office, both the Network Operations Center Specialist and the Field Technician are involved. Here's how we can proceed to diagnose and fix the problem:
 
-**Immediate Actions Taken:**
+1. Network Operations Center Specialist:
+   - Remote Analysis:
+     - Check the physical connections and cables for damage or loose connections.
+     - Verify the status of the network switches and routers.
+     - Review network logs for error messages or patterns.
+     - Conduct a network performance assessment to identify potential congestion or bottlenecks.
+     - Update network device firmware and drivers if needed.
 
-1. **Network Monitoring Analysis** (In Progress)
-   - Our Network Operations Center is reviewing your connection logs from the past 48 hours
-   - Analyzing traffic patterns and error rates on your circuit
-   - Checking for equipment alerts or performance degradation signals
+2. Field Technician:
+   - Onsite Inspection:
+     - Coordinate with a network engineer for diagnosing network issues.
+     - Access and inspect network equipment at your premises.
 
-2. **Initial Findings**
-   - NOC has identified intermittent packet loss starting at 2:15 PM yesterday
-   - Pattern suggests potential issue with optical transceiver or fiber connection
-   - No outages reported in your area, issue appears isolated to your circuit
+Steps to Resolve:
+- Assign to Network Support Team: Involve the network support team for diagnosis and resolution.
+- Initial Diagnosis:
+  - Check for known outages or issues in your area.
+  - Review service logs for relevant events or errors.
+- Physical Inspection:
+  - Inspect cabling and connections for wear or damage.
+  - Examine network devices for errors or unusual behavior.
+- Configuration Review:
+  - Verify network settings and IP/DNS configurations.
+- Testing and Monitoring:
+  - Conduct connectivity tests and monitor network performance.
 
-3. **Recommended Next Steps**
+If you'd like us to coordinate efforts between the Network Operations Center Specialist and the Field Technician to comprehensively address the issue, please let us know.
 
-   **Option A: Remote Troubleshooting (Fastest)**
-   - NOC specialist can perform remote diagnostics on your customer premises equipment (CPE)
-   - Test optical signal levels and circuit performance
-   - Timeline: 30-45 minutes
-   - May resolve issue if it's configuration-related
-
-   **Option B: Onsite Field Service**
-   - Schedule field technician to inspect physical connections and equipment
-   - Replace optical transceiver or patch cables if faulty
-   - Timeline: Technician available today between 4-6 PM or tomorrow 8-10 AM
-   - Recommended if remote diagnostics don't resolve the issue
-
-**My Recommendation**: Start with Option A (remote troubleshooting) right now. If we can't resolve it remotely, I'll immediately schedule the field technician for today's 4-6 PM window to minimize your downtime.
-
-Would you like me to proceed with the remote diagnostics now?
 ```
 
-### Human
-
-```text
-Yes, let's start with remote diagnostics now.
-```
-
-### AI (customer_support_rep)
-
-```text
-Perfect! I'm connecting you with our Network Operations Center specialist who will perform the remote diagnostics. They'll be working on your circuit for the next 30-45 minutes.
-
-**What to Expect:**
-- NOC specialist will monitor your connection in real-time
-- You may experience brief (1-2 minute) service interruptions during testing
-- They'll test optical signal strength, circuit configuration, and equipment status
-
-I'll stay assigned to your case and follow up with you once diagnostics are complete. You should receive:
-1. Real-time updates if any issues are found
-2. A full diagnostic report within the next hour
-3. Immediate notification if field service dispatch is needed
-
-**Case Number**: NET-20251228-0547
-
-I'll contact you via this channel as soon as we have results. Is there a backup phone number where we can reach you if needed?
-```
 
 ---
 
@@ -189,5 +163,19 @@ customer_support_rep
 **None**
 
 This agent network operates using internal knowledge and does not rely on external APIs or web search services. All network diagnostics, project coordination, and customer service operations are handled through the internal agent hierarchy and simulated technical knowledge.
+
+---
+
+## Testing
+
+This agent network includes test coverage:
+
+[telco_network_support_test.hocon](../../../tests/fixtures/industry/telco_network_support_test.hocon) - Tests basic network support inquiry handling with network outage scenario
+
+Run tests using:
+```bash
+# Run telco network support test
+pytest tests/integration/test_integration_test_hocons.py -k "telco_network_support"
+```
 
 ---
