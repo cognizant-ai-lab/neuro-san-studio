@@ -14,7 +14,7 @@
 #
 # END COPYRIGHT
 {
-    include "registries/aaosa.hocon"
+    include "registries/aaosa.hocon",
 
     "metadata": {
         "description": "Multi-agent system that provides help with real estate transaction inquiries. The top-level agent receives a question and, in coordination with down-chain agents, provides an answer. Includes Buyer, Seller, and Listing agents that form a tree-shaped network multiple layers deep. Some agents call coded tools such as the Brave search API for property listings and inspections.",
@@ -24,11 +24,13 @@
             "I want to sell my property, what do I need to do?",
             "Find me listings for 3-bedroom houses in San Francisco under $1 million"
         ]
-    }
-
-    "llm_config": {
-        "model_name": "gpt-4o"
     },
+
+    # Load the shared LLM configuration from a single source of truth.
+    # This allows users to change the model in one file rather than
+    # modifying the configuration for each agent network.
+    # Note that the file path here is relative to the root level of the repo.
+    include "registries/llm_config.hocon",
     "instructions_prefix": """
 You are in charge of a portion of company's realestate consulting services. The company is known as RealEstate.ai.
 Only answer inquiries that are directly within your area of expertise, from the company's perspective.
