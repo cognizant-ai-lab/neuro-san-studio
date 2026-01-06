@@ -58,6 +58,7 @@ class NeuroSanRunner:
             "default_sly_data": str(os.getenv("DEFAULT_SLY_DATA", "")),
             "nsflow_host": os.getenv("NSFLOW_HOST", "localhost"),
             "nsflow_port": int(os.getenv("NSFLOW_PORT", "4173")),
+            "nsflow_plugin_cruse": os.getenv("NSFLOW_PLUGIN_CRUSE", "false"),
             "log_level": os.getenv("LOG_LEVEL", "info"),
             "vite_api_protocol": os.getenv("VITE_API_PROTOCOL", "http"),
             "vite_ws_protocol": os.getenv("VITE_WS_PROTOCOL", "ws"),
@@ -208,9 +209,11 @@ class NeuroSanRunner:
                 print(f"NEURO_SAN_WEB_CLIENT_PORT set to: {os.environ['NEURO_SAN_WEB_CLIENT_PORT']}")
             else:
                 os.environ["NSFLOW_PORT"] = str(self.args["nsflow_port"])
+                os.environ["NSFLOW_PLUGIN_CRUSE"] = str(self.args["nsflow_plugin_cruse"])
                 os.environ["VITE_API_PROTOCOL"] = str(self.args["vite_api_protocol"])
                 os.environ["VITE_WS_PROTOCOL"] = str(self.args["vite_ws_protocol"])
                 print(f"NSFLOW_PORT set to: {os.environ['NSFLOW_PORT']}")
+                print(f"NSFLOW_PLUGIN_CRUSE set to: {os.environ['NSFLOW_PLUGIN_CRUSE']}")
                 print(f"VITE_API_PROTOCOL set to: {os.environ['VITE_API_PROTOCOL']}")
                 print(f"VITE_WS_PROTOCOL set to: {os.environ['VITE_WS_PROTOCOL']}")
                 # Set env variable for using nsflow in client-only mode
