@@ -129,6 +129,9 @@
     #     pip install wikipedia
     "tools/wikipedia_rag.hocon": false,
 
+    # Wikimedia media search
+    "tools/wikimedia_search.hocon": true,
+
     # To use this agent network, start by installing the required package:
     #     pip install arxiv
     "tools/arxiv_rag.hocon": false,
@@ -228,4 +231,6 @@
         "serve": true,
         "public": false
     },
+
+    "generated/ecommerce_customer_support.hocon": true,
 }
