@@ -14,11 +14,15 @@
 #
 # END COPYRIGHT
 
+import json
 import logging
+import urllib.error
 import urllib.parse
 import urllib.request
-import json
-from typing import Any, Dict, List, Union
+from typing import Any
+from typing import Dict
+from typing import List
+from typing import Union
 
 from neuro_san.interfaces.coded_tool import CodedTool
 
@@ -36,12 +40,7 @@ class WikimediaMediaSearch(CodedTool):
     TIMEOUT_SECONDS = 10
 
     # MIME type prefixes for filtering
-    MIME_TYPE_PREFIXES = {
-        "image": "image/",
-        "audio": "audio/",
-        "video": "video/",
-        "all": ""  # No filtering
-    }
+    MIME_TYPE_PREFIXES = {"image": "image/", "audio": "audio/", "video": "video/", "all": ""}
 
     def invoke(self, args: Dict[str, Any], sly_data: Dict[str, Any]) -> Union[Dict[str, Any], str]:
         """
@@ -68,14 +67,14 @@ class WikimediaMediaSearch(CodedTool):
         query: str = args.get("query", "").strip()
         if not query:
             error = "Error: Please provide a search query for finding media."
-            logger.debug(error)
+            logger.debug("%s", error)
             return error
 
         # Get media_type parameter (default: "image")
         media_type: str = args.get("media_type", "image").lower()
         if media_type not in self.MIME_TYPE_PREFIXES:
             error = f"Error: Invalid media_type '{media_type}'. Must be one of: image, audio, video, all"
-            logger.debug(error)
+            logger.debug("%s", error)
             return error
 
         # Get limit parameter (default 1, max 10)
@@ -96,7 +95,7 @@ class WikimediaMediaSearch(CodedTool):
 
             if not search_results:
                 message = f"No {media_type} files found on Wikimedia Commons for query: '{query}'"
-                logger.debug(message)
+                logger.debug("%s", message)
                 return message
 
             # Step 2: Get media info and filter by MIME type
@@ -104,7 +103,7 @@ class WikimediaMediaSearch(CodedTool):
 
             if not media_urls:
                 message = f"Found files but no {media_type} files matched for query: '{query}'"
-                logger.debug(message)
+                logger.debug("Found files but no %s files matched for query: '%s'", media_type, query)
                 return message
 
             # Format the response
@@ -113,9 +112,9 @@ class WikimediaMediaSearch(CodedTool):
             logger.debug(">>>>>>>>>>>>>>>>>>> DONE !!! >>>>>>>>>>>>>>>>>>")
             return response
 
-        except Exception as e:
-            error = f"Error searching Wikimedia Commons: {str(e)}"
-            logger.error(error, exc_info=True)
+        except (urllib.error.HTTPError, urllib.error.URLError, TimeoutError, json.JSONDecodeError, ValueError) as exc:
+            error = f"Error searching Wikimedia Commons: {str(exc)}"
+            logger.error("%s", error, exc_info=True)
             return error
 
     def _search_files(self, query: str, limit: int, offset: int = 0) -> List[str]:
@@ -136,23 +135,24 @@ class WikimediaMediaSearch(CodedTool):
             "srnamespace": "6",  # File namespace
             "srlimit": str(min(limit, 50)),  # API max is 50
             "srprop": "snippet",
-            "sroffset": str(offset)  # Pagination offset
+            "sroffset": str(offset),  # Pagination offset
         }
 
         url = f"{self.WIKIMEDIA_API_ENDPOINT}?{urllib.parse.urlencode(params)}"
-        logger.debug(f"Searching files with URL: {url}")
+        logger.debug("Searching files with URL: %s?%s", self.WIKIMEDIA_API_ENDPOINT, urllib.parse.urlencode(params))
 
         # Create request with User-Agent header (required by Wikimedia)
-        request = urllib.request.Request(url, headers={'User-Agent': self.USER_AGENT})
+        request = urllib.request.Request(url, headers={"User-Agent": self.USER_AGENT})
         with urllib.request.urlopen(request, timeout=self.TIMEOUT_SECONDS) as response:
-            data = json.loads(response.read().decode('utf-8'))
+            data = json.loads(response.read().decode("utf-8"))
 
         search_results = data.get("query", {}).get("search", [])
         file_titles = [result["title"] for result in search_results]
 
-        logger.debug(f"Found {len(file_titles)} files: {file_titles}")
+        logger.debug("Found %s files: %s", len(file_titles), file_titles)
         return file_titles
 
+    # pylint: disable=too-many-locals
     def _get_media_urls(self, file_titles: List[str], media_type: str, limit: int) -> List[Dict[str, str]]:
         """
         Get direct media URLs for the given file titles, filtered by media type.
@@ -172,22 +172,23 @@ class WikimediaMediaSearch(CodedTool):
             "titles": "|".join(file_titles),
             "prop": "imageinfo",
             "iiprop": "url|size|mime|extmetadata",
-            "iiurlwidth": "1024"  # Get a reasonably sized thumbnail for images
+            "iiurlwidth": "1024",  # Get a reasonably sized thumbnail for images
         }
 
         url = f"{self.WIKIMEDIA_API_ENDPOINT}?{urllib.parse.urlencode(params)}"
-        logger.debug(f"Getting media URLs with URL: {url}")
+        logger.debug("Getting media URLs with URL: %s", url)
 
         # Create request with User-Agent header (required by Wikimedia)
-        request = urllib.request.Request(url, headers={'User-Agent': self.USER_AGENT})
+        request = urllib.request.Request(url, headers={"User-Agent": self.USER_AGENT})
         with urllib.request.urlopen(request, timeout=self.TIMEOUT_SECONDS) as response:
-            data = json.loads(response.read().decode('utf-8'))
+            data = json.loads(response.read().decode("utf-8"))
 
         pages = data.get("query", {}).get("pages", {})
         mime_prefix = self.MIME_TYPE_PREFIXES[media_type]
 
         media_data = []
         for page_id, page_info in pages.items():
+            _ = page_id  # Unused
             if "imageinfo" in page_info and len(page_info["imageinfo"]) > 0:
                 img_info = page_info["imageinfo"][0]
                 mime_type_value = img_info.get("mime", "")
@@ -215,18 +216,20 @@ class WikimediaMediaSearch(CodedTool):
                         description = description[:147] + "..."
 
                 if media_url:
-                    media_data.append({
-                        "title": title,
-                        "url": media_url,
-                        "mime": mime_type_value,
-                        "description": description or "No description available"
-                    })
+                    media_data.append(
+                        {
+                            "title": title,
+                            "url": media_url,
+                            "mime": mime_type_value,
+                            "description": description or "No description available",
+                        }
+                    )
 
                     # Stop once we have enough results
                     if len(media_data) >= limit:
                         break
 
-        logger.debug(f"Retrieved {len(media_data)} {media_type} URLs")
+        logger.debug("Retrieved %s %s URLs", len(media_data), media_type)
         return media_data
 
     def _format_response(self, query: str, media_urls: List[Dict[str, str]], media_type: str) -> str:
@@ -245,7 +248,7 @@ class WikimediaMediaSearch(CodedTool):
             response_lines.append(f"{i}. {media['title']}")
             response_lines.append(f"   URL: {media['url']}")
             response_lines.append(f"   Type: {media['mime']}")
-            if media['description'] and media['description'] != "No description available":
+            if media["description"] and media["description"] != "No description available":
                 response_lines.append(f"   Description: {media['description']}")
             response_lines.append("")  # Empty line for readability
 
