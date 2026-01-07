@@ -23,6 +23,7 @@ Here are a few examples ordered by level of complexity.
     - [OpenAI Video Generation](#openai-video-generation)
     - [OpenAI Web Search](#openai-web-search)
     - [Gemini Image Generation](#gemini-image-generation)
+    - [Wikimedia Search](#wikimedia-search)
     - [Gmail Assistant](#gmail-assistant)
     - [Agent Network HTML Creator](#agent-network-html-creator)
     - [Agentforce](#agentforce)
@@ -204,6 +205,15 @@ that interfaces with Gemini's image generation tool, supporting two models: the 
 resolutions (up to 4K), multiple aspect ratios, and optional Google Search integration for enhanced context.
 
 **Tags** `tool`, `image`, `Gemini`
+
+### Wikimedia Search
+
+[Wikimedia Search](examples/wikimedia_search.md) is an agent network designed to help users find authentic URLs to
+multimedia content such as images, videos, and audio files from Wikimedia Commons. It provides direct media URLs with
+proper file extensions, supports pagination for diverse results, and employs smart query optimization strategies to
+deliver the best matching media files for user descriptions.
+
+**Tags:** `tool`, `API`, `multi-media`
 
 ### Gmail Assistant
 

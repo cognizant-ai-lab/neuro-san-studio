@@ -437,6 +437,40 @@
             "required": ["query"]
         }
     },
+
+    # Wikimedia Media search tool for retrieving image, audio, and video URLs from Wikimedia Commons.
+    "wikimedia_media_search": {
+        "class": "tools.wikimedia_media_search.WikimediaMediaSearch",
+        "description": """
+        Searches Wikimedia Commons for media files (images, audio, video) and returns direct URLs with proper file extensions.
+This tool is excellent for finding high-quality, properly licensed multimedia content from Wikimedia Commons.
+Supports searching for images, audio files (mp3, ogg, flac, wav), and video files (webm, ogv, mp4).
+        """,
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "query": {
+                    "type": "string",
+                    "description": """The search query with KEYWORDS ONLY (no conversational phrases). Extract key terms from user request. 
+                    Examples: 'nature video' (NOT 'show me nice nature video'), 'Einstein' (NOT 'photos of Einstein'), 'rain sound' (NOT 'find me rain sounds').
+                    For videos, include 'video', 'timelapse', or 'animation'. For audio, include 'sound' or 'audio'."""
+                },
+                "media_type": {
+                    "type": "string",
+                    "description": "Type of media to search for: 'image', 'audio', 'video', or 'all' (default: 'image')"
+                },
+                "limit": {
+                    "type": "int",
+                    "description": "Maximum number of results to return (default: 1, maximum: 10)"
+                },
+                "offset": {
+                    "type": "int",
+                    "description": "Result offset for pagination (default: 0). Use 10, 20, 30, etc. to get different sets of results from the same query."
+                }
+            },
+            "required": ["query"]
+        }
+    },
     
     # To use this tool, start by installing the required package:
     #     pip install arxiv
