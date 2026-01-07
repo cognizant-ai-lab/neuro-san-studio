@@ -89,9 +89,9 @@ test: lint ## Run tests with coverage
 test-integration: install
 	@. venv/bin/activate && \
 	export PYTHONPATH=`pwd` && \
-	export AGENT_TOOL_PATH=tests/coded_tools/ && \
-	export AGENT_MANIFEST_FILE=tests/registries/manifest.hocon && \
-	pytest -s -m "integration"
+	export AGENT_TOOL_PATH=coded_tools/ && \
+	export AGENT_MANIFEST_FILE=registries/manifest.hocon && \
+	pytest -s -m "integration" --timer-top-n 100
 
 help: ## Show this help message and exit
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | \

@@ -46,16 +46,51 @@ class TestIntegrationTestHocons(TestCase):
                 # These can be in any order.
                 # Ideally more basic functionality will come first.
                 # Barring that, try to stick to alphabetical order.
+                "basic/music_nerd_pro/combination_responses_with_history_direct.hocon",
                 "industry/telco_network_support_test.hocon",
                 "industry/consumer_decision_assistant_comprehensive.hocon",
-                "music_nerd_pro/combination_responses_with_history_direct.hocon",
                 # List more hocon files as they become available here.
             ]
-        )
+        ),
+        skip_on_empty=True,
     )
-    @pytest.mark.timeout(90)  # 90 seconds for this test
     @pytest.mark.integration
-    def test_hocon(self, test_name: str, test_hocon: str):
+    @pytest.mark.integration_basic
+    def test_hocon_basic(self, test_name: str, test_hocon: str):
+        """
+        Test method for a single parameterized test case specified by a hocon file.
+        Arguments to this method are given by the iteration that happens as a result
+        of the magic of the @parameterized.expand annotation above.
+
+        :param test_name: The name of a single test.
+        :param test_hocon: The hocon file of a single data-driven test case.
+        """
+        # Call the guts of the dynamic test driver.
+        # This will expand the test_hocon file name from the expanded list to
+        # include the file basis implied by the __file__ and path_to_basis above.
+        self.DYNAMIC.one_test_hocon(self, test_name, test_hocon)
+
+    @parameterized.expand(
+        DynamicHoconUnitTests.from_hocon_list(
+            [
+                # These can be in any order.
+                # Ideally more basic functionality will come first.
+                # Barring that, try to stick to alphabetical order.
+                "industry/airline_policy/basic_eco_carryon_baggage.hocon",
+                "industry/airline_policy/basic_eco_checkin_baggage_at_gate_fee.hocon",
+                "industry/airline_policy/basic_eco_checkin_baggage.hocon",
+                "industry/airline_policy/general_carryon_other_items",
+                "industry/airline_policy/general_carryon_baggage_size.hocon",
+                "industry/airline_policy/general_carryon_person_item.hocon",
+                "industry/airline_policy/general_carryon_person_item_size.hocon",
+                # List more hocon files as they become available here.
+            ]
+        ),
+        skip_on_empty=True,
+    )
+    @pytest.mark.integration
+    @pytest.mark.integration_industry
+    def test_hocon_industry(self, test_name: str, test_hocon: str):
         """
         Test method for a single parameterized test case specified by a hocon file.
         Arguments to this method are given by the iteration that happens as a result
