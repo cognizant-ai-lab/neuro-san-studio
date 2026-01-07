@@ -230,7 +230,5 @@
         # We want it served up, but not listed as a public agent network
         "serve": true,
         "public": false
-    },
-
-    "generated/ecommerce_customer_support.hocon": true,
+    }
 }
