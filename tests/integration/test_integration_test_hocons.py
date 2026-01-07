@@ -87,9 +87,11 @@ class TestIntegrationTestHocons(TestCase):
                 "industry/airline_policy/general_carryon_baggage_size.hocon",
                 "industry/airline_policy/general_carryon_person_item.hocon",
                 "industry/airline_policy/general_checkin_baggage_liquid_items.hocon",
-                "industry/airline_policy/general_children_seat.hocon",
+                "industry/airline_policy/general_child_car_seat.hocon",
+                "industry/airline_policy/general_children_seating.hocon",
+                "industry/airline_policy/general_family_with_children.hocon",
                 "industry/airline_policy/premier_gold_checkin_baggage_weights.hocon",
-                "industry/airline_policy/premium_eco_checkin_baggage_weights.hocon"
+                "industry/airline_policy/premium_eco_checkin_baggage_weights.hocon",
                 # List more hocon files as they become available here.
             ]
         ),
