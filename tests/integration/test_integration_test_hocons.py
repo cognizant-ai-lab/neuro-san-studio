@@ -81,6 +81,7 @@ class TestIntegrationTestHocons(TestCase):
                 "industry/airline_policy/basic_eco_checkin_baggage_at_gate_fee.hocon",
                 "industry/airline_policy/basic_eco_checkin_baggage.hocon",
                 "industry/airline_policy/general_baggage_tracker.hocon",
+                "industry/airline_policy/general_carryon_baggage_liquid_items.hocon",
                 "industry/airline_policy/general_carryon_person_item_size.hocon",
                 "industry/airline_policy/general_carryon_other_items.hocon",
                 "industry/airline_policy/general_carryon_baggage_size.hocon",
