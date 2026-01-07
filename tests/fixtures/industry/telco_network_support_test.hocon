@@ -1,0 +1,45 @@
+# Copyright © 2025 Cognizant Technology Solutions Corp, www.cognizant.com.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
+# END COPYRIGHT
+
+# Simple test case for telco_network_support agent network
+# Tests basic network support inquiry handling
+{
+    # Describes what agent to test against
+    "agent": "industry/telco_network_support",
+
+    # Connect to the agent directly (no server required for testing)
+    "connections": ["direct"],
+
+    # Timeout for the entire test (5 minutes)
+    "timeout_in_seconds": 300,
+
+    # Interactions are a series of dictionaries with request elements paired with
+    # descriptions of response checks
+    "interactions": [
+        {
+            # Simple network support inquiry
+            "text": "We're experiencing network outages at our Boston office",
+
+            # Test that the assistant responds by asking for more details
+            "response": {
+                "text": {
+                    # The gist test checks if the response matches the general meaning
+                    "gist": "The assistant should ask for additional details about the network issue such as the specific location address, type of network service (ethernet/optical), when the outage started, error messages, number of affected users, or service ID."
+                }
+            }
+        }
+    ]
+}
