@@ -48,13 +48,28 @@
 
     # Experimental and research
     "agent_network_designer.hocon": false,              # Reason #1
-    "agent_network_editor.hocon": false,                # Reason #1
-    "agent_network_instructions_editor.hocon": false,   # Reason #1
-    "agent_network_query_generator.hocon": false,       # Reason #1
+    "agent_network_editor.hocon": {
+        "serve": false,                                 # Reason #1
+        "public": false
+    },
+    "agent_network_instructions_editor.hocon": {
+        "serve": false,                                 # Reason #1
+        "public": false
+    },
+    "agent_network_query_generator.hocon": {
+        "serve": false,                                 # Reason #1
+        "public": false
+    },
 
     # Demos
 
     "tools/now_agents.hocon": false,                    # Reason #2
-    "cruse_theme_agent.hocon": false                    # Reason #1
-    "cruse_widget_agent.hocon": false                   # Reason #1
+    "cruse_theme_agent.hocon": {
+        "serve": false,                                 # Reason #1
+        "public": false
+    },
+    "cruse_widget_agent.hocon": {
+        "serve": false,                                 # Reason #1
+        "public": false
+    }
 }
