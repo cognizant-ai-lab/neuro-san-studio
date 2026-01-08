@@ -213,3 +213,17 @@ This agent network operates using internal knowledge and organizational structur
 
 ---
 
+## Testing
+
+This agent network includes test coverage:
+
+[cpg_agents_test.hocon](../../tests/fixtures/cpg_agents_test.hocon) - Tests basic supply chain inquiry handling with product launch delay scenario
+
+Run tests using:
+```bash
+# Run cpg agents test
+pytest tests/integration/test_integration_test_hocons.py -k "cpg_agents"
+```
+
+---
+
