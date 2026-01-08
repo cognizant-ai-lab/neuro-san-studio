@@ -31,12 +31,13 @@
     #   1. Knowledge or modification of the server's local filesystem.
     #   2. Have specific external account settings that are not generally available.
     #   3. Makes use of tools that execute external processes via shell commands.
-    #   4. Requires use of external services not easily deployed (like databases)
+    #   4. Requires use of external services not readily deployed by the average bear
+    #      (like databases)
     #
     # To use this file, we simply add a reference to it at the end of our existing
     # AGENT_MANIFEST_FILE specification # like this:
     #
-    #    export AGENT_MANIFEST_FILE="registries/manifest.hocon registries/manifest_no_deploy.hocon"
+    #    export AGENT_MANIFEST_FILE="registries/manifest.hocon registries/manifest_multiuser_overlay.hocon"
     #
     # Basically the data for later manifest files gets overlayed on top of earlier ones.
 
