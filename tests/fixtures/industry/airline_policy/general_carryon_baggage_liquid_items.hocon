@@ -37,6 +37,9 @@
     # descriptions of response checks.
     "interactions": [
         {
+            # Note: This text case is expected to failed 100%!!!
+            # These is no info regarding liquids in Carry-on Bags.txt file.
+            
             # This is what we send as input to streaming_chat()
             "text": """
 How should I pack liquids in my carry-on bag?
@@ -51,7 +54,7 @@ How should I pack liquids in my carry-on bag?
                     # Gist says we are going to ask an LLM about how the response
                     # matches up to our description of acceptance criteria.
                     # Each component of the list needs to pass muster in order to pass.
-                    "gist": ["""
+                    "not_gist": ["""
 Confirms that liquids in a carry-on must be 3.4 oz (100 ml) or less.
                              """]
                 }
