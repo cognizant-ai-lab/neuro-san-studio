@@ -46,6 +46,7 @@ class TestIntegrationTestHocons(TestCase):
                 # These can be in any order.
                 # Ideally more basic functionality will come first.
                 # Barring that, try to stick to alphabetical order.
+                "cpg_agents_test.hocon",
                 "industry/telco_network_support_test.hocon",
                 "industry/consumer_decision_assistant_comprehensive.hocon",
                 "music_nerd_pro/combination_responses_with_history_direct.hocon",
