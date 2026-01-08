@@ -257,9 +257,8 @@ can be set alongside `model_name`.
 A full list of available models and parameters can be found in the
 [default LLM info file](https://github.com/cognizant-ai-lab/neuro-san/blob/main/neuro_san/internals/run_context/langchain/llms/default_llm_info.hocon).
 
-> If `model_name` or `temperature` is not provided, the defaults `gpt-4o` and `0.7` will be used, respectively.
-
-> ⚠️ Different providers may require unique configurations or environment variables.
+> - If `model_name` or `temperature` is not provided, the defaults `gpt-4o` and `0.7` will be used, respectively.
+> - ⚠️ Different providers may require unique configurations or environment variables.
 
 The following sections provide details for each supported provider, including required parameters and setup instructions.
 
@@ -452,7 +451,9 @@ and specify which model to use in the `model_name` field of the `llm_config` sec
     }
 ```
 
-> For Gemini 3.0+ models, it is recommended to set `temperature` to `1.0`. Using `0.7` may lead to infinite loops, degraded reasoning performance, and failures on complex tasks. Therefore, this value should be explicitly set to avoid falling back to the default of `0.7`.
+> For Gemini 3.0+ models, it is recommended to set `temperature` to `1.0`. Using `0.7` may lead to infinite loops,
+degraded reasoning performance, and failures on complex tasks. Therefore, this value should be explicitly set to avoid
+falling back to the default of `0.7`.
 
 You can get an Google Gemini API [key](https://ai.google.dev/gemini-api/docs/api-key) here.
 
@@ -771,9 +772,8 @@ Example:
     }
 ```
 
-For more details, see the [
-documentation](https://docs.langchain.com/oss/python/integrations/chat/google_generative_ai#thinking-support)
-
+For more details, see the
+[documentation](https://docs.langchain.com/oss/python/integrations/chat/google_generative_ai#thinking-support)
 
 ### Ollama Models
 
