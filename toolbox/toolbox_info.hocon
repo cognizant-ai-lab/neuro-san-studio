@@ -158,6 +158,42 @@
         }
     },
 
+    # ---------- Gemini Image Generation Tools ----------
+    # Requirement to use this agent network:
+    # - google-genai
+    # - GOOGLE_API_KEY
+    # Note: If `langchain-google-genai` is already installed in your environment, `google-genai` is already included.
+    # See also:
+    # - https://ai.google.dev/gemini-api/docs
+    # - https://ai.google.dev/gemini-api/docs/nanobanana
+    # - https://ai.google.dev/gemini-api/docs/image-generation
+    "gemini_image_generation": {
+        "class": "tools.gemini_image_generation.GeminiImageGeneration",
+        "description": "Tool that generates image using Gemini models",
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "query": {
+                    "type": "string",
+                    "description": "The prompt for image generation."
+                },
+                "aspect_ratio": {
+                    "type": "string",
+                    "description": "Aspect ratio of the generated image (allowed values: 1:1, 2:3, 3:2, 3:4, 4:3, 4:5, 5:4, 9:16, 16:9, 21:9)."
+                },
+                "image_size": {
+                    "type": "string",
+                    "description": "Size of the generated image (allowed values: 1K, 2K, and 4K)."
+                },
+                "google_search": {
+                    "type": "boolean",
+                    "description": "Whether to use Google search to find information related to the query."
+                }
+            },
+            "required": ["query"]
+        }
+    },
+
     # ---------- Jira Tools ----------
     # Requirements to use this tool:
     # pip install atlassian-python-api
@@ -250,6 +286,40 @@
                     "type": "string",
                     "description": "A natural language instruction or request to be executed by the code interpreter (e.g., a math problem, plotting instruction, or data transformation)."
                 },
+            },
+            "required": ["query"]
+        }
+    },
+    "openai_image_generation": {
+        "class": "tools.openai_image_generation.OpenAIImageGeneration",
+        "description": "Tool that generates image using OpenAI tool",
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "query": {
+                    "type": "string",
+                    "description": "The prompt for image generation."
+                    # Note that the model may revise the prompt before generate the image.
+                    # Check the log for the revised prompt.
+                },
+            },
+            "required": ["query"]
+        }
+    },
+    "openai_video_generation": {
+        "class": "tools.openai_video_generation.OpenAIVideoGeneration",
+        "description": "Tool that generates video using OpenAI models",
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "query": {
+                    "type": "string",
+                    "description": "The prompt for video generation."
+                },
+                "video_id": {
+                    "type": "string",
+                    "description": "The ID of an existing video to remix. If provided, the video will be remixed based on the prompt."
+                }
             },
             "required": ["query"]
         }
@@ -362,6 +432,40 @@
                 "query": {
                     "type": "string",
                     "description": "Query for retrieval"
+                }
+            },
+            "required": ["query"]
+        }
+    },
+
+    # Wikimedia Media search tool for retrieving image, audio, and video URLs from Wikimedia Commons.
+    "wikimedia_media_search": {
+        "class": "tools.wikimedia_media_search.WikimediaMediaSearch",
+        "description": """
+        Searches Wikimedia Commons for media files (images, audio, video) and returns direct URLs with proper file extensions.
+This tool is excellent for finding high-quality, properly licensed multimedia content from Wikimedia Commons.
+Supports searching for images, audio files (mp3, ogg, flac, wav), and video files (webm, ogv, mp4).
+        """,
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "query": {
+                    "type": "string",
+                    "description": """The search query with KEYWORDS ONLY (no conversational phrases). Extract key terms from user request. 
+                    Examples: 'nature video' (NOT 'show me nice nature video'), 'Einstein' (NOT 'photos of Einstein'), 'rain sound' (NOT 'find me rain sounds').
+                    For videos, include 'video', 'timelapse', or 'animation'. For audio, include 'sound' or 'audio'."""
+                },
+                "media_type": {
+                    "type": "string",
+                    "description": "Type of media to search for: 'image', 'audio', 'video', or 'all' (default: 'image')"
+                },
+                "limit": {
+                    "type": "int",
+                    "description": "Maximum number of results to return (default: 1, maximum: 10)"
+                },
+                "offset": {
+                    "type": "int",
+                    "description": "Result offset for pagination (default: 0). Use 10, 20, 30, etc. to get different sets of results from the same query."
                 }
             },
             "required": ["query"]

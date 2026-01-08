@@ -1,0 +1,213 @@
+# Copyright © 2025 Cognizant Technology Solutions Corp, www.cognizant.com.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
+# END COPYRIGHT
+{
+    "metadata": {
+        "description": "Cruse Widget Agent that analyzes conversation context and generates appropriate JSON schema definitions for dynamic widgets. Determines what information is needed from the user and creates form specifications with proper field types, validations, and UI hints.",
+        "tags": ["widget", "json-schema", "CRUSE"],
+        "sample_queries": [
+            "I need to request time off",
+            "Help me report an expense",
+            "I want to book a meeting room"
+        ]
+    },
+
+    # Load the shared LLM configuration from a single source of truth.
+    # This allows users to change the model in one file rather than
+    # modifying the configuration for each agent network.
+    # Note that the file path here is relative to the root level of the repo.
+    include "registries/llm_config.hocon",
+
+    "tools": [
+        # Front man agent that analyzes conversation and generates widget schemas
+        {
+            "name": "widget_generator",
+
+            "function": {
+                "description": "Analyze conversation context and generate appropriate widget JSON schema for dynamic forms.",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "conversation_context": {
+                            "type": "string",
+                            "description": """
+                            The full conversation context including user messages and any previous interactions.
+                            This provides the semantic context needed to determine what information to collect.
+                            """
+                        },
+                        "user_intent": {
+                            "type": "string",
+                            "description": """
+                            A brief summary of what the user is trying to accomplish.
+                            Examples: "request_time_off", "submit_expense", "book_meeting_room"
+                            """
+                        },
+                        "previous_widget": {
+                            "type": "string",
+                            "description": """
+                            Optional. JSON string of previously generated widget if this is a follow-up.
+                            Used to refine or extend existing widget definitions.
+                            """
+                        }
+                    },
+                    "required": ["conversation_context", "user_intent"]
+                }
+            },
+
+            "instructions": """
+You are a widget generation specialist for the CRUSE (Context Reactive User Experience) system.
+Your job is to analyze conversation context and generate appropriate JSON schema definitions for dynamic widgets.
+
+IMPORTANT: Always use your template_provider tool first to get the widget schema template, examples, and available icons.
+
+## Your Process:
+
+1. **Understand the Context**
+   - Analyze the conversation to understand what the user wants to accomplish
+   - Identify what information needs to be collected from the user
+   - Determine the most appropriate field types for each piece of information
+   - **Determine if a widget is actually needed** - see "When NOT to Display a Widget" section below
+
+2. **Get the Template**
+   - Call your template_provider tool with request_type: "full"
+   - Use the template structure as your base
+   - Reference the widget_type_examples for common field patterns
+
+3. **Generate the Widget Schema**
+   - Replace all <PLACEHOLDERS> with actual values based on the conversation context
+   - Choose appropriate field types (text, number, boolean, select, date, etc.)
+   - Set proper validations (required fields, min/max values, patterns, etc.)
+   - Add helpful descriptions and examples for each field
+   - Select a creative, contextually meaningful icon from the Material Design Icons library
+     * Full library: https://github.com/google/material-design-icons/blob/master/font/MaterialIcons-Regular.codepoints
+     * Use PascalCase names (e.g., BeachAccess, FlightTakeoff, Receipt)
+     * Choose icons that capture the ESSENCE of the request (e.g., BeachAccess for vacation, Receipt for expenses)
+     * Refer to icon_guidance from your template_provider for creative examples
+   - Choose a color that fits the context (e.g., blue for business, green for success, purple for creative)
+
+4. **Return Valid JSON**
+   - Your response must be ONLY valid JSON matching the WidgetCardDefinition structure
+   - No extra text, explanations, or markdown - just the JSON object
+   - Ensure all field names are valid and consistent
+
+## When NOT to Display a Widget:
+
+If based on the conversation context, a widget is NOT necessary, return ONLY:
+{{"display": false}}
+
+A widget is NOT necessary when:
+   - User is just having a casual conversation and no input is needed from the user
+
+## When to Display a Widget:
+   - The conversation hints to any options for the user to select from
+
+## Widget Field Type Selection Guide:
+
+- **text**: Default for short string inputs (names, IDs, short descriptions)
+- **textarea**: For longer text (comments, descriptions, notes) - use x-ui.widget: "textarea"
+- **number**: For numeric values (amounts, quantities, counts)
+- **boolean**: For yes/no, true/false, enable/disable
+- **checkbox**: Alternative to boolean with different UI - use x-ui.widget: "checkbox"
+- **select**: When user must choose ONE from a fixed list - use enum array
+- **radio**: Alternative to select with different UI - use enum with x-ui.widget: "radio"
+- **multiselect**: When user can choose MULTIPLE from a list - use type: "array" with items.enum
+- **date**: For date selection - use format: "date" or "date-time"
+- **slider**: For numeric ranges (ratings, scales) - use minimum, maximum, multipleOf
+- **rating**: For star ratings - use x-ui.widget: "rating"
+- **file**: For file uploads with drag-and-drop - use x-ui.widget: "file" with accept, maxFiles (default: 1), maxSize (default: 25MB per file)
+
+## Example Output Format:
+
+{{
+  "title": "Time Off Request",
+  "description": "Submit your time off request for manager approval",
+  "icon": "CalendarMonth",
+  "color": "#1976d2",
+  "schema": {{
+    "type": "object",
+    "title": "Time Off Request Form",
+    "properties": {{
+      "startDate": {{
+        "type": "string",
+        "format": "date",
+        "title": "Start Date",
+        "description": "First day of time off"
+      }},
+      "endDate": {{
+        "type": "string",
+        "format": "date",
+        "title": "End Date",
+        "description": "Last day of time off"
+      }},
+      "reason": {{
+        "type": "string",
+        "title": "Reason",
+        "description": "Brief explanation for time off request",
+        "x-ui": {{"widget": "textarea"}}
+      }},
+      "type": {{
+        "type": "string",
+        "title": "Leave Type",
+        "enum": ["Vacation", "Sick Leave", "Personal Day", "Other"]
+      }}
+    }},
+    "required": ["startDate", "endDate", "type"]
+  }}
+}}
+
+## Key Principles:
+
+1. **Context-Aware**: Base your widget on the conversation context
+2. **User-Friendly**: Use clear labels, helpful descriptions, and appropriate field types
+3. **Complete**: Include all fields needed to accomplish the user's goal
+4. **Validated**: Set proper validations to ensure data quality
+5. **Consistent**: Always return the same JSON structure
+6. **Clean**: No extra text outside the JSON object
+
+Remember: Your output will be parsed directly as JSON, so it must be perfectly formatted.
+            """,
+
+            "tools": ["template_provider"]
+        },
+
+        # Coded tool that provides widget templates and examples
+        {
+            "name": "template_provider",
+
+            "function": {
+                "description": "Provides widget schema templates, field type examples, and available icons for widget generation.",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "request_type": {
+                            "type": "string",
+                            "enum": ["template", "examples", "icons", "full"],
+                            "description": """
+                            What information to return:
+                            - template: Just the base widget schema template
+                            - examples: Widget field type examples
+                            - icons: List of available icon names
+                            - full: All of the above plus instructions
+                            """
+                        }
+                    },
+                    "required": ["request_type"]
+                }
+            },
+
+            "class": "widget_template_provider.WidgetTemplateProvider"
+        }
+    ]
+}

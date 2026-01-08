@@ -4,55 +4,61 @@ Here are a few examples ordered by level of complexity.
 
 <!-- TOC -->
 
-* [Examples](#examples)
-  * [🔰 Basic Examples](#-basic-examples)
-    * [Music Nerd](#music-nerd)
-    * [Music Nerd Pro](#music-nerd-pro)
-    * [Music Nerd Local](#music-nerd-local)
-    * [Music Nerd Pro Local](#music-nerd-pro-local)
-    * [Music Nerd Pro Sly](#music-nerd-pro-sly)
-    * [Music Nerd Pro Sly Local](#music-nerd-pro-sly-local)
-    * [Music Nerd LLM Fallbacks](#music-nerd-llm-fallbacks)
-    * [Coffee Finder](#coffee-finder)
-    * [Coffee Finder Advanced](#coffee-finder-advanced)
-  * [🧰 Tool Integration Examples](#-tool-integration-examples)
-    * [Anthropic Code Execution](#anthropic-code-execution)
-    * [Anthropic Web Search](#anthropic-web-search)
-    * [OpenAI Code Interpreter](#openai-code-interpreter)
-    * [OpenAI Web Search](#openai-web-search)
-    * [Gmail Assistant](#gmail-assistant)
-    * [Agent Network HTML Creator](#agent-network-html-creator)
-    * [Agentforce](#agentforce)
-    * [Agentspace](#agentspace)
-    * [MCP BMI STREAMABLE HTTP](#mcp-bmi-streamable-http)
-    * [A2A RESEARCH REPORT](#a2a-research-report)
-    * [PDF RAG Assistant](#pdf-rag-assistant)
-    * [Confluence RAG Assistant](#confluence-rag-assistant)
-    * [Agentic RAG Assistant](#agentic-rag-assistant)
-    * [Wikipedia RAG Assistant](#wikipedia-rag-assistant)
-    * [ArXiv RAG Assistant](#arxiv-rag-assistant)
-    * [ServiceNow AI Agents](#servicenow-ai-agents)
-    * [Visual Question Answering](#visual-question-answering)
-  * [🏢 Industry-Specific Examples](#-industry-specific-examples)
-    * [Intranet Agents](#intranet-agents)
-    * [Intranet Agents With Tools](#intranet-agents-with-tools)
-    * [Airline Policy 360 Assistant](#airline-policy-360-assistant)
-    * [Telco Network Orchestration](#telco-network-orchestration)
-    * [Real Estate Agent](#real-estate-agent)
-    * [Consumer Decision Assistant Agents](#consumer-decision-assistant-agents)
-    * [Therapy Vignette Supervision](#therapy-vignette-supervision)
-    * [Banking Operations](#banking-operations)
-    * [Retail Operations and Customer Service Assistant](#retail-operations-and-customer-service-assistant)
-    * [Insurance Underwriting Agents](#insurance-underwriting-agents)
-    * [Sentiment Analysis of News Sources](#sentiment-analysis-of-news-sources)
-  * [🧪 Experimental and Research](#-experimental-and-research)
-    * [Agent Network Designer](#agent-network-designer)
-    * [Agent Network Architect](#agent-network-architect)
-    * [KWIK Agents](#kwik-agents)
-    * [CRUSE](#cruse)
-    * [Conscious Assistant](#conscious-assistant)
-    * [Log Analyzer](#log-analyzer)
-    * [WWAW](#wwaw)
+- [Examples](#examples)
+  - [🔰 Basic Examples](#-basic-examples)
+    - [Music Nerd](#music-nerd)
+    - [Music Nerd Pro](#music-nerd-pro)
+    - [Music Nerd Local](#music-nerd-local)
+    - [Music Nerd Pro Local](#music-nerd-pro-local)
+    - [Music Nerd Pro Sly](#music-nerd-pro-sly)
+    - [Music Nerd Pro Sly Local](#music-nerd-pro-sly-local)
+    - [Music Nerd LLM Fallbacks](#music-nerd-llm-fallbacks)
+    - [Coffee Finder](#coffee-finder)
+    - [Coffee Finder Advanced](#coffee-finder-advanced)
+  - [🧰 Tool Integration Examples](#-tool-integration-examples)
+    - [Anthropic Code Execution](#anthropic-code-execution)
+    - [Anthropic Web Search](#anthropic-web-search)
+    - [OpenAI Code Interpreter](#openai-code-interpreter)
+    - [OpenAI Image Generation](#openai-image-generation)
+    - [OpenAI Video Generation](#openai-video-generation)
+    - [OpenAI Web Search](#openai-web-search)
+    - [Gemini Image Generation](#gemini-image-generation)
+    - [Wikimedia Search](#wikimedia-search)
+    - [Gmail Assistant](#gmail-assistant)
+    - [Agent Network HTML Creator](#agent-network-html-creator)
+    - [Agentforce](#agentforce)
+    - [Agentspace](#agentspace)
+    - [MCP BMI STREAMABLE HTTP](#mcp-bmi-streamable-http)
+    - [A2A RESEARCH REPORT](#a2a-research-report)
+    - [PDF RAG Assistant](#pdf-rag-assistant)
+    - [Confluence RAG Assistant](#confluence-rag-assistant)
+    - [Agentic RAG Assistant](#agentic-rag-assistant)
+    - [Wikipedia RAG Assistant](#wikipedia-rag-assistant)
+    - [ArXiv RAG Assistant](#arxiv-rag-assistant)
+    - [ServiceNow AI Agents](#servicenow-ai-agents)
+    - [Visual Question Answering](#visual-question-answering)
+  - [🏢 Industry-Specific Examples](#-industry-specific-examples)
+    - [Intranet Agents](#intranet-agents)
+    - [Intranet Agents With Tools](#intranet-agents-with-tools)
+    - [Airline Policy 360 Assistant](#airline-policy-360-assistant)
+    - [Telco Network Orchestration](#telco-network-orchestration)
+    - [Real Estate Agent](#real-estate-agent)
+    - [Consumer Decision Assistant Agents](#consumer-decision-assistant-agents)
+    - [Therapy Vignette Supervision](#therapy-vignette-supervision)
+    - [Banking Operations](#banking-operations)
+    - [Retail Operations and Customer Service Assistant](#retail-operations-and-customer-service-assistant)
+    - [Insurance Underwriting Agents](#insurance-underwriting-agents)
+    - [Sentiment Analysis of News Sources](#sentiment-analysis-of-news-sources)
+  - [🧪 Experimental and Research](#-experimental-and-research)
+    - [Agent Network Designer](#agent-network-designer)
+    - [Agent Network Architect](#agent-network-architect)
+    - [CRUSE Theme Agent](#cruse-theme-agent)
+    - [CRUSE Widget Agent](#cruse-widget-agent)
+    - [KWIK Agents](#kwik-agents)
+    - [CRUSE](#cruse)
+    - [Conscious Assistant](#conscious-assistant)
+    - [Log Analyzer](#log-analyzer)
+    - [WWAW](#wwaw)
 
 <!-- TOC -->
 
@@ -124,10 +130,10 @@ the best option depending on the context.
 [Coffee Finder Advanced](examples/basic/coffee_finder_advanced.md) is an agent network that helps
 users find places that sell coffee and place orders.
 This is a good example to:
-* Learn how to use the `AAOSA` instructions to find and choose between options.
-* Learn how agents can ask for clarification and follow up with questions.
-* Learn how to use tools to call Python code.
-* Learn how agents can ask for additional information.
+- Learn how to use the `AAOSA` instructions to find and choose between options.
+- Learn how agents can ask for clarification and follow up with questions.
+- Learn how to use tools to call Python code.
+- Learn how agents can ask for additional information.
 
 **Tags:** `AAOSA` `tool` `time` `sly_data` `memory`
 
@@ -162,6 +168,25 @@ perform data analysis, and create computational solutions through natural langua
 
 **Tags:** `tool`, `OpenAI`
 
+### OpenAI Image Generation
+
+[OpenAI Image Generation](examples/tools/openai_image_generation.md) is an AI assistant that creates
+images from text descriptions. Users describe what they want to see in natural language, and the
+system generates and displays the corresponding image in their browser, with optional disk storage
+for generated images.
+
+**Tags:** `tool`, `image`, `OpenAI`
+
+### OpenAI Video Generation
+
+[OpenAI Video Generation](examples/tools/openai_video_generation.md) is a multi-agent system that allows users to
+create, remix, and describe videos through natural language commands. It consists of a Video Generator agent that
+coordinates with two tools: an OpenAI video generation tool (using Sora models) that creates videos from text prompts
+with configurable durations and resolutions, and a Video Describer tool that analyzes video content by extracting
+frames and generating detailed descriptions using vision-capable language models.
+
+**Tags:** `tool`, `video`, `OpenAI`
+
 ### OpenAI Web Search
 
 [OpenAI Web Search](examples/tools/openai_web_search.md) is a task-oriented agentic system designed to help users search
@@ -170,6 +195,25 @@ toolkit, providing users with accurate, up-to-date information from across the i
 natural language queries.
 
 **Tags:** `tool`, `OpenAI`
+
+### Gemini Image Generation
+
+[Gemini Image Generation](examples/tools/gemini_image_generation.md) is a single-agent system that enables users to
+create images through natural language prompts using Google's Gemini models. It consists of an Image Generator agent
+that interfaces with Gemini's image generation tool, supporting two models: the efficient `gemini-2.5-flash-image`
+(`Nano Banana`) for everyday use and the advanced `gemini-3-pro-image-preview` (`Nano Banana Pro`) which offers higher
+resolutions (up to 4K), multiple aspect ratios, and optional Google Search integration for enhanced context.
+
+**Tags** `tool`, `image`, `Gemini`
+
+### Wikimedia Search
+
+[Wikimedia Search](examples/wikimedia_search.md) is an agent network designed to help users find authentic URLs to
+multimedia content such as images, videos, and audio files from Wikimedia Commons. It provides direct media URLs with
+proper file extensions, supports pagination for diverse results, and employs smart query optimization strategies to
+deliver the best matching media files for user descriptions.
+
+**Tags:** `tool`, `API`, `multi-media`
 
 ### Gmail Assistant
 
@@ -382,6 +426,24 @@ creates an interactive HTML graph of the network, runs a live demonstration usin
 the results. This network streamlines the end-to-end workflow for building and showcasing agent systems.
 
 **Tags:** `tool`, `external_network`, `HTML`, `nsflow`, `Gmail`
+
+### CRUSE Theme Agent
+
+[CRUSE Theme Agent](examples/cruse_theme_agent.md) is an agent that can dynamically generate a json schema for any agent
+ (or given context). This json schema can be read by a UI component in the downstream to generate dynamic themes.
+ Currently this is limited to only css-based schema. It can be extended to have another sub-agent like Dall-E or nano-banana
+ to generate more dynamic backgrounds.
+
+**Tags:** `CRUSE`, `tool`, `ui`, `theme`, `background`
+
+### CRUSE Widget Agent
+
+[CRUSE Widget Agent](examples/cruse_widget_agent.md) is also a CRUSE agent that can dynamically generate a json schema
+ that represents an action card. This is useful in generating an input form-like interface by a UI component.
+ Currently supported set of fields for a widget include: boolean, checkbox, date, multi-select,
+  number, radio-group, rating, select, text area, slider.
+
+**Tags:** `CRUSE`, `tool`, `ui`, `widget`
 
 ### KWIK Agents
 

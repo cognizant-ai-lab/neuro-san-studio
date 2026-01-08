@@ -1,4 +1,5 @@
-# Copyright © 2025 Cognizant Technology Solutions Corp, www.cognizant.com.
+
+# Copyright © 2023-2025 Cognizant Technology Solutions Corp, www.cognizant.com.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -13,6 +14,10 @@
 # limitations under the License.
 #
 # END COPYRIGHT
+
+# The schema specifications for this file are documented here:
+# https://github.com/cognizant-ai-lab/neuro-san/blob/main/docs/agent_hocon_reference.md
+
 {
     # Optional metadata describing this agent network
     "metadata": {
@@ -22,11 +27,15 @@
             "Which band wrote Yellow Submarine?",
             "Where are they from?",
         ]
-    }
-
-    "llm_config": {
-        "model_name": "gpt-4o",
     },
+
+    # Load the shared LLM configuration from a single source of truth.
+    # This allows users to change the model in one file rather than
+    # modifying the configuration for each agent network.
+    # Note that the file path here is relative to the root level of the repo.
+    include "registries/llm_config.hocon",
+
+    
     "tools": [
         # This first agent definition is regarded as the "Front Man", which
         # does all the talking to the outside world/client.
@@ -48,8 +57,7 @@
 
             "function": {
 
-                # The description acts as an initial prompt. 
-
+                # The description acts as an initial prompt.
                 "description": """
 I can help with music-related inquiries.
 """
@@ -65,11 +73,17 @@ You’re Music Nerd Pro, the go-to brain for all things rock, pop, and everythin
 You’re equal parts playlist curator, music historian, and pop culture mythbuster—with a sixth sense for sonic nostalgia and a deep respect for the analog gods.
 
 This service comes for a fee. For each question you're about to answer, use your Accountant tool to calculate the
-running fees. 
+running fees.
 
-Return your answer and the running cost in a JSON message.
+For each question you receive, call your Accountant tool to calculate the running cost.
+Then answer with a JSON message that has two keys:
+1. An "answer" key whose value has the answer to the question
+2. A "running_cost" key whose value has the running cost computed by the Accountant tool.
 """,
-            "tools": ["Accountant"]
+            "tools": ["Accountant"],
+
+            # Parse any JSON in responses into the structure field of the ChatMessage.
+            "structure_formats": "json"
         },
         {
             "name": "Accountant",
@@ -82,14 +96,14 @@ to the API to get the updated running cost. If no running cost it known, pass 0.
                     "type": "object",
                     "properties": {
                         "running_cost": {
-                            "type": "string",
+                            "type": "float",
                             "description": "The current running total of the service cost."
                         },
                     },
                     "required": ["running_cost"]
                 }
             },
-            "class": "accounting.Accountant"
+            "class": "accountant.Accountant"
         },
     ]
 }

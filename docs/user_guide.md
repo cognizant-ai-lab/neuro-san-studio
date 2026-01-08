@@ -54,6 +54,11 @@
     - [External Agent Networks](#external-agent-networks)
     - [Memory](#memory)
   - [Connect with other agent frameworks](#connect-with-other-agent-frameworks)
+  - [Test](#test)
+    - [Unit test](#unit-test)
+    - [Integration Test](#integration-test)
+      - [Add test case](#add-test-case)
+      - [Run test](#run-test)
 
 <!-- TOC -->
 
@@ -504,6 +509,19 @@ If you're encountering the default 120 seconds timeouts,
 you can increase it by setting the `max_execution_seconds` key in the agent network HOCON.
 See [agent network documentation](https://github.com/cognizant-ai-lab/neuro-san/blob/main/docs/agent_hocon_reference.md#max_execution_seconds)
 for more details.
+
+<!-- pyml disable line-length -->
+Note that if your ollama model is not listed in [default_LLM_info.hocon file](https://github.com/cognizant-ai-lab/neuro-san/blob/main/neuro_san/internals/run_context/langchain/llms/default_llm_info.hocon#L1005) it might throw an 404 error, in which case explicitly adding the class should help.
+<!-- pyml enable line-length -->
+
+```hocon
+    "llm_config": {
+            "class" : "ollama",
+            "model_name": "llama3.1:8b",
+        }
+```
+
+For more information about using unlisted ollama models with neuro-san, please refer to the [agent hocon reference](https://github.com/cognizant-ai-lab/neuro-san/blob/main/docs/agent_hocon_reference.md#model_name).
 
 #### Using Ollama in Docker or Remote Server
 
@@ -1085,7 +1103,7 @@ Furthermore, please install the build requirements in your virtual environment v
     ```
 
 2. Suppose you want to debug the coded tool for `music_nerd_pro` agent network. Add the following lines of code to the
-`music_nerd_pro`'s coded tool Python file (E.g., to the first line of `invoke` method in `Accountant` [class](https://github.com/cognizant-ai-lab/neuro-san-studio/blob/main/coded_tools/basic/music_nerd_pro/accounting.py)
+`music_nerd_pro`'s coded tool Python file (E.g., to the first line of `invoke` method in `Accountant` [class](https://github.com/cognizant-ai-lab/neuro-san-studio/blob/main/coded_tools/basic/accountant.py)
 
     ```python
     import pytest
@@ -1172,3 +1190,70 @@ agent to interact with a CRM system.
 - Agentspace: [Agentspace_adapter](./examples/tools/agentspace_adapter.md) is an agent network adapter that delegates queries
 to a [Google Agentspace](https://cloud.google.com/agentspace/agentspace-enterprise/docs/overview) agent to interact with
 different data store connectors on google cloud.
+
+## Test
+
+### Unit test
+
+To run the unit test, use the following command:
+
+```bash
+make test
+```
+
+or
+
+```bash
+python -m pytest tests/ -v --cov=coded_tools,run.py -m "not integration"
+```
+
+### Integration Test
+
+#### Add test case
+
+TBD
+
+#### Run test
+
+These test cases are organized to mirror the same grouping structure defined in the network prompting logic.
+As a result, there are three supported ways to execute the tests,
+each corresponding to a specific grouping strategy.
+
+This design ensures the network prompting logic behaves as intended across different execution scopes,
+with ongoing additions of test cases to improve coverage.
+
+Please select the execution option that best aligns with the level of validation you want to perform.
+
+`--timer-top-n 100` flag is optional. It shows the top 100 slowest test cases.
+
+- Run all integration test cases:
+
+    Example:
+
+    ```bash
+    pytest -s -m "integration" --timer-top-n 100
+    ```
+
+- Run by a group or groups of those test cases:
+  
+    pytest -s -m "<name of test 1st group, 2nd, 3rd, etc.>" --timer-top-n 100
+
+    Example:
+
+    ```bash
+    pytest -s -m "integration_basic" --timer-top-n 100
+    ```
+
+- Run a single test case:
+
+    pytest -s <"relative path to test hocon">::
+    <"test class name">::
+    <"test function name">_
+    <"the order of test start from zero">_
+    <"relative path to test case & replace to "_" vs. "/"">
+
+    Example:
+
+    ```bash
+    pytest -s ./tests/integration/test_integration_test_hocons.py::TestIntegrationTestHocons::test_hocon_industry_0_industry_airline_policy_basic_eco_carryon_baggage
+    ```
