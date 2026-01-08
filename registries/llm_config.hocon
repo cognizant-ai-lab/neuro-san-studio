@@ -1,0 +1,53 @@
+# Copyright © 2025 Cognizant Technology Solutions Corp, www.cognizant.com.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
+# END COPYRIGHT
+
+{
+    # This file is NOT an agent network HOCON.
+    # It defines a set of key-value pairs for substitution, typically used in agent network HOCON files.
+    # Each key can be referenced in agent configs using the ${key} syntax.
+    # Do not define agents or tools directly here—this file only provides reusable values.
+
+    "llm_config": {
+
+        # Set the `class` key to one of the values listed below, then specify the model
+        # using the `model_name` key.
+        #
+        # The available model names for each provider can be found in the corresponding links.
+        #
+        # | LLM Provider     | `class` Value   | Links for model names |
+        # |------------------|-----------------|-----------------------|
+        # | Amazon Bedrock   | `bedrock`       | https://docs.aws.amazon.com/bedrock/latest/userguide/model-ids.html |
+        # | Anthropic        | `anthropic`     | https://docs.anthropic.com/claude/docs/models-overview |
+        # | Azure OpenAI     | `azure_openai`  | https://learn.microsoft.com/azure/ai-services/openai/concepts/models |
+        # | Google Gemini    | `gemini`        | https://ai.google.dev/gemini-api/docs/models |
+        # | NVIDIA           | `nvidia`        | https://build.nvidia.com/explore/discover |
+        # | Ollama           | `ollama`        | https://ollama.com/library |
+        # | OpenAI           | `openai`        | https://platform.openai.com/docs/models |
+        #
+        # Note:
+        # - For Ollama, the model must be downloaded locally before use.
+        # - Additional LLM parameters (e.g., `temperature`, `max_tokens`) can be configured below.
+        # - Agent-level control (e.g., `max_iterations`) can also be set here.
+        #
+        #   For more details, see:
+        #   - `neuro_san/internals/run_context/langchain/llms/default_llm_info.hocon`
+        #   - `docs/agent_hocon_reference.md`
+
+        "class": "openai",
+        "model_name": "gpt-4o",
+
+    }
+}
