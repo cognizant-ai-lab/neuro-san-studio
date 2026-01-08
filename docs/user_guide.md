@@ -32,6 +32,9 @@
   - [Reasoning Models](#reasoning-models)
     - [OpenAI and AzureOpenAI Models](#openai-and-azureopenai-models)
     - [Anthropic and Bedrock Models](#anthropic-and-bedrock-models)
+    - [Gemini Models](#gemini-models)
+      - [Thinking Level](#thinking-level)
+      - [Thinking Budget](#thinking-budget)
     - [Ollama Models](#ollama-models)
   - [Using custom or non-default LLMs](#using-custom-or-non-default-llms)
     - [Using the `class` Key](#using-the-class-key)
@@ -232,7 +235,7 @@ For more details, please check the [Agent Manifest HOCON File Reference](
 |-------------|------------------------------------------------------------------------------------------------------------------------------------------------|
 | model_name  | Name of the model to use (i.e. “gpt-4o”, “claude-3-haiku”).                                                                                    |
 | class       | Optional key for using custom models or providers. See [Using Custom or Non-Default LLMs](#using-custom-or-non-default-llms) for more details. |
-| temperature | Optional level of randomness 0.0-1.0 to use for LLM results.                                                                                   |
+| temperature | Optional parameter controlling response randomness. Higher values increase variability; lower values make outputs more deterministic. Valid range depends on the provider.                                                                                  |
 <!-- pyml enable line-length -->
 
 See next section for more information about how to specify the LLM(s) to use.
@@ -253,6 +256,8 @@ the name of the model you want. In addition, model-specific parameters (such as 
 can be set alongside `model_name`.
 A full list of available models and parameters can be found in the
 [default LLM info file](https://github.com/cognizant-ai-lab/neuro-san/blob/main/neuro_san/internals/run_context/langchain/llms/default_llm_info.hocon).
+
+> If `model_name` or `temperature` is not provided, the defaults `gpt-4o` and `0.7` will be used, respectively.
 
 > ⚠️ Different providers may require unique configurations or environment variables.
 
@@ -442,9 +447,12 @@ and specify which model to use in the `model_name` field of the `llm_config` sec
 
 ```hocon
     "llm_config": {
-        "model_name": "gemini-2.0-flash",
+        "model_name": "gemini-3-flash",
+        "temperature": 1.0
     }
 ```
+
+> For Gemini 3.0+ models, it is recommended to set `temperature` to `1.0`. Using `0.7` may lead to infinite loops, degraded reasoning performance, and failures on complex tasks. Therefore, this value should be explicitly set to avoid falling back to the default of `0.7`.
 
 You can get an Google Gemini API [key](https://ai.google.dev/gemini-api/docs/api-key) here.
 
@@ -712,9 +720,9 @@ Example:
 
 ```hocon
     "llm_config": {
-            "model_name": "bedrock-us-claude-3-7-sonnet",
-            "credentials_profile_name": "<profile_name>",
-            "region_name": "us-west-2",
+        "model_name": "bedrock-us-claude-3-7-sonnet",
+        "credentials_profile_name": "<profile_name>",
+        "region_name": "us-west-2",
         "model_kwargs": {
             "thinking": {"type": "enabled", "budget_tokens": 1024}
         }
@@ -725,6 +733,48 @@ See
 [Langchain ChatAnthropic documentation](https://reference.langchain.com/python/integrations/langchain_anthropic/ChatAnthropic/?h=chat#langchain_anthropic.chat_models.ChatAnthropic.thinking)
 for more information.
 
+### Gemini Models
+
+Some Gemini models support configurable thinking depth. Depending on the model version, this can be controlled using
+`thinking_level` (Gemini 3+) or `thinking_budget` (Gemini 2.5).
+
+#### Thinking Level
+
+For Gemini 3+ models, use `thinking_level` to control reasoning depth.
+
+| Value | Models | Description |
+|-------|--------|-------------|
+| `minimal` | Flash | Matches the "no thinking" setting for most queries |
+| `low` | Flash, Pro | Minimizes latency and cost |
+| `medium` | Flash | Balances latency/cost with reasoning depth |
+| `high` | Flash, Pro | Maximizes reasoning depth (default) |
+
+> Note that minimal does not guarantee that thinking is off.
+
+#### Thinking Budget
+
+For Gemini 2.5 models, use thinking_budget (an integer token count)
+
+- Set to `0` to disable thinking (where supported)
+
+- Set to `-1` for dynamic thinking (model decides)
+
+- Set to a positive integer to constrain token usage
+
+Example:
+
+```hocon
+    "llm_config": {
+        "model_name": "gemini-3-flash",
+        "temperature": 1.0,
+        "thinking_level": "minimal"
+    }
+```
+
+For more details, see the [
+documentation](https://docs.langchain.com/oss/python/integrations/chat/google_generative_ai#thinking-support)
+
+
 ### Ollama Models
 
 For Ollama’s [supported reasoning models](https://ollama.com/search?c=thinking),
@@ -733,7 +783,7 @@ you can control reasoning behavior using the `reasoning` field with one of the f
 - `true`: Enables reasoning mode.
 - `false`: Disables reasoning mode.
 - `null` (default): Uses the model’s default reasoning behavior.
-- 'low', 'medium', 'high'. Enables reasoning with a custom intensity level. Currently, this is only supported `gpt-oss`.
+- `low`, `medium`, `high`. Enables reasoning with a custom intensity level. Currently, this is only supported `gpt-oss`.
 
 Example:
 
