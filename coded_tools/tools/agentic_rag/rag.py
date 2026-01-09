@@ -15,6 +15,8 @@
 #
 # END COPYRIGHT
 
+"""Tool module for doing RAG from a pdf file"""
+
 from typing import Any
 from typing import Dict
 from typing import List

@@ -15,6 +15,8 @@
 #
 # END COPYRIGHT
 
+"""Tool module for reading messages from a slack channel"""
+
 import ast
 from typing import Any
 from typing import Dict

@@ -14,6 +14,7 @@
 # limitations under the License.
 #
 # END COPYRIGHT
+"""Example of how to use tools from mcp server"""
 
 from typing import Any
 from typing import Dict
