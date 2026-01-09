@@ -19,7 +19,6 @@ from __future__ import annotations
 import copy
 import json
 import logging
-import os
 import re
 import threading
 from datetime import datetime
@@ -506,7 +505,7 @@ class ProcessLogBridge:
         s = text.find("{")
         e = text.rfind("}")
         if s != -1 and e != -1 and e > s:
-            frag = text[s : e + 1]
+            frag = text[s: e + 1]
             try:
                 obj = json.loads(frag)
                 return obj if isinstance(obj, dict) else {"message": obj}

@@ -76,7 +76,7 @@ class CommandParser:
                 json_str = sly_match.group(1)
                 sly_data = loads(cls.strip_urls(json_str))
                 logger.info(f"Parsed sly_data: {sly_data}")
-                remaining_text = (text[: sly_match.start()].strip() + " " + text[sly_match.end() :].strip()).strip()
+                remaining_text = (text[: sly_match.start()].strip() + " " + text[sly_match.end():].strip()).strip()
             except JSONDecodeError as e:
                 logger.warning(f"Failed to parse sly_data: {e}")
 

@@ -409,4 +409,3 @@ class PhoenixPlugin:
                 self.phoenix_process.terminate()
             else:
                 os.killpg(os.getpgid(self.phoenix_process.pid), signal.SIGKILL)
-
