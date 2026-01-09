@@ -15,6 +15,16 @@
 #
 # END COPYRIGHT
 
+"""
+Example of how to use coded tool as a2a client.
+
+Before running this coded tool
+- `pip install a2a-sdk crewai`
+- run A2A server (servers/a2a/server.py)
+- `python server.py`
+"""
+
+
 import logging
 from typing import Any
 from typing import Dict
