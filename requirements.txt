@@ -1,5 +1,5 @@
 # Neuro SAN
-neuro-san==0.6.21
+neuro-san==0.6.23
 nsflow==0.6.5
 
 # For the airline_policy demo, to extract text from documents
