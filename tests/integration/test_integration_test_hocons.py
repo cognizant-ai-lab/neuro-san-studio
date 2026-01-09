@@ -69,6 +69,7 @@ class TestIntegrationTestHocons(TestCase):
         # Call the guts of the dynamic test driver.
         # This will expand the test_hocon file name from the expanded list to
         # include the file basis implied by the __file__ and path_to_basis above.
+
         self.DYNAMIC.one_test_hocon(self, test_name, test_hocon)
 
     @parameterized.expand(
@@ -80,10 +81,22 @@ class TestIntegrationTestHocons(TestCase):
                 "industry/airline_policy/basic_eco_carryon_baggage.hocon",
                 "industry/airline_policy/basic_eco_checkin_baggage_at_gate_fee.hocon",
                 "industry/airline_policy/basic_eco_checkin_baggage.hocon",
-                "industry/airline_policy/general_carryon_other_items",
+                "industry/airline_policy/general_baggage_tracker.hocon",
+                "industry/airline_policy/general_carryon_baggage_liquid_items.hocon",
+                "industry/airline_policy/general_carryon_person_item_size.hocon",
+                "industry/airline_policy/general_carryon_other_items.hocon",
                 "industry/airline_policy/general_carryon_baggage_size.hocon",
                 "industry/airline_policy/general_carryon_person_item.hocon",
-                "industry/airline_policy/general_carryon_person_item_size.hocon",
+                "industry/airline_policy/general_checkin_baggage_liquid_items.hocon",
+                "industry/airline_policy/general_child_car_seat.hocon",
+                "industry/airline_policy/general_child_stroller.hocon",
+                "industry/airline_policy/general_children_formula.hocon",
+                "industry/airline_policy/general_children_id_domestic_flights.hocon",
+                "industry/airline_policy/general_children_id_international_flights.hocon",
+                "industry/airline_policy/general_children_seating.hocon",
+                "industry/airline_policy/general_family_with_children.hocon",
+                "industry/airline_policy/premier_gold_checkin_baggage_weights.hocon",
+                "industry/airline_policy/premium_eco_checkin_baggage_weights.hocon",
                 # List more hocon files as they become available here.
             ]
         ),
