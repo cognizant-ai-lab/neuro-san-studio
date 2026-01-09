@@ -1,6 +1,4 @@
-"""Tool module for doing RAG from a pdf file"""
-
-# Copyright © 2025 Cognizant Technology Solutions Corp, www.cognizant.com.
+# Copyright © 2025-2026 Cognizant Technology Solutions Corp, www.cognizant.com.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -15,6 +13,8 @@
 # limitations under the License.
 #
 # END COPYRIGHT
+
+"""Tool module for doing RAG from a pdf file"""
 
 from typing import Any
 from typing import Dict
