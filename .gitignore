@@ -189,3 +189,6 @@ token.json
 
 # example files from agent networks
 TopicMemory.json
+
+# Generated agent networks by the designer
+registries/generated/
