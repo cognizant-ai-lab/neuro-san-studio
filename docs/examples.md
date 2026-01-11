@@ -379,6 +379,15 @@ collaborate to deliver bank policy-compliant responses to users, with the system
 
 **Tags:** `AAOSA`
 
+### CPG Operations Management
+
+[CPG Operations Management](examples/industry/cpg_agents.md) is a comprehensive enterprise system that coordinates global
+operations for a Consumer Packaged Goods (CPG) company. The system manages cross-functional activities including supply
+chain, product development, sales and marketing, and regional operations through a hierarchical C-suite leadership structure
+led by a Chief Operating Officer.
+
+**Tags:** `AAOSA`, `CPG`, `supply-chain`, `operations`, `enterprise`
+
 ### Retail Operations and Customer Service Assistant
 
 [Retail Operations and Customer Service Assistant](examples/industry/retail_ops_and_customer_service.md) is a modular,
