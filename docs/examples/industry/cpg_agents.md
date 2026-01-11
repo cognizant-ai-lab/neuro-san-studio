@@ -6,7 +6,7 @@ The **CPG Operations Management** agent network is a comprehensive enterprise sy
 
 ## File
 
-[cpg_agents.hocon](../../registries/cpg_agents.hocon)
+[cpg_agents.hocon](../../../registries/industry/cpg_agents.hocon)
 
 ---
 
@@ -217,7 +217,7 @@ This agent network operates using internal knowledge and organizational structur
 
 This agent network includes test coverage:
 
-[cpg_agents_test.hocon](../../tests/fixtures/cpg_agents_test.hocon) - Tests basic supply chain inquiry handling with product launch delay scenario
+[cpg_agents_test.hocon](../../../tests/fixtures/industry/cpg_agents_test.hocon) - Tests basic supply chain inquiry handling with product launch delay scenario
 
 Run tests using:
 ```bash
