@@ -50,6 +50,9 @@
       - [Coded tools in toolbox](#coded-tools-in-toolbox)
     - [Usage in agent network config](#usage-in-agent-network-config)
     - [Adding tools in toolbox](#adding-tools-in-toolbox)
+  - [MCP servers](#mcp-servers)
+    - [MCP server configuration](#mcp-server-configuration)
+    - [Authentication](#authentication)
   - [Logging](#logging)
   - [Debugging](#debugging)
   - [Advanced](#advanced)
@@ -451,7 +454,7 @@ and specify which model to use in the `model_name` field of the `llm_config` sec
     }
 ```
 
-> For Gemini 3.0+ models, it is recommended to set `temperature` to `1.0`. Using `0.7` may lead to infinite loops,
+> ⚠️ For Gemini 3.0+ models, it is recommended to set `temperature` to `1.0`. Using `0.7` may lead to infinite loops,
 degraded reasoning performance, and failures on complex tasks. Therefore, this value should be explicitly set to avoid
 falling back to the default of `0.7`.
 
@@ -757,9 +760,7 @@ For Gemini 3+ models, use `thinking_level` to control reasoning depth.
 For Gemini 2.5 models, use thinking_budget (an integer token count)
 
 - Set to `0` to disable thinking (where supported)
-
 - Set to `-1` for dynamic thinking (model decides)
-
 - Set to a positive integer to constrain token usage
 
 Example:
@@ -1130,6 +1131,103 @@ To use tools from toolbox in your agent network, simply call them with field `to
 
 For more information on toolbox, please see [Toolbox Info HOCON File Reference](
     https://github.com/cognizant-ai-lab/neuro-san/blob/main/docs/toolbox_info_hocon_reference.md) documentation.
+
+## MCP Servers
+
+Agents can invoke tools exposed by remote **Model Context Protocol (MCP)** servers.
+
+**MCP server URL requirements**
+- URLs must either:
+  - start with `https://mcp`, **or**
+  - end with `/mcp`
+
+### MCP Server Configuration
+
+MCP servers can be configured in one of two formats under the `tools` field.
+
+1. String Reference
+
+    Use this format when you want to expose **all tools** from an MCP server and do not need inline tool filtering.
+
+    ```json
+    "tools": ["https://example.com/mcp"]
+    ```
+
+    **Notes**
+
+    - All tools exposed by the MCP server will be available to the agent.
+    - Tool filtering is not supported in this format unless it is provided via the
+    `MCP_SERVERS_INFO_FILE` environment variable (see Authentication & Configuration below).
+
+2. Dictionary Reference
+
+    Use this format when you want to explicitly control which tools are exposed from a given MCP server.
+
+    ```json
+    "tools": [
+        {
+            "url": "https://example.com/mcp",
+            "tools": ["tool_1"]
+        }
+    ]
+    ```
+
+    **Notes**
+
+    - The tools key specifies a whitelist of tools made available to the agent.
+    - If the tools key is omitted, all tools from the MCP server will be accessible.
+
+### Authentication
+
+MCP servers may require authentication. Authentication and optional tool filtering can be configured using one of the following methods.
+
+1. http_headers in sly_data
+
+    Authentication headers can be provided directly in sly_data.
+    Each MCP server URL can have its own set of headers, depending on the authentication scheme it requires.
+
+    ```json
+    {
+        "http_headers": {
+            "<MCP_URL_1>": {
+                "Authorization": "Bearer <token_value>"
+            },
+            "<MCP_URL_2>": {
+                "client_id": "<client_id_value>",
+                "client_secret": "<client_secret_value>"
+            }
+        }
+    }
+    ```
+
+    **Notes**
+
+    - The exact header fields depend on the authentication mechanism implemented by the MCP server.
+
+    - This method supports per-server credentials.
+
+
+2. MCP_SERVERS_INFO_FILE Environment Variable
+
+    Alternatively, you can set the MCP_SERVERS_INFO_FILE environment variable to point to a HOCON file
+    that defines MCP server configuration, including authentication headers and optional tool filtering.
+
+    ```json
+    {
+    "https://example.com/mcp": {
+        http_headers: {
+        Authorization: "Bearer <token>"
+        },
+        tools: ["tool_1", "tool_2"]
+    }
+    }
+    ```
+
+    **Notes**
+    - MCP server URLs in this file must exactly match those referenced in the agent network HOCON file.
+    - If authentication headers are defined in both sly_data, and `MCP_SERVERS_INFO_FILE` then sly_data takes precedence.
+    - Tool filtering from `MCP_SERVERS_INFO_FILE` is applied only if no tool filtering is defined
+    directly in the agent network HOCON configuration.
 
 ## Logging
 

@@ -17,7 +17,7 @@
 
 # This file contains the MCP server configurations in the following format:
 #     "mcp_server_url_1": {
-#         "headers": {
+#         "http_headers": {
 #                "Authorization": "Bearer <token>",
 #         }, # Optional: if the server requires authentication
 #         "tools": ["tool_1", "tool_2"]  # Optional: list of specific tools to load from this server. Load all tools if not specified.
@@ -31,7 +31,7 @@
     # Uncomment this section to use GitHub Copilot MCP server.
     # Make sure to set the environment variable GITHUB_TOKEN with a valid token.
     # "https://api.githubcopilot.com/mcp": {
-    #     "headers": {
+    #     "http_headers": {
     #        # ${GITHUB_TOKEN} is an environment variable that should contain a valid GitHub Copilot token.
     #         "Authorization": "Bearer" ${GITHUB_TOKEN}
     #     },
