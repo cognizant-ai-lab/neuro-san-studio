@@ -1,4 +1,4 @@
-# Copyright © 2025 Cognizant Technology Solutions Corp, www.cognizant.com.
+# Copyright © 2025-2026 Cognizant Technology Solutions Corp, www.cognizant.com.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -116,9 +116,12 @@ ENV APP_ENTRYPOINT=${APP_SOURCE}/deploy/entrypoint.sh
 # Point to the root folder of the app
 ENV PYTHONPATH=${APP_SOURCE}
 
-# Where to find the tool registry manifest file which lists all the agent hocon
+# Where to find the tool registry manifest file(s) which list all the agent hocon
 # files to serve up from this server instance.
-ENV AGENT_MANIFEST_FILE=${APP_SOURCE}/registries/manifest_deploy.hocon
+# This particular Dockerfile is put together to support a server that hosts multiple users
+# and so we use the multiple manifest file aspect of the neuro-san server to turn off some networks
+# that are not appropriate for such a deployment. See manifest_multiuser_overlay.hocon for more info.
+ENV AGENT_MANIFEST_FILE="${APP_SOURCE}/registries/manifest.hocon ${APP_SOURCE}/registries/manifest_multiuser_overlay.hocon"
 
 # An llm_info hocon file with user-provided llm descriptions that are to be used
 # in addition to the neuro-san defaults.

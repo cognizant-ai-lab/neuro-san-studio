@@ -1,6 +1,5 @@
 #!/bin/bash -e
-
-# Copyright © 2025 Cognizant Technology Solutions Corp, www.cognizant.com.
+# Copyright © 2025-2026 Cognizant Technology Solutions Corp, www.cognizant.com.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -24,8 +23,9 @@
 # registries and code lives so as to properly import them into the Dockerfile.
 #
 
+# If either of these change, also change the env var in run.sh
 export SERVICE_TAG=${SERVICE_TAG:-neuro-san-studio}
-export SERVICE_VERSION=${SERVICE_VERSION:-0.0.9}
+export SERVICE_VERSION=${SERVICE_VERSION:-0.0.1}
 
 function check_directory() {
     working_dir=$(pwd)
