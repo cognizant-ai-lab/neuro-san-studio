@@ -1207,7 +1207,7 @@ MCP servers may require authentication. Authentication and optional tool filteri
     {
     "https://example.com/mcp": {
         http_headers: {
-        Authorization: "Bearer <token>"
+            Authorization: "Bearer <token>"
         },
         tools: ["tool_1", "tool_2"]
     }
