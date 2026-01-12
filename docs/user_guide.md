@@ -1135,11 +1135,9 @@ For more information on toolbox, please see [Toolbox Info HOCON File Reference](
 ## MCP Servers
 
 Agents can invoke tools exposed by remote **Model Context Protocol (MCP)** servers.
-
-**MCP server URL requirements**
-- URLs must either:
+URLs must either:
   - start with `https://mcp`, **or**
-  - end with `/mcp`
+  - end with `/mcp`.
 
 ### MCP Server Configuration
 
@@ -1153,10 +1151,8 @@ MCP servers can be configured in one of two formats under the `tools` field.
     "tools": ["https://example.com/mcp"]
     ```
 
-    **Notes**
-
-    - All tools exposed by the MCP server will be available to the agent.
-    - Tool filtering is not supported in this format unless it is provided via the
+   - All tools exposed by the MCP server will be available to the agent.
+   - Tool filtering is not supported in this format unless it is provided via the
     `MCP_SERVERS_INFO_FILE` environment variable (see Authentication & Configuration below).
 
 2. Dictionary Reference
@@ -1172,10 +1168,8 @@ MCP servers can be configured in one of two formats under the `tools` field.
     ]
     ```
 
-    **Notes**
-
-    - The tools key specifies a whitelist of tools made available to the agent.
-    - If the tools key is omitted, all tools from the MCP server will be accessible.
+   - The tools key specifies a whitelist of tools made available to the agent.
+   - If the tools key is omitted, all tools from the MCP server will be accessible.
 
 ### Authentication
 
@@ -1200,16 +1194,13 @@ MCP servers may require authentication. Authentication and optional tool filteri
     }
     ```
 
-    **Notes**
-
-    - The exact header fields depend on the authentication mechanism implemented by the MCP server.
-
-    - This method supports per-server credentials.
+   - The exact header fields depend on the authentication mechanism implemented by the MCP server.
+   - This method supports per-server credentials.
 
 
-2. MCP_SERVERS_INFO_FILE Environment Variable
+2. `MCP_SERVERS_INFO_FILE` Environment Variable
 
-    Alternatively, you can set the MCP_SERVERS_INFO_FILE environment variable to point to a HOCON file
+    Alternatively, you can set the `MCP_SERVERS_INFO_FILE` environment variable to point to a HOCON file
     that defines MCP server configuration, including authentication headers and optional tool filtering.
 
     ```json
@@ -1223,10 +1214,9 @@ MCP servers may require authentication. Authentication and optional tool filteri
     }
     ```
 
-    **Notes**
-    - MCP server URLs in this file must exactly match those referenced in the agent network HOCON file.
-    - If authentication headers are defined in both sly_data, and `MCP_SERVERS_INFO_FILE` then sly_data takes precedence.
-    - Tool filtering from `MCP_SERVERS_INFO_FILE` is applied only if no tool filtering is defined
+   - MCP server URLs in this file must exactly match those referenced in the agent network HOCON file.
+   - If authentication headers are defined in both sly_data, and `MCP_SERVERS_INFO_FILE` then sly_data takes precedence.
+   - Tool filtering from `MCP_SERVERS_INFO_FILE` is applied only if no tool filtering is defined
     directly in the agent network HOCON configuration.
 
 ## Logging
