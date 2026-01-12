@@ -229,15 +229,13 @@ Use this checklist when reorganizing an agent network:
 - [ ] Run tests to verify all references are correct
 - [ ] Create separate commits for each logical change
 
-```
-
 ### Verification
 
 After reorganization, verify the changes:
 
 ```bash
 # Check that the agent loads correctly
-python run.py industry/agent_name
+python -m run
 
 # Run integration tests
 pytest tests/integration/test_integration_test_hocons.py -k "agent_name"
