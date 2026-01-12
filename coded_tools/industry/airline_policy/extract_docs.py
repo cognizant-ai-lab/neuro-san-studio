@@ -1,4 +1,4 @@
-# Copyright © 2025 Cognizant Technology Solutions Corp, www.cognizant.com.
+# Copyright © 2025-2026 Cognizant Technology Solutions Corp, www.cognizant.com.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -33,18 +33,18 @@ class ExtractDocs(CodedTool):
     """
 
     def __init__(self):
-        self.default_path = ["coded_tools/airline_policy/knowdocs/Help Center.txt"]
+        self.default_path = ["coded_tools/industry/airline_policy/knowdocs/Help Center.txt"]
 
         self.docs_path = {
-            "Bag Issues": "coded_tools/airline_policy/knowdocs/baggage/bag-issues",
-            "Carry On Baggage": "coded_tools/airline_policy/knowdocs/baggage/carryon",
-            "Checked Baggage": "coded_tools/airline_policy/knowdocs/baggage/checked",
-            "Special Items": "coded_tools/airline_policy/knowdocs/baggage/special-items",
-            "Military Personnel": "coded_tools/airline_policy/knowdocs/flight/military-personnel",
-            "Mileage Plus": "coded_tools/airline_policy/knowdocs/flight/mileage-plus",
-            "Basic Economy Restrictions": "coded_tools/airline_policy/knowdocs/flight/basic-econ",
-            "International Checked Baggage": "coded_tools/airline_policy/knowdocs/international",
-            "Embargoes": "coded_tools/airline_policy/knowdocs/international",
+            "Bag Issues": "coded_tools/industry/airline_policy/knowdocs/baggage/bag-issues",
+            "Carry On Baggage": "coded_tools/industry/airline_policy/knowdocs/baggage/carryon",
+            "Checked Baggage": "coded_tools/industry/airline_policy/knowdocs/baggage/checked",
+            "Special Items": "coded_tools/industry/airline_policy/knowdocs/baggage/special-items",
+            "Military Personnel": "coded_tools/industry/airline_policy/knowdocs/flight/military-personnel",
+            "Mileage Plus": "coded_tools/industry/airline_policy/knowdocs/flight/mileage-plus",
+            "Basic Economy Restrictions": "coded_tools/industry/airline_policy/knowdocs/flight/basic-econ",
+            "International Checked Baggage": "coded_tools/industry/airline_policy/knowdocs/international",
+            "Embargoes": "coded_tools/industry/airline_policy/knowdocs/international",
         }
 
     def invoke(self, args: Dict[str, Any], sly_data: Dict[str, Any]) -> Union[Dict[str, Any], str]:
@@ -105,10 +105,11 @@ class ExtractDocs(CodedTool):
         logger.debug("############### Documents extraction done ###############")
         if not docs:
             logger.debug("No PDF or text files found in the directory.")
-            return {"docs": {}}
+            return "ERROR: No PDF or text files found in the directory."
         return {"files": docs}
 
-    def extract_pdf_content(self, pdf_path: str) -> str:
+    @staticmethod
+    def extract_pdf_content(pdf_path: str) -> str:
         """
         Extract text from a PDF file using pypdf, while attempting to preserve
         pagination (by inserting page headers).
@@ -127,12 +128,14 @@ class ExtractDocs(CodedTool):
                 text_output.append(page_text)
         except Exception as e:
             # In case there's an issue with reading the PDF
-            logger.error("Error reading PDF %s: %s", pdf_path, e)
-            return ""
+            error = f"Error reading PDF {pdf_path}: {e}"
+            logger.error(error)
+            return f"ERROR: {error}"
 
         return "".join(text_output)
 
-    def extract_txt_content(self, txt_path: str) -> str:
+    @staticmethod
+    def extract_txt_content(txt_path: str) -> str:
         """
         Extract text from a plain text file.
 
@@ -144,5 +147,6 @@ class ExtractDocs(CodedTool):
                 return f.read()
         except Exception as e:
             # In case there's an issue with reading the text file
-            logger.error("Error reading TXT %s: %s", txt_path, e)
-            return ""
+            error = f"Error reading TXT {txt_path}: {e}"
+            logger.error(error)
+            return f"ERROR: {error}"

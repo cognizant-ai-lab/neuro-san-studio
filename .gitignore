@@ -26,6 +26,8 @@ share/python-wheels/
 *.egg
 MANIFEST
 logs/
+# .python-version appears when we try to use uv
+.python-version
 
 # PyInstaller
 #  Usually these files are written by a python script from a template
@@ -170,6 +172,9 @@ cython_debug/
 #  option (not recommended) you can uncomment the following to ignore the entire idea folder.
 .idea/
 
+# Vim editor restore files
+*.swp
+
 # VS Code setting
 settings.json
 
@@ -186,3 +191,9 @@ token.json
 
 # example files from agent networks
 TopicMemory.json
+
+# Cruse related local database
+cruse_threads.db
+
+# Generated agent networks by the designer
+registries/generated/
