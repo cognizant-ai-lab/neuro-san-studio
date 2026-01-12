@@ -18,7 +18,7 @@
 # Tests basic supply chain inquiry handling
 {
     # Describes what agent to test against
-    "agent": "cpg_agents",
+    "agent": "industry/cpg_agents",
 
     # Connect to the agent directly (no server required for testing)
     "connections": ["direct"],

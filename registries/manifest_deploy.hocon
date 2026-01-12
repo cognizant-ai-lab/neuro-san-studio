@@ -21,7 +21,7 @@
     "industry/airline_policy.hocon": true,
     "industry/banking_ops.hocon": true,
     "industry/consumer_decision_assistant.hocon": true,
-    "cpg_agents.hocon": true,
+    "industry/cpg_agents.hocon": true,
     "industry/insurance_underwriting_agents.hocon": true,
     "industry/intranet_agents_with_tools.hocon": true,
     "industry/retail_ops_and_customer_service.hocon": true,

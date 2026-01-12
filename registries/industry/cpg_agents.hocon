@@ -13,8 +13,19 @@
 # limitations under the License.
 #
 # END COPYRIGHT
+
 {
-    include "registries/aaosa.hocon"
+   include "registries/aaosa.hocon",
+
+   "metadata": {
+      "description": "Multi-agent CPG operations management system that coordinates global enterprise activities across supply chain, product development, sales and marketing, and regional operations through a hierarchical C-suite leadership structure.",
+      "tags": ["AAOSA", "CPG", "supply-chain", "operations", "enterprise"],
+      "sample_queries": [
+         "We're experiencing supply chain delays in Southeast Asia affecting our product launch. Can you help identify root causes and develop a mitigation plan?",
+         "Help me develop a go-to-market strategy for our new organic snack line launching in Q2",
+         "Analyze our regional sales performance and recommend market expansion strategies for Europe"
+      ]
+   }
     
     # Load the shared LLM configuration from a single source of truth.
     # This allows users to change the model in one file rather than

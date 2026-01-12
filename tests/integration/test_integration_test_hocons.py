@@ -46,7 +46,6 @@ class TestIntegrationTestHocons(TestCase):
                 # These can be in any order.
                 # Ideally more basic functionality will come first.
                 # Barring that, try to stick to alphabetical order.
-                "cpg_agents_test.hocon",
                 "basic/music_nerd_pro/combination_responses_with_history_direct.hocon",
                 "industry/telco_network_support_test.hocon",
                 "industry/consumer_decision_assistant_comprehensive.hocon",
@@ -78,6 +77,7 @@ class TestIntegrationTestHocons(TestCase):
                 # These can be in any order.
                 # Ideally more basic functionality will come first.
                 # Barring that, try to stick to alphabetical order.
+                "industry/cpg_agents_test.hocon",
                 "industry/airline_policy/basic_eco_carryon_baggage.hocon",
                 "industry/airline_policy/basic_eco_checkin_baggage_at_gate_fee.hocon",
                 "industry/airline_policy/basic_eco_checkin_baggage.hocon",
