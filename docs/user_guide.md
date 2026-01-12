@@ -1136,8 +1136,8 @@ For more information on toolbox, please see [Toolbox Info HOCON File Reference](
 
 Agents can invoke tools exposed by remote **Model Context Protocol (MCP)** servers.
 URLs must either:
-  - start with `https://mcp`, **or**
-  - end with `/mcp`.
+- start with `https://mcp`, **or**
+- end with `/mcp`.
 
 ### MCP Server Configuration
 
@@ -1173,7 +1173,8 @@ MCP servers can be configured in one of two formats under the `tools` field.
 
 ### Authentication
 
-MCP servers may require authentication. Authentication and optional tool filtering can be configured using one of the following methods.
+MCP servers may require authentication. Authentication and optional tool filtering can be configured using one of the
+following methods.
 
 1. http_headers in sly_data
 
@@ -1196,7 +1197,6 @@ MCP servers may require authentication. Authentication and optional tool filteri
 
    - The exact header fields depend on the authentication mechanism implemented by the MCP server.
    - This method supports per-server credentials.
-
 
 2. `MCP_SERVERS_INFO_FILE` Environment Variable
 
