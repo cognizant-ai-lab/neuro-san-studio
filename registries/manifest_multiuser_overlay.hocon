@@ -1,0 +1,75 @@
+# Copyright © 2025-2026 Cognizant Technology Solutions Corp, www.cognizant.com.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
+# END COPYRIGHT
+{
+    # This manifest file lists agent networks that we do *not* want to serve up
+    # in a multi-user deployment.  The idea is that the main manifest.hocon is
+    # what most developers will want to use in their nsflow-based dev environments,
+    # and that one grows organically as we add new agent networks.
+    #
+    # However, every once in a while someone develops an agent network that does not scale up
+    # well to a multi-user deployment just yet, so we add those here as they arise until
+    # they are ready to be included in the main manifest.
+    #
+    # Most often these special networks are put together with a bent towards the client having
+    # knowledge of specific server details, which is fine for a single-developer setup,
+    # but a big no-no for a multi-user setup. Properties of these special networks
+    # include but are not limited to:
+    #
+    #   1. Knowledge or modification of the server's local filesystem.
+    #   2. Have specific external account settings that are not generally available.
+    #   3. Makes use of tools that execute external processes via shell commands.
+    #   4. Requires use of external services not readily deployed by the average bear
+    #      (like databases)
+    #
+    # To use this file, we simply add a reference to it at the end of our existing
+    # AGENT_MANIFEST_FILE specification # like this:
+    #
+    #    export AGENT_MANIFEST_FILE="registries/manifest.hocon registries/manifest_multiuser_overlay.hocon"
+    #
+    # Basically the data for later manifest files gets overlayed on top of earlier ones.
+
+    # Tools
+    "tools/agent_network_html_creator.hocon": false,    # Reason #3
+    "tools/agentforce.hocon": false,                    # Reason #2
+    "tools/openai_image_generation.hocon": false,       # Reason #1
+
+    # Experimental and research
+    "agent_network_designer.hocon": false,              # Reason #1
+    "agent_network_editor.hocon": {
+        "serve": false,                                 # Reason #1
+        "public": false
+    },
+    "agent_network_instructions_editor.hocon": {
+        "serve": false,                                 # Reason #1
+        "public": false
+    },
+    "agent_network_query_generator.hocon": {
+        "serve": false,                                 # Reason #1
+        "public": false
+    },
+
+    # Demos
+
+    "tools/now_agents.hocon": false,                    # Reason #2
+    "cruse_theme_agent.hocon": {
+        "serve": false,                                 # Reason #1
+        "public": false
+    },
+    "cruse_widget_agent.hocon": {
+        "serve": false,                                 # Reason #1
+        "public": false
+    }
+}
