@@ -83,7 +83,7 @@ class WebScrapingTechnician(CodedTool):
                 paragraphs = [p.get_text() for p in article_body.find_all("p")]
             return " ".join(paragraphs).strip()
         except requests.exceptions.RequestException as e:
-            logger.warning("BeautifulSoup failed for %s (%s): %s", url, source, e)
+            logger.warning("BeautifulSoup failed for source %s: %s", source, type(e).__name__)
             return ""
 
     @backoff.on_exception(
@@ -145,7 +145,7 @@ class WebScrapingTechnician(CodedTool):
             return content
 
         except (requests.exceptions.RequestException, ValueError) as e:
-            logger.debug("Newspaper3k failed for %s: %s", url, e)
+            logger.debug("Newspaper3k failed: %s", type(e).__name__)
             return self.scrape_with_bs4(url, source)
 
     def scrape_nyt(self, keywords: list, save_dir: str = "nyt_articles_output") -> Dict[str, Any]:
