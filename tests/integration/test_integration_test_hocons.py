@@ -46,6 +46,9 @@ class TestIntegrationTestHocons(TestCase):
                 # These can be in any order.
                 # Ideally more basic functionality will come first.
                 # Barring that, try to stick to alphabetical order.
+                "basic/coffee_finder_advanced/coffee_what_time_sly_data_1am.hocon",
+                "basic/coffee_finder_advanced/coffee_where_sly_data_1am_continue.hocon",
+                "basic/coffee_finder_advanced/coffee_where_sly_data_8am.hocon",
                 "cpg_agents_test.hocon",
                 "basic/music_nerd_pro/combination_responses_with_history_direct.hocon",
                 "industry/telco_network_support_test.hocon",
