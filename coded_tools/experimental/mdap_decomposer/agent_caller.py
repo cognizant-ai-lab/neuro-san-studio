@@ -30,11 +30,12 @@ class AgentCaller:
         """
         raise NotImplementedError
 
-    async def call_agent(self, tool_args: dict[str, Any]) -> str:
+    async def call_agent(self, tool_args: dict[str, Any], sly_data: dict[str, Any] = None) -> str:
         """
         Call an agent with text
 
         :param tool_args: A dictionary of arguments to pass to the agent
+        :param sly_data: A dictionary of private data to pass to the agent
         :return: The text of the response
         """
         raise NotImplementedError
