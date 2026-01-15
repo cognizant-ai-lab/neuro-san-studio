@@ -29,12 +29,15 @@ class FirstToKVoter(Voter):
     a certain number of votes (K).
     """
 
-    def __init__(self, source: str,
-                 discriminator_name: str,
-                 candidates_key: str,
-                 discriminator_caller: AgentCaller,
-                 number_of_votes: int = 3,
-                 winning_vote_count: int = 2):
+    def __init__(
+        self,
+        source: str,
+        discriminator_name: str,
+        candidates_key: str,
+        discriminator_caller: AgentCaller,
+        number_of_votes: int = 3,
+        winning_vote_count: int = 2
+    ):
         """
         Constructor.
         """
@@ -59,10 +62,7 @@ class FirstToKVoter(Voter):
         numbered = f"problem: {problem}, {numbered}"
         logging.info(f"{self.source} {self.discriminator_name} discriminator query: {numbered}")
 
-        tool_args: dict[str, Any] = {
-            "problem": problem,
-            self.candidates_key: candidates
-        }
+        tool_args: dict[str, Any] = {"problem": problem, self.candidates_key: candidates}
 
         # Prepare a list of coroutines to parallelize
         coroutines: list[Future] = []

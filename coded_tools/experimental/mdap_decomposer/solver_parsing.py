@@ -50,7 +50,7 @@ class SolverParsing:
             # Find LAST occurrence of token in this line (case-insensitive)
             idx = ln.lower().rfind(tkn_lower)
             if idx != -1:
-                return ln[idx + len(tkn):].strip()
+                return ln[idx + len(tkn) :].strip()
         return lines[-1]
 
     def extract_decomposition_text(self, resp: str) -> str | None:

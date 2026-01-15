@@ -30,10 +30,13 @@ class NeuroSanSolver:
     Generic solver implementation that uses Neuro SAN.
     """
 
-    def __init__(self, winning_vote_count: int = 2,
-                 candidate_count: int = None,
-                 number_of_votes: int = None,
-                 solution_candidate_count: int = None):
+    def __init__(
+        self,
+        winning_vote_count: int = 2,
+        candidate_count: int = None,
+        number_of_votes: int = None,
+        solution_candidate_count: int = None
+    ):
         """
         Constructor.
         """
@@ -60,10 +63,13 @@ class NeuroSanSolver:
         self.problem_solver_caller: AgentCaller = None
         self.solution_discriminator_caller: AgentCaller = None
 
-    def set_callers(self, composition_discriminator_caller: AgentCaller,
-                    decomposer_caller: AgentCaller,
-                    problem_solver_caller: AgentCaller,
-                    solution_discriminator_caller: AgentCaller):
+    def set_callers(
+        self,
+        composition_discriminator_caller: AgentCaller,
+        decomposer_caller: AgentCaller,
+        problem_solver_caller: AgentCaller,
+        solution_discriminator_caller: AgentCaller
+    ):
         """
         Set AgentCallers.
         """
@@ -84,7 +90,9 @@ class NeuroSanSolver:
 
         :return: The root trace node of the decomposition process
         """
-        logging.info(f"[solve] depth={depth} path={path} problem: {problem[:120]}{'...' if len(problem) > 120 else ''}")
+        logging.info(
+            f"[solve] depth={depth} path={path} problem: {problem[:120]}{'...' if len(problem) > 120 else ''}"
+        )
 
         node = {
             "depth": depth,
@@ -192,9 +200,7 @@ class NeuroSanSolver:
         """
         solutions: list[str] = []
         finals: list[str] = []
-        tool_args: dict[str, Any] = {
-            "problem": problem
-        }
+        tool_args: dict[str, Any] = {"problem": problem}
 
         # Parallelize finding different solutions for the problem
         coroutines: list[Future] = []
@@ -207,8 +213,14 @@ class NeuroSanSolver:
             finals.append(self.parsing.extract_final(r))
             logging.info(f"{source} candidate {k + 1}: {finals[-1]}")
 
-        voter: Voter = FirstToKVoter(source, "composition", "solutions", self.composition_discriminator_caller,
-                                     self.number_of_votes, self.winning_vote_count)
+        voter: Voter = FirstToKVoter(
+            source,
+            "composition",
+            "solutions",
+            self.composition_discriminator_caller,
+            self.number_of_votes,
+            self.winning_vote_count
+        )
         votes, winner_idx = await voter.vote(problem, finals)
 
         return solutions[winner_idx], finals, votes, winner_idx, solutions
@@ -220,9 +232,7 @@ class NeuroSanSolver:
         Returns (p1, p2, c, metadata_dict).
         """
         candidates: list[str] = []
-        tool_args: dict[str, Any] = {
-            "problem": problem
-        }
+        tool_args: dict[str, Any] = {"problem": problem}
 
         # Parallelize finding different decompositions for the problem
         coroutines: list[Future] = []
@@ -241,8 +251,14 @@ class NeuroSanSolver:
         if not candidates:
             return None, None, None, {}
 
-        voter: Voter = FirstToKVoter("[decompose]", "solution", "decompositions", self.solution_discriminator_caller,
-                                     self.number_of_votes, self.winning_vote_count)
+        voter: Voter = FirstToKVoter(
+            "[decompose]",
+            "solution",
+            "decompositions",
+            self.solution_discriminator_caller,
+            self.number_of_votes,
+            self.winning_vote_count
+        )
         votes, winner_idx = await voter.vote(problem, candidates)
 
         p1, p2, c = self.parsing.parse_decomposition(candidates[winner_idx])

@@ -108,25 +108,30 @@ class DecompositionSolver(BranchActivation, CodedTool):
         """
 
         # Create the solver and use some of the arguments to configure it
-        solver = NeuroSanSolver(winning_vote_count=args.get("winning_vote_count", 2),
-                                candidate_count=args.get("candidate_count"),
-                                number_of_votes=args.get("number_of_votes"),
-                                solution_candidate_count=args.get("solution_candidate_count"))
+        solver = NeuroSanSolver(
+            winning_vote_count=args.get("winning_vote_count", 2),
+            candidate_count=args.get("candidate_count"),
+            number_of_votes=args.get("number_of_votes"),
+            solution_candidate_count=args.get("solution_candidate_count")
+        )
 
         tools: Dict[str, str] = {}
         tools = args.get("tools", tools)
 
         # Set up the AgentCallers to use this CodedTool as a basis for calling the agents.
         parsing = SolverParsing()
-        composition_discriminator_caller = CodedToolAgentCaller(self, parsing,
-                                                                name=tools.get("composition_discriminator"))
+        composition_discriminator_caller = CodedToolAgentCaller(
+            self, parsing, name=tools.get("composition_discriminator")
+        )
         decomposer_caller = CodedToolAgentCaller(self, parsing=None, name=tools.get("decomposer"))
         problem_solver_caller = CodedToolAgentCaller(self, parsing=None, name=tools.get("problem_solver"))
         solution_discriminator_caller = CodedToolAgentCaller(self, parsing, name=tools.get("solution_discriminator"))
-        solver.set_callers(composition_discriminator_caller,
-                           decomposer_caller,
-                           problem_solver_caller,
-                           solution_discriminator_caller)
+        solver.set_callers(
+            composition_discriminator_caller,
+            decomposer_caller,
+            problem_solver_caller,
+            solution_discriminator_caller
+        )
 
         problem: str = args.get("problem")
         max_depth: int = args.get("max_depth", 5)

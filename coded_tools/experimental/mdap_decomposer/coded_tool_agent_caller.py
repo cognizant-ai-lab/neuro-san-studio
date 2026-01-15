@@ -29,9 +29,7 @@ class CodedToolAgentCaller(AgentCaller):
     AgentCaller implementation that uses a BranchActivation from a CodedTool for calling an agent
     """
 
-    def __init__(self, branch_activation: BranchActivation,
-                 parsing: SolverParsing = None,
-                 name: str = None):
+    def __init__(self, branch_activation: BranchActivation, parsing: SolverParsing = None, name: str = None):
         """
         Constructor
 
