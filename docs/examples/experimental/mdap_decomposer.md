@@ -1,6 +1,7 @@
 # MDAP Decomposer
 
 The **MDAP Decomposer** is an agentic system designed to break problems down into smaller sub-problems recursively.
+
 ---
 
 ## File
@@ -50,6 +51,9 @@ export OPENAI_API_KEY="your_openai_api_key_here"
 ```text
 What is 46048 × 42098?
 ```
+
+This is an example of a long multiplication problem that is too big for a typical reasoning LLM 
+to get right.
 
 ### AI
 
