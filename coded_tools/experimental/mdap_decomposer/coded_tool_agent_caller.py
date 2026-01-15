@@ -57,13 +57,13 @@ class CodedToolAgentCaller(AgentCaller):
         """
 
         use_name: str = self.get_name()
-        logging.debug(f"call_agent({use_name}) sending args: {json.dumps(tool_args, indent=4)}")
+        logging.debug("call_agent(%s) sending args: %s", use_name, json.dumps(tool_args, indent=4))
 
         # Call the agent
         sly_data = {}
         resp: str = await self.branch_activation.use_tool(use_name, tool_args, sly_data=sly_data)
 
-        logging.debug(f"call_agent({use_name}): received {len(resp)} chars")
+        logging.debug("call_agent(%s): received %s chars", use_name, len(resp))
         if self.solver_parsing is not None:
             resp = self.solver_parsing.extract_final(resp)
 

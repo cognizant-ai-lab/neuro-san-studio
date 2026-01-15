@@ -25,6 +25,7 @@ from coded_tools.experimental.mdap_decomposer.solver_parsing import SolverParsin
 from coded_tools.experimental.mdap_decomposer.voter import Voter
 
 
+# pylint: disable=too-many-instance-attributes
 class NeuroSanSolver:
     """
     Generic solver implementation that uses Neuro SAN.
@@ -83,6 +84,7 @@ class NeuroSanSolver:
         if solution_discriminator_caller is not None:
             self.solution_discriminator_caller = solution_discriminator_caller
 
+    # pylint: disable=too-many-locals
     async def solve(self, problem: str, depth: int, max_depth: int, path: str = "0") -> dict[str, Any]:
         """
         Internal recursive solver that returns (response, trace_node).
@@ -225,6 +227,7 @@ class NeuroSanSolver:
 
         return solutions[winner_idx], finals, votes, winner_idx, solutions
 
+    # pylint: disable=too-many-locals
     async def decompose(self, problem: str) -> tuple[str | None, str | None, str | None, dict]:
         """
         Collect CANDIDATE_COUNT decompositions from the 'decomposer' agent,

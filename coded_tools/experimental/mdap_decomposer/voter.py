@@ -15,6 +15,7 @@
 # END COPYRIGHT
 
 
+# pylint: disable=too-few-public-methods
 class Voter:
     """
     Generic voter interface

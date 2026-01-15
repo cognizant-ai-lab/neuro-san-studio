@@ -89,6 +89,9 @@ class SolverParsing:
         return p1, p2, c
 
     def unbracket(self, s: str | None) -> str | None:
+        """
+        Remove leading and trailing square brackets, and coerce "None" to None.
+        """
         if not s:
             return None
         s = s.strip()
