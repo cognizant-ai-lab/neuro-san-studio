@@ -42,6 +42,9 @@
     # descriptions of response checks.
     "interactions": [
         {
+            # This is to enable streaming_chat contents to thinking file for debug.
+            # "chat_filter": "MAXIMAL",
+
             # This is what we send as input to streaming_chat()
             "text": "Who did Yellow Submarine?",
 
