@@ -30,6 +30,9 @@
     # These are independent questions, not a continuous conversation
     "interactions": [
         {
+            # This is to enable streaming_chat contents to thinking file for debug.
+            # "chat_filter": "MAXIMAL",
+            
             # Test 1: Travel decision specialist (Airbnb/Booking/Expedia)
             "text": "Help me book a trip to Dubai",
 
