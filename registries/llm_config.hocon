@@ -30,7 +30,7 @@
         # | LLM Provider     | `class` Value   | Links for model names |
         # |------------------|-----------------|-----------------------|
         # | Amazon Bedrock   | `bedrock`       | https://docs.aws.amazon.com/bedrock/latest/userguide/model-ids.html |
-        # | Anthropic        | `anthropic`     | https://docs.anthropic.com/claude/docs/models-overview |
+        # | Anthropic        | `anthropic`     | https://platform.claude.com/docs/en/about-claude/models/overview |
         # | Azure OpenAI     | `azure_openai`  | https://learn.microsoft.com/azure/ai-services/openai/concepts/models |
         # | Google Gemini    | `gemini`        | https://ai.google.dev/gemini-api/docs/models |
         # | NVIDIA           | `nvidia`        | https://build.nvidia.com/explore/discover |
@@ -41,10 +41,12 @@
         # - For Ollama, the model must be downloaded locally before use.
         # - Additional LLM parameters (e.g., `temperature`, `max_tokens`) can be configured below.
         # - Agent-level control (e.g., `max_iterations`) can also be set here.
+        # - It is possible to have a separate llm_config describing a different LLM with different parameters for each agent network hocon file
+        #or even for each agent within a network.
         #
         #   For more details, see:
-        #   - `neuro_san/internals/run_context/langchain/llms/default_llm_info.hocon`
-        #   - `docs/agent_hocon_reference.md`
+        #   - https://github.com/cognizant-ai-lab/neuro-san/blob/main/neuro_san/internals/run_context/langchain/llms/default_llm_info.hocon
+        #   - https://github.com/cognizant-ai-lab/neuro-san/blob/main/docs/agent_hocon_reference.md#llm_config
 
         "class": "openai",
         "model_name": "gpt-4o",
