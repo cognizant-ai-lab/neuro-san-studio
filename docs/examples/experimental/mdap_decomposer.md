@@ -76,7 +76,7 @@ of the decomposition process for assessing the approaches taken to problem solvi
 
 - Interprets natural language queries and delegates tasks to the decomposition_solver tool.
 
-### Tools: decomposition_solver
+### Tool: decomposition_solver
 
 This agent is a CodedTool that performs the required recursive decomposition by calling other agents
 defined withinin the network.  We specifically do not leave this to LLM-based agents themselves to
