@@ -80,7 +80,7 @@ class FirstToKVoter(Voter):
         votes: list[int] = [0] * len(candidates)
         winner_idx: int = None
         for vote_txt in results:
-            logging.info("%s raw vote: %s", self.source, vote_text)
+            logging.info("%s raw vote: %s", self.source, vote_txt)
             try:
                 idx: int = int(vote_txt) - 1
                 if idx >= len(candidates):
