@@ -116,24 +116,24 @@ for this example.
 - `solution_candidate_count`: Number of candidates to consider during the problem solving stage.
 
 - `tools`: A dictionary of agents to use for various stages of the decomposition.
-           Keys are strings which are names for abstract roles for the implementation to use,
-           and values are strings which are concrete agent names from the hocon file.
+    Keys are strings which are names for abstract roles for the implementation to use,
+    and values are strings which are concrete agent names from the hocon file.
 
-           The values from this dictionary also contribute to better Connectivity() reporting
-           over the neuro-san protocol when CodedTools are calling agents for visualizing clients.
-           Without this information, the neuro-san system assumes that CodedTools are leaf nodes
-           in the graph for Connectivity reporting.
+    The values from this dictionary also contribute to better Connectivity() reporting
+    over the neuro-san protocol when CodedTools are calling agents for visualizing clients.
+    Without this information, the neuro-san system assumes that CodedTools are leaf nodes
+    in the graph for Connectivity reporting.
 
-           The tool role keys for this implementation simply have keys that correspond to their
-           agent-name values, as we are not really using any dynamism here, but we still want to follow
-           the tools argument convention for connectivity reporting. This particular tool
-           can call each of the reamining agents programmatically.
+    The tool role keys for this implementation simply have keys that correspond to their
+    agent-name values, as we are not really using any dynamism here, but we still want to follow
+    the tools argument convention for connectivity reporting. This particular tool
+    can call each of the reamining agents programmatically.
 
-### Tools: decomposer
+##### Tool: decomposer
 
 Receives a single problem statement and performs a single attempt to break the problem down into into exactly 2 smaller sub-problems.  This gets called repeatedly from the DecompositionSolver to get mulitple ideas for sub-problems.
 
-### Tools: solution_discriminator
+##### Tool: solution_discriminator
 
 Receives a problem statement along with a particular set of suggested decompositions of the problem.
 This guy then checks each candidate for correctness with respect to the original problem description
@@ -141,13 +141,13 @@ and returns what it thinks would be the best candidate for breaking down the pro
 This gets called repeatedly from the DecompositionSolver as part of the voting process as to
 which direction to take in the decompostion process.
 
-### Tools: problem_solver
+##### Tool: problem_solver
 
 This guy receives a problem statement and attempts to actually solve the problem via LLM magic.
 This gets called repeatedly from the DecompositionSolver as part of the collection of potential
 solutions for one of the sub-problems.
 
-### Tools: composition_discriminator
+##### Tool: composition_discriminator
 
 This guy receives a problem statement along with a particular set of suggested answers for the problem.
 Not unlike the solution_discriminator, he returns what he thinks is the best candidate solution
