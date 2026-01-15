@@ -165,10 +165,10 @@ class NeuroSanSolver:
         s2: str = nodes[1].get("extracted_final")
         node["sub_finals"] = {"s1_final": s1, "s2_final": s2}
 
-        logging.info("%s sub-answers -> s1_final=%s, s2_final=%s", source, s1!r, s2!r)
+        logging.info("%s sub-answers -> s1_final=%s, s2_final=%s", source, s1, s2)
 
         comp_prompt = self._compose_prompt(c, s1, s2)
-        logging.info("%s composing with C=%s", source, c!r)
+        logging.info("%s composing with C=%s", source, c)
 
         resp, finals, votes, winner_idx, solutions = await self._solve_generic(comp_prompt, source)
 
