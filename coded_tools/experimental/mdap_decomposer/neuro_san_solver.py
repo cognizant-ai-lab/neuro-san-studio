@@ -93,7 +93,11 @@ class NeuroSanSolver:
         :return: The root trace node of the decomposition process
         """
         logging.info(
-            f"[solve] depth={depth} path={path} problem: {problem[:120]}{'...' if len(problem) > 120 else ''}"
+            "[solve] depth=%d path=%s problem: %s%s",
+            depth,
+            path,
+            problem[:120],
+            "..." if len(problem) > 120 else "",
         )
 
         node = {
@@ -112,7 +116,7 @@ class NeuroSanSolver:
         }
 
         if depth >= max_depth:
-            logging.info(f"[solve] depth={depth} -> atomic (max depth)")
+            logging.info("[solve] depth=%d -> atomic (max depth)", depth)
             resp, finals, votes, winner_idx, solutions = await self._solve_atomic_with_voting(problem)
             _ = solutions
             node["response"] = resp
@@ -130,7 +134,7 @@ class NeuroSanSolver:
 
         source: str = f"[solve] depth={depth}"
         if not p1 or not p2 or not c:
-            logging.info(f"{source} -> atomic (no decomp)")
+            logging.info("%s -> atomic (no decomp)", source)
             if decomp_meta:
                 node["decomposition"] = {**decomp_meta, "decision": "no_decomposition"}
             resp, finals, votes, winner_idx, solutions = await self._solve_atomic_with_voting(problem)
@@ -145,7 +149,7 @@ class NeuroSanSolver:
             node["extracted_final"] = self.parsing.extract_final(resp)
             return node
 
-        logging.info(f"{source} using decomposition")
+        logging.info("%s using decomposition", source)
         node["decomposition"] = decomp_meta
 
         # Parallelize solving each sub-problem
@@ -161,10 +165,10 @@ class NeuroSanSolver:
         s2: str = nodes[1].get("extracted_final")
         node["sub_finals"] = {"s1_final": s1, "s2_final": s2}
 
-        logging.info(f"{source} sub-answers -> s1_final={s1!r}, s2_final={s2!r}")
+        logging.info("%s sub-answers -> s1_final=%s, s2_final=%s", source, s1!r, s2!r)
 
         comp_prompt = self._compose_prompt(c, s1, s2)
-        logging.info(f"{source} composing with C={c!r}")
+        logging.info("%s composing with C=%s", source, c!r)
 
         resp, finals, votes, winner_idx, solutions = await self._solve_generic(comp_prompt, source)
 
@@ -213,7 +217,7 @@ class NeuroSanSolver:
         for k, r in enumerate(results):
             solutions.append(r)
             finals.append(self.parsing.extract_final(r))
-            logging.info(f"{source} candidate {k + 1}: {finals[-1]}")
+            logging.info("%s candidate %d: %s", source, k + 1, finals[-1])
 
         voter: Voter = FirstToKVoter(
             source,

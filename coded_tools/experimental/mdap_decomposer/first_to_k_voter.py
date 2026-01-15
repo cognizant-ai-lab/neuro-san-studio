@@ -62,7 +62,7 @@ class FirstToKVoter(Voter):
 
         numbered: str = "\n".join(f"{i + 1}. {candidate}" for i, candidate in enumerate(candidates))
         numbered = f"problem: {problem}, {numbered}"
-        logging.info(f"{self.source} {self.discriminator_name} discriminator query: {numbered}")
+        logging.info("%s %s discriminator query: %s", self.source, self.discriminator_name, numbered)
 
         tool_args: dict[str, Any] = {"problem": problem, self.candidates_key: candidates}
 
@@ -80,24 +80,24 @@ class FirstToKVoter(Voter):
         votes: list[int] = [0] * len(candidates)
         winner_idx: int = None
         for vote_txt in results:
-            logging.info(f"{self.source} raw vote: {vote_txt}")
+            logging.info("%s raw vote: %s", self.source, vote_text)
             try:
                 idx: int = int(vote_txt) - 1
                 if idx >= len(candidates):
-                    logging.error(f"Invalid vote index: {idx}")
+                    logging.error("Invalid vote index: %d", idx)
                 if 0 <= idx < len(candidates):
                     votes[idx] += 1
-                    logging.info(f"{self.source} tally: {votes}")
+                    logging.info("%s tally: %s", self.source, str(votes))
                     if votes[idx] >= self.winning_vote_count:
                         winner_idx = idx
-                        logging.info(f"{self.source} early winner: {winner_idx + 1}")
+                        logging.info("%s early winner: %d", self.source, winner_idx + 1)
                         break
             except ValueError:
-                logging.warning(f"{self.source} malformed vote ignored: {vote_txt!r}")
+                logging.warning("%s malformed vote ignored: %s", self.source, vote_txt!r)
 
         if winner_idx is None:
             winner_idx = max(range(len(votes)), key=lambda v: votes[v])
 
-        logging.info(f"{self.source} final winner: {winner_idx + 1} -> {candidates[winner_idx]!r}")
+        logging.info("%s final winner: %d -> %s", self.source, winner_idx + 1, candidates[winner_idx]!r)
 
         return votes, winner_idx
