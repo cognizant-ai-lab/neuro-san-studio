@@ -14,12 +14,10 @@
 #
 # END COPYRIGHT
 
-from typing import Any
-
+import logging
 from asyncio import Future
 from asyncio import gather
-
-import logging
+from typing import Any
 
 from coded_tools.experimental.mdap_decomposer.agent_caller import AgentCaller
 from coded_tools.experimental.mdap_decomposer.voter import Voter
@@ -57,7 +55,7 @@ class FirstToKVoter(Voter):
         :return: A tuple of (list of number of votes per candidate, winner index)
         """
 
-        numbered: str = "\n".join(f"{i+1}. {candidate}" for i, candidate in enumerate(candidates))
+        numbered: str = "\n".join(f"{i + 1}. {candidate}" for i, candidate in enumerate(candidates))
         numbered = f"problem: {problem}, {numbered}"
         logging.info(f"{self.source} {self.discriminator_name} discriminator query: {numbered}")
 

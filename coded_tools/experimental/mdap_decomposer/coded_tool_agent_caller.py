@@ -14,10 +14,10 @@
 #
 # END COPYRIGHT
 
-from typing import Any
-
 import json
 import logging
+
+from typing import Any
 
 from neuro_san.internals.graph.activations.branch_activation import BranchActivation
 

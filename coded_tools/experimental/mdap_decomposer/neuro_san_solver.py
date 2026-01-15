@@ -14,12 +14,10 @@
 #
 # END COPYRIGHT
 
-from typing import Any
-
+import logging
 from asyncio import Future
 from asyncio import gather
-
-import logging
+from typing import Any
 
 from coded_tools.experimental.mdap_decomposer.agent_caller import AgentCaller
 from coded_tools.experimental.mdap_decomposer.first_to_k_voter import FirstToKVoter
