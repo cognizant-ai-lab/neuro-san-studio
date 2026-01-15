@@ -16,7 +16,9 @@ MDAP stands for "Massively Decomposed Agentic Processes"
 This agent network uses the basis of the MAKER paper's voting strategy to determine both the best
 sub-problem descriptions and the best solutions for any given sub-problem stage.
 
-This agent network also provides an example of how a CodedTool can make calls to other agents within an agent network.
+This agent network also provides an example of how:
+* a CodedTool can make calls to other agents within an agent network.
+* voting on multple calls to the same agent can yield better results.
 
 ---
 
