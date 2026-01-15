@@ -249,7 +249,7 @@ class NeuroSanSolver:
                 candidates.append(cand)
 
         for i, candidate in enumerate(candidates, 1):
-            logging.info(f"[decompose] candidate {i}: {candidate}")
+            logging.info("[decompose] candidate %d: %s", i, candidate)
 
         if not candidates:
             return None, None, None, {}
