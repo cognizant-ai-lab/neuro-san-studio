@@ -131,6 +131,7 @@ class TestIntegrationTestHocons(TestCase):
         skip_on_empty=True,
     )
     @pytest.mark.integration
+    @pytest.mark.integration_experimental
     def test_hocon_experimental(self, test_name: str, test_hocon: str):
         """
         Test method for a single parameterized test case specified by a hocon file.
