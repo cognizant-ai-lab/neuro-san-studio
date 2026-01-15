@@ -1,10 +1,6 @@
 # MDAP Decomposer
 
 The **MDAP Decomposer** is an agentic system designed to break problems down into smaller sub-problems recursively.
-It uses the basis of the MAKER paper's voting strategy to determine both the best sub-problem descriptions and
-the best solutions for any given sub-problem stage.  This agent network also provides an example of how a
-CodedTool can make calls to other agents within an agent network.
-
 ---
 
 ## File
@@ -17,7 +13,10 @@ CodedTool can make calls to other agents within an agent network.
 
 MDAP stands for "Massively Decomposed Agentic Processes"
 
-XXX More
+This agent network uses the basis of the MAKER paper's voting strategy to determine both the best
+sub-problem descriptions and the best solutions for any given sub-problem stage.
+
+This agent network also provides an example of how a CodedTool can make calls to other agents within an agent network.
 
 ---
 
