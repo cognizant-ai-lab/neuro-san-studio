@@ -36,7 +36,7 @@ class FirstToKVoter(Voter):
         candidates_key: str,
         discriminator_caller: AgentCaller,
         number_of_votes: int = 3,
-        winning_vote_count: int = 2
+        winning_vote_count: int = 2,
     ):
         """
         Constructor.

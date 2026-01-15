@@ -112,7 +112,7 @@ class DecompositionSolver(BranchActivation, CodedTool):
             winning_vote_count=args.get("winning_vote_count", 2),
             candidate_count=args.get("candidate_count"),
             number_of_votes=args.get("number_of_votes"),
-            solution_candidate_count=args.get("solution_candidate_count")
+            solution_candidate_count=args.get("solution_candidate_count"),
         )
 
         tools: Dict[str, str] = {}
@@ -130,7 +130,7 @@ class DecompositionSolver(BranchActivation, CodedTool):
             composition_discriminator_caller,
             decomposer_caller,
             problem_solver_caller,
-            solution_discriminator_caller
+            solution_discriminator_caller,
         )
 
         problem: str = args.get("problem")

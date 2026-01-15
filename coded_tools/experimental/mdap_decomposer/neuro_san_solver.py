@@ -35,7 +35,7 @@ class NeuroSanSolver:
         winning_vote_count: int = 2,
         candidate_count: int = None,
         number_of_votes: int = None,
-        solution_candidate_count: int = None
+        solution_candidate_count: int = None,
     ):
         """
         Constructor.
@@ -68,7 +68,7 @@ class NeuroSanSolver:
         composition_discriminator_caller: AgentCaller,
         decomposer_caller: AgentCaller,
         problem_solver_caller: AgentCaller,
-        solution_discriminator_caller: AgentCaller
+        solution_discriminator_caller: AgentCaller,
     ):
         """
         Set AgentCallers.
@@ -219,7 +219,7 @@ class NeuroSanSolver:
             "solutions",
             self.composition_discriminator_caller,
             self.number_of_votes,
-            self.winning_vote_count
+            self.winning_vote_count,
         )
         votes, winner_idx = await voter.vote(problem, finals)
 
@@ -257,7 +257,7 @@ class NeuroSanSolver:
             "decompositions",
             self.solution_discriminator_caller,
             self.number_of_votes,
-            self.winning_vote_count
+            self.winning_vote_count,
         )
         votes, winner_idx = await voter.vote(problem, candidates)
 
