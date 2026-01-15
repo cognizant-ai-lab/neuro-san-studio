@@ -34,6 +34,9 @@ class CodedToolAgentCaller(AgentCaller):
         Constructor
 
         :param branch_activation: The BranchActivation (CodedTool) used to call the agents.
+                                  This ends up being the reference back to the CodedTool
+                                  that is also derived from BranchActivation that wants to do
+                                  the calling out to an agent internal to the network.
         :param parsing: The SolverParsing instance to use (if any) to extract the final answer
         :param name: The name of the agent
         """
@@ -49,18 +52,24 @@ class CodedToolAgentCaller(AgentCaller):
         """
         return self.name
 
-    async def call_agent(self, tool_args: dict[str, Any]) -> str:
+    async def call_agent(self, tool_args: dict[str, Any], sly_data: dict[str, Any] = None) -> str:
         """
         Call a single agent with given text, return its response.
         :param tool_args: A dictionary of arguments to pass to the agent
+        :param sly_data: A dictionary of private data to pass to the agent
         :return: The text of the response
         """
 
         use_name: str = self.get_name()
         logging.debug("call_agent(%s) sending args: %s", use_name, json.dumps(tool_args, indent=4))
 
-        # Call the agent
-        sly_data = {}
+        if sly_data is None:
+            # No sly_data to pass on.
+            sly_data = {}
+
+        # Call my agent.
+        # This is the magic hook back into the neuro-san framework that allows us to
+        # invoke another agent (within the same network or not) from within a CodedTool.
         resp: str = await self.branch_activation.use_tool(use_name, tool_args, sly_data=sly_data)
 
         logging.debug("call_agent(%s): received %s chars", use_name, len(resp))
