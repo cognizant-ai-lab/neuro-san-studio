@@ -32,11 +32,29 @@
     # Make sure to set the environment variable GITHUB_TOKEN with a valid token.
     # "https://api.githubcopilot.com/mcp": {
     #     "http_headers": {
-    #        # ${GITHUB_TOKEN} is an environment variable that should contain a valid GitHub Copilot token.
+    #        # GITHUB_TOKEN is an environment variable that should contain a valid GitHub Copilot token.
+    #        # "${...}" syntax will substitute the value of the environment variable at runtime.
     #         "Authorization": "Bearer" ${GITHUB_TOKEN}
     #     },
     #     "tools": ["issue_write"]
-    #     # filter the tool to only create_issue. Note that there is a bug making this filtering not function properly in neuro-san==0.5.65,
-    #     # which will be fixed in the next release.
+    #     # filter the tool to only create_issue.
     # },
+
+    # Uncomment this section to use Google Maps Platform Grounding Lite MCP server.
+    # Make sure to set the environment variable GOOGLE_API_KEY with a valid API key and enable the Maps Grounding Lite API.
+    "https://mapstools.googleapis.com/mcp": {
+        "http_headers": {
+           # GOOGLE_API_KEY is an environment variable that should contain a valid Google Maps Platform API key.
+           # "${...}" syntax will substitute the value of the environment variable at runtime.
+            "X-Goog-Api-Key": ${GOOGLE_API_KEY}
+        },
+        "tools": ["search_places", "lookup_weather", "compute_routes"]
+    #     # This MCP server provides three tools:
+    #     # Search places: Request information about places and get AI-generated place data summaries, as well as Place IDs, 
+    #     #                latitude and longitude coordinates, and Google Maps links for each of the places included in the summary.
+    #     # Lookup weather: Request information about weather and return current conditions, hourly forecasts, and daily forecasts.
+    #     # Compute routes: Request information about driving or walking routes between two locations and return route distance and duration information.
+    #     # Note: Grounding Lite does not provide step-by-step routing, directions, real-time traffic, or navigation information
+    #     # See https://developers.google.com/maps/ai/grounding-lite for more details on the tools and how to get started.
+    },
 }
