@@ -19,6 +19,8 @@ import os
 import time
 from typing import Any
 from typing import Dict
+from urllib.parse import urlparse
+from urllib.parse import urlunparse
 
 # pylint: disable=import-error
 import backoff
@@ -63,6 +65,28 @@ class WebScrapingTechnician(CodedTool):
         self.aljazeera_feeds = {"world": "https://www.aljazeera.com/xml/rss/all.xml"}
         logger.info("WebScrapingTechnician initialized")
 
+    def sanitize_url(self, url: str) -> str:
+        """
+        Remove credentials (username/password) from URL for safe logging.
+
+        :param url: The URL to sanitize.
+        :return: URL with credentials removed.
+        """
+        try:
+            parsed = urlparse(url)
+            # Reconstruct netloc without credentials
+            if parsed.hostname:
+                sanitized_netloc = parsed.hostname
+                if parsed.port:
+                    sanitized_netloc += f":{parsed.port}"
+                # Rebuild URL without username and password
+                sanitized = parsed._replace(netloc=sanitized_netloc)
+                return urlunparse(sanitized)
+            return url
+        except Exception:
+            # If parsing fails, return a generic placeholder
+            return "[invalid-url]"
+
     def scrape_with_bs4(self, url: str, source: str = "generic") -> str:
         """
         Scrape article content from a given URL using BeautifulSoup as a fallback method.
@@ -83,7 +107,7 @@ class WebScrapingTechnician(CodedTool):
                 paragraphs = [p.get_text() for p in article_body.find_all("p")]
             return " ".join(paragraphs).strip()
         except requests.exceptions.RequestException as e:
-            logger.warning("BeautifulSoup failed for source %s: %s", source, type(e).__name__)
+            logger.warning("BeautifulSoup failed for %s (%s): %s", self.sanitize_url(url), source, str(e))
             return ""
 
     @backoff.on_exception(
@@ -145,7 +169,7 @@ class WebScrapingTechnician(CodedTool):
             return content
 
         except (requests.exceptions.RequestException, ValueError) as e:
-            logger.debug("Newspaper3k failed: %s", type(e).__name__)
+            logger.debug("Newspaper3k failed for %s: %s", self.sanitize_url(url), str(e))
             return self.scrape_with_bs4(url, source)
 
     def scrape_nyt(self, keywords: list, save_dir: str = "nyt_articles_output") -> Dict[str, Any]:
