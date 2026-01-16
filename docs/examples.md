@@ -54,10 +54,11 @@ Here are a few examples ordered by level of complexity.
     - [Agent Network Architect](#agent-network-architect)
     - [CRUSE Theme Agent](#cruse-theme-agent)
     - [CRUSE Widget Agent](#cruse-widget-agent)
-    - [KWIK Agents](#kwik-agents)
     - [CRUSE](#cruse)
     - [Conscious Assistant](#conscious-assistant)
+    - [KWIK Agents](#kwik-agents)
     - [Log Analyzer](#log-analyzer)
+    - [MDAP Decomposer (MAKER example)](#mdap-decomposer-maker-example)
     - [WWAW](#wwaw)
 
 <!-- TOC -->
@@ -472,6 +473,11 @@ serves as a good example of how to run an agent permanently.
 good example of how to run an agent network on an agent network log for various validations.
 
 **Tags:** `AAOSA`, `app`
+
+### MDAP Decomposer (MAKER example)
+
+[MDAP Decomposer](examples/experimental/mdap_decomposer.md) is a multi-agent system that decomposes problems down to simpler steps using principles defined within the MAKER paper.
+
 
 ### WWAW
 
