@@ -42,13 +42,13 @@
 
     # Uncomment this section to use Google Maps Platform Grounding Lite MCP server.
     # Make sure to set the environment variable GOOGLE_API_KEY with a valid API key and enable the Maps Grounding Lite API.
-    "https://mapstools.googleapis.com/mcp": {
-        "http_headers": {
-           # GOOGLE_API_KEY is an environment variable that should contain a valid Google Maps Platform API key.
-           # "${...}" syntax will substitute the value of the environment variable at runtime.
-            "X-Goog-Api-Key": ${GOOGLE_API_KEY}
-        },
-        "tools": ["search_places", "lookup_weather", "compute_routes"]
+    # "https://mapstools.googleapis.com/mcp": {
+    #     "http_headers": {
+    #        # GOOGLE_API_KEY is an environment variable that should contain a valid Google Maps Platform API key.
+    #        # "${...}" syntax will substitute the value of the environment variable at runtime.
+    #         "X-Goog-Api-Key": ${GOOGLE_API_KEY}
+    #     },
+    #     "tools": ["search_places", "lookup_weather", "compute_routes"]
     #     # This MCP server provides three tools:
     #     # Search places: Request information about places and get AI-generated place data summaries, as well as Place IDs, 
     #     #                latitude and longitude coordinates, and Google Maps links for each of the places included in the summary.
