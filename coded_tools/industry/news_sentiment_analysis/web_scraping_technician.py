@@ -106,7 +106,7 @@ class WebScrapingTechnician(CodedTool):
                     query=sanitized_query,
                 )
             )
-        except Exception:
+        except (ValueError, TypeError):
             return url
 
     def scrape_with_bs4(self, url: str, source: str = "generic") -> str:
