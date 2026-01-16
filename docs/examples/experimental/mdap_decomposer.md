@@ -14,8 +14,9 @@ The **MDAP Decomposer** is an agentic system designed to break problems down int
 
 MDAP stands for "Massively Decomposed Agentic Processes"
 
-This agent network uses the basis of the MAKER paper's voting strategy to determine both the best
-sub-problem descriptions and the best solutions for any given sub-problem stage.
+This agent network uses the basis of the [MAKER paper](https://arxiv.org/abs/2511.09030)'s
+voting strategy to determine both the best sub-problem descriptions and the best solutions
+for any given sub-problem stage.
 
 This agent network also provides an example of how:
 * a CodedTool can make calls to other agents within an agent network.
@@ -32,9 +33,8 @@ This agent network requires the following setup:
 
 ### Python Dependencies
 
-```bash
-pip install langchain-openai>=0.3.26
-```
+This agent network requires langchain-openai to use the model that the prompts are tuned for.
+This is already a prerequisite for the neuro-san library, so no need to install anything new.
 
 ### Environment Variables
 
@@ -164,17 +164,15 @@ which solution is best for a particular problem decomposition.
 
 ## Debugging Hints
 
-When developing or debugging the OpenAI Web Search Assistant, keep the following in mind:
+When developing or debugging with OpenAI models, keep the following in mind:
 
 - **API Key Validation**: Ensure your `OPENAI_API_KEY` is valid and has access to preview tools.
-
-- **LangChain Version**: Verify langchain-openai>=0.3.26 is installed for Responses API support.
 
 - **Rate Limits**: Be aware of API rate limits that may affect LLM calling frequency.
 
 ### Common Issues
 
-- **Import Errors**: Ensure langchain-openai>=0.3.26 is installed
+- **Import Errors**: Ensure langchain-openai is installed
 
 - **Authentication Failures**: Verify API key is set and valid
 
@@ -183,9 +181,6 @@ When developing or debugging the OpenAI Web Search Assistant, keep the following
 ---
 
 ## Resources
-
-- [LangChain OpenAI Responses API](https://python.langchain.com/docs/integrations/chat/openai/#responses-api)
-  Documentation on using OpenAI's Responses API within the LangChain framework.
 
 - [Coded Tools Implementation Guide](https://github.com/cognizant-ai-lab/neuro-san-studio/blob/main/docs/user_guide.md#coded-tools)
   Learn how to implement and integrate custom coded tools in Neuro-SAN Studio.
