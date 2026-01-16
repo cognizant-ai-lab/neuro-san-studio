@@ -18,4 +18,4 @@ file, there are 3 tutorial videos (listed below). Please view the videos.
 
 3. Read the Neuro SAN [User guide](https://github.com/cognizant-ai-lab/neuro-san-studio/blob/main/docs/user_guide.md)
 
-4. Email NeuroAITraining@cognizant.com to get details about tking the test. Good luck!
+4. Email NeuroAITraining@cognizant.com to get details about taking the test. Good luck!
