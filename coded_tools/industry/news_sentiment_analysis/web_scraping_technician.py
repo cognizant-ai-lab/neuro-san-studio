@@ -39,21 +39,23 @@ logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(__name__)
 
 SENSITIVE_QUERY_KEYS = {
-        "api-key",
-        "apikey",
-        "api_key",
-        "key",
-        "token",
-        "access_token",
-        "password",
-        "passwd",
-    }
+    "api-key",
+    "apikey",
+    "api_key",
+    "key",
+    "token",
+    "access_token",
+    "password",
+    "passwd",
+}
+
 
 class WebScrapingTechnician(CodedTool):
     """
     CodedTool implementation for collecting news articles from The New York Times, The Guardian, and Al Jazeera.
     Supports keyword-based filtering and saves results to text files for downstream analysis.
     """
+
     def __init__(self):
         self.nyt_api_key = os.getenv("NYT_API_KEY")
         self.guardian_api_key = os.getenv("GUARDIAN_API_KEY")
@@ -94,10 +96,7 @@ class WebScrapingTechnician(CodedTool):
             # Sanitize query parameters
             query_pairs = parse_qsl(parsed.query, keep_blank_values=True)
             sanitized_query = urlencode(
-                [
-                    (k, "[redacted]" if k.lower() in SENSITIVE_QUERY_KEYS else v)
-                    for k, v in query_pairs
-                ],
+                [(k, "[redacted]" if k.lower() in SENSITIVE_QUERY_KEYS else v) for k, v in query_pairs],
                 doseq=True,
             )
 
