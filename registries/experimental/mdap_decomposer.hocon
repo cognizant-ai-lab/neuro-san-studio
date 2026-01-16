@@ -20,7 +20,15 @@
         "tags": ["MAKER", "experimental", "tools-calling-agents"],
         "sample_queries": [
             "What is 46048 × 42098?",
-            "Sort the following list of numbers from highest to lowest: 321, 423, 101, 221, 589"
+            """
+Sort the following list of numbers from highest to lowest:
+601449
+153694
+216901
+849467      
+137676      
+704296
+"""
         ]
     },
 
