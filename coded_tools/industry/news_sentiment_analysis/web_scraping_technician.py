@@ -19,6 +19,8 @@ import os
 import time
 from typing import Any
 from typing import Dict
+from urllib.parse import parse_qsl
+from urllib.parse import urlencode
 from urllib.parse import urlparse
 from urllib.parse import urlunparse
 
@@ -36,13 +38,22 @@ from newspaper import Article
 logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(__name__)
 
+SENSITIVE_QUERY_KEYS = {
+        "api-key",
+        "apikey",
+        "api_key",
+        "key",
+        "token",
+        "access_token",
+        "password",
+        "passwd",
+    }
 
 class WebScrapingTechnician(CodedTool):
     """
     CodedTool implementation for collecting news articles from The New York Times, The Guardian, and Al Jazeera.
     Supports keyword-based filtering and saves results to text files for downstream analysis.
     """
-
     def __init__(self):
         self.nyt_api_key = os.getenv("NYT_API_KEY")
         self.guardian_api_key = os.getenv("GUARDIAN_API_KEY")
@@ -67,25 +78,37 @@ class WebScrapingTechnician(CodedTool):
 
     def sanitize_url(self, url: str) -> str:
         """
-        Remove credentials (username/password) from URL for safe logging.
+        Remove credentials (username/password) and sensitive query parameters from URL for safe logging.
 
         :param url: The URL to sanitize.
         :return: URL with credentials removed.
         """
         try:
             parsed = urlparse(url)
-            # Reconstruct netloc without credentials
-            if parsed.hostname:
-                sanitized_netloc = parsed.hostname
-                if parsed.port:
-                    sanitized_netloc += f":{parsed.port}"
-                # Rebuild URL without username and password
-                sanitized = parsed._replace(netloc=sanitized_netloc)
-                return urlunparse(sanitized)
-            return url
+
+            # Strip username/password
+            netloc = parsed.hostname or ""
+            if parsed.port:
+                netloc = f"{netloc}:{parsed.port}"
+
+            # Sanitize query parameters
+            query_pairs = parse_qsl(parsed.query, keep_blank_values=True)
+            sanitized_query = urlencode(
+                [
+                    (k, "[redacted]" if k.lower() in SENSITIVE_QUERY_KEYS else v)
+                    for k, v in query_pairs
+                ],
+                doseq=True,
+            )
+
+            return urlunparse(
+                parsed._replace(
+                    netloc=netloc,
+                    query=sanitized_query,
+                )
+            )
         except Exception:
-            # If parsing fails, return a generic placeholder
-            return "[invalid-url]"
+            return url
 
     def scrape_with_bs4(self, url: str, source: str = "generic") -> str:
         """

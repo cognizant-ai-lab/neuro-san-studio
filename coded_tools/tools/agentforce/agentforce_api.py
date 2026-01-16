@@ -92,8 +92,8 @@ class AgentforceAPI(CodedTool):
         tool_name = self.__class__.__name__
         logger.debug("========== Calling %s ==========", tool_name)
         logger.debug("    Inquiry: %s", inquiry)
-        # Log partially masked session_id
-        logger.debug("    Session ID: %s", session_id[:8] if session_id else None)
+        # Log only whether a session exists; do not log the session_id itself
+        logger.debug("    Has session: %s", bool(session_id))
 
         if self.agentforce.is_configured:
             logger.debug("AgentforceAdapter is configured. Fetching response...")
