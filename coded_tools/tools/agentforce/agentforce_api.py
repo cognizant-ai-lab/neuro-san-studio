@@ -92,7 +92,7 @@ class AgentforceAPI(CodedTool):
         tool_name = self.__class__.__name__
         logger.debug("========== Calling %s ==========", tool_name)
         logger.debug("    Inquiry: %s", inquiry)
-        logger.debug("    Session ID: %s", session_id)
+        logger.debug("    Session ID: %s", session_id[:8] if session_id else None)
 
         if self.agentforce.is_configured:
             logger.debug("AgentforceAdapter is configured. Fetching response...")
