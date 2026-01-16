@@ -93,7 +93,7 @@ class FirstToKVoter(Voter):
                         logging.info("%s early winner: %d", self.source, winner_idx + 1)
                         break
             except ValueError:
-                logging.warning("%s malformed vote ignored: %s", self.source, vote_txt)
+                logging.error("%s malformed vote ignored: %s", self.source, vote_txt)
 
         if winner_idx is None:
             winner_idx = max(range(len(votes)), key=lambda v: votes[v])

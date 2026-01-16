@@ -135,6 +135,8 @@ class DecompositionSolver(BranchActivation, CodedTool):
 
         problem: str = args.get("problem")
         max_depth: int = args.get("max_depth", 5)
+        if max_depth is None:
+            max_depth = 5
 
         # Call the solver to solve the problem by decomposition
         trace_node: dict[str, Any] = await solver.solve(problem, depth=0, max_depth=max_depth)
