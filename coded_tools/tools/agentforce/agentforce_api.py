@@ -92,6 +92,7 @@ class AgentforceAPI(CodedTool):
         tool_name = self.__class__.__name__
         logger.debug("========== Calling %s ==========", tool_name)
         logger.debug("    Inquiry: %s", inquiry)
+        # Log partially masked session_id
         logger.debug("    Session ID: %s", session_id[:8] if session_id else None)
 
         if self.agentforce.is_configured:
@@ -112,6 +113,9 @@ class AgentforceAPI(CodedTool):
         tool_response = response["response"]["messages"][0]["message"]
 
         logger.debug("-----------------------")
+        # tool_response contains only agent-generated natural language text.
+        # In practice, be careful about logging any sensitive data.
+        # lgtm[py/clear-text-logging-sensitive-data]
         logger.debug("%s tool response: %s", tool_name, tool_response)
         # NOTE: sly_data contains secrets - never log it
         logger.debug("========== Done with %s ==========", tool_name)
