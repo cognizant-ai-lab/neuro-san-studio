@@ -42,7 +42,10 @@ class NeuroSanSolver:
         Constructor.
         """
 
+        if winning_vote_count is None:
+            winning_vote_count = 2
         self.winning_vote_count: int = winning_vote_count
+
         default_count: int = (2 * winning_vote_count) - 1
 
         self.candidate_count: int = candidate_count
