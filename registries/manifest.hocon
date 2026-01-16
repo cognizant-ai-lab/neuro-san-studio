@@ -18,7 +18,9 @@
     # Eventually we might have a dictionary value with server specifications for each.
 
 
+    #
     # Basic examples
+    #
     "basic/music_nerd.hocon": true,
     "basic/music_nerd_local.hocon": true,
     "basic/music_nerd_pro.hocon": true,
@@ -32,7 +34,9 @@
     "basic/coffee_finder.hocon": true,
     "basic/coffee_finder_advanced.hocon": true,
 
+    #
     # Tool integration examples
+    #
 
     # To use this agent network with Brave Search, obtain an API key from: https://brave.com/search/api/
     # Once you have the API key, set it using the BRAVE_API_KEY environment variable.
@@ -146,8 +150,9 @@
     # To use this agent network, follow the instructions in ./docs/examples/visual_question_answering.md
     "tools/visual_question_answering.hocon": false,
 
-
-    # Use cases
+    #
+    # Industry use cases
+    #
     "industry/airline_policy.hocon": true,
     "industry/banking_ops.hocon": true,
     "cpg_agents.hocon": true,
@@ -169,7 +174,10 @@
     "industry/expedia.hocon": true,
     "industry/macys.hocon": true,
     "industry/LinkedInJobSeekerSupportNetwork.hocon": true,
+
+    #
     # Experimental and research
+    #
     "agent_network_designer.hocon": true,
     "agent_network_editor.hocon": {
         # This is a support network for agent_network_designer
@@ -196,6 +204,8 @@
     "conscious_agent.hocon": false,
     # Set the following agent network to true before running apps/log_analyzer/log_analyzer.py
     "log_analysis_agents.hocon": false,
+
+    "experimental/mdap_decomposer.hocon": true,
 
     # Demos
 
