@@ -60,7 +60,7 @@ Where can I get coffee?
                     # matches up to our description of acceptance criteria.
                     # Each component of the list needs to pass muster in order to pass.
                     "gist": ["""
-Got it — Joe’s Gas Station can serve coffee anytime. Would you like to place an order?
+Got it — Joe’s Gas Station can serve coffee anytime.
                              """]
                 }
             }
@@ -76,7 +76,7 @@ Got it — Joe’s Gas Station can serve coffee anytime. Would you like to place
             
             # This is what we send as input to streaming_chat()
             "text": """
-Get me black coffee from Bob's Coffee Shop
+Get me black coffee from Bob's Coffee Shop or Henry's Fast Food
 """,
 
             # The response block treats how we are going to test what comes back
@@ -89,7 +89,71 @@ Get me black coffee from Bob's Coffee Shop
                     # matches up to our description of acceptance criteria.
                     # Each component of the list needs to pass muster in order to pass.
                     "gist": ["""
-Got it — Bob’s Coffee Shop is closed.
+Got it — I can’t place the black coffee order right now
+because Bob’s Coffee Shop and Henry’s Fast Food are closed.
+                             """]
+                }
+            }
+        },
+        {
+            # This is to enable streaming_chat contents to thinking file for debug.
+            # "chat_filter": "MAXIMAL",
+
+            # Using the sly_data to set a hard timer.
+            "sly_data": {
+                "time": "1 am"
+            },
+            
+            # This is what we send as input to streaming_chat()
+            "text": """
+ok, order from Joe's instead
+""",
+
+            # The response block treats how we are going to test what comes back
+            "response": {
+
+                # Text block says how we are going to examine the text of the response.
+                "text": {
+
+                    # Gist says we are going to ask an LLM about how the response
+                    # matches up to our description of acceptance criteria.
+                    # Each component of the list needs to pass muster in order to pass.
+                    "gist": ["""
+Got it — to place your black coffee order from Joe’s Gas Station
+- provide your name
+- need your name
+                             """]
+                }
+            }
+        },
+        {
+            # This is to enable streaming_chat contents to thinking file for debug.
+            # "chat_filter": "MAXIMAL",
+
+            # Using the sly_data to set a hard timer.
+            "sly_data": {
+                "time": "1 am"
+            },
+            
+            # This is what we send as input to streaming_chat()
+            "text": """
+Pixel
+""",
+
+            # The response block treats how we are going to test what comes back
+            "response": {
+
+                # Text block says how we are going to examine the text of the response.
+                "text": {
+
+                    # Gist says we are going to ask an LLM about how the response
+                    # matches up to our description of acceptance criteria.
+                    # Each component of the list needs to pass muster in order to pass.
+                    "gist": ["""
+Got it — Order 301 has been placed
+- Name: Pixel
+- Black coffee
+- Joe's Gas Station
                              """]
                 }
             }
