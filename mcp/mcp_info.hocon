@@ -56,5 +56,5 @@
     #     # Compute routes: Request information about driving or walking routes between two locations and return route distance and duration information.
     #     # Note: Grounding Lite does not provide step-by-step routing, directions, real-time traffic, or navigation information
     #     # See https://developers.google.com/maps/ai/grounding-lite for more details on the tools and how to get started.
-    },
+    # },
 }
