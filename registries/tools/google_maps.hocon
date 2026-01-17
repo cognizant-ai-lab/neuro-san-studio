@@ -1,0 +1,72 @@
+# Copyright © 2025 Cognizant Technology Solutions Corp, www.cognizant.com.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
+# END COPYRIGHT
+
+# Requirement to use this agent network:
+    # - neuro-san>=0.6.24
+    # - GOOGLE_API_KEY
+    # - Maps Grounding Lite API enabled in Google Cloud project. See https://developers.google.com/maps/ai/grounding-lite
+    # - Use MCP_SERVERS_INFO_FILE for authentication. See https://github.com/cognizant-ai-lab/neuro-san-studio/blob/main/mcp/mcp_info.hocon and https://github.com/cognizant-ai-lab/neuro-san-studio/blob/main/docs/user_guide.md#authentication
+
+{
+    # Optional metadata describing this agent network
+    "metadata": {
+        "description": "Agent network with a single agent that can search Google Maps Platform Grounding Lite MCP server for places, weather, and routes (distances).",
+        "tags": ["tool", "google_maps"]
+        "sample_queries": [
+            "Give me a list of coffee shops near Golden Gate Park.",
+            "What is the weather like in San Francisco today?",
+            "What is the driving distance from Mountainview, CA to San Francisco, CA?"
+        ]
+    },
+
+    include "registries/llm_config.hocon",
+
+    "tools": [
+        # This first agent definition is regarded as the "Front Man", which
+        # does all the talking to the outside world/client.
+        #
+        # Some disqualifications from being a front man:
+        #   1) Cannot use a CodedTool "class" definition
+        #   2) Cannot use a Tool "toolbox" definition
+        #
+        # Besides the first agent being the front man, these tool definitions
+        # do not have to be in any particular order. How they are linked and
+        # call each other is defined within their own specs.
+        # This could be a graph, potentially even with cycles.
+        {
+            "name": "map_searcher",
+
+            "function": {
+                "description": "Assist caller with searching information from Google Maps Platform Grounding Lite MCP server.",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "user_inquiry": {
+                            "type": "string",
+                            "description": "An inquiry from a user."
+                        },
+                    },
+                    "required": ["user_inquiry"]
+                }
+            },
+
+            "instructions": """
+Use your tools to respond to the inquiry.
+""",
+            "tools": ["https://mapstools.googleapis.com/mcp"]
+        },
+    ]
+}

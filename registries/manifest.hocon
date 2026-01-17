@@ -100,6 +100,13 @@
     # Note: If `langchain-google-genai` is already installed in your environment, `google-genai` is already included.
     "tools/gemini_image_generation.hocon": false,
 
+    # Requirement to use this agent network:
+    # - neuro-san>=0.6.24
+    # - GOOGLE_API_KEY
+    # - Maps Grounding Lite API enabled in Google Cloud project. See https://developers.google.com/maps/ai/grounding-lite
+    # - Use MCP_SERVERS_INFO_FILE for authentication. See https://github.com/cognizant-ai-lab/neuro-san-studio/blob/main/mcp/mcp_info.hocon and https://github.com/cognizant-ai-lab/neuro-san-studio/blob/main/docs/user_guide.md#authentication
+    "tools/google_maps.hocon": false,
+
     # To use this agent network, start by installing the required package:
     #     pip install atlassian-python-api
     #

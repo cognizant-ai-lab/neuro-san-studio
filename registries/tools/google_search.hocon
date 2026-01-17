@@ -14,11 +14,22 @@
 #
 # END COPYRIGHT
 
-# To use this agent network with Brave Search, obtain an API key from: https://brave.com/search/api/
-# Once you have the API key, set it using the BRAVE_API_KEY environment variable.
-# You can optionally set a custom search URL via the BRAVE_URL environment variable.
-# If BRAVE_URL is not set, the default is: https://api.search.brave.com/res/v1/web/search?q=
-# You can also configure the request timeout (in seconds) using BRAVE_TIMEOUT; the default is 30 seconds.
+# To use this search tool, you must
+#
+# 1. Create a Custom Search Engine (CSE)
+#   * Go to  https://programmablesearchengine.google.com/
+#   * Click "Add" → Choose sites or use "*" to search the whole web (then enable that in settings).
+#   * Note your Search Engine ID (cx).
+# 2. Get Google API key
+#  * Go to: https://console.cloud.google.com/
+#  * Enable the Custom Search API.
+#  * Create an API key under APIs & Services > Credentials.
+#
+# Use the CSE ID in step 1 to set GOOGLE_SEARCH_CSE_ID environment variable.
+# Use the API key in step 2 to set GOOGLE_SEARCH_API_KEY environment variable.
+#
+# You can optionally set a custom search URL and a custom timeout via the GOOGLE_SEARCH_URL and GOOGLE_SEARCH_TIMEOUT environment variables.
+# Otherwise, the default values of "https://www.googleapis.com/customsearch/v1" and "30" are used, respectively
 
 {
     # Load the shared LLM configuration from a single source of truth.
