@@ -31,7 +31,7 @@
     # a test is intermitently failing. Sometimes it's the agent prompt, but
     # sometimes it's the test itself.
     # Note: This number was increased for network failure identification and should be reverted afterward to 1/1.
-    "success_ratio": "10/10",
+    "success_ratio": "1/1",
 
     # Interactions are a series of dictionaries with request elements paired with
     # descriptions of response checks.

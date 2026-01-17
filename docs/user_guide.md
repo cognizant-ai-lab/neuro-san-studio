@@ -1286,12 +1286,23 @@ Please select the execution option that best aligns with the level of validation
 
 - Run by a group or groups of those test cases:
   
-    pytest -s -m "<name of test 1st group, 2nd, 3rd, etc.>" --timer-top-n 100
+    pytest -s -m "<name of folder>" --timer-top-n 100
 
     Example:
 
     ```bash
     pytest -s -m "integration_basic" --timer-top-n 100
+    pytest -s -m "integration_industry" --timer-top-n 100
+    ```
+- Run by the network agent hocon name of those test cases:
+  
+    pytest -s -m "<name of network_agent hocon>" --timer-top-n 100
+
+    Example:
+
+    ```bash
+    pytest -s -m "integration_basic_coffee_finder_advanced" --timer-top-n 100
+    pytest -s -m "integration_industry_airline_policy" --timer-top-n 100
     ```
 
 - Run a single test case:
