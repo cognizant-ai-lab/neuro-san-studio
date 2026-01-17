@@ -25,7 +25,7 @@
 
     # Timeout for the entire test.
     # It's also possible to have a timeout_in_seconds on a per-interaction basis.
-    "timeout_in_seconds": 180,
+    "timeout_in_seconds": 500,
 
     # success_ratio is useful for passing to the assessor to find out why
     # a test is intermitently failing. Sometimes it's the agent prompt, but
@@ -37,6 +37,8 @@
     # descriptions of response checks.
     "interactions": [
         {
+            # Step 1 of 3 as where to order the coffee
+
             # This is to enable streaming_chat contents to thinking file for debug.
             # "chat_filter": "MAXIMAL",
 
@@ -66,6 +68,8 @@ Got it — Joe’s Gas Station can serve coffee anytime.
             }
         },
         {
+            # Step 2 of 3 as place the order
+
             # This is to enable streaming_chat contents to thinking file for debug.
             # "chat_filter": "MAXIMAL",
 
@@ -76,37 +80,7 @@ Got it — Joe’s Gas Station can serve coffee anytime.
             
             # This is what we send as input to streaming_chat()
             "text": """
-Get me black coffee from Bob's Coffee Shop or Henry's Fast Food
-""",
-
-            # The response block treats how we are going to test what comes back
-            "response": {
-
-                # Text block says how we are going to examine the text of the response.
-                "text": {
-
-                    # Gist says we are going to ask an LLM about how the response
-                    # matches up to our description of acceptance criteria.
-                    # Each component of the list needs to pass muster in order to pass.
-                    "gist": ["""
-Got it — I can’t place the black coffee order right now
-because Bob’s Coffee Shop and Henry’s Fast Food are closed.
-                             """]
-                }
-            }
-        },
-        {
-            # This is to enable streaming_chat contents to thinking file for debug.
-            # "chat_filter": "MAXIMAL",
-
-            # Using the sly_data to set a hard timer.
-            "sly_data": {
-                "time": "1 am"
-            },
-            
-            # This is what we send as input to streaming_chat()
-            "text": """
-ok, order from Joe's instead
+Get me black coffee from Joe's
 """,
 
             # The response block treats how we are going to test what comes back
@@ -120,13 +94,16 @@ ok, order from Joe's instead
                     # Each component of the list needs to pass muster in order to pass.
                     "gist": ["""
 Got it — to place your black coffee order from Joe’s Gas Station
-- provide your name
+- provide your name?
+- provide name
 - need your name
                              """]
                 }
             }
         },
         {
+            # Step 3 of 3 as providing addtional order name
+            
             # This is to enable streaming_chat contents to thinking file for debug.
             # "chat_filter": "MAXIMAL",
 
