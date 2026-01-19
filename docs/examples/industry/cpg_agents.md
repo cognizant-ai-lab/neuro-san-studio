@@ -32,7 +32,7 @@ Key Capabilities:
 
 ## Example Conversation
 
-### Turn 1 - Human
+### Human
 
 ```text
 We're experiencing supply chain delays in our Southeast Asia region that are affecting
@@ -40,7 +40,7 @@ our new product launch. Can you help me understand the root cause and develop a
 mitigation plan?
 ```
 
-### Turn 1 - AI (chief_operating_officer)
+### AI (chief_operating_officer)
 
 ```text
 I'll help you address the supply chain delays affecting your Southeast Asia product
@@ -58,7 +58,7 @@ This information will help me coordinate with our supply chain, regional operati
 and product development teams to identify root causes and develop actionable solutions.
 ```
 
-### Turn 2 - Human
+### Human
 
 ```text
 Thailand and Vietnam manufacturing facilities. It's our new organic snack line.
@@ -67,7 +67,7 @@ sourcing - organic grains and packaging materials. We're about 2 weeks behind
 schedule. Target production is 500,000 units for initial launch inventory.
 ```
 
-### Turn 2 - AI (chief_operating_officer)
+### AI (chief_operating_officer)
 
 ```text
 Here's the compiled response addressing the delays in raw material sourcing for organic grains and packaging materials for the Thailand and Vietnam manufacturing facilities:
