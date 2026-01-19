@@ -58,6 +58,7 @@ This information will help me coordinate with our supply chain, regional operati
 and product development teams to identify root causes and develop actionable solutions.
 ```
 
+<!-- pyml disable-next-line MD024 -->
 ### Human
 
 ```text
@@ -67,6 +68,7 @@ sourcing - organic grains and packaging materials. We're about 2 weeks behind
 schedule. Target production is 500,000 units for initial launch inventory.
 ```
 
+<!-- pyml disable-next-line MD024 -->
 ### AI (chief_operating_officer)
 
 ```text
