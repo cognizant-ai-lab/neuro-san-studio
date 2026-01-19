@@ -169,7 +169,9 @@ Following this workflow will help ensure a smooth contribution process and maint
 
 ## Reorganizing Agent Networks
 
-When moving an agent network to a different directory (e.g., from root to an industry subfolder), multiple files need to be updated to maintain consistency across the codebase. This section provides a comprehensive checklist to ensure all references are properly updated.
+When moving an agent network to a different directory (e.g., from root to an industry
+subfolder), multiple files need to be updated to maintain consistency across the codebase.
+This section provides a comprehensive checklist to ensure all references are properly updated.
 
 ### Files to Move
 
@@ -202,9 +204,8 @@ When moving an agent network to a different directory (e.g., from root to an ind
    - Example: `"cpg_agents_test.hocon"` becomes `"industry/cpg_agents_test.hocon"`
    - Ensure the test is in the appropriate test group (basic, industry, etc.)
 
-4. **Manifest Files**
-   - **`registries/manifest.hocon`**: Update the agent path in the registry list
-   - **`registries/manifest_deploy.hocon`**: Update the agent path in the deployment list
+4. **Manifest Files** (registry configuration)
+   - `registries/manifest.hocon`: Update the agent path in the registry list
    - Example: `"cpg_agents.hocon": true` becomes `"industry/cpg_agents.hocon": true`
 
 5. **Examples Index** (`docs/examples.md`)
@@ -224,7 +225,6 @@ Use this checklist when reorganizing an agent network:
 - [ ] Update `"agent"` field in test fixture
 - [ ] Update integration test suite to reference new test path
 - [ ] Update `registries/manifest.hocon`
-- [ ] Update `registries/manifest_deploy.hocon`
 - [ ] Update `docs/examples.md` with new documentation path
 - [ ] Run tests to verify all references are correct
 - [ ] Create separate commits for each logical change
@@ -243,4 +243,3 @@ pytest tests/integration/test_integration_test_hocons.py -k "agent_name"
 # Verify documentation links are not broken
 # (manually check relative paths in documentation)
 ```
-
