@@ -213,6 +213,17 @@ This section provides a comprehensive checklist to ensure all references are pro
    - Update the documentation link to reflect the new path
    - Include description and tags
 
+6. **External References** (other `.hocon` files)
+   - Search for any `.hocon` files that reference this agent network as a tool or sub-agent
+   - Update `external_network` or similar references to use the new path
+   - Example: `"external_network": "airline_policy"` becomes
+     `"external_network": "industry/airline_policy"`
+
+7. **CodedTools Document Paths** (if applicable)
+   - Check if any CodedTools reference document files from this agent network
+   - Update file paths in the CodedTools to reflect the new location
+   - Example: Policy documents or data files referenced by coded tools
+
 ### Checklist
 
 Use this checklist when reorganizing an agent network:
@@ -226,6 +237,8 @@ Use this checklist when reorganizing an agent network:
 - [ ] Update integration test suite to reference new test path
 - [ ] Update `registries/manifest.hocon`
 - [ ] Update `docs/examples.md` with new documentation path
+- [ ] Update any `.hocon` files referencing this agent as a tool/sub-agent
+- [ ] Update CodedTools document paths (if applicable)
 - [ ] Run tests to verify all references are correct
 - [ ] Create separate commits for each logical change
 
