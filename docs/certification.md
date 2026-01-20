@@ -1,13 +1,9 @@
 # Neuro SAN Certification
 
-In order to get your Neuro SAN certification, you need to pass a quiz. This document
-outlines the steps for quiz perparation.
+To get your Neuro SAN certification, you need to pass a quiz. This document
+outlines the steps for quiz preparation.
 
-1. Clone Neuro SAN repository on GitHub
-
-    ```bash
-    git clone https://github.com/cognizant-ai-lab/neuro-san-studio.git
-    ```
+1. Visit the Neuro SAN repository on [GitHub](https://github.com/cognizant-ai-lab/neuro-san-studio)
 
 2. In the [REAME.md](https://github.com/cognizant-ai-lab/neuro-san-studio/blob/main/README.md)
 file, there are 3 tutorial videos (listed below). Please view the videos.
@@ -18,4 +14,4 @@ file, there are 3 tutorial videos (listed below). Please view the videos.
 
 3. Read the Neuro SAN [User guide](https://github.com/cognizant-ai-lab/neuro-san-studio/blob/main/docs/user_guide.md)
 
-4. Email NeuroAITraining@cognizant.com to get details about taking the test. Good luck!
+4. For Cognizant employees: Please visit My Learning Studio and search for Neuro SAN. Good luck!
