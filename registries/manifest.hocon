@@ -14,8 +14,6 @@
 #
 # END COPYRIGHT
 {
-    # Currently we list each hocon file we want to serve as a key with a boolean value.
-    # Eventually we might have a dictionary value with server specifications for each.
     # For all the grouped registries such as basic, tools, industry, we include the respective manifest file.
 
     # Basic examples
@@ -26,6 +24,12 @@
     
     # Industry use cases
     include "registries/industry/manifest.hocon",
+
+    # Experimental and research
+    include "registries/experimental/manifest.hocon",
+
+    # Currently we list each hocon file we want to serve as a key with a boolean value.
+    # Eventually we might have a dictionary value with server specifications for each.
 
     "kwik_agents.hocon": false,
     "cpg_agents.hocon": true,
@@ -60,7 +64,6 @@
     # Set the following agent network to true before running apps/log_analyzer/log_analyzer.py
     "log_analysis_agents.hocon": false,
 
-    "experimental/mdap_decomposer.hocon": true,
 
     # Demos
 
