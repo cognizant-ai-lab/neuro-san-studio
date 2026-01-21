@@ -474,6 +474,7 @@ Supports searching for images, audio files (mp3, ogg, flac, wav), and video file
     
     # To use this tool, start by installing the required package:
     #     pip install arxiv
+    #     pip install langchain-postgres
     "arxiv_rag": {
         # This is a coded tool for RAG on Arxiv Articles.
         "class": "tools.arxiv_rag.ArxivRag",

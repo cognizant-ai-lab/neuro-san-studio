@@ -228,7 +228,7 @@ class BaseRag(ABC):
         )
 
         try:
-            # Initiaize vector store table
+            # Initialize vector store table
             await pg_engine.ainit_vectorstore_table(
                 table_name=table_name,
                 vector_size=VECTOR_SIZE,

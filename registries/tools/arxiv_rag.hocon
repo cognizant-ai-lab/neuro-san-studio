@@ -16,6 +16,7 @@
 
 # To use this agent network, start by installing the required package:
 #     pip install arxiv
+#     pip install langchain-postgres
 
 {
     # Load the shared LLM configuration from a single source of truth.

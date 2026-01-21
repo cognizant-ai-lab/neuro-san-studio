@@ -20,10 +20,11 @@ This agent is **disabled by default**. To use it:
     "arxiv_rag.hocon": true
     ```
    
-2. Installing the required package:
+2. Installing the required packages:
 
     ```bash
     pip install arxiv
+    pip install langchain-postgres
     ```
 
 ---
