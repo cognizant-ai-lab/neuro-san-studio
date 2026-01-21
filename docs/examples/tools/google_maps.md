@@ -1,6 +1,6 @@
 # Google Maps Platform Grounding Lite
 
-The **Google Maps** agnet network is a task-oriented agentic system designed to help users search for places,
+The **Google Maps** agent network is a task-oriented agentic system designed to help users search for places,
 check weather conditions, and calculate routes using Google Maps data. It leverages Google Maps Platform Grounding Lite
 MCP server to provide real-time location-based information through natural language queries.
 
