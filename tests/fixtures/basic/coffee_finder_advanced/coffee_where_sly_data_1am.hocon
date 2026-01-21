@@ -37,6 +37,8 @@
     # descriptions of response checks.
     "interactions": [
         {
+             # Test case confirm shops open and close.
+            
             # This is to enable streaming_chat contents to thinking file for debug.
             # "chat_filter": "MAXIMAL",
 
@@ -63,7 +65,7 @@ Where can I get coffee at this time?
 You can get coffee at Joe's Gas Station at any time.
                              """],
                     "not_gist": ["""
-You can get coffee at bothBob’s Coffee Shop and Henry's Fast Food at this time.
+You can get coffee at both Bob’s Coffee Shop and Henry's Fast Food at this time.
                             """]
                 }
             }

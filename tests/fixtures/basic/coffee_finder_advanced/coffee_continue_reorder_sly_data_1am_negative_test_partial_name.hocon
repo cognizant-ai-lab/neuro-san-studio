@@ -37,7 +37,8 @@
     # descriptions of response checks.
     "interactions": [
         {
-            # test case re-order from the 1st order [no provide coffee name & store]
+            # Negative test case re-order using just partial name like Pixel vs. Pixel Smith.
+            # It is expected no order due the partial name.
             
             # This is to enable streaming_chat contents to thinking file for debug.
             # "chat_filter": "MAXIMAL",
@@ -49,7 +50,7 @@
             
             # This is what we send as input to streaming_chat()
             "text": """
-Hey, it's Pixel Smith. Get me the same as usual please.
+Hey, it's Pixel. Get me the same as usual please.
 """,
 
             # The response block treats how we are going to test what comes back
@@ -61,7 +62,7 @@ Hey, it's Pixel Smith. Get me the same as usual please.
                     # Gist says we are going to ask an LLM about how the response
                     # matches up to our description of acceptance criteria.
                     # Each component of the list needs to pass muster in order to pass.
-                    "gist": ["""
+                    "not_gist": ["""
 Order 301 has been placed
 - Black coffee
 - Joe's Gas Station

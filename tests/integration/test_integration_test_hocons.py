@@ -79,9 +79,14 @@ class TestIntegrationTestHocons(TestCase):
                 "basic/coffee_finder_advanced/coffee_continue_0_order_sly_data_1am_negative_test.hocon",
                 "basic/coffee_finder_advanced/coffee_continue_1_order_sly_data_1am.hocon",
                 "basic/coffee_finder_advanced/coffee_continue_2_reorder_sly_data_1am.hocon",
+                "basic/coffee_finder_advanced/coffee_continue_3_reorder_sly_data_8am_new_location.hocon",
+                "basic/coffee_finder_advanced/coffee_continue_4_reorder_sly_data_8am_from_last_order.hocon",
+                "basic/coffee_finder_advanced/coffee_continue_5_reorder_sly_data_8am_from_1st_order.hocon",
+                "basic/coffee_finder_advanced/coffee_continue_reorder_sly_data_8am_negative_test_multi_orders_exist.hocon",
+                "basic/coffee_finder_advanced/coffee_continue_reorder_sly_data_1am_negative_test_partial_name.hocon",
                 "basic/coffee_finder_advanced/coffee_what_time_sly_data_1am.hocon",
-                "basic/coffee_finder_advanced/coffee_where_sly_data_1am_negative_test.hocon",
                 "basic/coffee_finder_advanced/coffee_where_sly_data_1am.hocon",
+                "basic/coffee_finder_advanced/coffee_where_sly_data_6am.hocon",
                 "basic/coffee_finder_advanced/coffee_where_sly_data_8am.hocon",
                 # List more hocon files as they become available here.
             ]

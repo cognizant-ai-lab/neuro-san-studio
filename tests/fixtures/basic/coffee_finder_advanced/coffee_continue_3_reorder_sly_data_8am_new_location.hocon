@@ -37,19 +37,20 @@
     # descriptions of response checks.
     "interactions": [
         {
-            # test case re-order from the 1st order [no provide coffee name & store]
+            # test case re-order usual coffee type from existed order, but at the new location.
             
             # This is to enable streaming_chat contents to thinking file for debug.
             # "chat_filter": "MAXIMAL",
 
             # Using the sly_data to set a hard time
             "sly_data": {
-                "time": "1 am"
+                "time": "8 am"
             },
             
             # This is what we send as input to streaming_chat()
             "text": """
-Hey, it's Pixel Smith. Get me the same as usual please.
+Hey, it’s Pixel Smith. Can you reorder the same coffee I got from Joe’s Gas Station,
+but this time from Bob’s Coffee Shop?
 """,
 
             # The response block treats how we are going to test what comes back
@@ -62,6 +63,11 @@ Hey, it's Pixel Smith. Get me the same as usual please.
                     # matches up to our description of acceptance criteria.
                     # Each component of the list needs to pass muster in order to pass.
                     "gist": ["""
+Order 101 has been placed
+- Black coffee
+- Bob's Coffee Shop
+                            """],
+                    "not_gist": ["""
 Order 301 has been placed
 - Black coffee
 - Joe's Gas Station
