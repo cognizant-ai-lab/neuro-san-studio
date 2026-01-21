@@ -320,8 +320,19 @@ class BaseRag(ABC):
             if results:
                 logger.info("Retrieval completed!\n")
 
-            # Concatenate the content of all retrieved documents
-            return "\n\n".join(doc.page_content for doc in results)
+            formatted_results = []
+            for doc in results:
+                # Get content
+                content = doc.page_content
+                # Add metadata in if available
+                if doc.metadata:
+                    metadata_str = "\n".join(f"{key}: {value}" for key, value in doc.metadata.items())
+                    formatted_results.append(f"{content}\n\nMetadata:\n{metadata_str}")
+                else:
+                    formatted_results.append(content)
+
+            # Concatenate the content/metadata of all retrieved documents
+            return "\n\n".join(formatted_results)
 
         except asyncio.TimeoutError as e:
             return f"Timed out while querying retriever: {e}"
