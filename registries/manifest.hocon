@@ -33,9 +33,16 @@
 
     "kwik_agents.hocon": false,
     "cpg_agents.hocon": true,
+    # Set the following agent network to true before running apps/cruse/interface_flask.py
+    "cruse_agent.hocon": false,
+    # Set the following agent network to true before running apps/conscious_assistant/interface_flask.py
+    "conscious_agent.hocon": false,
+    # Set the following agent network to true before running apps/log_analyzer/log_analyzer.py
+    "log_analysis_agents.hocon": false,
+    "six_thinking_hats.hocon": true,
 
     #
-    # Experimental and research
+    # Agent network designer family of agents
     #
     "agent_network_designer.hocon": true,
     "agent_network_editor.hocon": {
@@ -56,16 +63,6 @@
         "serve": true,
         "public": false
     },
-    "six_thinking_hats.hocon": true,
-    # Set the following agent network to true before running apps/cruse/interface_flask.py
-    "cruse_agent.hocon": false,
-    # Set the following agent network to true before running apps/conscious_assistant/interface_flask.py
-    "conscious_agent.hocon": false,
-    # Set the following agent network to true before running apps/log_analyzer/log_analyzer.py
-    "log_analysis_agents.hocon": false,
-
-
-    # Demos
 
     # This agent network performs the following actions:
     # 1. Calls "agent_network_designer" as an external agent to generate a .hocon configuration file.
