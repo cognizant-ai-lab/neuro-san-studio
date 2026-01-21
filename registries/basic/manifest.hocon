@@ -1,0 +1,17 @@
+{
+    #
+    # Basic examples
+    #
+    "basic/advanced_calculator.hocon": false,
+    "basic/coffee_finder_advanced.hocon": true,
+    "basic/coffee_finder.hocon": true,
+    "basic/hello_world.hocon": true,
+    "basic/music_nerd.hocon": true,
+    "basic/music_nerd_llm_fallbacks.hocon": true,
+    "basic/music_nerd_local.hocon": true,
+    "basic/music_nerd_pro.hocon": true,
+    "basic/music_nerd_pro_local.hocon": true,
+    "basic/music_nerd_pro_sly.hocon": true,
+    "basic/music_nerd_pro_sly_local.hocon": true,
+    "basic/smart_home.hocon": true,
+}
