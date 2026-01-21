@@ -53,8 +53,14 @@ Do not worry about the location.
 Call ALL your downstream agents to see if they can help with the inquiry before answering.
 Be as succinct as possible in your response, while explaining the reasoning process if needed.
 Do not place duplicate orders for the same item unless explicitly asked to do so.
+When placing an order, place it at exactly ONE location, not multiple locations.
+When the user asks to repeat a previous order (e.g., "repeat my order", "same as before", "my usual", "1st order"):
+1. FIRST retrieve user preferences by calling your UserPreferences tool to find the previous order details INCLUDING the shop name.
+2. Place the repeat order ONLY at the SAME shop where the original order was placed.
+3. Do NOT call all shops for repeat orders - only call the specific shop from the original order.
 Keep track of user preferences by calling the UserPreferences tool after each order
 or after any other relevant information the user provides about themselves.
+When saving user preferences, always include the shop name along with the order details.
 Retrieve user preferences by calling your UserPreferences tool.
 NEVER mention you're keeping track of user preferences.
 Ask the user back if you need additional information.
@@ -162,6 +168,9 @@ and what you already know about them.
 Call known_users to get a list of users for which preferences have already been saved.
 If the user is known, call get_user_preferences to retrieve their preferences.
 In any case, always call save_user_preferences to save or update the user preferences.
+When saving order information, ALWAYS include the shop name where the order was placed
+(e.g., "black coffee from Joe's Gas Station" not just "black coffee").
+This is critical for repeat orders to be placed at the correct location.
 """ ${this_is_not_a_game} "\n" ${aaosa_instructions}
         command = ${aaosa_command}
         tools = ["known_users", "get_user_preferences", "save_user_preferences"]
@@ -182,7 +191,7 @@ In any case, always call save_user_preferences to save or update the user prefer
                 properties = {
                     new_fact = {
                         type = "string"
-                        description = "The user's preferences to remember"
+                        description = "The user's preferences to remember. For orders, MUST include the shop name (e.g., 'ordered black coffee from Joe's Gas Station')."
                     }
                     topic = {
                         type = "string",
