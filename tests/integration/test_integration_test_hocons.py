@@ -125,6 +125,7 @@ class TestIntegrationTestHocons(TestCase):
                 # Ideally more basic functionality will come first.
                 # Barring that, try to stick to alphabetical order.
                 "experimental/mdap_decomposer/long_multiplication.hocon",
+                "experimental/mdap_decomposer/list_sorting.hocon",
                 # List more hocon files as they become available here.
             ]
         ),
