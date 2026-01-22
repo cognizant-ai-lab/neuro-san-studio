@@ -510,6 +510,7 @@ query="id_list:2301.01234"
 Rules:
 
 - Every search term must use a prefix
+- Author name should be firstname_lastname with no spaces, lowercase
 - Boolean operators must be uppercase
 - Pass the entire query as a single string
 """,
