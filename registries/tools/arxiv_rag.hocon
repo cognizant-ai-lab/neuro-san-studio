@@ -16,7 +16,8 @@
 
 # To use this agent network, start by installing the required package:
 #     pip install arxiv
-#     pip install langchain-postgres
+# If "get_full_documents" is set to True (see below)
+#     pip install pymupdf
 
 {
     # Load the shared LLM configuration from a single source of truth.
@@ -71,7 +72,9 @@
                 # Content scope:
                 # True = full PDF text (slower, richer context)
                 # False = abstracts only (faster, smaller)
-                "get_full_documents": "True",
+                # Default is False.
+                # if this is set to True, pymupdf package is required.
+                "get_full_documents": "False",
 
                 # Per-document character cap to keep long pages from inflating context/cost
                 # Token math: ~1 token ≈ 4 chars

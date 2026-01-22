@@ -138,7 +138,8 @@
 
     # To use this agent network, start by installing the required package:
     #     pip install arxiv
-    #     pip install langchain-postgres
+    # If "get_full_documents" is set to True
+    #     pip install pymupdf
     "tools/arxiv_rag.hocon": false,
 
     # To use this agent network, follow the instructions in ./docs/examples/visual_question_answering.md

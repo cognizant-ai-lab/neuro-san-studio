@@ -24,7 +24,12 @@ This agent is **disabled by default**. To use it:
 
     ```bash
     pip install arxiv
-    pip install langchain-postgres
+    ```
+
+    If `get_full_documents` is set to True. See [Optional](#optional)
+    
+    ```bash
+    pip install pymupdf
     ```
 
 ---
