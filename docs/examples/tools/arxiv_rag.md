@@ -20,10 +20,16 @@ This agent is **disabled by default**. To use it:
     "arxiv_rag.hocon": true
     ```
    
-2. Installing the required package:
+2. Installing the required packages:
 
     ```bash
     pip install arxiv
+    ```
+
+    If `get_full_documents` is set to True. See [Optional](#optional)
+    
+    ```bash
+    pip install pymupdf
     ```
 
 ---

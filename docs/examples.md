@@ -22,6 +22,7 @@ Here are a few examples ordered by level of complexity.
     - [OpenAI Image Generation](#openai-image-generation)
     - [OpenAI Video Generation](#openai-video-generation)
     - [OpenAI Web Search](#openai-web-search)
+    - [Google Maps](#google-maps)
     - [Gemini Image Generation](#gemini-image-generation)
     - [Wikimedia Search](#wikimedia-search)
     - [Gmail Assistant](#gmail-assistant)
@@ -42,6 +43,7 @@ Here are a few examples ordered by level of complexity.
     - [Intranet Agents With Tools](#intranet-agents-with-tools)
     - [Airline Policy 360 Assistant](#airline-policy-360-assistant)
     - [Telco Network Orchestration](#telco-network-orchestration)
+    - [Telco Network Support](#telco-network-support)
     - [Real Estate Agent](#real-estate-agent)
     - [Consumer Decision Assistant Agents](#consumer-decision-assistant-agents)
     - [Therapy Vignette Supervision](#therapy-vignette-supervision)
@@ -197,6 +199,15 @@ natural language queries.
 
 **Tags:** `tool`, `OpenAI`
 
+### Google Maps
+
+[Google Maps](examples/tools/google_maps.md) is a single-agent system that enables users to search for places,
+check weather conditions, and calculate routes using natural language queries. It consists of a Map Searcher agent
+that connects to Google Maps Platform Grounding Lite MCP server, providing access to location-based services including
+place discovery, current weather information, and driving distances between locations.
+
+**Tags:** `tool`, `Google Maps`
+
 ### Gemini Image Generation
 
 [Gemini Image Generation](examples/tools/gemini_image_generation.md) is a single-agent system that enables users to
@@ -347,6 +358,15 @@ flights, international travel, and more.
 an agent-based network that models the orchestration of a large-scale
 telecommunications system for an Australian telco, encompassing monitoring,
 fault detection, and resource allocation.
+
+### Telco Network Support
+
+[Telco Network Support](examples/industry/telco_network_support.md) is a comprehensive service delivery system
+designed to handle customer inquiries, network operations, and project management for ethernet and optical network
+services. The system coordinates technical support, installation, monitoring, and business relationship management
+through specialized agents.
+
+**Tags:** `AAOSA`
 
 ### Real Estate Agent
 

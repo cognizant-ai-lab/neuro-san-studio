@@ -820,7 +820,7 @@ You can define an LLM directly in `llm_config` using the `class` key in two diff
     |:--------------|:----------------|
     | Amazon Bedrock| `bedrock`       |
     | Anthropic     | `anthropic`     |
-    | Azure OpenAI  | `azure_openai`  |
+    | Azure OpenAI  | `azure-openai`  |
     | Google Gemini | `gemini`        |
     | NVidia        | `nvidia`        |
     | Ollma         | `ollama`        |
@@ -1218,6 +1218,7 @@ following methods.
    - If authentication headers are defined in both sly_data, and `MCP_SERVERS_INFO_FILE` then sly_data takes precedence.
    - Tool filtering from `MCP_SERVERS_INFO_FILE` is applied only if no tool filtering is defined
     directly in the agent network HOCON configuration.
+   - For example, see [mcp_info.hocon](../mcp/mcp_info.hocon)
 
 ## Logging
 
