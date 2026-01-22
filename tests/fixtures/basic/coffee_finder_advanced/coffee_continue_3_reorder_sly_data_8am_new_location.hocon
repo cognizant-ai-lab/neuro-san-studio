@@ -37,6 +37,7 @@
     # descriptions of response checks.
     "interactions": [
         {
+            # Expected memory file existed.
             # test case re-order usual coffee type from existed order, but at the new location.
             
             # This is to enable streaming_chat contents to thinking file for debug.

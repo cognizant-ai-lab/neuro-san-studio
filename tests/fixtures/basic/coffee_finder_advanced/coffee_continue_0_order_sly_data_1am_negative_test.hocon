@@ -37,6 +37,7 @@
     # descriptions of response checks.
     "interactions": [
         {
+            # MUST DELETE MEMORY FILE before running this test case!!!
             # test case is a negative test as the is no existing order. 
             # Expected TopicMemory.json file empty or no order of this list Name listed.
 

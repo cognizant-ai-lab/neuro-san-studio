@@ -37,6 +37,7 @@
     # descriptions of response checks.
     "interactions": [
         {
+            # Expected memory file existed.
             # test case re-order. Note: expected 2 existing orders from 2 locations under this Name.
             # The expected with require a confirmation from which existed locations or
             # Select location from latest order not both.

@@ -37,6 +37,7 @@
     # descriptions of response checks.
     "interactions": [
         {
+            # Expected memory file existed.
             # Negative test case re-order using just partial name like Pixel vs. Pixel Smith.
             # It is expected no order due the partial name.
             

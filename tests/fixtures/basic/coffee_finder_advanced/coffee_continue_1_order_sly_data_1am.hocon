@@ -37,7 +37,8 @@
     # descriptions of response checks.
     "interactions": [
         {
-            # Step 1 of 3 as where to order the coffee
+            # MUST DELETE MEMORY FILE before running this test case!!!
+            # Test case to ask where the coffee places and place the 1st order
 
             # This is to enable streaming_chat contents to thinking file for debug.
             # "chat_filter": "MAXIMAL",
