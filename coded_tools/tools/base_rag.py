@@ -214,7 +214,6 @@ class BaseRag(ABC):
         from langchain_postgres import PGEngine
         from langchain_postgres import PGVectorStore
 
-
         # Create engine and table
         pg_engine = PGEngine.from_connection_string(url=postgres_config.connection_string)
         table_name: str = postgres_config.table_name or DEFAULT_TABLE_NAME
