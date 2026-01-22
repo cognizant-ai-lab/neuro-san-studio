@@ -41,8 +41,10 @@
     "tools/anthropic_web_search.hocon": true,
     "tools/anthropic_code_execution.hocon": true,
 
-    # To use this agent network, start by installing the required package:
+    # To use this arxiv_rag agent network, start by installing the required package:
     #     pip install arxiv
+    # If "get_full_documents" is set to True
+    #     pip install pymupdf
     "tools/arxiv_rag.hocon": false,
 
     # To use this agent network with Brave Search, obtain an API key from: https://brave.com/search/api/
