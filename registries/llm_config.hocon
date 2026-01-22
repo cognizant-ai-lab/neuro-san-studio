@@ -31,7 +31,7 @@
         # |------------------|-----------------|-----------------------|
         # | Amazon Bedrock   | `bedrock`       | https://docs.aws.amazon.com/bedrock/latest/userguide/model-ids.html |
         # | Anthropic        | `anthropic`     | https://platform.claude.com/docs/en/about-claude/models/overview |
-        # | Azure OpenAI     | `azure_openai`  | https://learn.microsoft.com/azure/ai-services/openai/concepts/models |
+        # | Azure OpenAI     | `azure-openai`  | https://learn.microsoft.com/azure/ai-services/openai/concepts/models |
         # | Google Gemini    | `gemini`        | https://ai.google.dev/gemini-api/docs/models |
         # | NVIDIA           | `nvidia`        | https://build.nvidia.com/explore/discover |
         # | Ollama           | `ollama`        | https://ollama.com/library |
