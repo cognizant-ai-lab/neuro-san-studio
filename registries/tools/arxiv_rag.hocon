@@ -67,7 +67,7 @@
                 # Recommended values:
                 # Fast experimentation (lightweight context): 3–5
                 # Deeper context (survey / related work scan): 8–15
-                "top_k_results": "3",
+                "top_k_results": "10",
 
                 # Content scope:
                 # True = full PDF text (slower, richer context)
