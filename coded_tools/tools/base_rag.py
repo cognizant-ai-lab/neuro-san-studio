@@ -26,8 +26,6 @@ from typing import List
 from typing import Literal
 from typing import Optional
 
-from asyncpg import InvalidCatalogNameError
-from asyncpg import InvalidPasswordError
 from langchain_community.vectorstores import InMemoryVectorStore
 from langchain_core.documents import Document
 from langchain_core.embeddings import Embeddings
@@ -209,9 +207,13 @@ class BaseRag(ABC):
         """Create a PostgreSQL vector store."""
 
         # Do lazy import so that users do not always have to install postgres
+        # pylint: disable=import-error
         # pylint: disable=import-outside-toplevel
+        from asyncpg import InvalidCatalogNameError
+        from asyncpg import InvalidPasswordError
         from langchain_postgres import PGEngine
         from langchain_postgres import PGVectorStore
+
 
         # Create engine and table
         pg_engine = PGEngine.from_connection_string(url=postgres_config.connection_string)
