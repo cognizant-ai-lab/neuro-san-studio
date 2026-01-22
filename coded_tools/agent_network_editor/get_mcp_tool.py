@@ -21,7 +21,7 @@ from typing import Any
 from langchain_core.tools import BaseTool
 from neuro_san.interfaces.coded_tool import CodedTool
 from neuro_san.internals.run_context.langchain.mcp.langchain_mcp_adapter import LangChainMcpAdapter
-from neuro_san.internals.run_context.langchain.mcp.mcp_clients_info_restorer import McpClientsInfoRestorer
+from neuro_san.internals.run_context.langchain.mcp.mcp_servers_info_restorer import McpServersInfoRestorer
 
 # Use deepwiki MCP server as default since it is free and does not require authorization.
 DEFAULT_MCP_INFO_FILE = os.path.join("mcp", "mcp_info.hocon")
@@ -33,9 +33,9 @@ class GetMcpTool(CodedTool):
     """
 
     def __init__(self):
-        if not os.getenv("MCP_CLIENTS_INFO_FILE"):
-            os.environ["MCP_CLIENTS_INFO_FILE"] = DEFAULT_MCP_INFO_FILE
-        restorer = McpClientsInfoRestorer()
+        if not os.getenv("MCP_SERVERS_INFO_FILE"):
+            os.environ["MCP_SERVERS_INFO_FILE"] = DEFAULT_MCP_INFO_FILE
+        restorer = McpServersInfoRestorer()
         self.mcp_servers: list[str] = list(restorer.restore().keys())
 
     async def async_invoke(self, args: dict[str, Any], sly_data: dict[str, Any]) -> dict[str, list[BaseTool]] | str:

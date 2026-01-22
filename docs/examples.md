@@ -22,6 +22,7 @@ Here are a few examples ordered by level of complexity.
     - [OpenAI Image Generation](#openai-image-generation)
     - [OpenAI Video Generation](#openai-video-generation)
     - [OpenAI Web Search](#openai-web-search)
+    - [Google Maps](#google-maps)
     - [Gemini Image Generation](#gemini-image-generation)
     - [Wikimedia Search](#wikimedia-search)
     - [Gmail Assistant](#gmail-assistant)
@@ -42,6 +43,7 @@ Here are a few examples ordered by level of complexity.
     - [Intranet Agents With Tools](#intranet-agents-with-tools)
     - [Airline Policy 360 Assistant](#airline-policy-360-assistant)
     - [Telco Network Orchestration](#telco-network-orchestration)
+    - [Telco Network Support](#telco-network-support)
     - [Real Estate Agent](#real-estate-agent)
     - [Consumer Decision Assistant Agents](#consumer-decision-assistant-agents)
     - [Therapy Vignette Supervision](#therapy-vignette-supervision)
@@ -54,10 +56,11 @@ Here are a few examples ordered by level of complexity.
     - [Agent Network Architect](#agent-network-architect)
     - [CRUSE Theme Agent](#cruse-theme-agent)
     - [CRUSE Widget Agent](#cruse-widget-agent)
-    - [KWIK Agents](#kwik-agents)
     - [CRUSE](#cruse)
     - [Conscious Assistant](#conscious-assistant)
+    - [KWIK Agents](#kwik-agents)
     - [Log Analyzer](#log-analyzer)
+    - [MDAP Decomposer (MAKER example)](#mdap-decomposer-maker-example)
     - [WWAW](#wwaw)
 
 <!-- TOC -->
@@ -195,6 +198,15 @@ toolkit, providing users with accurate, up-to-date information from across the i
 natural language queries.
 
 **Tags:** `tool`, `OpenAI`
+
+### Google Maps
+
+[Google Maps](examples/tools/google_maps.md) is a single-agent system that enables users to search for places,
+check weather conditions, and calculate routes using natural language queries. It consists of a Map Searcher agent
+that connects to Google Maps Platform Grounding Lite MCP server, providing access to location-based services including
+place discovery, current weather information, and driving distances between locations.
+
+**Tags:** `tool`, `Google Maps`
 
 ### Gemini Image Generation
 
@@ -347,6 +359,15 @@ an agent-based network that models the orchestration of a large-scale
 telecommunications system for an Australian telco, encompassing monitoring,
 fault detection, and resource allocation.
 
+### Telco Network Support
+
+[Telco Network Support](examples/industry/telco_network_support.md) is a comprehensive service delivery system
+designed to handle customer inquiries, network operations, and project management for ethernet and optical network
+services. The system coordinates technical support, installation, monitoring, and business relationship management
+through specialized agents.
+
+**Tags:** `AAOSA`
+
 ### Real Estate Agent
 
 [Real Estate Agent](examples/industry/real_estate.md) is a multi-agent system that provides help with real estate transaction
@@ -473,8 +494,16 @@ good example of how to run an agent network on an agent network log for various 
 
 **Tags:** `AAOSA`, `app`
 
+### MDAP Decomposer (MAKER example)
+
+[MDAP Decomposer](examples/experimental/mdap_decomposer.md) is a multi-agent system that decomposes problems down
+to simpler steps using principles defined within the MAKER paper.
+
+**Tags:** `MAKER`, `experimental`, `tools-calling-agents`
+
 ### WWAW
 
 [wwaw.md](examples/wwaw.md) stands for worldwide agentic web, and is an app to generate an arbitrarily sized agent
 network using the web as the template for the agent connections and content.
+
 **Tags:** `scale`, `app`

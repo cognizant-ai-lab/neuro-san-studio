@@ -18,7 +18,9 @@
     # Eventually we might have a dictionary value with server specifications for each.
 
 
+    #
     # Basic examples
+    #
     "basic/music_nerd.hocon": true,
     "basic/music_nerd_local.hocon": true,
     "basic/music_nerd_pro.hocon": true,
@@ -32,7 +34,9 @@
     "basic/coffee_finder.hocon": true,
     "basic/coffee_finder_advanced.hocon": true,
 
+    #
     # Tool integration examples
+    #
 
     # To use this agent network with Brave Search, obtain an API key from: https://brave.com/search/api/
     # Once you have the API key, set it using the BRAVE_API_KEY environment variable.
@@ -96,6 +100,13 @@
     # Note: If `langchain-google-genai` is already installed in your environment, `google-genai` is already included.
     "tools/gemini_image_generation.hocon": false,
 
+    # Requirement to use this agent network:
+    # - neuro-san>=0.6.24
+    # - GOOGLE_API_KEY
+    # - Maps Grounding Lite API enabled in Google Cloud project. See https://developers.google.com/maps/ai/grounding-lite
+    # - Use MCP_SERVERS_INFO_FILE for authentication. See https://github.com/cognizant-ai-lab/neuro-san-studio/blob/main/mcp/mcp_info.hocon and https://github.com/cognizant-ai-lab/neuro-san-studio/blob/main/docs/user_guide.md#authentication
+    "tools/google_maps.hocon": false,
+
     # To use this agent network, start by installing the required package:
     #     pip install atlassian-python-api
     #
@@ -134,13 +145,16 @@
 
     # To use this agent network, start by installing the required package:
     #     pip install arxiv
+    # If "get_full_documents" is set to True
+    #     pip install pymupdf
     "tools/arxiv_rag.hocon": false,
 
     # To use this agent network, follow the instructions in ./docs/examples/visual_question_answering.md
     "tools/visual_question_answering.hocon": false,
 
-
-    # Use cases
+    #
+    # Industry use cases
+    #
     "industry/airline_policy.hocon": true,
     "industry/banking_ops.hocon": true,
     "cpg_agents.hocon": true,
@@ -162,7 +176,10 @@
     "industry/expedia.hocon": true,
     "industry/macys.hocon": true,
     "industry/LinkedInJobSeekerSupportNetwork.hocon": true,
+
+    #
     # Experimental and research
+    #
     "agent_network_designer.hocon": true,
     "agent_network_editor.hocon": {
         # This is a support network for agent_network_designer
@@ -189,6 +206,8 @@
     "conscious_agent.hocon": false,
     # Set the following agent network to true before running apps/log_analyzer/log_analyzer.py
     "log_analysis_agents.hocon": false,
+
+    "experimental/mdap_decomposer.hocon": true,
 
     # Demos
 
