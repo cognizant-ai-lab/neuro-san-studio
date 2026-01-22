@@ -43,6 +43,7 @@ Here are a few examples ordered by level of complexity.
     - [Intranet Agents With Tools](#intranet-agents-with-tools)
     - [Airline Policy 360 Assistant](#airline-policy-360-assistant)
     - [Telco Network Orchestration](#telco-network-orchestration)
+    - [Telco Network Support](#telco-network-support)
     - [Real Estate Agent](#real-estate-agent)
     - [Consumer Decision Assistant Agents](#consumer-decision-assistant-agents)
     - [Therapy Vignette Supervision](#therapy-vignette-supervision)
@@ -357,6 +358,15 @@ flights, international travel, and more.
 an agent-based network that models the orchestration of a large-scale
 telecommunications system for an Australian telco, encompassing monitoring,
 fault detection, and resource allocation.
+
+### Telco Network Support
+
+[Telco Network Support](examples/industry/telco_network_support.md) is a comprehensive service delivery system
+designed to handle customer inquiries, network operations, and project management for ethernet and optical network
+services. The system coordinates technical support, installation, monitoring, and business relationship management
+through specialized agents.
+
+**Tags:** `AAOSA`
 
 ### Real Estate Agent
 
