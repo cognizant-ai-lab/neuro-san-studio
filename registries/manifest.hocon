@@ -32,7 +32,6 @@
     # Eventually we might have a dictionary value with server specifications for each.
 
     "kwik_agents.hocon": false,
-    "cpg_agents.hocon": true,
     # Set the following agent network to true before running apps/cruse/interface_flask.py
     "cruse_agent.hocon": false,
     # Set the following agent network to true before running apps/conscious_assistant/interface_flask.py
