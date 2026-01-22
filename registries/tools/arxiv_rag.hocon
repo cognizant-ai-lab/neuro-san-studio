@@ -16,6 +16,8 @@
 
 # To use this agent network, start by installing the required package:
 #     pip install arxiv
+# If "get_full_documents" is set to True (see below)
+#     pip install pymupdf
 
 {
     # Load the shared LLM configuration from a single source of truth.
@@ -70,7 +72,9 @@
                 # Content scope:
                 # True = full PDF text (slower, richer context)
                 # False = abstracts only (faster, smaller)
-                "get_full_documents": "True",
+                # Default is False.
+                # if this is set to True, pymupdf package is required.
+                "get_full_documents": false,
 
                 # Per-document character cap to keep long pages from inflating context/cost
                 # Token math: ~1 token ≈ 4 chars
@@ -82,12 +86,12 @@
                 # Metadata scope: 
                 # True = full arXiv metadata (journal ref, categories, comments)
                 # False = minimal metadata (title, authors, abstract, published)
-                "load_all_available_meta": "False",
+                "load_all_available_meta": true,
 
                 # Error handling:
                 # True = continue on retrieval/parsing errors
                 # False = fail fast
-                "continue_on_failure": "True",
+                "continue_on_failure": true,
             }
         }
     ]
