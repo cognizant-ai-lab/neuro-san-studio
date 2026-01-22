@@ -26,7 +26,6 @@ from typing import List
 from typing import Literal
 from typing import Optional
 
-# pylint: disable=import-error
 from asyncpg import InvalidCatalogNameError
 from asyncpg import InvalidPasswordError
 from langchain_community.vectorstores import InMemoryVectorStore
@@ -35,8 +34,6 @@ from langchain_core.embeddings import Embeddings
 from langchain_core.vectorstores import VectorStore
 from langchain_core.vectorstores.base import VectorStoreRetriever
 from langchain_openai import OpenAIEmbeddings
-from langchain_postgres import PGEngine
-from langchain_postgres import PGVectorStore
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from sqlalchemy.exc import ProgrammingError
 
@@ -210,6 +207,11 @@ class BaseRag(ABC):
         self, loader_args: Any, postgres_config: PostgresConfig
     ) -> Optional[VectorStore]:
         """Create a PostgreSQL vector store."""
+
+        # Do lazy import so that users do not always have to install postgres
+        # pylint: disable=import-outside-toplevel
+        from langchain_postgres import PGEngine
+        from langchain_postgres import PGVectorStore
 
         # Create engine and table
         pg_engine = PGEngine.from_connection_string(url=postgres_config.connection_string)
