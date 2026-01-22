@@ -66,12 +66,30 @@ class ArxivRag(CodedTool):
         # Validate presence of required inputs
         if not query:
             logger.error("Missing required input: 'query' (retrieval question).")
-            return "❌ Missing required1 input: 'query'."
+            raise ValueError("❌ Missing required input: 'query'.")
+
+        # For the arXiv API, the query argument must follow a specific format,
+        # for example: "au:del_maestro AND ti:checkerboard".
+        #
+        # References:
+        # - https://lukasschwab.me/arxiv.py/arxiv.html#Search.query
+        # - https://info.arxiv.org/help/api/user-manual.html#51-details-of-query-construction
+        #
+        # However, when `get_full_documents` is set to True, LangChain strips
+        # characters such as ":" and "-", which makes the query invalid for arXiv.
+        #
+        # To avoid this issue, we remove the arXiv field prefixes in advance
+        # when `get_full_documents` is enabled.
+        get_full_documents = bool(args.get("get_full_documents", False))
+        if get_full_documents:
+            prefixes = ["ti:", "au:", "abs:", "co:", "jr:", "cat:", "rn:", "id_list:"]
+            for prefix in prefixes:
+                query = query.replace(prefix, "")
 
         # Initialize ArxivRetriever with the provided arguments
         retriever = ArxivRetriever(
             top_k_results=int(args.get("top_k_results", 3)),
-            get_full_documents=bool(args.get("get_full_documents", True)),
+            get_full_documents=get_full_documents,
             doc_content_chars_max=int(args.get("doc_content_chars_max", 4000)),
             load_all_available_meta=bool(args.get("load_all_available_meta", False)),
             continue_on_failure=bool(args.get("continue_on_failure", True)),
