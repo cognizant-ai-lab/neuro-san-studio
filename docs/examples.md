@@ -22,6 +22,7 @@ Here are a few examples ordered by level of complexity.
     - [OpenAI Image Generation](#openai-image-generation)
     - [OpenAI Video Generation](#openai-video-generation)
     - [OpenAI Web Search](#openai-web-search)
+    - [Google Maps](#google-maps)
     - [Gemini Image Generation](#gemini-image-generation)
     - [Wikimedia Search](#wikimedia-search)
     - [Gmail Assistant](#gmail-assistant)
@@ -197,6 +198,15 @@ toolkit, providing users with accurate, up-to-date information from across the i
 natural language queries.
 
 **Tags:** `tool`, `OpenAI`
+
+### Google Maps
+
+[Google Maps](examples/tools/google_maps.md) is a single-agent system that enables users to search for places,
+check weather conditions, and calculate routes using natural language queries. It consists of a Map Searcher agent
+that connects to Google Maps Platform Grounding Lite MCP server, providing access to location-based services including
+place discovery, current weather information, and driving distances between locations.
+
+**Tags:** `tool`, `Google Maps`
 
 ### Gemini Image Generation
 
