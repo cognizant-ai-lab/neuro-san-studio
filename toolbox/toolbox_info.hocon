@@ -474,10 +474,46 @@ Supports searching for images, audio files (mp3, ogg, flac, wav), and video file
     
     # To use this tool, start by installing the required package:
     #     pip install arxiv
+    # If "get_full_documents" is set to True
+    #     pip install pymupdf
     "arxiv_rag": {
         # This is a coded tool for RAG on Arxiv Articles.
         "class": "tools.arxiv_rag.ArxivRag",
-        "description": "Retrieve information from arXiv and answer a query using RAG.",
+        "description": """This tool retrieves papers from arXiv using a query string.
+
+A query is a text string made of search terms and Boolean operators.
+
+Search terms must use one of these prefixes:
+
+ti = title
+au = author
+abs = abstract
+co = comment
+jr = journal reference
+cat = subject category
+rn = report number
+id_list = arXiv article ID
+
+Boolean operators (must be uppercase): AND, OR, ANDNOT
+
+You can group terms using parentheses ().
+
+Examples:
+
+query="au:del_maestro"
+query="au:del_maestro AND ti:checkerboard"
+query="au:del_maestro AND ti:quantum criticality"
+query="au:del_maestro ANDNOT (ti:checkerboard OR ti:Pyrochlore)"
+query="cat:quant-ph AND abs:entanglement"
+query="id_list:2301.01234"
+
+Rules:
+
+- Every search term must use a prefix
+- Author name should be firstname_lastname with no spaces, lowercase
+- Boolean operators must be uppercase
+- Pass the entire query as a single string
+""",
         "parameters": {
             "type": "object",
             "properties": {
