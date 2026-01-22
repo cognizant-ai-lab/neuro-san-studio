@@ -82,7 +82,8 @@ class TestIntegrationTestHocons(TestCase):
                 "basic/coffee_finder_advanced/coffee_continue_3_reorder_sly_data_8am_new_location.hocon",
                 "basic/coffee_finder_advanced/coffee_continue_4_reorder_sly_data_8am_from_last_order.hocon",
                 "basic/coffee_finder_advanced/coffee_continue_5_reorder_sly_data_8am_from_1st_order.hocon",
-                "basic/coffee_finder_advanced/coffee_continue_reorder_sly_data_8am_negative_test_multi_orders_exist.hocon",
+                "basic/coffee_finder_advanced/"
+                "coffee_continue_reorder_sly_data_8am_negative_test_multi_orders_exist.hocon",
                 "basic/coffee_finder_advanced/coffee_continue_reorder_sly_data_1am_negative_test_partial_name.hocon",
                 "basic/coffee_finder_advanced/coffee_what_time_sly_data_1am.hocon",
                 "basic/coffee_finder_advanced/coffee_where_sly_data_1am.hocon",
@@ -96,7 +97,7 @@ class TestIntegrationTestHocons(TestCase):
     @pytest.mark.integration
     @pytest.mark.integration_basic
     @pytest.mark.integration_basic_coffee_finder_advanced
-    def test_hocon_industry(self, test_name: str, test_hocon: str):
+    def test_hocon_industry_coffee_finder_advanced(self, test_name: str, test_hocon: str):
         """
         Test method for a single parameterized test case specified by a hocon file.
         Arguments to this method are given by the iteration that happens as a result
@@ -174,7 +175,7 @@ class TestIntegrationTestHocons(TestCase):
     @pytest.mark.integration
     @pytest.mark.integration_industry
     @pytest.mark.integration_industry_airline_policy
-    def test_hocon_industry(self, test_name: str, test_hocon: str):
+    def test_hocon_industry_airline_policy(self, test_name: str, test_hocon: str):
         """
         Test method for a single parameterized test case specified by a hocon file.
         Arguments to this method are given by the iteration that happens as a result
