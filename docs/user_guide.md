@@ -1374,8 +1374,10 @@ Please select the execution option that best aligns with the level of validation
     ```
 
 - Run by a group or groups of those test cases:
-  
+
+    ```bash
     pytest -s -m "<name of folder>" --timer-top-n 100
+    ```
 
     Example:
 
@@ -1383,9 +1385,12 @@ Please select the execution option that best aligns with the level of validation
     pytest -s -m "integration_basic" --timer-top-n 100
     pytest -s -m "integration_industry" --timer-top-n 100
     ```
+
 - Run by the network agent hocon name of those test cases:
-  
+
+    ```bash
     pytest -s -m "<name of network_agent hocon>" --timer-top-n 100
+    ```
 
     Example:
 
