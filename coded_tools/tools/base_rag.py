@@ -26,17 +26,12 @@ from typing import List
 from typing import Literal
 from typing import Optional
 
-# pylint: disable=import-error
-from asyncpg import InvalidCatalogNameError
-from asyncpg import InvalidPasswordError
 from langchain_community.vectorstores import InMemoryVectorStore
 from langchain_core.documents import Document
 from langchain_core.embeddings import Embeddings
 from langchain_core.vectorstores import VectorStore
 from langchain_core.vectorstores.base import VectorStoreRetriever
 from langchain_openai import OpenAIEmbeddings
-from langchain_postgres import PGEngine
-from langchain_postgres import PGVectorStore
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from sqlalchemy.exc import ProgrammingError
 
@@ -211,6 +206,14 @@ class BaseRag(ABC):
     ) -> Optional[VectorStore]:
         """Create a PostgreSQL vector store."""
 
+        # Do lazy import so that users do not always have to install postgres
+        # pylint: disable=import-error
+        # pylint: disable=import-outside-toplevel
+        from asyncpg import InvalidCatalogNameError
+        from asyncpg import InvalidPasswordError
+        from langchain_postgres import PGEngine
+        from langchain_postgres import PGVectorStore
+
         # Create engine and table
         pg_engine = PGEngine.from_connection_string(url=postgres_config.connection_string)
         table_name: str = postgres_config.table_name or DEFAULT_TABLE_NAME
@@ -228,7 +231,7 @@ class BaseRag(ABC):
         )
 
         try:
-            # Initiaize vector store table
+            # Initialize vector store table
             await pg_engine.ainit_vectorstore_table(
                 table_name=table_name,
                 vector_size=VECTOR_SIZE,
@@ -320,8 +323,19 @@ class BaseRag(ABC):
             if results:
                 logger.info("Retrieval completed!\n")
 
-            # Concatenate the content of all retrieved documents
-            return "\n\n".join(doc.page_content for doc in results)
+            formatted_results = []
+            for doc in results:
+                # Get content
+                content = doc.page_content
+                # Add metadata in if available
+                if doc.metadata:
+                    metadata_str = "\n".join(f"{key}: {value}" for key, value in doc.metadata.items())
+                    formatted_results.append(f"{content}\n\nMetadata:\n{metadata_str}")
+                else:
+                    formatted_results.append(content)
+
+            # Concatenate the content/metadata of all retrieved documents
+            return "\n\n".join(formatted_results)
 
         except asyncio.TimeoutError as e:
             return f"Timed out while querying retriever: {e}"
