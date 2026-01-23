@@ -23,6 +23,14 @@
     "metadata": {
         "description": "Simple agent network demonstrating use of temporary agent networks using Reservations",
         "tags": ["example", "experimental", "reservations"],
+        "sample_queries": [
+            """
+Please make a copy of the basic/hello_world.hocon file.
+
+When you are done copying it, call the new agent with the following text:
+'From earth, I approach a new planet and wish to send a short 2-word greeting to the new orb.'
+"""
+        ]
     },
 
     "llm_config": {
