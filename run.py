@@ -75,7 +75,8 @@ class NeuroSanRunner:
                 "AGENT_TOOLBOX_INFO_FILE", os.path.join(self.root_dir, "toolbox", "toolbox_info.hocon")
             ),
             "mcp_servers_info_file": os.getenv(
-                "MCP_SERVERS_INFO_FILE", os.path.join(self.root_dir, "mcp", "mcp_info.hocon")),
+                "MCP_SERVERS_INFO_FILE", os.path.join(self.root_dir, "mcp", "mcp_info.hocon")
+            ),
             "logs_dir": self.logs_dir,
         }
 
