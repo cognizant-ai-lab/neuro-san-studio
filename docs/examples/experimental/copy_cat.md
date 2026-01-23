@@ -122,17 +122,37 @@ This agent is a CodedTool that performs the required work of:
 
 1. Checking for network name validity, given the system it is running on.
 2. Creating a temporary copy of the target network by reading the hocon file from the filesystem.
+   It is worth noting that this copy is not a text copy of the hocon file, but rather the
+   resulting dictionary that results from actually reading the hocon file.
+   That is, you are not allowed to do any #include or environment variable tricks
+   that the hocon parser would normally allow.
 3. Creating the temporary network via the ReservationUtil.wait_for_one() helper method.
 4. Assmebling the sly_data response per the convention described above.
 5. Optionally calling the temporary network with input the front man's parsing of the request
    In order to do this successfully, the CodedTool must derive from both BranchActivation and CodedTool
-   ot gain access to the use_reservation() method.
+   to gain access to the use_reservation() method.  This is not strictly required if you are only
+   creating new temporary networks and not calling them.
 
 #### Tool Arguments and Parameters
 
 - `agent_name`: The name of the agent to copy
 
 - `call_text`: An optional string to pass as input to the new agent.
+
+#### Tool hocon settings
+
+It is worth calling out that any tool that is going to use the Reservations API
+will need to announce that it wants to do so with an allow block in the hocon file:
+
+```
+            "allow": {
+                # Coded Tools that use the Reservations API specifically need to turn on
+                # the "reservations" flag in their own "allow" block in order to get an instance
+                # of a Reservationist passed as part of their arguments from the execution environment.
+                # This object comes in the "reservationist" key of the args.
+                "reservations": True
+            }
+```
 
 ---
 

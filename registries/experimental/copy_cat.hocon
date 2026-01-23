@@ -115,6 +115,10 @@ If the call_text argument is given, the temporary network will be immediately ca
             },
             "class": "copyist.Copyist",
             "allow": {
+                # Coded Tools that use the Reservations API specifically need to turn on
+                # the "reservations" flag in their own "allow" block in order to get an instance
+                # of a Reservationist passed as part of their arguments from the execution environment.
+                # This object comes in the "reservationist" key of the args.
                 "reservations": True
             }
         }
