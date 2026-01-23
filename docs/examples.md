@@ -6,6 +6,9 @@ Here are a few examples ordered by level of complexity.
 
 - [Examples](#examples)
   - [🔰 Basic Examples](#-basic-examples)
+    - [Coffee Finder](#coffee-finder)
+    - [Coffee Finder Advanced](#coffee-finder-advanced)
+    - [Hello World](#hello-world)
     - [Music Nerd](#music-nerd)
     - [Music Nerd Pro](#music-nerd-pro)
     - [Music Nerd Local](#music-nerd-local)
@@ -13,8 +16,6 @@ Here are a few examples ordered by level of complexity.
     - [Music Nerd Pro Sly](#music-nerd-pro-sly)
     - [Music Nerd Pro Sly Local](#music-nerd-pro-sly-local)
     - [Music Nerd LLM Fallbacks](#music-nerd-llm-fallbacks)
-    - [Coffee Finder](#coffee-finder)
-    - [Coffee Finder Advanced](#coffee-finder-advanced)
   - [🧰 Tool Integration Examples](#-tool-integration-examples)
     - [Anthropic Code Execution](#anthropic-code-execution)
     - [Anthropic Web Search](#anthropic-web-search)
@@ -140,6 +141,12 @@ This is a good example to:
 - Learn how agents can ask for additional information.
 
 **Tags:** `AAOSA` `tool` `time` `sly_data` `memory`
+
+### Hello World
+
+[Hello World](examples/basic/hellow_world.md) is an agent network that
+demonstrates how one agent can call another using a basic hocon file.
+Given specific input, there is a good chance you will get output something like "Hello World!".
 
 ## 🧰 Tool Integration Examples
 
