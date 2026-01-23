@@ -92,7 +92,7 @@ class Copyist(BranchActivation, CodedTool):
         try:
             network = restorer.restore(file_reference=copy_file)
         except FileNotFoundError:
-            error = f"Unable to restore agent network from {copy_file}. File not found."
+            error = f"Unable to restore agent network from {copy_file}. Agent network .hocon file not found."
             return error
 
         my_agent_spec: Dict[str, Any] = network.get_config()
