@@ -248,6 +248,9 @@ ENV AGENT_HTTP_RESOURCES_MONITOR_INTERVAL=0
 # interface, if the agent network hocon file specifically allows it for the tool.
 # Update will be done every AGENT_TEMPORARY_NETWORK_UPDATE_PERIOD_SECONDS seconds;
 # if value is not specified or <= 0, no such dynamic updates will be executed.
+# This particular sample deployment turns this on to 5 seconds to be able to show off the feature
+# in a multi-user environment, however most Neuro SAN deployments will want this set to 0
+# to disable the feature for safety.
 ENV AGENT_TEMPORARY_NETWORK_UPDATE_PERIOD_SECONDS=5
 
 # Optional URL describing how the server is to be referenced by the outside world.
