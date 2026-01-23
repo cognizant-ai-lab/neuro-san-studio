@@ -46,7 +46,6 @@ class Copyist(BranchActivation, CodedTool):
     Implementations are expected to clean up after themselves.
     """
 
-    # pylint: disable=too-many-locals
     async def async_invoke(self, args: Dict[str, Any], sly_data: Dict[str, Any]) -> Any:
         """
         Called when the coded tool is invoked asynchronously by the agent hierarchy.
@@ -91,8 +90,9 @@ class Copyist(BranchActivation, CodedTool):
 
         reservation: Reservation = None
         error: str = None
+        prefix: str = f"copy_cat-{use_agent_name}"
         reservation, error = await ReservationUtil.wait_for_one(
-            sly_data, args, my_agent_spec, lifetime_in_seconds, prefix=f"copy_cat-{use_agent_name}"
+            sly_data, args, my_agent_spec, lifetime_in_seconds, prefix
         )
 
         if error is not None:
