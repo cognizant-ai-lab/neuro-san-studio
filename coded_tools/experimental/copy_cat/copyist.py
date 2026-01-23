@@ -1,4 +1,3 @@
-
 # Copyright © 2023-2026 Cognizant Technology Solutions Corp, www.cognizant.com.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -92,8 +91,9 @@ class Copyist(BranchActivation, CodedTool):
 
         reservation: Reservation = None
         error: str = None
-        reservation, error = await ReservationUtil.wait_for_one(args, my_agent_spec, lifetime_in_seconds,
-                                                                prefix=f"copy_cat-{use_agent_name}")
+        reservation, error = await ReservationUtil.wait_for_one(
+            sly_data, args, my_agent_spec, lifetime_in_seconds, prefix=f"copy_cat-{use_agent_name}"
+        )
 
         if error is not None:
             return error
@@ -103,20 +103,22 @@ class Copyist(BranchActivation, CodedTool):
         lifetime_in_seconds: float = reservation.get_lifetime_in_seconds()
 
         # Put the output in sly_data for less LLM "telephone" interference
-        sly_data["agent_reservations"] = [{
-            "reservation_id": reservation_id,
-            "lifetime_in_seconds": lifetime_in_seconds,
-            "expiration_time_in_seconds": reservation.get_expiration_time_in_seconds()
-        }]
+        sly_data["agent_reservations"] = [
+            {
+                "reservation_id": reservation_id,
+                "lifetime_in_seconds": lifetime_in_seconds,
+                "expiration_time_in_seconds": reservation.get_expiration_time_in_seconds()
+            }
+        ]
 
         if args.get("call_text") is None:
             # Don't call the agent we just created as a tool
-            return f"The temporary agent name is {reservation_id}." + \
-                   f"Hurry, it's only available for {lifetime_in_seconds} seconds."
+            return (
+                f"The temporary agent name is {reservation_id}."
+                + f"Hurry, it's only available for {lifetime_in_seconds} seconds."
+            )
 
         # Call the agent we just created for our reservation
-        res_args: Dict[str, Any] = {
-            "input": args.get("call_text")
-        }
+        res_args: Dict[str, Any] = {"input": args.get("call_text")}
         res_return: str = await self.use_reservation(reservation_id, res_args, sly_data)
         return res_return
