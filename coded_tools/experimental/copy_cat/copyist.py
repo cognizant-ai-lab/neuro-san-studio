@@ -81,7 +81,7 @@ class Copyist(BranchActivation, CodedTool):
         use_agent_name: str = copy_agent[:-6]
 
         # Get a relative path to the registries directory to copy hocons
-        registries_dir: FileOfClass = FileOfClass(__file__, path_to_basis="../../registries")
+        registries_dir: FileOfClass = FileOfClass(__file__, path_to_basis="../../../registries")
 
         # Restore the given agent network to find its spec dictionary
         copy_file: str = registries_dir.get_file_in_basis(copy_agent)
