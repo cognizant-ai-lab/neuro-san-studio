@@ -29,7 +29,40 @@ from neuro_san.test.unittest.dynamic_hocon_unit_tests import DynamicHoconUnitTes
 from parameterized import parameterized
 
 
-class TestIntegrationTestHocons(TestCase):
+class FailFastParamMixin:
+    """
+    Helper mixin that allows a *single parameterized test group* to fail-fast.
+
+    Meaning:
+      - if one parameterized case fails (ex: c.hocon),
+      - then all remaining cases in that SAME group (ex: d.hocon) will be skipped.
+
+    IMPORTANT:
+      - This is NOT a global "stop pytest" feature.
+      - It only affects tests that call _failfast_skip_if_failed().
+      - Other test functions will still run normally.
+    """
+
+    # Shared state per test class (NOT per instance):
+    # key = group name string
+    # val = True if any case in that group has failed
+    _failfast_flags = {}
+
+    def _failfast_skip_if_failed(self, key: str):
+        """
+        If a previous case failed for this group, skip this case.
+        """
+        if self.__class__._failfast_flags.get(key, False):
+            pytest.skip(f"Earlier case failed for fail-fast group '{key}'")
+
+    def _failfast_mark_failed(self, key: str):
+        """
+        Mark a group as having failed so future cases skip.
+        """
+        self.__class__._failfast_flags[key] = True
+
+
+class TestIntegrationTestHocons(TestCase, FailFastParamMixin):
     """
     Data-driven dynamic test cases where each test case is specified by a single hocon file.
     """
