@@ -46,6 +46,7 @@ class Copyist(BranchActivation, CodedTool):
     Implementations are expected to clean up after themselves.
     """
 
+    # pylint: disable=too-many-local-variables
     async def async_invoke(self, args: Dict[str, Any], sly_data: Dict[str, Any]) -> Any:
         """
         Called when the coded tool is invoked asynchronously by the agent hierarchy.
