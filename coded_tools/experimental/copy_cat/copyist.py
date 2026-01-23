@@ -90,9 +90,9 @@ class Copyist(BranchActivation, CodedTool):
 
         reservation: Reservation = None
         error: str = None
-        prefix: str = f"copy_cat-{use_agent_name}"
+        # pylint: disable=redundant-keyword-arg
         reservation, error = await ReservationUtil.wait_for_one(
-            sly_data, args, my_agent_spec, lifetime_in_seconds, prefix
+            sly_data, args, my_agent_spec, lifetime_in_seconds, prefix=f"copy_cat-{use_agent_name}"
         )
 
         if error is not None:
