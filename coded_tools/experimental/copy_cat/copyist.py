@@ -18,7 +18,6 @@ from typing import Any
 from typing import Dict
 
 from leaf_common.config.file_of_class import FileOfClass
-
 from neuro_san.interfaces.coded_tool import CodedTool
 from neuro_san.interfaces.reservation import Reservation
 from neuro_san.internals.graph.activations.branch_activation import BranchActivation
