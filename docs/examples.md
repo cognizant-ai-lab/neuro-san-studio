@@ -54,6 +54,7 @@ Here are a few examples ordered by level of complexity.
   - [🧪 Experimental and Research](#-experimental-and-research)
     - [Agent Network Designer](#agent-network-designer)
     - [Agent Network Architect](#agent-network-architect)
+    - [Copy Cat](#copy-cat)
     - [CRUSE Theme Agent](#cruse-theme-agent)
     - [CRUSE Widget Agent](#cruse-widget-agent)
     - [CRUSE](#cruse)
@@ -456,6 +457,12 @@ creates an interactive HTML graph of the network, runs a live demonstration usin
 the results. This network streamlines the end-to-end workflow for building and showcasing agent systems.
 
 **Tags:** `tool`, `external_network`, `HTML`, `nsflow`, `Gmail`
+
+### Copy Cat
+
+[Copy Cat](examples/experimental/copy_cat.md) is a simple example of an agent network that uses the Neuro SAN Reservations API to create other agent networks which become available on a temporary basis.
+
+**Tags:** `example`, `experimental`, `reservations`, `agents-creating-agents`
 
 ### CRUSE Theme Agent
 

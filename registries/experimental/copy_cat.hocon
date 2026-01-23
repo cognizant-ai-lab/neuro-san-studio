@@ -28,7 +28,7 @@
     # Optional metadata describing this agent network
     "metadata": {
         "description": "Simple agent network demonstrating use of temporary agent networks using Reservations",
-        "tags": ["example", "experimental", "reservations"],
+        "tags": ["example", "experimental", "reservations", "agents-creating-agents"],
         "sample_queries": [
             """
 Please make a copy of the basic/hello_world.hocon file.
