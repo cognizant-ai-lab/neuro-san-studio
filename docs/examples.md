@@ -460,7 +460,8 @@ the results. This network streamlines the end-to-end workflow for building and s
 
 ### Copy Cat
 
-[Copy Cat](examples/experimental/copy_cat.md) is a simple example of an agent network that uses the Neuro SAN Reservations API to create other agent networks which become available on a temporary basis.
+[Copy Cat](examples/experimental/copy_cat.md) is a simple example of an agent network that uses the
+Neuro SAN Reservations API to create other agent networks which become available on a temporary basis.
 
 **Tags:** `example`, `experimental`, `reservations`, `agents-creating-agents`
 
