@@ -99,10 +99,12 @@ class Copyist(BranchActivation, CodedTool):
 
         # Creating Reservations can be done outside the with-statement
         lifetime_in_seconds: float = 5 * 60.0
+        agent_base_name: str = use_agent_name.split("/")[-1]
+        prefix: str = f"copy_cat-{agent_base_name}"
 
         reservation: Reservation = None
         reservation, error = await ReservationUtil.wait_for_one(
-            args, my_agent_spec, lifetime_in_seconds, prefix=f"copy_cat-{use_agent_name}"
+            args, my_agent_spec, lifetime_in_seconds, prefix=prefix
         )
 
         if error is not None:
