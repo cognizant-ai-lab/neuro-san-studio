@@ -98,6 +98,13 @@
     # Otherwise, the default values of "https://www.googleapis.com/customsearch/v1" and "30" are used, respectively
     "tools/google_search.hocon": false,
 
+    # Requirement to use this agent network:
+    # - neuro-san>=0.6.24
+    # - GOOGLE_API_KEY
+    # - Maps Grounding Lite API enabled in Google Cloud project. See https://developers.google.com/maps/ai/grounding-lite
+    # - Use MCP_SERVERS_INFO_FILE for authentication. See https://github.com/cognizant-ai-lab/neuro-san-studio/blob/main/mcp/mcp_info.hocon and https://github.com/cognizant-ai-lab/neuro-san-studio/blob/main/docs/user_guide.md#authentication
+    "tools/google_maps.hocon": false,
+
     # Before turning on and running the following agent network, make sure that:
     # The MCP server is running.
     # The server can be found at servers/MCP/bmi_server.py and run using the following command
