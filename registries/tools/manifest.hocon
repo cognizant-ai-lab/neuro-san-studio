@@ -1,0 +1,141 @@
+# Copyright © 2025-2026 Cognizant Technology Solutions Corp, www.cognizant.com.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
+# END COPYRIGHT
+{
+    # Refer to this document for neuro-san specifications for the agent manifest.hocon file 
+    # that is used as configuration for neuro-san servers
+    # https://github.com/cognizant-ai-lab/neuro-san/blob/main/docs/manifest_hocon_reference.md
+
+    #
+    # Tool integration examples
+    #
+
+    # The following agent network is an example of Agent2Agent (A2A) Protocol implementation:
+    # Make sure to pip install a2a-sdk crewai and start the server by python server.py before turning the agent on.
+    # The A2Aserver can be found at servers/A2A/server.py and run by command
+    # python server.py
+    "tools/a2a_research_report.hocon": false,
+
+    "tools/agent_network_html_creator.hocon": true,
+    "tools/agentforce.hocon": true,
+    "tools/agentic_rag.hocon": false,
+    "tools/agentspace_adapter.hocon": false,
+
+    # Requirement to use this anthropic based agent network:
+    # - langchain-anthropic>=0.3.13
+    # - ANTHROPIC_API_KEY
+    # See https://docs.anthropic.com/en/docs/agents-and-tools/tool-use/overview and
+    # https://python.langchain.com/docs/integrations/chat/anthropic/#built-in-tools
+    "tools/anthropic_web_search.hocon": true,
+    "tools/anthropic_code_execution.hocon": true,
+
+    # To use this arxiv_rag agent network, start by installing the required package:
+    #     pip install arxiv
+    # If "get_full_documents" is set to True
+    #     pip install pymupdf
+    "tools/arxiv_rag.hocon": false,
+
+    # To use this agent network with Brave Search, obtain an API key from: https://brave.com/search/api/
+    # Once you have the API key, set it using the BRAVE_API_KEY environment variable.
+    # You can optionally set a custom search URL via the BRAVE_URL environment variable.
+    # If BRAVE_URL is not set, the default is: https://api.search.brave.com/res/v1/web/search?q=
+    # You can also configure the request timeout (in seconds) using BRAVE_TIMEOUT; the default is 30 seconds.
+    "tools/brave_search.hocon": false,
+
+    # To use this confluence agent network, start by installing the required package:
+    #     pip install atlassian-python-api
+    #
+    # Additional installations may be required depending on the attachment types used.
+    # For details, see https://python.langchain.com/api_reference/_modules/langchain_community/document_loaders/confluence.html#ConfluenceLoader
+    # Set "username" and "api_key" in the agent network hocon or
+    # as environment variable "JIRA_USERNAME" and "JIRA_API_TOKEN", respectively.
+    "tools/confluence_rag.hocon": false,
+
+    "tools/ddgs_search.hocon": true,
+
+    # Requirement to use this agent network:
+    # - google-genai
+    # - GOOGLE_API_KEY
+    # See https://ai.google.dev/gemini-api/docs
+    # Note: If `langchain-google-genai` is already installed in your environment, `google-genai` is already included.
+    "tools/gemini_image_generation.hocon": false,
+
+    # To use this gmail agent network, you will need to
+    # - pip install -U langchain-google-community\[gmail\]
+    # - set up your credentials explained in
+    # https://developers.google.com/workspace/gmail/api/quickstart/python#authorize_credentials_for_a_desktop_application.
+    # Once you've downloaded the credentials.json file and put it in the top level of this repo,
+    # you can start using the agent network.
+    "tools/gmail.hocon": false,
+
+    # To use this google_search tool, you must
+    #
+    # 1. Create a Custom Search Engine (CSE)
+    #   * Go to  https://programmablesearchengine.google.com/
+    #   * Click "Add" → Choose sites or use "*" to search the whole web (then enable that in settings).
+    #   * Note your Search Engine ID (cx).
+    # 2. Get Google API key
+    #  * Go to: https://console.cloud.google.com/
+    #  * Enable the Custom Search API.
+    #  * Create an API key under APIs & Services > Credentials.
+    #
+    # Use the CSE ID in step 1 to set GOOGLE_SEARCH_CSE_ID environment variable.
+    # Use the API key in step 2 to set GOOGLE_SEARCH_API_KEY environment variable.
+    #
+    # You can optionally set a custom search URL and a custom timeout via the GOOGLE_SEARCH_URL and GOOGLE_SEARCH_TIMEOUT environment variables.
+    # Otherwise, the default values of "https://www.googleapis.com/customsearch/v1" and "30" are used, respectively
+    "tools/google_search.hocon": false,
+
+    # Requirement to use this agent network:
+    # - neuro-san>=0.6.24
+    # - GOOGLE_API_KEY
+    # - Maps Grounding Lite API enabled in Google Cloud project. See https://developers.google.com/maps/ai/grounding-lite
+    # - Use MCP_SERVERS_INFO_FILE for authentication. See https://github.com/cognizant-ai-lab/neuro-san-studio/blob/main/mcp/mcp_info.hocon and https://github.com/cognizant-ai-lab/neuro-san-studio/blob/main/docs/user_guide.md#authentication
+    "tools/google_maps.hocon": false,
+
+    # Before turning on and running the following agent network, make sure that:
+    # The MCP server is running.
+    # The server can be found at servers/MCP/bmi_server.py and run using the following command
+    # python bmi_server.py
+    "tools/mcp_bmi_streamable_http.hocon": false,
+
+    "tools/now_agents.hocon": true,
+
+    # Requirement to use this openai based agent network:
+    # - langchain-openai >= 0.3.26
+    # - OPENAI_API_KEY
+    # See https://platform.openai.com/docs/guides/tools?api-mode=responses and
+    # https://python.langchain.com/docs/integrations/chat/openai/#responses-api
+    "tools/openai_code_interpreter.hocon": true,
+    "tools/openai_image_generation.hocon": true,
+    # This network also requires opencv-python
+    # See docs/examples/tools/openai_video_generation.hocon#Prerequisites for more information.
+    "tools/openai_video_generation.hocon": false,
+    "tools/openai_web_search.hocon": true,
+
+    # To use this agent network, start by installing the required package:
+    #     pip install pymupdf >= 1.25.5
+    "tools/pdf_rag.hocon": false,
+
+    # To use this agent network, follow the instructions in ./docs/examples/visual_question_answering.md
+    "tools/visual_question_answering.hocon": false,
+
+    # To use this agent network, start by installing the required package:
+    #     pip install wikipedia
+    "tools/wikipedia_rag.hocon": false,
+
+    # Wikimedia media search
+    "tools/wikimedia_search.hocon": true,
+}

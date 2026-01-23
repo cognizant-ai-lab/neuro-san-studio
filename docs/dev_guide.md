@@ -166,3 +166,93 @@ git rebase main
 ```
 
 Following this workflow will help ensure a smooth contribution process and maintain the project's quality standards.
+
+## Reorganizing Agent Networks
+
+When moving an agent network to a different directory (e.g., from root to an industry
+subfolder), multiple files need to be updated to maintain consistency across the codebase.
+This section provides a comprehensive checklist to ensure all references are properly updated.
+
+### Files to Move
+
+1. **Agent Configuration File** (`registries/<agent_name>.hocon`)
+   - Move to appropriate subdirectory (e.g., `registries/industry/<agent_name>.hocon`)
+   - Ensure metadata section is present with:
+     - `description`: Brief description of the agent network
+     - `tags`: Array of relevant tags (e.g., `["AAOSA", "industry-specific-tags"]`)
+     - `sample_queries`: Array of 2-3 example queries users might ask
+
+2. **Documentation File** (`docs/examples/<agent_name>.md`)
+   - Move to corresponding subdirectory (e.g., `docs/examples/industry/<agent_name>.md`)
+
+3. **Test Fixture** (`tests/fixtures/<agent_name>_test.hocon`)
+   - Move to corresponding subdirectory (e.g., `tests/fixtures/industry/<agent_name>_test.hocon`)
+
+### Files to Update
+
+1. **Agent Documentation** (`docs/examples/industry/<agent_name>.md`)
+   - Update file path reference in the `## File` section to reflect new location
+   - Update test fixture path reference in the `## Testing` section
+   - Adjust relative path depth (e.g., `../../` to `../../../` when moving into subfolder)
+
+2. **Test Fixture** (`tests/fixtures/industry/<agent_name>_test.hocon`)
+   - Update the `"agent"` field to include the subdirectory path
+   - Example: `"agent": "cpg_agents"` becomes `"agent": "industry/cpg_agents"`
+
+3. **Integration Test Suite** (`tests/integration/test_integration_test_hocons.py`)
+   - Update the test file path in the `@parameterized.expand()` list
+   - Example: `"cpg_agents_test.hocon"` becomes `"industry/cpg_agents_test.hocon"`
+   - Ensure the test is in the appropriate test group (basic, industry, etc.)
+
+4. **Manifest Files** (registry configuration)
+   - `registries/manifest.hocon`: Update the agent path in the registry list
+   - Example: `"cpg_agents.hocon": true` becomes `"industry/cpg_agents.hocon": true`
+
+5. **Examples Index** (`docs/examples.md`)
+   - Add or update the agent entry in the appropriate section
+   - Update the documentation link to reflect the new path
+   - Include description and tags
+
+6. **External References** (other `.hocon` files)
+   - Search for any `.hocon` files that reference this agent network as a tool or sub-agent
+   - Update `external_network` or similar references to use the new path
+   - Example: `"external_network": "airline_policy"` becomes
+     `"external_network": "industry/airline_policy"`
+
+7. **CodedTools Document Paths** (if applicable)
+   - Check if any CodedTools reference document files from this agent network
+   - Update file paths in the CodedTools to reflect the new location
+   - Example: Policy documents or data files referenced by coded tools
+
+### Checklist
+
+Use this checklist when reorganizing an agent network:
+
+- [ ] Move `.hocon` file to target directory
+- [ ] Add/verify metadata in `.hocon` file (description, tags, sample_queries)
+- [ ] Move documentation `.md` file to target directory
+- [ ] Move test fixture `.hocon` file to target directory
+- [ ] Update file path references in documentation `.md` file
+- [ ] Update `"agent"` field in test fixture
+- [ ] Update integration test suite to reference new test path
+- [ ] Update `registries/manifest.hocon`
+- [ ] Update `docs/examples.md` with new documentation path
+- [ ] Update any `.hocon` files referencing this agent as a tool/sub-agent
+- [ ] Update CodedTools document paths (if applicable)
+- [ ] Run tests to verify all references are correct
+- [ ] Create separate commits for each logical change
+
+### Verification
+
+After reorganization, verify the changes:
+
+```bash
+# Check that the agent loads correctly
+python -m run
+
+# Run integration tests
+pytest tests/integration/test_integration_test_hocons.py -k "agent_name"
+
+# Verify documentation links are not broken
+# (manually check relative paths in documentation)
+```
