@@ -107,7 +107,7 @@ class Copyist(BranchActivation, CodedTool):
             {
                 "reservation_id": reservation_id,
                 "lifetime_in_seconds": lifetime_in_seconds,
-                "expiration_time_in_seconds": reservation.get_expiration_time_in_seconds()
+                "expiration_time_in_seconds": reservation.get_expiration_time_in_seconds(),
             }
         ]
 
