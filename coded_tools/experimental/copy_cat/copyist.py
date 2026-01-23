@@ -103,6 +103,27 @@ class Copyist(BranchActivation, CodedTool):
         lifetime_in_seconds: float = reservation.get_lifetime_in_seconds()
 
         # Put the output in sly_data for less LLM "telephone" interference
+        # in reporting agent reservations information.
+        #
+        # By convention, we put agent reservation information in the sly_data under this
+        # "agent_reservations" key.  The value is a list of dictionaries, one for each
+        # reservation created that we want to publicize to the caller. For this simple example,
+        # there is only a single new agent network reservation created, but more complex
+        # apps can produce multiple networks.
+        #
+        # Having such a convention allows for various clients to know what to expect
+        # from networks returning what are effectively links to newly created agent networks
+        # that have a limited lifetime.
+        #
+        # The string contained in a "reservation_id" key is a unique identifier
+        # containing a human-reable prefix and a uuid suffix for uniqueness.
+        # This can be used as an agent name in a subsequent call to the agent server.
+        #
+        # The "lifetime_in_seconds" float value contains the number of seconds that the agent
+        # is available for before the expiring in the server.
+        #
+        # The "expiration_time_in_seconds" float value contains a UTC timestamp beyond which
+        # a client knows when to not offer access to the network any more.
         sly_data["agent_reservations"] = [
             {
                 "reservation_id": reservation_id,
