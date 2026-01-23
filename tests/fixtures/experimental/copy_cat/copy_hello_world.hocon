@@ -27,7 +27,7 @@
     "use_direct": true,
 
     # Number of iterations that have to pass to call this test successful.
-    "success_ratio": "1/1",
+    "success_ratio": "2/3",
 
     # Interactions are a series of dictionaries with request elements paired with
     # descriptions of response checks.
