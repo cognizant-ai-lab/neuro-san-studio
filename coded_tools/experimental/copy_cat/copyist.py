@@ -17,7 +17,8 @@
 from typing import Any
 from typing import Dict
 
-from neuro_san import REGISTRIES_DIR
+from leaf_common.config.file_of_class import FileOfClass
+
 from neuro_san.interfaces.coded_tool import CodedTool
 from neuro_san.interfaces.reservation import Reservation
 from neuro_san.internals.graph.activations.branch_activation import BranchActivation
@@ -79,17 +80,27 @@ class Copyist(BranchActivation, CodedTool):
         # Remove the .hocon suffix for this string
         use_agent_name: str = copy_agent[:-6]
 
+        # Get a relative path to the registries directory to copy hocons
+        registries_dir: FileOfClass = FileOfClass(__file__, path_to_basis="../../registries")
+
         # Restore the given agent network to find its spec dictionary
-        copy_file: str = REGISTRIES_DIR.get_file_in_basis(copy_agent)
+        copy_file: str = registries_dir.get_file_in_basis(copy_agent)
         restorer = AgentNetworkRestorer()
-        network: AgentNetwork = restorer.restore(file_reference=copy_file)
+
+        error: str = None
+        network: AgentNetwork = None
+        try:
+            network = restorer.restore(file_reference=copy_file)
+        except FileNotFoundError:
+            error = f"Unable to restore agent network from {copy_file}. File not found."
+            return error
+
         my_agent_spec: Dict[str, Any] = network.get_config()
 
         # Creating Reservations can be done outside the with-statement
         lifetime_in_seconds: float = 5 * 60.0
 
         reservation: Reservation = None
-        error: str = None
         # pylint: disable=redundant-keyword-arg
         reservation, error = await ReservationUtil.wait_for_one(
             sly_data, args, my_agent_spec, lifetime_in_seconds, prefix=f"copy_cat-{use_agent_name}"
