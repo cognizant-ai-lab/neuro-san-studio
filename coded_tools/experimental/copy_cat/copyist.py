@@ -14,6 +14,7 @@
 #
 # END COPYRIGHT
 
+from os import environ
 from typing import Any
 from typing import Dict
 
@@ -69,6 +70,14 @@ class Copyist(BranchActivation, CodedTool):
                 adding the data is not invoke()-ed more than once.
         :return: A return value that goes into the chat stream.
         """
+        if environ.get("AGENT_TEMPORARY_NETWORK_UPDATE_PERIOD_SECONDS") is None:
+            return """
+The copy_cat network requires the neuro-san server to be configured with the
+AGENT_TEMPORARY_NETWORK_UPDATE_PERIOD_SECONDS environment variable.
+Try doing this in your environment:
+    export AGENT_TEMPORARY_NETWORK_UPDATE_PERIOD_SECONDS=5
+"""
+
         copy_agent: str = args.get("agent_name")
         if copy_agent is None or len(copy_agent) == 0:
             return "Need a non-empty value for copy_agent"
