@@ -28,8 +28,8 @@ from typing import Dict
 from typing import Tuple
 
 from dotenv import load_dotenv
-from env_validator import EnvValidator
 from plugins.log_bridge.process_log_bridge import ProcessLogBridge
+from tests.apps.env_validator import EnvValidator
 from plugins.phoenix.phoenix_plugin import PhoenixPlugin
 
 
