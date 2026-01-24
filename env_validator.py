@@ -317,11 +317,11 @@ class EnvValidator:
         value = os.getenv(var_name, "")
 
         try:
-            import google.generativeai as genai
+            from google import genai
 
-            genai.configure(api_key=value)
+            client = genai.Client(api_key=value)
             # Lightweight call - list models
-            list(genai.list_models())
+            list(client.models.list())
             return ValidationResult(
                 var_name=var_name,
                 status=ValidationStatus.VALID,
@@ -332,7 +332,7 @@ class EnvValidator:
             return ValidationResult(
                 var_name=var_name,
                 status=ValidationStatus.UNKNOWN_ERROR,
-                message="google-generativeai package not installed - skipping live validation",
+                message="google-genai package not installed - skipping live validation",
                 masked_value=self.mask_value(value),
             )
         except Exception as e:
