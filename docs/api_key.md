@@ -49,6 +49,7 @@ python -m run --validate-keys
 ```
 
 **Currently supported providers for live validation:**
+
 - ✅ OpenAI (calls `/v1/models`)
 - ✅ Anthropic (calls `/v1/messages/count_tokens`)
 - ✅ Google (calls Gemini models list)
@@ -57,7 +58,7 @@ python -m run --validate-keys
 
 ### Example Output
 
-```
+```text
 ======================================================================
 Environment Variable Validation Results
 ======================================================================
@@ -78,7 +79,9 @@ Summary: 3/7 valid, 4 warnings, 0 errors
 ======================================================================
 ```
 
-> **Source Code:** The validation logic lives in [`tests/apps/env_validator.py`](../tests/apps/env_validator.py). You can inspect or extend this file to add support for additional providers.
+> **Source Code:** The validation logic lives in
+> [`tests/apps/env_validator.py`](../tests/apps/env_validator.py).
+> You can inspect or extend this file to add support for additional providers.
 
 ---
 
