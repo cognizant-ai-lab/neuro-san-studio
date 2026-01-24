@@ -28,7 +28,35 @@ critical environment variables:
 import os
 from dataclasses import dataclass
 from enum import Enum
-from typing import Callable, Optional
+from typing import Callable
+from typing import Optional
+
+# Optional dependencies for live validation (Tier 3)
+try:
+    from anthropic import Anthropic
+    from anthropic import AuthenticationError as AnthropicAuthError
+    from anthropic import BadRequestError as AnthropicBadRequestError
+    from anthropic import RateLimitError as AnthropicRateLimitError
+
+    HAS_ANTHROPIC = True
+except ImportError:
+    HAS_ANTHROPIC = False
+
+try:
+    from google import genai
+
+    HAS_GOOGLE = True
+except ImportError:
+    HAS_GOOGLE = False
+
+try:
+    from openai import AuthenticationError as OpenAIAuthError
+    from openai import OpenAI
+    from openai import RateLimitError as OpenAIRateLimitError
+
+    HAS_OPENAI = True
+except ImportError:
+    HAS_OPENAI = False
 
 
 class ValidationStatus(Enum):
@@ -217,9 +245,15 @@ class EnvValidator:
 
         value = os.getenv(var_name, "")
 
-        try:
-            from openai import AuthenticationError, OpenAI, RateLimitError
+        if not HAS_OPENAI:
+            return ValidationResult(
+                var_name=var_name,
+                status=ValidationStatus.UNKNOWN_ERROR,
+                message="openai package not installed - skipping live validation",
+                masked_value=self.mask_value(value),
+            )
 
+        try:
             client = OpenAI(api_key=value)
             # Lightweight call - list models doesn't consume tokens
             client.models.list()
@@ -229,25 +263,18 @@ class EnvValidator:
                 message="API key verified",
                 masked_value=self.mask_value(value),
             )
-        except AuthenticationError:
+        except OpenAIAuthError:
             return ValidationResult(
                 var_name=var_name,
                 status=ValidationStatus.INVALID_KEY,
                 message="Authentication failed - invalid API key",
                 masked_value=self.mask_value(value),
             )
-        except RateLimitError:
+        except OpenAIRateLimitError:
             return ValidationResult(
                 var_name=var_name,
                 status=ValidationStatus.RATE_LIMITED,
                 message="Rate limited - key may be valid but quota exceeded",
-                masked_value=self.mask_value(value),
-            )
-        except ImportError:
-            return ValidationResult(
-                var_name=var_name,
-                status=ValidationStatus.UNKNOWN_ERROR,
-                message="openai package not installed - skipping live validation",
                 masked_value=self.mask_value(value),
             )
         except Exception as e:
@@ -266,14 +293,15 @@ class EnvValidator:
 
         value = os.getenv(var_name, "")
 
-        try:
-            from anthropic import (
-                Anthropic,
-                AuthenticationError,
-                BadRequestError,
-                RateLimitError,
+        if not HAS_ANTHROPIC:
+            return ValidationResult(
+                var_name=var_name,
+                status=ValidationStatus.UNKNOWN_ERROR,
+                message="anthropic package not installed - skipping live validation",
+                masked_value=self.mask_value(value),
             )
 
+        try:
             client = Anthropic(api_key=value)
             # Lightweight call - count tokens using the messages API
             client.messages.count_tokens(
@@ -286,7 +314,7 @@ class EnvValidator:
                 message="API key verified",
                 masked_value=self.mask_value(value),
             )
-        except BadRequestError:
+        except AnthropicBadRequestError:
             # 400 means the key authenticated but request was malformed
             # This still confirms the key is valid
             return ValidationResult(
@@ -295,25 +323,18 @@ class EnvValidator:
                 message="API key verified",
                 masked_value=self.mask_value(value),
             )
-        except AuthenticationError:
+        except AnthropicAuthError:
             return ValidationResult(
                 var_name=var_name,
                 status=ValidationStatus.INVALID_KEY,
                 message="Authentication failed - invalid API key",
                 masked_value=self.mask_value(value),
             )
-        except RateLimitError:
+        except AnthropicRateLimitError:
             return ValidationResult(
                 var_name=var_name,
                 status=ValidationStatus.RATE_LIMITED,
                 message="Rate limited - key may be valid but quota exceeded",
-                masked_value=self.mask_value(value),
-            )
-        except ImportError:
-            return ValidationResult(
-                var_name=var_name,
-                status=ValidationStatus.UNKNOWN_ERROR,
-                message="anthropic package not installed - skipping live validation",
                 masked_value=self.mask_value(value),
             )
         except Exception as e:
@@ -332,9 +353,15 @@ class EnvValidator:
 
         value = os.getenv(var_name, "")
 
-        try:
-            from google import genai
+        if not HAS_GOOGLE:
+            return ValidationResult(
+                var_name=var_name,
+                status=ValidationStatus.UNKNOWN_ERROR,
+                message="google-genai package not installed - skipping live validation",
+                masked_value=self.mask_value(value),
+            )
 
+        try:
             client = genai.Client(api_key=value)
             # Lightweight call - list models
             list(client.models.list())
@@ -342,13 +369,6 @@ class EnvValidator:
                 var_name=var_name,
                 status=ValidationStatus.VALID,
                 message="API key verified",
-                masked_value=self.mask_value(value),
-            )
-        except ImportError:
-            return ValidationResult(
-                var_name=var_name,
-                status=ValidationStatus.UNKNOWN_ERROR,
-                message="google-genai package not installed - skipping live validation",
                 masked_value=self.mask_value(value),
             )
         except Exception as e:
