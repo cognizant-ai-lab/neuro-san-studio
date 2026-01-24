@@ -2,6 +2,44 @@
 
 Setup a virtual environment, install the dependencies, and activate the virtual environment using [Make](./dev_guide.md#using-the-makefile)
 
+## Quick Validation (All Keys at Once)
+
+The easiest way to validate all your API keys is to use the `--validate-keys` flag when starting the server:
+
+```bash
+python -m run --validate-keys
+```
+
+This performs live validation by making test API calls to each provider (OpenAI, Anthropic, Google, etc.) and displays a summary:
+
+```
+======================================================================
+Environment Variable Validation Results
+======================================================================
+
+[VALID]
+  OPENAI_API_KEY: sk-pr...xY9z - API key verified
+  GOOGLE_API_KEY: AIza...cntU - API key verified
+
+[WARNING]
+  - AWS_ACCESS_KEY_ID: not set - Configure in .env file
+
+[ERROR]
+  X ANTHROPIC_API_KEY: sk-an...1234 - Authentication failed - invalid API key
+
+======================================================================
+Summary: 2/7 valid, 1 warnings, 1 errors
+======================================================================
+```
+
+**Note:** Without the `--validate-keys` flag, the server still performs basic validation (placeholder detection and format checks) but skips live API calls for faster startup.
+
+---
+
+## Individual Key Testing
+
+You can also test individual API keys using the scripts below:
+
 ## OpenAI API Key
 
 - Export your OpenAI API environment variables
