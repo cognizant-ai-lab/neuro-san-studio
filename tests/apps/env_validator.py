@@ -444,11 +444,7 @@ class EnvValidator:
 
         # Group by status for cleaner output
         valid_results = [r for r in results if r.status == ValidationStatus.VALID]
-        warning_results = [
-            r
-            for r in results
-            if r.status in (ValidationStatus.NOT_SET, ValidationStatus.PLACEHOLDER)
-        ]
+        warning_results = [r for r in results if r.status in (ValidationStatus.NOT_SET, ValidationStatus.PLACEHOLDER)]
         error_results = [
             r
             for r in results
