@@ -25,8 +25,13 @@
 from unittest import TestCase
 
 import pytest
+import re
+import os
 from neuro_san.test.unittest.dynamic_hocon_unit_tests import DynamicHoconUnitTests
 from parameterized import parameterized
+
+from coded_tools.kwik_agents.list_topics import MEMORY_DATA_STRUCTURE
+from coded_tools.kwik_agents.list_topics import MEMORY_FILE_PATH
 
 
 class FailFastParamMixin:
@@ -60,6 +65,63 @@ class FailFastParamMixin:
         Mark a group as having failed so future cases skip.
         """
         self.__class__._failfast_flags[key] = True
+
+    def run_hocon_failfast(self, test_name: str, test_hocon: str):
+        """
+        Run one HOCON-driven E2E test case with FAIL-FAST behavior for the *parameterized group*.
+
+        This helper is intended for end-to-end (E2E) integration tests where:
+        - Each .hocon file represents one full scenario/case.
+        - If one scenario fails, running the remaining scenarios is often not useful
+            (it usually causes cascading failures and wastes runtime).
+
+        Extra requirement (memory cleanup):
+        - Before the first case in a fail-fast group starts, we delete the shared
+            TopicMemory.json file to ensure the entire parameterized group starts from
+            a clean memory state.
+        - Cleanup is performed once per group (not once per case).
+
+        How grouping works:
+        - parameterized.expand generates a unique unittest-style method name per case, e.g.
+            test_hocon_xxx_e2e_7_some_description
+        - We derive the *base* method name by stripping "_<index>_<rest...>"
+            so all cases from the same original test method share ONE group key.
+        - Once any case in the group fails, remaining cases in that group are skipped.
+        """
+
+        # Base method name for the current parameterized group
+        group = re.sub(r"_\d+_.*$", "", self._testMethodName)
+
+        # ------------------------------------------------------------
+        # One-time cleanup memory file BEFORE first case in this fail-fast group
+        # ------------------------------------------------------------
+        # We store a cleanup flag per group so we only do it once.
+        cleanup_key = f"{group}::cleanup_done"
+
+        if not self.__class__._failfast_flags.get(cleanup_key, False):
+            topic_memory_path = MEMORY_FILE_PATH + MEMORY_DATA_STRUCTURE + ".json"
+
+            # Delete file if it exists. Ignore if it's already gone.
+            try:
+                os.remove(topic_memory_path)
+            except FileNotFoundError:
+                pass
+
+            # Mark cleanup as done so later param cases don’t repeat it
+            self.__class__._failfast_flags[cleanup_key] = True
+
+        # ------------------------------------------------------------
+        # Fail-fast gating logic
+        # ------------------------------------------------------------
+        self._failfast_skip_if_failed(group)
+
+        try:
+            # Run your existing dynamic driver
+            self.DYNAMIC.one_test_hocon(self, test_name, test_hocon)
+        except Exception:
+            # Mark group as failed so remaining cases skip
+            self._failfast_mark_failed(group)
+            raise
 
 
 class TestIntegrationTestHocons(TestCase, FailFastParamMixin):
@@ -103,6 +165,9 @@ class TestIntegrationTestHocons(TestCase, FailFastParamMixin):
 
         self.DYNAMIC.one_test_hocon(self, test_name, test_hocon)
 
+    # ------------------------------------------------------------
+    # FAIL-FAST GROUP KEY (base test method name)
+    # ------------------------------------------------------------
     @parameterized.expand(
         DynamicHoconUnitTests.from_hocon_list(
             [
@@ -118,6 +183,24 @@ class TestIntegrationTestHocons(TestCase, FailFastParamMixin):
                 "basic/coffee_finder_advanced/"
                 "coffee_continue_reorder_sly_data_8am_negative_test_multi_orders_exist.hocon",
                 "basic/coffee_finder_advanced/coffee_continue_reorder_sly_data_1am_negative_test_partial_name.hocon",
+                # List more hocon files as they become available here.
+            ]
+        ),
+        skip_on_empty=True,
+    )
+    @pytest.mark.integration
+    @pytest.mark.integration_basic
+    @pytest.mark.integration_basic_coffee_finder_advanced
+    @pytest.mark.integration_basic_coffee_finder_advanced_e2e
+    def test_hocon_industry_coffee_finder_advanced_e2e(self, test_name: str, test_hocon: str):
+        self.run_hocon_failfast(test_name, test_hocon)
+
+    @parameterized.expand(
+        DynamicHoconUnitTests.from_hocon_list(
+            [
+                # These can be in any order.
+                # Ideally more basic functionality will come first.
+                # Barring that, try to stick to alphabetical order.
                 "basic/coffee_finder_advanced/coffee_what_time_sly_data_1am.hocon",
                 "basic/coffee_finder_advanced/coffee_where_sly_data_1am.hocon",
                 "basic/coffee_finder_advanced/coffee_where_sly_data_6am.hocon",
