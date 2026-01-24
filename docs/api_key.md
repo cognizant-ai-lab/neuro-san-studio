@@ -78,6 +78,8 @@ Summary: 3/7 valid, 4 warnings, 0 errors
 ======================================================================
 ```
 
+> **Source Code:** The validation logic lives in [`tests/apps/env_validator.py`](../tests/apps/env_validator.py). You can inspect or extend this file to add support for additional providers.
+
 ---
 
 ## Individual Key Testing
