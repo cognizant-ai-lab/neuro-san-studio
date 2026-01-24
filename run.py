@@ -28,6 +28,7 @@ from typing import Dict
 from typing import Tuple
 
 from dotenv import load_dotenv
+from env_validator import EnvValidator
 from plugins.log_bridge.process_log_bridge import ProcessLogBridge
 from plugins.phoenix.phoenix_plugin import PhoenixPlugin
 
@@ -162,6 +163,11 @@ class NeuroSanRunner:
         parser.add_argument(
             "--use-flask-web-client", action="store_true", help="Use the flask based neuro-san-web-client"
         )
+        parser.add_argument(
+            "--validate-keys",
+            action="store_true",
+            help="Perform live validation of API keys by making test API calls",
+        )
 
         args, _ = parser.parse_known_args()
         explicitly_passed_args = {arg for arg in sys.argv[1:] if arg.startswith("--")}
@@ -238,6 +244,28 @@ class NeuroSanRunner:
             print(f"NEURO_SAN_SERVER_HTTP_PORT set to: {os.environ['NEURO_SAN_SERVER_HTTP_PORT']}\n")
 
         print("\n" + "=" * 50 + "\n")
+
+    def validate_environment(self):
+        """Validate LLM API keys and critical environment variables."""
+        print("Validating environment variables...")
+
+        validator = EnvValidator()
+        live_validation = self.args.get("validate_keys", False)
+
+        if live_validation:
+            print("Live validation enabled (--validate-keys) - making API calls to verify keys...")
+
+        results = validator.validate_all(live_validation=live_validation)
+        validator.print_results(results)
+
+        # Warn but don't block startup for missing/placeholder keys
+        if validator.has_warnings(results):
+            print("Note: Some API keys are not configured. Agents using those providers will fail.")
+            print("      Configure them in your .env file to enable all features.\n")
+
+        # For actual errors (invalid format, invalid key), warn more strongly
+        if validator.has_errors(results):
+            print("Warning: Some API keys have validation errors. Check the results above.\n")
 
     @staticmethod
     def generate_html_files():
@@ -536,6 +564,9 @@ class NeuroSanRunner:
 
         # Set environment variables
         self.set_environment_variables()
+
+        # Validate environment variables (Tier 1 & 2 always, Tier 3 if --validate-keys)
+        self.validate_environment()
 
         # Ensure logs directory exists
         os.makedirs("logs", exist_ok=True)
