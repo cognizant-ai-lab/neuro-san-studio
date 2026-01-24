@@ -268,11 +268,28 @@ class EnvValidator:
         value = os.getenv(var_name, "")
 
         try:
-            from anthropic import Anthropic, AuthenticationError, RateLimitError
+            from anthropic import (
+                Anthropic,
+                AuthenticationError,
+                BadRequestError,
+                RateLimitError,
+            )
 
             client = Anthropic(api_key=value)
-            # Lightweight call - count tokens for a minimal string
-            client.count_tokens("test")
+            # Lightweight call - count tokens using the messages API
+            client.messages.count_tokens(
+                model="claude-3-haiku-20240307",
+                messages=[{"role": "user", "content": "test"}],
+            )
+            return ValidationResult(
+                var_name=var_name,
+                status=ValidationStatus.VALID,
+                message="API key verified",
+                masked_value=self.mask_value(value),
+            )
+        except BadRequestError:
+            # 400 means the key authenticated but request was malformed
+            # This still confirms the key is valid
             return ValidationResult(
                 var_name=var_name,
                 status=ValidationStatus.VALID,
