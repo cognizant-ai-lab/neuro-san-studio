@@ -28,7 +28,6 @@ from typing import Dict
 from typing import Tuple
 
 from dotenv import load_dotenv
-
 from plugins.log_bridge.process_log_bridge import ProcessLogBridge
 from plugins.phoenix.phoenix_plugin import PhoenixPlugin
 
