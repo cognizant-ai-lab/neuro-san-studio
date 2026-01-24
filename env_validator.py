@@ -156,7 +156,7 @@ class EnvValidator:
             return ValidationResult(
                 var_name=var_name,
                 status=ValidationStatus.NOT_SET,
-                message="Not set",
+                message="Configure in .env file",
                 masked_value=None,
             )
 
