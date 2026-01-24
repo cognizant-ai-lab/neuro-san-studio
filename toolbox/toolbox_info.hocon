@@ -500,17 +500,18 @@ You can group terms using parentheses ().
 
 Examples:
 
-query="au:del_maestro"
-query="au:del_maestro AND ti:checkerboard"
-query='au:del_maestro AND ti:"quantum criticality"'
-query="au:del_maestro ANDNOT (ti:checkerboard OR ti:Pyrochlore)"
+query='au:"del maestro"'
+query='au:"del maestro" AND ti:checkerboard'
+query='au:"del maestro" AND ti:"quantum criticality"'
+query='au:"Adrian Del Maestro" AND au:"Bernd Rosenow"'
+query='au:"del maestro" ANDNOT (ti:checkerboard OR ti:Pyrochlore)'
 query="cat:quant-ph AND abs:entanglement"
 query="id_list:2301.01234"
 
 Rules:
 
 - Every search term must use a prefix
-- Author name should be firstname_lastname with no spaces, lowercase
+- Author names with more than one word must be in quotes
 - Boolean operators must be uppercase
 - Use () to group Boolean expressions for Boolean operator precedence.
 - Use double quotes to group multiple words into phrases to search a particular field.

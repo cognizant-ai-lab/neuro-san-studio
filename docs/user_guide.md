@@ -820,7 +820,7 @@ You can define an LLM directly in `llm_config` using the `class` key in two diff
     |:--------------|:----------------|
     | Amazon Bedrock| `bedrock`       |
     | Anthropic     | `anthropic`     |
-    | Azure OpenAI  | `azure_openai`  |
+    | Azure OpenAI  | `azure-openai`  |
     | Google Gemini | `gemini`        |
     | NVidia        | `nvidia`        |
     | Ollma         | `ollama`        |
