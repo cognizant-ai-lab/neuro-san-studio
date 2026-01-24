@@ -164,36 +164,6 @@ class TestIntegrationTestHocons(TestCase, FailFastParamMixin):
 
         self.DYNAMIC.one_test_hocon(self, test_name, test_hocon)
 
-    # ------------------------------------------------------------
-    # FAIL-FAST GROUP KEY (base test method name)
-    # ------------------------------------------------------------
-    @parameterized.expand(
-        DynamicHoconUnitTests.from_hocon_list(
-            [
-                # These can be in any order.
-                # Ideally more basic functionality will come first.
-                # Barring that, try to stick to alphabetical order.
-                "basic/coffee_finder_advanced/coffee_continue_0_order_sly_data_1am_negative_test.hocon",
-                "basic/coffee_finder_advanced/coffee_continue_1_order_sly_data_1am.hocon",
-                "basic/coffee_finder_advanced/coffee_continue_2_reorder_sly_data_1am.hocon",
-                "basic/coffee_finder_advanced/coffee_continue_3_reorder_sly_data_8am_new_location.hocon",
-                "basic/coffee_finder_advanced/coffee_continue_4_reorder_sly_data_8am_from_last_order.hocon",
-                "basic/coffee_finder_advanced/coffee_continue_5_reorder_sly_data_8am_from_1st_order.hocon",
-                "basic/coffee_finder_advanced/"
-                "coffee_continue_reorder_sly_data_8am_negative_test_multi_orders_exist.hocon",
-                "basic/coffee_finder_advanced/coffee_continue_reorder_sly_data_1am_negative_test_partial_name.hocon",
-                # List more hocon files as they become available here.
-            ]
-        ),
-        skip_on_empty=True,
-    )
-    @pytest.mark.integration
-    @pytest.mark.integration_basic
-    @pytest.mark.integration_basic_coffee_finder_advanced
-    @pytest.mark.integration_basic_coffee_finder_advanced_e2e
-    def test_hocon_industry_coffee_finder_advanced_e2e(self, test_name: str, test_hocon: str):
-        self.run_hocon_failfast(test_name, test_hocon)
-
     @parameterized.expand(
         DynamicHoconUnitTests.from_hocon_list(
             [
@@ -225,6 +195,36 @@ class TestIntegrationTestHocons(TestCase, FailFastParamMixin):
         # This will expand the test_hocon file name from the expanded list to
         # include the file basis implied by the __file__ and path_to_basis above.
         self.DYNAMIC.one_test_hocon(self, test_name, test_hocon)
+
+    # ------------------------------------------------------------
+    # FAIL-FAST GROUP KEY (base test method name)
+    # ------------------------------------------------------------
+    @parameterized.expand(
+        DynamicHoconUnitTests.from_hocon_list(
+            [
+                # These can be in any order.
+                # Ideally more basic functionality will come first.
+                # Barring that, try to stick to alphabetical order.
+                "basic/coffee_finder_advanced/coffee_continue_0_order_sly_data_1am_negative_test.hocon",
+                "basic/coffee_finder_advanced/coffee_continue_1_order_sly_data_1am.hocon",
+                "basic/coffee_finder_advanced/coffee_continue_2_reorder_sly_data_1am.hocon",
+                "basic/coffee_finder_advanced/coffee_continue_3_reorder_sly_data_8am_new_location.hocon",
+                "basic/coffee_finder_advanced/coffee_continue_4_reorder_sly_data_8am_from_last_order.hocon",
+                "basic/coffee_finder_advanced/coffee_continue_5_reorder_sly_data_8am_from_1st_order.hocon",
+                "basic/coffee_finder_advanced/"
+                "coffee_continue_reorder_sly_data_8am_negative_test_multi_orders_exist.hocon",
+                "basic/coffee_finder_advanced/coffee_continue_reorder_sly_data_1am_negative_test_partial_name.hocon",
+                # List more hocon files as they become available here.
+            ]
+        ),
+        skip_on_empty=True,
+    )
+    @pytest.mark.integration
+    @pytest.mark.integration_basic
+    @pytest.mark.integration_basic_coffee_finder_advanced
+    @pytest.mark.integration_basic_coffee_finder_advanced_e2e
+    def test_hocon_industry_coffee_finder_advanced_e2e(self, test_name: str, test_hocon: str):
+        self.run_hocon_failfast(test_name, test_hocon)
 
     @parameterized.expand(
         DynamicHoconUnitTests.from_hocon_list(
