@@ -21,11 +21,10 @@
 # You can run this test by doing the following:
 # https://github.dev/cognizant-ai-lab/neuro-san-studio/blob/355_add_smoke_test_using_music_pro_hocon/CONTRIBUTING.md#testing-guidelines
 
-
+import re
 from unittest import TestCase
 
 import pytest
-import re
 from neuro_san.test.unittest.dynamic_hocon_unit_tests import DynamicHoconUnitTests
 from parameterized import parameterized
 
