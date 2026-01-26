@@ -197,3 +197,6 @@ cruse_threads.db
 
 # Generated agent networks by the designer
 registries/generated/
+
+# test local only
+registries/manifest.hocon.test
