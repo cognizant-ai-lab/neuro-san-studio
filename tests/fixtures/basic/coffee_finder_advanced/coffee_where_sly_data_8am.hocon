@@ -1,0 +1,72 @@
+
+# Copyright © 2023-2025 Cognizant Technology Solutions Corp, www.cognizant.com.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
+# END COPYRIGHT
+
+# This file defines everything necessary for a data-driven test.
+# The schema specifications for this file are documented here:
+# https://github.com/cognizant-ai-lab/neuro-san/blob/main/docs/test_case_hocon_reference.md
+
+{
+    # Describes what agent to test against.
+    "agent": "basic/coffee_finder_advanced",
+
+    # Timeout for the entire test.
+    # It's also possible to have a timeout_in_seconds on a per-interaction basis.
+    "timeout_in_seconds": 180,
+
+    # success_ratio is useful for passing to the assessor to find out why
+    # a test is intermitently failing. Sometimes it's the agent prompt, but
+    # sometimes it's the test itself.
+    # Note: This number was increased for network failure identification and should be reverted afterward to 1/1.
+    "success_ratio": "1/1",
+
+    # Interactions are a series of dictionaries with request elements paired with
+    # descriptions of response checks.
+    "interactions": [
+        {
+             # Test case confirm shops open and close.
+            
+            # This is to enable streaming_chat contents to thinking file for debug.
+            # "chat_filter": "MAXIMAL",
+
+            # Using the sly_data to set a hard timer.
+            "sly_data": {
+                "time": "8 am"
+            },
+            
+            # This is what we send as input to streaming_chat()
+            "text": """
+Where can I get coffee?
+""",
+
+            # The response block treats how we are going to test what comes back
+            "response": {
+
+                # Text block says how we are going to examine the text of the response.
+                "text": {
+
+                    # Gist says we are going to ask an LLM about how the response
+                    # matches up to our description of acceptance criteria.
+                    # Each component of the list needs to pass muster in order to pass.
+                    "gist": ["""
+Got it — coffee is available at Bob’s Coffee Shop, Henry’s Fast Food, and Joe’s Gas Station.
+Which one would you like, and do you have any preferences?
+                             """]
+                }
+            }
+        }
+    ]
+}

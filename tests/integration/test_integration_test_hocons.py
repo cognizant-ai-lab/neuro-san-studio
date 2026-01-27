@@ -47,8 +47,6 @@ class TestIntegrationTestHocons(TestCase):
                 # Ideally more basic functionality will come first.
                 # Barring that, try to stick to alphabetical order.
                 "basic/music_nerd_pro/combination_responses_with_history_direct.hocon",
-                "industry/telco_network_support_test.hocon",
-                "industry/consumer_decision_assistant_comprehensive.hocon",
                 # List more hocon files as they become available here.
             ]
         ),
@@ -83,11 +81,13 @@ class TestIntegrationTestHocons(TestCase):
                 "industry/airline_policy/basic_eco_checkin_baggage.hocon",
                 "industry/airline_policy/general_baggage_tracker.hocon",
                 "industry/airline_policy/general_carryon_baggage_liquid_items.hocon",
+                "industry/airline_policy/general_carryon_baggage_overweight_fee.hocon",
                 "industry/airline_policy/general_carryon_person_item_size.hocon",
                 "industry/airline_policy/general_carryon_other_items.hocon",
                 "industry/airline_policy/general_carryon_baggage_size.hocon",
                 "industry/airline_policy/general_carryon_person_item.hocon",
                 "industry/airline_policy/general_checkin_baggage_liquid_items.hocon",
+                "industry/airline_policy/general_checkin_baggage.hocon",
                 "industry/airline_policy/general_child_car_seat.hocon",
                 "industry/airline_policy/general_child_stroller.hocon",
                 "industry/airline_policy/general_children_formula.hocon",
@@ -104,7 +104,8 @@ class TestIntegrationTestHocons(TestCase):
     )
     @pytest.mark.integration
     @pytest.mark.integration_industry
-    def test_hocon_industry(self, test_name: str, test_hocon: str):
+    @pytest.mark.integration_industry_airline_policy
+    def test_hocon_industry_airline_policy(self, test_name: str, test_hocon: str):
         """
         Test method for a single parameterized test case specified by a hocon file.
         Arguments to this method are given by the iteration that happens as a result
@@ -124,6 +125,7 @@ class TestIntegrationTestHocons(TestCase):
                 # These can be in any order.
                 # Ideally more basic functionality will come first.
                 # Barring that, try to stick to alphabetical order.
+                "experimental/copy_cat/copy_hello_world.hocon",
                 "experimental/mdap_decomposer/long_multiplication.hocon",
                 "experimental/mdap_decomposer/list_sorting.hocon",
                 # List more hocon files as they become available here.

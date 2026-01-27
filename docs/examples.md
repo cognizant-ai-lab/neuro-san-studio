@@ -6,6 +6,9 @@ Here are a few examples ordered by level of complexity.
 
 - [Examples](#examples)
   - [🔰 Basic Examples](#-basic-examples)
+    - [Coffee Finder](#coffee-finder)
+    - [Coffee Finder Advanced](#coffee-finder-advanced)
+    - [Hello World](#hello-world)
     - [Music Nerd](#music-nerd)
     - [Music Nerd Pro](#music-nerd-pro)
     - [Music Nerd Local](#music-nerd-local)
@@ -13,8 +16,6 @@ Here are a few examples ordered by level of complexity.
     - [Music Nerd Pro Sly](#music-nerd-pro-sly)
     - [Music Nerd Pro Sly Local](#music-nerd-pro-sly-local)
     - [Music Nerd LLM Fallbacks](#music-nerd-llm-fallbacks)
-    - [Coffee Finder](#coffee-finder)
-    - [Coffee Finder Advanced](#coffee-finder-advanced)
   - [🧰 Tool Integration Examples](#-tool-integration-examples)
     - [Anthropic Code Execution](#anthropic-code-execution)
     - [Anthropic Web Search](#anthropic-web-search)
@@ -54,6 +55,7 @@ Here are a few examples ordered by level of complexity.
   - [🧪 Experimental and Research](#-experimental-and-research)
     - [Agent Network Designer](#agent-network-designer)
     - [Agent Network Architect](#agent-network-architect)
+    - [Copy Cat](#copy-cat)
     - [CRUSE Theme Agent](#cruse-theme-agent)
     - [CRUSE Widget Agent](#cruse-widget-agent)
     - [CRUSE](#cruse)
@@ -139,6 +141,12 @@ This is a good example to:
 - Learn how agents can ask for additional information.
 
 **Tags:** `AAOSA` `tool` `time` `sly_data` `memory`
+
+### Hello World
+
+[Hello World](examples/basic/hellow_world.md) is an agent network that
+demonstrates how one agent can call another using a basic hocon file.
+Given specific input, there is a good chance you will get output something like "Hello World!".
 
 ## 🧰 Tool Integration Examples
 
@@ -456,6 +464,13 @@ creates an interactive HTML graph of the network, runs a live demonstration usin
 the results. This network streamlines the end-to-end workflow for building and showcasing agent systems.
 
 **Tags:** `tool`, `external_network`, `HTML`, `nsflow`, `Gmail`
+
+### Copy Cat
+
+[Copy Cat](examples/experimental/copy_cat.md) is a simple example of an agent network that uses the
+Neuro SAN Reservations API to create other agent networks which become available on a temporary basis.
+
+**Tags:** `example`, `experimental`, `reservations`, `agents-creating-agents`
 
 ### CRUSE Theme Agent
 

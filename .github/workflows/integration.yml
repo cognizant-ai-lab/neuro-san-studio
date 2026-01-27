@@ -43,8 +43,9 @@ jobs:
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
           OPENAI_API_VERSION: ${{ vars.OPENAI_API_VERSION }}
           PYTHONPATH: ${{ env.PYTHONPATH }}:"."
-          AGENT_TOOL_PATH: "tests/coded_tools/"
-          AGENT_MANIFEST_FILE: "tests/registries/manifest.hocon"
+          AGENT_TOOL_PATH: "coded_tools/"
+          AGENT_MANIFEST_FILE: "registries/manifest.hocon"
+          AGENT_TEMPORARY_NETWORK_UPDATE_PERIOD_SECONDS: 5
 
       - name: Notify Slack on failure
         if: failure()
