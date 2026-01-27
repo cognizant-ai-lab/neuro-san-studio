@@ -214,10 +214,12 @@ class NeuroSanRunner:
                 os.environ["NEURO_SAN_WEB_CLIENT_PORT"] = str(self.args["web_client_port"])
                 print(f"NEURO_SAN_WEB_CLIENT_PORT set to: {os.environ['NEURO_SAN_WEB_CLIENT_PORT']}")
             else:
+                os.environ["NSFLOW_HOST"] = str(self.args["nsflow_host"])
                 os.environ["NSFLOW_PORT"] = str(self.args["nsflow_port"])
                 os.environ["NSFLOW_PLUGIN_CRUSE"] = str(self.args["nsflow_plugin_cruse"])
                 os.environ["VITE_API_PROTOCOL"] = str(self.args["vite_api_protocol"])
                 os.environ["VITE_WS_PROTOCOL"] = str(self.args["vite_ws_protocol"])
+                print(f"NSFLOW_HOST set to: {os.environ['NSFLOW_HOST']}")
                 print(f"NSFLOW_PORT set to: {os.environ['NSFLOW_PORT']}")
                 print(f"NSFLOW_PLUGIN_CRUSE set to: {os.environ['NSFLOW_PLUGIN_CRUSE']}")
                 print(f"VITE_API_PROTOCOL set to: {os.environ['VITE_API_PROTOCOL']}")
@@ -339,13 +341,15 @@ class NeuroSanRunner:
             "-m",
             "uvicorn",
             "nsflow.backend.main:app",
+            "--host",
+            str(self.args["nsflow_host"]),
             "--port",
             str(self.args["nsflow_port"]),
             "--reload",
         ]
 
         self.nsflow_process = self.start_process(command, "nsflow", "logs/nsflow.log")
-        print("nsflow client started on port: ", self.args["nsflow_port"])
+        print(f"nsflow client started on {self.args['nsflow_host']}:{self.args['nsflow_port']}")
 
     def start_flask_web_client(self):
         """Start the Flask web client."""
