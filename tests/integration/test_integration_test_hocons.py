@@ -27,7 +27,7 @@ import pytest
 from neuro_san.test.unittest.dynamic_hocon_unit_tests import DynamicHoconUnitTests
 from parameterized import parameterized
 
-from tests.utils.fail_fast import FailFastParamMixin
+from tests.utils.fail_fast_param_mixin import FailFastParamMixin
 
 
 class TestIntegrationTestHocons(TestCase, FailFastParamMixin):
