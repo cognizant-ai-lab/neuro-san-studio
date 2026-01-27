@@ -22,4 +22,5 @@
     # Experimental and research
     #
     "experimental/mdap_decomposer.hocon": true,
+    "experimental/copy_cat.hocon": true,
 }
