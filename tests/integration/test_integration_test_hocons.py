@@ -21,78 +21,13 @@
 # You can run this test by doing the following:
 # https://github.dev/cognizant-ai-lab/neuro-san-studio/blob/355_add_smoke_test_using_music_pro_hocon/CONTRIBUTING.md#testing-guidelines
 
-import re
 from unittest import TestCase
 
 import pytest
 from neuro_san.test.unittest.dynamic_hocon_unit_tests import DynamicHoconUnitTests
 from parameterized import parameterized
 
-
-class FailFastParamMixin:
-    """
-    Helper mixin that allows a *single parameterized test group* to fail-fast.
-
-    Meaning:
-      - if one parameterized case fails (ex: c.hocon),
-      - then all remaining cases in that SAME group (ex: d.hocon) will be skipped.
-
-    IMPORTANT:
-      - This is NOT a global "stop pytest" feature.
-      - It only affects tests that call _failfast_skip_if_failed().
-      - Other test functions will still run normally.
-    """
-
-    # Shared state per test class (NOT per instance):
-    # key = group name string
-    # val = True if any case in that group has failed
-    _failfast_flags = {}
-
-    def _failfast_skip_if_failed(self, key: str):
-        """
-        If a previous case failed for this group, skip this case.
-        """
-        if self.__class__._failfast_flags.get(key, False):
-            pytest.skip(f"Earlier case failed for fail-fast group '{key}'")
-
-    def _failfast_mark_failed(self, key: str):
-        """
-        Mark a group as having failed so future cases skip.
-        """
-        self.__class__._failfast_flags[key] = True
-
-    def run_hocon_group_failfast_case(self, test_name: str, test_hocon: str):
-        """
-        Run one HOCON-driven E2E test case with FAIL-FAST behavior for the *parameterized group*.
-
-        This helper is intended for end-to-end (E2E) integration tests where:
-        - Each .hocon file represents one full scenario/case.
-        - If one scenario fails, running the remaining scenarios is often not useful
-            (it usually causes cascading failures and wastes runtime).
-
-        How grouping works:
-        - parameterized.expand generates a unique unittest-style method name per case, e.g.
-            test_hocon_xxx_e2e_7_some_description
-        - We derive the *base* method name by stripping "_<index>_<rest...>"
-            so all cases from the same original test method share ONE group key.
-        - Once any case in the group fails, remaining cases in that group are skipped.
-        """
-
-        # Base method name for the current parameterized group
-        group = re.sub(r"_\d+_.*$", "", self._testMethodName)
-
-        # ------------------------------------------------------------
-        # FAIL-FAST GROUP (base test method name)
-        # ------------------------------------------------------------
-        self._failfast_skip_if_failed(group)
-
-        try:
-            # Run your existing dynamic driver
-            self.DYNAMIC.one_test_hocon(self, test_name, test_hocon)
-        except Exception:
-            # Mark group as failed so remaining cases skip
-            self._failfast_mark_failed(group)
-            raise
+from tests.utils.fail_fast import FailFastParamMixin
 
 
 class TestIntegrationTestHocons(TestCase, FailFastParamMixin):
@@ -195,7 +130,7 @@ class TestIntegrationTestHocons(TestCase, FailFastParamMixin):
     @pytest.mark.integration_basic_coffee_finder_advanced
     @pytest.mark.integration_basic_coffee_finder_advanced_e2e
     def test_hocon_industry_coffee_finder_advanced_e2e(self, test_name: str, test_hocon: str):
-        self.run_hocon_group_failfast_case(test_name, test_hocon)
+        self.run_hocon_group_fail_fast_case(test_name, test_hocon)
 
     @parameterized.expand(
         DynamicHoconUnitTests.from_hocon_list(
