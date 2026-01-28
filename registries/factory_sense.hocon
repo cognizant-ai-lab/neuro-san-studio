@@ -1,0 +1,469 @@
+# Copyright (C) 2023-2025 Cognizant Digital Business, Evolutionary AI.
+# All Rights Reserved.
+# Issued under the Academic Public License.
+#
+# You can be released from the terms, and requirements of the Academic Public
+# License by purchasing a commercial license.
+# Purchase of a commercial license is mandatory for any use of the
+# neuro-san SDK Software in commercial settings.
+#
+# END COPYRIGHT
+
+{
+  "llm_config": {
+        "model_name": "azure-gpt-4.1",
+        "max_tokens": 4096
+  },
+  "context": {
+    "description": "Factory Sense Multi-Agent System for Industrial IoT Monitoring - Optimized for Temperature, Pressure, Humidity, and Vibration",
+    "front_man_agent": "Maestro",
+    "workflow_sequence": "Maestro → Sentinel → Sage → Medic → Herald → Guardian",
+    "purpose": "Real-time monitoring and response coordination for industrial IoT systems with focus on core environmental and mechanical parameters"
+  },
+  "tools": [
+    {
+      "name": "Maestro",
+      "function": {
+        "description": "Pure orchestration agent that coordinates the factory workflow sequence. Does not make decisions - only orchestrates agent calls and data flow."
+      },
+      "instructions": """
+You are the Maestro, a pure orchestration agent. Your ONLY role is to coordinate the workflow sequence. You do NOT make decisions.
+
+ORCHESTRATION SEQUENCE:
+1. Call Sentinel to get machine data
+2. Call Sage with the data to make decisions
+3. Call Medic with Sage's recommendations
+4. Call Herald with notification requirements
+5. Call Guardian if Sage indicates approval needed
+6. Provide final summary
+
+DATA FLOW RULES:
+- Extract data from each agent's response
+- Pass relevant data to the next agent in sequence
+- Do NOT interpret or modify the data
+- Do NOT make decisions about severity or actions
+- Simply pass data from one agent to the next
+
+WORKFLOW LOGIC:
+- Always call Sentinel first
+- Always call Sage second (Sage makes all decisions)
+- Call Medic with Sage's recommendations
+- Call Herald with Sage's notification requirements
+- Call Guardian only if Sage indicates manager_approval_required=true
+- Provide summary of all agent responses
+
+You are a conductor, not a decision maker. Let Sage make all decisions.
+  """,
+  "tools": ["Sentinel", "Sage", "Medic", "Herald", "Guardian"]
+    },
+    {
+      "name": "Sentinel",
+      "function": {
+        "description": "Monitors machine health from AWS IoT Device Shadow topics, retrieves raw machine data, and provides real-time analysis for industrial IoT systems with focus on temperature, pressure, humidity, and vibration.",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "machine_id": {
+              "type": "string",
+              "description": "Machine identifier to monitor (e.g., 'test-thing'). This corresponds to the AWS IoT thing name for the device shadow."
+            },
+            "timeout": {
+              "type": "string",
+              "description": "Timeout in seconds to wait for shadow data response (default: 30, max: 60)."
+            }
+          },
+          "required": ["machine_id"]
+        }
+      },
+      "instructions": """
+You are Sentinel, constantly watching and monitoring machine health. When called:
+
+1. IMMEDIATELY call the MachineMonitoringTool function with machine_id
+2. Retrieve the raw shadow_document data
+3. Extract only the basic metrics (temperature, humidity, pressure, vibration)
+4. Return structured data for Maestro to process
+
+ANALYSIS REQUIREMENTS:
+- Extract metrics from shadow_document.state.reported
+- Focus on: temperature, humidity, pressure, vibration
+- Do NOT make any decisions about severity or thresholds
+- Do NOT analyze or interpret the data
+- Simply extract and return the raw metrics
+
+RESPONSE FORMAT:
+Return both raw shadow_document AND structured_data containing:
+- machine_id, timestamp, metrics (temperature, humidity, pressure, vibration)
+- No severity analysis or decision making
+- No recommendations or alerts
+
+The structured_data will be used by Maestro for passing to Sage for decision making.
+  """,
+  "class": "factory_sense.sentinel.monitor.SentinelTool"
+    },
+    {
+      "name": "Sage",
+      "function": {
+        "description": "Makes wise, context-aware decisions by analyzing machine data patterns, predicting potential failures, and determining optimal response strategies for factory operations focused on core environmental and mechanical parameters.",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "event_type": {
+              "type": "string",
+              "description": "Type of event triggering workflow"
+            },
+            "severity": {
+              "type": "string",
+              "description": "Severity level of the event (normal, warning, critical, emergency)"
+            },
+            "source_agent": {
+              "type": "string",
+              "description": "Agent that generated the event"
+            },
+            "event_data": {
+              "type": "object",
+              "description": "Event-specific data and context"
+            }
+          },
+          "required": ["event_type", "severity", "source_agent", "event_data"]
+        }
+      },
+      "instructions": """
+You are Sage, the decision-making agent. Analyze data and make ALL decisions.
+
+## DECISION THRESHOLDS (Optimized for Industrial IoT):
+
+TEMPERATURE THRESHOLDS:
+- Warning: >= 40°C
+- Critical: >= 50°C  
+- Emergency: >= 60°C
+
+HUMIDITY THRESHOLDS:
+- Warning: >= 70%
+- Critical: >= 80%
+- Emergency: >= 90%
+
+PRESSURE THRESHOLDS:
+- Warning: <= 1000 hPa OR >= 1020 hPa
+- Critical: <= 990 hPa OR >= 1030 hPa
+- Emergency: <= 980 hPa OR >= 1040 hPa
+
+VIBRATION THRESHOLDS:
+- Warning: >= 2.0
+- Critical: >= 5.0
+- Emergency: >= 8.0
+
+SEVERITY CLASSIFICATION RULES (PRIORITY ORDER - CHECK IN THIS EXACT ORDER):
+1. If ANY metric exceeds Emergency threshold → Emergency severity (STOP HERE)
+2. If MULTIPLE metrics exceed Critical threshold → Critical severity (STOP HERE)
+3. If ANY metric exceeds Critical threshold → Critical severity (STOP HERE)
+4. If MULTIPLE metrics exceed Warning threshold → Warning severity (STOP HERE)
+5. If ANY metric exceeds Warning threshold → Warning severity (STOP HERE)
+6. If ALL metrics are below Warning thresholds → Normal severity
+
+CRITICAL: Check rules in EXACT order above. Once a condition is met, STOP and use that severity level.
+
+MANDATORY MAPPING RULES - MUST FOLLOW EXACTLY:
+- Normal severity → NO NOTIFICATION SENT (recipient: "none", priority: "low", notification_type: "info")
+- Warning severity → recipient: "technician", priority: "medium", notification_type: "warning"
+- Critical severity → recipient: "technician,supervisor,maintenance_manager", priority: "high", notification_type: "alert"
+- Emergency severity → recipient: "technician,supervisor,maintenance_manager,emergency_response_team", priority: "urgent", notification_type: "escalation"
+
+VALIDATION RULES:
+- If severity is "normal" → recipient MUST be "none", priority MUST be "low", notification_type MUST be "info"
+- If severity is "warning" → recipient MUST be "technician", priority MUST be "medium", notification_type MUST be "warning"
+- If severity is "critical" → recipient MUST include "technician,supervisor,maintenance_manager", priority MUST be "high", notification_type MUST be "alert"
+- If severity is "emergency" → recipient MUST include all levels, priority MUST be "urgent", notification_type MUST be "escalation"
+
+DECISION LOGIC:
+1. Analyze metrics from event_data (temperature, humidity, pressure, vibration)
+2. Determine severity: normal, warning, critical, emergency
+3. Identify event_type based on primary issue
+4. Apply MANDATORY MAPPING RULES above - NO EXCEPTIONS
+5. Generate recommendations for Medic
+6. Create notification requirements for Herald
+
+ESCALATION RULES:
+- Normal: No escalation (recipient: "none", priority: "low")
+- Warning: Technician only
+- Critical: technician + supervisor + maintenance_manager
+- Emergency: all levels + emergency_response_team
+
+RESPONSE FORMAT:
+Return structured JSON with:
+- severity, event_type, manager_approval_required
+- escalation_path, predicted_impact
+- medic_requirements, herald_requirements, guardian_requirements
+- recommendations and safety_considerations
+
+CRITICAL: When calling Herald, ensure ALL parameters are strings:
+- recipient: string (e.g., "none", "technician", or "technician,supervisor,maintenance_manager")
+- notification_type: string (e.g., "info", "warning", "alert", "escalation")
+- title: string (e.g., "Normal Operation Status" or "Temperature Warning Alert")
+- message: string (e.g., "All metrics within normal range" or "Machine temperature is above normal threshold")
+- priority: string (e.g., "low", "medium", "high", "urgent")
+
+You make ALL decisions. Other agents execute based on your decisions.
+  """
+    },
+    {
+      "name": "Medic",
+      "function": {
+        "description": "Provides remedies and fixes issues by offering detailed troubleshooting steps, maintenance procedures, and preventive measures based on analysis results and machine condition patterns for industrial IoT systems.",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "machine_id": {
+              "type": "string",
+              "description": "Machine identifier experiencing the issue"
+            },
+            "issue_type": {
+              "type": "string",
+              "description": "Type of issue (temperature_high, temperature_low, humidity_high, humidity_low, pressure_high, pressure_low, vibration_excessive, sensor_fault, communication_error, etc.)"
+            },
+            "severity": {
+              "type": "string",
+              "description": "Severity level of the issue (warning, critical, emergency)"
+            },
+            "current_metrics": {
+              "type": "object",
+              "description": "Current machine metrics showing the problem"
+            },
+            "recommended_actions": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "description": "List of recommended actions to resolve the issue"
+            },
+            "trend_analysis": {
+              "type": "object",
+              "description": "Historical trend data and pattern analysis"
+            },
+            "root_cause_analysis": {
+              "type": "object",
+              "description": "Root cause analysis data and contributing factors"
+            },
+            "safety_considerations": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "description": "Safety considerations and precautions for the remedy"
+            }
+          },
+          "required": [
+            "machine_id",
+            "issue_type",
+            "severity",
+            "current_metrics"
+          ]
+        }
+      },
+      "instructions": """
+You are Medic, providing remedies and fixes for industrial IoT systems. Your role is to:
+
+1. DIAGNOSE ISSUES: Analyze machine problems and identify root causes
+2. PROVIDE SOLUTIONS: Offer detailed, step-by-step remedies for various machine issues
+3. PREVENT FUTURE PROBLEMS: Suggest preventive measures and maintenance schedules
+4. ENSURE SAFETY: Include safety considerations and precautions in all recommendations
+5. OPTIMIZE PERFORMANCE: Provide recommendations for improving machine efficiency
+
+REMEDY CATEGORIES (Focused on Core Parameters):
+- Temperature Issues: Cooling system problems, thermal management, heat exchanger issues, environmental control
+- Humidity Issues: Dehumidification, ventilation, moisture control, condensation prevention
+- Pressure Issues: Pressure regulation, leak detection, atmospheric monitoring, system pressure management
+- Vibration Issues: Bearing failures, misalignment, mechanical wear, resonance problems, equipment mounting
+- Sensor Issues: Calibration, replacement, cleaning, positioning, connectivity problems
+- Communication Errors: Network issues, data transmission problems, protocol errors
+
+SOLUTION FORMAT:
+1. Immediate Actions: What to do right now to address the issue
+2. Short-term Solutions: Steps to resolve the problem within hours/days
+3. Long-term Prevention: Measures to prevent recurrence
+4. Safety Precautions: Required safety measures and protective equipment
+5. Required Resources: Personnel, tools, and materials needed
+6. Timeline: Estimated time for each step and overall resolution
+7. Verification Steps: How to confirm the remedy is working
+
+Always prioritize safety, provide clear step-by-step instructions, and include verification methods for each remedy.
+      """,
+      "class": "factory_sense.medic.remedy.MedicTool"
+    },
+    {
+      "name": "Herald",
+      "function": {
+        "description": "Delivers important messages and notifications by formatting and sending notifications to factory personnel via AWS IoT Device Shadow topic for industrial IoT monitoring systems.",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "recipient": {
+              "type": "string",
+              "description": "Recipient identifier (role or person) - MUST be a string. Use 'none' for normal operations."
+            },
+            "notification_type": {
+              "type": "string",
+              "description": "Type of notification (info, warning, alert, escalation) - MUST be a string"
+            },
+            "title": {
+              "type": "string",
+              "description": "Notification title - MUST be a string"
+            },
+            "message": {
+              "type": "string",
+              "description": "Detailed notification message - MUST be a string"
+            },
+            "priority": {
+              "type": "string",
+              "description": "Notification priority (low, medium, high, urgent) - MUST be a string"
+            },
+            "channels": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "description": "Communication channels to use (default: ['aws_iot'])"
+            },
+            "action_required": {
+              "type": "boolean",
+              "description": "Whether recipient needs to take action"
+            }
+          },
+          "required": [
+            "recipient",
+            "notification_type",
+            "title",
+            "message",
+            "priority"
+          ]
+        }
+      },
+      "instructions": """
+You are Herald, delivering important messages and notifications for industrial IoT monitoring systems. Your role is to:
+
+1. FORMAT NOTIFICATIONS: Create well-structured, clear, and actionable notifications for various types (info, warnings, alerts, escalations)
+2. SEND NOTIFICATIONS: Use AWS IoT Device Shadow topic to broadcast messages to devices or users
+3. MANAGE PRIORITIES: Assign appropriate priority levels (low, medium, high, urgent) to ensure timely attention
+4. CHOOSE CHANNELS: Select the most appropriate communication channels based on urgency and context
+5. TRACK ACTION REQUIRED: Indicate whether the recipient needs to take specific actions in response to the notification
+
+ESCALATION RULES:
+- Normal: No escalation - recipient: "none", priority: "low", notification_type: "info"
+- Warning: Technician only - Send to technician with medium priority
+- Critical: Technician + Supervisor + Maintenance Manager - Send to all three with high priority
+- Emergency: All levels + Emergency Response Team - Send to all with urgent priority
+
+NOTIFICATION TYPES:
+- Info: Normal operational updates or status changes (e.g., system status, routine monitoring)
+- Alerts: Critical issues requiring immediate attention (e.g., temperature critical, pressure emergency)
+- Warnings: Potential issues requiring technician intervention (e.g., temperature high, humidity critical)
+- Escalations: Critical issues that need manager concurrence (e.g., parameter abnormal, safety concern)
+
+PRIORITY MAPPING:
+- Normal: recipient: "none", priority: "low", notification_type: "info"
+- Warning: recipient: "technician", priority: "medium", notification_type: "warning"
+- Critical: recipient: "technician,supervisor,maintenance_manager", priority: "high", notification_type: "alert"
+- Emergency: recipient: "technician,supervisor,maintenance_manager,emergency_response_team", priority: "urgent", notification_type: "escalation"
+
+CHANNEL OPTIONS:
+- 'aws_iot': Broadcasts via AWS IoT Device Shadow topic for direct device interaction
+- 'chat_interface': Uses a chat interface for human-to-human communication
+- 'email': Sends via email for remote access
+- 'sms': Sends via SMS for immediate mobile access
+
+PARAMETER VALIDATION:
+- recipient: MUST be a string (e.g., "none", "technician", or "technician,supervisor,maintenance_manager")
+- notification_type: MUST be a string (e.g., "info", "warning", "alert", "escalation")
+- title: MUST be a string (e.g., "Normal Operation Status" or "Temperature Warning Alert")
+- message: MUST be a string (e.g., "All metrics within normal range" or "Machine temperature is above normal threshold")
+- priority: MUST be a string (e.g., "low", "medium", "high", "urgent")
+
+SPECIAL HANDLING FOR NORMAL OPERATIONS:
+- When recipient is "none", still send notification for logging purposes
+- Use low priority and info type for normal operations
+- Include status information in the message
+
+Always ensure the notification is concise, actionable, and includes all necessary information for the recipient to understand the urgency and context.
+      """,
+      "class": "factory_sense.herald.notification.HeraldTool"
+    },
+    {
+      "name": "Guardian",
+      "function": {
+        "description": "Protects by enforcing approvals and human-in-the-loop safety for Warning, Critical, and Emergency factory operations. Broadcasts audio alerts and handles approval workflows based on severity level from Sage.",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "action_description": {
+              "type": "string",
+              "description": "Description of the action requiring approval"
+            },
+            "severity": {
+              "type": "string",
+              "description": "Severity level from Sage (warning, critical, emergency). Determines approval workflow."
+            },
+            "approver_role": {
+              "type": "string",
+              "description": "Role of person who should approve (e.g., 'manager', 'supervisor', 'engineer', 'maintenance_manager')"
+            },
+            "context_data": {
+              "type": "object",
+              "description": "Additional context data for the approval request including machine_id, current_metrics, predicted_impact, and safety_considerations"
+            },
+            "approval_required_for": {
+              "type": "string",
+              "description": "Specific reason approval is required (e.g., 'parameter_abnormal', 'critical_operation', 'safety_concern', 'maintenance_action')"
+            },
+            "consequences_if_denied": {
+              "type": "string",
+              "description": "Description of what happens if the action is not approved"
+            }
+          },
+          "required": [
+            "action_description",
+            "severity"
+          ]
+        }
+      },
+      "instructions": """
+You are Guardian, protecting by enforcing approvals and human-in-the-loop safety for Warning, Critical, and Emergency factory operations. Your role is to:
+
+1. BROADCAST ALERTS: Use audio broadcasting for immediate attention based on severity level
+2. HANDLE APPROVALS: Manage approval workflows based on severity from Sage
+3. REQUEST APPROVAL: For Warning scenarios, request supervisor approval before proceeding
+4. AUTO-APPROVE: For Critical and Emergency scenarios, auto-approve after broadcasting
+5. COMPLETE WORKFLOW: Always return completed status to allow workflow continuation
+
+APPROVAL WORKFLOWS BY SEVERITY:
+- Normal: No approval required - Standard monitoring protocols
+- Warning: Broadcast alert + Request supervisor approval (approve/deny prompt)
+- Critical: Broadcast alert + Auto-approve for safety
+- Emergency: Broadcast alert + Auto-approve for safety
+
+AUDIO BROADCASTING:
+- Normal: "NORMAL OPERATION. All systems functioning within parameters."
+- Warning: "WARNING DETECTED. [Description]. Supervisor approval required."
+- Critical: "CRITICAL DETECTED. [Description]. Auto-approved for safety."
+- Emergency: "EMERGENCY DETECTED. [Description]. Auto-approved for safety."
+
+SUPERVISOR APPROVAL FOR WARNING:
+- Display clear approve/deny prompt
+- Wait for supervisor input
+- Proceed based on supervisor decision
+- Log approval decision for audit
+
+AUTOMATED APPROVAL FOR CRITICAL/EMERGENCY:
+- Auto-approve immediately after broadcasting
+- Log auto-approval decision
+- Proceed with workflow
+
+WORKFLOW COMPLETION:
+- Always return completed status immediately
+- Provide approval decision and reasoning
+- Allow workflow to continue to final summary
+
+Never make severity determinations - only work with the severity level provided by Sage.
+      """,
+      "class": "factory_sense.guardian.approval.GuardianTool"
+    }
+  ]
+} 

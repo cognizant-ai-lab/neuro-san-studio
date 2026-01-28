@@ -14,6 +14,7 @@
 #
 # END COPYRIGHT
 {
+    "factory_sense.hocon": true,
     # Refer to this document for neuro-san specifications for the agent manifest.hocon file 
     # that is used as configuration for neuro-san servers
     # https://github.com/cognizant-ai-lab/neuro-san/blob/main/docs/manifest_hocon_reference.md

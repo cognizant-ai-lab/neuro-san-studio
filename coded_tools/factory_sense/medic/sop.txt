@@ -1,0 +1,150 @@
+{
+  "temperature_high_warning": {
+    "immediate_actions": [
+      "Confirm reported temperature reading and timestamp",
+      "Check cooling system status and power indicators",
+      "Increase ventilation around equipment if safe to do so",
+      "Isolate heat-generating nearby equipment"
+    ],
+    "short_term_solutions": [
+      "Clean or replace air filters",
+      "Restart cooling subsystem if hardware health is OK",
+      "Verify thermostat and setpoints",
+      "Schedule on-site HVAC inspection within 24 hours"
+    ],
+    "long_term_prevention": [
+      "Install additional temperature sensors for better coverage",
+      "Add automated cooling capacity or redundancy",
+      "Introduce regular cooling system maintenance (monthly)",
+      "Optimize equipment placement to improve airflow"
+    ],
+    "safety_precautions": [
+      "Use lockout/tagout before servicing electrical cooling equipment",
+      "Wear heat-resistant PPE when inspecting hot surfaces"
+    ],
+    "required_resources": ["HVAC technician", "replacement air filters", "temperature logger"],
+    "timeline": {"immediate": "0-30 minutes", "short_term": "<24 hours", "long_term": "weeks"},
+    "verification_steps": [
+      "Confirm temperature returns below warning threshold",
+      "Observe stable temperature for 30+ minutes",
+      "Confirm cooling system reports normal health"
+    ]
+  },
+
+  "temperature_high_critical": {
+    "immediate_actions": [
+      "Initiate emergency cooling procedures if supported",
+      "Power-down nonessential heat-generating equipment following SOP",
+      "Notify technician and supervisor immediately"
+    ],
+    "short_term_solutions": [
+      "Perform rapid diagnostics on cooling loops (pumps, fans, refrigerant)",
+      "Replace or bypass failed cooling components for temporary recovery"
+    ],
+    "long_term_prevention": [
+      "Upgrade cooling capacity or add redundancy",
+      "Implement predictive monitoring for cooling subsystem health"
+    ],
+    "safety_precautions": [
+      "Evacuate nonessential personnel from the immediate area if temperatures threaten equipment integrity",
+      "Follow electrical safety procedures when interacting with HVAC controls"
+    ],
+    "required_resources": ["HVAC technician (onsite)", "spare pumps/fans", "thermal imaging camera"],
+    "timeline": {"immediate": "0-15 minutes", "short_term": "hours", "long_term": "1-2 weeks"},
+    "verification_steps": ["Temperature < critical threshold", "Cooling subsystem health OK"]
+  },
+
+  "temperature_high_emergency": {
+    "immediate_actions": [
+      "Trigger emergency shutdown for affected equipment if configured and safe",
+      "Call emergency response and on-call engineering",
+      "Isolate power to overheating modules following LOTO procedures"
+    ],
+    "short_term_solutions": ["Perform full thermal containment and component replacement"],
+    "long_term_prevention": ["Review thermal design and perform retrofits to remove single points of failure"],
+    "safety_precautions": ["Follow facility emergency response plan; prioritize human safety"],
+    "required_resources": ["Emergency response team", "senior engineer", "replacement hardware"],
+    "timeline": {"immediate": "0-5 minutes", "short_term": "same day", "long_term": "1+ weeks"},
+    "verification_steps": ["Safe state confirmed", "Temperature stabilized below emergency threshold"]
+  },
+
+  "temperature_low_warning": {
+    "immediate_actions": ["Check heating subsystem operation", "Inspect insulation and drafts"],
+    "short_term_solutions": ["Adjust heating setpoints", "Seal drafts"],
+    "long_term_prevention": ["Improve insulation", "Scheduled heater maintenance"],
+    "safety_precautions": ["Beware of condensation creating slip hazards"],
+    "required_resources": ["Facility technician"],
+    "timeline": {"immediate": "0-60 minutes"},
+    "verification_steps": ["Temperature returns to acceptable range"]
+  },
+
+  "humidity_high_warning": {
+    "immediate_actions": ["Check dehumidifier/HVAC operation", "Look for visible leaks or condensation"],
+    "short_term_solutions": ["Increase dehumidification", "Repair identified leaks"],
+    "long_term_prevention": ["Install humidity monitoring alerts", "Improve moisture barriers"],
+    "safety_precautions": ["Use PPE for areas with condensation or mold risk"],
+    "required_resources": ["HVAC technician", "moisture meter"],
+    "timeline": {"immediate": "0-60 minutes"},
+    "verification_steps": ["Humidity returns below warning threshold"]
+  },
+
+  "humidity_high_critical": {
+    "immediate_actions": ["Isolate affected equipment to prevent corrosion", "Notify maintenance and supervisor"],
+    "short_term_solutions": ["Deploy temporary dehumidifiers", "Perform targeted repairs"],
+    "long_term_prevention": ["Assess HVAC capacity and add redundancy"],
+    "safety_precautions": ["Avoid electrical contact in wet areas"],
+    "required_resources": ["Dehumidification units", "maintenance crew"],
+    "timeline": {"short_term": "hours"},
+    "verification_steps": ["Equipment corrosion checks", "Humidity stable"]
+  },
+
+  "pressure_high_warning": {
+    "immediate_actions": ["Check pressure gauges and relief valves", "Verify there are no blockages in lines"],
+    "short_term_solutions": ["Bleed excess pressure following SOP", "Replace/inspect pressure sensors"],
+    "long_term_prevention": ["Add pressure monitoring points and alarms"],
+    "safety_precautions": ["Stand clear of pressurized lines when venting"],
+    "required_resources": ["Pressure technician", "spare relief valves"],
+    "timeline": {"immediate": "0-30 minutes"},
+    "verification_steps": ["Pressure returns to safe range", "Relief valves functional"]
+  },
+
+  "pressure_low_warning": {
+    "immediate_actions": ["Check for leaks and valve positions", "Confirm pump operation"],
+    "short_term_solutions": ["Repair leaks", "Adjust valves or restart pumps"],
+    "long_term_prevention": ["Regular pump and seal maintenance"],
+    "safety_precautions": ["Depressurize sections before maintenance"],
+    "required_resources": ["Mechanic", "seal kits"],
+    "timeline": {"immediate": "0-60 minutes"},
+    "verification_steps": ["System pressure stable within target band"]
+  },
+
+  "vibration_excessive_warning": {
+    "immediate_actions": ["Stop affected machine if safe and required by SOP", "Visually inspect for loose parts"],
+    "short_term_solutions": ["Tighten mounts, rebalance rotating components"],
+    "long_term_prevention": ["Implement vibration monitoring and scheduled balancing"],
+    "safety_precautions": ["Lockout/tagout before mechanical interventions"],
+    "required_resources": ["Vibration analyst", "balancing tools"],
+    "timeline": {"immediate": "0-30 minutes"},
+    "verification_steps": ["Vibration readings return to normal range"]
+  },
+
+  "sensor_fault_warning": {
+    "immediate_actions": ["Check sensor wiring and power", "Confirm last known good value and timestamp"],
+    "short_term_solutions": ["Replace sensor or recalibrate if possible"],
+    "long_term_prevention": ["Add sensor health monitoring and redundancy"],
+    "safety_precautions": ["Follow electrical safety when accessing sensors"],
+    "required_resources": ["Spare sensor", "calibration kit"],
+    "timeline": {"immediate": "0-2 hours"},
+    "verification_steps": ["Sensor reports valid measurements and self-test passes"]
+  },
+
+  "communication_error_warning": {
+    "immediate_actions": ["Check network connectivity to device", "Inspect gateway and TLS/auth logs"],
+    "short_term_solutions": ["Restart gateway or networking equipment", "Switch to backup comms channel if available"],
+    "long_term_prevention": ["Harden network; add redundant connectivity paths"],
+    "safety_precautions": ["Do not change network config during critical operations without approval"],
+    "required_resources": ["Network engineer", "access to gateway console"],
+    "timeline": {"immediate": "0-30 minutes"},
+    "verification_steps": ["Device reconnects and updates shadow; messages flowing normally"]
+  }
+}
