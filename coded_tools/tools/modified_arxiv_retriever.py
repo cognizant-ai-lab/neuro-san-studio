@@ -1,4 +1,3 @@
-
 # Copyright © 2025-2026 Cognizant Technology Solutions Corp, www.cognizant.com.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -36,9 +35,7 @@ class ModifiedArxivRetriever(BaseRetriever, ModifiedArxivAPIWrapper):
 
     get_full_documents: bool = False
 
-    def _get_relevant_documents(
-        self, query: str, *, run_manager: CallbackManagerForRetrieverRun
-    ) -> List[Document]:
+    def _get_relevant_documents(self, query: str, *, run_manager: CallbackManagerForRetrieverRun) -> List[Document]:
         if self.get_full_documents:
             return self.load(query=query)
 

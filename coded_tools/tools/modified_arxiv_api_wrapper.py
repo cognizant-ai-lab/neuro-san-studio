@@ -1,4 +1,3 @@
-
 # Copyright © 2025-2026 Cognizant Technology Solutions Corp, www.cognizant.com.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -71,13 +70,13 @@ class ModifiedArxivAPIWrapper(ArxivAPIWrapper):
                 id_list=query.split(),
                 max_results=self.top_k_results,
                 sort_by=sort_criterion,
-                sort_order=sort_order_enum
+                sort_order=sort_order_enum,
             ).results()
         return self.arxiv_search(
             query[: self.ARXIV_MAX_QUERY_LENGTH],
             max_results=self.top_k_results,
             sort_by=sort_criterion,
-            sort_order=sort_order_enum
+            sort_order=sort_order_enum,
         ).results()
 
     def lazy_load(self, query: str) -> Iterator[Document]:
@@ -97,14 +96,11 @@ class ModifiedArxivAPIWrapper(ArxivAPIWrapper):
             import fitz
         except ImportError as import_error:
             raise ImportError(
-                "PyMuPDF package not found, please install it with "
-                "`pip install pymupdf`"
+                "PyMuPDF package not found, please install it with " "`pip install pymupdf`"
             ) from import_error
 
         try:
-            results = self._fetch_results(
-                query
-            )  # Using helper function to fetch results
+            results = self._fetch_results(query)  # Using helper function to fetch results
         except self.arxiv_exceptions as ex:
             logger.debug("Error on arxiv: %s", ex)
             return
@@ -142,7 +138,5 @@ class ModifiedArxivAPIWrapper(ArxivAPIWrapper):
                 "Summary": result.summary,
                 **extra_metadata,
             }
-            yield Document(
-                page_content=text[: self.doc_content_chars_max], metadata=metadata
-            )
+            yield Document(page_content=text[: self.doc_content_chars_max], metadata=metadata)
             os.remove(doc_file_name)
