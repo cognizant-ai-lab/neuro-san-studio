@@ -67,7 +67,13 @@
             "properties": {
                 "agent_name": {
                     "type": "string",
-                    "description": "Name of the agent to call. Do not include file extension such as '.hocon' in the name."
+                    "description": """
+                    Name of the agent to call. Do not include file extension such as '.hocon' in the name.
+                    Always start the name with `/`.
+
+                    Example:
+                    "agent_name": "/music_nerd"
+                    """
                 },
                 "inquiry": {
                     "type": "string",
