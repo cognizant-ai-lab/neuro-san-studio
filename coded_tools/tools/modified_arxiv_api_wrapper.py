@@ -96,7 +96,7 @@ class ModifiedArxivAPIWrapper(ArxivAPIWrapper):
             import fitz
         except ImportError as import_error:
             raise ImportError(
-                "PyMuPDF package not found, please install it with " "`pip install pymupdf`"
+                "PyMuPDF package not found, please install it with `pip install pymupdf`"
             ) from import_error
 
         try:
