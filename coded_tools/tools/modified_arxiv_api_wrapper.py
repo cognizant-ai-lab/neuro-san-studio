@@ -15,8 +15,8 @@
 #
 # END COPYRIGHT
 
-from logging import getLogger
 import os
+from logging import getLogger
 from typing import Any
 from typing import Iterator
 
@@ -25,7 +25,6 @@ from arxiv import SortCriterion
 from arxiv import SortOrder
 from langchain_community.utilities.arxiv import ArxivAPIWrapper
 from langchain_core.documents import Document
-
 
 logger = getLogger(__name__)
 
