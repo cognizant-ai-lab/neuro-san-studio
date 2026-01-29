@@ -28,16 +28,28 @@ import pytest
 
 class FailFastParamMixin:
     """
-    Helper mixin that allows a *single parameterized test group* to fail-fast.
+    Mixin that provides fail-fast behavior for parameterized, HOCON-driven E2E tests.
 
-    Meaning:
-      - if one parameterized case fails (ex: c.hocon),
-      - then all remaining cases in that SAME group (ex: d.hocon) will be skipped.
+    What it does
+    ------------
+    - For a single parameterized test *group* (i.e., all cases generated from one base
+    test method), if any case fails, all remaining cases in that same group are skipped.
+    This avoids cascading failures and saves runtime.
 
-    IMPORTANT:
-      - This is NOT a global "stop pytest" feature.
-      - It only affects tests that call _fail_fast_skip_if_failed().
-      - Other test functions will still run normally.
+    How it works
+    ------------
+    - Uses shared per-class state (_fail_fast_flags) so that later parameterized cases
+    can observe failures from earlier cases within the same group.
+    - Derives a stable "group key" from the base test method name (from unittest's
+    generated self._testMethodName created by parameterized.expand).
+    - Calls pytest.skip(...) to skip remaining cases after the first failure.
+
+    Important notes
+    ---------------
+    - This is not a global "stop pytest" feature; it only affects test methods that
+    explicitly use this mixin helper (e.g., run_hocon_fail_fast / _fail_fast_skip_if_failed).
+    - Designed for unittest.TestCase + parameterized.expand style tests (not pure pytest
+    parametrize fixtures).
     """
 
     # Shared state per test class (NOT per instance):
