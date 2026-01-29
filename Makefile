@@ -91,6 +91,7 @@ test-integration: install
 	export PYTHONPATH=`pwd` && \
 	export AGENT_TOOL_PATH=coded_tools/ && \
 	export AGENT_MANIFEST_FILE=registries/manifest.hocon && \
+	export AGENT_TEMPORARY_NETWORK_UPDATE_PERIOD_SECONDS=5 && \
 	pytest -s -m "integration" --timer-top-n 100
 
 help: ## Show this help message and exit
