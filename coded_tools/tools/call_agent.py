@@ -22,7 +22,7 @@ from typing import Union
 from neuro_san.interfaces.coded_tool import CodedTool
 from neuro_san.internals.graph.activations.branch_activation import BranchActivation
 
-from coded_tools.experimental.mdap_decomposer.coded_tool_agent_caller import CodedToolAgentCaller
+from coded_tools.tools.coded_tool_agent_caller import CodedToolAgentCaller
 
 logger = logging.getLogger(__name__)
 
@@ -39,7 +39,7 @@ class CallAgent(BranchActivation, CodedTool):
                 by the calling agent.  This dictionary is to be treated as read-only.
 
                 The argument dictionary expects the following keys:
-                    "inquiry" the query for the agent.
+                    "tool_args" the arguments for the called agent.
                     "agent_name" the agent that answer the query.
 
         :param sly_data: A dictionary whose keys are defined by the agent hierarchy,
@@ -62,17 +62,17 @@ class CallAgent(BranchActivation, CodedTool):
                 a text string an error message in the format:
                 "Error: <error message>"
         """
-        inquiry: str = args.get("inquiry", "")
-        if inquiry == "":
-            raise ValueError("Error: No inquiry provided.")
+        tool_args: Dict[str, Any] = args.get("tool_args")
+        if not tool_args:
+            raise ValueError("Error: No tool_args provided.")
         agent_name = args.get("agent_name") or sly_data.get("selected_agent")
         if not agent_name:
             raise ValueError("Error: No 'agent_name' in args or 'selected_agent' in sly_data.")
 
-        logger.debug("inquiry: %s", inquiry)
+        logger.debug("tool_args: %s", tool_args)
         logger.debug("agent_name: %s", agent_name)
 
         # Set up the AgentCallers to use this CodedTool as a basis for calling the agents.
         agent_caller = CodedToolAgentCaller(self, parsing=None, name=agent_name)
 
-        return await agent_caller.call_agent(tool_args={"inquiry": inquiry}, sly_data=sly_data)
+        return await agent_caller.call_agent(tool_args=tool_args, sly_data=sly_data)

@@ -73,11 +73,16 @@
 
                     Example:
                     "agent_name": "/music_nerd"
+
+                    Note:
+                    Some "agent_name" may have `/` like "basic/music_nerd".
+                    If that the case then use
+                    "agent_name": "/basic/music_nerd"
                     """
                 },
-                "inquiry": {
-                    "type": "string",
-                    "description": "The inquiry"
+                "tool_args": {
+                    "type": "object",
+                    "description": "Arguments for the called agent."
                 },
             },
             "required": ["inquiry"]
