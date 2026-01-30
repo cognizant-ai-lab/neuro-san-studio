@@ -67,11 +67,22 @@
             "properties": {
                 "agent_name": {
                     "type": "string",
-                    "description": "Name of the agent to call. Do not include file extension such as '.hocon' in the name."
+                    "description": """
+                    Name of the agent to call. Do not include file extension such as '.hocon' in the name.
+                    Always start the name with `/`.
+
+                    Example:
+                    "agent_name": "/music_nerd"
+
+                    Note:
+                    Some "agent_name" may have `/` like "basic/music_nerd".
+                    If that the case then use
+                    "agent_name": "/basic/music_nerd"
+                    """
                 },
-                "inquiry": {
-                    "type": "string",
-                    "description": "The inquiry"
+                "tool_args": {
+                    "type": "object",
+                    "description": "Arguments for the called agent."
                 },
             },
             "required": ["inquiry"]
