@@ -164,7 +164,7 @@ class HoconAgentNetworkAssembler(AgentNetworkAssembler):
         if sample_queries:
             parts = []
             for query in sample_queries:
-                parts.append(f'"{query}"')
+                parts.append(f'"{query.replace('"', "")}"')
             formatted_queries = ",\n            ".join(parts)
         return formatted_queries
 
