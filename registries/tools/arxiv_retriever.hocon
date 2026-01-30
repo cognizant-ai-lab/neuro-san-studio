@@ -71,9 +71,11 @@
                 # "top_k_results": 3,
 
                 # How to sort the search results
+                # Options are `relevance`, `lastUpdatedDate`, and `submittedDate`. Default to `relevance`.
                 # "sort_by": "relevance",
 
                 # Sort order
+                # Options are `ascending` and `descending`. Default to `descending`.
                 # "sort_order": "descending"
 
                 # LLM can set the above 3 arguments, but user can override in this `args` block.
