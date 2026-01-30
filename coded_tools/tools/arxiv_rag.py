@@ -18,10 +18,10 @@ import logging
 from typing import Any
 from typing import Dict
 
-from langchain_community.retrievers import ArxivRetriever
 from neuro_san.interfaces.coded_tool import CodedTool
 
 from coded_tools.tools.base_rag import BaseRag
+from coded_tools.tools.modified_arxiv_retriever import ModifiedArxivRetriever
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -43,6 +43,8 @@ class ArxivRag(CodedTool):
             "doc_content_chars_max": maximum number of characters to keep in each document (default is 4000)
             "load_all_available_meta": whether to load all available metadata (default is False)
             "continue_on_failure": whether to continue processing if an error occurs (default is True)
+            "sort_by": options are `relevance`, `lastUpdatedDate`, and `submittedDate`. Default to `relevance`.
+            "sort_order": options are `ascending` and `descending`. Default to `descending`.
 
         :param sly_data: A dictionary whose keys are defined by the agent
             hierarchy, but whose values are meant to be kept out of the
@@ -68,31 +70,15 @@ class ArxivRag(CodedTool):
             logger.error("Missing required input: 'query' (retrieval question).")
             raise ValueError("❌ Missing required input: 'query'.")
 
-        # For the arXiv API, the query argument must follow a specific format,
-        # for example: "au:del_maestro AND ti:checkerboard".
-        #
-        # References:
-        # - https://lukasschwab.me/arxiv.py/arxiv.html#Search.query
-        # - https://info.arxiv.org/help/api/user-manual.html#51-details-of-query-construction
-        #
-        # However, when `get_full_documents` is set to True, LangChain strips
-        # characters such as ":" and "-", which makes the query invalid for arXiv.
-        #
-        # To avoid this issue, we remove the arXiv field prefixes in advance
-        # when `get_full_documents` is enabled.
-        get_full_documents = bool(args.get("get_full_documents", False))
-        if get_full_documents:
-            prefixes = ["ti:", "au:", "abs:", "co:", "jr:", "cat:", "rn:", "id_list:"]
-            for prefix in prefixes:
-                query = query.replace(prefix, "")
-
         # Initialize ArxivRetriever with the provided arguments
-        retriever = ArxivRetriever(
-            top_k_results=int(args.get("top_k_results", 3)),
-            get_full_documents=get_full_documents,
-            doc_content_chars_max=int(args.get("doc_content_chars_max", 4000)),
-            load_all_available_meta=bool(args.get("load_all_available_meta", False)),
-            continue_on_failure=bool(args.get("continue_on_failure", True)),
+        retriever = ModifiedArxivRetriever(
+            top_k_results=args.get("top_k_results", 3),
+            get_full_documents=args.get("get_full_documents", False),
+            doc_content_chars_max=args.get("doc_content_chars_max", 4000),
+            load_all_available_meta=args.get("load_all_available_meta", False),
+            continue_on_failure=args.get("continue_on_failure", True),
+            sort_by=args.get("sort_by") or "relevance",
+            sort_order=args.get("sort_order") or "descending",
         )
 
         return await BaseRag.query_retriever(retriever, query)

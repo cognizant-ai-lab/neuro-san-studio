@@ -476,7 +476,7 @@ Supports searching for images, audio files (mp3, ogg, flac, wav), and video file
     #     pip install arxiv
     # If "get_full_documents" is set to True
     #     pip install pymupdf
-    "arxiv_rag": {
+    "arxiv_retriever": {
         # This is a coded tool for RAG on Arxiv Articles.
         "class": "tools.arxiv_rag.ArxivRag",
         "description": """This tool retrieves papers from arXiv using a query string.
@@ -524,10 +524,28 @@ Rules:
                     "type": "string",
                     "description": "Retrieval question to answer over arXiv documents"
                 },
+                "sort_by": {
+                    "type": "string",
+                    "description": """
+A property by which search results can be sorted.
+Options are `relevance`, `lastUpdatedDate`, and `submittedDate`. Default to `relevance`.
+"""
+                },
+                "sort_order": {
+                    "type": "string",
+                    "description": """
+Order in which search results are sorted according to the specified `sort_by`.
+Options are `ascending` and `descending`. Default to `descending`.
+"""
+                },
+                "top_k_results": {
+                    "type": "int",
+                    "description": "The maximum number of results to be returned in an execution of this search. Default to 3"
+                },
             },
             "required": ["query"]
         }
-    }
+    },
 
     # ---------- Search Tools ----------
 

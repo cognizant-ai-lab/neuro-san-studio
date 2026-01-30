@@ -28,8 +28,8 @@
 
     # Optional metadata describing this agent network
     "metadata": {
-        "description": "ArXiv RAG assistant that retrieves and answers queries using academic papers from arXiv.org, supporting full PDF text or abstracts with configurable retrieval parameters.",
-        "tags": ["rag", "arxiv", "tool"],
+        "description": "ArXiv assistant that retrieves and answers queries using academic papers from arXiv.org, supporting full PDF text or abstracts with configurable retrieval parameters.",
+        "tags": ["arxiv", "tool"],
         "sample_queries": [
             "Please give me a list of research papers on LORA",
             "Find recent papers about transformer architectures",
@@ -39,7 +39,7 @@
     
     "tools": [
         {
-            "name": "Arxiv_RAG_Assistant",
+            "name": "Arxiv_Assistant",
 
             "function": {
               "description": "Answer caller's query with answers from tools.",
@@ -49,13 +49,13 @@
             If the tool failed or unavailable, just notify the user.
             Do not attempt to answer the question by yourself.""",
 
-            "tools": ["rag_retriever"]
+            "tools": ["arxiv_retriever"]
         },
-        # RAG tool that retrieves relevant data from Arxiv to answer user queries.
+        # A tool that retrieves relevant data from Arxiv to answer user queries.
         {
-            "name": "rag_retriever",
+            "name": "arxiv_retriever",
 
-            "toolbox": "arxiv_rag",
+            "toolbox": "arxiv_retriever",
 
             "args": {
                 # User-defined arguments for the tool
@@ -67,7 +67,18 @@
                 # Recommended values:
                 # Fast experimentation (lightweight context): 3–5
                 # Deeper context (survey / related work scan): 8–15
-                "top_k_results": "10",
+                # Default to 3. Can be set to null to return all.
+                # "top_k_results": 3,
+
+                # How to sort the search results
+                # Options are `relevance`, `lastUpdatedDate`, and `submittedDate`. Default to `relevance`.
+                # "sort_by": "relevance",
+
+                # Sort order
+                # Options are `ascending` and `descending`. Default to `descending`.
+                # "sort_order": "descending"
+
+                # LLM can set the above 3 arguments, but user can override in this `args` block.
 
                 # Content scope:
                 # True = full PDF text (slower, richer context)
@@ -81,16 +92,20 @@
                 # Total doc tokens ≈ (K * doc_content_chars_max) / 4  (K = top_k_results)
                 # Budget docs to a small share of the model’s max tokens (aim ~6–10%; increase if answers lack context)
                 # Need more coverage? lower per-doc cap. Need more detail per doc? lower K
-                "doc_content_chars_max": "4000",
+                # Default to 4000. 
+                # Can be set to null to return all. Note that this could be costly.
+                "doc_content_chars_max": 4000,
 
                 # Metadata scope: 
                 # True = full arXiv metadata (journal ref, categories, comments)
                 # False = minimal metadata (title, authors, abstract, published)
+                # Default to False.
                 "load_all_available_meta": true,
 
                 # Error handling:
                 # True = continue on retrieval/parsing errors
                 # False = fail fast
+                # Default to True.
                 "continue_on_failure": true,
             }
         }
