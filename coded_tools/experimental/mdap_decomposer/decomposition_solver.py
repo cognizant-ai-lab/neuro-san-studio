@@ -20,9 +20,9 @@ from typing import Dict
 from neuro_san.interfaces.coded_tool import CodedTool
 from neuro_san.internals.graph.activations.branch_activation import BranchActivation
 
-from coded_tools.experimental.mdap_decomposer.coded_tool_agent_caller import CodedToolAgentCaller
 from coded_tools.experimental.mdap_decomposer.neuro_san_solver import NeuroSanSolver
 from coded_tools.experimental.mdap_decomposer.solver_parsing import SolverParsing
+from coded_tools.tools.coded_tool_agent_caller import CodedToolAgentCaller
 
 
 class DecompositionSolver(BranchActivation, CodedTool):
