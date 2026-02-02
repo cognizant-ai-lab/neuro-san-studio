@@ -36,7 +36,7 @@ Here are a few examples ordered by level of complexity.
     - [Confluence RAG Assistant](#confluence-rag-assistant)
     - [Agentic RAG Assistant](#agentic-rag-assistant)
     - [Wikipedia RAG Assistant](#wikipedia-rag-assistant)
-    - [ArXiv RAG Assistant](#arxiv-rag-assistant)
+    - [ArXiv Assistant](#arxiv-assistant)
     - [ServiceNow AI Agents](#servicenow-ai-agents)
     - [Visual Question Answering](#visual-question-answering)
   - [🏢 Industry-Specific Examples](#-industry-specific-examples)
@@ -309,12 +309,12 @@ relevant articles, and synthesizing their content into accurate, detailed answer
 
 **Tags:** `tool`, `RAG`
 
-### ArXiv RAG Assistant
+### ArXiv Assistant
 
-[ArXiv RAG Assistant](examples/tools/arxiv_rag.md) is an agent-based system that queries arXiv, pulls the best-matching
+[ArXiv Assistant](examples/tools/arxiv_retriever.md) is an agent-based system that queries arXiv, pulls the best-matching
 research papers (abstracts or full text) and produces accurate responses to user queries (no vector store needed).
 
-**Tags:** `tool`, `RAG`
+**Tags:** `tool`
 
 ### ServiceNow AI Agents
 

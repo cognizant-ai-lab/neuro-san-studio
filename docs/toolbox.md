@@ -66,7 +66,7 @@ Integrate with Atlassian products for issue tracking and documentation.
 
 Retrieve and query information from various document sources.
 
-* **`arxiv_rag`** — Search and retrieve information from arXiv research papers
+* **`arxiv_retriever`** — Search and retrieve information from arXiv research papers
 * **`confluence_rag`** — Query Confluence documentation and wiki pages
 * **`docling_rag`** — Extract and search content from multiple document formats
 * **`pdf_rag`** — Query PDF documents
