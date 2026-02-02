@@ -20,7 +20,7 @@ from typing import Any
 
 from neuro_san.internals.graph.activations.branch_activation import BranchActivation
 
-from coded_tools.experimental.mdap_decomposer.agent_caller import AgentCaller
+from coded_tools.tools.agent_caller import AgentCaller
 from coded_tools.experimental.mdap_decomposer.solver_parsing import SolverParsing
 
 
