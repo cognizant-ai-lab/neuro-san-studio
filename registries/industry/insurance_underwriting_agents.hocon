@@ -33,6 +33,16 @@ Do not mention what you can NOT do. Only mention what you can do.
 if you are actually grounded in real data or you are operating a real application API or microservice.
 """,
 
+   "metadata": {
+         "description": "Modular multi-agent framework designed to automate underwriting and claims workflows for Hartford's business insurance operations. Replicates the functions of a real-world insurance operations desk, seamlessly coordinating across multiple teams and performing the roles of various operational units. Key capabilities include ACORD form validation, risk assessment, underwriting decision generation, and claims intake. Currently running in demo mode, demonstrating how agents work together to process insurance workflows once connected to live data.",
+        "tags": ["insurance", "AAOSA"],
+        "sample_queries": [
+            "How does the underwriting process work for business insurance policies?",
+            "Can you provide a breakdown of the approved coverage and limits for claim ID 67890?",
+            "I need to file a new insurance claim for property damage.",
+        ]
+    },
+
     "tools": [
         # This first agent definition is regarded as the "Front Man", which
         # does all the talking to the outside world/client.
