@@ -2,6 +2,93 @@
 
 Setup a virtual environment, install the dependencies, and activate the virtual environment using [Make](./dev_guide.md#using-the-makefile)
 
+## Automatic Validation at Startup
+
+When you run the server with `python -m run`, environment variables are automatically validated using a three-tier system:
+
+### Tier 1: Placeholder Detection (Always Runs)
+
+Detects common placeholder values that indicate unconfigured keys.
+
+**Detected patterns:** `YOUR_`, `REPLACE`, `CHANGEME`, `INSERT`, `TODO`, `<`, `>`, `xxx`, `...`
+
+**Examples:**
+| Value | Result |
+|-------|--------|
+| `YOUR_OPENAI_API_KEY` | ⚠️ Placeholder detected |
+| `<insert-key-here>` | ⚠️ Placeholder detected |
+| `sk-proj-abc123...` | ✓ Passes to Tier 2 |
+
+### Tier 2: Format Validation (Always Runs)
+
+Validates that API keys match expected patterns for each provider.
+
+**Format rules:**
+| Provider | Expected Format |
+|----------|-----------------|
+| OpenAI | Starts with `sk-`, at least 20 characters |
+| Anthropic | Starts with `sk-ant-`, at least 20 characters |
+| Google | At least 20 characters |
+| AWS Access Key | Starts with `AKIA`, exactly 20 characters |
+| AWS Secret Key | Exactly 40 characters |
+| Azure OpenAI | At least 20 characters |
+
+**Examples:**
+| Value | Result |
+|-------|--------|
+| `sk-proj-abc123def456...` | ✓ Valid OpenAI format |
+| `invalid-key` | ❌ Invalid format |
+| `sk-ant-api03-xyz...` | ✓ Valid Anthropic format |
+
+### Tier 3: Live Validation (Optional - `--validate-keys` flag)
+
+Makes actual API calls to verify keys are valid and have access.
+
+```bash
+python -m run --validate-keys
+```
+
+**Currently supported providers for live validation:**
+
+- ✅ OpenAI (calls `/v1/models`)
+- ✅ Anthropic (calls `/v1/messages/count_tokens`)
+- ✅ Google (calls Gemini models list)
+
+**Not yet supported:** AWS, Azure OpenAI (these only get Tier 1 & 2 validation)
+
+### Example Output
+
+```text
+======================================================================
+Environment Variable Validation Results
+======================================================================
+
+[VALID]
+  OPENAI_API_KEY: sk-pr...xY9z - API key verified
+  GOOGLE_API_KEY: AIza...cntU - API key verified
+  ANTHROPIC_API_KEY: sk-an...swAA - API key verified
+
+[WARNING]
+  - AWS_ACCESS_KEY_ID: not set - Configure in .env file
+  - AWS_SECRET_ACCESS_KEY: not set - Configure in .env file
+  - AZURE_OPENAI_API_KEY: not set - Configure in .env file
+  - AZURE_OPENAI_ENDPOINT: not set - Configure in .env file
+
+======================================================================
+Summary: 3/7 valid, 4 warnings, 0 errors
+======================================================================
+```
+
+> **Source Code:** The validation logic lives in
+> [`tests/apps/env_validator.py`](../tests/apps/env_validator.py).
+> You can inspect or extend this file to add support for additional providers.
+
+---
+
+## Individual Key Testing
+
+You can also test individual API keys using the scripts below:
+
 ## OpenAI API Key
 
 - Export your OpenAI API environment variables
