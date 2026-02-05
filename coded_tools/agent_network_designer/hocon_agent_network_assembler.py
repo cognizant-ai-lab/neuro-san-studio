@@ -45,7 +45,7 @@ HOCON_HEADER_START = (
     "# This allows users to change the model in one file rather than\n"
     "# modifying the configuration for each agent network.\n"
     "# Note that the file path here is relative to the root level of the repo.\n"
-    'include "registries/llm_config.hocon",\n'
+    '    include "registries/llm_config.hocon",\n'
     "\n"
     '   "instructions_prefix": """\n'
     "You are part of a team of assistants in "
