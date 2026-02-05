@@ -1,0 +1,103 @@
+# Version control
+.git
+.github
+.gitattributes
+.gitignore
+
+# Python bytecode and caches
+__pycache__
+*.py[cod]
+*$py.class
+*.so
+.mypy_cache
+.dmypy.json
+.pytype
+.pyre
+
+# Virtual environments
+.venv
+venv
+env
+ENV
+env.bak
+venv.bak
+
+# Environment and secrets
+.env
+.env.*
+!.env.example
+credentials.json
+token.json
+
+# IDE and editor files
+.idea
+.vscode
+settings.json
+*.swp
+*.swo
+*~
+
+# Test and coverage
+tests
+htmlcov
+.tox
+.nox
+.coverage
+.coverage.*
+coverage.xml
+*.cover
+.pytest_cache
+.hypothesis
+pytest.ini
+
+# Build artifacts
+build
+dist
+*.egg-info
+*.egg
+.eggs
+wheels
+sdist
+
+# Documentation (not needed in container)
+docs
+*.md
+!deploy/*.md
+LICENSE.txt
+
+# Development configs
+.flake8
+.pymarkdownlint.yaml
+pyproject.toml
+requirements-build.txt
+Makefile
+
+# macOS
+.DS_Store
+
+# Logs (generated at runtime)
+logs
+*.log
+
+# Jupyter
+*.ipynb
+.ipynb_checkpoints
+generated_notebooks
+
+# Local dev scripts (not the deploy scripts)
+build_scripts
+
+# Apps (optional clients, not needed for server deployment)
+apps
+
+# Generated files
+registries/generated
+
+# Docker files (don't copy Dockerfiles into the image)
+Dockerfile
+docker-compose*
+.dockerignore
+
+# Claude/AI assistant configs
+.claude/
+**/CLAUDE.md

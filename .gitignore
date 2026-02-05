@@ -200,3 +200,7 @@ registries/generated/
 
 # test local only
 registries/manifest.hocon.test
+
+# User
+**/claude.md
+.claude/
