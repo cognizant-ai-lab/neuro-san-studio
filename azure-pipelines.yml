@@ -11,52 +11,42 @@ variables:
   resourceGroup: 'CSAI-RG'
   containerAppName: 'csai-neuro-san-studio'
 
-stages:
-  - stage: Build
-    displayName: 'Build & Push Image'
-    jobs:
-      - job: BuildWithACR
-        pool:
-          name: 'Default'
-        steps:
-          - checkout: self
-            displayName: 'Checkout Code'
+jobs:
+  - job: BuildAndDeploy
+    displayName: 'Build & Deploy'
+    pool:
+      name: 'Default'
+    steps:
+      - checkout: self
+        displayName: 'Checkout Code'
 
-          - task: AzureCLI@2
-            displayName: 'Build Image with ACR Tasks'
-            inputs:
-              azureSubscription: '$(azureServiceConnection)'
-              scriptType: 'bash'
-              scriptLocation: 'inlineScript'
-              inlineScript: |
-                echo "Building image using ACR Tasks..."
-                az acr build \
-                  --registry $(acrName) \
-                  --image $(imageName):$(Build.BuildId) \
-                  --image $(imageName):latest \
-                  --file Dockerfile \
-                  .
-                echo "Build and push complete!"
+      - task: AzureCLI@2
+        displayName: 'Build Image with ACR Tasks'
+        inputs:
+          azureSubscription: '$(azureServiceConnection)'
+          scriptType: 'bash'
+          scriptLocation: 'inlineScript'
+          inlineScript: |
+            echo "Building image using ACR Tasks..."
+            az acr build \
+              --registry $(acrName) \
+              --image $(imageName):$(Build.BuildId) \
+              --image $(imageName):latest \
+              --file Dockerfile \
+              .
+            echo "Build and push complete!"
 
-  - stage: Deploy
-    displayName: 'Deploy to Container App'
-    dependsOn: Build
-    jobs:
-      - job: DeployApp
-        pool:
-          name: 'Default'
-        steps:
-          - task: AzureCLI@2
-            displayName: 'Update Container App'
-            inputs:
-              azureSubscription: '$(azureServiceConnection)'
-              scriptType: 'bash'
-              scriptLocation: 'inlineScript'
-              inlineScript: |
-                echo "Deploying to Container App..."
-                az containerapp update \
-                  --name $(containerAppName) \
-                  --resource-group $(resourceGroup) \
-                  --image $(acrLoginServer)/$(imageName):$(Build.BuildId)
-                echo "Deployment complete!"
-                echo "URL: https://csai-neuro-san-studio.ambitioussmoke-0c6f22e3.westus2.azurecontainerapps.io"
+      - task: AzureCLI@2
+        displayName: 'Deploy to Container App'
+        inputs:
+          azureSubscription: '$(azureServiceConnection)'
+          scriptType: 'bash'
+          scriptLocation: 'inlineScript'
+          inlineScript: |
+            echo "Deploying to Container App..."
+            az containerapp update \
+              --name $(containerAppName) \
+              --resource-group $(resourceGroup) \
+              --image $(acrLoginServer)/$(imageName):$(Build.BuildId)
+            echo "Deployment complete!"
+            echo "URL: https://csai-neuro-san-studio.ambitioussmoke-0c6f22e3.westus2.azurecontainerapps.io"
