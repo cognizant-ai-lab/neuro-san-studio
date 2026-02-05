@@ -4,7 +4,7 @@ trigger:
       - main
 
 variables:
-  azureServiceConnection: 'aai-az-container-apps-connection'
+  azureServiceConnection: 'csai-neuro-san-studio-connection'
   acrName: 'csaiadocicd'
   acrLoginServer: 'csaiadocicd.azurecr.io'
   imageName: 'csai-neuro-san-studio'
