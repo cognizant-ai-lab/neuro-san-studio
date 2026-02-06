@@ -1,0 +1,711 @@
+# Copyright © 2025-2026 Cognizant Technology Solutions Corp, www.cognizant.com.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
+# END COPYRIGHT
+
+# This is a toolbox that allows user to add tools from langchain or shared coded tools for easy access.
+# For more information about tools in the default toolbox and how to use them in the agent network hocon, see
+# https://github.com/cognizant-ai-lab/neuro-san-studio/blob/main/docs/user_guide.md#toolbox
+
+{
+
+    # ---------- Anthropic Tools ----------
+
+    # Requirement to use this agent network:
+    # - langchain-anthropic>=0.3.13
+    # - ANTHROPIC_API_KEY
+    # See https://docs.anthropic.com/en/docs/agents-and-tools/tool-use/overview and
+    # https://python.langchain.com/docs/integrations/chat/anthropic/#built-in-tools
+
+    "anthropic_search": {
+        "class": "tools.anthropic_web_search.AnthropicWebSearch",
+        "description": "Tool that provides web search capabilities",
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "query": {
+                    "type": "string",
+                    "description": "The text to search in."
+                },
+            },
+            "required": ["query"]
+        }
+    },
+    "anthropic_code_execution": {
+        "class": "tools.anthropic_code_execution.AnthropicCodeExecution",
+        "description": "Executes Python code and performs tasks such as plotting, data analysis, or math using the Anthropic Code Execution tool.",
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "query": {
+                    "type": "string",
+                    "description": "A natural language instruction or request to be executed by the code interpreter (e.g., a math problem, plotting instruction, or data transformation)."
+                },
+            },
+            "required": ["query"]
+        }
+    },
+
+    # ---------- Agent Network Tools ----------
+
+    "call_agent": {
+        "class": "tools.call_agent.CallAgent",
+        "description": "Call the agent to respond to inquiry.",
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "agent_name": {
+                    "type": "string",
+                    "description": """
+                    Name of the agent to call. Do not include file extension such as '.hocon' in the name.
+                    Always start the name with `/`.
+
+                    Example:
+                    "agent_name": "/music_nerd"
+
+                    Note:
+                    Some "agent_name" may have `/` like "basic/music_nerd".
+                    If that the case then use
+                    "agent_name": "/basic/music_nerd"
+                    """
+                },
+                "tool_args": {
+                    "type": "object",
+                    "description": "Arguments for the called agent."
+                },
+            },
+            "required": ["inquiry"]
+        } 
+    },
+
+    # This tool uses pyvis to generate a html, and open it in chrome browser.
+    "agent_network_html_generator": {
+        "class": "tools.agent_network_html_generator.AgentNetworkHtmlGenerator"
+        "description": "Generate a html file from agent network hocon",
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "agent_name": {
+                    "type": "string",
+                    "description": "Name of the agent to create html for. Do not include file extension such as '.hocon' in the name."
+                }
+            },
+            "required": ["agent_name"]
+        }
+    },
+
+    # ---------- Gmail Tools ----------
+    "gmail_toolkit": {
+        # This is the class of the tool to use
+        # Before using this tool make sure to
+        # pip install -U langchain-google-community\[gmail\]
+        # and get the credentials.json by following instructions from
+        # https://developers.google.com/workspace/gmail/api/quickstart/python#authorize_credentials_for_a_desktop_application
+        "class": "langchain_google_community.gmail.toolkit.GmailToolkit",
+
+        # This is where more info on the tool can be found.
+        "base_tool_info_url": "https://python.langchain.com/docs/integrations/tools/gmail/",
+
+        # Note that these tools do not support file attachment.
+    },
+
+    "send_gmail_message_with_attachment": {
+        # This is the coded tool for sending an email with attachment
+        "class": "tools.gmail_attachment.GmailAttachment"
+        "description": "Send an email with attachment",
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "to": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    },
+                    "description": "List of recipient email addresses"
+                },
+                "attachment_paths": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    },
+                    "description": "List of absolute paths of the attached files"
+                },
+                "cc": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    },
+                    "description": "List of CC email addresses"
+                },
+                "bcc": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    },
+                    "description": "List of BCC email addresses"
+                },
+                "subject": {
+                    "type": "string",
+                    "description": "Subject of the email"
+                },
+                "message": {
+                    "type": "string",
+                    "description": "Message or body of the email"
+                }
+            },
+            "required": ["to", "attachment_path"]
+            # The other arguments are optional
+        }
+    },
+
+    # ---------- Gemini Image Generation Tools ----------
+    # Requirement to use this agent network:
+    # - google-genai
+    # - GOOGLE_API_KEY
+    # Note: If `langchain-google-genai` is already installed in your environment, `google-genai` is already included.
+    # See also:
+    # - https://ai.google.dev/gemini-api/docs
+    # - https://ai.google.dev/gemini-api/docs/nanobanana
+    # - https://ai.google.dev/gemini-api/docs/image-generation
+    "gemini_image_generation": {
+        "class": "tools.gemini_image_generation.GeminiImageGeneration",
+        "description": "Tool that generates image using Gemini models",
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "query": {
+                    "type": "string",
+                    "description": "The prompt for image generation."
+                },
+                "aspect_ratio": {
+                    "type": "string",
+                    "description": "Aspect ratio of the generated image (allowed values: 1:1, 2:3, 3:2, 3:4, 4:3, 4:5, 5:4, 9:16, 16:9, 21:9)."
+                },
+                "image_size": {
+                    "type": "string",
+                    "description": "Size of the generated image (allowed values: 1K, 2K, and 4K)."
+                },
+                "google_search": {
+                    "type": "boolean",
+                    "description": "Whether to use Google search to find information related to the query."
+                }
+            },
+            "required": ["query"]
+        }
+    },
+
+    # ---------- Jira Tools ----------
+    # Requirements to use this tool:
+    # pip install atlassian-python-api
+    # Set up the following environment variable:
+    # JIRA_API_TOKEN (string), JIRA_USERNAME (string), JIRA_INSTANCE_URL (string), and JIRA_CLOUDb (boolean)
+    # See https://python.langchain.com/docs/integrations/tools/jira/
+
+    # This is a toolkit that contains the following tools for interacting with Jira.
+    #
+    # jql_query 
+    # This tool is a wrapper around atlassian-python-api's Jira jql API, useful when you need to search for Jira issues.
+    # The input to this tool is a JQL query string, and will be passed into atlassian-python-api's Jira `jql` function,
+    # For example, to find all the issues in project "Test" assigned to the me, you would pass in the following string:
+    # project = Test AND assignee = currentUser()
+    # or to find issues with summaries that contain the word "test", you would pass in the following string:
+    # summary ~ 'test'
+    #
+    # get_projects 
+    # This tool is a wrapper around atlassian-python-api's Jira project API, 
+    # useful when you need to fetch all the projects the user has access to, find out how many projects there are, or as an intermediary step that involv searching by projects. 
+    # there is no input to this tool.
+    #
+    # create_issue 
+    # This tool is a wrapper around atlassian-python-api's Jira issue_create API, useful when you need to create a Jira issue. 
+    # The input to this tool is a dictionary specifying the fields of the Jira issue, and will be passed into atlassian-python-api's Jira `issue_create` function.
+    # For example, to create a low priority task called "test issue" with description "test description", you would pass in the following dictionary: 
+    # {{"summary": "test issue", "description": "test description", "issuetype": {{"name": "Task"}}, "priority": {{"name": "Low"}}}}
+    #
+    # catch_all_jira_api 
+    # This tool is a wrapper around atlassian-python-api's Jira API.
+    # There are other dedicated tools for fetching all projects, and creating and searching for issues, 
+    # use this tool if you need to perform any other actions allowed by the atlassian-python-api Jira API.
+    # The input to this tool is a dictionary specifying a function from atlassian-python-api's Jira API, 
+    # as well as a list of arguments and dictionary of keyword arguments to pass into the function.
+    # For example, to get all the users in a group, while increasing the max number of results to 100, you would
+    # pass in the following dictionary: {{"function": "get_all_users_from_group", "args": ["group"], "kwargs": {{"limit":100}} }}
+    # or to find out how many projects are in the Jira instance, you would pass in the following string:
+    # {{"function": "projects"}}
+    # For more information on the Jira API, refer to https://atlassian-python-api.readthedocs.io/jira.html
+    #
+    # create_confluence_page This tool is a wrapper around atlassian-python-api's Confluence 
+    # atlassian-python-api API, useful when you need to create a Confluence page. The input to this tool is a dictionary 
+    # specifying the fields of the Confluence page, and will be passed into atlassian-python-api's Confluence `create_page` 
+    # function. For example, to create a page in the DEMO space titled "This is the title" with body "This is the body. You can use 
+    # <strong>HTML tags</strong>!", you would pass in the following dictionary: {{"space": "DEMO", "title":"This is the 
+    # title","body":"This is the body. You can use <strong>HTML tags</strong>!"}} 
+
+    "jira_toolkit": {
+        "class": "langchain_community.agent_toolkits.jira.toolkit.JiraToolkit",
+        "args": {
+            "jira_api_wrapper": {
+                "class": "langchain_community.utilities.jira.JiraAPIWrapper"
+            }
+        },
+
+        # This is where more info on the tool can be found.
+        "base_tool_info_url": "https://python.langchain.com/docs/integrations/tools/jira/",
+
+    },
+
+    # ---------- OpenAI Tools ----------
+
+    # Requirement to use these tools:
+    # - langchain-openai >= 0.3.26
+    # - OPENAI_API_KEY
+    # See https://platform.openai.com/docs/guides/tools?api-mode=responses and
+    # https://python.langchain.com/docs/integrations/chat/openai/#responses-api
+
+    "openai_search": {
+        "class": "tools.openai_web_search.OpenAIWebSearch",
+        "description": "Tool that provides web search capabilities",
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "query": {
+                    "type": "string",
+                    "description": "The text to search in."
+                },
+            },
+            "required": ["query"]
+        }
+    },
+    "openai_code_interpreter": {
+        "class": "tools.openai_code_interpreter.OpenAICodeInterpreter",
+        "description": "Executes Python code and performs tasks such as plotting, data analysis, or math using the OpenAI Code Interpreter tool.",
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "query": {
+                    "type": "string",
+                    "description": "A natural language instruction or request to be executed by the code interpreter (e.g., a math problem, plotting instruction, or data transformation)."
+                },
+            },
+            "required": ["query"]
+        }
+    },
+    "openai_image_generation": {
+        "class": "tools.openai_image_generation.OpenAIImageGeneration",
+        "description": "Tool that generates image using OpenAI tool",
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "query": {
+                    "type": "string",
+                    "description": "The prompt for image generation."
+                    # Note that the model may revise the prompt before generate the image.
+                    # Check the log for the revised prompt.
+                },
+            },
+            "required": ["query"]
+        }
+    },
+    "openai_video_generation": {
+        "class": "tools.openai_video_generation.OpenAIVideoGeneration",
+        "description": "Tool that generates video using OpenAI models",
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "query": {
+                    "type": "string",
+                    "description": "The prompt for video generation."
+                },
+                "video_id": {
+                    "type": "string",
+                    "description": "The ID of an existing video to remix. If provided, the video will be remixed based on the prompt."
+                }
+            },
+            "required": ["query"]
+        }
+    },
+        
+    # ---------- RAG Tools ----------
+    #
+    # Supported Vector Store: In-Memory and PostgreSQL vector stores
+    #
+    # Prerequisites for PostgreSQL:
+    #   - Install Docker: https://www.docker.com/get-started/
+    #   - Install Python package: pip install langchain-postgres
+    #   - Set environment variables: POSTGRES_USER, POSTGRES_PASSWORD, POSTGRES_HOST, POSTGRES_PORT, POSTGRES_DB
+    #   - Run: docker run --name pgvector-container -e POSTGRES_USER=<user> -e POSTGRES_PASSWORD=<password> -e POSTGRES_DB=<db_name> -p 6024:5432 -d pgvector/pgvector:pg16
+
+
+    # To use this tool, start by installing the required package:
+    #     pip install atlassian-python-api
+    #
+    # Additional installations may be required depending on the attachment types used.
+    # For details, see https://python.langchain.com/api_reference/_modules/langchain_community/document_loaders/confluence.html#ConfluenceLoader
+    # Set "username" and "api_key" in the agent network hocon or 
+    # as environment variable "JIRA_USERNAME" and "JIRA_API_TOKEN", respectively.
+    "confluence_rag": {
+        # This is a coded tool for RAG on confluence pages.
+        "class": "tools.confluence_rag.ConfluenceRag",
+        "description": "Retrieve information from the given confluence documents",
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "query": {
+                    "type": "string",
+                    "description": "Query for retrieval"
+                }
+            },
+            "required": ["query"]
+        }      
+    },
+
+    # To use this tool, start by installing the required package:
+    #     pip install langchain-docling
+    "docling_rag": {
+        # This is a coded tool for RAG on multiple file format.
+        # See https://python.langchain.com/docs/integrations/document_loaders/docling/ and
+        # https://docling-project.github.io/docling/
+        "class": "tools.docling_rag.DoclingRag",
+        "description": "Retrieve information from the given files",
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "query": {
+                    "type": "string",
+                    "description": "Query for retrieval"
+                }
+            },
+            "required": ["query"]
+        }
+    },
+
+    # To use tool, start by installing the required package:
+    #     pip install pymupdf >= 1.25.5
+    "pdf_rag": {
+        # This is a coded tool for RAG on PDF files.
+        "class": "tools.pdf_rag.PdfRag", 
+        "description": "Retrieve information from the given PDF files",
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "query": {
+                    "type": "string",
+                    "description": "Query for retrieval"
+                }
+            },
+            "required": ["query"]
+        }
+    },
+
+    "webpage_rag": {
+        # This is a coded tool for RAG on webpages.
+        "class": "tools.webpage_rag.WebpageRag",
+        "description": "Retrieve information from the given webpages",
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "query": {
+                    "type": "string",
+                    "description": "Query for retrieval"
+                },
+                "urls": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    },
+                    "description": "List of URLs to retrieve information from"
+                }
+            },
+            "required": ["query"]
+        }
+    }
+
+    # To use this tool, start by installing the required package:
+    #     pip install wikipedia
+    "wikipedia_rag": {
+        # This is a coded tool for RAG on Wikipedia pages.
+        "class": "tools.wikipedia_rag.WikipediaRag",
+        "description": "Retrieve information from Wikipedia and answer a query using RAG.",
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "query": {
+                    "type": "string",
+                    "description": "Query for retrieval"
+                }
+            },
+            "required": ["query"]
+        }
+    },
+
+    # Wikimedia Media search tool for retrieving image, audio, and video URLs from Wikimedia Commons.
+    "wikimedia_media_search": {
+        "class": "tools.wikimedia_media_search.WikimediaMediaSearch",
+        "description": """
+        Searches Wikimedia Commons for media files (images, audio, video) and returns direct URLs with proper file extensions.
+This tool is excellent for finding high-quality, properly licensed multimedia content from Wikimedia Commons.
+Supports searching for images, audio files (mp3, ogg, flac, wav), and video files (webm, ogv, mp4).
+        """,
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "query": {
+                    "type": "string",
+                    "description": """The search query with KEYWORDS ONLY (no conversational phrases). Extract key terms from user request. 
+                    Examples: 'nature video' (NOT 'show me nice nature video'), 'Einstein' (NOT 'photos of Einstein'), 'rain sound' (NOT 'find me rain sounds').
+                    For videos, include 'video', 'timelapse', or 'animation'. For audio, include 'sound' or 'audio'."""
+                },
+                "media_type": {
+                    "type": "string",
+                    "description": "Type of media to search for: 'image', 'audio', 'video', or 'all' (default: 'image')"
+                },
+                "limit": {
+                    "type": "int",
+                    "description": "Maximum number of results to return (default: 1, maximum: 10)"
+                },
+                "offset": {
+                    "type": "int",
+                    "description": "Result offset for pagination (default: 0). Use 10, 20, 30, etc. to get different sets of results from the same query."
+                }
+            },
+            "required": ["query"]
+        }
+    },
+    
+    # To use this tool, start by installing the required package:
+    #     pip install arxiv
+    # If "get_full_documents" is set to True
+    #     pip install pymupdf
+    "arxiv_retriever": {
+        # This is a coded tool for RAG on Arxiv Articles.
+        "class": "tools.arxiv_rag.ArxivRag",
+        "description": """This tool retrieves papers from arXiv using a query string.
+
+A query is a text string made of search terms and Boolean operators.
+
+Search terms must use one of these prefixes:
+
+ti = title
+au = author
+abs = abstract
+co = comment
+jr = journal reference
+cat = subject category
+rn = report number
+id_list = arXiv article ID
+
+Boolean operators (must be uppercase): AND, OR, ANDNOT
+
+You can group terms using parentheses ().
+
+Examples:
+
+query='au:"del maestro"'
+query='au:"del maestro" AND ti:checkerboard'
+query='au:"del maestro" AND ti:"quantum criticality"'
+query='au:"Adrian Del Maestro" AND au:"Bernd Rosenow"'
+query='au:"del maestro" ANDNOT (ti:checkerboard OR ti:Pyrochlore)'
+query="cat:quant-ph AND abs:entanglement"
+query="id_list:2301.01234"
+
+Rules:
+
+- Every search term must use a prefix
+- Author names with more than one word must be in quotes
+- Boolean operators must be uppercase
+- Use () to group Boolean expressions for Boolean operator precedence.
+- Use double quotes to group multiple words into phrases to search a particular field.
+- Pass the entire query as a single string
+""",
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "query": {
+                    "type": "string",
+                    "description": "Retrieval question to answer over arXiv documents"
+                },
+                "sort_by": {
+                    "type": "string",
+                    "description": """
+A property by which search results can be sorted.
+Options are `relevance`, `lastUpdatedDate`, and `submittedDate`. Default to `relevance`.
+"""
+                },
+                "sort_order": {
+                    "type": "string",
+                    "description": """
+Order in which search results are sorted according to the specified `sort_by`.
+Options are `ascending` and `descending`. Default to `descending`.
+"""
+                },
+                "top_k_results": {
+                    "type": "int",
+                    "description": "The maximum number of results to be returned in an execution of this search. Default to 3"
+                },
+            },
+            "required": ["query"]
+        }
+    },
+
+    # ---------- Search Tools ----------
+
+    # To use this search tool, obtain an API key from: https://brave.com/search/api/
+    # Once you have the API key, set it using the BRAVE_API_KEY environment variable.
+    # You can optionally set a custom search URL via the BRAVE_URL environment variable.
+    # If BRAVE_URL is not set, the default is: https://api.search.brave.com/res/v1/web/search?q=
+    # You can also configure the request timeout (in seconds) using BRAVE_TIMEOUT; the default is 30 seconds.
+    "brave_search": {
+        "class": "tools.brave_search.BraveSearch",
+        "description": "Performs a web search using Brave Search.",
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "search_terms": {
+                    "type": "string",
+                    "description": "The query string or keywords to search for."
+                },
+            },
+            "required": ["search_terms"]
+        }
+    },
+
+    # This search tool requires no API key.
+    # Reference: https://github.com/deedy5/ddgs
+    "ddgs_search": {
+        "class": "tools.ddgs_search.DdgsSearch",
+        "description": "Performs a web search using DDGS Search.",
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "search_terms": {
+                    "type": "string",
+                    "description": "The query string or keywords to search for."
+                },
+            },
+            "required": ["search_terms"]
+        }
+    },
+
+    # To use this search tool, you must
+    #
+    # 1. Create a Custom Search Engine (CSE)
+    #   * Go to  https://programmablesearchengine.google.com/
+    #   * Click "Add" → Choose sites or use "*" to search the whole web (then enable that in settings).
+    #   * Note your Search Engine ID (cx).
+    # 2. Get Google API key
+    #  * Go to: https://console.cloud.google.com/
+    #  * Enable the Custom Search API.
+    #  * Create an API key under APIs & Services > Credentials.
+    #
+    # Use the CSE ID in step 1 to set GOOGLE_SEARCH_CSE_ID environment variable.
+    # Use the API key in step 2 to set GOOGLE_SEARCH_API_KEY environment variable.
+    #
+    # You can optionally set a custom search URL and a custom timeout via the GOOGLE_SEARCH_URL and GOOGLE_SEARCH_TIMEOUT environment variables.
+    # Otherwise, the default values of "https://www.googleapis.com/customsearch/v1" and "30" are used, respectively
+    "google_search": {
+        "class": "tools.google_search.GoogleSearch",
+        "description": "Performs a web search using Google Search.",
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "search_terms": {
+                    "type": "string",
+                    "description": "The query string or keywords to search for."
+                },
+            },
+            "required": ["search_terms"]
+        }
+    },
+
+    # To use this search tool, obtain an API key from: https://serper.dev/
+    # Once you have the API key, set it using the SERPER_API_KEY environment variable.
+    "google_serper": {
+        "class": "tools.google_serper.GoogleSerper",
+        "description": """Search the web using Google Serper API with customizable parameters.
+        
+        Supports multiple search types (web, news, images, places) with geographic and language localization.
+        Returns structured search results with metadata for easy processing.
+        
+        Available parameters:
+        - query (required): The search term or question to look up online
+        - type (optional): Search type - 'search' (default, general web), 'news', 'images', or 'places'
+        - k (optional): Number of results to return (default: 10)
+        - gl (optional): Country code for geographic localization (default: 'us', e.g., 'uk', 'de', 'fr')
+        - hl (optional): Language code for search interface (default: 'en', e.g., 'es', 'fr', 'de')
+        - tbs (optional): Time-based search filter (e.g., 'qdr:d' for past day, 'qdr:w' for past week, 'qdr:m' for past month)
+        
+        Use this for: real-time web information, news searches, location-based queries, and when you need
+        fresh data not available in the AI model's training data.""",
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "query": {
+                    "type": "string",
+                    "description": "The search term or question to look up online."
+                },
+                "type": {
+                    "type": "string",
+                    "description": "Type of search: 'search' (general web), 'news', 'images', or 'places'. Default: 'search'"
+                },
+                "k": {
+                    "type": "object",
+                    "description": "Number of search results to retrieve. Default: 10"
+                },
+                "gl": {
+                    "type": "string",
+                    "description": "Country code to localize search results (e.g., 'us', 'uk', 'de'). Default: 'us'"
+                },
+                "hl": {
+                    "type": "string",
+                    "description": "Language code for the search interface (e.g., 'en', 'es', 'fr'). Default: 'en'"
+                },
+                "tbs": {
+                    "type": "string",
+                    "description": "Time-based search filter (e.g., 'qdr:d' for past day, 'qdr:w' for past week, 'qdr:m' for past month)"
+                }
+            },
+            "required": ["query"]
+        }
+    },
+
+    # To use this search tool, obtain an API key from: https://www.tavily.com/
+    # Once you have the API key, set it using the TAVILY_API_KEY environment variable.
+    # Then install the langchain-tavily package:
+    # pip install langchain-tavily
+    "tavily_search": {
+        # This is the class of the tool to use
+        "class": "langchain_tavily.TavilySearch",
+
+        # This is where more info on the tool can be found.
+        "base_tool_info_url": "https://pypi.org/project/langchain-tavily/",
+
+        # Arguments for the tool's constructor.
+        # These arguments will be used when instantiating the tool unless overridden in the agent HOCON file.
+        "args": {
+            "max_results": 5,
+            "topic": "general",
+            "include_answer": false,
+            "include_raw_content": false,
+            "include_images": false,
+            "include_image_descriptions": false,
+            "include_favicon": false,
+            "search_depth": "basic",
+            "time_range": "day",
+            "include_domains": null,
+            "exclude_domains": null,
+            "country": null
+        }
+    },
+
+}

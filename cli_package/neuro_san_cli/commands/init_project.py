@@ -170,3 +170,17 @@ def _copy_designer_files(project_path: Path):
         if src.exists():
             shutil.copytree(src, dst)
             click.echo(f"  Created: {dst}/")
+
+    # Copy mcp directory
+    mcp_src = DESIGNER_ASSETS_DIR / "mcp"
+    mcp_dst = project_path / "mcp"
+    if mcp_src.exists():
+        shutil.copytree(mcp_src, mcp_dst)
+        click.echo(f"  Created: {mcp_dst}/")
+
+    # Copy toolbox directory
+    toolbox_src = DESIGNER_ASSETS_DIR / "toolbox"
+    toolbox_dst = project_path / "toolbox"
+    if toolbox_src.exists():
+        shutil.copytree(toolbox_src, toolbox_dst)
+        click.echo(f"  Created: {toolbox_dst}/")

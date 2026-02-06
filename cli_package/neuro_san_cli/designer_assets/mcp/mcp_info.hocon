@@ -1,0 +1,60 @@
+# Copyright © 2025-2026 Cognizant Technology Solutions Corp, www.cognizant.com.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
+# END COPYRIGHT
+
+
+# This file contains the MCP server configurations in the following format:
+#     "mcp_server_url_1": {
+#         "http_headers": {
+#                "Authorization": "Bearer <token>",
+#         }, # Optional: if the server requires authentication
+#         "tools": ["tool_1", "tool_2"]  # Optional: list of specific tools to load from this server. Load all tools if not specified.
+#     },
+
+{
+    "https://mcp.deepwiki.com/mcp": {
+        "tools": ["read_wiki_structure", "ask_question"]
+    },
+
+    # Uncomment this section to use GitHub Copilot MCP server.
+    # Make sure to set the environment variable GITHUB_TOKEN with a valid token.
+    # "https://api.githubcopilot.com/mcp": {
+    #     "http_headers": {
+    #        # GITHUB_TOKEN is an environment variable that should contain a valid GitHub Copilot token.
+    #        # "${...}" syntax will substitute the value of the environment variable at runtime.
+    #         "Authorization": "Bearer" ${GITHUB_TOKEN}
+    #     },
+    #     "tools": ["issue_write"]
+    #     # filter the tool to only create_issue.
+    # },
+
+    # Uncomment this section to use Google Maps Platform Grounding Lite MCP server.
+    # Make sure to set the environment variable GOOGLE_API_KEY with a valid API key and enable the Maps Grounding Lite API.
+    # "https://mapstools.googleapis.com/mcp": {
+    #     "http_headers": {
+    #        # GOOGLE_API_KEY is an environment variable that should contain a valid Google Maps Platform API key.
+    #        # "${...}" syntax will substitute the value of the environment variable at runtime.
+    #         "X-Goog-Api-Key": ${GOOGLE_API_KEY}
+    #     },
+    #     "tools": ["search_places", "lookup_weather", "compute_routes"]
+    #     # This MCP server provides three tools:
+    #     # Search places: Request information about places and get AI-generated place data summaries, as well as Place IDs, 
+    #     #                latitude and longitude coordinates, and Google Maps links for each of the places included in the summary.
+    #     # Lookup weather: Request information about weather and return current conditions, hourly forecasts, and daily forecasts.
+    #     # Compute routes: Request information about driving or walking routes between two locations and return route distance and duration information.
+    #     # Note: Grounding Lite does not provide step-by-step routing, directions, real-time traffic, or navigation information
+    #     # See https://developers.google.com/maps/ai/grounding-lite for more details on the tools and how to get started.
+    # },
+}
