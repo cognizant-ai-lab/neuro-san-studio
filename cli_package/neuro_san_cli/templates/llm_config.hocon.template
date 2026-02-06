@@ -1,0 +1,36 @@
+# Copyright 2025-2026 Cognizant Technology Solutions Corp, www.cognizant.com.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+# Shared LLM Configuration for ${project_name}
+#
+# This file defines the default LLM settings used by all agents in this project.
+# Include this file in your agent HOCONs with: include "registries/llm_config.hocon"
+#
+# Documentation: https://github.com/cognizant-ai-lab/neuro-san/blob/main/docs/llm_info_hocon_reference.md
+
+{
+    "llm_config": {
+        "model_name": "${model_name}"
+        # Optional: Add temperature, max_tokens, etc.
+        # "temperature": 0.7
+        # "max_tokens": 4000
+
+        # Optional: Add fallback models for resilience
+        # "fallbacks": [
+        #     {
+        #         "model_name": "gpt-3.5-turbo"
+        #     }
+        # ]
+    }
+}

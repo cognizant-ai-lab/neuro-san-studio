@@ -1,0 +1,95 @@
+# ${project_name}
+
+A neuro-san multi-agent project.
+
+## Setup
+
+1. Create and activate a virtual environment:
+
+```bash
+python -m venv venv
+source venv/bin/activate  # On Windows: venv\Scripts\activate
+```
+
+2. Install dependencies:
+
+```bash
+pip install -r requirements.txt
+```
+
+3. Configure your environment:
+
+```bash
+cp .env.example .env
+# Edit .env and add your API keys
+```
+
+## Running Agents
+
+### Using the CLI (Direct Mode)
+
+Run an agent directly without starting a server:
+
+```bash
+python -m neuro_san.client.agent_cli --agent hello_world
+```
+
+### Using the Server
+
+Start the neuro-san server:
+
+```bash
+python -m neuro_san.service.main_loop.server_main_loop
+```
+
+Then connect with the CLI:
+
+```bash
+python -m neuro_san.client.agent_cli --http --agent hello_world
+```
+
+## Project Structure
+
+```
+${project_name}/
+├── registries/           # Agent network definitions
+│   ├── manifest.hocon    # Lists which agents to serve
+│   ├── llm_config.hocon  # Shared LLM configuration
+│   └── hello_world.hocon # Example agent
+├── coded_tools/          # Custom Python tools
+├── .env.example          # Environment template
+├── .env                   # Your API keys (not in git)
+└── requirements.txt      # Python dependencies
+```
+
+## Creating New Agents
+
+Use the neuro-san CLI to scaffold new agents:
+
+```bash
+neuro-san new agent my_agent
+```
+
+Then add it to your manifest.hocon:
+
+```hocon
+"my_agent.hocon": true
+```
+
+## Creating New Tools
+
+Scaffold a new CodedTool:
+
+```bash
+neuro-san new tool my_tool
+```
+
+## Documentation
+
+- [neuro-san Documentation](https://github.com/cognizant-ai-lab/neuro-san)
+- [Agent HOCON Reference](https://github.com/cognizant-ai-lab/neuro-san/blob/main/docs/agent_hocon_reference.md)
+- [Manifest Reference](https://github.com/cognizant-ai-lab/neuro-san/blob/main/docs/manifest_hocon_reference.md)
+
+## License
+
+Apache License 2.0

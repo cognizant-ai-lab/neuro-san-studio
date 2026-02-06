@@ -1,0 +1,77 @@
+# Copyright 2025-2026 Cognizant Technology Solutions Corp, www.cognizant.com.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+# Agent: ${agent_name}
+#
+# Documentation: https://github.com/cognizant-ai-lab/neuro-san/blob/main/docs/agent_hocon_reference.md
+
+{
+    # Include shared LLM configuration
+    include "registries/llm_config.hocon"
+
+    "metadata": {
+        "description": "${description}"
+        "tags": []
+        "sample_queries": [
+            "Add example queries here"
+        ]
+    }
+
+    "tools": [
+        # Front Man - the entry point for user interactions
+        {
+            "name": "${agent_name}"
+
+            "function": {
+                "description": """
+${description}
+
+How can I help you today?
+"""
+            }
+
+            "instructions": """
+You are ${agent_name}, an AI assistant.
+
+Your responsibilities:
+1. Understand the user's request
+2. Delegate to appropriate helper agents/tools
+3. Synthesize results and provide a clear response
+
+Be helpful, accurate, and concise.
+"""
+            # Add helper agents/tools here:
+            # "tools": ["helper_agent", "another_tool"]
+        }
+
+        # Add helper agents below:
+        # {
+        #     "name": "helper_agent"
+        #     "function": {
+        #         "description": "Helps with specific tasks"
+        #         "parameters": {
+        #             "type": "object"
+        #             "properties": {
+        #                 "input": {
+        #                     "type": "string"
+        #                     "description": "Input for the helper"
+        #                 }
+        #             }
+        #             "required": ["input"]
+        #         }
+        #     }
+        #     "instructions": "Instructions for the helper agent"
+        # }
+    ]
+}

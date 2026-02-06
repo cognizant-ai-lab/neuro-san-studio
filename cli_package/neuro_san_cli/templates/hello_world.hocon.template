@@ -1,0 +1,90 @@
+# Copyright 2025-2026 Cognizant Technology Solutions Corp, www.cognizant.com.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+# Hello World Agent - A simple example to get you started
+#
+# Documentation: https://github.com/cognizant-ai-lab/neuro-san/blob/main/docs/agent_hocon_reference.md
+
+{
+    # Include shared LLM configuration
+    include "registries/llm_config.hocon"
+
+    "metadata": {
+        "description": "A simple example agent network with a front man and one helper agent."
+        "tags": ["example", "starter"]
+        "sample_queries": [
+            "Say hello to the world in a creative way."
+            "Greet developers who just created their first neuro-san project."
+        ]
+    }
+
+    "tools": [
+        # The first agent is the "Front Man" - the entry point for user interactions.
+        # It cannot be a CodedTool or toolbox tool.
+        {
+            "name": "greeter"
+
+            "function": {
+                # This description is shown to users as the initial prompt
+                "description": """
+I can help you create friendly greetings and announcements.
+Tell me who you want to greet and what tone you'd like to use.
+"""
+            }
+
+            "instructions": """
+You are a friendly greeter who helps create warm, welcoming messages.
+When asked to create a greeting:
+1. Understand the target audience
+2. Determine the appropriate tone (formal, casual, playful, etc.)
+3. Call the message_crafter tool to refine your greeting
+4. Return the final greeting without additional commentary
+"""
+            "tools": ["message_crafter"]
+        }
+
+        # Helper agent that refines messages
+        {
+            "name": "message_crafter"
+
+            "function": {
+                "description": "Crafts and refines messages to be clear and engaging."
+                "parameters": {
+                    "type": "object"
+                    "properties": {
+                        "draft_message": {
+                            "type": "string"
+                            "description": "The draft message to refine"
+                        }
+                        "tone": {
+                            "type": "string"
+                            "description": "The desired tone (formal, casual, playful, etc.)"
+                        }
+                    }
+                    "required": ["draft_message"]
+                }
+            }
+
+            "instructions": """
+You are a skilled message crafter. Your job is to take draft messages and make them:
+- Clear and concise
+- Appropriate for the specified tone
+- Engaging and memorable
+
+Return only the refined message without explanation.
+"""
+            "command": "Refine the draft message with the specified tone"
+        }
+    ]
+}
