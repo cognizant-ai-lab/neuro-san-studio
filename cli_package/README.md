@@ -70,7 +70,6 @@ Options:
 |--------|-------------|---------|
 | `--llm-provider` | Default LLM provider (openai, anthropic, google, azure, bedrock, ollama) | openai |
 | `--model` | Default model name (e.g., gpt-4o, claude-3-5-sonnet) | Provider default |
-| `--include-designer` | Include the Agent Network Designer for creating agent networks via natural language | False |
 
 Examples:
 
@@ -80,9 +79,6 @@ neuro-san init my-project
 
 # Project with Anthropic Claude
 neuro-san init my-project --llm-provider anthropic --model claude-3-5-sonnet-20241022
-
-# Project with Agent Network Designer
-neuro-san init my-project --include-designer
 ```
 
 This creates:
@@ -98,20 +94,6 @@ This creates:
 | `requirements.txt` | Python dependencies |
 | `README.md` | Project documentation |
 | `.gitignore` | Git ignore file |
-
-When using `--include-designer`, additional files are created:
-
-| File/Directory | Description |
-|----------------|-------------|
-| `registries/agent_network_designer.hocon` | Main designer agent |
-| `registries/agent_network_editor.hocon` | Support network for editing |
-| `registries/agent_network_instructions_editor.hocon` | Support network for instructions |
-| `registries/agent_network_query_generator.hocon` | Support network for queries |
-| `coded_tools/agent_network_designer/` | Designer coded tools |
-| `coded_tools/agent_network_editor/` | Editor coded tools |
-| `coded_tools/agent_network_instructions_editor/` | Instructions editor coded tools |
-| `mcp/mcp_info.hocon` | MCP server configuration |
-| `toolbox/toolbox_info.hocon` | Toolbox configuration |
 
 ### Create a new agent
 
