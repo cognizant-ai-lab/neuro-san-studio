@@ -24,7 +24,25 @@ cp .env.example .env
 # Edit .env and add your API keys
 ```
 
-## Running Agents
+## Running the Project
+
+### Quick Start with NSFlow UI
+
+Start the neuro-san server and NSFlow UI together:
+
+```bash
+python run.py
+```
+
+Then open http://localhost:4173 in your browser to view and interact with your agents.
+
+### Run Options
+
+```bash
+python run.py                    # Start both server and NSFlow
+python run.py --server-only      # Start only the neuro-san server
+python run.py --client-only      # Start only NSFlow (connect to existing server)
+```
 
 ### Using the CLI (Direct Mode)
 
@@ -34,7 +52,7 @@ Run an agent directly without starting a server:
 python -m neuro_san.client.agent_cli --agent hello_world
 ```
 
-### Using the Server
+### Using the Server Manually
 
 Start the neuro-san server:
 
@@ -57,8 +75,9 @@ ${project_name}/
 │   ├── llm_config.hocon  # Shared LLM configuration
 │   └── hello_world.hocon # Example agent
 ├── coded_tools/          # Custom Python tools
+├── run.py                # Start server and NSFlow UI
 ├── .env.example          # Environment template
-├── .env                   # Your API keys (not in git)
+├── .env                  # Your API keys (not in git)
 └── requirements.txt      # Python dependencies
 ```
 

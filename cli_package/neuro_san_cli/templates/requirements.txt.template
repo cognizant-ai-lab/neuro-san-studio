@@ -5,6 +5,12 @@
 # neuro-san framework
 neuro-san>=0.5.0
 
+# NSFlow UI for visualizing agent networks
+nsflow>=0.1.0
+
+# Environment variable loading
+python-dotenv>=1.0.0
+
 # Optional: Add your project-specific dependencies below
 # requests>=2.28.0
 # pandas>=2.0.0

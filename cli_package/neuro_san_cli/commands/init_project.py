@@ -80,6 +80,7 @@ def init_project(project_name: str, llm_provider: str, model: str = None):
         ("gitignore", project_path / ".gitignore"),
         ("readme.md", project_path / "README.md"),
         ("coded_tool_init.py", project_path / "coded_tools" / "__init__.py"),
+        ("run.py", project_path / "run.py"),
     ]
 
     for template_name, output_path in files_to_create:
@@ -95,6 +96,9 @@ def init_project(project_name: str, llm_provider: str, model: str = None):
     click.echo("  2. cp .env.example .env")
     click.echo("  3. Edit .env and add your API keys")
     click.echo("  4. pip install -r requirements.txt")
-    click.echo("  5. python -m neuro_san.client.agent_cli --agent hello_world")
+    click.echo("  5. python run.py")
+    click.echo("")
+    click.echo("This will start the neuro-san server and NSFlow UI.")
+    click.echo("Open http://localhost:4173 to view your agents in NSFlow.")
     click.echo("")
     click.echo("For more information, see the README.md file.")

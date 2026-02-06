@@ -1,0 +1,257 @@
+# Copyright 2025-2026 Cognizant Technology Solutions Corp, www.cognizant.com.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+"""
+Run script for ${project_name} - starts neuro-san server and NSFlow UI.
+
+Usage:
+    python run.py                    # Start both server and NSFlow
+    python run.py --server-only      # Start only the neuro-san server
+    python run.py --client-only      # Start only NSFlow (connect to existing server)
+"""
+
+import argparse
+import os
+import signal
+import socket
+import subprocess
+import sys
+import time
+
+from dotenv import load_dotenv
+
+
+class NeuroSanRunner:
+    """Simple runner for neuro-san server and NSFlow client."""
+
+    def __init__(self):
+        """Initialize configuration."""
+        self.root_dir = os.path.dirname(os.path.abspath(__file__))
+        self.logs_dir = os.path.join(self.root_dir, "logs")
+
+        # Load environment variables from .env file
+        self._load_env()
+
+        # Default configuration
+        self.config = {
+            "server_host": os.getenv("NEURO_SAN_SERVER_HOST", "localhost"),
+            "server_http_port": int(os.getenv("NEURO_SAN_SERVER_HTTP_PORT", "8080")),
+            "nsflow_host": os.getenv("NSFLOW_HOST", "localhost"),
+            "nsflow_port": int(os.getenv("NSFLOW_PORT", "4173")),
+            "manifest_file": os.getenv(
+                "AGENT_MANIFEST_FILE",
+                os.path.join(self.root_dir, "registries", "manifest.hocon")
+            ),
+            "tool_path": os.getenv(
+                "AGENT_TOOL_PATH",
+                os.path.join(self.root_dir, "coded_tools")
+            ),
+        }
+
+        # Parse command-line arguments
+        self._parse_args()
+
+        # Ensure logs directory exists
+        os.makedirs(self.logs_dir, exist_ok=True)
+
+        # Process references
+        self.server_process = None
+        self.nsflow_process = None
+
+    def _load_env(self):
+        """Load .env file if it exists."""
+        env_path = os.path.join(self.root_dir, ".env")
+        if os.path.exists(env_path):
+            load_dotenv(env_path)
+            print(f"Loaded environment from: {env_path}")
+        else:
+            print("No .env file found. Using defaults.")
+            print("Hint: Copy .env.example to .env and add your API keys.")
+
+    def _parse_args(self):
+        """Parse command-line arguments."""
+        parser = argparse.ArgumentParser(
+            description="Run neuro-san server and NSFlow UI.",
+            formatter_class=argparse.ArgumentDefaultsHelpFormatter,
+        )
+        parser.add_argument(
+            "--server-host",
+            type=str,
+            default=self.config["server_host"],
+            help="Host for the neuro-san server",
+        )
+        parser.add_argument(
+            "--server-port",
+            type=int,
+            default=self.config["server_http_port"],
+            help="HTTP port for the neuro-san server",
+        )
+        parser.add_argument(
+            "--nsflow-port",
+            type=int,
+            default=self.config["nsflow_port"],
+            help="Port for NSFlow UI",
+        )
+        parser.add_argument(
+            "--server-only",
+            action="store_true",
+            help="Run only the neuro-san server",
+        )
+        parser.add_argument(
+            "--client-only",
+            action="store_true",
+            help="Run only NSFlow (connect to existing server)",
+        )
+
+        args = parser.parse_args()
+        self.config.update(vars(args))
+
+    def _set_environment(self):
+        """Set environment variables for subprocesses."""
+        os.environ["PYTHONPATH"] = self.root_dir
+        os.environ["AGENT_MANIFEST_FILE"] = self.config["manifest_file"]
+        os.environ["AGENT_TOOL_PATH"] = self.config["tool_path"]
+        os.environ["NEURO_SAN_SERVER_HOST"] = self.config["server_host"]
+        os.environ["NEURO_SAN_SERVER_HTTP_PORT"] = str(self.config["server_port"])
+        os.environ["NSFLOW_HOST"] = self.config["nsflow_host"]
+        os.environ["NSFLOW_PORT"] = str(self.config["nsflow_port"])
+
+        print("\nEnvironment configured:")
+        print(f"  AGENT_MANIFEST_FILE: {self.config['manifest_file']}")
+        print(f"  AGENT_TOOL_PATH: {self.config['tool_path']}")
+        print(f"  Server: {self.config['server_host']}:{self.config['server_port']}")
+        print(f"  NSFlow: {self.config['nsflow_host']}:{self.config['nsflow_port']}")
+
+    def _is_port_open(self, host: str, port: int) -> bool:
+        """Check if a port is already in use."""
+        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
+            sock.settimeout(1.0)
+            try:
+                sock.connect((host, port))
+                return True
+            except (ConnectionRefusedError, TimeoutError, OSError):
+                return False
+
+    def _start_process(self, command: list, name: str, log_file: str):
+        """Start a subprocess."""
+        log_path = os.path.join(self.logs_dir, log_file)
+        with open(log_path, "w", encoding="utf-8") as log:
+            log.write(f"Starting {name}...\n")
+
+        process = subprocess.Popen(
+            command,
+            stdout=open(log_path, "a", encoding="utf-8"),
+            stderr=subprocess.STDOUT,
+            start_new_session=True,
+        )
+        print(f"Started {name} (PID {process.pid}) - logs: {log_path}")
+        return process
+
+    def _start_server(self):
+        """Start the neuro-san server."""
+        if self._is_port_open(self.config["server_host"], self.config["server_port"]):
+            print(f"Warning: Port {self.config['server_port']} already in use.")
+            return None
+
+        command = [
+            sys.executable,
+            "-m",
+            "neuro_san.service.main_loop.server_main_loop",
+            "--http_port",
+            str(self.config["server_port"]),
+        ]
+        self.server_process = self._start_process(command, "neuro-san server", "server.log")
+        return self.server_process
+
+    def _start_nsflow(self):
+        """Start NSFlow UI."""
+        if self._is_port_open(self.config["nsflow_host"], self.config["nsflow_port"]):
+            print(f"Warning: Port {self.config['nsflow_port']} already in use.")
+            return None
+
+        command = [
+            sys.executable,
+            "-m",
+            "uvicorn",
+            "nsflow.backend.main:app",
+            "--host",
+            self.config["nsflow_host"],
+            "--port",
+            str(self.config["nsflow_port"]),
+        ]
+        self.nsflow_process = self._start_process(command, "NSFlow", "nsflow.log")
+        return self.nsflow_process
+
+    def _signal_handler(self, signum, frame):
+        """Handle termination signals."""
+        print("\nShutting down...")
+        for process, name in [
+            (self.server_process, "server"),
+            (self.nsflow_process, "NSFlow"),
+        ]:
+            if process:
+                print(f"Stopping {name}...")
+                try:
+                    os.killpg(os.getpgid(process.pid), signal.SIGTERM)
+                except ProcessLookupError:
+                    pass
+        sys.exit(0)
+
+    def run(self):
+        """Run the server and/or client."""
+        self._set_environment()
+
+        # Set up signal handling
+        signal.signal(signal.SIGINT, self._signal_handler)
+        signal.signal(signal.SIGTERM, self._signal_handler)
+
+        server_only = self.config.get("server_only", False)
+        client_only = self.config.get("client_only", False)
+
+        if server_only and client_only:
+            print("Error: Cannot use --server-only and --client-only together.")
+            sys.exit(1)
+
+        # Start services
+        if not client_only:
+            self._start_server()
+            time.sleep(2)  # Give server time to start
+
+        if not server_only:
+            self._start_nsflow()
+
+        print("\n" + "=" * 50)
+        print("Services running. Press Ctrl+C to stop.")
+        if not server_only:
+            print(f"NSFlow UI: http://{self.config['nsflow_host']}:{self.config['nsflow_port']}")
+        print("=" * 50 + "\n")
+
+        # Wait for processes
+        try:
+            while True:
+                time.sleep(1)
+                # Check if processes are still running
+                if self.server_process and self.server_process.poll() is not None:
+                    print("Server process exited.")
+                    break
+                if self.nsflow_process and self.nsflow_process.poll() is not None:
+                    print("NSFlow process exited.")
+                    break
+        except KeyboardInterrupt:
+            self._signal_handler(None, None)
+
+
+if __name__ == "__main__":
+    runner = NeuroSanRunner()
+    runner.run()
