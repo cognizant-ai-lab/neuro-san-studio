@@ -22,18 +22,25 @@ Usage:
 """
 
 import argparse
+import logging
 import os
 import signal
 import socket
 import subprocess
 import sys
+import threading
 import time
+from datetime import datetime
 
 from dotenv import load_dotenv
+from rich.console import Console
+from rich.logging import RichHandler
+from rich.text import Text
+from rich.theme import Theme
 
 
 class NeuroSanRunner:
-    """Simple runner for neuro-san server and NSFlow client."""
+    """Simple runner for neuro-san server and NSFlow client with rich logging."""
 
     def __init__(self):
         """Initialize configuration."""
@@ -49,6 +56,7 @@ class NeuroSanRunner:
             "server_http_port": int(os.getenv("NEURO_SAN_SERVER_HTTP_PORT", "8080")),
             "nsflow_host": os.getenv("NSFLOW_HOST", "localhost"),
             "nsflow_port": int(os.getenv("NSFLOW_PORT", "4173")),
+            "log_level": os.getenv("LOG_LEVEL", "info"),
             "manifest_file": os.getenv(
                 "AGENT_MANIFEST_FILE",
                 os.path.join(self.root_dir, "registries", "manifest.hocon")
@@ -65,6 +73,9 @@ class NeuroSanRunner:
         # Ensure logs directory exists
         os.makedirs(self.logs_dir, exist_ok=True)
 
+        # Set up rich logging
+        self._setup_logging()
+
         # Process references
         self.server_process = None
         self.nsflow_process = None
@@ -78,6 +89,42 @@ class NeuroSanRunner:
         else:
             print("No .env file found. Using defaults.")
             print("Hint: Copy .env.example to .env and add your API keys.")
+
+    def _setup_logging(self):
+        """Set up rich console logging with colored timestamps."""
+        theme = Theme({
+            "logging.time": "bright_cyan",
+            "logging.level.error": "bold red",
+        })
+        self.console = Console(theme=theme)
+
+        def rich_time_text(record=None, date=None):
+            now = datetime.now().astimezone()
+            return Text(
+                f"[{now.strftime('%Y-%m-%d %H:%M:%S')} {now.tzname()}]",
+                style="logging.time"
+            )
+
+        rich_handler = RichHandler(
+            console=self.console,
+            rich_tracebacks=False,
+            markup=False,
+            show_time=True,
+            show_path=False,
+            omit_repeated_times=False,
+            log_time_format=rich_time_text,
+        )
+        level = getattr(logging, self.config["log_level"].upper(), logging.INFO)
+        rich_handler.setLevel(level)
+        rich_handler.setFormatter(logging.Formatter("%(message)s"))
+
+        root = logging.getLogger()
+        root.setLevel(logging.DEBUG)
+        root.handlers.clear()
+        root.addHandler(rich_handler)
+
+        self._logger = logging.getLogger(self.__class__.__name__)
+        self._logger.info("Runner logging initialized (rich console enabled)")
 
     def _parse_args(self):
         """Parse command-line arguments."""
@@ -104,6 +151,12 @@ class NeuroSanRunner:
             help="Port for NSFlow UI",
         )
         parser.add_argument(
+            "--log-level",
+            type=str,
+            default=self.config["log_level"],
+            help="Log level for all processes",
+        )
+        parser.add_argument(
             "--server-only",
             action="store_true",
             help="Run only the neuro-san server",
@@ -126,12 +179,14 @@ class NeuroSanRunner:
         os.environ["NEURO_SAN_SERVER_HTTP_PORT"] = str(self.config["server_port"])
         os.environ["NSFLOW_HOST"] = self.config["nsflow_host"]
         os.environ["NSFLOW_PORT"] = str(self.config["nsflow_port"])
+        os.environ["LOG_LEVEL"] = self.config["log_level"]
 
-        print("\nEnvironment configured:")
-        print(f"  AGENT_MANIFEST_FILE: {self.config['manifest_file']}")
-        print(f"  AGENT_TOOL_PATH: {self.config['tool_path']}")
-        print(f"  Server: {self.config['server_host']}:{self.config['server_port']}")
-        print(f"  NSFlow: {self.config['nsflow_host']}:{self.config['nsflow_port']}")
+        self._logger.info("Environment configured:")
+        self._logger.info(f"  AGENT_MANIFEST_FILE: {self.config['manifest_file']}")
+        self._logger.info(f"  AGENT_TOOL_PATH: {self.config['tool_path']}")
+        self._logger.info(f"  Server: {self.config['server_host']}:{self.config['server_port']}")
+        self._logger.info(f"  NSFlow: {self.config['nsflow_host']}:{self.config['nsflow_port']}")
+        self._logger.info(f"  LOG_LEVEL: {self.config['log_level']}")
 
     def _is_port_open(self, host: str, port: int) -> bool:
         """Check if a port is already in use."""
@@ -143,45 +198,75 @@ class NeuroSanRunner:
             except (ConnectionRefusedError, TimeoutError, OSError):
                 return False
 
+    def _stream_output(self, pipe, log_file: str, prefix: str):
+        """Stream subprocess output to console and log file in real-time."""
+        logger = logging.getLogger(prefix)
+        with open(log_file, "a", encoding="utf-8") as log:
+            for line in iter(pipe.readline, ""):
+                line = line.rstrip("\n")
+                logger.info(line)
+                log.write(f"{line}\n")
+        pipe.close()
+
     def _start_process(self, command: list, name: str, log_file: str):
-        """Start a subprocess."""
+        """Start a subprocess with streaming output."""
         log_path = os.path.join(self.logs_dir, log_file)
         with open(log_path, "w", encoding="utf-8") as log:
             log.write(f"Starting {name}...\n")
 
         process = subprocess.Popen(
             command,
-            stdout=open(log_path, "a", encoding="utf-8"),
-            stderr=subprocess.STDOUT,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True,
+            bufsize=1,
+            universal_newlines=True,
             start_new_session=True,
         )
-        print(f"Started {name} (PID {process.pid}) - logs: {log_path}")
+
+        # Start streaming logs in separate threads
+        stdout_thread = threading.Thread(
+            target=self._stream_output,
+            args=(process.stdout, log_path, name),
+            daemon=True
+        )
+        stderr_thread = threading.Thread(
+            target=self._stream_output,
+            args=(process.stderr, log_path, name),
+            daemon=True
+        )
+        stdout_thread.start()
+        stderr_thread.start()
+
+        self._logger.info(f"Started {name} (PID {process.pid}) - logs: {log_path}")
         return process
 
     def _start_server(self):
         """Start the neuro-san server."""
         if self._is_port_open(self.config["server_host"], self.config["server_port"]):
-            print(f"Warning: Port {self.config['server_port']} already in use.")
+            self._logger.warning(f"Port {self.config['server_port']} already in use.")
             return None
 
         command = [
             sys.executable,
+            "-u",
             "-m",
             "neuro_san.service.main_loop.server_main_loop",
             "--http_port",
             str(self.config["server_port"]),
         ]
-        self.server_process = self._start_process(command, "neuro-san server", "server.log")
+        self.server_process = self._start_process(command, "NeuroSan", "server.log")
         return self.server_process
 
     def _start_nsflow(self):
         """Start NSFlow UI."""
         if self._is_port_open(self.config["nsflow_host"], self.config["nsflow_port"]):
-            print(f"Warning: Port {self.config['nsflow_port']} already in use.")
+            self._logger.warning(f"Port {self.config['nsflow_port']} already in use.")
             return None
 
         command = [
             sys.executable,
+            "-u",
             "-m",
             "uvicorn",
             "nsflow.backend.main:app",
@@ -195,13 +280,13 @@ class NeuroSanRunner:
 
     def _signal_handler(self, signum, frame):
         """Handle termination signals."""
-        print("\nShutting down...")
+        self._logger.info("Shutting down...")
         for process, name in [
             (self.server_process, "server"),
             (self.nsflow_process, "NSFlow"),
         ]:
             if process:
-                print(f"Stopping {name}...")
+                self._logger.info(f"Stopping {name}...")
                 try:
                     os.killpg(os.getpgid(process.pid), signal.SIGTERM)
                 except ProcessLookupError:
@@ -220,7 +305,7 @@ class NeuroSanRunner:
         client_only = self.config.get("client_only", False)
 
         if server_only and client_only:
-            print("Error: Cannot use --server-only and --client-only together.")
+            self._logger.error("Cannot use --server-only and --client-only together.")
             sys.exit(1)
 
         # Start services
@@ -231,11 +316,13 @@ class NeuroSanRunner:
         if not server_only:
             self._start_nsflow()
 
-        print("\n" + "=" * 50)
-        print("Services running. Press Ctrl+C to stop.")
+        self._logger.info("=" * 50)
+        self._logger.info("Services running. Press Ctrl+C to stop.")
         if not server_only:
-            print(f"NSFlow UI: http://{self.config['nsflow_host']}:{self.config['nsflow_port']}")
-        print("=" * 50 + "\n")
+            self._logger.info(
+                f"NSFlow UI: http://{self.config['nsflow_host']}:{self.config['nsflow_port']}"
+            )
+        self._logger.info("=" * 50)
 
         # Wait for processes
         try:
@@ -243,10 +330,10 @@ class NeuroSanRunner:
                 time.sleep(1)
                 # Check if processes are still running
                 if self.server_process and self.server_process.poll() is not None:
-                    print("Server process exited.")
+                    self._logger.warning("Server process exited.")
                     break
                 if self.nsflow_process and self.nsflow_process.poll() is not None:
-                    print("NSFlow process exited.")
+                    self._logger.warning("NSFlow process exited.")
                     break
         except KeyboardInterrupt:
             self._signal_handler(None, None)
