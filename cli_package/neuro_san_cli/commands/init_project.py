@@ -74,8 +74,27 @@ def init_project(project_name: str, llm_provider: str, model: str = None,
     designer_manifest_entries = ""
     if include_designer:
         designer_manifest_entries = """
-    # Agent Network Designer - create new agent networks via natural language
-    "agent_network_designer.hocon": true
+    # Agent network designer family of agents
+    #
+    "agent_network_designer.hocon": true,
+    "agent_network_editor.hocon": {
+        # This is a support network for agent_network_designer
+        # We want it served up, but not listed as a public agent network
+        "serve": true,
+        "public": false
+    },
+    "agent_network_instructions_editor.hocon": {
+        # This is a support network for agent_network_designer
+        # We want it served up, but not listed as a public agent network
+        "serve": true,
+        "public": false
+    },
+    "agent_network_query_generator.hocon": {
+        # This is a support network for agent_network_designer
+        # We want it served up, but not listed as a public agent network
+        "serve": true,
+        "public": false
+    },
 """
 
     # Create files from templates
