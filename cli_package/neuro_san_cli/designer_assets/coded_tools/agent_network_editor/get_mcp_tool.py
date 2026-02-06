@@ -33,25 +33,10 @@ class GetMcpTool(CodedTool):
     """
 
     def __init__(self):
-        self.mcp_servers: list[str] = []
-        mcp_info_file = os.getenv("MCP_SERVERS_INFO_FILE")
-        if not mcp_info_file:
-            # Check if default file exists before setting the env var
-            if os.path.exists(DEFAULT_MCP_INFO_FILE):
-                os.environ["MCP_SERVERS_INFO_FILE"] = DEFAULT_MCP_INFO_FILE
-                mcp_info_file = DEFAULT_MCP_INFO_FILE
-            else:
-                # No MCP config file available - this is fine, MCP is optional
-                return
-
-        try:
-            restorer = McpServersInfoRestorer()
-            servers_info = restorer.restore()
-            if servers_info:
-                self.mcp_servers = list(servers_info.keys())
-        except FileNotFoundError:
-            # MCP config file not found - this is fine, MCP is optional
-            pass
+        if not os.getenv("MCP_SERVERS_INFO_FILE"):
+            os.environ["MCP_SERVERS_INFO_FILE"] = DEFAULT_MCP_INFO_FILE
+        restorer = McpServersInfoRestorer()
+        self.mcp_servers: list[str] = list(restorer.restore().keys())
 
     async def async_invoke(self, args: dict[str, Any], sly_data: dict[str, Any]) -> dict[str, list[BaseTool]] | str:
         """
