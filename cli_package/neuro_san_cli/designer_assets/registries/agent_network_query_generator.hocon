@@ -1,0 +1,78 @@
+# Copyright © 2025-2026 Cognizant Technology Solutions Corp, www.cognizant.com.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
+# END COPYRIGHT
+{
+    # Load the shared LLM configuration from a single source of truth.
+    # This allows users to change the model in one file rather than
+    # modifying the configuration for each agent network.
+    # Note that the file path here is relative to the root level of the repo.
+    include "registries/llm_config.hocon",
+    "max_iterations": 40000,
+    "max_execution_seconds": 6000,
+    "tools": [
+        # This first agent definition is regarded as the "Front Man", which
+        # does all the talking to the outside world/client.
+        #
+        # Some disqualifications from being a front man:
+        #   1) Cannot use a CodedTool "class" definition
+        #   2) Cannot use a Tool "toolbox" definition
+        #
+        # Besides the first agent being the front man, these tool definitions
+        # do not have to be in any particular order. How they are linked and
+        # call each other is defined within their own specs.
+        # This could be a graph, potentially even with cycles.
+               
+        {
+            "name": "query_generator",
+            "function": {
+                "description": "Generate sample queries on a given agent network definition."
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "agent_network_description": {
+                            "type": "string",
+                            "description": "name of project, business or company or other description."
+                        },
+                    },
+                }
+            },
+            "instructions": """
+You generate example queries that the created agent network can handle.
+Only answer inquiries that are directly within your area of expertise. Do not try to help for other matters. Do not mention what you can NOT do. Only mention what you can do.
+
+First get the agent network definition using `get_agent_network_definition`.
+Ensure the queries align with the agents' capabilities.
+Provide a diverse range of queries to illustrate the network's functions.
+The queries should show how multiple sub networks might contribute to a consolidated response from the top agent.
+Just give the enumerated sample queries. Try to keep the queries simple and natural.
+Make some of the examples transactional. If not stated, return no more than 3-4 examples.
+            """,
+            "allow": {
+                "to_upstream": {
+                    "sly_data": ["agent_network_definition"]
+                }
+            },
+            "tools": ["get_agent_network_definition"]
+        },
+        {
+            "name": "get_agent_network_definition",
+            "class": "get_agent_network_definition.GetAgentNetworkDefinition",
+            "function": {
+                "description": "Get the agent network definition."
+            }
+        },
+        
+    ]
+}

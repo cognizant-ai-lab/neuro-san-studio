@@ -16,6 +16,7 @@
 Command to initialize a new neuro-san project.
 """
 
+import shutil
 from pathlib import Path
 
 import click
@@ -33,14 +34,19 @@ DEFAULT_MODELS = {
     "ollama": "llama3.2",
 }
 
+# Path to the designer assets (relative to neuro-san-studio root)
+DESIGNER_ASSETS_DIR = Path(__file__).parent.parent / "designer_assets"
 
-def init_project(project_name: str, llm_provider: str, model: str = None):
+
+def init_project(project_name: str, llm_provider: str, model: str = None,
+                 include_designer: bool = False):
     """
     Initialize a new neuro-san project with starter files.
 
     :param project_name: Name of the project directory to create
     :param llm_provider: Default LLM provider (openai, anthropic, etc.)
     :param model: Model name to use (defaults to provider's default)
+    :param include_designer: Include the Agent Network Designer
     """
     project_path = Path(project_name)
 
@@ -64,11 +70,20 @@ def init_project(project_name: str, llm_provider: str, model: str = None):
         directory.mkdir(parents=True, exist_ok=True)
         click.echo(f"  Created: {directory}/")
 
+    # Build designer manifest entries if needed
+    designer_manifest_entries = ""
+    if include_designer:
+        designer_manifest_entries = """
+    # Agent Network Designer - create new agent networks via natural language
+    "agent_network_designer.hocon": true
+"""
+
     # Create files from templates
     template_vars = {
         "project_name": project_name,
         "llm_provider": llm_provider,
         "model_name": model_name,
+        "designer_manifest_entries": designer_manifest_entries,
     }
 
     files_to_create = [
@@ -88,6 +103,10 @@ def init_project(project_name: str, llm_provider: str, model: str = None):
         output_path.write_text(content, encoding="utf-8")
         click.echo(f"  Created: {output_path}")
 
+    # Copy Agent Network Designer files if requested
+    if include_designer:
+        _copy_designer_files(project_path)
+
     click.echo("")
     click.echo(f"Project '{project_name}' created successfully!")
     click.echo("")
@@ -100,5 +119,54 @@ def init_project(project_name: str, llm_provider: str, model: str = None):
     click.echo("")
     click.echo("This will start the neuro-san server and NSFlow UI.")
     click.echo("Open http://localhost:4173 to view your agents in NSFlow.")
+    if include_designer:
+        click.echo("")
+        click.echo("Agent Network Designer included! Use it to create new agent networks:")
+        click.echo("  Select 'agent_network_designer' in NSFlow and describe your use case.")
     click.echo("")
     click.echo("For more information, see the README.md file.")
+
+
+def _copy_designer_files(project_path: Path):
+    """
+    Copy the Agent Network Designer files to the project.
+
+    :param project_path: Path to the project directory
+    """
+    click.echo("")
+    click.echo("Adding Agent Network Designer...")
+
+    # Copy HOCON files from designer_assets/registries
+    registries_src = DESIGNER_ASSETS_DIR / "registries"
+    registries_dst = project_path / "registries"
+
+    designer_hocon_files = [
+        "agent_network_designer.hocon",
+        "agent_network_editor.hocon",
+        "agent_network_instructions_editor.hocon",
+        "agent_network_query_generator.hocon",
+    ]
+
+    for hocon_file in designer_hocon_files:
+        src = registries_src / hocon_file
+        dst = registries_dst / hocon_file
+        if src.exists():
+            shutil.copy2(src, dst)
+            click.echo(f"  Created: {dst}")
+
+    # Copy coded_tools directories
+    coded_tools_src = DESIGNER_ASSETS_DIR / "coded_tools"
+    coded_tools_dst = project_path / "coded_tools"
+
+    designer_tool_dirs = [
+        "agent_network_designer",
+        "agent_network_editor",
+        "agent_network_instructions_editor",
+    ]
+
+    for tool_dir in designer_tool_dirs:
+        src = coded_tools_src / tool_dir
+        dst = coded_tools_dst / tool_dir
+        if src.exists():
+            shutil.copytree(src, dst)
+            click.echo(f"  Created: {dst}/")

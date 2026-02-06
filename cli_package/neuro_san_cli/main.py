@@ -49,14 +49,20 @@ def cli():
     default=None,
     help="Default model name (e.g., gpt-4o, claude-3-5-sonnet). If not specified, uses provider default.",
 )
-def init_command(project_name: str, llm_provider: str, model: str):
+@click.option(
+    "--include-designer",
+    is_flag=True,
+    default=False,
+    help="Include the Agent Network Designer for creating new agent networks via natural language.",
+)
+def init_command(project_name: str, llm_provider: str, model: str, include_designer: bool):
     """
     Initialize a new neuro-san project.
 
     Creates a new directory with the project name containing starter files
     for building a neuro-san multi-agent application.
     """
-    init_project(project_name, llm_provider, model)
+    init_project(project_name, llm_provider, model, include_designer)
 
 
 @cli.group("new")

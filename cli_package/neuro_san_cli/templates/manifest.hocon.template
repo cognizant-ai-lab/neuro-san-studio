@@ -23,7 +23,7 @@
 {
     # Example agent - a simple hello world demonstration
     "hello_world.hocon": true
-
+${designer_manifest_entries}
     # Add your agents here:
     # "my_agent.hocon": true
     #

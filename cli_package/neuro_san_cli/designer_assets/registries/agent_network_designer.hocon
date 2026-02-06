@@ -1,0 +1,175 @@
+# Copyright © 2025-2026 Cognizant Technology Solutions Corp, www.cognizant.com.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
+# END COPYRIGHT
+{
+    "metadata": {
+        "description": "Multi-agent system designed to create or modify other multi-agent systems. Provide an organization name or use case description, and it will design a new multi-agent system, save it to registries in HOCON format, add it to manifest.hocon, and generate example usage queries. The system orchestrates network structure design, instruction refinement, query generation, and validation.",
+        "tags": ["experimental", "tool"],
+        "sample_queries": [
+            "Create a network for UNHCR back-office",
+            "Design an agent network for a hospital management system",
+            "Build a multi-agent system for e-commerce customer support",
+        ]
+    },
+    
+    # Load the shared LLM configuration from a single source of truth.
+    # This allows users to change the model in one file rather than
+    # modifying the configuration for each agent network.
+    # Note that the file path here is relative to the root level of the repo.
+    include "registries/llm_config.hocon",
+    "max_iterations": 40000,
+    "max_execution_seconds": 6000,
+    "tools": [
+        # This first agent definition is regarded as the "Front Man", which
+        # does all the talking to the outside world/client.
+        #
+        # Some disqualifications from being a front man:
+        #   1) Cannot use a CodedTool "class" definition
+        #   2) Cannot use a Tool "toolbox" definition
+        #
+        # Besides the first agent being the front man, these tool definitions
+        # do not have to be in any particular order. How they are linked and
+        # call each other is defined within their own specs.
+        # This could be a graph, potentially even with cycles.
+        {
+            "name": "agent_network_designer",
+            "function": {
+                "description": "Create or modify an agent network.",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "agent_network_description": {
+                            "type": "string",
+                            "description": "For `create`: A full description of the project, business, or company this agent network represents. For `modify`: A clear description of the change you want to make to the existing agent network."
+                        },
+                        "mode": {
+                            "type": "string",
+                            "description": "Indicates whether to build a brand new agent network (`create`) or to edit the existing one (`modify`)."
+                        }
+                    },
+                    "required": ["agent_network_description", "mode"]
+                }
+            },
+            "instructions": """
+You are responsible for designing and modifying agent networks based on user requirements.
+Only answer inquiries that are directly within your area of expertise. Do not try to help for other matters. Do not mention what you can NOT do. Only mention what you can do.
+
+Take the following steps. Make sure you don't miss any details and follow the steps carefully.
+
+LOOPABLE WORKFLOW (steps 1–3 can repeat any number of times; step 4 is final):
+**Always begin by calling `get_agent_network_definition` to load the current network definition. Only include the parameter `agent_network_hocon_file` if the user explicitly specifies a HOCON file.**
+At any time before step 4 you may call `get_agent_network_definition` again to inspect the current network definition and decide what to change next.
+You may repeat steps 1–3 (create/modify structure, refine instructions, regenerate queries) until the network is ready for finalization.
+However, you **must do step 4** for each user request.
+
+1) Create or modify the network structure
+- If the user provides a company name or domain description for a new network, generate an agent network definition that mirrors relevant workflows and responsible nodes. Call your `agent_network_editor` tool. Ensure the agent network name is snake case.
+- If the user asks to modify an existing network's structure (add/remove agents, or change up-chains/down-chains), call `agent_network_editor` with the modification instructions.
+- You may call `web_search` to find more details on the company or domain.
+- If the user only asks to modify agent instructions (no structural changes), skip structural edits and go to step 2.
+- Wait for and inspect the response from `agent_network_editor` before proceeding. You may call `get_agent_network_definition` now to confirm the change.
+
+2) Create or refine agent instructions
+- Always call `agent_network_instruction_editor` to generate instructions after step 1 if the network structure is created.
+- After structural modification, you may call `agent_network_instruction_editor` to update agents' instructions.
+- You may call `agent_network_instruction_editor` multiple times as you iterate on the network; call it whenever agents are added or when their responsibilities change.
+- You may call `web_search` to find more details on the company or domain.
+- Wait for and inspect the response from `agent_network_instruction_editor` before proceeding. Use `get_agent_network_definition` as needed to verify instruction placement.
+
+3) Generate sample queries
+- Obtain 3–4 sample queries for the current agent network by calling `agent_network_query_generator`.
+- If the sample queries do not match the network or you decide further changes are needed, return to steps 1 or 2, then regenerate queries.
+- You may call `agent_network_query_generator` repeatedly until the queries accurately reflect the network behavior.
+
+4) FINALIZE HOCON — ABSOLUTELY MANDATORY
+- **MUST call `persist_agent_network_hocon` before concluding the session**.
+- **Do not return a final answer, or claim completion until the `persist_agent_network` tool has been called successfully**.
+- Return the agent network definition together with the final 3–4 sample queries as example usage.
+
+Operational notes:
+- Always wait for each tool's response before taking the next action.
+- Use `get_agent_network_definition` liberally to inspect current state before deciding on changes.
+- Iteratively refine the structure, instructions, and queries — after each refinement call the HOCON producer and, if it returns errors, fix them;
+    repeat until the HOCON producer returns no errors, then accept that output as final.
+""",
+            "allow": {
+                "to_upstream": {
+                    "sly_data": [
+                        "agent_network_definition",
+                        "agent_network_name",
+                        "agent_reservations"
+                    ]
+                },
+                "from_downstream": {
+                    "sly_data": ["agent_network_definition", "agent_network_name"],
+                    # Allow all messages sent from specific downstream agents to be reported
+                    # as if they came back from this agent network
+                    "messages": ["/agent_network_editor", "/agent_network_instructions_editor"]
+                },
+                "to_downstream": {
+                    "sly_data": ["agent_network_definition", "agent_network_name"]
+                }
+            },
+           "tools": ["/agent_network_editor", "/agent_network_query_generator", "/agent_network_instructions_editor", "persist_agent_network", "get_agent_network_definition", "web_search"]
+        },
+
+        {
+            "name": "persist_agent_network",
+            "class": "persist_agent_network.PersistAgentNetwork"
+            "function": {
+                "description": "Generate the complete persisted definition for an agent network and save it. Must always call this tool before giving response."
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "sample_queries": {
+                            "type": "array",
+                            "items": {
+                                "type": "string"
+                            },
+                            "description": "List of sample queries"
+                        }
+                    }
+                }
+            },
+            "allow": {
+                "reservations": True
+            }
+        },
+
+        {
+            "name": "get_agent_network_definition",
+            "class": "get_agent_network_definition.GetAgentNetworkDefinition",
+            "function": {
+                "description": "Retrieve the current agent network definition. Use the `agent_network_hocon_file` parameter only if the user explicitly specifies a HOCON file to be modified.",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "agent_network_hocon_file": {
+                            "type": "string",
+                            "description": "Optional. The name of the agent network HOCON file, if explicitly provided by the user."
+                        },
+                    },
+                    "required": []
+                }
+            }
+        },
+
+        {
+            "name": "web_search",
+            "toolbox": "ddgs_search"
+        },
+
+    ]
+}

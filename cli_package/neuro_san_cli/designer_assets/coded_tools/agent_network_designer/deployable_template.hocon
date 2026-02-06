@@ -1,0 +1,106 @@
+# Copyright © 2025-2026 Cognizant Technology Solutions Corp, www.cognizant.com.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
+# END COPYRIGHT
+
+# Template for assembly of agent_network_designer networks that are deployable
+# via neuro-san Reservations. Any tool in the tools section might be replicated
+# and {strings} replaced with salient information from the agent_network_designer.
+# Note that we are not including aaosa.hocon in here as we have to do subsitutions in code
+# in order for the networks to be deployment-ready.
+
+# This file serves as the base template for deployable agent networks.
+{
+    # Every network will have an llm_config
+    "llm_config": {
+        "model_name": "gpt-4o"
+    },
+
+    # These are common commondefs for every agent_network_designer-created network
+    # In the final deployable network, {strings} and "values" will be replaced
+    # and this section will disappear.
+    "commondefs": {
+        "replacement_strings": {
+            "instructions_prefix": """
+You are part of a team of assistants in {agent_network_name}.
+Only answer inquiries that are directly within your area of expertise.
+Do not try to help for other matters.
+Do not mention what you can NOT do. Only mention what you can do.
+""",
+            # For the base template, demo_mode is empty.
+            "demo_mode": "",
+        }
+    },
+
+    # Every network will have a list of tools
+    # These are merely templates for the kinds of nodes that will show up in
+    # a network definition.
+    "tools": [
+
+        # Top agent template
+        {
+            "name": "{agent_name}",
+            "function": {
+                "description": "An assistant that answer inquiries from the user."
+            },
+            "instructions": """
+{instructions_prefix}
+
+Never express irrelevance unless you have first consulted all your tools.
+Once you have determined the relevant tools, do not express that to the user, rather,
+call all the relevant tools and make sure the command is fully serviced and express the end result.
+
+{agent_instructions}
+
+{aaosa_instructions}
+""",
+            "tools": "tools"
+        },
+
+        # Regular agent template
+        {
+            "name": "{agent_name}",
+            "function": "aaosa_call",
+            "instructions": """
+{instructions_prefix}
+
+{agent_instructions}
+
+{aaosa_instructions}
+""",
+            "command": "{aaosa_command}",
+            "tools": "tools"
+        },
+
+        # Leaf agent template
+        {
+            "name": "{agent_name}",
+            "function": "aaosa_call",
+            "instructions": """
+{instructions_prefix}
+
+{demo_mode}
+
+{agent_instructions}
+"""
+        },
+
+        # Toolbox agent template
+        {
+            "name": "{agent_name}",
+            # Toolbox name is the same as agent name
+            "toolbox": "{agent_name}"
+        }
+    ]
+}
