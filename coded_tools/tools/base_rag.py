@@ -22,7 +22,6 @@ from abc import ABC
 from abc import abstractmethod
 from dataclasses import dataclass
 from typing import Any
-from typing import List
 from typing import Literal
 from typing import Optional
 
@@ -74,7 +73,7 @@ class BaseRag(ABC):
         self.embeddings: Embeddings = OpenAIEmbeddings(model=EMBEDDINGS_MODEL, dimensions=VECTOR_SIZE)
 
     @abstractmethod
-    async def load_documents(self, loader_args: Any) -> List[Document]:
+    async def load_documents(self, loader_args: Any) -> list[Document]:
         """
         Abstract method to load documents from a specific data source.
         """
@@ -179,22 +178,22 @@ class BaseRag(ABC):
 
         return await self._create_postgres_vector_store(loader_args, postgres_config)
 
-    async def _process_documents(self, loader_args: Any) -> List[Document]:
+    async def _process_documents(self, loader_args: Any) -> list[Document]:
         """Load and split documents"""
         # Load documents and build the vector store
-        docs: List[Document] = await self.load_documents(loader_args)
+        docs: list[Document] = await self.load_documents(loader_args)
 
         # Split documents into smaller chunks for better embedding and retrieval
         text_splitter = RecursiveCharacterTextSplitter.from_tiktoken_encoder(chunk_size=100, chunk_overlap=50)
 
-        doc_chunks: List[Document] = text_splitter.split_documents(docs)
+        doc_chunks: list[Document] = text_splitter.split_documents(docs)
         logger.info("Processed %d document chunks\n", len(doc_chunks))
 
         return doc_chunks
 
     async def _create_in_memory_vector_store(self, loader_args) -> VectorStore:
         """Create an in-memory vector store."""
-        doc_chunks: List[Document] = await self._process_documents(loader_args)
+        doc_chunks: list[Document] = await self._process_documents(loader_args)
         logger.info("Creating in-memory vector store.")
         return await InMemoryVectorStore.afrom_documents(
             documents=doc_chunks,
@@ -237,7 +236,7 @@ class BaseRag(ABC):
                 vector_size=VECTOR_SIZE,
             )
 
-            doc_chunks: List[Document] = await self._process_documents(loader_args)
+            doc_chunks: list[Document] = await self._process_documents(loader_args)
 
             logger.info("Creating postgres vector store from documents.")
             # Create vector store and load documents
@@ -318,24 +317,17 @@ class BaseRag(ABC):
         """
         try:
             # Perform an asynchronous similarity search
-            results: List[Document] = await retriever.ainvoke(query)
+            results: list[Document] = await retriever.ainvoke(query)
 
             if results:
                 logger.info("Retrieval completed!\n")
 
-            formatted_results = []
-            for doc in results:
-                # Get content
-                content = doc.page_content
-                # Add metadata in if available
-                if doc.metadata:
-                    metadata_str = "\n".join(f"{key}: {value}" for key, value in doc.metadata.items())
-                    formatted_results.append(f"{content}\n\nMetadata:\n{metadata_str}")
-                else:
-                    formatted_results.append(content)
+            formatted_results: list[dict[str, Any]] = []
 
-            # Concatenate the content/metadata of all retrieved documents
-            return "\n\n".join(formatted_results)
+            for doc in results:
+                formatted_results.append({"content": doc.page_content, "metadata": doc.metadata})
+
+            return formatted_results
 
         except asyncio.TimeoutError as e:
             return f"Timed out while querying retriever: {e}"
