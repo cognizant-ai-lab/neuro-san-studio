@@ -20,7 +20,7 @@ from typing import Dict
 
 from neuro_san.interfaces.coded_tool import CodedTool
 
-from coded_tools.kwik_agents.list_topics import MEMORY_DATA_STRUCTURE
+from coded_tools.experimental.kwik_agents.list_topics import MEMORY_DATA_STRUCTURE
 
 
 class RecallMemory(CodedTool):
