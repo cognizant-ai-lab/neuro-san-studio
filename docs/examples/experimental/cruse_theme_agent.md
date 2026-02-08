@@ -14,9 +14,9 @@ The CRUSE Interface is available at `/cruse` in nsflow and renders these themes.
 
 ## Files
 
-- **Agent Definition**: [cruse_theme_agent.hocon](../registries/cruse_theme_agent.hocon)
-- **Coded Tool**: [theme_template_provider.py](../coded_tools/cruse_theme_agent/theme_template_provider.py)
-- **Constants**: [cruse_theme_constants.py](../coded_tools/cruse_theme_agent/cruse_theme_constants.py)
+- **Agent Definition**: [cruse_theme_agent.hocon](../../registries/experimental/cruse_theme_agent.hocon)
+- **Coded Tool**: [theme_template_provider.py](../../coded_tools/experimental/cruse_theme_agent/theme_template_provider.py)
+- **Constants**: [cruse_theme_constants.py](../../coded_tools/experimental/cruse_theme_agent/cruse_theme_constants.py)
 
 ---
 
@@ -79,7 +79,7 @@ The theme generator serves as the single entry point for all theme generation re
 
 ### Functional Tools
 
-**`template_provider`** ([theme_template_provider.py](../coded_tools/cruse_theme_agent/theme_template_provider.py))
+**`template_provider`** ([theme_template_provider.py](../../coded_tools/experimental/cruse_theme_agent/theme_template_provider.py))
 
 Provides comprehensive background resources:
 - Pre-built css-doodle templates for common domains
@@ -88,7 +88,7 @@ Provides comprehensive background resources:
 - css-doodle syntax guidance and examples
 - Accepts `request_type`: `"css-doodle"`, `"gradient"`, `"colors"`, or `"full"`
 
-**Template Constants** ([cruse_theme_constants.py](../coded_tools/cruse_theme_agent/cruse_theme_constants.py))
+**Template Constants** ([cruse_theme_constants.py](../../coded_tools/experimental/cruse_theme_agent/cruse_theme_constants.py))
 - `CSS_DOODLE_TEMPLATES` - 11 pre-built patterns for common domains
 - `GRADIENT_TEMPLATES` - Static gradient examples
 - `COLOR_PALETTES` - Domain-specific color schemes with psychology notes

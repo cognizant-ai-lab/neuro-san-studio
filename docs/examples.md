@@ -474,7 +474,7 @@ Neuro SAN Reservations API to create other agent networks which become available
 
 ### CRUSE Theme Agent
 
-[CRUSE Theme Agent](examples/cruse_theme_agent.md) is an agent that can dynamically generate a json schema for any agent
+[CRUSE Theme Agent](examples/experimental/cruse_theme_agent.md) is an agent that can dynamically generate a json schema for any agent
  (or given context). This json schema can be read by a UI component in the downstream to generate dynamic themes.
  Currently this is limited to only css-based schema. It can be extended to have another sub-agent like Dall-E or nano-banana
  to generate more dynamic backgrounds.
@@ -483,7 +483,7 @@ Neuro SAN Reservations API to create other agent networks which become available
 
 ### CRUSE Widget Agent
 
-[CRUSE Widget Agent](examples/cruse_widget_agent.md) is also a CRUSE agent that can dynamically generate a json schema
+[CRUSE Widget Agent](examples/experimental/cruse_widget_agent.md) is also a CRUSE agent that can dynamically generate a json schema
  that represents an action card. This is useful in generating an input form-like interface by a UI component.
  Currently supported set of fields for a widget include: boolean, checkbox, date, multi-select,
   number, radio-group, rating, select, text area, slider.
@@ -492,13 +492,13 @@ Neuro SAN Reservations API to create other agent networks which become available
 
 ### KWIK Agents
 
-[KWIK_agents](examples/kwik_agents.md) is a basic multi-agent system with memory.
+[KWIK_agents](examples/experimental/kwik_agents.md) is a basic multi-agent system with memory.
 
 **Tags:** `tool`, `memory`
 
 ### CRUSE
 
-[CRUSE](examples/cruse.md) is an agent that can dynamically attach to any agent in your registry and make it run with a
+[CRUSE](examples/experimental/cruse.md) is an agent that can dynamically attach to any agent in your registry and make it run with a
 context reactive user experience. This is a good example of how to switch down-chain agents dynamically using coded
 tools and sly_data.
 
@@ -506,14 +506,14 @@ tools and sly_data.
 
 ### Conscious Assistant
 
-[Conscious Agent](examples/conscious_agent.md) is a multi-agent system used within the conscious assistant and
+[Conscious Agent](examples/experimental/conscious_agent.md) is a multi-agent system used within the conscious assistant and
 serves as a good example of how to run an agent permanently.
 
 **Tags:** `tool`, `memory`, `app`
 
 ### Log Analyzer
 
-[Log Analyzer](examples/log_analyzer.md) is a multi-agent system used within the log analyzer app and serves as a
+[Log Analyzer](examples/experimental/log_analyzer.md) is a multi-agent system used within the log analyzer app and serves as a
 good example of how to run an agent network on an agent network log for various validations.
 
 **Tags:** `AAOSA`, `app`
