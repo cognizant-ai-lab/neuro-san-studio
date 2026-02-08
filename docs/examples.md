@@ -474,19 +474,19 @@ Neuro SAN Reservations API to create other agent networks which become available
 
 ### CRUSE Theme Agent
 
-[CRUSE Theme Agent](examples/experimental/cruse_theme_agent.md) is an agent that can dynamically generate a json schema for any agent
- (or given context). This json schema can be read by a UI component in the downstream to generate dynamic themes.
- Currently this is limited to only css-based schema. It can be extended to have another sub-agent like Dall-E or nano-banana
- to generate more dynamic backgrounds.
+[CRUSE Theme Agent](examples/experimental/cruse_theme_agent.md) is an agent that can dynamically generate
+a json schema for any agent (or given context). This json schema can be read by a UI component in the
+downstream to generate dynamic themes. Currently this is limited to only css-based schema. It can be
+extended to have another sub-agent like Dall-E or nano-banana to generate more dynamic backgrounds.
 
 **Tags:** `CRUSE`, `tool`, `ui`, `theme`, `background`
 
 ### CRUSE Widget Agent
 
-[CRUSE Widget Agent](examples/experimental/cruse_widget_agent.md) is also a CRUSE agent that can dynamically generate a json schema
- that represents an action card. This is useful in generating an input form-like interface by a UI component.
- Currently supported set of fields for a widget include: boolean, checkbox, date, multi-select,
-  number, radio-group, rating, select, text area, slider.
+[CRUSE Widget Agent](examples/experimental/cruse_widget_agent.md) is also a CRUSE agent that can dynamically
+generate a json schema that represents an action card. This is useful in generating an input form-like
+interface by a UI component. Currently supported set of fields for a widget include: boolean, checkbox,
+date, multi-select, number, radio-group, rating, select, text area, slider.
 
 **Tags:** `CRUSE`, `tool`, `ui`, `widget`
 
@@ -498,9 +498,9 @@ Neuro SAN Reservations API to create other agent networks which become available
 
 ### CRUSE
 
-[CRUSE](examples/experimental/cruse.md) is an agent that can dynamically attach to any agent in your registry and make it run with a
-context reactive user experience. This is a good example of how to switch down-chain agents dynamically using coded
-tools and sly_data.
+[CRUSE](examples/experimental/cruse.md) is an agent that can dynamically attach to any agent in your registry
+and make it run with a context reactive user experience. This is a good example of how to switch down-chain
+agents dynamically using coded tools and sly_data.
 
 **Tags:** `tool`, `ui`, `app`
 
@@ -513,8 +513,9 @@ serves as a good example of how to run an agent permanently.
 
 ### Log Analyzer
 
-[Log Analyzer](examples/experimental/log_analyzer.md) is a multi-agent system used within the log analyzer app and serves as a
-good example of how to run an agent network on an agent network log for various validations.
+[Log Analyzer](examples/experimental/log_analyzer.md) is a multi-agent system used within the log analyzer
+app and serves as a good example of how to run an agent network on an agent network log for various
+validations.
 
 **Tags:** `AAOSA`, `app`
 
