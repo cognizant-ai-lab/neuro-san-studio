@@ -4,13 +4,13 @@ The **KWIK Agents** is a basic multi-agent system that uses tools to remember ne
 in chatting with users.
 
 **Note**: this demo will add a file to your directory store its memory in the file. You can turn this feature off by
-changing LONG_TERM_MEMORY_FILE to False in [list_topics.py](../../coded_tools/kwik_agents/list_topics.py)
+changing LONG_TERM_MEMORY_FILE to False in [list_topics.py](../../coded_tools/experimental/kwik_agents/list_topics.py)
 
 ---
 
 ## File
 
-[kwik_agents.hocon](../../registries/kwik_agents.hocon)
+[kwik_agents.hocon](../../../registries/experimental/kwik_agents.hocon)
 
 ---
 
@@ -84,11 +84,11 @@ Retrieved the fact that Bill has a dog named Max from memory. Based on this fact
 1. **list_topics**
    - Retrieves list of memory topics from sly_data (if any)
    - If no sly_data exists, it will attempt to load the memories from file.
-   - See [list_topics.py](../../coded_tools/kwik_agents/list_topics.py)
+   - See [list_topics.py](../../coded_tools/experimental/kwik_agents/list_topics.py)
 
 2. **recall_memory**
-   - Retrieves the memory entries associated with a given topic using the [recall_memory.py](../../coded_tools/kwik_agents/recall_memory.py)
+   - Retrieves the memory entries associated with a given topic using the [recall_memory.py](../../coded_tools/experimental/kwik_agents/recall_memory.py)
    tool.
 
 3. **commit_to_memory**
-   - Adds a memory entry to a topic using the [commit_to_memory.py](../../coded_tools/kwik_agents/commit_to_memory.py) tool.
+   - Adds a memory entry to a topic using the [commit_to_memory.py](../../coded_tools/experimental/kwik_agents/commit_to_memory.py) tool.

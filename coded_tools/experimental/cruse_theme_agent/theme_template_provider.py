@@ -21,9 +21,9 @@ from typing import Dict
 
 from neuro_san.interfaces.coded_tool import CodedTool
 
-from coded_tools.cruse_theme_agent.cruse_theme_constants import COLOR_PALETTES
-from coded_tools.cruse_theme_agent.cruse_theme_constants import CSS_DOODLE_TEMPLATES
-from coded_tools.cruse_theme_agent.cruse_theme_constants import GRADIENT_TEMPLATES
+from coded_tools.experimental.cruse_theme_agent.cruse_theme_constants import COLOR_PALETTES
+from coded_tools.experimental.cruse_theme_agent.cruse_theme_constants import CSS_DOODLE_TEMPLATES
+from coded_tools.experimental.cruse_theme_agent.cruse_theme_constants import GRADIENT_TEMPLATES
 
 
 class ThemeTemplateProvider(CodedTool):

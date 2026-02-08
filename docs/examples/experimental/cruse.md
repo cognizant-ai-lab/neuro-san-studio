@@ -1,13 +1,13 @@
 # CRUSE
 
 **CRUSE** is an agentic interface that uses the principles of Context Reactive User Experience and is called from the [cruse_assistant.py]
-(../../apps/cruse/cruse_assistant.py) Flask app.
+(../../../apps/cruse/cruse_assistant.py) Flask app.
 
 ---
 
 ## File
 
-[cruse_agent.hocon](../../registries/cruse_agent.hocon)
+[cruse_agent.hocon](../../../registries/experimental/cruse_agent.hocon)
 
 ---
 
@@ -31,7 +31,7 @@ considers to be the most natural way to interact with the user. For example, rat
 me to search more the word ‘dog’, images of dogs, or either?” the system would produce a radio button with the three choices
 so the user can easily click on their choice.
 
-Once you run the [interface_flask.py](../../apps/cruse/interface_flask.py) Flask app, it will provide you with a link,
+Once you run the [interface_flask.py](../../../apps/cruse/interface_flask.py) Flask app, it will provide you with a link,
 which you can open in your browser to play around with the cruse assistant. This assistant can attached to any existing
 agent network in your `registries.manifest.hocon` file and make it operate with a context reactive user experience.
 
