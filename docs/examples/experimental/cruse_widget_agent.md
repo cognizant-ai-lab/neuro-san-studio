@@ -14,8 +14,8 @@ The CRUSE Interface is available at `/cruse` in nsflow and displays these widget
 
 ## Files
 
-- **Agent Definition**: [cruse_widget_agent.hocon](../../registries/experimental/cruse_widget_agent.hocon)
-- **Coded Tool**: [widget_template_provider.py](../../coded_tools/experimental/cruse_widget_agent/widget_template_provider.py)
+- **Agent Definition**: [cruse_widget_agent.hocon](../../../registries/experimental/cruse_widget_agent.hocon)
+- **Coded Tool**: [widget_template_provider.py](../../../coded_tools/experimental/cruse_widget_agent/widget_template_provider.py)
 
 ---
 
@@ -196,7 +196,7 @@ The widget generator serves as the single entry point for all widget generation 
 
 ### Functional Tools
 
-**`template_provider`** ([widget_template_provider.py](../../coded_tools/experimental/cruse_widget_agent/widget_template_provider.py))
+**`template_provider`** ([widget_template_provider.py](../../../coded_tools/experimental/cruse_widget_agent/widget_template_provider.py))
 
 Provides comprehensive widget resources:
 - Base widget schema template with placeholders

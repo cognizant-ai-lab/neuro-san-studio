@@ -1,7 +1,7 @@
 # Conscious Agent
 
 The **Conscious Agent** is a basic multi-agent system that is called from the [conscious_assistant.py]
-(../../apps/conscious_assistant/conscious_assistant.py) Flask app.
+(../../../apps/conscious_assistant/conscious_assistant.py) Flask app.
 
 ## Note
 
