@@ -1,7 +1,7 @@
 # CRUSE
 
-**CRUSE** is an agentic interface that uses the principles of Context Reactive User Experience and is called from the [cruse_assistant.py]
-(../../../apps/cruse/cruse_assistant.py) Flask app.
+**CRUSE** is an agentic interface that uses the principles of Context Reactive User Experience and is called from the
+[cruse_assistant.py](../../../apps/cruse/cruse_assistant.py) Flask app.
 
 ---
 
@@ -43,12 +43,12 @@ session information is stored and retrieved from the sly_data too.
 ## Examples
 
 CRUSE automatically generates a form:
-![CRUSE_Generated_UI.png](../images/CRUSE_Generated_UI.png)
+![CRUSE_Generated_UI.png](../../images/CRUSE_Generated_UI.png)
 
 The user only submits the form with no chat:
-![CRUSE_Reads_Context.png](../images/CRUSE_Reads_Context.png)
+![CRUSE_Reads_Context.png](../../images/CRUSE_Reads_Context.png)
 
 Some other examples:
-![CRUSE_Network_Issue.png](../images/CRUSE_Network_Issue.png)
+![CRUSE_Network_Issue.png](../../images/CRUSE_Network_Issue.png)
 
-![CRUSE_RetailReturn.png](../images/CRUSE_RetailReturn.png)
+![CRUSE_RetailReturn.png](../../images/CRUSE_RetailReturn.png)
