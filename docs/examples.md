@@ -144,7 +144,7 @@ This is a good example to:
 
 ### Hello World
 
-[Hello World](examples/basic/hellow_world.md) is an agent network that
+[Hello World](examples/basic/hello_world.md) is an agent network that
 demonstrates how one agent can call another using a basic hocon file.
 Given specific input, there is a good chance you will get output something like "Hello World!".
 

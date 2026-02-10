@@ -134,9 +134,7 @@ git checkout -b docs/documentation-update  # For documentation
 This project follows these coding standards:
 
 - **Line length**: Maximum 119 characters
-- **Formatter**: Black (v25.1.0)
-- **Import sorting**: isort with Black profile
-- **Linting**: flake8 and pylint
+- **Linter and Formatter**: [Ruff](https://docs.astral.sh/ruff/) (replaces Black, isort, flake8, and pylint)
 - **Naming conventions**: Follow Google Python Style Guide
   - Functions and variables: `snake_case`
   - Classes: `PascalCase`
@@ -190,10 +188,9 @@ require to run the follow steps 1st:
 
 For Windows (manual):
 ```bash
-# Run linting
-isort apps coded_tools tests
-black apps coded_tools tests
-flake8 apps coded_tools tests
+# Run linting and formatting
+ruff format apps coded_tools tests run.py
+ruff check apps coded_tools tests run.py
 
 # Run tests
 pytest --verbose --cov=. --cov-report=term-missing --no-cov-on-fail
@@ -298,6 +295,28 @@ pymarkdown --config ./.pymarkdownlint.yaml scan ./docs ./README.md
 ```
 
 Configuration is in `.pymarkdownlint.yaml`.
+
+### Link Checking
+
+We use [lychee](https://github.com/lycheeverse/lychee) to check for broken links in Markdown files.
+This runs automatically in CI on every push and pull request. To run locally:
+
+```bash
+lychee --offline --no-progress './**/*.md'
+```
+
+Exclusion patterns are configured in `.lycheeignore`.
+
+### Pre-commit Hook (Recommended)
+
+To catch formatting and lint issues before committing, you can set up a
+pre-commit hook:
+
+```bash
+# Add to .git/hooks/pre-commit (and make it executable)
+ruff check --fix run.py apps coded_tools tests
+ruff format run.py apps coded_tools tests
+```
 
 ### Logging
 
