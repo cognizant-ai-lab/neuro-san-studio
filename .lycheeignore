@@ -1,0 +1,7 @@
+# Virtual environment directories
+venv/
+.venv/
+
+# Pre-existing broken relative links in cruse docs
+docs/coded_tools/
+docs/registries/
