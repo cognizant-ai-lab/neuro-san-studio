@@ -3,10 +3,6 @@ SOURCES := run.py apps coded_tools
 TESTS   := tests
 .DEFAULT_GOAL := help
 
-ISORT_FLAGS := --force-single-line
-ISORT_CHECK := --check-only --diff
-BLACK_CHECK := --check --diff
-
 venv: # Set up a virtual environment in project
 	@if [ ! -d "venv" ]; then \
 		echo "Creating virtual environment in ./venv..."; \
@@ -53,31 +49,27 @@ activate: ## Activate the venv
 	fi
 
 format-source: venv-guard
-	# Apply format changes from isort and black
-	isort $(SOURCES) $(ISORT_FLAGS)
-	black $(SOURCES)
+	# Apply format changes from ruff
+	ruff check --fix --select I $(SOURCES)
+	ruff format $(SOURCES)
 
 format-tests: venv-guard
-	# Apply format changes from isort and black
-	isort $(TESTS) $(ISORT_FLAGS)
-	black $(TESTS)
+	# Apply format changes from ruff
+	ruff check --fix --select I $(TESTS)
+	ruff format $(TESTS)
 
 format: format-source format-tests
 
 lint-check-source: venv-guard
-	# Run format checks and fail if isort or black need changes
-	isort $(SOURCES) $(ISORT_FLAGS) $(ISORT_CHECK)
-	black $(SOURCES) $(BLACK_CHECK)
-	flake8 $(SOURCES)
-	pylint $(SOURCES)/
+	# Run format and lint checks with ruff
+	ruff format --check --diff $(SOURCES)
+	ruff check $(SOURCES)
 	pymarkdown --config ./.pymarkdownlint.yaml scan ./docs ./README.md
 
 lint-check-tests: venv-guard
-	# Run format checks and fail if isort or black need changes
-	isort $(TESTS) $(ISORT_FLAGS) $(ISORT_CHECK)
-	black $(TESTS) $(BLACK_CHECK)
-	flake8 $(TESTS)
-	pylint $(TESTS)
+	# Run format and lint checks with ruff
+	ruff format --check --diff $(TESTS)
+	ruff check $(TESTS)
 
 lint-check: lint-check-source lint-check-tests
 

@@ -1,48 +1,32 @@
-[tool.isort]
-profile = "black"
-src_paths = ["apps", "coded_tools", "tests"]
-line_length = 119
-known_first_party = ["apps"]
-force_single_line = true
-
-[tool.flake8]
-extend-ignore = ["W503", "E203"]
-max-line-length = 119
-
-[tool.black]
+[tool.ruff]
 line-length = 119
-required-version = "25.1.0"
-
-[tool.pylint]
-max-line-length = 119
-# Based on Google Python Style Guide
-disable = [
-    "C0301",  # Line too long (handled by black)
-    "C0114",  # Missing module docstring (missing-module-docstring)
-    # This repo contains examples that should remain independent, so we expect some level of copy/paste
-    "R0801",  # Similar lines in 2 files
-    "W0511",  # TODO/FIXME comments
-    ]
-good-names = ["i", "j", "k", "ex", "_", "id", "f", "db", "e"]
-ignore-patterns = [".*checkpoint\\.py"]
-ignore-paths = ["^venv/.*$", "^.*/\\.venv/.*$"]
-# Google style requires docstrings
-enable = [
-    "useless-suppression",
+target-version = "py312"
+exclude = [
+    "venv",
+    ".venv",
+    "dist",
 ]
-# Google style naming conventions
-const-naming-style = "UPPER_CASE"
-function-naming-style = "snake_case"
-class-naming-style = "PascalCase"
-method-naming-style = "snake_case"
-attr-naming-style = "snake_case"
-argument-naming-style = "snake_case"
-variable-naming-style = "snake_case"
-inlinevar-naming-style = "snake_case"
-# Additional settings
-fail-under = 10.0
-output-format = "colorized"
-init-import = false
+
+[tool.ruff.lint]
+select = ["E", "W", "F", "I", "PL"]
+ignore = [
+    "PLR2004",
+    "PLC0415",
+    "PLR0911",
+    "PLR0913",
+    "PLW0603",
+    "PLW2901",
+]
+
+[tool.ruff.lint.isort]
+force-single-line = true
+known-first-party = ["apps"]
+
+[tool.ruff.lint.pylint]
+max-args = 5
+
+[tool.ruff.format]
+skip-magic-trailing-comma = true
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
