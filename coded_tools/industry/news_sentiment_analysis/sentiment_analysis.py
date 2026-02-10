@@ -85,12 +85,7 @@ class SentimentAnalysis(CodedTool):
                 if any(k in s_lower for k in norm_keywords):
                     found_keywords = True
                     scores = self.analyzer.polarity_scores(sentence)
-                    results.append(
-                        {
-                            "sentence": sentence,
-                            "compound": scores["compound"],
-                        }
-                    )
+                    results.append({"sentence": sentence, "compound": scores["compound"]})
             return results, found_keywords
 
         except (LookupError, TypeError, ValueError):
@@ -137,12 +132,7 @@ class SentimentAnalysis(CodedTool):
         avg_compound = sum(r["compound"] for r in sentence_results) / len(sentence_results)
         snippet = content[:200] + ("..." if len(content) > 200 else "")
 
-        return {
-            "file": file_name,
-            "sentences": sentence_results,
-            "avg_compound": avg_compound,
-            "snippet": snippet,
-        }
+        return {"file": file_name, "sentences": sentence_results, "avg_compound": avg_compound, "snippet": snippet}
 
     def _collect_articles(
         self, entries: List[str], keywords_list: List[str], target_sources: Optional[set]

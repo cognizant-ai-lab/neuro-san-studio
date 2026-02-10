@@ -127,10 +127,7 @@ class DecompositionSolver(BranchActivation, CodedTool):
         problem_solver_caller = CodedToolAgentCaller(self, parsing=None, name=tools.get("problem_solver"))
         solution_discriminator_caller = CodedToolAgentCaller(self, parsing, name=tools.get("solution_discriminator"))
         solver.set_callers(
-            composition_discriminator_caller,
-            decomposer_caller,
-            problem_solver_caller,
-            solution_discriminator_caller,
+            composition_discriminator_caller, decomposer_caller, problem_solver_caller, solution_discriminator_caller
         )
 
         problem: str = args.get("problem")

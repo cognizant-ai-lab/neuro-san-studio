@@ -78,7 +78,6 @@ class DeployableAgentNetworkAssembler(AgentNetworkAssembler):
         agent_name: str = None
         agent_def: dict[str, Any] = {}
         for agent_name, agent_def in network_def.items():
-
             # Find bits and pieces from the agent definition in the larger network definition
             tools: list[str] = agent_def.get("tools", None)
 
@@ -147,9 +146,7 @@ class DeployableAgentNetworkAssembler(AgentNetworkAssembler):
         string_replacements.update(commondefs.get("replacement_strings", empty))
 
         # Similarly set up dictionary value replacements
-        value_replacements: dict[str, Any] = {
-            "aaosa_call": self.aaosa_defs.get("aaosa_call"),
-        }
+        value_replacements: dict[str, Any] = {"aaosa_call": self.aaosa_defs.get("aaosa_call")}
         value_replacements.update(value_replacements_in)
         value_replacements.update(commondefs.get("replacement_values", empty))
 

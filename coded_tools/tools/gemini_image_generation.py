@@ -184,7 +184,7 @@ class GeminiImageGeneration(CodedTool):
 
         # Get file type
         mime_type: str = image_block.mime_type
-        file_type: str = mime_type.split("/")[-1]
+        file_type: str = mime_type.rsplit("/", maxsplit=1)[-1]
 
         # Determine file path
         if save_image_file:

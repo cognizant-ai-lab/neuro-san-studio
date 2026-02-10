@@ -23,7 +23,6 @@ Before running this coded tool
 - `python server.py`
 """
 
-
 import logging
 from typing import Any
 from typing import Dict
@@ -86,7 +85,6 @@ class A2aResearchReport(CodedTool):
         # It could take a long time before remote agents response.
         # Adjust the timeout accordingly.
         async with httpx.AsyncClient(timeout=600.0) as httpx_client:
-
             # Initialize A2ACardResolver
             resolver = A2ACardResolver(httpx_client=httpx_client, base_url=BASE_URL)
 
@@ -105,11 +103,7 @@ class A2aResearchReport(CodedTool):
             logger.info("A2A Client initialized.")
 
             # Send message and process responses
-            message: Message = {
-                "role": "user",
-                "parts": [{"kind": "text", "text": topic}],
-                "messageId": uuid4().hex,
-            }
+            message: Message = {"role": "user", "parts": [{"kind": "text", "text": topic}], "messageId": uuid4().hex}
 
             responses: list[Message] = []
             async for response in client.send_message(message):

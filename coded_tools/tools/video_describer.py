@@ -76,18 +76,8 @@ class VideoDescriber(CodedTool):
 
         llm = ChatOpenAI(model=openai_model)
         content = [
-            {
-                "type": "text",
-                "text": f"{INSTRUCTIONS}",
-            },
-            *[
-                {
-                    "type": "image",
-                    "base64": f"{frame}",
-                    "mime_type": "image/jpeg",
-                }
-                for frame in base64_frames
-            ],
+            {"type": "text", "text": f"{INSTRUCTIONS}"},
+            *[{"type": "image", "base64": f"{frame}", "mime_type": "image/jpeg"} for frame in base64_frames],
         ]
 
         message = HumanMessage(content=content)

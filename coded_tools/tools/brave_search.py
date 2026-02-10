@@ -160,10 +160,7 @@ class BraveSearch(CodedTool):
         # HTTP request header
         # You want to receive JSON data, and
         # You want to authenticate with your API key
-        headers = {
-            "Accept": "application/json",
-            "X-Subscription-Token": self.brave_api_key,
-        }
+        headers = {"Accept": "application/json", "X-Subscription-Token": self.brave_api_key}
         results: Dict[str, Any] = {}
         try:
             # Attaches URL query parameters to the request.

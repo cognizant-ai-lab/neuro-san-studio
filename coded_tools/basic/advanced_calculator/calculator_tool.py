@@ -45,15 +45,12 @@ class CalculatorCodedTool(CodedTool):
             "exponentiate": [2, math.pow],
             "factorial": [
                 1,
-                lambda n: (math.factorial(int(n)) if n >= 0 else "Error: Factorial of negative numbers is undefined"),
+                lambda n: math.factorial(int(n)) if n >= 0 else "Error: Factorial of negative numbers is undefined",
             ],
-            "isprime": [
-                1,
-                lambda n: all(n % i != 0 for i in range(2, int(math.sqrt(n)) + 1)) and n > 1,
-            ],
+            "isprime": [1, lambda n: all(n % i != 0 for i in range(2, int(math.sqrt(n)) + 1)) and n > 1],
             "squareroot": [
                 1,
-                lambda n: (math.sqrt(n) if n >= 0 else "Error: Square root of negative numbers is undefined"),
+                lambda n: math.sqrt(n) if n >= 0 else "Error: Square root of negative numbers is undefined",
             ],
             "log": [
                 1,
@@ -61,37 +58,19 @@ class CalculatorCodedTool(CodedTool):
                     math.log(x, base) if x > 0 else "Error: Logarithm undefined for non-positive values"
                 ),
             ],
-            "log10": [
-                1,
-                lambda x: (math.log10(x) if x > 0 else "Error: Logarithm undefined for non-positive values"),
-            ],
-            "log2": [
-                1,
-                lambda x: (math.log2(x) if x > 0 else "Error: Logarithm undefined for non-positive values"),
-            ],
+            "log10": [1, lambda x: math.log10(x) if x > 0 else "Error: Logarithm undefined for non-positive values"],
+            "log2": [1, lambda x: math.log2(x) if x > 0 else "Error: Logarithm undefined for non-positive values"],
             "sin": [1, math.sin],
             "cos": [1, math.cos],
-            "tan": [
-                1,
-                lambda x: (math.tan(x) if (x % (math.pi / 2)) != 0 else "Error: Tangent undefined at π/2 + kπ"),
-            ],
-            "asin": [
-                1,
-                lambda x: (math.asin(x) if -1 <= x <= 1 else "Error: Input out of domain for arcsin"),
-            ],
-            "acos": [
-                1,
-                lambda x: (math.acos(x) if -1 <= x <= 1 else "Error: Input out of domain for arccos"),
-            ],
+            "tan": [1, lambda x: math.tan(x) if (x % (math.pi / 2)) != 0 else "Error: Tangent undefined at π/2 + kπ"],
+            "asin": [1, lambda x: math.asin(x) if -1 <= x <= 1 else "Error: Input out of domain for arcsin"],
+            "acos": [1, lambda x: math.acos(x) if -1 <= x <= 1 else "Error: Input out of domain for arccos"],
             "atan": [1, math.atan],
             "sinh": [1, math.sinh],
             "cosh": [1, math.cosh],
             "tanh": [1, math.tanh],
             "gcd": [2, lambda a, b: math.gcd(int(a), int(b))],
-            "lcm": [
-                2,
-                lambda a, b: (abs(int(a) * int(b)) // math.gcd(int(a), int(b)) if a and b else 0),
-            ],
+            "lcm": [2, lambda a, b: abs(int(a) * int(b)) // math.gcd(int(a), int(b)) if a and b else 0],
             "mod": [2, lambda a, b: a % b if b != 0 else "Error: Modulo by zero"],
             "ceil": [1, math.ceil],
             "floor": [1, math.floor],

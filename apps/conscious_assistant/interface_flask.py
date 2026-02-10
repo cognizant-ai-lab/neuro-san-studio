@@ -64,7 +64,8 @@ def conscious_thinking_process():
             #     Each block begins with  "thought:"  or  "say:"  and continues until
             #     the next block or the end of the string.
             pattern = re.compile(
-                r"(?m)^(thought|say):[ \t]*(.*?)(?=^\s*(?:thought|say):|\Z)", re.S  # look-ahead  # dot = newline
+                r"(?m)^(thought|say):[ \t]*(.*?)(?=^\s*(?:thought|say):|\Z)",
+                re.S,  # look-ahead  # dot = newline
             )
 
             for kind, raw in pattern.findall(thoughts):
@@ -80,18 +81,10 @@ def conscious_thinking_process():
 
             # --- 2.  Emit the blocks -----------------------------------------------------
             if thoughts_to_emit:
-                socketio.emit(
-                    "update_thoughts",
-                    {"data": "\n".join(thoughts_to_emit)},
-                    namespace="/chat",
-                )
+                socketio.emit("update_thoughts", {"data": "\n".join(thoughts_to_emit)}, namespace="/chat")
 
             if speeches_to_emit:
-                socketio.emit(
-                    "update_speech",
-                    {"data": "\n".join(speeches_to_emit)},
-                    namespace="/chat",
-                )
+                socketio.emit("update_speech", {"data": "\n".join(speeches_to_emit)}, namespace="/chat")
 
             timestamp = datetime.now().strftime("[%I:%M:%S%p]").lower()
             thoughts = f"\n{timestamp} user: " + "[Silence]"

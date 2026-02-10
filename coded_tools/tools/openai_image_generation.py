@@ -121,7 +121,7 @@ class OpenAIImageGeneration(CodedTool):
 
         # Get file type
         mime_type: str = image_block.get("mime_type", "image/png")
-        file_type: str = mime_type.split("/")[-1]
+        file_type: str = mime_type.rsplit("/", maxsplit=1)[-1]
 
         # Log revised prompt
         self.logger.info(

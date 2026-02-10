@@ -95,7 +95,7 @@ class AnthropicCodeExecution(CodedTool):
             tool_name="code_execution",
             anthropic_model=anthropic_model,
             betas=[CODE_EXECUTION_BETA],
-            **additional_kwargs
+            **additional_kwargs,
         )
 
         # If there are generated files and user wants to save them
