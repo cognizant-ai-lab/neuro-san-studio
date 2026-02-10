@@ -85,7 +85,7 @@ class ExtractDocs(CodedTool):
             raise TypeError(f"Expected str, bytes, or os.PathLike object, got {type(directory).__name__} instead")
 
         docs = {}
-        for root, dirs, files in os.walk(directory):
+        for root, _, files in os.walk(directory):
             for file in files:
                 # Build the full path to the file
                 file_path = os.path.join(root, file)
@@ -108,6 +108,12 @@ class ExtractDocs(CodedTool):
             return "ERROR: No PDF or text files found in the directory."
         return {"files": docs}
 
+    async def async_invoke(self, args: Dict[str, Any], sly_data: Dict[str, Any]) -> Union[Dict[str, Any], str]:
+        """
+        Delegates to the synchronous invoke method for now.
+        """
+        return self.invoke(args, sly_data)
+
     @staticmethod
     def extract_pdf_content(pdf_path: str) -> str:
         """
@@ -126,8 +132,7 @@ class ExtractDocs(CodedTool):
                 # Extract text from the page (fall back to empty string if None)
                 page_text = page.extract_text() or ""
                 text_output.append(page_text)
-        except Exception as e:
-            # In case there's an issue with reading the PDF
+        except (OSError, ValueError) as e:
             error = f"Error reading PDF {pdf_path}: {e}"
             logger.error(error)
             return f"ERROR: {error}"
@@ -145,8 +150,7 @@ class ExtractDocs(CodedTool):
         try:
             with open(txt_path, "r", encoding="utf-8") as f:
                 return f.read()
-        except Exception as e:
-            # In case there's an issue with reading the text file
+        except OSError as e:
             error = f"Error reading TXT {txt_path}: {e}"
             logger.error(error)
             return f"ERROR: {error}"
