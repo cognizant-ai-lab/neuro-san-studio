@@ -18,6 +18,7 @@ from typing import Any
 from typing import Dict
 from typing import List
 
+import asyncio
 from argparse import ArgumentParser
 from os import environ
 
@@ -112,12 +113,12 @@ class Authorize:
                     succeeded: bool = False
                     if self.args.grant:
                         print(f"Attempting to grant {message}")
-                        succeeded = authorizer.grant(actor, relation, resource)
+                        succeeded = asyncio.run(authorizer.grant(actor, relation, resource))
                         success_message: str = "succeeded" if succeeded else "already existed"
                         print(f"Grant for {message} {success_message}")
                     else:
                         print(f"Attempting to revoke {message}")
-                        succeeded = authorizer.revoke(actor, relation, resource)
+                        succeeded = asyncio.run(authorizer.revoke(actor, relation, resource))
                         success_message: str = "succeeded" if succeeded else "already existed"
                         print(f"Revoke for {message} {success_message}")
 
