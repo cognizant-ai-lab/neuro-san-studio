@@ -48,5 +48,12 @@ jobs:
               --name $(containerAppName) \
               --resource-group $(resourceGroup) \
               --image $(acrLoginServer)/$(imageName):$(Build.BuildId)
+
+            echo "Updating ingress to target nsflow port 4173..."
+            az containerapp ingress update \
+              --name $(containerAppName) \
+              --resource-group $(resourceGroup) \
+              --target-port 4173
+
             echo "Deployment complete!"
             echo "URL: https://csai-neuro-san-studio.ambitioussmoke-0c6f22e3.westus2.azurecontainerapps.io"

@@ -5,7 +5,7 @@
 #   docker build -t neuro-san-studio:latest .
 #
 # Run locally:
-#   docker run --rm -p 8080:8080 -p 30011:30011 \
+#   docker run --rm -p 4173:4173 -p 8080:8080 -p 30011:30011 \
 #     -e OPENAI_API_KEY="sk-..." \
 #     neuro-san-studio:latest
 # =============================================================================
@@ -82,8 +82,10 @@ RUN chmod +x "${APP_SOURCE}/deploy/entrypoint.sh"
 # ---- Ports ----
 # gRPC port (used by neuro-san inter-agent communication)
 EXPOSE 30011
-# HTTP port (primary API — this is what Azure Container Apps ingress targets)
+# HTTP port (neuro-san API — internal, nsflow connects to it on localhost)
 EXPOSE 8080
+# nsflow web UI port (Azure Container Apps ingress targets this)
+EXPOSE 4173
 
 # ---- Switch to non-root user ----
 USER ${USERNAME}
@@ -145,15 +147,26 @@ ENV AGENT_MCP_ONLY="false"
 ENV PHOENIX_ENABLED="false"
 ENV PHOENIX_AUTOSTART="false"
 
+# ---- nsflow web UI configuration ----
+ENV NSFLOW_HOST=0.0.0.0
+ENV NSFLOW_PORT=4173
+ENV NSFLOW_PLUGIN_CRUSE="false"
+ENV VITE_API_PROTOCOL=http
+ENV VITE_WS_PROTOCOL=ws
+ENV NEURO_SAN_SERVER_HOST=localhost
+ENV NEURO_SAN_SERVER_HTTP_PORT=8080
+ENV NEURO_SAN_SERVER_CONNECTION=http
+ENV SERVER_STARTUP_TIMEOUT=60
+
 # ---- Health check ----
-# The neuro-san HTTP server listens on port 8080.
-# A simple TCP check ensures the process is alive and accepting connections.
-HEALTHCHECK --interval=30s --timeout=5s --start-period=15s --retries=3 \
-    CMD python -c "import socket; s=socket.socket(); s.settimeout(3); s.connect(('127.0.0.1',8080)); s.close()" || exit 1
+# Check both services: neuro-san server (8080) AND nsflow web UI (4173).
+# start-period is 45s to allow neuro-san to start first, then nsflow.
+HEALTHCHECK --interval=30s --timeout=5s --start-period=45s --retries=3 \
+    CMD python -c "import socket; s=socket.socket(); s.settimeout(3); s.connect(('127.0.0.1',8080)); s.close(); s=socket.socket(); s.settimeout(3); s.connect(('127.0.0.1',4173)); s.close()" || exit 1
 
 # ---- Entrypoint ----
-# The entrypoint.sh script delegates to:
-#   python3 <PACKAGE_INSTALL>/neuro_san/service/main_loop/server_main_loop.py
-# which starts both gRPC (30011) and HTTP (8080) servers.
+# The entrypoint.sh script starts two processes:
+#   1. neuro-san server: gRPC (30011) + HTTP API (8080)
+#   2. nsflow web UI: Uvicorn on port 4173 (Azure ingress target)
 ENV APP_ENTRYPOINT=${APP_SOURCE}/deploy/entrypoint.sh
 ENTRYPOINT ["/bin/bash", "-c", "${APP_ENTRYPOINT}"]
