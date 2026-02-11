@@ -104,7 +104,7 @@ class WebPageReader(CodedTool):
             results = {}
             for url in urls:
                 try:
-                    response = requests.get(url, headers=headers, timeout=30)
+                    response = requests.get(url, headers=headers, timeout=75)
                     response.raise_for_status()
 
                     soup = BeautifulSoup(response.text, "html.parser")
