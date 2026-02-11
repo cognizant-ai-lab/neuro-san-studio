@@ -136,13 +136,20 @@ class OpenAIVideoGeneration(CodedTool):
             self.logger.error("Exception details: %s", data)
             return None
 
-    async def _remix_video(self, session: aiohttp.ClientSession, video_id: str, query: str) -> str | None:
+    async def _remix_video(
+        self,
+        session: aiohttp.ClientSession,
+        video_id: str,
+        query: str,
+    ) -> str | None:
         """
         Create a video remix job.
 
         :return: Video ID if successful, None otherwise
         """
-        payload = {"prompt": query}
+        payload = {
+            "prompt": query,
+        }
 
         try:
             async with session.post(f"{URL_ENDPOINT}/{video_id}/remix", headers=HEADERS, json=payload) as response:

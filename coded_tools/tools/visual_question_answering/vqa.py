@@ -128,7 +128,16 @@ class VisualQuestionAnswering(CodedTool):
             logger.debug("It's an image!")
 
             # Call predict.py
-            cmd = [PYTHON_CMD, PREDICT, "--model-path", model, "--image-file", file_path, "--prompt", query]
+            cmd = [
+                PYTHON_CMD,
+                PREDICT,
+                "--model-path",
+                model,
+                "--image-file",
+                file_path,
+                "--prompt",
+                query,
+            ]
         #
         # Process video file
         #
@@ -179,7 +188,11 @@ class VisualQuestionAnswering(CodedTool):
             return "Query timed out after " + timeout_sec + " seconds"
 
         # Parse/return
-        payload = {"exit_code": proc.returncode, "stdout": proc.stdout.strip(), "stderr": proc.stderr.strip()}
+        payload = {
+            "exit_code": proc.returncode,
+            "stdout": proc.stdout.strip(),
+            "stderr": proc.stderr.strip(),
+        }
         if proc.returncode != 0:
             return (
                 "Error: exit_code: "

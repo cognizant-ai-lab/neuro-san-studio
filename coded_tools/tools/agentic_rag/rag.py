@@ -107,7 +107,9 @@ class Rag(CodedTool):
 
         # Create an in-memory vector store with embeddings
         vectorstore: InMemoryVectorStore = await InMemoryVectorStore.afrom_documents(
-            documents=doc_chunks, collection_name="rag-in-memory", embedding=OpenAIEmbeddings()
+            documents=doc_chunks,
+            collection_name="rag-in-memory",
+            embedding=OpenAIEmbeddings(),
         )
 
         return vectorstore

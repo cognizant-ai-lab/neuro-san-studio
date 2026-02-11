@@ -31,6 +31,7 @@ def test_open_ai_api_key():
     client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
     response = None
     try:
+
         # Make a chat completion request
         response = client.chat.completions.create(
             model="gpt-4",  # or "gpt-3.5-turbo"

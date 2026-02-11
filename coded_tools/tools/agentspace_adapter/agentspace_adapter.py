@@ -136,7 +136,9 @@ class AgentSpaceSearch(CodedTool):
                 model_prompt_spec=discoveryengine.SearchRequest.ContentSearchSpec.SummarySpec.ModelPromptSpec(
                     preamble="YOUR_CUSTOM_PROMPT"
                 ),
-                model_spec=discoveryengine.SearchRequest.ContentSearchSpec.SummarySpec.ModelSpec(version="stable"),
+                model_spec=discoveryengine.SearchRequest.ContentSearchSpec.SummarySpec.ModelSpec(
+                    version="stable",
+                ),
             ),
         )
 
@@ -148,7 +150,7 @@ class AgentSpaceSearch(CodedTool):
             page_size=10,
             content_search_spec=content_search_spec,
             query_expansion_spec=discoveryengine.SearchRequest.QueryExpansionSpec(
-                condition=discoveryengine.SearchRequest.QueryExpansionSpec.Condition.AUTO
+                condition=discoveryengine.SearchRequest.QueryExpansionSpec.Condition.AUTO,
             ),
             spell_correction_spec=discoveryengine.SearchRequest.SpellCorrectionSpec(
                 mode=discoveryengine.SearchRequest.SpellCorrectionSpec.Mode.AUTO

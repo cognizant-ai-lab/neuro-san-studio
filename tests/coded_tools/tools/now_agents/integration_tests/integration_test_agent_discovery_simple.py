@@ -64,6 +64,7 @@ def test_connectivity():
     print("\nTesting ServiceNow connectivity...")
 
     try:
+
         base_url = os.getenv("SERVICENOW_INSTANCE_URL")
         user = os.getenv("SERVICENOW_USER")
         pwd = os.getenv("SERVICENOW_PWD")
