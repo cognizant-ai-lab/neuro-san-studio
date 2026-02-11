@@ -93,10 +93,18 @@ class Authorize:
 
                 # Loop through all the relations to grant/revoke
                 for relation in relations:
+                    message: str = f"{actor['type']}:{actor['id']} {relation} on {resource['type']}:{resource['id']}"
+                    succeeded: bool = False
                     if self.args.grant:
-                        authorizer.grant(actor, relation, resource)
+                        print(f"Attempting to grant {message}")
+                        succeeded = authorizer.grant(actor, relation, resource)
+                        success_message: str = "succeeded" if succeeded else "already existed"
+                        print(f"Grant for {message} {success_message}")
                     else:
-                        authorizer.revoke(actor, relation, resource)
+                        print(f"Attempting to revoke {message}")
+                        suecceeded = authorizer.revoke(actor, relation, resource)
+                        success_message: str = "succeeded" if succeeded else "already existed"
+                        print(f"Revoke for {message} {success_message}")
 
     def parse_args(self):
         """
