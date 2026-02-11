@@ -34,6 +34,7 @@ in a Docker container.
    https://openfga.dev/docs/getting-started/setup-openfga/docker#step-by-step
 
    By the end of this phase, the container will be running with a 'memory' based storage engine.
+   Output will look something like:
 
 ```
 2026-02-11T01:05:42.584Z	INFO	using 'memory' storage engine
@@ -80,10 +81,25 @@ pip install -r plugins/authorization/openfga/requirements.txt
 sudo plugins/authorization/openfga/install_fga_cli.sh
 ```
 
-5. Take the sample authorization policy model and transform it so it can be loaded into the OpenFGA server. 
+5. Take the sample authorization policy model to validate and transform it so it can be loaded into the OpenFGA server. 
 
+```bash
     # Validate the fga file
-    fga model validate --file sample_authorization_model.fga
+    fga model validate --file plugins/authorization/openfga/sample_authorization_model.fga
+```
 
+   Output will look something like:
+
+```
+{
+  "is_valid":true
+}
+```
+
+```bash
     # Transform the .fga DSL to a JSON description which is importable by the OpenFGA API
-    fga model transform --file sample_authorization_model.fga | python -m json.tool > sample_authorization_model.json
+    fga model transform --file plugins/authorization/openfga/sample_authorization_model.fga | python -m json.tool > plugins/authorization/openfga/sample_authorization_model.json
+```
+
+   There will not be any real output from this step, but the file sample_authorization_model.json
+   will be (re-)created in the plugins/authorization/openfga directory.
