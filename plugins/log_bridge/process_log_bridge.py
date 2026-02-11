@@ -235,6 +235,7 @@ class ProcessLogBridge:
         File-handler formatter that emits timezone-aware timestamps.
         :extend: logging.Formatter
         """
+
         def formatTime(self, record, datefmt=None):
             """
             :param: record: A log record.
@@ -507,7 +508,7 @@ class ProcessLogBridge:
         s = text.find("{")
         e = text.rfind("}")
         if s != -1 and e != -1 and e > s:
-            frag = text[s: e + 1]
+            frag = text[s : e + 1]
             try:
                 obj = json.loads(frag)
                 return obj if isinstance(obj, dict) else {"message": obj}
