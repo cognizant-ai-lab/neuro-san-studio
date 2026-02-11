@@ -42,25 +42,34 @@ jobs:
 
       - name: Install dependencies
         run: |
+          python -m venv venv
+          source venv/bin/activate
           pip install -r requirements-build.txt
           pip install -r requirements.txt
 
       - name: Show installed packages
-        run: pip freeze
+        run: |
+          source venv/bin/activate
+          pip freeze
 
       - name: Run make lint-check
         # We run this check-only step to break the build if
         # formatting changes are needed
-        run: make lint-check
+        run: |
+          source venv/bin/activate
+          make lint-check
 
       - name: Run make test
-        run: make test
+        run: |
+          source venv/bin/activate
+          make test
         env:
           AGENT_TOOL_PATH: "./neuro_san/coded_tools"
           PYTHONPATH: ${{ env.PYTHONPATH }}:"."
 
       - name: Check README renders correctly on PyPI
         run: |
+          source venv/bin/activate
           pip install readme_renderer readme_renderer[md]
           python -m readme_renderer README.md
 
