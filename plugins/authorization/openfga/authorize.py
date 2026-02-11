@@ -111,21 +111,28 @@ class Authorize:
         Adds arguments.  Allows subclasses a chance to add their own.
         :param arg_parser: The ArgumentParser to add.
         """
+        default_user: str = environ.get("USER")
+        default_manifest: str = environ.get("AGENT_MANIFEST_FILE")
+
         # What agent are we talking to?
-        arg_parser.add_argument("--user", type=str, default=environ.get("USER"),
-                                help="""
-Name of the user to authorize. This can be a space separated list of multiple users to authorize at once.
+        arg_parser.add_argument("--user", type=str, default=default_user,
+                                help=f"""
+Name of the user to authorize.
+This can be a space separated list of multiple users to authorize at once.
+When not set, this reverts to the USER env var which is currently '{default_user}'.
 """)
         arg_parser.add_argument("--network", type=str, default=None,
-                                help="""
+                                help=f"""
 Optional name of the agent network to authorize.
 This can be a space separated list of multiple networks to authorize at once.
-When not set, we authorize all the networks in the default manifest from the AGENT_MANIFEST_FILE env var.
+When not set, we authorize all the networks in the default manifest from the AGENT_MANIFEST_FILE
+env var which is currently '{default_manifest}'.
 """)
 
         arg_parser.add_argument("--grant", default=True, dest="grant", action="store_true",
                                 help="""
 Operation of this run is to grant authorization for given user(s) and network(s).
+This is the default operation.
 """)
         arg_parser.add_argument("--revoke", default=False, dest="grant", action="store_false",
                                 help="""
