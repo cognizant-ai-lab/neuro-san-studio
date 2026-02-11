@@ -1,4 +1,5 @@
 #!/bin/bash
+set -e
 #
 # Script to run a sample OpenFGA server from scratch using docker commands
 # This will reset any authorization database every time it is run.
@@ -33,6 +34,12 @@ INCOMING_HTTP_PORT=8082
 # Name of the OpenFGA container
 CONTAINER_NAME=neuro_san_openfga
 
+#
+# Beginning essentials
+#
+
+# Make sure docker is installed
+docker --version
 
 # From  https://openfga.dev/docs/getting-started/setup-openfga/docker#step-by-step
 # Pull the OpenFGA image if needed

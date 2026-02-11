@@ -3,7 +3,9 @@
 This plugin integrates a Neuro SAN server with an [OpenFGA](https://openfga.dev/) server for
 controlling authorization access for agents.
 
-## Clarifications - Authentation vs Authorization
+## Clarifications 
+
+### Authentation != Authorization
 
 Note that _authorization_ - the ability to determine permission to access a resource (in
 Neuro SAN's case an agent network) - is not to be confused with _authentication_ -
@@ -33,35 +35,13 @@ You need to have docker already installed and running on your system.
 This example supports the installation steps for running an OpenFGA authorization server
 in a Docker container.
 
-1. Follow the instructions to create a docker instance running OpenFGA.
-   Important: Only do the 1st 3 steps. Do not continue on to the "Using Postgres" section:
+1. Install the Python requirements for the Neuro SAN OpenFGA Authorization plugin in your virtual environment.
 
-   https://openfga.dev/docs/getting-started/setup-openfga/docker#step-by-step
-
-   By the end of this phase, the container will be running with a 'memory' based storage engine.
-   Output will look something like:
-
-```
-2026-02-11T01:05:42.584Z	INFO	using 'memory' storage engine
-2026-02-11T01:05:42.584Z	WARN	authentication is disabled
-2026-02-11T01:05:42.584Z	WARN	gRPC TLS is disabled, serving connections using insecure plaintext
-2026-02-11T01:05:42.584Z	INFO	📈 starting prometheus metrics server on '0.0.0.0:2112'
-2026-02-11T01:05:42.584Z	INFO	starting openfga service...
-
-...
-
-2026-02-11T01:05:42.585Z	INFO	🚀 starting gRPC server on '[::]:8081'...
-2026-02-11T01:05:42.586Z	WARN	HTTP TLS is disabled, serving connections using insecure plaintext
-2026-02-11T01:05:42.586Z	INFO	🛝 starting openfga playground on http://localhost:3000/playground
-2026-02-11T01:05:42.586Z	INFO	🚀 starting HTTP server on '0.0.0.0:8080'...
+```bash
+pip install -r plugins/authorization/openfga/requirements.txt
 ```
 
-    Ctrl-C to stop the container to continue to the next step.
-
-2. The base examples on that OpenFGA setup page above would have you choose between Postgres, MySQL,
-   and SQLite as databases.  At this level, it doesn't really matter what you choose, but if
-   you are just starting out, SQLite is the lightest-weight overall. We encapsulate the starting
-   of a SQLite based OpenFGA server in the following script:
+2. We encapsulate the starting of a SQLite-based OpenFGA server in the following script:
 
 ```bash
 ./plugins/authorization/openfga/run_openfga_server.sh
@@ -70,8 +50,15 @@ in a Docker container.
    Your output will look something like:
 
 ```
-openfga
-openfga
+Docker version 29.2.1, build #######
+Using default tag: latest
+latest: Pulling from openfga/openfga
+Digest: sha256:################################################################
+Status: Image is up to date for openfga/openfga:latest
+docker.io/openfga/openfga:latest
+9d3e4887daf6
+neuro_san_openfga
+neuro_san_openfga
 2026-02-11T05:02:03.731Z	INFO	db info	{"current version": 0}
 2026-02-11T05:02:03.731Z	INFO	running all migrations
 2026-02-11T05:02:03.738Z	INFO	migration done
@@ -92,13 +79,9 @@ openfga
    This script will continue to run with the OpenFGA server running until you Ctrl-C it.
    Keep this going. We will be using it in subsequent steps.
 
-3. Install the Python requirements for the Neuro SAN OpenFGA Authorization plugin in your virtual environment.
 
-```bash
-pip install -r plugins/authorization/openfga/requirements.txt
-```
-
-4. In another shell, set some environment variables that enable the use of the OpenFGA server for Authorization.
+3. In another shell, but using the same virtual environment, set some environment variables that
+enable the use of the OpenFGA server for authorization within your Neuro SAN server:
 
 ```bash
 # Where the OpenFGA grpc server is running
@@ -131,10 +114,10 @@ export AGENT_AUTHORIZER_RESOURCE_KEY=AgentNetwork
 export AGENT_AUTHORIZER_ALLOW_ACTION=read
 ```
 
-    Now run your neuro-san server.
-
-5. In yet another shell, set the same environment variables as above and run the authorize.py utility.
+4. In a shell with the same virtual env and environment variables set,
+   run the authorize.py utility to get initial permissions into the OpenFGA database for your user.
    Without any arguments, it will read in the manifest and authorize the current user for each network.
+   This command is given from the neuro-san-studio repo top-level directory.
 
 ```bash
 python plugins/authorization/openfga/authorize.py
@@ -147,12 +130,23 @@ python plugins/authorization/openfga/authorize.py
     This can be OK because the server will report when obect relations already exist.
     The authorize.py app will report whether it created relations or they were already there.
 
-6. Try running a listing of the agents against your running Neuro SAN server with your existing user.
+5. In a shell with the same virtual env and environment variables set,
+   now run your neuro-san server.
+
+   This command is given from the neuro-san-studio repo top-level directory.
+
+```bash
+python -m neuro_san.service.main_loop.server_main_loop
+```
+
+6. In yet another shell, try running a listing of the agents against your running Neuro SAN server
+   with your existing user.
 
 ```bash
 python -m neuro_san.client.agent_cli --http --list
 ```
-    You should get a list of the agents that you have access as all networks should be authorized for your user.
+    You should get a complete list of the agents that you have access as all networks
+    should be authorized for your user.
 
 7. Now try running the same as above but with a different user id.
 
@@ -184,8 +178,8 @@ Note that this script:
     * will need to be run as root
     * will install to /usr/bin/fga.
 
-If you are not running on linux you will have to figure out your own way of getting the fga command line tool installed.
-See https://openfga.dev/docs/getting-started/cli for more info.
+If you are not running on linux you will have to figure out your own way of getting the fga command line
+tool installed.  See https://openfga.dev/docs/getting-started/cli for more info.
 
 ### Modifying the OpenFGA Policy Model
 
@@ -225,3 +219,20 @@ are defined correctly.  We have included one test with this example. To run it:
 ```bash
     fga model test --tests plugins/authorization/openfga/agent_network_access_test.fga.yml 
 ```
+
+---
+
+## Debugging Hints
+
+### Common Issues
+
+---
+
+## Resources
+
+- [OpenFGA documentation](https://openfga.dev/docs/fga)
+  Extensive documentation on OpenFGA capabilities and configuration.
+
+- [Oso's Authorization Academy](https://www.osohq.com/academy)
+  A very good resource describing the basics concepts of Authorization and several
+  different authorization models.
