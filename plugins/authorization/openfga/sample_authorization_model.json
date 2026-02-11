@@ -113,12 +113,25 @@
                     "create": {
                         "directly_related_user_types": [
                             {
+                                "type": "User"
+                            },
+                            {
                                 "type": "User",
                                 "wildcard": {}
                             }
                         ]
                     },
-                    "delete": {},
+                    "delete": {
+                        "directly_related_user_types": [
+                            {
+                                "type": "User"
+                            },
+                            {
+                                "type": "User",
+                                "wildcard": {}
+                            }
+                        ]
+                    },
                     "owner": {
                         "directly_related_user_types": [
                             {
@@ -130,7 +143,17 @@
                             }
                         ]
                     },
-                    "read": {},
+                    "read": {
+                        "directly_related_user_types": [
+                            {
+                                "type": "User"
+                            },
+                            {
+                                "type": "User",
+                                "wildcard": {}
+                            }
+                        ]
+                    },
                     "tourist": {
                         "directly_related_user_types": [
                             {
@@ -146,7 +169,17 @@
                             }
                         ]
                     },
-                    "update": {}
+                    "update": {
+                        "directly_related_user_types": [
+                            {
+                                "type": "User"
+                            },
+                            {
+                                "type": "User",
+                                "wildcard": {}
+                            }
+                        ]
+                    }
                 }
             },
             "relations": {
@@ -182,8 +215,17 @@
                     }
                 },
                 "delete": {
-                    "computedUserset": {
-                        "relation": "owner"
+                    "union": {
+                        "child": [
+                            {
+                                "this": {}
+                            },
+                            {
+                                "computedUserset": {
+                                    "relation": "owner"
+                                }
+                            }
+                        ]
                     }
                 },
                 "owner": {
@@ -206,8 +248,17 @@
                     }
                 },
                 "read": {
-                    "computedUserset": {
-                        "relation": "tourist"
+                    "union": {
+                        "child": [
+                            {
+                                "this": {}
+                            },
+                            {
+                                "computedUserset": {
+                                    "relation": "tourist"
+                                }
+                            }
+                        ]
                     }
                 },
                 "tourist": {
@@ -225,8 +276,17 @@
                     }
                 },
                 "update": {
-                    "computedUserset": {
-                        "relation": "collaborator"
+                    "union": {
+                        "child": [
+                            {
+                                "this": {}
+                            },
+                            {
+                                "computedUserset": {
+                                    "relation": "collaborator"
+                                }
+                            }
+                        ]
                     }
                 }
             },
