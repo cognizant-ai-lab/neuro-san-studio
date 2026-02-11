@@ -64,7 +64,7 @@ in a Docker container.
    port 8080 by doing this instead:
 
 ```bash
-docker run --name openfga --network=openfga \
+docker run --name openfga --network=bridge \
     -p 3000:3000 -p 8082:8080 -p 8081:8081 \
     -v openfga:/home/nonroot \
     -u nonroot \
