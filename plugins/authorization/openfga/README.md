@@ -102,6 +102,9 @@ export AGENT_AUTHORIZER=neuro_san.service.authorization.openfga.open_fga_authori
 # The request metadata field to use as the user id for authorization
 export AGENT_AUTHORIZER_ACTOR_ID_METADATA_KEY=user_id
 
+# See authorization results. In production you would not want to set this at all.
+export AGENT_DEBUG_AUTH=true
+
 # Below: Different keys correspond to aspects of the authorization policy that is defined in the .fga file
 
 # The type defined in the authorization policy (.fga file) for a user
