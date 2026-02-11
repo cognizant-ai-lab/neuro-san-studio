@@ -279,7 +279,7 @@ class ProcessLogBridge:
         """
         try:
             state["tee"].write(f"{raw}\n")
-        except Exception:   # pylint: disable=broad-except
+        except Exception:  # pylint: disable=broad-except
             pass
 
     @staticmethod
@@ -292,7 +292,7 @@ class ProcessLogBridge:
         try:
             state["tee"].flush()
             state["tee"].close()
-        except Exception:   # pylint: disable=broad-except
+        except Exception:  # pylint: disable=broad-except
             pass
 
     # ---------- pipe draining ----------
@@ -316,7 +316,7 @@ class ProcessLogBridge:
         finally:
             try:
                 pipe.close()
-            except Exception:   # pylint: disable=broad-except
+            except Exception:  # pylint: disable=broad-except
                 pass
             self._close_stream(state)
 
@@ -486,7 +486,7 @@ class ProcessLogBridge:
         """
         try:
             return json.dumps(obj, indent=2, ensure_ascii=False)
-        except Exception:   # pylint: disable=broad-except
+        except Exception:  # pylint: disable=broad-except
             return str(obj)
 
     @staticmethod
@@ -505,7 +505,7 @@ class ProcessLogBridge:
         try:
             obj = json.loads(text)
             return obj if isinstance(obj, dict) else {"message": obj}
-        except Exception:   # pylint: disable=broad-except
+        except Exception:  # pylint: disable=broad-except
             pass
         # first {...}
         s = text.find("{")
@@ -515,7 +515,7 @@ class ProcessLogBridge:
             try:
                 obj = json.loads(frag)
                 return obj if isinstance(obj, dict) else {"message": obj}
-            except Exception:   # pylint: disable=broad-except
+            except Exception:  # pylint: disable=broad-except
                 return None
         return None
 
@@ -541,7 +541,7 @@ class ProcessLogBridge:
         # strict
         try:
             return json.loads(s)
-        except Exception:   # pylint: disable=broad-except
+        except Exception:  # pylint: disable=broad-except
             pass
         # mild cleanup: unescape \n \t \r and drop trailing commas
         s2 = s.replace("\\r", "\r").replace("\\t", "\t").replace("\\n", "\n")
@@ -549,7 +549,7 @@ class ProcessLogBridge:
         s2 = re.sub(r"\n{3,}", "\n\n", s2)
         try:
             return json.loads(s2)
-        except Exception:   # pylint: disable=broad-except
+        except Exception:  # pylint: disable=broad-except
             return None
 
     # ---------- special NeuroSan block ----------
@@ -570,7 +570,7 @@ class ProcessLogBridge:
         inner_src = "{" + m.group("inner").strip() + "}"
         try:
             inner = json.loads(inner_src)
-        except Exception:   # pylint: disable=broad-except
+        except Exception:  # pylint: disable=broad-except
             inner = inner_src
         out: Dict[str, Any] = {"message": inner}
         for f, rx in self._META_REGEXES.items():
