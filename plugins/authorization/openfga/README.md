@@ -60,7 +60,8 @@ in a Docker container.
    https://openfga.dev/docs/getting-started/setup-openfga/docker#using-sqlite
 
    For the last step, to start the server, we do not want the OpenFGA server taking up
-   the same HTTP port as the Neuro SAN server.  Do this instead:
+   the same HTTP port as the Neuro SAN server, so we forward the local port 8082 to the container
+   port 8080 by doing this instead:
 
 ```bash
 docker run --name openfga --network=openfga \
@@ -87,7 +88,7 @@ pip install -r plugins/authorization/openfga/requirements.txt
 
 ```bash
 # Where the OpenFGA grpc server is running
-export FGA_API_URL=http://localhost:8081
+export FGA_API_URL=http://localhost:8082
 
 # The file containing the authorization policy
 export FGA_POLICY_FILE=plugins/authorization/openfga/sample_authorization_model.json
