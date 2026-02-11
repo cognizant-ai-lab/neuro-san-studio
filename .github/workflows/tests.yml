@@ -17,13 +17,15 @@ jobs:
     if: >
       (github.event_name == 'push' && github.ref != 'refs/heads/main') ||
       (github.event_name == 'pull_request' && github.base_ref == 'main')
-    container:
-      image: python:3.13-slim
-
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-      
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
       - name: Check if PR is from a fork
         id: fork_check
         run: |
@@ -39,52 +41,34 @@ jobs:
           fi
 
       - name: Install dependencies
-        shell: bash
         run: |
-          apt-get update && apt-get install --yes curl shellcheck make
-          python -m venv venv
-          source venv/bin/activate
           pip install -r requirements-build.txt
           pip install -r requirements.txt
 
       - name: Show installed packages
-        shell: bash
-        run: |
-          source venv/bin/activate 
-          pip freeze
+        run: pip freeze
 
       - name: Run make lint-check
         # We run this check-only step to break the build if
         # formatting changes are needed
-        shell: bash
-        run: |
-          source venv/bin/activate 
-          make lint-check
+        run: make lint-check
 
       - name: Run make test
-        shell: bash
-        run: |
-          source venv/bin/activate 
-          make test
+        run: make test
         env:
           AGENT_TOOL_PATH: "./neuro_san/coded_tools"
           PYTHONPATH: ${{ env.PYTHONPATH }}:"."
 
       - name: Check README renders correctly on PyPI
-        shell: bash
         run: |
-          source venv/bin/activate
           pip install readme_renderer readme_renderer[md]
           python -m readme_renderer README.md
 
       - name: Check for broken links
-        shell: bash
-        run: |
-          curl --silent --fail --location --output /tmp/lychee.tar.gz \
-            https://github.com/lycheeverse/lychee/releases/latest/download/lychee-x86_64-unknown-linux-gnu.tar.gz
-          tar --extract --gzip --file /tmp/lychee.tar.gz --directory /usr/local/bin lychee
-          chmod +x /usr/local/bin/lychee
-          lychee --offline --no-progress './**/*.md'
+        uses: lycheeverse/lychee-action@v2
+        with:
+          args: "--offline --no-progress './**/*.md'"
+          fail: true
 
       - name: Notify Slack on success
         if: success() && steps.fork_check.outputs.is_fork == 'false'
