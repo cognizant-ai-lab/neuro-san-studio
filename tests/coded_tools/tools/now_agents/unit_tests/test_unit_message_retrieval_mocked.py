@@ -181,11 +181,11 @@ class TestNowAgentRetrieveMessage(unittest.TestCase):
         retrieves environment variables.
         """
         with patch.dict(os.environ, {"TEST_VAR": "test_value"}):
-            result = self.tool._get_env_variable("TEST_VAR")  # pylint: disable=protected-access
+            result = self.tool._get_env_variable("TEST_VAR")  # noqa: SLF001
             self.assertEqual(result, "test_value")
 
         # Test missing environment variable
-        result = self.tool._get_env_variable("NONEXISTENT_VAR")  # pylint: disable=protected-access
+        result = self.tool._get_env_variable("NONEXISTENT_VAR")  # noqa: SLF001
         self.assertIsNone(result)
 
     @patch.dict(

@@ -17,8 +17,6 @@
 from typing import Any
 
 from requests.exceptions import RequestException
-
-# pylint: disable=import-error
 from slack_bolt import Ack
 from slack_bolt import App
 

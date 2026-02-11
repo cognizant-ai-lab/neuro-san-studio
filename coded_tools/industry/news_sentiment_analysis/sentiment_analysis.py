@@ -23,7 +23,6 @@ from typing import List
 from typing import Optional
 from typing import Tuple
 
-# pylint: disable=import-error
 from neuro_san.interfaces.coded_tool import CodedTool
 from nltk import sent_tokenize
 from vaderSentiment.vaderSentiment import SentimentIntensityAnalyzer

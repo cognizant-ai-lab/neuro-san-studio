@@ -19,6 +19,7 @@ Wrapper module that initializes plugins before starting the server.
 This module ensures that plugins are initialized in the same Python process as the Neuro SAN server,
 allowing, for instance, proper tracing and observability.
 """
+
 import os
 
 from neuro_san.service.main_loop.server_main_loop import ServerMainLoop
@@ -38,7 +39,7 @@ class NeuroSanServerWrapper:
             return
 
         try:
-            from plugins.phoenix.phoenix_plugin import PhoenixPlugin
+            from plugins.phoenix.phoenix_plugin import PhoenixPlugin  # noqa: PLC0415
 
             print("Initializing Phoenix in server process...")
             PhoenixPlugin().initialize()
@@ -46,7 +47,7 @@ class NeuroSanServerWrapper:
         except ImportError:
             print("Warning: Phoenix plugin not installed.")
             print("Install with: pip install -r plugins/phoenix/requirements.txt")
-        except Exception as e:  # pylint: disable=broad-exception-caught
+        except Exception as e:  # noqa: BLE001
             print(f"Warning: Phoenix initialization failed: {e}")
 
     def run(self):

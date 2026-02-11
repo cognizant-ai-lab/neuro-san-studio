@@ -8,13 +8,23 @@ exclude = [
 ]
 
 [tool.ruff.lint]
-select = ["E", "W", "F", "I", "PL"]
+preview = true
+explicit-preview-rules = true
+select = [
+    "E",
+    "W",
+    "F",
+    "I",
+    "PL",
+    "BLE001",
+    "SLF001",
+    "TRY002",
+    "SIM115",
+    "PLR0914",
+    "PLR0917",
+]
 ignore = [
     "PLR2004",
-    "PLC0415",
-    "PLR0911",
-    "PLR0913",
-    "PLW0603",
     "PLW2901",
 ]
 

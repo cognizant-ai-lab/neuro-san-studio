@@ -28,7 +28,7 @@ try:
     from opentelemetry.sdk.resources import Resource
     from opentelemetry.sdk.trace import TracerProvider
     from opentelemetry.sdk.trace.export import BatchSpanProcessor
-except Exception:  # pragma: no cover
+except Exception:  # pragma: no cover  # noqa: BLE001
     trace = None  # type: ignore
     TracerProvider = None  # type: ignore
     BatchSpanProcessor = None  # type: ignore
@@ -157,42 +157,42 @@ class PhoenixPlugin:
         """
         # Instrument OpenAI
         try:
-            from openinference.instrumentation.openai import OpenAIInstrumentor
+            from openinference.instrumentation.openai import OpenAIInstrumentor  # noqa: PLC0415
 
             OpenAIInstrumentor().instrument()
-        except Exception:  # pragma: no cover
+        except Exception:  # pragma: no cover  # noqa: BLE001
             pass
 
         # Instrument LangChain
         try:
-            from openinference.instrumentation.langchain import LangChainInstrumentor
+            from openinference.instrumentation.langchain import LangChainInstrumentor  # noqa: PLC0415
 
             LangChainInstrumentor().instrument()
-        except Exception:  # pragma: no cover
+        except Exception:  # pragma: no cover  # noqa: BLE001
             pass
 
         # Instrument LiteLLM (common in orchestration libs)
         try:
-            from openinference.instrumentation.litellm import LiteLLMInstrumentor
+            from openinference.instrumentation.litellm import LiteLLMInstrumentor  # noqa: PLC0415
 
             LiteLLMInstrumentor().instrument()
-        except Exception:  # pragma: no cover
+        except Exception:  # pragma: no cover  # noqa: BLE001
             pass
 
         # Instrument Anthropic
         try:
-            from openinference.instrumentation.anthropic import AnthropicInstrumentor
+            from openinference.instrumentation.anthropic import AnthropicInstrumentor  # noqa: PLC0415
 
             AnthropicInstrumentor().instrument()
-        except Exception:  # pragma: no cover
+        except Exception:  # pragma: no cover  # noqa: BLE001
             pass
 
         # Instrument MCP
         try:
-            from openinference.instrumentation.mcp import MCPInstrumentor
+            from openinference.instrumentation.mcp import MCPInstrumentor  # noqa: PLC0415
 
             MCPInstrumentor().instrument()
-        except Exception:  # pragma: no cover
+        except Exception:  # pragma: no cover  # noqa: BLE001
             pass
 
     def _try_phoenix_register(self) -> bool:
@@ -204,7 +204,7 @@ class PhoenixPlugin:
         try:
             if not self._get_bool_env("PHOENIX_OTEL_REGISTER", True):
                 return False
-            from phoenix.otel import register  # type: ignore
+            from phoenix.otel import register  # type: ignore  # noqa: PLC0415
 
             project_name = os.getenv("PHOENIX_PROJECT_NAME", "default")
             endpoint = (
@@ -219,7 +219,7 @@ class PhoenixPlugin:
                 auto_instrument=True,
             )
             return True
-        except Exception as exc:  # pragma: no cover
+        except Exception as exc:  # pragma: no cover  # noqa: BLE001
             self._logger.info("Phoenix register not used: %s", exc)
             return False
 
@@ -259,7 +259,7 @@ class PhoenixPlugin:
                 print(f"[Phoenix] phoenix.otel.register() succeeded (PID={os.getpid()})")
             self._initialized = True
             print(f"[Phoenix] Initialization complete (PID={os.getpid()})")
-        except Exception as exc:  # pragma: no cover
+        except Exception as exc:  # pragma: no cover  # noqa: BLE001
             print(f"[Phoenix] Initialization FAILED: {exc} (PID={os.getpid()})")
             self._logger.warning("Phoenix initialization failed: %s", exc)
 
@@ -328,7 +328,7 @@ class PhoenixPlugin:
         with open(log_file, "w", encoding="utf-8") as log:
             log.write("Starting Phoenix...\n")
 
-        # pylint: disable=consider-using-with
+        # noqa: SIM115
         if self.is_windows:
             # On Windows, don't use CREATE_NEW_PROCESS_GROUP to allow Ctrl+C propagation
             process = subprocess.Popen(
@@ -391,7 +391,7 @@ class PhoenixPlugin:
                     print("Phoenix started successfully.")
                 else:
                     print("Failed to start Phoenix automatically. Check logs/phoenix.log")
-            except Exception as exc:  # pylint: disable=broad-exception-caught
+            except Exception as exc:  # noqa: BLE001
                 print(f"Failed to start Phoenix automatically: {exc}")
 
         # Update OTLP endpoint env to point to this phoenix instance if not explicitly overridden

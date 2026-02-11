@@ -19,15 +19,12 @@ crewAI agent executor for an A2A server example
 See https://github.com/google/a2a-python/tree/main/examples
 """
 
-from typing_extensions import override
-
-# pylint: disable=import-error
 from a2a.server.agent_execution import AgentExecutor
 from a2a.server.agent_execution import RequestContext
 from a2a.server.events import EventQueue
 from a2a.utils import new_agent_text_message
-
 from agent import CrewAiResearchReport
+from typing_extensions import override
 
 
 class CrewAiAgentExecutor(AgentExecutor):

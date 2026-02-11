@@ -96,11 +96,10 @@ LEAF_NODE_AGENT_TEMPLATE = (
     '""",\n'
     "        },\n"
 )
-# pylint: disable=implicit-str-concat
+# noqa: ISC001
 TOOLBOX_AGENT_TEMPLATE = '        {\n            "name": "%s",\n            "toolbox": "%s"\n        },\n'
 
 
-# pylint: disable=too-few-public-methods
 class HoconAgentNetworkAssembler(AgentNetworkAssembler):
     """
     AgentNetworkAssembler implementation which creates a full hocon of a designed agent network

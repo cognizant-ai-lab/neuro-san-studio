@@ -16,7 +16,6 @@
 
 import logging
 
-# pylint: disable=import-error
 from slack_bolt import App
 from slack_bolt.adapter.socket_mode import SocketModeHandler
 

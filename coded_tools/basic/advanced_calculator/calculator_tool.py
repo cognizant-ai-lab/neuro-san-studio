@@ -102,8 +102,8 @@ class CalculatorCodedTool(CodedTool):
             "radians": [1, math.radians],
         }
 
-    # pylint: disable=too-many-return-statements
-    def process_operation(self, operation: str, operands: list) -> Union[str, float]:
+    # noqa: PLR0911
+    def process_operation(self, operation: str, operands: list) -> Union[str, float]:  # noqa: PLR0911
         """
         Processes an operation dynamically.
 

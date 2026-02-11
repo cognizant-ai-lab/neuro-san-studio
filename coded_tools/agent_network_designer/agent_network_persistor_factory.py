@@ -23,7 +23,6 @@ from coded_tools.agent_network_designer.file_system_agent_network_persistor impo
 from coded_tools.agent_network_designer.reservations_agent_network_persistor import ReservationsAgentNetworkPersistor
 
 
-# pylint: disable=too-few-public-methods
 class AgentNetworkPersistorFactory:
     """
     Factory class for AgentNetworkPersistors.

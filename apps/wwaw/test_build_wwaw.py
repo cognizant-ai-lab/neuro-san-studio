@@ -68,7 +68,7 @@ def test_process_page_single_pass():
     builder.PAGE_LEN_MAX = 5000
     builder.AGENT_INSTRUCTION_PREFACE = "Agent Instructions:"
 
-    new_count = builder._process_page(
+    new_count = builder._process_page(  # noqa: SLF001
         url, parent_name, resp, visited, existing_names, agents, count, to_visit, base_domain
     )
 

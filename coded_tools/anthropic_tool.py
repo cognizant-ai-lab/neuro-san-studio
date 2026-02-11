@@ -24,7 +24,6 @@ from langchain_core.messages import AIMessage
 DEFAULT_ANTHROPIC_MODEL = "claude-3-7-sonnet-20250219"
 
 
-# pylint: disable=too-few-public-methods
 class AnthropicTool:
     """
     An implementation for invoking Anthropic built-in tools using LangChain's ChatAnthropic.

@@ -20,7 +20,6 @@ import time
 from typing import Any
 from typing import Dict
 
-# pylint: disable=import-error
 import backoff
 import feedparser
 import requests

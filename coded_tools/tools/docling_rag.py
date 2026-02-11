@@ -20,8 +20,6 @@ from typing import Any
 
 from langchain_core.documents import Document
 from langchain_core.vectorstores import VectorStore
-
-# pylint: disable=import-error
 from langchain_docling import DoclingLoader
 from neuro_san.interfaces.coded_tool import CodedTool
 from requests.exceptions import HTTPError

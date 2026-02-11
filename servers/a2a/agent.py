@@ -18,10 +18,9 @@
 crewAI agents for an A2A server example
 """
 
-# pylint: disable=import-error
+from crewai import LLM
 from crewai import Agent
 from crewai import Crew
-from crewai import LLM
 from crewai import Task
 
 
@@ -49,15 +48,12 @@ class CrewAiResearchReport:
                 "and concise manner."
             ),
             llm=llm,
-            verbose=False
+            verbose=False,
         )
 
         reporting_analyst = Agent(
             role="{topic} Reporting Analyst",
-            goal=(
-                "Create detailed reports based on {topic} data analysis and "
-                "research findings"
-            ),
+            goal=("Create detailed reports based on {topic} data analysis and research findings"),
             backstory=(
                 "You're a meticulous analyst with a keen eye for detail. "
                 "You're known for your ability to turn complex data into "
@@ -65,7 +61,7 @@ class CrewAiResearchReport:
                 "understand and act on the information you provide."
             ),
             llm=llm,
-            verbose=False
+            verbose=False,
         )
 
         # researcher conducts research while reporting_analyst write a report
@@ -74,11 +70,8 @@ class CrewAiResearchReport:
                 "Conduct a thorough research about {topic} "
                 "Make sure you find any interesting and relevant information "
             ),
-            expected_output=(
-                "A list with 10 bullet points of the most relevant information"
-                " about {topic}"
-            ),
-            agent=researcher
+            expected_output=("A list with 10 bullet points of the most relevant information about {topic}"),
+            agent=researcher,
         )
 
         reporting_task = Task(
@@ -92,15 +85,11 @@ class CrewAiResearchReport:
                 "full section of information. Formatted as markdown "
                 "without '```'"
             ),
-            agent=reporting_analyst
+            agent=reporting_analyst,
         )
 
         # Put agents and tasks into crew
-        self.crew = Crew(
-            agents=[researcher, reporting_analyst],
-            tasks=[research_task, reporting_task],
-            verbose=True
-        )
+        self.crew = Crew(agents=[researcher, reporting_analyst], tasks=[research_task, reporting_task], verbose=True)
 
     async def ainvoke(self, topic: str) -> str:
         """
@@ -109,7 +98,7 @@ class CrewAiResearchReport:
 
         :return: Report on the topic.
         """
-        inputs = {'topic': topic}
+        inputs = {"topic": topic}
         result = await self.crew.kickoff_async(inputs=inputs)
 
         return result.raw

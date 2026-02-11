@@ -281,7 +281,7 @@ class WebAgentNetworkBuilder:
 
         return base
 
-    def _process_page(
+    def _process_page(  # noqa: PLR0913, PLR0917
         self,
         url: str,
         parent_name: Optional[str],
@@ -480,7 +480,7 @@ class WebAgentNetworkBuilder:
         hocon = get_agent_network_hocon(the_agents, the_agent_network_name)
 
         # Write the agent network file
-        from pathlib import Path
+        from pathlib import Path  # noqa: PLC0415
 
         file_path = Path(cls.OUTPUT_PATH) / f"{the_agent_network_name}.hocon"
         # Ensure the directory exists

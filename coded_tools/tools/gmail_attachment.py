@@ -24,7 +24,6 @@ from typing import Dict
 from typing import List
 from typing import Optional
 
-# pylint: disable=import-error
 from googleapiclient.errors import HttpError
 from langchain_google_community.gmail.utils import build_resource_service
 from neuro_san.interfaces.coded_tool import CodedTool
@@ -88,9 +87,9 @@ class GmailAttachment(CodedTool):
 
         return self.gmail_send_message_with_attachment(to, attachment_paths, cc, bcc, subject, message, html)
 
-    # pylint: disable=too-many-arguments
-    # pylint: disable=too-many-positional-arguments
-    def gmail_send_message_with_attachment(
+    # noqa: PLR0913
+    # noqa: PLR0917
+    def gmail_send_message_with_attachment(  # noqa: PLR0913, PLR0917
         self,
         to: List[str],
         attachment_paths: List[str],

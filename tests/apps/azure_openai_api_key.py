@@ -59,7 +59,7 @@ def test_azure_open_ai_api_key():
         print("Successful call to Azure OpenAI")
         print(f"reponse: {response.choices[0].message.content}")
 
-    except Exception as e:  # pylint: disable=broad-except
+    except Exception as e:  # noqa: BLE001
         print("Failed call to Azure OpenAI")
         print(f"Exception: {e}")
         exception_msg = ApiKeyErrorCheck.check_for_api_key_exception(e)

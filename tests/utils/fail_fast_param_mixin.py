@@ -61,14 +61,14 @@ class FailFastParamMixin:
         """
         If a previous case failed for this group, skip this case.
         """
-        if self.__class__._fail_fast_flags.get(key, False):
+        if self.__class__._fail_fast_flags.get(key, False):  # noqa: SLF001
             pytest.skip(f"Earlier case failed for fail-fast group '{key}'")
 
     def _fail_fast_mark_failed(self, key: str):
         """
         Mark a group as having failed so future cases skip.
         """
-        self.__class__._fail_fast_flags[key] = True
+        self.__class__._fail_fast_flags[key] = True  # noqa: SLF001
 
     def run_hocon_group_fail_fast_case(self, test_name: str, test_hocon: str):
         """

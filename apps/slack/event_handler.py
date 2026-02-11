@@ -16,7 +16,6 @@
 
 from typing import Any
 
-# pylint: disable=import-error
 from slack_bolt import App
 from slack_bolt import Say
 
@@ -81,7 +80,7 @@ class EventHandler:
                     self.network_handler.setup_new_network(msg_ctx, command)
             else:
                 say(text="Please @mention me with a network name", thread_ts=thread_ctx.conversation_thread)
-        # pylint: disable=broad-exception-caught
+        # noqa: BLE001
         except Exception as e:
             logger.error(f"Error in handle_message: {e}", exc_info=True)
 
@@ -113,7 +112,7 @@ class EventHandler:
             else:
                 command = CommandParser.parse(cleaned_text, logger)
                 self.network_handler.setup_new_network(msg_ctx, command)
-        # pylint: disable=broad-exception-caught
+        # noqa: BLE001
         except Exception as e:
             logger.error(f"Error in handle_app_mention: {e}", exc_info=True)
             say(text=f"Error: {e}", thread_ts=event.get("thread_ts") or event.get("ts"))

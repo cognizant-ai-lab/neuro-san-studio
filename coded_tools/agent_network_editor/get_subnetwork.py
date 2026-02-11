@@ -31,7 +31,7 @@ class GetSubnetwork(CodedTool):
     CodedTool implementation which provides a way to get subnetwork names and descriptions from the manifest file
     """
 
-    # pylint: disable=too-many-locals
+    # noqa: PLR0914
     def invoke(self, args: dict[str, Any], sly_data: dict[str, Any]) -> dict[str, Any] | str:
         """
         :param args: An argument dictionary whose keys are the parameters

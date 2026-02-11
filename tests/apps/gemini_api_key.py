@@ -39,7 +39,7 @@ def test_gemini_api_key():
         print("Successful call to Gemini")
         print(response.text)
 
-    except Exception as e:
+    except Exception as e:  # noqa: BLE001
         print("Failed call to Gemini")
         exception_msg = ApiKeyErrorCheck.check_for_api_key_exception(e)
         print(f"Exception message: {exception_msg}")

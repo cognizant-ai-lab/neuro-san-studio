@@ -49,7 +49,7 @@ def test_anthropic_api_key():
         print("Successful call to Anthropic")
         print(f"reponse: {message.content[0].text}")
 
-    except Exception as e:
+    except Exception as e:  # noqa: BLE001
         print("Failed call to Anthropic")
         print(f"Exception: {e}")
         exception_msg = ApiKeyErrorCheck.check_for_api_key_exception(e)

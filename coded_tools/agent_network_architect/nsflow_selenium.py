@@ -23,8 +23,6 @@ from typing import Dict
 from typing import Optional
 
 from neuro_san.interfaces.coded_tool import CodedTool
-
-# pylint: disable=import-error
 from selenium import webdriver
 from selenium.common.exceptions import TimeoutException
 from selenium.common.exceptions import WebDriverException
@@ -125,9 +123,9 @@ class NsflowSelenium(CodedTool):
         return await asyncio.to_thread(self.invoke, args, sly_data)
 
 
-# pylint: disable=too-many-arguments
-# pylint: disable=too-many-positional-arguments
-def connect_run_agent_nsflow(
+# noqa: PLR0913
+# noqa: PLR0917
+def connect_run_agent_nsflow(  # noqa: PLR0913, PLR0917
     url: str,
     agent_name: str,
     query: str,

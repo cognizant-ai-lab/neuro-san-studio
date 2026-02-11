@@ -18,7 +18,6 @@
 
 from mcp.server.fastmcp import FastMCP
 
-
 mcp = FastMCP("BMI", port=8000)
 
 
@@ -28,7 +27,7 @@ mcp = FastMCP("BMI", port=8000)
 @mcp.tool()
 def calculate_bmi(weight: float, height: float) -> float:
     """Calculate BMI given weight in kg and height in meters"""
-    return weight / (height ** 2)
+    return weight / (height**2)
 
 
 if __name__ == "__main__":

@@ -152,7 +152,7 @@ class WikimediaMediaSearch(CodedTool):
         logger.debug("Found %s files: %s", len(file_titles), file_titles)
         return file_titles
 
-    # pylint: disable=too-many-locals
+    # noqa: PLR0914
     def _get_media_urls(self, file_titles: List[str], media_type: str, limit: int) -> List[Dict[str, str]]:
         """
         Get direct media URLs for the given file titles, filtered by media type.

@@ -36,7 +36,6 @@ from plugins.phoenix.phoenix_plugin import PhoenixPlugin
 class NeuroSanRunner:
     """Command-line tool to run the Neuro SAN server and web client."""
 
-    # pylint: disable=too-many-instance-attributes
     def __init__(self):
         """Initialize configuration and parse CLI arguments."""
         self.is_windows = os.name == "nt"
@@ -275,7 +274,7 @@ class NeuroSanRunner:
         with open(log_file, "w", encoding="utf-8") as log:
             log.write(f"Starting {process_name}...\n")
 
-        # pylint: disable=consider-using-with
+        # noqa: SIM115
         if self.is_windows:
             # On Windows, don't use CREATE_NEW_PROCESS_GROUP to allow Ctrl+C propagation
             process = subprocess.Popen(
@@ -372,7 +371,7 @@ class NeuroSanRunner:
         self.flask_webclient_process = self.start_process(command, "FlaskWebClient", "logs/webclient.log")
         print("Flask web client started on port: ", self.args["web_client_port"])
 
-    # pylint: disable=unused-argument
+    # noqa: ARG002
     def signal_handler(self, signum, frame):
         """Handle termination signals to cleanly exit."""
         print("\nTermination signal received. Stopping all processes...")
@@ -473,7 +472,7 @@ class NeuroSanRunner:
                         print(f"  No process found on port {port}")
             except subprocess.CalledProcessError as e:
                 print(f"  Failed to kill process on port {port}: {e}")
-            except Exception as e:  # pylint: disable=broad-exception-caught
+            except Exception as e:  # noqa: BLE001
                 print(f"  Error handling port {port}: {e}")
 
     def conditional_start_servers(self):
@@ -493,7 +492,7 @@ class NeuroSanRunner:
         if use_flask:
             # Check if flask web client is available
             try:
-                import neuro_san_web_client  # pylint: disable=unused-import,import-outside-toplevel  # noqa: F401
+                import neuro_san_web_client  # noqa: F401, PLC0415
             except ImportError:
                 print("Flask web client is not available. Please install it with `pip install neuro-san-web-client`.")
                 sys.exit(1)
@@ -550,7 +549,7 @@ class NeuroSanRunner:
         if self.is_windows:
             signal.signal(
                 signal.SIGBREAK,
-                self.signal_handler,  # pylint: disable=no-member
+                self.signal_handler,
             )  # Handle Ctrl+Break on Windows
         else:
             signal.signal(signal.SIGTERM, self.signal_handler)  # Handle kill command (not available on Windows)

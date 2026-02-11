@@ -29,8 +29,6 @@ from typing import Dict
 from uuid import uuid4
 
 import httpx
-
-# pylint: disable=import-error
 from a2a.client import A2ACardResolver
 from a2a.client import Client
 from a2a.client import ClientConfig

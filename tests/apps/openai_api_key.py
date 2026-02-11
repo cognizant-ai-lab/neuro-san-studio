@@ -44,7 +44,7 @@ def test_open_ai_api_key():
         print("Successful call to OpenAI")
         print(f"reponse: {response.choices[0].message.content}")
 
-    except Exception as e:
+    except Exception as e:  # noqa: BLE001
         print("Failed call to OpenAI")
         exception_msg = ApiKeyErrorCheck.check_for_api_key_exception(e)
         print(f"Exception message: {exception_msg}")

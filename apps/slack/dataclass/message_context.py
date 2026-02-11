@@ -17,7 +17,6 @@
 from dataclasses import dataclass
 from typing import Any
 
-# pylint: disable=import-error
 from slack_bolt import Say
 
 from apps.slack.dataclass.thread_context import ThreadContext

@@ -120,7 +120,7 @@ def test_agent_discovery():
         print("ERROR: Invalid response format")
         return []
 
-    except Exception as e:  # pylint: disable=broad-exception-caught
+    except Exception as e:  # noqa: BLE001
         print(f"ERROR: Agent discovery failed - {str(e)}")
         traceback.print_exc()
         return []

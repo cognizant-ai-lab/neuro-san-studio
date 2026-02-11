@@ -126,7 +126,7 @@ class ExtractDocs(CodedTool):
                 # Extract text from the page (fall back to empty string if None)
                 page_text = page.extract_text() or ""
                 text_output.append(page_text)
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001
             # In case there's an issue with reading the PDF
             error = f"Error reading PDF {pdf_path}: {e}"
             logger.error(error)
@@ -145,7 +145,7 @@ class ExtractDocs(CodedTool):
         try:
             with open(txt_path, "r", encoding="utf-8") as f:
                 return f.read()
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001
             # In case there's an issue with reading the text file
             error = f"Error reading TXT {txt_path}: {e}"
             logger.error(error)

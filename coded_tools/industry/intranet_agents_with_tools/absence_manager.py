@@ -115,8 +115,8 @@ class AbsenceManager:
         response = requests.post(url, headers=self.headers, json=payload, timeout=TIMEOUT_SECONDS)
         return response.json()
 
-    # pylint: disable=too-many-arguments
-    # pylint: disable=too-many-positional-arguments
+    # noqa: PLR0913
+    # noqa: PLR0917
     def get_absence_details(self, start_date, end_date, abs_pin, partial_days, absence_reason):  # /hcm/leave/selection
         """
         Get absence details.
@@ -139,8 +139,8 @@ class AbsenceManager:
         response = requests.post(url, headers=self.headers, json=payload, timeout=TIMEOUT_SECONDS)
         return response.json()
 
-    # pylint: disable=too-many-locals
-    def post_absence_details(
+    # noqa: PLR0914
+    def post_absence_details(  # noqa: PLR0913, PLR0917
         self,
         begin_dt,
         end_dt,

@@ -135,12 +135,12 @@ def test_agent_discovery():
         print(f"Result: {result}")
         return []
 
-    except Exception as e:  # pylint: disable=broad-exception-caught
+    except Exception as e:  # noqa: BLE001
         print(f"ERROR: Agent discovery failed: {str(e)}")
         return []
 
 
-def test_single_agent_interaction(agents):  # pylint: disable=too-many-locals
+def test_single_agent_interaction(agents):  # noqa: PLR0914
     """Test single interaction with a ServiceNow agent"""
     if not agents:
         print("\n[WARNING] Skipping agent interaction test - no agents available")
@@ -201,7 +201,7 @@ def test_single_agent_interaction(agents):  # pylint: disable=too-many-locals
         print(f"Result: {send_result}")
         return False
 
-    except Exception as e:  # pylint: disable=broad-exception-caught
+    except Exception as e:  # noqa: BLE001
         print(f"ERROR: Agent interaction test failed: {str(e)}")
         return False
 

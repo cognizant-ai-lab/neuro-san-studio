@@ -67,7 +67,7 @@ def test_agents_with_debug():
             if "result" in result:
                 print("AGENTS FOUND:", len(result["result"]) if isinstance(result["result"], list) else "Not a list")
 
-    except Exception as e:  # pylint: disable=broad-exception-caught
+    except Exception as e:  # noqa: BLE001
         print(f"EXCEPTION: {e}")
         traceback.print_exc()
 

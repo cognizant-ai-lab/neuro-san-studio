@@ -23,15 +23,14 @@ from coded_tools.experimental.mdap_decomposer.voter import Voter
 from coded_tools.tools.agent_caller import AgentCaller
 
 
-# pylint: disable=too-few-public-methods
 class FirstToKVoter(Voter):
     """
     Generic Voter implementation that returns the first solution that receives
     a certain number of votes (K).
     """
 
-    # pylint: disable=too-many-arguments, too-many-positional-arguments
-    def __init__(
+    # noqa: PLR0913, PLR0917
+    def __init__(  # noqa: PLR0913, PLR0917
         self,
         source: str,
         discriminator_name: str,

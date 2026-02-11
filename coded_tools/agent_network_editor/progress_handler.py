@@ -29,7 +29,6 @@ from coded_tools.agent_network_editor.constants import AGENT_NETWORK_NAME
 from coded_tools.agent_network_editor.designer_network_inspector import DesignerNetworkInspector
 
 
-# pylint: disable=too-few-public-methods
 class ProgressHandler:
     """
     Common handler for progress progress during the building of agent networks

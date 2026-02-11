@@ -42,7 +42,7 @@ class NowAgentAPIGetAgents(CodedTool):
         No initialization parameters required. Configuration is handled through environment variables.
         """
 
-    def invoke(self, args: Dict[str, Any], sly_data: Dict[str, Any]) -> str:  # pylint: disable=too-many-locals
+    def invoke(self, args: Dict[str, Any], sly_data: Dict[str, Any]) -> str:  # noqa: PLR0914
         """
         Discovers and retrieves available ServiceNow AI agents from the configured instance.
 

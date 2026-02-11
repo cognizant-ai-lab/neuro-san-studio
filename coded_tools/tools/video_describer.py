@@ -18,7 +18,6 @@ import base64
 import logging
 from typing import Any
 
-# pylint: disable=import-error
 import cv2
 from langchain_core.messages import HumanMessage
 from langchain_openai import ChatOpenAI

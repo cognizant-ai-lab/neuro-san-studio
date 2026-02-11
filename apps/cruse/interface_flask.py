@@ -18,7 +18,6 @@ import atexit
 import os
 import queue
 
-# pylint: disable=import-error
 import schedule
 from flask import Flask
 from flask import jsonify
@@ -37,7 +36,7 @@ os.environ["AGENT_TOOL_PATH"] = "coded_tools"
 app = Flask(__name__)
 app.config["SECRET_KEY"] = "secret!"
 socketio = SocketIO(app, ping_timeout=360, ping_interval=25)
-thread_started = False  # pylint: disable=invalid-name
+thread_started = False
 
 user_input_queue = queue.Queue()
 gui_context_queue = queue.Queue()
@@ -48,7 +47,7 @@ cruse_session, cruse_agent_state = set_up_cruse_assistant(get_available_systems(
 def cruse_thinking_process():
     """Main permanent agent-calling loop."""
     with app.app_context():
-        global cruse_agent_state  # pylint: disable=global-statement
+        global cruse_agent_state  # noqa: PLW0603
         user_input = ""
 
         while True:
@@ -99,7 +98,7 @@ def cruse_thinking_process():
 @socketio.on("connect", namespace="/chat")
 def on_connect():
     """Start background task on connect."""
-    global thread_started  # pylint: disable=global-statement
+    global thread_started  # noqa: PLW0603
     if not thread_started:
         thread_started = True
         # let socketio manage the green-thread
@@ -216,7 +215,7 @@ def handle_new_chat(data, *args):
 
     """
     del args
-    # pylint: disable=global-statement
+    # noqa: PLW0603
     global cruse_session, cruse_agent_state
 
     if isinstance(data, dict):

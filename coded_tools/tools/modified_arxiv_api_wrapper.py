@@ -19,7 +19,6 @@ from logging import getLogger
 from typing import Any
 from typing import Iterator
 
-# pylint: disable=import-error
 from arxiv import SortCriterion
 from arxiv import SortOrder
 from langchain_community.utilities.arxiv import ArxivAPIWrapper
@@ -92,8 +91,8 @@ class ModifiedArxivAPIWrapper(ArxivAPIWrapper):
         :param query: a plaintext search query
         """
         try:
-            # pylint: disable=import-outside-toplevel
-            import fitz
+            # noqa: PLC0415
+            import fitz  # noqa: PLC0415
         except ImportError as import_error:
             raise ImportError(
                 "PyMuPDF package not found, please install it with `pip install pymupdf`"

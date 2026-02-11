@@ -111,9 +111,9 @@ class WebPageReader(CodedTool):
                     texts = soup.stripped_strings
                     full_text = " ".join(texts)
                     results[url] = full_text
-                except Exception as e:
+                except Exception as e:  # noqa: BLE001
                     results[url] = f"Error: Unable to process the URL. {str(e)}"
             logger.debug(">>>>>>>>>>>>>>>>>>> Done! >>>>>>>>>>>>>>>>>>")
             return results
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001
             return f"Error: Unable to process the request. {str(e)}"

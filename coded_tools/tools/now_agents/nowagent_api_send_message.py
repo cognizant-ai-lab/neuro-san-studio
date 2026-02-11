@@ -43,7 +43,7 @@ class NowAgentSendMessage(CodedTool):
         No initialization parameters required. Configuration is handled through environment variables.
         """
 
-    def invoke(self, args: Dict[str, Any], sly_data: Dict[str, Any]) -> str:  # pylint: disable=too-many-locals
+    def invoke(self, args: Dict[str, Any], sly_data: Dict[str, Any]) -> str:  # noqa: PLR0914
         """
         Sends a message/inquiry to a specific ServiceNow AI agent.
 

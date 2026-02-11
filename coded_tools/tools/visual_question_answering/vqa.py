@@ -63,8 +63,8 @@ class VisualQuestionAnswering(CodedTool):
     A tool that allows you to query an image or a video.
     """
 
-    # pylint: disable=too-many-locals,too-many-return-statements
-    def invoke(self, args: Dict[str, Any], sly_data: Dict[str, Any]) -> Union[Dict[str, Any], str]:
+    # noqa: PLR0914, PLR0911
+    def invoke(self, args: Dict[str, Any], sly_data: Dict[str, Any]) -> Union[Dict[str, Any], str]:  # noqa: PLR0911
         """
         Provide an answer for a query on an image/video
         :param args: An dictionary with the following fields

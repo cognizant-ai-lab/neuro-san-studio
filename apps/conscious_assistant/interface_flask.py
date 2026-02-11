@@ -21,7 +21,6 @@ import re
 import time
 from datetime import datetime
 
-# pylint: disable=import-error
 import schedule
 from flask import Flask
 from flask import render_template
@@ -36,7 +35,7 @@ os.environ["AGENT_TOOL_PATH"] = "coded_tools"
 app = Flask(__name__)
 app.config["SECRET_KEY"] = "secret!"
 socketio = SocketIO(app)
-thread_started = False  # pylint: disable=invalid-name
+thread_started = False
 
 user_input_queue = queue.Queue()
 
@@ -46,7 +45,7 @@ conscious_session, conscious_thread = set_up_conscious_assistant()
 def conscious_thinking_process():
     """Main permanent agent-calling loop."""
     with app.app_context():  # Manually push the application context
-        global conscious_thread  # pylint: disable=global-statement
+        global conscious_thread  # noqa: PLW0603
         thoughts = "thought: hmm, let's see now..."
         while True:
             socketio.sleep(1)
@@ -110,7 +109,7 @@ def conscious_thinking_process():
 @socketio.on("connect", namespace="/chat")
 def on_connect():
     """Start background task on connect."""
-    global thread_started  # pylint: disable=global-statement
+    global thread_started  # noqa: PLW0603
     if not thread_started:
         thread_started = True
         # let socketio manage the green-thread

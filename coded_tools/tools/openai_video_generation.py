@@ -92,8 +92,8 @@ class OpenAIVideoGeneration(CodedTool):
                 video_id = await self._create_video(session, query, openai_model, size, seconds)
 
             if not video_id:
-                # pylint: disable=broad-exception-raised
-                raise Exception("Failed to create video rendering job.")
+                # noqa: TRY002
+                raise Exception("Failed to create video rendering job.")  # noqa: TRY002
             self.logger.info("Video generation started with ID: %s", video_id)
 
             # Poll for completion
@@ -109,11 +109,11 @@ class OpenAIVideoGeneration(CodedTool):
             if video_path:
                 return f"Video generation completed with id {video_id}. Saved to: {video_path}"
 
-            # pylint: disable=broad-exception-raised
-            raise Exception("Failed to download generated video.")
+            # noqa: TRY002
+            raise Exception("Failed to download generated video.")  # noqa: TRY002
 
-    # pylint: disable=too-many-arguments
-    # pylint: disable=too-many-positional-arguments
+    # noqa: PLR0913
+    # noqa: PLR0917
     async def _create_video(
         self, session: aiohttp.ClientSession, query: str, model: str, size: str, seconds: str
     ) -> str | None:
@@ -130,8 +130,8 @@ class OpenAIVideoGeneration(CodedTool):
                 data = await response.json()
                 self.logger.info("Video creation response: %s", data)
                 return data.get("id")
-        # pylint: disable=broad-exception-caught
-        except Exception as exception:
+        # noqa: BLE001
+        except Exception as exception:  # noqa: BLE001
             self.logger.error("Error creating video: %s", exception)
             self.logger.error("Exception details: %s", data)
             return None
@@ -157,8 +157,8 @@ class OpenAIVideoGeneration(CodedTool):
                 data = await response.json()
                 self.logger.info("Video remix response: %s", data)
                 return data.get("id")
-        # pylint: disable=broad-exception-caught
-        except Exception as exception:
+        # noqa: BLE001
+        except Exception as exception:  # noqa: BLE001
             self.logger.error("Error remixing video: %s", exception)
             self.logger.error("Exception details: %s", data)
             return None
@@ -243,7 +243,7 @@ class OpenAIVideoGeneration(CodedTool):
                 webbrowser.open(file_uri)
 
             return file_uri
-        # pylint: disable=broad-exception-caught
-        except Exception as exception:
+        # noqa: BLE001
+        except Exception as exception:  # noqa: BLE001
             self.logger.error("Error downloading/displaying video: %s", exception)
             return None
