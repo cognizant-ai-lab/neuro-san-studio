@@ -1,0 +1,186 @@
+
+# This file needs to go through a manual process in order to be converted
+# into the JSON format the OpenFGA client likes:
+#
+#   fga model transform --file neuroai_model.fga | python -m json.tool > neuroai_model.json
+#
+# For more info as to how to install the fga tool, see the README.md.
+
+# Update the commented model version below whenever there are any changes to this file.
+# model_version 1.0.0
+model
+    schema 1.1
+
+# What you would expect for a normal user
+type User
+
+# Special actor type for versioning the model
+type Identifier
+
+# A few syntax things to recall when reading this DSL file from:
+#   https://openfga.dev/docs/configuration-language
+#
+# type <foo>                        ... is a simple type declaration
+#   relations                       *Everything* is declared in terms of relations
+#     define <relA>: [<bar>]        What goes in the [] defines *how* the relation <relA>
+#                                       is allowed to be referenced when storing or checking relationships
+#                                       in this case, an object of type bar is the only allowed spec.
+#     define <relB>: [<bar#relation>]   a relation on type bar is the only allowed spec
+#     define <relC>: <relB>             a relation <relB> on type <foo> also implies the relation <relC>
+
+# An object that allows for storing a auth model information in the store itself
+# This allows us to know whether or not we need to update the information in the
+# store at all via an upgrade/migration process.
+type AuthModel
+    relations
+        # Relations
+        define version: [Identifier]
+        define checksum: [Identifier]
+
+# Global object for global things
+type Global
+    relations
+        # Roles
+        define superuser: [User, Global#superuser]
+        define seen_model: [AuthModel]
+
+type Organization
+    relations
+        # Roles
+        define admin: [User] or superuser from global
+        define owner: [User] or admin
+        define member: [User] or owner
+
+        # Relations
+        define global: [Global]
+
+        # Permissions
+        define create: admin
+        define read: member
+        define update: owner
+        define delete: admin
+
+type Team
+    relations
+        # Roles
+        define admin: [User] or admin from parent
+        define owner: [User] or admin
+        define member: [User, Organization#member, Team#member] or owner
+
+        # Relations
+        define parent: [Organization]
+
+        # Permissions
+        define create: owner
+        define read: member
+        define update: owner
+        define delete: owner
+
+type Project
+    relations
+        # Roles
+        define owner: [User, Organization#member] or admin from container
+        define collaborator: [User, Organization#member, Team#member] or owner
+        define tourist: [User, User:*, Organization#member, Team#member] or collaborator
+
+        # Relations
+        define container: [Organization]
+        define coown: [Team]
+        define collaborate: [Team]
+        define expose: [Team]
+
+        # Permissions
+        define create: [User:*] or owner
+        define read: tourist
+        define update: collaborator
+        define delete: owner
+
+type DataReference
+    relations
+        # Roles
+        define owner: [User, Organization#member] or admin from container
+        define collaborator: [User, Organization#member, Team#member] or owner
+        define tourist: [User, User:*, Organization#member, Team#member] or collaborator
+
+        # Relations
+        define container: [Organization]
+        define coown: [Team]
+        define collaborate: [Team]
+        define expose: [Team]
+
+        # Permissions
+        define create: [User:*] or owner
+        define read: tourist
+        define update: collaborator
+        define delete: owner
+
+type DataSource
+    relations
+        # Roles
+        define owner: [User, Organization#member] or owner from container
+        define collaborator: [User, Team#member] or owner or collaborator from container
+        define tourist: [User, User:*, Team#member] or collaborator or tourist from container
+
+        # Relations
+        define container: [Project]
+        define basis: [DataReference]
+
+        # Permissions
+        define create: [User:*] or owner
+        define read: tourist
+        define update: collaborator
+        define delete: owner
+
+type DataTag
+    relations
+        # Roles
+        define owner: [User] or owner from basis
+        define collaborator: [User] or owner or collaborator from basis
+        define tourist: [User, User:*, Team#member] or collaborator or tourist from basis
+
+        # Relations
+        define basis: [DataSource]
+
+        # Permissions
+        define create: [User:*] or owner
+        define read: tourist
+        define update: collaborator
+        define delete: owner
+
+type Experiment
+    relations
+        # Roles
+        define owner: [User, Organization#member, Team#member] or owner from parent or member from coown
+        define collaborator: [User, Organization#member, Team#member] or owner or collaborator from parent or member from collaborate
+        define tourist: [User, User:*, Organization#member, Team#member] or collaborator or tourist from parent or member from expose
+
+        # Relations
+        define parent: [Project]
+        define coown: [Team]
+        define collaborate: [Team]
+        define expose: [Team]
+
+        # Permissions
+        define create: [User:*] or collaborator
+        define read: tourist
+        define update: collaborator
+        define delete: owner
+
+type Run
+    relations
+        # Roles
+        define owner: [User, Organization#member] or owner from parent or member from coown
+        define collaborator: [User, Organization#member, Team#member] or owner or collaborator from parent or member from collaborate
+        define tourist: [User, User:*, Organization#member, Team#member] or collaborator or tourist from parent or member from expose
+
+        # Relations
+        define parent: [Experiment]
+        define coown: [Team]
+        define collaborate: [Team]
+        define expose: [Team]
+
+        # Permissions
+        define create: [User:*] or collaborator
+        define read: tourist
+        define update: collaborator
+        define delete: owner
