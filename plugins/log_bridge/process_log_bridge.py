@@ -218,8 +218,8 @@ class ProcessLogBridge:
             - Per-stream state (buffer, JSON reassembly, tee handle) is created.
         """
         Path(log_file).parent.mkdir(parents=True, exist_ok=True)
-        tee_out = open(log_file, "a", encoding="utf-8")     # pylint: disable=consider-using-with
-        tee_err = open(log_file, "a", encoding="utf-8")     # pylint: disable=consider-using-with
+        tee_out = open(log_file, "a", encoding="utf-8")  # pylint: disable=consider-using-with
+        tee_err = open(log_file, "a", encoding="utf-8")  # pylint: disable=consider-using-with
         self._streams[(process_name, "STDOUT")] = self._make_stream_state(process_name, tee_out)
         self._streams[(process_name, "STDERR")] = self._make_stream_state(process_name, tee_err)
 
