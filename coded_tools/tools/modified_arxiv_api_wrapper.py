@@ -34,7 +34,8 @@ class ModifiedArxivAPIWrapper(ArxivAPIWrapper):
     This is needed for search queries like au: "Firstname Lastname".
     User can still ask questions normally since the template is handled by LLM
 
-    Add `sort_by` and `sort_order` attribute
+    - Add `sort_by` and `sort_order` attribute
+    - Move `Entry ID` to main metadata when `get_full_documents` is True
 
     From
     https://github.com/langchain-ai/langchain-community/blob/main/libs/community/langchain_community/utilities/arxiv.py
@@ -120,7 +121,6 @@ class ModifiedArxivAPIWrapper(ArxivAPIWrapper):
                 raise e
             if self.load_all_available_meta:
                 extra_metadata = {
-                    "entry_id": result.entry_id,
                     "published_first_time": str(result.published.date()),
                     "comment": result.comment,
                     "journal_ref": result.journal_ref,
@@ -132,6 +132,7 @@ class ModifiedArxivAPIWrapper(ArxivAPIWrapper):
             else:
                 extra_metadata = {}
             metadata = {
+                "Entry ID": result.entry_id,
                 "Published": str(result.updated.date()),
                 "Title": result.title,
                 "Authors": ", ".join(a.name for a in result.authors),
