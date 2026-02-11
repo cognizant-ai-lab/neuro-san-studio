@@ -89,22 +89,18 @@ class Authorize:
         # Find the action/relations to authorize
         actions: str = environ.get("AGENT_AUTHORIZER_ALLOW_ACTION", "read")
         relations: List[str] = actions.split(" ")
+        resource_type: str = environ.get("AGENT_AUTHORIZER_RESOURCE_KEY", "AgentNetwork"),
+        actor_type: str = environ.get("AGENT_AUTHORIZER_ACTOR_KEY", "User"),
 
         # Loop through all the networks as resources to authorize for the user(s)
         for network_name in network_names:
 
-            resource: Dict[str, Any] = {
-                "type": environ.get("AGENT_AUTHORIZER_RESOURCE_KEY", "AgentNetwork"),
-                "id": network_name
-            }
+            resource: Dict[str, Any] = { "type": resource_type, "id": network_name }
 
             # Loop through all the users
             for user_name in user_names:
 
-                actor: Dict[str, Any] = {
-                    "type": environ.get("AGENT_AUTHORIZER_ACTOR_KEY", "User"),
-                    "id": user_name
-                }
+                actor: Dict[str, Any] = { "type": actor_type, "id": user_name }
 
                 # Loop through all the relations to grant/revoke
                 for relation in relations:
@@ -138,27 +134,41 @@ class Authorize:
         default_manifest: str = environ.get("AGENT_MANIFEST_FILE")
 
         # What agent are we talking to?
-        arg_parser.add_argument("--user", type=str, default=default_user,
-                                help=f"""
+        arg_parser.add_argument(
+            "--user",
+            type=str,
+            default=default_user,
+            help=f"""
 Name of the user to authorize.
 This can be a space separated list of multiple users to authorize at once.
 When not set, this reverts to the USER env var which is currently '{default_user}'.
 """)
-        arg_parser.add_argument("--network", type=str, default=None,
-                                help=f"""
+        arg_parser.add_argument(
+            "--network",
+            type=str,
+            default=None,
+            help=f"""
 Optional name of the agent network to authorize.
 This can be a space separated list of multiple networks to authorize at once.
 When not set, we authorize all the networks in the default manifest from the AGENT_MANIFEST_FILE
 env var which is currently '{default_manifest}'.
 """)
 
-        arg_parser.add_argument("--grant", default=True, dest="grant", action="store_true",
-                                help="""
+        arg_parser.add_argument(
+            "--grant",
+            default=True,
+            dest="grant",
+            action="store_true",
+            help="""
 Operation of this run is to grant authorization for given user(s) and network(s).
 This is the default operation.
 """)
-        arg_parser.add_argument("--revoke", default=False, dest="grant", action="store_false",
-                                help="""
+        arg_parser.add_argument(
+            "--revoke",
+            default=False,
+            dest="grant",
+            action="store_false",
+            help="""
 Operation of this run is to revoke authorization for given user(s) and network(s).
 """)
 
