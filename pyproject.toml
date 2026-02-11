@@ -26,7 +26,7 @@ known-first-party = ["apps"]
 max-args = 5
 
 [tool.ruff.format]
-skip-magic-trailing-comma = true
+skip-magic-trailing-comma = false
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

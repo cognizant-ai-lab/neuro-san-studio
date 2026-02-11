@@ -46,7 +46,6 @@ def test_azure_open_ai_api_key():
     # Set up the client with your API key
     response = None
     try:
-
         # Make a chat completion request
         response = client.chat.completions.create(
             model=deployment_name,  # or "gpt-3.5-turbo"

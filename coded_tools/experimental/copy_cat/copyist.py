@@ -108,7 +108,7 @@ Try doing this in your environment:
 
         # Creating Reservations can be done outside the with-statement
         lifetime_in_seconds: float = 5 * 60.0
-        agent_base_name: str = use_agent_name.split("/")[-1]
+        agent_base_name: str = use_agent_name.rsplit("/", maxsplit=1)[-1]
         prefix: str = f"copy_cat-{agent_base_name}"
 
         reservation: Reservation = None
