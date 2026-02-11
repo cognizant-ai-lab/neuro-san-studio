@@ -14,9 +14,6 @@ model
 # What you would expect for a normal user
 type User
 
-# Special actor type for versioning the model
-type Identifier
-
 # A few syntax things to recall when reading this DSL file from:
 #   https://openfga.dev/docs/configuration-language
 #
@@ -28,31 +25,12 @@ type Identifier
 #     define <relB>: [<bar#relation>]   a relation on type bar is the only allowed spec
 #     define <relC>: <relB>             a relation <relB> on type <foo> also implies the relation <relC>
 
-# An object that allows for storing a auth model information in the store itself
-# This allows us to know whether or not we need to update the information in the
-# store at all via an upgrade/migration process.
-type AuthModel
-    relations
-        # Relations
-        define version: [Identifier]
-        define checksum: [Identifier]
-
-# Global object for global things
-type Global
-    relations
-        # Roles
-        define superuser: [User, Global#superuser]
-        define seen_model: [AuthModel]
-
 type Organization
     relations
         # Roles
-        define admin: [User] or superuser from global
+        define admin: [User]
         define owner: [User] or admin
         define member: [User] or owner
-
-        # Relations
-        define global: [Global]
 
         # Permissions
         define create: admin
@@ -60,127 +38,18 @@ type Organization
         define update: owner
         define delete: admin
 
-type Team
-    relations
-        # Roles
-        define admin: [User] or admin from parent
-        define owner: [User] or admin
-        define member: [User, Organization#member, Team#member] or owner
-
-        # Relations
-        define parent: [Organization]
-
-        # Permissions
-        define create: owner
-        define read: member
-        define update: owner
-        define delete: owner
-
-type Project
+type AgentNetwork
     relations
         # Roles
         define owner: [User, Organization#member] or admin from container
-        define collaborator: [User, Organization#member, Team#member] or owner
-        define tourist: [User, User:*, Organization#member, Team#member] or collaborator
+        define collaborator: [User, Organization#member] or owner
+        define tourist: [User, User:*, Organization#member] or collaborator
 
         # Relations
         define container: [Organization]
-        define coown: [Team]
-        define collaborate: [Team]
-        define expose: [Team]
 
         # Permissions
         define create: [User:*] or owner
-        define read: tourist
-        define update: collaborator
-        define delete: owner
-
-type DataReference
-    relations
-        # Roles
-        define owner: [User, Organization#member] or admin from container
-        define collaborator: [User, Organization#member, Team#member] or owner
-        define tourist: [User, User:*, Organization#member, Team#member] or collaborator
-
-        # Relations
-        define container: [Organization]
-        define coown: [Team]
-        define collaborate: [Team]
-        define expose: [Team]
-
-        # Permissions
-        define create: [User:*] or owner
-        define read: tourist
-        define update: collaborator
-        define delete: owner
-
-type DataSource
-    relations
-        # Roles
-        define owner: [User, Organization#member] or owner from container
-        define collaborator: [User, Team#member] or owner or collaborator from container
-        define tourist: [User, User:*, Team#member] or collaborator or tourist from container
-
-        # Relations
-        define container: [Project]
-        define basis: [DataReference]
-
-        # Permissions
-        define create: [User:*] or owner
-        define read: tourist
-        define update: collaborator
-        define delete: owner
-
-type DataTag
-    relations
-        # Roles
-        define owner: [User] or owner from basis
-        define collaborator: [User] or owner or collaborator from basis
-        define tourist: [User, User:*, Team#member] or collaborator or tourist from basis
-
-        # Relations
-        define basis: [DataSource]
-
-        # Permissions
-        define create: [User:*] or owner
-        define read: tourist
-        define update: collaborator
-        define delete: owner
-
-type Experiment
-    relations
-        # Roles
-        define owner: [User, Organization#member, Team#member] or owner from parent or member from coown
-        define collaborator: [User, Organization#member, Team#member] or owner or collaborator from parent or member from collaborate
-        define tourist: [User, User:*, Organization#member, Team#member] or collaborator or tourist from parent or member from expose
-
-        # Relations
-        define parent: [Project]
-        define coown: [Team]
-        define collaborate: [Team]
-        define expose: [Team]
-
-        # Permissions
-        define create: [User:*] or collaborator
-        define read: tourist
-        define update: collaborator
-        define delete: owner
-
-type Run
-    relations
-        # Roles
-        define owner: [User, Organization#member] or owner from parent or member from coown
-        define collaborator: [User, Organization#member, Team#member] or owner or collaborator from parent or member from collaborate
-        define tourist: [User, User:*, Organization#member, Team#member] or collaborator or tourist from parent or member from expose
-
-        # Relations
-        define parent: [Experiment]
-        define coown: [Team]
-        define collaborate: [Team]
-        define expose: [Team]
-
-        # Permissions
-        define create: [User:*] or collaborator
         define read: tourist
         define update: collaborator
         define delete: owner
