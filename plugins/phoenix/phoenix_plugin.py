@@ -128,7 +128,6 @@ class PhoenixPlugin:
         # pylint: disable=invalid-name
         Resource: Type[Any] = ResolverUtil.create_type(
             "opentelemetry.sdk.resources.Resource",
-            raise_if_not_found=False,
             install_if_missing="opentelemetry-sdk",
         )
         resource = Resource.create(
@@ -159,7 +158,6 @@ class PhoenixPlugin:
             # pylint: disable=invalid-name
             BatchSpanProcessor: Type[Any] = ResolverUtil.create_type(
                 "opentelemetry.sdk.trace.export.BatchSpanProcessor",
-                raise_if_not_found=False,
                 install_if_missing="opentelemetry-sdk",
             )
             processor = BatchSpanProcessor(exporter)
@@ -250,7 +248,6 @@ class PhoenixPlugin:
             # Lazily load the method
             register: Type[Any] = ResolverUtil.create_type(
                 "phoenix.otel.register",
-                raise_if_not_found=False,
                 install_if_missing="arize-phoenix-otel",
             )
 
