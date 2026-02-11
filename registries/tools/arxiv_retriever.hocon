@@ -42,15 +42,33 @@
             "name": "Arxiv_Assistant",
 
             "function": {
-              "description": "Answer caller's query with answers from tools.",
+              "description": "Coordinate ArXiv retrieval and answering by invoking the appropriate tools.",
             },
 
-            "instructions": """Always use your tool to respond to the inquiry.
-            If the tool failed or unavailable, just notify the user.
-            Do not attempt to answer the question by yourself.""",
+            "instructions": """You must always use a tool to respond to the user’s query.
 
-            "tools": ["arxiv_retriever"]
+Workflow:
+1. Use the retrieval tool to find relevant ArXiv papers.
+2. If a specific paper needs to be analyzed in detail, delegate to the appropriate answering tool.
+
+Rules:
+- Do NOT answer from your own knowledge.
+- If a required tool is unavailable or fails, clearly inform the user.
+- Never fabricate or infer content without tool output.
+""",
+
+            # This is required to persist the downloaded contents for multiturn conversations.
+            "allow": {
+                "to_upstream": {
+                    "sly_data": [
+                        "arxiv_contents",
+                    ]
+                },
+            }
+
+            "tools": ["arxiv_retriever", "arxiv_detailed_answer"]
         },
+
         # A tool that retrieves relevant data from Arxiv to answer user queries.
         {
             "name": "arxiv_retriever",
@@ -107,6 +125,61 @@
                 # False = fail fast
                 # Default to True.
                 "continue_on_failure": true,
+            }
+        },
+        
+        # An agent that gets answer from a specific paper
+        {
+            "name": "arxiv_detailed_answer",
+            "function": {
+              "description": "Answer a specific question using the full content of a single ArXiv paper identified by entry ID.",
+              "parameters": {
+                "type": "object",
+                "properties": {
+                    "entry_id": {
+                        "type": "string",
+                        "description": "Entry ID of the paper to provide the answer on"
+                    },
+                    "question": {
+                        "type": "string",
+                        "description": "Question on the paper of the entry_id"
+                    }
+                },
+                "required": ["entry_id", "question"]
+              }
+            },
+
+            "instructions": """You must always use your tool to answer the question.
+
+Behavior:
+- Use the provided entry ID to retrieve the paper content.
+- Base your answer strictly on the retrieved paper.
+- Provide a detailed, well-structured response grounded in the paper’s content.
+
+Rules:
+- Do NOT answer from prior knowledge or assumptions.
+- If the tool fails or the paper cannot be retrieved, notify the user.
+- Do NOT speculate or fill in missing information.
+""",
+
+            "tools": ["get_arxiv_paper"]
+        },
+
+        {
+            "name": "get_arxiv_paper",
+            "class": "tools.get_arxiv_paper.GetArxivPaper",
+            "function": {
+                "description": "Retrieve the full content of an ArXiv paper given its entry ID.",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "entry_id": {
+                            "type": "string",
+                            "description": "Entry ID of the paper to return the content"
+                        }
+                    },
+                    "required": ["entry_id"]
+                }
             }
         }
     ]

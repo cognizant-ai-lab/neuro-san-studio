@@ -33,15 +33,20 @@ HOCON_HEADER_START = (
     "# The path to this substitution file is **relative to the top-level directory**,\n"
     "# so running the script from elsewhere may result in file not found errors.\n"
     '    include "registries/aaosa.hocon"\n'
+    "\n"
     "# Optional metadata describing this agent network\n"
     '    "metadata": {\n'
     '        "sample_queries": [\n'
     "            %s\n"
     "        ]\n"
     "    },\n"
-    '    "llm_config": {\n'
-    '        "model_name": "gpt-4o",\n'
-    "    },\n"
+    "\n"
+    "# Load the shared LLM configuration from a single source of truth.\n"
+    "# This allows users to change the model in one file rather than\n"
+    "# modifying the configuration for each agent network.\n"
+    "# Note that the file path here is relative to the root level of the repo.\n"
+    '    include "registries/llm_config.hocon",\n'
+    "\n"
     '   "instructions_prefix": """\n'
     "You are part of a team of assistants in "
 )
