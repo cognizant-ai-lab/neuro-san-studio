@@ -142,6 +142,11 @@ python plugins/authorization/openfga/authorize.py
 
     You will see the results of reading in the manifest and authorizing the current user for each network.
 
+    If you run this script again against the same authorization database, you might see the OpenFGA
+    server give some errors about "tuple to be written already existed or the tuple to be deleted did not exist".
+    This can be OK because the server will report when obect relations already exist.
+    The authorize.py app will report whether it created relations or they were already there.
+
 6. Try running a listing of the agents against your running Neuro SAN server with your existing user.
 
 ```bash
@@ -176,7 +181,7 @@ sudo plugins/authorization/openfga/install_fga_cli.sh
 
 Note that this script:
     * is linux-specific (Windows people: mods welcome for the larger audience!)
-    * will need to be run as root 
+    * will need to be run as root
     * will install to /usr/bin/fga.
 
 If you are not running on linux you will have to figure out your own way of getting the fga command line tool installed.
