@@ -84,7 +84,7 @@ neuro_san_openfga
 enable the use of the OpenFGA server for authorization within your Neuro SAN server:
 
 ```bash
-# Where the OpenFGA grpc server is running
+# Where the OpenFGA HTTP server is running
 export FGA_API_URL=http://localhost:8082
 
 # The file containing the authorization policy
@@ -247,3 +247,6 @@ are defined correctly.  We have included one test with this example. To run it:
     - [Install Docker Desktop on Linux](https://docs.docker.com/desktop/setup/install/linux/)
     - [Install Docker Desktop on Mac](https://docs.docker.com/desktop/setup/install/mac-install/)
     - [Install Docker Desktop on Windows](https://docs.docker.com/desktop/setup/install/windows-install/)
+
+- [The Neuro SAN Dockerfile](https://github.com/cognizant-ai-lab/neuro-san/blob/main/neuro_san/deploy/Dockerfile)
+  has the documentation for each of the environment variables mentioned above.
