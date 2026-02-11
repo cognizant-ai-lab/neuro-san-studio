@@ -3,5 +3,5 @@ venv/
 .venv/
 
 # Pre-existing broken relative links in cruse docs
-**/docs/coded_tools/**
-**/docs/registries/**
+.*/docs/coded_tools/.*
+.*/docs/registries/.*
