@@ -2,7 +2,7 @@
 # This file needs to go through a manual process in order to be converted
 # into the JSON format the OpenFGA client likes:
 #
-#   fga model transform --file neuroai_model.fga | python -m json.tool > neuroai_model.json
+#   fga model transform --file sample_authorization_model.fga | python -m json.tool > sample_authorization_model.json
 #
 # For more info as to how to install the fga tool, see the README.md.
 
