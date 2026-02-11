@@ -59,6 +59,19 @@ in a Docker container.
 
    https://openfga.dev/docs/getting-started/setup-openfga/docker#using-sqlite
 
+   For the last step, to start the server, we do not want the OpenFGA server taking up
+   the same HTTP port as the Neuro SAN server.  Do this instead:
+
+```bash
+docker run --name openfga --network=openfga \
+    -p 3000:3000 -p 8082:8080 -p 8081:8081 \
+    -v openfga:/home/nonroot \
+    -u nonroot \
+    openfga/openfga run \
+    --datastore-engine sqlite \
+    --datastore-uri 'file:/home/nonroot/openfga.db'
+```
+
    Keep this container running in a separate shell or background process, we will be using it.
 
    Note: There are extra instructions beyond this point for setting up the OpenFGA server
@@ -70,7 +83,43 @@ in a Docker container.
 pip install -r plugins/authorization/openfga/requirements.txt
 ```
 
-4. Install the fga command line tool.
+4. Set some environment variables that enable the use of the OpenFGA server for Authorization.
+
+```bash
+# Where the OpenFGA grpc server is running
+export FGA_API_URL=http://localhost:8081
+
+# The file containing the authorization policy
+export FGA_POLICY_FILE=plugins/authorization/openfga/sample_authorization_model.json
+
+# The name of the authorization store to use
+export AGENT_FGA_STORE_NAME=default
+
+# What class neuro-san server should use for authorization
+export AGENT_AUTHORIZER=neuro_san.service.authorization.openfga.open_fga_authorizer.OpenFgaAuthorizer
+
+# The request metadata field to use as the user id for authorization
+export AGENT_AUTHORIZER_ACTOR_ID_METADATA_KEY=user_id
+
+# Below: Different keys correspond to aspects of the authorization policy that is defined in the .fga file
+
+# The type defined in the authorization policy (.fga file) for a user
+export AGENT_AUTHORIZER_ACTOR_KEY=User
+
+# The type defined in the authorization policy (.fga file) for an agent network
+export AGENT_AUTHORIZER_RESOURCE_KEY=AgentNetwork
+
+# The type defined in the authorization policy (.fga file) for read permissions
+export AGENT_AUTHORIZER_ALLOW_ACTION=read
+```
+
+5. Run your neuro-san server.
+
+
+
+## Extra Credit: Modifying the OpenFGA Policy Model
+
+1. Install the fga command line tool.
 
    Note that this script:
     * is linux-specific (Windows people: mods welcome for the larger audience!)
@@ -81,7 +130,7 @@ pip install -r plugins/authorization/openfga/requirements.txt
 sudo plugins/authorization/openfga/install_fga_cli.sh
 ```
 
-5. Take the sample authorization policy model to validate and transform it so it can be loaded into the OpenFGA server. 
+2. Use the fga CLI tool to validate the authorization policy model file
 
 ```bash
     # Validate the fga file
@@ -96,6 +145,9 @@ sudo plugins/authorization/openfga/install_fga_cli.sh
 }
 ```
 
+3. Use the fga CLI tool to transform the authorization policy model file into a JSON format
+   ingestible by the OpenFGA API.
+
 ```bash
     # Transform the .fga DSL to a JSON description which is importable by the OpenFGA API
     fga model transform --file plugins/authorization/openfga/sample_authorization_model.fga | python -m json.tool > plugins/authorization/openfga/sample_authorization_model.json
@@ -103,3 +155,5 @@ sudo plugins/authorization/openfga/install_fga_cli.sh
 
    There will not be any real output from this step, but the file sample_authorization_model.json
    will be (re-)created in the plugins/authorization/openfga directory.
+
+4. Re-run your neuro-san server with the same env vars as described in previous sections
