@@ -23,14 +23,17 @@ import threading
 from datetime import datetime
 from logging.handlers import TimedRotatingFileHandler
 from pathlib import Path
-from typing import Any, Dict, Optional, TextIO, Tuple
+from typing import Any
+from typing import Dict
+from typing import Optional
+from typing import TextIO
+from typing import Tuple
 
 from rich.console import Console
 from rich.logging import RichHandler
 from rich.syntax import Syntax
 from rich.text import Text
 from rich.theme import Theme
-
 
 log_cfg = {
     # Refer rich guidelines for more options:
