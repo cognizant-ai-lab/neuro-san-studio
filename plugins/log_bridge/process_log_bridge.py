@@ -59,6 +59,22 @@ log_cfg = {
 }
 
 
+class TZFormatter(logging.Formatter):
+    """
+    File-handler formatter that emits timezone-aware timestamps.
+    :extend: logging.Formatter
+    """
+
+    def formatTime(self, record, datefmt=None):
+        """
+        :param: record: A log record.
+        :param datefmt (str | None): Ignored. Exists for Formatter API compatibility.
+        :return: str: Timestamp formatted as `"YYYY-MM-DD HH:MM:SS <TZNAME>"`.
+        """
+        dt = datetime.fromtimestamp(record.created).astimezone()
+        return f"{dt.strftime('%Y-%m-%d %H:%M:%S')} {dt.tzname()}"
+
+
 class ProcessLogBridge:
     """
     ProcessLogBridge: single-class logging bridge
@@ -167,7 +183,7 @@ class ProcessLogBridge:
             )
             self.file_handler.setLevel(logging.DEBUG)
             # keep tz-aware timestamps for file logs
-            self.file_handler.setFormatter(self._TZFormatter(fmt=fmt))
+            self.file_handler.setFormatter(TZFormatter(fmt=fmt))
 
         # root logger config
         root = logging.getLogger()
@@ -229,21 +245,6 @@ class ProcessLogBridge:
         """
         now = self._now_local()
         return Text(f"[{now.strftime('%Y-%m-%d %H:%M:%S')} {now.tzname()}]", style=self._time_style_key)
-
-    class _TZFormatter(logging.Formatter):
-        """
-        File-handler formatter that emits timezone-aware timestamps.
-        :extend: logging.Formatter
-        """
-
-        def formatTime(self, record, datefmt=None):
-            """
-            :param: record: A log record.
-            :param datefmt (str | None): Ignored. Exists for Formatter API compatibility.
-            :return: str: Timestamp formatted as `"YYYY-MM-DD HH:MM:SS <TZNAME>"`.
-            """
-            dt = datetime.fromtimestamp(record.created).astimezone()
-            return f"{dt.strftime('%Y-%m-%d %H:%M:%S')} {dt.tzname()}"
 
     # ---------- helpers: per-stream state ----------
     def _make_stream_state(self, process_name: str, tee: TextIO) -> Dict[str, Any]:
