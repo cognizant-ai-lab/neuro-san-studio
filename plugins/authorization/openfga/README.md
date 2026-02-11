@@ -226,6 +226,11 @@ are defined correctly.  We have included one test with this example. To run it:
 
 ### Common Issues
 
+- run_openfga_server.sh: line 42: docker: command not found
+
+    This means you need to install Docker on your system.
+    See the Docker installation links in the Resources section below.
+
 ---
 
 ## Resources
@@ -236,3 +241,9 @@ are defined correctly.  We have included one test with this example. To run it:
 - [Oso's Authorization Academy](https://www.osohq.com/academy)
   A very good resource describing the basics concepts of Authorization and several
   different authorization models.
+
+- Docker Installation on various platforms:
+
+    - [Install Docker Desktop on Linux](https://docs.docker.com/desktop/setup/install/linux/)
+    - [Install Docker Desktop on Mac](https://docs.docker.com/desktop/setup/install/mac-install/)
+    - [Install Docker Desktop on Windows](https://docs.docker.com/desktop/setup/install/windows-install/)
