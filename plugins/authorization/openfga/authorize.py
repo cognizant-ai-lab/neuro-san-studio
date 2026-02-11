@@ -14,13 +14,12 @@
 #
 # END COPYRIGHT
 
-from typing import Any
-from typing import Dict
-from typing import List
-
 import asyncio
 from argparse import ArgumentParser
 from os import environ
+from typing import Any
+from typing import Dict
+from typing import List
 
 from neuro_san.internals.graph.persistence.registry_manifest_restorer import RegistryManifestRestorer
 from neuro_san.service.authorization.factory.authorizer_factory import AuthorizerFactory
