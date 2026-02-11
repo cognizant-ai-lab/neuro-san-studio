@@ -22,7 +22,7 @@ from typing import Union
 
 from neuro_san.interfaces.coded_tool import CodedTool
 from pypdf import PdfReader
-from pypdf.errors import PdfReadError
+from pypdf.errors import PyPdfError
 
 logger = logging.getLogger(__name__)
 
@@ -133,7 +133,7 @@ class ExtractDocs(CodedTool):
                 # Extract text from the page (fall back to empty string if None)
                 page_text = page.extract_text() or ""
                 text_output.append(page_text)
-        except (PdfReadError, OSError, ValueError) as e:
+        except (PyPdfError, OSError) as e:
             error = f"Error reading PDF {pdf_path}: {e}"
             logger.error(error)
             return f"ERROR: {error}"
