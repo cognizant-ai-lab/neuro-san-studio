@@ -70,10 +70,15 @@ class ArxivRag(CodedTool):
             logger.error("Missing required input: 'query' (retrieval question).")
             raise ValueError("❌ Missing required input: 'query'.")
 
+        # Controls the shape of the data returned to the agent
+        # - False (default): return metadata + summarized content
+        # - True: return metadata only, and store full document content in sly_data
+        get_full_document: bool = args.get("get_full_documents", False)
+
         # Initialize ArxivRetriever with the provided arguments
         retriever = ModifiedArxivRetriever(
             top_k_results=args.get("top_k_results", 3),
-            get_full_documents=args.get("get_full_documents", False),
+            get_full_documents=get_full_document,
             doc_content_chars_max=args.get("doc_content_chars_max", 4000),
             load_all_available_meta=args.get("load_all_available_meta", False),
             continue_on_failure=args.get("continue_on_failure", True),
@@ -81,4 +86,28 @@ class ArxivRag(CodedTool):
             sort_order=args.get("sort_order") or "descending",
         )
 
-        return await BaseRag.query_retriever(retriever, query)
+        # Query the retriever
+        # Each result contains:
+        # - content: summary or full document (depending on retriever config)
+        # - metadata: document-level metadata (includes summary when full content is returned)
+        results: list[dict[str, Any]] = await BaseRag.query_retriever(retriever, query)
+
+        # If full documents are requested:
+        # - Persist the full document text in sly_data (keyed by Entry ID)
+        # - Return only metadata (with summaries) to the agent to reduce token usage
+        if get_full_document:
+            arxiv_contents: dict[str, str] = sly_data.get("arxiv_contents") or {}
+            metadata_list: list[dict[str, str]] = []
+            for result in results:
+                entry_id: str = result.get("metadata", {}).get("Entry ID")
+                content: str = result.get("content")
+                arxiv_contents.update({entry_id: content})
+                metadata_list.append(result.get("metadata", {}))
+            # Store full document content outside chat history
+            sly_data["arxiv_contents"] = arxiv_contents
+            # Return metadata (which includes the summary)
+            return metadata_list
+
+        # Default behavior:
+        # Return metadata with summarized content directly to the agent
+        return results
