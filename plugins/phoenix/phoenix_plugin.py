@@ -183,6 +183,7 @@ class PhoenixPlugin:
         # Lazy imports from openinference
 
         # Instrument OpenAI
+        # Lazily load the type
         # pylint: disable=invalid-name
         OpenAIInstrumentor: Type[Any] = ResolverUtil.create_type(
             "openinference.instrumentation.openai.OpenAIInstrumentor",
@@ -193,6 +194,7 @@ class PhoenixPlugin:
             OpenAIInstrumentor().instrument()
 
         # Instrument LangChain
+        # Lazily load the type
         # pylint: disable=invalid-name
         LangChainInstrumentor: Type[Any] = ResolverUtil.create_type(
             "openinference.instrumentation.langchain.LangChainInstrumentor",
@@ -203,6 +205,7 @@ class PhoenixPlugin:
             LangChainInstrumentor().instrument()
 
         # Instrument LiteLLM (common in orchestration libs)
+        # Lazily load the type
         # pylint: disable=invalid-name
         LiteLLMInstrumentor: Type[Any] = ResolverUtil.create_type(
             "openinference.instrumentation.litellm.LiteLLMInstrumentor",
@@ -213,6 +216,7 @@ class PhoenixPlugin:
             LiteLLMInstrumentor().instrument()
 
         # Instrument Anthropic
+        # Lazily load the type
         # pylint: disable=invalid-name
         AnthropicInstrumentor: Type[Any] = ResolverUtil.create_type(
             "openinference.instrumentation.anthropic.AnthropicInstrumentor",
@@ -223,6 +227,7 @@ class PhoenixPlugin:
             AnthropicInstrumentor().instrument()
 
         # Instrument MCP
+        # Lazily load the type
         # pylint: disable=invalid-name
         MCPInstrumentor: Type[Any] = ResolverUtil.create_type(
             "openinference.instrumentation.mcp.MCPInstrumentor",
@@ -241,7 +246,13 @@ class PhoenixPlugin:
         try:
             if not self._get_bool_env("PHOENIX_OTEL_REGISTER", True):
                 return False
-            from phoenix.otel import register  # type: ignore
+
+            # Lazily load the method
+            register: Type[Any] = ResolverUtil.create_type(
+                "phoenix.otel.register",
+                raise_if_not_found=False,
+                install_if_missing="arize-phoenix-otel",
+            )
 
             project_name = os.getenv("PHOENIX_PROJECT_NAME", "default")
             endpoint = (

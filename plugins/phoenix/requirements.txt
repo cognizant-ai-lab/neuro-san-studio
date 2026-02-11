@@ -1,6 +1,7 @@
 # Phoenix AI Observability
 # Why do we need version pins?
 arize-phoenix==12.31.2
+arize-phoenix-otel==0.14.0
 openinference-instrumentation-anthropic==0.1.20
 openinference-instrumentation-langchain==0.1.58
 openinference-instrumentation-litellm==0.1.29
