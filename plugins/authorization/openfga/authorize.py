@@ -98,7 +98,7 @@ class Authorize:
         resource_type: str = environ.get("AGENT_AUTHORIZER_RESOURCE_KEY", "AgentNetwork")
         actor_type: str = environ.get("AGENT_AUTHORIZER_ACTOR_KEY", "User")
 
-        async with authorizer:
+        async with authorizer as auth:
 
             # Gather everything to do together so as to save on clients
             coroutines: List[Future] = []
@@ -115,7 +115,7 @@ class Authorize:
 
                     # Loop through all the relations to grant/revoke
                     for relation in relations:
-                        coroutines.append(self.authorize_one(authorizer, actor, relation, resource))
+                        coroutines.append(self.authorize_one(auth, actor, relation, resource))
 
             await gather(*coroutines)
 
