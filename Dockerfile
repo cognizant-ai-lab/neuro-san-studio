@@ -156,13 +156,12 @@ ENV VITE_WS_PROTOCOL=ws
 ENV NEURO_SAN_SERVER_HOST=localhost
 ENV NEURO_SAN_SERVER_HTTP_PORT=8080
 ENV NEURO_SAN_SERVER_CONNECTION=http
-ENV SERVER_STARTUP_TIMEOUT=60
 
 # ---- Health check ----
-# Check both services: neuro-san server (8080) AND nsflow web UI (4173).
-# start-period is 45s to allow neuro-san to start first, then nsflow.
-HEALTHCHECK --interval=30s --timeout=5s --start-period=45s --retries=3 \
-    CMD python -c "import socket; s=socket.socket(); s.settimeout(3); s.connect(('127.0.0.1',8080)); s.close(); s=socket.socket(); s.settimeout(3); s.connect(('127.0.0.1',4173)); s.close()" || exit 1
+# Check nsflow (4173) — the user-facing service and Azure ingress target.
+# Both services start in parallel; uvicorn binds within seconds.
+HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
+    CMD python -c "import socket; s=socket.socket(); s.settimeout(3); s.connect(('127.0.0.1',4173)); s.close()" || exit 1
 
 # ---- Entrypoint ----
 # The entrypoint.sh script starts two processes:

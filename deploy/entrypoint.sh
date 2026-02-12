@@ -16,7 +16,9 @@
 # END COPYRIGHT
 
 # Entry point script which manages the transition from Docker bash to Python.
-# Starts both the neuro-san server and the nsflow web UI.
+# Starts both the neuro-san server and the nsflow web UI in parallel.
+# nsflow starts immediately so Azure's startup probe on port 4173 passes quickly.
+# nsflow will serve its UI right away; agent calls work once neuro-san is ready.
 
 set -eo pipefail
 
@@ -50,8 +52,6 @@ echo "PACKAGE_INSTALL is ${PACKAGE_INSTALL}"
 # -------------------------------------------------------------------
 NSFLOW_HOST=${NSFLOW_HOST:-0.0.0.0}
 NSFLOW_PORT=${NSFLOW_PORT:-4173}
-AGENT_HTTP_PORT=${AGENT_HTTP_PORT:-8080}
-SERVER_STARTUP_TIMEOUT=${SERVER_STARTUP_TIMEOUT:-60}
 
 # -------------------------------------------------------------------
 # Signal handling: forward signals to both child processes
@@ -80,31 +80,10 @@ NEURO_SAN_PID=$!
 echo "neuro-san server started (PID ${NEURO_SAN_PID})"
 
 # -------------------------------------------------------------------
-# 2) Wait for neuro-san HTTP server to be ready
-# -------------------------------------------------------------------
-echo "Waiting for neuro-san server on port ${AGENT_HTTP_PORT}..."
-elapsed=0
-while [ ${elapsed} -lt ${SERVER_STARTUP_TIMEOUT} ]; do
-    if ${PYTHON} -c "import socket; s=socket.socket(); s.settimeout(1); s.connect(('127.0.0.1',${AGENT_HTTP_PORT})); s.close()" 2>/dev/null; then
-        echo "neuro-san server is ready on port ${AGENT_HTTP_PORT} (took ~${elapsed}s)"
-        break
-    fi
-    if ! kill -0 "${NEURO_SAN_PID}" 2>/dev/null; then
-        echo "ERROR: neuro-san server (PID ${NEURO_SAN_PID}) exited during startup"
-        exit 1
-    fi
-    sleep 2
-    elapsed=$((elapsed + 2))
-done
-
-if [ ${elapsed} -ge ${SERVER_STARTUP_TIMEOUT} ]; then
-    echo "ERROR: neuro-san server did not become ready within ${SERVER_STARTUP_TIMEOUT}s"
-    kill -TERM "${NEURO_SAN_PID}" 2>/dev/null || true
-    exit 1
-fi
-
-# -------------------------------------------------------------------
-# 3) Start nsflow web UI (background)
+# 2) Start nsflow web UI immediately (background)
+#    Do NOT wait for neuro-san — nsflow serves its UI right away.
+#    Azure startup probe on port 4173 will pass as soon as uvicorn binds.
+#    Agent functionality becomes available once neuro-san is ready.
 # -------------------------------------------------------------------
 echo "Starting nsflow on ${NSFLOW_HOST}:${NSFLOW_PORT}..."
 ${PYTHON} -u -m uvicorn nsflow.backend.main:app \
@@ -114,9 +93,9 @@ NSFLOW_PID=$!
 echo "nsflow started (PID ${NSFLOW_PID})"
 
 # -------------------------------------------------------------------
-# 4) Monitor both processes — exit if either dies
+# 3) Monitor both processes — exit if either dies
 # -------------------------------------------------------------------
-echo "Both services running. Monitoring..."
+echo "Both services starting. Monitoring..."
 while true; do
     if ! kill -0 "${NEURO_SAN_PID}" 2>/dev/null; then
         echo "ERROR: neuro-san server (PID ${NEURO_SAN_PID}) exited unexpectedly"
