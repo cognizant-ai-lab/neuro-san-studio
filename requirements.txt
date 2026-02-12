@@ -22,3 +22,9 @@ rich>=14.2.0
 
 # For the HTML agent-network graph generator
 pyvis~=0.3.2
+
+# For HOCON parsing and validation in config editor
+pyhocon>=0.3.60
+
+# For Jinja2 template rendering in config editor
+jinja2>=3.1.0

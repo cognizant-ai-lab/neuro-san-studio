@@ -1,0 +1,392 @@
+<!--
+Copyright (C) 2025-2026 Cognizant Technology Solutions Corp, www.cognizant.com.
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+
+END COPYRIGHT
+-->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>HOCON Config Editor</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link href="https://fonts.googleapis.com/css?family=Inter:400,600&display=swap" rel="stylesheet">
+    <!-- CodeMirror 5 from CDN -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/codemirror.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/theme/eclipse.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/codemirror.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/javascript/javascript.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/edit/matchbrackets.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/edit/closebrackets.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/dompurify@3.1.6/dist/purify.min.js"></script>
+    <link rel="stylesheet" type="text/css" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <!-- Header -->
+    <header>
+        <div class="header-row">
+            <div>
+                <h1>HOCON Config Editor</h1>
+                <p class="subtitle">Manage agent network configurations</p>
+            </div>
+            <div class="header-controls">
+                <button id="btn-new" type="button" title="Create new HOCON file">New File</button>
+                <button id="btn-save" type="button" class="btn-primary" title="Save current file">Save</button>
+                <button id="btn-validate" type="button" title="Validate HOCON syntax">Validate</button>
+                <button id="btn-delete" type="button" class="btn-danger" title="Delete current file">Delete</button>
+            </div>
+        </div>
+    </header>
+
+    <!-- Two-panel main content -->
+    <div class="interface-row">
+        <!-- Left panel: File tree -->
+        <section id="file-tree-section" aria-label="File Browser">
+            <h2>Files</h2>
+            <div id="file-tree" class="tree-box"></div>
+            <div id="manifest-section">
+                <h2>Manifest</h2>
+                <div id="manifest-list" class="manifest-box"></div>
+            </div>
+        </section>
+
+        <!-- Right panel: Editor -->
+        <section id="editor-section" aria-label="Code Editor">
+            <div id="editor-header">
+                <span id="current-file">No file selected</span>
+                <span id="editor-status"></span>
+            </div>
+            <div id="editor-container">
+                <textarea id="code-editor"></textarea>
+            </div>
+        </section>
+    </div>
+
+    <!-- Footer -->
+    <footer>
+        <small>&copy; 2025-2026 Cognizant Technology Solutions &mdash; Powered by Neuro-SAN</small>
+    </footer>
+
+    <script>
+        // ---------------------------------------------------------------
+        // State
+        // ---------------------------------------------------------------
+        var currentFile = null;
+        var editor = null;
+        var unsavedChanges = false;
+
+        // ---------------------------------------------------------------
+        // CodeMirror setup
+        // ---------------------------------------------------------------
+        document.addEventListener('DOMContentLoaded', function() {
+            editor = CodeMirror.fromTextArea(document.getElementById('code-editor'), {
+                mode: { name: 'javascript', json: true },
+                theme: 'eclipse',
+                lineNumbers: true,
+                matchBrackets: true,
+                autoCloseBrackets: true,
+                indentUnit: 4,
+                tabSize: 4,
+                indentWithTabs: false,
+                lineWrapping: true
+            });
+
+            editor.on('change', function() {
+                if (currentFile) {
+                    unsavedChanges = true;
+                    setStatus('modified', 'Modified');
+                }
+            });
+
+            editor.setSize('100%', '100%');
+            loadFileTree();
+            loadManifest();
+        });
+
+        // ---------------------------------------------------------------
+        // Status indicator
+        // ---------------------------------------------------------------
+        function setStatus(cls, text) {
+            var el = document.getElementById('editor-status');
+            el.className = 'status-' + cls;
+            el.textContent = text;
+        }
+
+        // ---------------------------------------------------------------
+        // File tree
+        // ---------------------------------------------------------------
+        function loadFileTree() {
+            fetch('/api/files')
+                .then(function(r) { return r.json(); })
+                .then(function(data) {
+                    renderFileTree(data.files);
+                })
+                .catch(function(err) {
+                    console.error('Failed to load file tree:', err);
+                });
+        }
+
+        function renderFileTree(files) {
+            var container = document.getElementById('file-tree');
+            container.innerHTML = '';
+
+            // Group by directory
+            var dirs = {};
+            files.forEach(function(f) {
+                var dir = f.directory || '.';
+                if (!dirs[dir]) dirs[dir] = [];
+                dirs[dir].push(f);
+            });
+
+            // Sort directory keys
+            var sortedDirs = Object.keys(dirs).sort();
+            sortedDirs.forEach(function(dir) {
+                // Directory label
+                if (dir !== '.') {
+                    var dirEl = document.createElement('div');
+                    dirEl.className = 'tree-dir';
+                    dirEl.textContent = dir + '/';
+                    container.appendChild(dirEl);
+                }
+
+                // Files in this directory
+                dirs[dir].forEach(function(f) {
+                    var fileEl = document.createElement('div');
+                    fileEl.className = 'tree-file';
+                    if (dir !== '.') {
+                        fileEl.style.paddingLeft = '24px';
+                    }
+                    fileEl.textContent = f.name;
+                    fileEl.title = f.path;
+                    fileEl.setAttribute('data-path', f.path);
+                    fileEl.addEventListener('click', function() {
+                        openFile(f.path);
+                    });
+                    container.appendChild(fileEl);
+                });
+            });
+        }
+
+        // ---------------------------------------------------------------
+        // File operations
+        // ---------------------------------------------------------------
+        function openFile(path) {
+            if (unsavedChanges && !confirm('You have unsaved changes. Discard?')) {
+                return;
+            }
+            fetch('/api/files/' + encodeURIComponent(path))
+                .then(function(r) {
+                    if (!r.ok) throw new Error('Failed to load file');
+                    return r.json();
+                })
+                .then(function(data) {
+                    currentFile = data.path;
+                    editor.setValue(data.content);
+                    unsavedChanges = false;
+                    document.getElementById('current-file').textContent = data.path;
+                    setStatus('saved', 'Loaded');
+
+                    // Highlight active file in tree
+                    document.querySelectorAll('.tree-file').forEach(function(el) {
+                        el.classList.toggle('active', el.getAttribute('data-path') === path);
+                    });
+                })
+                .catch(function(err) {
+                    alert('Error loading file: ' + err.message);
+                });
+        }
+
+        function saveFile() {
+            if (!currentFile) {
+                alert('No file is open.');
+                return;
+            }
+            var content = editor.getValue();
+            fetch('/api/files/' + encodeURIComponent(currentFile), {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ content: content })
+            })
+            .then(function(r) {
+                if (!r.ok) return r.json().then(function(d) { throw new Error(d.detail); });
+                return r.json();
+            })
+            .then(function() {
+                unsavedChanges = false;
+                setStatus('saved', 'Saved');
+            })
+            .catch(function(err) {
+                alert('Error saving file: ' + err.message);
+            });
+        }
+
+        function validateFile() {
+            var content = editor.getValue();
+            if (!content.trim()) {
+                alert('Editor is empty.');
+                return;
+            }
+            fetch('/api/validate', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ content: content })
+            })
+            .then(function(r) { return r.json(); })
+            .then(function(data) {
+                if (data.valid) {
+                    setStatus('valid', 'Valid HOCON');
+                } else {
+                    setStatus('error', 'Invalid: ' + data.error);
+                    alert('HOCON validation error:\n' + data.error);
+                }
+            })
+            .catch(function(err) {
+                alert('Validation request failed: ' + err.message);
+            });
+        }
+
+        function createFile() {
+            var name = prompt('Enter file path (relative to registries/).\nExample: my_network.hocon');
+            if (!name) return;
+            if (!name.endsWith('.hocon')) name += '.hocon';
+
+            var content = '{\n    # New agent network configuration\n}\n';
+            fetch('/api/files/' + encodeURIComponent(name), {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ content: content })
+            })
+            .then(function(r) {
+                if (!r.ok) return r.json().then(function(d) { throw new Error(d.detail); });
+                return r.json();
+            })
+            .then(function() {
+                loadFileTree();
+                openFile(name);
+            })
+            .catch(function(err) {
+                alert('Error creating file: ' + err.message);
+            });
+        }
+
+        function deleteFile() {
+            if (!currentFile) {
+                alert('No file is open.');
+                return;
+            }
+            if (!confirm('Delete "' + currentFile + '"? This cannot be undone.')) {
+                return;
+            }
+            fetch('/api/files/' + encodeURIComponent(currentFile), {
+                method: 'DELETE'
+            })
+            .then(function(r) {
+                if (!r.ok) return r.json().then(function(d) { throw new Error(d.detail); });
+                return r.json();
+            })
+            .then(function() {
+                currentFile = null;
+                editor.setValue('');
+                unsavedChanges = false;
+                document.getElementById('current-file').textContent = 'No file selected';
+                setStatus('', '');
+                loadFileTree();
+            })
+            .catch(function(err) {
+                alert('Error deleting file: ' + err.message);
+            });
+        }
+
+        // ---------------------------------------------------------------
+        // Manifest management
+        // ---------------------------------------------------------------
+        function loadManifest() {
+            fetch('/api/manifest')
+                .then(function(r) { return r.json(); })
+                .then(function(data) {
+                    renderManifest(data.entries);
+                })
+                .catch(function(err) {
+                    console.error('Failed to load manifest:', err);
+                });
+        }
+
+        function renderManifest(entries) {
+            var container = document.getElementById('manifest-list');
+            container.innerHTML = '';
+            var keys = Object.keys(entries).sort();
+            keys.forEach(function(key) {
+                var entry = entries[key];
+                var row = document.createElement('div');
+                row.className = 'manifest-entry';
+
+                var toggle = document.createElement('input');
+                toggle.type = 'checkbox';
+                toggle.checked = entry.enabled;
+                toggle.title = 'Toggle ' + key;
+                toggle.addEventListener('change', function() {
+                    toggleManifest(key, toggle.checked);
+                });
+
+                var label = document.createElement('span');
+                label.className = 'manifest-label';
+                label.textContent = key;
+                if (entry.public === false) {
+                    label.textContent += ' (private)';
+                    label.classList.add('manifest-private');
+                }
+
+                row.appendChild(toggle);
+                row.appendChild(label);
+                container.appendChild(row);
+            });
+        }
+
+        function toggleManifest(network, enabled) {
+            fetch('/api/manifest/' + encodeURIComponent(network), {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ enabled: enabled })
+            })
+            .then(function(r) {
+                if (!r.ok) return r.json().then(function(d) { throw new Error(d.detail); });
+                return r.json();
+            })
+            .then(function() {
+                setStatus('saved', network + (enabled ? ' enabled' : ' disabled'));
+            })
+            .catch(function(err) {
+                alert('Error toggling manifest: ' + err.message);
+                loadManifest();
+            });
+        }
+
+        // ---------------------------------------------------------------
+        // Button bindings
+        // ---------------------------------------------------------------
+        document.getElementById('btn-new').addEventListener('click', createFile);
+        document.getElementById('btn-save').addEventListener('click', saveFile);
+        document.getElementById('btn-validate').addEventListener('click', validateFile);
+        document.getElementById('btn-delete').addEventListener('click', deleteFile);
+
+        // Keyboard shortcut: Ctrl/Cmd+S to save
+        document.addEventListener('keydown', function(e) {
+            if ((e.ctrlKey || e.metaKey) && e.key === 's') {
+                e.preventDefault();
+                saveFile();
+            }
+        });
+    </script>
+</body>
+</html>

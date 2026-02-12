@@ -53,10 +53,11 @@ COPY --from=builder /install /usr/local
 # Order: least-frequently-changed first for layer caching.
 
 # Config files used by the server at runtime
-COPY --chown=${USERNAME}:${USERNAME} ./deploy/entrypoint.sh  ${APP_SOURCE}/deploy/entrypoint.sh
-COPY --chown=${USERNAME}:${USERNAME} ./deploy/nsflow_start.py ${APP_SOURCE}/deploy/nsflow_start.py
-COPY --chown=${USERNAME}:${USERNAME} ./deploy/logging.json    ${APP_SOURCE}/deploy/logging.json
-COPY --chown=${USERNAME}:${USERNAME} ./logging.json            ${APP_SOURCE}/logging.json
+COPY --chown=${USERNAME}:${USERNAME} ./deploy/entrypoint.sh         ${APP_SOURCE}/deploy/entrypoint.sh
+COPY --chown=${USERNAME}:${USERNAME} ./deploy/nsflow_start.py       ${APP_SOURCE}/deploy/nsflow_start.py
+COPY --chown=${USERNAME}:${USERNAME} ./deploy/config_editor_start.py ${APP_SOURCE}/deploy/config_editor_start.py
+COPY --chown=${USERNAME}:${USERNAME} ./deploy/logging.json          ${APP_SOURCE}/deploy/logging.json
+COPY --chown=${USERNAME}:${USERNAME} ./logging.json                  ${APP_SOURCE}/logging.json
 
 # MCP and toolbox configs
 COPY --chown=${USERNAME}:${USERNAME} ./mcp         ${APP_SOURCE}/mcp
@@ -68,11 +69,15 @@ COPY --chown=${USERNAME}:${USERNAME} ./servers      ${APP_SOURCE}/servers
 # Plugins (log_bridge, phoenix)
 COPY --chown=${USERNAME}:${USERNAME} ./plugins      ${APP_SOURCE}/plugins
 
-# Agent registries (hocon definitions)
-COPY --chown=${USERNAME}:${USERNAME} ./registries   ${APP_SOURCE}/registries
+# Agent registries — seed copy (live registries will be Azure File Share mount)
+COPY --chown=${USERNAME}:${USERNAME} ./registries   ${APP_SOURCE}/registries-seed
+RUN mkdir -p ${APP_SOURCE}/registries && chown ${USERNAME}:${USERNAME} ${APP_SOURCE}/registries
 
 # Coded tools (custom Python tool implementations)
 COPY --chown=${USERNAME}:${USERNAME} ./coded_tools  ${APP_SOURCE}/coded_tools
+
+# Config editor (web UI for HOCON management)
+COPY --chown=${USERNAME}:${USERNAME} ./config_editor ${APP_SOURCE}/config_editor
 
 # Main runner script (used by run.py-based launches; not the primary entrypoint)
 COPY --chown=${USERNAME}:${USERNAME} ./run.py       ${APP_SOURCE}/run.py
@@ -87,6 +92,8 @@ EXPOSE 30011
 EXPOSE 8080
 # nsflow web UI port (Azure Container Apps ingress targets this)
 EXPOSE 4173
+# Config editor port (separate ingress with Entra ID MFA)
+EXPOSE 4174
 
 # ---- Switch to non-root user ----
 USER ${USERNAME}
@@ -121,8 +128,8 @@ ENV AGENT_HTTP_IDLE_CONNECTIONS_TIMEOUT=3600
 ENV AGENT_HTTP_SERVER_INSTANCES=1
 ENV AGENT_HTTP_RESOURCES_MONITOR_INTERVAL=0
 
-# Agent manifest dynamic reload (0 = disabled)
-ENV AGENT_MANIFEST_UPDATE_PERIOD_SECONDS=0
+# Agent manifest dynamic reload (30s polling; picks up HOCON changes without restart)
+ENV AGENT_MANIFEST_UPDATE_PERIOD_SECONDS=30
 
 # Temporary network reservations (0 = disabled; set >0 for multi-user)
 ENV AGENT_TEMPORARY_NETWORK_UPDATE_PERIOD_SECONDS=5
@@ -148,6 +155,11 @@ ENV AGENT_MCP_ONLY="false"
 ENV PHOENIX_ENABLED="false"
 ENV PHOENIX_AUTOSTART="false"
 
+# ---- Process toggle flags ----
+# Set to "false" to disable a process (for single-purpose container apps)
+ENV NEURO_SAN_ENABLED="true"
+ENV NSFLOW_ENABLED="true"
+
 # ---- nsflow web UI configuration ----
 ENV NSFLOW_HOST=0.0.0.0
 ENV NSFLOW_PORT=4173
@@ -158,6 +170,12 @@ ENV NEURO_SAN_SERVER_HOST=localhost
 ENV NEURO_SAN_SERVER_HTTP_PORT=8080
 ENV NEURO_SAN_SERVER_CONNECTION=http
 
+# ---- Config editor configuration ----
+ENV CONFIG_EDITOR_ENABLED="true"
+ENV CONFIG_EDITOR_HOST=0.0.0.0
+ENV CONFIG_EDITOR_PORT=4174
+ENV CONFIG_EDITOR_REGISTRIES_PATH="${APP_SOURCE}/registries"
+
 # ---- Health check ----
 # Check nsflow (4173) — the user-facing service and Azure ingress target.
 # Both services start in parallel; uvicorn binds within seconds.
@@ -165,8 +183,9 @@ HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
     CMD python -c "import socket; s=socket.socket(); s.settimeout(3); s.connect(('127.0.0.1',4173)); s.close()" || exit 1
 
 # ---- Entrypoint ----
-# The entrypoint.sh script starts two processes:
-#   1. neuro-san server: gRPC (30011) + HTTP API (8080)
-#   2. nsflow web UI: Uvicorn on port 4173 (Azure ingress target)
+# The entrypoint.sh script selectively starts processes based on *_ENABLED flags:
+#   1. neuro-san server: gRPC (30011) + HTTP API (8080) [NEURO_SAN_ENABLED]
+#   2. nsflow web UI: Uvicorn on port 4173              [NSFLOW_ENABLED]
+#   3. config editor: Uvicorn on port 4174              [CONFIG_EDITOR_ENABLED]
 ENV APP_ENTRYPOINT=${APP_SOURCE}/deploy/entrypoint.sh
 ENTRYPOINT ["/bin/bash", "-c", "${APP_ENTRYPOINT}"]

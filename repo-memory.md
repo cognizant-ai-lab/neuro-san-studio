@@ -56,6 +56,40 @@ AttributeError: module 'hvac' has no attribute 'VaultClient'
 
 ---
 
+## Config Editor (HOCON Management UI)
+
+**Added:** 2026-02-12
+
+### Architecture
+- `config_editor/` — FastAPI app with REST API + Jinja2/CodeMirror web UI
+- Runs on port **4174** (separate from nsflow on 4173)
+- `deploy/config_editor_start.py` — uvicorn launcher (mirrors nsflow_start.py)
+- `deploy/entrypoint.sh` — manages 3 processes: neuro-san, nsflow, config editor
+
+### Azure File Share Integration
+- Registries baked into image at `registries-seed/` (Dockerfile)
+- Azure File Share mounted at `registries/` (the live config path)
+- `entrypoint.sh` seeds the file share from `registries-seed/` on first boot (empty share)
+- `AGENT_MANIFEST_UPDATE_PERIOD_SECONDS=30` enables live reload
+
+### Authentication
+- Entra ID MFA configured on port 4174 ingress (Cognizant tenant only)
+- Azure File Share RBAC for admin access via Azure Portal/Storage Explorer
+
+### Dependencies
+- `pyhocon>=0.3.60` (latest is 0.3.x — there is NO 1.x release)
+- `jinja2>=3.1.0` (may be transitively available but explicitly declared)
+
+### Environment Variables
+| Variable | Default | Purpose |
+|----------|---------|---------|
+| `CONFIG_EDITOR_ENABLED` | `true` | Enable/disable config editor process |
+| `CONFIG_EDITOR_HOST` | `0.0.0.0` | Bind host |
+| `CONFIG_EDITOR_PORT` | `4174` | Bind port |
+| `CONFIG_EDITOR_REGISTRIES_PATH` | `${APP_SOURCE}/registries` | Path to registries directory |
+
+---
+
 ## Version History
 
 | Date | neuro-san | nsflow | Notes |
