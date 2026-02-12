@@ -96,7 +96,6 @@ LEAF_NODE_AGENT_TEMPLATE = (
     '""",\n'
     "        },\n"
 )
-# pylint: disable=implicit-str-concat
 TOOLBOX_AGENT_TEMPLATE = '        {\n            "name": "%s",\n            "toolbox": "%s"\n        },\n'
 
 
