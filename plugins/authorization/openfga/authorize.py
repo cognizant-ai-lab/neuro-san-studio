@@ -118,8 +118,9 @@ class Authorize:
 
             await gather(*coroutines)
 
-    async def authorize_one(self, authorizer: Authorizer, actor: Dict[str, Any],
-                            relation: str, resource: Dict[str, Any]) -> bool:
+    async def authorize_one(
+        self, authorizer: Authorizer, actor: Dict[str, Any], relation: str, resource: Dict[str, Any]
+    ) -> bool:
         """
         :param authorizer: the authorizer to use
         :param actor: the actor to authorize
