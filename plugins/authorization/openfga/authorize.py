@@ -15,12 +15,11 @@
 # END COPYRIGHT
 
 import asyncio
+from argparse import ArgumentParser
 from asyncio import Future
 from asyncio import gather
-
-from argparse import ArgumentParser
-from os import environ
 from logging import basicConfig
+from os import environ
 from typing import Any
 from typing import Dict
 from typing import List
