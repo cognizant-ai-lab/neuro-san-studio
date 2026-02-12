@@ -1,6 +1,18 @@
 # Neuro SAN Studio — Azure Container Environment Variables
 
-## nsflow Web UI
+## Required — API Keys (must be set in Azure)
+
+These variables have **no defaults** and the container will not function without them. Inject via Azure Container Apps environment config or secrets — never hardcode.
+
+| Variable | Default | Required | Description |
+|----------|---------|----------|-------------|
+| `OPENAI_API_KEY` | *(none)* | **Yes** | OpenAI API key for LLM calls. Use `secretref:` to reference an Azure secret. |
+
+---
+
+## Optional — All variables below have sensible defaults baked into the Docker image. You only need to set them in Azure if you want to override the default.
+
+### nsflow Web UI
 
 | Variable | Default | Required | Description |
 |----------|---------|----------|-------------|
@@ -79,12 +91,6 @@
 |----------|---------|----------|-------------|
 | `PHOENIX_ENABLED` | `false` | No | Enable Phoenix OpenTelemetry observability. |
 | `PHOENIX_AUTOSTART` | `false` | No | Auto-start the Phoenix server inside the container. |
-
-## API Keys (inject at runtime)
-
-| Variable | Default | Required | Description |
-|----------|---------|----------|-------------|
-| `OPENAI_API_KEY` | *(none)* | **Yes** | OpenAI API key for LLM calls. Never hardcode — inject via Azure env config. |
 
 ---
 

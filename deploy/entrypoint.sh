@@ -18,7 +18,7 @@
 # Entry point script which manages the transition from Docker bash to Python.
 # Starts both the neuro-san server and the nsflow web UI.
 
-set -euo pipefail
+set -eo pipefail
 
 # -------------------------------------------------------------------
 # Diagnostics
@@ -74,7 +74,7 @@ trap cleanup SIGTERM SIGINT
 # -------------------------------------------------------------------
 # 1) Start neuro-san server (background)
 # -------------------------------------------------------------------
-echo "Starting neuro-san server with args '$1'..."
+echo "Starting neuro-san server..."
 ${PYTHON} "${PACKAGE_INSTALL}"/neuro_san/service/main_loop/server_main_loop.py "$@" &
 NEURO_SAN_PID=$!
 echo "neuro-san server started (PID ${NEURO_SAN_PID})"
