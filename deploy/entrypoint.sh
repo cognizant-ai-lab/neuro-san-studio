@@ -85,10 +85,9 @@ echo "neuro-san server started (PID ${NEURO_SAN_PID})"
 #    Azure startup probe on port 4173 will pass as soon as uvicorn binds.
 #    Agent functionality becomes available once neuro-san is ready.
 # -------------------------------------------------------------------
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 echo "Starting nsflow on ${NSFLOW_HOST}:${NSFLOW_PORT}..."
-${PYTHON} -u -m uvicorn nsflow.backend.main:app \
-    --host "${NSFLOW_HOST}" \
-    --port "${NSFLOW_PORT}" &
+${PYTHON} -u "${SCRIPT_DIR}/nsflow_start.py" &
 NSFLOW_PID=$!
 echo "nsflow started (PID ${NSFLOW_PID})"
 

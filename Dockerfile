@@ -54,6 +54,7 @@ COPY --from=builder /install /usr/local
 
 # Config files used by the server at runtime
 COPY --chown=${USERNAME}:${USERNAME} ./deploy/entrypoint.sh  ${APP_SOURCE}/deploy/entrypoint.sh
+COPY --chown=${USERNAME}:${USERNAME} ./deploy/nsflow_start.py ${APP_SOURCE}/deploy/nsflow_start.py
 COPY --chown=${USERNAME}:${USERNAME} ./deploy/logging.json    ${APP_SOURCE}/deploy/logging.json
 COPY --chown=${USERNAME}:${USERNAME} ./logging.json            ${APP_SOURCE}/logging.json
 
