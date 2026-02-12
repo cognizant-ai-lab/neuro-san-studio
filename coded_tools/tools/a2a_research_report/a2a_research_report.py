@@ -103,11 +103,7 @@ class A2aResearchReport(CodedTool):
             logger.info("A2A Client initialized.")
 
             # Send message and process responses
-            message: Message = {
-                "role": "user",
-                "parts": [{"kind": "text", "text": topic}],
-                "messageId": uuid4().hex,
-            }
+            message: Message = {"role": "user", "parts": [{"kind": "text", "text": topic}], "messageId": uuid4().hex}
 
             responses: list[Message] = []
             async for response in client.send_message(message):

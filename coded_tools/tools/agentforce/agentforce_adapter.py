@@ -39,11 +39,7 @@ class AgentforceAdapter:
     """
 
     def __init__(
-        self,
-        my_domain_url: str = None,
-        agent_id: str = None,
-        client_id: str = None,
-        client_secret: str = None,
+        self, my_domain_url: str = None, agent_id: str = None, client_id: str = None, client_secret: str = None
     ):
         """
         Constructs a Salesforce Agentforce Adapter.
@@ -112,14 +108,8 @@ class AgentforceAdapter:
         Calls the Salesforce API to get an access token.
         :return: An access token, as a string.
         """
-        headers = {
-            "Content-Type": "application/x-www-form-urlencoded",
-        }
-        data = {
-            "client_id": self.client_id,
-            "client_secret": self.client_secret,
-            "grant_type": "client_credentials",
-        }
+        headers = {"Content-Type": "application/x-www-form-urlencoded"}
+        data = {"client_id": self.client_id, "client_secret": self.client_secret, "grant_type": "client_credentials"}
         access_token_url = f"{self.my_domain_url}/services/oauth2/token"
         response = requests.post(access_token_url, headers=headers, data=data, timeout=TIMEOUT_SECONDS)
         access_token = response.json()["access_token"]
@@ -132,17 +122,12 @@ class AgentforceAdapter:
         :return: A session ID, as a string.
         """
         uuid_str = str(uuid.uuid4())
-        headers = {
-            "Authorization": f"Bearer {access_token}",
-            "Content-Type": "application/json",
-        }
+        headers = {"Authorization": f"Bearer {access_token}", "Content-Type": "application/json"}
         # print("----Session headers:")
         # print(headers)
         data = {
             "externalSessionKey": uuid_str,
-            "instanceConfig": {
-                "endpoint": self.my_domain_url,
-            },
+            "instanceConfig": {"endpoint": self.my_domain_url},
             "streamingCapabilities": {"chunkTypes": ["Text"]},
             "bypassUser": "true",
         }
@@ -167,10 +152,7 @@ class AgentforceAdapter:
         """
         logger.debug("AgentforceAdapter: close_session called")
         session_url = f"{SESSIONS_URL}/{session_id}"
-        headers = {
-            "Authorization": f"Bearer {access_token}",
-            "x-session-end-reason": "UserRequest",
-        }
+        headers = {"Authorization": f"Bearer {access_token}", "x-session-end-reason": "UserRequest"}
         requests.delete(session_url, headers=headers, timeout=TIMEOUT_SECONDS)
         logger.debug("    Session %s closed:", session_id)
 
@@ -200,14 +182,7 @@ class AgentforceAdapter:
             "Content-Type": "application/json",
         }
         timestamp = 42
-        data = {
-            "message": {
-                "sequenceId": timestamp,
-                "type": "Text",
-                "text": message,
-            },
-            "variables": [],
-        }
+        data = {"message": {"sequenceId": timestamp, "type": "Text", "text": message}, "variables": []}
         # Convert data to json
         data_json = json.dumps(data)
         logger.debug("---- Data JSON: %s", data_json)
@@ -215,9 +190,5 @@ class AgentforceAdapter:
         logger.debug("---- Response: %s", response)
         logger.debug("---- Response JSON:")
         logger.debug(response.json())
-        response_dict = {
-            "session_id": session_id,
-            "access_token": access_token,
-            "response": response.json(),
-        }
+        response_dict = {"session_id": session_id, "access_token": access_token, "response": response.json()}
         return response_dict

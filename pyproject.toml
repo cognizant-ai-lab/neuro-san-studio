@@ -12,6 +12,9 @@ select = [
 ]
 ignore = []
 
+[tool.ruff.format]
+skip-magic-trailing-comma = true
+
 [tool.ruff.lint.isort]
 force-single-line = true
 known-first-party = ["apps"]

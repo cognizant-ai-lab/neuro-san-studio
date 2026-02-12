@@ -24,15 +24,7 @@ from ddgs import DDGS
 from neuro_san.interfaces.coded_tool import CodedTool
 
 # The following parameters are from https://github.com/deedy5/ddgs?tab=readme-ov-file#1-text.
-DDGS_QUERY_PARAMS = [
-    "query",
-    "region",
-    "safesearch",
-    "timelimit",
-    "max_results",
-    "page",
-    "backend",
-]
+DDGS_QUERY_PARAMS = ["query", "region", "safesearch", "timelimit", "max_results", "page", "backend"]
 
 
 class DdgsSearch(CodedTool):

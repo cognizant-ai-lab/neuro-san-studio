@@ -146,9 +146,7 @@ class DeployableAgentNetworkAssembler(AgentNetworkAssembler):
         string_replacements.update(commondefs.get("replacement_strings", empty))
 
         # Similarly set up dictionary value replacements
-        value_replacements: dict[str, Any] = {
-            "aaosa_call": self.aaosa_defs.get("aaosa_call"),
-        }
+        value_replacements: dict[str, Any] = {"aaosa_call": self.aaosa_defs.get("aaosa_call")}
         value_replacements.update(value_replacements_in)
         value_replacements.update(commondefs.get("replacement_values", empty))
 
