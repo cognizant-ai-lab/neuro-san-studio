@@ -83,7 +83,6 @@ class Authorize:
         user_names: List[str] = self.args.user.split(" ")
         return user_names
 
-    # pylint: disable=too-many-locals
     async def change_authorization(self, authorizer: Authorizer, network_names: List[str], user_names: List[str]):
         """
         :param authorizer: the authorizer to use
