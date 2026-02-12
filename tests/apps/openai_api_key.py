@@ -26,12 +26,10 @@ from openai import OpenAI
 #  The response should includes the word "Paris".
 #  Any exceptions (Invalid API Key, OpenAI access being blocked, etc.) are reported.
 def test_open_ai_api_key():
-
     # Set up the client with your API key
     client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
     response = None
     try:
-
         # Make a chat completion request
         response = client.chat.completions.create(
             model="gpt-4",  # or "gpt-3.5-turbo"

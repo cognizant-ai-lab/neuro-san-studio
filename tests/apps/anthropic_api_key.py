@@ -26,7 +26,6 @@ from neuro_san.internals.run_context.langchain.util.api_key_error_check import A
 #  The response should includes the word "Paris".
 #  Any exceptions (Invalid API Key, Azure OpenAI access being blocked, etc.) are reported.
 def test_anthropic_api_key():
-
     # Set your Anthropic details
     api_key = os.getenv("ANTHROPIC_API_KEY")  # or use a string directly
 
