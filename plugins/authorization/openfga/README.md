@@ -111,7 +111,7 @@ export AGENT_AUTHORIZER_ACTOR_KEY=User
 export AGENT_AUTHORIZER_RESOURCE_KEY=AgentNetwork
 
 # The type defined in the authorization policy (.fga file) for read permissions
-export AGENT_AUTHORIZER_ALLOW_ACTION=read
+export AGENT_AUTHORIZER_ALLOW_RELATION=read
 ```
 
 4. In a shell with the same virtual env and environment variables set,
