@@ -15,8 +15,12 @@
 # END COPYRIGHT
 
 import asyncio
+from asyncio import Future
+from asyncio import gather
+
 from argparse import ArgumentParser
 from os import environ
+from logging import basicConfig
 from typing import Any
 from typing import Dict
 from typing import List
@@ -40,6 +44,7 @@ class Authorize:
         """
         # These come from the arg parser
         self.args: Any = None
+        basicConfig(level="INFO")
 
     def run(self):
         """
@@ -51,7 +56,7 @@ class Authorize:
         authorizer: Authorizer = AuthorizerFactory.create_authorizer()
         print(f"Using Authorizer: {authorizer.__class__.__name__}")
 
-        self.change_authorization(authorizer, network_names, user_names)
+        asyncio.run(self.change_authorization(authorizer, network_names, user_names))
 
     def get_network_names(self) -> List[str]:
         """
@@ -80,7 +85,7 @@ class Authorize:
         return user_names
 
     # pylint: disable=too-many-locals
-    def change_authorization(self, authorizer: Authorizer, network_names: List[str], user_names: List[str]):
+    async def change_authorization(self, authorizer: Authorizer, network_names: List[str], user_names: List[str]):
         """
         :param authorizer: the authorizer to use
         :param network_names: the names of the networks to authorize
@@ -93,30 +98,51 @@ class Authorize:
         resource_type: str = environ.get("AGENT_AUTHORIZER_RESOURCE_KEY", "AgentNetwork")
         actor_type: str = environ.get("AGENT_AUTHORIZER_ACTOR_KEY", "User")
 
-        # Loop through all the networks as resources to authorize for the user(s)
-        for network_name in network_names:
+        async with authorizer:
 
-            resource: Dict[str, Any] = {"type": resource_type, "id": network_name}
+            # Gather everything to do together so as to save on clients
+            coroutines: List[Future] = []
 
-            # Loop through all the users
-            for user_name in user_names:
+            # Loop through all the networks as resources to authorize for the user(s)
+            for network_name in network_names:
 
-                actor: Dict[str, Any] = {"type": actor_type, "id": user_name}
+                resource: Dict[str, Any] = {"type": resource_type, "id": network_name}
 
-                # Loop through all the relations to grant/revoke
-                for relation in relations:
-                    message: str = f"{actor['type']}:{actor['id']} {relation} on {resource['type']}:{resource['id']}"
-                    succeeded: bool = False
-                    if self.args.grant:
-                        print(f"Attempting to grant {message}")
-                        succeeded = asyncio.run(authorizer.grant(actor, relation, resource))
-                        success_message: str = "succeeded" if succeeded else "already existed"
-                        print(f"Grant for {message} {success_message}")
-                    else:
-                        print(f"Attempting to revoke {message}")
-                        succeeded = asyncio.run(authorizer.revoke(actor, relation, resource))
-                        success_message: str = "succeeded" if succeeded else "already existed"
-                        print(f"Revoke for {message} {success_message}")
+                # Loop through all the users
+                for user_name in user_names:
+
+                    actor: Dict[str, Any] = {"type": actor_type, "id": user_name}
+
+                    # Loop through all the relations to grant/revoke
+                    for relation in relations:
+                        coroutines.append(self.authorize_one(authorizer, actor, relation, resource))
+
+            await gather(*coroutines)
+
+    async def authorize_one(self, authorizer: Authorizer, actor: Dict[str, Any],
+                            relation: str, resource: Dict[str, Any]) -> bool:
+        """
+        :param authorizer: the authorizer to use
+        :param actor: the actor to authorize
+        :param relation: the relation to authorize
+        :param resource: the resource to authorize
+        :return: True if successful. False otherwise
+        """
+
+        message: str = f"{actor['type']}:{actor['id']} {relation} on {resource['type']}:{resource['id']}"
+        succeeded: bool = False
+        if self.args.grant:
+            print(f"Attempting to grant {message}")
+            succeeded = await authorizer.grant(actor, relation, resource)
+            success_message: str = "succeeded" if succeeded else "already existed"
+            print(f"Grant for {message} {success_message}")
+        else:
+            print(f"Attempting to revoke {message}")
+            succeeded = await authorizer.revoke(actor, relation, resource)
+            success_message: str = "succeeded" if succeeded else "already existed"
+            print(f"Revoke for {message} {success_message}")
+
+        return succeeded
 
     def parse_args(self):
         """
