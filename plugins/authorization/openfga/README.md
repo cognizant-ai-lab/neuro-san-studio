@@ -84,15 +84,6 @@ neuro_san_openfga
 enable the use of the OpenFGA server for authorization within your Neuro SAN server:
 
 ```bash
-# Where the OpenFGA HTTP server is running
-export FGA_API_URL=http://localhost:8082
-
-# The file containing the authorization policy
-export FGA_POLICY_FILE=plugins/authorization/openfga/sample_authorization_model.json
-
-# The name of the authorization store to use
-export AGENT_FGA_STORE_NAME=default
-
 # What class neuro-san server should use for authorization
 export AGENT_AUTHORIZER=neuro_san.service.authorization.openfga.open_fga_authorizer.OpenFgaAuthorizer
 
@@ -112,6 +103,16 @@ export AGENT_AUTHORIZER_RESOURCE_KEY=AgentNetwork
 
 # The type defined in the authorization policy (.fga file) for read permissions
 export AGENT_AUTHORIZER_ALLOW_RELATION=read
+
+# Where the OpenFGA HTTP server is running
+export FGA_API_URL=http://localhost:8082
+
+# The file containing the authorization policy
+export FGA_POLICY_FILE=plugins/authorization/openfga/sample_authorization_model.json
+
+# The name of the authorization store to use
+export FGA_STORE_NAME=default
+
 ```
 
 4. In a shell with the same virtual env and environment variables set,
