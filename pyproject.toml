@@ -4,7 +4,12 @@ line-length = 119
 src = ["apps", "coded_tools", "tests"]
 
 [tool.ruff.lint]
-select = ["E", "F", "W", "I"]
+select = [
+    "E",  # pycodestyle errors (e.g. indentation, whitespace, line length)
+    "F",  # Pyflakes checks (e.g. undefined names, unused imports)
+    "W",  # pycodestyle warnings (e.g. trailing whitespace, blank lines)
+    "I",  # isort import-ordering rules
+]
 ignore = []
 
 [tool.ruff.lint.isort]
@@ -15,7 +20,7 @@ known-first-party = ["apps"]
 max-line-length = 119
 # Based on Google Python Style Guide
 disable = [
-    "C0301",  # Line too long (handled by black)
+    "C0301",  # Line too long (handled by ruff)
     "C0114",  # Missing module docstring (missing-module-docstring)
     # This repo contains examples that should remain independent, so we expect some level of copy/paste
     "R0801",  # Similar lines in 2 files
