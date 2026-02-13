@@ -23,14 +23,17 @@ import threading
 from datetime import datetime
 from logging.handlers import TimedRotatingFileHandler
 from pathlib import Path
-from typing import Any, Dict, Optional, TextIO, Tuple
+from typing import Any
+from typing import Dict
+from typing import Optional
+from typing import TextIO
+from typing import Tuple
 
 from rich.console import Console
 from rich.logging import RichHandler
 from rich.syntax import Syntax
 from rich.text import Text
 from rich.theme import Theme
-
 
 log_cfg = {
     # Refer rich guidelines for more options:
@@ -232,6 +235,7 @@ class ProcessLogBridge:
         File-handler formatter that emits timezone-aware timestamps.
         :extend: logging.Formatter
         """
+
         def formatTime(self, record, datefmt=None):
             """
             :param: record: A log record.
@@ -504,7 +508,7 @@ class ProcessLogBridge:
         s = text.find("{")
         e = text.rfind("}")
         if s != -1 and e != -1 and e > s:
-            frag = text[s: e + 1]
+            frag = text[s : e + 1]
             try:
                 obj = json.loads(frag)
                 return obj if isinstance(obj, dict) else {"message": obj}

@@ -1,10 +1,11 @@
 .PHONY: help venv install activate venv-guard lint lint-tests format format-tests
-SOURCES := run.py apps coded_tools
+SOURCES := run.py apps coded_tools plugins
 TESTS   := tests
 .DEFAULT_GOAL := help
 
 RUFF_FORMAT_CHECK := --check --diff
 RUFF_LINT_CHECK := --output-format=full
+RUFF_IMPORTS_FIX := --select I --fix
 
 venv: # Set up a virtual environment in project
 	@if [ ! -d "venv" ]; then \
@@ -53,12 +54,12 @@ activate: ## Activate the venv
 
 format-source: venv-guard
 	# Apply format and import sorting via ruff
-	ruff check --select I --fix $(SOURCES)
+	ruff check $(RUFF_IMPORTS_FIX) $(SOURCES)
 	ruff format $(SOURCES)
 
 format-tests: venv-guard
 	# Apply format and import sorting via ruff
-	ruff check --select I --fix $(TESTS)
+	ruff check $(RUFF_IMPORTS_FIX) $(TESTS)
 	ruff format $(TESTS)
 
 format: format-source format-tests

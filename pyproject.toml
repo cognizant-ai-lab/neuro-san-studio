@@ -1,14 +1,14 @@
 [tool.ruff]
 target-version = "py312"
 line-length = 119
-src = ["apps", "coded_tools", "tests"]
+src = ["apps", "coded_tools", "plugins", "tests"]
 
 [tool.ruff.lint]
 select = [
     "E",  # pycodestyle errors (e.g. indentation, whitespace, line length)
     "F",  # Pyflakes checks (e.g. undefined names, unused imports, unused variables)
-    "W",  # pycodestyle warnings (e.g. trailing whitespace, blank lines)
     "I",  # isort import-ordering rules
+    "W",  # pycodestyle warnings (e.g. trailing whitespace, blank lines)
 ]
 ignore = []
 
