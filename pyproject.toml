@@ -6,6 +6,7 @@ src = ["apps", "coded_tools", "tests"]
 [tool.ruff.lint]
 select = [
     "E",  # pycodestyle errors (e.g. indentation, whitespace, line length)
+    "F",  # Pyflakes checks (e.g. undefined names, unused imports, unused variables)
     "W",  # pycodestyle warnings (e.g. trailing whitespace, blank lines)
     "I",  # isort import-ordering rules
 ]
