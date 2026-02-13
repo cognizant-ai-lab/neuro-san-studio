@@ -28,6 +28,7 @@ def test_gemini_api_key():
     Any exceptions (Invalid API Key, Gemini access being blocked, etc.) are reported.
     :return: Nothing
     """
+
     # Set your Gemini details
     api_key = os.getenv("GOOGLE_API_KEY")  # or use a string directly
     model_name = os.getenv("GOOGLE_MODEL_NAME", "gemini-3-flash-preview")  # e.g., "gemini-3-flash-preview"

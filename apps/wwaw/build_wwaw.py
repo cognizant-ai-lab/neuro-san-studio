@@ -201,7 +201,11 @@ class WebAgentNetworkBuilder:
             raise ValueError(f"Duplicate agent: '{agent_name}' already exists.")
         if agent_name in down_chains or down_chains is None:
             raise ValueError(f"Self-reference detected: '{agent_name}' cannot have itself as child.")
-        agents[agent_name] = {"instructions": instructions, "down_chains": down_chains, "top_agent": top_agent}
+        agents[agent_name] = {
+            "instructions": instructions,
+            "down_chains": down_chains,
+            "top_agent": top_agent,
+        }
         self.agent_counter += 1
         if self.agent_counter % 100 == 0:
             print(".", end="", flush=True)
@@ -618,11 +622,22 @@ def get_agent_network_hocon(agents, agent_network_name):
 
         # Format the agent using the appropriate HOCON template based on its type
         if agent.get("top_agent") == "true":
-            an_agent = TOP_AGENT_TEMPLATE % (agent_name, agent["instructions"], tools)
+            an_agent = TOP_AGENT_TEMPLATE % (
+                agent_name,
+                agent["instructions"],
+                tools,
+            )
         elif agent.get("down_chains"):
-            an_agent = REGULAR_AGENT_TEMPLATE % (agent_name, agent["instructions"], tools)
+            an_agent = REGULAR_AGENT_TEMPLATE % (
+                agent_name,
+                agent["instructions"],
+                tools,
+            )
         else:
-            an_agent = LEAF_NODE_AGENT_TEMPLATE % (agent_name, agent["instructions"])
+            an_agent = LEAF_NODE_AGENT_TEMPLATE % (
+                agent_name,
+                agent["instructions"],
+            )
         agent_network_hocon += an_agent
 
     # Finalize the HOCON string with a closing bracket

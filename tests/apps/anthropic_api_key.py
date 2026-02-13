@@ -28,6 +28,7 @@ def test_anthropic_api_key():
     Any exceptions (Invalid API Key, Anthropic access being blocked, etc.) are reported.
     :return: Nothing
     """
+
     # Set your Anthropic details
     api_key = os.getenv("ANTHROPIC_API_KEY")  # or use a string directly
 

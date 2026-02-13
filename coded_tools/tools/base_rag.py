@@ -195,7 +195,10 @@ class BaseRag(ABC):
         """Create an in-memory vector store."""
         doc_chunks: list[Document] = await self._process_documents(loader_args)
         logger.info("Creating in-memory vector store.")
-        return await InMemoryVectorStore.afrom_documents(documents=doc_chunks, embedding=self.embeddings)
+        return await InMemoryVectorStore.afrom_documents(
+            documents=doc_chunks,
+            embedding=self.embeddings,
+        )
 
     async def _create_postgres_vector_store(
         self, loader_args: Any, postgres_config: PostgresConfig
@@ -228,14 +231,20 @@ class BaseRag(ABC):
 
         try:
             # Initialize vector store table
-            await pg_engine.ainit_vectorstore_table(table_name=table_name, vector_size=VECTOR_SIZE)
+            await pg_engine.ainit_vectorstore_table(
+                table_name=table_name,
+                vector_size=VECTOR_SIZE,
+            )
 
             doc_chunks: list[Document] = await self._process_documents(loader_args)
 
             logger.info("Creating postgres vector store from documents.")
             # Create vector store and load documents
             return await PGVectorStore.afrom_documents(
-                documents=doc_chunks, embedding=self.embeddings, engine=pg_engine, table_name=table_name
+                documents=doc_chunks,
+                embedding=self.embeddings,
+                engine=pg_engine,
+                table_name=table_name,
             )
 
         except ProgrammingError:
@@ -243,7 +252,9 @@ class BaseRag(ABC):
             logger.info("Table %s already exists.\n", table_name)
             logger.info("Creating postgres vector store from existing table.\n")
             return await PGVectorStore.create(
-                engine=pg_engine, table_name=table_name, embedding_service=self.embeddings
+                engine=pg_engine,
+                table_name=table_name,
+                embedding_service=self.embeddings,
             )
 
         except OSError as os_error:

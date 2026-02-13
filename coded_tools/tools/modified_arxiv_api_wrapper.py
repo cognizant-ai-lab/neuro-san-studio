@@ -55,7 +55,10 @@ class ModifiedArxivAPIWrapper(ArxivAPIWrapper):
 
     def _get_sort_order(self) -> SortOrder:
         """Convert string sort_order to SortOrder enum."""
-        mapping = {"ascending": SortOrder.Ascending, "descending": SortOrder.Descending}
+        mapping = {
+            "ascending": SortOrder.Ascending,
+            "descending": SortOrder.Descending,
+        }
         return mapping.get(self.sort_order, SortOrder.Descending)
 
     def _fetch_results(self, query: str) -> Any:

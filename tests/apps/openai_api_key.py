@@ -28,6 +28,7 @@ def test_open_ai_api_key():
     Any exceptions (Invalid API Key, OpenAI access being blocked, etc.) are reported.
     :return: Nothing
     """
+
     # Set up the client with your API key
     client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
     try:

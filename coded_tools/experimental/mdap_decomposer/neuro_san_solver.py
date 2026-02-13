@@ -96,7 +96,11 @@ class NeuroSanSolver:
         :return: The root trace node of the decomposition process
         """
         logging.info(
-            "[solve] depth=%d path=%s problem: %s%s", depth, path, problem[:120], "..." if len(problem) > 120 else ""
+            "[solve] depth=%d path=%s problem: %s%s",
+            depth,
+            path,
+            problem[:120],
+            "..." if len(problem) > 120 else "",
         )
 
         node = {

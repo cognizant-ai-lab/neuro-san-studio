@@ -135,7 +135,10 @@ class NeuroSanRunner:
             help="Port number for the Neuro SAN server http endpoint",
         )
         parser.add_argument(
-            "--nsflow-port", type=int, default=self.args["nsflow_port"], help="Port number for the nsflow client"
+            "--nsflow-port",
+            type=int,
+            default=self.args["nsflow_port"],
+            help="Port number for the nsflow client",
         )
         parser.add_argument(
             "--web-client-port",
@@ -275,7 +278,12 @@ class NeuroSanRunner:
         if self.is_windows:
             # On Windows, don't use CREATE_NEW_PROCESS_GROUP to allow Ctrl+C propagation
             process = subprocess.Popen(
-                command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, bufsize=1, universal_newlines=True
+                command,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                text=True,
+                bufsize=1,
+                universal_newlines=True,
             )
         else:
             # On Unix, use start_new_session for proper process group management
