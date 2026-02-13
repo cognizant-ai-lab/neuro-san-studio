@@ -15,7 +15,7 @@ Authentication/user identity verification, while an important part of any truste
 is _not_ a responsibility within the core capabilities of a Neuro SAN server.
 
 Most often a Neuro SAN server is a single component in a larger cluster deployment where
-authentication is handled is handled upon any request entering the cluster. 
+authentication is handled upon any request entering the cluster. 
 Consider a chat with your friendly neighborhood dev-ops professional if what you are
 really interested in is authentication.
 
