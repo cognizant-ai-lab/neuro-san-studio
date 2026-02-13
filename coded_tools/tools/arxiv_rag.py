@@ -77,7 +77,7 @@ class ArxivRag(CodedTool):
 
         # Initialize ArxivRetriever with the provided arguments
         retriever = ModifiedArxivRetriever(
-            top_k_results=args.get("top_k_results", 3),
+            top_k_results=args.get("top_k_results") or 3,
             get_full_documents=get_full_document,
             doc_content_chars_max=args.get("doc_content_chars_max", 4000),
             load_all_available_meta=args.get("load_all_available_meta", False),
