@@ -64,11 +64,11 @@
     # Demos
 
     "tools/now_agents.hocon": false,                    # Reason #2
-    "cruse_theme_agent.hocon": {
+    "experimental/cruse_theme_agent.hocon": {
         "serve": false,                                 # Reason #1
         "public": false
     },
-    "cruse_widget_agent.hocon": {
+    "experimental/cruse_widget_agent.hocon": {
         "serve": false,                                 # Reason #1
         "public": false
     }
