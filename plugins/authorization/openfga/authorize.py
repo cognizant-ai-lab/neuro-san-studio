@@ -24,9 +24,9 @@ from typing import Any
 from typing import Dict
 from typing import List
 
+from neuro_san.internals.authorization.factory.authorizer_factory import AuthorizerFactory
+from neuro_san.internals.authorization.interfaces.authorizer import Authorizer
 from neuro_san.internals.graph.persistence.registry_manifest_restorer import RegistryManifestRestorer
-from neuro_san.service.authorization.factory.authorizer_factory import AuthorizerFactory
-from neuro_san.service.authorization.interfaces.authorizer import Authorizer
 
 
 class Authorize:

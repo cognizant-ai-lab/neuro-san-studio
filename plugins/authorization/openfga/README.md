@@ -85,7 +85,7 @@ enable the use of the OpenFGA server for authorization within your Neuro SAN ser
 
 ```bash
 # What class neuro-san server should use for authorization
-export AGENT_AUTHORIZER=neuro_san.service.authorization.openfga.open_fga_authorizer.OpenFgaAuthorizer
+export AGENT_AUTHORIZER=neuro_san.internals.authorization.openfga.open_fga_authorizer.OpenFgaAuthorizer
 
 # The request metadata field to use as the user id for authorization
 export AGENT_AUTHORIZER_ACTOR_ID_METADATA_KEY=user_id
