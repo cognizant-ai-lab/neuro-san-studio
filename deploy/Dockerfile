@@ -73,15 +73,6 @@ RUN \
 RUN mkdir -p ${APP_HOME}/certs/aws \
     && ln -s ${APP_HOME}/certs/aws ${APP_HOME}/.aws
 
-# This is the port the service will accept grpc requests on.
-# This should be consistent with the main port for the service as described
-# in the <service>.yaml file for any kubernetes deployment.
-# This default port number is also mentioned as AGENT_PORT below
-# and ServiceAgentSession.DEFAULT_PORT
-# In order to be self-discovered by supporting build/run scripts this must
-# be the first port exposed in the Dockerfile.
-EXPOSE 30011
-
 # This is the port the service will accept http requests on.
 # This should be consistent with the main port for the service as described
 # in the <service>.yaml file for any kubernetes deployment.
@@ -150,7 +141,7 @@ ENV AGENT_SERVICE_LOG_JSON=${APP_SOURCE}/deploy/logging.json
 # and https://docs.python.org/3/library/logging.html#logging-levels for details.
 ENV AGENT_SERVICE_LOG_LEVEL="DEBUG"
 
-# The name of the service for grpc health reporting purposes
+# The name of the service for health reporting purposes
 ENV AGENT_SERVER_NAME="neuro-san-studio.Agent"
 
 # Name of the service as seen in logs
