@@ -1,5 +1,5 @@
 .PHONY: help venv install activate venv-guard lint lint-tests format format-tests
-SOURCES := run.py apps coded_tools plugins
+SOURCES := run.py apps coded_tools
 TESTS   := tests
 .DEFAULT_GOAL := help
 
