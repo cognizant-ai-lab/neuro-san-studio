@@ -78,7 +78,6 @@ class DeployableAgentNetworkAssembler(AgentNetworkAssembler):
         agent_name: str = None
         agent_def: dict[str, Any] = {}
         for agent_name, agent_def in network_def.items():
-
             # Find bits and pieces from the agent definition in the larger network definition
             tools: list[str] = agent_def.get("tools", None)
 

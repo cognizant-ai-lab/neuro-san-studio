@@ -96,8 +96,10 @@ LEAF_NODE_AGENT_TEMPLATE = (
     '""",\n'
     "        },\n"
 )
+# fmt: off
 # pylint: disable=implicit-str-concat
 TOOLBOX_AGENT_TEMPLATE = "        {\n" '            "name": "%s",\n' '            "toolbox": "%s"\n' "        },\n"
+# fmt: on
 
 
 # pylint: disable=too-few-public-methods
