@@ -77,6 +77,7 @@ class ArxivRag(CodedTool):
 
         # Initialize ArxivRetriever with the provided arguments
         retriever = ModifiedArxivRetriever(
+            # LMMs can decide to set a "top_k_results" key to None in args. Make sure we always use an int by default.
             top_k_results=args.get("top_k_results") or 3,
             get_full_documents=get_full_document,
             doc_content_chars_max=args.get("doc_content_chars_max", 4000),
