@@ -17,13 +17,13 @@
     include "registries/aaosa.hocon",
 
     "metadata": {
-        "description": "Multi-agent system simulating Macy's retail operations. Covers customer insights, order management, return analysis, supply chain optimization, demand planning, marketing campaign optimization, pricing strategy, fraud detection, loyalty analysis, and customer sentiment through specialized agents using the AAOSA pattern.",
-        "tags": ["retail", "AAOSA", "customer-service"],
+        "description": "AI-powered business intelligence system simulating Macy's retail operations. Provides data-driven insights across customer analytics, order management, return pattern analysis, supply chain optimization, demand planning, marketing campaign optimization, pricing strategy, fraud detection, and loyalty program analysis through specialized agents using the AAOSA pattern.",
+        "tags": ["retail", "AAOSA"],
         "sample_queries": [
-            "What is the return policy for an online order?",
-            "Can you analyze customer sentiment trends for the holiday season?",
-            "What are the current promotions and loyalty rewards available?",
-            "Help me understand the order fulfillment status for my recent purchase.",
+            "Analyze the current return patterns for the shoes category and identify common reasons.",
+            "What customer sentiment trends are emerging from recent holiday season interactions?",
+            "Evaluate the effectiveness of the current loyalty program on customer retention.",
+            "Provide demand planning recommendations for the upcoming spring inventory cycle.",
         ]
     },
 
