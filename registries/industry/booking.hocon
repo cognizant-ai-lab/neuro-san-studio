@@ -22,7 +22,7 @@
        "tags": ["AAOSA", "travel", "customer-service", "tool"],
        "sample_queries": [
            "Find me a hotel in London near the city center for two adults next week.",
-           "What are the cheapest flight and hotel packages to Rome in March?",
+           "What are the best hotel deals in Rome for a week in March?",
            "I need to cancel my reservation, what is the refund policy?",
            "Are there any Genius loyalty discounts available for my trip to Amsterdam?",
        ]
