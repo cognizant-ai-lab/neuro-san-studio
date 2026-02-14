@@ -15,7 +15,18 @@
 # END COPYRIGHT
 {
     include "registries/aaosa.hocon",
-    
+
+    "metadata": {
+        "description": "Multi-agent system simulating a telecommunications network support operation. Covers network engineering, field technician dispatch, NOC monitoring, service delivery coordination, project management for multi-location installations, and account management through specialized agents using the AAOSA pattern.",
+        "tags": ["telecommunications", "AAOSA", "customer-service"],
+        "sample_queries": [
+            "I need to set up ethernet service at our new office location.",
+            "Our network connection has been intermittent since this morning.",
+            "What is the status of our multi-site network installation project?",
+            "Can you schedule a field technician to troubleshoot our optical network?",
+        ]
+    },
+
     # Load the shared LLM configuration from a single source of truth.
     # This allows users to change the model in one file rather than
     # modifying the configuration for each agent network.
