@@ -15,7 +15,18 @@
 # END COPYRIGHT
 {
     include "registries/aaosa.hocon",
-    
+
+    "metadata": {
+        "description": "Multi-agent system simulating Macy's retail operations. Covers customer insights, order management, return analysis, supply chain optimization, demand planning, marketing campaign optimization, pricing strategy, fraud detection, loyalty analysis, and customer sentiment through specialized agents using the AAOSA pattern.",
+        "tags": ["retail", "AAOSA", "customer-service"],
+        "sample_queries": [
+            "What is the return policy for an online order?",
+            "Can you analyze customer sentiment trends for the holiday season?",
+            "What are the current promotions and loyalty rewards available?",
+            "Help me understand the order fulfillment status for my recent purchase.",
+        ]
+    },
+
     # Load the shared LLM configuration from a single source of truth.
     # This allows users to change the model in one file rather than
     # modifying the configuration for each agent network.
