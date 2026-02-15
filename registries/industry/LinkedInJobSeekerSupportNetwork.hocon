@@ -15,7 +15,18 @@
 # END COPYRIGHT
 {
     include "registries/aaosa.hocon",
-    
+
+    "metadata": {
+        "description": "Multi-agent system simulating a LinkedIn job seeker support platform. Assists with LinkedIn profile optimization, resume and cover letter tailoring, job search strategies, and content creation for professional branding through specialized agents using the AAOSA pattern with web search integration.",
+        "tags": ["AAOSA", "career", "customer-service", "tool"],
+        "sample_queries": [
+            "How can I improve my LinkedIn profile to attract recruiters?",
+            "Help me tailor my resume for a data engineering position.",
+            "Search for remote software developer jobs in the United States.",
+            "What should I write in my LinkedIn headline as a project manager?",
+        ]
+    },
+
     # Load the shared LLM configuration from a single source of truth.
     # This allows users to change the model in one file rather than
     # modifying the configuration for each agent network.

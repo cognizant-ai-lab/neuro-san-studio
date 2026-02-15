@@ -16,7 +16,18 @@
 
 {
    include "registries/aaosa.hocon",
-   
+
+   "metadata": {
+       "description": "Multi-agent system simulating Booking.com's travel platform. Provides trip planning, accommodation and activity search, pricing and discount guidance, vacation package creation, booking management, and payment support through specialized agents using the AAOSA pattern with web search integration.",
+       "tags": ["AAOSA", "travel", "customer-service", "tool"],
+       "sample_queries": [
+           "Find me a hotel in London near the city center for two adults next week.",
+           "What are the best hotel deals in Rome for a week in March?",
+           "I need to cancel my reservation, what is the refund policy?",
+           "Are there any Genius loyalty discounts available for my trip to Amsterdam?",
+       ]
+   },
+
    # Load the shared LLM configuration from a single source of truth.
    # This allows users to change the model in one file rather than
    # modifying the configuration for each agent network.
