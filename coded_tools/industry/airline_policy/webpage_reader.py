@@ -59,7 +59,7 @@ class WebPageReader(CodedTool):
             "Embargoes": ["https://www.united.com/en/us/fly/baggage/international-checked-bag-limits.html"],
         }
 
-    def invoke(self, args: Dict[str, Any]) -> Union[str, Dict[str, Any]]:
+    def invoke(self, args: Dict[str, Any], sly_data: Dict[str, Any]) -> Union[str, Dict[str, Any]]:
         """
         :param args: An argument dictionary whose keys are the parameters
                 to the coded tool and whose values are the values passed for them
@@ -104,16 +104,22 @@ class WebPageReader(CodedTool):
             results = {}
             for url in urls:
                 try:
-                    response = requests.get(url, headers=headers)
+                    response = requests.get(url, headers=headers, timeout=75)
                     response.raise_for_status()
 
                     soup = BeautifulSoup(response.text, "html.parser")
                     texts = soup.stripped_strings
                     full_text = " ".join(texts)
                     results[url] = full_text
-                except Exception as e:
+                except requests.exceptions.RequestException as e:
                     results[url] = f"Error: Unable to process the URL. {str(e)}"
             logger.debug(">>>>>>>>>>>>>>>>>>> Done! >>>>>>>>>>>>>>>>>>")
             return results
-        except Exception as e:
+        except requests.exceptions.RequestException as e:
             return f"Error: Unable to process the request. {str(e)}"
+
+    async def async_invoke(self, args: Dict[str, Any], sly_data: Dict[str, Any]) -> Union[str, Dict[str, Any]]:
+        """
+        Delegates to the synchronous invoke method for now.
+        """
+        return self.invoke(args, sly_data)
