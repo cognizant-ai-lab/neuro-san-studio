@@ -6,6 +6,9 @@ Here are a few examples ordered by level of complexity.
 
 - [Examples](#examples)
   - [🔰 Basic Examples](#-basic-examples)
+    - [Coffee Finder](#coffee-finder)
+    - [Coffee Finder Advanced](#coffee-finder-advanced)
+    - [Hello World](#hello-world)
     - [Music Nerd](#music-nerd)
     - [Music Nerd Pro](#music-nerd-pro)
     - [Music Nerd Local](#music-nerd-local)
@@ -13,8 +16,6 @@ Here are a few examples ordered by level of complexity.
     - [Music Nerd Pro Sly](#music-nerd-pro-sly)
     - [Music Nerd Pro Sly Local](#music-nerd-pro-sly-local)
     - [Music Nerd LLM Fallbacks](#music-nerd-llm-fallbacks)
-    - [Coffee Finder](#coffee-finder)
-    - [Coffee Finder Advanced](#coffee-finder-advanced)
   - [🧰 Tool Integration Examples](#-tool-integration-examples)
     - [Anthropic Code Execution](#anthropic-code-execution)
     - [Anthropic Web Search](#anthropic-web-search)
@@ -35,7 +36,7 @@ Here are a few examples ordered by level of complexity.
     - [Confluence RAG Assistant](#confluence-rag-assistant)
     - [Agentic RAG Assistant](#agentic-rag-assistant)
     - [Wikipedia RAG Assistant](#wikipedia-rag-assistant)
-    - [ArXiv RAG Assistant](#arxiv-rag-assistant)
+    - [ArXiv Assistant](#arxiv-assistant)
     - [ServiceNow AI Agents](#servicenow-ai-agents)
     - [Visual Question Answering](#visual-question-answering)
   - [🏢 Industry-Specific Examples](#-industry-specific-examples)
@@ -54,6 +55,7 @@ Here are a few examples ordered by level of complexity.
   - [🧪 Experimental and Research](#-experimental-and-research)
     - [Agent Network Designer](#agent-network-designer)
     - [Agent Network Architect](#agent-network-architect)
+    - [Copy Cat](#copy-cat)
     - [CRUSE Theme Agent](#cruse-theme-agent)
     - [CRUSE Widget Agent](#cruse-widget-agent)
     - [CRUSE](#cruse)
@@ -139,6 +141,12 @@ This is a good example to:
 - Learn how agents can ask for additional information.
 
 **Tags:** `AAOSA` `tool` `time` `sly_data` `memory`
+
+### Hello World
+
+[Hello World](examples/basic/hellow_world.md) is an agent network that
+demonstrates how one agent can call another using a basic hocon file.
+Given specific input, there is a good chance you will get output something like "Hello World!".
 
 ## 🧰 Tool Integration Examples
 
@@ -301,12 +309,12 @@ relevant articles, and synthesizing their content into accurate, detailed answer
 
 **Tags:** `tool`, `RAG`
 
-### ArXiv RAG Assistant
+### ArXiv Assistant
 
-[ArXiv RAG Assistant](examples/tools/arxiv_rag.md) is an agent-based system that queries arXiv, pulls the best-matching
+[ArXiv Assistant](examples/tools/arxiv_retriever.md) is an agent-based system that queries arXiv, pulls the best-matching
 research papers (abstracts or full text) and produces accurate responses to user queries (no vector store needed).
 
-**Tags:** `tool`, `RAG`
+**Tags:** `tool`
 
 ### ServiceNow AI Agents
 
@@ -399,6 +407,15 @@ collaborate to deliver bank policy-compliant responses to users, with the system
 
 **Tags:** `AAOSA`
 
+### CPG Operations Management
+
+[CPG Operations Management](examples/industry/cpg_agents.md) is a comprehensive enterprise system that coordinates global
+operations for a Consumer Packaged Goods (CPG) company. The system manages cross-functional activities including supply
+chain, product development, sales and marketing, and regional operations through a hierarchical C-suite leadership structure
+led by a Chief Operating Officer.
+
+**Tags:** `AAOSA`, `CPG`, `supply-chain`, `operations`, `enterprise`
+
 ### Retail Operations and Customer Service Assistant
 
 [Retail Operations and Customer Service Assistant](examples/industry/retail_ops_and_customer_service.md) is a modular,
@@ -448,49 +465,57 @@ the results. This network streamlines the end-to-end workflow for building and s
 
 **Tags:** `tool`, `external_network`, `HTML`, `nsflow`, `Gmail`
 
+### Copy Cat
+
+[Copy Cat](examples/experimental/copy_cat.md) is a simple example of an agent network that uses the
+Neuro SAN Reservations API to create other agent networks which become available on a temporary basis.
+
+**Tags:** `example`, `experimental`, `reservations`, `agents-creating-agents`
+
 ### CRUSE Theme Agent
 
-[CRUSE Theme Agent](examples/cruse_theme_agent.md) is an agent that can dynamically generate a json schema for any agent
- (or given context). This json schema can be read by a UI component in the downstream to generate dynamic themes.
- Currently this is limited to only css-based schema. It can be extended to have another sub-agent like Dall-E or nano-banana
- to generate more dynamic backgrounds.
+[CRUSE Theme Agent](examples/experimental/cruse_theme_agent.md) is an agent that can dynamically generate
+a json schema for any agent (or given context). This json schema can be read by a UI component in the
+downstream to generate dynamic themes. Currently this is limited to only css-based schema. It can be
+extended to have another sub-agent like Dall-E or nano-banana to generate more dynamic backgrounds.
 
 **Tags:** `CRUSE`, `tool`, `ui`, `theme`, `background`
 
 ### CRUSE Widget Agent
 
-[CRUSE Widget Agent](examples/cruse_widget_agent.md) is also a CRUSE agent that can dynamically generate a json schema
- that represents an action card. This is useful in generating an input form-like interface by a UI component.
- Currently supported set of fields for a widget include: boolean, checkbox, date, multi-select,
-  number, radio-group, rating, select, text area, slider.
+[CRUSE Widget Agent](examples/experimental/cruse_widget_agent.md) is also a CRUSE agent that can dynamically
+generate a json schema that represents an action card. This is useful in generating an input form-like
+interface by a UI component. Currently supported set of fields for a widget include: boolean, checkbox,
+date, multi-select, number, radio-group, rating, select, text area, slider.
 
 **Tags:** `CRUSE`, `tool`, `ui`, `widget`
 
 ### KWIK Agents
 
-[KWIK_agents](examples/kwik_agents.md) is a basic multi-agent system with memory.
+[KWIK_agents](examples/experimental/kwik_agents.md) is a basic multi-agent system with memory.
 
 **Tags:** `tool`, `memory`
 
 ### CRUSE
 
-[CRUSE](examples/cruse.md) is an agent that can dynamically attach to any agent in your registry and make it run with a
-context reactive user experience. This is a good example of how to switch down-chain agents dynamically using coded
-tools and sly_data.
+[CRUSE](examples/experimental/cruse.md) is an agent that can dynamically attach to any agent in your registry
+and make it run with a context reactive user experience. This is a good example of how to switch down-chain
+agents dynamically using coded tools and sly_data.
 
 **Tags:** `tool`, `ui`, `app`
 
 ### Conscious Assistant
 
-[Conscious Agent](examples/conscious_agent.md) is a multi-agent system used within the conscious assistant and
+[Conscious Agent](examples/experimental/conscious_agent.md) is a multi-agent system used within the conscious assistant and
 serves as a good example of how to run an agent permanently.
 
 **Tags:** `tool`, `memory`, `app`
 
 ### Log Analyzer
 
-[Log Analyzer](examples/log_analyzer.md) is a multi-agent system used within the log analyzer app and serves as a
-good example of how to run an agent network on an agent network log for various validations.
+[Log Analyzer](examples/experimental/log_analyzer.md) is a multi-agent system used within the log analyzer
+app and serves as a good example of how to run an agent network on an agent network log for various
+validations.
 
 **Tags:** `AAOSA`, `app`
 

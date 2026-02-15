@@ -1,5 +1,5 @@
 # Phoenix AI Observability
-arize-phoenix==12.2.0
-openinference-instrumentation-langchain==0.1.37
-openinference-instrumentation-openai==0.1.18
-openinference-instrumentation-anthropic==0.1.13
+arize-phoenix==12.31.2
+openinference-instrumentation-langchain==0.1.58
+openinference-instrumentation-openai==0.1.41
+openinference-instrumentation-anthropic==0.1.20

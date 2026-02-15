@@ -67,11 +67,22 @@
             "properties": {
                 "agent_name": {
                     "type": "string",
-                    "description": "Name of the agent to call. Do not include file extension such as '.hocon' in the name."
+                    "description": """
+                    Name of the agent to call. Do not include file extension such as '.hocon' in the name.
+                    Always start the name with `/`.
+
+                    Example:
+                    "agent_name": "/music_nerd"
+
+                    Note:
+                    Some "agent_name" may have `/` like "basic/music_nerd".
+                    If that the case then use
+                    "agent_name": "/basic/music_nerd"
+                    """
                 },
-                "inquiry": {
-                    "type": "string",
-                    "description": "The inquiry"
+                "tool_args": {
+                    "type": "object",
+                    "description": "Arguments for the called agent."
                 },
             },
             "required": ["inquiry"]
@@ -476,7 +487,7 @@ Supports searching for images, audio files (mp3, ogg, flac, wav), and video file
     #     pip install arxiv
     # If "get_full_documents" is set to True
     #     pip install pymupdf
-    "arxiv_rag": {
+    "arxiv_retriever": {
         # This is a coded tool for RAG on Arxiv Articles.
         "class": "tools.arxiv_rag.ArxivRag",
         "description": """This tool retrieves papers from arXiv using a query string.
@@ -500,17 +511,18 @@ You can group terms using parentheses ().
 
 Examples:
 
-query="au:del_maestro"
-query="au:del_maestro AND ti:checkerboard"
-query='au:del_maestro AND ti:"quantum criticality"'
-query="au:del_maestro ANDNOT (ti:checkerboard OR ti:Pyrochlore)"
+query='au:"del maestro"'
+query='au:"del maestro" AND ti:checkerboard'
+query='au:"del maestro" AND ti:"quantum criticality"'
+query='au:"Adrian Del Maestro" AND au:"Bernd Rosenow"'
+query='au:"del maestro" ANDNOT (ti:checkerboard OR ti:Pyrochlore)'
 query="cat:quant-ph AND abs:entanglement"
 query="id_list:2301.01234"
 
 Rules:
 
 - Every search term must use a prefix
-- Author name should be firstname_lastname with no spaces, lowercase
+- Author names with more than one word must be in quotes
 - Boolean operators must be uppercase
 - Use () to group Boolean expressions for Boolean operator precedence.
 - Use double quotes to group multiple words into phrases to search a particular field.
@@ -523,10 +535,28 @@ Rules:
                     "type": "string",
                     "description": "Retrieval question to answer over arXiv documents"
                 },
+                "sort_by": {
+                    "type": "string",
+                    "description": """
+A property by which search results can be sorted.
+Options are `relevance`, `lastUpdatedDate`, and `submittedDate`. Default to `relevance`.
+"""
+                },
+                "sort_order": {
+                    "type": "string",
+                    "description": """
+Order in which search results are sorted according to the specified `sort_by`.
+Options are `ascending` and `descending`. Default to `descending`.
+"""
+                },
+                "top_k_results": {
+                    "type": "int",
+                    "description": "The maximum number of results to be returned in an execution of this search. Default to 3"
+                },
             },
             "required": ["query"]
         }
-    }
+    },
 
     # ---------- Search Tools ----------
 

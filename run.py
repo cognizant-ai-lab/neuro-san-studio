@@ -74,6 +74,9 @@ class NeuroSanRunner:
             "agent_toolbox_info_file": os.getenv(
                 "AGENT_TOOLBOX_INFO_FILE", os.path.join(self.root_dir, "toolbox", "toolbox_info.hocon")
             ),
+            "mcp_servers_info_file": os.getenv(
+                "MCP_SERVERS_INFO_FILE", os.path.join(self.root_dir, "mcp", "mcp_info.hocon")
+            ),
             "logs_dir": self.logs_dir,
         }
 
@@ -185,6 +188,7 @@ class NeuroSanRunner:
         os.environ["AGENT_MANIFEST_FILE"] = self.args["agent_manifest_file"]
         os.environ["AGENT_TOOL_PATH"] = self.args["agent_tool_path"]
         os.environ["AGENT_TOOLBOX_INFO_FILE"] = self.args["agent_toolbox_info_file"]
+        os.environ["MCP_SERVERS_INFO_FILE"] = self.args["mcp_servers_info_file"]
         os.environ["NEURO_SAN_SERVER_CONNECTION"] = self.args["server_connection"]
         os.environ["AGENT_MANIFEST_UPDATE_PERIOD_SECONDS"] = str(self.args["manifest_update_period_seconds"])
         os.environ["LOG_LEVEL"] = self.args["log_level"]
@@ -192,8 +196,10 @@ class NeuroSanRunner:
         print(f"AGENT_MANIFEST_FILE set to: {os.environ['AGENT_MANIFEST_FILE']}")
         print(f"AGENT_TOOL_PATH set to: {os.environ['AGENT_TOOL_PATH']}")
         print(f"AGENT_TOOLBOX_INFO_FILE set to: {os.environ['AGENT_TOOLBOX_INFO_FILE']}")
+        print(f"MCP_SERVERS_INFO_FILE set to: {os.environ['MCP_SERVERS_INFO_FILE']}")
         print(f"NEURO_SAN_SERVER_CONNECTION set to: {os.environ['NEURO_SAN_SERVER_CONNECTION']}")
-        print(f"AGENT_MANIFEST_UPDATE_PERIOD_SECONDS set to: {os.environ['AGENT_MANIFEST_UPDATE_PERIOD_SECONDS']}\n")
+        print(f"AGENT_MANIFEST_UPDATE_PERIOD_SECONDS set to: {os.environ['AGENT_MANIFEST_UPDATE_PERIOD_SECONDS']}")
+        print(f"LOG_LEVEL set to: {os.environ['LOG_LEVEL']}\n")
 
         # Phoenix / OpenTelemetry envs - delegate to PhoenixPlugin
         self.phoenix_plugin.set_environment_variables()
@@ -208,10 +214,12 @@ class NeuroSanRunner:
                 os.environ["NEURO_SAN_WEB_CLIENT_PORT"] = str(self.args["web_client_port"])
                 print(f"NEURO_SAN_WEB_CLIENT_PORT set to: {os.environ['NEURO_SAN_WEB_CLIENT_PORT']}")
             else:
+                os.environ["NSFLOW_HOST"] = str(self.args["nsflow_host"])
                 os.environ["NSFLOW_PORT"] = str(self.args["nsflow_port"])
                 os.environ["NSFLOW_PLUGIN_CRUSE"] = str(self.args["nsflow_plugin_cruse"])
                 os.environ["VITE_API_PROTOCOL"] = str(self.args["vite_api_protocol"])
                 os.environ["VITE_WS_PROTOCOL"] = str(self.args["vite_ws_protocol"])
+                print(f"NSFLOW_HOST set to: {os.environ['NSFLOW_HOST']}")
                 print(f"NSFLOW_PORT set to: {os.environ['NSFLOW_PORT']}")
                 print(f"NSFLOW_PLUGIN_CRUSE set to: {os.environ['NSFLOW_PLUGIN_CRUSE']}")
                 print(f"VITE_API_PROTOCOL set to: {os.environ['VITE_API_PROTOCOL']}")
@@ -333,13 +341,15 @@ class NeuroSanRunner:
             "-m",
             "uvicorn",
             "nsflow.backend.main:app",
+            "--host",
+            str(self.args["nsflow_host"]),
             "--port",
             str(self.args["nsflow_port"]),
             "--reload",
         ]
 
         self.nsflow_process = self.start_process(command, "nsflow", "logs/nsflow.log")
-        print("nsflow client started on port: ", self.args["nsflow_port"])
+        print(f"nsflow client started on {self.args['nsflow_host']}:{self.args['nsflow_port']}")
 
     def start_flask_web_client(self):
         """Start the Flask web client."""

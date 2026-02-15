@@ -14,171 +14,33 @@
 #
 # END COPYRIGHT
 {
+    # Refer to this document for neuro-san specifications for the agent manifest.hocon file 
+    # that is used as configuration for neuro-san servers
+    # https://github.com/cognizant-ai-lab/neuro-san/blob/main/docs/manifest_hocon_reference.md
+
+    # For all the grouped registries such as basic, tools, industry, we include the respective manifest file.
+
+    # Basic examples
+    include "registries/basic/manifest.hocon",
+
+    # Tool integration examples
+    include "registries/tools/manifest.hocon",
+    
+    # Industry use cases
+    include "registries/industry/manifest.hocon",
+
+    # Experimental and research
+    include "registries/experimental/manifest.hocon",
+
+    # Generated agent networks
+    include "registries/generated/manifest.hocon",
+
     # Currently we list each hocon file we want to serve as a key with a boolean value.
     # Eventually we might have a dictionary value with server specifications for each.
 
 
     #
-    # Basic examples
-    #
-    "basic/music_nerd.hocon": true,
-    "basic/music_nerd_local.hocon": true,
-    "basic/music_nerd_pro.hocon": true,
-    "basic/music_nerd_pro_local.hocon": true,
-    "basic/music_nerd_pro_sly.hocon": true,
-    "basic/music_nerd_pro_sly_local.hocon": true,
-    "basic/music_nerd_llm_fallbacks.hocon": true,
-    "basic/hello_world.hocon": true,
-    "basic/advanced_calculator.hocon": false,
-    "basic/smart_home.hocon": true,
-    "basic/coffee_finder.hocon": true,
-    "basic/coffee_finder_advanced.hocon": true,
-
-    #
-    # Tool integration examples
-    #
-
-    # To use this agent network with Brave Search, obtain an API key from: https://brave.com/search/api/
-    # Once you have the API key, set it using the BRAVE_API_KEY environment variable.
-    # You can optionally set a custom search URL via the BRAVE_URL environment variable.
-    # If BRAVE_URL is not set, the default is: https://api.search.brave.com/res/v1/web/search?q=
-    # You can also configure the request timeout (in seconds) using BRAVE_TIMEOUT; the default is 30 seconds.
-    "tools/brave_search.hocon": false,
-
-    # To use this search tool, you must
-    #
-    # 1. Create a Custom Search Engine (CSE)
-    #   * Go to  https://programmablesearchengine.google.com/
-    #   * Click "Add" → Choose sites or use "*" to search the whole web (then enable that in settings).
-    #   * Note your Search Engine ID (cx).
-    # 2. Get Google API key
-    #  * Go to: https://console.cloud.google.com/
-    #  * Enable the Custom Search API.
-    #  * Create an API key under APIs & Services > Credentials.
-    #
-    # Use the CSE ID in step 1 to set GOOGLE_SEARCH_CSE_ID environment variable.
-    # Use the API key in step 2 to set GOOGLE_SEARCH_API_KEY environment variable.
-    #
-    # You can optionally set a custom search URL and a custom timeout via the GOOGLE_SEARCH_URL and GOOGLE_SEARCH_TIMEOUT environment variables.
-    # Otherwise, the default values of "https://www.googleapis.com/customsearch/v1" and "30" are used, respectively
-    "tools/google_search.hocon": false,
-
-    "tools/agent_network_html_creator.hocon": true,
-    "tools/agentforce.hocon": true,
-    "tools/agentspace_adapter.hocon": false,
-
-    # To use this agent network, start by installing the required package:
-    #     pip install pymupdf >= 1.25.5
-    "tools/pdf_rag.hocon": false,
-    "tools/agentic_rag.hocon": false,
-    "kwik_agents.hocon": false,
-
-    # Requirement to use this agent network:
-    # - langchain-openai >= 0.3.26
-    # - OPENAI_API_KEY
-    # See https://platform.openai.com/docs/guides/tools?api-mode=responses and
-    # https://python.langchain.com/docs/integrations/chat/openai/#responses-api
-    "tools/openai_web_search.hocon": true,
-    "tools/openai_code_interpreter.hocon": true,
-    "tools/openai_image_generation.hocon": true,
-    # This network also requires opencv-python
-    # See docs/examples/tools/openai_video_generation.hocon#Prerequisites for more information.
-    "tools/openai_video_generation.hocon": false,
-
-    # Requirement to use this agent network:
-    # - langchain-anthropic>=0.3.13
-    # - ANTHROPIC_API_KEY
-    # See https://docs.anthropic.com/en/docs/agents-and-tools/tool-use/overview and
-    # https://python.langchain.com/docs/integrations/chat/anthropic/#built-in-tools
-    "tools/anthropic_web_search.hocon": true,
-    "tools/anthropic_code_execution.hocon": true,
-
-    # Requirement to use this agent network:
-    # - google-genai
-    # - GOOGLE_API_KEY
-    # See https://ai.google.dev/gemini-api/docs
-    # Note: If `langchain-google-genai` is already installed in your environment, `google-genai` is already included.
-    "tools/gemini_image_generation.hocon": false,
-
-    # Requirement to use this agent network:
-    # - neuro-san>=0.6.24
-    # - GOOGLE_API_KEY
-    # - Maps Grounding Lite API enabled in Google Cloud project. See https://developers.google.com/maps/ai/grounding-lite
-    # - Use MCP_SERVERS_INFO_FILE for authentication. See https://github.com/cognizant-ai-lab/neuro-san-studio/blob/main/mcp/mcp_info.hocon and https://github.com/cognizant-ai-lab/neuro-san-studio/blob/main/docs/user_guide.md#authentication
-    "tools/google_maps.hocon": false,
-
-    # To use this agent network, start by installing the required package:
-    #     pip install atlassian-python-api
-    #
-    # Additional installations may be required depending on the attachment types used.
-    # For details, see https://python.langchain.com/api_reference/_modules/langchain_community/document_loaders/confluence.html#ConfluenceLoader
-    # Set "username" and "api_key" in the agent network hocon or
-    # as environment variable "JIRA_USERNAME" and "JIRA_API_TOKEN", respectively.
-    "tools/confluence_rag.hocon": false,
-
-    # Before turning on and running the following agent network, make sure that:
-    # The MCP server is running.
-    # The server can be found at servers/MCP/bmi_server.py and run using the following command
-    # python bmi_server.py
-    "tools/mcp_bmi_streamable_http.hocon": false,
-
-    # The following agent network is an example of Agent2Agent (A2A) Protocol implementation:
-    # Make sure to pip install a2a-sdk crewai and start the server by python server.py before turning the agent on.
-    # The A2Aserver can be found at servers/A2A/server.py and run by command
-    # python server.py
-    "tools/a2a_research_report.hocon": false,
-
-    # To use this agent network, you will need to
-    # - pip install -U langchain-google-community\[gmail\]
-    # - set up your credentials explained in
-    # https://developers.google.com/workspace/gmail/api/quickstart/python#authorize_credentials_for_a_desktop_application.
-    # Once you've downloaded the credentials.json file and put it in the top level of this repo,
-    # you can start using the agent network.
-    "tools/gmail.hocon": false,
-
-    # To use this agent network, start by installing the required package:
-    #     pip install wikipedia
-    "tools/wikipedia_rag.hocon": false,
-
-    # Wikimedia media search
-    "tools/wikimedia_search.hocon": true,
-
-    # To use this agent network, start by installing the required package:
-    #     pip install arxiv
-    # If "get_full_documents" is set to True
-    #     pip install pymupdf
-    "tools/arxiv_rag.hocon": false,
-
-    # To use this agent network, follow the instructions in ./docs/examples/visual_question_answering.md
-    "tools/visual_question_answering.hocon": false,
-
-    #
-    # Industry use cases
-    #
-    "industry/airline_policy.hocon": true,
-    "industry/banking_ops.hocon": true,
-    "cpg_agents.hocon": true,
-    "industry/insurance_agents.hocon": false,  # This is a deprecated version of insurance_underwriting_agents.hocon
-    "industry/insurance_underwriting_agents.hocon": true,
-    "industry/intranet_agents.hocon": false,  # This is a deprecated version of intranet_agents_with_tools.hocon
-    "industry/intranet_agents_with_tools.hocon": true,
-    "industry/real_estate.hocon": false,
-    "industry/retail_ops_and_customer_service.hocon": true,
-    "industry/telco_network_support.hocon": true,
-    "industry/telco_network_orchestration.hocon": true,
-    "industry/therapy_vignette_supervisors.hocon": true,
-    "industry/consumer_decision_assistant.hocon": true,
-    # The following agent networks are used as sub-networks by consumer_decision_assistant.hocon
-    "industry/airbnb.hocon": true,
-    "industry/booking.hocon": true,
-    "industry/carmax.hocon": true,
-    "tools/ddgs_search.hocon": true,
-    "industry/expedia.hocon": true,
-    "industry/macys.hocon": true,
-    "industry/LinkedInJobSeekerSupportNetwork.hocon": true,
-
-    #
-    # Experimental and research
+    # Agent network designer family of agents
     #
     "agent_network_designer.hocon": true,
     "agent_network_editor.hocon": {
@@ -199,17 +61,6 @@
         "serve": true,
         "public": false
     },
-    "six_thinking_hats.hocon": true,
-    # Set the following agent network to true before running apps/cruse/interface_flask.py
-    "cruse_agent.hocon": false,
-    # Set the following agent network to true before running apps/conscious_assistant/interface_flask.py
-    "conscious_agent.hocon": false,
-    # Set the following agent network to true before running apps/log_analyzer/log_analyzer.py
-    "log_analysis_agents.hocon": false,
-
-    "experimental/mdap_decomposer.hocon": true,
-
-    # Demos
 
     # This agent network performs the following actions:
     # 1. Calls "agent_network_designer" as an external agent to generate a .hocon configuration file.
@@ -235,19 +86,5 @@
     #   For example, you can run:
     #     python -m run --server-grpc-port 30012 --server-http-port 8081 --nsflow-port 4174
     "agent_network_architect.hocon": false,
-    "industry/news_sentiment_analysis.hocon": false,
-    "tools/now_agents.hocon": true,
 
-    "cruse_theme_agent.hocon": {
-        # This is a support network for Cruse Interface
-        # We want it served up, but not listed as a public agent network
-        "serve": true,
-        "public": false
-    },
-    "cruse_widget_agent.hocon": {
-        # This is a support network for Cruse Interface
-        # We want it served up, but not listed as a public agent network
-        "serve": true,
-        "public": false
-    }
 }

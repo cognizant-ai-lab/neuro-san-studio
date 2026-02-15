@@ -168,7 +168,6 @@ make lint-tests         # Run linting on test code
 make test               # Run all tests with coverage except integration test
 make test-integration   # run integration test
 
-Run pytest -s -m "integration"
 require to run the follow steps 1st:
 - goto top level neuro-san-studio
 - make install
@@ -176,6 +175,16 @@ require to run the follow steps 1st:
 - export PYTHONPATH=`pwd`
 - export AGENT_TOOL_PATH=tests/coded_tools/ 
 - export AGENT_MANIFEST_FILE=tests/registries/manifest.hocon
+
+# Run all integration test suite:
+- Run pytest -s -m "integration"
+
+# Run all test cases under that group of sectors:
+- Run pytest -s -m "integration_basic"
+- Run pytest -s -m "integration_industry"
+
+# Run all test cases that related to network agent name:
+- Run pytest -s -m "integration_basic_coffee_finder_advance"
 
 ```
 
