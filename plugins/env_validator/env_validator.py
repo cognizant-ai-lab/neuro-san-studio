@@ -408,12 +408,12 @@ class EnvValidator:
             # For keys without live validation, return tier 2 result
             return self.validate_tier2(var_name)
 
-    def validate_all(self, live_validation: bool = False) -> list[ValidationResult]:
+    def validate_all(self, tier: int = 2) -> list[ValidationResult]:
         """
         Validate all known LLM API keys.
 
         Args:
-            live_validation: If True, perform Tier 3 live validation
+            tier: Validation tier level (1=placeholder, 2=format, 3=live API calls)
 
         Returns:
             List of ValidationResult objects
@@ -421,10 +421,12 @@ class EnvValidator:
         self.results = []
 
         for var_name in self.LLM_API_KEYS:
-            if live_validation:
+            if tier >= 3:
                 result = self.validate_tier3(var_name)
-            else:
+            elif tier >= 2:
                 result = self.validate_tier2(var_name)
+            else:
+                result = self.validate_tier1(var_name)
             self.results.append(result)
 
         return self.results
