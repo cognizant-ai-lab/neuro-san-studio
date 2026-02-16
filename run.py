@@ -253,17 +253,19 @@ class NeuroSanRunner:
 
         print("\n" + "=" * 50 + "\n")
 
-    def validate_environment(self):
-        """Validate LLM API keys and critical environment variables."""
-        print("Validating environment variables...")
+    def validate_keys(self):
+        """Validate LLM API keys when --validate-keys is specified."""
+        tier = self.args.get("validate_keys")
+        if not tier:
+            return
+
+        print(f"Validating LLM API keys (tier {tier})...")
+
+        if tier >= 3:
+            print("Live validation enabled - making API calls to verify keys...")
 
         validator = EnvValidator()
-        live_validation = self.args.get("validate_keys", False)
-
-        if live_validation:
-            print("Live validation enabled (--validate-keys) - making API calls to verify keys...")
-
-        results = validator.validate_all(live_validation=live_validation)
+        results = validator.validate_all(tier=tier)
         validator.print_results(results)
 
         # Warn but don't block startup for missing/placeholder keys
@@ -573,8 +575,8 @@ class NeuroSanRunner:
         # Set environment variables
         self.set_environment_variables()
 
-        # Validate environment variables (Tier 1 & 2 always, Tier 3 if --validate-keys)
-        self.validate_environment()
+        # Validate LLM API keys if --validate-keys was specified
+        self.validate_keys()
 
         # Ensure logs directory exists
         os.makedirs("logs", exist_ok=True)
