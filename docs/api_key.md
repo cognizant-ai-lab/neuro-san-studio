@@ -2,11 +2,15 @@
 
 Setup a virtual environment, install the dependencies, and activate the virtual environment using [Make](./dev_guide.md#using-the-makefile)
 
-## Automatic Validation at Startup
+## Validation with `--validate-keys`
 
-When you run the server with `python -m run`, environment variables are automatically validated using a three-tier system:
+When you run the server with `python -m run --validate-keys`, API keys are validated using a three-tier system. You can specify the tier level:
 
-### Tier 1: Placeholder Detection (Always Runs)
+- `--validate-keys` or `--validate-keys 3` — Run all three tiers (default)
+- `--validate-keys 1` — Run only Tier 1
+- `--validate-keys 2` — Run Tiers 1 and 2
+
+### Tier 1: Placeholder Detection
 
 Detects common placeholder values that indicate unconfigured keys.
 
@@ -19,7 +23,7 @@ Detects common placeholder values that indicate unconfigured keys.
 | `<insert-key-here>` | ⚠️ Placeholder detected |
 | `sk-proj-abc123...` | ✓ Passes to Tier 2 |
 
-### Tier 2: Format Validation (Always Runs)
+### Tier 2: Format Validation
 
 Validates that API keys match expected patterns for each provider.
 
@@ -40,13 +44,9 @@ Validates that API keys match expected patterns for each provider.
 | `invalid-key` | ❌ Invalid format |
 | `sk-ant-api03-xyz...` | ✓ Valid Anthropic format |
 
-### Tier 3: Live Validation (Optional - `--validate-keys` flag)
+### Tier 3: Live Validation
 
-Makes actual API calls to verify keys are valid and have access.
-
-```bash
-python -m run --validate-keys
-```
+Makes actual API calls to verify keys are valid and have access. This tier runs when `--validate-keys` is passed without a value or with `--validate-keys 3`.
 
 **Currently supported providers for live validation:**
 
@@ -80,7 +80,7 @@ Summary: 3/7 valid, 4 warnings, 0 errors
 ```
 
 > **Source Code:** The validation logic lives in
-> [`tests/apps/env_validator.py`](../tests/apps/env_validator.py).
+> [`plugins/env_validator/env_validator.py`](../plugins/env_validator/env_validator.py).
 > You can inspect or extend this file to add support for additional providers.
 
 ---
@@ -89,7 +89,7 @@ Summary: 3/7 valid, 4 warnings, 0 errors
 
 You can also test individual API keys using the scripts below:
 
-## OpenAI API Key
+### OpenAI API Key
 
 - Export your OpenAI API environment variables
 
@@ -105,7 +105,7 @@ You can also test individual API keys using the scripts below:
 
 - You will recieve a message indicating success or failure.
 
-## Azure OpenAI API Key
+### Azure OpenAI API Key
 
 - Export your Azure OpenAI API environment variables
 
@@ -132,7 +132,7 @@ You can also test individual API keys using the scripts below:
 - See [Azure OpenAI Quickstart](https://learn.microsoft.com/en-us/azure/ai-services/openai/chatgpt-quickstart?tabs=keyless%2Ctypescript-keyless%2Cpython-new%2Ccommand-line&pivots=programming-language-python) for more information.
 <!-- pyml enable line-length-->
 
-## Anthropic API Key
+### Anthropic API Key
 
 - Export your Anthropic API environment variables
 
@@ -149,7 +149,7 @@ You can also test individual API keys using the scripts below:
 
 - You will recieve a message indicating success or failure.
 
-## Gemini API Key
+### Gemini API Key
 
 - Export your Gemini API environment variables
 
