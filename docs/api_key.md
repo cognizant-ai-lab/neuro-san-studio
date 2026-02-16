@@ -4,7 +4,8 @@ Setup a virtual environment, install the dependencies, and activate the virtual 
 
 ## Validation with `--validate-keys`
 
-When you run the server with `python -m run --validate-keys`, API keys are validated using a three-tier system. You can specify the tier level:
+When you run the server with `python -m run --validate-keys`, API keys are validated
+using a three-tier system. You can specify the tier level:
 
 - `--validate-keys` or `--validate-keys 3` — Run all three tiers (default)
 - `--validate-keys 1` — Run only Tier 1
@@ -46,7 +47,9 @@ Validates that API keys match expected patterns for each provider.
 
 ### Tier 3: Live Validation
 
-Makes actual API calls to verify keys are valid and have access. This tier runs when `--validate-keys` is passed without a value or with `--validate-keys 3`.
+Makes actual API calls to verify keys are valid and have access.
+This tier runs when `--validate-keys` is passed without a value
+or with `--validate-keys 3`.
 
 **Currently supported providers for live validation:**
 
