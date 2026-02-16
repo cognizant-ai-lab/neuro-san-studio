@@ -166,8 +166,15 @@ class NeuroSanRunner:
         )
         parser.add_argument(
             "--validate-keys",
-            action="store_true",
-            help="Perform live validation of API keys by making test API calls",
+            type=int,
+            nargs="?",
+            const=3,
+            default=None,
+            metavar="{1,2,3}",
+            help="Validate API keys up to the specified tier: "
+            "1=placeholder detection, 2=format validation, "
+            "3=live API calls (default when flag is passed without a value). "
+            "Omit to skip validation entirely.",
         )
 
         args, _ = parser.parse_known_args()
