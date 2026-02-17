@@ -19,6 +19,10 @@ import os
 import time
 from typing import Any
 from typing import Dict
+from urllib.parse import parse_qsl
+from urllib.parse import urlencode
+from urllib.parse import urlparse
+from urllib.parse import urlunparse
 
 # pylint: disable=import-error
 import backoff
@@ -33,6 +37,17 @@ from newspaper import Article
 # Setup logger
 logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(__name__)
+
+SENSITIVE_QUERY_KEYS = {
+    "api-key",
+    "apikey",
+    "api_key",
+    "key",
+    "token",
+    "access_token",
+    "password",
+    "passwd",
+}
 
 
 class WebScrapingTechnician(CodedTool):
@@ -63,6 +78,37 @@ class WebScrapingTechnician(CodedTool):
         self.aljazeera_feeds = {"world": "https://www.aljazeera.com/xml/rss/all.xml"}
         logger.info("WebScrapingTechnician initialized")
 
+    def sanitize_url(self, url: str) -> str:
+        """
+        Remove credentials (username/password) and sensitive query parameters from URL for safe logging.
+
+        :param url: The URL to sanitize.
+        :return: URL with credentials removed.
+        """
+        try:
+            parsed = urlparse(url)
+
+            # Strip username/password
+            netloc = parsed.hostname or ""
+            if parsed.port:
+                netloc = f"{netloc}:{parsed.port}"
+
+            # Sanitize query parameters
+            query_pairs = parse_qsl(parsed.query, keep_blank_values=True)
+            sanitized_query = urlencode(
+                [(k, "[redacted]" if k.lower() in SENSITIVE_QUERY_KEYS else v) for k, v in query_pairs],
+                doseq=True,
+            )
+
+            return urlunparse(
+                parsed._replace(
+                    netloc=netloc,
+                    query=sanitized_query,
+                )
+            )
+        except (ValueError, TypeError):
+            return url
+
     def scrape_with_bs4(self, url: str, source: str = "generic") -> str:
         """
         Scrape article content from a given URL using BeautifulSoup as a fallback method.
@@ -83,7 +129,7 @@ class WebScrapingTechnician(CodedTool):
                 paragraphs = [p.get_text() for p in article_body.find_all("p")]
             return " ".join(paragraphs).strip()
         except requests.exceptions.RequestException as e:
-            logger.warning("BeautifulSoup failed for %s (%s): %s", url, source, e)
+            logger.warning("BeautifulSoup failed for %s (%s): %s", self.sanitize_url(url), source, str(e))
             return ""
 
     @backoff.on_exception(
@@ -145,7 +191,7 @@ class WebScrapingTechnician(CodedTool):
             return content
 
         except (requests.exceptions.RequestException, ValueError) as e:
-            logger.debug("Newspaper3k failed for %s: %s", url, e)
+            logger.debug("Newspaper3k failed for %s: %s", self.sanitize_url(url), str(e))
             return self.scrape_with_bs4(url, source)
 
     def scrape_nyt(self, keywords: list, save_dir: str = "nyt_articles_output") -> Dict[str, Any]:
