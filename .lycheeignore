@@ -26,19 +26,9 @@ https://www.googleapis.com/customsearch/
 # Sites that timeout or block CI requests
 https://docs.servicenow.com/
 
-# Pre-existing broken file references
-file://.*hellow_world\.md
-
-# Pre-existing broken links in docs (moved/deleted pages)
-https://github.com/cognizant-ai-lab/neuro-san-studio/blob/main/registries/airbnb.hocon
-https://github.com/cognizant-ai-lab/neuro-san-studio/blob/main/registries/booking.hocon
-https://github.com/cognizant-ai-lab/neuro-san-studio/blob/main/registries/carmax.hocon
-https://github.com/cognizant-ai-lab/neuro-san-studio/blob/main/registries/expedia.hocon
-https://github.com/cognizant-ai-lab/neuro-san-studio/blob/main/registries/real_estate.hocon
-https://github.com/cognizant-ai-lab/neuro-san-studio/blob/main/registries/LinkedInJobSeekerSupportNetwork.hocon
+# Broken or private external links
 https://github.com/deepsaia/vibe-coding-eval
 https://google.github.io/A2A/specification
-https://cloud.google.com/agentspace/agentspace-enterprise/docs/overview
 
 # Shield badges (dynamic content, not actual pages)
 https://img.shields.io/

@@ -1,4 +1,4 @@
-.PHONY: help venv install activate venv-guard lint lint-tests format format-tests link-check
+.PHONY: help venv install activate venv-guard lint lint-tests format format-tests
 SOURCES := run.py apps coded_tools
 TESTS   := tests
 .DEFAULT_GOAL := help
@@ -64,9 +64,6 @@ format-tests: venv-guard
 
 format: format-source format-tests
 
-link-check:
-	lychee --verbose --no-progress './**/*.md'
-
 lint-check-source: venv-guard
 	# Run format checks and fail if isort or black need changes
 	isort $(SOURCES) $(ISORT_FLAGS) $(ISORT_CHECK)
@@ -74,6 +71,7 @@ lint-check-source: venv-guard
 	flake8 $(SOURCES)
 	pylint $(SOURCES)/
 	pymarkdown --config ./.pymarkdownlint.yaml scan ./docs ./README.md
+	lychee --verbose --no-progress --exclude-path venv './**/*.md'
 
 lint-check-tests: venv-guard
 	# Run format checks and fail if isort or black need changes

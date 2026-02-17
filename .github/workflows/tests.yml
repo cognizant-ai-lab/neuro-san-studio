@@ -51,11 +51,6 @@ jobs:
           tar --extract --gzip --file /tmp/lychee.tar.gz --directory /usr/local/bin
           chmod +x /usr/local/bin/lychee
 
-      - name: Run make link-check
-        shell: bash
-        run: |
-          make link-check
-
       - name: Install Python dependencies
         shell: bash
         run: |
