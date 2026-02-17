@@ -41,17 +41,30 @@ jobs:
       - name: Install dependencies
         shell: bash
         run: |
-          apt-get update && apt-get install -y shellcheck make
+          apt-get update && apt-get install --yes shellcheck make
           python -m venv venv
           source venv/bin/activate
           pip install -r requirements-build.txt
           pip install -r requirements.txt
+
+      - name: Install lychee
+        shell: bash
+        run: |
+          curl --silent --location --output /tmp/lychee.tar.gz \
+            https://github.com/lycheeverse/lychee/releases/latest/download/lychee-x86_64-unknown-linux-gnu.tar.gz
+          tar --extract --gzip --file /tmp/lychee.tar.gz --directory /usr/local/bin
+          chmod +x /usr/local/bin/lychee
 
       - name: Show installed packages
         shell: bash
         run: |
           source venv/bin/activate 
           pip freeze
+
+      - name: Run make link-check
+        shell: bash
+        run: |
+          make link-check
 
       - name: Run make lint-check
         # We run this check-only step to break the build if

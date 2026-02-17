@@ -1,4 +1,4 @@
-.PHONY: help venv install activate venv-guard lint lint-tests format format-tests
+.PHONY: help venv install activate venv-guard lint lint-tests format format-tests link-check
 SOURCES := run.py apps coded_tools
 TESTS   := tests
 .DEFAULT_GOAL := help
@@ -63,6 +63,9 @@ format-tests: venv-guard
 	black $(TESTS)
 
 format: format-source format-tests
+
+link-check:
+	lychee --verbose --no-progress './**/*.md'
 
 lint-check-source: venv-guard
 	# Run format checks and fail if isort or black need changes
