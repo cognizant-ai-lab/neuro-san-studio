@@ -71,7 +71,7 @@ lint-check-source: venv-guard
 	flake8 $(SOURCES)
 	pylint $(SOURCES)/
 	pymarkdown --config ./.pymarkdownlint.yaml scan ./docs ./README.md
-	lychee --verbose --no-progress --exclude-path venv './**/*.md'
+	lychee --no-progress --exclude-path venv './**/*.md'
 
 lint-check-tests: venv-guard
 	# Run format checks and fail if isort or black need changes
