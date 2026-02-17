@@ -1,0 +1,17 @@
+# Localhost and local development URLs
+http://localhost
+https://localhost
+http://127.0.0.1
+
+# Placeholder and example URLs
+https://github.com/your-username/
+https://your-instance.atlassian.net
+
+# URLs that require authentication or are rate-limited
+https://platform.openai.com/signup
+https://api.slack.com/apps
+https://api.salesforce.com
+
+# Shield badges (dynamic content, not actual pages)
+https://img.shields.io/
+https://static.pepy.tech/badge/
