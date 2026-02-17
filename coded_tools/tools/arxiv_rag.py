@@ -18,10 +18,10 @@ import logging
 from typing import Any
 from typing import Dict
 
-from langchain_community.retrievers import ArxivRetriever
 from neuro_san.interfaces.coded_tool import CodedTool
 
 from coded_tools.tools.base_rag import BaseRag
+from coded_tools.tools.modified_arxiv_retriever import ModifiedArxivRetriever
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -43,6 +43,8 @@ class ArxivRag(CodedTool):
             "doc_content_chars_max": maximum number of characters to keep in each document (default is 4000)
             "load_all_available_meta": whether to load all available metadata (default is False)
             "continue_on_failure": whether to continue processing if an error occurs (default is True)
+            "sort_by": options are `relevance`, `lastUpdatedDate`, and `submittedDate`. Default to `relevance`.
+            "sort_order": options are `ascending` and `descending`. Default to `descending`.
 
         :param sly_data: A dictionary whose keys are defined by the agent
             hierarchy, but whose values are meant to be kept out of the
@@ -68,31 +70,45 @@ class ArxivRag(CodedTool):
             logger.error("Missing required input: 'query' (retrieval question).")
             raise ValueError("❌ Missing required input: 'query'.")
 
-        # For the arXiv API, the query argument must follow a specific format,
-        # for example: "au:del_maestro AND ti:checkerboard".
-        #
-        # References:
-        # - https://lukasschwab.me/arxiv.py/arxiv.html#Search.query
-        # - https://info.arxiv.org/help/api/user-manual.html#51-details-of-query-construction
-        #
-        # However, when `get_full_documents` is set to True, LangChain strips
-        # characters such as ":" and "-", which makes the query invalid for arXiv.
-        #
-        # To avoid this issue, we remove the arXiv field prefixes in advance
-        # when `get_full_documents` is enabled.
-        get_full_documents = bool(args.get("get_full_documents", False))
-        if get_full_documents:
-            prefixes = ["ti:", "au:", "abs:", "co:", "jr:", "cat:", "rn:", "id_list:"]
-            for prefix in prefixes:
-                query = query.replace(prefix, "")
+        # Controls the shape of the data returned to the agent
+        # - False (default): return metadata + summarized content
+        # - True: return metadata only, and store full document content in sly_data
+        get_full_document: bool = args.get("get_full_documents", False)
 
         # Initialize ArxivRetriever with the provided arguments
-        retriever = ArxivRetriever(
-            top_k_results=int(args.get("top_k_results", 3)),
-            get_full_documents=get_full_documents,
-            doc_content_chars_max=int(args.get("doc_content_chars_max", 4000)),
-            load_all_available_meta=bool(args.get("load_all_available_meta", False)),
-            continue_on_failure=bool(args.get("continue_on_failure", True)),
+        retriever = ModifiedArxivRetriever(
+            # LMMs can decide to set a "top_k_results" key to None in args. Make sure we always use an int by default.
+            top_k_results=args.get("top_k_results") or 3,
+            get_full_documents=get_full_document,
+            doc_content_chars_max=args.get("doc_content_chars_max", 4000),
+            load_all_available_meta=args.get("load_all_available_meta", False),
+            continue_on_failure=args.get("continue_on_failure", True),
+            sort_by=args.get("sort_by") or "relevance",
+            sort_order=args.get("sort_order") or "descending",
         )
 
-        return await BaseRag.query_retriever(retriever, query)
+        # Query the retriever
+        # Each result contains:
+        # - content: summary or full document (depending on retriever config)
+        # - metadata: document-level metadata (includes summary when full content is returned)
+        results: list[dict[str, Any]] = await BaseRag.query_retriever(retriever, query)
+
+        # If full documents are requested:
+        # - Persist the full document text in sly_data (keyed by Entry ID)
+        # - Return only metadata (with summaries) to the agent to reduce token usage
+        if get_full_document:
+            arxiv_contents: dict[str, str] = sly_data.get("arxiv_contents") or {}
+            metadata_list: list[dict[str, str]] = []
+            for result in results:
+                entry_id: str = result.get("metadata", {}).get("Entry ID")
+                content: str = result.get("content")
+                arxiv_contents.update({entry_id: content})
+                metadata_list.append(result.get("metadata", {}))
+            # Store full document content outside chat history
+            sly_data["arxiv_contents"] = arxiv_contents
+            # Return metadata (which includes the summary)
+            return metadata_list
+
+        # Default behavior:
+        # Return metadata with summarized content directly to the agent
+        return results

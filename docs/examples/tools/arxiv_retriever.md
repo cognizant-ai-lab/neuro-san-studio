@@ -1,12 +1,12 @@
-# ArXiv RAG Assistant
+# ArXiv Assistant
 
-The **ArXiv RAG Assistant** answers user queries using Retrieval-Augmented Generation (RAG) over academic papers from [arXiv.org](https://arxiv.org).
+The **ArXiv Assistant** answers user queries using retrieved over academic papers from [arXiv.org](https://arxiv.org).
 
 ---
 
 ## File
 
-[arxiv_rag.hocon](../../../registries/tools/arxiv_rag.hocon)
+[arxiv_retriever.hocon](../../../registries/tools/arxiv_retriever.hocon)
 
 ---
 
@@ -17,7 +17,7 @@ This agent is **disabled by default**. To use it:
 1. Enable hocon file:
    
     ```hocon
-    "arxiv_rag.hocon": true
+    "arxiv_retriever.hocon": true
     ```
    
 2. Installing the required packages:
@@ -42,7 +42,7 @@ This agent is **disabled by default**. To use it:
 Please give me a list of research papers on LORA.
 ```
 
-### AI (ArXiv RAG Assistant)
+### AI (ArXiv Assistant)
 
 ```text
 Here is a list of research papers on Low-Rank Adaptation (LoRA):
@@ -85,13 +85,13 @@ language models, and IoT networking.
 
 ## Architecture Overview
 
-### Frontman Agent: **ArXiv RAG Assistant**
+### Frontman Agent: **ArXiv Assistant**
 
 * Serves as the **entry point** for user queries.  
-* Passes the **query** to the `rag_retriever` tool.
+* Passes the **query** to the `arxiv_retriever` tool.
 * Aggregates and composes the answer to user query.
 
-### Tool: `rag_retriever`
+### Tool: `arxiv_retriever`
 
 * Retrieves relevant papers from wikipedia that answer the user's query.
 
@@ -110,6 +110,8 @@ language models, and IoT networking.
 - `continue_on_failure` (bool, default True): Fault tolerance.
     - true → skip retrieval/parsing failures and continue.
     - false → fail fast on first error.
+- `sort_by` (str, default `relevance`): Options are `relevance`, `lastUpdatedDate`, and `submittedDate`.
+- `sort_order` (str, default `descending`): Options are `ascending` and `descending`.
 
 ---
 
@@ -118,5 +120,5 @@ language models, and IoT networking.
 When troubleshooting, check the following:
 
 - Ensure that the user queries are detailed with context.
-- Verify that top_k_results and doc_content_chars_max are set to values that don’t cause timeouts or memory issues or do not lose a lot of context.
+- Verify that `top_k_results` and `doc_content_chars_max` are set to values that don’t cause timeouts or memory issues or do not lose a lot of context.
 - Look at logs to ensure smooth delegation across tool calls and proper response integration.

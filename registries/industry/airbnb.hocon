@@ -16,7 +16,18 @@
 
 {
    include "registries/aaosa.hocon",
-   
+
+   "metadata": {
+       "description": "Multi-agent system simulating Airbnb's consumer-facing travel platform. Handles accommodation search, pricing and discounts, vacation package planning, experience booking, and travel support through specialized agents using the AAOSA pattern with web search integration.",
+       "tags": ["AAOSA", "travel", "customer-service", "tool"],
+       "sample_queries": [
+           "I need a pet-friendly apartment in New York for next weekend.",
+           "What discounts are available for a month-long stay in Barcelona?",
+           "Can you plan a vacation package with accommodation and local experiences in Tokyo?",
+           "I need to modify my booking dates, what is the cancellation policy?",
+       ]
+   },
+
    # Load the shared LLM configuration from a single source of truth.
    # This allows users to change the model in one file rather than
    # modifying the configuration for each agent network.

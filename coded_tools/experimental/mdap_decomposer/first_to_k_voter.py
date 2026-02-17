@@ -19,8 +19,8 @@ from asyncio import Future
 from asyncio import gather
 from typing import Any
 
-from coded_tools.experimental.mdap_decomposer.agent_caller import AgentCaller
 from coded_tools.experimental.mdap_decomposer.voter import Voter
+from coded_tools.tools.agent_caller import AgentCaller
 
 
 # pylint: disable=too-few-public-methods

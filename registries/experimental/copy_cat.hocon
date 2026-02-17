@@ -1,0 +1,126 @@
+
+# Copyright © 2023-2026 Cognizant Technology Solutions Corp, www.cognizant.com.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
+# END COPYRIGHT
+
+# The schema specifications for this file are documented here:
+# https://github.com/cognizant-ai-lab/neuro-san/blob/main/docs/agent_hocon_reference.md
+
+{
+
+    # This allows users to change the model in one file rather than
+    # modifying the configuration for each agent network.
+    # Note that the file path here is relative to the root level of the repo.
+    include "registries/llm_config.hocon",
+
+    # Optional metadata describing this agent network
+    "metadata": {
+        "description": "Simple agent network demonstrating use of temporary agent networks using Reservations",
+        "tags": ["example", "experimental", "reservations", "agents-creating-agents"],
+        "sample_queries": [
+            """
+Please make a copy of the basic/hello_world.hocon file.
+
+When you are done copying it, call the new agent with the following text:
+'From earth, I approach a new planet and wish to send a short 2-word greeting to the new orb.'
+"""
+        ]
+    },
+
+    "tools": [
+        # These tool definitions do not have to be in any particular order
+        # How they are linked and call each other is defined within their
+        # own specs.  This could be a graph, potentially even with cycles.
+
+        # This first agent definition is regarded as the "Front Man", which
+        # does all the talking to the outside world/client.
+        # It is identified as such because it is either:
+        #   A) The only one with no parameters in his function definition,
+        #      and therefore he needs to talk to the outside world to get things rolling.
+        #   B) The first agent listed, regardless of function parameters.
+        #
+        # Some disqualifications from being a front man:
+        #   1) Cannot use a CodedTool "class" definition
+        #   2) Cannot use a Tool "toolbox" definition
+        {
+            "name": "copy_cat",
+
+            "function": {
+
+                # The description acts as an initial prompt.
+                "description": """
+I am a demonstration agent network that can make a copy of an existing agent on this server
+and deploy it as a temporary agent.  This works best when there are not specific Coded Tools
+in the agent you are copying.  The reference to the temporary agent will be returned in the
+"agent_reservations" key of the sly_data.
+
+Also, if you give me some input text for the new temporary agent, I can immediately call it,
+but that is optional.
+
+What is the name of the agent you want to copy?
+"""
+            },
+
+            "instructions": """
+Always call the copyist tool to copy the agent network referred to by the user input.
+Return verbatim whatever it returns.
+If there is an error or list of errors, report that.
+""",
+            "tools": ["copyist"],
+
+            "allow": {
+                "to_upstream": {
+                    # Specifying this allows sly_data keys from this network to be passed back
+                    # to the calling client
+                    "sly_data": ["agent_reservations"]
+                }
+            }
+        },
+
+        # The copyist is a low-level CodedTool and does not call anyone else.
+        # He is called by the front-man.
+        {
+            "name": "copyist",
+            "function": {
+                "description": """
+Takes a given agent network name and copies it as a temporary network.
+If the call_text argument is given, the temporary network will be immediately called with the text provided.
+""",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "agent_name": {
+                            "type": "string",
+                            "description": "The name of the agent to copy"
+                        },
+                        "call_text": {
+                            "type": "string",
+                            "description": "The text with which to call the copied agent immediately."
+                        }
+                    },
+                    "required": ["agent_name"]
+                }
+            },
+            "class": "copyist.Copyist",
+            "allow": {
+                # Coded Tools that use the Reservations API specifically need to turn on
+                # the "reservations" flag in their own "allow" block in order to get an instance
+                # of a Reservationist passed as part of their arguments from the execution environment.
+                # This object comes in the "reservationist" key of the args.
+                "reservations": True
+            }
+        }
+    ]
+}

@@ -1,0 +1,186 @@
+# Copyright © 2025-2026 Cognizant Technology Solutions Corp, www.cognizant.com.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
+# END COPYRIGHT
+
+# To use this agent network, start by installing the required package:
+#     pip install arxiv
+# If "get_full_documents" is set to True (see below)
+#     pip install pymupdf
+
+{
+    # Load the shared LLM configuration from a single source of truth.
+    # This allows users to change the model in one file rather than
+    # modifying the configuration for each agent network.
+    # Note that the file path here is relative to the root level of the repo.
+    include "registries/llm_config.hocon",
+
+    # Optional metadata describing this agent network
+    "metadata": {
+        "description": "ArXiv assistant that retrieves and answers queries using academic papers from arXiv.org, supporting full PDF text or abstracts with configurable retrieval parameters.",
+        "tags": ["arxiv", "tool"],
+        "sample_queries": [
+            "Please give me a list of research papers on LORA",
+            "Find recent papers about transformer architectures",
+            "What are the latest developments in quantum machine learning?",
+        ]
+    },
+    
+    "tools": [
+        {
+            "name": "Arxiv_Assistant",
+
+            "function": {
+              "description": "Coordinate ArXiv retrieval and answering by invoking the appropriate tools.",
+            },
+
+            "instructions": """You must always use a tool to respond to the user’s query.
+
+Workflow:
+1. Use the retrieval tool to find relevant ArXiv papers.
+2. If a specific paper needs to be analyzed in detail, delegate to the appropriate answering tool.
+
+Rules:
+- Do NOT answer from your own knowledge.
+- If a required tool is unavailable or fails, clearly inform the user.
+- Never fabricate or infer content without tool output.
+""",
+
+            # This is required to persist the downloaded contents for multiturn conversations.
+            "allow": {
+                "to_upstream": {
+                    "sly_data": [
+                        "arxiv_contents",
+                    ]
+                },
+            }
+
+            "tools": ["arxiv_retriever", "arxiv_detailed_answer"]
+        },
+
+        # A tool that retrieves relevant data from Arxiv to answer user queries.
+        {
+            "name": "arxiv_retriever",
+
+            "toolbox": "arxiv_retriever",
+
+            "args": {
+                # User-defined arguments for the tool
+
+                # --- Optional Arguments ---
+
+                # Maximum number of arXiv docs to load
+                # Start small and increase value only if answers lack context
+                # Recommended values:
+                # Fast experimentation (lightweight context): 3–5
+                # Deeper context (survey / related work scan): 8–15
+                # Default to 3. Can be set to null to return all.
+                # "top_k_results": 3,
+
+                # How to sort the search results
+                # Options are `relevance`, `lastUpdatedDate`, and `submittedDate`. Default to `relevance`.
+                # "sort_by": "relevance",
+
+                # Sort order
+                # Options are `ascending` and `descending`. Default to `descending`.
+                # "sort_order": "descending"
+
+                # LLM can set the above 3 arguments, but user can override in this `args` block.
+
+                # Content scope:
+                # True = full PDF text (slower, richer context)
+                # False = abstracts only (faster, smaller)
+                # Default is False.
+                # if this is set to True, pymupdf package is required.
+                "get_full_documents": false,
+
+                # Per-document character cap to keep long pages from inflating context/cost
+                # Token math: ~1 token ≈ 4 chars
+                # Total doc tokens ≈ (K * doc_content_chars_max) / 4  (K = top_k_results)
+                # Budget docs to a small share of the model’s max tokens (aim ~6–10%; increase if answers lack context)
+                # Need more coverage? lower per-doc cap. Need more detail per doc? lower K
+                # Default to 4000. 
+                # Can be set to null to return all. Note that this could be costly.
+                "doc_content_chars_max": 4000,
+
+                # Metadata scope: 
+                # True = full arXiv metadata (journal ref, categories, comments)
+                # False = minimal metadata (title, authors, abstract, published)
+                # Default to False.
+                "load_all_available_meta": true,
+
+                # Error handling:
+                # True = continue on retrieval/parsing errors
+                # False = fail fast
+                # Default to True.
+                "continue_on_failure": true,
+            }
+        },
+        
+        # An agent that gets answer from a specific paper
+        {
+            "name": "arxiv_detailed_answer",
+            "function": {
+              "description": "Answer a specific question using the full content of a single ArXiv paper identified by entry ID.",
+              "parameters": {
+                "type": "object",
+                "properties": {
+                    "entry_id": {
+                        "type": "string",
+                        "description": "Entry ID of the paper to provide the answer on"
+                    },
+                    "question": {
+                        "type": "string",
+                        "description": "Question on the paper of the entry_id"
+                    }
+                },
+                "required": ["entry_id", "question"]
+              }
+            },
+
+            "instructions": """You must always use your tool to answer the question.
+
+Behavior:
+- Use the provided entry ID to retrieve the paper content.
+- Base your answer strictly on the retrieved paper.
+- Provide a detailed, well-structured response grounded in the paper’s content.
+
+Rules:
+- Do NOT answer from prior knowledge or assumptions.
+- If the tool fails or the paper cannot be retrieved, notify the user.
+- Do NOT speculate or fill in missing information.
+""",
+
+            "tools": ["get_arxiv_paper"]
+        },
+
+        {
+            "name": "get_arxiv_paper",
+            "class": "tools.get_arxiv_paper.GetArxivPaper",
+            "function": {
+                "description": "Retrieve the full content of an ArXiv paper given its entry ID.",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "entry_id": {
+                            "type": "string",
+                            "description": "Entry ID of the paper to return the content"
+                        }
+                    },
+                    "required": ["entry_id"]
+                }
+            }
+        }
+    ]
+}

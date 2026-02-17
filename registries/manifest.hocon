@@ -32,17 +32,12 @@
     # Experimental and research
     include "registries/experimental/manifest.hocon",
 
+    # Generated agent networks
+    include "registries/generated/manifest.hocon",
+
     # Currently we list each hocon file we want to serve as a key with a boolean value.
     # Eventually we might have a dictionary value with server specifications for each.
 
-    "kwik_agents.hocon": false,
-    # Set the following agent network to true before running apps/cruse/interface_flask.py
-    "cruse_agent.hocon": false,
-    # Set the following agent network to true before running apps/conscious_assistant/interface_flask.py
-    "conscious_agent.hocon": false,
-    # Set the following agent network to true before running apps/log_analyzer/log_analyzer.py
-    "log_analysis_agents.hocon": false,
-    "six_thinking_hats.hocon": true,
 
     #
     # Agent network designer family of agents
@@ -92,16 +87,4 @@
     #     python -m run --server-grpc-port 30012 --server-http-port 8081 --nsflow-port 4174
     "agent_network_architect.hocon": false,
 
-    "cruse_theme_agent.hocon": {
-        # This is a support network for Cruse Interface
-        # We want it served up, but not listed as a public agent network
-        "serve": true,
-        "public": false
-    },
-    "cruse_widget_agent.hocon": {
-        # This is a support network for Cruse Interface
-        # We want it served up, but not listed as a public agent network
-        "serve": true,
-        "public": false
-    }
 }

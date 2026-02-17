@@ -22,4 +22,25 @@
     # Experimental and research
     #
     "experimental/mdap_decomposer.hocon": true,
+    "experimental/copy_cat.hocon": true,
+    "experimental/kwik_agents.hocon": false,
+    # Set the following agent network to true before running apps/cruse/interface_flask.py
+    "experimental/cruse_agent.hocon": false,
+    # Set the following agent network to true before running apps/conscious_assistant/interface_flask.py
+    "experimental/conscious_agent.hocon": false,
+    # Set the following agent network to true before running apps/log_analyzer/log_analyzer.py
+    "experimental/log_analysis_agents.hocon": false,
+    "experimental/six_thinking_hats.hocon": true,
+    "experimental/cruse_theme_agent.hocon": {
+        # This is a support network for Cruse Interface
+        # We want it served up, but not listed as a public agent network
+        "serve": true,
+        "public": false
+    },
+    "experimental/cruse_widget_agent.hocon": {
+        # This is a support network for Cruse Interface
+        # We want it served up, but not listed as a public agent network
+        "serve": true,
+        "public": false
+    },
 }
