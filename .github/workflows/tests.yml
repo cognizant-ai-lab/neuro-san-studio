@@ -38,14 +38,10 @@ jobs:
             echo "is_fork=false" >> $GITHUB_OUTPUT
           fi
 
-      - name: Install dependencies
+      - name: Install system packages
         shell: bash
         run: |
           apt-get update && apt-get install --yes shellcheck make curl
-          python -m venv venv
-          source venv/bin/activate
-          pip install -r requirements-build.txt
-          pip install -r requirements.txt
 
       - name: Install lychee
         shell: bash
@@ -55,16 +51,24 @@ jobs:
           tar --extract --gzip --file /tmp/lychee.tar.gz --directory /usr/local/bin
           chmod +x /usr/local/bin/lychee
 
+      - name: Run make link-check
+        shell: bash
+        run: |
+          make link-check
+
+      - name: Install Python dependencies
+        shell: bash
+        run: |
+          python -m venv venv
+          source venv/bin/activate
+          pip install -r requirements-build.txt
+          pip install -r requirements.txt
+
       - name: Show installed packages
         shell: bash
         run: |
           source venv/bin/activate 
           pip freeze
-
-      - name: Run make link-check
-        shell: bash
-        run: |
-          make link-check
 
       - name: Run make lint-check
         # We run this check-only step to break the build if

@@ -23,6 +23,12 @@ https://api.search.brave.com/
 https://customsearch.googleapis.com/
 https://www.googleapis.com/customsearch/
 
+# Sites that timeout or block CI requests
+https://docs.servicenow.com/
+
+# Pre-existing broken file references
+file://.*hellow_world\.md
+
 # Pre-existing broken links in docs (moved/deleted pages)
 https://github.com/cognizant-ai-lab/neuro-san-studio/blob/main/registries/airbnb.hocon
 https://github.com/cognizant-ai-lab/neuro-san-studio/blob/main/registries/booking.hocon
