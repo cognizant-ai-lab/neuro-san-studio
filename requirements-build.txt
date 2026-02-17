@@ -1,6 +1,9 @@
 # We separate out requirements that are specific to the build, but not
 # necessary for operation to minimize the size of containers
 
+# OpenFGA authorization (not to be confused with authentication)
+openfga-sdk
+
 # Tests
 coverage==7.6.1
 pytest==8.3.3

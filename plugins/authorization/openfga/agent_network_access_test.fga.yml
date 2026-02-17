@@ -1,0 +1,74 @@
+# Tests basic access to an AgentNetwork
+
+name: Basic AgentNetwork Access Tests 
+
+# What authorization model is being tested? (Needs to be .fga)
+model_file: sample_authorization_model.fga
+
+# These are the facts to be preloaded for the test
+tuples:
+    # Primary ownership information
+    - user: User:anne
+      relation: owner
+      object: AgentNetwork:1
+
+    # Ancillary test info
+    - user: User:charlie
+      relation: collaborator
+      object: AgentNetwork:1
+
+    - user: User:donna
+      relation: tourist
+      object: AgentNetwork:1
+
+
+# These are the tests related to the purpose of this file given the facts above.
+tests:
+    - name: Test owner access to agent network
+      check:
+        - user: User:anne
+          object: AgentNetwork:1
+          assertions:
+              owner: true
+              collaborator: true
+              tourist: true
+              create: true
+              read: true
+              update: true
+              delete: true
+    - name: Test non-participant access to agent network
+      check:
+        - user: User:bob
+          object: AgentNetwork:1
+          assertions:
+              owner: false
+              collaborator: false
+              tourist: false
+              create: false
+              read: false
+              update: false
+              delete: false
+    - name: Test collaborator access to agent network
+      check:
+        - user: User:charlie
+          object: AgentNetwork:1
+          assertions:
+              owner: false
+              collaborator: true
+              tourist: true
+              create: false
+              read: true
+              update: true
+              delete: false
+    - name: Test tourist access to agent network
+      check:
+        - user: User:donna
+          object: AgentNetwork:1
+          assertions:
+              owner: false
+              collaborator: false
+              tourist: true
+              create: false
+              read: true
+              update: false
+              delete: false

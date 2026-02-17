@@ -1,0 +1,296 @@
+{
+    "schema_version": "1.1",
+    "type_definitions": [
+        {
+            "type": "User"
+        },
+        {
+            "metadata": {
+                "relations": {
+                    "admin": {
+                        "directly_related_user_types": [
+                            {
+                                "type": "User"
+                            }
+                        ]
+                    },
+                    "create": {},
+                    "delete": {},
+                    "member": {
+                        "directly_related_user_types": [
+                            {
+                                "type": "User"
+                            }
+                        ]
+                    },
+                    "owner": {
+                        "directly_related_user_types": [
+                            {
+                                "type": "User"
+                            }
+                        ]
+                    },
+                    "read": {},
+                    "update": {}
+                }
+            },
+            "relations": {
+                "admin": {
+                    "this": {}
+                },
+                "create": {
+                    "computedUserset": {
+                        "relation": "admin"
+                    }
+                },
+                "delete": {
+                    "computedUserset": {
+                        "relation": "admin"
+                    }
+                },
+                "member": {
+                    "union": {
+                        "child": [
+                            {
+                                "this": {}
+                            },
+                            {
+                                "computedUserset": {
+                                    "relation": "owner"
+                                }
+                            }
+                        ]
+                    }
+                },
+                "owner": {
+                    "union": {
+                        "child": [
+                            {
+                                "this": {}
+                            },
+                            {
+                                "computedUserset": {
+                                    "relation": "admin"
+                                }
+                            }
+                        ]
+                    }
+                },
+                "read": {
+                    "computedUserset": {
+                        "relation": "member"
+                    }
+                },
+                "update": {
+                    "computedUserset": {
+                        "relation": "owner"
+                    }
+                }
+            },
+            "type": "Organization"
+        },
+        {
+            "metadata": {
+                "relations": {
+                    "collaborator": {
+                        "directly_related_user_types": [
+                            {
+                                "type": "User"
+                            },
+                            {
+                                "relation": "member",
+                                "type": "Organization"
+                            }
+                        ]
+                    },
+                    "container": {
+                        "directly_related_user_types": [
+                            {
+                                "type": "Organization"
+                            }
+                        ]
+                    },
+                    "create": {
+                        "directly_related_user_types": [
+                            {
+                                "type": "User"
+                            },
+                            {
+                                "type": "User",
+                                "wildcard": {}
+                            }
+                        ]
+                    },
+                    "delete": {
+                        "directly_related_user_types": [
+                            {
+                                "type": "User"
+                            },
+                            {
+                                "type": "User",
+                                "wildcard": {}
+                            }
+                        ]
+                    },
+                    "owner": {
+                        "directly_related_user_types": [
+                            {
+                                "type": "User"
+                            },
+                            {
+                                "relation": "member",
+                                "type": "Organization"
+                            }
+                        ]
+                    },
+                    "read": {
+                        "directly_related_user_types": [
+                            {
+                                "type": "User"
+                            },
+                            {
+                                "type": "User",
+                                "wildcard": {}
+                            }
+                        ]
+                    },
+                    "tourist": {
+                        "directly_related_user_types": [
+                            {
+                                "type": "User"
+                            },
+                            {
+                                "type": "User",
+                                "wildcard": {}
+                            },
+                            {
+                                "relation": "member",
+                                "type": "Organization"
+                            }
+                        ]
+                    },
+                    "update": {
+                        "directly_related_user_types": [
+                            {
+                                "type": "User"
+                            },
+                            {
+                                "type": "User",
+                                "wildcard": {}
+                            }
+                        ]
+                    }
+                }
+            },
+            "relations": {
+                "collaborator": {
+                    "union": {
+                        "child": [
+                            {
+                                "this": {}
+                            },
+                            {
+                                "computedUserset": {
+                                    "relation": "owner"
+                                }
+                            }
+                        ]
+                    }
+                },
+                "container": {
+                    "this": {}
+                },
+                "create": {
+                    "union": {
+                        "child": [
+                            {
+                                "this": {}
+                            },
+                            {
+                                "computedUserset": {
+                                    "relation": "owner"
+                                }
+                            }
+                        ]
+                    }
+                },
+                "delete": {
+                    "union": {
+                        "child": [
+                            {
+                                "this": {}
+                            },
+                            {
+                                "computedUserset": {
+                                    "relation": "owner"
+                                }
+                            }
+                        ]
+                    }
+                },
+                "owner": {
+                    "union": {
+                        "child": [
+                            {
+                                "this": {}
+                            },
+                            {
+                                "tupleToUserset": {
+                                    "computedUserset": {
+                                        "relation": "admin"
+                                    },
+                                    "tupleset": {
+                                        "relation": "container"
+                                    }
+                                }
+                            }
+                        ]
+                    }
+                },
+                "read": {
+                    "union": {
+                        "child": [
+                            {
+                                "this": {}
+                            },
+                            {
+                                "computedUserset": {
+                                    "relation": "tourist"
+                                }
+                            }
+                        ]
+                    }
+                },
+                "tourist": {
+                    "union": {
+                        "child": [
+                            {
+                                "this": {}
+                            },
+                            {
+                                "computedUserset": {
+                                    "relation": "collaborator"
+                                }
+                            }
+                        ]
+                    }
+                },
+                "update": {
+                    "union": {
+                        "child": [
+                            {
+                                "this": {}
+                            },
+                            {
+                                "computedUserset": {
+                                    "relation": "collaborator"
+                                }
+                            }
+                        ]
+                    }
+                }
+            },
+            "type": "AgentNetwork"
+        }
+    ]
+}
