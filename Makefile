@@ -65,7 +65,7 @@ format-tests: venv-guard
 format: format-source format-tests
 
 link-check:
-	lychee --verbose --no-progress './**/*.md'
+	lychee --verbose --no-progress --exclude-path './venv' './**/*.md'
 
 lint-check-source: venv-guard
 	# Run format checks and fail if isort or black need changes
