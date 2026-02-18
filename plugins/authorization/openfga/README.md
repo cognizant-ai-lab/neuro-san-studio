@@ -3,7 +3,7 @@
 This plugin integrates a Neuro SAN server with an [OpenFGA](https://openfga.dev/) server for
 controlling authorization access for agents.
 
-## Clarifications 
+## Clarifications
 
 ### Authentation != Authorization
 
@@ -15,7 +15,7 @@ Authentication/user identity verification, while an important part of any truste
 is _not_ a responsibility within the core capabilities of a Neuro SAN server.
 
 Most often a Neuro SAN server is a single component in a larger cluster deployment where
-authentication is handled upon any request entering the cluster. 
+authentication is handled upon any request entering the cluster.
 Consider a chat with your friendly neighborhood dev-ops professional if what you are
 really interested in is authentication.
 
@@ -218,7 +218,7 @@ It is possible to create tests for an OpenFGA model to be sure that the relation
 are defined correctly.  We have included one test with this example. To run it:
 
 ```bash
-    fga model test --tests plugins/authorization/openfga/agent_network_access_test.fga.yml 
+    fga model test --tests plugins/authorization/openfga/agent_network_access_test.fga.yml
 ```
 
 ---
@@ -240,8 +240,12 @@ are defined correctly.  We have included one test with this example. To run it:
   Extensive documentation on OpenFGA capabilities and configuration.
 
 - [Oso's Authorization Academy](https://www.osohq.com/academy)
-  A very good resource describing the basics concepts of Authorization and several
-  different authorization models.
+  An excellent resource describing the basics concepts of Authorization and several different
+  authorization models.
+
+  Oso itself is a paid authorization service with free trials available supporting a company of lovely
+  and helpful people trying to make authorization easier for everyone. (OpenFGA itself is free, but no picnic.)
+  Maybe if demand is there we will add an Oso implementation of the Authorizer interface.
 
 - Docker Installation on various platforms:
 
@@ -251,3 +255,12 @@ are defined correctly.  We have included one test with this example. To run it:
 
 - [The Neuro SAN Dockerfile](https://github.com/cognizant-ai-lab/neuro-san/blob/main/neuro_san/deploy/Dockerfile)
   has the documentation for each of the environment variables mentioned above.
+
+- [The Neuro SAN Authorizer interface](https://github.com/cognizant-ai-lab/neuro-san/blob/main/neuro_san/internals/authorization/interfaces/authorizer.py)
+  contains documentation and examples for each of the methods of the Authorizer interface
+
+- [The OpenFGA implementation of the Authorizer interface](https://github.com/cognizant-ai-lab/neuro-san/blob/main/neuro_san/internals/authorization/openfga/open_fga_authorizer.py)
+  See the details of the OpenFGA can give you some ideas as to how to extend it for your own purposes.
+  It's worth noting that we have used an extended version of the OpenFGA Authorizer and supplied schema
+  to allow for many other objects under authorization control, including special users, and storing information
+  about authorization models that evolve over time. Go wild.
