@@ -370,6 +370,9 @@ class PhoenixPlugin:
             phoenix_url = f"http://{phoenix_host}:{phoenix_port}"
             print(f"Phoenix detected at {phoenix_url} — skipping autostart.")
         else:
+            # Disable gRPC on Windows (port binding issues)
+            os.environ["PHOENIX_GRPC_PORT"] = "0"
+
             # Use python -m form for better compatibility
             try:
                 self.phoenix_process = self.start_process(
