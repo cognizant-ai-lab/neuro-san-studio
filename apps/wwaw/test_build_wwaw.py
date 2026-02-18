@@ -15,6 +15,7 @@
 # END COPYRIGHT
 
 from unittest.mock import Mock
+from urllib.parse import urlparse
 
 from build_wwaw import WebAgentNetworkBuilder
 
@@ -79,4 +80,7 @@ def test_process_page_single_pass():
     assert "Agent Instructions:" in agents[name]["instructions"]
     assert agents[name]["down_chains"] == []
     assert len(to_visit) == 2  # /about and /contact; external should be ignored
-    assert all("example.com" in link for link, _ in to_visit)
+    assert all(
+        urlparse(link).netloc == "example.com" or urlparse(link).netloc.endswith(".example.com")
+        for link, _ in to_visit
+    )

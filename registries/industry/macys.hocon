@@ -15,7 +15,18 @@
 # END COPYRIGHT
 {
     include "registries/aaosa.hocon",
-    
+
+    "metadata": {
+        "description": "AI-powered business intelligence system simulating Macy's retail operations. Provides data-driven insights across customer analytics, order management, return pattern analysis, supply chain optimization, demand planning, marketing campaign optimization, pricing strategy, fraud detection, and loyalty program analysis through specialized agents using the AAOSA pattern.",
+        "tags": ["retail", "AAOSA"],
+        "sample_queries": [
+            "Analyze the current return patterns for the shoes category and identify common reasons.",
+            "What customer sentiment trends are emerging from recent holiday season interactions?",
+            "Evaluate the effectiveness of the current loyalty program on customer retention.",
+            "Provide demand planning recommendations for the upcoming spring inventory cycle.",
+        ]
+    },
+
     # Load the shared LLM configuration from a single source of truth.
     # This allows users to change the model in one file rather than
     # modifying the configuration for each agent network.
