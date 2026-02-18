@@ -137,6 +137,7 @@ This project follows these coding standards:
 - **Formatter**: Black (v25.1.0)
 - **Import sorting**: isort with Black profile
 - **Linting**: flake8 and pylint
+- **Link checking**: lychee (v0.23.0)
 - **Naming conventions**: Follow Google Python Style Guide
   - Functions and variables: `snake_case`
   - Classes: `PascalCase`
