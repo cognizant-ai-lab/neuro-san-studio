@@ -25,10 +25,13 @@ END COPYRIGHT
     <!-- CodeMirror 5 from CDN -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/codemirror.min.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/theme/eclipse.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/theme/material-darker.min.css">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/codemirror.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/javascript/javascript.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/edit/matchbrackets.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/edit/closebrackets.min.js"></script>
+    <!-- HOCON-specific: properties mode for include/substitution, plus comment support -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/mode/overlay.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/dompurify@3.1.6/dist/purify.min.js"></script>
     <link rel="stylesheet" type="text/css" href="{{ request.scope.get('root_path', '') }}/static/style.css">
 </head>
@@ -69,6 +72,10 @@ END COPYRIGHT
                 <span id="current-file">No file selected</span>
                 <span id="editor-status"></span>
             </div>
+            <div id="error-banner" class="error-banner" style="display:none;">
+                <span id="error-banner-text"></span>
+                <button id="error-banner-close" type="button" title="Dismiss">&times;</button>
+            </div>
             <div id="editor-container">
                 <textarea id="code-editor"></textarea>
             </div>
@@ -96,10 +103,56 @@ END COPYRIGHT
         // ---------------------------------------------------------------
         // CodeMirror setup
         // ---------------------------------------------------------------
+        // ---------------------------------------------------------------
+        // HOCON overlay mode — highlights include, ${substitutions}, # comments
+        // ---------------------------------------------------------------
+        CodeMirror.defineMode('hocon', function(config) {
+            var jsonMode = CodeMirror.getMode(config, { name: 'javascript', json: true });
+            return CodeMirror.overlayMode(jsonMode, {
+                token: function(stream) {
+                    // # or // line comments
+                    if (stream.match(/^[#]/) || stream.match(/^\/\//)) {
+                        stream.skipToEnd();
+                        return 'comment';
+                    }
+                    // include directive
+                    if (stream.match(/^include\b/)) {
+                        return 'keyword';
+                    }
+                    // ${substitution} references
+                    if (stream.match(/^\$\{[^}]*\}/)) {
+                        return 'variable-2';
+                    }
+                    // Unquoted string values (after : or =)
+                    stream.next();
+                    return null;
+                }
+            });
+        });
+
+        // ---------------------------------------------------------------
+        // Theme detection — sync with nsflow's localStorage 'mode'
+        // ---------------------------------------------------------------
+        function getEffectiveTheme() {
+            var mode;
+            try { mode = localStorage.getItem('mode'); } catch(e) {}
+            if (mode === 'dark') return 'dark';
+            if (mode === 'light') return 'light';
+            // 'system' or unset — follow OS preference
+            return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+        }
+
+        function applyTheme(theme) {
+            document.body.setAttribute('data-theme', theme);
+            if (editor) {
+                editor.setOption('theme', theme === 'dark' ? 'material-darker' : 'eclipse');
+            }
+        }
+
         document.addEventListener('DOMContentLoaded', function() {
             editor = CodeMirror.fromTextArea(document.getElementById('code-editor'), {
-                mode: { name: 'javascript', json: true },
-                theme: 'eclipse',
+                mode: 'hocon',
+                theme: getEffectiveTheme() === 'dark' ? 'material-darker' : 'eclipse',
                 lineNumbers: true,
                 matchBrackets: true,
                 autoCloseBrackets: true,
@@ -112,23 +165,80 @@ END COPYRIGHT
             editor.on('change', function() {
                 if (currentFile) {
                     unsavedChanges = true;
-                    setStatus('modified', 'Modified');
+                    setStatus('modified', 'Unsaved changes');
+                    updateFileLabel();
+                    hideError();
                 }
             });
 
             editor.setSize('100%', '100%');
+
+            // Apply initial theme and listen for changes
+            applyTheme(getEffectiveTheme());
+
+            // Listen for theme messages from parent frame (postMessage)
+            window.addEventListener('message', function(e) {
+                if (e.data && e.data.type === 'nss-theme') {
+                    applyTheme(e.data.theme);
+                }
+            });
+
+            // Fallback: storage event + OS preference + polling (for standalone mode)
+            window.addEventListener('storage', function(e) {
+                if (e.key === 'mode') applyTheme(getEffectiveTheme());
+            });
+            window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', function() {
+                applyTheme(getEffectiveTheme());
+            });
+            var lastTheme = getEffectiveTheme();
+            setInterval(function() {
+                var t = getEffectiveTheme();
+                if (t !== lastTheme) { lastTheme = t; applyTheme(t); }
+            }, 1000);
+
             loadFileTree();
             loadManifest();
         });
 
         // ---------------------------------------------------------------
-        // Status indicator
+        // Status indicator + file label
         // ---------------------------------------------------------------
         function setStatus(cls, text) {
             var el = document.getElementById('editor-status');
             el.className = 'status-' + cls;
             el.textContent = text;
         }
+
+        function updateFileLabel() {
+            var el = document.getElementById('current-file');
+            if (!currentFile) {
+                el.textContent = 'No file selected';
+            } else {
+                el.textContent = unsavedChanges ? currentFile + ' *' : currentFile;
+            }
+        }
+
+        // ---------------------------------------------------------------
+        // Global functions exposed to parent frame (blade close prompt)
+        // ---------------------------------------------------------------
+        window.hasUnsavedChanges = function() { return unsavedChanges; };
+        window.saveCurrentFile = function() { saveFile(); };
+
+        // ---------------------------------------------------------------
+        // Error banner (non-blocking, dismissible)
+        // ---------------------------------------------------------------
+        function showError(message) {
+            var banner = document.getElementById('error-banner');
+            var text = document.getElementById('error-banner-text');
+            text.textContent = message;
+            banner.style.display = 'flex';
+        }
+
+        function hideError() {
+            document.getElementById('error-banner').style.display = 'none';
+        }
+
+        document.getElementById('error-banner-close').addEventListener('click', hideError);
 
         // ---------------------------------------------------------------
         // File tree
@@ -201,8 +311,9 @@ END COPYRIGHT
                     currentFile = data.path;
                     editor.setValue(data.content);
                     unsavedChanges = false;
-                    document.getElementById('current-file').textContent = data.path;
+                    updateFileLabel();
                     setStatus('saved', 'Loaded');
+                    hideError();
 
                     // Highlight active file in tree
                     document.querySelectorAll('.tree-file').forEach(function(el) {
@@ -210,38 +321,56 @@ END COPYRIGHT
                     });
                 })
                 .catch(function(err) {
-                    alert('Error loading file: ' + err.message);
+                    showError('Error loading file: ' + err.message);
                 });
         }
 
         function saveFile() {
             if (!currentFile) {
-                alert('No file is open.');
+                showError('No file is open.');
                 return;
             }
             var content = editor.getValue();
-            fetch(API_BASE + '/api/files/' + encodeURIComponent(currentFile), {
-                method: 'PUT',
+
+            // Validate before saving — block save if invalid
+            fetch(API_BASE + '/api/validate', {
+                method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ content: content })
             })
-            .then(function(r) {
-                if (!r.ok) return r.json().then(function(d) { throw new Error(d.detail); });
-                return r.json();
-            })
-            .then(function() {
-                unsavedChanges = false;
-                setStatus('saved', 'Saved');
+            .then(function(r) { return r.json(); })
+            .then(function(vResult) {
+                if (!vResult.valid) {
+                    setStatus('error', 'Cannot save — invalid HOCON');
+                    showError(vResult.error);
+                    return;
+                }
+                // Validation passed — proceed with save
+                return fetch(API_BASE + '/api/files/' + encodeURIComponent(currentFile), {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ content: content })
+                })
+                .then(function(r) {
+                    if (!r.ok) return r.json().then(function(d) { throw new Error(d.detail); });
+                    return r.json();
+                })
+                .then(function() {
+                    unsavedChanges = false;
+                    updateFileLabel();
+                    setStatus('saved', 'Saved');
+                    hideError();
+                });
             })
             .catch(function(err) {
-                alert('Error saving file: ' + err.message);
+                showError('Error saving: ' + err.message);
             });
         }
 
         function validateFile() {
             var content = editor.getValue();
             if (!content.trim()) {
-                alert('Editor is empty.');
+                showError('Editor is empty.');
                 return;
             }
             fetch(API_BASE + '/api/validate', {
@@ -253,13 +382,14 @@ END COPYRIGHT
             .then(function(data) {
                 if (data.valid) {
                     setStatus('valid', 'Valid HOCON');
+                    hideError();
                 } else {
-                    setStatus('error', 'Invalid: ' + data.error);
-                    alert('HOCON validation error:\n' + data.error);
+                    setStatus('error', 'Invalid HOCON');
+                    showError(data.error);
                 }
             })
             .catch(function(err) {
-                alert('Validation request failed: ' + err.message);
+                showError('Validation request failed: ' + err.message);
             });
         }
 
@@ -283,13 +413,13 @@ END COPYRIGHT
                 openFile(name);
             })
             .catch(function(err) {
-                alert('Error creating file: ' + err.message);
+                showError('Error creating file: ' + err.message);
             });
         }
 
         function deleteFile() {
             if (!currentFile) {
-                alert('No file is open.');
+                showError('No file is open.');
                 return;
             }
             if (!confirm('Delete "' + currentFile + '"? This cannot be undone.')) {
@@ -311,7 +441,7 @@ END COPYRIGHT
                 loadFileTree();
             })
             .catch(function(err) {
-                alert('Error deleting file: ' + err.message);
+                showError('Error deleting file: ' + err.message);
             });
         }
 
@@ -374,7 +504,7 @@ END COPYRIGHT
                 setStatus('saved', network + (enabled ? ' enabled' : ' disabled'));
             })
             .catch(function(err) {
-                alert('Error toggling manifest: ' + err.message);
+                showError('Error toggling manifest: ' + err.message);
                 loadManifest();
             });
         }
@@ -384,7 +514,7 @@ END COPYRIGHT
         // ---------------------------------------------------------------
         function downloadFile() {
             if (!currentFile) {
-                alert('No file is open.');
+                showError('No file is open.');
                 return;
             }
             var content = editor.getValue();
@@ -407,7 +537,7 @@ END COPYRIGHT
                 var file = e.target.files[0];
                 if (!file) return;
                 if (!file.name.endsWith('.hocon')) {
-                    alert('Only .hocon files are supported.');
+                    showError('Only .hocon files are supported.');
                     return;
                 }
                 // Ask user for target folder within registries
@@ -452,7 +582,7 @@ END COPYRIGHT
                         setStatus('saved', 'Uploaded: ' + targetPath);
                     })
                     .catch(function(err) {
-                        alert('Upload error: ' + err.message);
+                        showError('Upload error: ' + err.message);
                     });
                 };
                 reader.readAsText(file);

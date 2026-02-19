@@ -52,6 +52,15 @@ from starlette.types import Send  # noqa: E402
 
 from config_editor.app import app as editor_app  # noqa: E402
 from nsflow.backend.main import app as nsflow_app  # noqa: E402
+from nsflow.backend.main import initialize_ns_config_from_env  # noqa: E402
+
+# ---------------------------------------------------------------------------
+# Initialize nsflow config registry manually.
+# When mounted as a sub-app via Starlette.Mount(), nsflow's lifespan event
+# does not fire, so NsConfigsRegistry never gets initialized. Calling this
+# here ensures the config is set before any requests arrive.
+# ---------------------------------------------------------------------------
+initialize_ns_config_from_env()
 
 
 # ---------------------------------------------------------------------------
@@ -65,21 +74,28 @@ _INJECTION_SNIPPET = """
     z-index: 9998; background: #fff;
     box-shadow: -4px 0 20px rgba(0,0,0,0.15);
     transition: right 0.3s ease;
+    display: flex; flex-direction: column;
   }
   #nss-editor-overlay.open { right: 0; }
-  #nss-editor-overlay iframe {
-    width: 100%; height: calc(100% - 52px); border: none;
-    margin-top: 52px;
+  #nss-editor-toolbar {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 0 12px; height: 36px; min-height: 36px;
+    background: #f5f5f5; border-bottom: 1px solid #ddd;
+  }
+  #nss-editor-toolbar span {
+    font-weight: 600; font-size: 13px; color: #3553ad;
   }
   #nss-editor-close {
-    position: absolute; top: 10px; right: 12px; z-index: 10000;
     background: #d94444; color: #fff; border: none;
-    border-radius: 6px; width: 32px; height: 32px;
-    font-size: 18px; cursor: pointer; display: flex;
+    border-radius: 4px; width: 28px; height: 28px;
+    font-size: 16px; cursor: pointer; display: flex;
     align-items: center; justify-content: center;
-    box-shadow: 0 2px 6px rgba(0,0,0,0.2);
+    box-shadow: 0 1px 3px rgba(0,0,0,0.2);
   }
   #nss-editor-close:hover { background: #b71c1c; }
+  #nss-editor-overlay iframe {
+    flex: 1; width: 100%; border: none;
+  }
   #nss-editor-scrim {
     position: fixed; top: 0; left: 0; right: 0; bottom: 0;
     background: rgba(0,0,0,0.2); z-index: 9997;
@@ -89,7 +105,10 @@ _INJECTION_SNIPPET = """
 </style>
 <div id="nss-editor-scrim"></div>
 <div id="nss-editor-overlay">
-  <button id="nss-editor-close" title="Close editor">&times;</button>
+  <div id="nss-editor-toolbar">
+    <span>Config Editor</span>
+    <button id="nss-editor-close" title="Close editor">&times;</button>
+  </div>
   <iframe src="/editor/" title="HOCON Config Editor"></iframe>
 </div>
 <script>
@@ -100,13 +119,40 @@ _INJECTION_SNIPPET = """
   var isOpen = false;
   var injectedBtn = null;
 
-  function toggle() {
-    isOpen = !isOpen;
-    overlay.classList.toggle('open', isOpen);
-    scrim.classList.toggle('open', isOpen);
+  var editorIframe = overlay.querySelector('iframe');
+
+  function openPanel() {
+    isOpen = true;
+    overlay.classList.add('open');
+    scrim.classList.add('open');
   }
-  closeBtn.addEventListener('click', toggle);
-  scrim.addEventListener('click', toggle);
+  function closePanel() {
+    isOpen = false;
+    overlay.classList.remove('open');
+    scrim.classList.remove('open');
+  }
+  function toggle() {
+    if (isOpen) { tryClose(); } else { openPanel(); }
+  }
+  function tryClose() {
+    /* Ask the iframe if there are unsaved changes before closing */
+    try {
+      var iframeWin = editorIframe.contentWindow;
+      if (iframeWin && typeof iframeWin.hasUnsavedChanges === 'function'
+          && iframeWin.hasUnsavedChanges()) {
+        var action = confirm(
+          'You have unsaved changes in the Config Editor.\\n\\n'
+          + 'Press OK to save, or Cancel to discard changes.'
+        );
+        if (action && typeof iframeWin.saveCurrentFile === 'function') {
+          iframeWin.saveCurrentFile();
+        }
+      }
+    } catch(e) { /* cross-origin — just close */ }
+    closePanel();
+  }
+  closeBtn.addEventListener('click', tryClose);
+  scrim.addEventListener('click', tryClose);
 
   /* ---- Find OEM Editor button and inject CONFIG EDITOR next to it ---- */
   /* SVG icon: Description/document icon (config files) */
@@ -158,6 +204,50 @@ _INJECTION_SNIPPET = """
       observer.observe(document.body, { childList: true, subtree: true });
     }
   }, 300);
+
+  /* ---- Theme sync: detect parent theme and postMessage to iframe ---- */
+  function detectParentTheme() {
+    var bg = getComputedStyle(document.body).backgroundColor;
+    var match = bg.match(/\\d+/g);
+    if (match) {
+      var lum = 0.299 * parseInt(match[0]) + 0.587 * parseInt(match[1])
+                + 0.114 * parseInt(match[2]);
+      return lum < 128 ? 'dark' : 'light';
+    }
+    return 'light';
+  }
+  function sendThemeToEditor() {
+    var theme = detectParentTheme();
+    try {
+      if (editorIframe && editorIframe.contentWindow) {
+        editorIframe.contentWindow.postMessage(
+          { type: 'nss-theme', theme: theme }, '*'
+        );
+      }
+    } catch(e) {}
+    /* Also style the toolbar to match */
+    var tb = document.getElementById('nss-editor-toolbar');
+    if (tb) {
+      tb.style.background = theme === 'dark' ? '#1e1e2f' : '#f5f5f5';
+      tb.style.borderBottomColor = theme === 'dark' ? '#2a2a3e' : '#ddd';
+      tb.querySelector('span').style.color = theme === 'dark' ? '#7ca1f7' : '#3553ad';
+    }
+  }
+  /* Send theme on open and poll for changes */
+  var _lastParentTheme = detectParentTheme();
+  setInterval(function() {
+    var t = detectParentTheme();
+    if (t !== _lastParentTheme) {
+      _lastParentTheme = t;
+      sendThemeToEditor();
+    }
+  }, 500);
+  /* Also send theme whenever the panel opens (iframe may have just loaded) */
+  var _origOpen = openPanel;
+  openPanel = function() {
+    _origOpen();
+    setTimeout(sendThemeToEditor, 200);
+  };
 })();
 </script>
 <!-- /NSS Config Editor Integration -->

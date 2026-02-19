@@ -272,6 +272,43 @@ button.btn-danger:hover, button.btn-danger:focus {
 .status-valid { color: #2e7d32; font-weight: 600; }
 .status-error { color: #d94444; font-weight: 600; }
 
+/* Error banner — dismissible, non-blocking */
+.error-banner {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 8px 16px;
+    background: #fef2f2;
+    border-bottom: 2px solid #d94444;
+    color: #991b1b;
+    font-size: 0.88em;
+    font-weight: 500;
+    line-height: 1.4;
+}
+
+.error-banner span {
+    flex: 1;
+    word-break: break-word;
+}
+
+.error-banner button {
+    flex-shrink: 0;
+    padding: 2px 8px;
+    font-size: 1.1em;
+    border: 1px solid #d94444;
+    background: transparent;
+    color: #d94444;
+    border-radius: 4px;
+    cursor: pointer;
+    line-height: 1;
+}
+
+.error-banner button:hover {
+    background: #d94444;
+    color: #fff;
+}
+
 #editor-container {
     flex: 1;
     overflow: hidden;
@@ -315,6 +352,116 @@ footer {
 ::-webkit-scrollbar-thumb:hover {
     background: #8891b0;
 }
+
+/* ===================================================================
+   Dark theme — activated via body[data-theme="dark"]
+   Matches nsflow's dark mode palette
+   =================================================================== */
+body[data-theme="dark"] {
+    background: linear-gradient(to right, #1a1a2e, #16213e);
+    color: #e0e0e0;
+}
+
+body[data-theme="dark"] header {
+    background-color: #1e1e2f;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+}
+
+body[data-theme="dark"] header h1 { color: #7ca1f7; }
+body[data-theme="dark"] .subtitle { color: #8899bb; }
+body[data-theme="dark"] h2 { color: #7ca1f7; }
+
+/* Buttons dark */
+body[data-theme="dark"] button {
+    background: #2a2a3e;
+    border-color: #5580d4;
+    color: #7ca1f7;
+}
+body[data-theme="dark"] button:hover,
+body[data-theme="dark"] button:focus {
+    background: #5580d4;
+    color: #fff;
+}
+body[data-theme="dark"] button.btn-primary {
+    background: linear-gradient(90deg, #5580d4 60%, #2a3f6f 100%);
+    color: #fff;
+    border: none;
+}
+body[data-theme="dark"] button#btn-download,
+body[data-theme="dark"] button#btn-upload {
+    border-color: #4caf50;
+    color: #66bb6a;
+}
+body[data-theme="dark"] button#btn-download:hover,
+body[data-theme="dark"] button#btn-upload:hover {
+    background: #4caf50;
+    color: #fff;
+}
+body[data-theme="dark"] button.btn-danger {
+    border-color: #ef5350;
+    color: #ef5350;
+}
+body[data-theme="dark"] button.btn-danger:hover {
+    background: #ef5350;
+    color: #fff;
+}
+
+/* File tree dark */
+body[data-theme="dark"] #file-tree-section {
+    background-color: #1e1e2f;
+    border-right-color: #2a2a3e;
+}
+body[data-theme="dark"] .tree-box {
+    background: #252540;
+    border-color: #2a2a3e;
+}
+body[data-theme="dark"] .tree-dir { color: #7ca1f7; }
+body[data-theme="dark"] .tree-file:hover { background: #2a3f6f; }
+body[data-theme="dark"] .tree-file.active {
+    background: #5580d4;
+    color: #fff;
+}
+
+/* Manifest dark */
+body[data-theme="dark"] #manifest-section { border-top-color: #2a2a3e; }
+body[data-theme="dark"] .manifest-entry input[type="checkbox"] { accent-color: #5580d4; }
+body[data-theme="dark"] .manifest-private { color: #666; }
+
+/* Editor section dark */
+body[data-theme="dark"] #editor-section { background: #1a1a2e; }
+body[data-theme="dark"] #editor-header {
+    background: #1e1e2f;
+    border-bottom-color: #2a2a3e;
+}
+body[data-theme="dark"] #current-file { color: #7ca1f7; }
+
+/* Error banner dark */
+body[data-theme="dark"] .error-banner {
+    background: #3b1515;
+    border-bottom-color: #ef5350;
+    color: #ef9a9a;
+}
+body[data-theme="dark"] .error-banner button {
+    border-color: #ef5350;
+    color: #ef5350;
+    background: transparent;
+}
+body[data-theme="dark"] .error-banner button:hover {
+    background: #ef5350;
+    color: #fff;
+}
+
+/* Footer dark */
+body[data-theme="dark"] footer {
+    background: #1e1e2f;
+    box-shadow: 0 -2px 4px rgba(0, 0, 0, 0.3);
+    color: #8899bb;
+}
+
+/* Scrollbar dark */
+body[data-theme="dark"] ::-webkit-scrollbar-track { background: #1a1a2e; }
+body[data-theme="dark"] ::-webkit-scrollbar-thumb { background: #3a3a55; }
+body[data-theme="dark"] ::-webkit-scrollbar-thumb:hover { background: #5a5a77; }
 
 /* ===================================================================
    Responsive

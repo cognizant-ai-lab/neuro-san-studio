@@ -20,6 +20,7 @@ configuration files (registries/*.hocon) via a web UI and REST API.
 """
 
 import os
+import re
 from pathlib import Path
 from typing import Dict
 from typing import List
@@ -106,40 +107,47 @@ def _read_manifest() -> Dict[str, object]:
         return {}
     try:
         conf = ConfigFactory.parse_file(str(manifest_path))
-        return {k: conf[k] for k in conf}
-    except ConfigException:
+        # Strip surrounding quotes from keys — pyhocon may preserve them
+        # for keys containing dots (e.g. "my_network.hocon")
+        return {k.strip('"'): conf[k] for k in conf}
+    except Exception:
         return {}
 
 
 def _toggle_manifest_entry(network: str, enabled: bool) -> None:
     """Toggle a network entry in manifest.hocon between true and false.
 
-    Uses string manipulation (not pyhocon write) to preserve comments and
-    formatting, following the pattern in
-    coded_tools/agent_network_designer/file_system_agent_network_persistor.py.
+    Uses regex matching to find the entry regardless of whitespace variations.
+    Only modifies entries in the root manifest — entries from included
+    sub-manifests cannot be toggled here.
     """
     manifest_path = REGISTRIES_PATH / "manifest.hocon"
     if not manifest_path.is_file():
         raise HTTPException(status_code=404, detail="manifest.hocon not found")
 
     content = manifest_path.read_text(encoding="utf-8")
+    new_bool = "true" if enabled else "false"
 
-    # Look for the network entry in the manifest
-    # Handles both: "network.hocon": true  and  "network.hocon": false
-    old_true = f'"{network}": true'
-    old_false = f'"{network}": false'
-    new_value = f'"{network}": {"true" if enabled else "false"}'
+    # Strip any surrounding quotes from the network key (prevent double-quoting)
+    network = network.strip('"')
 
-    if old_true in content:
-        content = content.replace(old_true, new_value, 1)
-    elif old_false in content:
-        content = content.replace(old_false, new_value, 1)
+    # Regex: match "network.hocon" : true/false with flexible whitespace
+    pattern = re.compile(
+        r'("' + re.escape(network) + r'")\s*:\s*(true|false)',
+        re.IGNORECASE,
+    )
+    match = pattern.search(content)
+
+    if match:
+        # Replace only the boolean value, preserve the key and spacing
+        start, end = match.start(2), match.end(2)
+        content = content[:start] + new_bool + content[end:]
     else:
-        # Entry not found — add it before the closing brace
+        # Entry not found in root manifest — add before the closing brace
         insert_pos = content.rfind("}")
         if insert_pos == -1:
             raise HTTPException(status_code=500, detail="Malformed manifest.hocon")
-        entry = f"    {new_value},\n"
+        entry = f'    "{network}": {new_bool},\n'
         content = content[:insert_pos] + "\n" + entry + content[insert_pos:]
 
     manifest_path.write_text(content, encoding="utf-8")
@@ -208,6 +216,20 @@ async def delete_file(file_path: str):
 # ---------------------------------------------------------------------------
 # Routes — Validation
 # ---------------------------------------------------------------------------
+def _clean_parse_error(raw: str) -> str:
+    """Extract human-readable location info from verbose pyparsing errors."""
+    # pyparsing errors end with: found 'X' (at char N), (line:L, col:C)
+    match = re.search(r"found\s+(.+?)\s*\(at char \d+\),\s*\(line:(\d+),\s*col:(\d+)\)", raw)
+    if match:
+        found, line, col = match.group(1), match.group(2), match.group(3)
+        return f"Syntax error at line {line}, col {col}: unexpected {found}"
+    # ConfigException messages are usually already clean
+    # Truncate if still too long
+    if len(raw) > 200:
+        return raw[:200] + "..."
+    return raw
+
+
 @app.post("/api/validate")
 async def validate_hocon(body: FileContent) -> ValidationResult:
     """Validate HOCON syntax and return any parse errors."""
@@ -215,7 +237,7 @@ async def validate_hocon(body: FileContent) -> ValidationResult:
         ConfigFactory.parse_string(body.content)
         return ValidationResult(valid=True)
     except (ConfigException, Exception) as exc:
-        return ValidationResult(valid=False, error=str(exc))
+        return ValidationResult(valid=False, error=_clean_parse_error(str(exc)))
 
 
 # ---------------------------------------------------------------------------
