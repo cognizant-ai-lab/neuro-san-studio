@@ -101,6 +101,39 @@ ENV PACKAGE_INSTALL=/usr/local/lib/python3.13/site-packages
 ENV APP_ENTRYPOINT=${APP_SOURCE}/deploy/entrypoint.sh
 
 #
+# API Keys for LLM Access
+#
+# Which env vars you need may vary depending on which LLM(s) you choose for your own setup.
+# See https://github.com/cognizant-ai-lab/neuro-san/blob/main/docs/agent_hocon_reference.md#llm_config
+# for details on different LLM providers' needs for out-of-the-box support.
+#
+# Note that you really really don't want to leak secrets by checking the actual values into source control.
+# These are best injected into the container via environment variables at runtime ala:
+#   docker run -e OPENAI_API_KEY=...
+#
+
+# OpenAI/ChatGPT access
+ENV OPENAI_API_KEY=""
+
+# Amazon Bedrock access
+ENV AWS_ACCESS_KEY_ID=""
+ENV AWS_SECRET_ACCESS_KEY=""
+
+# Anthropic/Claude access
+ENV ANTHROPIC_API_KEY=""
+
+# MicroSoft Azure/OpenAI access
+# OPENAI_API_KEY is a fallback for AZURE_OPENAI_API_KEY
+# ENV AZURE_OPENAI_API_KEY=""
+ENV AZURE_OPENAI_ENDPOINT=""
+
+# Google/Gemini access
+ENV GOOGLE_API_KEY=""
+
+# NVidia LLM access
+ENV NVIDIA_API_KEY=""
+
+#
 # Server configuration
 #
 
