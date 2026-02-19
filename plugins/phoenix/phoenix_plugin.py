@@ -141,7 +141,7 @@ class PhoenixPlugin:
 
         # pylint: disable=invalid-name
         OTLPSpanExporter: Type[Any] = ResolverUtil.create_type(
-            "opentelemetry.sdk.exporter.otlp.proto.http.trace_exporter.OTLPSpanExporter",
+            "opentelemetry.exporter.otlp.proto.http.trace_exporter.OTLPSpanExporter",
             raise_if_not_found=False,
             install_if_missing="opentelemetry-exporter-otlp",
         )
