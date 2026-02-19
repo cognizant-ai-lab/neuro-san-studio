@@ -204,3 +204,4 @@ registries/manifest.hocon.test
 # User
 **/claude.md
 .claude/
+repo-memory.md
