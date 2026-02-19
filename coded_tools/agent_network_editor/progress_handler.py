@@ -77,7 +77,6 @@ class ProgressHandler:
 
     @staticmethod
     def _convert_to_connectivity_style(network_definition: dict[str, Any]) -> list[dict[str, Any]]:
-
         connectivity: list[dict[str, Any]] = []
 
         inspector: AgentNetworkInspector = DesignerNetworkInspector(network_definition)

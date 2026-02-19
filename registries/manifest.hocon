@@ -81,10 +81,10 @@
     #
     # Additional setup for running the "NsflowSelenium" coded tool:
     # - Start the nsflow service in a separate terminal.
-    # - Use non-default ports for the neuro-san gRPC, HTTP, and nsflow servers.
-    #   The default ports are 30011 for gRPC, 8080 for HTTP, and 4173 for nsflow.
+    # - Use non-default ports for the neuro-san HTTP and nsflow servers.
+    #   The default ports are 8080 for HTTP and 4173 for nsflow.
     #   For example, you can run:
-    #     python -m run --server-grpc-port 30012 --server-http-port 8081 --nsflow-port 4174
+    #     python -m run --server-http-port 8081 --nsflow-port 4174
     "agent_network_architect.hocon": false,
 
 }

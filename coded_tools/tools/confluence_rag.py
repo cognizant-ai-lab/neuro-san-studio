@@ -88,9 +88,7 @@ class ConfluenceRag(CodedTool, BaseRag):
             return "❌ Missing required input: 'query'."
         if not loader_args.get("url"):
             logger.error("Missing required input: 'url'")
-            return (
-                "❌ Missing required input: 'url'.\n" "This should look like: https://your-domain.atlassian.net/wiki/"
-            )
+            return "❌ Missing required input: 'url'.\nThis should look like: https://your-domain.atlassian.net/wiki/"
         if not loader_args.get("space_key") and not loader_args.get("page_ids"):
             logger.error("Missing both 'space_key' and 'page_ids'")
             return (

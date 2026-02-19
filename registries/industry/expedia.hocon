@@ -16,6 +16,17 @@
 {
    include "registries/aaosa.hocon",
 
+   "metadata": {
+       "description": "Multi-agent system simulating Expedia's travel booking platform. Covers flight and hotel reservations, vacation package creation, customer support, billing, and technical assistance with airline and hotel partner coordination through specialized agents using the AAOSA pattern with web search integration.",
+       "tags": ["AAOSA", "travel", "customer-service", "tool"],
+       "sample_queries": [
+           "Find me a round-trip flight from New York to Los Angeles next Friday.",
+           "What hotel deals are available near Disney World for a family of four?",
+           "I need to change the dates on my existing hotel booking.",
+           "Can you bundle a flight and hotel package to Cancun for under $1500?",
+       ]
+   },
+
    # Load the shared LLM configuration from a single source of truth.
    # This allows users to change the model in one file rather than
    # modifying the configuration for each agent network.

@@ -84,5 +84,5 @@ class AnthropicWebSearch(CodedTool):
             tool_name="web_search",
             anthropic_model=anthropic_model,
             betas=None,
-            **additional_kwargs
+            **additional_kwargs,
         )

@@ -1,23 +1,26 @@
-[tool.isort]
-profile = "black"
-src_paths = ["apps", "coded_tools", "tests"]
-line_length = 119
-known_first_party = ["apps"]
-force_single_line = true
-
-[tool.flake8]
-extend-ignore = ["W503", "E203"]
-max-line-length = 119
-
-[tool.black]
+[tool.ruff]
+target-version = "py312"
 line-length = 119
-required-version = "25.1.0"
+src = ["apps", "coded_tools", "plugins", "tests"]
+
+[tool.ruff.lint]
+select = [
+    "E",  # pycodestyle errors (e.g. indentation, whitespace, line length)
+    "F",  # Pyflakes checks (e.g. undefined names, unused imports, unused variables)
+    "I",  # isort import-ordering rules
+    "W",  # pycodestyle warnings (e.g. trailing whitespace, blank lines)
+]
+ignore = []
+
+[tool.ruff.lint.isort]
+force-single-line = true
+known-first-party = ["apps", "coded_tools", "tests"]
 
 [tool.pylint]
 max-line-length = 119
 # Based on Google Python Style Guide
 disable = [
-    "C0301",  # Line too long (handled by black)
+    "C0301",  # Line too long (handled by ruff)
     "C0114",  # Missing module docstring (missing-module-docstring)
     # This repo contains examples that should remain independent, so we expect some level of copy/paste
     "R0801",  # Similar lines in 2 files

@@ -1,6 +1,0 @@
-[flake8]
-max-line-length = 120
-exclude =
-    dist,
-# Incompatible style with lint-check (Black)
-ignore = E203,W503
