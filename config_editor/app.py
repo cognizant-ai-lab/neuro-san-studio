@@ -214,7 +214,7 @@ async def validate_hocon(body: FileContent) -> ValidationResult:
     try:
         ConfigFactory.parse_string(body.content)
         return ValidationResult(valid=True)
-    except ConfigException as exc:
+    except (ConfigException, Exception) as exc:
         return ValidationResult(valid=False, error=str(exc))
 
 

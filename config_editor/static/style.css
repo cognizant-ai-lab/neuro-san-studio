@@ -110,6 +110,20 @@ button.btn-primary:hover, button.btn-primary:focus {
     transform: translateY(-1px) scale(1.02);
 }
 
+button#btn-download,
+button#btn-upload {
+    border-color: #2e7d32;
+    color: #2e7d32;
+}
+
+button#btn-download:hover,
+button#btn-download:focus,
+button#btn-upload:hover,
+button#btn-upload:focus {
+    background: #2e7d32;
+    color: #fff;
+}
+
 button.btn-danger {
     border-color: #d94444;
     color: #d94444;

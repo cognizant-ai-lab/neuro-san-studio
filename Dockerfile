@@ -56,6 +56,7 @@ COPY --from=builder /install /usr/local
 COPY --chown=${USERNAME}:${USERNAME} ./deploy/entrypoint.sh         ${APP_SOURCE}/deploy/entrypoint.sh
 COPY --chown=${USERNAME}:${USERNAME} ./deploy/nsflow_start.py       ${APP_SOURCE}/deploy/nsflow_start.py
 COPY --chown=${USERNAME}:${USERNAME} ./deploy/config_editor_start.py ${APP_SOURCE}/deploy/config_editor_start.py
+COPY --chown=${USERNAME}:${USERNAME} ./deploy/combined_start.py      ${APP_SOURCE}/deploy/combined_start.py
 COPY --chown=${USERNAME}:${USERNAME} ./deploy/logging.json          ${APP_SOURCE}/deploy/logging.json
 COPY --chown=${USERNAME}:${USERNAME} ./logging.json                  ${APP_SOURCE}/logging.json
 
@@ -92,7 +93,7 @@ EXPOSE 30011
 EXPOSE 8080
 # nsflow web UI port (Azure Container Apps ingress targets this)
 EXPOSE 4173
-# Config editor port (separate ingress with Entra ID MFA)
+# Config editor port (legacy — editor is now served at /editor on port 4173)
 EXPOSE 4174
 
 # ---- Switch to non-root user ----
@@ -183,9 +184,9 @@ HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
     CMD python -c "import socket; s=socket.socket(); s.settimeout(3); s.connect(('127.0.0.1',4173)); s.close()" || exit 1
 
 # ---- Entrypoint ----
-# The entrypoint.sh script selectively starts processes based on *_ENABLED flags:
-#   1. neuro-san server: gRPC (30011) + HTTP API (8080) [NEURO_SAN_ENABLED]
-#   2. nsflow web UI: Uvicorn on port 4173              [NSFLOW_ENABLED]
-#   3. config editor: Uvicorn on port 4174              [CONFIG_EDITOR_ENABLED]
+# The entrypoint.sh script starts processes based on *_ENABLED flags:
+#   1. neuro-san server: gRPC (30011) + HTTP API (8080)            [NEURO_SAN_ENABLED]
+#   2. combined app: nsflow + config editor on port 4173           [NSFLOW_ENABLED]
+#      Config editor is served at /editor/ (CONFIG_EDITOR_ENABLED controls mount)
 ENV APP_ENTRYPOINT=${APP_SOURCE}/deploy/entrypoint.sh
 ENTRYPOINT ["/bin/bash", "-c", "${APP_ENTRYPOINT}"]

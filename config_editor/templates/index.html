@@ -30,7 +30,7 @@ END COPYRIGHT
     <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/edit/matchbrackets.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/edit/closebrackets.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/dompurify@3.1.6/dist/purify.min.js"></script>
-    <link rel="stylesheet" type="text/css" href="{{ url_for('static', filename='style.css') }}">
+    <link rel="stylesheet" type="text/css" href="{{ request.scope.get('root_path', '') }}/static/style.css">
 </head>
 <body>
     <!-- Header -->
@@ -44,6 +44,8 @@ END COPYRIGHT
                 <button id="btn-new" type="button" title="Create new HOCON file">New File</button>
                 <button id="btn-save" type="button" class="btn-primary" title="Save current file">Save</button>
                 <button id="btn-validate" type="button" title="Validate HOCON syntax">Validate</button>
+                <button id="btn-download" type="button" title="Download current file">Download</button>
+                <button id="btn-upload" type="button" title="Upload a .hocon file">Upload</button>
                 <button id="btn-delete" type="button" class="btn-danger" title="Delete current file">Delete</button>
             </div>
         </div>
@@ -79,6 +81,11 @@ END COPYRIGHT
     </footer>
 
     <script>
+        // ---------------------------------------------------------------
+        // Base path (adapts when mounted under a sub-path like /editor)
+        // ---------------------------------------------------------------
+        var API_BASE = "{{ request.scope.get('root_path', '') }}";
+
         // ---------------------------------------------------------------
         // State
         // ---------------------------------------------------------------
@@ -127,7 +134,7 @@ END COPYRIGHT
         // File tree
         // ---------------------------------------------------------------
         function loadFileTree() {
-            fetch('/api/files')
+            fetch(API_BASE + '/api/files')
                 .then(function(r) { return r.json(); })
                 .then(function(data) {
                     renderFileTree(data.files);
@@ -185,7 +192,7 @@ END COPYRIGHT
             if (unsavedChanges && !confirm('You have unsaved changes. Discard?')) {
                 return;
             }
-            fetch('/api/files/' + encodeURIComponent(path))
+            fetch(API_BASE + '/api/files/' + encodeURIComponent(path))
                 .then(function(r) {
                     if (!r.ok) throw new Error('Failed to load file');
                     return r.json();
@@ -213,7 +220,7 @@ END COPYRIGHT
                 return;
             }
             var content = editor.getValue();
-            fetch('/api/files/' + encodeURIComponent(currentFile), {
+            fetch(API_BASE + '/api/files/' + encodeURIComponent(currentFile), {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ content: content })
@@ -237,7 +244,7 @@ END COPYRIGHT
                 alert('Editor is empty.');
                 return;
             }
-            fetch('/api/validate', {
+            fetch(API_BASE + '/api/validate', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ content: content })
@@ -262,7 +269,7 @@ END COPYRIGHT
             if (!name.endsWith('.hocon')) name += '.hocon';
 
             var content = '{\n    # New agent network configuration\n}\n';
-            fetch('/api/files/' + encodeURIComponent(name), {
+            fetch(API_BASE + '/api/files/' + encodeURIComponent(name), {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ content: content })
@@ -288,7 +295,7 @@ END COPYRIGHT
             if (!confirm('Delete "' + currentFile + '"? This cannot be undone.')) {
                 return;
             }
-            fetch('/api/files/' + encodeURIComponent(currentFile), {
+            fetch(API_BASE + '/api/files/' + encodeURIComponent(currentFile), {
                 method: 'DELETE'
             })
             .then(function(r) {
@@ -312,7 +319,7 @@ END COPYRIGHT
         // Manifest management
         // ---------------------------------------------------------------
         function loadManifest() {
-            fetch('/api/manifest')
+            fetch(API_BASE + '/api/manifest')
                 .then(function(r) { return r.json(); })
                 .then(function(data) {
                     renderManifest(data.entries);
@@ -354,7 +361,7 @@ END COPYRIGHT
         }
 
         function toggleManifest(network, enabled) {
-            fetch('/api/manifest/' + encodeURIComponent(network), {
+            fetch(API_BASE + '/api/manifest/' + encodeURIComponent(network), {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ enabled: enabled })
@@ -373,11 +380,82 @@ END COPYRIGHT
         }
 
         // ---------------------------------------------------------------
+        // Download / Upload
+        // ---------------------------------------------------------------
+        function downloadFile() {
+            if (!currentFile) {
+                alert('No file is open.');
+                return;
+            }
+            var content = editor.getValue();
+            var blob = new Blob([content], { type: 'text/plain;charset=utf-8' });
+            var url = URL.createObjectURL(blob);
+            var a = document.createElement('a');
+            a.href = url;
+            a.download = currentFile.split('/').pop();
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        }
+
+        function uploadFile() {
+            var input = document.createElement('input');
+            input.type = 'file';
+            input.accept = '.hocon';
+            input.onchange = function(e) {
+                var file = e.target.files[0];
+                if (!file) return;
+                if (!file.name.endsWith('.hocon')) {
+                    alert('Only .hocon files are supported.');
+                    return;
+                }
+                var reader = new FileReader();
+                reader.onload = function(ev) {
+                    var content = ev.target.result;
+                    fetch(API_BASE + '/api/files/' + encodeURIComponent(file.name), {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ content: content })
+                    })
+                    .then(function(r) {
+                        if (r.status === 409) {
+                            if (confirm('"' + file.name + '" already exists. Overwrite?')) {
+                                return fetch(API_BASE + '/api/files/' + encodeURIComponent(file.name), {
+                                    method: 'PUT',
+                                    headers: { 'Content-Type': 'application/json' },
+                                    body: JSON.stringify({ content: content })
+                                });
+                            }
+                            return null;
+                        }
+                        if (!r.ok) return r.json().then(function(d) { throw new Error(d.detail); });
+                        return r;
+                    })
+                    .then(function(r) {
+                        if (!r) return;
+                        if (!r.ok) return r.json().then(function(d) { throw new Error(d.detail); });
+                        loadFileTree();
+                        openFile(file.name);
+                        setStatus('saved', 'Uploaded: ' + file.name);
+                    })
+                    .catch(function(err) {
+                        alert('Upload error: ' + err.message);
+                    });
+                };
+                reader.readAsText(file);
+            };
+            input.click();
+        }
+
+        // ---------------------------------------------------------------
         // Button bindings
         // ---------------------------------------------------------------
         document.getElementById('btn-new').addEventListener('click', createFile);
         document.getElementById('btn-save').addEventListener('click', saveFile);
         document.getElementById('btn-validate').addEventListener('click', validateFile);
+        document.getElementById('btn-download').addEventListener('click', downloadFile);
+        document.getElementById('btn-upload').addEventListener('click', uploadFile);
         document.getElementById('btn-delete').addEventListener('click', deleteFile);
 
         // Keyboard shortcut: Ctrl/Cmd+S to save
