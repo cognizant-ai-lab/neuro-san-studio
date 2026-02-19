@@ -49,19 +49,44 @@ PACKAGE_INSTALL=${PACKAGE_INSTALL:-.}
 echo "PACKAGE_INSTALL is ${PACKAGE_INSTALL}"
 
 # -------------------------------------------------------------------
-# Bootstrap: seed Azure File Share from baked-in registries if empty
+# Bootstrap: smart-merge baked-in registries into Azure File Share
+# -------------------------------------------------------------------
+# On every startup we sync the container image's registries into the
+# (possibly Azure File Share-mounted) registries directory.  This
+# ensures newly added agent definitions, updated manifests and sub-
+# manifests always reach the running container.
+#
+# Strategy:
+#   - All directories EXCEPT generated/ are copied from the seed,
+#     overwriting stale files and adding new ones.
+#   - generated/ is never overwritten — it holds user-created agent
+#     networks.  We only create the directory and seed an empty
+#     manifest.hocon if they don't already exist.
 # -------------------------------------------------------------------
 REGISTRIES_DIR="${APP_SOURCE}/registries"
 SEED_DIR="${APP_SOURCE}/registries-seed"
 
 if [ -d "${SEED_DIR}" ]; then
-    if [ -z "$(ls -A "${REGISTRIES_DIR}" 2>/dev/null)" ]; then
-        echo "Seeding registries from container image..."
-        cp -r "${SEED_DIR}/"* "${REGISTRIES_DIR}/"
-        echo "Seeding complete."
-    else
-        echo "Registries directory already populated."
+    echo "Syncing registries from container image..."
+
+    # Sync everything except generated/
+    for item in "${SEED_DIR}"/*; do
+        basename="$(basename "${item}")"
+        if [ "${basename}" = "generated" ]; then
+            continue  # handled below
+        fi
+        cp -r "${item}" "${REGISTRIES_DIR}/"
+    done
+
+    # Ensure generated/ exists with its manifest, but never overwrite
+    mkdir -p "${REGISTRIES_DIR}/generated"
+    if [ ! -f "${REGISTRIES_DIR}/generated/manifest.hocon" ]; then
+        cp "${SEED_DIR}/generated/manifest.hocon" \
+           "${REGISTRIES_DIR}/generated/manifest.hocon"
+        echo "Seeded generated/manifest.hocon."
     fi
+
+    echo "Registry sync complete."
 fi
 
 # -------------------------------------------------------------------
