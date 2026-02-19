@@ -539,12 +539,12 @@ network using the web as the template for the agent connections and content.
 ## Plugins
 
 Plugins are a way to extend the functionality of a Neuro SAN server largely for deployment-related use-cases.
+Note that plugins are never required for Neuro SAN to function.
 
 ### Authorization
 
 Authorization plugins allow user-by-user access control to Agent Networks.
 This is not to be confused with _authentication_, which is the process of verifying a user's identity.
-Note that Authorization plugins are not required for Neuro SAN to function.
 
 #### Open FGA
 
