@@ -48,8 +48,8 @@
         #   - https://github.com/cognizant-ai-lab/neuro-san/blob/main/neuro_san/internals/run_context/langchain/llms/default_llm_info.hocon
         #   - https://github.com/cognizant-ai-lab/neuro-san/blob/main/docs/agent_hocon_reference.md#llm_config
 
-        "class": "openai",
-        "model_name": "gpt-4o",
+        "class": "gemini",
+        "model_name": "gemini-3-flash-preview",
 
     }
 }

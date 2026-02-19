@@ -16,6 +16,7 @@ langchain-mcp-adapters>=0.1.7,<1.0
 
 # Neuro-SAN now requires explicit installation of langchain LLM providers' libs
 langchain-anthropic>=1.0.0,<2.0
+langchain-google-genai>=4.0.0,<5.0
 
 # For rich logging
 rich>=14.2.0

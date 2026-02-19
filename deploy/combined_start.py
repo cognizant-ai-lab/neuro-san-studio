@@ -21,8 +21,9 @@ Routes:
     /editor/*  -> config_editor FastAPI app (Starlette Mount strips prefix)
     /*         -> nsflow FastAPI app (with HTML injection middleware)
 
-The HTML injection middleware adds a floating "Editor" button to nsflow's
-HTML pages that opens the config editor in a slide-in iframe overlay.
+The HTML injection middleware adds a "Config Editor" button next to the
+existing OEM "Editor" button in nsflow's toolbar. Clicking it opens the
+config editor in a slide-in iframe overlay.
 
 Configurable via environment variables:
     NSFLOW_HOST              (default: 0.0.0.0)
@@ -59,19 +60,6 @@ from nsflow.backend.main import app as nsflow_app  # noqa: E402
 _INJECTION_SNIPPET = """
 <!-- NSS Config Editor Integration -->
 <style>
-  #nss-editor-toggle {
-    position: fixed; top: 12px; right: 12px; z-index: 9999;
-    background: linear-gradient(90deg, #507be8, #233a66);
-    color: #fff; border: none; border-radius: 8px;
-    padding: 10px 18px; font-size: 14px; font-weight: 600;
-    cursor: pointer; box-shadow: 0 2px 8px rgba(80,123,232,0.3);
-    font-family: Inter, sans-serif;
-    transition: transform 0.15s, box-shadow 0.15s;
-  }
-  #nss-editor-toggle:hover {
-    transform: translateY(-1px);
-    box-shadow: 0 4px 12px rgba(80,123,232,0.4);
-  }
   #nss-editor-overlay {
     position: fixed; top: 0; right: -62%; bottom: 0; width: 60%;
     z-index: 9998; background: #fff;
@@ -80,16 +68,18 @@ _INJECTION_SNIPPET = """
   }
   #nss-editor-overlay.open { right: 0; }
   #nss-editor-overlay iframe {
-    width: 100%; height: 100%; border: none;
+    width: 100%; height: calc(100% - 52px); border: none;
+    margin-top: 52px;
   }
   #nss-editor-close {
-    position: absolute; top: 8px; left: -36px; z-index: 10000;
+    position: absolute; top: 10px; right: 12px; z-index: 10000;
     background: #d94444; color: #fff; border: none;
-    border-radius: 50%; width: 28px; height: 28px;
-    font-size: 16px; cursor: pointer; display: flex;
+    border-radius: 6px; width: 32px; height: 32px;
+    font-size: 18px; cursor: pointer; display: flex;
     align-items: center; justify-content: center;
     box-shadow: 0 2px 6px rgba(0,0,0,0.2);
   }
+  #nss-editor-close:hover { background: #b71c1c; }
   #nss-editor-scrim {
     position: fixed; top: 0; left: 0; right: 0; bottom: 0;
     background: rgba(0,0,0,0.2); z-index: 9997;
@@ -102,23 +92,72 @@ _INJECTION_SNIPPET = """
   <button id="nss-editor-close" title="Close editor">&times;</button>
   <iframe src="/editor/" title="HOCON Config Editor"></iframe>
 </div>
-<button id="nss-editor-toggle" title="Open HOCON Config Editor">Editor</button>
 <script>
 (function() {
-  var btn = document.getElementById('nss-editor-toggle');
   var overlay = document.getElementById('nss-editor-overlay');
   var scrim = document.getElementById('nss-editor-scrim');
   var closeBtn = document.getElementById('nss-editor-close');
   var isOpen = false;
+  var injectedBtn = null;
+
   function toggle() {
     isOpen = !isOpen;
     overlay.classList.toggle('open', isOpen);
     scrim.classList.toggle('open', isOpen);
-    btn.textContent = isOpen ? 'Close Editor' : 'Editor';
   }
-  btn.addEventListener('click', toggle);
   closeBtn.addEventListener('click', toggle);
   scrim.addEventListener('click', toggle);
+
+  /* ---- Find OEM Editor button and inject CONFIG EDITOR next to it ---- */
+  /* SVG icon: Description/document icon (config files) */
+  var iconSvg = '<span class="MuiButton-icon MuiButton-startIcon MuiButton-iconSizeMedium css-1ygddt1">'
+    + '<svg class="MuiSvgIcon-root MuiSvgIcon-fontSizeMedium css-q7mezt" focusable="false" aria-hidden="true" viewBox="0 0 24 24">'
+    + '<path d="M14 2H6c-1.1 0-1.99.9-1.99 2L4 20c0 1.1.89 2 1.99 2H18c1.1 0 2-.9 2-2V8l-6-6z'
+    + 'm2 16H8v-2h8v2zm0-4H8v-2h8v2zM13 9V3.5L18.5 9H13z"></path>'
+    + '</svg></span>';
+
+  function findOemEditorButton() {
+    /* Look for MUI outlined buttons whose text content is exactly "Editor" */
+    var buttons = document.querySelectorAll('button.MuiButton-outlinedPrimary');
+    for (var i = 0; i < buttons.length; i++) {
+      var txt = buttons[i].textContent.trim();
+      if (txt === 'Editor') return buttons[i];
+    }
+    return null;
+  }
+
+  function injectButton() {
+    if (injectedBtn && document.body.contains(injectedBtn)) return true;
+    var oemBtn = findOemEditorButton();
+    if (!oemBtn) return false;
+
+    /* Clone the OEM button structure to match MUI styling exactly */
+    injectedBtn = oemBtn.cloneNode(false);
+    injectedBtn.id = 'nss-config-editor-btn';
+    injectedBtn.title = 'Open HOCON Config Editor';
+    injectedBtn.innerHTML = iconSvg + 'Config Editor'
+      + '<span class="MuiTouchRipple-root css-4mb1j7"></span>';
+    injectedBtn.addEventListener('click', function(e) {
+      e.preventDefault();
+      e.stopPropagation();
+      toggle();
+    });
+    /* Insert right after the OEM Editor button */
+    oemBtn.parentNode.insertBefore(injectedBtn, oemBtn.nextSibling);
+    return true;
+  }
+
+  /* Poll until the React SPA renders the toolbar, then observe for re-renders */
+  var pollInterval = setInterval(function() {
+    if (injectButton()) {
+      clearInterval(pollInterval);
+      /* Observe DOM changes in case React re-renders the toolbar */
+      var observer = new MutationObserver(function() {
+        injectButton();
+      });
+      observer.observe(document.body, { childList: true, subtree: true });
+    }
+  }, 300);
 })();
 </script>
 <!-- /NSS Config Editor Integration -->

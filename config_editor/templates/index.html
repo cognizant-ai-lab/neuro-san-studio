@@ -410,18 +410,30 @@ END COPYRIGHT
                     alert('Only .hocon files are supported.');
                     return;
                 }
+                // Ask user for target folder within registries
+                var folder = prompt(
+                    'Upload to which folder inside registries/?\n\n'
+                    + 'Leave blank for the root, or enter a subfolder path.\n'
+                    + 'Example: my_agents\n'
+                    + 'Example: team/project',
+                    ''
+                );
+                if (folder === null) return; // cancelled
+                folder = folder.replace(/^\/+|\/+$/g, ''); // trim slashes
+                var targetPath = folder ? (folder + '/' + file.name) : file.name;
+
                 var reader = new FileReader();
                 reader.onload = function(ev) {
                     var content = ev.target.result;
-                    fetch(API_BASE + '/api/files/' + encodeURIComponent(file.name), {
+                    fetch(API_BASE + '/api/files/' + encodeURIComponent(targetPath), {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({ content: content })
                     })
                     .then(function(r) {
                         if (r.status === 409) {
-                            if (confirm('"' + file.name + '" already exists. Overwrite?')) {
-                                return fetch(API_BASE + '/api/files/' + encodeURIComponent(file.name), {
+                            if (confirm('"' + targetPath + '" already exists. Overwrite?')) {
+                                return fetch(API_BASE + '/api/files/' + encodeURIComponent(targetPath), {
                                     method: 'PUT',
                                     headers: { 'Content-Type': 'application/json' },
                                     body: JSON.stringify({ content: content })
@@ -436,8 +448,8 @@ END COPYRIGHT
                         if (!r) return;
                         if (!r.ok) return r.json().then(function(d) { throw new Error(d.detail); });
                         loadFileTree();
-                        openFile(file.name);
-                        setStatus('saved', 'Uploaded: ' + file.name);
+                        openFile(targetPath);
+                        setStatus('saved', 'Uploaded: ' + targetPath);
                     })
                     .catch(function(err) {
                         alert('Upload error: ' + err.message);
