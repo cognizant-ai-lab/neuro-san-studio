@@ -112,9 +112,9 @@ ENV AGENT_SERVER_NAME_FOR_LOGS="Agent Server"
 # Manifest and tool paths (relative to APP_SOURCE set above)
 ENV AGENT_MANIFEST_FILE="${APP_SOURCE}/registries/manifest.hocon ${APP_SOURCE}/registries/manifest_multiuser_overlay.hocon"
 ENV AGENT_TOOL_PATH="${APP_SOURCE}/coded_tools"
-ENV AGENT_TOOLBOX_INFO_FILE=""
+ENV AGENT_TOOLBOX_INFO_FILE="${APP_SOURCE}/toolbox/toolbox_info.hocon"
 ENV AGENT_LLM_INFO_FILE=""
-ENV MCP_SERVERS_INFO_FILE=""
+ENV MCP_SERVERS_INFO_FILE="${APP_SOURCE}/mcp/mcp_info.hocon"
 
 # Logging
 ENV AGENT_SERVICE_LOG_JSON="${APP_SOURCE}/deploy/logging.json"

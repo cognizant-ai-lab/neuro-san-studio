@@ -144,7 +144,7 @@ Operational notes:
                 }
             },
             "allow": {
-                "reservations": True
+                "reservations": true
             }
         },
 
