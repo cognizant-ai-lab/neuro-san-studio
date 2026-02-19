@@ -86,4 +86,6 @@
     #   For example, you can run:
     #     python -m run --server-http-port 8081 --nsflow-port 4174
     "agent_network_architect.hocon": true,
+
+    "agent_network_editor.hocon": true,
 }
