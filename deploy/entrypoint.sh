@@ -78,11 +78,16 @@ if [ -d "${SEED_DIR}" ]; then
         cp -r "${item}" "${REGISTRIES_DIR}/"
     done
 
-    # Ensure generated/ exists with its manifest, but never overwrite
+    # Ensure generated/ exists with its manifest, but never overwrite.
+    # Note: registries/generated is in .dockerignore so it won't be in
+    # the seed — we create the empty manifest inline instead.
     mkdir -p "${REGISTRIES_DIR}/generated"
     if [ ! -f "${REGISTRIES_DIR}/generated/manifest.hocon" ]; then
-        cp "${SEED_DIR}/generated/manifest.hocon" \
-           "${REGISTRIES_DIR}/generated/manifest.hocon"
+        cat > "${REGISTRIES_DIR}/generated/manifest.hocon" << 'GENEOF'
+{
+    # Generated agent networks (created by the agent_network_designer)
+}
+GENEOF
         echo "Seeded generated/manifest.hocon."
     fi
 
