@@ -15,6 +15,7 @@
 # END COPYRIGHT
 
 # Import for asynchronous file operations
+import logging
 import os
 
 import aiofiles
@@ -59,16 +60,22 @@ class FileSystemAgentNetworkPersistor(AgentNetworkPersistor):
         :return an object describing the location to which the object was persisted
         """
 
+        logger = logging.getLogger(self.__class__.__name__)
+
         the_agent_network_hocon_str: str = obj
         # This agent network name already includes any subdirectory specified.
         the_agent_network_name: str = file_reference
 
         # Write the agent network file
         file_path: str = os.path.join(self.OUTPUT_PATH, the_agent_network_name + ".hocon")
+        abs_path: str = os.path.abspath(file_path)
+        logger.info("CWD: %s", os.getcwd())
+        logger.info("Writing agent network to: %s (absolute: %s)", file_path, abs_path)
         # Create parent directory automatically if necessary
         os.makedirs(os.path.dirname(file_path), exist_ok=True)
         async with aiofiles.open(file_path, "w") as file:
             await file.write(the_agent_network_hocon_str)
+        logger.info("File written. Exists: %s, Size: %d bytes", os.path.exists(file_path), os.path.getsize(file_path))
 
         # Update the manifest.hocon file
         manifest_path: str = os.path.join(self.OUTPUT_PATH, self.GENERATED, "manifest.hocon")
@@ -117,5 +124,6 @@ class FileSystemAgentNetworkPersistor(AgentNetworkPersistor):
         # Write the updated content back to the manifest file
         async with aiofiles.open(manifest_path, "w") as file:
             await file.write(updated_content)
+        logger.info("Updated manifest at: %s with entry: %s", os.path.abspath(manifest_path), manifest_entry.strip())
 
         return file_path

@@ -265,3 +265,45 @@ async def toggle_manifest(network: str, body: ManifestEntry):
     """Toggle a network entry on/off in manifest.hocon."""
     _toggle_manifest_entry(network, body.enabled)
     return {"network": network, "enabled": body.enabled}
+
+
+# ---------------------------------------------------------------------------
+# Routes — Diagnostics
+# ---------------------------------------------------------------------------
+@app.get("/api/diagnostic")
+async def diagnostic():
+    """Diagnostic endpoint showing registries state, generated/ contents, and write test."""
+    import time
+
+    generated_dir = REGISTRIES_PATH / "generated"
+    generated_files = []
+    if generated_dir.is_dir():
+        for p in sorted(generated_dir.iterdir()):
+            stat = p.stat()
+            generated_files.append(
+                {
+                    "name": p.name,
+                    "size": stat.st_size,
+                    "modified": time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(stat.st_mtime)),
+                }
+            )
+
+    # Test write permissions on generated/
+    writable = False
+    try:
+        test_file = generated_dir / ".write_test"
+        test_file.write_text("ok", encoding="utf-8")
+        test_file.unlink()
+        writable = True
+    except Exception as exc:
+        writable = str(exc)
+
+    return {
+        "registries_path": str(REGISTRIES_PATH),
+        "registries_exists": REGISTRIES_PATH.is_dir(),
+        "cwd": os.getcwd(),
+        "generated_dir_exists": generated_dir.is_dir(),
+        "generated_writable": writable,
+        "generated_files": generated_files,
+        "total_hocon_files": len(_walk_hocon_files()),
+    }
