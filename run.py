@@ -532,7 +532,8 @@ class NeuroSanRunner:
         signal.signal(signal.SIGINT, self.signal_handler)  # Handle Ctrl+C
         if self.is_windows:
             signal.signal(
-                signal.SIGBREAK, self.signal_handler  # pylint: disable=no-member
+                signal.SIGBREAK,  # pylint: disable=no-member
+                self.signal_handler,
             )  # Handle Ctrl+Break on Windows
         else:
             signal.signal(signal.SIGTERM, self.signal_handler)  # Handle kill command (not available on Windows)

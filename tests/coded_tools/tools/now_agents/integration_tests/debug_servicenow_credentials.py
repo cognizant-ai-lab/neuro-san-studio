@@ -49,7 +49,6 @@ print(f"Personal Password length: {len(personal_pwd) if personal_pwd else 0}")
 
 # Test basic auth format
 if user and pwd:
-
     # Test with explicit auth
     TEST_URL = f"{url}api/now/table/sys_user?sysparm_limit=1"
     print(f"\nTesting URL: {TEST_URL}")
