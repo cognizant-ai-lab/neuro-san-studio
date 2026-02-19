@@ -260,7 +260,7 @@ are defined correctly.  We have included one test with this example. To run it:
   contains documentation and examples for each of the methods of the Authorizer interface
 
 - [The OpenFGA implementation of the Authorizer interface](https://github.com/cognizant-ai-lab/neuro-san/blob/main/neuro_san/internals/authorization/openfga/open_fga_authorizer.py)
-  Seeing the details of the OpenFGA can give you some ideas as to how to extend it for your own purposes.
+  Seeing the details of the OpenFGA implementation can give you some ideas as to how to extend it for your own purposes.
   It's worth noting that we have used an extended version of the OpenFGA Authorizer and supplied schema
   to allow for many other objects under authorization control, including special users, and storing information
   about authorization models that evolve over time. Go wild.
