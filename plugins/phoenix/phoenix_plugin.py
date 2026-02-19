@@ -115,6 +115,7 @@ class PhoenixPlugin:
         )
 
         if trace is None or TracerProvider is None:  # pragma: no cover
+            print("Skipping OpenTelemetry TracerProvider configuration")
             return
 
         # Avoid double-initialization if a provider already exists
