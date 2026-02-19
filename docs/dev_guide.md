@@ -9,7 +9,7 @@ This repository includes a Makefile with several useful commands to streamline d
 - `make install` - Creates the virtual environment (if needed) and installs all dependencies including build dependencies
 - `make activate` - Checks if the virtual environment exists and either provides activation instructions (if it exists)
 or suggests running `make install` (if it doesn't)
-- `make lint` - Runs code formatting and linting tools (isort, black, flake8) on the source code
+- `make lint` - Runs code formatting and linting tools (ruff, pylint) on the source code
 - `make lint-tests` - Runs code formatting and linting tools on the test code
 - `make test` - Runs lint and lint-tests, then executes the tests with pytest and generates coverage reports
 

@@ -15,7 +15,18 @@
 # END COPYRIGHT
 {
     include "registries/aaosa.hocon",
-    
+
+    "metadata": {
+        "description": "Multi-agent system simulating KeyBank's financial services operations. Covers consumer banking, commercial lending, wealth management, investment advisory, estate and retirement planning, and risk management including fraud prevention and compliance through specialized agents using the AAOSA pattern.",
+        "tags": ["banking", "AAOSA", "customer-service"],
+        "sample_queries": [
+            "What mortgage options are available for a first-time home buyer?",
+            "I need a business line of credit for my small company.",
+            "Can you help me build a retirement savings plan?",
+            "What investment portfolio strategies do you recommend for moderate risk tolerance?",
+        ]
+    },
+
     # Load the shared LLM configuration from a single source of truth.
     # This allows users to change the model in one file rather than
     # modifying the configuration for each agent network.

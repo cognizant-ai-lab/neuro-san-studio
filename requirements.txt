@@ -1,6 +1,6 @@
 # Neuro SAN
-neuro-san==0.6.26
-nsflow==0.6.7
+neuro-san==0.6.32
+nsflow==0.6.9
 
 # For the airline_policy demo, to extract text from documents
 pypdf>=6.1.3

@@ -37,7 +37,7 @@ function run() {
 
     check_directory
 
-    # RUN_JSON_INPUT_DIR will go away when an actual GRPC service exists
+    # RUN_JSON_INPUT_DIR will go away when an actual service exists
     # for receiving the input. For now it's a mounted directory.
     CONTAINER_VERSION=${SERVICE_VERSION}
     echo "Using CONTAINER_VERSION ${CONTAINER_VERSION}"
@@ -56,11 +56,9 @@ function run() {
     echo "Network is ${network}"
 
     SERVICE_NAME="NeuroSanAgents"
-    # Assume the first port EXPOSEd in the Dockerfile is the input port
+    # Get the HTTP port EXPOSED in the Dockerfile
     DOCKERFILE=$(find . -name Dockerfile | sort | head -1)
-    SERVICE_PORT=$(grep ^EXPOSE < "${DOCKERFILE}" | head -1 | awk '{ print $2 }')
-    SERVICE_HTTP_PORT=$(grep ^EXPOSE < "${DOCKERFILE}" | tail -1 | awk '{ print $2 }')
-    echo "SERVICE_PORT: ${SERVICE_PORT}"
+    SERVICE_HTTP_PORT=$(grep ^EXPOSE < "${DOCKERFILE}" | head -1 | awk '{ print $2 }')
     echo "SERVICE_HTTP_PORT: ${SERVICE_HTTP_PORT}"
 
     # Run the docker container in interactive mode
@@ -73,7 +71,6 @@ function run() {
         -e OPENAI_API_KEY \
         -e ANTHROPIC_API_KEY \
         -e TOOL_REGISTRY_FILE=$1 \
-        -p $SERVICE_PORT:$SERVICE_PORT \
         -p $SERVICE_HTTP_PORT:$SERVICE_HTTP_PORT \
             neuro-san/${SERVICE_TAG}:$CONTAINER_VERSION"
 

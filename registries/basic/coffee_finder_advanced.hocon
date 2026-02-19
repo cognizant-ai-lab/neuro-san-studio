@@ -171,7 +171,7 @@ In any case, always call save_user_preferences to save or update the user prefer
         function = {
             description = "Lists users for which habits and preferences have been stored"
         }
-        class = "kwik_agents.list_topics.ListTopics"
+        class = "experimental.kwik_agents.list_topics.ListTopics"
     }
     {
         name = "save_user_preferences"
@@ -192,7 +192,7 @@ In any case, always call save_user_preferences to save or update the user prefer
                 required = ["new_fact", "topic"]
             }
         }
-        class = "kwik_agents.commit_to_memory.CommitToMemory"
+        class = "experimental.kwik_agents.commit_to_memory.CommitToMemory"
     }
     {
         name = "get_user_preferences"
@@ -209,6 +209,6 @@ In any case, always call save_user_preferences to save or update the user prefer
                 required = ["topic"]
             }
         }
-        class = "kwik_agents.recall_memory.RecallMemory"
+        class = "experimental.kwik_agents.recall_memory.RecallMemory"
     }
 ]

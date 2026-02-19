@@ -59,7 +59,6 @@ def cruse_thinking_process():
                 gui_context = ""
 
             if user_input or gui_context:
-
                 print(f"USER INPUT:{user_input}\n\nGUI CONTEXT:{gui_context}\n")
                 response, cruse_agent_state = cruse(cruse_session, cruse_agent_state, user_input + str(gui_context))
                 print(response)
