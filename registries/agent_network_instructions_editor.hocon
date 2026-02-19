@@ -118,7 +118,11 @@ Guardrails:
             "name": "get_agent_network_definition",
             "class": "get_agent_network_definition.GetAgentNetworkDefinition",
             "function": {
-                "description": "Get the agent network definition."
+                "description": "Get the agent network definition.",
+                "parameters": {
+                    "type": "object",
+                    "properties": {}
+                }
             }
         },
 
@@ -126,7 +130,11 @@ Guardrails:
             "name": "validate_instructions",
             "class": "validate_instructions.ValidateInstructions",
             "function": {
-                "description": "Validate that all non-function agents in the agent network have instructions."
+                "description": "Validate that all non-function agents in the agent network have instructions.",
+                "parameters": {
+                    "type": "object",
+                    "properties": {}
+                }
             }
         }
     ]

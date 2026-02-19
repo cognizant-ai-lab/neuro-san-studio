@@ -70,7 +70,11 @@ Make some of the examples transactional. If not stated, return no more than 3-4 
             "name": "get_agent_network_definition",
             "class": "get_agent_network_definition.GetAgentNetworkDefinition",
             "function": {
-                "description": "Get the agent network definition."
+                "description": "Get the agent network definition.",
+                "parameters": {
+                    "type": "object",
+                    "properties": {}
+                }
             }
         },
         

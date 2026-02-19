@@ -291,7 +291,11 @@ Think of this as building or refining a hierarchical organizational chart. Each 
             "name": "get_agent_network_definition",
             "class": "get_agent_network_definition.GetAgentNetworkDefinition",
             "function": {
-                "description": "Get the agent network definition."
+                "description": "Get the agent network definition.",
+                "parameters": {
+                    "type": "object",
+                    "properties": {}
+                }
             }
         },
 
@@ -300,6 +304,10 @@ Think of this as building or refining a hierarchical organizational chart. Each 
             "class": "get_mcp_tool.GetMcpTool",
             "function": {
                 "description": "Retrieve tools specification from specified MCP servers.",
+                "parameters": {
+                    "type": "object",
+                    "properties": {}
+                }
             }
         },
 
@@ -308,14 +316,22 @@ Think of this as building or refining a hierarchical organizational chart. Each 
             "class": "get_subnetwork.GetSubnetwork",
             "function": {
                 "description": "Retrieve the definitions of all subnetworks available in the system.",
+                "parameters": {
+                    "type": "object",
+                    "properties": {}
+                }
             }
-        }
+        },
 
         {
             "name": "get_toolbox",
             "class": "get_toolbox.GetToolbox",
             "function": {
                 "description": "Retrieve the toolbox information from the 'toolbox_info.hocon' file and return it as a dictionary.",
+                "parameters": {
+                    "type": "object",
+                    "properties": {}
+                }
             }
         },
 
@@ -324,6 +340,10 @@ Think of this as building or refining a hierarchical organizational chart. Each 
             "class": "validate_structure.ValidateStructure",
             "function": {
                 "description": "Validate the structure of the agent network to ensure it adheres to the defined rules and constraints.",
+                "parameters": {
+                    "type": "object",
+                    "properties": {}
+                }
             }
         },
 
