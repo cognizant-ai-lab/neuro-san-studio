@@ -137,7 +137,6 @@ This project follows these coding standards:
 - **Formatter**: Black (v25.1.0)
 - **Import sorting**: isort with Black profile
 - **Linting**: flake8 and pylint
-- **Link checking**: lychee (v0.23.0)
 - **Naming conventions**: Follow Google Python Style Guide
   - Functions and variables: `snake_case`
   - Classes: `PascalCase`
@@ -299,6 +298,16 @@ pymarkdown --config ./.pymarkdownlint.yaml scan ./docs ./README.md
 ```
 
 Configuration is in `.pymarkdownlint.yaml`.
+
+### Link Checking
+
+We use [lychee](https://lychee.cli.rs/) (v0.23.0) for checking broken links in Markdown files:
+
+```bash
+lychee --no-progress --exclude-path venv './**/*.md'
+```
+
+URLs excluded from checking are listed in `.lycheeignore`.
 
 ### Logging
 

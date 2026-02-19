@@ -9,7 +9,7 @@ This repository includes a Makefile with several useful commands to streamline d
 - `make install` - Creates the virtual environment (if needed) and installs all dependencies including build dependencies
 - `make activate` - Checks if the virtual environment exists and either provides activation instructions (if it exists)
 or suggests running `make install` (if it doesn't)
-- `make lint` - Runs code formatting, linting tools and link checking (isort, black, flake8, lychee) on the source code
+- `make lint` - Runs code formatting and linting tools (isort, black, flake8) on the source code
 - `make lint-tests` - Runs code formatting and linting tools on the test code
 - `make test` - Runs lint and lint-tests, then executes the tests with pytest and generates coverage reports
 
@@ -39,6 +39,26 @@ You can run `pymarkdown` in two ways:
     ```bash
     pymarkdown --help
     ```
+
+<!-- pyml enable blanks-around-fences -->
+- Using Make
+
+    - `make lint`
+
+### Note on Link Checking
+
+We use [lychee](https://lychee.cli.rs/) (v0.23.0) to check for broken links in .md files.
+URLs excluded from checking are listed in `.lycheeignore` located in the projects top level folder.
+`lychee` is a Rust binary and is not installed via pip. In CI, it is downloaded from
+[GitHub releases](https://github.com/lycheeverse/lychee/releases). Locally, you can install
+it via `brew install lychee` (macOS) or download from the releases page.
+
+<!-- pyml disable blanks-around-fences -->
+- Using a local installation of `lychee`
+
+    - ```bash
+      lychee --no-progress --exclude-path venv './**/*.md'
+      ```
 
 <!-- pyml enable blanks-around-fences -->
 - Using Make
