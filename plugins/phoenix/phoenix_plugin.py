@@ -146,6 +146,7 @@ class PhoenixPlugin:
             install_if_missing="opentelemetry-exporter-otlp",
         )
         if OTLPSpanExporter is not None:
+            print("Configuring OTLPSpanExporter...")
             # Prefer explicit traces endpoint if provided; fallback to Phoenix default
             endpoint: Optional[str] = os.getenv("OTEL_EXPORTER_OTLP_TRACES_ENDPOINT") or os.getenv(
                 "OTEL_EXPORTER_OTLP_ENDPOINT"
@@ -189,6 +190,7 @@ class PhoenixPlugin:
             install_if_missing="openinference-instrumentation-openai",
         )
         if OpenAIInstrumentor is not None:
+            print("Using OpenAIInstrumentor")
             OpenAIInstrumentor().instrument()
 
         # Instrument LangChain
@@ -200,6 +202,7 @@ class PhoenixPlugin:
             install_if_missing="openinference-instrumentation-langchain",
         )
         if LangChainInstrumentor is not None:
+            print("Using LangChainInstrumentor")
             LangChainInstrumentor().instrument()
 
         # Instrument LiteLLM (common in orchestration libs)
@@ -211,6 +214,7 @@ class PhoenixPlugin:
             install_if_missing="openinference-instrumentation-litellm",
         )
         if LiteLLMInstrumentor is not None:
+            print("Using LiteLLMInstrumentor")
             LiteLLMInstrumentor().instrument()
 
         # Instrument Anthropic
@@ -222,6 +226,7 @@ class PhoenixPlugin:
             install_if_missing="openinference-instrumentation-anthropic",
         )
         if AnthropicInstrumentor is not None:
+            print("Using AnthropicInstrumentor")
             AnthropicInstrumentor().instrument()
 
         # Instrument MCP
@@ -233,6 +238,7 @@ class PhoenixPlugin:
             install_if_missing="openinference-instrumentation-mcp",
         )
         if MCPInstrumentor is not None:
+            print("Using MCPInstrumentor")
             MCPInstrumentor().instrument()
 
     def _try_phoenix_register(self) -> bool:
