@@ -20,6 +20,7 @@ import socket
 import subprocess
 import sys
 import time
+from types import ModuleType
 from typing import Any
 from typing import Optional
 from typing import Type
@@ -108,7 +109,7 @@ class PhoenixPlugin:
             install_if_missing="opentelemetry-sdk",
         )
 
-        trace: Type[Any] = ResolverUtil.create_type(
+        trace: ModuleType = ResolverUtil.create_type(
             "opentelemetry.trace",
             raise_if_not_found=False,
             install_if_missing="opentelemetry-sdk",
