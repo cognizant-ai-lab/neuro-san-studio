@@ -155,19 +155,31 @@ _INJECTION_SNIPPET = """
   scrim.addEventListener('click', tryClose);
 
   /* ---- Find OEM Editor button and inject CONFIG EDITOR next to it ---- */
-  /* SVG icon: Description/document icon (config files) */
-  var iconSvg = '<span class="MuiButton-icon MuiButton-startIcon MuiButton-iconSizeMedium css-1ygddt1">'
-    + '<svg class="MuiSvgIcon-root MuiSvgIcon-fontSizeMedium css-q7mezt" focusable="false" aria-hidden="true" viewBox="0 0 24 24">'
-    + '<path d="M14 2H6c-1.1 0-1.99.9-1.99 2L4 20c0 1.1.89 2 1.99 2H18c1.1 0 2-.9 2-2V8l-6-6z'
-    + 'm2 16H8v-2h8v2zm0-4H8v-2h8v2zM13 9V3.5L18.5 9H13z"></path>'
-    + '</svg></span>';
+  /* SVG icon: Description/document icon (config files) — copies class structure from OEM button */
+  function buildIconSvg(oemBtn) {
+    /* Try to copy class names from the OEM button's icon span and svg */
+    var oemIcon = oemBtn.querySelector('span[class*="MuiButton-startIcon"], span[class*="icon"]');
+    var oemSvg = oemBtn.querySelector('svg');
+    var spanCls = oemIcon ? oemIcon.className : '';
+    var svgCls = oemSvg ? oemSvg.className.baseVal || oemSvg.getAttribute('class') || '' : '';
+    return '<span class="' + spanCls + '">'
+      + '<svg class="' + svgCls + '" focusable="false" aria-hidden="true" viewBox="0 0 24 24">'
+      + '<path d="M14 2H6c-1.1 0-1.99.9-1.99 2L4 20c0 1.1.89 2 1.99 2H18c1.1 0 2-.9 2-2V8l-6-6z'
+      + 'm2 16H8v-2h8v2zm0-4H8v-2h8v2zM13 9V3.5L18.5 9H13z"></path>'
+      + '</svg></span>';
+  }
 
   function findOemEditorButton() {
-    /* Look for MUI outlined buttons whose text content is exactly "Editor" */
-    var buttons = document.querySelectorAll('button.MuiButton-outlinedPrimary');
-    for (var i = 0; i < buttons.length; i++) {
-      var txt = buttons[i].textContent.trim();
-      if (txt === 'Editor') return buttons[i];
+    /* Search all MUI buttons first, then fall back to any button with text "Editor" */
+    var selectors = ['button[class*="MuiButton"]', 'button'];
+    for (var s = 0; s < selectors.length; s++) {
+      var buttons = document.querySelectorAll(selectors[s]);
+      for (var i = 0; i < buttons.length; i++) {
+        var txt = buttons[i].textContent.trim();
+        if (txt === 'Editor' && buttons[i].id !== 'nss-config-editor-btn') {
+          return buttons[i];
+        }
+      }
     }
     return null;
   }
@@ -177,12 +189,14 @@ _INJECTION_SNIPPET = """
     var oemBtn = findOemEditorButton();
     if (!oemBtn) return false;
 
-    /* Clone the OEM button structure to match MUI styling exactly */
+    /* Clone the OEM button (shallow) to inherit all MUI classes */
     injectedBtn = oemBtn.cloneNode(false);
     injectedBtn.id = 'nss-config-editor-btn';
     injectedBtn.title = 'Open HOCON Config Editor';
-    injectedBtn.innerHTML = iconSvg + 'Config Editor'
-      + '<span class="MuiTouchRipple-root css-4mb1j7"></span>';
+    /* Build inner HTML: copy icon class structure from OEM, add our SVG path + label */
+    var ripple = oemBtn.querySelector('span[class*="MuiTouchRipple"]');
+    var rippleHtml = ripple ? ripple.outerHTML : '';
+    injectedBtn.innerHTML = buildIconSvg(oemBtn) + 'Config Editor' + rippleHtml;
     injectedBtn.addEventListener('click', function(e) {
       e.preventDefault();
       e.stopPropagation();
