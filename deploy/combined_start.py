@@ -44,7 +44,9 @@ hvac.VaultClient = hvac.Client
 
 import uvicorn  # noqa: E402
 from starlette.applications import Starlette  # noqa: E402
+from starlette.responses import JSONResponse  # noqa: E402
 from starlette.routing import Mount  # noqa: E402
+from starlette.routing import Route  # noqa: E402
 from starlette.types import ASGIApp  # noqa: E402
 from starlette.types import Receive  # noqa: E402
 from starlette.types import Scope  # noqa: E402
@@ -357,16 +359,32 @@ def _inject_into_html(body: bytes) -> bytes:
 # Build the combined ASGI application
 # ---------------------------------------------------------------------------
 config_editor_enabled = os.environ.get("CONFIG_EDITOR_ENABLED", "true").lower() == "true"
+print(f"[combined_start] CONFIG_EDITOR_ENABLED={config_editor_enabled}", flush=True)
+
+
+async def _nss_health(request):
+    """Diagnostic endpoint — returns routing and config info."""
+    return JSONResponse(
+        {
+            "combined_start": True,
+            "config_editor_enabled": config_editor_enabled,
+            "config_editor_env": os.environ.get("CONFIG_EDITOR_ENABLED", "(not set)"),
+        }
+    )
+
 
 if config_editor_enabled:
+    print("[combined_start] Building combined app with editor + injection", flush=True)
     injected_nsflow = HTMLInjectionMiddleware(nsflow_app)
     combined_app = Starlette(
         routes=[
+            Route("/_nss/health", _nss_health),
             Mount("/editor", app=editor_app),
             Mount("/", app=injected_nsflow),
         ]
     )
 else:
+    print("[combined_start] Editor disabled — running bare nsflow", flush=True)
     combined_app = nsflow_app
 
 
