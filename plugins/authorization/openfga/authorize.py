@@ -100,18 +100,15 @@ class Authorize:
         actor_type: str = environ.get("AGENT_AUTHORIZER_ACTOR_KEY", "User")
 
         async with authorizer as auth:
-
             # Gather everything to do together so as to save on clients
             coroutines: List[Future] = []
 
             # Loop through all the networks as resources to authorize for the user(s)
             for network_name in network_names:
-
                 resource: Dict[str, Any] = {"type": resource_type, "id": network_name}
 
                 # Loop through all the users
                 for user_name in user_names:
-
                     actor: Dict[str, Any] = {"type": actor_type, "id": user_name}
 
                     # Loop through all the relations to grant/revoke
