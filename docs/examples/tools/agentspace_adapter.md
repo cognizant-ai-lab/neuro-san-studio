@@ -2,7 +2,7 @@
 
 This agent network delegates to a Google Agentspace agent to interact with different data store connectors on google cloud.
 It uses a CodedTool to call the Agentspace APIs.
-See the [Agentspace documentation](https://cloud.google.com/agentspace/agentspace-enterprise/docs/overview) for more details.
+See the [Agentspace documentation](https://docs.cloud.google.com/gemini/enterprise/docs/agents-overview) for more details.
 
 ---
 

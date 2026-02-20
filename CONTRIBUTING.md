@@ -298,6 +298,16 @@ pymarkdown --config ./.pymarkdownlint.yaml scan ./docs ./README.md
 
 Configuration is in `.pymarkdownlint.yaml`.
 
+### Link Checking
+
+We use [lychee](https://lychee.cli.rs/) (v0.23.0) for checking broken links in Markdown files:
+
+```bash
+lychee --no-progress --exclude-path venv './**/*.md'
+```
+
+URLs excluded from checking are listed in `.lycheeignore`.
+
 ### Logging
 
 Use the `logging` module for logging instead of `print`.

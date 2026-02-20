@@ -45,6 +45,26 @@ You can run `pymarkdown` in two ways:
 
     - `make lint`
 
+### Note on Link Checking
+
+We use [lychee](https://lychee.cli.rs/) (v0.23.0) to check for broken links in .md files.
+URLs excluded from checking are listed in `.lycheeignore` located in the projects top level folder.
+`lychee` is a Rust binary and is not installed via pip. In CI, it is downloaded from
+[GitHub releases](https://github.com/lycheeverse/lychee/releases). Locally, you can install
+it via `brew install lychee` (macOS) or download from the releases page.
+
+<!-- pyml disable blanks-around-fences -->
+- Using a local installation of `lychee`
+
+    - ```bash
+      lychee --no-progress --exclude-path venv './**/*.md'
+      ```
+
+<!-- pyml enable blanks-around-fences -->
+- Using Make
+
+    - `make lint`
+
 ## Python Project Configuration
 
 This project uses `pyproject.toml` for configuration of various Python development tools. This modern approach

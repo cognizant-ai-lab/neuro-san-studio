@@ -70,6 +70,7 @@ lint-check-source: venv-guard
 	ruff check $(SOURCES) $(RUFF_LINT_CHECK)
 	pylint $(SOURCES)/
 	pymarkdown --config ./.pymarkdownlint.yaml scan ./docs ./README.md
+	lychee --no-progress --exclude-path venv './**/*.md'
 
 lint-check-tests: venv-guard
 	# Run format and lint checks via ruff, then pylint
