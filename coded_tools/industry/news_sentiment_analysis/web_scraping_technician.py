@@ -30,7 +30,6 @@ import feedparser
 import requests
 from bs4 import BeautifulSoup
 from neuro_san.interfaces.coded_tool import CodedTool
-from newspaper import Article
 
 # pylint: enable=import-error
 
@@ -174,25 +173,14 @@ class WebScrapingTechnician(CodedTool):
 
     def _scrape_article(self, url: str, source: str) -> str:
         """
-        Scrape a single article using Newspaper3k, falling back to BeautifulSoup if needed.
+        Scrape a single article using BeautifulSoup.
 
         :param url: The article URL.
         :param source: The news source name for custom parsing.
 
         :return: Extracted article text, or an empty string if scraping fails.
         """
-        try:
-            article = Article(url)
-            article.download()
-            article.parse()
-            content = article.text.strip()
-            if not content:
-                raise ValueError("Empty content")
-            return content
-
-        except (requests.exceptions.RequestException, ValueError) as e:
-            logger.debug("Newspaper3k failed for %s: %s", self.sanitize_url(url), str(e))
-            return self.scrape_with_bs4(url, source)
+        return self.scrape_with_bs4(url, source)
 
     def scrape_nyt(self, keywords: list, save_dir: str = "nyt_articles_output") -> Dict[str, Any]:
         """

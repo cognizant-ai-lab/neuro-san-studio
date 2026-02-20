@@ -17,6 +17,7 @@
 import json
 import logging
 import os
+import re
 from typing import Any
 from typing import Dict
 from typing import List
@@ -25,7 +26,6 @@ from typing import Tuple
 
 # pylint: disable=import-error
 from neuro_san.interfaces.coded_tool import CodedTool
-from nltk import sent_tokenize
 from vaderSentiment.vaderSentiment import SentimentIntensityAnalyzer
 
 # pylint: enable=import-error
@@ -34,12 +34,77 @@ from vaderSentiment.vaderSentiment import SentimentIntensityAnalyzer
 logger = logging.getLogger(__name__)
 logging.basicConfig(level=logging.INFO)
 
-try:
-    import nltk
+ABBREVIATIONS = {
+    "mr",
+    "mrs",
+    "ms",
+    "dr",
+    "prof",
+    "sr",
+    "jr",
+    "st",
+    "ave",
+    "blvd",
+    "dept",
+    "est",
+    "vol",
+    "vs",
+    "gen",
+    "sgt",
+    "cpl",
+    "pvt",
+    "capt",
+    "lt",
+    "col",
+    "maj",
+    "jan",
+    "feb",
+    "mar",
+    "apr",
+    "jun",
+    "jul",
+    "aug",
+    "sep",
+    "oct",
+    "nov",
+    "dec",
+    "inc",
+    "ltd",
+    "corp",
+    "co",
+    "dept",
+    "u.s",
+    "u.k",
+    "e.u",
+}
 
-    nltk.download("punkt", quiet=True)
-except ModuleNotFoundError:
-    logger.error("NLTK library is not installed")
+_SENTENCE_BOUNDARY_RE = re.compile(r"(?<=[.!?])\s+(?=[A-Z])")
+
+
+def sent_tokenize(text: str) -> List[str]:
+    """
+    Split text into sentences using regex-based boundary detection.
+    Handles common abbreviations and decimal numbers.
+    """
+    parts = _SENTENCE_BOUNDARY_RE.split(text)
+    sentences: List[str] = []
+    carry = ""
+    for part in parts:
+        candidate = (carry + " " + part).strip() if carry else part.strip()
+        if not candidate:
+            continue
+        words = candidate.rstrip(".!?").rsplit(None, 1)
+        last_word = words[-1].lower().rstrip(".") if words else ""
+        if last_word in ABBREVIATIONS:
+            carry = candidate
+            continue
+        if candidate:
+            sentences.append(candidate)
+        carry = ""
+    if carry:
+        sentences.append(carry)
+    return sentences
+
 
 SOURCE_MAP = {
     "aljazeera_articles": "aljazeera",
