@@ -548,6 +548,6 @@ This is not to be confused with _authentication_, which is the process of verify
 
 #### Open FGA
 
-[Open FGA](../plugins/authorization/open_fga/README.md) is a plugin that extends the authorization capabilities
+[Open FGA](../plugins/authorization/openfga/README.md) is a plugin that extends the authorization capabilities
 of a Neuro SAN server using a free and open source Open FGA server to do Relation-Based Access Control (ReBAC)
 authorization.
