@@ -23,14 +23,17 @@ import threading
 from datetime import datetime
 from logging.handlers import TimedRotatingFileHandler
 from pathlib import Path
-from typing import Any, Dict, Optional, TextIO, Tuple
+from typing import Any
+from typing import Dict
+from typing import Optional
+from typing import TextIO
+from typing import Tuple
 
 from rich.console import Console
 from rich.logging import RichHandler
 from rich.syntax import Syntax
 from rich.text import Text
 from rich.theme import Theme
-
 
 log_cfg = {
     # Refer rich guidelines for more options:
@@ -56,6 +59,23 @@ log_cfg = {
 }
 
 
+class TZFormatter(logging.Formatter):
+    """
+    File-handler formatter that emits timezone-aware timestamps.
+    :extend: logging.Formatter
+    """
+
+    def formatTime(self, record, datefmt=None):
+        """
+        :param: record: A log record.
+        :param datefmt (str | None): Ignored. Exists for Formatter API compatibility.
+        :return: str: Timestamp formatted as `"YYYY-MM-DD HH:MM:SS <TZNAME>"`.
+        """
+        dt = datetime.fromtimestamp(record.created).astimezone()
+        return f"{dt.strftime('%Y-%m-%d %H:%M:%S')} {dt.tzname()}"
+
+
+# pylint: disable=too-many-instance-attributes,too-few-public-methods
 class ProcessLogBridge:
     """
     ProcessLogBridge: single-class logging bridge
@@ -164,7 +184,7 @@ class ProcessLogBridge:
             )
             self.file_handler.setLevel(logging.DEBUG)
             # keep tz-aware timestamps for file logs
-            self.file_handler.setFormatter(self._TZFormatter(fmt=fmt))
+            self.file_handler.setFormatter(TZFormatter(fmt=fmt))
 
         # root logger config
         root = logging.getLogger()
@@ -198,8 +218,8 @@ class ProcessLogBridge:
             - Per-stream state (buffer, JSON reassembly, tee handle) is created.
         """
         Path(log_file).parent.mkdir(parents=True, exist_ok=True)
-        tee_out = open(log_file, "a", encoding="utf-8")
-        tee_err = open(log_file, "a", encoding="utf-8")
+        tee_out = open(log_file, "a", encoding="utf-8")  # pylint: disable=consider-using-with
+        tee_err = open(log_file, "a", encoding="utf-8")  # pylint: disable=consider-using-with
         self._streams[(process_name, "STDOUT")] = self._make_stream_state(process_name, tee_out)
         self._streams[(process_name, "STDERR")] = self._make_stream_state(process_name, tee_err)
 
@@ -224,22 +244,9 @@ class ProcessLogBridge:
         :return: Text: A Rich `Text` object containing a formatted timestamp using
                 the configured `self._time_style_key`.
         """
+        _ = record, date
         now = self._now_local()
         return Text(f"[{now.strftime('%Y-%m-%d %H:%M:%S')} {now.tzname()}]", style=self._time_style_key)
-
-    class _TZFormatter(logging.Formatter):
-        """
-        File-handler formatter that emits timezone-aware timestamps.
-        :extend: logging.Formatter
-        """
-        def formatTime(self, record, datefmt=None):
-            """
-            :param: record: A log record.
-            :param datefmt (str | None): Ignored. Exists for Formatter API compatibility.
-            :return: str: Timestamp formatted as `"YYYY-MM-DD HH:MM:SS <TZNAME>"`.
-            """
-            dt = datetime.fromtimestamp(record.created).astimezone()
-            return f"{dt.strftime('%Y-%m-%d %H:%M:%S')} {dt.tzname()}"
 
     # ---------- helpers: per-stream state ----------
     def _make_stream_state(self, process_name: str, tee: TextIO) -> Dict[str, Any]:
@@ -272,7 +279,7 @@ class ProcessLogBridge:
         """
         try:
             state["tee"].write(f"{raw}\n")
-        except Exception:
+        except Exception:  # pylint: disable=broad-except
             pass
 
     @staticmethod
@@ -285,7 +292,7 @@ class ProcessLogBridge:
         try:
             state["tee"].flush()
             state["tee"].close()
-        except Exception:
+        except Exception:  # pylint: disable=broad-except
             pass
 
     # ---------- pipe draining ----------
@@ -309,7 +316,7 @@ class ProcessLogBridge:
         finally:
             try:
                 pipe.close()
-            except Exception:
+            except Exception:  # pylint: disable=broad-except
                 pass
             self._close_stream(state)
 
@@ -479,7 +486,7 @@ class ProcessLogBridge:
         """
         try:
             return json.dumps(obj, indent=2, ensure_ascii=False)
-        except Exception:
+        except Exception:  # pylint: disable=broad-except
             return str(obj)
 
     @staticmethod
@@ -498,17 +505,17 @@ class ProcessLogBridge:
         try:
             obj = json.loads(text)
             return obj if isinstance(obj, dict) else {"message": obj}
-        except Exception:
+        except Exception:  # pylint: disable=broad-except
             pass
         # first {...}
         s = text.find("{")
         e = text.rfind("}")
         if s != -1 and e != -1 and e > s:
-            frag = text[s: e + 1]
+            frag = text[s : e + 1]
             try:
                 obj = json.loads(frag)
                 return obj if isinstance(obj, dict) else {"message": obj}
-            except Exception:
+            except Exception:  # pylint: disable=broad-except
                 return None
         return None
 
@@ -534,7 +541,7 @@ class ProcessLogBridge:
         # strict
         try:
             return json.loads(s)
-        except Exception:
+        except Exception:  # pylint: disable=broad-except
             pass
         # mild cleanup: unescape \n \t \r and drop trailing commas
         s2 = s.replace("\\r", "\r").replace("\\t", "\t").replace("\\n", "\n")
@@ -542,7 +549,7 @@ class ProcessLogBridge:
         s2 = re.sub(r"\n{3,}", "\n\n", s2)
         try:
             return json.loads(s2)
-        except Exception:
+        except Exception:  # pylint: disable=broad-except
             return None
 
     # ---------- special NeuroSan block ----------
@@ -563,7 +570,7 @@ class ProcessLogBridge:
         inner_src = "{" + m.group("inner").strip() + "}"
         try:
             inner = json.loads(inner_src)
-        except Exception:
+        except Exception:  # pylint: disable=broad-except
             inner = inner_src
         out: Dict[str, Any] = {"message": inner}
         for f, rx in self._META_REGEXES.items():
