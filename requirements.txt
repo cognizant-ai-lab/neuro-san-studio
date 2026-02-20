@@ -18,6 +18,9 @@ langchain-mcp-adapters>=0.1.7,<1.0
 langchain-anthropic>=1.0.0,<2.0
 langchain-google-genai>=4.0.0,<5.0
 
+# For DuckDuckGo web search (used by agent_network_designer)
+ddgs>=7.0.0
+
 # For rich logging
 rich>=14.2.0
 
