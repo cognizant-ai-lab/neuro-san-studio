@@ -24,9 +24,11 @@
 #     },
 
 {
-    "https://mcp.deepwiki.com/mcp": {
-        "tools": ["read_wiki_structure", "ask_question"]
-    },
+    # TODO: Re-enable deepwiki MCP once container connectivity is verified.
+    # Disabled to prevent 30s timeout per editor sub-network call in agent_network_designer.
+    # "https://mcp.deepwiki.com/mcp": {
+    #     "tools": ["read_wiki_structure", "ask_question"]
+    # },
 
     # Uncomment this section to use GitHub Copilot MCP server.
     # Make sure to set the environment variable GITHUB_TOKEN with a valid token.
