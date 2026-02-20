@@ -74,7 +74,7 @@ class Authorize:
         storages: Dict[str, Dict[str, Any]] = restorer.restore()
 
         storage: Dict[str, Any] = None
-        for _, storage in storages.items():
+        for storage in storages.values():
             networks.extend(storage.keys())
 
         return networks
