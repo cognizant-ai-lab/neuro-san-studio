@@ -20,19 +20,13 @@ import socket
 import subprocess
 import sys
 import time
+from types import ModuleType
+from typing import Any
 from typing import Optional
+from typing import Type
 
-try:
-    from opentelemetry import trace
-    from opentelemetry.exporter.otlp.proto.http.trace_exporter import OTLPSpanExporter
-    from opentelemetry.sdk.resources import Resource
-    from opentelemetry.sdk.trace import TracerProvider
-    from opentelemetry.sdk.trace.export import BatchSpanProcessor
-except Exception:  # pragma: no cover
-    trace = None  # type: ignore
-    TracerProvider = None  # type: ignore
-    BatchSpanProcessor = None  # type: ignore
-    OTLPSpanExporter = None  # type: ignore
+# Use lazy loading of types to avoid dependency bloat for stuff most people don't need.
+from leaf_common.config.resolver_util import ResolverUtil
 
 
 class PhoenixPlugin:
@@ -108,7 +102,21 @@ class PhoenixPlugin:
         - OTLP span exporter with batch processor
         - Fallback to Phoenix default endpoint if not specified
         """
+        # pylint: disable=invalid-name
+        TracerProvider: Type[Any] = ResolverUtil.create_type(
+            "opentelemetry.sdk.trace.TracerProvider",
+            raise_if_not_found=False,
+            install_if_missing="opentelemetry-sdk",
+        )
+
+        trace: ModuleType = ResolverUtil.create_type(
+            "opentelemetry.trace",
+            raise_if_not_found=False,
+            install_if_missing="opentelemetry-sdk",
+        )
+
         if trace is None or TracerProvider is None:  # pragma: no cover
+            print("Skipping OpenTelemetry TracerProvider configuration")
             return
 
         # Avoid double-initialization if a provider already exists
@@ -119,6 +127,11 @@ class PhoenixPlugin:
         service_name = os.getenv("OTEL_SERVICE_NAME", "neuro-san-demos")
         service_version = os.getenv("OTEL_SERVICE_VERSION", "dev")
 
+        # pylint: disable=invalid-name
+        Resource: Type[Any] = ResolverUtil.create_type(
+            "opentelemetry.sdk.resources.Resource",
+            install_if_missing="opentelemetry-sdk",
+        )
         resource = Resource.create(
             {
                 "service.name": service_name,
@@ -128,7 +141,14 @@ class PhoenixPlugin:
 
         provider = TracerProvider(resource=resource)
 
+        # pylint: disable=invalid-name
+        OTLPSpanExporter: Type[Any] = ResolverUtil.create_type(
+            "opentelemetry.exporter.otlp.proto.http.trace_exporter.OTLPSpanExporter",
+            raise_if_not_found=False,
+            install_if_missing="opentelemetry-exporter-otlp",
+        )
         if OTLPSpanExporter is not None:
+            print("Configuring OTLPSpanExporter...")
             # Prefer explicit traces endpoint if provided; fallback to Phoenix default
             endpoint: Optional[str] = os.getenv("OTEL_EXPORTER_OTLP_TRACES_ENDPOINT") or os.getenv(
                 "OTEL_EXPORTER_OTLP_ENDPOINT"
@@ -137,6 +157,12 @@ class PhoenixPlugin:
                 endpoint = "http://localhost:6006/v1/traces"
 
             exporter = OTLPSpanExporter(endpoint=endpoint)
+
+            # pylint: disable=invalid-name
+            BatchSpanProcessor: Type[Any] = ResolverUtil.create_type(
+                "opentelemetry.sdk.trace.export.BatchSpanProcessor",
+                install_if_missing="opentelemetry-sdk",
+            )
             processor = BatchSpanProcessor(exporter)
             provider.add_span_processor(processor)
 
@@ -155,45 +181,67 @@ class PhoenixPlugin:
 
         Failures are silently ignored to allow partial instrumentation.
         """
-        # Instrument OpenAI
-        try:
-            from openinference.instrumentation.openai import OpenAIInstrumentor
+        # Lazy imports from openinference
 
+        # Instrument OpenAI
+        # Lazily load the type
+        # pylint: disable=invalid-name
+        OpenAIInstrumentor: Type[Any] = ResolverUtil.create_type(
+            "openinference.instrumentation.openai.OpenAIInstrumentor",
+            raise_if_not_found=False,
+            install_if_missing="openinference-instrumentation-openai",
+        )
+        if OpenAIInstrumentor is not None:
+            print("Using OpenAIInstrumentor")
             OpenAIInstrumentor().instrument()
-        except Exception:  # pragma: no cover
-            pass
 
         # Instrument LangChain
-        try:
-            from openinference.instrumentation.langchain import LangChainInstrumentor
-
+        # Lazily load the type
+        # pylint: disable=invalid-name
+        LangChainInstrumentor: Type[Any] = ResolverUtil.create_type(
+            "openinference.instrumentation.langchain.LangChainInstrumentor",
+            raise_if_not_found=False,
+            install_if_missing="openinference-instrumentation-langchain",
+        )
+        if LangChainInstrumentor is not None:
+            print("Using LangChainInstrumentor")
             LangChainInstrumentor().instrument()
-        except Exception:  # pragma: no cover
-            pass
 
         # Instrument LiteLLM (common in orchestration libs)
-        try:
-            from openinference.instrumentation.litellm import LiteLLMInstrumentor
-
+        # Lazily load the type
+        # pylint: disable=invalid-name
+        LiteLLMInstrumentor: Type[Any] = ResolverUtil.create_type(
+            "openinference.instrumentation.litellm.LiteLLMInstrumentor",
+            raise_if_not_found=False,
+            install_if_missing="openinference-instrumentation-litellm",
+        )
+        if LiteLLMInstrumentor is not None:
+            print("Using LiteLLMInstrumentor")
             LiteLLMInstrumentor().instrument()
-        except Exception:  # pragma: no cover
-            pass
 
         # Instrument Anthropic
-        try:
-            from openinference.instrumentation.anthropic import AnthropicInstrumentor
-
+        # Lazily load the type
+        # pylint: disable=invalid-name
+        AnthropicInstrumentor: Type[Any] = ResolverUtil.create_type(
+            "openinference.instrumentation.anthropic.AnthropicInstrumentor",
+            raise_if_not_found=False,
+            install_if_missing="openinference-instrumentation-anthropic",
+        )
+        if AnthropicInstrumentor is not None:
+            print("Using AnthropicInstrumentor")
             AnthropicInstrumentor().instrument()
-        except Exception:  # pragma: no cover
-            pass
 
         # Instrument MCP
-        try:
-            from openinference.instrumentation.mcp import MCPInstrumentor
-
+        # Lazily load the type
+        # pylint: disable=invalid-name
+        MCPInstrumentor: Type[Any] = ResolverUtil.create_type(
+            "openinference.instrumentation.mcp.MCPInstrumentor",
+            raise_if_not_found=False,
+            install_if_missing="openinference-instrumentation-mcp",
+        )
+        if MCPInstrumentor is not None:
+            print("Using MCPInstrumentor")
             MCPInstrumentor().instrument()
-        except Exception:  # pragma: no cover
-            pass
 
     def _try_phoenix_register(self) -> bool:
         """Try using phoenix.otel.register for first-class setup.
@@ -204,7 +252,12 @@ class PhoenixPlugin:
         try:
             if not self._get_bool_env("PHOENIX_OTEL_REGISTER", True):
                 return False
-            from phoenix.otel import register  # type: ignore
+
+            # Lazily load the method
+            register: Type[Any] = ResolverUtil.create_type(
+                "phoenix.otel.register",
+                install_if_missing="arize-phoenix-otel",
+            )
 
             project_name = os.getenv("PHOENIX_PROJECT_NAME", "default")
             endpoint = (
@@ -219,7 +272,7 @@ class PhoenixPlugin:
                 auto_instrument=True,
             )
             return True
-        except Exception as exc:  # pragma: no cover
+        except Exception as exc:  # pylint: disable=broad-except
             self._logger.info("Phoenix register not used: %s", exc)
             return False
 
@@ -259,7 +312,7 @@ class PhoenixPlugin:
                 print(f"[Phoenix] phoenix.otel.register() succeeded (PID={os.getpid()})")
             self._initialized = True
             print(f"[Phoenix] Initialization complete (PID={os.getpid()})")
-        except Exception as exc:  # pragma: no cover
+        except Exception as exc:  # pylint: disable=broad-except
             print(f"[Phoenix] Initialization FAILED: {exc} (PID={os.getpid()})")
             self._logger.warning("Phoenix initialization failed: %s", exc)
 
