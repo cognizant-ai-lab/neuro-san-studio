@@ -64,6 +64,9 @@ Here are a few examples ordered by level of complexity.
     - [Log Analyzer](#log-analyzer)
     - [MDAP Decomposer (MAKER example)](#mdap-decomposer-maker-example)
     - [WWAW](#wwaw)
+  - [Plugins](#plugins)
+    - [Authorization](#authorization)
+      - [Open FGA](#open-fga)
 
 <!-- TOC -->
 
@@ -532,3 +535,19 @@ to simpler steps using principles defined within the MAKER paper.
 network using the web as the template for the agent connections and content.
 
 **Tags:** `scale`, `app`
+
+## Plugins
+
+Plugins are a way to extend the functionality of a Neuro SAN server largely for deployment-related use-cases.
+Note that plugins are never required for Neuro SAN to function.
+
+### Authorization
+
+Authorization plugins allow user-by-user access control to Agent Networks.
+This is not to be confused with _authentication_, which is the process of verifying a user's identity.
+
+#### Open FGA
+
+[Open FGA](../plugins/authorization/openfga/README.md) is a plugin that extends the authorization capabilities
+of a Neuro SAN server using a free and open source Open FGA server to do Relation-Based Access Control (ReBAC)
+authorization.

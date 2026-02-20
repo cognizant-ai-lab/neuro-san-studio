@@ -187,7 +187,7 @@ ENV AGENT_SERVER_NAME_FOR_LOGS="Agent Server"
 ENV AGENT_FORWARDED_REQUEST_METADATA="request_id user_id"
 
 # Port number for http service endpoint
-# If you are changing this, you should also change the second EXPOSE port above
+# If you are changing this, you should also change the EXPOSE port above
 # and when running your container locally be sure to have a -p <port>:<port> entry
 # for it on your docker run command line.
 ENV AGENT_HTTP_PORT=8080
@@ -197,7 +197,8 @@ ENV AGENT_MAX_CONCURRENT_REQUESTS=50
 
 # Number of requests served before the server shuts down in an orderly fashion.
 # This is useful for testing response handling in clusters with duplicated pods.
-ENV AGENT_REQUEST_LIMIT=1000000
+# A value of -1 indicates unlimited requests are handled.
+ENV AGENT_REQUEST_LIMIT=-1
 
 # If this value is specified and >0,
 # it will enable dynamic run-time updates of the server agents configuration according
@@ -307,6 +308,56 @@ ENV AGENT_MCP_ENABLE="true"
 # When set, this parameter will only enable MCP service protocol for running neuro-san server,
 # while disabling neuro-san own http API.
 ENV AGENT_MCP_ONLY="false"
+
+#
+# Authorization
+#
+
+# What class neuro-san server should use for authorization
+# When not set (the default) the server uses an implementation for the Authorizer
+# that effectively lets all requests for all users through.
+# We offer the following implementations:
+#   neuro_san.internals.authorization.null.always_yes_authorizer.AlwaysYesAuthorizer (default)
+#   neuro_san.internals.authorization.null.always_no_authorizer.AlwaysNoAuthorizer
+#   neuro_san.internals.authorization.openfga.open_fga_authorizer.OpenFgaAuthorizer
+# Feel free to make your own as long as it derives from this interface:
+#   neuro_san.internals.authorization.interfaces.authorizer.Authorizer
+ENV AGENT_AUTHORIZER=""
+
+# The request metadata field to use as the actor id for authorization
+ENV AGENT_AUTHORIZER_ACTOR_ID_METADATA_KEY=user_id
+
+# See authorization logging.
+# In production you would not want to set this at all.
+# For debugging you might want to set this to "true".
+ENV AGENT_DEBUG_AUTH=""
+
+# The Actor type sent to the Authorizer
+# This typically corresponds to a specific type set up in the authorization policy
+ENV AGENT_AUTHORIZER_ACTOR_KEY=User
+
+# The Resource type sent to the Authorizer
+# This typically corresponds to a specific type set up in the authorization policy
+ENV AGENT_AUTHORIZER_RESOURCE_KEY=AgentNetwork
+
+# The Relation type sent to the Authorizer used to judge whether the Actor has permission to access the Resource.
+# This typically corresponds to a specific relation set up in the authorization policy
+# Typically "read" from CRUD-based permissions.
+ENV AGENT_AUTHORIZER_ALLOW_RELATION=read
+
+# Below: Env vars specific to OpenFgaAuthorizer
+
+# Where the OpenFGA HTTP server is running for the OpenFgaAuthorizer
+# Typical development example might be "http://localhost:8082"
+ENV FGA_API_URL=
+
+# The file containing the authorization policy for the OpenFgaAuthorizer
+# This is a path to a json file that has been compiled from a .fga policy file using the fga CLI tool.
+ENV FGA_POLICY_FILE=
+
+# The name of the authorization store to use
+# Typically "default"
+ENV FGA_STORE_NAME=
 
 # ENTRYPOINT ls ${APP_SOURCE}
 ENTRYPOINT "${APP_ENTRYPOINT}"
