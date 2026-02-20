@@ -14,17 +14,26 @@
 #
 # END COPYRIGHT
 
+import asyncio
 import logging
 import os
 from typing import Any
 
 from langchain_core.tools import BaseTool
 from neuro_san.interfaces.coded_tool import CodedTool
-from neuro_san.internals.run_context.langchain.mcp.langchain_mcp_adapter import LangChainMcpAdapter
-from neuro_san.internals.run_context.langchain.mcp.mcp_servers_info_restorer import McpServersInfoRestorer
+from neuro_san.internals.run_context.langchain.mcp.langchain_mcp_adapter import (
+    LangChainMcpAdapter,
+)
+from neuro_san.internals.run_context.langchain.mcp.mcp_servers_info_restorer import (
+    McpServersInfoRestorer,
+)
 
 # Use deepwiki MCP server as default since it is free and does not require authorization.
 DEFAULT_MCP_INFO_FILE = os.path.join("mcp", "mcp_info.hocon")
+
+# Timeout for connecting to each MCP server (seconds).
+# Prevents a single unreachable server from blocking the entire editor workflow.
+MCP_SERVER_TIMEOUT_SECONDS = 30
 
 
 class GetMcpTool(CodedTool):
@@ -38,7 +47,9 @@ class GetMcpTool(CodedTool):
         restorer = McpServersInfoRestorer()
         self.mcp_servers: list[str] = list(restorer.restore().keys())
 
-    async def async_invoke(self, args: dict[str, Any], sly_data: dict[str, Any]) -> dict[str, list[BaseTool]] | str:
+    async def async_invoke(
+        self, args: dict[str, Any], sly_data: dict[str, Any]
+    ) -> dict[str, list[BaseTool]] | str:
         """
         :param args: An argument dictionary whose keys are the parameters
                 to the coded tool and whose values are the values passed for them
@@ -70,12 +81,17 @@ class GetMcpTool(CodedTool):
         logger = logging.getLogger(self.__class__.__name__)
 
         # Get tool list from MCP servers
-        logger.info(">>>>>>>>>>>>>>>>>>>Getting Tool Definition from MCP Servers>>>>>>>>>>>>>>>>>>>")
+        logger.info(
+            ">>>>>>>>>>>>>>>>>>>Getting Tool Definition from MCP Servers>>>>>>>>>>>>>>>>>>>"
+        )
         tool_dict: dict[str, list[BaseTool]] = {}
         for mcp_server in self.mcp_servers:
             try:
                 logger.info("MCP Server: %s", mcp_server)
-                tools: list[BaseTool] = await LangChainMcpAdapter().get_mcp_tools(mcp_server)
+                tools: list[BaseTool] = await asyncio.wait_for(
+                    LangChainMcpAdapter().get_mcp_tools(mcp_server),
+                    timeout=MCP_SERVER_TIMEOUT_SECONDS,
+                )
                 logger.info("Successfully loaded the following tools: %s", str(tools))
 
                 # Gather each tool's description into one string.
@@ -83,8 +99,16 @@ class GetMcpTool(CodedTool):
                 for tool in tools:
                     tool_dict[mcp_server] += tool.description + "\n"
 
-            except ExceptionGroup as exception:
-                error_msg = f"Error: Failed to load tools from {mcp_server}. {str(exception)}"
+            except TimeoutError:
+                logger.warning(
+                    "Timeout after %ds connecting to MCP server: %s",
+                    MCP_SERVER_TIMEOUT_SECONDS,
+                    mcp_server,
+                )
+            except Exception as exception:
+                error_msg = (
+                    f"Error: Failed to load tools from {mcp_server}. {str(exception)}"
+                )
                 logger.warning(error_msg)
 
         # Returns a dict with url as a key and combined descriptions of tools as a value.

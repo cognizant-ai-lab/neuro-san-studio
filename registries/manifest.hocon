@@ -25,7 +25,7 @@
 
     # Tool integration examples
     include "registries/tools/manifest.hocon",
-    
+
     # Industry use cases
     include "registries/industry/manifest.hocon",
 
