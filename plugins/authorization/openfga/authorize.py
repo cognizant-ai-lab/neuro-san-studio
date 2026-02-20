@@ -43,6 +43,9 @@ class Authorize:
         """
         # These come from the arg parser
         self.args: Any = None
+
+        # Make the logging in the lower-level code which is also used in the server show up by
+        # default in this manual-use app..
         basicConfig(level="INFO")
 
     def run(self):

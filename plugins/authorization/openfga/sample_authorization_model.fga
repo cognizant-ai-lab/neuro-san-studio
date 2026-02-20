@@ -49,6 +49,9 @@ type AgentNetwork
         define container: [Organization]
 
         # Permissions
+        # Note: this schema has fairly lax permissions for CRUD permissions
+        #       to keep things simple and frustration low for an example.
+        #       You might want to tighten this for your own production schema.
         define create: [User, User:*] or owner
         define read: [User, User:*] or tourist
         define update: [User, User:*] or collaborator
