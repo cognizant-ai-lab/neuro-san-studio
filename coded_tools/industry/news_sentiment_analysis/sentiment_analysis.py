@@ -72,7 +72,6 @@ ABBREVIATIONS = {
     "ltd",
     "corp",
     "co",
-    "dept",
     "u.s",
     "u.k",
     "e.u",
