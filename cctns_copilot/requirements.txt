@@ -1,0 +1,37 @@
+# Core neurosama framework (if applicable, or specific components)
+# neurosama
+
+# Speech recognition and audio
+SpeechRecognition
+PyAudio
+# For Hugging Face models (Transformers)
+transformers
+sentencepiece # Required by T5 tokenizers and other models
+# sentencia-transformers # Not directly used yet, but good for embeddings later if needed
+torch # Or tensorflow, depending on model compatibility and preference
+# For IndicConformer, ensure specific dependencies are met.
+# If models require specific versions, pin them e.g., transformers==4.30.0
+
+# Indic NLP Library (potentially useful for text processing later, including T5 for translation)
+# We might need this if we use specific Indic T5 models, e.g., from ai4bharat
+# indic-nlp-library
+
+# Database connectivity
+cx_Oracle
+
+# Vanna AI and dependencies
+vanna
+ollama # For running local LLMs that Vanna can use
+chromadb # Vector database for Vanna's training data
+
+# UI and Reporting
+# Flask # For a web UI, if chosen
+# Streamlit # Alternative for web UI
+pandas # For data manipulation and table display
+matplotlib # For generating charts
+reportlab # For PDF generation
+# fpdf2 # Alternative for PDF generation, often simpler for basic tables/text
+openpyxl # For Excel export option, if added later (CSV is simpler)
+
+# Note: Some models (like Whisper) might require ffmpeg to be installed on the system.
+# Ensure Hugging Face CLI is configured if downloading models from the hub: `huggingface-cli login`
