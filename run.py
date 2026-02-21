@@ -28,6 +28,7 @@ from typing import Dict
 from typing import Tuple
 
 from dotenv import load_dotenv
+from plugins.env_validator.env_validator import EnvValidator
 from plugins.log_bridge.process_log_bridge import ProcessLogBridge
 from plugins.phoenix.phoenix_plugin import PhoenixPlugin
 
@@ -155,6 +156,18 @@ class NeuroSanRunner:
         parser.add_argument(
             "--use-flask-web-client", action="store_true", help="Use the flask based neuro-san-web-client"
         )
+        parser.add_argument(
+            "--validate-keys",
+            type=int,
+            nargs="?",
+            const=3,
+            default=None,
+            metavar="{1,2,3}",
+            help="Validate API keys up to the specified tier: "
+            "1=placeholder detection, 2=format validation, "
+            "3=live API calls (default when flag is passed without a value). "
+            "Omit to skip validation entirely.",
+        )
 
         args, _ = parser.parse_known_args()
         explicitly_passed_args = {arg for arg in sys.argv[1:] if arg.startswith("--")}
@@ -231,6 +244,30 @@ class NeuroSanRunner:
             print(f"NEURO_SAN_SERVER_HTTP_PORT set to: {os.environ['NEURO_SAN_SERVER_HTTP_PORT']}\n")
 
         print("\n" + "=" * 50 + "\n")
+
+    def validate_keys(self):
+        """Validate LLM API keys when --validate-keys is specified."""
+        tier = self.args.get("validate_keys")
+        if not tier:
+            return
+
+        print(f"Validating LLM API keys (tier {tier})...")
+
+        if tier >= 3:
+            print("Live validation enabled - making API calls to verify keys...")
+
+        validator = EnvValidator()
+        results = validator.validate_all(tier=tier)
+        validator.print_results(results)
+
+        # Warn but don't block startup for missing/placeholder keys
+        if validator.has_warnings(results):
+            print("Note: Some API keys are not configured. Agents using those providers will fail.")
+            print("      Configure them in your .env file to enable all features.\n")
+
+        # For actual errors (invalid format, invalid key), warn more strongly
+        if validator.has_errors(results):
+            print("Warning: Some API keys have validation errors. Check the results above.\n")
 
     @staticmethod
     def generate_html_files():
@@ -524,6 +561,9 @@ class NeuroSanRunner:
 
         # Set environment variables
         self.set_environment_variables()
+
+        # Validate LLM API keys if --validate-keys was specified
+        self.validate_keys()
 
         # Ensure logs directory exists
         os.makedirs("logs", exist_ok=True)
