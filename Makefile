@@ -1,11 +1,11 @@
 .PHONY: help venv install activate venv-guard lint lint-tests format format-tests
-SOURCES := run.py apps coded_tools
+SOURCES := run.py apps coded_tools plugins
 TESTS   := tests
 .DEFAULT_GOAL := help
 
-ISORT_FLAGS := --force-single-line
-ISORT_CHECK := --check-only --diff
-BLACK_CHECK := --check --diff
+RUFF_FORMAT_CHECK := --check --diff
+RUFF_LINT_CHECK := --output-format=full
+RUFF_IMPORTS_FIX := --select I --fix
 
 venv: # Set up a virtual environment in project
 	@if [ ! -d "venv" ]; then \
@@ -53,30 +53,28 @@ activate: ## Activate the venv
 	fi
 
 format-source: venv-guard
-	# Apply format changes from isort and black
-	isort $(SOURCES) $(ISORT_FLAGS)
-	black $(SOURCES)
+	# Apply format and import sorting via ruff
+	ruff check $(RUFF_IMPORTS_FIX) $(SOURCES)
+	ruff format $(SOURCES)
 
 format-tests: venv-guard
-	# Apply format changes from isort and black
-	isort $(TESTS) $(ISORT_FLAGS)
-	black $(TESTS)
+	# Apply format and import sorting via ruff
+	ruff check $(RUFF_IMPORTS_FIX) $(TESTS)
+	ruff format $(TESTS)
 
 format: format-source format-tests
 
 lint-check-source: venv-guard
-	# Run format checks and fail if isort or black need changes
-	isort $(SOURCES) $(ISORT_FLAGS) $(ISORT_CHECK)
-	black $(SOURCES) $(BLACK_CHECK)
-	flake8 $(SOURCES)
+	# Run format and lint checks via ruff, then pylint
+	ruff format $(SOURCES) $(RUFF_FORMAT_CHECK)
+	ruff check $(SOURCES) $(RUFF_LINT_CHECK)
 	pylint $(SOURCES)/
 	pymarkdown --config ./.pymarkdownlint.yaml scan ./docs ./README.md
 
 lint-check-tests: venv-guard
-	# Run format checks and fail if isort or black need changes
-	isort $(TESTS) $(ISORT_FLAGS) $(ISORT_CHECK)
-	black $(TESTS) $(BLACK_CHECK)
-	flake8 $(TESTS)
+	# Run format and lint checks via ruff, then pylint
+	ruff format $(TESTS) $(RUFF_FORMAT_CHECK)
+	ruff check $(TESTS) $(RUFF_LINT_CHECK)
 	pylint $(TESTS)
 
 lint-check: lint-check-source lint-check-tests

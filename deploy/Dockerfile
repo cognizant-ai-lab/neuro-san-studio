@@ -73,15 +73,6 @@ RUN \
 RUN mkdir -p ${APP_HOME}/certs/aws \
     && ln -s ${APP_HOME}/certs/aws ${APP_HOME}/.aws
 
-# This is the port the service will accept grpc requests on.
-# This should be consistent with the main port for the service as described
-# in the <service>.yaml file for any kubernetes deployment.
-# This default port number is also mentioned as AGENT_PORT below
-# and ServiceAgentSession.DEFAULT_PORT
-# In order to be self-discovered by supporting build/run scripts this must
-# be the first port exposed in the Dockerfile.
-EXPOSE 30011
-
 # This is the port the service will accept http requests on.
 # This should be consistent with the main port for the service as described
 # in the <service>.yaml file for any kubernetes deployment.
@@ -108,6 +99,39 @@ WORKDIR ${APP_SOURCE}
 # This value below comes from the above RUN command. Cannot set ENV vars in Dockerfiles based on shell output.
 ENV PACKAGE_INSTALL=/usr/local/lib/python3.13/site-packages
 ENV APP_ENTRYPOINT=${APP_SOURCE}/deploy/entrypoint.sh
+
+#
+# API Keys for LLM Access
+#
+# Which env vars you need may vary depending on which LLM(s) you choose for your own setup.
+# See https://github.com/cognizant-ai-lab/neuro-san/blob/main/docs/agent_hocon_reference.md#llm_config
+# for details on different LLM providers' needs for out-of-the-box support.
+#
+# Note that you really really don't want to leak secrets by checking the actual values into source control.
+# These are best injected into the container via environment variables at runtime ala:
+#   docker run -e OPENAI_API_KEY=...
+#
+
+# OpenAI/ChatGPT access
+ENV OPENAI_API_KEY=""
+
+# Amazon Bedrock access
+ENV AWS_ACCESS_KEY_ID=""
+ENV AWS_SECRET_ACCESS_KEY=""
+
+# Anthropic/Claude access
+ENV ANTHROPIC_API_KEY=""
+
+# MicroSoft Azure/OpenAI access
+# OPENAI_API_KEY is a fallback for AZURE_OPENAI_API_KEY
+# ENV AZURE_OPENAI_API_KEY=""
+ENV AZURE_OPENAI_ENDPOINT=""
+
+# Google/Gemini access
+ENV GOOGLE_API_KEY=""
+
+# NVidia LLM access
+ENV NVIDIA_API_KEY=""
 
 #
 # Server configuration
@@ -150,7 +174,7 @@ ENV AGENT_SERVICE_LOG_JSON=${APP_SOURCE}/deploy/logging.json
 # and https://docs.python.org/3/library/logging.html#logging-levels for details.
 ENV AGENT_SERVICE_LOG_LEVEL="DEBUG"
 
-# The name of the service for grpc health reporting purposes
+# The name of the service for health reporting purposes
 ENV AGENT_SERVER_NAME="neuro-san-studio.Agent"
 
 # Name of the service as seen in logs
