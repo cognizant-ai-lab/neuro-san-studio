@@ -30,6 +30,7 @@ from typing import Tuple
 from dotenv import load_dotenv
 from plugins.log_bridge.process_log_bridge import ProcessLogBridge
 from plugins.phoenix.phoenix_plugin import PhoenixPlugin
+from plugins.langfuse.langfuse_plugin import LangfusePlugin
 
 
 class NeuroSanRunner:
@@ -82,6 +83,9 @@ class NeuroSanRunner:
         # Add Phoenix configuration defaults
         self.args.update(PhoenixPlugin.get_default_config())
 
+        # Add Langfuse configuration defaults
+        self.args.update(LangfusePlugin.get_default_config())
+
         # Ensure logs directory exists
         os.makedirs(self.logs_dir, exist_ok=True)
         os.makedirs(self.thinking_dir, exist_ok=True)
@@ -101,6 +105,9 @@ class NeuroSanRunner:
 
         # Initialize Phoenix manager
         self.phoenix_plugin = PhoenixPlugin(self.args)
+
+        # Initialize Langfuse manager
+        self.langfuse_plugin = LangfusePlugin(self.args)
 
     def load_env_variables(self):
         """Load .env file from project root and set variables."""
@@ -196,6 +203,9 @@ class NeuroSanRunner:
 
         # Phoenix / OpenTelemetry envs - delegate to PhoenixPlugin
         self.phoenix_plugin.set_environment_variables()
+
+        # Langfuse envs - delegate to LangfusePlugin
+        self.langfuse_plugin.set_environment_variables()
 
         # Client-only env variables
         if not self.args["server_only"]:
@@ -306,6 +316,10 @@ class NeuroSanRunner:
         """Start Phoenix server (UI + OTLP HTTP collector) if enabled."""
         self.phoenix_plugin.start_phoenix_server()
 
+    def start_langfuse(self):
+        """Initialize Langfuse client if enabled."""
+        self.langfuse_plugin.initialize()
+
     def start_neuro_san(self):
         """Start the Neuro SAN server."""
         print("Starting Neuro SAN server...")
@@ -387,6 +401,9 @@ class NeuroSanRunner:
 
         # Stop Phoenix using the initializer
         self.phoenix_plugin.stop_phoenix_server()
+
+        # Shutdown Langfuse
+        self.langfuse_plugin.shutdown()
 
         sys.exit(0)
 
@@ -503,6 +520,8 @@ class NeuroSanRunner:
         # Start services only if ports are free
         # 1) Phoenix first so other services point OTLP to it
         self.start_phoenix()
+        # 2) Initialize Langfuse for observability
+        self.start_langfuse()
         if not server_only:
             if use_flask:
                 if not no_html:
