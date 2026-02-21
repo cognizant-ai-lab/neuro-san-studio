@@ -31,6 +31,8 @@ class NeuroSanServerWrapper:
         """Initialize the plugins."""
         # Phoenix
         self.phoenix_enabled = os.getenv("PHOENIX_ENABLED", "false").lower() in ("true", "1", "yes", "on")
+        # Langfuse
+        self.langfuse_enabled = os.getenv("LANGFUSE_ENABLED", "false").lower() in ("true", "1", "yes", "on")
 
     def _init_phoenix(self):
         """Initialize Phoenix instrumentation if enabled."""
@@ -49,10 +51,30 @@ class NeuroSanServerWrapper:
         except Exception as e:  # pylint: disable=broad-exception-caught
             print(f"Warning: Phoenix initialization failed: {e}")
 
+    def _init_langfuse(self):
+        """Initialize Langfuse instrumentation if enabled."""
+        if not self.langfuse_enabled:
+            return
+
+        try:
+            from plugins.langfuse.langfuse_plugin import LangfusePlugin
+
+            print("Initializing Langfuse in server process...")
+            LangfusePlugin().initialize()
+            print("Langfuse initialization complete.")
+        except ImportError:
+            print("Warning: Langfuse plugin not installed.")
+            print("Install with: pip install langfuse")
+        except Exception as e:  # pylint: disable=broad-exception-caught
+            print(f"Warning: Langfuse initialization failed: {e}")
+
     def run(self):
-        """Initialize Phoenix and run the server main loop."""
+        """Initialize Phoenix and Langfuse and run the server main loop."""
         # Initialize Phoenix before starting the server
         self._init_phoenix()
+
+        # Initialize Langfuse before starting the server
+        self._init_langfuse()
 
         # Import and run the actual server main loop
         # Note: ServerMainLoop will parse sys.argv itself, so all command-line
