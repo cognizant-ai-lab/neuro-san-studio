@@ -229,7 +229,7 @@ Install the requirements:
 pip install -r requirements.txt
 ```
 
-**IMPORTANT**: By default, the server relies on OpenAI's `gpt-4o` model. Set the OpenAI API key and add it to your shell
+**IMPORTANT**: By default, the server relies on OpenAI's `gpt-5.2` model. Set the OpenAI API key and add it to your shell
 configuration so it's available in future sessions.
 
 You can get your OpenAI API key from <https://platform.openai.com/signup>. After signing up, create a new API key in the
