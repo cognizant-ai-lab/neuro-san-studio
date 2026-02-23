@@ -9,7 +9,7 @@ This repository includes a Makefile with several useful commands to streamline d
 - `make install` - Creates the virtual environment (if needed) and installs all dependencies including build dependencies
 - `make activate` - Checks if the virtual environment exists and either provides activation instructions (if it exists)
 or suggests running `make install` (if it doesn't)
-- `make lint` - Runs code formatting and linting tools (ruff, pylint) on the source code
+- `make lint` - Runs code formatting and linting tools (ruff, pylint, pymarkdown, md-dead-link-check) on the source code
 - `make lint-tests` - Runs code formatting and linting tools on the test code
 - `make test` - Runs lint and lint-tests, then executes the tests with pytest and generates coverage reports
 
@@ -39,6 +39,25 @@ You can run `pymarkdown` in two ways:
     ```bash
     pymarkdown --help
     ```
+
+<!-- pyml enable blanks-around-fences -->
+- Using Make
+
+    - `make lint`
+
+### Note on Link Checking
+
+We use [md-dead-link-check](https://github.com/AlexanderDokuchaev/md-dead-link-check) (v1.3.0) to check for
+broken links in .md files. `md-dead-link-check` is installed in the virtual environment as part of the build
+dependency requirements specified in `requirements-build.txt`. Configuration is in `pyproject.toml` under
+`[tool.md_dead_link_check]`.
+
+<!-- pyml disable blanks-around-fences -->
+- Using an installed version of `md-dead-link-check`
+
+    - ```bash
+      md-dead-link-check
+      ```
 
 <!-- pyml enable blanks-around-fences -->
 - Using Make

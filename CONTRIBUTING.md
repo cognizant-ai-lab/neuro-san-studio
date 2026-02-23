@@ -298,6 +298,17 @@ pymarkdown --config ./.pymarkdownlint.yaml scan ./docs ./README.md
 
 Configuration is in `.pymarkdownlint.yaml`.
 
+### Link Checking
+
+We use [md-dead-link-check](https://github.com/AlexanderDokuchaev/md-dead-link-check) (v1.3.0) for checking
+broken links in Markdown files:
+
+```bash
+md-dead-link-check
+```
+
+Configuration is in `pyproject.toml` under `[tool.md_dead_link_check]`.
+
 ### Logging
 
 Use the `logging` module for logging instead of `print`.
