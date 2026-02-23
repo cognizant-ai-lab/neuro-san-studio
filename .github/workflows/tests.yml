@@ -27,7 +27,11 @@ jobs:
 
       - name: Checkout
         uses: actions/checkout@v4
-      
+
+      - name: Mark workspace as safe for git
+        run: |
+          git config --global --add safe.directory "$GITHUB_WORKSPACE"
+
       - name: Check if PR is from a fork
         id: fork_check
         run: |
