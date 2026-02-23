@@ -70,8 +70,9 @@ lint-check-source: venv-guard
 	ruff check $(SOURCES) $(RUFF_LINT_CHECK)
 	pylint $(SOURCES)/
 	pymarkdown --config ./.pymarkdownlint.yaml scan ./docs ./README.md
+	md-dead-link-check
 
-lint-check-tests: venv-guard
+lint-check-tests:venv-guard
 	# Run format and lint checks via ruff, then pylint
 	ruff format $(TESTS) $(RUFF_FORMAT_CHECK)
 	ruff check $(TESTS) $(RUFF_LINT_CHECK)
