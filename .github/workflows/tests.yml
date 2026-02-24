@@ -21,16 +21,12 @@ jobs:
       image: python:3.13-slim
 
     steps:
-      - name: Install git
+      - name: Install system packages
         run: |
-          apt-get update && apt-get install --yes git
+          apt-get update && apt-get install --yes git shellcheck make
 
       - name: Checkout
         uses: actions/checkout@v4
-
-      - name: Mark workspace as safe for git
-        run: |
-          git config --global --add safe.directory "$GITHUB_WORKSPACE"
 
       - name: Check if PR is from a fork
         id: fork_check
@@ -49,7 +45,7 @@ jobs:
       - name: Install dependencies
         shell: bash
         run: |
-          apt-get install --yes shellcheck make
+          git config --global --add safe.directory "$GITHUB_WORKSPACE"
           python -m venv venv
           source venv/bin/activate
           pip install -r requirements-build.txt
