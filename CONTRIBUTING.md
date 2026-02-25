@@ -304,7 +304,7 @@ Use the `logging` module for logging instead of `print`.
 To enable debug logs for coded tools, set:
 
 ```bash
-export AGENT_SERVICE_LOG_JSON=logging.json
+export AGENT_SERVICE_LOG_JSON=logging.hocon
 ```
 
 ### Using the Makefile

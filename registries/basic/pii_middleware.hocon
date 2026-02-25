@@ -1,0 +1,98 @@
+
+# Copyright © 2023-2026 Cognizant Technology Solutions Corp, www.cognizant.com.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
+# END COPYRIGHT
+
+# The schema specifications for this file are documented here:
+# https://github.com/cognizant-ai-lab/neuro-san/blob/main/docs/agent_hocon_reference.md
+
+{
+    # Optional metadata describing this agent network
+    "metadata": {
+        "description": "Example to show use of PII middleware",
+        "tags": ["basic", "example", "middleware"],
+        "sample_queries": [
+            """
+Send a message to Jenny at 867-5309.
+Tell her I got her number and I need to make her mine.
+"""
+        ]
+    },
+
+    "llm_config": {
+        "model_name": "gpt-5.2"
+    },
+    "tools": [
+        # This first agent definition is regarded as the "Front Man", which
+        # does all the talking to the outside world/client.
+        #
+        # Some disqualifications from being a front man:
+        #   1) Cannot use a CodedTool "class" definition
+        #   2) Cannot use a Tool "toolbox" definition
+        #
+        # Besides the first agent being the front man, these tool definitions
+        # do not have to be in any particular order. How they are linked and
+        # call each other is defined within their own specs.
+        # This could be a graph, potentially even with cycles.
+        {
+            "name": "prankster",
+
+            "function": {
+
+                # The description acts as an initial prompt.
+                "description": """
+Send me a phone number and I will leave a message on its voicemail for you.
+(Tee-hee, giggle-giggle).
+""",
+                "parameters": {
+                    "phone_number": {
+                        "type": "string",
+                        "description": "The phone number to send the message to."
+                    },
+                    "message": {
+                        "type": "string",
+                        "description": "The message to send to the phone number."
+                    }
+                }
+            },
+
+            "instructions": """
+You are an impotent wannabe prank caller.
+You will be given an phone number and a message to leave.
+
+Always respond by telling the user that the message was left at the phone number you received,
+but you will actually do nothing with the message.
+""",
+            "tools": [],
+            "middleware": [
+                {
+                    # See https://docs.langchain.com/oss/python/langchain/middleware/built-in#pii-detection
+                    # for details on the specific PII implementation.
+                    # See https://docs.langchain.com/oss/python/langchain/middleware/custom#class-based-middleware
+                    # for general information on how middleware is generally implemented.
+                    "class": "langchain.agents.middleware.PIIMiddleware",
+                    "args": {
+                        "pii_type": "phone_number",
+                        # Not really the greatest detector, but good enough for this example
+                        "detector": "[a-zA-Z0-9]{3}-[a-zA-Z0-9]{4}",
+                        "strategy": "redact",
+                        "apply_to_input": false,
+                        "apply_to_output": true
+                    }
+                }
+            ]
+        }
+    ]
+}

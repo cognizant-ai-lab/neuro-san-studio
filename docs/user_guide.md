@@ -50,8 +50,8 @@
       - [Coded tools in toolbox](#coded-tools-in-toolbox)
     - [Usage in agent network config](#usage-in-agent-network-config)
     - [Adding tools in toolbox](#adding-tools-in-toolbox)
-  - [MCP servers](#mcp-servers)
-    - [MCP server configuration](#mcp-server-configuration)
+  - [MCP Servers](#mcp-servers)
+    - [MCP Server Configuration](#mcp-server-configuration)
     - [Authentication](#authentication)
   - [Logging](#logging)
   - [Debugging](#debugging)
@@ -60,6 +60,7 @@
     - [External Agent Networks](#external-agent-networks)
     - [Memory](#memory)
   - [Connect with other agent frameworks](#connect-with-other-agent-frameworks)
+  - [Plugins](#plugins)
   - [Test](#test)
     - [Unit test](#unit-test)
     - [Integration Test](#integration-test)
@@ -1329,6 +1330,12 @@ agent to interact with a CRM system.
 - Agentspace: [Agentspace_adapter](./examples/tools/agentspace_adapter.md) is an agent network adapter that delegates queries
 to a [Google Agentspace](https://cloud.google.com/agentspace/agentspace-enterprise/docs/overview) agent to interact with
 different data store connectors on google cloud.
+
+## Plugins
+
+Plugins are a way to extend the functionality of a Neuro SAN server largely for
+deployment-related use-cases. Note that plugins are never required for Neuro SAN to function.
+See [Plugins](./plugins.md) for more information.
 
 ## Test
 

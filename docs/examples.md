@@ -16,6 +16,7 @@ Here are a few examples ordered by level of complexity.
     - [Music Nerd Pro Sly](#music-nerd-pro-sly)
     - [Music Nerd Pro Sly Local](#music-nerd-pro-sly-local)
     - [Music Nerd LLM Fallbacks](#music-nerd-llm-fallbacks)
+    - [PII Middleware](#pii-middleware)
   - [🧰 Tool Integration Examples](#-tool-integration-examples)
     - [Anthropic Code Execution](#anthropic-code-execution)
     - [Anthropic Web Search](#anthropic-web-search)
@@ -144,9 +145,19 @@ This is a good example to:
 
 ### Hello World
 
-[Hello World](examples/basic/hellow_world.md) is an agent network that
+[Hello World](examples/basic/hello_world.md) is an agent network that
 demonstrates how one agent can call another using a basic hocon file.
 Given specific input, there is a good chance you will get output something like "Hello World!".
+
+**Tags:** `basic` `example`
+
+### PII Middleware
+
+[PII Middleware](examples/basic/pii_middleware.md) is an agent network that demonstrates the use of PII redaction
+via AgentMiddleware.  This just scratches the surface of what you can do with middleware, but it is the
+simplest example to learn how to integrate middleware.
+
+**Tags:** `basic` `example` `middleware`
 
 ## 🧰 Tool Integration Examples
 

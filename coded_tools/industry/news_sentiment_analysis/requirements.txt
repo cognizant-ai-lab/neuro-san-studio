@@ -1,6 +1,6 @@
 newspaper3k==0.2.8
 beautifulsoup4==4.13.4
-nltk==3.9.1
+nltk==3.9.3
 vaderSentiment==3.3.2
 backoff==2.2.1
 lxml-html-clean==0.4.2
