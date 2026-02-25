@@ -62,7 +62,7 @@ dependency requirements specified in `requirements-build.txt`. Configuration is 
 <!-- pyml enable blanks-around-fences -->
 - Using Make
 
-    - `make lint`
+    - `make link-check`
 
 ## Python Project Configuration
 

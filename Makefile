@@ -1,4 +1,4 @@
-.PHONY: help venv install activate venv-guard lint lint-tests format format-tests
+.PHONY: help venv install activate venv-guard lint lint-tests format format-tests link-check
 SOURCES := run.py apps coded_tools plugins
 TESTS   := tests
 .DEFAULT_GOAL := help
@@ -70,6 +70,8 @@ lint-check-source: venv-guard
 	ruff check $(SOURCES) $(RUFF_LINT_CHECK)
 	pylint $(SOURCES)/
 	pymarkdown --config ./.pymarkdownlint.yaml scan ./docs ./README.md
+
+link-check: venv-guard ## Check for broken links in Markdown files (local only)
 	md-dead-link-check
 
 lint-check-tests: venv-guard
