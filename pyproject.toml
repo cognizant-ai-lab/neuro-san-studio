@@ -87,7 +87,6 @@ exclude_links = [
     "https://docs.servicenow.com/*",
     # Broken or private external links
     "https://github.com/deepsaia/vibe-coding-eval*",
-    "https://google.github.io/A2A/specification*",
     # Shield badges (dynamic content, not actual pages)
     "https://img.shields.io/*",
     "https://static.pepy.tech/badge/*",

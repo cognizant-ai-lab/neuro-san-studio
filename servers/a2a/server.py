@@ -17,7 +17,7 @@
 """
 A2A server example
 See https://github.com/google/a2a-python/tree/main/examples
-and https://google.github.io/A2A/specification
+and https://a2a-protocol.org/latest/specification/
 
 Before running this server
  - `pip install a2a-sdk crewai`
