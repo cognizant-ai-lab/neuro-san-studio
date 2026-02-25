@@ -21,10 +21,6 @@ jobs:
       image: python:3.13-slim
 
     steps:
-      - name: Install system packages
-        run: |
-          apt-get update && apt-get install --yes git shellcheck make
-
       - name: Checkout
         uses: actions/checkout@v4
 
@@ -45,7 +41,7 @@ jobs:
       - name: Install dependencies
         shell: bash
         run: |
-          git config --global --add safe.directory "$GITHUB_WORKSPACE"
+          apt-get update && apt-get install -y shellcheck make
           python -m venv venv
           source venv/bin/activate
           pip install -r requirements-build.txt
