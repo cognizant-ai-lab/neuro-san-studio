@@ -92,6 +92,7 @@ COPY ./registries ${APP_SOURCE}/registries
 COPY ./coded_tool[s] ${APP_SOURCE}/coded_tools
 COPY ./deploy/entrypoint.sh ${APP_SOURCE}/deploy/entrypoint.sh
 COPY ./deploy/logging.hocon ${APP_SOURCE}/deploy/logging.hocon
+COPY ./mcp/mcp_info.hocon ${APP_SOURCE}/mcp/mcp_info.hocon
 
 # Set up the entry point for when the container is run
 USER ${USERNAME}
