@@ -33,7 +33,7 @@
     #   3. Makes use of tools that execute external processes via shell commands.
     #   4. Requires use of external services not readily deployed by the average bear
     #      (like databases)
-    #   5. Have a dependency on a particular agent network that has one of the above issues.
+    #   5. Have-a or is-a dependency on a particular agent network that has one of the above issues.
     #
     # To use this file, we simply add a reference to it at the end of our existing
     # AGENT_MANIFEST_FILE specification # like this:
@@ -50,7 +50,7 @@
     # Experimental and research
     "agent_network_designer.hocon": true,               # Reason #1. Needs AGENT_NETWORK_DESIGNER_USE_RESERVATIONS=true
     "agent_network_editor.hocon": {
-        "serve": true,                                  # Reason #5. See agent_network_designer above.
+        "serve": true,                                  # Reason #1 and #5. See agent_network_designer above.
         "public": false
     },
     "agent_network_instructions_editor.hocon": {
