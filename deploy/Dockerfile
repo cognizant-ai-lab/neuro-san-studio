@@ -379,4 +379,11 @@ ENV AGENT_NETWORK_DESIGNER_USE_RESERVATIONS=true
 # Typically 3 days.  259200 = 3 days * 24 hr/day * 60 min/hour * 60 sec/min
 ENV AGENT_NETWORK_DESIGNER_RESERVATIONS_LIFETIME_IN_SECONDS=259200
 
+# Progress style for the Agent Network Designer.
+# By default an internal representation is sent for AGENT_PROGRESS updated.
+# This is unfortunate, but it is what nsflow currently expects. :shrug:
+# For multi-user deployments, we use the connectivity style, meaning the progress reports that
+# are sent are in the same format at the Connectivity() API for neuro-san.
+ENV AGENT_NETWORK_DESIGNER_PROGRESS_STYLE=connectivity
+
 ENTRYPOINT "${APP_ENTRYPOINT}"
