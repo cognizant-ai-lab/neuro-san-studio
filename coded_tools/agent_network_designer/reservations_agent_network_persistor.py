@@ -73,10 +73,10 @@ class ReservationsAgentNetworkPersistor(AgentNetworkPersistor):
         if len(lifetime_in_seconds_str) > 0:
             try:
                 lifetime_in_seconds = float(lifetime_in_seconds_str)
-            except ValueError:
+            except ValueError as exception:
                 raise ValueError(
                     "Value for AGENT_NETWORK_DESIGNER_RESERVATIONS_LIFETIME_IN_SECONDS needs to be a number"
-                )
+                ) from exception
         if lifetime_in_seconds <= 0:
             raise ValueError("Value for AGENT_NETWORK_DESIGNER_RESERVATIONS_LIFETIME_IN_SECONDS needs to be > 0")
 
