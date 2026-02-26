@@ -303,7 +303,7 @@ ENV AGENT_RESERVATIONS_S3_BUCKET=""
 
 # A hocon file with MCP servers information to be used by LangChainMcpAdapter
 # for connecting to external MCP servers with authentication and tool filtering.
-ENV MCP_SERVERS_INFO_FILE=""
+ENV MCP_SERVERS_INFO_FILE="mcp/mcp_info.hocon"
 
 # When set, this parameter enables MCP service protocol for running neuro-san server.
 # Service endpoint is http://host:port/mcp
