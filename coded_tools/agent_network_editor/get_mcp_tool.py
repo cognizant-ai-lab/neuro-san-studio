@@ -33,7 +33,9 @@ class GetMcpTool(CodedTool):
     DEFAULT_MCP_INFO_FILE = os.path.join("mcp", "mcp_info.hocon")
 
     def __init__(self):
-
+        """
+        Constructor
+        """
         # Initialize a logger
         self.logger = logging.getLogger(self.__class__.__name__)
 
