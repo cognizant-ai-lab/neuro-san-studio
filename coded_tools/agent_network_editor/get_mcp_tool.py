@@ -50,8 +50,7 @@ class GetMcpTool(CodedTool):
             mcp_servers_from_file = restorer.restore(file_reference=use_mcp_info_file)
         except FileNotFoundError:
             self.logger.warning(
-                "MCP servers info file not found at %s. No MCP Servers will be used.",
-                use_mcp_info_file
+                "MCP servers info file not found at %s. No MCP Servers will be used.", use_mcp_info_file
             )
 
         self.mcp_servers: list[str] = list(mcp_servers_from_file.keys())
