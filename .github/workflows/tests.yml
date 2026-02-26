@@ -59,7 +59,10 @@ jobs:
         shell: bash
         run: |
           source venv/bin/activate 
-          make lint-check
+          make lint-check-ci
+
+      - name: md-dead-link-check
+        uses: AlexanderDokuchaev/md-dead-link-check@v1.3.0
 
       - name: Run make test
         shell: bash
