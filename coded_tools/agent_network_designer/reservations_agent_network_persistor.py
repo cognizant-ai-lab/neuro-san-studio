@@ -16,6 +16,8 @@
 
 from typing import Any
 
+from os import environ
+
 from neuro_san.interfaces.reservation import Reservation
 from neuro_san.internals.reservations.reservation_util import ReservationUtil
 
@@ -29,6 +31,9 @@ class ReservationsAgentNetworkPersistor(AgentNetworkPersistor):
     AgentNetworkPersistor implementation that saves a temporary network
     using the neuro-san Reservations API
     """
+
+    # 1 hour
+    DEFAULT_LIFETIME_IN_SECONDS: float = 60.0 * 60.0
 
     def __init__(self, args: dict[str, Any], demo_mode: bool):
         """
@@ -62,8 +67,19 @@ class ReservationsAgentNetworkPersistor(AgentNetworkPersistor):
         agent_spec: dict[str, Any] = obj
         # Remove the generated/ prefix
         agent_prefix: str = file_reference.replace("generated/", "")
-        # For now
-        lifetime_in_seconds: float = 60.0 * 60.0
+
+        lifetime_in_seconds: float = self.DEFAULT_LIFETIME_IN_SECONDS
+        lifetime_in_seconds_str: str = environ.get("AGENT_NETWORK_DESIGNER_RESERVATIONS_LIFETIME_IN_SECONDS", "")
+        lifetime_in_seconds_str = lifetime_in_seconds_str.strip()
+        if len(lifetime_in_seconds_str) > 0:
+            try:
+                lifetime_in_seconds = float(lifetime_in_seconds_str)
+            except ValueError:
+                raise ValueError(
+                    "Value for AGENT_NETWORK_DESIGNER_RESERVATIONS_LIFETIME_IN_SECONDS needs to be a number"
+                )
+        if lifetime_in_seconds <= 0:
+            raise ValueError("Value for AGENT_NETWORK_DESIGNER_RESERVATIONS_LIFETIME_IN_SECONDS needs to be > 0")
 
         reservation: Reservation = None
         error: str = None

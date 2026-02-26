@@ -364,4 +364,19 @@ ENV FGA_POLICY_FILE=
 # Typically "default"
 ENV FGA_STORE_NAME=
 
+#
+# Environment Variables that control specific Agent Network behavior
+#
+
+# When set, this parameter allows the Agent Network Designer to use
+# Resevations as the means for temporary deployment of vibe-coded agent networks.
+# When not set, this defaults to false and the file-system is modified.
+# While appropriate for single-user development, the false setting is not recommended
+# for multi-user production use.
+ENV AGENT_NETWORK_DESIGNER_USE_RESERVATIONS=true
+
+# Time in seconds that any Reservation from the Agent Network Designer will be valid.
+# Typically 3 days.  259200 = 3 days * 24 hr/day * 60 min/hour * 60 sec/min
+ENV AGENT_NETWORK_DESIGNER_RESERVATIONS_LIFETIME_IN_SECONDS=259200
+
 ENTRYPOINT "${APP_ENTRYPOINT}"
