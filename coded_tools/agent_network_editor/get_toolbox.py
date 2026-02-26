@@ -22,7 +22,7 @@ from typing import Any
 from neuro_san.interfaces.coded_tool import CodedTool
 from neuro_san.internals.run_context.langchain.toolbox.toolbox_info_restorer import ToolboxInfoRestorer
 
-DEFAULT_TOOLBOX_INFO_FILE = os.path.join("toolbox", "toolbox_info.hocon")
+DEFAULT_TOOLBOX_INFO_FILE = os.path.join("toolbox", "agent_network_designer_toolbox_info.hocon")
 
 
 class GetToolbox(CodedTool):
@@ -60,7 +60,7 @@ class GetToolbox(CodedTool):
                 "Error: <error message>"
         """
         logger = logging.getLogger(self.__class__.__name__)
-        toolbox_info_file: str = os.getenv("AGENT_TOOLBOX_INFO_FILE", DEFAULT_TOOLBOX_INFO_FILE)
+        toolbox_info_file: str = os.getenv("AGENT_NETWORK_DESIGNER_TOOLBOX_INFO_FILE", DEFAULT_TOOLBOX_INFO_FILE)
         try:
             logger.info(">>>>>>>>>>>>>>>>>>>Getting Tool Definition from Toolbox>>>>>>>>>>>>>>>>>>>")
             logger.info("Toolbox info file: %s", toolbox_info_file)

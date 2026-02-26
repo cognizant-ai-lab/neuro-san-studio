@@ -22,3 +22,6 @@ rich>=14.2.0
 
 # For the HTML agent-network graph generator
 pyvis~=0.3.2
+
+# For web search tools without needing API keys, using DuckDuckGo's search results
+ddgs>=9.4.1
