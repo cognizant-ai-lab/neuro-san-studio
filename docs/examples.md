@@ -52,6 +52,7 @@ Here are a few examples ordered by level of complexity.
     - [Banking Operations](#banking-operations)
     - [Retail Operations and Customer Service Assistant](#retail-operations-and-customer-service-assistant)
     - [Insurance Underwriting Agents](#insurance-underwriting-agents)
+    - [KeyBank Financial Services](#keybank-financial-services)
     - [Sentiment Analysis of News Sources](#sentiment-analysis-of-news-sources)
   - [🧪 Experimental and Research](#-experimental-and-research)
     - [Agent Network Designer](#agent-network-designer)
@@ -443,6 +444,15 @@ that automates Hartford's business insurance workflows, replicating a real-world
 coordinates information flow across multiple agents (teams), managing underwriting and claims processes. Key tasks
 include ACORD form validation, risk assessment, underwriting decisions, and claims intake. The system is currently in
 demo mode.
+
+**Tags:** `AAOSA`
+
+### KeyBank Financial Services
+
+[KeyBank Financial Services](examples/industry/keybank.md) is a multi-agent system simulating KeyBank's
+financial services operations. It covers consumer banking, commercial lending, wealth management,
+investment advisory, estate and retirement planning, and risk management including fraud prevention
+and compliance through specialized agents using the AAOSA pattern.
 
 **Tags:** `AAOSA`
 
