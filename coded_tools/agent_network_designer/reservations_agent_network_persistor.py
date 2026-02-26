@@ -14,9 +14,8 @@
 #
 # END COPYRIGHT
 
-from typing import Any
-
 from os import environ
+from typing import Any
 
 from neuro_san.interfaces.reservation import Reservation
 from neuro_san.internals.reservations.reservation_util import ReservationUtil
