@@ -297,7 +297,7 @@ ENV AGENT_EXTERNAL_SERVER_URL=""
 # When not set, this defaults to a null implementation.
 # A simple default implementation is provided by the class
 # "neuro_san.service.watcher.temp_networks.s3_reservations_storage.S3ReservationsStorage"
-ENV AGENT_EXTERNAL_RESERVATIONS_STORAGE=""
+ENV AGENT_EXTERNAL_RESERVATIONS_STORAGE="neuro_san.service.watcher.temp_networks.s3_reservations_storage.S3ReservationsStorage"
 
 # When the AGENT_EXTERNAL_RESERVATIONS_STORAGE (immediately above) is set to the
 # S3ReservationsStorage class mentioned there, this env var must be set to the S3 Bucket
