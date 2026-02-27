@@ -23,13 +23,13 @@ from neuro_san.interfaces.coded_tool import CodedTool
 from neuro_san.internals.graph.persistence.registry_manifest_restorer import RegistryManifestRestorer
 from neuro_san.internals.graph.registry.agent_network import AgentNetwork
 
-DEFAULT_MANIFEST_FILE = os.path.join("registries", "manifest.hocon")
-
 
 class GetSubnetwork(CodedTool):
     """
     CodedTool implementation which provides a way to get subnetwork names and descriptions from the manifest file
     """
+
+    DEFAULT_MANIFEST_FILE = os.path.join("registries", "manifest.hocon")
 
     # pylint: disable=too-many-locals
     def invoke(self, args: dict[str, Any], sly_data: dict[str, Any]) -> dict[str, Any] | str:
@@ -62,8 +62,12 @@ class GetSubnetwork(CodedTool):
                 "Error: <error message>"
         """
         logger = logging.getLogger(self.__class__.__name__)
-        os.environ["AGENT_MANIFEST_FILE"] = os.getenv("AGENT_MANIFEST_FILE", DEFAULT_MANIFEST_FILE)
-        manifest_file: str | list[str] = os.environ["AGENT_MANIFEST_FILE"]
+
+        # Check manifest file from env var
+        manifest_file: str | list[str] = os.getenv("AGENT_MANIFEST_FILE")
+        if not manifest_file:
+            # Use a default if no value provided
+            manifest_file = self.DEFAULT_MANIFEST_FILE
 
         empty: dict[str, AgentNetwork] = {}
         networks: dict[str, AgentNetwork] = {}
@@ -72,7 +76,9 @@ class GetSubnetwork(CodedTool):
             logger.info("Manifest file: %s", str(manifest_file))
 
             # What is returned is mapping from storage type -> (name -> AgentNetwork mapping)
-            networks_by_storage: dict[str, dict[str, AgentNetwork]] = RegistryManifestRestorer().restore()
+            # DEF - synchronous file access in async invoke
+            restorer = RegistryManifestRestorer(manifest_file)
+            networks_by_storage: dict[str, dict[str, AgentNetwork]] = restorer.restore()
             logger.info("Successfully loaded agent networks info from %s", str(manifest_file))
 
             # Put all name -> AgentNetwork mappings into a single dictionary,

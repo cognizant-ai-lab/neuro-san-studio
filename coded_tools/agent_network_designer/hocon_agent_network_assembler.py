@@ -14,6 +14,7 @@
 #
 # END COPYRIGHT
 
+from copy import copy as shallow_copy
 from typing import Any
 
 from coded_tools.agent_network_designer.agent_network_assembler import AgentNetworkAssembler
@@ -135,12 +136,13 @@ class HoconAgentNetworkAssembler(AgentNetworkAssembler):
 
         :return: A full agent network HOCON as a string.
         """
-        network_def = self._move_top_agent_first(network_def, top_agent_name)
+        use_network_def = shallow_copy(network_def)
+        use_network_def = self._move_top_agent_first(use_network_def, top_agent_name)
 
         header = self._build_header(agent_network_name, sample_queries)
 
         body = []
-        for agent_name, agent in network_def.items():
+        for agent_name, agent in use_network_def.items():
             body.append(self._render_agent_block(agent_name, agent, top_agent_name))
 
         return header + "".join(body) + "]\n}\n"

@@ -16,4 +16,5 @@
 
 # Common dictionary key constants
 AGENT_NETWORK_DEFINITION: str = "agent_network_definition"
+AGENT_NETWORK_HOCON_TEXT: str = "agent_network_hocon_text"
 AGENT_NETWORK_NAME: str = "agent_network_name"

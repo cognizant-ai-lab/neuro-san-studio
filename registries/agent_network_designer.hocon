@@ -109,6 +109,7 @@ Operational notes:
                 "to_upstream": {
                     "sly_data": [
                         "agent_network_definition",
+                        "agent_network_hocon_text",
                         "agent_network_name",
                         "agent_reservations"
                     ]

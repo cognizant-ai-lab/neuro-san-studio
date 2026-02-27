@@ -29,7 +29,9 @@ from neuro_san.internals.validation.network.url_network_validator import UrlNetw
 from coded_tools.agent_network_designer.agent_network_assembler import AgentNetworkAssembler
 from coded_tools.agent_network_designer.agent_network_persistor import AgentNetworkPersistor
 from coded_tools.agent_network_designer.agent_network_persistor_factory import AgentNetworkPersistorFactory
+from coded_tools.agent_network_designer.hocon_agent_network_assembler import HoconAgentNetworkAssembler
 from coded_tools.agent_network_editor.constants import AGENT_NETWORK_DEFINITION
+from coded_tools.agent_network_editor.constants import AGENT_NETWORK_HOCON_TEXT
 from coded_tools.agent_network_editor.constants import AGENT_NETWORK_NAME
 from coded_tools.agent_network_editor.get_mcp_tool import GetMcpTool
 from coded_tools.agent_network_editor.get_subnetwork import GetSubnetwork
@@ -56,6 +58,7 @@ class PersistAgentNetwork(CodedTool):
     - a list of down-chain agents (agents reporting to it)
     """
 
+    # pylint: disable=too-many-locals
     async def async_invoke(self, args: dict[str, Any], sly_data: dict[str, Any]) -> str:
         """
         :param args: An argument dictionary whose keys are the parameters
@@ -143,6 +146,16 @@ class PersistAgentNetwork(CodedTool):
 
         if isinstance(persisted_reference, list):
             sly_data["agent_reservations"] = persisted_reference
+
+        hocon_text: str = persisted_content
+        if not isinstance(assembler, HoconAgentNetworkAssembler):
+            # We don't yet have client-consumable HOCON content, so we need to re-assemble
+            # to send that back as a parting gift.
+            assembler = HoconAgentNetworkAssembler(DEMO_MODE)
+            hocon_text: str = assembler.assemble_agent_network(
+                network_def, top_agent_name, the_agent_network_name, sample_queries
+            )
+        sly_data[AGENT_NETWORK_HOCON_TEXT] = hocon_text
 
         logger.info(">>>>>>>>>>>>>>>>>>>DONE !!!>>>>>>>>>>>>>>>>>>")
         return (
