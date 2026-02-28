@@ -34,7 +34,7 @@ class ReservationsAgentNetworkPersistor(AgentNetworkPersistor):
     # 1 hour
     DEFAULT_LIFETIME_IN_SECONDS: float = 60.0 * 60.0
 
-    def __init__(self, args: dict[str, Any], demo_mode: bool, external_networks: list[str], mcp_servers: list[str] ):
+    def __init__(self, args: dict[str, Any], demo_mode: bool, external_networks: list[str], mcp_servers: list[str]):
         """
         Creates a new persistor of the specified type.
 
