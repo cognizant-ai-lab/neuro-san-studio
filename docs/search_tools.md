@@ -61,7 +61,7 @@ _Example Usage in Neuro San Studio:_
 
 <!-- pyml disable line-length -->
 [brave\_search.hocon](https://github.com/cognizant-ai-lab/neuro-san-studio/blob/main/registries/tools/brave_search.hocon),
-[real\_estate.hocon](https://github.com/cognizant-ai-lab/neuro-san-studio/blob/main/registries/real_estate.hocon),
+[real\_estate.hocon](https://github.com/cognizant-ai-lab/neuro-san-studio/blob/main/registries/industry/real_estate.hocon),
 available as a tool in toolbox\_info.hocon](https://github.com/cognizant-ai-lab/neuro-san-studio/blob/main/toolbox/toolbox_info.hocon)
 <!-- pyml enable line-length -->
 
@@ -88,11 +88,11 @@ _Example Usage in Neuro San Studio_:
 [ddgs_search.hocon](https://github.com/cognizant-ai-lab/neuro-san-studio/blob/main/registries/tools/ddgs_search.hocon),
 [agent\_netowork\_designer.hocon](https://github.com/cognizant-ai-lab/neuro-san-studio/blob/main/registries/agent_network_designer.hocon),
 [agentic\_rag.hocon](https://github.com/cognizant-ai-lab/neuro-san-studio/blob/main/registries/tools/agentic_rag.hocon),
-[airbnb.hocon](https://github.com/cognizant-ai-lab/neuro-san-studio/blob/main/registries/airbnb.hocon),
-[booking.hocon](https://github.com/cognizant-ai-lab/neuro-san-studio/blob/main/registries/booking.hocon),
-[carmax.hocon](https://github.com/cognizant-ai-lab/neuro-san-studio/blob/main/registries/carmax.hocon),
-[expedia.hocon](https://github.com/cognizant-ai-lab/neuro-san-studio/blob/main/registries/expedia.hocon),
-[LinkedInJobSeekerSupportNetwork.hocon](https://github.com/cognizant-ai-lab/neuro-san-studio/blob/main/registries/LinkedInJobSeekerSupportNetwork.hocon),
+[airbnb.hocon](https://github.com/cognizant-ai-lab/neuro-san-studio/blob/main/registries/industry/airbnb.hocon),
+[booking.hocon](https://github.com/cognizant-ai-lab/neuro-san-studio/blob/main/registries/industry/booking.hocon),
+[carmax.hocon](https://github.com/cognizant-ai-lab/neuro-san-studio/blob/main/registries/industry/carmax.hocon),
+[expedia.hocon](https://github.com/cognizant-ai-lab/neuro-san-studio/blob/main/registries/industry/expedia.hocon),
+[LinkedInJobSeekerSupportNetwork.hocon](https://github.com/cognizant-ai-lab/neuro-san-studio/blob/main/registries/industry/LinkedInJobSeekerSupportNetwork.hocon),
 available as a tool in
 [toolbox\_info.hocon](https://github.com/cognizant-ai-lab/neuro-san-studio/blob/main/toolbox/toolbox_info.hocon)
 

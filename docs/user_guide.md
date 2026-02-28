@@ -261,7 +261,8 @@ can be set alongside `model_name`.
 A full list of available models and parameters can be found in the
 [default LLM info file](https://github.com/cognizant-ai-lab/neuro-san/blob/main/neuro_san/internals/run_context/langchain/llms/default_llm_info.hocon).
 
-> - If `model_name` or `temperature` is not provided, the defaults `gpt-4o` and `0.7` will be used, respectively.
+> - If `model_name` is not provided, the default `gpt-5.2` will be used.
+> See [GPT-5.2 model documentation](https://developers.openai.com/api/docs/models/gpt-5.2) for supported parameters.
 > - ⚠️ Different providers may require unique configurations or environment variables.
 
 The following sections provide details for each supported provider, including required parameters and setup instructions.
@@ -598,7 +599,7 @@ model via an environment variable:
 }
 ```
 
-If the `MODEL_NAME` environment variable is not set, this will default to `gpt-4o` (the system default).
+If the `MODEL_NAME` environment variable is not set, this will default to `gpt-5.2` (the system default).
 
 #### Setting Your Own Default Model
 
@@ -1328,7 +1329,7 @@ a coded tool as an A2A client to connect to CrewAI agents running in an A2A serv
 - Agentforce: [Agentforce](./examples/tools/agentforce.md) is an agent network that delegates queries to a [Salesforce Agentforce](https://www.salesforce.com/agentforce/)
 agent to interact with a CRM system.
 - Agentspace: [Agentspace_adapter](./examples/tools/agentspace_adapter.md) is an agent network adapter that delegates queries
-to a [Google Agentspace](https://cloud.google.com/agentspace/agentspace-enterprise/docs/overview) agent to interact with
+to a [Google Agentspace](https://docs.cloud.google.com/gemini/enterprise/docs/agents-overview) agent to interact with
 different data store connectors on google cloud.
 
 ## Plugins
