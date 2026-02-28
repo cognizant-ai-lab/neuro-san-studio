@@ -15,7 +15,7 @@
 # END COPYRIGHT
 
 {
-    include "registries/aaosa.hocon",
+    include "registries/llm_config.hocon",
 
     "metadata": {
         "description": "Simulates a large-scale telecommunication network orchestration system, including monitoring, fault detection and resource allocation, for a telco company in Australia. The network is organized into regions (NSW: New South Wales, VIC: Victoria, QLD: Queensland), each with a site manager and a set of nodes. The agents are NOT grounded and will simulate access to the network's systems instead.",
