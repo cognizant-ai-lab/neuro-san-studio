@@ -57,6 +57,12 @@ class GetMcpTool(CodedTool):
 
         self.mcp_servers: list[str] = list(mcp_servers_from_file.keys())
 
+    def get_mcp_servers(self) -> list[str]:
+        """
+        Get the MCP servers associated with this instance
+        """
+        return self.mcp_servers
+
     async def async_invoke(self, args: dict[str, Any], sly_data: dict[str, Any]) -> dict[str, list[BaseTool]] | str:
         """
         :param args: An argument dictionary whose keys are the parameters
@@ -90,7 +96,7 @@ class GetMcpTool(CodedTool):
         # Get tool list from MCP servers
         self.logger.info(">>>>>>>>>>>>>>>>>>>Getting Tool Definition from MCP Servers>>>>>>>>>>>>>>>>>>>")
         tool_dict: dict[str, list[BaseTool]] = {}
-        for mcp_server in self.mcp_servers:
+        for mcp_server in self.get_mcp_servers():
             try:
                 self.logger.info("MCP Server: %s", mcp_server)
                 tools: list[BaseTool] = await LangChainMcpAdapter().get_mcp_tools(mcp_server)
