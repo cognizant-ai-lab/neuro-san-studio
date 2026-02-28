@@ -23,7 +23,7 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-      
+
       - name: Check if PR is from a fork
         id: fork_check
         run: |
@@ -41,7 +41,7 @@ jobs:
       - name: Install dependencies
         shell: bash
         run: |
-          apt-get update && apt-get install -y shellcheck make
+          apt-get update && apt-get install -y shellcheck make curl
           python -m venv venv
           source venv/bin/activate
           pip install -r requirements-build.txt
@@ -60,6 +60,14 @@ jobs:
         run: |
           source venv/bin/activate 
           make lint-check
+      
+      - name: Run dead link checker
+        shell: bash
+        run: |
+          curl --silent --location \
+          https://github.com/lycheeverse/lychee/releases/latest/download/lychee-x86_64-unknown-linux-gnu.tar.gz \
+          | tar --extract --gzip --directory /tmp
+          /tmp/lychee --no-progress --exclude-path venv './**/*.md'
 
       - name: Run make test
         shell: bash

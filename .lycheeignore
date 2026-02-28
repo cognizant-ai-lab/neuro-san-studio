@@ -1,0 +1,35 @@
+# Localhost and local development URLs
+http://localhost
+https://localhost
+http://127.0.0.1
+
+# Placeholder and example URLs
+https://github.com/your-username/
+https://your-instance.atlassian.net
+https://mydomain.my.salesforce.com/
+
+# URLs that require authentication or block bots
+https://platform.openai.com/
+https://portal.azure.com/
+https://api.slack.com/apps
+https://api.salesforce.com
+https://medium.com/@evolutionmlmail
+https://dl.acm.org/
+https://community.openai.com/
+https://citeseerx.ist.psu.edu/
+
+# API endpoints (not browsable)
+https://api.search.brave.com/
+https://customsearch.googleapis.com/
+https://www.googleapis.com/customsearch/
+
+# Sites that timeout or block CI requests
+https://docs.servicenow.com/
+
+# Broken or private external links
+https://github.com/deepsaia/vibe-coding-eval
+https://pepy.tech/projects/neuro-san
+
+# Shield badges (dynamic content, not actual pages)
+https://img.shields.io/
+https://static.pepy.tech/badge/
