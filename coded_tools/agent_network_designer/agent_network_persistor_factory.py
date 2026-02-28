@@ -30,8 +30,9 @@ class AgentNetworkPersistorFactory:
     """
 
     @staticmethod
-    def create_persistor(args: dict[str, Any], write_to_file: bool, demo_mode: bool,
-                         subnetworks: list[str], mcp_servers: list[str] ) -> AgentNetworkPersistor:
+    def create_persistor(
+        args: dict[str, Any], write_to_file: bool, demo_mode: bool, subnetworks: list[str], mcp_servers: list[str]
+    ) -> AgentNetworkPersistor:
         """
         Creates a new persistor of the specified type.
 
