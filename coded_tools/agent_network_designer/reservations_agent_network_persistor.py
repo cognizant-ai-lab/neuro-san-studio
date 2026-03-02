@@ -34,15 +34,20 @@ class ReservationsAgentNetworkPersistor(AgentNetworkPersistor):
     # 1 hour
     DEFAULT_LIFETIME_IN_SECONDS: float = 60.0 * 60.0
 
-    def __init__(self, args: dict[str, Any], demo_mode: bool):
+    def __init__(self, args: dict[str, Any], demo_mode: bool, external_networks: list[str], mcp_servers: list[str]):
         """
         Creates a new persistor of the specified type.
 
         :param args: The arguments from the calling CodedTool.
                     It should contain a Reservationist instance.
+        :param demo_mode: Whether to include demo mode instructions for agents
+        :param external_networks: The external networks for the agent network
+        :param mcp_servers: The MCP servers for the agent network
         """
         self.args: dict[str, Any] = args
         self.demo_mode: bool = demo_mode
+        self.external_networks: list[str] = external_networks
+        self.mcp_servers: list[str] = mcp_servers
 
     def get_assembler(self) -> AgentNetworkAssembler:
         """
@@ -83,7 +88,12 @@ class ReservationsAgentNetworkPersistor(AgentNetworkPersistor):
         reservation: Reservation = None
         error: str = None
         reservation, error = await ReservationUtil.wait_for_one(
-            self.args, agent_spec, lifetime_in_seconds, agent_prefix
+            self.args,
+            agent_spec,
+            lifetime_in_seconds,
+            agent_prefix,
+            external_networks=self.external_networks,
+            mcp_servers=self.mcp_servers,
         )
 
         if error is not None:

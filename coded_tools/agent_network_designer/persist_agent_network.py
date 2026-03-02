@@ -97,17 +97,18 @@ class PersistAgentNetwork(CodedTool):
 
         # Validate the agent network and return error message if there are any issues.
         # Gather all external agents (subnetworks) into a list.
-        subnetworks: dict[str, Any] | str = GetSubnetwork().invoke(None, None)
-        if isinstance(subnetworks, dict):
-            subnetworks: list[str] = list(subnetworks.keys())
-        else:
-            subnetworks = []
+        subnetworks: list[str] = []
+        subnetworks_from_tool: dict[str, Any] | str = GetSubnetwork().invoke(None, None)
+        if isinstance(subnetworks_from_tool, dict):
+            subnetworks = list(subnetworks_from_tool.keys())
+
+        mcp_servers: list[str] = GetMcpTool().get_mcp_servers()
 
         error_list: list[str] = (
             StructureNetworkValidator().validate(network_def)
             + KeywordNetworkValidator().validate(network_def)
             + ToolboxNetworkValidator(GetToolbox().invoke(None, None)).validate(network_def)
-            + UrlNetworkValidator(subnetworks, GetMcpTool().mcp_servers).validate(network_def)
+            + UrlNetworkValidator(subnetworks, mcp_servers).validate(network_def)
         )
         if error_list:
             error_msg = f"Error: {error_list}"
@@ -131,7 +132,7 @@ class PersistAgentNetwork(CodedTool):
         logger.info("Agent Network Name: %s", str(the_agent_network_name))
         # Get the persistor first, as that will determine how we want to assemble the agent network
         persistor: AgentNetworkPersistor = AgentNetworkPersistorFactory.create_persistor(
-            args, WRITE_TO_FILE, DEMO_MODE
+            args, WRITE_TO_FILE, DEMO_MODE, subnetworks, mcp_servers
         )
         assembler: AgentNetworkAssembler = persistor.get_assembler()
         top_agent_name: str = UnreachableNodesNetworkValidator().find_all_top_agents(network_def).pop()
