@@ -111,14 +111,13 @@ class AgentforceAPI(CodedTool):
         sly_data["session_id"] = response["session_id"]
         sly_data["access_token"] = response["access_token"]
         tool_response = response["response"]["messages"][0]["message"]
-
-        logger.debug("-----------------------")
-        # tool_response contains only agent-generated natural language text.
-        # In practice, be careful about logging any sensitive data.
-        # lgtm[py/clear-text-logging-sensitive-data]
-        logger.debug("%s tool response: %s", tool_name, tool_response)
         # NOTE: sly_data contains secrets - never log it
-        logger.debug("========== Done with %s ==========", tool_name)
+
+        # Uncomment the following lines to log the tool response, but be cautious about logging sensitive data in production.
+        # logger.debug("-----------------------")
+        # logger.debug("%s tool response: %s", tool_name, tool_response)
+        # logger.debug("========== Done with %s ==========", tool_name)
+
         return tool_response
 
     async def async_invoke(self, args: Dict[str, Any], sly_data: Dict[str, Any]) -> str:
