@@ -70,6 +70,8 @@ function run() {
         --network=$network \
         -e OPENAI_API_KEY \
         -e ANTHROPIC_API_KEY \
+        -e AGENT_RESERVATIONS_S3_BUCKET \
+        -e AGENT_EXTERNAL_RESERVATIONS_STORAGE \
         -e TOOL_REGISTRY_FILE=$1 \
         -p $SERVICE_HTTP_PORT:$SERVICE_HTTP_PORT \
             neuro-san/${SERVICE_TAG}:$CONTAINER_VERSION"
