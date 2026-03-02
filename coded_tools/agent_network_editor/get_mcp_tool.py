@@ -61,7 +61,7 @@ class GetMcpTool(CodedTool):
         """
         Get the MCP servers associated with this instance
         """
-        return self.mcp_servers
+        return list(self.mcp_servers)
 
     async def async_invoke(self, args: dict[str, Any], sly_data: dict[str, Any]) -> dict[str, list[BaseTool]] | str:
         """
