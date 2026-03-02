@@ -113,7 +113,8 @@ class AgentforceAPI(CodedTool):
         tool_response = response["response"]["messages"][0]["message"]
         # NOTE: sly_data contains secrets - never log it
 
-        # Uncomment the following lines to log the tool response, but be cautious about logging sensitive data in production.
+        # Uncomment the following lines to log the tool response.
+        # Be cautious about logging sensitive data in production.
         # logger.debug("-----------------------")
         # logger.debug("%s tool response: %s", tool_name, tool_response)
         # logger.debug("========== Done with %s ==========", tool_name)
