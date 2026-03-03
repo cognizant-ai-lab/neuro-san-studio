@@ -81,7 +81,7 @@ class ValidateStructure(CodedTool):
             subnetworks: list[str] = list(subnetworks.keys())
         else:
             subnetworks = []
-        mcp_servers: list[str] = GetMcpTool().mcp_servers
+        mcp_servers: list[str] = GetMcpTool().get_mcp_servers()
 
         error_list: list[str] = (
             StructureNetworkValidator().validate(network_def)
