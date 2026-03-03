@@ -69,7 +69,7 @@ jobs:
           https://github.com/lycheeverse/lychee/releases/latest/download/lychee-x86_64-unknown-linux-gnu.tar.gz \
           | tar --extract --gzip --directory /tmp
           # Accept 429 (rate limit) and 503 (temporary outage) to prevent flaky CI failures
-          /tmp/lychee --max-retries 3 --retry-wait-time 1 --verbose --accept '200,203,204,429,503' --exclude-path venv './**/*.md'
+          /tmp/lychee --max-retries 3 --retry-wait-time 3 --verbose --accept '200,203,204,429,503' --exclude-path venv './**/*.md'
 
       - name: Run make test
         shell: bash
