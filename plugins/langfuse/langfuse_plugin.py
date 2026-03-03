@@ -91,19 +91,19 @@ class LangfusePlugin:
         - Debug settings
         """
         # Lazily load Langfuse class
-        Langfuse: Type[Any] = ResolverUtil.create_type(
+        langfuse_class: Type[Any] = ResolverUtil.create_type(
             "langfuse.Langfuse",
             raise_if_not_found=False,
             install_if_missing="langfuse",
         )
-        
-        if Langfuse is None:  # pragma: no cover
+
+        if langfuse_class is None:  # pragma: no cover
             self._logger.warning("Langfuse package not installed")
             return
 
         secret_key = os.getenv("LANGFUSE_SECRET_KEY")
         public_key = os.getenv("LANGFUSE_PUBLIC_KEY")
-        
+
         if not secret_key or not public_key:
             self._logger.warning("Langfuse keys not configured. Set LANGFUSE_SECRET_KEY and LANGFUSE_PUBLIC_KEY")
             return
@@ -113,7 +113,7 @@ class LangfusePlugin:
         debug = self._get_bool_env("LANGFUSE_DEBUG", False)
 
         try:
-            self.langfuse_client = Langfuse(
+            self.langfuse_client = langfuse_class(
                 secret_key=secret_key,
                 public_key=public_key,
                 host=host,
@@ -121,10 +121,10 @@ class LangfusePlugin:
                 debug=debug,
             )
             self._logger.info("Langfuse client configured successfully")
-            
+
             # Patch OpenAI module globally to use Langfuse's instrumented version
             self._patch_openai_module()
-                
+
         except Exception as exc:  # pylint: disable=broad-exception-caught
             self._logger.error("Failed to configure Langfuse client: %s", exc)
 
@@ -136,12 +136,12 @@ class LangfusePlugin:
         are automatically traced by Langfuse.
         """
         try:
-            import sys
-            import importlib
-            
+            import sys  # pylint: disable=import-outside-toplevel
+            import importlib  # pylint: disable=import-outside-toplevel
+
             # Import langfuse.openai module (not a class, so we use importlib)
             langfuse_openai_module = importlib.import_module('langfuse.openai')
-            
+
             # The module contains an 'openai' attribute which is the patched openai module
             if hasattr(langfuse_openai_module, 'openai'):
                 # Replace the openai module with Langfuse's version
@@ -179,7 +179,7 @@ class LangfusePlugin:
             self._configure_langfuse_client()
             if self.langfuse_client is None:
                 return False
-            
+
             self._instrument_sdks()
             return True
         except Exception as exc:  # pylint: disable=broad-exception-caught
@@ -211,17 +211,6 @@ class LangfusePlugin:
 
         if not self._get_bool_env("LANGFUSE_ENABLED", False):
             print(f"[Langfuse] Langfuse not enabled, skipping (PID={os.getpid()})")
-            return
-
-        # Check if API keys are set
-        secret_key = os.getenv("LANGFUSE_SECRET_KEY")
-        public_key = os.getenv("LANGFUSE_PUBLIC_KEY")
-        
-        if not secret_key or not public_key:
-            print("[Langfuse] ERROR: LANGFUSE_ENABLED=true but API keys not configured!")
-            print("[Langfuse] Please set LANGFUSE_SECRET_KEY and LANGFUSE_PUBLIC_KEY in your .env file")
-            print(f"[Langfuse] Get your keys from: {os.getenv('LANGFUSE_HOST', 'https://cloud.langfuse.com')}")
-            self._logger.error("Langfuse enabled but API keys not configured")
             return
 
         # If using existing Langfuse instance, just verify keys are set
@@ -260,7 +249,7 @@ class LangfusePlugin:
         # Langfuse configuration
         os.environ["LANGFUSE_ENABLED"] = str(self.config.get("langfuse_enabled", "false")).lower()
         os.environ["LANGFUSE_USE_EXISTING"] = str(self.config.get("langfuse_use_existing", "false")).lower()
-        os.environ["LANGFUSE_HOST"] = self.config.get("langfuse_host", "http://localhost:3000")
+        os.environ["LANGFUSE_HOST"] = self.config.get("langfuse_host", "https://cloud.langfuse.com")
         os.environ["LANGFUSE_PROJECT_NAME"] = str(self.config.get("langfuse_project_name", "default"))
         os.environ["LANGFUSE_RELEASE"] = self.config.get("langfuse_release", "dev")
         os.environ["LANGFUSE_DEBUG"] = str(self.config.get("langfuse_debug", "false")).lower()
@@ -291,14 +280,14 @@ class LangfusePlugin:
 
         try:
             # Lazily load CallbackHandler
-            CallbackHandler: Type[Any] = ResolverUtil.create_type(
+            callback_handler_class: Type[Any] = ResolverUtil.create_type(
                 "langfuse.callback.CallbackHandler",
                 raise_if_not_found=False,
                 install_if_missing="langfuse",
             )
-            
-            if CallbackHandler is not None:
-                return CallbackHandler()
+
+            if callback_handler_class is not None:
+                return callback_handler_class()
             return None
         except Exception as exc:  # pylint: disable=broad-exception-caught
             self._logger.warning("Failed to create Langfuse callback handler: %s", exc)

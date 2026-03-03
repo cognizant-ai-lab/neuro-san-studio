@@ -64,7 +64,7 @@ class NeuroSanServerWrapper:
             print("Langfuse initialization complete.")
         except ImportError:
             print("Warning: Langfuse plugin not installed.")
-            print("Install with: pip install langfuse")
+            print("Install with: pip install -r plugins/langfuse/requirements.txt")
         except Exception as e:  # pylint: disable=broad-exception-caught
             print(f"Warning: Langfuse initialization failed: {e}")
 
