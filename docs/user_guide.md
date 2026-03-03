@@ -646,7 +646,7 @@ In the `llm_config` block, put each LLM configuration in a `fallbacks` list.
 The list of LLM configs is tried in order until one succeeds.
 
 In this example, as seen in [./examples/music_nerd_llm_fallbacks.md](examples/basic/music_nerd_llm_fallbacks.md),
-the agent network will use OpenAI's `gpt-4o` model first,
+the agent network will use OpenAI's `gpt-5.2` model first,
 and if that fails (for example, due to rate limits or service outages),
 it will automatically fall back to Anthropic's `claude-3-7-sonnet` model:
 
@@ -655,7 +655,7 @@ it will automatically fall back to Anthropic's `claude-3-7-sonnet` model:
         "fallbacks": [
             {
                 # Try OpenAI first
-                "model_name": "gpt-4o",
+                "model_name": "gpt-5.2",
             },
             {
                 # Fall back to Anthropic Claude if OpenAI is unavailable.
