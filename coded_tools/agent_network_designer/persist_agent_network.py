@@ -102,7 +102,7 @@ class PersistAgentNetwork(CodedTool):
         if isinstance(subnetworks_from_tool, dict):
             subnetworks = list(subnetworks_from_tool.keys())
 
-        mcp_servers: list[str] = GetMcpTool().get_mcp_servers()
+        mcp_servers: list[str] = await GetMcpTool().get_mcp_servers(sly_data)
 
         error_list: list[str] = (
             StructureNetworkValidator().validate(network_def)

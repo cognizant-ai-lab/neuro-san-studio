@@ -35,7 +35,7 @@ class ValidateStructure(CodedTool):
     to ensure it adheres to the defined rules and constraints.
     """
 
-    def invoke(self, args: dict[str, Any], sly_data: dict[str, Any]) -> str:
+    async def async_invoke(self, args: dict[str, Any], sly_data: dict[str, Any]) -> dict[str, Any] | str:
         """
         :param args: An argument dictionary whose keys are the parameters
                 to the coded tool and whose values are the values passed for them
@@ -81,7 +81,7 @@ class ValidateStructure(CodedTool):
             subnetworks: list[str] = list(subnetworks.keys())
         else:
             subnetworks = []
-        mcp_servers: list[str] = GetMcpTool().get_mcp_servers()
+        mcp_servers: list[str] = await GetMcpTool().get_mcp_servers(sly_data)
 
         error_list: list[str] = (
             StructureNetworkValidator().validate(network_def)
@@ -96,7 +96,3 @@ class ValidateStructure(CodedTool):
         success_msg = "No structure error found in the agent network."
         logger.info(success_msg)
         return success_msg
-
-    async def async_invoke(self, args: dict[str, Any], sly_data: dict[str, Any]) -> dict[str, Any] | str:
-        """Run invoke asynchronously."""
-        return await asyncio.to_thread(self.invoke, args, sly_data)
