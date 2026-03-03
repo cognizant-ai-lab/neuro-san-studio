@@ -92,6 +92,7 @@ COPY ./registries ${APP_SOURCE}/registries
 COPY ./coded_tool[s] ${APP_SOURCE}/coded_tools
 COPY ./deploy/entrypoint.sh ${APP_SOURCE}/deploy/entrypoint.sh
 COPY ./deploy/logging.hocon ${APP_SOURCE}/deploy/logging.hocon
+COPY ./mcp/mcp_info.hocon ${APP_SOURCE}/mcp/mcp_info.hocon
 
 # Set up the entry point for when the container is run
 USER ${USERNAME}
@@ -303,7 +304,7 @@ ENV AGENT_RESERVATIONS_S3_BUCKET=""
 
 # A hocon file with MCP servers information to be used by LangChainMcpAdapter
 # for connecting to external MCP servers with authentication and tool filtering.
-ENV MCP_SERVERS_INFO_FILE=""
+ENV MCP_SERVERS_INFO_FILE="mcp/mcp_info.hocon"
 
 # When set, this parameter enables MCP service protocol for running neuro-san server.
 # Service endpoint is http://host:port/mcp
@@ -363,5 +364,27 @@ ENV FGA_POLICY_FILE=
 # The name of the authorization store to use
 # Typically "default"
 ENV FGA_STORE_NAME=
+
+#
+# Environment Variables that control specific Agent Network behavior
+#
+
+# When set, this parameter allows the Agent Network Designer to use
+# Resevations as the means for temporary deployment of vibe-coded agent networks.
+# When not set, this defaults to false and the file-system is modified.
+# While appropriate for single-user development, the false setting is not recommended
+# for multi-user production use.
+ENV AGENT_NETWORK_DESIGNER_USE_RESERVATIONS=true
+
+# Time in seconds that any Reservation from the Agent Network Designer will be valid.
+# Typically 3 days.  259200 = 3 days * 24 hr/day * 60 min/hour * 60 sec/min
+ENV AGENT_NETWORK_DESIGNER_RESERVATIONS_LIFETIME_IN_SECONDS=259200
+
+# Progress style for the Agent Network Designer.
+# By default an internal representation is sent for AGENT_PROGRESS updated.
+# This is unfortunate, but it is what nsflow currently expects. :shrug:
+# For multi-user deployments, we use the connectivity style, meaning the progress reports that
+# are sent are in the same format at the Connectivity() API for neuro-san.
+ENV AGENT_NETWORK_DESIGNER_PROGRESS_STYLE=connectivity
 
 ENTRYPOINT "${APP_ENTRYPOINT}"
