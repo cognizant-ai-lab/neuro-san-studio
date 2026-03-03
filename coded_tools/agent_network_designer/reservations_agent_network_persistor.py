@@ -14,6 +14,7 @@
 #
 # END COPYRIGHT
 
+from os import environ
 from typing import Any
 
 from neuro_san.interfaces.reservation import Reservation
@@ -30,15 +31,23 @@ class ReservationsAgentNetworkPersistor(AgentNetworkPersistor):
     using the neuro-san Reservations API
     """
 
-    def __init__(self, args: dict[str, Any], demo_mode: bool):
+    # 1 hour
+    DEFAULT_LIFETIME_IN_SECONDS: float = 60.0 * 60.0
+
+    def __init__(self, args: dict[str, Any], demo_mode: bool, external_networks: list[str], mcp_servers: list[str]):
         """
         Creates a new persistor of the specified type.
 
         :param args: The arguments from the calling CodedTool.
                     It should contain a Reservationist instance.
+        :param demo_mode: Whether to include demo mode instructions for agents
+        :param external_networks: The external networks for the agent network
+        :param mcp_servers: The MCP servers for the agent network
         """
         self.args: dict[str, Any] = args
         self.demo_mode: bool = demo_mode
+        self.external_networks: list[str] = external_networks
+        self.mcp_servers: list[str] = mcp_servers
 
     def get_assembler(self) -> AgentNetworkAssembler:
         """
@@ -62,13 +71,29 @@ class ReservationsAgentNetworkPersistor(AgentNetworkPersistor):
         agent_spec: dict[str, Any] = obj
         # Remove the generated/ prefix
         agent_prefix: str = file_reference.replace("generated/", "")
-        # For now
-        lifetime_in_seconds: float = 60.0 * 60.0
+
+        lifetime_in_seconds: float = self.DEFAULT_LIFETIME_IN_SECONDS
+        lifetime_in_seconds_str: str = environ.get("AGENT_NETWORK_DESIGNER_RESERVATIONS_LIFETIME_IN_SECONDS", "")
+        lifetime_in_seconds_str = lifetime_in_seconds_str.strip()
+        if len(lifetime_in_seconds_str) > 0:
+            try:
+                lifetime_in_seconds = float(lifetime_in_seconds_str)
+            except ValueError as exception:
+                raise ValueError(
+                    "Value for AGENT_NETWORK_DESIGNER_RESERVATIONS_LIFETIME_IN_SECONDS needs to be a number"
+                ) from exception
+        if lifetime_in_seconds <= 0:
+            raise ValueError("Value for AGENT_NETWORK_DESIGNER_RESERVATIONS_LIFETIME_IN_SECONDS needs to be > 0")
 
         reservation: Reservation = None
         error: str = None
         reservation, error = await ReservationUtil.wait_for_one(
-            self.args, agent_spec, lifetime_in_seconds, agent_prefix
+            self.args,
+            agent_spec,
+            lifetime_in_seconds,
+            agent_prefix,
+            external_networks=self.external_networks,
+            mcp_servers=self.mcp_servers,
         )
 
         if error is not None:

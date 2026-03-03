@@ -646,7 +646,7 @@ In the `llm_config` block, put each LLM configuration in a `fallbacks` list.
 The list of LLM configs is tried in order until one succeeds.
 
 In this example, as seen in [./examples/music_nerd_llm_fallbacks.md](examples/basic/music_nerd_llm_fallbacks.md),
-the agent network will use OpenAI's `gpt-4o` model first,
+the agent network will use OpenAI's `gpt-5.2` model first,
 and if that fails (for example, due to rate limits or service outages),
 it will automatically fall back to Anthropic's `claude-3-7-sonnet` model:
 
@@ -655,7 +655,7 @@ it will automatically fall back to Anthropic's `claude-3-7-sonnet` model:
         "fallbacks": [
             {
                 # Try OpenAI first
-                "model_name": "gpt-4o",
+                "model_name": "gpt-5.2",
             },
             {
                 # Fall back to Anthropic Claude if OpenAI is unavailable.
@@ -1254,7 +1254,7 @@ Furthermore, please install the build requirements in your virtual environment v
 3. Start the client and server via `python3 -m run`, select `music_nerd_pro` agent network, and ask a question like
 `Where was John Lennon born?`. The code execution stops at the line where you added `pytest.set_trace` statement. You
 can step through the code, view variable values, etc. by typing commands in the terminal. For all the debugger options,
-please refer to pdb [documentation](https://ugoproto.github.io/ugo_py_doc/pdf/Python-Debugger-Cheatsheet.pdf)
+please refer to pdb [documentation](https://docs.python.org/3/library/pdb.html)
 
 ## Advanced
 

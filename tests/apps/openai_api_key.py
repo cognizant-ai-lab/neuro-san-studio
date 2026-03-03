@@ -34,7 +34,7 @@ def test_open_ai_api_key():
     try:
         # Make a chat completion request
         response = client.chat.completions.create(
-            model="gpt-4o",  # or "gpt-5.2"
+            model="gpt-5.2",
             messages=[
                 {"role": "system", "content": "You are a helpful assistant."},
                 {"role": "user", "content": "What's the capital of France?"},
