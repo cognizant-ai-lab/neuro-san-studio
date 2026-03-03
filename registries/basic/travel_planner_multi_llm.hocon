@@ -1,0 +1,216 @@
+# Copyright © 2025-2026 Cognizant Technology Solutions Corp, www.cognizant.com.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
+# END COPYRIGHT
+
+# The schema specifications for this file are documented here:
+# https://github.com/cognizant-ai-lab/neuro-san/blob/main/docs/agent_hocon_reference.md
+
+#
+# This example demonstrates how to use DIFFERENT LLMs for different agents
+# within a single agent network. Each agent's llm_config is chosen based
+# on what that agent does best:
+#
+#   - The orchestrator uses GPT-4o for reliable tool-calling.
+#   - The itinerary writer uses Claude for polished prose.
+#   - The budget estimator uses GPT-4o-mini because the task is simple and cheap.
+#   - The destination researcher uses Gemini for fast, broad knowledge retrieval.
+#
+# The network-level llm_config acts as the default for any agent that does
+# not specify its own. Individual agents override it with their own llm_config.
+#
+# For the full list of supported providers and models, see:
+# https://github.com/cognizant-ai-lab/neuro-san/blob/main/docs/agent_hocon_reference.md#llm_config
+#
+# Prerequisites:
+#   - OPENAI_API_KEY   (for TravelPlanner and BudgetEstimator)
+#   - ANTHROPIC_API_KEY (for ItineraryWriter)
+#   - GOOGLE_API_KEY    (for DestinationResearcher)
+#
+# If you only have an OpenAI key, comment out the per-agent llm_config
+# blocks and all agents will fall back to the network-level default.
+#
+
+include "registries/aaosa_basic.hocon"
+
+{
+    "metadata": {
+        "description": "A travel planning agent network that demonstrates using different LLMs for different agents. The orchestrator uses GPT-4o, the writer uses Claude, the researcher uses Gemini, and the budget estimator uses GPT-4o-mini."
+        "tags": ["AAOSA", "llm_config", "multi_llm"]
+        "sample_queries": [
+            "Plan a 5-day trip to Tokyo on a $3000 budget.",
+            "I want a romantic weekend getaway in Paris.",
+            "Plan a family vacation to Costa Rica with two kids.",
+        ]
+    }
+
+    # Network-level default: used by any agent that does not define its own llm_config.
+    # Here we use GPT-4o as the default, which is a strong all-purpose model
+    # with reliable tool-calling capabilities.
+    "llm_config": {
+        "class": "openai"
+        "model_name": "gpt-4o"
+    }
+
+    "tools": [
+
+        # ---------------------------------------------------------------
+        # Front Man: TravelPlanner (orchestrator)
+        # Uses the network-level default (GPT-4o) — no per-agent override.
+        # GPT-4o is chosen here for its reliable tool-calling, which is
+        # critical for an orchestrator that must coordinate multiple agents.
+        # ---------------------------------------------------------------
+        {
+            "name": "TravelPlanner"
+
+            "function": {
+                "description": """
+I can help you plan a trip. Tell me your destination, dates, budget,
+and travel preferences, and I will research the destination, write
+a detailed itinerary, and estimate your budget.
+"""
+            }
+
+            "instructions": """
+You are TravelPlanner, the lead coordinator for a travel planning service.
+Your job is to take the user's travel request and break it into parts
+for your specialist agents:
+
+1. Call DestinationResearcher to gather information about the destination
+   (attractions, climate, local tips, best times to visit).
+2. Call ItineraryWriter with the research results and the user's preferences
+   to produce a polished day-by-day itinerary.
+3. Call BudgetEstimator with the itinerary and destination to produce a
+   cost breakdown.
+
+Compile the results into a single, well-organized response for the user.
+Ask the user for clarification if the request is missing key details
+(destination, dates, or budget).
+""" ${aaosa_instructions}
+
+            "tools": ["DestinationResearcher", "ItineraryWriter", "BudgetEstimator"]
+        }
+
+        # ---------------------------------------------------------------
+        # DestinationResearcher
+        # Uses Google Gemini — fast and strong at broad knowledge retrieval.
+        # Gemini excels at synthesizing information from its large training
+        # set, making it well-suited for research tasks.
+        #
+        # If you do not have a GOOGLE_API_KEY, comment out the llm_config
+        # block below and this agent will fall back to the network default.
+        # ---------------------------------------------------------------
+        {
+            "name": "DestinationResearcher"
+
+            "function": ${aaosa_call}
+
+            # Per-agent LLM override: Gemini for research
+            "llm_config": {
+                "class": "gemini"
+                "model_name": "gemini-2.0-flash"
+            }
+
+            "instructions": """
+You are DestinationResearcher. Given a travel destination, provide
+a concise research brief covering:
+- Top attractions and must-see sights
+- Best time of year to visit and expected weather
+- Local customs, language tips, and cultural etiquette
+- Transportation options (getting there and getting around)
+- Safety tips and common tourist pitfalls
+
+Be factual and concise. Cite specific neighborhoods, landmarks,
+or experiences rather than giving vague advice.
+""" ${aaosa_instructions}
+
+            "command": ${aaosa_command}
+        }
+
+        # ---------------------------------------------------------------
+        # ItineraryWriter
+        # Uses Anthropic Claude — excels at long-form, engaging prose.
+        # Claude produces well-structured, readable narratives, making it
+        # the ideal choice for writing a polished travel itinerary.
+        #
+        # If you do not have an ANTHROPIC_API_KEY, comment out the
+        # llm_config block below and this agent will fall back to the
+        # network default.
+        # ---------------------------------------------------------------
+        {
+            "name": "ItineraryWriter"
+
+            "function": ${aaosa_call}
+
+            # Per-agent LLM override: Claude for writing
+            "llm_config": {
+                "class": "anthropic"
+                "model_name": "claude-sonnet-4-20250514"
+            }
+
+            "instructions": """
+You are ItineraryWriter. Given destination research and user preferences
+(dates, interests, pace, travel companions), write a day-by-day itinerary.
+
+For each day include:
+- Morning, afternoon, and evening activities
+- Specific restaurant or food recommendations
+- Estimated travel times between locations
+- Insider tips or alternative options for different weather
+
+Write in an engaging, friendly tone. Keep each day concise but vivid.
+Structure the output clearly with day headers.
+""" ${aaosa_instructions}
+
+            "command": ${aaosa_command}
+        }
+
+        # ---------------------------------------------------------------
+        # BudgetEstimator
+        # Uses GPT-4o-mini — a cost-effective model for simple tasks.
+        # Budget estimation is straightforward arithmetic and lookup,
+        # so a smaller, cheaper model handles it well. This demonstrates
+        # using a lighter model to reduce costs where heavy reasoning
+        # is not needed.
+        # ---------------------------------------------------------------
+        {
+            "name": "BudgetEstimator"
+
+            "function": ${aaosa_call}
+
+            # Per-agent LLM override: GPT-4o-mini for cost efficiency
+            "llm_config": {
+                "class": "openai"
+                "model_name": "gpt-4o-mini"
+            }
+
+            "instructions": """
+You are BudgetEstimator. Given an itinerary and destination, produce
+a cost breakdown covering:
+- Flights (estimated round-trip range)
+- Accommodation (per night, with budget/mid-range/luxury options)
+- Daily meals (breakfast, lunch, dinner estimates)
+- Local transportation
+- Activities and entrance fees
+- Miscellaneous (tips, souvenirs, travel insurance)
+
+Present a summary table with low/mid/high estimates and a grand total
+for each tier. Use USD unless the user specifies another currency.
+Be realistic with current price ranges.
+""" ${aaosa_instructions}
+
+            "command": ${aaosa_command}
+        }
+    ]
+}
