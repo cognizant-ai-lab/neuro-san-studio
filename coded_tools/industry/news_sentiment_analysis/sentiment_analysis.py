@@ -37,7 +37,7 @@ logging.basicConfig(level=logging.INFO)
 try:
     import nltk
 
-    nltk.download("punkt", quiet=True)
+    nltk.download("punkt_tab", quiet=True)
 except ModuleNotFoundError:
     logger.error("NLTK library is not installed")
 
