@@ -201,22 +201,26 @@ class SentimentAnalysis(CodedTool):
         keywords_list = [kw.strip().lower() for kw in args.get("keywords", "").split(",") if kw.strip()]
         target_sources = None if source == "all" else {s.strip().lower() for s in source.split(",") if s.strip()}
 
-        source_dir = os.path.abspath(f"{source}_articles_output")
-        input_dir = source_dir if os.path.isdir(source_dir) else self.input_dir
+        input_dir = os.path.abspath(f"{source}_articles_output")
+        if not os.path.isdir(input_dir):
+            input_dir = self.input_dir
 
         try:
             try:
-                with os.scandir(input_dir) as it:
+                with os.scandir(self.input_dir) as it:
                     entries = [entry.name for entry in it if entry.is_file() and entry.name.endswith(".txt")]
             except OSError as e:
-                logger.exception("Error accessing input directory: %s", input_dir)
+                logger.exception("Error accessing input directory: %s", self.input_dir)
                 return {"status": "failed", "error": f"Failed to access input directory: {e}"}
 
             articles, file_stats = self._collect_articles(entries, keywords_list, target_sources, input_dir)
 
-            for a in articles:
-                if isinstance(a.get("sentences"), list) and len(a["sentences"]) > 300:
-                    a["sentences"] = a["sentences"][:300]
+            articles = [
+                {**a, "sentences": a["sentences"][:300]}
+                if isinstance(a.get("sentences"), list) and len(a["sentences"]) > 300
+                else a
+                for a in articles
+            ]
 
             results = {
                 "sentiment_score_summary": {
