@@ -25,7 +25,7 @@
     # Every network will have an llm_config.
     # Use the deployment's llm_config.hocon as a basis.
     # This needs to be a relative path from this file.
-    include "../../registries/llm_config.hocon",
+    include "../../config/llm_config.hocon",
 
     # These are common commondefs for every agent_network_designer-created network
     # In the final deployable network, {strings} and "values" will be replaced
