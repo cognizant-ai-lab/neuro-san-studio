@@ -23,23 +23,27 @@ from neuro_san.client.streaming_input_processor import StreamingInputProcessor
 
 AGENT_THINKING_LOGS_DIRECTORY = "/private/tmp/agent_thinking"
 
-AGENT_NETWORK_NAME = "log_analysis_agents"
+AGENT_NETWORK_NAME = "experimental/log_analysis_agents"
 os.environ["AGENT_MANIFEST_FILE"] = "registries/manifest.hocon"
 os.environ["AGENT_TOOL_PATH"] = "coded_tools"
 
 
 def set_up_log_analyzer():
     """Configure these as needed."""
-    agent_name = AGENT_NETWORK_NAME
-    connection = "direct"
-    host = "localhost"
-    port = 30011
     local_externals_direct = False
     metadata = {"user_id": os.environ.get("USER")}
 
     # Create session factory and agent session
     factory = AgentSessionFactory()
-    session = factory.create_session(connection, agent_name, host, port, local_externals_direct, metadata)
+    session = factory.create_session(
+        session_type="direct",
+        agent_name=AGENT_NETWORK_NAME,
+        hostname=None,
+        port=None,
+        use_direct=local_externals_direct,
+        metadata=metadata,
+        connect_timeout_in_seconds=None,
+    )
     # Initialize any conversation state here
     analysis_thread = {
         "last_chat_response": None,

@@ -18,7 +18,7 @@ The list is ordered, and the first LLM that succeeds will be used.
         "fallbacks": [
             {
                 # Try OpenAI first
-                "model_name": "gpt-4o",
+                "model_name": "gpt-5.2",
             },
             {
                 # Fall back to Anthropic Claude if OpenAI is unavailable.
