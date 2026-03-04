@@ -29,7 +29,9 @@ from neuro_san.internals.validation.network.url_network_validator import UrlNetw
 from coded_tools.agent_network_designer.agent_network_assembler import AgentNetworkAssembler
 from coded_tools.agent_network_designer.agent_network_persistor import AgentNetworkPersistor
 from coded_tools.agent_network_designer.agent_network_persistor_factory import AgentNetworkPersistorFactory
+from coded_tools.agent_network_designer.hocon_agent_network_assembler import HoconAgentNetworkAssembler
 from coded_tools.agent_network_editor.constants import AGENT_NETWORK_DEFINITION
+from coded_tools.agent_network_editor.constants import AGENT_NETWORK_HOCON_TEXT
 from coded_tools.agent_network_editor.constants import AGENT_NETWORK_NAME
 from coded_tools.agent_network_editor.get_mcp_tool import GetMcpTool
 from coded_tools.agent_network_editor.get_subnetwork import GetSubnetwork
@@ -56,6 +58,7 @@ class PersistAgentNetwork(CodedTool):
     - a list of down-chain agents (agents reporting to it)
     """
 
+    # pylint: disable=too-many-locals
     async def async_invoke(self, args: dict[str, Any], sly_data: dict[str, Any]) -> str:
         """
         :param args: An argument dictionary whose keys are the parameters
@@ -94,17 +97,18 @@ class PersistAgentNetwork(CodedTool):
 
         # Validate the agent network and return error message if there are any issues.
         # Gather all external agents (subnetworks) into a list.
-        subnetworks: dict[str, Any] | str = GetSubnetwork().invoke(None, None)
-        if isinstance(subnetworks, dict):
-            subnetworks: list[str] = list(subnetworks.keys())
-        else:
-            subnetworks = []
+        subnetworks: list[str] = []
+        subnetworks_from_tool: dict[str, Any] | str = GetSubnetwork().invoke(None, None)
+        if isinstance(subnetworks_from_tool, dict):
+            subnetworks = list(subnetworks_from_tool.keys())
+
+        mcp_servers: list[str] = GetMcpTool().get_mcp_servers()
 
         error_list: list[str] = (
             StructureNetworkValidator().validate(network_def)
             + KeywordNetworkValidator().validate(network_def)
             + ToolboxNetworkValidator(GetToolbox().invoke(None, None)).validate(network_def)
-            + UrlNetworkValidator(subnetworks, GetMcpTool().mcp_servers).validate(network_def)
+            + UrlNetworkValidator(subnetworks, mcp_servers).validate(network_def)
         )
         if error_list:
             error_msg = f"Error: {error_list}"
@@ -128,7 +132,7 @@ class PersistAgentNetwork(CodedTool):
         logger.info("Agent Network Name: %s", str(the_agent_network_name))
         # Get the persistor first, as that will determine how we want to assemble the agent network
         persistor: AgentNetworkPersistor = AgentNetworkPersistorFactory.create_persistor(
-            args, WRITE_TO_FILE, DEMO_MODE
+            args, WRITE_TO_FILE, DEMO_MODE, subnetworks, mcp_servers
         )
         assembler: AgentNetworkAssembler = persistor.get_assembler()
         top_agent_name: str = UnreachableNodesNetworkValidator().find_all_top_agents(network_def).pop()
@@ -143,6 +147,16 @@ class PersistAgentNetwork(CodedTool):
 
         if isinstance(persisted_reference, list):
             sly_data["agent_reservations"] = persisted_reference
+
+        hocon_text: str = persisted_content
+        if not isinstance(assembler, HoconAgentNetworkAssembler):
+            # We don't yet have client-consumable HOCON content, so we need to re-assemble
+            # to send that back as a parting gift.
+            assembler = HoconAgentNetworkAssembler(DEMO_MODE)
+            hocon_text: str = assembler.assemble_agent_network(
+                network_def, top_agent_name, the_agent_network_name, sample_queries
+            )
+        sly_data[AGENT_NETWORK_HOCON_TEXT] = hocon_text
 
         logger.info(">>>>>>>>>>>>>>>>>>>DONE !!!>>>>>>>>>>>>>>>>>>")
         return (

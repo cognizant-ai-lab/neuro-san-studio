@@ -50,8 +50,8 @@
       - [Coded tools in toolbox](#coded-tools-in-toolbox)
     - [Usage in agent network config](#usage-in-agent-network-config)
     - [Adding tools in toolbox](#adding-tools-in-toolbox)
-  - [MCP servers](#mcp-servers)
-    - [MCP server configuration](#mcp-server-configuration)
+  - [MCP Servers](#mcp-servers)
+    - [MCP Server Configuration](#mcp-server-configuration)
     - [Authentication](#authentication)
   - [Logging](#logging)
   - [Debugging](#debugging)
@@ -60,6 +60,7 @@
     - [External Agent Networks](#external-agent-networks)
     - [Memory](#memory)
   - [Connect with other agent frameworks](#connect-with-other-agent-frameworks)
+  - [Plugins](#plugins)
   - [Test](#test)
     - [Unit test](#unit-test)
     - [Integration Test](#integration-test)
@@ -260,7 +261,8 @@ can be set alongside `model_name`.
 A full list of available models and parameters can be found in the
 [default LLM info file](https://github.com/cognizant-ai-lab/neuro-san/blob/main/neuro_san/internals/run_context/langchain/llms/default_llm_info.hocon).
 
-> - If `model_name` or `temperature` is not provided, the defaults `gpt-4o` and `0.7` will be used, respectively.
+> - If `model_name` is not provided, the default `gpt-5.2` will be used.
+> See [GPT-5.2 model documentation](https://developers.openai.com/api/docs/models/gpt-5.2) for supported parameters.
 > - ⚠️ Different providers may require unique configurations or environment variables.
 
 The following sections provide details for each supported provider, including required parameters and setup instructions.
@@ -597,7 +599,7 @@ model via an environment variable:
 }
 ```
 
-If the `MODEL_NAME` environment variable is not set, this will default to `gpt-4o` (the system default).
+If the `MODEL_NAME` environment variable is not set, this will default to `gpt-5.2` (the system default).
 
 #### Setting Your Own Default Model
 
@@ -644,7 +646,7 @@ In the `llm_config` block, put each LLM configuration in a `fallbacks` list.
 The list of LLM configs is tried in order until one succeeds.
 
 In this example, as seen in [./examples/music_nerd_llm_fallbacks.md](examples/basic/music_nerd_llm_fallbacks.md),
-the agent network will use OpenAI's `gpt-4o` model first,
+the agent network will use OpenAI's `gpt-5.2` model first,
 and if that fails (for example, due to rate limits or service outages),
 it will automatically fall back to Anthropic's `claude-3-7-sonnet` model:
 
@@ -653,7 +655,7 @@ it will automatically fall back to Anthropic's `claude-3-7-sonnet` model:
         "fallbacks": [
             {
                 # Try OpenAI first
-                "model_name": "gpt-4o",
+                "model_name": "gpt-5.2",
             },
             {
                 # Fall back to Anthropic Claude if OpenAI is unavailable.
@@ -1252,7 +1254,7 @@ Furthermore, please install the build requirements in your virtual environment v
 3. Start the client and server via `python3 -m run`, select `music_nerd_pro` agent network, and ask a question like
 `Where was John Lennon born?`. The code execution stops at the line where you added `pytest.set_trace` statement. You
 can step through the code, view variable values, etc. by typing commands in the terminal. For all the debugger options,
-please refer to pdb [documentation](https://ugoproto.github.io/ugo_py_doc/pdf/Python-Debugger-Cheatsheet.pdf)
+please refer to pdb [documentation](https://docs.python.org/3/library/pdb.html)
 
 ## Advanced
 
@@ -1327,8 +1329,14 @@ a coded tool as an A2A client to connect to CrewAI agents running in an A2A serv
 - Agentforce: [Agentforce](./examples/tools/agentforce.md) is an agent network that delegates queries to a [Salesforce Agentforce](https://www.salesforce.com/agentforce/)
 agent to interact with a CRM system.
 - Agentspace: [Agentspace_adapter](./examples/tools/agentspace_adapter.md) is an agent network adapter that delegates queries
-to a [Google Agentspace](https://cloud.google.com/agentspace/agentspace-enterprise/docs/overview) agent to interact with
+to a [Google Agentspace](https://docs.cloud.google.com/gemini/enterprise/docs/agents-overview) agent to interact with
 different data store connectors on google cloud.
+
+## Plugins
+
+Plugins are a way to extend the functionality of a Neuro SAN server largely for
+deployment-related use-cases. Note that plugins are never required for Neuro SAN to function.
+See [Plugins](./plugins.md) for more information.
 
 ## Test
 

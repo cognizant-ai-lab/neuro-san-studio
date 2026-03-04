@@ -14,6 +14,8 @@
 #
 # END COPYRIGHT
 {
+    include "registries/llm_config.hocon",
+
     metadata {
         description =
     """Agent network that helps users with finding URLs to multi-media content such as images, videos, and audio from the web."""
@@ -28,9 +30,6 @@
         ]
     }
 
-    llm_config {
-        model_name = "gpt-4o"
-    }
 tools = [
         {
             name = "WikimediaSearch"

@@ -1,4 +1,4 @@
-# Hellow World
+# Hello World
 
 The **Hello World** agent network is a small network designed to demonstrate the most basic example of one agent calling another by hocon configuration only.
 

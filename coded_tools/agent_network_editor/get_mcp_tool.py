@@ -23,20 +23,45 @@ from neuro_san.interfaces.coded_tool import CodedTool
 from neuro_san.internals.run_context.langchain.mcp.langchain_mcp_adapter import LangChainMcpAdapter
 from neuro_san.internals.run_context.langchain.mcp.mcp_servers_info_restorer import McpServersInfoRestorer
 
-# Use deepwiki MCP server as default since it is free and does not require authorization.
-DEFAULT_MCP_INFO_FILE = os.path.join("mcp", "mcp_info.hocon")
-
 
 class GetMcpTool(CodedTool):
     """
     CodedTool implementation which provides a way to get tool definition from given MCP servers
     """
 
+    # Use deepwiki MCP server as default since it is free and does not require authorization.
+    DEFAULT_MCP_INFO_FILE = os.path.join("mcp", "mcp_info.hocon")
+
     def __init__(self):
-        if not os.getenv("MCP_SERVERS_INFO_FILE"):
-            os.environ["MCP_SERVERS_INFO_FILE"] = DEFAULT_MCP_INFO_FILE
-        restorer = McpServersInfoRestorer()
-        self.mcp_servers: list[str] = list(restorer.restore().keys())
+        """
+        Constructor
+        """
+        # Initialize a logger
+        self.logger = logging.getLogger(self.__class__.__name__)
+
+        # Check for MCP servers info file in env var
+        use_mcp_info_file: str = os.getenv("MCP_SERVERS_INFO_FILE")
+        if not use_mcp_info_file:
+            # Use a default if no value specified
+            use_mcp_info_file = self.DEFAULT_MCP_INFO_FILE
+
+        # Try to restore
+        mcp_servers_from_file: dict[str, Any] = {}
+        try:
+            restorer = McpServersInfoRestorer()
+            mcp_servers_from_file = restorer.restore(file_reference=use_mcp_info_file)
+        except FileNotFoundError:
+            self.logger.warning(
+                "MCP servers info file not found at %s. No MCP Servers will be used.", use_mcp_info_file
+            )
+
+        self.mcp_servers: list[str] = list(mcp_servers_from_file.keys())
+
+    def get_mcp_servers(self) -> list[str]:
+        """
+        Get the MCP servers associated with this instance
+        """
+        return list(self.mcp_servers)
 
     async def async_invoke(self, args: dict[str, Any], sly_data: dict[str, Any]) -> dict[str, list[BaseTool]] | str:
         """
@@ -67,16 +92,15 @@ class GetMcpTool(CodedTool):
                 a text string of an error message in the format:
                 "Error: <error message>"
         """
-        logger = logging.getLogger(self.__class__.__name__)
 
         # Get tool list from MCP servers
-        logger.info(">>>>>>>>>>>>>>>>>>>Getting Tool Definition from MCP Servers>>>>>>>>>>>>>>>>>>>")
+        self.logger.info(">>>>>>>>>>>>>>>>>>>Getting Tool Definition from MCP Servers>>>>>>>>>>>>>>>>>>>")
         tool_dict: dict[str, list[BaseTool]] = {}
-        for mcp_server in self.mcp_servers:
+        for mcp_server in self.get_mcp_servers():
             try:
-                logger.info("MCP Server: %s", mcp_server)
+                self.logger.info("MCP Server: %s", mcp_server)
                 tools: list[BaseTool] = await LangChainMcpAdapter().get_mcp_tools(mcp_server)
-                logger.info("Successfully loaded the following tools: %s", str(tools))
+                self.logger.info("Successfully loaded the following tools: %s", str(tools))
 
                 # Gather each tool's description into one string.
                 tool_dict[mcp_server] = ""
@@ -85,7 +109,7 @@ class GetMcpTool(CodedTool):
 
             except ExceptionGroup as exception:
                 error_msg = f"Error: Failed to load tools from {mcp_server}. {str(exception)}"
-                logger.warning(error_msg)
+                self.logger.warning(error_msg)
 
         # Returns a dict with url as a key and combined descriptions of tools as a value.
         return str(tool_dict)

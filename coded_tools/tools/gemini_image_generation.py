@@ -21,7 +21,6 @@ from pathlib import Path
 from tempfile import NamedTemporaryFile
 from typing import Any
 
-# pylint: disable=import-error
 from google.genai import Client
 from google.genai.types import Blob
 from google.genai.types import GenerateContentConfig

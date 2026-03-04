@@ -16,6 +16,7 @@ Here are a few examples ordered by level of complexity.
     - [Music Nerd Pro Sly](#music-nerd-pro-sly)
     - [Music Nerd Pro Sly Local](#music-nerd-pro-sly-local)
     - [Music Nerd LLM Fallbacks](#music-nerd-llm-fallbacks)
+    - [PII Middleware](#pii-middleware)
   - [🧰 Tool Integration Examples](#-tool-integration-examples)
     - [Anthropic Code Execution](#anthropic-code-execution)
     - [Anthropic Web Search](#anthropic-web-search)
@@ -51,6 +52,7 @@ Here are a few examples ordered by level of complexity.
     - [Banking Operations](#banking-operations)
     - [Retail Operations and Customer Service Assistant](#retail-operations-and-customer-service-assistant)
     - [Insurance Underwriting Agents](#insurance-underwriting-agents)
+    - [KeyBank Financial Services](#keybank-financial-services)
     - [Sentiment Analysis of News Sources](#sentiment-analysis-of-news-sources)
   - [🧪 Experimental and Research](#-experimental-and-research)
     - [Agent Network Designer](#agent-network-designer)
@@ -144,9 +146,19 @@ This is a good example to:
 
 ### Hello World
 
-[Hello World](examples/basic/hellow_world.md) is an agent network that
+[Hello World](examples/basic/hello_world.md) is an agent network that
 demonstrates how one agent can call another using a basic hocon file.
 Given specific input, there is a good chance you will get output something like "Hello World!".
+
+**Tags:** `basic` `example`
+
+### PII Middleware
+
+[PII Middleware](examples/basic/pii_middleware.md) is an agent network that demonstrates the use of PII redaction
+via AgentMiddleware.  This just scratches the surface of what you can do with middleware, but it is the
+simplest example to learn how to integrate middleware.
+
+**Tags:** `basic` `example` `middleware`
 
 ## 🧰 Tool Integration Examples
 
@@ -432,6 +444,15 @@ that automates Hartford's business insurance workflows, replicating a real-world
 coordinates information flow across multiple agents (teams), managing underwriting and claims processes. Key tasks
 include ACORD form validation, risk assessment, underwriting decisions, and claims intake. The system is currently in
 demo mode.
+
+**Tags:** `AAOSA`
+
+### KeyBank Financial Services
+
+[KeyBank Financial Services](examples/industry/keybank.md) is a multi-agent system simulating KeyBank's
+financial services operations. It covers consumer banking, commercial lending, wealth management,
+investment advisory, estate and retirement planning, and risk management including fraud prevention
+and compliance through specialized agents using the AAOSA pattern.
 
 **Tags:** `AAOSA`
 

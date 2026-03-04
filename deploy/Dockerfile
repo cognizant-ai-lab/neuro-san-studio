@@ -20,7 +20,8 @@
 # To find server-oriented environment variables to help you configure things
 # how you want, search for "ENV AGENT_" in this file.
 
-# Stage 1: Set python image as base image
+# Stage 1: Builder Stage - Use our python base image for installations
+# Set python image as base image
 FROM python:3.13-slim AS builder
 
 # Set the shell and options per hadolint recommendations
@@ -36,7 +37,7 @@ ENV APP_SOURCE=${APP_HOME}/myapp
 ENV PIP3_VERSION=25.0.1
 
 # Explicitly get the desired pip version
-RUN pip3 install --upgrade pip==${PIP3_VERSION} --no-cache-dir
+RUN pip3 install --upgrade pip==${PIP3_VERSION} --no-cache-dir ; mkdir -p ${APP_SOURCE}
 
 # Having a requirements.txt file for your coded_tool dependencies is optional
 COPY ./requirements.txt ${APP_SOURCE}/requirements.txt
@@ -73,19 +74,10 @@ RUN \
 RUN mkdir -p ${APP_HOME}/certs/aws \
     && ln -s ${APP_HOME}/certs/aws ${APP_HOME}/.aws
 
-# This is the port the service will accept grpc requests on.
-# This should be consistent with the main port for the service as described
-# in the <service>.yaml file for any kubernetes deployment.
-# This default port number is also mentioned as AGENT_PORT below
-# and ServiceAgentSession.DEFAULT_PORT
-# In order to be self-discovered by supporting build/run scripts this must
-# be the first port exposed in the Dockerfile.
-EXPOSE 30011
-
 # This is the port the service will accept http requests on.
 # This should be consistent with the main port for the service as described
-# in the <service>.yaml file for any kubernetes deployment.
-# This default port number is also mentioned as AGENT_HTTP_PORT below
+# in any kubernetes <service>.yaml file
+# This port number is also mentioned as AGENT_HTTP_PORT below
 # and ServiceAgentSession.DEFAULT_HTTP_PORT
 EXPOSE 8080
 
@@ -95,10 +87,12 @@ COPY --from=builder /install /usr/local
 # Copy application code and necessary files
 # Note: The registries directory where agent definitions live is mandatory
 #       The coded_tools directory where agent code lives is optional
+#       [s] allows for registries/coded_tools from within client repo or neuro-san repo
 COPY ./registries ${APP_SOURCE}/registries
 COPY ./coded_tool[s] ${APP_SOURCE}/coded_tools
 COPY ./deploy/entrypoint.sh ${APP_SOURCE}/deploy/entrypoint.sh
-COPY ./deploy/logging.json ${APP_SOURCE}/deploy/logging.json
+COPY ./deploy/logging.hocon ${APP_SOURCE}/deploy/logging.hocon
+COPY ./mcp/mcp_info.hocon ${APP_SOURCE}/mcp/mcp_info.hocon
 
 # Set up the entry point for when the container is run
 USER ${USERNAME}
@@ -108,6 +102,39 @@ WORKDIR ${APP_SOURCE}
 # This value below comes from the above RUN command. Cannot set ENV vars in Dockerfiles based on shell output.
 ENV PACKAGE_INSTALL=/usr/local/lib/python3.13/site-packages
 ENV APP_ENTRYPOINT=${APP_SOURCE}/deploy/entrypoint.sh
+
+#
+# API Keys for LLM Access
+#
+# Which env vars you need may vary depending on which LLM(s) you choose for your own setup.
+# See https://github.com/cognizant-ai-lab/neuro-san/blob/main/docs/agent_hocon_reference.md#llm_config
+# for details on different LLM providers' needs for out-of-the-box support.
+#
+# Note that you really really don't want to leak secrets by checking the actual values into source control.
+# These are best injected into the container via environment variables at runtime ala:
+#   docker run -e OPENAI_API_KEY=...
+#
+
+# OpenAI/ChatGPT access
+ENV OPENAI_API_KEY=""
+
+# Amazon Bedrock access
+ENV AWS_ACCESS_KEY_ID=""
+ENV AWS_SECRET_ACCESS_KEY=""
+
+# Anthropic/Claude access
+ENV ANTHROPIC_API_KEY=""
+
+# MicroSoft Azure/OpenAI access
+# OPENAI_API_KEY is a fallback for AZURE_OPENAI_API_KEY
+# ENV AZURE_OPENAI_API_KEY=""
+ENV AZURE_OPENAI_ENDPOINT=""
+
+# Google/Gemini access
+ENV GOOGLE_API_KEY=""
+
+# NVidia LLM access
+ENV NVIDIA_API_KEY=""
 
 #
 # Server configuration
@@ -141,16 +168,16 @@ ENV AGENT_TOOL_PATH=${APP_SOURCE}/coded_tools
 # Where to find the configuration file for Python logging.
 # See https://docs.python.org/3/library/logging.config.html#dictionary-schema-details
 # as to how this file can be configured for your own needs.  Examples there are provided in YAML,
-# but these can be easily translated to JSON (which we prefer).
+# but these can be easily translated to JSON or HOCON (which we prefer).
 # Another good resource: https://docs.python.org/3/howto/logging-cookbook.html
-ENV AGENT_SERVICE_LOG_JSON=${APP_SOURCE}/deploy/logging.json
+ENV AGENT_SERVICE_LOG_JSON=${APP_SOURCE}/deploy/logging.hocon
 
 # Threshold for logging.
 # See https://docs.python.org/3/library/logging.html#logging.Handler.setLevel
 # and https://docs.python.org/3/library/logging.html#logging-levels for details.
 ENV AGENT_SERVICE_LOG_LEVEL="DEBUG"
 
-# The name of the service for grpc health reporting purposes
+# The name of the service for health reporting purposes
 ENV AGENT_SERVER_NAME="neuro-san-studio.Agent"
 
 # Name of the service as seen in logs
@@ -163,7 +190,7 @@ ENV AGENT_SERVER_NAME_FOR_LOGS="Agent Server"
 ENV AGENT_FORWARDED_REQUEST_METADATA="request_id user_id"
 
 # Port number for http service endpoint
-# If you are changing this, you should also change the second EXPOSE port above
+# If you are changing this, you should also change the EXPOSE port above
 # and when running your container locally be sure to have a -p <port>:<port> entry
 # for it on your docker run command line.
 ENV AGENT_HTTP_PORT=8080
@@ -173,7 +200,8 @@ ENV AGENT_MAX_CONCURRENT_REQUESTS=50
 
 # Number of requests served before the server shuts down in an orderly fashion.
 # This is useful for testing response handling in clusters with duplicated pods.
-ENV AGENT_REQUEST_LIMIT=1000000
+# A value of -1 indicates unlimited requests are handled.
+ENV AGENT_REQUEST_LIMIT=-1
 
 # If this value is specified and >0,
 # it will enable dynamic run-time updates of the server agents configuration according
@@ -185,6 +213,9 @@ ENV AGENT_REQUEST_LIMIT=1000000
 # if value is not specified or <= 0, no such dynamic updates will be executed.
 ENV AGENT_MANIFEST_UPDATE_PERIOD_SECONDS=0
 
+# By default, the HTTP service reports the neuro-san library pip version in its health-check response.
+# It is possible to add other libraries to those results by listing them within this env var
+# below and separating them with spaces, like this: "langchain openai".
 # Sometimes it is useful to report a library version explicitly when they are not actually
 # pip-installed (for instance when building a container from your own source, it's the
 # tag of your repo that you care about.)  In that case you can add an entry with its version
@@ -273,7 +304,7 @@ ENV AGENT_RESERVATIONS_S3_BUCKET=""
 
 # A hocon file with MCP servers information to be used by LangChainMcpAdapter
 # for connecting to external MCP servers with authentication and tool filtering.
-ENV MCP_SERVERS_INFO_FILE=""
+ENV MCP_SERVERS_INFO_FILE="mcp/mcp_info.hocon"
 
 # When set, this parameter enables MCP service protocol for running neuro-san server.
 # Service endpoint is http://host:port/mcp
@@ -284,5 +315,76 @@ ENV AGENT_MCP_ENABLE="true"
 # while disabling neuro-san own http API.
 ENV AGENT_MCP_ONLY="false"
 
-# ENTRYPOINT ls ${APP_SOURCE}
+#
+# Authorization
+#
+
+# What class neuro-san server should use for authorization
+# When not set (the default) the server uses an implementation for the Authorizer
+# that effectively lets all requests for all users through.
+# We offer the following implementations:
+#   neuro_san.internals.authorization.null.always_yes_authorizer.AlwaysYesAuthorizer (default)
+#   neuro_san.internals.authorization.null.always_no_authorizer.AlwaysNoAuthorizer
+#   neuro_san.internals.authorization.openfga.open_fga_authorizer.OpenFgaAuthorizer
+# Feel free to make your own as long as it derives from this interface:
+#   neuro_san.internals.authorization.interfaces.authorizer.Authorizer
+ENV AGENT_AUTHORIZER=""
+
+# The request metadata field to use as the actor id for authorization
+ENV AGENT_AUTHORIZER_ACTOR_ID_METADATA_KEY=user_id
+
+# See authorization logging.
+# In production you would not want to set this at all.
+# For debugging you might want to set this to "true".
+ENV AGENT_DEBUG_AUTH=""
+
+# The Actor type sent to the Authorizer
+# This typically corresponds to a specific type set up in the authorization policy
+ENV AGENT_AUTHORIZER_ACTOR_KEY=User
+
+# The Resource type sent to the Authorizer
+# This typically corresponds to a specific type set up in the authorization policy
+ENV AGENT_AUTHORIZER_RESOURCE_KEY=AgentNetwork
+
+# The Relation type sent to the Authorizer used to judge whether the Actor has permission to access the Resource.
+# This typically corresponds to a specific relation set up in the authorization policy
+# Typically "read" from CRUD-based permissions.
+ENV AGENT_AUTHORIZER_ALLOW_RELATION=read
+
+# Below: Env vars specific to OpenFgaAuthorizer
+
+# Where the OpenFGA HTTP server is running for the OpenFgaAuthorizer
+# Typical development example might be "http://localhost:8082"
+ENV FGA_API_URL=
+
+# The file containing the authorization policy for the OpenFgaAuthorizer
+# This is a path to a json file that has been compiled from a .fga policy file using the fga CLI tool.
+ENV FGA_POLICY_FILE=
+
+# The name of the authorization store to use
+# Typically "default"
+ENV FGA_STORE_NAME=
+
+#
+# Environment Variables that control specific Agent Network behavior
+#
+
+# When set, this parameter allows the Agent Network Designer to use
+# Resevations as the means for temporary deployment of vibe-coded agent networks.
+# When not set, this defaults to false and the file-system is modified.
+# While appropriate for single-user development, the false setting is not recommended
+# for multi-user production use.
+ENV AGENT_NETWORK_DESIGNER_USE_RESERVATIONS=true
+
+# Time in seconds that any Reservation from the Agent Network Designer will be valid.
+# Typically 3 days.  259200 = 3 days * 24 hr/day * 60 min/hour * 60 sec/min
+ENV AGENT_NETWORK_DESIGNER_RESERVATIONS_LIFETIME_IN_SECONDS=259200
+
+# Progress style for the Agent Network Designer.
+# By default an internal representation is sent for AGENT_PROGRESS updated.
+# This is unfortunate, but it is what nsflow currently expects. :shrug:
+# For multi-user deployments, we use the connectivity style, meaning the progress reports that
+# are sent are in the same format at the Connectivity() API for neuro-san.
+ENV AGENT_NETWORK_DESIGNER_PROGRESS_STYLE=connectivity
+
 ENTRYPOINT "${APP_ENTRYPOINT}"

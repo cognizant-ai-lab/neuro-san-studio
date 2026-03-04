@@ -21,6 +21,7 @@
             "Create a network for UNHCR back-office",
             "Design an agent network for a hospital management system",
             "Build a multi-agent system for e-commerce customer support",
+            "Create an agent network for Santa's Workshop"
         ]
     },
     
@@ -108,6 +109,7 @@ Operational notes:
                 "to_upstream": {
                     "sly_data": [
                         "agent_network_definition",
+                        "agent_network_hocon_text",
                         "agent_network_name",
                         "agent_reservations"
                     ]

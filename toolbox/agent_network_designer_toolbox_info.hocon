@@ -1,0 +1,200 @@
+# Copyright © 2025-2026 Cognizant Technology Solutions Corp, www.cognizant.com.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
+# END COPYRIGHT
+
+# This is a toolbox that allows user to add tools from langchain or shared coded tools for easy access.
+# For more information about tools in the default toolbox and how to use them in the agent network hocon, see
+# https://github.com/cognizant-ai-lab/neuro-san-studio/blob/main/docs/user_guide.md#toolbox
+
+{
+
+    # ---------- Agent Network Tools ----------
+
+    "call_agent": {
+        "class": "tools.call_agent.CallAgent",
+        "description": "Call the agent to respond to inquiry.",
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "agent_name": {
+                    "type": "string",
+                    "description": """
+                    Name of the agent to call. Do not include file extension such as '.hocon' in the name.
+                    Always start the name with `/`.
+
+                    Example:
+                    "agent_name": "/music_nerd"
+
+                    Note:
+                    Some "agent_name" may have `/` like "basic/music_nerd".
+                    If that the case then use
+                    "agent_name": "/basic/music_nerd"
+                    """
+                },
+                "tool_args": {
+                    "type": "object",
+                    "description": "Arguments for the called agent."
+                },
+            },
+            "required": ["inquiry"]
+        } 
+    },
+
+    # ---------- OpenAI Tools ----------
+
+    # Requirement to use these tools:
+    # - langchain-openai >= 0.3.26
+    # - OPENAI_API_KEY
+    # See https://platform.openai.com/docs/guides/tools?api-mode=responses and
+    # https://python.langchain.com/docs/integrations/chat/openai/#responses-api
+
+    "openai_code_interpreter": {
+        "class": "tools.openai_code_interpreter.OpenAICodeInterpreter",
+        "description": "Executes Python code and performs tasks such as plotting, data analysis, or math using the OpenAI Code Interpreter tool.",
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "query": {
+                    "type": "string",
+                    "description": "A natural language instruction or request to be executed by the code interpreter (e.g., a math problem, plotting instruction, or data transformation)."
+                },
+            },
+            "required": ["query"]
+        }
+    },
+
+    "openai_image_generation": {
+        "class": "tools.openai_image_generation.OpenAIImageGeneration",
+        "description": "Tool that generates image using OpenAI tool",
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "query": {
+                    "type": "string",
+                    "description": "The prompt for image generation."
+                    # Note that the model may revise the prompt before generate the image.
+                    # Check the log for the revised prompt.
+                },
+            },
+            "required": ["query"]
+        }
+    },
+
+    "openai_video_generation": {
+        "class": "tools.openai_video_generation.OpenAIVideoGeneration",
+        "description": "Tool that generates video using OpenAI models",
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "query": {
+                    "type": "string",
+                    "description": "The prompt for video generation."
+                },
+                "video_id": {
+                    "type": "string",
+                    "description": "The ID of an existing video to remix. If provided, the video will be remixed based on the prompt."
+                }
+            },
+            "required": ["query"]
+        }
+    },
+
+     # ---------- RAG Tools ----------
+    #
+    # Supported Vector Store: In-Memory and PostgreSQL vector stores
+    #
+    # Prerequisites for PostgreSQL:
+    #   - Install Docker: https://www.docker.com/get-started/
+    #   - Install Python package: pip install langchain-postgres
+    #   - Set environment variables: POSTGRES_USER, POSTGRES_PASSWORD, POSTGRES_HOST, POSTGRES_PORT, POSTGRES_DB
+    #   - Run: docker run --name pgvector-container -e POSTGRES_USER=<user> -e POSTGRES_PASSWORD=<password> -e POSTGRES_DB=<db_name> -p 6024:5432 -d pgvector/pgvector:pg16
+
+    "webpage_rag": {
+        # This is a coded tool for RAG on webpages.
+        "class": "tools.webpage_rag.WebpageRag",
+        "description": "Retrieve information from the given webpages",
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "query": {
+                    "type": "string",
+                    "description": "Query for retrieval"
+                },
+                "urls": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    },
+                    "description": "List of URLs to retrieve information from"
+                }
+            },
+            "required": ["query"]
+        }
+    },
+
+    # Wikimedia Media search tool for retrieving image, audio, and video URLs from Wikimedia Commons.
+    "wikimedia_media_search": {
+        "class": "tools.wikimedia_media_search.WikimediaMediaSearch",
+        "description": """
+        Searches Wikimedia Commons for media files (images, audio, video) and returns direct URLs with proper file extensions.
+This tool is excellent for finding high-quality, properly licensed multimedia content from Wikimedia Commons.
+Supports searching for images, audio files (mp3, ogg, flac, wav), and video files (webm, ogv, mp4).
+        """,
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "query": {
+                    "type": "string",
+                    "description": """The search query with KEYWORDS ONLY (no conversational phrases). Extract key terms from user request. 
+                    Examples: 'nature video' (NOT 'show me nice nature video'), 'Einstein' (NOT 'photos of Einstein'), 'rain sound' (NOT 'find me rain sounds').
+                    For videos, include 'video', 'timelapse', or 'animation'. For audio, include 'sound' or 'audio'."""
+                },
+                "media_type": {
+                    "type": "string",
+                    "description": "Type of media to search for: 'image', 'audio', 'video', or 'all' (default: 'image')"
+                },
+                "limit": {
+                    "type": "int",
+                    "description": "Maximum number of results to return (default: 1, maximum: 10)"
+                },
+                "offset": {
+                    "type": "int",
+                    "description": "Result offset for pagination (default: 0). Use 10, 20, 30, etc. to get different sets of results from the same query."
+                }
+            },
+            "required": ["query"]
+        }
+    },
+
+    # ---------- Search Tools ----------
+
+    # This search tool requires no API key.
+    # Reference: https://github.com/deedy5/ddgs
+    "ddgs_search": {
+        "class": "tools.ddgs_search.DdgsSearch",
+        "description": "Performs a web search using DDGS Search.",
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "search_terms": {
+                    "type": "string",
+                    "description": "The query string or keywords to search for."
+                },
+            },
+            "required": ["search_terms"]
+        }
+    },
+
+}

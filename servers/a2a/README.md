@@ -65,6 +65,6 @@ For more details, please refer to the official documentation and references.
 
 ## References
 
-- [A2A Protocol Specification](https://google.github.io/A2A/specification)
+- [A2A Protocol Specification](https://a2a-protocol.org/latest/specification/)
 - [CrewAI Documentation](https://docs.crewai.com/)
 - [A2A Python SDK](https://github.com/google/a2a-python)

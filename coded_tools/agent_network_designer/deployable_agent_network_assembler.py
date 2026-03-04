@@ -14,6 +14,7 @@
 #
 # END COPYRIGHT
 
+from copy import copy as shallow_copy
 from copy import deepcopy
 from typing import Any
 
@@ -48,6 +49,7 @@ class DeployableAgentNetworkAssembler(AgentNetworkAssembler):
         aaosa_file: str = file_of_class.get_file_in_basis("../../registries/aaosa.hocon")
         self.aaosa_defs: dict[str, Any] = persistence.restore(file_reference=aaosa_file)
 
+    # pylint: disable=too-many-locals
     def assemble_agent_network(
         self, network_def: dict[str, Any], top_agent_name: str, agent_network_name: str, sample_queries: list[str]
     ) -> dict[str, Any]:
@@ -61,10 +63,11 @@ class DeployableAgentNetworkAssembler(AgentNetworkAssembler):
 
         :return: Some representation of the agent network
         """
+        use_network_def: dict[str, Any] = shallow_copy(network_def)
         # Move top agent to front so it is listed first
-        if top_agent_name != next(iter(network_def)):
-            top_agent: dict[str, Any] = network_def.pop(top_agent_name)
-            network_def = {top_agent_name: top_agent, **network_def}
+        if top_agent_name != next(iter(use_network_def)):
+            top_agent: dict[str, Any] = use_network_def.pop(top_agent_name)
+            use_network_def = {top_agent_name: top_agent, **use_network_def}
 
         # Start out with a copy of the template, but remove the tools and commondefs
         agent_network: dict[str, Any] = deepcopy(self.template)
@@ -77,8 +80,7 @@ class DeployableAgentNetworkAssembler(AgentNetworkAssembler):
 
         agent_name: str = None
         agent_def: dict[str, Any] = {}
-        for agent_name, agent_def in network_def.items():
-
+        for agent_name, agent_def in use_network_def.items():
             # Find bits and pieces from the agent definition in the larger network definition
             tools: list[str] = agent_def.get("tools", None)
 
