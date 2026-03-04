@@ -277,7 +277,7 @@ class EnvValidator:
                 message="Rate limited - key may be valid but quota exceeded",
                 masked_value=self.mask_value(value),
             )
-        except Exception as e:
+        except Exception as e:  # pylint: disable=broad-exception-caught
             return ValidationResult(
                 var_name=var_name,
                 status=ValidationStatus.NETWORK_ERROR,
@@ -308,21 +308,10 @@ class EnvValidator:
                 model="claude-3-haiku-20240307",
                 messages=[{"role": "user", "content": "test"}],
             )
-            return ValidationResult(
-                var_name=var_name,
-                status=ValidationStatus.VALID,
-                message="API key verified",
-                masked_value=self.mask_value(value),
-            )
         except AnthropicBadRequestError:
             # 400 means the key authenticated but request was malformed
             # This still confirms the key is valid
-            return ValidationResult(
-                var_name=var_name,
-                status=ValidationStatus.VALID,
-                message="API key verified",
-                masked_value=self.mask_value(value),
-            )
+            pass
         except AnthropicAuthError:
             return ValidationResult(
                 var_name=var_name,
@@ -337,13 +326,20 @@ class EnvValidator:
                 message="Rate limited - key may be valid but quota exceeded",
                 masked_value=self.mask_value(value),
             )
-        except Exception as e:
+        except Exception as e:  # pylint: disable=broad-exception-caught
             return ValidationResult(
                 var_name=var_name,
                 status=ValidationStatus.NETWORK_ERROR,
                 message=f"Connection error: {type(e).__name__}",
                 masked_value=self.mask_value(value),
             )
+
+        return ValidationResult(
+            var_name=var_name,
+            status=ValidationStatus.VALID,
+            message="API key verified",
+            masked_value=self.mask_value(value),
+        )
 
     def validate_tier3_google(self, var_name: str) -> ValidationResult:
         """Validate Google API key with a live API call."""
@@ -371,7 +367,7 @@ class EnvValidator:
                 message="API key verified",
                 masked_value=self.mask_value(value),
             )
-        except Exception as e:
+        except Exception as e:  # pylint: disable=broad-exception-caught
             error_msg = str(e).lower()
             if "api key" in error_msg or "invalid" in error_msg or "401" in error_msg:
                 return ValidationResult(
@@ -400,13 +396,12 @@ class EnvValidator:
         # Route to appropriate validator based on key type
         if var_name == "OPENAI_API_KEY":
             return self.validate_tier3_openai(var_name)
-        elif var_name == "ANTHROPIC_API_KEY":
+        if var_name == "ANTHROPIC_API_KEY":
             return self.validate_tier3_anthropic(var_name)
-        elif var_name == "GOOGLE_API_KEY":
+        if var_name == "GOOGLE_API_KEY":
             return self.validate_tier3_google(var_name)
-        else:
-            # For keys without live validation, return tier 2 result
-            return self.validate_tier2(var_name)
+        # For keys without live validation, return tier 2 result
+        return self.validate_tier2(var_name)
 
     def validate_all(self, tier: int = 2) -> list[ValidationResult]:
         """
