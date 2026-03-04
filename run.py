@@ -267,7 +267,7 @@ class NeuroSanRunner:
 
         # For actual errors (invalid format, invalid key), warn more strongly
         if validator.has_errors(results):
-            print("Warning: Some API keys have validation errors. Check the results above.\n")
+            print("Error: Some API keys have validation errors. Check the results above.\n")
 
     @staticmethod
     def generate_html_files():
