@@ -31,6 +31,7 @@ import requests
 from bs4 import BeautifulSoup
 from neuro_san.interfaces.coded_tool import CodedTool
 from newspaper import Article
+from newspaper import ArticleException
 
 # pylint: enable=import-error
 
@@ -190,7 +191,7 @@ class WebScrapingTechnician(CodedTool):
                 raise ValueError("Empty content")
             return content
 
-        except (requests.exceptions.RequestException, ValueError) as e:
+        except (requests.exceptions.RequestException, ArticleException, ValueError) as e:
             logger.debug("Newspaper3k failed for %s: %s", self.sanitize_url(url), str(e))
             return self.scrape_with_bs4(url, source)
 
