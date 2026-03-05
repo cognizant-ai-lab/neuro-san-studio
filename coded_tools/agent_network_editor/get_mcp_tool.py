@@ -81,7 +81,7 @@ class GetMcpTool(CodedTool):
             if sly_data is not None:
                 sly_data["mcp_servers"] = mcp_servers
 
-       return mcp_servers
+        return mcp_servers
 
     async def async_invoke(self, args: dict[str, Any], sly_data: dict[str, Any]) -> str:
         """
