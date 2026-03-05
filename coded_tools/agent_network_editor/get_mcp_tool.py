@@ -14,7 +14,6 @@
 #
 # END COPYRIGHT
 
-from asyncio import Lock
 import logging
 import os
 from typing import Any
@@ -116,7 +115,7 @@ class GetMcpTool(CodedTool):
         self.logger.info(">>>>>>>>>>>>>>>>>>>Getting Tool Definition from MCP Servers>>>>>>>>>>>>>>>>>>>")
 
         async with SlyDataLock.get_lock(sly_data, "tool_dict_lock"):
-            if not "tool_dict" in sly_data:
+            if "tool_dict" not in sly_data:
                 # tool_dict is a dict with urls as keys and combined descriptions of tools as a values.
                 tool_dict: dict[str, list[BaseTool]] = {}
                 mcp_servers: list[str] = await self.get_mcp_servers(sly_data)
