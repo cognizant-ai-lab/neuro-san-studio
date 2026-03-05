@@ -53,7 +53,6 @@ class GetMcpTool(CodedTool):
         mcp_servers: list[str] = None
 
         async with SlyDataLock.get_lock(sly_data, "mcp_servers_lock"):
-
             # Try getting from sly_data
             mcp_servers = sly_data.get("mcp_servers")
             if mcp_servers is not None:
@@ -117,9 +116,7 @@ class GetMcpTool(CodedTool):
         self.logger.info(">>>>>>>>>>>>>>>>>>>Getting Tool Definition from MCP Servers>>>>>>>>>>>>>>>>>>>")
 
         async with SlyDataLock.get_lock(sly_data, "tool_dict_lock"):
-
             if not "tool_dict" in sly_data:
-
                 # tool_dict is a dict with urls as keys and combined descriptions of tools as a values.
                 tool_dict: dict[str, list[BaseTool]] = {}
                 mcp_servers: list[str] = await self.get_mcp_servers(sly_data)
@@ -139,7 +136,7 @@ class GetMcpTool(CodedTool):
                         self.logger.warning(error_msg)
 
                 # Stash a string representation of the tool_dict
-                sly_data["tool_dict"] = str(tool_dict) 
+                sly_data["tool_dict"] = str(tool_dict)
 
         # Return the cached tool_dict
         return sly_data["tool_dict"]
