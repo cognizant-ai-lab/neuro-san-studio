@@ -18,6 +18,7 @@ from asyncio import Lock
 from typing import Any
 
 
+# pylint: disable=too-few-public-methods
 class SlyDataLock:
     """
     Class for getting a lock on the sly_data for modification.
