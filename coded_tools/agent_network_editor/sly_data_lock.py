@@ -15,6 +15,7 @@
 # END COPYRIGHT
 
 from asyncio import Lock
+from typing import Any
 
 
 class SlyDataLock:
