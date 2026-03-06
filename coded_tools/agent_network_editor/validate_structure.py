@@ -73,9 +73,9 @@ class ValidateStructure(CodedTool):
         # Validate the agent network and return error message if there are any issues.
 
         # Get a dict of tools or error message if no toolbox found.
-        tools: dict[str, Any] | str = GetToolbox().invoke(None, None)
+        tools: dict[str, Any] | str = await GetToolbox().async_invoke(None, sly_data)
         # Gather all URLs from MCP servers and subnetworks.
-        subnetworks: dict[str, Any] | str = GetSubnetwork().invoke(None, None)
+        subnetworks: dict[str, Any] | str = await GetSubnetwork().async_invoke(None, sly_data)
         if isinstance(subnetworks, dict):
             subnetworks: list[str] = list(subnetworks.keys())
         else:

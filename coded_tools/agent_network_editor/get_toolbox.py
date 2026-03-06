@@ -14,13 +14,15 @@
 #
 # END COPYRIGHT
 
-import asyncio
 import logging
 import os
 from typing import Any
 
 from neuro_san.interfaces.coded_tool import CodedTool
 from neuro_san.internals.run_context.langchain.toolbox.toolbox_info_restorer import ToolboxInfoRestorer
+
+from coded_tools.agent_network_editor.sly_data_lock import SlyDataLock
+
 
 DEFAULT_TOOLBOX_INFO_FILE = os.path.join("toolbox", "agent_network_designer_toolbox_info.hocon")
 
@@ -30,7 +32,7 @@ class GetToolbox(CodedTool):
     CodedTool implementation which provides a way to get tool definition from toolbox info file
     """
 
-    def invoke(self, args: dict[str, Any], sly_data: dict[str, Any]) -> dict[str, Any] | str:
+    async def async_invoke(self, args: dict[str, Any], sly_data: dict[str, Any]) -> dict[str, Any] | str:
         """
         :param args: An argument dictionary whose keys are the parameters
                 to the coded tool and whose values are the values passed for them
@@ -61,22 +63,33 @@ class GetToolbox(CodedTool):
         """
         logger = logging.getLogger(self.__class__.__name__)
         toolbox_info_file: str = os.getenv("AGENT_NETWORK_DESIGNER_TOOLBOX_INFO_FILE", DEFAULT_TOOLBOX_INFO_FILE)
-        try:
+
+        tools: dict[str, Any] | str = None
+        async with SlyDataLock.get_lock(sly_data, "toolbox_info_lock"):
+
+            # Try getting from sly_data
+            tools = sly_data.get("toolbox_info")
+            if tools is not None:
+                # Return whatever we had cached before
+                return tools
+
+            # Go fish, but only once.
             logger.info(">>>>>>>>>>>>>>>>>>>Getting Tool Definition from Toolbox>>>>>>>>>>>>>>>>>>>")
             logger.info("Toolbox info file: %s", toolbox_info_file)
-            tools: dict[str, Any] = ToolboxInfoRestorer().restore(toolbox_info_file)
-            logger.info("Successfully loaded the following toolbox: %s", str(tools))
+            try:
+                # Need to do the load
+                tools = await ToolboxInfoRestorer().async_restore(toolbox_info_file)
+                logger.info("Successfully loaded the following toolbox: %s", str(tools))
 
-            # Clean up the dict so that it only contains "description" key.
-            for tool_name, tool_info in tools.items():
-                tools[tool_name] = tool_info.get("description", "")
+                # Clean up the dict so that it only contains "description" key.
+                for tool_name, tool_info in tools.items():
+                    tools[tool_name] = tool_info.get("description", "")
 
-            return tools
-        except FileNotFoundError as not_found_err:
-            error_msg = f"Error: Failed to load toolbox info from {toolbox_info_file}. {str(not_found_err)}"
-            logger.warning(error_msg)
-            return error_msg
+            except FileNotFoundError as not_found_err:
+                tools = f"Error: Failed to load toolbox info from {toolbox_info_file}. {str(not_found_err)}"
+                logger.warning(tools)
 
-    async def async_invoke(self, args: dict[str, Any], sly_data: dict[str, Any]) -> dict[str, Any] | str:
-        """Run invoke asynchronously."""
-        return await asyncio.to_thread(self.invoke, args, sly_data)
+            # Cache the results in sly_data - success or failure.
+            sly_data["toolbox_info"] = tools
+
+        return tools

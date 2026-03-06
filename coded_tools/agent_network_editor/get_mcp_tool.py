@@ -67,9 +67,8 @@ class GetMcpTool(CodedTool):
             # Try to restore
             mcp_servers_from_file: dict[str, Any] = {}
             try:
-                # DEF - make this an async fileio read
                 restorer = McpServersInfoRestorer()
-                mcp_servers_from_file = restorer.restore(file_reference=use_mcp_info_file)
+                mcp_servers_from_file = await restorer.async_restore(file_reference=use_mcp_info_file)
             except FileNotFoundError:
                 self.logger.warning(
                     "MCP servers info file not found at %s. No MCP Servers will be used.", use_mcp_info_file
