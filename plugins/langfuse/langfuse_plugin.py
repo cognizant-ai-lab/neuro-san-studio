@@ -131,7 +131,7 @@ class LangfusePlugin:
     @staticmethod
     def _patch_openai_module() -> None:
         """Patch the openai module with Langfuse's instrumented version.
-        
+
         This replaces the global openai module so that all OpenAI calls
         are automatically traced by Langfuse.
         """
@@ -140,12 +140,12 @@ class LangfusePlugin:
             import importlib  # pylint: disable=import-outside-toplevel
 
             # Import langfuse.openai module (not a class, so we use importlib)
-            langfuse_openai_module = importlib.import_module('langfuse.openai')
+            langfuse_openai_module = importlib.import_module("langfuse.openai")
 
             # The module contains an 'openai' attribute which is the patched openai module
-            if hasattr(langfuse_openai_module, 'openai'):
+            if hasattr(langfuse_openai_module, "openai"):
                 # Replace the openai module with Langfuse's version
-                sys.modules['openai'] = langfuse_openai_module.openai
+                sys.modules["openai"] = langfuse_openai_module.openai
                 print("[Langfuse] OpenAI module globally patched for automatic tracing")
             else:
                 print("[Langfuse] Warning: langfuse.openai module structure unexpected")
@@ -160,7 +160,7 @@ class LangfusePlugin:
         - OpenAI: Patched globally via _patch_openai_module() during client configuration
         - LangChain: Use get_callback_handler() to get callbacks for LangChain chains
         - Custom functions: Use @observe decorator from langfuse.decorators
-        
+
         The OpenAI module patching is done in _patch_openai_module() which is called
         from _configure_langfuse_client() to ensure it happens after the client is set up.
         """
