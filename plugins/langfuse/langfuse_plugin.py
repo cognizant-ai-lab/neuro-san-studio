@@ -49,25 +49,6 @@ class LangfusePlugin:
         self._callback_handler = None
 
     @staticmethod
-    def get_default_config() -> dict:
-        """Get default Langfuse configuration from environment variables.
-
-        Returns:
-            Dictionary with default Langfuse configuration values
-        """
-        return {
-            # Langfuse defaults
-            "langfuse_enabled": os.getenv("LANGFUSE_ENABLED", "false"),
-            "langfuse_secret_key": os.getenv("LANGFUSE_SECRET_KEY", ""),
-            "langfuse_public_key": os.getenv("LANGFUSE_PUBLIC_KEY", ""),
-            "langfuse_host": os.getenv("LANGFUSE_HOST", "https://cloud.langfuse.com"),
-            "langfuse_project_name": os.getenv("LANGFUSE_PROJECT_NAME", "default"),
-            "langfuse_release": os.getenv("LANGFUSE_RELEASE", "dev"),
-            "langfuse_debug": os.getenv("LANGFUSE_DEBUG", "false"),
-            "langfuse_sample_rate": float(os.getenv("LANGFUSE_SAMPLE_RATE", "1.0")),
-        }
-
-    @staticmethod
     def _get_bool_env(var_name: str, default: bool) -> bool:
         """Parse a boolean environment variable.
 
@@ -83,6 +64,15 @@ class LangfusePlugin:
             return default
         return val.strip().lower() in {"1", "true", "yes", "on"}
 
+    @staticmethod
+    def _is_valid_key() -> bool:
+        secret_key = os.getenv("LANGFUSE_SECRET_KEY")
+        public_key = os.getenv("LANGFUSE_PUBLIC_KEY")
+
+        if not secret_key or not public_key:
+            return False
+        return True
+
     def _try_langfuse_setup(self) -> bool:
         """Try setting up Langfuse via LangChain CallbackHandler.
 
@@ -93,12 +83,6 @@ class LangfusePlugin:
         Returns:
             True if Langfuse setup was successful, False otherwise
         """
-        secret_key = os.getenv("LANGFUSE_SECRET_KEY")
-        public_key = os.getenv("LANGFUSE_PUBLIC_KEY")
-
-        if not secret_key or not public_key:
-            self._logger.warning("Langfuse keys not configured. Set LANGFUSE_SECRET_KEY and LANGFUSE_PUBLIC_KEY")
-            return False
 
         # Lazily load get_client and CallbackHandler
         get_client_fn = ResolverUtil.create_type(
@@ -113,7 +97,11 @@ class LangfusePlugin:
         )
 
         if get_client_fn is None or callback_handler_class is None:  # pragma: no cover
-            self._logger.warning("Langfuse package not installed")
+            self._logger.error("Langfuse package not installed")
+            return False
+
+        if not self._is_valid_key():
+            self._logger.error("Langfuse keys not configured. Set LANGFUSE_SECRET_KEY and LANGFUSE_PUBLIC_KEY")
             return False
 
         try:
@@ -149,16 +137,17 @@ class LangfusePlugin:
 
         This method is idempotent and safe to call multiple times.
         """
+        # Do NOTHING, not even log, if the plugin is not enabled.
+        # The plugin is NOT enabled, so it should not appear in the logs
+        if not self._get_bool_env("LANGFUSE_ENABLED", False):
+            return
+
         print(f"[Langfuse] initialize called, PID={os.getpid()}")
         print(f"[Langfuse] _initialized={self._initialized}")
         print(f"[Langfuse] LANGFUSE_ENABLED={os.getenv('LANGFUSE_ENABLED')}")
 
         if self._initialized:
             print(f"[Langfuse] Already initialized in this process, skipping (PID={os.getpid()})")
-            return
-
-        if not self._get_bool_env("LANGFUSE_ENABLED", False):
-            print(f"[Langfuse] Langfuse not enabled, skipping (PID={os.getpid()})")
             return
 
         try:
@@ -169,9 +158,9 @@ class LangfusePlugin:
                 print(f"[Langfuse] Traces will be sent to: {os.getenv('LANGFUSE_HOST', 'https://cloud.langfuse.com')}")
                 print(f"[Langfuse] Project: {os.getenv('LANGFUSE_PROJECT_NAME', 'default')}")
                 self._initialized = True
+                print(f"[Langfuse] Setup successful (PID={os.getpid()})")
             else:
                 print(f"[Langfuse] Setup failed (PID={os.getpid()})")
-            print(f"[Langfuse] Initialization complete (PID={os.getpid()})")
         except Exception as exc:  # pylint: disable=broad-exception-caught
             print(f"[Langfuse] Initialization FAILED: {exc} (PID={os.getpid()})")
             self._logger.warning("Langfuse initialization failed: %s", exc)
@@ -184,29 +173,6 @@ class LangfusePlugin:
             True if initialized, False otherwise
         """
         return self._initialized
-
-    def set_environment_variables(self) -> None:
-        """Set Langfuse environment variables."""
-        # Langfuse configuration
-        os.environ["LANGFUSE_ENABLED"] = str(self.config.get("langfuse_enabled", "false")).lower()
-        os.environ["LANGFUSE_HOST"] = self.config.get("langfuse_host", "https://cloud.langfuse.com")
-        os.environ["LANGFUSE_PROJECT_NAME"] = str(self.config.get("langfuse_project_name", "default"))
-        os.environ["LANGFUSE_RELEASE"] = self.config.get("langfuse_release", "dev")
-        os.environ["LANGFUSE_DEBUG"] = str(self.config.get("langfuse_debug", "false")).lower()
-        os.environ["LANGFUSE_SAMPLE_RATE"] = str(self.config.get("langfuse_sample_rate", "1.0"))
-
-        # Only set keys if provided (don't overwrite existing values with empty strings)
-        if self.config.get("langfuse_secret_key"):
-            os.environ["LANGFUSE_SECRET_KEY"] = self.config.get("langfuse_secret_key", "")
-        if self.config.get("langfuse_public_key"):
-            os.environ["LANGFUSE_PUBLIC_KEY"] = self.config.get("langfuse_public_key", "")
-
-        print(f"LANGFUSE_ENABLED set to: {os.environ['LANGFUSE_ENABLED']}")
-        print(f"LANGFUSE_HOST set to: {os.environ['LANGFUSE_HOST']}")
-        print(f"LANGFUSE_PROJECT_NAME set to: {os.environ['LANGFUSE_PROJECT_NAME']}")
-        print(f"LANGFUSE_RELEASE set to: {os.environ['LANGFUSE_RELEASE']}")
-        print(f"LANGFUSE_DEBUG set to: {os.environ['LANGFUSE_DEBUG']}")
-        print(f"LANGFUSE_SAMPLE_RATE set to: {os.environ['LANGFUSE_SAMPLE_RATE']}\n")
 
     def flush(self) -> None:
         """Flush any pending traces to Langfuse."""
