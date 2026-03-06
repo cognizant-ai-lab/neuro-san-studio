@@ -42,6 +42,7 @@ class LangfusePlugin:
         self._initialized = False
         self._logger = logging.getLogger(__name__)
         self.config = config or {}
+        self._langfuse_client = None
         self._callback_handler = None
 
     @staticmethod
@@ -96,23 +97,29 @@ class LangfusePlugin:
             self._logger.warning("Langfuse keys not configured. Set LANGFUSE_SECRET_KEY and LANGFUSE_PUBLIC_KEY")
             return False
 
-        # Lazily load CallbackHandler
+        # Lazily load get_client and CallbackHandler
+        get_client_fn = ResolverUtil.create_type(
+            "langfuse.get_client",
+            raise_if_not_found=False,
+            install_if_missing="langfuse",
+        )
         callback_handler_class: Type[Any] = ResolverUtil.create_type(
             "langfuse.langchain.CallbackHandler",
             raise_if_not_found=False,
             install_if_missing="langfuse",
         )
 
-        if callback_handler_class is None:  # pragma: no cover
+        if get_client_fn or callback_handler_class is None:  # pragma: no cover
             self._logger.warning("Langfuse package not installed")
             return False
 
         try:
+            self._langfuse_client = get_client_fn()
             self._callback_handler = callback_handler_class()
-            print("[Langfuse] LangChain CallbackHandler initialized")
+            print("[Langfuse] LangChain initialized")
             return True
         except Exception as exc:  # pylint: disable=broad-exception-caught
-            self._logger.error("Failed to create Langfuse CallbackHandler: %s", exc)
+            self._logger.error("Failed to create Langfuse client or CallbackHandler: %s", exc)
             return False
 
     def initialize(self) -> None:
@@ -191,9 +198,7 @@ class LangfusePlugin:
         if not self._initialized:
             return
         try:
-            from langfuse import get_client
-
-            get_client().flush()
+            self._langfuse_client.flush()
             print("[Langfuse] Flushed pending traces")
         except Exception as exc:  # pylint: disable=broad-exception-caught
             self._logger.warning("Failed to flush Langfuse traces: %s", exc)
@@ -204,11 +209,10 @@ class LangfusePlugin:
             return
         print("[Langfuse] Shutting down...")
         try:
-            from langfuse import get_client
-
-            get_client().flush()
+            self._langfuse_client.flush()
             self._initialized = False
             self._callback_handler = None
+            self._langfuse_client = None
             print("[Langfuse] Shutdown complete")
         except Exception as exc:  # pylint: disable=broad-exception-caught
             self._logger.warning("Failed to shutdown Langfuse cleanly: %s", exc)
