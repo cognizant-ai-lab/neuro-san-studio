@@ -16,5 +16,5 @@ may be overridden by volume mounts in production environments.
 ## Volume Mount Example
 
 ```bash
-docker run -v /path/to/your/llm_config.hocon:/app/registries/deployment_config/llm_config.hocon <image>
+docker run -v /path/to/your/llm_config.hocon:/usr/local/neuro-san/myapp/registries/deployment_config/llm_config.hocon <image>
 ```
