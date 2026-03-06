@@ -30,7 +30,7 @@ class ValidateInstructions(CodedTool):
     to ensure that each non-tool agent has it.
     """
 
-    def invoke(self, args: dict[str, Any], sly_data: dict[str, Any]) -> str:
+    async def async_invoke(self, args: dict[str, Any], sly_data: dict[str, Any]) -> dict[str, Any] | str:
         """
         :param args: An argument dictionary whose keys are the parameters
                 to the coded tool and whose values are the values passed for them
@@ -77,7 +77,3 @@ class ValidateInstructions(CodedTool):
         success_msg = "No error found."
         logger.info(success_msg)
         return success_msg
-
-    async def async_invoke(self, args: dict[str, Any], sly_data: dict[str, Any]) -> dict[str, Any] | str:
-        """Run invoke asynchronously."""
-        return await asyncio.to_thread(self.invoke, args, sly_data)
