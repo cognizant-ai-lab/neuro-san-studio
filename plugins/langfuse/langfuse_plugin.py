@@ -15,9 +15,12 @@
 # END COPYRIGHT
 import logging
 import os
+from contextvars import ContextVar
 from typing import Any
 from typing import Optional
 from typing import Type
+
+from langchain_core.tracers.context import register_configure_hook
 
 # Use lazy loading of types to avoid dependency bloat for stuff most people don't need.
 from leaf_common.config.resolver_util import ResolverUtil
@@ -124,9 +127,6 @@ class LangfusePlugin:
             # neuro_san's RunContextRunnable), LangChain automatically includes
             # the Langfuse handler in the callbacks list. No explicit
             # config={"callbacks": [handler]} needed.
-            from contextvars import ContextVar
-            from langchain_core.tracers.context import register_configure_hook
-
             langfuse_ctx_var = ContextVar("langfuse_handler", default=None)
             langfuse_ctx_var.set(self._callback_handler)
             register_configure_hook(langfuse_ctx_var, inheritable=True)
