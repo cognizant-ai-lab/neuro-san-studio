@@ -103,7 +103,6 @@ class NeuroSanRunner:
         # Instantiate Phoenix plugin
         self.phoenix_plugin = PhoenixPlugin(self.args)
 
-
     def load_env_variables(self):
         """Load .env file from project root and set variables."""
         env_path = os.path.join(self.root_dir, ".env")
