@@ -71,7 +71,6 @@ class GetSubnetwork(CodedTool):
             manifest_file = self.DEFAULT_MANIFEST_FILE
 
         subnetworks: dict[str, str] | str = {}
-
         async with await SlyDataLock.get_lock(sly_data, "subnetworks_lock"):
             # Try getting from sly_data
             subnetworks = sly_data.get("subnetworks")
@@ -79,6 +78,7 @@ class GetSubnetwork(CodedTool):
                 # Exit early
                 return subnetworks
 
+            subnetworks = {}
             empty: dict[str, AgentNetwork] = {}
             networks: dict[str, AgentNetwork] = {}
             logger.info(">>>>>>>>>>>>>>>>>>>Getting Subnetwork Descriptions from Manifest>>>>>>>>>>>>>>>>>>>")
