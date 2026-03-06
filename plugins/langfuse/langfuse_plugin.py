@@ -109,14 +109,29 @@ class LangfusePlugin:
             install_if_missing="langfuse",
         )
 
-        if get_client_fn or callback_handler_class is None:  # pragma: no cover
+        if get_client_fn is None or callback_handler_class is None:  # pragma: no cover
             self._logger.warning("Langfuse package not installed")
             return False
 
         try:
             self._langfuse_client = get_client_fn()
             self._callback_handler = callback_handler_class()
-            print("[Langfuse] LangChain initialized")
+
+            # Use LangChain's register_configure_hook to register the Langfuse
+            # CallbackHandler globally with inheritable=True. This hooks into
+            # LangChain's internal callback configuration system — whenever any
+            # Runnable.ainvoke() or .invoke() is called (including inside
+            # neuro_san's RunContextRunnable), LangChain automatically includes
+            # the Langfuse handler in the callbacks list. No explicit
+            # config={"callbacks": [handler]} needed.
+            from contextvars import ContextVar
+            from langchain_core.tracers.context import register_configure_hook
+
+            langfuse_ctx_var = ContextVar("langfuse_handler", default=None)
+            langfuse_ctx_var.set(self._callback_handler)
+            register_configure_hook(langfuse_ctx_var, inheritable=True)
+
+            print("[Langfuse] LangChain CallbackHandler registered globally")
             return True
         except Exception as exc:  # pylint: disable=broad-exception-caught
             self._logger.error("Failed to create Langfuse client or CallbackHandler: %s", exc)
