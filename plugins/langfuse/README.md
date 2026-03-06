@@ -32,6 +32,9 @@ LANGFUSE_ENABLED=true
 LANGFUSE_USE_EXISTING=false
 LANGFUSE_SECRET_KEY=sk-lf-...
 LANGFUSE_PUBLIC_KEY=pk-lf-...
+# Optional: LANGFUSE_HOST defaults to https://cloud.langfuse.com
+# But if you're in the US you might want to use this one instead:
+LANGFUSE_HOST=https://us.cloud.langfuse.com
 ```
 
 ### Using Existing Langfuse Instance
