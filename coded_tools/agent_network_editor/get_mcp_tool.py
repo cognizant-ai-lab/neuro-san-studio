@@ -115,7 +115,7 @@ class GetMcpTool(CodedTool):
         async with await SlyDataLock.get_lock(sly_data, "tool_dict_lock"):
             if "tool_dict" not in sly_data:
                 # tool_dict is a dict with urls as keys and combined descriptions of tools as a values.
-                tool_dict: dict[str, list[BaseTool]] = {}
+                tool_dict: dict[str, str] = {}
                 mcp_servers: list[str] = await self.get_mcp_servers(sly_data)
                 for mcp_server in mcp_servers:
                     try:
