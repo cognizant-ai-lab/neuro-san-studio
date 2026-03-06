@@ -136,8 +136,8 @@ class LangfusePlugin:
         are automatically traced by Langfuse.
         """
         try:
-            import sys  # pylint: disable=import-outside-toplevel
             import importlib  # pylint: disable=import-outside-toplevel
+            import sys  # pylint: disable=import-outside-toplevel
 
             # Import langfuse.openai module (not a class, so we use importlib)
             langfuse_openai_module = importlib.import_module("langfuse.openai")
