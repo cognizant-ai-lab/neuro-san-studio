@@ -100,7 +100,8 @@ class GetSubnetwork(CodedTool):
                 for name, network in networks.items():
                     front_man: str = network.find_front_man()
                     desc: str = network.get_agent_tool_spec(front_man).get("function", {}).get("description")
-                    subnetworks["/" + name] = desc
+                    if desc is not None and len(desc) > 0:
+                        subnetworks["/" + name] = desc
 
             except FileNotFoundError as not_found_err:
                 subnetworks = f"Error: Failed to load agent networks info from {manifest_file}. {str(not_found_err)}"
