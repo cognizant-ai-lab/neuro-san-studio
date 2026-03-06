@@ -75,8 +75,7 @@ class GetMcpTool(CodedTool):
                 )
 
             mcp_servers = list(mcp_servers_from_file.keys())
-            if sly_data is not None:
-                sly_data["mcp_servers"] = mcp_servers
+            sly_data["mcp_servers"] = mcp_servers
 
         return mcp_servers
 
