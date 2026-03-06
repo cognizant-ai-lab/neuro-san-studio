@@ -27,7 +27,7 @@ class SlyDataLock:
     @staticmethod
     async def get_lock(sly_data: dict[str, Any], lock_name: str = "lock") -> Lock:
         """
-        Get a lock stored on the sly_data for atmoic modification of certain fields.
+        Get a lock stored on the sly_data for atomic modification of certain fields.
         If no lock is on the sly_data, then create one.
 
         :param sly_data: The sly_data to get a lock on.
