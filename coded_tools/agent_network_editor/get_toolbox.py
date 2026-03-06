@@ -23,7 +23,6 @@ from neuro_san.internals.run_context.langchain.toolbox.toolbox_info_restorer imp
 
 from coded_tools.agent_network_editor.sly_data_lock import SlyDataLock
 
-
 DEFAULT_TOOLBOX_INFO_FILE = os.path.join("toolbox", "agent_network_designer_toolbox_info.hocon")
 
 
