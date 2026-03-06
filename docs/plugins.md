@@ -12,6 +12,7 @@ Note that plugins are never required for Neuro SAN to function.
     - [Log Bridge](#log-bridge)
   - [Observability](#observability)
     - [Arize Phoenix](#arize-phoenix)
+    - [Langfuse](#langfuse)
 
 <!-- TOC -->
 
@@ -46,3 +47,9 @@ allowing developers to monitor and analyze their networks in real-time.
 
 The [Arize Phoenix plugin](../plugins/phoenix/README.md) integrates [Arize Phoenix](https://phoenix.arize.com/) for AI
 observability in Neuro SAN Studio, providing comprehensive monitoring and analysis of LLM interactions.
+
+### Langfuse
+
+The [Langfuse plugin](../plugins/langfuse/README.md) integrates [Langfuse](https://langfuse.com/) for AI
+observability in Neuro SAN Studio, providing trace collection, cost tracking, and performance metrics
+for LLM interactions. It supports both cloud and self-hosted Langfuse instances.

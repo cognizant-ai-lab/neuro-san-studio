@@ -32,6 +32,9 @@ LANGFUSE_ENABLED=true
 LANGFUSE_USE_EXISTING=false
 LANGFUSE_SECRET_KEY=sk-lf-...
 LANGFUSE_PUBLIC_KEY=pk-lf-...
+# Optional: LANGFUSE_HOST defaults to https://cloud.langfuse.com
+# But if you're in the US you might want to use this one instead:
+LANGFUSE_HOST=https://us.cloud.langfuse.com
 ```
 
 ### Using Existing Langfuse Instance
@@ -74,6 +77,10 @@ All configuration is done via environment variables in your `.env` file.
 | `LANGFUSE_DEBUG` | `false` | Enable debug logging |
 | `LANGFUSE_SAMPLE_RATE` | `1.0` | Trace sampling rate (0.0-1.0) |
 
+
+## Limitations
+
+> **Note:** The current implementation only instruments OpenAI LLM calls. Other providers (e.g., Anthropic, Gemini) are not yet instrumented and their calls will not appear in Langfuse traces.
 
 ## Troubleshooting
 
