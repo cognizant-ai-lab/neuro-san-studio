@@ -82,7 +82,6 @@ All configuration is done via environment variables in your `.env` file.
 
 ### Missing traces
 
-- Call `plugin.flush()` before application exit
 - Check `LANGFUSE_SAMPLE_RATE` (should be 1.0 for all traces)
 - Verify instrumentation is working with debug mode
 

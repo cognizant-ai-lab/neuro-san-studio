@@ -168,16 +168,6 @@ class LangfusePlugin:
         """
         return self._initialized
 
-    def flush(self) -> None:
-        """Flush any pending traces to Langfuse."""
-        if not self._initialized:
-            return
-        try:
-            self._langfuse_client.flush()
-            print("[Langfuse] Flushed pending traces")
-        except Exception as exc:  # pylint: disable=broad-exception-caught
-            self._logger.warning("Failed to flush Langfuse traces: %s", exc)
-
     def shutdown(self) -> None:
         """Shutdown Langfuse client and flush remaining traces."""
         if not self._initialized:
