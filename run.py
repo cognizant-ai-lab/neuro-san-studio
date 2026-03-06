@@ -407,7 +407,9 @@ class NeuroSanRunner:
             if self.is_windows:
                 self.server_process.terminate()
             else:
-                os.killpg(os.getpgid(self.server_process.pid), signal.SIGKILL)
+                os.killpg(os.getpgid(self.server_process.pid), signal.SIGTERM)
+            # Wait for the server to finish cleanup (e.g. flushing Langfuse traces)
+            self.server_process.wait(timeout=10)
 
         if self.flask_webclient_process:
             print(f"Stopping WEB CLIENT (PID {self.flask_webclient_process.pid})...")
