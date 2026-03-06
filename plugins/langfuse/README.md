@@ -29,24 +29,11 @@ pip install -r plugins/langfuse/requirements.txt
 
 ```bash
 LANGFUSE_ENABLED=true
-LANGFUSE_USE_EXISTING=false
 LANGFUSE_SECRET_KEY=sk-lf-...
 LANGFUSE_PUBLIC_KEY=pk-lf-...
 # Optional: LANGFUSE_HOST defaults to https://cloud.langfuse.com
 # But if you're in the US you might want to use this one instead:
 LANGFUSE_HOST=https://us.cloud.langfuse.com
-```
-
-### Using Existing Langfuse Instance
-
-If you already have Langfuse running (cloud or self-hosted):
-
-```bash
-LANGFUSE_ENABLED=true
-LANGFUSE_USE_EXISTING=true
-LANGFUSE_SECRET_KEY=sk-lf-...
-LANGFUSE_PUBLIC_KEY=pk-lf-...
-LANGFUSE_HOST=https://your-langfuse-instance.com
 ```
 
 ## Configuration
@@ -58,7 +45,6 @@ All configuration is done via environment variables in your `.env` file.
 | Variable | Default | Description |
 |----------|---------|-------------|
 | `LANGFUSE_ENABLED` | `false` | Enable/disable Langfuse observability |
-| `LANGFUSE_USE_EXISTING` | `false` | Use existing Langfuse instance (skips local setup) |
 
 ### API Keys
 
@@ -104,10 +90,3 @@ All configuration is done via environment variables in your `.env` file.
 - Check `LANGFUSE_SAMPLE_RATE` (should be 1.0 for all traces)
 - Verify instrumentation is working with debug mode
 
-### Using with existing instance
-
-When `LANGFUSE_USE_EXISTING=true`:
-- Plugin skips local client initialization
-- Only validates that API keys are set
-- Assumes Langfuse SDK is configured elsewhere
-- Useful for custom setups or framework integration

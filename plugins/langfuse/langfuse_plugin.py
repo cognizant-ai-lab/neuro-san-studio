@@ -29,7 +29,8 @@ class LangfusePlugin:
 
     Handles:
     - Langfuse client configuration
-    - SDK instrumentation (OpenAI, LangChain, Anthropic, etc.)
+    - OpenAI SDK instrumentation via method patching
+    - LangChain callback handler integration
     - Process-local initialization state tracking
     - Environment variable management
     """
@@ -55,7 +56,6 @@ class LangfusePlugin:
         return {
             # Langfuse defaults
             "langfuse_enabled": os.getenv("LANGFUSE_ENABLED", "false"),
-            "langfuse_use_existing": os.getenv("LANGFUSE_USE_EXISTING", "false"),
             "langfuse_secret_key": os.getenv("LANGFUSE_SECRET_KEY", ""),
             "langfuse_public_key": os.getenv("LANGFUSE_PUBLIC_KEY", ""),
             "langfuse_host": os.getenv("LANGFUSE_HOST", "https://cloud.langfuse.com"),
@@ -122,52 +122,32 @@ class LangfusePlugin:
             )
             self._logger.info("Langfuse client configured successfully")
 
-            # Patch OpenAI module globally to use Langfuse's instrumented version
-            self._patch_openai_module()
-
         except Exception as exc:  # pylint: disable=broad-exception-caught
             self._logger.error("Failed to configure Langfuse client: %s", exc)
 
-    @staticmethod
-    def _patch_openai_module() -> None:
-        """Patch the openai module with Langfuse's instrumented version.
-
-        This replaces the global openai module so that all OpenAI calls
-        are automatically traced by Langfuse.
-        """
-        try:
-            import importlib  # pylint: disable=import-outside-toplevel
-            import sys  # pylint: disable=import-outside-toplevel
-
-            # Import langfuse.openai module (not a class, so we use importlib)
-            langfuse_openai_module = importlib.import_module("langfuse.openai")
-
-            # The module contains an 'openai' attribute which is the patched openai module
-            if hasattr(langfuse_openai_module, "openai"):
-                # Replace the openai module with Langfuse's version
-                sys.modules["openai"] = langfuse_openai_module.openai
-                print("[Langfuse] OpenAI module globally patched for automatic tracing")
-            else:
-                print("[Langfuse] Warning: langfuse.openai module structure unexpected")
-        except Exception as exc:  # pylint: disable=broad-exception-caught
-            print(f"[Langfuse] Failed to patch OpenAI module: {exc}")
-
-    @staticmethod
-    def _instrument_sdks() -> None:
+    def _instrument_sdks(self) -> None:
         """Instrument various AI/ML SDKs for tracing.
 
-        Note: Langfuse uses a different instrumentation approach than Phoenix.
-        - OpenAI: Patched globally via _patch_openai_module() during client configuration
-        - LangChain: Use get_callback_handler() to get callbacks for LangChain chains
-        - Custom functions: Use @observe decorator from langfuse.decorators
-
-        The OpenAI module patching is done in _patch_openai_module() which is called
-        from _configure_langfuse_client() to ensure it happens after the client is set up.
+        Instruments:
+        - OpenAI: Uses langfuse.openai.register_tracing() to patch OpenAI client methods in-place
+        - LangChain: Use get_callback_handler() for callback integration
         """
+        # Instrument OpenAI via Langfuse's built-in method patching
+        try:
+            register_tracing_fn = ResolverUtil.create_type(
+                "langfuse.openai.register_tracing",
+                raise_if_not_found=False,
+            )
+            if register_tracing_fn is not None:
+                register_tracing_fn()
+                print("[Langfuse] OpenAI methods instrumented for tracing")
+            else:
+                self._logger.warning("langfuse.openai.register_tracing not available")
+        except Exception as exc:  # pylint: disable=broad-exception-caught
+            self._logger.warning("Failed to instrument OpenAI: %s", exc)
+
         print("[Langfuse] SDK instrumentation ready")
-        print("[Langfuse] - OpenAI calls will be automatically traced")
         print("[Langfuse] - Use get_callback_handler() for LangChain integration")
-        print("[Langfuse] - Use @observe decorator for custom function tracing")
 
     def _try_langfuse_setup(self) -> bool:
         """Try setting up Langfuse with automatic instrumentation.
@@ -192,7 +172,6 @@ class LangfusePlugin:
         Checks:
         - Whether already initialized (prevents double-init)
         - LANGFUSE_ENABLED environment variable
-        - LANGFUSE_USE_EXISTING flag (skips setup if using existing instance)
 
         Attempts:
         1. Langfuse client configuration
@@ -203,7 +182,6 @@ class LangfusePlugin:
         print(f"[Langfuse] initialize called, PID={os.getpid()}")
         print(f"[Langfuse] _initialized={self._initialized}")
         print(f"[Langfuse] LANGFUSE_ENABLED={os.getenv('LANGFUSE_ENABLED')}")
-        print(f"[Langfuse] LANGFUSE_USE_EXISTING={os.getenv('LANGFUSE_USE_EXISTING')}")
 
         if self._initialized:
             print(f"[Langfuse] Already initialized in this process, skipping (PID={os.getpid()})")
@@ -211,13 +189,6 @@ class LangfusePlugin:
 
         if not self._get_bool_env("LANGFUSE_ENABLED", False):
             print(f"[Langfuse] Langfuse not enabled, skipping (PID={os.getpid()})")
-            return
-
-        # If using existing Langfuse instance, just verify keys are set
-        if self._get_bool_env("LANGFUSE_USE_EXISTING", False):
-            print(f"[Langfuse] Using existing Langfuse instance (PID={os.getpid()})")
-            print(f"[Langfuse] Keys configured, skipping initialization (PID={os.getpid()})")
-            self._initialized = True
             return
 
         try:
@@ -248,7 +219,6 @@ class LangfusePlugin:
         """Set Langfuse environment variables."""
         # Langfuse configuration
         os.environ["LANGFUSE_ENABLED"] = str(self.config.get("langfuse_enabled", "false")).lower()
-        os.environ["LANGFUSE_USE_EXISTING"] = str(self.config.get("langfuse_use_existing", "false")).lower()
         os.environ["LANGFUSE_HOST"] = self.config.get("langfuse_host", "https://cloud.langfuse.com")
         os.environ["LANGFUSE_PROJECT_NAME"] = str(self.config.get("langfuse_project_name", "default"))
         os.environ["LANGFUSE_RELEASE"] = self.config.get("langfuse_release", "dev")
@@ -262,7 +232,6 @@ class LangfusePlugin:
             os.environ["LANGFUSE_PUBLIC_KEY"] = self.config.get("langfuse_public_key", "")
 
         print(f"LANGFUSE_ENABLED set to: {os.environ['LANGFUSE_ENABLED']}")
-        print(f"LANGFUSE_USE_EXISTING set to: {os.environ['LANGFUSE_USE_EXISTING']}")
         print(f"LANGFUSE_HOST set to: {os.environ['LANGFUSE_HOST']}")
         print(f"LANGFUSE_PROJECT_NAME set to: {os.environ['LANGFUSE_PROJECT_NAME']}")
         print(f"LANGFUSE_RELEASE set to: {os.environ['LANGFUSE_RELEASE']}")
