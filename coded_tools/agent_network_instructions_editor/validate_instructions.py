@@ -14,7 +14,6 @@
 #
 # END COPYRIGHT
 
-import asyncio
 import logging
 from typing import Any
 
