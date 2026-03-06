@@ -66,7 +66,6 @@ class GetToolbox(CodedTool):
 
         tools: dict[str, Any] | str = None
         async with SlyDataLock.get_lock(sly_data, "toolbox_info_lock"):
-
             # Try getting from sly_data
             tools = sly_data.get("toolbox_info")
             if tools is not None:
