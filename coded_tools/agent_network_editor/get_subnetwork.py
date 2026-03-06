@@ -103,7 +103,7 @@ class GetSubnetwork(CodedTool):
                     subnetworks["/" + name] = desc
 
             except FileNotFoundError as not_found_err:
-                subnetworks = f"Error: Failed to load agent networkds info from {manifest_file}. {str(not_found_err)}"
+                subnetworks = f"Error: Failed to load agent networks info from {manifest_file}. {str(not_found_err)}"
                 logger.warning(subnetworks)
 
             # Cache whatever we found, including an error - no need to do this more than once.
