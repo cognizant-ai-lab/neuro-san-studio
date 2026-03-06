@@ -88,7 +88,7 @@ create a network for UNHCR back-office
 Here is the full agent network definition in HOCON format for the UNHCR back-office:
 
 {
-    include "config/llm_config.hocon",
+    include "registries/deployment_config/llm_config.hocon",
 
     "commondefs": {
         "replacement_strings": {

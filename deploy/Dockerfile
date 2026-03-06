@@ -89,6 +89,9 @@ COPY --from=builder /install /usr/local
 #       The coded_tools directory where agent code lives is optional
 #       [s] allows for registries/coded_tools from within client repo or neuro-san repo
 COPY ./registries ${APP_SOURCE}/registries
+# To override the default LLM configuration at runtime, mount your custom
+# llm_config.hocon using a Docker volume, e.g.:
+#   docker run -v /path/to/your/llm_config.hocon:${APP_SOURCE}/registries/deployment_config/llm_config.hocon ...
 COPY ./coded_tool[s] ${APP_SOURCE}/coded_tools
 COPY ./deploy/entrypoint.sh ${APP_SOURCE}/deploy/entrypoint.sh
 COPY ./deploy/logging.hocon ${APP_SOURCE}/deploy/logging.hocon
