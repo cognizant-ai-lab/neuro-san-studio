@@ -29,9 +29,9 @@ from typing import Tuple
 
 from dotenv import load_dotenv
 from plugins.env_validator.env_validator import EnvValidator
+from plugins.langfuse.langfuse_plugin import LangfusePlugin
 from plugins.log_bridge.process_log_bridge import ProcessLogBridge
 from plugins.phoenix.phoenix_plugin import PhoenixPlugin
-from plugins.langfuse.langfuse_plugin import LangfusePlugin
 
 
 class NeuroSanRunner:
