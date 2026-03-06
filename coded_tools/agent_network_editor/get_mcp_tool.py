@@ -113,7 +113,7 @@ class GetMcpTool(CodedTool):
         # Get tool list from MCP servers
         self.logger.info(">>>>>>>>>>>>>>>>>>>Getting Tool Definition from MCP Servers>>>>>>>>>>>>>>>>>>>")
 
-        async with SlyDataLock.get_lock(sly_data, "tool_dict_lock"):
+        async with await SlyDataLock.get_lock(sly_data, "tool_dict_lock"):
             if "tool_dict" not in sly_data:
                 # tool_dict is a dict with urls as keys and combined descriptions of tools as a values.
                 tool_dict: dict[str, list[BaseTool]] = {}
