@@ -28,6 +28,8 @@ from typing import Dict
 from typing import Tuple
 
 from dotenv import load_dotenv
+from plugins.env_validator.env_validator import EnvValidator
+from plugins.langfuse.langfuse_plugin import LangfusePlugin
 from plugins.log_bridge.process_log_bridge import ProcessLogBridge
 from plugins.phoenix.phoenix_plugin import PhoenixPlugin
 
@@ -82,6 +84,9 @@ class NeuroSanRunner:
         # Add Phoenix configuration defaults
         self.args.update(PhoenixPlugin.get_default_config())
 
+        # Add Langfuse configuration defaults
+        self.args.update(LangfusePlugin.get_default_config())
+
         # Ensure logs directory exists
         os.makedirs(self.logs_dir, exist_ok=True)
         os.makedirs(self.thinking_dir, exist_ok=True)
@@ -101,6 +106,9 @@ class NeuroSanRunner:
 
         # Initialize Phoenix manager
         self.phoenix_plugin = PhoenixPlugin(self.args)
+
+        # Initialize Langfuse manager
+        self.langfuse_plugin = LangfusePlugin(self.args)
 
     def load_env_variables(self):
         """Load .env file from project root and set variables."""
@@ -155,6 +163,18 @@ class NeuroSanRunner:
         parser.add_argument(
             "--use-flask-web-client", action="store_true", help="Use the flask based neuro-san-web-client"
         )
+        parser.add_argument(
+            "--validate-keys",
+            type=int,
+            nargs="?",
+            const=3,
+            default=None,
+            metavar="{1,2,3}",
+            help="Validate API keys up to the specified tier: "
+            "1=placeholder detection, 2=format validation, "
+            "3=live API calls (default when flag is passed without a value). "
+            "Omit to skip validation entirely.",
+        )
 
         args, _ = parser.parse_known_args()
         explicitly_passed_args = {arg for arg in sys.argv[1:] if arg.startswith("--")}
@@ -197,6 +217,9 @@ class NeuroSanRunner:
         # Phoenix / OpenTelemetry envs - delegate to PhoenixPlugin
         self.phoenix_plugin.set_environment_variables()
 
+        # Langfuse envs - delegate to LangfusePlugin
+        self.langfuse_plugin.set_environment_variables()
+
         # Client-only env variables
         if not self.args["server_only"]:
             os.environ["THINKING_FILE"] = self.args["thinking_file"]
@@ -231,6 +254,30 @@ class NeuroSanRunner:
             print(f"NEURO_SAN_SERVER_HTTP_PORT set to: {os.environ['NEURO_SAN_SERVER_HTTP_PORT']}\n")
 
         print("\n" + "=" * 50 + "\n")
+
+    def validate_keys(self):
+        """Validate LLM API keys when --validate-keys is specified."""
+        tier = self.args.get("validate_keys")
+        if not tier:
+            return
+
+        print(f"Validating LLM API keys (tier {tier})...")
+
+        if tier >= 3:
+            print("Live validation enabled - making API calls to verify keys...")
+
+        validator = EnvValidator()
+        results = validator.validate_all(tier=tier)
+        validator.print_results(results)
+
+        # Warn but don't block startup for missing/placeholder keys
+        if validator.has_warnings(results):
+            print("Note: Some API keys are not configured. Agents using those providers will fail.")
+            print("      Configure them in your .env file to enable all features.\n")
+
+        # For actual errors (invalid format, invalid key), warn more strongly
+        if validator.has_errors(results):
+            print("Error: Some API keys have validation errors. Check the results above.\n")
 
     @staticmethod
     def generate_html_files():
@@ -305,6 +352,10 @@ class NeuroSanRunner:
     def start_phoenix(self):
         """Start Phoenix server (UI + OTLP HTTP collector) if enabled."""
         self.phoenix_plugin.start_phoenix_server()
+
+    def start_langfuse(self):
+        """Initialize Langfuse client if enabled."""
+        self.langfuse_plugin.initialize()
 
     def start_neuro_san(self):
         """Start the Neuro SAN server."""
@@ -387,6 +438,9 @@ class NeuroSanRunner:
 
         # Stop Phoenix using the initializer
         self.phoenix_plugin.stop_phoenix_server()
+
+        # Shutdown Langfuse
+        self.langfuse_plugin.shutdown()
 
         sys.exit(0)
 
@@ -503,6 +557,8 @@ class NeuroSanRunner:
         # Start services only if ports are free
         # 1) Phoenix first so other services point OTLP to it
         self.start_phoenix()
+        # 2) Initialize Langfuse for observability
+        self.start_langfuse()
         if not server_only:
             if use_flask:
                 if not no_html:
@@ -524,6 +580,9 @@ class NeuroSanRunner:
 
         # Set environment variables
         self.set_environment_variables()
+
+        # Validate LLM API keys if --validate-keys was specified
+        self.validate_keys()
 
         # Ensure logs directory exists
         os.makedirs("logs", exist_ok=True)
