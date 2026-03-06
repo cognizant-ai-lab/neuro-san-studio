@@ -17,7 +17,6 @@ import logging
 import os
 from contextvars import ContextVar
 from typing import Any
-from typing import Optional
 from typing import Type
 
 from langchain_core.tracers.context import register_configure_hook
@@ -36,15 +35,10 @@ class LangfusePlugin:
     - Environment variable management
     """
 
-    def __init__(self, config: Optional[dict] = None) -> None:
-        """Initialize the LangfusePlugin with the optional configuration.
-
-        Args:
-            config: Optional configuration dictionary with langfuse settings
-        """
+    def __init__(self) -> None:
+        """Initialize the LangfusePlugin."""
         self._initialized = False
         self._logger = logging.getLogger(__name__)
-        self.config = config or {}
         self._langfuse_client = None
         self._callback_handler = None
 
