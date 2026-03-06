@@ -28,9 +28,7 @@ class LangfusePlugin:
     Manages Langfuse initialization for tracing and observability.
 
     Handles:
-    - Langfuse client configuration
-    - OpenAI SDK instrumentation via method patching
-    - LangChain callback handler integration
+    - LangChain callback handler integration (traces all LLM providers)
     - Process-local initialization state tracking
     - Environment variable management
     """
@@ -44,7 +42,7 @@ class LangfusePlugin:
         self._initialized = False
         self._logger = logging.getLogger(__name__)
         self.config = config or {}
-        self.langfuse_client = None
+        self._callback_handler = None
 
     @staticmethod
     def get_default_config() -> dict:
@@ -81,89 +79,40 @@ class LangfusePlugin:
             return default
         return val.strip().lower() in {"1", "true", "yes", "on"}
 
-    def _configure_langfuse_client(self) -> None:
-        """Configure Langfuse client with API keys and settings.
+    def _try_langfuse_setup(self) -> bool:
+        """Try setting up Langfuse via LangChain CallbackHandler.
 
-        Sets up:
-        - API authentication (public/secret keys)
-        - Host endpoint
-        - Project/release metadata
-        - Debug settings
+        The CallbackHandler reads LANGFUSE_SECRET_KEY, LANGFUSE_PUBLIC_KEY,
+        and LANGFUSE_HOST from environment variables automatically and
+        traces all LLM providers through LangChain's callback system.
+
+        Returns:
+            True if Langfuse setup was successful, False otherwise
         """
-        # Lazily load Langfuse class
-        langfuse_class: Type[Any] = ResolverUtil.create_type(
-            "langfuse.Langfuse",
-            raise_if_not_found=False,
-            install_if_missing="langfuse",
-        )
-
-        if langfuse_class is None:  # pragma: no cover
-            self._logger.warning("Langfuse package not installed")
-            return
-
         secret_key = os.getenv("LANGFUSE_SECRET_KEY")
         public_key = os.getenv("LANGFUSE_PUBLIC_KEY")
 
         if not secret_key or not public_key:
             self._logger.warning("Langfuse keys not configured. Set LANGFUSE_SECRET_KEY and LANGFUSE_PUBLIC_KEY")
-            return
+            return False
 
-        host = os.getenv("LANGFUSE_HOST", "https://cloud.langfuse.com")
-        release = os.getenv("LANGFUSE_RELEASE", "dev")
-        debug = self._get_bool_env("LANGFUSE_DEBUG", False)
+        # Lazily load CallbackHandler
+        callback_handler_class: Type[Any] = ResolverUtil.create_type(
+            "langfuse.langchain.CallbackHandler",
+            raise_if_not_found=False,
+            install_if_missing="langfuse",
+        )
+
+        if callback_handler_class is None:  # pragma: no cover
+            self._logger.warning("Langfuse package not installed")
+            return False
 
         try:
-            self.langfuse_client = langfuse_class(
-                secret_key=secret_key,
-                public_key=public_key,
-                host=host,
-                release=release,
-                debug=debug,
-            )
-            self._logger.info("Langfuse client configured successfully")
-
-        except Exception as exc:  # pylint: disable=broad-exception-caught
-            self._logger.error("Failed to configure Langfuse client: %s", exc)
-
-    def _instrument_sdks(self) -> None:
-        """Instrument various AI/ML SDKs for tracing.
-
-        Instruments:
-        - OpenAI: Uses langfuse.openai.register_tracing() to patch OpenAI client methods in-place
-        - LangChain: Use get_callback_handler() for callback integration
-        """
-        # Instrument OpenAI via Langfuse's built-in method patching
-        try:
-            register_tracing_fn = ResolverUtil.create_type(
-                "langfuse.openai.register_tracing",
-                raise_if_not_found=False,
-            )
-            if register_tracing_fn is not None:
-                register_tracing_fn()
-                print("[Langfuse] OpenAI methods instrumented for tracing")
-            else:
-                self._logger.warning("langfuse.openai.register_tracing not available")
-        except Exception as exc:  # pylint: disable=broad-exception-caught
-            self._logger.warning("Failed to instrument OpenAI: %s", exc)
-
-        print("[Langfuse] SDK instrumentation ready")
-        print("[Langfuse] - Use get_callback_handler() for LangChain integration")
-
-    def _try_langfuse_setup(self) -> bool:
-        """Try setting up Langfuse with automatic instrumentation.
-
-        Returns:
-            True if Langfuse setup was successful, False otherwise
-        """
-        try:
-            self._configure_langfuse_client()
-            if self.langfuse_client is None:
-                return False
-
-            self._instrument_sdks()
+            self._callback_handler = callback_handler_class()
+            print("[Langfuse] LangChain CallbackHandler initialized")
             return True
         except Exception as exc:  # pylint: disable=broad-exception-caught
-            self._logger.info("Langfuse setup failed: %s", exc)
+            self._logger.error("Failed to create Langfuse CallbackHandler: %s", exc)
             return False
 
     def initialize(self) -> None:
@@ -173,9 +122,8 @@ class LangfusePlugin:
         - Whether already initialized (prevents double-init)
         - LANGFUSE_ENABLED environment variable
 
-        Attempts:
-        1. Langfuse client configuration
-        2. SDK instrumentation setup
+        Attempts LangChain CallbackHandler setup which automatically
+        traces all LLM providers.
 
         This method is idempotent and safe to call multiple times.
         """
@@ -238,46 +186,29 @@ class LangfusePlugin:
         print(f"LANGFUSE_DEBUG set to: {os.environ['LANGFUSE_DEBUG']}")
         print(f"LANGFUSE_SAMPLE_RATE set to: {os.environ['LANGFUSE_SAMPLE_RATE']}\n")
 
-    def get_callback_handler(self):
-        """Get Langfuse callback handler for LangChain integration.
-
-        Returns:
-            Langfuse CallbackHandler instance if available, None otherwise
-        """
-        if not self._initialized or self.langfuse_client is None:
-            return None
-
-        try:
-            # Lazily load CallbackHandler
-            callback_handler_class: Type[Any] = ResolverUtil.create_type(
-                "langfuse.callback.CallbackHandler",
-                raise_if_not_found=False,
-                install_if_missing="langfuse",
-            )
-
-            if callback_handler_class is not None:
-                return callback_handler_class()
-            return None
-        except Exception as exc:  # pylint: disable=broad-exception-caught
-            self._logger.warning("Failed to create Langfuse callback handler: %s", exc)
-            return None
-
     def flush(self) -> None:
         """Flush any pending traces to Langfuse."""
-        if self.langfuse_client is not None:
-            try:
-                self.langfuse_client.flush()
-                print("[Langfuse] Flushed pending traces")
-            except Exception as exc:  # pylint: disable=broad-exception-caught
-                self._logger.warning("Failed to flush Langfuse traces: %s", exc)
+        if not self._initialized:
+            return
+        try:
+            from langfuse import get_client
+
+            get_client().flush()
+            print("[Langfuse] Flushed pending traces")
+        except Exception as exc:  # pylint: disable=broad-exception-caught
+            self._logger.warning("Failed to flush Langfuse traces: %s", exc)
 
     def shutdown(self) -> None:
         """Shutdown Langfuse client and flush remaining traces."""
-        if self.langfuse_client is not None:
-            print("[Langfuse] Shutting down...")
-            try:
-                self.langfuse_client.flush()
-                self._initialized = False
-                print("[Langfuse] Shutdown complete")
-            except Exception as exc:  # pylint: disable=broad-exception-caught
-                self._logger.warning("Failed to shutdown Langfuse cleanly: %s", exc)
+        if not self._initialized:
+            return
+        print("[Langfuse] Shutting down...")
+        try:
+            from langfuse import get_client
+
+            get_client().flush()
+            self._initialized = False
+            self._callback_handler = None
+            print("[Langfuse] Shutdown complete")
+        except Exception as exc:  # pylint: disable=broad-exception-caught
+            self._logger.warning("Failed to shutdown Langfuse cleanly: %s", exc)
