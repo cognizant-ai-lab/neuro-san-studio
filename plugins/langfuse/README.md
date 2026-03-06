@@ -78,6 +78,10 @@ All configuration is done via environment variables in your `.env` file.
 | `LANGFUSE_SAMPLE_RATE` | `1.0` | Trace sampling rate (0.0-1.0) |
 
 
+## Limitations
+
+> **Note:** The current implementation only instruments OpenAI LLM calls. Other providers (e.g., Anthropic, Gemini) are not yet instrumented and their calls will not appear in Langfuse traces.
+
 ## Troubleshooting
 
 ### No traces appearing
