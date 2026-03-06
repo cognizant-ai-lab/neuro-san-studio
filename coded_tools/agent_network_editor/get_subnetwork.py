@@ -72,7 +72,7 @@ class GetSubnetwork(CodedTool):
 
         subnetworks: dict[str, str] | str = {}
 
-        async with SlyDataLock.get_lock(sly_data, "subnetworks_lock"):
+        async with await SlyDataLock.get_lock(sly_data, "subnetworks_lock"):
             # Try getting from sly_data
             subnetworks = sly_data.get("subnetworks")
             if subnetworks is not None:

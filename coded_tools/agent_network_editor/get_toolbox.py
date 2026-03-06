@@ -64,7 +64,7 @@ class GetToolbox(CodedTool):
         toolbox_info_file: str = os.getenv("AGENT_NETWORK_DESIGNER_TOOLBOX_INFO_FILE", DEFAULT_TOOLBOX_INFO_FILE)
 
         tools: dict[str, Any] | str = None
-        async with SlyDataLock.get_lock(sly_data, "toolbox_info_lock"):
+        async with await SlyDataLock.get_lock(sly_data, "toolbox_info_lock"):
             # Try getting from sly_data
             tools = sly_data.get("toolbox_info")
             if tools is not None:

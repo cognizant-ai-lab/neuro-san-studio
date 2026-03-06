@@ -51,7 +51,7 @@ class GetMcpTool(CodedTool):
         """
         mcp_servers: list[str] = None
 
-        async with SlyDataLock.get_lock(sly_data, "mcp_servers_lock"):
+        async with await SlyDataLock.get_lock(sly_data, "mcp_servers_lock"):
             # Try getting from sly_data
             mcp_servers = sly_data.get("mcp_servers")
             if mcp_servers is not None:
