@@ -4,6 +4,8 @@
 
 Since Neuro SAN uses LangChain internally, LangSmith tracing works out of the box with no plugin required — just set environment variables.
 
+For the official setup guide, see the [LangSmith Observability Quickstart](https://docs.langchain.com/langsmith/observability-quickstart).
+
 ## Quick Start
 
 1. [Create an account and get your API key](https://docs.langchain.com/langsmith/create-account-api-key)
@@ -11,10 +13,10 @@ Since Neuro SAN uses LangChain internally, LangSmith tracing works out of the bo
 3. Configure your `.env` file:
 
 ```bash
-LANGCHAIN_TRACING_V2=true
-LANGCHAIN_API_KEY=lsv2_pt_...
-# Optional: defaults to "default"
-LANGCHAIN_PROJECT=my-project
+LANGSMITH_TRACING=true
+LANGSMITH_API_KEY=lsv2_pt_...
+# Optional: defaults to the default tracing project
+LANGSMITH_PROJECT=my-project
 ```
 
 That's it. All LangChain `Runnable.invoke()` / `.ainvoke()` calls (including those inside Neuro SAN's `RunContextRunnable`) are automatically traced.
@@ -27,19 +29,20 @@ All configuration is done via environment variables in your `.env` file.
 
 | Variable | Description |
 |----------|-------------|
-| `LANGCHAIN_TRACING_V2` | Set to `true` to enable tracing |
-| `LANGCHAIN_API_KEY` | API key from LangSmith dashboard |
+| `LANGSMITH_TRACING` | Set to `true` to enable tracing |
+| `LANGSMITH_API_KEY` | API key from LangSmith dashboard |
 
 ### Optional Settings
 
 | Variable | Default | Description |
 |----------|---------|-------------|
-| `LANGCHAIN_PROJECT` | `default` | Project name for organizing traces |
-| `LANGCHAIN_ENDPOINT` | `https://api.smith.langchain.com` | LangSmith API endpoint |
+| `LANGSMITH_PROJECT` | default tracing project | Project name for organizing traces |
+| `LANGSMITH_ENDPOINT` | `https://api.smith.langchain.com` | LangSmith API endpoint |
+| `LANGSMITH_WORKSPACE_ID` | | Workspace ID (required only if your API key is linked to multiple workspaces) |
 
 ## How It Works
 
-LangSmith tracing is built into LangChain's callback system. When `LANGCHAIN_TRACING_V2=true` is set, LangChain automatically adds a `LangChainTracer` callback to every invocation. This captures all LLM calls, tool usage, and chain execution across all providers (OpenAI, Anthropic, Google, etc.).
+LangSmith tracing is built into LangChain's callback system. When `LANGSMITH_TRACING=true` is set, LangChain automatically adds a `LangChainTracer` callback to every invocation. This captures all LLM calls, tool usage, and chain execution across all providers (OpenAI, Anthropic, Google, etc.).
 
 No code changes or plugins are needed — the environment variables are all that's required.
 
@@ -47,9 +50,9 @@ No code changes or plugins are needed — the environment variables are all that
 
 ### No traces appearing
 
-1. Verify `LANGCHAIN_TRACING_V2=true` is set
-2. Check that `LANGCHAIN_API_KEY` is correct
-3. Confirm `LANGCHAIN_ENDPOINT` is accessible (if using a custom endpoint)
+1. Verify `LANGSMITH_TRACING=true` is set
+2. Check that `LANGSMITH_API_KEY` is correct
+3. Confirm `LANGSMITH_ENDPOINT` is accessible (if using a custom endpoint)
 
 ### Authentication errors
 

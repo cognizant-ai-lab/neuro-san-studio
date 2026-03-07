@@ -59,4 +59,4 @@ for LLM interactions. It supports both cloud and self-hosted Langfuse instances.
 
 [LangSmith](../plugins/langsmith/README.md) is LangChain's built-in observability platform. Since Neuro SAN uses LangChain
 internally, LangSmith tracing works out of the box with no plugin required — just set
-`LANGCHAIN_TRACING_V2=true` and `LANGCHAIN_API_KEY` in your `.env` file.
+`LANGSMITH_TRACING=true` and `LANGSMITH_API_KEY` in your `.env` file.
