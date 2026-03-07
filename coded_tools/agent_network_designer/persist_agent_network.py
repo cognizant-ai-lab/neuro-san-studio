@@ -98,16 +98,17 @@ class PersistAgentNetwork(CodedTool):
         # Validate the agent network and return error message if there are any issues.
         # Gather all external agents (subnetworks) into a list.
         subnetworks: list[str] = []
-        subnetworks_from_tool: dict[str, Any] | str = GetSubnetwork().invoke(None, None)
+        subnetworks_from_tool: dict[str, Any] | str = await GetSubnetwork().async_invoke(None, sly_data)
         if isinstance(subnetworks_from_tool, dict):
             subnetworks = list(subnetworks_from_tool.keys())
 
-        mcp_servers: list[str] = GetMcpTool().get_mcp_servers()
+        mcp_servers: list[str] = await GetMcpTool().get_mcp_servers(sly_data)
+        toolbox: dict[str, Any] | str = await GetToolbox().async_invoke(None, sly_data)
 
         error_list: list[str] = (
             StructureNetworkValidator().validate(network_def)
             + KeywordNetworkValidator().validate(network_def)
-            + ToolboxNetworkValidator(GetToolbox().invoke(None, None)).validate(network_def)
+            + ToolboxNetworkValidator(toolbox).validate(network_def)
             + UrlNetworkValidator(subnetworks, mcp_servers).validate(network_def)
         )
         if error_list:

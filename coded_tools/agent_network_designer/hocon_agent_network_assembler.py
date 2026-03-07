@@ -14,6 +14,7 @@
 #
 # END COPYRIGHT
 
+import datetime
 from copy import copy as shallow_copy
 from typing import Any
 
@@ -39,7 +40,8 @@ HOCON_HEADER_START = (
     '    "metadata": {\n'
     '        "sample_queries": [\n'
     "            %s\n"
-    "        ]\n"
+    "        ],\n"
+    '        "date_created": "%s"\n'
     "    },\n"
     "\n"
     "# Load the shared LLM configuration from a single source of truth.\n"
@@ -187,7 +189,7 @@ class HoconAgentNetworkAssembler(AgentNetworkAssembler):
         :return: The header of the HOCON agent network file as a string.
         """
         formatted_queries = self._format_sample_queries(sample_queries)
-
+        date_created = datetime.datetime.now(tz=datetime.timezone.utc).isoformat()
         demo_mode_block = (
             '   "demo_mode": "You are part of a demo system, so when queried, make up a realistic '
             "response as if you are actually grounded in real data or you are operating a real "
@@ -196,7 +198,11 @@ class HoconAgentNetworkAssembler(AgentNetworkAssembler):
             else ""
         )
 
-        return HOCON_HEADER_START % formatted_queries + agent_network_name + HOCON_HEADER_REMAINDER % demo_mode_block
+        return (
+            HOCON_HEADER_START % (formatted_queries, date_created)
+            + agent_network_name
+            + HOCON_HEADER_REMAINDER % demo_mode_block
+        )
 
     def _render_agent_block(self, agent_name: str, agent: dict[str, Any], top_agent_name: str) -> str:
         """

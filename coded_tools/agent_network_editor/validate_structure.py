@@ -14,7 +14,6 @@
 #
 # END COPYRIGHT
 
-import asyncio
 import logging
 from typing import Any
 
@@ -35,7 +34,7 @@ class ValidateStructure(CodedTool):
     to ensure it adheres to the defined rules and constraints.
     """
 
-    def invoke(self, args: dict[str, Any], sly_data: dict[str, Any]) -> str:
+    async def async_invoke(self, args: dict[str, Any], sly_data: dict[str, Any]) -> dict[str, Any] | str:
         """
         :param args: An argument dictionary whose keys are the parameters
                 to the coded tool and whose values are the values passed for them
@@ -74,14 +73,14 @@ class ValidateStructure(CodedTool):
         # Validate the agent network and return error message if there are any issues.
 
         # Get a dict of tools or error message if no toolbox found.
-        tools: dict[str, Any] | str = GetToolbox().invoke(None, None)
+        tools: dict[str, Any] | str = await GetToolbox().async_invoke(None, sly_data)
         # Gather all URLs from MCP servers and subnetworks.
-        subnetworks: dict[str, Any] | str = GetSubnetwork().invoke(None, None)
+        subnetworks: dict[str, Any] | str = await GetSubnetwork().async_invoke(None, sly_data)
         if isinstance(subnetworks, dict):
             subnetworks: list[str] = list(subnetworks.keys())
         else:
             subnetworks = []
-        mcp_servers: list[str] = GetMcpTool().mcp_servers
+        mcp_servers: list[str] = await GetMcpTool().get_mcp_servers(sly_data)
 
         error_list: list[str] = (
             StructureNetworkValidator().validate(network_def)
@@ -96,7 +95,3 @@ class ValidateStructure(CodedTool):
         success_msg = "No structure error found in the agent network."
         logger.info(success_msg)
         return success_msg
-
-    async def async_invoke(self, args: dict[str, Any], sly_data: dict[str, Any]) -> dict[str, Any] | str:
-        """Run invoke asynchronously."""
-        return await asyncio.to_thread(self.invoke, args, sly_data)
