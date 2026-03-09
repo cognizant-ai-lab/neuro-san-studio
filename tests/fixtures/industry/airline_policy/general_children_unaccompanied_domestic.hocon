@@ -23,10 +23,6 @@
     # Describes what agent to test against.
     "agent": "industry/airline_policy",
 
-    # Timeout for the entire test.
-    # It's also possible to have a timeout_in_seconds on a per-interaction basis.
-    "timeout_in_seconds": 180,
-
     # success_ratio is useful for passing to the assessor to find out why
     # a test is intermitently failing. Sometimes it's the agent prompt, but
     # sometimes it's the test itself.
@@ -37,15 +33,21 @@
     # descriptions of response checks.
     "interactions": [
         {
-            # Note: This text case is expected to failed 100%!!!
-            # These is no info regarding liquids in Carry-on Bags.txt file.
-            
+            # Note: This test case is expected to fail 100%!!!
+            # The knowledge docs discuss unaccompanied minors aged 5-14 and 15-17,
+            # but never address whether children under 5 can fly unaccompanied
+            # or what documents they would need.
+
             # This is to enable streaming_chat contents to thinking file for debug.
             # "chat_filter": "MAXIMAL",
-            
+
+            # Timeout for each interaction.
+            # It's also possible to have a timeout_in_seconds for the entire test.
+            "timeout_in_seconds": 180,
+
             # This is what we send as input to streaming_chat()
             "text": """
-How should I pack liquids in my carry-on bag?
+Can my 4-year-old fly alone on a domestic flight? What ID would they need?
 """,
 
             # The response block treats how we are going to test what comes back
@@ -54,11 +56,11 @@ How should I pack liquids in my carry-on bag?
                 # Text block says how we are going to examine the text of the response.
                 "text": {
 
-                    # Gist says we are going to ask an LLM about how the response
-                    # matches up to our description of acceptance criteria.
-                    # Each component of the list needs to pass muster in order to pass.
+                    # not_gist says we are going to ask an LLM to verify the response
+                    # does NOT confirm the described criteria.
+                    # Each component of the list needs to fail in order to pass.
                     "not_gist": ["""
-Confirms that liquids in a carry-on must be 3.4 oz (100 ml) or less.
+Confirms specific ID or document requirements for a 4-year-old to fly as an unaccompanied minor on domestic flights.
                              """]
                 }
             }
