@@ -13,6 +13,7 @@ Note that plugins are never required for Neuro SAN to function.
   - [Observability](#observability)
     - [Arize Phoenix](#arize-phoenix)
     - [Langfuse](#langfuse)
+    - [LangSmith](#langsmith)
 
 <!-- TOC -->
 
@@ -53,3 +54,9 @@ observability in Neuro SAN Studio, providing comprehensive monitoring and analys
 The [Langfuse plugin](../plugins/langfuse/README.md) integrates [Langfuse](https://langfuse.com/) for AI
 observability in Neuro SAN Studio, providing trace collection, cost tracking, and performance metrics
 for LLM interactions. It supports both cloud and self-hosted Langfuse instances.
+
+### LangSmith
+
+[LangSmith](../plugins/langsmith/README.md) is LangChain's built-in observability platform. Since Neuro SAN uses LangChain
+internally, LangSmith tracing works out of the box with no plugin required — just set
+`LANGSMITH_TRACING=true` and `LANGSMITH_API_KEY` in your `.env` file.
