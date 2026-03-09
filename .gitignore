@@ -151,6 +151,9 @@ venv.bak/
 # mkdocs documentation
 /site
 
+# Flake8 style
+.flake8
+
 # mypy
 .mypy_cache/
 .dmypy.json
