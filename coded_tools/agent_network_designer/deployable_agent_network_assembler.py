@@ -50,7 +50,7 @@ class DeployableAgentNetworkAssembler(AgentNetworkAssembler):
         self.aaosa_defs: dict[str, Any] = persistence.restore(file_reference=aaosa_file)
 
     # pylint: disable=too-many-locals
-    def assemble_agent_network(
+    async def assemble_agent_network(
         self, network_def: dict[str, Any], top_agent_name: str, agent_network_name: str, sample_queries: list[str]
     ) -> dict[str, Any]:
         """
