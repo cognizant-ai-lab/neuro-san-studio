@@ -1,7 +1,6 @@
 ---
 name: name-analytics
 description: Analyze and determine career information based on a person's given name
-allowed-tools: 
 ---
 
 # Name Analytics Skill
