@@ -534,7 +534,7 @@ class AgentSkillsMiddleware(AgentMiddleware):
         tool_name: str = tool_call.get("name", "")
         tool_call_id: str = tool_call.get("id", "")
 
-        # If not keeping full content in context, execute tool call as usual
+        # If not keeping full content in context, bypasses the handler and calls middleware methods directly
         if not self.keep_skill_in_context and tool_name in {
             "get_full_skill_content",
             "load_skill_resource_local",
