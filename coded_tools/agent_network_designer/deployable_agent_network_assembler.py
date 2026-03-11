@@ -67,8 +67,8 @@ class DeployableAgentNetworkAssembler(AgentNetworkAssembler):
         use_network_def: dict[str, Any] = shallow_copy(network_def)
 
         restorer = AbstractAsyncConfigRestorer("AgentNetworkDesigner template HOCON reader")
-        self.template: dict[str, Any] = await restorer.async_restore(file_reference=self.template_file)
-        self.aaosa_defs: dict[str, Any] = await restorer.async_restore(file_reference=self.aaosa_file)
+        self.template = await restorer.async_restore(file_reference=self.template_file)
+        self.aaosa_defs = await restorer.async_restore(file_reference=self.aaosa_file)
 
         # Move top agent to front so it is listed first
         if top_agent_name != next(iter(use_network_def)):
