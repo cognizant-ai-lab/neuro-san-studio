@@ -23,7 +23,7 @@ class AgentNetworkAssembler:
     Interface for a policy class that assembles an agent network from an agent network definition
     """
 
-    def assemble_agent_network(
+    async def assemble_agent_network(
         self, network_def: dict[str, Any], top_agent_name: str, agent_network_name: str, sample_queries: list[str]
     ) -> Any:
         """
