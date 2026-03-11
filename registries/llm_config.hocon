@@ -14,42 +14,18 @@
 #
 # END COPYRIGHT
 
-{
-    # This file is NOT an agent network HOCON.
-    # It defines a set of key-value pairs for substitution, typically used in agent network HOCON files.
-    # Each key can be referenced in agent configs using the ${key} syntax.
-    # Do not define agents or tools directly here—this file only provides reusable values.
-
-    "llm_config": {
-
-        # Set the `class` key to one of the values listed below, then specify the model
-        # using the `model_name` key.
-        #
-        # The available model names for each provider can be found in the corresponding links.
-        #
-        # | LLM Provider     | `class` Value   | Links for model names |
-        # |------------------|-----------------|-----------------------|
-        # | Amazon Bedrock   | `bedrock`       | https://docs.aws.amazon.com/bedrock/latest/userguide/model-ids.html |
-        # | Anthropic        | `anthropic`     | https://platform.claude.com/docs/en/about-claude/models/overview |
-        # | Azure OpenAI     | `azure-openai`  | https://learn.microsoft.com/azure/ai-services/openai/concepts/models |
-        # | Google Gemini    | `gemini`        | https://ai.google.dev/gemini-api/docs/models |
-        # | NVIDIA           | `nvidia`        | https://build.nvidia.com/explore/discover |
-        # | Ollama           | `ollama`        | https://ollama.com/library |
-        # | OpenAI           | `openai`        | https://platform.openai.com/docs/models |
-        #
-        # Note:
-        # - For Ollama, the model must be downloaded locally before use.
-        # - Additional LLM parameters (e.g., `temperature`, `max_tokens`) can be configured below.
-        # - Agent-level control (e.g., `max_iterations`) can also be set here.
-        # - It is possible to have a separate llm_config describing a different LLM with different parameters for each agent network hocon file
-        #or even for each agent within a network.
-        #
-        #   For more details, see:
-        #   - https://github.com/cognizant-ai-lab/neuro-san/blob/main/neuro_san/internals/run_context/langchain/llms/default_llm_info.hocon
-        #   - https://github.com/cognizant-ai-lab/neuro-san/blob/main/docs/agent_hocon_reference.md#llm_config
-
-        "class": "openai",
-        "model_name": "gpt-5.2",
-
-    }
-}
+# Backward compatibility shim.
+# The LLM configuration has moved to:
+#   registries/deployment_config/llm_config.hocon
+#
+# This file is kept only to maintain compatibility with any existing
+# external references that still point to the old path.
+#
+# ⚠️ This shim will be discontinued in the future.
+# Please update your generated agent networks and any related
+# configurations to reference the new location directly.
+#
+# Do NOT reference llm_config from registries using this file.
+# Instead, always include the new configuration directly:
+#   include "registries/deployment_config/llm_config.hocon"
+include "deployment_config/llm_config.hocon"

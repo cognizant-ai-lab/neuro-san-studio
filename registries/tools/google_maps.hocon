@@ -32,7 +32,7 @@
         ]
     },
 
-    include "registries/llm_config.hocon",
+    include "registries/deployment_config/llm_config.hocon",
 
     "tools": [
         # This first agent definition is regarded as the "Front Man", which
