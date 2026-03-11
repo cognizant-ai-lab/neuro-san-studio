@@ -24,7 +24,7 @@
         "description": "Simple agent network with one agent and a skill middleware that progressively loads a skill from the internet.",
         "tags": ["example", "agent skills"],
         "sample_queries": [
-            "Help me write a company news letter.",
+            "Help me write a company newsletter.",
             "How to write faqs for new employee.",
         ]
     },
