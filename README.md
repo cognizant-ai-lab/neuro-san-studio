@@ -335,7 +335,7 @@ a Flask web app that queries PDFs using RAG with topic-based long-term memory sy
 * [Vibe coding project evaluator](https://github.com/deepsaia/vibe-coding-eval):
 a scalable framework that evaluates vibe-coded projects on different criteria.
 * [Loopy Agents] (https://github.com/babakatwork/loopy_agent):
-* Run NeuroSAN agents in a loop via a separate service and interact with them asynchronously
+* Run NeuroSAN agents continuously or on triggers through a separate service, with asynchronous messaging.
 
 ### Utilities
 
