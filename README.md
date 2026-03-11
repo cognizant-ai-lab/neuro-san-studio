@@ -229,7 +229,7 @@ Install the requirements:
 pip install -r requirements.txt
 ```
 
-**IMPORTANT**: By default, the server relies on OpenAI's `gpt-4o` model. Set the OpenAI API key and add it to your shell
+**IMPORTANT**: By default, the server relies on OpenAI's `gpt-5.2` model. Set the OpenAI API key and add it to your shell
 configuration so it's available in future sessions.
 
 You can get your OpenAI API key from <https://platform.openai.com/signup>. After signing up, create a new API key in the
@@ -326,6 +326,8 @@ For the development guide, check out [docs/dev_guide.md](docs/dev_guide.md).
 
 * [Climate Change](https://github.com/cognizant-ai-lab/neuro-san-cc):
 a tool to answer questions about COP, the Paris Agreement or the Kyoto Protocol using UNFCCC documents.
+* [Enterprise Access Portal](https://github.com/M-Elsaied/enterprise-access-portal):
+an AI-powered multi-agent system for managing enterprise application access requests and IT operations.
 * [F1 fans eval](https://github.com/deepsaia/f1-fan-eval):
 an app that evaluates F1 fan submissions about why they are the biggest F1 fans.
 * [PDF Knowledge Assistant](https://github.com/M-Elsaied/neuro-san-studio/tree/pdf-knowledge-base/apps/pdf_knowledge_assistant):

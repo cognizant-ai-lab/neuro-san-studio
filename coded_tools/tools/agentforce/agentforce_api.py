@@ -92,7 +92,8 @@ class AgentforceAPI(CodedTool):
         tool_name = self.__class__.__name__
         logger.debug("========== Calling %s ==========", tool_name)
         logger.debug("    Inquiry: %s", inquiry)
-        logger.debug("    Session ID: %s", session_id)
+        # Log only whether a session exists; do not log the session_id itself
+        logger.debug("    Has session: %s", bool(session_id))
 
         if self.agentforce.is_configured:
             logger.debug("AgentforceAdapter is configured. Fetching response...")
@@ -110,11 +111,14 @@ class AgentforceAPI(CodedTool):
         sly_data["session_id"] = response["session_id"]
         sly_data["access_token"] = response["access_token"]
         tool_response = response["response"]["messages"][0]["message"]
-
-        logger.debug("-----------------------")
-        logger.debug("%s tool response: %s", tool_name, tool_response)
         # NOTE: sly_data contains secrets - never log it
-        logger.debug("========== Done with %s ==========", tool_name)
+
+        # Uncomment the following lines to log the tool response.
+        # Be cautious about logging sensitive data in production.
+        # logger.debug("-----------------------")
+        # logger.debug("%s tool response: %s", tool_name, tool_response)
+        # logger.debug("========== Done with %s ==========", tool_name)
+
         return tool_response
 
     async def async_invoke(self, args: Dict[str, Any], sly_data: Dict[str, Any]) -> str:

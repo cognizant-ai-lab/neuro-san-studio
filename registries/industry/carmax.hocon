@@ -15,7 +15,18 @@
 # END COPYRIGHT
 {
     include "registries/aaosa.hocon",
-    
+
+    "metadata": {
+        "description": "Multi-agent system simulating CarMax's automotive retail operations. Covers vehicle search and sales, test drive scheduling, service appointments, parts management, and auto financing including loan underwriting and credit analysis through specialized agents using the AAOSA pattern with web search integration.",
+        "tags": ["AAOSA", "automotive", "customer-service", "tool"],
+        "sample_queries": [
+            "I am looking for a used SUV under $30,000 with low mileage.",
+            "How do I schedule a service appointment for an oil change?",
+            "What financing options are available for a first-time car buyer?",
+            "Can I arrange a test drive for a 2023 Honda Accord this weekend?",
+        ]
+    },
+
     # Load the shared LLM configuration from a single source of truth.
     # This allows users to change the model in one file rather than
     # modifying the configuration for each agent network.

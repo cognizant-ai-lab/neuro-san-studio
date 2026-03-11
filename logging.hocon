@@ -1,0 +1,100 @@
+
+# See https://docs.python.org/3/library/logging.config.html#dictionary-schema-details
+# as to how this file can be configured for your own needs.  Examples there are provided in YAML,
+# but these can be easily translated to JSON or HOCON (which we prefer, because it allows these
+# comments to be sprinkled throughout).
+# Another good resource: https://docs.python.org/3/howto/logging-cookbook.html
+
+{
+    "version": 1,
+    "disable_existing_loggers": false,
+
+    # Format for log messages.
+    # See https://docs.python.org/3/library/logging.config.html#dictionary-schema-details
+    # and https://docs.python.org/3/library/logging.html#logging.Formatter
+    # for more information.
+    "formatters": {
+        "structured": {
+            "format": "{\"message\": \"%(message)s\", \"user_id\": \"%(user_id)s\", \"Timestamp\": \"%(iso_timestamp)s\", \"source\": \"%(source)s\", \"message_type\": \"%(message_type)s\", \"request_id\": \"%(request_id)s\"}"
+        }
+    },
+
+    # Filters for log messages.
+    # More sophisticated filtering other than simple log levels.
+    # See https://docs.python.org/3/library/logging.config.html#dictionary-schema-details
+    # and https://docs.python.org/3/library/logging.html#logging.Filter
+    # for more information.
+    "filters": {
+        "inject_context": {
+            "()": "neuro_san.service.http.logging.log_context_filter.LogContextFilter"
+        }
+    },
+
+    # Handlers for log messages.
+    # Handlers combine filters and formatters for different output streams.
+    # See https://docs.python.org/3/library/logging.config.html#dictionary-schema-details
+    # and https://docs.python.org/3/library/logging.html#handler-objects
+    # for more information.
+    "handlers": {
+        "null": {
+            "class": "logging.NullHandler",
+            "level": "INFO"
+        },
+        "console": {
+            "class": "logging.StreamHandler",
+            "level": "INFO",
+            "formatter": "structured",
+            "stream": "ext://sys.stdout"
+        },
+        "http_console": {
+            "class": "logging.StreamHandler",
+            "level": "INFO",
+            "formatter": "structured",
+            "filters": ["inject_context"],
+            "stream": "ext://sys.stdout"
+        }
+    },
+
+    # Loggers for log messages.
+    # This allows for fine-grained logging control for specific loggers usually associated
+    # with specific python modules.
+    # See https://docs.python.org/3/library/logging.config.html#dictionary-schema-details
+    # and https://docs.python.org/3/library/logging.html#logger-objects
+    # for more information.
+    "loggers": {
+        "HttpServer": {
+            "level": "INFO",
+            "handlers": [
+                "http_console"
+            ],
+            "propagate": false
+        },
+        "my_module": {
+            "level": "INFO",
+            "handlers": [
+                "console"
+            ],
+            "propagate": false
+        },
+
+        # Turn on debug logging for coded_tools
+        "coded_tools": {
+            "level": "DEBUG",
+            "handlers": [
+                "console"
+            ],
+            "propagate": false
+        }
+    },
+
+    # Configuration for the root logger.
+    # See https://docs.python.org/3/library/logging.config.html#dictionary-schema-details
+    # and https://docs.python.org/3/library/logging.html#logger-objects
+    # for more information.
+    "root": {
+        "level": "INFO",
+        "handlers": [
+            "console"
+        ]
+    }
+}

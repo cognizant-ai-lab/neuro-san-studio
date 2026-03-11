@@ -1,0 +1,2 @@
+# OpenFGA authorization (not to be confused with authentication)
+openfga-sdk

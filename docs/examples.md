@@ -16,6 +16,7 @@ Here are a few examples ordered by level of complexity.
     - [Music Nerd Pro Sly](#music-nerd-pro-sly)
     - [Music Nerd Pro Sly Local](#music-nerd-pro-sly-local)
     - [Music Nerd LLM Fallbacks](#music-nerd-llm-fallbacks)
+    - [PII Middleware](#pii-middleware)
   - [🧰 Tool Integration Examples](#-tool-integration-examples)
     - [Anthropic Code Execution](#anthropic-code-execution)
     - [Anthropic Web Search](#anthropic-web-search)
@@ -51,6 +52,7 @@ Here are a few examples ordered by level of complexity.
     - [Banking Operations](#banking-operations)
     - [Retail Operations and Customer Service Assistant](#retail-operations-and-customer-service-assistant)
     - [Insurance Underwriting Agents](#insurance-underwriting-agents)
+    - [KeyBank Financial Services](#keybank-financial-services)
     - [Sentiment Analysis of News Sources](#sentiment-analysis-of-news-sources)
   - [🧪 Experimental and Research](#-experimental-and-research)
     - [Agent Network Designer](#agent-network-designer)
@@ -144,9 +146,19 @@ This is a good example to:
 
 ### Hello World
 
-[Hello World](examples/basic/hellow_world.md) is an agent network that
+[Hello World](examples/basic/hello_world.md) is an agent network that
 demonstrates how one agent can call another using a basic hocon file.
 Given specific input, there is a good chance you will get output something like "Hello World!".
+
+**Tags:** `basic` `example`
+
+### PII Middleware
+
+[PII Middleware](examples/basic/pii_middleware.md) is an agent network that demonstrates the use of PII redaction
+via AgentMiddleware.  This just scratches the surface of what you can do with middleware, but it is the
+simplest example to learn how to integrate middleware.
+
+**Tags:** `basic` `example` `middleware`
 
 ## 🧰 Tool Integration Examples
 
@@ -435,6 +447,15 @@ demo mode.
 
 **Tags:** `AAOSA`
 
+### KeyBank Financial Services
+
+[KeyBank Financial Services](examples/industry/keybank.md) is a multi-agent system simulating KeyBank's
+financial services operations. It covers consumer banking, commercial lending, wealth management,
+investment advisory, estate and retirement planning, and risk management including fraud prevention
+and compliance through specialized agents using the AAOSA pattern.
+
+**Tags:** `AAOSA`
+
 ### Sentiment Analysis of News Sources
 
 [Sentiment Analysis of News Sources](examples/industry/news_sentiment_analysis.md) is a multi-agent system that analyzes
@@ -474,47 +495,48 @@ Neuro SAN Reservations API to create other agent networks which become available
 
 ### CRUSE Theme Agent
 
-[CRUSE Theme Agent](examples/cruse_theme_agent.md) is an agent that can dynamically generate a json schema for any agent
- (or given context). This json schema can be read by a UI component in the downstream to generate dynamic themes.
- Currently this is limited to only css-based schema. It can be extended to have another sub-agent like Dall-E or nano-banana
- to generate more dynamic backgrounds.
+[CRUSE Theme Agent](examples/experimental/cruse_theme_agent.md) is an agent that can dynamically generate
+a json schema for any agent (or given context). This json schema can be read by a UI component in the
+downstream to generate dynamic themes. Currently this is limited to only css-based schema. It can be
+extended to have another sub-agent like Dall-E or nano-banana to generate more dynamic backgrounds.
 
 **Tags:** `CRUSE`, `tool`, `ui`, `theme`, `background`
 
 ### CRUSE Widget Agent
 
-[CRUSE Widget Agent](examples/cruse_widget_agent.md) is also a CRUSE agent that can dynamically generate a json schema
- that represents an action card. This is useful in generating an input form-like interface by a UI component.
- Currently supported set of fields for a widget include: boolean, checkbox, date, multi-select,
-  number, radio-group, rating, select, text area, slider.
+[CRUSE Widget Agent](examples/experimental/cruse_widget_agent.md) is also a CRUSE agent that can dynamically
+generate a json schema that represents an action card. This is useful in generating an input form-like
+interface by a UI component. Currently supported set of fields for a widget include: boolean, checkbox,
+date, multi-select, number, radio-group, rating, select, text area, slider.
 
 **Tags:** `CRUSE`, `tool`, `ui`, `widget`
 
 ### KWIK Agents
 
-[KWIK_agents](examples/kwik_agents.md) is a basic multi-agent system with memory.
+[KWIK_agents](examples/experimental/kwik_agents.md) is a basic multi-agent system with memory.
 
 **Tags:** `tool`, `memory`
 
 ### CRUSE
 
-[CRUSE](examples/cruse.md) is an agent that can dynamically attach to any agent in your registry and make it run with a
-context reactive user experience. This is a good example of how to switch down-chain agents dynamically using coded
-tools and sly_data.
+[CRUSE](examples/experimental/cruse.md) is an agent that can dynamically attach to any agent in your registry
+and make it run with a context reactive user experience. This is a good example of how to switch down-chain
+agents dynamically using coded tools and sly_data.
 
 **Tags:** `tool`, `ui`, `app`
 
 ### Conscious Assistant
 
-[Conscious Agent](examples/conscious_agent.md) is a multi-agent system used within the conscious assistant and
+[Conscious Agent](examples/experimental/conscious_agent.md) is a multi-agent system used within the conscious assistant and
 serves as a good example of how to run an agent permanently.
 
 **Tags:** `tool`, `memory`, `app`
 
 ### Log Analyzer
 
-[Log Analyzer](examples/log_analyzer.md) is a multi-agent system used within the log analyzer app and serves as a
-good example of how to run an agent network on an agent network log for various validations.
+[Log Analyzer](examples/experimental/log_analyzer.md) is a multi-agent system used within the log analyzer
+app and serves as a good example of how to run an agent network on an agent network log for various
+validations.
 
 **Tags:** `AAOSA`, `app`
 

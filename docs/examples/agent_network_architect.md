@@ -42,11 +42,11 @@ To run this agent, ensure the following are installed and configured:
 **Additional setup for NsflowSelenium:**
 
 - Start the `nsflow` service in a separate terminal.
-- Use **non-default** ports for neuro-san gRPC, HTTP, and nsflow. The default ports are 30011 for gRPC, 8080 for HTTP, and
+- Use **non-default** ports for neuro-san HTTP and nsflow. The default ports are 8080 for HTTP and
 4173 for nsflow. For example, you can run:
 
     ```bash
-    python -m run --server-grpc-port 30012 --server-http-port 8081 --nsflow-port 4174
+    python -m run --server-http-port 8081 --nsflow-port 4174
     ```
 
 ---

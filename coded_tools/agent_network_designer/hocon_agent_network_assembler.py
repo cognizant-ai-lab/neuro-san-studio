@@ -14,6 +14,8 @@
 #
 # END COPYRIGHT
 
+import datetime
+from copy import copy as shallow_copy
 from typing import Any
 
 from coded_tools.agent_network_designer.agent_network_assembler import AgentNetworkAssembler
@@ -33,15 +35,21 @@ HOCON_HEADER_START = (
     "# The path to this substitution file is **relative to the top-level directory**,\n"
     "# so running the script from elsewhere may result in file not found errors.\n"
     '    include "registries/aaosa.hocon"\n'
+    "\n"
     "# Optional metadata describing this agent network\n"
     '    "metadata": {\n'
     '        "sample_queries": [\n'
     "            %s\n"
-    "        ]\n"
+    "        ],\n"
+    '        "date_created": "%s"\n'
     "    },\n"
-    '    "llm_config": {\n'
-    '        "model_name": "gpt-4o",\n'
-    "    },\n"
+    "\n"
+    "# Load the shared LLM configuration from a single source of truth.\n"
+    "# This allows users to change the model in one file rather than\n"
+    "# modifying the configuration for each agent network.\n"
+    "# Note that the file path here is relative to the root level of the repo.\n"
+    '    include "registries/llm_config.hocon",\n'
+    "\n"
     '   "instructions_prefix": """\n'
     "You are part of a team of assistants in "
 )
@@ -91,8 +99,10 @@ LEAF_NODE_AGENT_TEMPLATE = (
     '""",\n'
     "        },\n"
 )
+# fmt: off
 # pylint: disable=implicit-str-concat
 TOOLBOX_AGENT_TEMPLATE = "        {\n" '            "name": "%s",\n' '            "toolbox": "%s"\n' "        },\n"
+# fmt: on
 
 
 # pylint: disable=too-few-public-methods
@@ -115,7 +125,7 @@ class HoconAgentNetworkAssembler(AgentNetworkAssembler):
         """
         self.demo_mode: bool = demo_mode
 
-    def assemble_agent_network(
+    async def assemble_agent_network(
         self, network_def: dict[str, Any], top_agent_name: str, agent_network_name: str, sample_queries: list[str]
     ) -> str:
         """
@@ -128,12 +138,13 @@ class HoconAgentNetworkAssembler(AgentNetworkAssembler):
 
         :return: A full agent network HOCON as a string.
         """
-        network_def = self._move_top_agent_first(network_def, top_agent_name)
+        use_network_def = shallow_copy(network_def)
+        use_network_def = self._move_top_agent_first(use_network_def, top_agent_name)
 
         header = self._build_header(agent_network_name, sample_queries)
 
         body = []
-        for agent_name, agent in network_def.items():
+        for agent_name, agent in use_network_def.items():
             body.append(self._render_agent_block(agent_name, agent, top_agent_name))
 
         return header + "".join(body) + "]\n}\n"
@@ -178,7 +189,7 @@ class HoconAgentNetworkAssembler(AgentNetworkAssembler):
         :return: The header of the HOCON agent network file as a string.
         """
         formatted_queries = self._format_sample_queries(sample_queries)
-
+        date_created = datetime.datetime.now(tz=datetime.timezone.utc).isoformat()
         demo_mode_block = (
             '   "demo_mode": "You are part of a demo system, so when queried, make up a realistic '
             "response as if you are actually grounded in real data or you are operating a real "
@@ -187,7 +198,11 @@ class HoconAgentNetworkAssembler(AgentNetworkAssembler):
             else ""
         )
 
-        return HOCON_HEADER_START % formatted_queries + agent_network_name + HOCON_HEADER_REMAINDER % demo_mode_block
+        return (
+            HOCON_HEADER_START % (formatted_queries, date_created)
+            + agent_network_name
+            + HOCON_HEADER_REMAINDER % demo_mode_block
+        )
 
     def _render_agent_block(self, agent_name: str, agent: dict[str, Any], top_agent_name: str) -> str:
         """

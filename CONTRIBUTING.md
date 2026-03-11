@@ -134,9 +134,8 @@ git checkout -b docs/documentation-update  # For documentation
 This project follows these coding standards:
 
 - **Line length**: Maximum 119 characters
-- **Formatter**: Black (v25.1.0)
-- **Import sorting**: isort with Black profile
-- **Linting**: flake8 and pylint
+- **Formatter and linter**: Ruff (v0.11.12)
+- **Code quality**: pylint
 - **Naming conventions**: Follow Google Python Style Guide
   - Functions and variables: `snake_case`
   - Classes: `PascalCase`
@@ -191,9 +190,9 @@ require to run the follow steps 1st:
 For Windows (manual):
 ```bash
 # Run linting
-isort apps coded_tools tests
-black apps coded_tools tests
-flake8 apps coded_tools tests
+ruff check --select I --fix apps coded_tools tests
+ruff format apps coded_tools tests
+ruff check apps coded_tools tests
 
 # Run tests
 pytest --verbose --cov=. --cov-report=term-missing --no-cov-on-fail
@@ -305,7 +304,7 @@ Use the `logging` module for logging instead of `print`.
 To enable debug logs for coded tools, set:
 
 ```bash
-export AGENT_SERVICE_LOG_JSON=logging.json
+export AGENT_SERVICE_LOG_JSON=logging.hocon
 ```
 
 ### Using the Makefile

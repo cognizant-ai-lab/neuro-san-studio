@@ -49,7 +49,7 @@
         #   - https://github.com/cognizant-ai-lab/neuro-san/blob/main/docs/agent_hocon_reference.md#llm_config
 
         "class": "openai",
-        "model_name": "gpt-4o",
+        "model_name": "gpt-5.2",
 
     }
 }

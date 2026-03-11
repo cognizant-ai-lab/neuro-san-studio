@@ -37,7 +37,7 @@ logging.basicConfig(level=logging.INFO)
 try:
     import nltk
 
-    nltk.download("punkt", quiet=True)
+    nltk.download("punkt_tab", quiet=True)
 except ModuleNotFoundError:
     logger.error("NLTK library is not installed")
 
@@ -98,7 +98,7 @@ class SentimentAnalysis(CodedTool):
             return [], False
 
     def _process_file(
-        self, file_name: str, keywords_list: List[str], target_sources: Optional[set]
+        self, file_name: str, keywords_list: List[str], target_sources: Optional[set], input_dir: str = ""
     ) -> Optional[Dict[str, Any]]:
         """
         Process a single file for sentiment analysis.
@@ -119,7 +119,7 @@ class SentimentAnalysis(CodedTool):
         if target_sources is not None and source_name not in target_sources:
             return None
 
-        path = os.path.join(self.input_dir, file_name)
+        path = os.path.join(input_dir or self.input_dir, file_name)
         try:
             with open(path, "r", encoding="utf-8") as f:
                 content = f.read().strip()
@@ -145,7 +145,7 @@ class SentimentAnalysis(CodedTool):
         }
 
     def _collect_articles(
-        self, entries: List[str], keywords_list: List[str], target_sources: Optional[set]
+        self, entries: List[str], keywords_list: List[str], target_sources: Optional[set], input_dir: str = ""
     ) -> Tuple[List[Dict[str, Any]], Dict[str, Dict[str, float]]]:
         """
         Iterate over file entries, process each for keyword-based sentiment analysis,
@@ -163,7 +163,7 @@ class SentimentAnalysis(CodedTool):
         file_stats: Dict[str, Dict[str, float]] = {}
 
         for file_name in entries:
-            item = self._process_file(file_name, keywords_list, target_sources)
+            item = self._process_file(file_name, keywords_list, target_sources, input_dir)
             if item is None:
                 continue
             articles.append(item)
@@ -201,6 +201,10 @@ class SentimentAnalysis(CodedTool):
         keywords_list = [kw.strip().lower() for kw in args.get("keywords", "").split(",") if kw.strip()]
         target_sources = None if source == "all" else {s.strip().lower() for s in source.split(",") if s.strip()}
 
+        input_dir = os.path.abspath(f"{source}_articles_output")
+        if not os.path.isdir(input_dir):
+            input_dir = self.input_dir
+
         try:
             try:
                 with os.scandir(self.input_dir) as it:
@@ -209,11 +213,14 @@ class SentimentAnalysis(CodedTool):
                 logger.exception("Error accessing input directory: %s", self.input_dir)
                 return {"status": "failed", "error": f"Failed to access input directory: {e}"}
 
-            articles, file_stats = self._collect_articles(entries, keywords_list, target_sources)
+            articles, file_stats = self._collect_articles(entries, keywords_list, target_sources, input_dir)
 
-            for a in articles:
-                if isinstance(a.get("sentences"), list) and len(a["sentences"]) > 300:
-                    a["sentences"] = a["sentences"][:300]
+            articles = [
+                {**a, "sentences": a["sentences"][:300]}
+                if isinstance(a.get("sentences"), list) and len(a["sentences"]) > 300
+                else a
+                for a in articles
+            ]
 
             results = {
                 "sentiment_score_summary": {

@@ -1,6 +1,6 @@
 # Neuro SAN
-neuro-san==0.6.26
-nsflow==0.6.7
+neuro-san==0.6.39
+nsflow==0.6.9
 
 # For the airline_policy demo, to extract text from documents
 pypdf>=6.1.3
@@ -22,3 +22,6 @@ rich>=14.2.0
 
 # For the HTML agent-network graph generator
 pyvis~=0.3.2
+
+# For web search tools without needing API keys, using DuckDuckGo's search results
+ddgs>=9.4.1

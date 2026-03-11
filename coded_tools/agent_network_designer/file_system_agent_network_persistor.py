@@ -31,6 +31,7 @@ class FileSystemAgentNetworkPersistor(AgentNetworkPersistor):
     """
 
     OUTPUT_PATH: str = "registries"
+    GENERATED: str = "generated"
 
     def __init__(self, demo_mode: bool):
         """
@@ -70,7 +71,16 @@ class FileSystemAgentNetworkPersistor(AgentNetworkPersistor):
             await file.write(the_agent_network_hocon_str)
 
         # Update the manifest.hocon file
-        manifest_path: str = os.path.join(self.OUTPUT_PATH, "manifest.hocon")
+        manifest_path: str = os.path.join(self.OUTPUT_PATH, self.GENERATED, "manifest.hocon")
+
+        # Create the generated directory if it doesn't exist
+        os.makedirs(os.path.dirname(manifest_path), exist_ok=True)
+
+        # Create the manifest file if it doesn't exist
+        if not os.path.exists(manifest_path):
+            async with aiofiles.open(manifest_path, "w") as file:
+                # Initialize with empty JSON format
+                await file.write("{\n}")
 
         # Read the current manifest content
         async with aiofiles.open(manifest_path, "r") as file:

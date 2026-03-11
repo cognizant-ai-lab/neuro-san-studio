@@ -14,13 +14,14 @@
 #
 # END COPYRIGHT
 
+from copy import copy as shallow_copy
 from copy import deepcopy
 from typing import Any
 
 from leaf_common.config.file_of_class import FileOfClass
-from leaf_common.persistence.easy.easy_hocon_persistence import EasyHoconPersistence
 from neuro_san.internals.graph.filters.dictionary_common_defs_config_filter import DictionaryCommonDefsConfigFilter
 from neuro_san.internals.graph.filters.string_common_defs_config_filter import StringCommonDefsConfigFilter
+from neuro_san.internals.persistence.abstract_async_config_restorer import AbstractAsyncConfigRestorer
 
 from coded_tools.agent_network_designer.agent_network_assembler import AgentNetworkAssembler
 
@@ -35,20 +36,22 @@ class DeployableAgentNetworkAssembler(AgentNetworkAssembler):
         """
         Constructor
         """
-        # Only want to do these things once.
-        persistence = EasyHoconPersistence()
+        # Initialize file locations; content is restored lazily in assemble_agent_network().
         file_of_class = FileOfClass(__file__)
 
+        self.template_file: str = None
         if demo_mode:
-            template_file: str = file_of_class.get_file_in_basis("deployable_template_demo.hocon")
+            self.template_file: str = file_of_class.get_file_in_basis("deployable_template_demo.hocon")
         else:
-            template_file: str = file_of_class.get_file_in_basis("deployable_template.hocon")
-        self.template: dict[str, Any] = persistence.restore(file_reference=template_file)
+            self.template_file: str = file_of_class.get_file_in_basis("deployable_template.hocon")
 
-        aaosa_file: str = file_of_class.get_file_in_basis("../../registries/aaosa.hocon")
-        self.aaosa_defs: dict[str, Any] = persistence.restore(file_reference=aaosa_file)
+        self.aaosa_file: str = file_of_class.get_file_in_basis("../../registries/aaosa.hocon")
 
-    def assemble_agent_network(
+        self.template: dict[str, Any] = None
+        self.aaosa_defs: dict[str, Any] = None
+
+    # pylint: disable=too-many-locals
+    async def assemble_agent_network(
         self, network_def: dict[str, Any], top_agent_name: str, agent_network_name: str, sample_queries: list[str]
     ) -> dict[str, Any]:
         """
@@ -61,10 +64,16 @@ class DeployableAgentNetworkAssembler(AgentNetworkAssembler):
 
         :return: Some representation of the agent network
         """
+        use_network_def: dict[str, Any] = shallow_copy(network_def)
+
+        restorer = AbstractAsyncConfigRestorer("AgentNetworkDesigner template HOCON reader")
+        self.template = await restorer.async_restore(file_reference=self.template_file)
+        self.aaosa_defs = await restorer.async_restore(file_reference=self.aaosa_file)
+
         # Move top agent to front so it is listed first
-        if top_agent_name != next(iter(network_def)):
-            top_agent: dict[str, Any] = network_def.pop(top_agent_name)
-            network_def = {top_agent_name: top_agent, **network_def}
+        if top_agent_name != next(iter(use_network_def)):
+            top_agent: dict[str, Any] = use_network_def.pop(top_agent_name)
+            use_network_def = {top_agent_name: top_agent, **use_network_def}
 
         # Start out with a copy of the template, but remove the tools and commondefs
         agent_network: dict[str, Any] = deepcopy(self.template)
@@ -77,8 +86,7 @@ class DeployableAgentNetworkAssembler(AgentNetworkAssembler):
 
         agent_name: str = None
         agent_def: dict[str, Any] = {}
-        for agent_name, agent_def in network_def.items():
-
+        for agent_name, agent_def in use_network_def.items():
             # Find bits and pieces from the agent definition in the larger network definition
             tools: list[str] = agent_def.get("tools", None)
 

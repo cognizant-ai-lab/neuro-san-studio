@@ -1,0 +1,58 @@
+
+# This file needs to go through a manual process in order to be converted
+# into the JSON format the OpenFGA client likes:
+#
+#   fga model transform --file sample_authorization_model.fga | python -m json.tool > sample_authorization_model.json
+#
+# For more info as to how to install the fga tool, see the README.md.
+
+# Update the commented model version below whenever there are any changes to this file.
+# model_version 1.0.0
+model
+    schema 1.1
+
+# What you would expect for a normal user
+type User
+
+# A few syntax things to recall when reading this DSL file from:
+#   https://openfga.dev/docs/configuration-language
+#
+# type <foo>                        ... is a simple type declaration
+#   relations                       *Everything* is declared in terms of relations
+#     define <relA>: [<bar>]        What goes in the [] defines *how* the relation <relA>
+#                                       is allowed to be referenced when storing or checking relationships
+#                                       in this case, an object of type bar is the only allowed spec.
+#     define <relB>: [<bar#relation>]   a relation on type bar is the only allowed spec
+#     define <relC>: <relB>             a relation <relB> on type <foo> also implies the relation <relC>
+
+type Organization
+    relations
+        # Roles
+        define admin: [User]
+        define owner: [User] or admin
+        define member: [User] or owner
+
+        # Permissions
+        define create: admin
+        define read: member
+        define update: owner
+        define delete: admin
+
+type AgentNetwork
+    relations
+        # Roles
+        define owner: [User, Organization#member] or admin from container
+        define collaborator: [User, Organization#member] or owner
+        define tourist: [User, User:*, Organization#member] or collaborator
+
+        # Relations
+        define container: [Organization]
+
+        # Permissions
+        # Note: this schema has fairly lax permissions for CRUD permissions
+        #       to keep things simple and frustration low for an example.
+        #       You might want to tighten this for your own production schema.
+        define create: [User, User:*] or owner
+        define read: [User, User:*] or tourist
+        define update: [User, User:*] or collaborator
+        define delete: [User, User:*] or owner

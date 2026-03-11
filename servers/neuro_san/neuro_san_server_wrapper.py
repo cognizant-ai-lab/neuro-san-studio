@@ -20,6 +20,8 @@ This module ensures that plugins are initialized in the same Python process as t
 allowing, for instance, proper tracing and observability.
 """
 import os
+import signal
+import sys
 
 from neuro_san.service.main_loop.server_main_loop import ServerMainLoop
 
@@ -31,6 +33,8 @@ class NeuroSanServerWrapper:
         """Initialize the plugins."""
         # Phoenix
         self.phoenix_enabled = os.getenv("PHOENIX_ENABLED", "false").lower() in ("true", "1", "yes", "on")
+        # Langfuse
+        self.langfuse_enabled = os.getenv("LANGFUSE_ENABLED", "false").lower() in ("true", "1", "yes", "on")
 
     def _init_phoenix(self):
         """Initialize Phoenix instrumentation if enabled."""
@@ -49,15 +53,52 @@ class NeuroSanServerWrapper:
         except Exception as e:  # pylint: disable=broad-exception-caught
             print(f"Warning: Phoenix initialization failed: {e}")
 
+    def _init_langfuse(self):
+        """Initialize Langfuse instrumentation if enabled.
+
+        Returns:
+            LangfusePlugin instance if initialized, None otherwise
+        """
+        if not self.langfuse_enabled:
+            return None
+
+        try:
+            from plugins.langfuse.langfuse_plugin import LangfusePlugin
+
+            print("Initializing Langfuse in server process...")
+            plugin = LangfusePlugin()
+            plugin.initialize()
+            print("Langfuse initialization complete.")
+            return plugin
+        except ImportError:
+            print("Warning: Langfuse plugin not installed.")
+            print("Install with: pip install -r plugins/langfuse/requirements.txt")
+        except Exception as e:  # pylint: disable=broad-exception-caught
+            print(f"Warning: Langfuse initialization failed: {e}")
+        return None
+
     def run(self):
-        """Initialize Phoenix and run the server main loop."""
+        """Initialize Phoenix and Langfuse and run the server main loop."""
         # Initialize Phoenix before starting the server
         self._init_phoenix()
+
+        # Initialize Langfuse before starting the server
+        langfuse_plugin = self._init_langfuse()
 
         # Import and run the actual server main loop
         # Note: ServerMainLoop will parse sys.argv itself, so all command-line
         # arguments (--port, --http_port, etc.) are automatically passed through
-        ServerMainLoop().main_loop()
+        # Convert SIGTERM into SystemExit so Python unwinds through
+        # the finally block below, allowing plugins to flush traces.
+        # Tornado does not install a SIGTERM handler, so the default
+        # action would terminate the process immediately.
+        signal.signal(signal.SIGTERM, lambda signum, frame: sys.exit(0))
+
+        try:
+            ServerMainLoop().main_loop()
+        finally:
+            if langfuse_plugin is not None:
+                langfuse_plugin.shutdown()
 
 
 if __name__ == "__main__":
