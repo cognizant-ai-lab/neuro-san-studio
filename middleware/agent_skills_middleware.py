@@ -110,7 +110,7 @@ class AgentSkillsMiddleware(AgentMiddleware):
         :param skill_name: Name of the skill as defined in YAML frontmatter
         :return: Full content of SKILL.md file or error message
         """
-        skill: str = self.skills_dict.get(skill_name)
+        skill: dict[str, Any] = self.skills_dict.get(skill_name)
         if not skill:
             available = ", ".join(self.skills_dict.keys())
             return f"Error: Skill '{skill_name}' not found. Available skills: {available}"
