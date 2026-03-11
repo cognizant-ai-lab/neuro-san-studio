@@ -36,7 +36,7 @@ class DeployableAgentNetworkAssembler(AgentNetworkAssembler):
         """
         Constructor
         """
-        # Only want to do these things once.
+        # Initialize file locations; content is restored lazily in assemble_agent_network().
         file_of_class = FileOfClass(__file__)
 
         self.template_file: str = None
