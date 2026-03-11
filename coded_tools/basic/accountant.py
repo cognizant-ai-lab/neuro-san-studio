@@ -1,4 +1,3 @@
-
 # Copyright © 2023-2026 Cognizant Technology Solutions Corp, www.cognizant.com.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -14,13 +13,12 @@
 # limitations under the License.
 #
 # END COPYRIGHT
+
+from logging import Logger
+from logging import getLogger
 from typing import Any
 from typing import Dict
 from typing import Union
-
-
-from logging import getLogger
-from logging import Logger
 
 from neuro_san.interfaces.coded_tool import CodedTool
 
@@ -34,11 +32,11 @@ class Accountant(CodedTool):
         """
         Updates the passed running cost each time it's called.
         :param args: A dictionary with optional key:
-                    "running_cost": the running cost to update (optional if in sly_data).
+                "running_cost": the running cost to update (optional if in sly_data).
 
         :param sly_data: A dictionary containing parameters that should be kept out of the chat stream.
-                         Keys expected for this implementation are:
-                         "running_cost": the running cost to update (optional if in args).
+                Keys expected for this implementation are:
+                    "running_cost": the running cost to update (optional if in args).
 
         :return: A dictionary containing:
                  "running_cost": the updated running cost.
@@ -64,9 +62,7 @@ class Accountant(CodedTool):
         if "running_cost" not in args:
             sly_data["running_cost"] = updated_running_cost
 
-        tool_response = {
-            "running_cost": updated_running_cost
-        }
+        tool_response = {"running_cost": updated_running_cost}
         logger.debug("-----------------------")
         logger.debug("%s response: %s", tool_name, tool_response)
         logger.debug("========== Done with %s ==========", tool_name)

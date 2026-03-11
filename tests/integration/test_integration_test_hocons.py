@@ -86,7 +86,7 @@ class TestIntegrationTestHocons(TestCase, FailFastParamMixin):
     @pytest.mark.integration
     @pytest.mark.integration_basic
     @pytest.mark.integration_basic_music_nerd_pro
-    def test_hocon_basic(self, test_name: str, test_hocon: str):
+    def test_hocon_basic_music_nerd_pro(self, test_name: str, test_hocon: str):
         """
         Test method for a single parameterized test case specified by a hocon file.
         Arguments to this method are given by the iteration that happens as a result
