@@ -137,7 +137,7 @@ class PersistAgentNetwork(CodedTool):
         )
         assembler: AgentNetworkAssembler = persistor.get_assembler()
         top_agent_name: str = UnreachableNodesNetworkValidator().find_all_top_agents(network_def).pop()
-        persisted_content: str = assembler.assemble_agent_network(
+        persisted_content: str = await assembler.assemble_agent_network(
             network_def, top_agent_name, the_agent_network_name, sample_queries
         )
         logger.info("The resulting agent network: \n %s", str(persisted_content))
@@ -154,7 +154,7 @@ class PersistAgentNetwork(CodedTool):
             # We don't yet have client-consumable HOCON content, so we need to re-assemble
             # to send that back as a parting gift.
             assembler = HoconAgentNetworkAssembler(DEMO_MODE)
-            hocon_text: str = assembler.assemble_agent_network(
+            hocon_text: str = await assembler.assemble_agent_network(
                 network_def, top_agent_name, the_agent_network_name, sample_queries
             )
         sly_data[AGENT_NETWORK_HOCON_TEXT] = hocon_text

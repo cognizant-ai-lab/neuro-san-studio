@@ -125,7 +125,7 @@ class HoconAgentNetworkAssembler(AgentNetworkAssembler):
         """
         self.demo_mode: bool = demo_mode
 
-    def assemble_agent_network(
+    async def assemble_agent_network(
         self, network_def: dict[str, Any], top_agent_name: str, agent_network_name: str, sample_queries: list[str]
     ) -> str:
         """
