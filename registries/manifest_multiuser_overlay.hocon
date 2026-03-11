@@ -49,6 +49,24 @@
 
     # Experimental and research
     "agent_network_designer.hocon": true,               # Reason #1. Needs AGENT_NETWORK_DESIGNER_USE_RESERVATIONS=true
+    "agent_network_editor.hocon": {
+        # This is a support network for agent_network_designer
+        # We want it served up, but not listed as a public agent network
+        "serve": true,
+        "public": false
+    },
+    "agent_network_instructions_editor.hocon": {
+        # This is a support network for agent_network_designer
+        # We want it served up, but not listed as a public agent network
+        "serve": true,
+        "public": false
+    },
+    "agent_network_query_generator.hocon": {
+        # This is a support network for agent_network_designer
+        # We want it served up, but not listed as a public agent network
+        "serve": true,
+        "public": false
+    },
 
     # Demos
 
