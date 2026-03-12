@@ -25,7 +25,7 @@
         "tags": ["example", "agent skills"],
         "sample_queries": [
             "Help me write a company newsletter.",
-            "How to write faqs for new employee.",
+            "How to write FAQS for new employee.",
         ]
     },
 
@@ -63,7 +63,7 @@ I can help with internal communications writing.
             },
 
             "instructions": """
-You are an internal communications assistant that help with internal communications writing.
+You are an internal communications assistant that helps with internal communications writing.
 """,
             "middleware": [
                 {
