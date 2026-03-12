@@ -478,7 +478,7 @@ This approach is recommended for **enterprise and on-prem-to-cloud** deployments
 API keys is not desirable or permitted.
 
 > This is the authentication method used in the
-> [neuro-san-gemini-example](https://github.com/your-org/neuro-san-gemini-example) reference repository.
+> [neuro-san-gemini-example](https://github.com/subhadeep-banerjee/neuro-san-gemini-example) reference repository.
 
 ##### Prerequisites
 
