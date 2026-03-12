@@ -431,7 +431,7 @@ class AgentSkillsMiddleware(AgentMiddleware):
             "description": description,
             "content": content,
             "path": skill_path,
-            "allowed_tools": self._parse_allowed_tools(frontmatter.get("allowed-tools", "")),
+            "allowed_tools": self._parse_allowed_tools(frontmatter.get("allowed-tools")),
             "license": frontmatter.get("license", "").strip() or None,
             "compatibility": frontmatter.get("compatibility", "").strip() or None,
         }
@@ -454,15 +454,35 @@ class AgentSkillsMiddleware(AgentMiddleware):
             for c in name
         )
 
-    def _parse_allowed_tools(self, allowed_tools_str: str) -> list[str]:
-        """Parse space-delimited allowed-tools field.
+    def _parse_allowed_tools(self, allowed_tools_value: None | str | list[str]) -> list[str]:
+        """
+        Parse allowed-tools field from YAML frontmatter.
 
-        :param allowed_tools_str: Space-delimited tool names from frontmatter
+        Handles multiple YAML formats:
+        - None (key present but empty)
+        - String (space-delimited tool names)
+        - List (YAML list format)
+
+        :param allowed_tools_value: Value from YAML frontmatter
         :return: List of tool names
         """
-        if not allowed_tools_str:
+        if allowed_tools_value is None:
             return []
-        return [tool.strip() for tool in allowed_tools_str.split() if tool.strip()]
+
+        if isinstance(allowed_tools_value, list):
+            # YAML list format: ['tool1', 'tool2']
+            return [str(tool).strip() for tool in allowed_tools_value if tool]
+
+        if isinstance(allowed_tools_value, str):
+            # Space-delimited string format: "tool1 tool2"
+            return [tool.strip() for tool in allowed_tools_value.split() if tool.strip()]
+
+        # Unexpected type - log warning and return empty
+        self.logger.warning(
+            "allowed-tools has unexpected type %s, expected str or list. Ignoring.",
+            type(allowed_tools_value).__name__
+        )
+        return []
 
     async def _format_skills_prompt(self) -> str:
         """Generate skills section for system prompt per progressive disclosure pattern.
