@@ -188,7 +188,7 @@ class AgentSkillsMiddleware(AgentMiddleware):
         :return: File content or error message
         """
 
-        is_valid, error = self._validate_resource_path(resource_path, is_url=False)
+        is_valid, error = await self._validate_resource_path(resource_path, is_url=False)
         if not is_valid:
             return error
 
@@ -246,7 +246,7 @@ class AgentSkillsMiddleware(AgentMiddleware):
             return "Error: HTTP session not initialized. Skills must be loaded first."
 
         # Validate that URL is under an skill source to prevent security issue
-        is_valid, error = self._validate_resource_path(resource_url, is_url=True)
+        is_valid, error = await self._validate_resource_path(resource_url, is_url=True)
         if not is_valid:
             return error
 
@@ -354,7 +354,7 @@ class AgentSkillsMiddleware(AgentMiddleware):
                     self.logger.warning("Skipping skill source %s: %s", skill_source, content)
                     continue
 
-                parsed_skill: dict[str, Any] = self._parse_skill_metadata(content, skill_path)
+                parsed_skill: dict[str, Any] = await self._parse_skill_metadata(content, skill_path)
                 if parsed_skill:
                     # Later sources override earlier ones (last one wins)
                     self.skills_dict[parsed_skill["name"]] = parsed_skill
@@ -366,7 +366,7 @@ class AgentSkillsMiddleware(AgentMiddleware):
         self.logger.info("Loaded %d skills: %s", len(self.skills_dict), list(self.skills_dict.keys()))
 
     # pylint: disable=too-many-return-statements
-    def _parse_skill_metadata(
+    async def _parse_skill_metadata(
         self,
         content: str,
         skill_path: str,
@@ -408,7 +408,8 @@ class AgentSkillsMiddleware(AgentMiddleware):
             return None
 
         # Validate name constraints per spec
-        if not self._validate_skill_name(name):
+        is_valid_skill_name: bool = await self._validate_skill_name(name)
+        if not is_valid_skill_name:
             self.logger.warning(
                 "Skill name '%s' in %s violates Agent Skills spec constraints "
                 "(must be 1-64 chars, lowercase alphanumeric and hyphens only, "
@@ -431,12 +432,12 @@ class AgentSkillsMiddleware(AgentMiddleware):
             "description": description,
             "content": content,
             "path": skill_path,
-            "allowed_tools": self._parse_allowed_tools(frontmatter.get("allowed-tools")),
+            "allowed_tools": await self._parse_allowed_tools(frontmatter.get("allowed-tools")),
             "license": frontmatter.get("license", "").strip() or None,
             "compatibility": frontmatter.get("compatibility", "").strip() or None,
         }
 
-    def _validate_skill_name(self, name: str) -> bool:
+    async def _validate_skill_name(self, name: str) -> bool:
         """Validate skill name per Agent Skills specification.
 
         :param name: Skill name to validate
@@ -454,7 +455,7 @@ class AgentSkillsMiddleware(AgentMiddleware):
             for c in name
         )
 
-    def _parse_allowed_tools(self, allowed_tools_value: None | str | list[str]) -> list[str]:
+    async def _parse_allowed_tools(self, allowed_tools_value: None | str | list[str]) -> list[str]:
         """
         Parse allowed-tools field from YAML frontmatter.
 
