@@ -1,4 +1,4 @@
-# Copyright © 2025 Cognizant Technology Solutions Corp, www.cognizant.com.
+# Copyright © 2025-2026 Cognizant Technology Solutions Corp, www.cognizant.com.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -20,7 +20,10 @@ from pathlib import Path
 import re
 from re import DOTALL
 from re import Match
-from typing import Any, Awaitable, Callable
+from typing import Any
+from typing import Awaitable
+from typing import Callable
+from typing import override
 from urllib.parse import urljoin
 
 import aiofiles
@@ -109,6 +112,137 @@ class AgentSkillsMiddleware(AgentMiddleware):
         ]
 
         self.logger = logging.getLogger(__name__)
+
+    @override
+    async def abefore_agent(
+        self,
+        state: AgentState,
+        runtime: Runtime[ContextT]
+    ) -> dict[str, Any] | None:
+        """
+        Create HTTP session and load skills metadata and cache the content of SKILL.md before agent execution starts.
+
+        :param state: Current agent state
+        :param runtime: Runtime context
+        :return: None (skills loaded into instance variable, not state)
+        """
+
+        # Create shared session for this agent execution
+        if self._session is None:
+            self._session = ClientSession(timeout=self._timeout)
+
+        # Load skills if not already loaded
+        # Skill contents and metadata from SKILL.md are loaded and cache in abefore_agent().
+        # This happens once per session.
+        #
+        # Note that the `_load_skills()`` method calls `load_skill_resource_local()` and `load_skill_resource_remote()` to
+        # read the skill in file system and on internet, respectively.
+        # These two skills are also registered as tools so the agent can read any additional files in the skill directory.
+        if not self.skills_dict:
+            await self._load_skills()
+
+    @override
+    async def awrap_model_call(
+        self,
+        request: ModelRequest[ContextT],
+        handler: Callable[[ModelRequest[ContextT]], Awaitable[ModelResponse[ResponseT]]],
+    ) -> ModelResponse[ResponseT]:
+        """
+        Inject skills metadata into system prompt before model call
+        so the model knows what skills are available and when to use them.
+
+        :param request: Model request containing messages and state
+        :param handler: Handler to execute the model call
+        :return: Model response from handler
+        """
+
+        # Inject skills section into system message
+        messages: list[BaseMessage] = list(request.messages)
+        skills_prompt: str = await self._format_skills_prompt()
+
+        # If there is a skills prompt to inject
+        if skills_prompt:
+            if messages and isinstance(messages[0], SystemMessage):
+                original_content: str = messages[0].content
+                new_content: str = f"{original_content}\n\n{skills_prompt}"
+                messages[0] = SystemMessage(content=new_content)
+            else:
+                messages.insert(0, SystemMessage(content=skills_prompt))
+
+        return await handler(request.override(messages=messages))
+
+    @override
+    async def awrap_tool_call(
+        self,
+        request: ToolCallRequest,
+        handler: Callable[[ToolCallRequest], Awaitable[ToolMessage | Command[Any]]]
+    ) -> ToolMessage | Command[Any]:
+        """
+        Tool messages for langchain BaseTool are written in the journal and put in chat context with
+        JournalingCallbackHandler.on_tool_start() and JournalingCallbackHandler.on_tool_end().
+        These can be prevented by intercepting the tool call request and calling the methods directly instead.
+
+        :param request: Tool call request
+        :param handler: Handler to execute the tool call
+        :return: Skill content as Tool message if keep_skill_in_context is False,
+                    otherwise original command from handler
+        """
+        tool_call: ToolCall = request.tool_call
+        tool_name: str = tool_call.get("name", "")
+        tool_call_id: str = tool_call.get("id", "")
+
+        # If not keeping full content in context, bypasses the handler and calls middleware methods directly
+        if not self.keep_skill_in_context and tool_name in {
+            "get_full_skill_content",
+            "load_skill_resource_local",
+            "load_skill_resource_remote"
+        }:
+
+            content: str = ""
+            # Call the method directly instead of executing the tool to get content
+            if tool_name == "get_full_skill_content":
+                skill_name = tool_call.get("args", {}).get("skill_name")
+                if not skill_name:
+                    content = "Error: No 'skill_name' provided"
+                else:
+                    content = await self.get_full_skill_content(skill_name)
+
+            elif tool_name == "load_skill_resource_local":
+                resource_path = tool_call.get("args", {}).get("resource_path")
+                if not resource_path:
+                    content = "Error: No 'resource_path' provided"
+                else:
+                    content = await self.load_skill_resource_local(resource_path)
+
+            else:
+                resource_url = tool_call.get("args", {}).get("resource_url")
+                if not resource_url:
+                    content = "Error: No 'resource_url' provided"
+                else:
+                    content = await self.load_skill_resource_remote(resource_url)
+
+            # Return skill contents to the model
+            return ToolMessage(content=content, tool_call_id=tool_call_id)
+
+        # Execute tool and put all skill content in context
+        return await handler(request)
+
+    @override
+    async def aafter_agent(
+        self,
+        state: AgentState,
+        runtime: Runtime[ContextT]
+    ) -> dict[str, Any] | None:
+        """Close HTTP session after agent execution completes.
+
+        :param state: Current agent state
+        :param runtime: Runtime context
+        :return: None
+        """
+        # Close the session
+        if self._session is not None and not self._session.closed:
+            await self._session.close()
+            self._session = None
 
     async def get_full_skill_content(self, skill_name: str) -> str:
         """Get the full SKILL.md content for a specified skill.
@@ -531,122 +665,3 @@ class AgentSkillsMiddleware(AgentMiddleware):
         ])
 
         return "\n".join(lines)
-
-    async def abefore_agent(
-        self,
-        state: AgentState,
-        runtime: Runtime[ContextT]
-    ) -> dict[str, Any] | None:
-        """
-        Create HTTP session and load skills metadata and cache the content of SKILL.md before agent execution starts.
-
-        :param state: Current agent state
-        :param runtime: Runtime context
-        :return: None (skills loaded into instance variable, not state)
-        """
-
-        # Create shared session for this agent execution
-        if self._session is None:
-            self._session = ClientSession(timeout=self._timeout)
-
-        # Load skills if not already loaded
-        if not self.skills_dict:
-            await self._load_skills()
-
-    async def awrap_model_call(
-        self,
-        request: ModelRequest[ContextT],
-        handler: Callable[[ModelRequest[ContextT]], Awaitable[ModelResponse[ResponseT]]],
-    ) -> ModelResponse[ResponseT]:
-        """Inject skills metadata into system prompt before model call.
-
-        :param request: Model request containing messages and state
-        :param handler: Handler to execute the model call
-        :return: Model response from handler
-        """
-
-        # Inject skills section into system message
-        messages: list[BaseMessage] = list(request.messages)
-        skills_prompt: str = await self._format_skills_prompt()
-
-        # If there is a skills prompt to inject
-        if skills_prompt:
-            if messages and isinstance(messages[0], SystemMessage):
-                original_content: str = messages[0].content
-                new_content: str = f"{original_content}\n\n{skills_prompt}"
-                messages[0] = SystemMessage(content=new_content)
-            else:
-                messages.insert(0, SystemMessage(content=skills_prompt))
-
-        return await handler(request.override(messages=messages))
-
-    async def awrap_tool_call(
-        self,
-        request: ToolCallRequest,
-        handler: Callable[[ToolCallRequest], Awaitable[ToolMessage | Command[Any]]]
-    ) -> ToolMessage | Command[Any]:
-        """
-        Tool messages for langchain BaseTool are written in the journal and put in chat context with
-        JournalingCallbackHandler.on_tool_start() and JournalingCallbackHandler.on_tool_end().
-        These can be prevented by intercepting the tool call request and calling the methods directly instead.
-
-        :param request: Tool call request
-        :param handler: Handler to execute the tool call
-        :return: Skill content as Tool message if keep_skill_in_context is False,
-                    otherwise original command from handler
-        """
-        tool_call: ToolCall = request.tool_call
-        tool_name: str = tool_call.get("name", "")
-        tool_call_id: str = tool_call.get("id", "")
-
-        # If not keeping full content in context, bypasses the handler and calls middleware methods directly
-        if not self.keep_skill_in_context and tool_name in {
-            "get_full_skill_content",
-            "load_skill_resource_local",
-            "load_skill_resource_remote"
-        }:
-
-            content: str = ""
-            # Call the method directly instead of executing the tool to get content
-            if tool_name == "get_full_skill_content":
-                skill_name = tool_call.get("args", {}).get("skill_name")
-                if not skill_name:
-                    content = "Error: No 'skill_name' provided"
-                else:
-                    content = await self.get_full_skill_content(skill_name)
-
-            elif tool_name == "load_skill_resource_local":
-                resource_path = tool_call.get("args", {}).get("resource_path")
-                if not resource_path:
-                    content = "Error: No 'resource_path' provided"
-                else:
-                    content = await self.load_skill_resource_local(resource_path)
-
-            else:
-                resource_url = tool_call.get("args", {}).get("resource_url")
-                if not resource_url:
-                    content = "Error: No 'resource_url' provided"
-                else:
-                    content = await self.load_skill_resource_remote(resource_url)
-
-            # Return skill contents to the model
-            return ToolMessage(content=content, tool_call_id=tool_call_id)
-
-        # Execute tool and put all skill content in context
-        return await handler(request)
-
-    async def aafter_agent(
-        self,
-        state: AgentState,
-        runtime: Runtime[ContextT]
-    ) -> dict[str, Any] | None:
-        """Close HTTP session after agent execution completes.
-
-        :param state: Current agent state
-        :param runtime: Runtime context
-        :return: None
-        """
-        # Close the session
-        if self._session is not None and not self._session.closed:
-            await self._session.close()
-            self._session = None
