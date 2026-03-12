@@ -17,7 +17,6 @@
 import asyncio
 import logging
 from pathlib import Path
-from pathlib import PosixPath
 import re
 from re import DOTALL
 from re import Match
@@ -192,7 +191,7 @@ class AgentSkillsMiddleware(AgentMiddleware):
         if not is_valid:
             return error
 
-        path: PosixPath = Path(resource_path)
+        path = Path(resource_path)
 
         if not path.exists():
             return f"Error: Resource file not found: {resource_path}"
@@ -345,8 +344,8 @@ class AgentSkillsMiddleware(AgentMiddleware):
                     content: str = await self.load_skill_resource_remote(skill_md_url)
                     skill_path: str = skill_md_url
                 else:
-                    source_path: PosixPath = Path(skill_source)
-                    skill_md_path: PosixPath = source_path / "SKILL.md"
+                    source_path = Path(skill_source)
+                    skill_md_path = source_path / "SKILL.md"
                     content: str = await self.load_skill_resource_local(str(skill_md_path))
                     skill_path = str(skill_md_path)
 
