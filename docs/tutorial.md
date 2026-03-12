@@ -760,18 +760,18 @@ See also
 ---
 
 ## 8. How to Add Middleware to an Agent
- 
+
 ### What is Middleware?
- 
+
 **Middleware** lets you inject custom code at key points during an agent's execution — without modifying the agent's
 instructions or tools. This is useful for cross-cutting concerns such as:
- 
+
 * **PII detection and redaction** – scrub sensitive data before it reaches the LLM or after it is returned
 * **Logging and auditing** – record inputs and outputs for compliance or debugging
 * **Input/output transformation** – reformat or enrich data flowing through the agent
- 
+
 A middleware hooks into four points of the agent lifecycle:
- 
+
 | Hook              | When it runs                        |
 |-------------------|-------------------------------------|
 | `abefore_agent()` | Before the agent execution starts   |
@@ -780,18 +780,18 @@ A middleware hooks into four points of the agent lifecycle:
 | `aafter_model()`  | After each LLM call                 |
 | `awrap_model_call()` | intercept and control async model execution |
 | `awrap_tool_call()` | intercept and control async tool execution |
- 
+
 > **Note**: The asynchronous variants (`abefore_agent`, etc.) are preferred in the Neuro SAN server environment.
- 
+
 ### Adding Middleware in HOCON
- 
+
 Middleware is configured per agent using the `middleware` key, which takes a list of middleware definitions.
 Each definition requires a `class` field (the fully-qualified middleware class name) and an optional `args`
 dictionary for constructor arguments.
- 
+
 Here is a complete example based on [pii_middleware.hocon](../neuro_san/registries/pii_middleware.hocon).
 The `prankster` agent uses `PIIMiddleware` to detect and redact phone numbers:
- 
+
 ```hocon
 {
     "llm_config": {
@@ -834,20 +834,20 @@ The `prankster` agent uses `PIIMiddleware` to detect and redact phone numbers:
     ]
 }
 ```
- 
+
 The `args` values depend on the constructor signature of the middleware class you are using.
 The framework will also automatically populate the following special args if they appear in the
 constructor signature:
- 
+
 * **`origin`** – a list of dictionaries describing the agent's position in the network hierarchy
 * **`origin_str`** – a string representation of `origin`
 * **`sly_data`** – the shared data dictionary available to all middleware and coded tools for the request
- 
+
 ### Multiple Middleware
- 
+
 You can apply more than one middleware to an agent by listing them in order. They are applied sequentially,
 so order matters:
- 
+
 ```hocon
 "middleware": [
     {
@@ -864,7 +864,7 @@ so order matters:
     }
 ]
 ```
- 
+
 For more details, see the [Middleware](user_guide.md#middleware) section of the user guide.
 
 ---

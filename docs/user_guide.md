@@ -1237,46 +1237,46 @@ following methods.
    - For example, see [mcp_info.hocon](../mcp/mcp_info.hocon)
 
 ## Middleware
- 
+
 Middleware allows custom code to be injected at key points during agent execution — before or after the agent runs,
 and before or after each LLM call. This makes it possible to inspect, modify, or intercept data flowing through
 an agent without changing the agent's core logic.
- 
+
 Middleware is configured per agent using the optional `middleware` key in an agent's specification.
 The value is a list of dictionaries, each describing one `AgentMiddleware` instance to apply.
 When multiple middleware are listed, order of appearance matters — they are applied in sequence.
- 
+
 For an overview of middleware, see the [Overview](https://docs.langchain.com/oss/python/langchain/middleware/overview).
- 
+
 For a working example, see [pii_middleware.hocon](../neuro_san/registries/pii_middleware.hocon).
- 
+
 ### class
- 
+
 _Required._ The fully-qualified class name of the `AgentMiddleware` to instantiate. For example:
- 
+
 ```hocon
 "class": "langchain.agents.middleware.PIIMiddleware"
 ```
- 
+
 An `AgentMiddleware` can hook into the following points of agent execution (asynchronous variants are preferred
 in the Neuro SAN server environment):
- 
+
 - `abefore_agent()` — called before the agent execution starts
 - `aafter_agent()` — called after the agent execution completes
 - `abefore_model()` — called before each LLM call
 - `aafter_model()` — called after each LLM call
 - `awrap_model_call()` - intercept and control async model execution via handler callback
 - `awrap_tool_call()` - intercept and control async tool execution via handler callback
- 
+
 Only class-based middleware is supported (not annotation-based). See
 [AgentMiddleware](https://docs.langchain.com/oss/python/langchain/middleware/custom#class-based-middleware)
 for details on how to implement one.
- 
+
 ### args
- 
+
 A dictionary of keyword arguments passed to the middleware class constructor. Keys are argument names and
 values are argument values, matching the constructor signature of the class being instantiated. For example:
- 
+
 ```hocon
 "args": {
     "pii_type": "phone_number",
@@ -1285,23 +1285,23 @@ values are argument values, matching the constructor signature of the class bein
     "apply_to_output": true
 }
 ```
- 
+
 #### Special args
- 
+
 The following argument names are recognized by the agent framework and automatically populated if they appear
 in both the middleware dictionary and the class constructor signature:
- 
+
 - **`origin`** — a list of dictionaries describing where in the agent network hierarchy this middleware
   was instantiated.
 - **`origin_str`** — a simpler string representation of `origin`.
 - **`sly_data`** — the agent's `sly_data` dictionary, shared across all middleware and coded tools for
   the current request. See [Sly data](#sly-data) for more information.
- 
+
 ### Example
- 
+
 The following example shows a `prankster` agent that uses `PIIMiddleware` to detect and redact phone numbers
 from both inputs and outputs:
- 
+
 ```hocon
 {
     "name": "prankster",
@@ -1333,7 +1333,7 @@ from both inputs and outputs:
     ]
 }
 ```
- 
+
 See [pii_middleware.hocon](../neuro_san/registries/pii_middleware.hocon) for the full working network.
 
 ## Logging
