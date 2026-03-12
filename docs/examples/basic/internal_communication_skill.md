@@ -173,7 +173,7 @@ beginning the week of January 8.
 
 ## Architecture Overview
 
-### Agent: comms_assistant
+### Agent: internal_communications_assistant
 
 - **Entry point** for internal communication requests
 - Uses `AgentSkillsMiddleware` to load the `internal-comms` skill
@@ -214,7 +214,7 @@ skills/internal-comms/
 
 1. **User requests** internal communication
 2. **Agent identifies type** (3P, newsletter, FAQ, or general)
-3. **Agent loads** appropriate example file using `load_skill_resource_local`
+3. **Agent loads** appropriate example file using `load_skill_resource_remote`
 4. **Agent follows** format-specific instructions
 5. **Agent gathers** information (via tools or user input)
 6. **Agent drafts** communication following guidelines

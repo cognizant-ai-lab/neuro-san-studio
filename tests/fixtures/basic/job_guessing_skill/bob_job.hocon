@@ -28,7 +28,7 @@
     "timeout_in_seconds": 30,
     
     # success_ratio is useful for passing to the assessor to find out why
-    # a test is intermitently failing. Sometimes it's the agent prompt, but
+    # a test is intermittently failing. Sometimes it's the agent prompt, but
     # sometimes it's the test itself.
     "success_ratio": "1/1",
     

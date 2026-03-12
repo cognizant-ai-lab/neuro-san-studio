@@ -21,7 +21,7 @@ to load and utilize skills following the Agent Skills specification.
 The network demonstrates:
 - **Progressive disclosure**: Skill metadata loaded first, full content on demand
 - **Multi-file skills**: Loading additional resources (LOCATION.md, SALARY.md) referenced in SKILL.md
-- **Token optimization**: Optional content summarization to save context space
+- **Skill context control**: Configuration of whether full skill content is kept in the agent's context
 - **Security validation**: Path/URL validation to prevent SSRF and path traversal attacks
 
 The agent can determine a person's career, location, and salary based on their name using a simple mapping skill
@@ -141,8 +141,8 @@ The middleware manages skill lifecycle:
    - Provides usage instructions following Agent Skills spec
 
 3. **Tool Execution** (`awrap_tool_call`):
-   - Optionally replaces skill content with summary (if `keep_skill_in_context=False`)
-   - Saves tokens in long conversations
+   - Executes skill tools and returns the full skill content to the model
+   - Used to load SKILL.md and additional skill resources on demand
 
 4. **Cleanup** (`aafter_agent`):
    - Closes HTTP session after agent execution
