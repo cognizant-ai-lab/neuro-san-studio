@@ -67,3 +67,23 @@ class Accountant(CodedTool):
         logger.debug("%s response: %s", tool_name, tool_response)
         logger.debug("========== Done with %s ==========", tool_name)
         return tool_response
+
+    def invoke(self, args: Dict[str, Any], sly_data: Dict[str, Any]) -> Union[Dict[str, Any], str]:
+        """
+        Synchronous wrapper for :py:meth:`async_invoke`.
+
+        Some unit tests and legacy callers use the synchronous ``invoke`` method directly.
+        The base :class:`CodedTool` implementation returns ``None`` if ``invoke`` isn't
+        overridden, which caused our tests to fail.  ``Accountant`` only implemented
+        ``async_invoke`` previously, so ``accountant.invoke(...)`` returned ``None``.
+
+        To maintain parity with other tools (see :class:`CalculatorCodedTool`), we
+        simply run the asynchronous implementation on the current event loop using
+        :func:`asyncio.run`.
+        """
+        # ``asyncio`` is imported locally to keep the top of the file uncluttered and
+        # avoid pulling in an event loop unnecessarily when the tool is instantiated
+        # but not executed.
+        import asyncio
+
+        return asyncio.run(self.async_invoke(args, sly_data))
