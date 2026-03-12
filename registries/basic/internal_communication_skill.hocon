@@ -22,7 +22,7 @@
     # Optional metadata describing this agent network
     "metadata": {
         "description": "Simple agent network with one agent and a skill middleware that progressively loads a skill from the internet.",
-        "tags": ["example", "agent skills"],
+        "tags": ["example", "skills"],
         "sample_queries": [
             "Help me write a company newsletter.",
             "How to write FAQs for new employees.",
