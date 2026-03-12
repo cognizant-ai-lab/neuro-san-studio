@@ -14,6 +14,7 @@
 #
 # END COPYRIGHT
 
+import asyncio
 import logging
 from pathlib import Path
 from pathlib import PosixPath
@@ -24,8 +25,9 @@ from typing import Any, Awaitable, Callable
 from urllib.parse import urljoin
 
 import aiofiles
-from aiohttp import ClientSession
 from aiohttp import ClientError
+from aiohttp import ClientSession
+from aiohttp import ClientTimeout
 from yaml import safe_load
 from yaml import YAMLError
 
@@ -81,17 +83,22 @@ class AgentSkillsMiddleware(AgentMiddleware):
     def __init__(
         self,
         skill_sources: list[str],
-        keep_skill_in_context: bool = False
+        keep_skill_in_context: bool = False,
+        http_timeout: float = 30.0
     ) -> None:
         """Initialize the skills middleware.
 
         :param skill_sources: Directories or URLs to scan for SKILL.md files
         :param keep_skill_in_context: Whether to keep full skill content in chat context
+        :param http_timeout: Timeout in seconds for HTTP requests (default: 30.0)
         """
         self.skill_sources: list[str] = skill_sources
         self.skills_dict: dict[str, dict[str, Any]] = {}
-        self._skills_loaded: bool = False
         self.keep_skill_in_context: bool = keep_skill_in_context
+
+        # Session will be created in abefore_agent, and closed in aafter_agent
+        self._session: ClientSession | None = None
+        self._timeout = ClientTimeout(total=http_timeout, connect=http_timeout/3, sock_read=http_timeout)
 
         # Register tools per Agent Skills progressive disclosure pattern
         # This is equivalent to adding tools in the network hocon file
@@ -180,21 +187,15 @@ class AgentSkillsMiddleware(AgentMiddleware):
         :param resource_path: Absolute or relative path to resource file
         :return: File content or error message
         """
-        path = Path(resource_path)
+
+        is_valid, error = self._validate_resource_path(resource_path, is_url=False)
+        if not is_valid:
+            return error
+
+        path: PosixPath = Path(resource_path)
 
         if not path.exists():
-            # Try resolving relative to each skill directory
-            for skill in self.skills_dict.values():
-                skill_path = skill.get("path", "")
-                if not skill_path.startswith(("http://", "https://")):
-                    skill_dir = Path(skill_path).parent
-                    potential_path = skill_dir / resource_path
-                    if potential_path.exists():
-                        path = potential_path
-                        break
-
-            if not path.exists():
-                return f"Error: Resource file not found: {resource_path}"
+            return f"Error: Resource file not found: {resource_path}"
 
         try:
             async with aiofiles.open(path, mode='r', encoding='utf-8') as file:
@@ -241,16 +242,27 @@ class AgentSkillsMiddleware(AgentMiddleware):
         :param resource_url: Full URL to resource file
         :return: File content or error message
         """
+        if self._session is None:
+            return "Error: HTTP session not initialized. Skills must be loaded first."
+
+        # Validate that URL is under an skill source to prevent security issue
+        is_valid, error = self._validate_resource_path(resource_url, is_url=True)
+        if not is_valid:
+            return error
+
         try:
-            async with ClientSession() as session:
-                async with session.get(resource_url) as response:
-                    if response.status != 200:
-                        return f"Error: HTTP {response.status} when fetching {resource_url}"
-                    return await response.text()
+            async with self._session.get(resource_url) as response:
+                if response.status != 200:
+                    return f"Error: HTTP {response.status} when fetching {resource_url}"
+                message: str = await response.text()
+        except asyncio.TimeoutError:
+            message = f"Error: Timeout fetching {resource_url} (>{self._timeout.total}s)"
         except ClientError as client_error:
-            return f"Error: Network error loading {resource_url}: {client_error}"
+            message = f"Error: Network error loading {resource_url}: {client_error}"
         except UnicodeDecodeError as unicode_error:
-            return f"Error: Unable to decode response as UTF-8: {unicode_error}"
+            message = f"Error: Unable to decode response as UTF-8: {unicode_error}"
+
+        return message
 
     def _create_load_skill_resource_remote_tool(self) -> BaseTool:
         """Create tool to load additional skill resources from URLs.
@@ -283,6 +295,38 @@ class AgentSkillsMiddleware(AgentMiddleware):
             tags=["langchain_tool"]
         )
 
+    async def _validate_resource_path(self, resource_path: str, is_url: bool) -> tuple[bool, str]:
+        """
+        Validate that resource path is under a configured skill source.
+
+        :param resource_path: Path or URL to validate
+        :param is_url: True if validating URL, False if validating filesystem path
+        :return: (is_valid, error_message) - error_message empty if valid
+        """
+        for skill_source in self.skill_sources:
+            source_is_url = skill_source.startswith(("http://", "https://"))
+
+            # Match type: URL validation for URLs, path validation for paths
+            if source_is_url != is_url:
+                continue
+
+            if is_url:
+                # URL validation
+                base_url = skill_source.rstrip("/") + "/"
+                if resource_path.startswith(base_url):
+                    return True, ""
+            else:
+                # Filesystem path validation (resolve to prevent ../ attacks)
+                try:
+                    source_resolved = Path(skill_source).resolve()
+                    resource_resolved = Path(resource_path).resolve()
+                    if resource_resolved.is_relative_to(source_resolved):
+                        return True, ""
+                except (ValueError, OSError):
+                    continue
+
+        return False, f"Error: Path {resource_path} not under any configured skill source"
+
     async def _load_skills(self) -> None:
         """Scan all skill sources and load metadata from SKILL.md files.
 
@@ -291,8 +335,6 @@ class AgentSkillsMiddleware(AgentMiddleware):
 
         :raises: Logs warnings for invalid skills but continues processing
         """
-        if self._skills_loaded:
-            return
 
         for skill_source in self.skill_sources:
             is_url: bool = skill_source.startswith(("http://", "https://"))
@@ -321,7 +363,6 @@ class AgentSkillsMiddleware(AgentMiddleware):
             except Exception as error:
                 self.logger.warning("Unexpected error loading skill from %s: %s", skill_source, error)
 
-        self._skills_loaded = True
         self.logger.info("Loaded %d skills: %s", len(self.skills_dict), list(self.skills_dict.keys()))
 
     # pylint: disable=too-many-return-statements
@@ -476,17 +517,21 @@ class AgentSkillsMiddleware(AgentMiddleware):
         state: AgentState,
         runtime: Runtime[ContextT]
     ) -> dict[str, Any] | None:
-        """Load skills metadata and cache the content of SKILL.md before agent execution starts.
+        """
+        Create HTTP session and load skills metadata and cache the content of SKILL.md before agent execution starts.
 
         :param state: Current agent state
         :param runtime: Runtime context
         :return: None (skills loaded into instance variable, not state)
         """
-        if self.skills_dict:
-            return None
 
-        await self._load_skills()
-        return None
+        # Create shared session for this agent execution
+        if self._session is None:
+            self._session = ClientSession(timeout=self._timeout)
+
+        # Load skills if not already loaded
+        if not self.skills_dict:
+            await self._load_skills()
 
     async def awrap_model_call(
         self,
@@ -569,3 +614,19 @@ class AgentSkillsMiddleware(AgentMiddleware):
 
         # Execute tool and put all skill content in context
         return await handler(request)
+
+    async def aafter_agent(
+        self,
+        state: AgentState,
+        runtime: Runtime[ContextT]
+    ) -> dict[str, Any] | None:
+        """Close HTTP session after agent execution completes.
+
+        :param state: Current agent state
+        :param runtime: Runtime context
+        :return: None
+        """
+        # Close the session
+        if self._session is not None and not self._session.closed:
+            await self._session.close()
+            self._session = None

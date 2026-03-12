@@ -84,7 +84,9 @@ You are a name assistant that provides career information based on user's name.
 
                     "args": {
                         # List of skill directories. Each directory must contain a SKILL.md file.
-                        # Sources can be either local file paths or URLs.
+                        # Sources can be either local file paths or URLs. 
+                        # For local sources, use a path relative to the script's working directory
+                        # or provide an absolute path.
                         #
                         # ⚠️ Security note:
                         # Be cautious when using skills from the internet. They may contain malicious

@@ -84,6 +84,8 @@ You are an internal communications assistant that helps with internal communicat
                     "args": {
                         # List of skill directories. Each directory must contain a SKILL.md file.
                         # Sources can be either local file paths or URLs.
+                        # For local sources, use a path relative to the script's working directory
+                        # or provide an absolute path.
                         #
                         # ⚠️ Security note:
                         # Be cautious when using skills from the internet. They may contain malicious
@@ -108,7 +110,11 @@ You are an internal communications assistant that helps with internal communicat
                         # 
                         # Trade-off: Token efficiency vs. cross-skill synthesis capability
                         # Default: false
-                        "keep_skill_in_context": false
+                        "keep_skill_in_context": true,
+                        
+                        # Timeout in seconds for HTTP requests (Default: 30.0)
+                        # Only for remote skills
+                        "http_timeout": 30.0,
                     }
                 },
             ],
