@@ -789,7 +789,7 @@ Middleware is configured per agent using the `middleware` key, which takes a lis
 Each definition requires a `class` field (the fully-qualified middleware class name) and an optional `args`
 dictionary for constructor arguments.
 
-Here is a complete example based on [pii_middleware.hocon](../neuro_san/registries/pii_middleware.hocon).
+Here is a complete example based on [pii_middleware.hocon](../registries/basic/pii_middleware.hocon).
 The `prankster` agent uses `PIIMiddleware` to detect and redact phone numbers:
 
 ```hocon

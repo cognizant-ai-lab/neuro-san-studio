@@ -1334,7 +1334,7 @@ from both inputs and outputs:
 }
 ```
 
-See [pii_middleware.hocon](../neuro_san/registries/pii_middleware.hocon) for the full working network.
+See [pii_middleware.hocon](../registries/basic/pii_middleware.hocon) for the full working network.
 
 ## Logging
 
