@@ -9,7 +9,7 @@ with progressive disclosure and multi-file skill loading.
 
 ## File
 
-[job_guessing_skill.hocon](../../../registries/basic/job_gussing_skill.hocon)
+[job_guessing_skill.hocon](../../../registries/basic/job_guessing_skill.hocon)
 
 ---
 
