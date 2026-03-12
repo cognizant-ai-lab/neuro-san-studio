@@ -76,7 +76,7 @@ class AgentSkillsMiddleware(AgentMiddleware):
         2. `awrap_model_call()`: Injects available skills list into system prompt
         3. Agent decides to use a skill and calls `get_full_skill_content(skill_name='...')`
         4. Agent optionally loads additional resources via `load_skill_resource_*` tools
-        5. `awrap_tool_call()`: Optionally intercepts tool call to not puts skill content in chat context
+        5. `awrap_tool_call()`: Optionally intercepts tool calls to avoid putting skill content in the chat context
             (if keep_skill_in_context=False)
     """
 
