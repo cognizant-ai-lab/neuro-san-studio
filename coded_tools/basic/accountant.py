@@ -14,6 +14,7 @@
 #
 # END COPYRIGHT
 
+import asyncio
 from logging import Logger
 from logging import getLogger
 from typing import Any
@@ -84,6 +85,5 @@ class Accountant(CodedTool):
         # ``asyncio`` is imported locally to keep the top of the file uncluttered and
         # avoid pulling in an event loop unnecessarily when the tool is instantiated
         # but not executed.
-        import asyncio
 
         return asyncio.run(self.async_invoke(args, sly_data))
