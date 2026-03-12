@@ -1248,7 +1248,7 @@ When multiple middleware are listed, order of appearance matters — they are ap
 
 For an overview of middleware, see the [Overview](https://docs.langchain.com/oss/python/langchain/middleware/overview).
 
-For a working example, see [pii_middleware.hocon](../neuro_san/registries/pii_middleware.hocon).
+For a working example, see [pii_middleware.hocon](../registries/basic/pii_middleware.hocon).
 
 ### class
 
