@@ -43,10 +43,14 @@ single command.
             * [Using Toolbox Tools in Agent Network](#using-toolbox-tools-in-agent-network)
             * [Toolbox Configuration](#toolbox-configuration)
             * [Extending the Toolbox](#extending-the-toolbox)
-    * [8. How to Access the Logs](#8-how-to-access-the-logs)
-    * [9. How to Stop the servers](#9-how-to-stop-the-servers)
-    * [10. Key Aspects of Neuro AI Multi-Agent Accelerator](#10-key-aspects-of-neuro-ai-multi-agent-accelerator)
-    * [11. End Notes](#11-end-notes)
+    * [8. How to Add Middleware to an Agent](#8-how-to-add-middleware-to-an-agent)
+        * [What is Middleware?](#what-is-middleware)
+        * [Adding Middleware in HOCON](#adding-middleware-in-hocon)
+        * [Multiple Middleware](#multiple-middleware)
+    * [9. How to Access the Logs](#8-how-to-access-the-logs)
+    * [10. How to Stop the servers](#9-how-to-stop-the-servers)
+    * [11. Key Aspects of Neuro AI Multi-Agent Accelerator](#10-key-aspects-of-neuro-ai-multi-agent-accelerator)
+    * [12. End Notes](#11-end-notes)
 
 <!-- TOC -->
 
@@ -755,7 +759,117 @@ See also
 
 ---
 
-## 8. How to Access the Logs
+## 8. How to Add Middleware to an Agent
+ 
+### What is Middleware?
+ 
+**Middleware** lets you inject custom code at key points during an agent's execution — without modifying the agent's
+instructions or tools. This is useful for cross-cutting concerns such as:
+ 
+* **PII detection and redaction** – scrub sensitive data before it reaches the LLM or after it is returned
+* **Logging and auditing** – record inputs and outputs for compliance or debugging
+* **Input/output transformation** – reformat or enrich data flowing through the agent
+ 
+A middleware hooks into four points of the agent lifecycle:
+ 
+| Hook              | When it runs                        |
+|-------------------|-------------------------------------|
+| `abefore_agent()` | Before the agent execution starts   |
+| `aafter_agent()`  | After the agent execution completes |
+| `abefore_model()` | Before each LLM call                |
+| `aafter_model()`  | After each LLM call                 |
+| `awrap_model_call()` | intercept and control async model execution |
+| `awrap_tool_call()` | intercept and control async tool execution |
+ 
+> **Note**: The asynchronous variants (`abefore_agent`, etc.) are preferred in the Neuro SAN server environment.
+ 
+### Adding Middleware in HOCON
+ 
+Middleware is configured per agent using the `middleware` key, which takes a list of middleware definitions.
+Each definition requires a `class` field (the fully-qualified middleware class name) and an optional `args`
+dictionary for constructor arguments.
+ 
+Here is a complete example based on [pii_middleware.hocon](../neuro_san/registries/pii_middleware.hocon).
+The `prankster` agent uses `PIIMiddleware` to detect and redact phone numbers:
+ 
+```hocon
+{
+    "llm_config": {
+        "model_name": "gpt-5.2"
+    },
+    "tools": [
+        {
+            "name": "prankster",
+            "function": {
+                "description": "Send me a phone number and I will leave a message on its voicemail for you.",
+                "parameters": {
+                    "phone_number": {
+                        "type": "string",
+                        "description": "The phone number to send the message to."
+                    },
+                    "message": {
+                        "type": "string",
+                        "description": "The message to send to the phone number."
+                    }
+                }
+            },
+            "instructions": """
+                You are an impotent wannabe prank caller.
+                Always respond by telling the user that the message was left at the phone number you received,
+                but you will actually do nothing with the message.
+            """,
+            "tools": [],
+            "middleware": [
+                {
+                    "class": "langchain.agents.middleware.PIIMiddleware",
+                    "args": {
+                        "pii_type": "phone_number",
+                        "detector": "[a-zA-Z0-9]{3}-[a-zA-Z0-9]{4}",
+                        "strategy": "redact",
+                        "apply_to_output": true
+                    }
+                }
+            ]
+        }
+    ]
+}
+```
+ 
+The `args` values depend on the constructor signature of the middleware class you are using.
+The framework will also automatically populate the following special args if they appear in the
+constructor signature:
+ 
+* **`origin`** – a list of dictionaries describing the agent's position in the network hierarchy
+* **`origin_str`** – a string representation of `origin`
+* **`sly_data`** – the shared data dictionary available to all middleware and coded tools for the request
+ 
+### Multiple Middleware
+ 
+You can apply more than one middleware to an agent by listing them in order. They are applied sequentially,
+so order matters:
+ 
+```hocon
+"middleware": [
+    {
+        "class": "my_package.LoggingMiddleware",
+        "args": { "log_level": "INFO" }
+    },
+    {
+        "class": "langchain.agents.middleware.PIIMiddleware",
+        "args": {
+            "pii_type": "email",
+            "strategy": "redact",
+            "apply_to_output": true
+        }
+    }
+]
+```
+ 
+For more details, see the [Middleware](user_guide.md#middleware) section of the user guide.
+
+---
+
+## 9. How to Access the Logs
 
 By default, when you run:
 
@@ -774,7 +888,7 @@ Additionally, you will see logs on your terminal. Checking these files is useful
 
 ---
 
-## 9. How to Stop the servers
+## 10. How to Stop the servers
 
 When you are running the server in the foreground (via `python -m run`), simply press:
 
@@ -785,7 +899,7 @@ If you launched them separately, you would stop each process individually (again
 
 ---
 
-## 10. Key Aspects of Neuro AI Multi-Agent Accelerator
+## 11. Key Aspects of Neuro AI Multi-Agent Accelerator
 
 * **Flexibility of Use**: Define any agent network structure using `.hocon` files, easily adjustable for different use
 cases and tasks.
@@ -798,7 +912,7 @@ and autonomous decision workflows.
 
 ---
 
-## 11. End Notes
+## 12. End Notes
 
 You’ve now seen how to:
 
