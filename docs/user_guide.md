@@ -19,9 +19,11 @@
       - [Default Bedrock models](#default-bedrock-models)
     - [Gemini](#gemini)
       - [Gemini with ADC](#gemini-with-adc)
+        - [Gemini with ADC Prerequisites](#gemini-with-adc-prerequisites)
+        - [Gemini with ADC Configuration](#gemini-with-adc-configuration)
     - [Ollama](#ollama)
-      - [Prerequisites](#prerequisites)
-      - [Configuration](#configuration)
+      - [Ollama Prerequisites](#ollama-prerequisites)
+      - [Ollama Configuration](#ollama-configuration)
       - [Using Ollama in Docker or Remote Server](#using-ollama-in-docker-or-remote-server)
       - [Example agent network](#example-agent-network)
     - [Configuring Default Models with Environment Variables](#configuring-default-models-with-environment-variables)
@@ -461,7 +463,7 @@ and specify which model to use in the `model_name` field of the `llm_config` sec
 degraded reasoning performance, and failures on complex tasks. Therefore, this value should be explicitly set to avoid
 falling back to the default of `0.7`.
 
-You can get an Google Gemini API [key](https://ai.google.dev/gemini-api/docs/api-key) here.
+You can get a Google Gemini API [key](https://ai.google.dev/gemini-api/docs/api-key) here.
 
 #### Gemini with ADC
 
@@ -480,7 +482,7 @@ API keys is not desirable or permitted.
 > An example implementation of Gemini with ADC can be found in the
 > [neuro-san-gemini-example](https://github.com/subhadeep-banerjee/neuro-san-gemini-example) repository.
 
-##### Prerequisites
+##### Gemini with ADC Prerequisites
 
 1. Install the [Google Cloud CLI](https://cloud.google.com/sdk/docs/install) (`gcloud`).
 
@@ -503,7 +505,7 @@ API keys is not desirable or permitted.
     GCP_REGION=your-vertex-ai-region   # e.g. us-central1, europe-west4, asia-south1
     ```
 
-##### Configuration
+##### Gemini with ADC Configuration
 
 Because ADC-based Vertex AI access requires the `project` and `location` fields — which are not part of
 Neuro-SAN's default Gemini model definitions — you must use the `class` key to instantiate
@@ -526,7 +528,9 @@ No API key is required — authentication is handled transparently by Google's A
 > ⚠️ Do **not** set `GOOGLE_API_KEY` when using ADC. The two authentication paths are mutually exclusive.
 > If `GOOGLE_API_KEY` is present in the environment, it may take precedence and cause unexpected errors.
 
-> **Tip**: To centralise the LLM configuration and reuse it across multiple agent networks, define it in a
+<!-- -->
+
+> **Tip**: To centralize the LLM configuration and reuse it across multiple agent networks, define it in a
 > separate file (e.g. `registries/llm_config.hocon`) and include it in your agent network HOCON files:
 >
 > ```hocon
@@ -541,7 +545,7 @@ For more information on Vertex AI authentication and available models, see the
 
 This guide walks you through how to use a locally running LLM via [Ollama](https://github.com/ollama/ollama) in neuro-san.
 
-#### Prerequisites
+#### Ollama Prerequisites
 
 1. Download and Install Ollama
 
@@ -576,7 +580,7 @@ This guide walks you through how to use a locally running LLM via [Ollama](https
    To use the model in the `hocon` file, its name and relevant information, such as `max_token`, must be included in the
    [default llm info file](https://github.com/cognizant-ai-lab/neuro-san/blob/main/neuro_san/internals/run_context/langchain/llms/default_llm_info.hocon).
 
-#### Configuration
+#### Ollama Configuration
 
 In your agent network hocon file, set the model name in the `llm_config` section. For example:
 
