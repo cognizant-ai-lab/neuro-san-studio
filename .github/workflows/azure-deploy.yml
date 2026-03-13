@@ -5,6 +5,7 @@ on:
   push:
     branches:
       - main
+      - feature/azure-deployment
     paths:
       - 'Dockerfile'
       - 'deploy/**'

@@ -28,8 +28,8 @@ param containerRegistryUserName = 'ailabneurosan-admin'
 // Container configuration
 param containerPort = 8080
 param apiGatewayPort = 9000
-param cpuCores = '2'
-param memoryGb = '4'
+param cpuCores = '1'
+param memoryGb = '2'
 param minReplicas = 1
 param maxReplicas = 3
 

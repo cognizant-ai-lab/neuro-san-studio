@@ -43,9 +43,15 @@ param azureOpenaiApiKey string = ''
 param azureOpenaiEndpoint string = ''
 
 // Naming convention
+// Naming convention
 var containerAppEnvName = '${projectName}-env-${environmentName}'
 var containerAppName = '${projectName}-app-${environmentName}'
 var logAnalyticsName = '${projectName}-logs-${environmentName}'
+
+// Container resource allocation (must sum to valid combination)
+// Valid combinations: [cpu: 0.25, memory: 0.5Gi], [cpu: 0.5, memory: 1.0Gi], etc.
+var containerCpu = string(json(cpuCores) / 2)  // Split CPU between 2 containers
+var containerMemory = string(json(memoryGb) / 2)  // Split memory between 2 containers
 
 // Create Log Analytics Workspace
 resource logAnalytics 'Microsoft.OperationalInsights/workspaces@2022-10-01' = {
@@ -104,24 +110,32 @@ resource neuroSanApp 'Microsoft.App/containerApps@2023-11-02-preview' = {
           passwordSecretRef: 'container-registry-password'
         }
       ]
-      secrets: [
-        {
-          name: 'container-registry-password'
-          value: containerRegistryPassword
-        }
-        {
-          name: 'openai-api-key'
-          value: openaiApiKey
-        }
-        {
-          name: 'anthropic-api-key'
-          value: anthropicApiKey
-        }
-        {
-          name: 'azure-openai-api-key'
-          value: azureOpenaiApiKey
-        }
-      ]
+      secrets: union(
+        [
+          {
+            name: 'container-registry-password'
+            value: containerRegistryPassword
+          }
+        ],
+        (openaiApiKey != '' ? [
+          {
+            name: 'openai-api-key'
+            value: openaiApiKey
+          }
+        ] : []),
+        (anthropicApiKey != '' ? [
+          {
+            name: 'anthropic-api-key'
+            value: anthropicApiKey
+          }
+        ] : []),
+        (azureOpenaiApiKey != '' ? [
+          {
+            name: 'azure-openai-api-key'
+            value: azureOpenaiApiKey
+          }
+        ] : [])
+      )
     }
     template: {
       containers: [
@@ -129,8 +143,8 @@ resource neuroSanApp 'Microsoft.App/containerApps@2023-11-02-preview' = {
           name: 'neuro-san'
           image: containerImage
           resources: {
-            cpu: json(cpuCores)
-            memory: '${memoryGb}Gi'
+            cpu: json(containerCpu)
+            memory: '${containerMemory}Gi'
           }
           env: [
             {
@@ -161,28 +175,14 @@ resource neuroSanApp 'Microsoft.App/containerApps@2023-11-02-preview' = {
               name: 'AZURE_OPENAI_ENDPOINT'
               value: azureOpenaiEndpoint
             }
-            // Note: API keys can be injected via headers at request time
-            // These are fallback values; per-request injection is preferred
-            {
-              name: 'OPENAI_API_KEY'
-              secretRef: 'openai-api-key'
-            }
-            {
-              name: 'ANTHROPIC_API_KEY'
-              secretRef: 'anthropic-api-key'
-            }
-            {
-              name: 'AZURE_OPENAI_API_KEY'
-              secretRef: 'azure-openai-api-key'
-            }
           ]
         }
         {
           name: 'api-gateway'
           image: containerImage
           resources: {
-            cpu: json(cpuCores)
-            memory: '${memoryGb}Gi'
+            cpu: json(containerCpu)
+            memory: '${containerMemory}Gi'
           }
           env: [
             {
