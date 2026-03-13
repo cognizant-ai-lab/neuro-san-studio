@@ -1434,6 +1434,9 @@ Best practices for building and tuning AAOSA-based agent networks.
 - Design the agent network structure carefully:
    Parent-child relationships, nesting depth, and peer groupings all affect routing accuracy. If a sub-agent spans multiple parent domains, consider promoting it to a top-level peer to avoid misrouting and reduce ambiguity.
 
+- Choose your LLM based on the network's routing requirements:
+   The choice of LLM has a significant impact on agent network behavior. For example: Claude excels at long-context reasoning. If a single question needs to be answered by synthesizing information across many agents, Claude handles that aggregation well. GPT, on the other hand, performs better at precise query routing. If the goal is to reliably dispatch questions to the correct agent in the network, GPT produces more accurate and consistent routing decisions.
+
 - Add routing instructions to every agent that delegates — not just the frontman:
    Any intermediate agent that calls sub-agents needs explicit routing logic. Instruct each routing agent to match the query to exactly one sub-agent and send it there directly. Dispatching to multiple agents simultaneously wastes tokens, increases latency, and can produce conflicting responses.
 
