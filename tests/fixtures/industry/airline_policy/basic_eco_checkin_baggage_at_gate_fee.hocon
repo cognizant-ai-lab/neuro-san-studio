@@ -26,8 +26,8 @@
     # success_ratio is useful for passing to the assessor to find out why
     # a test is intermitently failing. Sometimes it's the agent prompt, but
     # sometimes it's the test itself.
-    # Note: This number was set to 3/3 to run each test 3 times for reliability testing.
-    "success_ratio": "3/3",
+    # Note: This number was set to 10/10 to run each test 10 times for reliability testing.
+    "success_ratio": "10/10",
 
     # Interactions are a series of dictionaries with request elements paired with
     # descriptions of response checks.
@@ -55,10 +55,7 @@ On a Basic Economy flight, what do I pay if my bag has to be checked at the gate
                     # matches up to our description of acceptance criteria.
                     # Each component of the list needs to pass muster in order to pass.
                     "gist": ["""
-Confirms that if a carry-on is checked at the gate on a Basic Economy flight,
-the passenger pays the standard checked-bag fee plus an additional $25.
-OR
-the passenger pays 65$.
+Confirms that if a carry-on is checked at the gate on a Basic Economy flight, the passenger pays the standard checked-bag fee plus an additional $25.
                              """]
                 }
             }

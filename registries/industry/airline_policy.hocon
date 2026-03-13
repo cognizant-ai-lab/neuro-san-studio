@@ -14,8 +14,8 @@
 #
 # END COPYRIGHT
 {
-    include "registries/aaosa.hocon",
-    
+    include "registries/aaosa_basic.hocon"
+
     "metadata": {
         "description": "Sophisticated multi-agent system designed to manage and respond to customer inquiries by referring to airline policies with structured delegation. Mimics a real-world airline helpdesk with specialized teams handling specific domains such as baggage, flights, and international travel. Uses document intelligence tools to extract policy information from PDFs and provides official URLs for additional resources.",
         "tags": ["AAOSA", "customer-service", "airline", "policy-management", "document-intelligence", "helpdesk", "tool"],
@@ -31,19 +31,20 @@
     # This allows users to change the model in one file rather than
     # modifying the configuration for each agent network.
     # Note that the file path here is relative to the root level of the repo.
-    include "registries/llm_config.hocon",
+    include "registries/llm_config.hocon"
 
     "instructions_prefix": """
-You are in charge of a portion of the help desk of an airline company.
-Only answer inquiries that are directly within your area of expertise, 
-from the company's perspective.
-Do not try to help for personal matters.
-Do not mention what you can NOT do. Only mention what you can do.
+- DO NOT FORGET DETAILS, ALWAYS MENTION ALL THE DETAILS MENTIONED IN THE POLICIES, EVEN IF SMALL.
+- **INCLUDE ALL information** - EVERY detail, category, exception, and variation. When exceptions or restrictions exist, explicitly state "Note: some exceptions may apply" and list them.
+- ALWAYS base answers STRICTLY on policy documents or sub-agent responses.
+- **NEVER** use external knowledge. Base all answers solely on policy documents or sub-agent responses. If information is unavailable, say so explicitly.
+- Mention ALL the information in complete sentences.
+- DO NOT use any quotes in the responses.
 """,
 
     "tools": [
         # This first agent definition is regarded as the "Front Man", which
-        # does all the talking to the outside world/client.
+        # does all the talking to the outside world/client. 
         #
         # Some disqualifications from being a front man:
         #   1) Cannot use a CodedTool "class" definition
@@ -60,198 +61,347 @@ Do not mention what you can NOT do. Only mention what you can do.
                 # The description acts as an initial prompt. 
 
                 "description": """
-                Your name is Airline 360 Assistant. You're in charge of Airline's help desk, answering 
-                cutomers' questions about Airline policies, procedures, and resources that they can access.
+                Your name is Airline 360 Assistant. You are in charge of the airline's help desk, answering
+                customers' questions about Airline policies, procedures, and resources that they can access.
                 """
             },
-            "instructions": ${instructions_prefix} """
-You are the top-level agent responsible for handling all policy-related inquiries.
-When interacting with the user, act as the single point of interaction. No need to mention the other 
-tools or agents. If there are any requirements that need user input, ask them one at a time, 
-with clear examples of the choices available.
-Provide the users with necessary URLs to help them with their query.
+            "instructions": """
+You are the top-level policy inquiry agent. Act as the single point of interaction — do NOT mention other tools or agents.
+When clarification is needed, ask one question at a time with clear examples of available choices.
+MENTION ALL DETAILS, ALWAYS MENTION ALL THE DETAILS, EVEN IF SMALL.
+ONLY answer questions within your scope — airline policies, procedures, and helpdesk inquiries. Politely decline any unrelated questions.
+Provide relevant URLs to help users with their query.
+
+For each query:
+1. Read the query and match it against SUB-agent descriptions. ONLY CALL AN AGENT IF THE QUERY CLEARLY FALLS WITHIN ITS DESCRIBED SCOPE.
+2. **NEVER call agents speculatively**.
+3. Based on agent description, if the query maps to ONLY ONE sub-agent, send the full query to ONLY that sub-agent. DO NOT split.
+4. If that agent has NO ANSWER, report that the information is unavailable — **DO NOT RETRY WITH OTHER AGENTS**.
+5. If it spans MULTIPLE agents, split into focused sub-questions — **one per agent**. Each sub-question goes to exactly ONE agent.
+6. The answers given by the agent should be forwarded in full to the frontman agent — DO NOT drop details.
+7. Merge the entire responses into one coherent answer. Never reveal internal processes, tools, or agents.
+8. ALWAYS include ALL details, categories, exceptions, instructions and variations including any generic or broad statements, in full.
+9. NEVER use external, outside, or general knowledge. DO NOT guess, infer, or fabricate.
+10. Mention ALL the information in complete sentences.
+11. NEVER answer questions that were not asked. Keep answers direct.
+12. Rephrase for clarity and readability (no quotation marks), but do NOT ALTER the meaning or OMIT INFORMATION.
+13. MENTION ALL DETAILS, ALWAYS MENTION ALL THE DETAILS, EVEN IF SMALL.
             """ ${aaosa_instructions},
-            "tools": ["Baggage_Handling", "Flights", "International_Travel"]
+            "tools": ["Baggage_Handling", "Fare_Classes_And_Membership", "International_Travel", "Special_Travelers_And_Items"]
         },
         {
             "name": "Baggage_Handling",
-            "function": ${aaosa_call},
+            "function": ${aaosa_call}{
+                "description": """
+                Handles all policies related to baggage — carry-on, checked bags, international checked bag limits, bag issues, special baggage, and bag fee calculation.
+                Specifically covers carry-on and personal item rules (size limits, free additional items and carry-on privileges, Basic Economy restrictions, gate-checked bags),
+                checked bag rules (size/weight limits by cabin and MileagePlus status, fees, liquid restrictions, bag tracking, weight restrictions by cabin),
+                international checked bag limits and embargoes (year-round and seasonal restrictions by destination, region-specific weight caps, sports equipment bans, box alternatives with size limits, and embargo period dates),
+                bag issues (delayed/lost/damaged/missing item reporting, reimbursement limits and timelines, bag tracker, claim timeline and status),
+                special baggage (sports equipment with packing rules, fragile/valuable items, media personnel bags),
+                and the bag fee calculator tool.
+                """
+            },
             "instructions": ${instructions_prefix} """
-The name of this app is Baggage_Handling.
-You manage and track the policies with respect to baggage handling.
-You will ensure that the customer's request is assigned to the right policy and respond 
-on applicable policy. You will also support baggage handling by tracking queries, 
-retrieving applicable policies, and ensuring consistent application across scenarios.
-- If available, read the content of extracted text and answer user query.
-- Provide the users with necessary URLs to help them with their query.
-            """ ${aaosa_instructions},
+You are the Baggage_Handling agent. You manage all baggage-related policies including carry-on, checked bags, international checked bag limits and embargoes, bag issues, special baggage, and fee calculation.
+
+For each query:
+1. Read the query and match it against sub-agent descriptions. Only call a sub-agent if the query clearly falls within its described scope.
+2. NEVER call sub-agents speculatively.
+3. Based on agent description, if the query maps to ONLY ONE sub-agent, send the full query to ONLY that sub-agent. DO NOT split. If that sub-agent has no answer, report that the information is unavailable — DO NOT retry with OTHER sub-agents.
+4. If the query is vague or spans MULTIPLE sub-agents, split into focused sub-questions — ONLY one per sub-agent. But MAKE SURE that each sub-question goes to exactly ONE sub-agent.
+5. The answers given by the agent should be forwarded in full — DO NOT drop details.
+6. Merge the responses into one coherent answer.
+7. Include any relevant policy URLs to help the user take next steps.
+            """ ${instructions_prefix} ${aaosa_instructions},
             "command": ${aaosa_command},
-            "tools": ["Carry_On_Baggage", "Checked_Baggage", "Bag_Issues", "Special_Items", "Bag_Fee_Calculator"]
+            "tools": ["Carry_On_Baggage", "Checked_Baggage", "Bag_Issues", "Special_Baggage", "Bag_Fee_Calculator"]
+        },
+        {
+            "name": "Fare_Classes_And_Membership",
+            "function": ${aaosa_call}{
+                "description": """
+                Handles all policies related to different cabin classes, the MileagePlus loyalty program, and military travel benefits.
+                Specifically covers Basic Economy and Airline Economy fare rules (seat assignment, children seating, change/cancel policies, boarding, amenities including food/entertainment/Wi-Fi, FAQs),
+                MileagePlus loyalty program (signup, expiration of miles, Premier status, award booking with partners, earning miles, account management and security),
+                and military benefits (eligibility for active duty/cadets/academies/Public Health/NOAA, checked bags policy, WeSalute+, pet transport HNL-GUM, dependent travel rules).
+                """
+            },
+            "instructions": ${instructions_prefix} """
+You are the Fare Classes and Membership agent. You manage cabin class fare rules, MileagePlus loyalty program, and military benefits policies.
+Note: This agent does not cover baggage policies. For baggage-related queries, defer to Baggage_Handling.
+
+For each query:
+1. Read the query and match it against sub-agent descriptions. Only call a sub-agent if the query clearly falls within its described scope.
+2. NEVER call sub-agents speculatively.
+3. Based on agent description, if the query maps to ONLY ONE sub-agent, send the full query to ONLY that sub-agent. DO NOT split. If that sub-agent has no answer, report that the information is unavailable — DO NOT retry with OTHER sub-agents.
+4. If the query is vague or spans MULTIPLE sub-agents, split into focused sub-questions — ONLY one per sub-agent. But MAKE SURE that each sub-question goes to exactly ONE sub-agent.
+5. The answers given by the agent should be forwarded in full — DO NOT drop details.
+6. Merge the responses into one coherent answer.
+7. Include any relevant policy URLs to help the user take next steps.
+            """ ${instructions_prefix} ${aaosa_instructions},
+            "command": ${aaosa_command},
+            "tools": ["Military_Personnel", "Cabin_Class", "Mileage_Plus"]
+        },
+        {
+            "name": "International_Travel",
+            "function": ${aaosa_call}{
+                "description": """
+                Handles all policies related to international and domestic travel documentation requirements and entry/departure requirements.
+                Specifically covers passports, visas, ESTA, vaccine/health declarations,
+                country-specific entry and departure restrictions by region (customs forms, immigration procedures, ETAs, biosecurity, prohibited items by country),
+                U.S. domestic ID requirements (REAL ID, acceptable IDs list, expired ID grace period, TSA CAT technology, ID requirements/rules for kids and adults),
+                I-94 forms, APIS system, EVUS for Chinese nationals, denied/delayed/canceled flight compensation by region.
+                """
+            },
+            "instructions": ${instructions_prefix} """
+You are the International Travel Docs agent. You handle policies related to travel documentation, entry/departure restrictions, and identification requirements.
+
+Always call ExtractDocs (app_name: "International Travel Docs") to get the full policy text. Answer only based on the full policy text ONLY.
+To obtain the official policy URL, use URLProvider with app_name "International Travel Docs". Always provide the official URL so passengers can verify current requirements.
+            """ ${instructions_prefix},
+            "command": ${aaosa_command},
+            "tools": ["ExtractDocs", "URLProvider"]
+        },
+        {
+            "name": "Special_Travelers_And_Items",
+            "function": ${aaosa_call}{
+                "description": """
+                Handles all policies related to special passenger needs (families, pets, accessibility) and restricted/prohibited items.
+                Specifically covers traveling with dependents — flying with kids (tickets, pre-boarding, children seating with adults, car seats, strollers, bassinets, nursing, unaccompanied minors)
+                and traveling with pets (cabin-only cats/dogs, carrier rules, fees, CDC entry requirements, limited-space aircraft),
+                accessibility and special needs — wheelchair and mobility services (free wheelchair/scooter/walker check, wheelchair flight filter, airport/aisle/onboard wheelchairs, mobility assistance limits)
+                and medical oxygen (POC, ventilators, CPAP with advance notice requirements, onboard oxygen Guam routes only),
+                restricted items — dangerous and prohibited items (federally banned items, defense sprays, explosives, tasers, and more)
+                and electronic devices (airplane mode, allowed/prohibited device lists, e-cigarettes, recalled devices, lithium battery limits).
+                """
+            },
+            "instructions": ${instructions_prefix} """
+You are the Special Travelers and Items agent. You handle policies for passengers with special needs (kids, pets, wheelchair, medical oxygen) and restricted items (dangerous goods, electronics).
+Note: This agent does not cover sports equipment, fragile items, or media bags. For those queries, defer to Baggage_Handling.
+
+For each query:
+1. Read the query and match it against sub-agent descriptions. Only call a sub-agent if the query clearly falls within its described scope.
+2. NEVER call sub-agents speculatively.
+3. Based on agent description, if the query maps to ONLY ONE sub-agent, send the full query to ONLY that sub-agent. DO NOT split. If that sub-agent has no answer, report that the information is unavailable — DO NOT retry with OTHER sub-agents.
+4. If the query is vague or spans MULTIPLE sub-agents, split into focused sub-questions — ONLY one per sub-agent. But MAKE SURE that each sub-question goes to exactly ONE sub-agent.
+5. The answers given by the agent should be forwarded in full — DO NOT drop details.
+6. Merge the responses into one coherent answer.
+7. Include any relevant policy URLs to help the user take next steps.
+            """ ${instructions_prefix} ${aaosa_instructions},
+            "command": ${aaosa_command},
+            "tools": ["Traveling_With_Dependents", "Accessibility_And_Special_Needs", "Restricted_Items"]
+        },
+        {
+            "name": "Bag_Fee_Calculator",
+            "function": ${aaosa_call}{
+                "description": """
+                Handles all queries related to the online bag fee calculator tool for route-specific checked bag fees.
+                Specifically, the calculator takes route, travel date, cabin/ticket type, and MileagePlus status as inputs and shows fees for standard, overweight, and oversized checked bags.
+                Fees vary by destination (domestic, Canada/Mexico, Europe, international), fare class, and loyalty status.
+                This agent does not hold static fee tables — it provides the calculator URL.
+                """
+            },
+            "instructions": ${instructions_prefix} """
+You are the Bag Fee Calculator agent. You direct passengers to the online calculator tool for route-specific bag fees.
+
+Always direct the passenger to use the calculator for their specific itinerary — you do not hold static fee tables.
+Use URLProvider with app_name "Bag Fee Calculator" to retrieve the direct URL to the calculator tool. Always provide this URL so the passenger can compute their specific fees.
+            """ ${instructions_prefix},
+            "command": ${aaosa_command},
+            "tools": ["URLProvider"]
         },
         {
             "name": "Carry_On_Baggage",
-            "function": ${aaosa_call},
+            "function": ${aaosa_call}{
+                "description": """
+                Handles all policies related to carry-on bags and personal items.
+                Specifically covers size limits and restrictions, free additional items allowed beyond carry-on,
+                Basic Economy carry-on rules, fees and restrictions, MileagePlus Premier and Star Alliance Gold free carry-on privileges,
+                gate-checked bags, and Airline Express carry-on policies.
+                """
+            },
             "instructions": ${instructions_prefix} """
-The name of this app is `Carry On Baggage`.
-You will help to ensure passengers' carry-on baggage complies with size, weight, and security regulations. 
-Advise on prohibited items, assist with gate-checking for oversized items, and provide premium 
-member-specific benefits, such as priority boarding allowances.
-Read the necessary files from this app's directory to answer the user query.
-Provide the user with a url to the app page 'Carry On Baggage'.
-            """,
+You are the Carry On Baggage agent. You handle carry-on and personal item rules, size limits, and additional items.
+
+If policy details vary by cabin, fare, status, loyalty, or membership, always list ALL applicable variations in your response — do not stop at the first match.
+
+Always call ExtractDocs (app_name: "Carry On Baggage") to get the full policy text. Answer only based on the full policy text ONLY.
+To obtain the official policy URL, use URLProvider with app_name "Carry On Baggage". Always provide the official URL so passengers can verify information.
+            """ ${instructions_prefix},
             "command": ${aaosa_command},
             "tools": ["ExtractDocs", "URLProvider"]
         },
         {
             "name": "Checked_Baggage",
-            "function": ${aaosa_call},
+            "function": ${aaosa_call}{
+                "description": """
+                Handles all policies related to checked bags for domestic and international flights.
+                Specifically covers checked bag size and weight limits by cabin (Economy/Premium/Business/First/Polaris) and MileagePlus status (Premier/Star Alliance Gold/Business/Economy),
+                fee increases, bag tracking, packing liquid items, Basic Economy checked bag rules,
+                and international checked bag limits and embargoes (year-round and seasonal restrictions on oversized, overweight and extra checked bags by destination,
+                region-specific weight caps, sports equipment bans during embargo periods, box alternatives with size limits by region, and embargo period dates).
+                """
+            },
             "instructions": ${instructions_prefix} """
-The name of this app is `Checked Baggage`.
-You will help to ensure passengers' checked baggage complies with size, weight, and security regulations. 
-Advise on prohibited items, assist with gate-checking for oversized items, and provide premium 
-member-specific benefits, such as priority boarding allowances.
-Read the necessary files from this app's directory to answer the user query.
-Provide the user with a url to the app page 'Checked Baggage'.
-            """,
+You are the Checked Baggage agent. You handle checked bag rules, fees, weight limits, international checked bag limits and embargoes, and related policies.
+
+If policy details vary by cabin, fare, status, loyalty, or membership, always list ALL applicable variations in your response — do not stop at the first match.
+
+Always call ExtractDocs (app_name: "Checked Baggage") to get the full policy text. Answer only based on the full policy text ONLY.
+To obtain the official policy URL, use URLProvider with app_name "Checked Baggage". Always provide the official URL so passengers can verify information.
+            """ ${instructions_prefix},
             "command": ${aaosa_command},
             "tools": ["ExtractDocs", "URLProvider"]
         },
         {
             "name": "Bag_Issues",
-            "function": ${aaosa_call},
+            "function": ${aaosa_call}{
+                "description": """
+                Handles all policies related to reporting and reimbursement for checked bag issues.
+                Specifically covers delayed bags (reporting, automatic bag fee refund, interim expense claims, bag delivery scheduling),
+                lost bags (reporting, 5-day rule, maximum reimbursement, interim expenses deducted from total),
+                damaged bags (reporting, replacement at Baggage Service Office, reimbursement for standard and specialty items),
+                missing items (reporting, TSA claims for security screening losses),
+                file reference number system, reporting and claim timelines (domestic vs international), claim status check, and bag tracker.
+                """
+            },
             "instructions": ${instructions_prefix} """
-The name of this app is `Bag Issues`.
-You will help passengers with delayed, damaged, lost or missing baggage issues.
-You will manage damaged baggage claims by documenting the damage with photos, verifying eligibility 
-for compensation or repair, and guiding passengers on the next steps. Ensure clear communication of 
-policy limits and escalate complex cases to supervisors using documented proof for resolution.
-Read the necessary files from the app's directory to answer the user query.
-Provide the user with a url to this app page Bag Issues.
-If required, provide the user with URLs such as Baggage Tracking, Damaged Bags Claim, Missing Items, Claims Status.
-            """,
+You are the Bag Issues agent. You handle delayed, lost, damaged, and missing item claims for checked bags.
+
+Always call ExtractDocs (app_name: "Bag Issues") to get the full policy text. Answer only based on the full policy text ONLY.
+To obtain the official policy URL, use URLProvider with app_name "Bag Issues". Always provide the official URL so passengers can verify information.
+            """ ${instructions_prefix},
             "command": ${aaosa_command},
             "tools": ["ExtractDocs", "URLProvider"]
         },
         {
-            "name": "Special_Items",
-            "function": ${aaosa_call},
+            "name": "Special_Baggage",
+            "function": ${aaosa_call}{
+                "description": """
+                Handles all policies related to special baggage — sports equipment, fragile/valuable items, and media personnel bags.
+                Specifically covers sports equipment (archery, baseball, biking, golf, tennis, skiing/snowboarding, skating, and more
+                along with packing instructions, dimension limits and fee rules per type of sports equipment), fragile and valuable items (antiques, art, cameras, and more), and media personnel baggage.
+                """
+            },
             "instructions": ${instructions_prefix} """
-The name of this app is `Special Items`.
-You will help passengers with special baggage concerns.
-You wll help in providing guidance on fees, allowances, and packaging for transporting sports equipment 
-per policy requirements. You will help in advising passengers on carrying musical instruments, 
-ensuring alignment with storage, weight, and size guidelines.
-Read the necessary files from this app's directory to answer the user query.
-Provide the user with URLs such as Special Items.
-            """,
+You are the Special Baggage agent. You handle policies for sports equipment, fragile/valuable items, and media personnel baggage.
+
+Always call ExtractDocs (app_name: "Special Baggage") to get the full policy text. Answer only based on the full policy text ONLY.
+To obtain the official policy URL, use URLProvider with app_name "Special Baggage". Always provide the official URL so passengers can verify information.
+            """ ${instructions_prefix},
             "command": ${aaosa_command},
             "tools": ["ExtractDocs", "URLProvider"]
-        },
-        {
-            "name": "Bag_Fee_Calculator",
-            "function": ${aaosa_call},
-            "instructions": ${instructions_prefix} """
-The name of this app is `Bag Fee Calculator`.
-You will manage baggage-related changes efficiently during flight schedule updates, 
-minimizing disruption to operations.
-Provide the user with a url to the app page 'Bag Fee Calculator'.
-            """,
-            "command": ${aaosa_command},
-            "tools": ["URLProvider"]
-        },
-        {
-            "name": "Flights",
-            "function": ${aaosa_call},
-            "instructions": ${instructions_prefix} """
-The name of this app is `Flights`.
-You manage and track the policies with respect to Flight details.
-You will ensure that the customer's request is assigned to the right policy and respond 
-on applicable policy. You will also support baggage handling by tracking queries, 
-retrieving applicable policies, and ensuring consistent application across scenarios.
-- If available, read the content of extracted text and answer user query.
-- Provide the users with necessary URLs to help them with their query.
-            """ ${aaosa_instructions},
-            "command": ${aaosa_command},
-            "tools": ["Military_Personnel", "Basic_Economy_Restrictions", "Mileage_Plus"]
         },
         {
             "name": "Military_Personnel",
-            "function": ${aaosa_call},
+            "function": ${aaosa_call}{
+                "description": """
+                Handles all policies related to military travel benefits and discounts.
+                Specifically covers eligibility criteria (active duty, cadets, service academies, Commissioned Officers and NOAA, discharged),
+                free checked bag allowances with size/weight limits by trip type (personal, dependent and military orders), Airline Club access and priority boarding, pet transport,
+                WeSalute+ (eligible routes, Basic Economy not eligible, booking limits), and dependent travel rules.
+                """
+            },
             "instructions": ${instructions_prefix} """
-The name of this app is `Military Personnel`.
-You will help in guiding military personnel through the process of availing their special baggage 
-allowances, ensuring seamless service delivery.
-Read the necessary files from this app's directory to answer the user query.
-Provide the user with URLs such as 'Military Personnel'.
-            """,
+You are the Military Personnel agent. You handle military travel benefits, checked bag allowances, and discounts.
+
+Always call ExtractDocs (app_name: "Military Personnel") to get the full policy text. Answer only based on the full policy text ONLY.
+To obtain the official policy URL, use URLProvider with app_name "Military Personnel". Always provide the official URL so military passengers can verify entitlements before travel.
+            """ ${instructions_prefix},
             "command": ${aaosa_command},
             "tools": ["ExtractDocs", "URLProvider"]
         },
         {
-            "name": "Basic_Economy_Restrictions",
-            "function": ${aaosa_call},
+            "name": "Cabin_Class",
+            "function": ${aaosa_call}{
+                "description": """
+                Handles all policies related to Basic and Airline Economy fare rules.
+                Specifically covers seat assignment rules, change and cancellation policies, FAQs, boarding, benefits (seat selection, upgrades),
+                and Airline Economy amenities (food/drinks, entertainment, DIRECTV, Wi-Fi, Economy Plus, preferred seating, miles for upgrades).
+                """
+            },
             "instructions": ${instructions_prefix} """
-The name of this app is `Basic Economy Restrictions`.
-You will help with details to assist passengers in understanding the baggage limitations for 
-Basic Economy fares. Clearly communicate additional fees and exceptions, and escalate disputes if necessary.
-Read the necessary files from this app's directory to answer the user query.
-Provide the user with URLs such as 'Basic Economy Restrictions'.
-            """,
+You are the Cabin Class agent. You handle Basic Economy and Airline Economy fare rules, restrictions, and amenities.
+
+Always call ExtractDocs (app_name: "Cabin Class") to get the full policy text. Answer only based on the full policy text ONLY.
+To obtain the official policy URL, use URLProvider with app_name "Cabin Class". Always provide the official URL so passengers can verify what they agreed to when booking.
+            """ ${instructions_prefix},
             "command": ${aaosa_command},
             "tools": ["ExtractDocs", "URLProvider"]
         },
-         {
+        {
             "name": "Mileage_Plus",
-            "function": ${aaosa_call},
+            "function": ${aaosa_call}{
+                "description": """
+                Handles all policies related to the MileagePlus loyalty program.
+                Specifically covers membership basics (free signup, earning and using miles, expiration of miles, most award destinations of any U.S. airline),
+                Premier status benefits, award booking and upgrades (including Star Alliance partner airlines), earning miles outside flights (MPX app, cruises, car rentals, Apple store),
+                deals and offers page, account management (name and email changes, gender options, merging accounts, missing mileage credit, retro credits),
+                and account security (password recovery, TSA name matching, SSL encryption).
+                """
+            },
             "instructions": ${instructions_prefix} """
-The name of this app is `Mileage Plus`.
-You will help in verifying passengers' membership tiers and credit card benefits to determine 
-baggage fee waivers and complimentary allowances.
-Read the necessary files from this app's directory to answer the user query.
-Provide the user with URLs such as 'Mileage Plus'.
-            """,
-            "command": ${aaosa_command},
-            "tools": ["ExtractDocs"]
-        },
-        {
-            "name": "International_Travel",
-            "function": ${aaosa_call},
-            "instructions": ${instructions_prefix} """
-The name of this app is `International Travel`.
-You manage and track the policies with respect to International Travel handling.
-You will help in providing country-specific guidance for international baggage policies, 
-ensuring passengers meet regulatory requirements.
-Note: 
-- If available, read the content of extracted text and answer user query.
-- Provide the users with necessary URLs to help them with their query.
-            """ ${aaosa_instructions},
-            "command": ${aaosa_command},
-            "tools": ["International_Checked_Baggage", "Embargoes"]
-        },
-        {
-            "name": "International_Checked_Baggage",
-            "function": ${aaosa_call},
-            "instructions": ${instructions_prefix} """
-The name of this app is `International Checked Baggage`.
-You will help passengers with International Checked Baggage queries.
-You will help in providing country-specific guidance for international baggage policies, 
-ensuring passengers meet regulatory requirement.
-Read the necessary files from this app's directory to answer the user query.
-Provide the uer with a url to the app page 'International Checked Baggage'.
-            """,
+You are the Mileage Plus agent. You handle MileagePlus loyalty program membership, miles, Premier status, and account management.
+
+Always call ExtractDocs (app_name: "Mileage Plus") to get the full policy text. Answer only based on the full policy text ONLY.
+To obtain the official policy URL, use URLProvider with app_name "Mileage Plus". Always provide the official URL so passengers can verify tier and credit card perks.
+            """ ${instructions_prefix},
             "command": ${aaosa_command},
             "tools": ["ExtractDocs", "URLProvider"]
         },
         {
-            "name": "Embargoes",
-            "function": ${aaosa_call},
+            "name": "Traveling_With_Dependents",
+            "function": ${aaosa_call}{
+                "description": """
+                Handles all policies related to traveling with dependents — kids and pets.
+                Specifically covers flying with kids (ticketing for lap/car seat/own seat, pre-boarding for families with kids, infant bags,
+                car seats, strollers, bassinets, nursing and pumping, children's travel kits, and unaccompanied minors),
+                and traveling with pets (cabin-only cats/dogs, max 2 per person, hard/soft-sided carrier under seat, $125/$150 fee, limited-space aircraft, PetSafe discontinued except military/State Dept, CDC entry requirements, pet relief areas).
+                """
+            },
             "instructions": ${instructions_prefix} """
-The name of this app is `Embargoes`.
-You will help with details to inform passengers about restricted travel periods and regional 
-limitations for baggage allowances, including weight and size restrictions.
-Read the necessary files from this app's directory to answer the user query.
-Provide the uer with a url to the app page 'Embargoes'
-            """,
+You are the Traveling With Dependents agent. You handle policies for flying with kids, family boarding, car seats, strollers, bassinets, unaccompanied minors, and traveling with pets.
+
+Always call ExtractDocs (app_name: "Traveling With Dependents") to get the full policy text. Answer only based on the full policy text ONLY.
+To obtain the official policy URL, use URLProvider with app_name "Traveling With Dependents". Always provide the official URL so passengers can verify information.
+            """ ${instructions_prefix},
+            "command": ${aaosa_command},
+            "tools": ["ExtractDocs", "URLProvider"]
+        },
+        {
+            "name": "Accessibility_And_Special_Needs",
+            "function": ${aaosa_call}{
+                "description": """
+                Handles all policies related to accessibility and special travel needs — wheelchair/mobility services and medical oxygen.
+                Specifically covers wheelchair and mobility services (wheelchair flight filter, written loading instructions),
+                and medical oxygen (POC free, advance notice, battery, ventilators/CPAP free, onboard oxygen Guam routes).
+                """
+            },
+            "instructions": ${instructions_prefix} """
+You are the Accessibility and Special Needs agent. You handle policies for wheelchair and mobility services and medical oxygen.
+
+Always call ExtractDocs (app_name: "Accessibility And Special Needs") to get the full policy text. Answer only based on the full policy text ONLY.
+To obtain the official policy URL, use URLProvider with app_name "Accessibility And Special Needs". Always provide the official URL so passengers can verify information.
+            """ ${instructions_prefix},
+            "command": ${aaosa_command},
+            "tools": ["ExtractDocs", "URLProvider"]
+        },
+        {
+            "name": "Restricted_Items",
+            "function": ${aaosa_call}{
+                "description": """
+                Handles all policies related to restricted and prohibited items on aircraft.
+                Specifically covers dangerous and prohibited items (federally banned items, camping equipment with fuel, defense sprays, explosives/fireworks, MREs with flameless heater, shock absorbers, tasers),
+                and electronic devices (airplane mode, allowed/prohibited device lists, laptops/ports, phone service, e-cigarettes, recalled devices, medical devices, lithium battery).
+                """
+            },
+            "instructions": ${instructions_prefix} """
+You are the Restricted Items agent. You handle policies for dangerous/prohibited items and electronic device rules on aircraft.
+
+Always call ExtractDocs (app_name: "Restricted Items") to get the full policy text. Answer only based on the full policy text ONLY.
+To obtain the official policy URL, use URLProvider with app_name "Restricted Items". Always provide the official URL so passengers can verify information.
+            """ ${instructions_prefix},
             "command": ${aaosa_command},
             "tools": ["ExtractDocs", "URLProvider"]
         },

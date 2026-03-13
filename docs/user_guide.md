@@ -66,6 +66,7 @@
     - [Integration Test](#integration-test)
       - [Add test case](#add-test-case)
       - [Run test](#run-test)
+  - [Improving agent networks](#improving-agent-networks)
 
 <!-- TOC -->
 
@@ -1420,3 +1421,53 @@ Please select the execution option that best aligns with the level of validation
     ```bash
     pytest -s ./tests/integration/test_integration_test_hocons.py::TestIntegrationTestHocons::test_hocon_industry_0_industry_airline_policy_basic_eco_carryon_baggage
     ```
+
+## Improving agent networks
+
+<!-- pyml disable line-length -->
+
+Best practices for building and tuning AAOSA-based agent networks.
+
+- Partition knowledge documents cleanly across agents:
+   No overlap between agents' document sets. Split shared directories into per-agent subdirectories. Clean source text (join broken lines, remove stale content).
+
+- Write rich function descriptions — they are your routing layer:
+   The top-level agent routes queries based on each sub-agent's `name` and `description` in the `function` block. Always override the `description` when extending `${aaosa_call}`. Choose agent names that reflect their full scope. Keep descriptions concise — one line is enough. Do not put lengthy descriptions in the prompt itself, as it inflates cost without added benefit.
+
+- Prefer negative instructions over positive ones:
+   While some studies suggest the opposite, in practice "NEVER do X" is followed more reliably than "try to do X" — especially when combined with capitalized keywords. When a rule is critical, phrase it as a prohibition.
+
+- Use capitalized keywords sparingly but strategically:
+   Words like `NEVER`, `ALWAYS`, `ONLY` in caps are strong emphasis markers. Overusing them dilutes the effect. Reserve caps for 3–5 of your most critical rules.
+
+- Use bullet-point instructions, not prose:
+   Prose is fine for descriptions, but for rules use one rule per bullet. Structured lists are followed more reliably than dense paragraphs.
+
+- Repeat critical instructions in the prompt:
+   Studies suggest that repeating key rules makes the LLM take them more seriously. Place key rules in `instructions_prefix` (inherited at top) and repeat them at the end of each agent's `instructions`.
+
+- Avoid the "lost in the middle" problem:
+   LLMs attend most to the beginning and end of a prompt — information in the middle is often lost. Put identity and key rules first, repeat constraints last, put edge cases in the middle.
+
+- Include explicit tool-call instructions with exact parameters:
+   Spell out the tool name, parameter name, and value. Without this, agents may skip tool calls and answer from pre-trained knowledge.
+
+- Use `aaosa_basic.hocon` over `aaosa.hocon`:
+   The basic variant provides only core AAOSA variables without extra features that may cause unintended behavior. It is also more refined and effective.
+
+- Use prompt optimization tools to iterate faster:
+   Feed your current prompt, test failures, and expected output to a prompt optimizer (e.g., ChatGPT) and ask for a rewrite.
+
+- Structure agents with explicit query processing pipelines:
+   Without decomposition instructions, agents call only one sub-agent even for multi-domain questions. Define steps (analyze, decompose, follow up, synthesize) for the top-level agent, and add similar step-by-step instructions to mid-level and leaf agents to help them perform accurately.
+
+- Add anti-summarization rules for completeness:
+   LLMs default to summarizing, dropping important variations. If you want agents to preserve the exact language from attached source documents, explicitly instruct them to do so.
+
+- Design the agent network structure carefully:
+   How agents are connected — parent-child relationships, nesting depth, peer groupings — directly affects routing accuracy. If a child agent spans multiple parent domains, promote it to a top-level peer to reduce misrouting.
+
+- Keep prompts short and to the point:
+   Every extra sentence increases the chance of rules being ignored. Move lengthy content to function descriptions or source documents.
+
+<!-- pyml enable line-length -->

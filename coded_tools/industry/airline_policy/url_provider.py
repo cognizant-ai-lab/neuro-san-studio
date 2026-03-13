@@ -33,6 +33,7 @@ class URLProvider(CodedTool):
         Constructs a URL Provider for airline's intranet.
         """
         self.airline_policy_urls = {
+            # Baggage
             "Baggage Tracking": "https://www.united.com/en/us/bagdelivery/start",
             "Damaged Bags Claim": "https://rynnsluggage.com/",
             "Missing Items": "https://www.united.com/en/US/fly/help/lost-and-found.html",
@@ -40,14 +41,20 @@ class URLProvider(CodedTool):
             "Carry On Baggage": "https://www.united.com/en/us/fly/baggage/carry-on-bags.html",
             "Checked Baggage": "https://www.united.com/en/us/fly/baggage/checked-bags.html",
             "Bag Issues": "https://www.united.com/en/us/baggage/bag-help",
-            "Special Items": "https://www.tsa.gov/travel/security-screening/whatcanibring/sporting-and-camping",
-            "Military_Personnel": "https://www.united.com/en/us/fly/company/company-info/military-benefits-and-discounts.html",  # noqa E501
-            "Mileage Plus": "https://www.united.com/en/us/fly/mileageplus.html",
-            "International Checked Baggage": "https://www.united.com/en/us/fly/baggage/international-checked-bag-limits.html",  # noqa E501
-            "International Travel Requirements": "https://www.united.com/en/us/travel/trip-planning/travel-requirements",  # noqa E501
+            "Special Baggage": "https://www.tsa.gov/travel/security-screening/whatcanibring/sporting-and-camping",
             "Embargoes": "https://www.united.com/en/us/fly/baggage/international-checked-bag-limits.html",
-            "Basic Economy_Restrictions": "https://www.united.com/en/us/fly/travel/inflight/basic-economy.html",
             "Bag Fee Calculator": "https://www.united.com/en/us/checked-bag-fee-calculator/any-flights",
+            # Fare classes and membership
+            "Military Personnel": "https://www.united.com/en/us/fly/company/company-info/military-benefits-and-discounts.html",  # noqa E501
+            "Mileage Plus": "https://www.united.com/en/us/fly/mileageplus.html",
+            "Cabin Class": "https://www.united.com/en/us/fly/travel/inflight/basic-economy.html",
+            # Special travelers and items
+            "Traveling With Dependents": "https://www.united.com/en/us/fly/travel/special-needs.html",
+            "Accessibility And Special Needs": "https://www.united.com/en/us/fly/travel/special-needs.html",
+            "Restricted Items": "https://www.tsa.gov/travel/security-screening/whatcanibring/all",
+            # International
+            "International Travel Docs": "https://www.united.com/en/us/travel/trip-planning/travel-requirements",
+            "International Checked Bag Limits": "https://www.united.com/en/us/fly/baggage/international-checked-bag-limits.html",
         }
 
     def invoke(self, args: Dict[str, Any], sly_data: Dict[str, Any]) -> str:

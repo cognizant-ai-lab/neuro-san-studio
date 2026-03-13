@@ -26,8 +26,8 @@
     # success_ratio is useful for passing to the assessor to find out why
     # a test is intermitently failing. Sometimes it's the agent prompt, but
     # sometimes it's the test itself.
-    # Note: This number was set to 3/3 to run each test 3 times for reliability testing.
-    "success_ratio": "3/3",
+    # Note: This number was set to 10/10 to run each test 10 times for reliability testing.
+    "success_ratio": "10/10",
 
     # Interactions are a series of dictionaries with request elements paired with
     # descriptions of response checks.
@@ -57,8 +57,7 @@ What’s the fee if my carry-on bag is over the weight limit?
                     "gist": ["""
 Confirms that there is no carry-on weight limit policy
 OR
-that there is no overweight fee specifically for carry-on bags that are too heavy
-(a gate-check fee for oversized or excess carry-ons does not count as a carry-on overweight fee).
+that there is no overweight fee specifically for carry-on bags that are too heavy.
                              """]
                 }
             }

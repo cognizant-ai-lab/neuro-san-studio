@@ -1,8 +1,6 @@
 Check your bags in just a few easy steps.
-Size and weight
-Checked bag
-The maximum size of a checked bag can be 30 in x 20 in x 12 in (76 cm x 52 cm x
-30 cm) or 62 total in., including handles and wheels.
+
+The maximum size of a checked bag can be 30 in x 20 in x 12 in (76 cm x 52 cm x 30 cm) or 62 total in., including handles and wheels.
 Baggage Fee Calculator
 Depending on where and how you travel, you may have to pay to check your bag. Use our baggage fee calculator to see how much it’ll cost.
 Calculate bag fees
@@ -13,61 +11,35 @@ bags section or the bag guidelines section for more info.
 Weight limit
 The weight limit for a checked bag depends on your cabin and your MileagePlus status. If they have different limits, we’ll go by the one that has the
 larger limit.
+
 Weights by cabin
+
 Airline Economy
 Premium Economy
-50 pounds
-(23 kilograms)
+50 pounds (23 kilograms)
+
 Airline Business
 Airline First
 Airline Polaris business class
-70 pounds
-(32 kilograms)
+70 pounds (32 kilograms)
+
 Weights by MileagePlus status
 Premier Silver
 Premier Gold
 Premier Platinum
 Premier 1K
-70 pounds
-(32 kilograms)
-Star Alliance™ Gold
-70 pounds
-(32 kilograms)
-in Business
-50 pounds
-(23 kilograms)
-in Economy
-Size and weight Common items Bag check process Additional info
-Cabin Maximum weight per bag
-®
-®
-®
-®
-®
-MileagePlus status Maximum weight per bag
-®
-Use our bag tracker or a device like an AirTag to keep an eye on your bag.
+70 pounds (32 kilograms)
+
+Star Alliance Gold
+70 pounds (32 kilograms) in Business
+50 pounds (23 kilograms) in Economy
+
 Place medication, valuables and other essentials, like keys and your wallet, in the bag you plan to bring on the plane with you.
 Pack all liquids in a resealable bag. Liquids more than 3.4 oz (100 ml) should be packed in your checked bag.
-Bag tracking
+
 Bag tracking is a feature of the Airline app that lets you see the status and location of your checked bags.
-Learn more
-Related links
-Checked bag embargoes
-Prepay for bags
-Bag Delivery
-Bag tracker
-Fragile and valuable items
-Additional info
-Prepay for your bags
-Flight and seat changes
-Exceptions to checked bag fees
-Oversized, overweight, and extra bags
-What qualifies as a bag
-Connecting flights
-Bag policies for partner airlines
-How we set checked baggage fees
-Military checked bag policy
+Use our bag tracker or a device like an AirTag to keep an eye on your bag.
+
 Basic Economy tickets only include one personal item. They do not include carry-on bags. If you decide to travel with a carry-on bag, you must check it in
 the airport lobby for a fee starting at $35. If you bring a carry-on bag to the gate that won't fit under the seat, you need to pay a $65 fee to check it.
 Basic Economy bag allowance
