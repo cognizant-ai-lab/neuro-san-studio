@@ -56,6 +56,10 @@
   - [MCP Servers](#mcp-servers)
     - [MCP Server Configuration](#mcp-server-configuration)
     - [Authentication](#authentication)
+  - [Middleware](#middleware)
+    - [class](#class)
+    - [args](#args)
+      - [Special args](#special-args)
   - [Logging](#logging)
   - [Debugging](#debugging)
   - [Advanced](#advanced)
@@ -221,6 +225,7 @@ For more details, please check the [Agent Manifest HOCON File Reference](
 | instructions | Text that sets up the agent in detail for its task.                                                                                           |
 | command      | Text that sets the agent in motion after it receives all its inputs.                                                                          |
 | tools        | Optional list of references to other agents that this agent is allowed to call in the course of working through their input and instructions. |
+| middleware   | Optional list of AgentMiddleware instances to apply during agent execution. Order of appearance matters. See [Middleware](#middleware) for more details. |
 | llm_config   | Optional agent-specification for different LLMs for different purposes such as specialization, costs, etc.                                    |
 <!-- pyml enable line-length -->
 
@@ -233,6 +238,15 @@ For more details, please check the [Agent Manifest HOCON File Reference](
 | class     | A Python import path pointing to the class or function to invoke when the tool is called. Must follow the format `<module>.<Class>`. See [Coded tools](#coded-tools) for more details. |
 | function  | An OpenAI-compatible function schema that defines the expected input parameters for the tool specified in `class`.                                                                     |
 | toolbox   | The name of a predefined tool from the toolbox. If this field is set, you must not specify `class` or `function`.                                                                      |
+<!-- pyml enable line-length -->
+
+#### Middleware specifications
+
+<!-- pyml disable line-length -->
+| **Field** | **Description**                                                                                                                                                                  |
+|-----------|----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| class     | Fully-qualified class name of the `AgentMiddleware` to instantiate (e.g. `langchain.agents.middleware.PIIMiddleware`). Only class-based middleware is supported.    |
+| args      | Optional dictionary of keyword arguments passed to the middleware class constructor. Keys are argument names, values are argument values. See [Middleware](#middleware) for special framework-populated args (`origin`, `origin_str`, `sly_data`). |
 <!-- pyml enable line-length -->
 
 #### LLM specifications
@@ -1300,6 +1314,106 @@ following methods.
    - Tool filtering from `MCP_SERVERS_INFO_FILE` is applied only if no tool filtering is defined
     directly in the agent network HOCON configuration.
    - For example, see [mcp_info.hocon](../mcp/mcp_info.hocon)
+
+## Middleware
+
+Middleware allows custom code to be injected at key points during agent execution — before or after the agent runs,
+and before or after each LLM call. This makes it possible to inspect, modify, or intercept data flowing through
+an agent without changing the agent's core logic.
+
+Middleware is configured per agent using the optional `middleware` key in an agent's specification.
+The value is a list of dictionaries, each describing one `AgentMiddleware` instance to apply.
+When multiple middleware are listed, order of appearance matters — they are applied in sequence.
+
+For an overview of middleware, see the [Overview](https://docs.langchain.com/oss/python/langchain/middleware/overview).
+
+For a working example, see [pii_middleware.hocon](../registries/basic/pii_middleware.hocon).
+
+### class
+
+_Required._ The fully-qualified class name of the `AgentMiddleware` to instantiate. For example:
+
+```hocon
+"class": "langchain.agents.middleware.PIIMiddleware"
+```
+
+An `AgentMiddleware` can hook into the following points of agent execution (asynchronous variants are preferred
+in the Neuro SAN server environment):
+
+- `abefore_agent()` — called before the agent execution starts
+- `aafter_agent()` — called after the agent execution completes
+- `abefore_model()` — called before each LLM call
+- `aafter_model()` — called after each LLM call
+- `awrap_model_call()` - intercept and control async model execution via handler callback
+- `awrap_tool_call()` - intercept and control async tool execution via handler callback
+
+Only class-based middleware is supported (not annotation-based). See
+[AgentMiddleware](https://docs.langchain.com/oss/python/langchain/middleware/custom#class-based-middleware)
+for details on how to implement one.
+
+### args
+
+A dictionary of keyword arguments passed to the middleware class constructor. Keys are argument names and
+values are argument values, matching the constructor signature of the class being instantiated. For example:
+
+```hocon
+"args": {
+    "pii_type": "phone_number",
+    "detector": "[a-zA-Z0-9]{3}-[a-zA-Z0-9]{4}",
+    "strategy": "redact",
+    "apply_to_output": true
+}
+```
+
+#### Special args
+
+The following argument names are recognized by the agent framework and automatically populated if they appear
+in both the middleware dictionary and the class constructor signature:
+
+- **`origin`** — a list of dictionaries describing where in the agent network hierarchy this middleware
+  was instantiated.
+- **`origin_str`** — a simpler string representation of `origin`.
+- **`sly_data`** — the agent's `sly_data` dictionary, shared across all middleware and coded tools for
+  the current request. See [Sly data](#sly-data) for more information.
+
+### Example
+
+The following example shows a `prankster` agent that uses `PIIMiddleware` to detect and redact phone numbers
+from both inputs and outputs:
+
+```hocon
+{
+    "name": "prankster",
+    "function": {
+        "description": "Send me a phone number and I will leave a message on its voicemail for you.",
+        "parameters": {
+            "phone_number": {
+                "type": "string",
+                "description": "The phone number to send the message to."
+            },
+            "message": {
+                "type": "string",
+                "description": "The message to send to the phone number."
+            }
+        }
+    },
+    "instructions": "You are an impotent wannabe prank caller. ...",
+    "tools": [],
+    "middleware": [
+        {
+            "class": "langchain.agents.middleware.PIIMiddleware",
+            "args": {
+                "pii_type": "phone_number",
+                "detector": "[a-zA-Z0-9]{3}-[a-zA-Z0-9]{4}",
+                "strategy": "redact",
+                "apply_to_output": true
+            }
+        }
+    ]
+}
+```
+
+See [pii_middleware.hocon](../registries/basic/pii_middleware.hocon) for the full working network.
 
 ## Logging
 
