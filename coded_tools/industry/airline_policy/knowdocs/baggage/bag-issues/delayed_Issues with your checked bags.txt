@@ -2,13 +2,7 @@ Bag help
 If your checked bags are delayed, lost, damaged or missing items, we want to make things right. Learn how to
 report bag issues and request reimbursement. You can also track your bags in real time with our bag tracker tool
 or in the Airline app.
-Types of bag issues Bag tracker
-Types of bag issues
-Delayed bags
-Lost bags
-Damaged bags
-Missing items
-Claim status
+
 Delayed bags
 Checked bags are considered delayed if they don’t arrive by the time you
 reach your final destination.

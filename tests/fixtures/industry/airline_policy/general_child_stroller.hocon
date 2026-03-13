@@ -23,10 +23,6 @@
     # Describes what agent to test against.
     "agent": "industry/airline_policy",
 
-    # Timeout for the entire test.
-    # It's also possible to have a timeout_in_seconds on a per-interaction basis.
-    "timeout_in_seconds": 180,
-
     # success_ratio is useful for passing to the assessor to find out why
     # a test is intermitently failing. Sometimes it's the agent prompt, but
     # sometimes it's the test itself.
@@ -39,6 +35,10 @@
         {
             # This is to enable streaming_chat contents to thinking file for debug.
             # "chat_filter": "MAXIMAL",
+
+            # Timeout for each interaction.
+            # It's also possible to have a timeout_in_seconds for the entire test.
+            "timeout_in_seconds": 180,
             
             # This is what we send as input to streaming_chat()
             "text": """

@@ -37,26 +37,32 @@ class WebPageReader(CodedTool):
         """
         self.default_url = ["https://www.united.com/en/us/fly/help-center.html"]
         self.airline_policy_urls = {
+            # Baggage
             "Carry On Baggage": ["https://www.united.com/en/us/fly/baggage/carry-on-bags.html"],
             "Checked Baggage": ["https://www.united.com/en/us/fly/baggage/checked-bags.html"],
             "Bag Issues": [
                 "https://www.united.com/en/us/baggage/bag-help",
                 "https://www.united.com/en/US/fly/help/lost-and-found.html",
             ],
-            "Special Items": [
+            "Special Baggage": [
                 "https://www.tsa.gov/travel/security-screening/whatcanibring/sporting-and-camping",
                 "https://www.united.com/en/us/fly/baggage/fragile-and-valuable-items.html",
             ],
+            "Embargoes": ["https://www.united.com/en/us/fly/baggage/international-checked-bag-limits.html"],
+            "Bag Fee Calculator": ["https://www.united.com/en/us/checked-bag-fee-calculator/any-flights"],
+            # Fare classes and membership
             "Military Personnel": [
                 "https://www.united.com/en/us/fly/company/company-info/military-benefits-and-discounts.html"
             ],
-            "Basic Economy Restrictions": ["https://www.united.com/en/us/fly/travel/inflight/basic-economy.html"],
+            "Cabin Class": ["https://www.united.com/en/us/fly/travel/inflight/basic-economy.html"],
             "Mileage Plus": ["https://www.united.com/en/us/fly/mileageplus.html"],
-            "Bag Fee Calculator": ["https://www.united.com/en/us/checked-bag-fee-calculator/any-flights"],
-            "International Checked_Baggage": [
-                "https://www.united.com/en/us/fly/baggage/international-checked-bag-limits.html"
+            # Special travelers and items
+            "Special Travelers": ["https://www.united.com/en/us/fly/travel/special-needs.html"],
+            "Restricted Items": ["https://www.tsa.gov/travel/security-screening/whatcanibring/all"],
+            # International
+            "International Travel Requirements": [
+                "https://www.united.com/en/us/travel/trip-planning/travel-requirements"
             ],
-            "Embargoes": ["https://www.united.com/en/us/fly/baggage/international-checked-bag-limits.html"],
         }
 
     def invoke(self, args: Dict[str, Any], sly_data: Dict[str, Any]) -> Union[str, Dict[str, Any]]:
