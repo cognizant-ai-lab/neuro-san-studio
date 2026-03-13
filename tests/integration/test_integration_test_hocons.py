@@ -47,6 +47,8 @@ class TestIntegrationTestHocons(TestCase, FailFastParamMixin):
                 # These can be in any order.
                 # Ideally more basic functionality will come first.
                 # Barring that, try to stick to alphabetical order.
+                "basic/internal_communication_skill/company_newsletter.hocon",
+                "basic/job_guessing_skill/bob_job.hocon",
                 "basic/pii_middleware/jenny_phone.hocon",
                 # List more hocon files as they become available here.
             ]
