@@ -1429,45 +1429,51 @@ Please select the execution option that best aligns with the level of validation
 Best practices for building and tuning AAOSA-based agent networks.
 
 - Partition knowledge documents cleanly across agents:
-   No overlap between agents' document sets. Split shared directories into per-agent subdirectories. Clean source text (join broken lines, remove stale content).
-
-- Write rich function descriptions — they are your routing layer:
-   The top-level agent routes queries based on each sub-agent's `name` and `description` in the `function` block. Always override the `description` when extending `${aaosa_call}`. Choose agent names that reflect their full scope. Keep descriptions concise — one line is enough. Do not put lengthy descriptions in the prompt itself, as it inflates cost without added benefit.
-
-- Prefer negative instructions over positive ones:
-   While some studies suggest the opposite, in practice "NEVER do X" is followed more reliably than "try to do X" — especially when combined with capitalized keywords. When a rule is critical, phrase it as a prohibition.
-
-- Use capitalized keywords sparingly but strategically:
-   Words like `NEVER`, `ALWAYS`, `ONLY` in caps are strong emphasis markers. Overusing them dilutes the effect. Reserve caps for 3–5 of your most critical rules.
-
-- Use bullet-point instructions, not prose:
-   Prose is fine for descriptions, but for rules use one rule per bullet. Structured lists are followed more reliably than dense paragraphs.
-
-- Repeat critical instructions in the prompt:
-   Studies suggest that repeating key rules makes the LLM take them more seriously. Place key rules in `instructions_prefix` (inherited at top) and repeat them at the end of each agent's `instructions`.
-
-- Avoid the "lost in the middle" problem:
-   LLMs attend most to the beginning and end of a prompt — information in the middle is often lost. Put identity and key rules first, repeat constraints last, put edge cases in the middle.
-
-- Include explicit tool-call instructions with exact parameters:
-   Spell out the tool name, parameter name, and value. Without this, agents may skip tool calls and answer from pre-trained knowledge.
-
-- Use `aaosa_basic.hocon` over `aaosa.hocon`:
-   The basic variant provides only core AAOSA variables without extra features that may cause unintended behavior. It is also more refined and effective.
-
-- Use prompt optimization tools to iterate faster:
-   Feed your current prompt, test failures, and expected output to a prompt optimizer (e.g., ChatGPT) and ask for a rewrite.
-
-- Structure agents with explicit query processing pipelines:
-   Without decomposition instructions, agents call only one sub-agent even for multi-domain questions. Define steps (analyze, decompose, follow up, synthesize) for the top-level agent, and add similar step-by-step instructions to mid-level and leaf agents to help them perform accurately.
-
-- Add anti-summarization rules for completeness:
-   LLMs default to summarizing, dropping important variations. If you want agents to preserve the exact language from attached source documents, explicitly instruct them to do so.
+   Avoid overlap between agents' document sets. Split shared directories into per-agent subdirectories and clean source text by joining broken lines and removing stale content.
 
 - Design the agent network structure carefully:
-   How agents are connected — parent-child relationships, nesting depth, peer groupings — directly affects routing accuracy. If a child agent spans multiple parent domains, promote it to a top-level peer to reduce misrouting.
+   Parent-child relationships, nesting depth, and peer groupings all affect routing accuracy. If a sub-agent spans multiple parent domains, consider promoting it to a top-level peer to avoid misrouting and reduce ambiguity.
 
-- Keep prompts short and to the point:
-   Every extra sentence increases the chance of rules being ignored. Move lengthy content to function descriptions or source documents.
+- Add routing instructions to every agent that delegates — not just the frontman:
+   Any intermediate agent that calls sub-agents needs explicit routing logic. Instruct each routing agent to match the query to exactly one sub-agent and send it there directly. Dispatching to multiple agents simultaneously wastes tokens, increases latency, and can produce conflicting responses.
+
+- Write rich function descriptions — they are your routing layer:
+   The top-level agent routes queries based on each sub-agent's `name` and `description` in the `function` block. Always override the `description` when extending `${aaosa_call}`. Choose agent names that reflect their full scope. Keep descriptions concise — one line is enough. Avoid putting lengthy descriptions in the prompt itself, as it inflates cost without added benefit.
+
+- Explicitly define scope boundaries to prevent misrouting:
+   When an agent's domain could plausibly overlap with a neighboring agent's, add a negative scope statement to its instructions — e.g., "This agent does not cover X; for X, defer to Agent Y." Without these boundaries, the LLM may route ambiguous queries to the wrong agent.
+
+- Prefer negative instructions over positive ones:
+   In practice, "NEVER do X" is followed more reliably than "try to do X" — especially when combined with capitalized keywords. When a rule is critical, phrase it as a prohibition.
+
+- Use capitalized keywords sparingly but strategically:
+   Words like `NEVER`, `ALWAYS`, and `ONLY` in all-caps are strong emphasis markers. Overusing them dilutes their effect — reserve capitalization for 3–5 of your most critical rules. Since LLMs parse instructions in Markdown format, combining caps with bold formatting (e.g., **NEVER**) provides an additional emphasis signal.
+
+- Use numbered lists for agent instructions, not prose:
+   Prose is appropriate for descriptions, but agent rules should be expressed as numbered steps (1, 2, 3 …). Structured lists are followed more reliably than dense paragraphs, and numbered ordering helps the LLM process instructions sequentially.
+
+- Repeat critical instructions at the top and bottom of the prompt:
+   LLM compliance improves when key rules appear more than once. Define cross-cutting rules in an `instructions_prefix` block (injected at the top) and repeat the most critical constraints at the end of each agent's `instructions`. Keep prompts concise — excess context increases the risk of rules being ignored.
+
+- Avoid the "lost in the middle" problem:
+   LLMs attend most strongly to the beginning and end of a prompt; content in the middle is most likely to be overlooked. Place agent identity and the most critical rules at the start, repeat key constraints at the end, and put edge cases and secondary rules in the middle.
+
+- Include explicit tool-call instructions with exact parameter values:
+   Spell out the tool name, parameter name, and expected value in the agent's instructions. Without this, agents may skip tool calls entirely and answer from pre-trained knowledge rather than the provided documents.
+
+- Use `aaosa_basic.hocon` over `aaosa.hocon`:
+   The basic variant includes only the core AAOSA variables, without additional features that may introduce unintended behavior. It is more refined and produces more reliable results in practice.
+
+- Use prompt optimization tools to iterate faster:
+   Feed your current prompt, failing test cases, and expected outputs to a prompt optimizer (e.g., ChatGPT or Claude) and ask for a targeted rewrite. This is often faster than manual trial and error.
+
+- Structure agents with explicit query-processing pipelines:
+   Without step-by-step decomposition instructions, agents tend to call only one sub-agent even for multi-domain questions. Define an explicit processing pipeline (e.g., analyze → decompose → delegate → synthesize) for the frontman and apply similar step-by-step instructions to mid-level and leaf agents.
+
+- Add anti-summarization rules to preserve completeness:
+   LLMs default to summarizing responses, which drops important variations, exceptions, and edge cases. If agents must preserve the exact content of source documents, explicitly instruct them not to omit details — for example: "Include ALL details, categories, exceptions, and variations."
+
+- Keep prompts short and focused:
+   Every unnecessary sentence increases the probability that a rule will be ignored. Move lengthy explanations and domain knowledge to function descriptions or source documents, and reserve the instructions block for behavioral rules only.
 
 <!-- pyml enable line-length -->
