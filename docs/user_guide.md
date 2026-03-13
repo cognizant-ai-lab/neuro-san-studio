@@ -18,9 +18,12 @@
     - [Bedrock](#bedrock)
       - [Default Bedrock models](#default-bedrock-models)
     - [Gemini](#gemini)
+      - [Gemini with ADC](#gemini-with-adc)
+        - [Gemini with ADC Prerequisites](#gemini-with-adc-prerequisites)
+        - [Gemini with ADC Configuration](#gemini-with-adc-configuration)
     - [Ollama](#ollama)
-      - [Prerequisites](#prerequisites)
-      - [Configuration](#configuration)
+      - [Ollama Prerequisites](#ollama-prerequisites)
+      - [Ollama Configuration](#ollama-configuration)
       - [Using Ollama in Docker or Remote Server](#using-ollama-in-docker-or-remote-server)
       - [Example agent network](#example-agent-network)
     - [Configuring Default Models with Environment Variables](#configuring-default-models-with-environment-variables)
@@ -474,13 +477,89 @@ and specify which model to use in the `model_name` field of the `llm_config` sec
 degraded reasoning performance, and failures on complex tasks. Therefore, this value should be explicitly set to avoid
 falling back to the default of `0.7`.
 
-You can get an Google Gemini API [key](https://ai.google.dev/gemini-api/docs/api-key) here.
+You can get a Google Gemini API [key](https://ai.google.dev/gemini-api/docs/api-key) here.
+
+#### Gemini with ADC
+
+If you are running in a **Google Cloud environment** (GCP VM, Cloud Run, GKE, etc.) or prefer to authenticate
+using your organization's GCP identity — without a personal API key — you can use
+**Application Default Credentials (ADC)**.
+
+ADC is Google's standard credential resolution mechanism. It automatically picks up credentials from:
+- `gcloud auth application-default login` (local development)
+- Attached service accounts (Cloud Run, GKE, Compute Engine)
+- Workload Identity Federation
+
+This approach is recommended for **enterprise and on-prem-to-cloud** deployments where managing individual
+API keys is not desirable or permitted.
+
+> An example implementation of Gemini with ADC can be found in the
+> [neuro-san-gemini-example](https://github.com/subhadeep-banerjee/neuro-san-gemini-example) repository.
+
+##### Gemini with ADC Prerequisites
+
+1. Install the [Google Cloud CLI](https://cloud.google.com/sdk/docs/install) (`gcloud`).
+
+2. Authenticate your local environment with ADC:
+
+    ```bash
+    gcloud auth application-default login
+    ```
+
+3. Install the required package (already included in `requirements.txt`):
+
+    ```bash
+    pip install langchain-google-vertexai
+    ```
+
+4. Set the following environment variables (or add them to your `.env` file):
+
+    ```bash
+    GCP_PROJECT_ID=your-gcp-project-id
+    GCP_REGION=your-vertex-ai-region   # e.g. us-central1, europe-west4, asia-south1
+    ```
+
+##### Gemini with ADC Configuration
+
+Because ADC-based Vertex AI access requires the `project` and `location` fields — which are not part of
+Neuro-SAN's default Gemini model definitions — you must use the `class` key to instantiate
+`ChatVertexAI` directly in your `llm_config`:
+
+```hocon
+llm_config: {
+    class: "langchain_google_vertexai.chat_models.ChatVertexAI"
+    model_name: "gemini-2.5-flash"   # configurable: any Vertex AI Gemini model (e.g. "gemini-2.0-flash", "gemini-1.5-pro")
+    temperature: 0.2                 # configurable: 0.0 (deterministic) to 1.0 (creative); use 1.0 for Gemini 3.0+ models
+    max_tokens: 2048                 # configurable: maximum number of tokens in the model's response
+    project: ${GCP_PROJECT_ID}
+    location: ${GCP_REGION}
+}
+```
+
+The `project` and `location` values are read from environment variables at startup via HOCON substitution.
+No API key is required — authentication is handled transparently by Google's ADC library.
+
+> ⚠️ Do **not** set `GOOGLE_API_KEY` when using ADC. The two authentication paths are mutually exclusive.
+> If `GOOGLE_API_KEY` is present in the environment, it may take precedence and cause unexpected errors.
+
+<!-- -->
+
+> **Tip**: To centralize the LLM configuration and reuse it across multiple agent networks, define it in a
+> separate file (e.g. `registries/llm_config.hocon`) and include it in your agent network HOCON files:
+>
+> ```hocon
+> include "registries/llm_config.hocon"
+> ```
+
+For more information on Vertex AI authentication and available models, see the
+[Vertex AI documentation](https://cloud.google.com/vertex-ai/docs/authentication) and the
+[LangChain ChatVertexAI reference](https://python.langchain.com/docs/integrations/chat/google_vertex_ai_palm/).
 
 ### Ollama
 
 This guide walks you through how to use a locally running LLM via [Ollama](https://github.com/ollama/ollama) in neuro-san.
 
-#### Prerequisites
+#### Ollama Prerequisites
 
 1. Download and Install Ollama
 
@@ -515,7 +594,7 @@ This guide walks you through how to use a locally running LLM via [Ollama](https
    To use the model in the `hocon` file, its name and relevant information, such as `max_token`, must be included in the
    [default llm info file](https://github.com/cognizant-ai-lab/neuro-san/blob/main/neuro_san/internals/run_context/langchain/llms/default_llm_info.hocon).
 
-#### Configuration
+#### Ollama Configuration
 
 In your agent network hocon file, set the model name in the `llm_config` section. For example:
 
