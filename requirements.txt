@@ -25,3 +25,8 @@ pyvis~=0.3.2
 
 # For web search tools without needing API keys, using DuckDuckGo's search results
 ddgs>=9.4.1
+
+# API Gateway dependencies (FastAPI for request routing, per-request API key injection)
+fastapi>=0.104.0
+uvicorn[standard]>=0.24.0
+httpx>=0.25.0

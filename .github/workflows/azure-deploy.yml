@@ -1,0 +1,240 @@
+name: Build and Deploy NeuroSan to Azure
+
+# Trigger conditions
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'Dockerfile'
+      - 'deploy/**'
+      - 'middleware/**'
+      - 'registries/**'
+      - 'coded_tools/**'
+      - 'requirements.txt'
+      - '.github/workflows/azure-deploy.yml'
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Environment to deploy to'
+        required: true
+        default: 'production'
+        type: choice
+        options:
+          - production
+          - staging
+
+env:
+  AZURE_REGISTRY_NAME: ailabneurosan
+  IMAGE_NAME: neurosan-app
+  IMAGE_TAG: latest
+  RESOURCE_GROUP: rg-neurosan
+  LOCATION: eastus
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  build:
+    name: Build Docker Image
+    runs-on: ubuntu-latest
+    outputs:
+      image_uri: ${{ steps.build.outputs.image_uri }}
+      image_tag: ${{ steps.build.outputs.image_tag }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Azure Login with OIDC
+        uses: azure/login@v1
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Get ACR Login Credentials
+        id: acr_creds
+        run: |
+          ACR_USERNAME=$(az acr credential show \
+            --resource-group ${{ env.RESOURCE_GROUP }} \
+            --name ${{ env.AZURE_REGISTRY_NAME }} \
+            --query "username" \
+            --output tsv)
+          ACR_PASSWORD=$(az acr credential show \
+            --resource-group ${{ env.RESOURCE_GROUP }} \
+            --name ${{ env.AZURE_REGISTRY_NAME }} \
+            --query "passwords[0].value" \
+            --output tsv)
+          ACR_LOGIN_SERVER=$(az acr show \
+            --resource-group ${{ env.RESOURCE_GROUP }} \
+            --name ${{ env.AZURE_REGISTRY_NAME }} \
+            --query loginServer \
+            --output tsv)
+          echo "acr_username=${ACR_USERNAME}" >> $GITHUB_OUTPUT
+          echo "acr_password=${ACR_PASSWORD}" >> $GITHUB_OUTPUT
+          echo "acr_login_server=${ACR_LOGIN_SERVER}" >> $GITHUB_OUTPUT
+
+      - name: Log in to ACR
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ steps.acr_creds.outputs.acr_login_server }}
+          username: ${{ steps.acr_creds.outputs.acr_username }}
+          password: ${{ steps.acr_creds.outputs.acr_password }}
+
+      - name: Build and Push Docker Image
+        id: build
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          dockerfile: ./deploy/Dockerfile
+          platforms: linux/amd64,linux/arm64
+          push: true
+          tags: |
+            ${{ steps.acr_creds.outputs.acr_login_server }}/${{ env.IMAGE_NAME }}:${{ env.IMAGE_TAG }}
+            ${{ steps.acr_creds.outputs.acr_login_server }}/${{ env.IMAGE_NAME }}:${{ github.sha }}
+          cache-from: type=registry,ref=${{ steps.acr_creds.outputs.acr_login_server }}/${{ env.IMAGE_NAME }}:buildcache
+          cache-to: type=registry,ref=${{ steps.acr_creds.outputs.acr_login_server }}/${{ env.IMAGE_NAME }}:buildcache,mode=max
+          build-args: |
+            BUILD_DATE=$(date -u +'%Y-%m-%dT%H:%M:%SZ')
+            VCS_REF=${{ github.sha }}
+            VERSION=${{ env.IMAGE_TAG }}
+
+      - name: Output Build Info
+        run: |
+          echo "Image URI: ${{ steps.acr_creds.outputs.acr_login_server }}/${{ env.IMAGE_NAME }}:${{ env.IMAGE_TAG }}"
+          echo "Image Tag: ${{ github.sha }}"
+
+  security-scan:
+    name: Security Scan
+    runs-on: ubuntu-latest
+    needs: build
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Run Trivy vulnerability scanner
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: ${{ needs.build.outputs.image_uri }}
+          format: 'sarif'
+          output: 'trivy-results.sarif'
+          severity: 'CRITICAL,HIGH'
+
+      - name: Upload Trivy results to GitHub Security tab
+        uses: github/codeql-action/upload-sarif@v2
+        if: always()
+        with:
+          sarif_file: 'trivy-results.sarif'
+
+  deploy:
+    name: Deploy to Azure
+    runs-on: ubuntu-latest
+    needs: [build, security-scan]
+    environment:
+      name: ${{ github.event.inputs.environment || 'production' }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Azure Login with OIDC
+        uses: azure/login@v1
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Get ACR Login Server
+        id: acr
+        run: |
+          ACR_LOGIN_SERVER=$(az acr show \
+            --resource-group ${{ env.RESOURCE_GROUP }} \
+            --name ${{ env.AZURE_REGISTRY_NAME }} \
+            --query loginServer \
+            --output tsv)
+          echo "acr_login_server=${ACR_LOGIN_SERVER}" >> $GITHUB_OUTPUT
+
+      - name: Deploy Bicep Template
+        uses: azure/arm-deploy@v1
+        with:
+          scope: resourcegroup
+          subscriptionId: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+          resourceGroupName: ${{ env.RESOURCE_GROUP }}
+          template: ./deploy/azure/main.bicep
+          parameters: >
+            location=${{ env.LOCATION }}
+            environmentName=${{ github.event.inputs.environment || 'production' }}
+            projectName=neuro-san
+            containerImage=${{ steps.acr.outputs.acr_login_server }}/${{ env.IMAGE_NAME }}:${{ env.IMAGE_TAG }}
+            containerRegistryUrl=${{ steps.acr.outputs.acr_login_server }}
+            containerRegistryUserName=${{ secrets.ACR_USERNAME }}
+            containerRegistryPassword=${{ secrets.ACR_PASSWORD }}
+            openaiApiKey=${{ secrets.OPENAI_API_KEY || '' }}
+            anthropicApiKey=${{ secrets.ANTHROPIC_API_KEY || '' }}
+            azureOpenaiApiKey=${{ secrets.AZURE_OPENAI_API_KEY || '' }}
+            azureOpenaiEndpoint=${{ secrets.AZURE_OPENAI_ENDPOINT || '' }}
+
+      - name: Get Container App URL
+        id: app_url
+        run: |
+          APP_NAME="neuro-san-app-${{ github.event.inputs.environment || 'production' }}"
+          FQDN=$(az containerapp show \
+            --resource-group ${{ env.RESOURCE_GROUP }} \
+            --name "$APP_NAME" \
+            --query "properties.configuration.ingress.fqdn" \
+            --output tsv)
+          echo "app_url=https://${FQDN}" >> $GITHUB_OUTPUT
+
+      - name: Verify Deployment
+        run: |
+          APP_URL="${{ steps.app_url.outputs.app_url }}"
+          echo "Testing deployment health check..."
+          for i in {1..30}; do
+            if curl -sf "${APP_URL}/health" > /dev/null 2>&1; then
+              echo "✓ Deployment successful"
+              exit 0
+            fi
+            echo "Attempt $i/30: Waiting for app to be ready..."
+            sleep 10
+          done
+          echo "✗ Deployment verification failed"
+          exit 1
+
+      - name: Comment on Pull Request
+        if: github.event_name == 'pull_request'
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: `## ✅ Deployment Successful\n\n**Production URL:** ${{ steps.app_url.outputs.app_url }}\n\nEndpoint is ready for testing.`
+            })
+
+      - name: Deployment Summary
+        run: |
+          echo "## Deployment Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "- **Image**: ${{ needs.build.outputs.image_uri }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **URL**: ${{ steps.app_url.outputs.app_url }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Environment**: ${{ github.event.inputs.environment || 'production' }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Commit**: ${{ github.sha }}" >> $GITHUB_STEP_SUMMARY
+
+  rollback:
+    name: Rollback on Failure
+    runs-on: ubuntu-latest
+    needs: [build, deploy]
+    if: failure() && github.ref == 'refs/heads/main'
+    steps:
+      - name: Notify Failure
+        run: |
+          echo "Deployment failed. Manual rollback may be required."
+          echo "Check the deployment logs for details."
