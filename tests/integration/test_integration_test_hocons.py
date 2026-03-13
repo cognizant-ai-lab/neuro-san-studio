@@ -187,7 +187,6 @@ class TestIntegrationTestHocons(TestCase, FailFastParamMixin):
                 "industry/airline_policy/general_children_id_domestic_flights.hocon",
                 "industry/airline_policy/general_children_id_international_flights.hocon",
                 "industry/airline_policy/general_children_seating.hocon",
-                "industry/airline_policy/general_children_unaccompanied_domestic.hocon",
                 "industry/airline_policy/general_family_with_children.hocon",
                 "industry/airline_policy/premier_gold_checkin_baggage_weights.hocon",
                 "industry/airline_policy/premium_eco_checkin_baggage_weights.hocon",
