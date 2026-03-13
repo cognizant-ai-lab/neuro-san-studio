@@ -47,9 +47,18 @@ class ExtractDocs(CodedTool):
             "Mileage Plus": "coded_tools/industry/airline_policy/knowdocs/fare-classes-and-membership/mileage-plus",
             "Cabin Class": "coded_tools/industry/airline_policy/knowdocs/fare-classes-and-membership/cabin-classes",
             # Special travelers and items
-            "Traveling With Dependents": "coded_tools/industry/airline_policy/knowdocs/special-travelers-and-items/traveling-with-dependents",
-            "Accessibility And Special Needs": "coded_tools/industry/airline_policy/knowdocs/special-travelers-and-items/accessibility-and-special-needs",
-            "Restricted Items": "coded_tools/industry/airline_policy/knowdocs/special-travelers-and-items/restricted-items",
+            "Traveling With Dependents": (
+                "coded_tools/industry/airline_policy/knowdocs"
+                "/special-travelers-and-items/traveling-with-dependents"
+            ),
+            "Accessibility And Special Needs": (
+                "coded_tools/industry/airline_policy/knowdocs"
+                "/special-travelers-and-items/accessibility-and-special-needs"
+            ),
+            "Restricted Items": (
+                "coded_tools/industry/airline_policy/knowdocs"
+                "/special-travelers-and-items/restricted-items"
+            ),
             # International
             "International Travel Docs": "coded_tools/industry/airline_policy/knowdocs/international",
         }
