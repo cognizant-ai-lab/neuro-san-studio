@@ -16,6 +16,8 @@ Here are a few examples ordered by level of complexity.
     - [Music Nerd Pro Sly](#music-nerd-pro-sly)
     - [Music Nerd Pro Sly Local](#music-nerd-pro-sly-local)
     - [Music Nerd LLM Fallbacks](#music-nerd-llm-fallbacks)
+    - [Internal Communication Skill](#internal-communication-skill)
+    - [Job Guessing Skill](#job-guessing-skill)
     - [PII Middleware](#pii-middleware)
   - [🧰 Tool Integration Examples](#-tool-integration-examples)
     - [Anthropic Code Execution](#anthropic-code-execution)
@@ -151,6 +153,25 @@ demonstrates how one agent can call another using a basic hocon file.
 Given specific input, there is a good chance you will get output something like "Hello World!".
 
 **Tags:** `basic` `example`
+
+### Internal Communication Skill
+
+[Internal Communication Skill](examples/basic/internal_communication_skill.md) demonstrates a branching multi-file
+skill where the agent dynamically routes to different communication formats (3P updates, newsletters, FAQs, general
+communications) based on user requests. The skill showcases real-world enterprise use with a single SKILL.md entry
+point that references format-specific guidelines in an examples/ directory, and includes instructions for optional
+tool integrations (Slack, Google Drive, Email, Calendar) to gather information, falling back to user input when tools
+aren't available.
+
+**Tags:** `basic` `example` `middleware` `skills`
+
+### Job Guessing Skill
+
+[Job Guessing Skill](examples/basic/job_guessing_skill.md) demonstrates agent skills with progressive disclosure
+- loading skill metadata first, then full instructions and multi-file resources on demand. The agent determines
+a person's career, location, and salary from their name, showcasing token-optimized skill loading.
+
+**Tags:** `basic` `example` `middleware` `skills`
 
 ### PII Middleware
 
