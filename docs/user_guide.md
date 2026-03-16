@@ -1443,9 +1443,9 @@ The middleware uses a **progressive disclosure** pattern to keep token usage low
 | `load_skill_resource_local` | Loads an additional file from a local skill directory |
 | `load_skill_resource_remote` | Loads an additional file from a remote skill URL |
 
-> **Security**: All three tools restrict file and URL access to paths that fall under the
-> configured `skill_sources` entries. Any request outside those boundaries is rejected,
-> preventing SSRF and data exfiltration attacks.
+> **Security**: All three tools attempt to restrict file and URL access to paths that fall under
+> the configured `skill_sources` entries. This helps reduce the risk of SSRF and data
+> exfiltration attacks, but should not be relied on as a complete security boundary.
 
 #### SKILL.md format
 
