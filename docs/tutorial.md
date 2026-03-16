@@ -931,9 +931,10 @@ Once configured, the middleware automatically registers three tools the agent ca
 * `load_skill_resource_local` — loads a supplementary file from a local skill directory
 * `load_skill_resource_remote` — loads a supplementary file from a remote skill URL
 
-> **Security**: All three tools restrict file and URL access to paths that fall under the
-> configured `skill_sources` entries. Any request outside those boundaries is rejected,
-> preventing SSRF and data exfiltration attacks.
+> **Security**: All three tools restrict file and URL access to paths and URLs whose prefixes
+> fall under the configured `skill_sources` entries. Requests outside those configured
+> prefixes are rejected, which helps mitigate SSRF and data exfiltration risks but does not
+> guarantee complete protection in all scenarios.
 
 For more details, see the [Agent Skills Middleware](user_guide.md#agent-skills-middleware) section
 of the user guide.
