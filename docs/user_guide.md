@@ -1430,8 +1430,9 @@ loading their full content into the prompt upfront.
 
 The middleware uses a **progressive disclosure** pattern to keep token usage low:
 
-1. **At startup** (`abefore_agent`): scans all configured skill sources and loads only the YAML
-   frontmatter (name, description) from each `SKILL.md`.
+1. **At startup** (`abefore_agent`): scans all configured skill sources, parses the YAML
+   frontmatter (name, description) from each `SKILL.md`, and caches the full file content, but
+   only injects the parsed metadata into the system prompt.
 2. **Before each model call** (`awrap_model_call`): injects a compact list of available skills into
    the system prompt so the agent knows what is available.
 3. **On demand**: when the agent decides a skill is relevant, it calls one of three tools registered
