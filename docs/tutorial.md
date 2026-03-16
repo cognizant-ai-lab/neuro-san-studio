@@ -884,6 +884,7 @@ the skill it actually needs. This pattern is called **progressive disclosure**.
 #### Local skill source
 
 Point `skill_sources` at a local directory containing a `SKILL.md` file:
+
 ```hocon
 {
     "name": "name_assistant",
@@ -926,9 +927,9 @@ See [internal_communication_skill.hocon](../registries/basic/internal_communicat
 
 Once configured, the middleware automatically registers three tools the agent can call:
 
-- `get_full_skill_content` — loads the complete `SKILL.md` for a named skill
-- `load_skill_resource_local` — loads a supplementary file from a local skill directory
-- `load_skill_resource_remote` — loads a supplementary file from a remote skill URL
+* `get_full_skill_content` — loads the complete `SKILL.md` for a named skill
+* `load_skill_resource_local` — loads a supplementary file from a local skill directory
+* `load_skill_resource_remote` — loads a supplementary file from a remote skill URL
 
 > **Security**: All three tools restrict file and URL access to paths that fall under the
 > configured `skill_sources` entries. Any request outside those boundaries is rejected,

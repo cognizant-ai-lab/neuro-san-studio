@@ -1476,6 +1476,7 @@ Frontmatter constraints (per the Agent Skills spec):
 #### Configuration
 
 Configure `AgentSkillsMiddleware` in the agent's `middleware` list:
+
 ```hocon
 "middleware": [
     {
@@ -1495,7 +1496,6 @@ containing a `SKILL.md` file. You can mix local and remote sources in the same l
     > ⚠️ **Security note**: Be cautious when using skills from the internet. Always review skill
     > contents carefully before use — they may contain malicious scripts or reference tools or
     > resources unavailable in your environment.
-
 
 - `keep_skill_in_context` argument controls whether full skill content stays in the conversation
 history after being loaded:
