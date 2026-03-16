@@ -874,12 +874,15 @@ For more details, see the [Middleware](user_guide.md#middleware) section of the 
 ### Using Agent Skills Middleware
 
 `AgentSkillsMiddleware` is a built-in middleware that lets an agent draw on a library of **skills**
-— reusable instruction sets stored as `SKILL.md` files — without loading all of their content
+— reusable instruction sets stored as `SKILL.md` files — without injecting all of their content
 into the prompt at once. This is useful when an agent needs to follow domain-specific workflows
 (writing, analysis, coding patterns, etc.) that would be too large to embed directly in `instructions`.
 
-The middleware loads skill metadata upfront, then lets the agent fetch the full content of only
-the skill it actually needs. This pattern is called **progressive disclosure**.
+The middleware eagerly loads and caches the full contents of each configured `SKILL.md`, but only
+injects lightweight metadata or summaries into the agent’s context initially. When the agent calls
+a skill tool, the tool returns the cached full content for the selected skill (and can load any
+additional resources if requested). This pattern of revealing only what is needed in the prompt is
+called **progressive disclosure**.
 
 #### Local skill source
 
