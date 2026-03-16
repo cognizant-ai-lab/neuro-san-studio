@@ -60,6 +60,10 @@
     - [class](#class)
     - [args](#args)
       - [Special args](#special-args)
+    - [Agent Skills Middleware](#agent-skills-middleware)
+      - [How it works](#how-it-works)
+      - [SKILL.md format](#skillmd-format)
+      - [Configuration](#configuration)
   - [Logging](#logging)
   - [Debugging](#debugging)
   - [Advanced](#advanced)
@@ -1414,6 +1418,100 @@ from both inputs and outputs:
 ```
 
 See [pii_middleware.hocon](../registries/basic/pii_middleware.hocon) for the full working network.
+
+### Agent Skills Middleware
+
+`AgentSkillsMiddleware` is a built-in middleware that implements the
+[Agent Skills specification](https://agentskills.io/specification). It gives an agent access to
+a library of **skills** — structured, reusable instruction sets stored as `SKILL.md` files — without
+loading their full content into the prompt upfront.
+
+#### How it works
+
+The middleware uses a **progressive disclosure** pattern to keep token usage low:
+
+1. **At startup** (`abefore_agent`): scans all configured skill sources and loads only the YAML
+   frontmatter (name, description) from each `SKILL.md`.
+2. **Before each model call** (`awrap_model_call`): injects a compact list of available skills into
+   the system prompt so the agent knows what is available.
+3. **On demand**: when the agent decides a skill is relevant, it calls one of three tools registered
+   by the middleware to load the full content:
+
+| Tool | Description |
+|------|-------------|
+| `get_full_skill_content` | Loads the complete `SKILL.md` for a named skill |
+| `load_skill_resource_local` | Loads an additional file from a local skill directory |
+| `load_skill_resource_remote` | Loads an additional file from a remote skill URL |
+
+> **Security**: All three tools restrict file and URL access to paths that fall under the
+> configured `skill_sources` entries. Any request outside those boundaries is rejected,
+> preventing SSRF and data exfiltration attacks.
+
+#### SKILL.md format
+
+Each skill directory must contain a `SKILL.md` file with a YAML frontmatter block followed by the
+skill's full instructions. The frontmatter must include at minimum `name` and `description`:
+
+```markdown
+---
+name: internal-comms
+description: Helps write internal communications such as newsletters and FAQs.
+allowed-tools: web_search
+compatibility: general
+license: Apache-2.0
+---
+
+# Internal Communications Skill
+
+... full instructions here ...
+```
+
+Frontmatter constraints (per the Agent Skills spec):
+
+- `name`: required, 1–64 characters, lowercase alphanumeric and hyphens only, no leading/trailing or consecutive hyphens
+- `description`: required, max 1024 characters
+- `allowed-tools`: optional, space-delimited or YAML list of recommended tool names
+- `compatibility`, `license`: optional free-text fields
+
+#### Configuration
+
+Configure `AgentSkillsMiddleware` in the agent's `middleware` list:
+```hocon
+"middleware": [
+    {
+        "class": "middleware.agent_skills_middleware.AgentSkillsMiddleware",
+        "args": {
+            "skill_sources": ["skills/my-skill/"],
+            "keep_skill_in_context": false,
+            "http_timeout": 30.0
+        }
+    }
+]
+```
+
+- `skill_sources` accepts a list of local paths or remote URLs. Each entry must point to a directory
+containing a `SKILL.md` file. You can mix local and remote sources in the same list.
+
+    > ⚠️ **Security note**: Be cautious when using skills from the internet. Always review skill
+    > contents carefully before use — they may contain malicious scripts or reference tools or
+    > resources unavailable in your environment.
+
+
+- `keep_skill_in_context` argument controls whether full skill content stays in the conversation
+history after being loaded:
+
+<!-- pyml disable line-length -->
+    | Value | Behaviour | Best for |
+    |-------|-----------|----------|
+    | `false` (default) | Skill content removed from chat history after use; agent may re-load if needed | Most use cases; token-constrained environments |
+    | `true` | Skill content stays in chat history; agent can reference multiple skills simultaneously | Complex tasks requiring cross-skill synthesis |
+<!-- pyml enable line-length -->
+
+- `http_timeout` indicates timeout in seconds for HTTP requests. Only used for remote skills.
+
+For working examples, see:
+- [job_guessing_skill.hocon](../registries/basic/job_guessing_skill.hocon) — local skill source
+- [internal_communication_skill.hocon](../registries/basic/internal_communication_skill.hocon)
 
 ## Logging
 

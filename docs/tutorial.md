@@ -47,6 +47,10 @@ single command.
         * [What is Middleware?](#what-is-middleware)
         * [Adding Middleware in HOCON](#adding-middleware-in-hocon)
         * [Multiple Middleware](#multiple-middleware)
+        * [Using Agent Skills Middleware](#using-agent-skills-middleware)
+            * [Local Skill Source](#local-skill-source)
+            * [Remote Skill Source](#remote-skill-source)
+            * [Tools in Skill Middleware](#tools-in-skills-middleware)
     * [9. How to Access the Logs](#8-how-to-access-the-logs)
     * [10. How to Stop the servers](#9-how-to-stop-the-servers)
     * [11. Key Aspects of Neuro AI Multi-Agent Accelerator](#10-key-aspects-of-neuro-ai-multi-agent-accelerator)
@@ -770,7 +774,9 @@ instructions or tools. This is useful for cross-cutting concerns such as:
 * **Logging and auditing** – record inputs and outputs for compliance or debugging
 * **Input/output transformation** – reformat or enrich data flowing through the agent
 
-A middleware hooks into four points of the agent lifecycle:
+A middleware hooks into six points of the agent lifecycle:
+
+> **Note**: The asynchronous variants (`abefore_agent`, etc.) are preferred in the Neuro SAN server environment.
 
 | Hook              | When it runs                        |
 |-------------------|-------------------------------------|
@@ -780,8 +786,6 @@ A middleware hooks into four points of the agent lifecycle:
 | `aafter_model()`  | After each LLM call                 |
 | `awrap_model_call()` | intercept and control async model execution |
 | `awrap_tool_call()` | intercept and control async tool execution |
-
-> **Note**: The asynchronous variants (`abefore_agent`, etc.) are preferred in the Neuro SAN server environment.
 
 ### Adding Middleware in HOCON
 
@@ -866,6 +870,72 @@ so order matters:
 ```
 
 For more details, see the [Middleware](user_guide.md#middleware) section of the user guide.
+
+### Using Agent Skills Middleware
+
+`AgentSkillsMiddleware` is a built-in middleware that lets an agent draw on a library of **skills**
+— reusable instruction sets stored as `SKILL.md` files — without loading all of their content
+into the prompt at once. This is useful when an agent needs to follow domain-specific workflows
+(writing, analysis, coding patterns, etc.) that would be too large to embed directly in `instructions`.
+
+The middleware loads skill metadata upfront, then lets the agent fetch the full content of only
+the skill it actually needs. This pattern is called **progressive disclosure**.
+
+#### Local skill source
+
+Point `skill_sources` at a local directory containing a `SKILL.md` file:
+```hocon
+{
+    "name": "name_assistant",
+    "function": {
+        "description": "I can help with name-related inquiries."
+    },
+    "instructions": "You are a name assistant that provides career information based on user's name.",
+    "middleware": [
+        {
+            "class": "middleware.agent_skills_middleware.AgentSkillsMiddleware",
+            "args": {
+                "skill_sources": ["skills/tests/job_guessing"],
+                "keep_skill_in_context": true
+            }
+        }
+    ]
+}
+```
+
+See [job_guessing_skill.hocon](../registries/basic/job_guessing_skill.hocon) for the full example.
+
+#### Remote skill source
+
+`skill_sources` also accepts URLs. The middleware will fetch `SKILL.md` over HTTP:
+
+```hocon
+"args": {
+    "skill_sources": ["https://raw.githubusercontent.com/anthropics/skills/main/skills/internal-comms/"],
+    "keep_skill_in_context": true,
+    "http_timeout": 30.0
+}
+```
+
+See [internal_communication_skill.hocon](../registries/basic/internal_communication_skill.hocon) for the full example.
+
+> ⚠️ **Security note**: Always review skills from the internet before use. They may contain malicious scripts or
+> instructions that reference tools or resources not available in your environment.
+
+#### Tools in Skills Middleware
+
+Once configured, the middleware automatically registers three tools the agent can call:
+
+- `get_full_skill_content` — loads the complete `SKILL.md` for a named skill
+- `load_skill_resource_local` — loads a supplementary file from a local skill directory
+- `load_skill_resource_remote` — loads a supplementary file from a remote skill URL
+
+> **Security**: All three tools restrict file and URL access to paths that fall under the
+> configured `skill_sources` entries. Any request outside those boundaries is rejected,
+> preventing SSRF and data exfiltration attacks.
+
+For more details, see the [Agent Skills Middleware](user_guide.md#agent-skills-middleware) section
+of the user guide.
 
 ---
 
