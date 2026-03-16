@@ -8,6 +8,8 @@ Note that plugins are never required for Neuro SAN to function.
 - [Plugins](#plugins)
   - [Authorization](#authorization)
     - [Open FGA](#open-fga)
+  - [Diagnostics](#diagnostics)
+    - [LLM Config Validator](#llm-config-validator)
   - [Logging](#logging)
     - [Log Bridge](#log-bridge)
   - [Observability](#observability)
@@ -27,6 +29,42 @@ This is not to be confused with _authentication_, which is the process of verify
 [Open FGA](../plugins/authorization/openfga/README.md) is a plugin that extends the authorization capabilities
 of a Neuro SAN server using a free and open source Open FGA server to do Relation-Based Access Control (ReBAC)
 authorization.
+
+## Diagnostics
+
+Diagnostic plugins help verify that your Neuro SAN Studio environment is correctly configured
+before starting the server.
+
+### LLM Config Validator
+
+The LLM Config Validator checks that every LLM configuration in a HOCON file is reachable and
+working by creating each LLM instance and invoking it with a trivial test prompt.
+It can also check the `llm_config.hocon` for any issues.
+
+It can be invoked via the `--check-llm-config` flag on `run.py`:
+
+```bash
+# Check the default registries/llm_config.hocon
+python run.py --check-llm-config
+
+# Check a specific agent network or llm_config HOCON file
+python run.py --check-llm-config registries/music_nerd.hocon
+```
+
+Or run the script directly:
+
+```bash
+python plugins/llm_config_validator/check_llm_configs.py registries/llm_config.hocon
+```
+
+Both HOCON formats are supported:
+
+- **Agent network** files (containing a `tools` list) — every agent's merged `llm_config` is tested.
+- **Standalone studio `llm_config`** files — the single top-level `llm_config` is tested.
+
+Duplicate configurations are deduplicated so each unique model is called only once.
+The validator exits with a non-zero code if any configuration fails, blocking server startup
+until the issue is resolved.
 
 ## Logging
 

@@ -52,17 +52,13 @@ import asyncio
 import sys
 import traceback
 from io import BytesIO
-from typing import Any, Dict, List, Tuple
+from typing import Any
+from typing import Dict
+from typing import List
+from typing import Tuple
 
 from langchain_core.language_models.base import BaseLanguageModel
 from langchain_core.messages.human import HumanMessage
-
-# Framework imports - same classes the framework itself uses
-from neuro_san.internals.graph.persistence.agent_network_restorer import AgentNetworkRestorer
-from neuro_san.internals.graph.registry.agent_network import AgentNetwork
-from neuro_san.internals.run_context.factory.master_llm_factory import MasterLlmFactory
-from neuro_san.internals.interfaces.context_type_llm_factory import ContextTypeLlmFactory
-from neuro_san.internals.run_context.langchain.llms.langchain_llm_resources import LangChainLlmResources
 
 # For per-agent config merging, same as CallingActivation.prepare_run_context_config
 from leaf_common.config.dictionary_overlay import DictionaryOverlay
@@ -71,6 +67,12 @@ from leaf_common.config.dictionary_overlay import DictionaryOverlay
 # via AbstractAsyncConfigRestorer.deserialize_file_contents)
 from leaf_common.serialization.format.hocon_serialization_format import HoconSerializationFormat
 
+# Framework imports - same classes the framework itself uses
+from neuro_san.internals.graph.persistence.agent_network_restorer import AgentNetworkRestorer
+from neuro_san.internals.graph.registry.agent_network import AgentNetwork
+from neuro_san.internals.interfaces.context_type_llm_factory import ContextTypeLlmFactory
+from neuro_san.internals.run_context.factory.master_llm_factory import MasterLlmFactory
+from neuro_san.internals.run_context.langchain.llms.langchain_llm_resources import LangChainLlmResources
 
 TEST_PROMPT = "Reply with exactly one word: hello"
 
@@ -106,6 +108,32 @@ def load_agent_network(hocon_path: str) -> AgentNetwork:
     return agent_network
 
 
+def _expand_fallbacks(label: str, llm_config: Dict[str, Any]) -> List[Tuple[str, Dict[str, Any]]]:
+    """
+    Expand an llm_config that uses a 'fallbacks' list into individual
+    (label, config) tuples so each model is tested separately.
+
+    If there is no 'fallbacks' key the config is returned as-is.
+    If the primary config (outside of 'fallbacks') also carries a model_name
+    it is included as the first entry.
+    """
+    fallbacks: Any = llm_config.get("fallbacks")
+    if not isinstance(fallbacks, list) or not fallbacks:
+        return [(label, llm_config)]
+
+    results: List[Tuple[str, Dict[str, Any]]] = []
+
+    # Primary config (everything except the fallbacks list itself)
+    primary_config: Dict[str, Any] = {k: v for k, v in llm_config.items() if k != "fallbacks"}
+    if primary_config.get("model_name"):
+        results.append((f"{label} (primary)", primary_config))
+
+    for i, fallback_cfg in enumerate(fallbacks):
+        results.append((f"{label} (fallback {i})", fallback_cfg))
+
+    return results
+
+
 def extract_llm_configs_from_agent_network(
     agent_network: AgentNetwork,
 ) -> List[Tuple[str, Dict[str, Any]]]:
@@ -115,6 +143,7 @@ def extract_llm_configs_from_agent_network(
     After the DefaultsConfigFilter has run, every tool spec already has an llm_config
     (either its own or inherited from top-level). We also merge with the top-level
     llm_config the same way CallingActivation.prepare_run_context_config does.
+    Configs that use a 'fallbacks' list are expanded into one entry per fallback.
     """
     config: Dict[str, Any] = agent_network.get_config()
     tools: List[Dict[str, Any]] = config.get("tools", [])
@@ -136,7 +165,7 @@ def extract_llm_configs_from_agent_network(
         agent_llm_config: Dict[str, Any] = tool_spec.get("llm_config", {})
         merged_llm_config: Dict[str, Any] = overlayer.overlay(top_level_llm_config, agent_llm_config)
 
-        results.append((agent_name, merged_llm_config))
+        results.extend(_expand_fallbacks(agent_name, merged_llm_config))
 
     return results
 
@@ -149,12 +178,12 @@ def extract_llm_configs_from_studio_config(
     Extract the llm_config from a standalone studio llm_config.hocon file.
     These files have no agents, just a top-level llm_config dict.
     We use the file path as the label since there are no agent names.
+    Configs that use a 'fallbacks' list are expanded into one entry per fallback.
     """
     llm_config: Dict[str, Any] = config.get("llm_config")
     if not llm_config:
         return []
-    label: str = hocon_path
-    return [(label, llm_config)]
+    return _expand_fallbacks(hocon_path, llm_config)
 
 
 def create_and_load_llm_factory(config: Dict[str, Any]) -> ContextTypeLlmFactory:
@@ -206,6 +235,7 @@ async def test_llm_configs(
     Test each unique llm_config by creating an LLM instance and invoking it.
     Returns (successes, failures) where each entry groups labels sharing the same config.
     """
+    # pylint: disable=too-many-locals
     failures: List[Tuple[List[str], Dict[str, Any], str]] = []
     successes: List[Tuple[List[str], Dict[str, Any]]] = []
 
@@ -235,7 +265,7 @@ async def test_llm_configs(
         try:
             llm: BaseLanguageModel = create_llm_instance(llm_factory, llm_cfg)
             print(f"    LLM instance created: {type(llm).__name__}")
-        except Exception as exc:
+        except Exception as exc:  # pylint: disable=broad-except
             error_msg: str = f"Failed to create LLM: {exc}"
             print(f"    FAIL (creation): {error_msg}")
             failures.append((labels, llm_cfg, error_msg))
@@ -246,7 +276,7 @@ async def test_llm_configs(
             response_text: str = await invoke_llm(llm)
             print(f"    Response: {response_text[:100]!r}")
             successes.append((labels, llm_cfg))
-        except Exception as exc:
+        except Exception as exc:  # pylint: disable=broad-except
             error_msg = f"Failed to invoke LLM: {exc}"
             print(f"    FAIL (invocation): {error_msg}")
             traceback.print_exc()
@@ -285,6 +315,7 @@ def print_results(
 
 
 async def main():
+    """Entry point: parse args, run checks, exit non-zero on failure."""
     if len(sys.argv) < 2:
         print("Usage: python check_llm_configs.py <path_to_hocon_file>")
         sys.exit(1)
@@ -295,7 +326,7 @@ async def main():
     print(f"[1] Parsing HOCON file: {hocon_path}")
     try:
         raw_config: Dict[str, Any] = parse_hocon_file(hocon_path)
-    except Exception as exc:
+    except Exception as exc:  # pylint: disable=broad-except
         print(f"    FATAL: Failed to parse HOCON file: {exc}")
         sys.exit(1)
 
@@ -305,7 +336,7 @@ async def main():
         print("    Detected format: agent network (has 'tools')")
         try:
             agent_network: AgentNetwork = load_agent_network(hocon_path)
-        except Exception as exc:
+        except Exception as exc:  # pylint: disable=broad-except
             print(f"    FATAL: Failed to load agent network: {exc}")
             sys.exit(1)
         config: Dict[str, Any] = agent_network.get_config()
@@ -335,7 +366,7 @@ async def main():
     print("[3] Creating LLM factory (loading default_llm_info.hocon)...")
     try:
         llm_factory: ContextTypeLlmFactory = create_and_load_llm_factory(config)
-    except Exception as exc:
+    except Exception as exc:  # pylint: disable=broad-except
         print(f"    FATAL: Failed to create/load LLM factory: {exc}")
         sys.exit(1)
     print("    LLM factory loaded successfully.")
