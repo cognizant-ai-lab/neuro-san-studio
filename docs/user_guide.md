@@ -1501,15 +1501,16 @@ containing a `SKILL.md` file. You can mix local and remote sources in the same l
     > contents carefully before use — they may contain malicious scripts or reference tools or
     > resources unavailable in your environment.
 
+<!-- pyml disable line-length -->
 - `keep_skill_in_context` argument controls whether full skill content stays in the conversation
 history after being loaded:
 
-    <!-- pyml disable line-length -->
     | Value | Behaviour | Best for |
     |-------|-----------|----------|
     | `false` (default) | Skill content removed from chat history after use; agent may re-load if needed | Most use cases; token-constrained environments |
     | `true` | Skill content stays in chat history; agent can reference multiple skills simultaneously | Complex tasks requiring cross-skill synthesis |
-    <!-- pyml enable line-length -->
+
+<!-- pyml enable line-length -->
 
 - `http_timeout` indicates timeout in seconds for HTTP requests. Only used for remote skills.
 
