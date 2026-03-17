@@ -1,0 +1,127 @@
+# Copyright © 2025-2026 Cognizant Technology Solutions Corp, www.cognizant.com.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
+# END COPYRIGHT
+{
+    "metadata": {
+        "description": "Agent network that generates data-driven test fixture HOCON files for existing agent networks. Provide the name of an agent network and it will read its definition, analyze its capabilities, and produce test cases with interactions, expected responses, and sly_data.",
+        "tags": ["tool", "testing"],
+        "sample_queries": [
+            "Generate test cases for basic/coffee_finder_advanced",
+            "Create a test fixture for basic/music_nerd_pro",
+            "Generate integration tests for basic/hello_world"
+        ]
+    },
+
+    include "registries/llm_config.hocon",
+    "max_iterations": 40000,
+    "max_execution_seconds": 6000,
+    "tools": [
+        {
+            "name": "agent_network_test_generator",
+            "function": {
+                "description": "Generate data-driven test fixture HOCON files for an existing agent network.",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "agent_network_hocon_file": {
+                            "type": "string",
+                            "description": "Path to the agent network HOCON file relative to registries/, e.g. 'basic/coffee_finder_advanced.hocon'."
+                        }
+                    },
+                    "required": ["agent_network_hocon_file"]
+                }
+            },
+            "instructions": """
+You generate data-driven test fixture HOCON files for existing neuro-san agent networks.
+Only answer inquiries that are directly within your area of expertise. Do not try to help for other matters. Do not mention what you can NOT do. Only mention what you can do.
+
+Follow these steps carefully:
+
+1) Read the target agent network
+- Call `read_agent_network` with the user-provided HOCON file path.
+- Study the returned summary: agent names, instructions, descriptions, parameters, sly_data schemas, metadata, and sample queries.
+
+2) Design test cases
+- Design one or more test cases. Each test case is a separate fixture file.
+- A test case contains a sequence of `interactions` that exercise a specific scenario of the agent network.
+- Each interaction has:
+  - `text`: the user message to send to the agent.
+  - `response`: describes how to verify the agent's reply. Use the `text` sub-key with a `gist` list for LLM-assessed acceptance criteria, or the `structure` sub-key with `keywords` or `value` checks for structured responses.
+  - `sly_data` (optional): private data to send alongside the message, if the agent uses sly_data (e.g. setting a fixed time).
+
+Guidelines for designing good test cases:
+- Use the network's `sample_queries` from metadata as inspiration for realistic inputs.
+- If the network uses sly_data (e.g. for time overrides), include appropriate sly_data in interactions to make tests deterministic.
+- Write `gist` acceptance criteria that describe the essential meaning of a correct response, not exact wording.
+- Keep gist descriptions concise but specific enough to distinguish correct from incorrect responses.
+- For multi-turn conversations, use sequential interactions that build on each other.
+- Consider both positive scenarios (expected behavior) and edge cases.
+- Set a reasonable `timeout_in_seconds` (60-180 for simple tests, 300-500 for multi-turn).
+- Set `success_ratio` to "1/1" by default.
+- The `agent` field must be the network name without the .hocon extension (e.g. "basic/coffee_finder_advanced").
+- Use `connections` field with value ["direct"] for direct library connection tests.
+
+3) Persist each test case
+- For each test case, call `persist_test_fixture` with:
+  - `test_fixture`: the complete test case dictionary following the schema.
+  - `file_name`: a descriptive snake_case file name ending in .hocon (e.g. "coffee_where_8am.hocon").
+- The tool will save it under `tests/fixtures/<agent_name>/`.
+
+4) Return a summary of all generated test cases with their file paths and what each one tests.
+""",
+            "tools": ["read_agent_network", "persist_test_fixture"]
+        },
+
+        {
+            "name": "read_agent_network",
+            "class": "agent_network_test_generator.read_agent_network.ReadAgentNetwork",
+            "function": {
+                "description": "Read an agent network HOCON file and return a structured summary of its agents, instructions, metadata, and sample queries.",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "agent_network_hocon_file": {
+                            "type": "string",
+                            "description": "Path to the agent network HOCON file relative to registries/, e.g. 'basic/coffee_finder_advanced.hocon'."
+                        }
+                    },
+                    "required": ["agent_network_hocon_file"]
+                }
+            }
+        },
+
+        {
+            "name": "persist_test_fixture",
+            "class": "agent_network_test_generator.persist_test_fixture.PersistTestFixture",
+            "function": {
+                "description": "Save a generated test fixture dictionary as a HOCON file under tests/fixtures/.",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "test_fixture": {
+                            "type": "object",
+                            "description": "The complete test fixture dictionary conforming to the neuro-san test case HOCON schema. Must include 'agent', 'timeout_in_seconds', 'success_ratio', and 'interactions'."
+                        },
+                        "file_name": {
+                            "type": "string",
+                            "description": "Descriptive snake_case file name for the test fixture (e.g. 'coffee_where_8am.hocon')."
+                        }
+                    },
+                    "required": ["test_fixture", "file_name"]
+                }
+            }
+        }
+    ]
+}
