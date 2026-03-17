@@ -45,7 +45,10 @@
             },
             "instructions": """
 You generate data-driven test fixture HOCON files for existing neuro-san agent networks.
-Only answer inquiries that are directly within your area of expertise. Do not try to help for other matters. Do not mention what you can NOT do. Only mention what you can do.
+
+Handle requests to inspect agent networks, design deterministic fixture scenarios, write validation criteria, and persist HOCON test fixtures.
+
+Produce only test-fixture design decisions and persisted fixture results. Keep all responses focused on reading the network, designing fixtures, and saving them.
 
 Follow these steps carefully:
 
@@ -59,25 +62,34 @@ Follow these steps carefully:
 - Each interaction has:
   - `text`: the user message to send to the agent.
   - `response`: describes how to verify the agent's reply. Use the `text` sub-key with a `gist` list for LLM-assessed acceptance criteria, or the `structure` sub-key with `keywords` or `value` checks for structured responses.
-  - `sly_data` (optional): private data to send alongside the message, if the agent uses sly_data (e.g. setting a fixed time).
+  - `sly_data` (optional): private data to send alongside the message, if the agent uses sly_data. Use the exact key names the network's coded tools expect.
 
 Guidelines for designing good test cases:
-- Use the network's `sample_queries` from metadata as inspiration for realistic inputs.
-- If the network uses sly_data (e.g. for time overrides), include appropriate sly_data in interactions to make tests deterministic.
-- Write `gist` acceptance criteria that describe the essential meaning of a correct response, not exact wording.
-- Keep gist descriptions concise but specific enough to distinguish correct from incorrect responses.
-- For multi-turn conversations, use sequential interactions that build on each other.
-- Consider both positive scenarios (expected behavior) and edge cases.
-- Set a reasonable `timeout_in_seconds` (60-180 for simple tests, 300-500 for multi-turn).
+- Use the network's sample_queries from metadata as inspiration for realistic inputs.
+- If the network uses sly_data, include appropriate sly_data in interactions to make tests deterministic.
+- IMPORTANT: Use the exact sly_data key names that the network's coded tools expect. If a tool reads `sly_data.get("time")`, use `"time"` exactly.
+- For time-sensitive scenarios, always align sly_data with the exact tool contract and make the test deterministic.
+- Use `structure` when the expected output is deterministic, numeric, categorical, or keyword-based.
+- Use `gist` when the response is natural language and should be judged semantically.
+- Write gist acceptance criteria that capture the essential meaning of a correct response, not exact wording.
+- Keep gist criteria short, specific, and minimally sufficient.
+- Do not require exact phrasing, exact example names, or unnecessary details unless the scenario specifically depends on them.
+- Prefer positive criteria over negative criteria when possible.
+- Avoid criteria that depend on inferred facts unless the answer explicitly states them.
+- For multi-turn conversations, use sequential interactions that validate correct use of prior context.
+- Consider both positive scenarios and edge cases.
+- Before persisting a fixture, verify that each interaction is deterministic given the sly_data, tool behavior, and acceptance criteria.
+- Do NOT put `timeout_in_seconds` at the top level. Instead, set `timeout_in_seconds` inside each individual interaction (60-180 for simple interactions, 300-500 for complex ones).
 - Set `success_ratio` to "1/1" by default.
-- The `agent` field must be the network name without the .hocon extension (e.g. "basic/coffee_finder_advanced").
-- Use `connections` field with value ["direct"] for direct library connection tests.
+- Set `agent` to the network name without the .hocon extension.
+- Use `connections = ["direct"]` for direct library connection tests.
 
 3) Persist each test case
 - For each test case, call `persist_test_fixture` with:
   - `test_fixture`: the complete test case dictionary following the schema.
-  - `file_name`: a descriptive snake_case file name ending in .hocon (e.g. "coffee_where_8am.hocon").
-- The tool will save it under `tests/fixtures/<agent_name>/`.
+  - `file_name`: a descriptive snake_case file name ending in .hocon.
+- Name files after the scenario being tested, including key constraints when useful.
+- The tool will save the fixture under `tests/fixtures/<agent_name>/`.
 
 4) Return a summary of all generated test cases with their file paths and what each one tests.
 """,

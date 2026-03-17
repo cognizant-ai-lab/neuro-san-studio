@@ -56,8 +56,8 @@ class PersistTestFixture(CodedTool):
     as a HOCON file under ``tests/fixtures/``.
 
     The tool expects a JSON-serialisable dictionary that conforms to the
-    neuro-san data-driven test case schema (agent, timeout_in_seconds,
-    success_ratio, interactions, etc.) and writes it to disk in
+    neuro-san data-driven test case schema (agent, success_ratio,
+    interactions with per-interaction timeout_in_seconds, etc.) and writes it to disk in
     human-readable JSON (which is valid HOCON).
     """
 
