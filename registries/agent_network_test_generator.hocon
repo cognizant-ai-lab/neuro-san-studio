@@ -65,31 +65,63 @@ Follow these steps carefully:
   - `sly_data` (optional): private data to send alongside the message, if the agent uses sly_data. Use the exact key names the network's coded tools expect.
 
 Guidelines for designing good test cases:
+
 - Use the network's sample_queries from metadata as inspiration for realistic inputs.
+
 - If the network uses sly_data, include appropriate sly_data in interactions to make tests deterministic.
+
 - IMPORTANT: Use the EXACT sly_data key names that the network's coded tools expect. Look at the agent instructions and coded tool classes returned by `read_agent_network` to determine the correct key names. For example, if a TimeTool reads `sly_data.get("time")`, use `"time"` (NOT `"fixed_time"` or any other variation). Using the wrong key will cause the tool to ignore the sly_data and fall back to live values, making tests non-deterministic.
-- IMPORTANT: Use sly_data values in the exact format the tool and downstream agents expect. Do not normalize, convert, or expand values unless the tool code explicitly requires it. For `time`, if the tool passes the sly_data value through directly and the agent instructions describe hours in simple human-readable form (for example, "7am to 6pm"), then use simple clock-time strings like `"8:00am"`, `"1:00am"`, or `"12:30am"`. Do NOT use ISO 8601 datetime strings such as `"2026-03-17T00:30:00-07:00"` unless the tool explicitly parses that format.
-- For time-sensitive scenarios, always align sly_data with the exact tool contract and make the test deterministic.
-- Use `structure` when the expected output is deterministic, numeric, categorical, or keyword-based.
+
+- IMPORTANT: Use sly_data values in the exact format the tool and downstream agents expect. Do not normalize, convert, or expand values unless the tool code explicitly requires it.
+  - If a tool passes sly_data through directly and agent instructions use human-readable formats (e.g., "7am to 6pm"), use simple clock-time strings like `"8:00am"` or `"12:30am"`.
+  - Do NOT use ISO 8601 datetime strings (e.g., `"2026-03-17T00:30:00-07:00"`) unless the tool explicitly parses that format.
+  - When in doubt, prioritize the coded tool behavior over general datetime conventions.
+
+- For time-sensitive scenarios, always align sly_data with the tool contract and ensure the test is deterministic.
+
+- Prefer `structure` over `gist` when the expected output can be validated deterministically using exact values, keywords, or simple categorical checks.
+
 - Use `gist` when the response is natural language and should be judged semantically.
+
 - Write gist acceptance criteria that capture the essential meaning of a correct response, not exact wording.
+
 - Keep gist criteria short, specific, and minimally sufficient.
+
+- Each gist criterion should test one essential fact only. Avoid combining multiple facts unless they are inseparable.
+
 - Do not require exact phrasing, exact example names, or unnecessary details unless the scenario specifically depends on them.
+
+- Do not embed supporting evidence, business hours, or explanatory parentheticals inside a gist criterion unless the response must explicitly mention them.
+
 - Prefer positive criteria over negative criteria when possible.
+
 - Avoid criteria that depend on inferred facts unless the answer explicitly states them.
+
+- For time-sensitive tests, do not require the answer to restate the exact time literally unless necessary. Instead, validate correctness relative to the provided time.
+
+- If a specific example is not required by the scenario, describe it as a valid example rather than a mandatory requirement.
+
 - For multi-turn conversations, use sequential interactions that validate correct use of prior context.
+
 - Consider both positive scenarios and edge cases.
+
 - Before persisting a fixture, verify that each interaction is deterministic given the sly_data, tool behavior, and acceptance criteria.
-- Do NOT put `timeout_in_seconds` at the top level. Instead, set `timeout_in_seconds` inside each individual interaction (60-180 for simple interactions, 300-500 for complex ones).
+
+- Before persisting, check that every acceptance criterion could reasonably pass for a correct answer that uses different wording from the examples in the metadata.
+
+- Do NOT put `timeout_in_seconds` at the top level. Instead, set it inside each interaction (60–180 for simple interactions, 300–500 for complex ones).
+
 - Set `success_ratio` to "1/1" by default.
+
 - Set `agent` to the network name without the .hocon extension.
+
 - Use `connections = ["direct"]` for direct library connection tests.
 
 3) Persist each test case
 - For each test case, call `persist_test_fixture` with:
   - `test_fixture`: the complete test case dictionary following the schema.
   - `file_name`: a descriptive snake_case file name ending in .hocon.
-- Name files after the scenario being tested, including key constraints when useful.
+- Name files after the scenario being tested, including key constraints when useful (e.g., `coffee_open_at_8am.hocon`, `basic_economy_gate_check_fee.hocon`).
 - The tool will save the fixture under `tests/fixtures/<agent_name>/`.
 
 4) Return a summary of all generated test cases with their file paths and what each one tests.
