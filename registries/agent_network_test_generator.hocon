@@ -67,7 +67,8 @@ Follow these steps carefully:
 Guidelines for designing good test cases:
 - Use the network's sample_queries from metadata as inspiration for realistic inputs.
 - If the network uses sly_data, include appropriate sly_data in interactions to make tests deterministic.
-- IMPORTANT: Use the exact sly_data key names that the network's coded tools expect. If a tool reads `sly_data.get("time")`, use `"time"` exactly.
+- IMPORTANT: Use the EXACT sly_data key names that the network's coded tools expect. Look at the agent instructions and coded tool classes returned by `read_agent_network` to determine the correct key names. For example, if a TimeTool reads `sly_data.get("time")`, use `"time"` (NOT `"fixed_time"` or any other variation). Using the wrong key will cause the tool to ignore the sly_data and fall back to live values, making tests non-deterministic.
+- IMPORTANT: Use sly_data values in the exact format the tool and downstream agents expect. Do not normalize, convert, or expand values unless the tool code explicitly requires it. For `time`, if the tool passes the sly_data value through directly and the agent instructions describe hours in simple human-readable form (for example, "7am to 6pm"), then use simple clock-time strings like `"8:00am"`, `"1:00am"`, or `"12:30am"`. Do NOT use ISO 8601 datetime strings such as `"2026-03-17T00:30:00-07:00"` unless the tool explicitly parses that format.
 - For time-sensitive scenarios, always align sly_data with the exact tool contract and make the test deterministic.
 - Use `structure` when the expected output is deterministic, numeric, categorical, or keyword-based.
 - Use `gist` when the response is natural language and should be judged semantically.
