@@ -10,6 +10,7 @@
     - [Agent network](#agent-network)
       - [Agent specifications](#agent-specifications)
       - [Tool specifications](#tool-specifications)
+      - [Middleware specifications](#middleware-specifications)
       - [LLM specifications](#llm-specifications)
   - [LLM configuration](#llm-configuration)
     - [OpenAI](#openai)
@@ -60,10 +61,11 @@
     - [class](#class)
     - [args](#args)
       - [Special args](#special-args)
-    - [Agent Skills Middleware](#agent-skills-middleware)
-      - [How it works](#how-it-works)
-      - [SKILL.md format](#skillmd-format)
-      - [Configuration](#configuration)
+    - [Example](#example)
+  - [Agent Skills](#agent-skills)
+    - [How it works](#how-it-works)
+    - [SKILL.md format](#skillmd-format)
+    - [Configuration](#configuration)
   - [Logging](#logging)
   - [Debugging](#debugging)
   - [Advanced](#advanced)
@@ -1419,14 +1421,15 @@ from both inputs and outputs:
 
 See [pii_middleware.hocon](../registries/basic/pii_middleware.hocon) for the full working network.
 
-### Agent Skills Middleware
+## Agent Skills
 
-`AgentSkillsMiddleware` is a built-in middleware that implements the
+[Agent Skills](https://platform.claude.com/docs/en/agents-and-tools/agent-skills/overview) are supported
+using a middleware implementation. `AgentSkillsMiddleware` is a built-in middleware that implements the
 [Agent Skills specification](https://agentskills.io/specification). It gives an agent access to
 a library of **skills** — structured, reusable instruction sets stored as `SKILL.md` files — without
 loading their full content into the prompt upfront.
 
-#### How it works
+### How it works
 
 The middleware uses a **progressive disclosure** pattern to keep token usage low:
 
@@ -1448,7 +1451,7 @@ The middleware uses a **progressive disclosure** pattern to keep token usage low
 > the configured `skill_sources` entries. This helps reduce the risk of SSRF and data
 > exfiltration attacks, but should not be relied on as a complete security boundary.
 
-#### SKILL.md format
+### SKILL.md format
 
 Each skill directory must contain a `SKILL.md` file with a YAML frontmatter block followed by the
 skill's full instructions. The frontmatter must include at minimum `name` and `description`:
@@ -1474,7 +1477,7 @@ Frontmatter constraints (per the [Agent Skills spec](https://agentskills.io/spec
 - `allowed-tools`: optional, space-delimited or YAML list of recommended tool names
 - `compatibility`, `license`: optional free-text fields
 
-#### Configuration
+### Configuration
 
 Configure `AgentSkillsMiddleware` in the agent's `middleware` list:
 
@@ -1498,14 +1501,15 @@ containing a `SKILL.md` file. You can mix local and remote sources in the same l
     > contents carefully before use — they may contain malicious scripts or reference tools or
     > resources unavailable in your environment.
 
+<!-- pyml disable line-length -->
 - `keep_skill_in_context` argument controls whether full skill content stays in the conversation
 history after being loaded:
 
-<!-- pyml disable line-length -->
     | Value | Behaviour | Best for |
     |-------|-----------|----------|
     | `false` (default) | Skill content removed from chat history after use; agent may re-load if needed | Most use cases; token-constrained environments |
     | `true` | Skill content stays in chat history; agent can reference multiple skills simultaneously | Complex tasks requiring cross-skill synthesis |
+
 <!-- pyml enable line-length -->
 
 - `http_timeout` indicates timeout in seconds for HTTP requests. Only used for remote skills.
