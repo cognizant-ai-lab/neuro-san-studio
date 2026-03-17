@@ -1467,7 +1467,7 @@ license: Apache-2.0
 ... full instructions here ...
 ```
 
-Frontmatter constraints (per the Agent Skills spec):
+Frontmatter constraints (per the [Agent Skills spec](https://agentskills.io/specification)):
 
 - `name`: required, 1–64 characters, lowercase alphanumeric and hyphens only, no leading/trailing or consecutive hyphens
 - `description`: required, max 1024 characters
