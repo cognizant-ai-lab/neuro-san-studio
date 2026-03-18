@@ -13,37 +13,41 @@
 # limitations under the License.
 #
 # END COPYRIGHT
-
 import asyncio
 import logging
+import os
 from typing import Any
 from typing import Union
-
 from leaf_common.persistence.easy.easy_hocon_persistence import EasyHoconPersistence
 from neuro_san.interfaces.coded_tool import CodedTool
-
-
+# Root directory where all coded tool Python modules are located.
+_CODED_TOOLS_DIR: str = "coded_tools"
 class ReadAgentNetwork(CodedTool):
     """
     CodedTool implementation that reads a target agent network HOCON file
     and returns a structured summary of its agents, instructions, metadata,
     sample queries, and sly_data schemas suitable for generating test cases.
-    """
 
+    Also resolves and reads the Python source code of any coded tools
+    referenced in the network, giving the LLM visibility into their
+    exact runtime behaviour for generating accurate test expectations.
+    """
     @staticmethod
     def _extract_agent_info(tool: dict[str, Any]) -> dict[str, Any]:
         """
         Extract relevant information from a single tool/agent definition.
-
         :param tool: A single tool definition dictionary from the network HOCON.
         :return: A dictionary summarising the agent's key attributes.
         """
+        # Start with the agent/tool name — the only required field.
         agent_info: dict[str, Any] = {
             "name": tool.get("name", ""),
         }
+        # Include the agent's system-level instructions if present.
         if tool.get("instructions"):
             agent_info["instructions"] = tool["instructions"]
-
+        # Extract fields from the "function" block (description, parameters,
+        # and any declared sly_data schema).
         function_def: dict[str, Any] = tool.get("function", {})
         if function_def.get("description"):
             agent_info["description"] = function_def["description"]
@@ -51,31 +55,76 @@ class ReadAgentNetwork(CodedTool):
             agent_info["parameters"] = function_def["parameters"]
         if function_def.get("sly_data_schema"):
             agent_info["sly_data_schema"] = function_def["sly_data_schema"]
-
+        # Capture which sub-tools this agent can call.
         if tool.get("tools"):
             agent_info["tools"] = tool["tools"]
+        # Capture the coded tool class reference (e.g. "accountant.Accountant")
+        # so downstream logic can resolve and read its Python source.
         if tool.get("class"):
             agent_info["class"] = tool["class"]
+        # Capture any toolbox reference (e.g. MCP or external tool integrations).
         if tool.get("toolbox"):
             agent_info["toolbox"] = tool["toolbox"]
-
         return agent_info
-
+    @staticmethod
+    def _resolve_coded_tool_source(class_ref: str, agent_name: str) -> str:
+        """
+        Attempt to locate and read the Python source code for a coded tool class.
+        The method tries several candidate paths under ``coded_tools/`` that
+        mirror the resolution strategies used by the neuro-san runtime.
+        :param class_ref: The dot-separated class reference from the HOCON
+            (e.g. ``"accountant.Accountant"``).
+        :param agent_name: The agent network name used to derive parent
+            directories (e.g. ``"basic/coffee_finder_advanced"``).
+        :return: The source code of the coded tool, or an empty string if the
+            file could not be found.
+        """
+        # Split the class reference into module path and class name.
+        # e.g. "accountant.Accountant" -> module_path="accountant", class="Accountant"
+        # e.g. "experimental.kwik_agents.list_topics.ListTopics"
+        #       -> module_path="experimental/kwik_agents/list_topics", class="ListTopics"
+        parts: list[str] = class_ref.rsplit(".", 1)
+        if len(parts) < 2:
+            return ""
+        # Convert the dot-separated module path to a filesystem path with .py extension.
+        module_path: str = parts[0].replace(".", os.sep) + ".py"
+        # Derive the parent directory from the agent network name.
+        # e.g. "basic/coffee_finder_advanced" -> parent_dir="basic"
+        parent_dir: str = os.path.dirname(agent_name)
+        # Try multiple candidate paths to locate the source file.
+        # This mirrors how neuro-san resolves coded tool classes at runtime:
+        #   1. coded_tools/<parent_dir>/<module>.py
+        #      e.g. coded_tools/basic/accountant.py
+        #   2. coded_tools/<parent_dir>/<network_name>/<module>.py
+        #      e.g. coded_tools/basic/coffee_finder_advanced/time_tool.py
+        #   3. coded_tools/<module>.py (fully qualified path)
+        #      e.g. coded_tools/experimental/kwik_agents/list_topics.py
+        candidates: list[str] = [
+            os.path.join(_CODED_TOOLS_DIR, parent_dir, module_path),
+            os.path.join(_CODED_TOOLS_DIR, parent_dir, agent_name.split("/")[-1], module_path),
+            os.path.join(_CODED_TOOLS_DIR, module_path),
+        ]
+        logger = logging.getLogger("ReadAgentNetwork")
+        for candidate in candidates:
+            if os.path.isfile(candidate):
+                logger.info("Found coded tool source: %s", candidate)
+                try:
+                    with open(candidate, "r", encoding="utf-8") as source_file:
+                        return source_file.read()
+                except OSError:
+                    continue
+        return ""
     def invoke(self, args: dict[str, Any], sly_data: dict[str, Any]) -> Union[dict[str, Any], str]:
         """
         Reads the specified agent network HOCON file and extracts relevant
         information for test case generation.
-
         :param args: A dictionary with the following keys:
                 "agent_network_hocon_file": the path to the agent network HOCON file
                     relative to the registries directory (e.g., "basic/coffee_finder_advanced.hocon").
-
         :param sly_data: A dictionary whose keys are defined by the agent hierarchy,
                 but whose values are meant to be kept out of the chat stream.
-
                 Keys expected for this implementation are:
                     None
-
         :return:
             In case of successful execution:
                 A dictionary containing the full agent network summary.
@@ -83,18 +132,16 @@ class ReadAgentNetwork(CodedTool):
                 A text string error message.
         """
         logger = logging.getLogger(self.__class__.__name__)
-
         hocon_file: str = args.get("agent_network_hocon_file", "")
         if not hocon_file:
             return "Error: No 'agent_network_hocon_file' provided."
-
-        # Ensure the path includes the registries prefix
+        # The user may pass a path with or without the "registries/" prefix.
+        # Normalise so it always starts with "registries/" for EasyHoconPersistence.
         if not hocon_file.startswith("registries/"):
             hocon_file = "registries/" + hocon_file
-
         logger.info(">>>>>>>>>>>>>>>>>>>Reading Agent Network HOCON>>>>>>>>>>>>>>>>>>")
         logger.info("HOCON file: %s", hocon_file)
-
+        # Parse the HOCON file into a Python dictionary.
         try:
             hocon = EasyHoconPersistence(full_ref=hocon_file, must_exist=True)
             network_hocon: dict[str, Any] = hocon.restore()
@@ -102,28 +149,63 @@ class ReadAgentNetwork(CodedTool):
             error_msg = f"Error: Could not read HOCON file '{hocon_file}': {exc}"
             logger.error(error_msg)
             return error_msg
-
-        # Extract the agent name (stem of the hocon file path without .hocon extension)
+        # Derive the agent network name from the file path.
+        # e.g. "registries/basic/coffee_finder_advanced.hocon"
+        #       -> "basic/coffee_finder_advanced"
         agent_name: str = hocon_file.replace("registries/", "").replace(".hocon", "")
-
+        # Extract a structured summary for each agent/tool in the network.
         agents_summary: list[dict[str, Any]] = [
             self._extract_agent_info(tool) for tool in network_hocon.get("tools", [])
         ]
-
+        # Read the Python source code for every coded tool referenced in the
+        # network.  This gives the LLM visibility into the exact runtime
+        # behaviour (e.g. that Accountant adds 3.0 per call) so it can
+        # generate accurate test expectations.
+        coded_tool_sources: dict[str, str] = self._read_all_coded_tool_sources(
+            network_hocon.get("tools", []), agent_name, logger
+        )
+        # Assemble the result dictionary returned to the frontman agent.
         result: dict[str, Any] = {
             "agent_name": agent_name,
             "metadata": network_hocon.get("metadata", {}),
             "agents": agents_summary,
         }
-
-        # Store in sly_data for downstream tools
+        if coded_tool_sources:
+            result["coded_tool_sources"] = coded_tool_sources
+        # Store key data in sly_data so the persist_test_fixture tool can
+        # access the target agent name without it appearing in the chat stream.
         sly_data["target_agent_name"] = agent_name
         sly_data["target_network_summary"] = result
-
         logger.info(">>>>>>>>>>>>>>>>>>>DONE !!!>>>>>>>>>>>>>>>>>>")
         logger.info("Extracted %d agents from network '%s'", len(agents_summary), agent_name)
         return result
-
+    @staticmethod
+    def _read_all_coded_tool_sources(
+        tools: list[dict[str, Any]],
+        agent_name: str,
+        logger: logging.Logger,
+    ) -> dict[str, str]:
+        """
+        Read Python source code for every coded tool referenced in the network.
+        :param tools: The list of tool definition dictionaries from the HOCON.
+        :param agent_name: The agent network name for path resolution.
+        :param logger: Logger instance.
+        :return: A mapping of class references to their source code.
+        """
+        sources: dict[str, str] = {}
+        for tool in tools:
+            class_ref: str = tool.get("class", "")
+            # Skip tools without a class reference (pure LLM agents) and
+            # avoid reading the same source file twice.
+            if not class_ref or class_ref in sources:
+                continue
+            source: str = ReadAgentNetwork._resolve_coded_tool_source(class_ref, agent_name)
+            if source:
+                sources[class_ref] = source
+                logger.info("Loaded source for coded tool: %s", class_ref)
+            else:
+                logger.warning("Could not find source for coded tool: %s", class_ref)
+        return sources
     async def async_invoke(self, args: dict[str, Any], sly_data: dict[str, Any]) -> Union[dict[str, Any], str]:
         """Run invoke asynchronously."""
         return await asyncio.to_thread(self.invoke, args, sly_data)

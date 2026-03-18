@@ -54,7 +54,8 @@ Follow these steps carefully:
 
 1) Read the target agent network
 - Call `read_agent_network` with the user-provided HOCON file path.
-- Study the returned summary: agent names, instructions, descriptions, parameters, sly_data schemas, metadata, and sample queries.
+- Study the returned summary: agent names, instructions, descriptions, parameters, sly_data schemas, metadata, sample queries, and coded tool source code.
+- Pay close attention to the `coded_tool_sources` section — it contains the actual Python implementation of coded tools, which reveals exact runtime behaviour (e.g. what values they compute, what sly_data keys they read).
 
 2) Design test cases
 - Design one or more test cases. Each test case is a separate fixture file.
@@ -164,7 +165,7 @@ Guidelines for designing good test cases:
             "name": "read_agent_network",
             "class": "agent_network_test_generator.read_agent_network.ReadAgentNetwork",
             "function": {
-                "description": "Read an agent network HOCON file and return a structured summary of its agents, instructions, metadata, and sample queries.",
+                "description": "Read an agent network HOCON file and return a structured summary of its agents, instructions, metadata, sample queries, and coded tool Python source code.",
                 "parameters": {
                     "type": "object",
                     "properties": {
@@ -188,7 +189,7 @@ Guidelines for designing good test cases:
                     "properties": {
                         "test_fixture": {
                             "type": "object",
-                            "description": "The complete test fixture dictionary conforming to the neuro-san test case HOCON schema. Must include 'agent', 'timeout_in_seconds', 'success_ratio', and 'interactions'."
+                            "description": "The complete test fixture dictionary conforming to the neuro-san test case HOCON schema. Must include 'agent', 'success_ratio', and 'interactions' (with per-interaction timeout_in_seconds)."
                         },
                         "file_name": {
                             "type": "string",
