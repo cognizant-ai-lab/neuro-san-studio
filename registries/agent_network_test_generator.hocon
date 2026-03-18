@@ -61,7 +61,38 @@ Follow these steps carefully:
 - A test case contains a sequence of `interactions` that exercise a specific scenario of the agent network.
 - Each interaction has:
   - `text`: the user message to send to the agent.
-  - `response`: describes how to verify the agent's reply. Use the `text` sub-key with a `gist` list for LLM-assessed acceptance criteria, or the `structure` sub-key with `keywords` or `value` checks for structured responses.
+  - `response`: describes how to verify the agent's reply. There are two ways to test responses:
+
+  A) `response.text` — for agents that return plain text.
+     Use stock tests like `gist` or `keywords` directly under `text`.
+
+     Example valid shapes:
+     - `response.text.gist = ["Lists available coffee shops"]`
+     - `response.text.keywords = ["Beatles"]`
+
+  B) `response.structure` — for agents that return a dictionary / structured response.
+
+     - Each key in `structure` must exactly match a key in the agent's response dictionary.
+     - The value for each key is a dictionary of stock tests to apply to that field.
+
+     Example valid shape:
+     - `response.structure.answer.keywords = "Beatles"`
+     - `response.structure.running_cost.value = 3.0`
+
+     IMPORTANT:
+    - Do NOT include meta-fields such as `type`, `required_keys`, or `properties`.
+    - Do NOT wrap `structure` in a schema or JSON definition.
+    - Do NOT add extra nesting.
+    - `structure` must be a direct mapping of response keys to validation rules.
+
+    - The only valid stock tests are: `keywords`, `not_keywords`, `value`, `not_value`, `gist`, `not_gist`, `less`, `not_less`, `greater`, `not_greater`.
+    - Do NOT use `type` as a test — it is not a valid stock test.
+
+    - Do NOT add instructional phrases such as "Respond with JSON" or "Respond with the required JSON keys" to the `text` field.
+    - The agent's own instructions already define its response format. The `text` field must contain only natural user queries.
+
+    - When a coded tool produces deterministic numeric values, use an exact `value` check based on the tool’s logic.
+    - Do NOT use vague or schema-style checks (e.g., `type: number`) when the exact value can be determined.
   - `sly_data` (optional): private data to send alongside the message, if the agent uses sly_data. Use the exact key names the network's coded tools expect.
 
 Guidelines for designing good test cases:

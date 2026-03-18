@@ -26,24 +26,18 @@
     ],
     "interactions": [
         {
-            "text": "Which band wrote \"Yellow Submarine\"?",
+            "text": "Which band wrote Yellow Submarine?",
             "timeout_in_seconds": 120,
             "response": {
                 "structure": {
-                    "type": "json",
-                    "required_keys": [
-                        "answer",
-                        "running_cost"
-                    ],
-                    "value": {
-                        "running_cost": {
-                            "type": "number"
-                        }
-                    },
-                    "keywords": {
-                        "answer": [
-                            "The Beatles"
+                    "answer": {
+                        "keywords": [
+                            "The Beatles",
+                            "Beatles"
                         ]
+                    },
+                    "running_cost": {
+                        "value": 1.0
                     }
                 }
             }
@@ -53,21 +47,14 @@
             "timeout_in_seconds": 120,
             "response": {
                 "structure": {
-                    "type": "json",
-                    "required_keys": [
-                        "answer",
-                        "running_cost"
-                    ],
-                    "value": {
-                        "running_cost": {
-                            "type": "number"
-                        }
-                    },
-                    "keywords": {
-                        "answer": [
+                    "answer": {
+                        "keywords": [
                             "Liverpool",
                             "England"
                         ]
+                    },
+                    "running_cost": {
+                        "value": 2.0
                     }
                 }
             }
