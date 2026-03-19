@@ -16,6 +16,7 @@
 
 import asyncio
 import logging
+import re
 from typing import Any
 from typing import Union
 
@@ -50,6 +51,28 @@ _FORBIDDEN_META_FIELDS: frozenset[str] = frozenset(
     }
 )
 
+# Keys that are allowed at the top level of a fixture.
+_ALLOWED_TOP_LEVEL_KEYS: frozenset[str] = frozenset(
+    {
+        "agent",
+        "success_ratio",
+        "connections",
+        "interactions",
+    }
+)
+
+# Keys that are allowed inside each interaction.
+_ALLOWED_INTERACTION_KEYS: frozenset[str] = frozenset(
+    {
+        "text",
+        "timeout_in_seconds",
+        "response",
+        "sly_data",
+    }
+)
+
+_SUCCESS_RATIO_PATTERN: str = r"^\d+/\d+$"
+
 
 class ValidateTestFixture(CodedTool):
     """
@@ -76,6 +99,19 @@ class ValidateTestFixture(CodedTool):
             errors.append(
                 "Top-level 'timeout_in_seconds' is not allowed. Set it inside each individual interaction instead."
             )
+
+        # Reject unexpected top-level keys.
+        for key in fixture:
+            if key not in _ALLOWED_TOP_LEVEL_KEYS:
+                errors.append(
+                    f"Unexpected top-level key: '{key}'. Allowed keys are: {sorted(_ALLOWED_TOP_LEVEL_KEYS)}."
+                )
+
+        # success_ratio must be a string like "1/1".
+        ratio = fixture.get("success_ratio")
+        if ratio is not None:
+            if not isinstance(ratio, str) or not re.match(_SUCCESS_RATIO_PATTERN, ratio):
+                errors.append(f"'success_ratio' must be a string in 'N/M' format (e.g. '1/1'), got: {ratio!r}.")
 
         interactions = fixture.get("interactions")
         if interactions is not None and not isinstance(interactions, list):
@@ -106,6 +142,13 @@ class ValidateTestFixture(CodedTool):
         if "timeout_in_seconds" not in interaction:
             errors.append(f"{prefix}: missing required key 'timeout_in_seconds'.")
 
+        # Reject unexpected interaction keys.
+        for key in interaction:
+            if key not in _ALLOWED_INTERACTION_KEYS:
+                errors.append(
+                    f"{prefix}: unexpected key '{key}'. Allowed keys are: {sorted(_ALLOWED_INTERACTION_KEYS)}."
+                )
+
         response: Any = interaction.get("response")
         if isinstance(response, dict):
             ValidateTestFixture._check_response(response, prefix, errors)
@@ -127,11 +170,24 @@ class ValidateTestFixture(CodedTool):
         if not has_text and not has_structure:
             errors.append(f"{prefix}.response: must contain either 'text' or 'structure'.")
 
-        if has_text and isinstance(response["text"], dict):
-            ValidateTestFixture._check_stock_tests(response["text"], f"{prefix}.response.text", errors)
+        if has_text:
+            text_val = response["text"]
+            if isinstance(text_val, dict):
+                ValidateTestFixture._check_stock_tests(text_val, f"{prefix}.response.text", errors)
+            else:
+                errors.append(
+                    f"{prefix}.response.text: must be a dictionary of stock tests "
+                    f'(e.g. {{"keywords": ["Beatles"]}}), '
+                    f"not a {type(text_val).__name__}. "
+                    "Do NOT use regex patterns."
+                )
 
-        if has_structure and isinstance(response["structure"], dict):
-            ValidateTestFixture._check_structure(response["structure"], f"{prefix}.response.structure", errors)
+        if has_structure:
+            struct_val = response["structure"]
+            if isinstance(struct_val, dict):
+                ValidateTestFixture._check_structure(struct_val, f"{prefix}.response.structure", errors)
+            else:
+                errors.append(f"{prefix}.response.structure: must be a dictionary, got {type(struct_val).__name__}.")
 
     # ------------------------------------------------------------------
     # Stock-test validation (for response.text)

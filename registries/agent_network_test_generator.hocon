@@ -154,30 +154,33 @@ Return a JSON list of scenario objects.
 You are a test fixture builder. Given a scenario description and network summary, you produce a complete test fixture dictionary conforming to the neuro-san test case HOCON schema.
 
 The fixture dictionary you return must have this structure:
-{
+{{
     "agent": "<network name without .hocon extension>",
     "success_ratio": "1/1",
     "connections": ["direct"],
     "interactions": [ ... ]
-}
+}}
 
-Each interaction in the list must have:
+IMPORTANT: Only the keys shown above are allowed at the top level. Do NOT add `name`, `description`, `timeout_in_seconds`, or any other key.
+
+Each interaction in the list must have ONLY these keys:
 - `text`: the user message to send to the agent. Must be a natural user query only. Do NOT add instructional phrases like "Respond with JSON" or "Respond with the required JSON keys".
 - `timeout_in_seconds`: 60-180 for simple interactions, 300-500 for complex ones.
 - `response`: describes how to verify the agent's reply.
 - `sly_data` (optional): private data if the agent uses sly_data.
+Do NOT add `name`, `description`, or any other key to interactions.
 
 There are two ways to specify `response`:
 
 A) `response.text` -- for agents that return plain text.
    Use stock tests directly under `text`.
-   Example: `"response": { "text": { "gist": ["Lists available coffee shops"] } }`
-   Example: `"response": { "text": { "keywords": ["Beatles"] } }`
+   Example: `"response": {{ "text": {{ "gist": ["Lists available coffee shops"] }} }}`
+   Example: `"response": {{ "text": {{ "keywords": ["Beatles"] }} }}`
 
 B) `response.structure` -- for agents that return a dictionary / structured response.
    Each key in `structure` must exactly match a key in the agent's response dictionary.
    The value for each key is a dictionary of stock tests.
-   Example: `"response": { "structure": { "answer": { "keywords": "Beatles" }, "running_cost": { "value": 3.0 } } }`
+   Example: `"response": {{ "structure": {{ "answer": {{ "keywords": "Beatles" }}, "running_cost": {{ "value": 3.0 }} }} }}`
 
 Rules for building fixtures:
 
@@ -189,11 +192,21 @@ Rules for building fixtures:
 
 - Do NOT put `timeout_in_seconds` at the top level. It must be inside each interaction.
 
+- Do NOT use regex patterns anywhere in the response. `response.text` must ALWAYS be a dictionary of stock tests, NEVER a regex string.
+
+- Do NOT add `name` or `description` fields at the top level or inside interactions. The only allowed top-level keys are: `agent`, `success_ratio`, `connections`, `interactions`.
+
+- Do NOT add `name` inside interactions. The only allowed interaction keys are: `text`, `timeout_in_seconds`, `response`, `sly_data`.
+
+- `success_ratio` must be a string in "N/M" format (e.g. "1/1"), NOT a number like 1.0.
+
 - Prefer `structure` over `gist` when the expected output can be validated deterministically.
 
 - Use `gist` when the response is natural language. Keep gist criteria short, specific, and focused on one essential fact each.
 
-- When a coded tool produces deterministic numeric values, use `value` with the exact expected number based on the tool's logic.
+- Be careful with `not_keywords`. It checks that a word does NOT appear ANYWHERE in the response text. Agents often mention unavailable/closed items by name when explaining why they are not options (e.g. "Bob's Coffee Shop is closed"). Do NOT use `not_keywords` for entities the agent might mention in passing. Only use `not_keywords` for words that should truly never appear in any context. Prefer `keywords` for what SHOULD be in the response and `gist` for overall meaning.
+
+- When a coded tool produces deterministic numeric values, use `value` with the exact expected number based on the tool's logic. Always preserve the float type — use 3.0 not 3, 6.0 not 6, etc. The `value` stock test does an exact comparison, so the type must match.
 
 - If `validation_errors` is provided, fix all listed errors before returning the fixture.
 
@@ -223,7 +236,7 @@ Return the complete fixture dictionary as JSON.
             "name": "validate_test_fixture",
             "class": "agent_network_test_generator.validate_test_fixture.ValidateTestFixture",
             "function": {
-                "description": "Programmatically validate a test fixture dictionary before persisting. Returns {valid: true} or {valid: false, errors: [...]} with specific error messages.",
+                "description": "Programmatically validate a test fixture dictionary before persisting. Returns a result with valid (true/false) and, when invalid, an errors list with specific error messages.",
                 "parameters": {
                     "type": "object",
                     "properties": {
