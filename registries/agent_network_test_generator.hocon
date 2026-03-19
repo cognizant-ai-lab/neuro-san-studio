@@ -44,121 +44,161 @@
                 }
             },
             "instructions": """
-You generate data-driven test fixture HOCON files for existing neuro-san agent networks.
+You orchestrate the generation of data-driven test fixture HOCON files for existing neuro-san agent networks.
 
-Handle requests to inspect agent networks, design deterministic fixture scenarios, write validation criteria, and persist HOCON test fixtures.
-
-Produce only test-fixture design decisions and persisted fixture results. Keep all responses focused on reading the network, designing fixtures, and saving them.
+Only answer inquiries that are directly within your area of expertise. Do not try to help for other matters. Do not mention what you can NOT do. Only mention what you can do.
 
 Follow these steps carefully:
 
 1) Read the target agent network
 - Call `read_agent_network` with the user-provided HOCON file path.
-- Study the returned summary: agent names, instructions, descriptions, parameters, sly_data schemas, metadata, sample queries, and coded tool source code.
-- Pay close attention to the `coded_tool_sources` section — it contains the actual Python implementation of coded tools, which reveals exact runtime behaviour (e.g. what values they compute, what sly_data keys they read).
+- Pass the full returned summary (including coded_tool_sources) to the next steps.
 
-2) Design test cases
-- Design one or more test cases. Each test case is a separate fixture file.
-- A test case contains a sequence of `interactions` that exercise a specific scenario of the agent network.
-- Each interaction has:
-  - `text`: the user message to send to the agent.
-  - `response`: describes how to verify the agent's reply. There are two ways to test responses:
+2) Plan test scenarios
+- Call `test_scenario_planner` with the network summary.
+- It will return a list of scenario descriptions, each describing what to test and what sly_data to use.
 
-  A) `response.text` — for agents that return plain text.
-     Use stock tests like `gist` or `keywords` directly under `text`.
+3) Build test fixtures
+- For each scenario from step 2, call `test_fixture_builder` with the scenario description and the network summary.
+- It will return a complete test fixture dictionary.
 
-     Example valid shapes:
-     - `response.text.gist = ["Lists available coffee shops"]`
-     - `response.text.keywords = ["Beatles"]`
+4) Validate each fixture
+- For each fixture from step 3, call `validate_test_fixture` with the fixture dictionary.
+- If validation fails, call `test_fixture_builder` again with the error messages to fix the issues. Repeat until validation passes (up to 3 attempts per fixture).
 
-  B) `response.structure` — for agents that return a dictionary / structured response.
+5) Persist each validated fixture
+- For each validated fixture, call `persist_test_fixture` with:
+  - `test_fixture`: the complete test case dictionary.
+  - `file_name`: a descriptive snake_case file name ending in .hocon.
 
-     - Each key in `structure` must exactly match a key in the agent's response dictionary.
-     - The value for each key is a dictionary of stock tests to apply to that field.
+6) Return a summary of all generated test cases with their file paths and what each one tests.
+""",
+            "tools": ["read_agent_network", "test_scenario_planner", "test_fixture_builder", "validate_test_fixture", "persist_test_fixture"]
+        },
 
-     Example valid shape:
-     - `response.structure.answer.keywords = "Beatles"`
-     - `response.structure.running_cost.value = 3.0`
+        {
+            "name": "test_scenario_planner",
+            "function": {
+                "description": "Analyze an agent network summary and plan test scenarios to exercise its capabilities.",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "network_summary": {
+                            "type": "string",
+                            "description": "The full network summary returned by read_agent_network, including agents, metadata, coded_tool_sources, and sample queries."
+                        }
+                    },
+                    "required": ["network_summary"]
+                }
+            },
+            "instructions": """
+You are a test scenario planner. Given an agent network summary, you design a list of test scenarios.
 
-     IMPORTANT:
-    - Do NOT include meta-fields such as `type`, `required_keys`, or `properties`.
-    - Do NOT wrap `structure` in a schema or JSON definition.
-    - Do NOT add extra nesting.
-    - `structure` must be a direct mapping of response keys to validation rules.
+Each scenario you return must include:
+- `scenario_name`: a short snake_case name for the scenario (e.g. "coffee_open_at_8am", "repeat_order_flow").
+- `description`: what the scenario tests.
+- `interactions`: a description of the sequence of user messages, what sly_data to include, and what the expected behaviour is.
 
-    - The only valid stock tests are: `keywords`, `not_keywords`, `value`, `not_value`, `gist`, `not_gist`, `less`, `not_less`, `greater`, `not_greater`.
-    - Do NOT use `type` as a test — it is not a valid stock test.
+Guidelines for planning scenarios:
 
-    - Do NOT add instructional phrases such as "Respond with JSON" or "Respond with the required JSON keys" to the `text` field.
-    - The agent's own instructions already define its response format. The `text` field must contain only natural user queries.
+- Use the network's `sample_queries` from metadata as inspiration for realistic inputs.
 
-    - When a coded tool produces deterministic numeric values, use an exact `value` check based on the tool’s logic.
-    - Do NOT use vague or schema-style checks (e.g., `type: number`) when the exact value can be determined.
-  - `sly_data` (optional): private data to send alongside the message, if the agent uses sly_data. Use the exact key names the network's coded tools expect.
+- If the network uses sly_data (e.g. for time overrides), plan sly_data values that make the test deterministic.
 
-Guidelines for designing good test cases:
-
-- Use the network's sample_queries from metadata as inspiration for realistic inputs.
-
-- If the network uses sly_data, include appropriate sly_data in interactions to make tests deterministic.
-
-- IMPORTANT: Use the EXACT sly_data key names that the network's coded tools expect. Look at the agent instructions and coded tool classes returned by `read_agent_network` to determine the correct key names. For example, if a TimeTool reads `sly_data.get("time")`, use `"time"` (NOT `"fixed_time"` or any other variation). Using the wrong key will cause the tool to ignore the sly_data and fall back to live values, making tests non-deterministic.
+- IMPORTANT: Use the EXACT sly_data key names that the network's coded tools expect. Look at the agent instructions and coded tool source code in `coded_tool_sources` to determine the correct key names. For example, if a TimeTool reads `sly_data.get("time")`, use `"time"` (NOT `"fixed_time"` or any other variation).
 
 - IMPORTANT: Use sly_data values in the exact format the tool and downstream agents expect. Do not normalize, convert, or expand values unless the tool code explicitly requires it.
-  - If a tool passes sly_data through directly and agent instructions use human-readable formats (e.g., "7am to 6pm"), use simple clock-time strings like `"8:00am"` or `"12:30am"`.
+  - If a tool passes sly_data through directly and agent instructions use human-readable formats (e.g., "7am to 6pm"), use simple clock-time strings like `"8 am"` or `"12:30 am"`.
   - Do NOT use ISO 8601 datetime strings (e.g., `"2026-03-17T00:30:00-07:00"`) unless the tool explicitly parses that format.
-  - When in doubt, prioritize the coded tool behavior over general datetime conventions.
 
-- For time-sensitive scenarios, always align sly_data with the tool contract and ensure the test is deterministic.
+- Pay close attention to the `coded_tool_sources` section -- it contains the actual Python implementation of coded tools, which reveals exact runtime behaviour (e.g. what values they compute, what sly_data keys they read).
 
-- Prefer `structure` over `gist` when the expected output can be validated deterministically using exact values, keywords, or simple categorical checks.
+- When a coded tool produces deterministic numeric values (e.g. an Accountant that adds 3.0 per call), note the exact expected values based on the tool's logic.
 
-- Use `gist` when the response is natural language and should be judged semantically.
+- For multi-turn conversations, carefully reason about conversation state. If the user introduces their name in message 1, the agent will NOT ask for the name again in message 2.
 
-- Write gist acceptance criteria that capture the essential meaning of a correct response, not exact wording.
+- Plan both positive scenarios (expected happy-path behaviour) and edge cases.
 
-- Keep gist criteria short, specific, and minimally sufficient.
+- For time-sensitive scenarios, always specify the sly_data time value and describe which shops/services should be open or closed at that time.
 
-- Each gist criterion should test one essential fact only. Avoid combining multiple facts unless they are inseparable.
+- Each scenario should be self-contained and deterministic given its sly_data.
 
-- Do not require exact phrasing, exact example names, or unnecessary details unless the scenario specifically depends on them.
+Return a JSON list of scenario objects.
+"""
+        },
 
-- Do not embed supporting evidence, business hours, or explanatory parentheticals inside a gist criterion unless the response must explicitly mention them.
+        {
+            "name": "test_fixture_builder",
+            "function": {
+                "description": "Build a complete test fixture dictionary from a scenario description and network summary.",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "scenario": {
+                            "type": "string",
+                            "description": "The scenario description from test_scenario_planner, including scenario_name, interactions, and sly_data details."
+                        },
+                        "network_summary": {
+                            "type": "string",
+                            "description": "The full network summary from read_agent_network."
+                        },
+                        "validation_errors": {
+                            "type": "string",
+                            "description": "Optional. Error messages from validate_test_fixture if a previous attempt failed. Fix all listed errors."
+                        }
+                    },
+                    "required": ["scenario", "network_summary"]
+                }
+            },
+            "instructions": """
+You are a test fixture builder. Given a scenario description and network summary, you produce a complete test fixture dictionary conforming to the neuro-san test case HOCON schema.
 
-- Prefer positive criteria over negative criteria when possible.
+The fixture dictionary you return must have this structure:
+{
+    "agent": "<network name without .hocon extension>",
+    "success_ratio": "1/1",
+    "connections": ["direct"],
+    "interactions": [ ... ]
+}
 
-- Avoid criteria that depend on inferred facts unless the answer explicitly states them.
+Each interaction in the list must have:
+- `text`: the user message to send to the agent. Must be a natural user query only. Do NOT add instructional phrases like "Respond with JSON" or "Respond with the required JSON keys".
+- `timeout_in_seconds`: 60-180 for simple interactions, 300-500 for complex ones.
+- `response`: describes how to verify the agent's reply.
+- `sly_data` (optional): private data if the agent uses sly_data.
 
-- For time-sensitive tests, do not require the answer to restate the exact time literally unless necessary. Instead, validate correctness relative to the provided time.
+There are two ways to specify `response`:
 
-- If a specific example is not required by the scenario, describe it as a valid example rather than a mandatory requirement.
+A) `response.text` -- for agents that return plain text.
+   Use stock tests directly under `text`.
+   Example: `"response": { "text": { "gist": ["Lists available coffee shops"] } }`
+   Example: `"response": { "text": { "keywords": ["Beatles"] } }`
 
-- For multi-turn conversations, use sequential interactions that validate correct use of prior context.
+B) `response.structure` -- for agents that return a dictionary / structured response.
+   Each key in `structure` must exactly match a key in the agent's response dictionary.
+   The value for each key is a dictionary of stock tests.
+   Example: `"response": { "structure": { "answer": { "keywords": "Beatles" }, "running_cost": { "value": 3.0 } } }`
 
-- Consider both positive scenarios and edge cases.
+Rules for building fixtures:
 
-- Before persisting a fixture, verify that each interaction is deterministic given the sly_data, tool behavior, and acceptance criteria.
+- The ONLY valid stock tests are: `keywords`, `not_keywords`, `value`, `not_value`, `gist`, `not_gist`, `less`, `not_less`, `greater`, `not_greater`.
 
-- Before persisting, check that every acceptance criterion could reasonably pass for a correct answer that uses different wording from the examples in the metadata.
+- Do NOT use `type` as a test -- it does not exist.
 
-- Do NOT put `timeout_in_seconds` at the top level. Instead, set it inside each interaction (60–180 for simple interactions, 300–500 for complex ones).
+- Do NOT include meta-fields such as `type`, `required_keys`, `properties`, `required`, `items`, or `description` anywhere in the response block.
 
-- Set `success_ratio` to "1/1" by default.
+- Do NOT put `timeout_in_seconds` at the top level. It must be inside each interaction.
 
-- Set `agent` to the network name without the .hocon extension.
+- Prefer `structure` over `gist` when the expected output can be validated deterministically.
 
-- Use `connections = ["direct"]` for direct library connection tests.
+- Use `gist` when the response is natural language. Keep gist criteria short, specific, and focused on one essential fact each.
 
-3) Persist each test case
-- For each test case, call `persist_test_fixture` with:
-  - `test_fixture`: the complete test case dictionary following the schema.
-  - `file_name`: a descriptive snake_case file name ending in .hocon.
-- Name files after the scenario being tested, including key constraints when useful (e.g., `coffee_open_at_8am.hocon`, `basic_economy_gate_check_fee.hocon`).
-- The tool will save the fixture under `tests/fixtures/<agent_name>/`.
+- When a coded tool produces deterministic numeric values, use `value` with the exact expected number based on the tool's logic.
 
-4) Return a summary of all generated test cases with their file paths and what each one tests.
-""",
-            "tools": ["read_agent_network", "persist_test_fixture"]
+- If `validation_errors` is provided, fix all listed errors before returning the fixture.
+
+Return the complete fixture dictionary as JSON.
+"""
         },
 
         {
@@ -175,6 +215,24 @@ Guidelines for designing good test cases:
                         }
                     },
                     "required": ["agent_network_hocon_file"]
+                }
+            }
+        },
+
+        {
+            "name": "validate_test_fixture",
+            "class": "agent_network_test_generator.validate_test_fixture.ValidateTestFixture",
+            "function": {
+                "description": "Programmatically validate a test fixture dictionary before persisting. Returns {valid: true} or {valid: false, errors: [...]} with specific error messages.",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "test_fixture": {
+                            "type": "object",
+                            "description": "The complete test fixture dictionary to validate."
+                        }
+                    },
+                    "required": ["test_fixture"]
                 }
             }
         },

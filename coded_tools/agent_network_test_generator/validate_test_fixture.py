@@ -1,0 +1,250 @@
+# Copyright © 2025-2026 Cognizant Technology Solutions Corp, www.cognizant.com.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
+# END COPYRIGHT
+
+import asyncio
+import logging
+from typing import Any
+from typing import Union
+
+from neuro_san.interfaces.coded_tool import CodedTool
+
+# The complete set of stock tests recognised by the neuro-san test runner.
+_VALID_STOCK_TESTS: frozenset[str] = frozenset(
+    {
+        "keywords",
+        "not_keywords",
+        "value",
+        "not_value",
+        "gist",
+        "not_gist",
+        "less",
+        "not_less",
+        "greater",
+        "not_greater",
+    }
+)
+
+# Fields that the LLM sometimes invents inside response.structure but that
+# are not part of the test fixture schema.
+_FORBIDDEN_META_FIELDS: frozenset[str] = frozenset(
+    {
+        "type",
+        "required_keys",
+        "properties",
+        "required",
+        "items",
+        "description",
+    }
+)
+
+
+class ValidateTestFixture(CodedTool):
+    """
+    CodedTool that programmatically validates a test fixture dictionary
+    before it is persisted to disk.
+
+    Returns a result dictionary with ``valid`` (bool) and, when invalid,
+    an ``errors`` list describing every problem found.  The front-man agent
+    can feed these errors back to the fixture builder for correction.
+    """
+
+    # ------------------------------------------------------------------
+    # Top-level validation
+    # ------------------------------------------------------------------
+
+    @staticmethod
+    def _check_top_level(fixture: dict[str, Any], errors: list[str]) -> None:
+        """Validate required top-level keys and reject disallowed ones."""
+        for key in ("agent", "success_ratio", "interactions"):
+            if key not in fixture:
+                errors.append(f"Missing required top-level key: '{key}'.")
+
+        if "timeout_in_seconds" in fixture:
+            errors.append(
+                "Top-level 'timeout_in_seconds' is not allowed. Set it inside each individual interaction instead."
+            )
+
+        interactions = fixture.get("interactions")
+        if interactions is not None and not isinstance(interactions, list):
+            errors.append("'interactions' must be a list.")
+
+    # ------------------------------------------------------------------
+    # Per-interaction validation
+    # ------------------------------------------------------------------
+
+    @staticmethod
+    def _check_interaction(
+        interaction: dict[str, Any],
+        index: int,
+        errors: list[str],
+    ) -> None:
+        """Validate a single interaction entry."""
+        prefix: str = f"interactions[{index}]"
+
+        if not isinstance(interaction, dict):
+            errors.append(f"{prefix}: must be a dictionary.")
+            return
+
+        # Required keys inside every interaction.
+        if "text" not in interaction:
+            errors.append(f"{prefix}: missing required key 'text'.")
+        if "response" not in interaction:
+            errors.append(f"{prefix}: missing required key 'response'.")
+        if "timeout_in_seconds" not in interaction:
+            errors.append(f"{prefix}: missing required key 'timeout_in_seconds'.")
+
+        response: Any = interaction.get("response")
+        if isinstance(response, dict):
+            ValidateTestFixture._check_response(response, prefix, errors)
+
+    # ------------------------------------------------------------------
+    # Response validation
+    # ------------------------------------------------------------------
+
+    @staticmethod
+    def _check_response(
+        response: dict[str, Any],
+        prefix: str,
+        errors: list[str],
+    ) -> None:
+        """Validate the response block of an interaction."""
+        has_text: bool = "text" in response
+        has_structure: bool = "structure" in response
+
+        if not has_text and not has_structure:
+            errors.append(f"{prefix}.response: must contain either 'text' or 'structure'.")
+
+        if has_text and isinstance(response["text"], dict):
+            ValidateTestFixture._check_stock_tests(response["text"], f"{prefix}.response.text", errors)
+
+        if has_structure and isinstance(response["structure"], dict):
+            ValidateTestFixture._check_structure(response["structure"], f"{prefix}.response.structure", errors)
+
+    # ------------------------------------------------------------------
+    # Stock-test validation (for response.text)
+    # ------------------------------------------------------------------
+
+    @staticmethod
+    def _check_stock_tests(
+        block: dict[str, Any],
+        path: str,
+        errors: list[str],
+    ) -> None:
+        """Ensure every key in *block* is a recognised stock test."""
+        for key in block:
+            if key not in _VALID_STOCK_TESTS:
+                errors.append(
+                    f"{path}: '{key}' is not a valid stock test. Valid tests are: {sorted(_VALID_STOCK_TESTS)}."
+                )
+
+    # ------------------------------------------------------------------
+    # Structure validation (for response.structure)
+    # ------------------------------------------------------------------
+
+    @staticmethod
+    def _check_structure(
+        structure: dict[str, Any],
+        path: str,
+        errors: list[str],
+    ) -> None:
+        """Validate response.structure entries.
+
+        Each key should map to a dict of stock tests.  Reject common
+        meta-fields the LLM tends to invent.
+        """
+        for key, value in structure.items():
+            field_path: str = f"{path}.{key}"
+
+            # Reject known meta-fields at the structure level.
+            if key in _FORBIDDEN_META_FIELDS:
+                errors.append(
+                    f"{field_path}: '{key}' is a forbidden meta-field. "
+                    "Structure keys must be actual response dictionary keys, "
+                    "not schema descriptors."
+                )
+                continue
+
+            if not isinstance(value, dict):
+                errors.append(f"{field_path}: expected a dictionary of stock tests, got {type(value).__name__}.")
+                continue
+
+            # Each value under a structure key should be stock tests.
+            for test_name in value:
+                if test_name in _FORBIDDEN_META_FIELDS:
+                    errors.append(
+                        f"{field_path}.{test_name}: '{test_name}' is a forbidden meta-field inside a structure value."
+                    )
+                elif test_name not in _VALID_STOCK_TESTS:
+                    errors.append(
+                        f"{field_path}.{test_name}: '{test_name}' is not a "
+                        f"valid stock test. Valid tests are: "
+                        f"{sorted(_VALID_STOCK_TESTS)}."
+                    )
+
+    # ------------------------------------------------------------------
+    # Public interface
+    # ------------------------------------------------------------------
+
+    def invoke(self, args: dict[str, Any], sly_data: dict[str, Any]) -> Union[dict[str, Any], str]:
+        """
+        Validate a test fixture dictionary and return the result.
+
+        :param args: A dictionary with the following keys:
+                "test_fixture": the fixture dictionary to validate.
+
+        :param sly_data: A dictionary whose keys are defined by the agent
+                hierarchy, but whose values are meant to be kept out of
+                the chat stream.
+
+                Keys expected for this implementation are:
+                    None
+
+        :return:
+            A dictionary with:
+                "valid": True/False
+                "errors": list of error strings (only when invalid)
+        """
+        logger = logging.getLogger(self.__class__.__name__)
+
+        test_fixture: dict[str, Any] = args.get("test_fixture", {})
+        if not test_fixture:
+            return {"valid": False, "errors": ["No 'test_fixture' provided."]}
+
+        logger.info(">>>>>>>>>>>>>>>>>>>Validating Test Fixture>>>>>>>>>>>>>>>>>>")
+
+        errors: list[str] = []
+
+        # Top-level checks.
+        self._check_top_level(test_fixture, errors)
+
+        # Per-interaction checks.
+        interactions: Any = test_fixture.get("interactions")
+        if isinstance(interactions, list):
+            for idx, interaction in enumerate(interactions):
+                self._check_interaction(interaction, idx, errors)
+
+        if errors:
+            logger.warning("Validation failed with %d error(s).", len(errors))
+            for err in errors:
+                logger.warning("  - %s", err)
+            return {"valid": False, "errors": errors}
+
+        logger.info(">>>>>>>>>>>>>>>>>>>Validation PASSED>>>>>>>>>>>>>>>>>>")
+        return {"valid": True}
+
+    async def async_invoke(self, args: dict[str, Any], sly_data: dict[str, Any]) -> Union[dict[str, Any], str]:
+        """Run invoke asynchronously."""
+        return await asyncio.to_thread(self.invoke, args, sly_data)
