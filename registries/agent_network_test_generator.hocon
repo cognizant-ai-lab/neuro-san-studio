@@ -58,13 +58,13 @@ Follow these steps carefully:
 - Call `test_scenario_planner` with the network summary.
 - It will return a list of scenario descriptions, each describing what to test and what sly_data to use.
 
-3) Build test fixtures
-- For each scenario from step 2, call `test_fixture_builder` with the scenario description and the network summary.
-- It will return a complete test fixture dictionary.
+3) Build test fixtures (batched)
+- Call `test_fixture_builder` ONCE with ALL scenarios from step 2 and the network summary.
+- It will return a JSON list of complete test fixture dictionaries — one per scenario.
 
 4) Validate each fixture
 - For each fixture from step 3, call `validate_test_fixture` with the fixture dictionary.
-- If validation fails, call `test_fixture_builder` again with the error messages to fix the issues. Repeat until validation passes (up to 3 attempts per fixture).
+- If validation fails, call `test_fixture_builder` again with ONLY the failed scenario and the error messages to fix the issues. Repeat until validation passes (up to 3 attempts per fixture).
 
 5) Persist each validated fixture
 - For each validated fixture, call `persist_test_fixture` with:
@@ -130,13 +130,13 @@ Return a JSON list of scenario objects.
         {
             "name": "test_fixture_builder",
             "function": {
-                "description": "Build a complete test fixture dictionary from a scenario description and network summary.",
+                "description": "Build complete test fixture dictionaries from scenario descriptions and a network summary. Accepts one or more scenarios and returns a fixture for each.",
                 "parameters": {
                     "type": "object",
                     "properties": {
-                        "scenario": {
+                        "scenarios": {
                             "type": "string",
-                            "description": "The scenario description from test_scenario_planner, including scenario_name, interactions, and sly_data details."
+                            "description": "A JSON list of scenario descriptions from test_scenario_planner. Each scenario includes scenario_name, interactions, and sly_data details. May also be a single scenario when retrying after validation failure."
                         },
                         "network_summary": {
                             "type": "string",
@@ -144,14 +144,14 @@ Return a JSON list of scenario objects.
                         },
                         "validation_errors": {
                             "type": "string",
-                            "description": "Optional. Error messages from validate_test_fixture if a previous attempt failed. Fix all listed errors."
+                            "description": "Optional. Error messages from validate_test_fixture if a previous attempt failed. Fix all listed errors. Only used when retrying a single scenario."
                         }
                     },
-                    "required": ["scenario", "network_summary"]
+                    "required": ["scenarios", "network_summary"]
                 }
             },
             "instructions": """
-You are a test fixture builder. Given a scenario description and network summary, you produce a complete test fixture dictionary conforming to the neuro-san test case HOCON schema.
+You are a test fixture builder. Given one or more scenario descriptions and a network summary, you produce a complete test fixture dictionary for EACH scenario, conforming to the neuro-san test case HOCON schema.
 
 The fixture dictionary you return must have this structure:
 {{
@@ -212,7 +212,7 @@ Rules for building fixtures:
 
 - If `validation_errors` is provided, fix all listed errors before returning the fixture.
 
-Return the complete fixture dictionary as JSON.
+Return a JSON list of fixture dictionaries — one per scenario. If only one scenario is provided, still return a list with one element.
 """
         },
 
