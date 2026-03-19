@@ -10,6 +10,7 @@
     - [Agent network](#agent-network)
       - [Agent specifications](#agent-specifications)
       - [Tool specifications](#tool-specifications)
+      - [Middleware specifications](#middleware-specifications)
       - [LLM specifications](#llm-specifications)
   - [LLM configuration](#llm-configuration)
     - [OpenAI](#openai)
@@ -18,9 +19,12 @@
     - [Bedrock](#bedrock)
       - [Default Bedrock models](#default-bedrock-models)
     - [Gemini](#gemini)
+      - [Gemini with ADC](#gemini-with-adc)
+        - [Gemini with ADC Prerequisites](#gemini-with-adc-prerequisites)
+        - [Gemini with ADC Configuration](#gemini-with-adc-configuration)
     - [Ollama](#ollama)
-      - [Prerequisites](#prerequisites)
-      - [Configuration](#configuration)
+      - [Ollama Prerequisites](#ollama-prerequisites)
+      - [Ollama Configuration](#ollama-configuration)
       - [Using Ollama in Docker or Remote Server](#using-ollama-in-docker-or-remote-server)
       - [Example agent network](#example-agent-network)
     - [Configuring Default Models with Environment Variables](#configuring-default-models-with-environment-variables)
@@ -53,6 +57,15 @@
   - [MCP Servers](#mcp-servers)
     - [MCP Server Configuration](#mcp-server-configuration)
     - [Authentication](#authentication)
+  - [Middleware](#middleware)
+    - [class](#class)
+    - [args](#args)
+      - [Special args](#special-args)
+    - [Example](#example)
+  - [Agent Skills](#agent-skills)
+    - [How it works](#how-it-works)
+    - [SKILL.md format](#skillmd-format)
+    - [Configuration](#configuration)
   - [Logging](#logging)
   - [Debugging](#debugging)
   - [Advanced](#advanced)
@@ -218,6 +231,7 @@ For more details, please check the [Agent Manifest HOCON File Reference](
 | instructions | Text that sets up the agent in detail for its task.                                                                                           |
 | command      | Text that sets the agent in motion after it receives all its inputs.                                                                          |
 | tools        | Optional list of references to other agents that this agent is allowed to call in the course of working through their input and instructions. |
+| middleware   | Optional list of AgentMiddleware instances to apply during agent execution. Order of appearance matters. See [Middleware](#middleware) for more details. |
 | llm_config   | Optional agent-specification for different LLMs for different purposes such as specialization, costs, etc.                                    |
 <!-- pyml enable line-length -->
 
@@ -230,6 +244,15 @@ For more details, please check the [Agent Manifest HOCON File Reference](
 | class     | A Python import path pointing to the class or function to invoke when the tool is called. Must follow the format `<module>.<Class>`. See [Coded tools](#coded-tools) for more details. |
 | function  | An OpenAI-compatible function schema that defines the expected input parameters for the tool specified in `class`.                                                                     |
 | toolbox   | The name of a predefined tool from the toolbox. If this field is set, you must not specify `class` or `function`.                                                                      |
+<!-- pyml enable line-length -->
+
+#### Middleware specifications
+
+<!-- pyml disable line-length -->
+| **Field** | **Description**                                                                                                                                                                  |
+|-----------|----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| class     | Fully-qualified class name of the `AgentMiddleware` to instantiate (e.g. `langchain.agents.middleware.PIIMiddleware`). Only class-based middleware is supported.    |
+| args      | Optional dictionary of keyword arguments passed to the middleware class constructor. Keys are argument names, values are argument values. See [Middleware](#middleware) for special framework-populated args (`origin`, `origin_str`, `sly_data`). |
 <!-- pyml enable line-length -->
 
 #### LLM specifications
@@ -460,13 +483,89 @@ and specify which model to use in the `model_name` field of the `llm_config` sec
 degraded reasoning performance, and failures on complex tasks. Therefore, this value should be explicitly set to avoid
 falling back to the default of `0.7`.
 
-You can get an Google Gemini API [key](https://ai.google.dev/gemini-api/docs/api-key) here.
+You can get a Google Gemini API [key](https://ai.google.dev/gemini-api/docs/api-key) here.
+
+#### Gemini with ADC
+
+If you are running in a **Google Cloud environment** (GCP VM, Cloud Run, GKE, etc.) or prefer to authenticate
+using your organization's GCP identity — without a personal API key — you can use
+**Application Default Credentials (ADC)**.
+
+ADC is Google's standard credential resolution mechanism. It automatically picks up credentials from:
+- `gcloud auth application-default login` (local development)
+- Attached service accounts (Cloud Run, GKE, Compute Engine)
+- Workload Identity Federation
+
+This approach is recommended for **enterprise and on-prem-to-cloud** deployments where managing individual
+API keys is not desirable or permitted.
+
+> An example implementation of Gemini with ADC can be found in the
+> [neuro-san-gemini-example](https://github.com/subhadeep-banerjee/neuro-san-gemini-example) repository.
+
+##### Gemini with ADC Prerequisites
+
+1. Install the [Google Cloud CLI](https://cloud.google.com/sdk/docs/install) (`gcloud`).
+
+2. Authenticate your local environment with ADC:
+
+    ```bash
+    gcloud auth application-default login
+    ```
+
+3. Install the required package (already included in `requirements.txt`):
+
+    ```bash
+    pip install langchain-google-vertexai
+    ```
+
+4. Set the following environment variables (or add them to your `.env` file):
+
+    ```bash
+    GCP_PROJECT_ID=your-gcp-project-id
+    GCP_REGION=your-vertex-ai-region   # e.g. us-central1, europe-west4, asia-south1
+    ```
+
+##### Gemini with ADC Configuration
+
+Because ADC-based Vertex AI access requires the `project` and `location` fields — which are not part of
+Neuro-SAN's default Gemini model definitions — you must use the `class` key to instantiate
+`ChatVertexAI` directly in your `llm_config`:
+
+```hocon
+llm_config: {
+    class: "langchain_google_vertexai.chat_models.ChatVertexAI"
+    model_name: "gemini-2.5-flash"   # configurable: any Vertex AI Gemini model (e.g. "gemini-2.0-flash", "gemini-1.5-pro")
+    temperature: 0.2                 # configurable: 0.0 (deterministic) to 1.0 (creative); use 1.0 for Gemini 3.0+ models
+    max_tokens: 2048                 # configurable: maximum number of tokens in the model's response
+    project: ${GCP_PROJECT_ID}
+    location: ${GCP_REGION}
+}
+```
+
+The `project` and `location` values are read from environment variables at startup via HOCON substitution.
+No API key is required — authentication is handled transparently by Google's ADC library.
+
+> ⚠️ Do **not** set `GOOGLE_API_KEY` when using ADC. The two authentication paths are mutually exclusive.
+> If `GOOGLE_API_KEY` is present in the environment, it may take precedence and cause unexpected errors.
+
+<!-- -->
+
+> **Tip**: To centralize the LLM configuration and reuse it across multiple agent networks, define it in a
+> separate file (e.g. `registries/llm_config.hocon`) and include it in your agent network HOCON files:
+>
+> ```hocon
+> include "registries/llm_config.hocon"
+> ```
+
+For more information on Vertex AI authentication and available models, see the
+[Vertex AI documentation](https://cloud.google.com/vertex-ai/docs/authentication) and the
+[LangChain ChatVertexAI reference](https://python.langchain.com/docs/integrations/chat/google_vertex_ai_palm/).
 
 ### Ollama
 
 This guide walks you through how to use a locally running LLM via [Ollama](https://github.com/ollama/ollama) in neuro-san.
 
-#### Prerequisites
+#### Ollama Prerequisites
 
 1. Download and Install Ollama
 
@@ -501,7 +600,7 @@ This guide walks you through how to use a locally running LLM via [Ollama](https
    To use the model in the `hocon` file, its name and relevant information, such as `max_token`, must be included in the
    [default llm info file](https://github.com/cognizant-ai-lab/neuro-san/blob/main/neuro_san/internals/run_context/langchain/llms/default_llm_info.hocon).
 
-#### Configuration
+#### Ollama Configuration
 
 In your agent network hocon file, set the model name in the `llm_config` section. For example:
 
@@ -1221,6 +1320,203 @@ following methods.
    - Tool filtering from `MCP_SERVERS_INFO_FILE` is applied only if no tool filtering is defined
     directly in the agent network HOCON configuration.
    - For example, see [mcp_info.hocon](../mcp/mcp_info.hocon)
+
+## Middleware
+
+Middleware allows custom code to be injected at key points during agent execution — before or after the agent runs,
+and before or after each LLM call. This makes it possible to inspect, modify, or intercept data flowing through
+an agent without changing the agent's core logic.
+
+Middleware is configured per agent using the optional `middleware` key in an agent's specification.
+The value is a list of dictionaries, each describing one `AgentMiddleware` instance to apply.
+When multiple middleware are listed, order of appearance matters — they are applied in sequence.
+
+For an overview of middleware, see the [Overview](https://docs.langchain.com/oss/python/langchain/middleware/overview).
+
+For a working example, see [pii_middleware.hocon](../registries/basic/pii_middleware.hocon).
+
+### class
+
+_Required._ The fully-qualified class name of the `AgentMiddleware` to instantiate. For example:
+
+```hocon
+"class": "langchain.agents.middleware.PIIMiddleware"
+```
+
+An `AgentMiddleware` can hook into the following points of agent execution (asynchronous variants are preferred
+in the Neuro SAN server environment):
+
+- `abefore_agent()` — called before the agent execution starts
+- `aafter_agent()` — called after the agent execution completes
+- `abefore_model()` — called before each LLM call
+- `aafter_model()` — called after each LLM call
+- `awrap_model_call()` - intercept and control async model execution via handler callback
+- `awrap_tool_call()` - intercept and control async tool execution via handler callback
+
+Only class-based middleware is supported (not annotation-based). See
+[AgentMiddleware](https://docs.langchain.com/oss/python/langchain/middleware/custom#class-based-middleware)
+for details on how to implement one.
+
+### args
+
+A dictionary of keyword arguments passed to the middleware class constructor. Keys are argument names and
+values are argument values, matching the constructor signature of the class being instantiated. For example:
+
+```hocon
+"args": {
+    "pii_type": "phone_number",
+    "detector": "[a-zA-Z0-9]{3}-[a-zA-Z0-9]{4}",
+    "strategy": "redact",
+    "apply_to_output": true
+}
+```
+
+#### Special args
+
+The following argument names are recognized by the agent framework and automatically populated if they appear
+in both the middleware dictionary and the class constructor signature:
+
+- **`origin`** — a list of dictionaries describing where in the agent network hierarchy this middleware
+  was instantiated.
+- **`origin_str`** — a simpler string representation of `origin`.
+- **`sly_data`** — the agent's `sly_data` dictionary, shared across all middleware and coded tools for
+  the current request. See [Sly data](#sly-data) for more information.
+
+### Example
+
+The following example shows a `prankster` agent that uses `PIIMiddleware` to detect and redact phone numbers
+from both inputs and outputs:
+
+```hocon
+{
+    "name": "prankster",
+    "function": {
+        "description": "Send me a phone number and I will leave a message on its voicemail for you.",
+        "parameters": {
+            "phone_number": {
+                "type": "string",
+                "description": "The phone number to send the message to."
+            },
+            "message": {
+                "type": "string",
+                "description": "The message to send to the phone number."
+            }
+        }
+    },
+    "instructions": "You are an impotent wannabe prank caller. ...",
+    "tools": [],
+    "middleware": [
+        {
+            "class": "langchain.agents.middleware.PIIMiddleware",
+            "args": {
+                "pii_type": "phone_number",
+                "detector": "[a-zA-Z0-9]{3}-[a-zA-Z0-9]{4}",
+                "strategy": "redact",
+                "apply_to_output": true
+            }
+        }
+    ]
+}
+```
+
+See [pii_middleware.hocon](../registries/basic/pii_middleware.hocon) for the full working network.
+
+## Agent Skills
+
+[Agent Skills](https://platform.claude.com/docs/en/agents-and-tools/agent-skills/overview) are supported
+using a middleware implementation. `AgentSkillsMiddleware` is a built-in middleware that implements the
+[Agent Skills specification](https://agentskills.io/specification). It gives an agent access to
+a library of **skills** — structured, reusable instruction sets stored as `SKILL.md` files — without
+loading their full content into the prompt upfront.
+
+### How it works
+
+The middleware uses a **progressive disclosure** pattern to keep token usage low:
+
+1. **At startup** (`abefore_agent`): scans all configured skill sources, parses the YAML
+   frontmatter (name, description) from each `SKILL.md`, and caches the full file content, but
+   only injects the parsed metadata into the system prompt.
+2. **Before each model call** (`awrap_model_call`): injects a compact list of available skills into
+   the system prompt so the agent knows what is available.
+3. **On demand**: when the agent decides a skill is relevant, it calls one of three tools registered
+   by the middleware to load the full content:
+
+| Tool | Description |
+|------|-------------|
+| `get_full_skill_content` | Loads the complete `SKILL.md` for a named skill |
+| `load_skill_resource_local` | Loads an additional file from a local skill directory |
+| `load_skill_resource_remote` | Loads an additional file from a remote skill URL |
+
+> **Security**: All three tools attempt to restrict file and URL access to paths that fall under
+> the configured `skill_sources` entries. This helps reduce the risk of SSRF and data
+> exfiltration attacks, but should not be relied on as a complete security boundary.
+
+### SKILL.md format
+
+Each skill directory must contain a `SKILL.md` file with a YAML frontmatter block followed by the
+skill's full instructions. The frontmatter must include at minimum `name` and `description`:
+
+```markdown
+---
+name: internal-comms
+description: Helps write internal communications such as newsletters and FAQs.
+allowed-tools: web_search
+compatibility: general
+license: Apache-2.0
+---
+
+# Internal Communications Skill
+
+... full instructions here ...
+```
+
+Frontmatter constraints (per the [Agent Skills spec](https://agentskills.io/specification)):
+
+- `name`: required, 1–64 characters, lowercase alphanumeric and hyphens only, no leading/trailing or consecutive hyphens
+- `description`: required, max 1024 characters
+- `allowed-tools`: optional, space-delimited or YAML list of recommended tool names
+- `compatibility`, `license`: optional free-text fields
+
+### Configuration
+
+Configure `AgentSkillsMiddleware` in the agent's `middleware` list:
+
+```hocon
+"middleware": [
+    {
+        "class": "middleware.agent_skills_middleware.AgentSkillsMiddleware",
+        "args": {
+            "skill_sources": ["skills/my-skill/"],
+            "keep_skill_in_context": false,
+            "http_timeout": 30.0
+        }
+    }
+]
+```
+
+- `skill_sources` accepts a list of local paths or remote URLs. Each entry must point to a directory
+containing a `SKILL.md` file. You can mix local and remote sources in the same list.
+
+    > ⚠️ **Security note**: Be cautious when using skills from the internet. Always review skill
+    > contents carefully before use — they may contain malicious scripts or reference tools or
+    > resources unavailable in your environment.
+
+<!-- pyml disable line-length -->
+- `keep_skill_in_context` argument controls whether full skill content stays in the conversation
+history after being loaded:
+
+    | Value | Behaviour | Best for |
+    |-------|-----------|----------|
+    | `false` (default) | Skill content removed from chat history after use; agent may re-load if needed | Most use cases; token-constrained environments |
+    | `true` | Skill content stays in chat history; agent can reference multiple skills simultaneously | Complex tasks requiring cross-skill synthesis |
+
+<!-- pyml enable line-length -->
+
+- `http_timeout` indicates timeout in seconds for HTTP requests. Only used for remote skills.
+
+For working examples, see:
+- [job_guessing_skill.hocon](../registries/basic/job_guessing_skill.hocon) — local skill source
+- [internal_communication_skill.hocon](../registries/basic/internal_communication_skill.hocon)
 
 ## Logging
 

@@ -43,10 +43,18 @@ single command.
             * [Using Toolbox Tools in Agent Network](#using-toolbox-tools-in-agent-network)
             * [Toolbox Configuration](#toolbox-configuration)
             * [Extending the Toolbox](#extending-the-toolbox)
-    * [8. How to Access the Logs](#8-how-to-access-the-logs)
-    * [9. How to Stop the servers](#9-how-to-stop-the-servers)
-    * [10. Key Aspects of Neuro AI Multi-Agent Accelerator](#10-key-aspects-of-neuro-ai-multi-agent-accelerator)
-    * [11. End Notes](#11-end-notes)
+    * [8. How to Add Middleware to an Agent](#8-how-to-add-middleware-to-an-agent)
+        * [What is Middleware?](#what-is-middleware)
+        * [Adding Middleware in HOCON](#adding-middleware-in-hocon)
+        * [Multiple Middleware](#multiple-middleware)
+        * [Using Agent Skills Middleware](#using-agent-skills-middleware)
+            * [Local Skill Source](#local-skill-source)
+            * [Remote Skill Source](#remote-skill-source)
+            * [Tools in Skill Middleware](#tools-in-skills-middleware)
+    * [9. How to Access the Logs](#8-how-to-access-the-logs)
+    * [10. How to Stop the servers](#9-how-to-stop-the-servers)
+    * [11. Key Aspects of Neuro AI Multi-Agent Accelerator](#10-key-aspects-of-neuro-ai-multi-agent-accelerator)
+    * [12. End Notes](#11-end-notes)
 
 <!-- TOC -->
 
@@ -755,7 +763,188 @@ See also
 
 ---
 
-## 8. How to Access the Logs
+## 8. How to Add Middleware to an Agent
+
+### What is Middleware?
+
+**Middleware** lets you inject custom code at key points during an agent's execution — without modifying the agent's
+instructions or tools. This is useful for cross-cutting concerns such as:
+
+* **PII detection and redaction** – scrub sensitive data before it reaches the LLM or after it is returned
+* **Logging and auditing** – record inputs and outputs for compliance or debugging
+* **Input/output transformation** – reformat or enrich data flowing through the agent
+
+A middleware hooks into six points of the agent lifecycle:
+
+> **Note**: The asynchronous variants (`abefore_agent`, etc.) are preferred in the Neuro SAN server environment.
+
+| Hook              | When it runs                        |
+|-------------------|-------------------------------------|
+| `abefore_agent()` | Before the agent execution starts   |
+| `aafter_agent()`  | After the agent execution completes |
+| `abefore_model()` | Before each LLM call                |
+| `aafter_model()`  | After each LLM call                 |
+| `awrap_model_call()` | intercept and control async model execution |
+| `awrap_tool_call()` | intercept and control async tool execution |
+
+### Adding Middleware in HOCON
+
+Middleware is configured per agent using the `middleware` key, which takes a list of middleware definitions.
+Each definition requires a `class` field (the fully-qualified middleware class name) and an optional `args`
+dictionary for constructor arguments.
+
+Here is a complete example based on [pii_middleware.hocon](../registries/basic/pii_middleware.hocon).
+The `prankster` agent uses `PIIMiddleware` to detect and redact phone numbers:
+
+```hocon
+{
+    "llm_config": {
+        "model_name": "gpt-5.2"
+    },
+    "tools": [
+        {
+            "name": "prankster",
+            "function": {
+                "description": "Send me a phone number and I will leave a message on its voicemail for you.",
+                "parameters": {
+                    "phone_number": {
+                        "type": "string",
+                        "description": "The phone number to send the message to."
+                    },
+                    "message": {
+                        "type": "string",
+                        "description": "The message to send to the phone number."
+                    }
+                }
+            },
+            "instructions": """
+                You are an impotent wannabe prank caller.
+                Always respond by telling the user that the message was left at the phone number you received,
+                but you will actually do nothing with the message.
+            """,
+            "tools": [],
+            "middleware": [
+                {
+                    "class": "langchain.agents.middleware.PIIMiddleware",
+                    "args": {
+                        "pii_type": "phone_number",
+                        "detector": "[a-zA-Z0-9]{3}-[a-zA-Z0-9]{4}",
+                        "strategy": "redact",
+                        "apply_to_output": true
+                    }
+                }
+            ]
+        }
+    ]
+}
+```
+
+The `args` values depend on the constructor signature of the middleware class you are using.
+The framework will also automatically populate the following special args if they appear in the
+constructor signature:
+
+* **`origin`** – a list of dictionaries describing the agent's position in the network hierarchy
+* **`origin_str`** – a string representation of `origin`
+* **`sly_data`** – the shared data dictionary available to all middleware and coded tools for the request
+
+### Multiple Middleware
+
+You can apply more than one middleware to an agent by listing them in order. They are applied sequentially,
+so order matters:
+
+```hocon
+"middleware": [
+    {
+        "class": "my_package.LoggingMiddleware",
+        "args": { "log_level": "INFO" }
+    },
+    {
+        "class": "langchain.agents.middleware.PIIMiddleware",
+        "args": {
+            "pii_type": "email",
+            "strategy": "redact",
+            "apply_to_output": true
+        }
+    }
+]
+```
+
+For more details, see the [Middleware](user_guide.md#middleware) section of the user guide.
+
+### Using Agent Skills Middleware
+
+`AgentSkillsMiddleware` is a built-in middleware that lets an agent draw on a library of **skills**
+— reusable instruction sets stored as `SKILL.md` files — without injecting all of their content
+into the prompt at once. This is useful when an agent needs to follow domain-specific workflows
+(writing, analysis, coding patterns, etc.) that would be too large to embed directly in `instructions`.
+
+The middleware eagerly loads and caches the full contents of each configured `SKILL.md`, but only
+injects lightweight metadata or summaries into the agent’s context initially. When the agent calls
+a skill tool, the tool returns the cached full content for the selected skill (and can load any
+additional resources if requested). This pattern of revealing only what is needed in the prompt is
+called **progressive disclosure**.
+
+#### Local skill source
+
+Point `skill_sources` at a local directory containing a `SKILL.md` file:
+
+```hocon
+{
+    "name": "name_assistant",
+    "function": {
+        "description": "I can help with name-related inquiries."
+    },
+    "instructions": "You are a name assistant that provides career information based on user's name.",
+    "middleware": [
+        {
+            "class": "middleware.agent_skills_middleware.AgentSkillsMiddleware",
+            "args": {
+                "skill_sources": ["skills/tests/job_guessing"],
+                "keep_skill_in_context": true
+            }
+        }
+    ]
+}
+```
+
+See [job_guessing_skill.hocon](../registries/basic/job_guessing_skill.hocon) for the full example.
+
+#### Remote skill source
+
+`skill_sources` also accepts URLs. The middleware will fetch `SKILL.md` over HTTP:
+
+```hocon
+"args": {
+    "skill_sources": ["https://raw.githubusercontent.com/anthropics/skills/main/skills/internal-comms/"],
+    "keep_skill_in_context": true,
+    "http_timeout": 30.0
+}
+```
+
+See [internal_communication_skill.hocon](../registries/basic/internal_communication_skill.hocon) for the full example.
+
+> ⚠️ **Security note**: Always review skills from the internet before use. They may contain malicious scripts or
+> instructions that reference tools or resources not available in your environment.
+
+#### Tools in Skills Middleware
+
+Once configured, the middleware automatically registers three tools the agent can call:
+
+* `get_full_skill_content` — loads the complete `SKILL.md` for a named skill
+* `load_skill_resource_local` — loads a supplementary file from a local skill directory
+* `load_skill_resource_remote` — loads a supplementary file from a remote skill URL
+
+> **Security**: All three tools restrict file and URL access to paths and URLs whose prefixes
+> fall under the configured `skill_sources` entries. Requests outside those configured
+> prefixes are rejected, which helps mitigate SSRF and data exfiltration risks but does not
+> guarantee complete protection in all scenarios.
+
+For more details, see the [Agent Skills Middleware](user_guide.md#agent-skills-middleware) section
+of the user guide.
+
+---
+
+## 9. How to Access the Logs
 
 By default, when you run:
 
@@ -774,7 +963,7 @@ Additionally, you will see logs on your terminal. Checking these files is useful
 
 ---
 
-## 9. How to Stop the servers
+## 10. How to Stop the servers
 
 When you are running the server in the foreground (via `python -m run`), simply press:
 
@@ -785,7 +974,7 @@ If you launched them separately, you would stop each process individually (again
 
 ---
 
-## 10. Key Aspects of Neuro AI Multi-Agent Accelerator
+## 11. Key Aspects of Neuro AI Multi-Agent Accelerator
 
 * **Flexibility of Use**: Define any agent network structure using `.hocon` files, easily adjustable for different use
 cases and tasks.
@@ -798,7 +987,7 @@ and autonomous decision workflows.
 
 ---
 
-## 11. End Notes
+## 12. End Notes
 
 You’ve now seen how to:
 
