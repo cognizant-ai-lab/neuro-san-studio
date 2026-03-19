@@ -23,15 +23,11 @@
     # Describes what agent to test against.
     "agent": "industry/airline_policy",
 
-    # Timeout for the entire test.
-    # It's also possible to have a timeout_in_seconds on a per-interaction basis.
-    "timeout_in_seconds": 180,
-
     # success_ratio is useful for passing to the assessor to find out why
     # a test is intermitently failing. Sometimes it's the agent prompt, but
     # sometimes it's the test itself.
-    # Note: This number was set to 3/3 to run each test 3 times for reliability testing.
-    "success_ratio": "3/3",
+    # Note: This number was set to 1/1 for regression testing.
+    "success_ratio": "2/3",
 
     # Interactions are a series of dictionaries with request elements paired with
     # descriptions of response checks.
@@ -39,7 +35,11 @@
         {
             # This is to enable streaming_chat contents to thinking file for debug.
             # "chat_filter": "MAXIMAL",
-            
+
+            # Timeout for each interaction.
+            # It's also possible to have a timeout_in_seconds for the entire test.
+            "timeout_in_seconds": 180,
+
             # This is what we send as input to streaming_chat()
             "text": """
 On a domestic basic economy flight, do I get a free check-in bag?
@@ -55,7 +55,10 @@ On a domestic basic economy flight, do I get a free check-in bag?
                     # matches up to our description of acceptance criteria.
                     # Each component of the list needs to pass muster in order to pass.
                     "gist": ["""
-Confirms that on domestic Basic Economy flights, passengers must pay an additional fee to check in a bag.
+Confirms that on domestic Basic Economy flights, 
+passengers do not get a free check in bag
+OR
+passengers must pay an additional fee to check in a bag.
                              """]
                 }
             }

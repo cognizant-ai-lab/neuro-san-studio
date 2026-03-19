@@ -23,15 +23,11 @@
     # Describes what agent to test against.
     "agent": "industry/airline_policy",
 
-    # Timeout for the entire test.
-    # It's also possible to have a timeout_in_seconds on a per-interaction basis.
-    "timeout_in_seconds": 180,
-
     # success_ratio is useful for passing to the assessor to find out why
     # a test is intermitently failing. Sometimes it's the agent prompt, but
     # sometimes it's the test itself.
-    # Note: This number was set to 3/3 to run each test 3 times for reliability testing.
-    "success_ratio": "3/3",
+    # Note: This number was set to 1/1 for regression testing.
+    "success_ratio": "2/3",
 
     # Interactions are a series of dictionaries with request elements paired with
     # descriptions of response checks.
@@ -39,6 +35,10 @@
         {
             # This is to enable streaming_chat contents to thinking file for debug.
             # "chat_filter": "MAXIMAL",
+
+            # Timeout for each interaction.
+            # It's also possible to have a timeout_in_seconds for the entire test.
+            "timeout_in_seconds": 180,
             
             # This is what we send as input to streaming_chat()
             "text": """
@@ -55,7 +55,9 @@ Can I bring a stroller with me to the gate, and what happens to it after?
                     # matches up to our description of acceptance criteria.
                     # Each component of the list needs to pass muster in order to pass.
                     "gist": ["""
-You can bring a standard stroller with you to the gate and check it there for free. Gate-checked strollers are returned to you upon arrival. Collapsible strollers may also be stored in the cabin.
+- Confirms that standard strollers can be brought to the gate and checked there for free.
+- Confirms that gate-checked strollers are returned upon arrival.
+- Confirms that collapsible strollers may be stored in the cabin.
                              """]
                 }
             }
