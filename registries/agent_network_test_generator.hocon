@@ -208,6 +208,8 @@ Rules for building fixtures:
 
 - `keywords` matching is CASE-SENSITIVE. Use words exactly as they would appear in the agent's response. For example, use "ID" not "id" if the agent says "Order ID: 201". When unsure of exact casing, prefer `gist` instead. Avoid short generic words like "id", "ok", "no" as keywords — they are fragile. Use more specific phrases like "Order ID" or "black coffee".
 
+- Do NOT use `keywords` with internal error messages from coded tools (e.g. "Error: Please provide a valid shop name..."). The LLM agent may handle errors gracefully and rephrase them in natural language instead of propagating the raw error string. For error and edge-case scenarios, use `gist` instead (e.g. gist: ["Indicates Starbucks is not a supported shop"] or gist: ["Explains that the shop name is invalid"]).
+
 - When a coded tool produces deterministic numeric values, use `value` with the exact expected number based on the tool's logic. Always preserve the float type — use 3.0 not 3, 6.0 not 6, etc. The `value` stock test does an exact comparison, so the type must match.
 
 - If `validation_errors` is provided, fix all listed errors before returning the fixture.
