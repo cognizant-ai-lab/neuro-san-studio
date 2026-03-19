@@ -18,6 +18,7 @@ import ast
 import asyncio
 import logging
 import os
+import re
 import textwrap
 from typing import Any
 from typing import Union
@@ -80,6 +81,9 @@ class ReadAgentNetwork(CodedTool):
 
         return agent_info
 
+    # Regex pattern matching logger.debug / logger.info / logger.warning lines.
+    _LOGGER_LINE_RE: re.Pattern[str] = re.compile(r"^\s*logger\.\w+\(.*\)\s*$")
+
     @staticmethod
     def _extract_essential_source(source: str) -> str:
         """Strip boilerplate from coded-tool source, keeping only the class body.
@@ -97,6 +101,8 @@ class ReadAgentNetwork(CodedTool):
         * License / copyright comment block.
         * Module-level imports and logger declarations.
         * ``async_invoke`` (always a trivial wrapper around ``invoke``).
+        * Docstrings inside methods (verbose param descriptions add no value).
+        * ``logger.debug`` / ``logger.info`` / ``logger.warning`` lines.
 
         :param source: Full Python source code of a coded-tool module.
         :return: A compact version of the source retaining only the
@@ -120,6 +126,16 @@ class ReadAgentNetwork(CodedTool):
             # Emit the class declaration line (e.g. "class OrderAPI(CodedTool):").
             parts.append(lines[node.lineno - 1])
 
+            # Collect all method names in this class so we can decide
+            # whether async_invoke is redundant (has a matching invoke)
+            # or is the sole entry point and must be kept.
+            method_names: set[str] = {
+                child.name
+                for child in ast.iter_child_nodes(node)
+                if isinstance(child, (ast.FunctionDef, ast.AsyncFunctionDef))
+            }
+            has_invoke: bool = "invoke" in method_names
+
             for child in ast.iter_child_nodes(node):
                 # Keep class-level assignments (constants like SHOPS, FIRST_ORDER_ID).
                 if isinstance(child, (ast.Assign, ast.AnnAssign)):
@@ -128,13 +144,61 @@ class ReadAgentNetwork(CodedTool):
                     continue
 
                 # Keep methods except those in _SKIP_METHODS.
+                # Only skip async_invoke when a separate invoke exists;
+                # otherwise async_invoke IS the main logic (e.g. Accountant).
                 if isinstance(child, (ast.FunctionDef, ast.AsyncFunctionDef)):
-                    if child.name in _SKIP_METHODS:
+                    if child.name in _SKIP_METHODS and has_invoke:
                         continue
                     method_lines = lines[child.lineno - 1 : child.end_lineno]
-                    parts.append(textwrap.dedent("\n".join(method_lines)))
+                    cleaned = ReadAgentNetwork._strip_method_noise(method_lines, child)
+                    parts.append(textwrap.dedent("\n".join(cleaned)))
 
         return "\n\n".join(parts) if parts else source
+
+    @staticmethod
+    def _strip_method_noise(
+        method_lines: list[str],
+        node: ast.FunctionDef,
+    ) -> list[str]:
+        """Remove docstrings and logger calls from a method's source lines.
+
+        :param method_lines: The raw source lines for the method
+            (including the ``def`` line).
+        :param node: The AST node for the method, used to locate the
+            docstring via ``ast.get_docstring``.
+        :return: A filtered list of source lines with docstrings and
+            logger calls removed.
+        """
+        result: list[str] = []
+
+        # Determine the line range of the docstring (if any) so we can
+        # skip those lines entirely.  The docstring is always the first
+        # statement in the method body.
+        docstring_start: int = -1
+        docstring_end: int = -1
+        if ast.get_docstring(node) is not None:
+            first_stmt = node.body[0]
+            docstring_start = first_stmt.lineno
+            docstring_end = first_stmt.end_lineno or first_stmt.lineno
+
+        # The method_lines are 0-indexed but AST lineno is 1-indexed.
+        # method_lines[0] corresponds to node.lineno.
+        base_lineno: int = node.lineno
+
+        for i, line in enumerate(method_lines):
+            abs_lineno = base_lineno + i
+
+            # Skip docstring lines.
+            if docstring_start <= abs_lineno <= docstring_end:
+                continue
+
+            # Skip logger.debug / logger.info / logger.warning lines.
+            if ReadAgentNetwork._LOGGER_LINE_RE.match(line):
+                continue
+
+            result.append(line)
+
+        return result
 
     @staticmethod
     def _resolve_coded_tool_source(class_ref: str, agent_name: str) -> str:
