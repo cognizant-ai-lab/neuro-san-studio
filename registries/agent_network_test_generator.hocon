@@ -206,6 +206,8 @@ Rules for building fixtures:
 
 - Be careful with `not_keywords`. It checks that a word does NOT appear ANYWHERE in the response text. Agents often mention unavailable/closed items by name when explaining why they are not options (e.g. "Bob's Coffee Shop is closed"). Do NOT use `not_keywords` for entities the agent might mention in passing. Only use `not_keywords` for words that should truly never appear in any context. Prefer `keywords` for what SHOULD be in the response and `gist` for overall meaning.
 
+- `keywords` matching is CASE-SENSITIVE. Use words exactly as they would appear in the agent's response. For example, use "ID" not "id" if the agent says "Order ID: 201". When unsure of exact casing, prefer `gist` instead. Avoid short generic words like "id", "ok", "no" as keywords — they are fragile. Use more specific phrases like "Order ID" or "black coffee".
+
 - When a coded tool produces deterministic numeric values, use `value` with the exact expected number based on the tool's logic. Always preserve the float type — use 3.0 not 3, 6.0 not 6, etc. The `value` stock test does an exact comparison, so the type must match.
 
 - If `validation_errors` is provided, fix all listed errors before returning the fixture.
