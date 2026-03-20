@@ -19,8 +19,9 @@
         "tags": ["tool", "testing"],
         "sample_queries": [
             "Generate test cases for basic/coffee_finder_advanced",
-            "Create a test fixture for basic/music_nerd_pro",
-            "Generate integration tests for basic/hello_world"
+            "Generate test cases for basic/coffee_finder_advanced with minimum coverage",
+            "Generate test cases for basic/music_nerd_pro with max coverage",
+            "Create a test fixture for basic/hello_world"
         ]
     },
 
@@ -38,6 +39,11 @@
                         "agent_network_hocon_file": {
                             "type": "string",
                             "description": "Path to the agent network HOCON file relative to registries/, e.g. 'basic/coffee_finder_advanced.hocon'."
+                        },
+                        "test_level": {
+                            "type": "string",
+                            "enum": ["minimum", "normal", "max"],
+                            "description": "Controls how many test scenarios to generate. 'minimum' = 2-3 core scenarios, 'normal' = 5-7 balanced scenarios (default), 'max' = 10-15 exhaustive scenarios."
                         }
                     },
                     "required": ["agent_network_hocon_file"]
@@ -55,7 +61,7 @@ Follow these steps carefully:
 - Pass the full returned summary (including coded_tool_sources) to the next steps.
 
 2) Plan test scenarios
-- Call `test_scenario_planner` with the network summary.
+- Call `test_scenario_planner` with the network summary and the `test_level` (default "normal" if the user did not specify one).
 - It will return a list of scenario descriptions, each describing what to test and what sly_data to use.
 
 3) Build test fixtures (batched)
@@ -86,18 +92,28 @@ Follow these steps carefully:
                         "network_summary": {
                             "type": "string",
                             "description": "The full network summary returned by read_agent_network, including agents, metadata, coded_tool_sources, and sample queries."
+                        },
+                        "test_level": {
+                            "type": "string",
+                            "enum": ["minimum", "normal", "max"],
+                            "description": "Controls how many scenarios to generate. 'minimum' = 2-3, 'normal' = 5-7, 'max' = 10-15."
                         }
                     },
-                    "required": ["network_summary"]
+                    "required": ["network_summary", "test_level"]
                 }
             },
             "instructions": """
-You are a test scenario planner. Given an agent network summary, you design a list of test scenarios.
+You are a test scenario planner. Given an agent network summary and a test level, you design a list of test scenarios.
 
 Each scenario you return must include:
 - `scenario_name`: a short snake_case name for the scenario (e.g. "coffee_open_at_8am", "repeat_order_flow").
 - `description`: what the scenario tests.
 - `interactions`: a description of the sequence of user messages, what sly_data to include, and what the expected behaviour is.
+
+The `test_level` parameter controls how many scenarios you must generate:
+- `minimum`: Generate 2-3 scenarios. Focus on the single most important happy-path and one critical edge case.
+- `normal`: Generate 5-7 scenarios. Cover the main happy paths, a few edge cases, and at least one error/boundary scenario.
+- `max`: Generate 10-15 scenarios. Exhaustively cover all agent capabilities, multiple edge cases, error handling, boundary conditions, and multi-turn flows.
 
 Guidelines for planning scenarios:
 
