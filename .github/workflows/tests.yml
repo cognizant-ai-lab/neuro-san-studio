@@ -30,6 +30,9 @@ jobs:
     # yamllint disable-line rule:line-length
     uses: cognizant-ai-lab/build-common/.github/workflows/_python-quality-gate.yml@devin/1771545839-python-quality-gate-abstraction
     with:
+      # Point at the build-common PR branch for testing.
+      # Replace with "main" (or remove) before merging.
+      build-common-ref: "devin/1771545839-python-quality-gate-abstraction"
       lint-toolchain: "ruff"
       python-version: "3.13"
       sources: "run.py apps coded_tools plugins tests"
