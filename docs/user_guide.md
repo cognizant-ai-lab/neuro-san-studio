@@ -1429,22 +1429,22 @@ Please select the execution option that best aligns with the level of validation
 Best practices for building and tuning AAOSA-based agent networks.
 
 - Partition knowledge documents cleanly across agents:
-   Avoid overlap between agents' document sets. Split shared directories into per-agent subdirectories and clean source text by joining broken lines and removing stale content.
+   Organize content into per-agent subdirectories, join broken lines, and remove stale or redundant material. Clean, well-scoped inputs improve retrieval accuracy and agent reliability.
+
+- Choose a routing strategy that matches your document layout:
+   Use single-agent routing when domains are clearly distinct or when latency and token cost are a concern. Use multi-agent routing when document boundaries are ambiguous or overlap; fan out to all relevant agents and merge their results.
 
 - Design the agent network structure carefully:
    Parent-child relationships, nesting depth, and peer groupings all affect routing accuracy. If a sub-agent spans multiple parent domains, consider promoting it to a top-level peer to avoid misrouting and reduce ambiguity.
 
-- Add routing instructions to every agent that delegates — not just the frontman:
+- Add routing instructions to every agent that delegates (not just the frontman):
    Any intermediate agent that calls sub-agents needs explicit routing logic. Instruct each routing agent to match the query to exactly one sub-agent and send it there directly. Dispatching to multiple agents simultaneously wastes tokens, increases latency, and can produce conflicting responses.
 
-- Write rich function descriptions — they are your routing layer:
-   The top-level agent routes queries based on each sub-agent's `name` and `description` in the `function` block. Always override the `description` when extending `${aaosa_call}`. Choose agent names that reflect their full scope. Keep descriptions concise — one line is enough. Avoid putting lengthy descriptions in the prompt itself, as it inflates cost without added benefit.
-
-- Explicitly define scope boundaries to prevent misrouting:
-   When an agent's domain could plausibly overlap with a neighboring agent's, add a negative scope statement to its instructions — e.g., "This agent does not cover X; for X, defer to Agent Y." Without these boundaries, the LLM may route ambiguous queries to the wrong agent.
+- Write rich function descriptions (they are your routing layer):
+   The top-level agent routes queries based on each sub-agent's `name` and `description` in the `function` block. Always override the `description` when extending `${aaosa_call}`. Choose agent names that reflect their full scope. Keep descriptions concise; one line is enough. Avoid putting lengthy descriptions in the prompt itself, as it inflates cost without added benefit.
 
 - Prefer negative instructions over positive ones:
-   In practice, "NEVER do X" is followed more reliably than "try to do X" — especially when combined with capitalized keywords. When a rule is critical, phrase it as a prohibition.
+   In practice, "NEVER do X" is followed more reliably than "try to do X", especially when combined with capitalized keywords. When a rule is critical, phrase it as a prohibition.
 
 - Use capitalized keywords sparingly but strategically:
    Words like `NEVER`, `ALWAYS`, and `ONLY` in all-caps are strong emphasis markers. Overusing them dilutes their effect — reserve capitalization for 3–5 of your most critical rules. Since LLMs parse instructions in Markdown format, combining caps with bold formatting (e.g., **NEVER**) provides an additional emphasis signal.
@@ -1453,7 +1453,7 @@ Best practices for building and tuning AAOSA-based agent networks.
    Prose is appropriate for descriptions, but agent rules should be expressed as numbered steps (1, 2, 3 …). Structured lists are followed more reliably than dense paragraphs, and numbered ordering helps the LLM process instructions sequentially.
 
 - Repeat critical instructions at the top and bottom of the prompt:
-   LLM compliance improves when key rules appear more than once. Define cross-cutting rules in an `instructions_prefix` block (injected at the top) and repeat the most critical constraints at the end of each agent's `instructions`. Keep prompts concise — excess context increases the risk of rules being ignored.
+   LLM compliance improves when key rules appear more than once. Define cross-cutting rules in an `instructions_prefix` block (injected at the top) and repeat the most critical constraints at the end of each agent's `instructions`. Keep prompts concise; excess context increases the risk of rules being ignored.
 
 - Avoid the "lost in the middle" problem:
    LLMs attend most strongly to the beginning and end of a prompt; content in the middle is most likely to be overlooked. Place agent identity and the most critical rules at the start, repeat key constraints at the end, and put edge cases and secondary rules in the middle.
