@@ -18,7 +18,7 @@ This agent is **disabled by default**. To enable and use it:
 
 Install the following dependencies:
 ```bash
-pip install newspaper3k beautifulsoup4 nltk vaderSentiment backoff lxml-html-clean feedparser
+pip install newspaper3k beautifulsoup4 nupunkt vaderSentiment backoff lxml-html-clean feedparser
 ```
 ### 2. Get API Keys
 
@@ -163,7 +163,7 @@ analyze, defaults to `"all"` (e.g., `"nyt,guardian"`).
 
 Check logs for the following stages:
 
-- **Library Dependencies**: Ensure all required libraries and NLTK resources are properly installed as per prerequisites.
+- **Library Dependencies**: Ensure all required libraries are properly installed as per prerequisites.
 - **Scraping Issues**: Please verify all API keys and ensure successful article extraction. If extraction fails, adjust the keywords and retry.
 - **File Handling**: Confirm all input/output paths are correct, directories exist, and files are saved without errors.
 - **Data Analysis**: Validate input JSON format and presence of key fields like sentiment scores and article metadata before analysis.
