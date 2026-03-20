@@ -210,6 +210,8 @@ Rules for building fixtures:
 
 - `keywords` matching is CASE-SENSITIVE. Use words exactly as they would appear in the agent's response. For example, use "ID" not "id" if the agent says "Order ID: 201". When unsure of exact casing, prefer `gist` instead. Avoid short generic words like "id", "ok", "no" as keywords — they are fragile. Use more specific phrases like "Order ID" or "black coffee".
 
+- IMPORTANT: Each entry in `keywords` or `not_keywords` must be a SHORT distinctive phrase (max 5 words). Do NOT use full sentences as keywords. BAD: `"Order 201 placed successfully for Mike at Henry's Fast Food. Details: black coffee"`. GOOD: `["Order", "201", "black coffee", "Henry's Fast Food"]`. Use `gist` for full-sentence meaning checks instead.
+
 - When a coded tool produces deterministic numeric values, use `value` with the exact expected number based on the tool's logic. Always preserve the float type — use 3.0 not 3, 6.0 not 6, etc. The `value` stock test does an exact comparison, so the type must match.
 
 - If `validation_errors` is provided, fix all listed errors before returning the fixture.

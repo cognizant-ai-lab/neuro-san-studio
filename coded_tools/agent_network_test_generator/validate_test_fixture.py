@@ -85,6 +85,18 @@ _NUMERIC_STOCK_TESTS: frozenset[str] = frozenset(
     }
 )
 
+# Maximum number of words allowed in a single keyword or not_keyword entry.
+# Keywords should be short distinctive phrases, not full sentences.
+_MAX_KEYWORD_WORDS: int = 5
+
+# Stock tests whose values are lists of strings that should be short keywords.
+_KEYWORD_STOCK_TESTS: frozenset[str] = frozenset(
+    {
+        "keywords",
+        "not_keywords",
+    }
+)
+
 # Keys that are managed internally by coded tools at runtime.
 # These must NEVER appear in sly_data (they accumulate automatically).
 # They MAY still appear in response.structure if the agent returns them.
@@ -249,6 +261,16 @@ class ValidateTestFixture(CodedTool):
                     f"{path}.{key}: numeric value must be a float, not an int. "
                     f"Use {float(val)} instead of {val}."
                 )
+            # Keywords / not_keywords entries must be short distinctive phrases.
+            if key in _KEYWORD_STOCK_TESTS and isinstance(val, list):
+                for kw_idx, kw_item in enumerate(val):
+                    if isinstance(kw_item, str) and len(kw_item.split()) > _MAX_KEYWORD_WORDS:
+                        errors.append(
+                            f"{path}.{key}[{kw_idx}]: keyword has {len(kw_item.split())} words "
+                            f"(max {_MAX_KEYWORD_WORDS}). Keywords must be short distinctive "
+                            "phrases (e.g. 'Order ID', 'black coffee'), not full sentences. "
+                            "Use `gist` for full-sentence meaning checks."
+                        )
 
     # ------------------------------------------------------------------
     # Structure validation (for response.structure)
@@ -299,6 +321,16 @@ class ValidateTestFixture(CodedTool):
                         f"{field_path}.{test_name}: numeric value must be a float, not an int. "
                         f"Use {float(test_val)} instead of {test_val}."
                     )
+                # Keywords / not_keywords entries must be short.
+                if test_name in _KEYWORD_STOCK_TESTS and isinstance(test_val, list):
+                    for kw_idx, kw_item in enumerate(test_val):
+                        if isinstance(kw_item, str) and len(kw_item.split()) > _MAX_KEYWORD_WORDS:
+                            errors.append(
+                                f"{field_path}.{test_name}[{kw_idx}]: keyword has "
+                                f"{len(kw_item.split())} words (max {_MAX_KEYWORD_WORDS}). "
+                                "Keywords must be short distinctive phrases, not full sentences. "
+                                "Use `gist` for full-sentence meaning checks."
+                            )
 
     # ------------------------------------------------------------------
     # Public interface
