@@ -85,6 +85,17 @@ _NUMERIC_STOCK_TESTS: frozenset[str] = frozenset(
     }
 )
 
+# sly_data keys that are managed internally by coded tools at runtime and
+# must NEVER be pre-set in test fixture interactions.  These accumulate
+# automatically during execution.
+_FORBIDDEN_SLY_DATA_KEYS: frozenset[str] = frozenset(
+    {
+        "running_cost",
+        "TopicMemory",
+        "username",
+    }
+)
+
 
 class ValidateTestFixture(CodedTool):
     """
@@ -160,6 +171,18 @@ class ValidateTestFixture(CodedTool):
                 errors.append(
                     f"{prefix}: unexpected key '{key}'. Allowed keys are: {sorted(_ALLOWED_INTERACTION_KEYS)}."
                 )
+
+        # Reject runtime-managed keys inside sly_data.
+        sly_data: Any = interaction.get("sly_data")
+        if isinstance(sly_data, dict):
+            for sly_key in sly_data:
+                if sly_key in _FORBIDDEN_SLY_DATA_KEYS:
+                    errors.append(
+                        f"{prefix}.sly_data: '{sly_key}' is a runtime-managed key that coded tools "
+                        "handle automatically. Remove it from sly_data — do NOT pre-set it. "
+                        "Only include keys that override external inputs for determinism "
+                        "(e.g. 'time' for TimeTool)."
+                    )
 
         response: Any = interaction.get("response")
         if isinstance(response, dict):
