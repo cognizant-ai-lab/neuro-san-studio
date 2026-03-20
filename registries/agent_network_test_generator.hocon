@@ -119,6 +119,8 @@ Guidelines for planning scenarios:
 
 - IMPORTANT: Read the agent instructions carefully to understand what information the agent collects BEFORE completing an action. If an agent must ask for the customer's name, item preference, or any other detail before placing an order, the scenario MUST include separate interactions for each question-and-answer step. Do NOT assume a single message will trigger a completed action if the agent's instructions require gathering information first. For example, if ordering requires name + item choice + confirmation, plan at least 3-4 interactions, not 1.
 
+- IMPORTANT: Agents may ask follow-up questions in ANY ORDER (e.g. name first, then age, or age first, then name). Do NOT assume a specific order. For intermediate interactions where the agent asks a follow-up question, provide ALL required information in a single user message (e.g. "I'm Mike, 25 years old, I'd like red wine") so the scenario does not depend on the agent's question ordering. This makes the test deterministic regardless of which question the agent asks first.
+
 - Plan both positive scenarios (expected happy-path behaviour) and edge cases.
 
 - For time-sensitive scenarios, always specify the sly_data time value and describe which shops/services should be open or closed at that time.
@@ -214,7 +216,9 @@ Rules for building fixtures:
 
 - IMPORTANT: Each entry in `keywords` or `not_keywords` must be a SHORT distinctive phrase (max 5 words). Do NOT use full sentences as keywords. BAD: `"Order 201 placed successfully for Mike at Henry's Fast Food. Details: black coffee"`. GOOD: `["Order", "201", "black coffee", "Henry's Fast Food"]`. Use `gist` for full-sentence meaning checks instead.
 
-- IMPORTANT: Each interaction's response assertions must match what the agent will ACTUALLY say in THAT specific turn — not what it will say at the end of the full conversation. If the agent will ask a follow-up question in turn 1, assert on the question (e.g. `"gist": ["Asks for the customer's name"]`), NOT on the final order confirmation. Only assert on order confirmations / final results in the LAST interaction of a multi-turn scenario.
+- IMPORTANT: Each interaction's response assertions must match what the agent will ACTUALLY say in THAT specific turn — not what it will say at the end of the full conversation. If the agent will ask a follow-up question in turn 1, assert on the question, NOT on the final order confirmation. Only assert on order confirmations / final results in the LAST interaction of a multi-turn scenario.
+
+- IMPORTANT: When the agent asks follow-up questions, it may ask them in ANY ORDER. Do NOT write gist assertions that assume a specific question order (e.g. do NOT assert "Asks for age" in turn 1 and "Asks for name" in turn 2). Instead, either: (a) provide all required info upfront in the first user message so only one follow-up round is needed, or (b) use order-agnostic gist like `"Asks a follow-up question to gather missing information"`.
 
 - When a coded tool produces deterministic numeric values, use `value` with the exact expected number based on the tool's logic. Always preserve the float type — use 3.0 not 3, 6.0 not 6, etc. The `value` stock test does an exact comparison, so the type must match.
 
