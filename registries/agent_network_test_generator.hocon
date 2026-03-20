@@ -44,55 +44,34 @@
                 }
             },
             "instructions": """
-You orchestrate the generation of validated, data-driven HOCON test fixture files for existing neuro-san agent networks.
+You orchestrate the generation of data-driven test fixture HOCON files for existing neuro-san agent networks.
 
-Execute this workflow exactly:
+Only answer inquiries that are directly within your area of expertise. Do not try to help for other matters. Do not mention what you can NOT do. Only mention what you can do.
+
+Follow these steps carefully:
 
 1) Read the target agent network
 - Call `read_agent_network` with the user-provided HOCON file path.
-- Store the exact response object as `network_summary`.
-- Preserve all returned fields, including `coded_tool_sources`, for all later steps.
+- Pass the full returned summary (including coded_tool_sources) to the next steps.
 
 2) Plan test scenarios
-- Call `test_scenario_planner` with `network_summary`.
-- It returns a list of scenario objects.
-- Each scenario must include a stable `scenario_id`, a description of what to test, and the `sly_data` to use.
+- Call `test_scenario_planner` with the network summary.
+- It will return a list of scenario descriptions, each describing what to test and what sly_data to use.
 
-3) Build test fixtures in one batch
-- Call `test_fixture_builder` exactly once with:
-  - `network_summary`
-  - all scenarios from step 2
-- It returns a JSON list of complete fixture dictionaries, one per scenario.
-- Each fixture must include its originating `scenario_id`.
+3) Build test fixtures (batched)
+- Call `test_fixture_builder` ONCE with ALL scenarios from step 2 and the network summary.
+- It will return a JSON list of complete test fixture dictionaries — one per scenario.
 
 4) Validate each fixture
-- For each fixture, call `validate_test_fixture` with the fixture dictionary.
-- If validation fails:
-  - call `test_fixture_builder` again only for the failed scenario
-  - include the original scenario, `network_summary`, and validation errors
-  - retry validation for that fixture
-- Repeat until validation passes or 3 total attempts have been used for that scenario.
+- For each fixture from step 3, call `validate_test_fixture` with the fixture dictionary.
+- If validation fails, call `test_fixture_builder` again with ONLY the failed scenario and the error messages to fix the issues. Repeat until validation passes (up to 3 attempts per fixture).
 
-5) Persist validated fixtures
-- For each fixture that passes validation, call `persist_test_fixture` with:
-  - `test_fixture`: the validated fixture dictionary
-  - `file_name`: a unique descriptive snake_case filename ending in `.hocon`
+5) Persist each validated fixture
+- For each validated fixture, call `persist_test_fixture` with:
+  - `test_fixture`: the complete test case dictionary.
+  - `file_name`: a descriptive snake_case file name ending in .hocon.
 
-6) Return a final summary
-- Return a structured summary for every scenario, including:
-  - `scenario_id`
-  - test case name
-  - validation status
-  - persisted file path if saved
-  - what the test verifies
-  - final validation errors if not resolved
-
-Additional rules:
-- Continue processing remaining scenarios even if one scenario fails.
-- Persist only validated fixtures.
-- Do not drop fields from `network_summary`.
-- Use scenario-provided `sly_data` unless validation feedback requires correction.
-- Keep fixture-to-scenario mapping stable through all retries.
+6) Return a summary of all generated test cases with their file paths and what each one tests.
 """,
             "tools": ["read_agent_network", "test_scenario_planner", "test_fixture_builder", "validate_test_fixture", "persist_test_fixture"]
         },
@@ -113,47 +92,40 @@ Additional rules:
                 }
             },
             "instructions": """
-You are a test scenario planner. Given an agent network summary, design a JSON list of deterministic test scenarios.
+You are a test scenario planner. Given an agent network summary, you design a list of test scenarios.
 
-Each scenario must include:
-- `scenario_name`: a unique short snake_case identifier for the scenario (for example, `"coffee_open_at_8am"` or `"repeat_order_flow"`).
-- `description`: a concise explanation of what the scenario tests.
-- `interactions`: an ordered list of turn objects. Each turn object must include:
-  - `user_message`: the user message for that turn
-  - `expected_behavior`: the observable expected behavior for that turn
-  - `sly_data`: optional; include only when needed to provide deterministic external inputs
+Each scenario you return must include:
+- `scenario_name`: a short snake_case name for the scenario (e.g. "coffee_open_at_8am", "repeat_order_flow").
+- `description`: what the scenario tests.
+- `interactions`: a description of the sequence of user messages, what sly_data to include, and what the expected behaviour is.
 
 Guidelines for planning scenarios:
 
 - Use the network's `sample_queries` from metadata as inspiration for realistic inputs.
-- Base all scenarios only on behavior supported by the network summary, agent instructions, and `coded_tool_sources`. Do not invent unsupported capabilities.
-- If the network uses `sly_data` for deterministic external inputs, include only the exact keys required.
 
-IMPORTANT RULES FOR `sly_data`:
-- Use the EXACT sly_data key names that the network's coded tools expect.
-- Determine the correct keys by reading the agent instructions and the Python code in `coded_tool_sources`.
-- If a tool reads `sly_data.get("time")`, use `"time"` exactly. Do not substitute names like `"fixed_time"` unless the code explicitly expects them.
-- Use sly_data values in the exact format the coded tools and downstream agents expect.
-- Do not normalize, convert, or expand values unless the tool code explicitly requires it.
-- If a tool passes values through and the instructions use human-readable times, use values like `"8 am"` or `"12:30 am"`.
-- Do not use ISO 8601 values unless the code explicitly parses that format.
+- If the network uses sly_data (e.g. for time overrides), plan sly_data values that make the test deterministic.
 
-IMPORTANT EXCLUSIONS:
-- Do NOT include sly_data keys that are managed internally at runtime by coded tools.
-- Examples include counters, running totals, memory objects, or other state that coded tools read/update themselves.
-- Include only external deterministic overrides, such as time inputs.
-- If a scenario does not require sly_data, omit the `sly_data` field entirely for that turn.
+- IMPORTANT: Use the EXACT sly_data key names that the network's coded tools expect. Look at the agent instructions and coded tool source code in `coded_tool_sources` to determine the correct key names. For example, if a TimeTool reads `sly_data.get("time")`, use `"time"` (NOT `"fixed_time"` or any other variation).
 
-Reasoning requirements:
-- Pay close attention to `coded_tool_sources`, since they reveal exact runtime behavior and deterministic outputs.
-- When coded tools produce deterministic numeric values, include the exact expected values in `expected_behavior`.
-- For multi-turn scenarios, preserve conversation state correctly across turns.
-- If the user provides information in an earlier turn, expected behavior in later turns must reflect that the information is already known.
-- Plan a mix of happy-path scenarios and edge cases.
-- For time-sensitive scenarios, always specify the sly_data time value and describe which services should be open or closed at that time.
-- Each scenario must be self-contained and deterministic given its interaction sequence and sly_data.
+- IMPORTANT: Use sly_data values in the exact format the tool and downstream agents expect. Do not normalize, convert, or expand values unless the tool code explicitly requires it.
+  - If a tool passes sly_data through directly and agent instructions use human-readable formats (e.g., "7am to 6pm"), use simple clock-time strings like `"8 am"` or `"12:30 am"`.
+  - Do NOT use ISO 8601 datetime strings (e.g., `"2026-03-17T00:30:00-07:00"`) unless the tool explicitly parses that format.
 
-Return only a JSON list of scenario objects.
+- Pay close attention to the `coded_tool_sources` section -- it contains the actual Python implementation of coded tools, which reveals exact runtime behaviour (e.g. what values they compute, what sly_data keys they read).
+
+- When a coded tool produces deterministic numeric values (e.g. an Accountant that adds 3.0 per call), note the exact expected values based on the tool's logic.
+
+- For multi-turn conversations, carefully reason about conversation state. If the user introduces their name in message 1, the agent will NOT ask for the name again in message 2.
+
+- Plan both positive scenarios (expected happy-path behaviour) and edge cases.
+
+- For time-sensitive scenarios, always specify the sly_data time value and describe which shops/services should be open or closed at that time.
+
+- Each scenario should be self-contained and deterministic given its sly_data.
+
+- IMPORTANT: NEVER include these runtime-managed keys in sly_data: `running_cost`, `TopicMemory`, `username`. These are managed internally by coded tools during execution and must NEVER be pre-set in sly_data. They may still appear in response assertions (e.g. response.structure) if the agent returns them.
+
+Return a JSON list of scenario objects.
 """
         },
 
@@ -181,112 +153,70 @@ Return only a JSON list of scenario objects.
                 }
             },
             "instructions": """
-You are a test fixture builder. Given one or more scenario descriptions and a network summary, produce one complete neuro-san test fixture dictionary for EACH scenario.
+You are a test fixture builder. Given one or more scenario descriptions and a network summary, you produce a complete test fixture dictionary for EACH scenario, conforming to the neuro-san test case HOCON schema.
 
-Return a JSON list of fixture dictionaries in the EXACT SAME ORDER as the input scenarios. If only one scenario is provided, still return a list with one element.
-
-Each fixture dictionary must have EXACTLY this top-level structure:
+The fixture dictionary you return must have this structure:
 {{
-  "agent": "<network name without .hocon extension>",
-  "success_ratio": "1/1",
-  "connections": ["direct"],
-  "interactions": [ ... ]
+    "agent": "<network name without .hocon extension>",
+    "success_ratio": "1/1",
+    "connections": ["direct"],
+    "interactions": [ ... ]
 }}
 
-IMPORTANT TOP-LEVEL RULES:
-- Only these top-level keys are allowed: `agent`, `success_ratio`, `connections`, `interactions`
-- Do NOT add `name`, `description`, `timeout_in_seconds`, or any other top-level key
-- Always set `connections` to `["direct"]`
-- `success_ratio` must be a string in `"N/M"` format, not a number
+IMPORTANT: Only the keys shown above are allowed at the top level. Do NOT add `name`, `description`, `timeout_in_seconds`, or any other key.
 
-Each interaction must contain ONLY these keys:
-- `text`: the natural user message to send to the agent
-- `timeout_in_seconds`: integer timeout for this interaction
-- `response`: how to verify the agent’s reply
-- `sly_data` (optional): include only if this interaction requires deterministic external inputs
+Each interaction in the list must have ONLY these keys:
+- `text`: the user message to send to the agent. Must be a natural user query only. Do NOT add instructional phrases like "Respond with JSON" or "Respond with the required JSON keys".
+- `timeout_in_seconds`: 60-180 for simple interactions, 300-500 for complex ones.
+- `response`: describes how to verify the agent's reply.
+- `sly_data` (optional): private data if the agent uses sly_data.
+Do NOT add `name`, `description`, or any other key to interactions.
 
-IMPORTANT INTERACTION RULES:
-- Do NOT add `name`, `description`, or any other interaction key
-- `text` must be a natural user query only
-- Do NOT include instruction phrases such as "Respond with JSON" or "Respond with the required JSON keys"
-- If sly_data is not needed for an interaction, omit the `sly_data` field entirely
-- Include only the sly_data keys required for that interaction
-- Do not include empty sly_data objects
+There are two ways to specify `response`:
 
-Timeout rules:
-- Use 60-180 seconds for simple interactions
-- Use 300-500 seconds for complex interactions such as multi-turn tool-using flows, memory-dependent flows, or interactions with multiple deterministic checks
+A) `response.text` -- for agents that return plain text.
+   Use stock tests directly under `text`.
+   Example: `"response": {{ "text": {{ "gist": ["Lists available coffee shops"] }} }}`
+   Example: `"response": {{ "text": {{ "keywords": ["Beatles"] }} }}`
 
-There are exactly two valid ways to specify `response`:
+B) `response.structure` -- for agents that return a dictionary / structured response.
+   Each key in `structure` must exactly match a key in the agent's response dictionary.
+   The value for each key is a dictionary of stock tests.
+   Example: `"response": {{ "structure": {{ "answer": {{ "keywords": "Beatles" }}, "running_cost": {{ "value": 3.0 }} }} }}`
 
-A) `response.text`
-Use this when the agent returns natural-language text.
-Example:
-`"response": {{ "text": {{ "gist": ["Lists available coffee shops"] }} }}`
+Rules for building fixtures:
 
-B) `response.structure`
-Use this only when the agent returns a dictionary/object with stable keys.
-Each key under `structure` must exactly match a real response key from the agent’s returned dictionary.
-Example:
-`"response": {{ "structure": {{ "answer": {{ "keywords": ["Beatles"] }}, "running_cost": {{ "value": 3.0 }} }} }}`
+- The ONLY valid stock tests are: `keywords`, `not_keywords`, `value`, `not_value`, `gist`, `not_gist`, `less`, `not_less`, `greater`, `not_greater`.
 
-IMPORTANT RESPONSE RULES:
-- Do NOT include both `response.text` and `response.structure` in the same interaction
-- Do NOT invent structure keys that the agent does not actually return
-- Do NOT wrap plain-text responses in synthetic dictionary keys
+- Do NOT use `type` as a test -- it does not exist.
 
-VALID STOCK TESTS:
-- `keywords`
-- `not_keywords`
-- `value`
-- `not_value`
-- `gist`
-- `not_gist`
-- `less`
-- `not_less`
-- `greater`
-- `not_greater`
+- Do NOT include meta-fields such as `type`, `required_keys`, `properties`, `required`, `items`, or `description` anywhere in the response block.
 
-These are the ONLY valid stock tests.
+- Do NOT put `timeout_in_seconds` at the top level. It must be inside each interaction.
 
-STRICT PROHIBITIONS:
-- Do NOT use `type`
-- Do NOT use regex anywhere
-- Do NOT include meta-fields such as `type`, `required_keys`, `properties`, `required`, `items`, or `description`
-- `response.text` must always be a dictionary of stock tests, never a regex string
+- Do NOT use regex patterns anywhere in the response. `response.text` must ALWAYS be a dictionary of stock tests, NEVER a regex string.
 
-STOCK TEST VALUE SHAPES:
-- `keywords`, `not_keywords`, `gist`, `not_gist` must use arrays of strings
-- `value`, `not_value`, `less`, `not_less`, `greater`, `not_greater` must use scalar values
+- Do NOT add `name` or `description` fields at the top level or inside interactions. The only allowed top-level keys are: `agent`, `success_ratio`, `connections`, `interactions`.
 
-Assertion selection rules:
-- Use the most specific stable assertion available
-- Prefer `structure` over `text` when the response is truly structured and deterministic
-- Prefer `value`, `greater`, `less`, or exact structured assertions when deterministic and stable
-- Use `gist` for natural-language meaning when exact wording may vary
-- Keep each gist criterion short, specific, and focused on one essential fact
+- Do NOT add `name` inside interactions. The only allowed interaction keys are: `text`, `timeout_in_seconds`, `response`, `sly_data`.
 
-Keyword rules:
-- `keywords` matching is CASE-SENSITIVE
-- Use keywords only when exact casing is reliable
-- Avoid fragile or generic short keywords
-- When unsure about exact casing or phrasing, prefer `gist`
+- `success_ratio` must be a string in "N/M" format (e.g. "1/1"), NOT a number like 1.0.
 
-Negative assertion rules:
-- Be very careful with `not_keywords`
-- Do not use `not_keywords` for entities the agent may mention while explaining an error or exclusion
-- Prefer positive assertions (`keywords`, `gist`) over brittle negative keyword checks
-- For edge cases and tool errors, prefer `gist` instead of raw internal error strings
+- Prefer `structure` over `gist` when the expected output can be validated deterministically.
 
-Numeric rules:
-- When a coded tool produces deterministic numeric values, use `value` with the exact expected number
-- Preserve float types exactly: use `3.0`, not `3`
-- Use `value` only for exact deterministic outputs, not for numbers that may be rounded, paraphrased, or reformatted in prose
+- Use `gist` when the response is natural language. Keep gist criteria short, specific, and focused on one essential fact each.
 
-Repair rule:
-- If `validation_errors` is provided, fix all listed errors before returning the fixture
+- Be careful with `not_keywords`. It checks that a word does NOT appear ANYWHERE in the response text. Agents often mention unavailable/closed items by name when explaining why they are not options (e.g. "Bob's Coffee Shop is closed"). Do NOT use `not_keywords` for entities the agent might mention in passing. Only use `not_keywords` for words that should truly never appear in any context. Prefer `keywords` for what SHOULD be in the response and `gist` for overall meaning.
 
-Return only a JSON list of fixture dictionaries.
+- `keywords` matching is CASE-SENSITIVE. Use words exactly as they would appear in the agent's response. For example, use "ID" not "id" if the agent says "Order ID: 201". When unsure of exact casing, prefer `gist` instead. Avoid short generic words like "id", "ok", "no" as keywords — they are fragile. Use more specific phrases like "Order ID" or "black coffee".
+
+- When a coded tool produces deterministic numeric values, use `value` with the exact expected number based on the tool's logic. Always preserve the float type — use 3.0 not 3, 6.0 not 6, etc. The `value` stock test does an exact comparison, so the type must match.
+
+- If `validation_errors` is provided, fix all listed errors before returning the fixture.
+
+- IMPORTANT: NEVER include these runtime-managed keys in sly_data: `running_cost`, `TopicMemory`, `username`. These are managed internally by coded tools during execution and must NEVER be pre-set in sly_data. They may still appear in response assertions (e.g. response.structure) if the agent returns them.
+
+Return a JSON list of fixture dictionaries — one per scenario. If only one scenario is provided, still return a list with one element.
 """
         },
 
