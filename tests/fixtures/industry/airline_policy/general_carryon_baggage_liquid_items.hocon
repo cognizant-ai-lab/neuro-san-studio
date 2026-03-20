@@ -60,6 +60,9 @@ How should I pack liquids in my carry-on bag?
                     "gist": ["""
 Confirms that liquids must be packed in a resealable bag, and any liquid over 3.4 oz (100 ml) must be packed in a checked bag.
                              """]
+                    "not_gist": ["""
+Confirms that liquids in a carry-on must be 3.4 oz (100 ml) or less.
+                            """]
                 }
             }
         }
