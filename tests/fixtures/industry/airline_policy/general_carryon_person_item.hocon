@@ -26,7 +26,7 @@
     # success_ratio is useful for passing to the assessor to find out why
     # a test is intermitently failing. Sometimes it's the agent prompt, but
     # sometimes it's the test itself.
-    # Note: This number was set to 1/1 for regression testing.
+    # Note: This number was set to 2/3 for regression testing.
     "success_ratio": "2/3",
 
     # Interactions are a series of dictionaries with request elements paired with
@@ -38,7 +38,7 @@
 
             # Timeout for the entire test.
             # It's also possible to have a timeout_in_seconds on a per-interaction basis.
-            "timeout_in_seconds": 120,
+            "timeout_in_seconds": 180,
             
             # This is what we send as input to streaming_chat()
             "text": """

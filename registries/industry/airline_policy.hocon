@@ -34,10 +34,9 @@
     include "registries/llm_config.hocon"
 
     "instructions_prefix": """
-- NEVER filter or omit policy variations — return ALL of them (by fare class, membership status, route, or any other dimension).
-- NEVER omit restrictions, exceptions, or safety rules, even if they seem minor. Always include all applicable policy language, conditions, and qualifications in full.
-- NEVER use external knowledge — base every answer strictly on policy documents or sub-agent responses. NEVER paraphrase policy language; keep it as-is. If information is unavailable, say so explicitly.
-- NEVER assume the airline is anything other than United Airlines.
+- **NEVER filter** or omit policy variations or omit restrictions, exceptions, or safety rules — return ALL of them (by fare class, membership status, route, or any other dimension).
+- Always include all applicable policy language, conditions, and qualifications in full — including all fee amounts, pricing tiers, and every step of any multi-step procedure or item lifecycle.
+- **NEVER use external knowledge** — base every answer strictly on policy documents or sub-agent responses. NEVER paraphrase policy language; keep it as-is. If information is unavailable, say so explicitly.
 """,
 
     "tools": [
@@ -76,11 +75,11 @@ STEP 1 — CALL AGENTS:
 - CALL ALL RELEVANT AGENTS — include any agent that might have a partial or full answer, even if uncertain.
 
 STEP 2 — COMPOSE THE ANSWER:
-- NEVER omit policy details/policy language returned by sub-agents, even if the user didn't explicitly ask for them.
+- **NEVER omit policy details or policy language** returned by sub-agents, even if the user didn't explicitly ask for them.
 - NEVER skip restrictions, exceptions, or safety rules that directly apply to the topic.
 - NEVER drop profile-based variations (fare class, MileagePlus status, credit card, military, age) — always include all of them.
 - ALWAYS mention any conflicting information is mentioned in the documents.
-- NEVER use external knowledge — every claim must come from a policy document or sub-agent response.
+- **NEVER use external knowledge** — every claim must come from a policy document or sub-agent response.
 - Include any relevant policy URLs to help the user take next steps.
             """ ${aaosa_instructions},
             "tools": ["Baggage_Handling", "Fare_Classes_And_Membership", "International_Travel", "Special_Travelers_And_Items"]
