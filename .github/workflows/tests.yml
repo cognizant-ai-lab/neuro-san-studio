@@ -1,6 +1,14 @@
+---
+# Test workflow — consumes the shared Python quality gate
+# from build-common (ruff toolchain: ruff format + ruff check
+# + pylint).
+#
+# NOTE: This branch temporarily points at the build-common
+# PR branch for integration testing.  Before merging,
+# update the ref to the merged SHA on main.
 name: Test
 
-on:
+"on":
   push:
     branches:
       - "**"
@@ -14,97 +22,27 @@ permissions:
 
 jobs:
   test:
-    runs-on: ubuntu-latest
     if: >
-      (github.event_name == 'push' && github.ref != 'refs/heads/main') ||
-      (github.event_name == 'pull_request' && github.base_ref == 'main')
-    container:
-      image: python:3.13-slim
-
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Check if PR is from a fork
-        id: fork_check
-        run: |
-          if [ "${{ github.event_name }}" = "pull_request" ]; then
-            if [ "${{ github.event.pull_request.head.repo.full_name }}" != "${{ github.repository }}" ]; then
-              echo "is_fork=true" >> $GITHUB_OUTPUT
-            else
-              echo "is_fork=false" >> $GITHUB_OUTPUT
-            fi
-          else
-          # Not a PR — so it's not a fork
-            echo "is_fork=false" >> $GITHUB_OUTPUT
-          fi
-
-      - name: Install dependencies
-        shell: bash
-        run: |
-          apt-get update && apt-get install -y shellcheck make curl
-          python -m venv venv
-          source venv/bin/activate
-          pip install -r requirements-build.txt
-          pip install -r requirements.txt
-
-      - name: Show installed packages
-        shell: bash
-        run: |
-          source venv/bin/activate 
-          pip freeze
-
-      - name: Run make lint-check
-        # We run this check-only step to break the build if
-        # formatting changes are needed
-        shell: bash
-        run: |
-          source venv/bin/activate 
-          make lint-check
-      
-      - name: Run dead link checker
-        shell: bash
-        run: |
-          curl --silent --location \
-          https://github.com/lycheeverse/lychee/releases/latest/download/lychee-x86_64-unknown-linux-gnu.tar.gz \
-          | tar --extract --gzip --directory /tmp
-          # Accept 429 (rate limit) and 503 (temporary outage) to prevent flaky CI failures
-          /tmp/lychee --max-retries 3 --retry-wait-time 3 --verbose --accept '200,203,204,429,503' --exclude-path venv './**/*.md'
-
-      - name: Run make test
-        shell: bash
-        run: |
-          source venv/bin/activate 
-          make test
-        env:
-          AGENT_TOOL_PATH: "./neuro_san/coded_tools"
-          PYTHONPATH: ${{ env.PYTHONPATH }}:"."
-
-      - name: Check README renders correctly on PyPI
-        shell: bash
-        run: |
-          source venv/bin/activate
-          pip install readme_renderer readme_renderer[md]
-          python -m readme_renderer README.md
-
-      - name: Notify Slack on success
-        if: success() && steps.fork_check.outputs.is_fork == 'false'
-        uses: slackapi/slack-github-action@v1.24.0
-        with:
-          payload: |
-            {
-              "text": "✅ *Tests Passed* for `${{ github.repository }}` on `${{ github.ref_name }}`"
-            }
-        env:
-          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
-
-      - name: Notify Slack on failure
-        if: failure() && steps.fork_check.outputs.is_fork == 'false'
-        uses: slackapi/slack-github-action@v1.24.0
-        with:
-          payload: |
-            {
-              "text": "❌ *Tests Failed* for `${{ github.repository }}` on `${{ github.ref_name }}`"
-            }
-        env:
-          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+      (github.event_name == 'push' &&
+       github.ref != 'refs/heads/main') ||
+      (github.event_name == 'pull_request' &&
+       github.base_ref == 'main')
+    # yamllint disable-line rule:line-length
+    uses: cognizant-ai-lab/build-common/.github/workflows/_python-quality-gate.yml@devin/1771545839-python-quality-gate-abstraction
+    with:
+      lint-toolchain: "ruff"
+      python-version: "3.13"
+      sources: "run.py apps coded_tools plugins tests"
+      run-pylint: true
+      run-markdownlint: true
+      run-shellcheck: true
+      check-readme-pypi: true
+      system-packages: "curl"
+      # pytest is invoked directly (not via make test) to
+      # avoid the Makefile venv-guard check.
+      test-command-override: >-
+        python -m pytest tests/ -v
+        --cov=coded_tools,run.py
+        -m "not integration"
+    secrets:
+      SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
