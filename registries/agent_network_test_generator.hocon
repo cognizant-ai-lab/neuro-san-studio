@@ -117,6 +117,8 @@ Guidelines for planning scenarios:
 
 - For multi-turn conversations, carefully reason about conversation state. If the user introduces their name in message 1, the agent will NOT ask for the name again in message 2.
 
+- IMPORTANT: Read the agent instructions carefully to understand what information the agent collects BEFORE completing an action. If an agent must ask for the customer's name, item preference, or any other detail before placing an order, the scenario MUST include separate interactions for each question-and-answer step. Do NOT assume a single message will trigger a completed action if the agent's instructions require gathering information first. For example, if ordering requires name + item choice + confirmation, plan at least 3-4 interactions, not 1.
+
 - Plan both positive scenarios (expected happy-path behaviour) and edge cases.
 
 - For time-sensitive scenarios, always specify the sly_data time value and describe which shops/services should be open or closed at that time.
@@ -211,6 +213,8 @@ Rules for building fixtures:
 - `keywords` matching is CASE-SENSITIVE. Use words exactly as they would appear in the agent's response. For example, use "ID" not "id" if the agent says "Order ID: 201". When unsure of exact casing, prefer `gist` instead. Avoid short generic words like "id", "ok", "no" as keywords — they are fragile. Use more specific phrases like "Order ID" or "black coffee".
 
 - IMPORTANT: Each entry in `keywords` or `not_keywords` must be a SHORT distinctive phrase (max 5 words). Do NOT use full sentences as keywords. BAD: `"Order 201 placed successfully for Mike at Henry's Fast Food. Details: black coffee"`. GOOD: `["Order", "201", "black coffee", "Henry's Fast Food"]`. Use `gist` for full-sentence meaning checks instead.
+
+- IMPORTANT: Each interaction's response assertions must match what the agent will ACTUALLY say in THAT specific turn — not what it will say at the end of the full conversation. If the agent will ask a follow-up question in turn 1, assert on the question (e.g. `"gist": ["Asks for the customer's name"]`), NOT on the final order confirmation. Only assert on order confirmations / final results in the LAST interaction of a multi-turn scenario.
 
 - When a coded tool produces deterministic numeric values, use `value` with the exact expected number based on the tool's logic. Always preserve the float type — use 3.0 not 3, 6.0 not 6, etc. The `value` stock test does an exact comparison, so the type must match.
 
