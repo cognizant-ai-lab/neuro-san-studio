@@ -73,6 +73,18 @@ _ALLOWED_INTERACTION_KEYS: frozenset[str] = frozenset(
 
 _SUCCESS_RATIO_PATTERN: str = r"^\d+/\d+$"
 
+# Stock tests that expect numeric values and must use float, not int.
+_NUMERIC_STOCK_TESTS: frozenset[str] = frozenset(
+    {
+        "value",
+        "not_value",
+        "less",
+        "not_less",
+        "greater",
+        "not_greater",
+    }
+)
+
 
 class ValidateTestFixture(CodedTool):
     """
@@ -200,10 +212,18 @@ class ValidateTestFixture(CodedTool):
         errors: list[str],
     ) -> None:
         """Ensure every key in *block* is a recognised stock test."""
-        for key in block:
+        for key, val in block.items():
             if key not in _VALID_STOCK_TESTS:
                 errors.append(
                     f"{path}: '{key}' is not a valid stock test. Valid tests are: {sorted(_VALID_STOCK_TESTS)}."
+                )
+            # Numeric stock tests (value, not_value, less, not_less, greater,
+            # not_greater) must use float, not int — the test runner does an
+            # exact-type comparison.
+            if key in _NUMERIC_STOCK_TESTS and isinstance(val, int) and not isinstance(val, bool):
+                errors.append(
+                    f"{path}.{key}: numeric value must be a float, not an int. "
+                    f"Use {float(val)} instead of {val}."
                 )
 
     # ------------------------------------------------------------------
@@ -238,7 +258,7 @@ class ValidateTestFixture(CodedTool):
                 continue
 
             # Each value under a structure key should be stock tests.
-            for test_name in value:
+            for test_name, test_val in value.items():
                 if test_name in _FORBIDDEN_META_FIELDS:
                     errors.append(
                         f"{field_path}.{test_name}: '{test_name}' is a forbidden meta-field inside a structure value."
@@ -248,6 +268,12 @@ class ValidateTestFixture(CodedTool):
                         f"{field_path}.{test_name}: '{test_name}' is not a "
                         f"valid stock test. Valid tests are: "
                         f"{sorted(_VALID_STOCK_TESTS)}."
+                    )
+                # Numeric stock tests must use float, not int.
+                if test_name in _NUMERIC_STOCK_TESTS and isinstance(test_val, int) and not isinstance(test_val, bool):
+                    errors.append(
+                        f"{field_path}.{test_name}: numeric value must be a float, not an int. "
+                        f"Use {float(test_val)} instead of {test_val}."
                     )
 
     # ------------------------------------------------------------------

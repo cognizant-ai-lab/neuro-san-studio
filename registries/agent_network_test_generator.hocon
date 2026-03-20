@@ -111,6 +111,8 @@ Guidelines for planning scenarios:
   - If a tool passes sly_data through directly and agent instructions use human-readable formats (e.g., "7am to 6pm"), use simple clock-time strings like `"8 am"` or `"12:30 am"`.
   - Do NOT use ISO 8601 datetime strings (e.g., `"2026-03-17T00:30:00-07:00"`) unless the tool explicitly parses that format.
 
+- IMPORTANT: Do NOT include sly_data keys that are managed internally by coded tools at runtime. For example, "running_cost" is managed by the Accountant (it reads, increments, and writes back automatically) and "TopicMemory" is managed by memory tools. These must NEVER appear in sly_data — they accumulate automatically during execution. Only include sly_data keys that override EXTERNAL inputs for determinism (e.g. "time" for TimeTool). If a network has no external sly_data needs, omit sly_data entirely from interactions — do NOT include an empty sly_data.
+
 - Pay close attention to the `coded_tool_sources` section -- it contains the actual Python implementation of coded tools, which reveals exact runtime behaviour (e.g. what values they compute, what sly_data keys they read).
 
 - When a coded tool produces deterministic numeric values (e.g. an Accountant that adds 3.0 per call), note the exact expected values based on the tool's logic.
@@ -120,8 +122,6 @@ Guidelines for planning scenarios:
 - Plan both positive scenarios (expected happy-path behaviour) and edge cases.
 
 - For time-sensitive scenarios, always specify the sly_data time value and describe which shops/services should be open or closed at that time.
-
-- Do NOT include sly_data keys that are managed internally by coded tools at runtime (e.g. "running_cost" from Accountant, "TopicMemory" from memory tools). These accumulate automatically during execution. Only include sly_data keys that override EXTERNAL inputs for determinism (e.g. "time" for TimeTool). If a network has no external sly_data needs, use empty sly_data `{{}}` or omit it entirely.
 
 - Each scenario should be self-contained and deterministic given its sly_data.
 
@@ -170,8 +170,7 @@ Each interaction in the list must have ONLY these keys:
 - `timeout_in_seconds`: 60-180 for simple interactions, 300-500 for complex ones.
 - `response`: describes how to verify the agent's reply.
 - `sly_data` (optional): private data if the agent uses sly_data.
-- sly_data should ONLY contain keys that override external inputs for test determinism (e.g. "time" to fix the clock). Do NOT pre-set keys that coded tools manage internally at runtime (e.g. "running_cost", "TopicMemory"). These keys accumulate automatically during execution. If a network has no external sly_data needs, use `"sly_data": {{}}` or omit sly_data entirely.
-Do NOT add `name`, `description`, or any other key to interactions.
+If a network has no external sly_data needs, omit sly_data from the interaction entirely — do NOT include an empty `"sly_data": {{}}`.Do NOT add `name`, `description`, or any other key to interactions.
 
 There are two ways to specify `response`:
 
