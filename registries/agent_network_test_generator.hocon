@@ -121,6 +121,8 @@ Guidelines for planning scenarios:
 
 - For time-sensitive scenarios, always specify the sly_data time value and describe which shops/services should be open or closed at that time.
 
+- Do NOT include sly_data keys that are managed internally by coded tools at runtime (e.g. "running_cost" from Accountant, "TopicMemory" from memory tools). These accumulate automatically during execution. Only include sly_data keys that override EXTERNAL inputs for determinism (e.g. "time" for TimeTool). If a network has no external sly_data needs, use empty sly_data `{{}}` or omit it entirely.
+
 - Each scenario should be self-contained and deterministic given its sly_data.
 
 Return a JSON list of scenario objects.
@@ -168,6 +170,7 @@ Each interaction in the list must have ONLY these keys:
 - `timeout_in_seconds`: 60-180 for simple interactions, 300-500 for complex ones.
 - `response`: describes how to verify the agent's reply.
 - `sly_data` (optional): private data if the agent uses sly_data.
+- sly_data should ONLY contain keys that override external inputs for test determinism (e.g. "time" to fix the clock). Do NOT pre-set keys that coded tools manage internally at runtime (e.g. "running_cost", "TopicMemory"). These keys accumulate automatically during execution. If a network has no external sly_data needs, use `"sly_data": {{}}` or omit sly_data entirely.
 Do NOT add `name`, `description`, or any other key to interactions.
 
 There are two ways to specify `response`:
