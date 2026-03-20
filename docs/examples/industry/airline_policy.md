@@ -76,9 +76,10 @@ Please ensure your guitar fits within the specified dimensions and policies to a
      - `Carry_On_Baggage`
      - `Checked_Baggage`
      - `Bag_Issues`
+     - `Special_Baggage`
      - `Bag_Fee_Calculator`
 
-2. **Fares_And_Loyalty**
+2. **Fare_Classes_And_Membership**
    - Deals with fare classes, loyalty programs, and military travel policies.
    - Delegates to:
      - `Military_Personnel`
@@ -86,14 +87,15 @@ Please ensure your guitar fits within the specified dimensions and policies to a
      - `Mileage_Plus`
 
 3. **International_Travel**
-   - Handles international-specific regulations.
-   - Delegates to:
-     - `International_Checked_Baggage`
-     - `International_Travel_Requirements`
-
-4. **Special_Items**
-   - Covers non-standard and specialty item policies.
+   - Handles international and domestic travel documentation and entry/departure requirements.
    - Calls `ExtractDocs` and `URLProvider` directly.
+
+4. **Special_Travelers_And_Items**
+   - Covers special passenger needs (families, pets, accessibility) and restricted/prohibited items.
+   - Delegates to:
+     - `Traveling_With_Dependents`
+     - `Accessibility_And_Special_Needs`
+     - `Restricted_Items`
 
 ---
 
@@ -104,7 +106,7 @@ These are coded tools called by various policy agents:
 - **ExtractDocs**
     - Retrieves text content from internal policy documents.
 
-    - **URLProvider**
+- **URLProvider**
     - Provides links to official airline pages for additional resources.
 
 ---
