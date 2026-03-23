@@ -190,8 +190,8 @@ Think of this as building or refining a hierarchical organizational chart. Each 
             "middleware": [
                 {
                     "class": "middleware.agent_network_structure_validation_middleware.AgentNetworkStructureValidationMiddleware",
-                    "args" {
-                        "sly_data": true,
+                    "args": {
+                        "sly_data": true
                     }
                 }
             ]
