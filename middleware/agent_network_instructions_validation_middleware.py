@@ -46,4 +46,4 @@ class AgentNetworkInstructionsValidationMiddleware(AgentNetworkValidationMiddlew
         return KeywordNetworkValidator().validate(network_def)
 
     def _format_error(self, error_list: list[str]) -> str:
-        return f"Error: {error_list}"
+        return "Error(s):\n" + "\n".join(error_list)
