@@ -15,28 +15,21 @@
 #
 # END COPYRIGHT
 
-import logging
 from typing import Any
-
-from langchain.agents.middleware import AgentMiddleware
-from langchain.agents.middleware import AgentState
-from langchain.agents.middleware import hook_config
-from langchain.messages import HumanMessage
-
-from langgraph.runtime import Runtime
 
 from neuro_san.internals.validation.network.structure_network_validator import StructureNetworkValidator
 from neuro_san.internals.validation.network.toolbox_network_validator import ToolboxNetworkValidator
 from neuro_san.internals.validation.network.url_network_validator import UrlNetworkValidator
 
-from coded_tools.agent_network_editor.constants import AGENT_NETWORK_DEFINITION
 from coded_tools.agent_network_editor.get_mcp_tool import GetMcpTool
 from coded_tools.agent_network_editor.get_subnetwork import GetSubnetwork
 from coded_tools.agent_network_editor.get_toolbox import GetToolbox
 
+from middleware.agent_network_validation_middleware import AgentNetworkValidationMiddleware
+
 
 # pylint: disable=too-few-public-methods
-class AgentNetworkStructureValidationMiddleware(AgentMiddleware):
+class AgentNetworkStructureValidationMiddleware(AgentNetworkValidationMiddleware):
     """
     Middleware that validates an agent network definition after each agent turn.
 
@@ -46,55 +39,16 @@ class AgentNetworkStructureValidationMiddleware(AgentMiddleware):
     it can self-correct.
     """
 
-    def __init__(
-            self,
-            sly_data: dict[str, Any]
-    ) -> None:
-        """
-        Initialize agent network validation middleware.
+    def _no_network_error_message(self) -> str:
+        return (
+            "Error: No agent network found. "
+            "Please create a new agent network using `create_new_network` tool"
+        )
 
-        :param sly_data: A dictionary whose keys are defined by the agent hierarchy,
-                but whose values are meant to be kept out of the chat stream.
+    def _validation_label(self) -> str:
+        return "Structure"
 
-                This dictionary is largely to be treated as read-only.
-                It is possible to add key/value pairs to this dict that do not
-                yet exist as a bulletin board, as long as the responsibility
-                for which coded_tool publishes new entries is well understood
-                by the agent chain implementation and the coded_tool implementation
-                adding the data is not invoke()-ed more than once.
-
-                Keys expected for this implementation are:
-                    "agent_network_definition": an outline of an agent network
-        """
-        self.logger = logging.getLogger(self.__class__.__name__)
-        self.sly_data = sly_data
-
-    @hook_config(can_jump_to=["model"])
-    async def aafter_agent(self, state: AgentState, runtime: Runtime) -> dict[str, Any] | None:
-        """
-        Validate the agent network definition after each agent turn.
-
-        Runs structure, toolbox, and URL validators. If any errors are found,
-        returns an AI message with the errors and jumps back to the model.
-
-        :param state: Current agent state
-        :param runtime: Runtime context
-        :return: Dict with error message and jump directive, or None if valid
-        """
-        network_def: dict[str, Any] = self.sly_data.get(AGENT_NETWORK_DEFINITION)
-        if not network_def:
-            content: str = (
-                "Error: No agent network found. "
-                "Please create a new agent network using `create_new_network` tool"
-            )
-            return {
-                # Use human message to ensure that the model follows the instructions
-                "messages": [HumanMessage(content)],
-                "jump_to": "model"
-            }
-
-        self.logger.info(">>>>>>>>>>>>>>>>>>>Validate Agent Network Structure>>>>>>>>>>>>>>>>>>")
-
+    async def _validate(self, network_def: dict[str, Any]) -> list[str]:
         # Get a dict of tools or error message if no toolbox found
         tools: dict[str, Any] | str = await GetToolbox().async_invoke(None, self.sly_data)
 
@@ -105,20 +59,11 @@ class AgentNetworkStructureValidationMiddleware(AgentMiddleware):
             subnetwork_names = list(subnetwork_result.keys())
         mcp_servers: list[str] = await GetMcpTool().get_mcp_servers(self.sly_data)
 
-        error_list: list[str] = (
+        return (
             StructureNetworkValidator().validate(network_def)
             + ToolboxNetworkValidator(tools).validate(network_def)
             + UrlNetworkValidator(subnetwork_names, mcp_servers).validate(network_def)
         )
 
-        if error_list:
-            content: str = f"Error: {error_list}. Use your tools to fix the errors."
-            self.logger.error(content)
-            return {
-                # Use human message to ensure that the model follows the instructions
-                "messages": [HumanMessage(content)],
-                "jump_to": "model"
-            }
-
-        self.logger.info("No structure error found in the agent network.")
-        return None
+    def _format_error(self, error_list: list[str]) -> str:
+        return f"Error: {error_list}. Use your tools to fix the errors."
