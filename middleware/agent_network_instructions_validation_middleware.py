@@ -33,17 +33,17 @@ class AgentNetworkInstructionsValidationMiddleware(AgentNetworkValidationMiddlew
     is injected into the conversation and control returns to the model so it can self-correct.
     """
 
-    def _no_network_error_message(self) -> str:
+    def no_network_error_message(self) -> str:
         return (
             "Error: No agent network found. "
             "Cannot edit or create instructions."
         )
 
-    def _validation_label(self) -> str:
+    def validation_label(self) -> str:
         return "Instructions"
 
-    async def _validate(self, network_def: dict[str, Any]) -> list[str]:
+    async def validate(self, network_def: dict[str, Any]) -> list[str]:
         return KeywordNetworkValidator().validate(network_def)
 
-    def _format_error(self, error_list: list[str]) -> str:
+    def format_error(self, error_list: list[str]) -> str:
         return "Error(s):\n" + "\n".join(error_list)

@@ -39,16 +39,16 @@ class AgentNetworkStructureValidationMiddleware(AgentNetworkValidationMiddleware
     model so it can self-correct.
     """
 
-    def _no_network_error_message(self) -> str:
+    def no_network_error_message(self) -> str:
         return (
             "Error: No agent network found. "
             "Please create a new agent network using `create_new_network` tool"
         )
 
-    def _validation_label(self) -> str:
+    def validation_label(self) -> str:
         return "Structure"
 
-    async def _validate(self, network_def: dict[str, Any]) -> list[str]:
+    async def validate(self, network_def: dict[str, Any]) -> list[str]:
         # Get a dict of tools or error message if no toolbox found
         tools: dict[str, Any] | str = await GetToolbox().async_invoke(None, self.sly_data)
 
@@ -65,6 +65,6 @@ class AgentNetworkStructureValidationMiddleware(AgentNetworkValidationMiddleware
             + UrlNetworkValidator(subnetwork_names, mcp_servers).validate(network_def)
         )
 
-    def _format_error(self, error_list: list[str]) -> str:
+    def format_error(self, error_list: list[str]) -> str:
         formatted_errors = "\n".join(f"- {msg}" for msg in error_list)
         return f"Errors detected:\n{formatted_errors}\n\nUse your tools to fix the errors."
