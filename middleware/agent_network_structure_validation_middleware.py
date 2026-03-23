@@ -66,4 +66,5 @@ class AgentNetworkStructureValidationMiddleware(AgentNetworkValidationMiddleware
         )
 
     def _format_error(self, error_list: list[str]) -> str:
-        return f"Error: {error_list}. Use your tools to fix the errors."
+        formatted_errors = "\n".join(f"- {msg}" for msg in error_list)
+        return f"Errors detected:\n{formatted_errors}\n\nUse your tools to fix the errors."
