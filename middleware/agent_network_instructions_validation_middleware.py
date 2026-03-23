@@ -29,8 +29,8 @@ class AgentNetworkInstructionsValidationMiddleware(AgentNetworkValidationMiddlew
 
     Runs keyword validation against the current network definition stored
     in sly_data to detect missing or incomplete agent instructions.
-    If validation errors are found, an AI message containing the errors
-    is injected and control jumps back to the model so it can self-correct.
+    If validation errors are found, a `HumanMessage` containing the errors
+    is injected into the conversation and control returns to the model so it can self-correct.
     """
 
     def _no_network_error_message(self) -> str:
