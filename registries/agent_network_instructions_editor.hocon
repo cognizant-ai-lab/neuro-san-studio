@@ -92,8 +92,8 @@ Guardrails:
             "middleware": [
                 {
                     "class": "middleware.agent_network_instructions_validation_middleware.AgentNetworkInstructionsValidationMiddleware",
-                    "args" {
-                        "sly_data": true,
+                    "args": {
+                        "sly_data": true
                     }
                 }
             ]
