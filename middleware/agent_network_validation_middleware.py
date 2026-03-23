@@ -22,7 +22,7 @@ from typing import Any
 from langchain.agents.middleware import AgentMiddleware
 from langchain.agents.middleware import AgentState
 from langchain.agents.middleware import hook_config
-from langchain.messages import HumanMessage
+from langchain_core.messages import HumanMessage
 
 from langgraph.runtime import Runtime
 
