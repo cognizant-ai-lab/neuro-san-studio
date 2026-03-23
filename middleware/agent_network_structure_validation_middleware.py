@@ -34,9 +34,9 @@ class AgentNetworkStructureValidationMiddleware(AgentNetworkValidationMiddleware
     Middleware that validates an agent network definition after each agent turn.
 
     Runs structural, toolbox, and URL validators against the current network
-    definition stored in sly_data. If validation errors are found, an AI message
-    containing the errors is injected and control jumps back to the model so
-    it can self-correct.
+    definition stored in sly_data. If validation errors are found, a human
+    message containing the errors is injected and control jumps back to the
+    model so it can self-correct.
     """
 
     def _no_network_error_message(self) -> str:
