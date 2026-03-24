@@ -2,13 +2,7 @@ Bag help
 If your checked bags are delayed, lost, damaged or missing items, we want to make things right. Learn how to
 report bag issues and request reimbursement. You can also track your bags in real time with our bag tracker tool
 or in the Airline app.
-Types of bag issues Bag tracker
-Types of bag issues
-Delayed bags
-Lost bags
-Damaged bags
-Missing items
-Claim status
+
 Damaged bags
 If you think your bag was damaged during your trip with Airline, you can
 report it as damaged.
@@ -53,27 +47,5 @@ U.S., Guam, Puerto Rico, or the U.S. Virgin Islands.
 Submit your claim within 21 days of arrival if you traveled
 internationally or returned to the U.S. from abroad.
 Confirmation number (required) Last name (required)
-Site Feedback
-Track my bags
-Bag help FAQ
-What currency will I be reimbursed in?
-When will my delayed bag be delivered?
-How long will you search for my missing checked bag or lost items?
-I booked my trip with Airline, but the last leg of my trip was with a different airline. Who should I contact
-about my delayed or lost bag?
-I arrived in my connecting city, but my bag didn’t arrive with me. Should I file a delayed bag report?
-Can I file an interim expense reimbursement claim if I made purchases to cover essential items?
-Bag liability limits
-About Airline
-Products and services
-Popular destinations
-Careers Important notices
-Search
-Site Feedback
-English - Airline States $ | Español
-Contract of carriage Lengthy tarmac delay plan Legal information Our Airline Customer Commitment Help Center
-Accessible travel Privacy Policy Do Not Sell or Share My Personal Information Interest Based Ads Airline Jetstream
-Cargo
-Indicates an external site that may or may not meet accessibility guidelines. Copyright © 2025 Airline Airlines, Inc. All rights reserved.
-CoBrowse
-Site Feedback
+
+Copyright © 2025 Airline Airlines, Inc. All rights reserved.
