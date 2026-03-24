@@ -242,36 +242,30 @@ class ValidateTestFixture(CodedTool):
     # ------------------------------------------------------------------
 
     @staticmethod
-    def _check_stock_tests(
-        block: dict[str, Any],
+    def _check_stock_test_value(
+        key: str,
+        val: Any,
         path: str,
         errors: list[str],
     ) -> None:
-        """Ensure every key in *block* is a recognised stock test."""
-        for key, val in block.items():
-            if key not in _VALID_STOCK_TESTS:
-                errors.append(
-                    f"{path}: '{key}' is not a valid stock test. Valid tests are: {sorted(_VALID_STOCK_TESTS)}."
-                )
-            # Numeric stock tests (value, not_value, less, not_less, greater,
-            # not_greater) must use float, not int — the test runner does an
-            # exact-type comparison.
-            if key in _NUMERIC_STOCK_TESTS and isinstance(val, int) and not isinstance(val, bool):
-                errors.append(
-                    f"{path}.{key}: numeric value must be a float, not an int. "
-                    f"Use {float(val)} instead of {val}."
-                )
-            # Keywords / not_keywords entries must be short distinctive phrases.
-            if key in _KEYWORD_STOCK_TESTS and isinstance(val, list):
-                for kw_idx, kw_item in enumerate(val):
-                    if isinstance(kw_item, str) and len(kw_item.split()) > _MAX_KEYWORD_WORDS:
-                        errors.append(
-                            f"{path}.{key}[{kw_idx}]: keyword has {len(kw_item.split())} words "
-                            f"(max {_MAX_KEYWORD_WORDS}). Keywords must be short distinctive "
-                            "phrases (e.g. 'Order ID', 'black coffee'), not full sentences. "
-                            "Use `gist` for full-sentence meaning checks."
-                        )
-
+        """Validate a single stock test key/value for type and length rules."""
+        # Numeric stock tests must use float, not int.
+        if key in _NUMERIC_STOCK_TESTS and isinstance(val, int) and not isinstance(val, bool):
+            errors.append(
+                f"{path}.{key}: numeric value must be a float, not an int. "
+                f"Use {float(val)} instead of {val}."
+            )
+        # Keywords / not_keywords entries must be short distinctive phrases.
+        if key in _KEYWORD_STOCK_TESTS and isinstance(val, list):
+            for kw_idx, kw_item in enumerate(val):
+                if isinstance(kw_item, str) and len(kw_item.split()) > _MAX_KEYWORD_WORDS:
+                    errors.append(
+                        f"{path}.{key}[{kw_idx}]: keyword has {len(kw_item.split())} words "
+                        f"(max {_MAX_KEYWORD_WORDS}). Keywords must be short distinctive "
+                        "phrases, not full sentences. "
+                        "Use `gist` for full-sentence meaning checks."
+                    )
+    
     # ------------------------------------------------------------------
     # Structure validation (for response.structure)
     # ------------------------------------------------------------------
@@ -302,35 +296,6 @@ class ValidateTestFixture(CodedTool):
             if not isinstance(value, dict):
                 errors.append(f"{field_path}: expected a dictionary of stock tests, got {type(value).__name__}.")
                 continue
-
-            # Each value under a structure key should be stock tests.
-            for test_name, test_val in value.items():
-                if test_name in _FORBIDDEN_META_FIELDS:
-                    errors.append(
-                        f"{field_path}.{test_name}: '{test_name}' is a forbidden meta-field inside a structure value."
-                    )
-                elif test_name not in _VALID_STOCK_TESTS:
-                    errors.append(
-                        f"{field_path}.{test_name}: '{test_name}' is not a "
-                        f"valid stock test. Valid tests are: "
-                        f"{sorted(_VALID_STOCK_TESTS)}."
-                    )
-                # Numeric stock tests must use float, not int.
-                if test_name in _NUMERIC_STOCK_TESTS and isinstance(test_val, int) and not isinstance(test_val, bool):
-                    errors.append(
-                        f"{field_path}.{test_name}: numeric value must be a float, not an int. "
-                        f"Use {float(test_val)} instead of {test_val}."
-                    )
-                # Keywords / not_keywords entries must be short.
-                if test_name in _KEYWORD_STOCK_TESTS and isinstance(test_val, list):
-                    for kw_idx, kw_item in enumerate(test_val):
-                        if isinstance(kw_item, str) and len(kw_item.split()) > _MAX_KEYWORD_WORDS:
-                            errors.append(
-                                f"{field_path}.{test_name}[{kw_idx}]: keyword has "
-                                f"{len(kw_item.split())} words (max {_MAX_KEYWORD_WORDS}). "
-                                "Keywords must be short distinctive phrases, not full sentences. "
-                                "Use `gist` for full-sentence meaning checks."
-                            )
 
     # ------------------------------------------------------------------
     # Public interface
