@@ -42,7 +42,6 @@ class URLProvider(CodedTool):
             "Checked Baggage": "https://www.united.com/en/us/fly/baggage/checked-bags.html",
             "Bag Issues": "https://www.united.com/en/us/baggage/bag-help",
             "Special Baggage": "https://www.tsa.gov/travel/security-screening/whatcanibring/sporting-and-camping",
-            "Embargoes": "https://www.united.com/en/us/fly/baggage/international-checked-bag-limits.html",
             "Bag Fee Calculator": "https://www.united.com/en/us/checked-bag-fee-calculator/any-flights",
             # Fare classes and membership
             "Military Personnel": "https://www.united.com/en/us/fly/company/company-info/military-benefits-and-discounts.html",  # noqa E501
@@ -54,7 +53,6 @@ class URLProvider(CodedTool):
             "Restricted Items": "https://www.tsa.gov/travel/security-screening/whatcanibring/all",
             # International
             "International Travel Docs": "https://www.united.com/en/us/travel/trip-planning/travel-requirements",
-            "International Checked Bag Limits": "https://www.united.com/en/us/fly/baggage/international-checked-bag-limits.html",
         }
 
     def invoke(self, args: Dict[str, Any], sly_data: Dict[str, Any]) -> str:

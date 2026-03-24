@@ -79,7 +79,7 @@
     - [Integration Test](#integration-test)
       - [Add test case](#add-test-case)
       - [Run test](#run-test)
-  - [Improving agent network](#improving-agent-networks)
+  - [Improving agent networks](#improving-agent-networks)
 
 <!-- TOC -->
 
