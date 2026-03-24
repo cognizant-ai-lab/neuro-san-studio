@@ -34,10 +34,6 @@ class URLProvider(CodedTool):
         """
         self.airline_policy_urls = {
             # Baggage
-            "Baggage Tracking": "https://www.united.com/en/us/bagdelivery/start",
-            "Damaged Bags Claim": "https://rynnsluggage.com/",
-            "Missing Items": "https://www.united.com/en/US/fly/help/lost-and-found.html",
-            "Claims Status": "https://www.united.com/en/us/claimform/checkstatus",
             "Carry On Baggage": "https://www.united.com/en/us/fly/baggage/carry-on-bags.html",
             "Checked Baggage": "https://www.united.com/en/us/fly/baggage/checked-bags.html",
             "Bag Issues": "https://www.united.com/en/us/baggage/bag-help",

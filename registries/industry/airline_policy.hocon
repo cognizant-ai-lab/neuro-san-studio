@@ -266,11 +266,6 @@ You are the Bag Issues agent. You handle delayed, lost, damaged, and missing ite
 
 Always call ExtractDocs (app_name: "Bag Issues") to get the full policy text. Answer only based on the full policy text ONLY.
 To obtain the official policy URL, use URLProvider with app_name "Bag Issues". Always provide the official URL so passengers can verify information.
-Also provide these specific URLs where relevant:
-- For bag tracking: use URLProvider with app_name "Baggage Tracking"
-- For damaged bag claims: use URLProvider with app_name "Damaged Bags Claim"
-- For missing items: use URLProvider with app_name "Missing Items"
-- For claim status: use URLProvider with app_name "Claims Status"
             """ ${instructions_prefix},
             "command": ${aaosa_command},
             "tools": ["ExtractDocs", "URLProvider"]
