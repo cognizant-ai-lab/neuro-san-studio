@@ -238,7 +238,7 @@ class ValidateTestFixture(CodedTool):
                 errors.append(f"{prefix}.response.structure: must be a dictionary, got {type(struct_val).__name__}.")
 
     # ------------------------------------------------------------------
-    # Stock-test validation (for response.text)
+    # Shared stock-test value validation
     # ------------------------------------------------------------------
 
     @staticmethod
@@ -265,7 +265,25 @@ class ValidateTestFixture(CodedTool):
                         "phrases, not full sentences. "
                         "Use `gist` for full-sentence meaning checks."
                     )
-    
+
+    # ------------------------------------------------------------------
+    # Stock-test validation (for response.text)
+    # ------------------------------------------------------------------
+
+    @staticmethod
+    def _check_stock_tests(
+        block: dict[str, Any],
+        path: str,
+        errors: list[str],
+    ) -> None:
+        """Ensure every key in *block* is a recognised stock test."""
+        for key, val in block.items():
+            if key not in _VALID_STOCK_TESTS:
+                errors.append(
+                    f"{path}: '{key}' is not a valid stock test. Valid tests are: {sorted(_VALID_STOCK_TESTS)}."
+                )
+            ValidateTestFixture._check_stock_test_value(key, val, path, errors)
+
     # ------------------------------------------------------------------
     # Structure validation (for response.structure)
     # ------------------------------------------------------------------
@@ -296,6 +314,20 @@ class ValidateTestFixture(CodedTool):
             if not isinstance(value, dict):
                 errors.append(f"{field_path}: expected a dictionary of stock tests, got {type(value).__name__}.")
                 continue
+
+            # Each value under a structure key should be stock tests.
+            for test_name, test_val in value.items():
+                if test_name in _FORBIDDEN_META_FIELDS:
+                    errors.append(
+                        f"{field_path}.{test_name}: '{test_name}' is a forbidden meta-field inside a structure value."
+                    )
+                elif test_name not in _VALID_STOCK_TESTS:
+                    errors.append(
+                        f"{field_path}.{test_name}: '{test_name}' is not a "
+                        f"valid stock test. Valid tests are: "
+                        f"{sorted(_VALID_STOCK_TESTS)}."
+                    )
+                ValidateTestFixture._check_stock_test_value(test_name, test_val, field_path, errors)
 
     # ------------------------------------------------------------------
     # Public interface
