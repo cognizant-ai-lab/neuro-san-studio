@@ -14,6 +14,7 @@
 #
 # END COPYRIGHT
 
+import asyncio
 from unittest import TestCase
 from unittest.mock import AsyncMock
 from unittest.mock import MagicMock
@@ -22,6 +23,8 @@ from unittest.mock import patch
 from plugins.llm_config_validator.check_llm_configs import _expand_fallbacks
 from plugins.llm_config_validator.check_llm_configs import extract_llm_configs_from_agent_network
 from plugins.llm_config_validator.check_llm_configs import extract_llm_configs_from_studio_config
+from plugins.llm_config_validator.check_llm_configs import redact_llm_config
+from plugins.llm_config_validator.check_llm_configs import run_checks
 from plugins.llm_config_validator.llm_config_validator_plugin import LlmConfigValidatorPlugin
 
 
@@ -83,6 +86,87 @@ class TestExpandFallbacks(TestCase):
         result = _expand_fallbacks("Agent X", config)
         labels = [label for label, _ in result]
         self.assertEqual(labels, ["Agent X (fallback 0)", "Agent X (fallback 1)", "Agent X (fallback 2)"])
+
+
+class TestRedactLlmConfig(TestCase):
+    """Tests for redact_llm_config — pure function, no I/O."""
+
+    def test_non_sensitive_keys_are_unchanged(self):
+        """Keys like model_name, temperature, and max_tokens pass through unmodified."""
+        config = {"model_name": "gpt-5-mini", "temperature": 0.7, "max_tokens": 100}
+        self.assertEqual(redact_llm_config(config), config)
+
+    def test_max_tokens_is_not_redacted(self):
+        """max_tokens must NOT be redacted — 'token' matches only at a word boundary."""
+        config = {"max_tokens": 1024, "model_name": "gpt-5-mini"}
+        result = redact_llm_config(config)
+        self.assertEqual(result["max_tokens"], 1024)
+
+    def test_access_token_is_redacted(self):
+        """access_token has 'token' as a whole word and must be redacted."""
+        config = {"access_token": "tok-abc123", "model_name": "gpt-5-mini"}
+        result = redact_llm_config(config)
+        self.assertEqual(result["access_token"], "***REDACTED***")
+        self.assertEqual(result["model_name"], "gpt-5-mini")
+
+    def test_api_key_is_redacted(self):
+        """Any key containing 'api_key' has its value replaced."""
+        config = {"model_name": "gpt-5-mini", "openai_api_key": "sk-secret123"}
+        result = redact_llm_config(config)
+        self.assertEqual(result["model_name"], "gpt-5-mini")
+        self.assertEqual(result["openai_api_key"], "***REDACTED***")
+
+    def test_key_substring_without_underscore_is_redacted(self):
+        """Keys containing 'key' as a substring (e.g. 'apikey') are also redacted."""
+        config = {"apikey": "sk-secret123", "model_name": "gpt-5-mini"}
+        result = redact_llm_config(config)
+        self.assertEqual(result["apikey"], "***REDACTED***")
+        self.assertEqual(result["model_name"], "gpt-5-mini")
+
+    def test_all_sensitive_patterns_are_redacted(self):
+        """Each sensitive pattern (token, secret, credential, private_key, password) is caught."""
+        config = {
+            "api_key": "key-val",
+            "bearer_token": "tok-val",
+            "client_secret": "sec-val",
+            "credential_json": "cred-val",
+            "private_key": "pkey-val",
+            "password": "pass-val",
+        }
+        result = redact_llm_config(config)
+        for key in config:
+            self.assertEqual(result[key], "***REDACTED***", f"Expected {key} to be redacted")
+
+    def test_nested_dict_is_redacted_recursively(self):
+        """Sensitive keys inside nested dicts are also redacted."""
+        config = {"model_name": "gpt-5-mini", "auth": {"api_key": "sk-abc", "region": "us-east-1"}}
+        result = redact_llm_config(config)
+        self.assertEqual(result["model_name"], "gpt-5-mini")
+        self.assertEqual(result["auth"]["api_key"], "***REDACTED***")
+        self.assertEqual(result["auth"]["region"], "us-east-1")
+
+    def test_sensitive_key_in_list_of_dicts_is_redacted(self):
+        """Sensitive keys inside dicts nested in lists are also redacted."""
+        config = {
+            "fallbacks": [
+                {"model_name": "gpt-5-mini", "api_key": "sk-1"},
+                {"model_name": "claude-sonnet-4-6", "api_key": "sk-2"},
+            ]
+        }
+        result = redact_llm_config(config)
+        for item in result["fallbacks"]:
+            self.assertEqual(item["api_key"], "***REDACTED***")
+            self.assertIn("model_name", item)
+
+    def test_original_config_is_not_mutated(self):
+        """redact_llm_config must not modify the original dict."""
+        config = {"api_key": "sk-secret", "model_name": "gpt-5-mini"}
+        redact_llm_config(config)
+        self.assertEqual(config["api_key"], "sk-secret")
+
+    def test_empty_config_returns_empty_dict(self):
+        """An empty config produces an empty redacted dict."""
+        self.assertEqual(redact_llm_config({}), {})
 
 
 class TestExtractLlmConfigsFromStudioConfig(TestCase):
@@ -206,30 +290,53 @@ class TestExtractLlmConfigsFromAgentNetwork(TestCase):
         self.assertEqual(labels, ["AgentA", "AgentB", "AgentC"])
 
 
-_MODULE = "plugins.llm_config_validator.llm_config_validator_plugin"
+_CHECKS_MODULE = "plugins.llm_config_validator.check_llm_configs"
+_PLUGIN_MODULE = "plugins.llm_config_validator.llm_config_validator_plugin"
 
 
 class TestLlmConfigValidatorPlugin(TestCase):
-    """Tests for LlmConfigValidatorPlugin.check using mocked I/O."""
-
-    def _patch_all(self, is_agent_network: bool, llm_configs: list, successes: list, failures: list):
-        """Return a dict of active patches for a standard plugin.check() run."""
-        patches = {
-            "parse_hocon_file": patch(f"{_MODULE}.parse_hocon_file", return_value={}),
-            "is_agent_network_hocon": patch(f"{_MODULE}.is_agent_network_hocon", return_value=is_agent_network),
-            "extract_studio": patch(f"{_MODULE}.extract_llm_configs_from_studio_config", return_value=llm_configs),
-            "extract_network": patch(f"{_MODULE}.extract_llm_configs_from_agent_network", return_value=llm_configs),
-            "load_agent_network": patch(f"{_MODULE}.load_agent_network", return_value=MagicMock()),
-            "create_factory": patch(f"{_MODULE}.create_and_load_llm_factory", return_value=MagicMock()),
-            "test_llm_configs": patch(
-                f"{_MODULE}.test_llm_configs", new=AsyncMock(return_value=(successes, failures))
-            ),
-            "print_results": patch(f"{_MODULE}.print_results"),
-        }
-        return patches
+    """Tests for LlmConfigValidatorPlugin.check — delegates to run_checks."""
 
     def test_all_pass_does_not_exit(self):
-        """When all LLM configs succeed, check() returns normally and print_results is called."""
+        """When run_checks returns True, check() returns normally."""
+        with patch(f"{_PLUGIN_MODULE}.run_checks", new=AsyncMock(return_value=True)):
+            LlmConfigValidatorPlugin().check("my.hocon")  # must not raise
+
+    def test_failures_cause_sys_exit_1(self):
+        """When run_checks returns False, check() calls sys.exit(1)."""
+        with patch(f"{_PLUGIN_MODULE}.run_checks", new=AsyncMock(return_value=False)):
+            with self.assertRaises(SystemExit) as ctx:
+                LlmConfigValidatorPlugin().check("my.hocon")
+            self.assertEqual(ctx.exception.code, 1)
+
+
+class TestRunChecks(TestCase):
+    """Tests for run_checks orchestration logic, using mocked I/O."""
+
+    def _run(self, coro):
+        return asyncio.run(coro)
+
+    def _patch_all(self, is_agent_network: bool, llm_configs: list, successes: list, failures: list):
+        """Return a dict of active patches for a standard run_checks() run."""
+        return {
+            "parse_hocon_file": patch(f"{_CHECKS_MODULE}.parse_hocon_file", return_value={}),
+            "is_agent_network_hocon": patch(f"{_CHECKS_MODULE}.is_agent_network_hocon", return_value=is_agent_network),
+            "extract_studio": patch(
+                f"{_CHECKS_MODULE}.extract_llm_configs_from_studio_config", return_value=llm_configs
+            ),
+            "extract_network": patch(
+                f"{_CHECKS_MODULE}.extract_llm_configs_from_agent_network", return_value=llm_configs
+            ),
+            "load_agent_network": patch(f"{_CHECKS_MODULE}.load_agent_network", return_value=MagicMock()),
+            "create_factory": patch(f"{_CHECKS_MODULE}.create_and_load_llm_factory", return_value=MagicMock()),
+            "test_llm_configs": patch(
+                f"{_CHECKS_MODULE}.test_llm_configs", new=AsyncMock(return_value=(successes, failures))
+            ),
+            "print_results": patch(f"{_CHECKS_MODULE}.print_results"),
+        }
+
+    def test_all_pass_returns_true(self):
+        """When all LLM configs succeed, run_checks() returns True and print_results is called."""
         successes = [(["my.hocon"], {"model_name": "gpt-5-mini"})]
         patches = self._patch_all(
             is_agent_network=False,
@@ -247,11 +354,12 @@ class TestLlmConfigValidatorPlugin(TestCase):
             patches["test_llm_configs"],
             patches["print_results"] as mock_print_results,
         ):
-            LlmConfigValidatorPlugin().check("my.hocon")  # must not raise
+            result = self._run(run_checks("my.hocon"))
+            self.assertTrue(result)
             mock_print_results.assert_called_once_with(successes, [])
 
-    def test_failures_cause_sys_exit_1(self):
-        """When any LLM config fails, check() calls sys.exit(1)."""
+    def test_failures_return_false(self):
+        """When any LLM config fails, run_checks() returns False."""
         failures = [(["my.hocon"], {"model_name": "gpt-5-mini"}, "Connection error")]
         patches = self._patch_all(
             is_agent_network=False,
@@ -269,12 +377,11 @@ class TestLlmConfigValidatorPlugin(TestCase):
             patches["test_llm_configs"],
             patches["print_results"],
         ):
-            with self.assertRaises(SystemExit) as ctx:
-                LlmConfigValidatorPlugin().check("my.hocon")
-            self.assertEqual(ctx.exception.code, 1)
+            result = self._run(run_checks("my.hocon"))
+            self.assertFalse(result)
 
-    def test_no_llm_configs_found_returns_early(self):
-        """When no llm_configs are found, check() returns early without testing or printing."""
+    def test_no_llm_configs_found_returns_true_without_testing(self):
+        """When no llm_configs are found, run_checks() returns True without testing or printing."""
         patches = self._patch_all(
             is_agent_network=False,
             llm_configs=[],
@@ -291,16 +398,16 @@ class TestLlmConfigValidatorPlugin(TestCase):
             patches["test_llm_configs"] as mock_test,
             patches["print_results"] as mock_print,
         ):
-            LlmConfigValidatorPlugin().check("my.hocon")  # must not raise
+            result = self._run(run_checks("my.hocon"))
+            self.assertTrue(result)
             mock_test.assert_not_called()
             mock_print.assert_not_called()
 
-    def test_parse_failure_exits_with_1(self):
-        """A failure to parse the HOCON file causes sys.exit(1)."""
-        with patch(f"{_MODULE}.parse_hocon_file", side_effect=Exception("bad file")):
-            with self.assertRaises(SystemExit) as ctx:
-                LlmConfigValidatorPlugin().check("bad.hocon")
-            self.assertEqual(ctx.exception.code, 1)
+    def test_parse_failure_returns_false(self):
+        """A failure to parse the HOCON file causes run_checks() to return False."""
+        with patch(f"{_CHECKS_MODULE}.parse_hocon_file", side_effect=Exception("bad file")):
+            result = self._run(run_checks("bad.hocon"))
+            self.assertFalse(result)
 
     def test_agent_network_path_uses_network_extractor(self):
         """An agent network HOCON file uses the network extractor, not the studio extractor."""
@@ -310,15 +417,17 @@ class TestLlmConfigValidatorPlugin(TestCase):
         successes = [(["AgentA"], {"model_name": "gpt-5-mini"})]
 
         with (
-            patch(f"{_MODULE}.parse_hocon_file", return_value={"tools": []}),
-            patch(f"{_MODULE}.is_agent_network_hocon", return_value=True),
-            patch(f"{_MODULE}.load_agent_network", return_value=mock_network),
-            patch(f"{_MODULE}.extract_llm_configs_from_agent_network", return_value=llm_configs) as mock_extract,
-            patch(f"{_MODULE}.extract_llm_configs_from_studio_config") as mock_extract_studio,
-            patch(f"{_MODULE}.create_and_load_llm_factory", return_value=MagicMock()),
-            patch(f"{_MODULE}.test_llm_configs", new=AsyncMock(return_value=(successes, []))),
-            patch(f"{_MODULE}.print_results"),
+            patch(f"{_CHECKS_MODULE}.parse_hocon_file", return_value={"tools": []}),
+            patch(f"{_CHECKS_MODULE}.is_agent_network_hocon", return_value=True),
+            patch(f"{_CHECKS_MODULE}.load_agent_network", return_value=mock_network),
+            patch(
+                f"{_CHECKS_MODULE}.extract_llm_configs_from_agent_network", return_value=llm_configs
+            ) as mock_extract,
+            patch(f"{_CHECKS_MODULE}.extract_llm_configs_from_studio_config") as mock_extract_studio,
+            patch(f"{_CHECKS_MODULE}.create_and_load_llm_factory", return_value=MagicMock()),
+            patch(f"{_CHECKS_MODULE}.test_llm_configs", new=AsyncMock(return_value=(successes, []))),
+            patch(f"{_CHECKS_MODULE}.print_results"),
         ):
-            LlmConfigValidatorPlugin().check("network.hocon")
+            self._run(run_checks("network.hocon"))
             mock_extract.assert_called_once_with(mock_network)
             mock_extract_studio.assert_not_called()

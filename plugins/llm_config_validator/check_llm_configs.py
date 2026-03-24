@@ -76,6 +76,54 @@ from neuro_san.internals.run_context.langchain.llms.langchain_llm_resources impo
 
 TEST_PROMPT = "Reply with exactly one word: hello"
 
+# Word-level tokens that mark a key as sensitive.  Matching is done against
+# the underscore-split parts of the lowercased key name so that, e.g.,
+# "max_tokens" is NOT redacted (its parts are ["max", "tokens"]) while
+# "access_token" IS redacted (its parts include "token").
+_SENSITIVE_KEY_WORDS: frozenset = frozenset({"key", "token", "secret", "credential", "credentials", "password"})
+
+
+def _is_sensitive_key(key: str) -> bool:
+    """Return True when *key* contains a sensitive word at a word boundary or as a substring."""
+    lower_key = key.lower()
+    # Fast-path: check if the literal string "key" appears anywhere in the key name
+    # (catches un-separated forms such as "apikey").
+    if "key" in lower_key:
+        return True
+    parts = lower_key.split("_")
+    # Check each individual part and adjacent pairs (to catch "api_key" as a unit).
+    for i, part in enumerate(parts):
+        if part in _SENSITIVE_KEY_WORDS:
+            return True
+        if i < len(parts) - 1:
+            pair = f"{part}_{parts[i + 1]}"
+            if pair in _SENSITIVE_KEY_WORDS:
+                return True
+    return False
+
+
+def redact_llm_config(config: Dict[str, Any]) -> Dict[str, Any]:
+    """
+    Return a shallow copy of *config* with sensitive values replaced by
+    ``'***REDACTED***'``.  Works recursively on nested dicts and lists so
+    that structures like ``credentials: {key: "..."}`` are also safe.
+
+    Sensitivity is determined per-word on the underscore-split key name, so
+    ``max_tokens`` is left untouched while ``access_token`` and
+    ``openai_api_key`` are redacted.
+    """
+    redacted: Dict[str, Any] = {}
+    for key, value in config.items():
+        if _is_sensitive_key(key):
+            redacted[key] = "***REDACTED***"
+        elif isinstance(value, dict):
+            redacted[key] = redact_llm_config(value)
+        elif isinstance(value, list):
+            redacted[key] = [redact_llm_config(item) if isinstance(item, dict) else item for item in value]
+        else:
+            redacted[key] = value
+    return redacted
+
 
 def parse_hocon_file(hocon_path: str) -> Dict[str, Any]:
     """
@@ -314,21 +362,20 @@ def print_results(
     print()
 
 
-async def main():
-    """Entry point: parse args, run checks, exit non-zero on failure."""
-    if len(sys.argv) < 2:
-        print("Usage: python check_llm_configs.py <path_to_hocon_file>")
-        sys.exit(1)
+async def run_checks(hocon_path: str) -> bool:
+    """
+    Run all LLM config validation steps for the given HOCON file.
 
-    hocon_path: str = sys.argv[1]
-
+    Returns True if all configurations passed (or none were found),
+    False if any fatal error or LLM test failure occurred.
+    """
     # --- Step 1: Parse the HOCON file and detect format ---
     print(f"[1] Parsing HOCON file: {hocon_path}")
     try:
         raw_config: Dict[str, Any] = parse_hocon_file(hocon_path)
     except Exception as exc:  # pylint: disable=broad-except
         print(f"    FATAL: Failed to parse HOCON file: {exc}")
-        sys.exit(1)
+        return False
 
     agent_network_mode: bool = is_agent_network_hocon(raw_config)
 
@@ -338,7 +385,7 @@ async def main():
             agent_network: AgentNetwork = load_agent_network(hocon_path)
         except Exception as exc:  # pylint: disable=broad-except
             print(f"    FATAL: Failed to load agent network: {exc}")
-            sys.exit(1)
+            return False
         config: Dict[str, Any] = agent_network.get_config()
         network_name: str = agent_network.get_network_name()
         print(f"    Agent network: {network_name}")
@@ -357,10 +404,10 @@ async def main():
 
     if not llm_configs:
         print("    No llm_config found in this HOCON file.")
-        sys.exit(0)
+        return True
 
     for label, llm_cfg in llm_configs:
-        print(f"    {label:30s} | llm_config: {llm_cfg}")
+        print(f"    {label:30s} | llm_config: {redact_llm_config(llm_cfg)}")
 
     # --- Step 3: Create and load the LLM factory ---
     print("[3] Creating LLM factory (loading default_llm_info.hocon)...")
@@ -368,7 +415,7 @@ async def main():
         llm_factory: ContextTypeLlmFactory = create_and_load_llm_factory(config)
     except Exception as exc:  # pylint: disable=broad-except
         print(f"    FATAL: Failed to create/load LLM factory: {exc}")
-        sys.exit(1)
+        return False
     print("    LLM factory loaded successfully.")
 
     # --- Step 4: Test each unique LLM configuration ---
@@ -378,8 +425,18 @@ async def main():
     # --- Step 5: Report results ---
     print_results(successes, failures)
 
-    # Return non-zero exit code if there are failures
-    if failures:
+    return not failures
+
+
+async def main():
+    """Entry point: parse args, run checks, exit non-zero on failure."""
+    if len(sys.argv) < 2:
+        print("Usage: python check_llm_configs.py <path_to_hocon_file>")
+        sys.exit(1)
+
+    hocon_path: str = sys.argv[1]
+    success: bool = await run_checks(hocon_path)
+    if not success:
         sys.exit(1)
 
 
