@@ -49,6 +49,7 @@ class URLProvider(CodedTool):
             "Restricted Items": "https://www.tsa.gov/travel/security-screening/whatcanibring/all",
             # International
             "International Travel Docs": "https://www.united.com/en/us/travel/trip-planning/travel-requirements",
+            "International Checked Bag Limits": "https://www.united.com/en/us/fly/baggage/international-checked-bag-limits.html",
         }
 
     def invoke(self, args: Dict[str, Any], sly_data: Dict[str, Any]) -> str:

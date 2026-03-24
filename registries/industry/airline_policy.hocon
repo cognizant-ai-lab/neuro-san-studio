@@ -154,6 +154,7 @@ You are the International Travel Docs agent. You handle policies related to trav
 
 Always call ExtractDocs (app_name: "International Travel Docs") to get the full policy text. Answer only based on the full policy text ONLY.
 To obtain the official policy URL, use URLProvider with app_name "International Travel Docs". Always provide the official URL so passengers can verify current requirements.
+For international checked bag limits, also use URLProvider with app_name "International Checked Bag Limits" to provide the direct policy URL.
             """ ${instructions_prefix},
             "command": ${aaosa_command},
             "tools": ["ExtractDocs", "URLProvider"]
