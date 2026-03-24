@@ -79,6 +79,7 @@
     - [Integration Test](#integration-test)
       - [Add test case](#add-test-case)
       - [Run test](#run-test)
+  - [Improving agent network](#improving-agent-networks)
 
 <!-- TOC -->
 
@@ -1729,14 +1730,14 @@ Best practices for building and tuning AAOSA-based agent networks.
 - Choose a routing strategy that matches your document layout:
    Use single-agent routing when domains are clearly distinct or when latency and token cost are a concern. Use multi-agent routing when document boundaries are ambiguous or overlap; fan out to all relevant agents and merge their results.
 
+- Add routing instructions to every agent that delegates (not just the frontman):
+   Any intermediate agent that calls sub-agents needs explicit routing logic. For simple queries with a clear single owner, instruct each routing agent to match the query to exactly one sub-agent and send it there directly. For anything more complex — queries that span multiple domains, require partial answers from several agents, or are ambiguous up front — **use AAOSA**. AAOSA is the preferred pattern for multi-agent coordination: each sub-agent independently assesses whether and how it can contribute, reports back, and the routing agent synthesizes a unified response. When in doubt, default to AAOSA; the overhead of unnecessary sub-agent calls is lower than the cost of misrouting or incomplete answers.
+
 - Design the agent network structure carefully:
    Parent-child relationships, nesting depth, and peer groupings all affect routing accuracy. If a sub-agent spans multiple parent domains, consider promoting it to a top-level peer to avoid misrouting and reduce ambiguity.
 
-- Add routing instructions to every agent that delegates (not just the frontman):
-   Any intermediate agent that calls sub-agents needs explicit routing logic. Instruct each routing agent to match the query to exactly one sub-agent and send it there directly. Dispatching to multiple agents simultaneously wastes tokens, increases latency, and can produce conflicting responses.
-
 - Write rich function descriptions (they are your routing layer):
-   The top-level agent routes queries based on each sub-agent's `name` and `description` in the `function` block. Always override the `description` when extending `${aaosa_call}`. Choose agent names that reflect their full scope. Keep descriptions concise; one line is enough. Avoid putting lengthy descriptions in the prompt itself, as it inflates cost without added benefit.
+   The top-level agent routes queries based on each sub-agent's `name` and `description` in the `function` block. Always override the `description` when extending `${aaosa_call}`. Choose agent names that reflect their full scope. Keep descriptions concise; one line is enough. Avoid putting lengthy descriptions in the prompt itself, as doing so inflates cost without added benefit.
 
 - Prefer negative instructions over positive ones:
    In practice, "NEVER do X" is followed more reliably than "try to do X", especially when combined with capitalized keywords. When a rule is critical, phrase it as a prohibition.
@@ -1760,13 +1761,13 @@ Best practices for building and tuning AAOSA-based agent networks.
    The basic variant includes only the core AAOSA variables, without additional features that may introduce unintended behavior. It is more refined and produces more reliable results in practice.
 
 - Use prompt optimization tools to iterate faster:
-   Feed your current prompt, failing test cases, and expected outputs to a prompt optimizer (e.g., ChatGPT or Claude) and ask for a targeted rewrite. This is often faster than manual trial and error.
+   Feed your current prompt, failing test cases, and expected outputs to a prompt optimizer for the model you are using (e.g., [OpenAI Optimizer](https://platform.openai.com/chat/edit?models=gpt-5&optimize=true) or [Claude Optimizer](https://claude.ai/public/artifacts/422bb5fc-c03e-4488-9e49-9ad4239398fe)) and ask for a targeted rewrite. This is often faster than manual trial and error.
 
 - Structure agents with explicit query-processing pipelines:
    Without step-by-step decomposition instructions, agents tend to call only one sub-agent even for multi-domain questions. Define an explicit processing pipeline (e.g., analyze → decompose → delegate → synthesize) for the frontman and apply similar step-by-step instructions to mid-level and leaf agents.
 
 - Add anti-summarization rules to preserve completeness:
-   LLMs default to summarizing responses, which drops important variations, exceptions, and edge cases. If agents must preserve the exact content of source documents, explicitly instruct them not to omit details — for example: "Include ALL details, categories, exceptions, and variations."
+   LLMs default to summarizing responses, which drop important variations, exceptions, and edge cases. If agents must preserve the exact content of source documents, explicitly instruct them not to omit details — for example: "Include ALL details, categories, exceptions, and variations."
 
 - Keep prompts short and focused:
    Every unnecessary sentence increases the probability that a rule will be ignored. Move lengthy explanations and domain knowledge to function descriptions or source documents, and reserve the instructions block for behavioral rules only.
