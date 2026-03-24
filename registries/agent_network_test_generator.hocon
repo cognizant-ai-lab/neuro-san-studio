@@ -202,7 +202,7 @@ A) `response.text` -- for agents that return plain text.
 B) `response.structure` -- for agents that return a dictionary / structured response.
    Each key in `structure` must exactly match a key in the agent's response dictionary.
    The value for each key is a dictionary of stock tests.
-   Example: `"response": {{ "structure": {{ "answer": {{ "keywords": "Beatles" }}, "running_cost": {{ "value": 3.0 }} }} }}`
+   Example: `"response": {{ "structure": {{ "answer": {{ "keywords": []"Beatles"] }}, "running_cost": {{ "value": 3.0 }} }} }}`
 
 Rules for building fixtures:
 

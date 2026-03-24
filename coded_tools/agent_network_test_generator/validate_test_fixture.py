@@ -71,7 +71,7 @@ _ALLOWED_INTERACTION_KEYS: frozenset[str] = frozenset(
     }
 )
 
-_SUCCESS_RATIO_PATTERN: str = r"^\d+/\d+$"
+_SUCCESS_RATIO_PATTERN: re.Pattern[str] = re.compile(r"^\d+/\d+$")
 
 # Stock tests that expect numeric values and must use float, not int.
 _NUMERIC_STOCK_TESTS: frozenset[str] = frozenset(
@@ -145,12 +145,27 @@ class ValidateTestFixture(CodedTool):
         # success_ratio must be a string like "1/1".
         ratio = fixture.get("success_ratio")
         if ratio is not None:
-            if not isinstance(ratio, str) or not re.match(_SUCCESS_RATIO_PATTERN, ratio):
+            if not isinstance(ratio, str) or not _SUCCESS_RATIO_PATTERN.match(ratio):
                 errors.append(f"'success_ratio' must be a string in 'N/M' format (e.g. '1/1'), got: {ratio!r}.")
 
         interactions = fixture.get("interactions")
         if interactions is not None and not isinstance(interactions, list):
             errors.append("'interactions' must be a list.")
+
+        # connections must be a list of valid connection types.
+        # currently we only expected "direct", but this can be extended in the future.
+        connections = fixture.get("connections")
+        if connections is not None:
+            if not isinstance(connections, list):
+                errors.append("'connections' must be a list of strings (e.g. [\"direct\"]).")
+            else:
+                _VALID_CONNECTIONS = frozenset({"direct"})  # extend as needed
+                for idx, conn in enumerate(connections):
+                    if conn not in _VALID_CONNECTIONS:
+                        errors.append(
+                            f"connections[{idx}]: '{conn}' is not a valid connection type. "
+                            f"Valid types are: {sorted(_VALID_CONNECTIONS)}."
+                        )
 
     # ------------------------------------------------------------------
     # Per-interaction validation
