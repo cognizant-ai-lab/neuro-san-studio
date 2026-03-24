@@ -328,7 +328,6 @@ class ReadAgentNetwork(CodedTool):
         # Store key data in sly_data so the persist_test_fixture tool can
         # access the target agent name without it appearing in the chat stream.
         sly_data["target_agent_name"] = agent_name
-        sly_data["target_network_summary"] = result
 
         logger.info(">>>>>>>>>>>>>>>>>>>DONE !!!>>>>>>>>>>>>>>>>>>")
         logger.info("Extracted %d agents from network '%s'", len(agents_summary), agent_name)
