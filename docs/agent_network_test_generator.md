@@ -18,7 +18,7 @@ Note:
 
 - This tool writes files to your `tests/fixtures/` directory. Generated fixtures are not
 automatically added to the integration test suite; you must manually register them in
-[test\_integration\_test\_hocons.py](../../tests/integration/test_integration_test_hocons.py)
+[test\_integration\_test\_hocons.py](../tests/integration/test_integration_test_hocons.py)
 if you want them to run as part of CI.
 
 - The quality of generated test cases depends on the LLM. You should review the output
@@ -32,7 +32,7 @@ to analyze the target network and design test cases.
 
 ## File
 
-[agent\_network\_test\_generator.hocon](../../registries/agent_network_test_generator.hocon)
+[agent\_network\_test\_generator.hocon](../registries/agent_network_test_generator.hocon)
 
 ---
 
@@ -42,7 +42,7 @@ The Agent Network Test Generator operates as a six-step pipeline orchestrated by
 frontman agent with two specialized sub-agents and three coded tools:
 
 1. **Read the target network** -- The frontman calls the
-[`read_agent_network`](../../coded_tools/agent_network_test_generator/read_agent_network.py)
+[`read_agent_network`](../coded_tools/agent_network_test_generator/read_agent_network.py)
 coded tool with the user-provided HOCON file path. This tool:
    - Parses the target network's HOCON file using `EasyHoconPersistence`.
    - Extracts a structured summary of every agent: name, instructions, description,
@@ -65,13 +65,13 @@ produces a complete test fixture dictionary for each scenario, conforming to the
 neuro-san test case HOCON schema.
 
 4. **Validate each fixture** -- For each fixture from step 3, the frontman calls the
-[`validate_test_fixture`](../../coded_tools/agent_network_test_generator/validate_test_fixture.py)
+[`validate_test_fixture`](../coded_tools/agent_network_test_generator/validate_test_fixture.py)
 coded tool, which programmatically checks the fixture against the schema. If validation
 fails, the frontman retries the `test_fixture_builder` with the error messages (up to
 3 attempts per fixture).
 
 5. **Persist each validated fixture** -- For each validated fixture, the frontman calls
-the [`persist_test_fixture`](../../coded_tools/agent_network_test_generator/persist_test_fixture.py)
+the [`persist_test_fixture`](../coded_tools/agent_network_test_generator/persist_test_fixture.py)
 coded tool, which:
    - Serializes the test fixture dictionary as human-readable JSON (valid HOCON).
    - Prepends the Apache 2.0 license header and a reference comment linking to the
@@ -190,7 +190,7 @@ Key building rules:
 
 #### `read_agent_network`
 
-[read\_agent\_network.py](../../coded_tools/agent_network_test_generator/read_agent_network.py)
+[read\_agent\_network.py](../coded_tools/agent_network_test_generator/read_agent_network.py)
 
 - Parses the target network's HOCON file
 - Extracts agent metadata, instructions, parameters, and sly\_data schemas
@@ -210,7 +210,7 @@ Key building rules:
 
 #### `validate_test_fixture`
 
-[validate\_test\_fixture.py](../../coded_tools/agent_network_test_generator/validate_test_fixture.py)
+[validate\_test\_fixture.py](../coded_tools/agent_network_test_generator/validate_test_fixture.py)
 
 - Programmatically validates a test fixture dictionary against the schema
 - Checks top-level keys (`agent`, `success_ratio`, `connections`, `interactions`)
@@ -225,7 +225,7 @@ Key building rules:
 
 #### `persist_test_fixture`
 
-[persist\_test\_fixture.py](../../coded_tools/agent_network_test_generator/persist_test_fixture.py)
+[persist\_test\_fixture.py](../coded_tools/agent_network_test_generator/persist_test_fixture.py)
 
 - Receives a test fixture dictionary and a file name
 - Serializes as indented JSON (valid HOCON) with license header

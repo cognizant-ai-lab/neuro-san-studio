@@ -1663,7 +1663,8 @@ The full schema is documented in the
 [test case HOCON reference](https://github.com/cognizant-ai-lab/neuro-san/blob/main/docs/test_case_hocon_reference.md).
 
 There are two ways to create a test case: automatically with the
-[Agent Network Test Generator](examples/agent_network_test_generator.md),
+[Agent Network Test Generator](agent_network_test_generator.md),
+
 or manually.
 
 ##### Automatic generation
@@ -1692,7 +1693,7 @@ Generate test cases for basic/music_nerd_pro with max coverage
 The generator saves fixtures under `tests/fixtures/<agent_name>/`. Review the generated
 files before committing — you may need to adjust `gist` criteria, `keywords`, `value`
 checks, or `sly_data` values. See
-[Agent Network Test Generator](examples/agent_network_test_generator.md) for full details.
+[Agent Network Test Generator](agent_network_test_generator.md) for full details.
 
 ##### Manual creation
 
