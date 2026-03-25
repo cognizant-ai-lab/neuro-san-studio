@@ -159,6 +159,25 @@ class ValidateTestFixture(CodedTool):
         ValidateTestFixture._check_connections(fixture.get("connections"), errors)
 
     # ------------------------------------------------------------------
+    # Connections validation
+    # ------------------------------------------------------------------
+
+    @staticmethod
+    def _check_connections(connections: Any, errors: list[str]) -> None:
+        """Validate the optional 'connections' list."""
+        if connections is None:
+            return
+        if not isinstance(connections, list):
+            errors.append("'connections' must be a list of strings (e.g. [\"direct\"]).")
+            return
+        for idx, conn in enumerate(connections):
+            if conn not in _VALID_CONNECTIONS:
+                errors.append(
+                    f"connections[{idx}]: '{conn}' is not a valid connection type. "
+                    f"Valid types are: {sorted(_VALID_CONNECTIONS)}."
+                )
+
+    # ------------------------------------------------------------------
     # Per-interaction validation
     # ------------------------------------------------------------------
 
