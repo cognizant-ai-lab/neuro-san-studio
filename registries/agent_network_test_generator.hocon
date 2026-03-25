@@ -108,7 +108,7 @@ You are a test scenario planner. Given an agent network summary and a test level
 Each scenario you return must include:
 - `scenario_name`: a short snake_case name for the scenario (e.g. "coffee_open_at_8am", "repeat_order_flow").
 - `description`: what the scenario tests.
-- `interactions`: a description of the sequence of user messages, what sly_data to include, and what the expected behaviour is.
+- `interactions`: a list of the EXACT user messages for each turn, with sly_data and expected behaviour. For multi-turn scenarios, this list MUST contain multiple entries (one per turn). For example, a 3-turn scenario MUST have 3 interaction entries.
 
 The `test_level` parameter controls how many scenarios you must generate:
 - `minimum`: Generate 2-3 scenarios. Focus on the single most important happy-path and one critical edge case.
@@ -139,7 +139,7 @@ Guidelines for planning scenarios:
 
   (B) MULTI-TURN strategy: Deliberately withhold some information so the agent must ask follow-up questions (e.g. first message: "I'd like to order from the liquor store", then respond to follow-ups one by one). This tests the agent's conversation flow — use it for at least 1-2 scenarios at `normal` level and more at `max` level. When using this strategy, plan one interaction per question-answer step PLUS a final confirmation interaction. Only assert on business names, order IDs, and final details in the LAST interaction. For intermediate turns, use order-agnostic gist like "Asks a follow-up question to gather missing information".
 
-- IMPORTANT: Agents may ask follow-up questions in ANY ORDER (e.g. name first, then age, or age first, then name). Do NOT assume a specific order. For intermediate interactions where the agent asks a follow-up question, provide ALL required information in a single user message (e.g. "I'm Mike, 25 years old, I'd like red wine") so the scenario does not depend on the agent's question ordering. This makes the test deterministic regardless of which question the agent asks first.
+- IMPORTANT: Agents may ask follow-up questions in ANY ORDER (e.g. name first, then age, or age first, then name). Do NOT assume a specific order. For UPFRONT scenarios (strategy A), include all required info in the first message. For MULTI-TURN scenarios (strategy B), each user reply should answer ONLY the specific question asked and provide ONE piece of new information at a time (e.g. turn 1: "I'd like to order from the liquor store", turn 2: "My name is Sarah", turn 3: "I'm 25", turn 4: "A bottle of red wine"). Use order-agnostic gist assertions on intermediate turns like "Asks a follow-up question to gather missing information" since you cannot predict which question comes first.
 
 - Plan both positive scenarios (expected happy-path behaviour) and edge cases.
 
@@ -237,6 +237,8 @@ Rules for building fixtures:
 - IMPORTANT: Each entry in `keywords` or `not_keywords` must be a SHORT distinctive phrase (max 5 words). Do NOT use full sentences as keywords. BAD: `"Order 201 placed successfully for Mike at Henry's Fast Food. Details: black coffee"`. GOOD: `["Order", "201", "black coffee", "Henry's Fast Food"]`. Use `gist` for full-sentence meaning checks instead.
 
 - IMPORTANT: Each interaction's response assertions must match what the agent will ACTUALLY say in THAT specific turn — not what it will say at the end of the full conversation. If the agent will ask a follow-up question in turn 1, assert on the question, NOT on the final order confirmation. Only assert on order confirmations / final results in the LAST interaction of a multi-turn scenario.
+
+- IMPORTANT: If the scenario description specifies multiple interactions (multi-turn), you MUST create a separate interaction entry for EACH turn. Do NOT collapse a multi-turn scenario into a single interaction. The number of interactions in your fixture must match the number of turns described in the scenario.
 
 - IMPORTANT: When the agent asks follow-up questions, it may ask them in ANY ORDER. Do NOT write gist assertions that assume a specific question order (e.g. do NOT assert "Asks for age" in turn 1 and "Asks for name" in turn 2). Instead, either: (a) provide all required info upfront in the first user message so only one follow-up round is needed, or (b) use order-agnostic gist like `"Asks a follow-up question to gather missing information"`.
 
