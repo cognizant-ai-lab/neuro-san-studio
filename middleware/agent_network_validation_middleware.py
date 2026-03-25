@@ -33,9 +33,9 @@ class AgentNetworkValidationMiddleware(AgentMiddleware):
     """
     Base middleware for validating an agent network definition after each agent turn.
 
-    Subclasses implement _validate() to run their specific validators and
-    provide custom error/log messages via _no_network_error_message(),
-    _validation_label(), and _format_error().
+    Subclasses implement validate() to run their specific validators and
+    provide custom error/log messages via no_network_error_message(),
+    validation_label(), and _format_error().
     """
 
     def __init__(
@@ -137,17 +137,17 @@ class AgentNetworkValidationMiddleware(AgentMiddleware):
         network_def: dict[str, Any] = self.sly_data.get(AGENT_NETWORK_DEFINITION)
         if not network_def:
             return {
-                "messages": [HumanMessage(self._no_network_error_message())],
+                "messages": [HumanMessage(self.no_network_error_message())],
                 "jump_to": "model"
             }
 
-        label: str = self._validation_label()
+        label: str = self.validation_label()
         self.logger.info(">>>>>>>>>>>>>>>>>>>Validate Agent Network %s>>>>>>>>>>>>>>>>>>", label)
 
-        error_list: list[str] = await self._validate(network_def)
+        error_list: list[str] = await self.validate(network_def)
 
         if error_list:
-            content: str = self._format_error(error_list)
+            content: str = self.format_error(error_list)
             self.logger.error(content)
             return {
                 # Use human message to ensure that the model follows the instructions
