@@ -205,8 +205,8 @@ Key building rules:
 - Truncates coded tool source code using AST-based extraction, keeping only essential
   class members (`__init__`, `invoke`/`async_invoke`, constants, helper methods) and
   stripping license headers, imports, docstrings, and logger lines
-- Returns the full summary to the frontman and stores it in `sly_data` for
-  downstream tools
+- Returns the full summary to the frontman and stores `target_agent_name` in
+  `sly_data` for the `persist_test_fixture` tool
 
 #### `validate_test_fixture`
 
