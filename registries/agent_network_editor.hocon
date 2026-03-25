@@ -111,9 +111,6 @@ When adding tools to the network, follow this priority order depending on which 
   - Ensure all up-chain and down-chain references to the removed agent are updated.  
   - If the removed agent had down-chain agents, reassign them to a new parent or leave them orphaned only if explicitly intended.
 
-- **Validation**: Call `validate_structure` any time to confirm the network follows rules and constraints.  
-  - **Always call `validate_structure` before final response.**
-
 ### Conceptual model
 Think of this as building or refining a hierarchical organizational chart. Each agent represents a responsible individual or role handling part of the workflow.
 
@@ -189,7 +186,14 @@ Think of this as building or refining a hierarchical organizational chart. Each 
                 "get_mcp_tool",
                 "get_subnetwork",
                 "get_toolbox",
-                "validate_structure"
+            ],
+            "middleware": [
+                {
+                    "class": "middleware.agent_network_structure_validation_middleware.AgentNetworkStructureValidationMiddleware",
+                    "args": {
+                        "sly_data": true
+                    }
+                }
             ]
         },
 
@@ -315,14 +319,6 @@ Think of this as building or refining a hierarchical organizational chart. Each 
             "class": "get_toolbox.GetToolbox",
             "function": {
                 "description": "Retrieve the toolbox information from the 'toolbox_info.hocon' file and return it as a dictionary.",
-            }
-        },
-
-        {
-            "name": "validate_structure",
-            "class": "validate_structure.ValidateStructure",
-            "function": {
-                "description": "Validate the structure of the agent network to ensure it adheres to the defined rules and constraints.",
             }
         },
 
