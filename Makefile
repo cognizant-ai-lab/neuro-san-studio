@@ -82,7 +82,7 @@ lint-check: lint-check-source lint-check-tests
 lint: format lint-check
 
 test: lint ## Run tests with coverage
-	python -m pytest tests/ -v --cov=coded_tools,run.py -m "not integration"
+	python -m pytest tests/ -v --cov=coded_tools --cov=run.py --cov-report=term-missing --no-cov-on-fail -m "not integration"
 
 test-integration: install
 	@. venv/bin/activate && \
@@ -90,7 +90,7 @@ test-integration: install
 	export AGENT_TOOL_PATH=coded_tools/ && \
 	export AGENT_MANIFEST_FILE=registries/manifest.hocon && \
 	export AGENT_TEMPORARY_NETWORK_UPDATE_PERIOD_SECONDS=5 && \
-	pytest -s -m "integration" --timer-top-n 100
+	pytest -s -m "integration" --no-cov --timer-top-n 100
 
 help: ## Show this help message and exit
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | \
