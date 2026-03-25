@@ -92,7 +92,7 @@ optional and defaults to `normal` if not specified.
 |-----------|----------------|-----------------------------------------------------------------------------|
 | `minimum` | 2--3           | One core happy-path scenario and one critical edge case.                    |
 | `normal`  | 5--7           | Main happy paths, a few edge cases, and at least one error/boundary case.   |
-| `max`     | 10--15         | Exhaustive coverage of all agent capabilities, edge cases, error handling, boundary conditions, and multi-turn flows. |
+| `max`     | 10--15         | Exhaustive: all capabilities, edge cases, errors, and multi-turn flows. |
 
 The user specifies the level naturally in their prompt:
 
