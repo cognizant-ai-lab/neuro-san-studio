@@ -267,8 +267,7 @@ class ValidateTestFixture(CodedTool):
         # Numeric stock tests must use float, not int.
         if key in _NUMERIC_STOCK_TESTS and isinstance(val, int) and not isinstance(val, bool):
             errors.append(
-                f"{path}.{key}: numeric value must be a float, not an int. "
-                f"Use {float(val)} instead of {val}."
+                f"{path}.{key}: numeric value must be a float, not an int. Use {float(val)} instead of {val}."
             )
         # Keywords / not_keywords entries must be short distinctive phrases.
         if key in _KEYWORD_STOCK_TESTS and isinstance(val, list):
