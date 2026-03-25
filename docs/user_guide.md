@@ -10,6 +10,7 @@
     - [Agent network](#agent-network)
       - [Agent specifications](#agent-specifications)
       - [Tool specifications](#tool-specifications)
+      - [Middleware specifications](#middleware-specifications)
       - [LLM specifications](#llm-specifications)
   - [LLM configuration](#llm-configuration)
     - [OpenAI](#openai)
@@ -60,10 +61,11 @@
     - [class](#class)
     - [args](#args)
       - [Special args](#special-args)
-    - [Agent Skills Middleware](#agent-skills-middleware)
-      - [How it works](#how-it-works)
-      - [SKILL.md format](#skillmd-format)
-      - [Configuration](#configuration)
+    - [Example](#example)
+  - [Agent Skills](#agent-skills)
+    - [How it works](#how-it-works)
+    - [SKILL.md format](#skillmd-format)
+    - [Configuration](#configuration)
   - [Logging](#logging)
   - [Debugging](#debugging)
   - [Advanced](#advanced)
@@ -80,6 +82,7 @@
         - [Manual creation](#manual-creation)
         - [Register the fixture](#register-the-fixture)
       - [Run test](#run-test)
+  - [Improving agent networks](#improving-agent-networks)
 
 <!-- TOC -->
 
@@ -1422,14 +1425,15 @@ from both inputs and outputs:
 
 See [pii_middleware.hocon](../registries/basic/pii_middleware.hocon) for the full working network.
 
-### Agent Skills Middleware
+## Agent Skills
 
-`AgentSkillsMiddleware` is a built-in middleware that implements the
+[Agent Skills](https://platform.claude.com/docs/en/agents-and-tools/agent-skills/overview) are supported
+using a middleware implementation. `AgentSkillsMiddleware` is a built-in middleware that implements the
 [Agent Skills specification](https://agentskills.io/specification). It gives an agent access to
 a library of **skills** — structured, reusable instruction sets stored as `SKILL.md` files — without
 loading their full content into the prompt upfront.
 
-#### How it works
+### How it works
 
 The middleware uses a **progressive disclosure** pattern to keep token usage low:
 
@@ -1451,7 +1455,7 @@ The middleware uses a **progressive disclosure** pattern to keep token usage low
 > the configured `skill_sources` entries. This helps reduce the risk of SSRF and data
 > exfiltration attacks, but should not be relied on as a complete security boundary.
 
-#### SKILL.md format
+### SKILL.md format
 
 Each skill directory must contain a `SKILL.md` file with a YAML frontmatter block followed by the
 skill's full instructions. The frontmatter must include at minimum `name` and `description`:
@@ -1477,7 +1481,7 @@ Frontmatter constraints (per the [Agent Skills spec](https://agentskills.io/spec
 - `allowed-tools`: optional, space-delimited or YAML list of recommended tool names
 - `compatibility`, `license`: optional free-text fields
 
-#### Configuration
+### Configuration
 
 Configure `AgentSkillsMiddleware` in the agent's `middleware` list:
 
@@ -1501,14 +1505,15 @@ containing a `SKILL.md` file. You can mix local and remote sources in the same l
     > contents carefully before use — they may contain malicious scripts or reference tools or
     > resources unavailable in your environment.
 
+<!-- pyml disable line-length -->
 - `keep_skill_in_context` argument controls whether full skill content stays in the conversation
 history after being loaded:
 
-<!-- pyml disable line-length -->
     | Value | Behaviour | Best for |
     |-------|-----------|----------|
     | `false` (default) | Skill content removed from chat history after use; agent may re-load if needed | Most use cases; token-constrained environments |
     | `true` | Skill content stays in chat history; agent can reference multiple skills simultaneously | Complex tasks requiring cross-skill synthesis |
+
 <!-- pyml enable line-length -->
 
 - `http_timeout` indicates timeout in seconds for HTTP requests. Only used for remote skills.
@@ -1785,3 +1790,59 @@ Please select the execution option that best aligns with the level of validation
     ```bash
     pytest -s ./tests/integration/test_integration_test_hocons.py::TestIntegrationTestHocons::test_hocon_industry_0_industry_airline_policy_basic_eco_carryon_baggage
     ```
+
+## Improving agent networks
+
+<!-- pyml disable line-length -->
+
+Best practices for building and tuning AAOSA-based agent networks.
+
+- Partition knowledge documents cleanly across agents:
+   Organize content into per-agent subdirectories, join broken lines, and remove stale or redundant material. Clean, well-scoped inputs improve retrieval accuracy and agent reliability.
+
+- Choose a routing strategy that matches your document layout:
+   Use single-agent routing when domains are clearly distinct or when latency and token cost are a concern. Use multi-agent routing when document boundaries are ambiguous or overlap; fan out to all relevant agents and merge their results.
+
+- Add routing instructions to every agent that delegates (not just the frontman):
+   Any intermediate agent that calls sub-agents needs explicit routing logic. For simple queries with a clear single owner, instruct each routing agent to match the query to exactly one sub-agent and send it there directly. For anything more complex — queries that span multiple domains, require partial answers from several agents, or are ambiguous up front — **use AAOSA**. AAOSA is the preferred pattern for multi-agent coordination: each sub-agent independently assesses whether and how it can contribute, reports back, and the routing agent synthesizes a unified response. When in doubt, default to AAOSA; the overhead of unnecessary sub-agent calls is lower than the cost of misrouting or incomplete answers.
+
+- Design the agent network structure carefully:
+   Parent-child relationships, nesting depth, and peer groupings all affect routing accuracy. If a sub-agent spans multiple parent domains, consider promoting it to a top-level peer to avoid misrouting and reduce ambiguity.
+
+- Write rich function descriptions (they are your routing layer):
+   The top-level agent routes queries based on each sub-agent's `name` and `description` in the `function` block. Always override the `description` when extending `${aaosa_call}`. Choose agent names that reflect their full scope. Keep descriptions concise; one line is enough. Avoid putting lengthy descriptions in the prompt itself, as doing so inflates cost without added benefit.
+
+- Prefer negative instructions over positive ones:
+   In practice, "NEVER do X" is followed more reliably than "try to do X", especially when combined with capitalized keywords. When a rule is critical, phrase it as a prohibition.
+
+- Use capitalized keywords sparingly but strategically:
+   Words like `NEVER`, `ALWAYS`, and `ONLY` in all-caps are strong emphasis markers. Overusing them dilutes their effect — reserve capitalization for 3–5 of your most critical rules. Since LLMs parse instructions in Markdown format, combining caps with bold formatting (e.g., **NEVER**) provides an additional emphasis signal.
+
+- Use numbered lists for agent instructions, not prose:
+   Prose is appropriate for descriptions, but agent rules should be expressed as numbered steps (1, 2, 3 …). Structured lists are followed more reliably than dense paragraphs, and numbered ordering helps the LLM process instructions sequentially.
+
+- Repeat critical instructions at the top and bottom of the prompt:
+   LLM compliance improves when key rules appear more than once. Define cross-cutting rules in an `instructions_prefix` block (injected at the top) and repeat the most critical constraints at the end of each agent's `instructions`. Keep prompts concise; excess context increases the risk of rules being ignored.
+
+- Avoid the "lost in the middle" problem:
+   LLMs attend most strongly to the beginning and end of a prompt; content in the middle is most likely to be overlooked. Place agent identity and the most critical rules at the start, repeat key constraints at the end, and put edge cases and secondary rules in the middle.
+
+- Include explicit tool-call instructions with exact parameter values:
+   Spell out the tool name, parameter name, and expected value in the agent's instructions. Without this, agents may skip tool calls entirely and answer from pre-trained knowledge rather than the provided documents.
+
+- Use `aaosa_basic.hocon` over `aaosa.hocon`:
+   The basic variant includes only the core AAOSA variables, without additional features that may introduce unintended behavior. It is more refined and produces more reliable results in practice.
+
+- Use prompt optimization tools to iterate faster:
+   Feed your current prompt, failing test cases, and expected outputs to a prompt optimizer for the model you are using (e.g., [OpenAI Optimizer](https://platform.openai.com/chat/edit?models=gpt-5&optimize=true) or [Claude Optimizer](https://claude.ai/public/artifacts/422bb5fc-c03e-4488-9e49-9ad4239398fe)) and ask for a targeted rewrite. This is often faster than manual trial and error.
+
+- Structure agents with explicit query-processing pipelines:
+   Without step-by-step decomposition instructions, agents tend to call only one sub-agent even for multi-domain questions. Define an explicit processing pipeline (e.g., analyze → decompose → delegate → synthesize) for the frontman and apply similar step-by-step instructions to mid-level and leaf agents.
+
+- Add anti-summarization rules to preserve completeness:
+   LLMs default to summarizing responses, which drop important variations, exceptions, and edge cases. If agents must preserve the exact content of source documents, explicitly instruct them not to omit details — for example: "Include ALL details, categories, exceptions, and variations."
+
+- Keep prompts short and focused:
+   Every unnecessary sentence increases the probability that a rule will be ignored. Move lengthy explanations and domain knowledge to function descriptions or source documents, and reserve the instructions block for behavioral rules only.
+
+<!-- pyml enable line-length -->

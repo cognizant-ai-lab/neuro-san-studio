@@ -25,7 +25,7 @@ from typing import Tuple
 
 # pylint: disable=import-error
 from neuro_san.interfaces.coded_tool import CodedTool
-from nltk import sent_tokenize
+from nupunkt import sent_tokenize
 from vaderSentiment.vaderSentiment import SentimentIntensityAnalyzer
 
 # pylint: enable=import-error
@@ -34,12 +34,6 @@ from vaderSentiment.vaderSentiment import SentimentIntensityAnalyzer
 logger = logging.getLogger(__name__)
 logging.basicConfig(level=logging.INFO)
 
-try:
-    import nltk
-
-    nltk.download("punkt_tab", quiet=True)
-except ModuleNotFoundError:
-    logger.error("NLTK library is not installed")
 
 SOURCE_MAP = {
     "aljazeera_articles": "aljazeera",
