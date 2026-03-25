@@ -155,19 +155,8 @@ class ValidateTestFixture(CodedTool):
         if interactions is not None and not isinstance(interactions, list):
             errors.append("'interactions' must be a list.")
 
-        # connections must be a list of valid connection types.
-        # currently we only expected "direct", but this can be extended in the future.
-        connections = fixture.get("connections")
-        if connections is not None:
-            if not isinstance(connections, list):
-                errors.append("'connections' must be a list of strings (e.g. [\"direct\"]).")
-            else:
-                for idx, conn in enumerate(connections):
-                    if conn not in _VALID_CONNECTIONS:
-                        errors.append(
-                            f"connections[{idx}]: '{conn}' is not a valid connection type. "
-                            f"Valid types are: {sorted(_VALID_CONNECTIONS)}."
-                        )
+        # connections validation.
+        ValidateTestFixture._check_connections(fixture.get("connections"), errors)
 
     # ------------------------------------------------------------------
     # Per-interaction validation
