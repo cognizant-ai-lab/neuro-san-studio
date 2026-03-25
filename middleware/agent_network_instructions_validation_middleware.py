@@ -22,7 +22,6 @@ from neuro_san.internals.validation.network.keyword_network_validator import Key
 from middleware.agent_network_validation_middleware import AgentNetworkValidationMiddleware
 
 
-# pylint: disable=too-few-public-methods
 class AgentNetworkInstructionsValidationMiddleware(AgentNetworkValidationMiddleware):
     """
     Middleware that validates agent instructions after each agent turn.
