@@ -14,6 +14,7 @@
 #
 # END COPYRIGHT
 
+import aiofiles
 import json
 import logging
 import os
@@ -98,8 +99,8 @@ class PersistTestFixture(CodedTool):
         content: str = _REFERENCE_COMMENT.lstrip("\n") + "\n" + fixture_json + "\n"
 
         try:
-            with open(output_path, "w", encoding="utf-8") as fout:
-                fout.write(content)
+            async with aiofiles.open(output_path, "w", encoding="utf-8") as fout:
+                await fout.write(content)
         except OSError as exc:
             error_msg = f"Error: Could not write file '{output_path}': {exc}"
             logger.error(error_msg)
