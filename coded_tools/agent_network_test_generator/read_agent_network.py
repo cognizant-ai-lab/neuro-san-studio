@@ -19,8 +19,8 @@ import logging
 from typing import Any
 from typing import Union
 
-from neuro_san.internals.graph.persistence.agent_network_restorer import AgentNetworkRestorer
 from neuro_san.interfaces.coded_tool import CodedTool
+from neuro_san.internals.graph.persistence.agent_network_restorer import AgentNetworkRestorer
 
 
 class ReadAgentNetwork(CodedTool):
@@ -96,7 +96,7 @@ class ReadAgentNetwork(CodedTool):
         # The user may pass a path with the "registries/" prefix — strip it
         # because AgentNetworkRestorer takes the registry dir separately.
         if hocon_file.startswith("registries/"):
-            hocon_file = hocon_file[len("registries/"):]
+            hocon_file = hocon_file[len("registries/") :]
 
         logger.info(">>>>>>>>>>>>>>>>>>>Reading Agent Network HOCON>>>>>>>>>>>>>>>>>>")
         logger.info("HOCON file: %s", hocon_file)

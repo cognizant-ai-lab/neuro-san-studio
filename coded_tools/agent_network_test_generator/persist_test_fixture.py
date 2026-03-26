@@ -14,7 +14,6 @@
 #
 # END COPYRIGHT
 
-import aiofiles
 import json
 import logging
 import os
@@ -22,6 +21,7 @@ import re
 from typing import Any
 from typing import Union
 
+import aiofiles
 from neuro_san.interfaces.coded_tool import CodedTool
 
 _REFERENCE_COMMENT: str = """\
