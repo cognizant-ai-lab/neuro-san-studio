@@ -24,7 +24,6 @@ from neuro_san.internals.run_context.interfaces.agent_network_inspector import A
 
 from coded_tools.agent_network_editor.designer_network_inspector import DesignerNetworkInspector
 
-
 # Type definition for sanity
 Connectivity = list[dict[str, Any]]
 

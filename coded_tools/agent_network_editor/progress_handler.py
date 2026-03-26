@@ -19,9 +19,9 @@ from typing import Any
 
 from neuro_san.interfaces.agent_progress_reporter import AgentProgressReporter
 
+from coded_tools.agent_network_editor.connectivity_dictionary_converter import ConnectivityDictionaryConverter
 from coded_tools.agent_network_editor.constants import AGENT_NETWORK_DEFINITION
 from coded_tools.agent_network_editor.constants import AGENT_NETWORK_NAME
-from coded_tools.agent_network_editor.connectivity_dictionary_converter import ConnectivityDictionaryConverter
 
 
 # pylint: disable=too-few-public-methods
