@@ -125,8 +125,6 @@ class ReadAgentNetwork(CodedTool):
             "metadata": network_hocon.get("metadata", {}),
             "agents": agents_summary,
         }
-        if coded_tool_sources:
-            result["coded_tool_sources"] = coded_tool_sources
 
         # Store key data in sly_data so the persist_test_fixture tool can
         # access the target agent name without it appearing in the chat stream.
