@@ -28,7 +28,6 @@ from coded_tools.agent_network_editor.get_toolbox import GetToolbox
 from middleware.agent_network_validation_middleware import AgentNetworkValidationMiddleware
 
 
-# pylint: disable=too-few-public-methods
 class AgentNetworkStructureValidationMiddleware(AgentNetworkValidationMiddleware):
     """
     Middleware that validates an agent network definition after each agent turn.
