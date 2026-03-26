@@ -53,7 +53,7 @@ weight restrictions. They should fit in the overhead bin or under the seat. For 
 3. **Basic Economy Considerations**: If you're flying under a Basic Economy fare, carry-on bags are generally not included
 unless you're on specific international routes. Ensure the guitar fits the dimensions allowed for a personal item or carry-on.
 Otherwise, it will need to be checked in, possibly incurring additional fees. For more information, check the
-[Basic Economy Restrictions](https://www.united.com/en/us/fly/travel/inflight/basic-economy.html).
+[Cabin Class](https://www.united.com/en/us/fly/travel/inflight/basic-economy.html).
 
 Please ensure your guitar fits within the specified dimensions and policies to avoid any issues during your travel.
 ```
@@ -76,21 +76,26 @@ Please ensure your guitar fits within the specified dimensions and policies to a
      - `Carry_On_Baggage`
      - `Checked_Baggage`
      - `Bag_Issues`
-     - `Special_Items`
+     - `Special_Baggage`
      - `Bag_Fee_Calculator`
 
-2. **Flights**
-   - Deals with flight-specific policies.
+2. **Fare_Classes_And_Membership**
+   - Deals with fare classes, loyalty programs, and military travel policies.
    - Delegates to:
      - `Military_Personnel`
-     - `Basic_Economy_Restrictions`
+     - `Cabin_Class`
      - `Mileage_Plus`
 
 3. **International_Travel**
-   - Handles international-specific regulations.
+   - Handles international and domestic travel documentation and entry/departure requirements.
+   - Calls `ExtractDocs` and `URLProvider` directly.
+
+4. **Special_Travelers_And_Items**
+   - Covers special passenger needs (families, pets, accessibility) and restricted/prohibited items.
    - Delegates to:
-     - `International_Checked_Baggage`
-     - `Embargoes`
+     - `Traveling_With_Dependents`
+     - `Accessibility_And_Special_Needs`
+     - `Restricted_Items`
 
 ---
 
@@ -101,7 +106,7 @@ These are coded tools called by various policy agents:
 - **ExtractDocs**
     - Retrieves text content from internal policy documents.
 
-    - **URLProvider**
+- **URLProvider**
     - Provides links to official airline pages for additional resources.
 
 ---
