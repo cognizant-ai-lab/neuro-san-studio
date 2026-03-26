@@ -119,14 +119,6 @@ class ReadAgentNetwork(CodedTool):
             self._extract_agent_info(tool) for tool in network_hocon.get("tools", [])
         ]
 
-        # Read the Python source code for every coded tool referenced in the
-        # network.  This gives the LLM visibility into the exact runtime
-        # behaviour (e.g. that Accountant adds 3.0 per call) so it can
-        # generate accurate test expectations.
-        coded_tool_sources: dict[str, str] = self._read_all_coded_tool_sources(
-            network_hocon.get("tools", []), agent_name, logger
-        )
-
         # Assemble the result dictionary returned to the frontman agent.
         result: dict[str, Any] = {
             "agent_name": agent_name,
