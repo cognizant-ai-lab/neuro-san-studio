@@ -100,7 +100,6 @@ class GetAgentNetworkDefinition(CodedTool):
 
         # Store in sly_data and validate
         if network_def:
-
             if isinstance(network_def, list):
                 # We have a connectivity-style list of dictionaries
                 # Convert it to a connectivity-style dictionary before passing along to sly_data.

@@ -1,5 +1,4 @@
-
-# Copyright © 2019-2026 Cognizant Technology Solutions Corp, www.cognizant.com.
+# Copyright © 2025-2026 Cognizant Technology Solutions Corp, www.cognizant.com.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -14,9 +13,6 @@
 # limitations under the License.
 #
 # END COPYRIGHT
-"""
-See class comment for details.
-"""
 from typing import Any
 
 from leaf_common.serialization.interface.dictionary_converter import DictionaryConverter
@@ -70,7 +66,6 @@ class ConnectivityDictionaryConverter(DictionaryConverter):
 
         connectivity: Connectivity = obj
         for connectivity_entry in connectivity:
-
             # The origin is the name of the agent node.
             name: str = connectivity_entry.get("origin")
 
@@ -99,7 +94,6 @@ class ConnectivityDictionaryConverter(DictionaryConverter):
 
         # Add any keys that are not already in the connectivity report
         for name, internal_entry in obj_dict.items():
-
             # Find the corresponding entry in the connectivity list.
             found_entry: dict[str, Any] = None
             for connectivity_entry in connectivity:
