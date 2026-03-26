@@ -14,7 +14,6 @@
 #
 # END COPYRIGHT
 
-import asyncio
 import logging
 from typing import Any
 from typing import Union
@@ -66,7 +65,7 @@ class ReadAgentNetwork(CodedTool):
 
         return agent_info
 
-    def invoke(self, args: dict[str, Any], sly_data: dict[str, Any]) -> Union[dict[str, Any], str]:
+    async def async_invoke(self, args: dict[str, Any], sly_data: dict[str, Any]) -> Union[dict[str, Any], str]:
         """
         Reads the specified agent network HOCON file and extracts relevant
         information for test case generation.
@@ -105,7 +104,7 @@ class ReadAgentNetwork(CodedTool):
         # config filter chains (defaults, common defs, name correction).
         try:
             restorer = AgentNetworkRestorer(registry_dir="registries")
-            agent_network = restorer.restore(file_reference=hocon_file)
+            agent_network = await restorer.async_restore(file_reference=hocon_file)
             network_hocon: dict[str, Any] = agent_network.get_config()
         except (FileNotFoundError, TypeError, ValueError) as exc:
             error_msg = f"Error: Could not read HOCON file '{hocon_file}': {exc}"
@@ -136,7 +135,3 @@ class ReadAgentNetwork(CodedTool):
         logger.info(">>>>>>>>>>>>>>>>>>>DONE !!!>>>>>>>>>>>>>>>>>>")
         logger.info("Extracted %d agents from network '%s'", len(agents_summary), agent_name)
         return result
-
-    async def async_invoke(self, args: dict[str, Any], sly_data: dict[str, Any]) -> Union[dict[str, Any], str]:
-        """Run invoke asynchronously."""
-        return await asyncio.to_thread(self.invoke, args, sly_data)
