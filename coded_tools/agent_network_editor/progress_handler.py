@@ -19,14 +19,9 @@ from typing import Any
 
 from neuro_san.interfaces.agent_progress_reporter import AgentProgressReporter
 
-# Reaching into neuro_san internals because we expect to know the gory details here because
-# we are building agent networks.  This is not normally a recommended practice.
-from neuro_san.internals.chat.connectivity_reporter import ConnectivityReporter
-from neuro_san.internals.run_context.interfaces.agent_network_inspector import AgentNetworkInspector
-
 from coded_tools.agent_network_editor.constants import AGENT_NETWORK_DEFINITION
 from coded_tools.agent_network_editor.constants import AGENT_NETWORK_NAME
-from coded_tools.agent_network_editor.designer_network_inspector import DesignerNetworkInspector
+from coded_tools.agent_network_editor.connectivity_dictionary_converter import ConnectivityDictionaryConverter
 
 
 # pylint: disable=too-few-public-methods
@@ -47,7 +42,7 @@ class ProgressHandler:
         progress_reporter: AgentProgressReporter = args.get("progress_reporter")
 
         use_key: str = AGENT_NETWORK_DEFINITION
-        use_network_definition: dict[str, Any] = network_definition
+        use_network_definition: dict[str, Any] | list[dict[str, Any]] = network_definition
 
         agent_progress_style: str = environ.get("AGENT_NETWORK_DESIGNER_PROGRESS_STYLE", "internal")
         if agent_progress_style == "connectivity":
@@ -56,7 +51,8 @@ class ProgressHandler:
             # that it already knows how to render.  Using the different key name allows the AGENT_PROGRESS
             # dictionary to look just like a ConnectivityResponse from the service.
             use_key: str = "connectivity_info"
-            use_network_definition = ProgressHandler._convert_to_connectivity_style(network_definition)
+            converter = ConnectivityDictionaryConverter()
+            use_network_definition = converter.from_dict(network_definition)
 
         elif agent_progress_style == "internal":
             # Report the internal structure used by Agent Network Designer and pals.
@@ -74,14 +70,3 @@ class ProgressHandler:
             progress[AGENT_NETWORK_NAME] = name
 
         await progress_reporter.async_report_progress(progress)
-
-    @staticmethod
-    def _convert_to_connectivity_style(network_definition: dict[str, Any]) -> list[dict[str, Any]]:
-        connectivity: list[dict[str, Any]] = []
-
-        inspector: AgentNetworkInspector = DesignerNetworkInspector(network_definition)
-
-        reporter: ConnectivityReporter = ConnectivityReporter(inspector)
-        connectivity = reporter.report_network_connectivity()
-
-        return connectivity
