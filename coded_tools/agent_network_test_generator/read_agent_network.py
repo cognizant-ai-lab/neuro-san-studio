@@ -65,60 +65,6 @@ class ReadAgentNetwork(CodedTool):
 
         return agent_info
 
-    @staticmethod
-    def _resolve_coded_tool_source(class_ref: str, agent_name: str) -> str:
-        """
-        Attempt to locate and read the Python source code for a coded tool class.
-
-        The method tries several candidate paths under ``coded_tools/`` that
-        mirror the resolution strategies used by the neuro-san runtime.
-
-        :param class_ref: The dot-separated class reference from the HOCON
-            (e.g. ``"accountant.Accountant"``).
-        :param agent_name: The agent network name used to derive parent
-            directories (e.g. ``"basic/coffee_finder_advanced"``).
-        :return: The source code of the coded tool, or an empty string if the
-            file could not be found.
-        """
-        # Split the class reference into module path and class name.
-        # e.g. "accountant.Accountant" -> module_path="accountant", class="Accountant"
-        # e.g. "experimental.kwik_agents.list_topics.ListTopics"
-        #       -> module_path="experimental/kwik_agents/list_topics", class="ListTopics"
-        parts: list[str] = class_ref.rsplit(".", 1)
-        if len(parts) < 2:
-            return ""
-        # Convert the dot-separated module path to a filesystem path with .py extension.
-        module_path: str = parts[0].replace(".", os.sep) + ".py"
-
-        # Derive the parent directory from the agent network name.
-        # e.g. "basic/coffee_finder_advanced" -> parent_dir="basic"
-        parent_dir: str = os.path.dirname(agent_name)
-
-        # Try multiple candidate paths to locate the source file.
-        # This mirrors how neuro-san resolves coded tool classes at runtime:
-        #   1. coded_tools/<parent_dir>/<module>.py
-        #      e.g. coded_tools/basic/accountant.py
-        #   2. coded_tools/<parent_dir>/<network_name>/<module>.py
-        #      e.g. coded_tools/basic/coffee_finder_advanced/time_tool.py
-        #   3. coded_tools/<module>.py (fully qualified path)
-        #      e.g. coded_tools/experimental/kwik_agents/list_topics.py
-        candidates: list[str] = [
-            os.path.join(_CODED_TOOLS_DIR, parent_dir, module_path),
-            os.path.join(_CODED_TOOLS_DIR, parent_dir, agent_name.split("/")[-1], module_path),
-            os.path.join(_CODED_TOOLS_DIR, module_path),
-        ]
-
-        logger = logging.getLogger("ReadAgentNetwork")
-        for candidate in candidates:
-            if os.path.isfile(candidate):
-                logger.info("Found coded tool source: %s", candidate)
-                try:
-                    with open(candidate, "r", encoding="utf-8") as source_file:
-                        return source_file.read()
-                except OSError:
-                    continue
-        return ""
-
     def invoke(self, args: dict[str, Any], sly_data: dict[str, Any]) -> Union[dict[str, Any], str]:
         """
         Reads the specified agent network HOCON file and extracts relevant
