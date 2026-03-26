@@ -14,24 +14,12 @@
 #
 # END COPYRIGHT
 
-import ast
-import asyncio
 import logging
-import os
-import re
-import textwrap
 from typing import Any
 from typing import Union
 
 from leaf_common.persistence.easy.easy_hocon_persistence import EasyHoconPersistence
 from neuro_san.interfaces.coded_tool import CodedTool
-
-# Root directory where all coded tool Python modules are located.
-_CODED_TOOLS_DIR: str = "coded_tools"
-
-# Method names that are pure boilerplate wrappers and carry no useful
-# information for the LLM when generating test expectations.
-_SKIP_METHODS: frozenset[str] = frozenset({"async_invoke"})
 
 
 class ReadAgentNetwork(CodedTool):
@@ -71,18 +59,11 @@ class ReadAgentNetwork(CodedTool):
         # Capture which sub-tools this agent can call.
         if tool.get("tools"):
             agent_info["tools"] = tool["tools"]
-        # Capture the coded tool class reference (e.g. "accountant.Accountant")
-        # so downstream logic can resolve and read its Python source.
-        if tool.get("class"):
-            agent_info["class"] = tool["class"]
         # Capture any toolbox reference (e.g. MCP or external tool integrations).
         if tool.get("toolbox"):
             agent_info["toolbox"] = tool["toolbox"]
 
         return agent_info
-
-    # Regex pattern matching logger.debug / logger.info / logger.warning lines.
-    _LOGGER_LINE_RE: re.Pattern[str] = re.compile(r"^\s*logger\.\w+\(.*\)\s*$")
 
     @staticmethod
     def _extract_essential_source(source: str) -> str:
