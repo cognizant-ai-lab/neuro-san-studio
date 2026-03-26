@@ -19,7 +19,7 @@ import logging
 from typing import Any
 from typing import Union
 
-from leaf_common.persistence.easy.easy_hocon_persistence import EasyHoconPersistence
+from neuro_san.internals.graph.persistence.agent_network_restorer import AgentNetworkRestorer
 from neuro_san.interfaces.coded_tool import CodedTool
 
 
@@ -93,19 +93,21 @@ class ReadAgentNetwork(CodedTool):
         if not hocon_file:
             return "Error: No 'agent_network_hocon_file' provided."
 
-        # The user may pass a path with or without the "registries/" prefix.
-        # Normalise so it always starts with "registries/" for EasyHoconPersistence.
-        if not hocon_file.startswith("registries/"):
-            hocon_file = "registries/" + hocon_file
+        # The user may pass a path with the "registries/" prefix — strip it
+        # because AgentNetworkRestorer takes the registry dir separately.
+        if hocon_file.startswith("registries/"):
+            hocon_file = hocon_file[len("registries/"):]
 
         logger.info(">>>>>>>>>>>>>>>>>>>Reading Agent Network HOCON>>>>>>>>>>>>>>>>>>")
         logger.info("HOCON file: %s", hocon_file)
 
-        # Parse the HOCON file into a Python dictionary.
+        # Parse the HOCON file via AgentNetworkRestorer, which also applies
+        # config filter chains (defaults, common defs, name correction).
         try:
-            hocon = EasyHoconPersistence(full_ref=hocon_file, must_exist=True)
-            network_hocon: dict[str, Any] = hocon.restore()
-        except (FileNotFoundError, TypeError) as exc:
+            restorer = AgentNetworkRestorer(registry_dir="registries")
+            agent_network = restorer.restore(file_reference=hocon_file)
+            network_hocon: dict[str, Any] = agent_network.get_config()
+        except (FileNotFoundError, TypeError, ValueError) as exc:
             error_msg = f"Error: Could not read HOCON file '{hocon_file}': {exc}"
             logger.error(error_msg)
             return error_msg
@@ -113,7 +115,7 @@ class ReadAgentNetwork(CodedTool):
         # Derive the agent network name from the file path.
         # e.g. "registries/basic/coffee_finder_advanced.hocon"
         #       -> "basic/coffee_finder_advanced"
-        agent_name: str = hocon_file.replace("registries/", "").replace(".hocon", "")
+        agent_name: str = hocon_file.replace(".hocon", "")
 
         # Extract a structured summary for each agent/tool in the network.
         agents_summary: list[dict[str, Any]] = [
