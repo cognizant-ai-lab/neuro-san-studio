@@ -58,7 +58,7 @@ Follow these steps carefully:
 
 1) Read the target agent network
 - Call `read_agent_network` with the user-provided HOCON file path.
-- Pass the full returned summary (including coded_tool_sources) to the next steps.
+- Pass the full returned summary to the next steps.
 
 2) Plan test scenarios
 - Call `test_scenario_planner` with the network summary and the `test_level` (default "normal" if the user did not specify one).
@@ -91,7 +91,7 @@ Follow these steps carefully:
                     "properties": {
                         "network_summary": {
                             "type": "string",
-                            "description": "The full network summary returned by read_agent_network, including agents, metadata, coded_tool_sources, and sample queries."
+                            "description": "The full network summary returned by read_agent_network, including agents, metadata, sly_data schemas, and sample queries."
                         },
                         "test_level": {
                             "type": "string",
@@ -121,13 +121,13 @@ Guidelines for planning scenarios:
 
 - If the network uses sly_data (e.g. for time overrides), plan sly_data values that make the test deterministic.
 
-- IMPORTANT: Use the EXACT sly_data key names that the network's coded tools expect. Look at the agent instructions and coded tool source code in `coded_tool_sources` to determine the correct key names. For example, if a TimeTool reads `sly_data.get("time")`, use `"time"` (NOT `"fixed_time"` or any other variation).
+- IMPORTANT: Use the EXACT sly_data key names that the network's coded tools expect. Look at the agent instructions and any `sly_data_schema` declared in the network summary to determine the correct key names. For example, if a TimeTool reads `sly_data.get("time")`, use `"time"` (NOT `"fixed_time"` or any other variation).
 
 - IMPORTANT: Use sly_data values in the exact format the tool and downstream agents expect. Do not normalize, convert, or expand values unless the tool code explicitly requires it.
   - If a tool passes sly_data through directly and agent instructions use human-readable formats (e.g., "7am to 6pm"), use simple clock-time strings like `"8 am"` or `"12:30 am"`.
   - Do NOT use ISO 8601 datetime strings (e.g., `"2026-03-17T00:30:00-07:00"`) unless the tool explicitly parses that format.
 
-- Pay close attention to the `coded_tool_sources` section -- it contains the actual Python implementation of coded tools, which reveals exact runtime behaviour (e.g. what values they compute, what sly_data keys they read).
+- Pay close attention to the `sly_data_schema` and `sly_data_output_schema` fields in the network summary -- they describe what sly_data keys each coded tool expects and what structured data it returns.
 
 - When a coded tool produces deterministic numeric values (e.g. an Accountant that adds 3.0 per call), note the exact expected values based on the tool's logic.
 
@@ -256,7 +256,7 @@ Return a JSON list of fixture dictionaries — one per scenario. If only one sce
             "name": "read_agent_network",
             "class": "agent_network_test_generator.read_agent_network.ReadAgentNetwork",
             "function": {
-                "description": "Read an agent network HOCON file and return a structured summary of its agents, instructions, metadata, sample queries, and coded tool Python source code.",
+                "description": "Read an agent network HOCON file and return a structured summary of its agents, instructions, metadata, sample queries, and sly_data schemas.",
                 "parameters": {
                     "type": "object",
                     "properties": {
