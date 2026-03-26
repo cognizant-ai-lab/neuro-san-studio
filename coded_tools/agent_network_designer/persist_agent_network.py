@@ -30,6 +30,7 @@ from coded_tools.agent_network_designer.agent_network_assembler import AgentNetw
 from coded_tools.agent_network_designer.agent_network_persistor import AgentNetworkPersistor
 from coded_tools.agent_network_designer.agent_network_persistor_factory import AgentNetworkPersistorFactory
 from coded_tools.agent_network_designer.hocon_agent_network_assembler import HoconAgentNetworkAssembler
+from coded_tools.agent_network_editor.connectivity_dictionary_converter import ConnectivityDictionaryConverter
 from coded_tools.agent_network_editor.constants import AGENT_NETWORK_DEFINITION
 from coded_tools.agent_network_editor.constants import AGENT_NETWORK_HOCON_TEXT
 from coded_tools.agent_network_editor.constants import AGENT_NETWORK_NAME
@@ -159,8 +160,33 @@ class PersistAgentNetwork(CodedTool):
             )
         sly_data[AGENT_NETWORK_HOCON_TEXT] = hocon_text
 
+        self._deterimine_exported_network_definition(sly_data)
+
         logger.info(">>>>>>>>>>>>>>>>>>>DONE !!!>>>>>>>>>>>>>>>>>>")
         return (
             f"The agent network file for {the_agent_network_name}"
             f"has been successfully created from the agent network definition: {network_def}."
         )
+
+    def _deterimine_exported_network_definition(self, sly_data: dict[str, Any]) -> dict[str, Any]:
+
+        network_definition: dict[str, Any] = sly_data.get(AGENT_NETWORK_DEFINITION)
+        use_network_definition: dict[str, Any] | list[dict[str, Any]] = network_definition
+
+        agent_progress_style: str = environ.get("AGENT_NETWORK_DESIGNER_PROGRESS_STYLE", "internal")
+        if agent_progress_style == "connectivity":
+            # The idea here is that a multi-user MAUI server can turn on this env variable
+            # so that agent network progress progress is converted to connectivity-style data format
+            # that it already knows how to render.  Using the different key name allows the AGENT_PROGRESS
+            # dictionary to look just like a ConnectivityResponse from the service.
+            converter = ConnectivityDictionaryConverter()
+            use_network_definition: list[dict[str, Any]] = converter.from_dict(network_definition)
+
+        elif agent_progress_style == "internal":
+            # Report the internal structure used by Agent Network Designer and pals.
+            # This is what was used in the first iterations with nsflow.
+            use_network_definition: dict[str, Any] = network_definition
+
+        sly_data[AGENT_NETWORK_DEFINITION] = use_network_definition
+
+        return sly_data
