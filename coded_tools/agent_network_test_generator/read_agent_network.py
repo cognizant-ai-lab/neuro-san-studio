@@ -144,37 +144,6 @@ class ReadAgentNetwork(CodedTool):
         logger.info("Extracted %d agents from network '%s'", len(agents_summary), agent_name)
         return result
 
-    @staticmethod
-    def _read_all_coded_tool_sources(
-        tools: list[dict[str, Any]],
-        agent_name: str,
-        logger: logging.Logger,
-    ) -> dict[str, str]:
-        """
-        Read Python source code for every coded tool referenced in the network.
-
-        :param tools: The list of tool definition dictionaries from the HOCON.
-        :param agent_name: The agent network name for path resolution.
-        :param logger: Logger instance.
-        :return: A mapping of class references to their source code.
-        """
-        sources: dict[str, str] = {}
-        for tool in tools:
-            class_ref: str = tool.get("class", "")
-            # Skip tools without a class reference (pure LLM agents) and
-            # avoid reading the same source file twice.
-            if not class_ref or class_ref in sources:
-                continue
-            raw_source: str = ReadAgentNetwork._resolve_coded_tool_source(class_ref, agent_name)
-            if raw_source:
-                # Strip boilerplate (license, imports, async_invoke) to
-                # reduce the token payload sent to downstream LLM agents.
-                sources[class_ref] = ReadAgentNetwork._extract_essential_source(raw_source)
-                logger.info("Loaded source for coded tool: %s", class_ref)
-            else:
-                logger.warning("Could not find source for coded tool: %s", class_ref)
-        return sources
-
     async def async_invoke(self, args: dict[str, Any], sly_data: dict[str, Any]) -> Union[dict[str, Any], str]:
         """Run invoke asynchronously."""
         return await asyncio.to_thread(self.invoke, args, sly_data)
