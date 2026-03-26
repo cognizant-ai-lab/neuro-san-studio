@@ -14,7 +14,6 @@
 #
 # END COPYRIGHT
 
-import asyncio
 import logging
 import re
 from typing import Any
@@ -357,7 +356,7 @@ class ValidateTestFixture(CodedTool):
     # Public interface
     # ------------------------------------------------------------------
 
-    def invoke(self, args: dict[str, Any], sly_data: dict[str, Any]) -> Union[dict[str, Any], str]:
+    async def async_invoke(self, args: dict[str, Any], sly_data: dict[str, Any]) -> Union[dict[str, Any], str]:
         """
         Validate a test fixture dictionary and return the result.
 
@@ -403,7 +402,3 @@ class ValidateTestFixture(CodedTool):
 
         logger.info(">>>>>>>>>>>>>>>>>>>Validation PASSED>>>>>>>>>>>>>>>>>>")
         return {"valid": True}
-
-    async def async_invoke(self, args: dict[str, Any], sly_data: dict[str, Any]) -> Union[dict[str, Any], str]:
-        """Run invoke asynchronously."""
-        return await asyncio.to_thread(self.invoke, args, sly_data)
