@@ -66,51 +66,6 @@ class ReadAgentNetwork(CodedTool):
         return agent_info
 
     @staticmethod
-    def _strip_method_noise(
-        method_lines: list[str],
-        node: ast.FunctionDef,
-    ) -> list[str]:
-        """Remove docstrings and logger calls from a method's source lines.
-
-        :param method_lines: The raw source lines for the method
-            (including the ``def`` line).
-        :param node: The AST node for the method, used to locate the
-            docstring via ``ast.get_docstring``.
-        :return: A filtered list of source lines with docstrings and
-            logger calls removed.
-        """
-        result: list[str] = []
-
-        # Determine the line range of the docstring (if any) so we can
-        # skip those lines entirely.  The docstring is always the first
-        # statement in the method body.
-        docstring_start: int = -1
-        docstring_end: int = -1
-        if ast.get_docstring(node) is not None:
-            first_stmt = node.body[0]
-            docstring_start = first_stmt.lineno
-            docstring_end = first_stmt.end_lineno or first_stmt.lineno
-
-        # The method_lines are 0-indexed but AST lineno is 1-indexed.
-        # method_lines[0] corresponds to node.lineno.
-        base_lineno: int = node.lineno
-
-        for i, line in enumerate(method_lines):
-            abs_lineno = base_lineno + i
-
-            # Skip docstring lines.
-            if docstring_start <= abs_lineno <= docstring_end:
-                continue
-
-            # Skip logger.debug / logger.info / logger.warning lines.
-            if ReadAgentNetwork._LOGGER_LINE_RE.match(line):
-                continue
-
-            result.append(line)
-
-        return result
-
-    @staticmethod
     def _resolve_coded_tool_source(class_ref: str, agent_name: str) -> str:
         """
         Attempt to locate and read the Python source code for a coded tool class.
