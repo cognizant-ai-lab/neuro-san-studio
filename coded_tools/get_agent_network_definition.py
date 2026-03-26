@@ -24,6 +24,7 @@ from neuro_san.interfaces.coded_tool import CodedTool
 
 from coded_tools.agent_network_editor.constants import AGENT_NETWORK_DEFINITION
 from coded_tools.agent_network_editor.constants import AGENT_NETWORK_NAME
+from coded_tools.agent_network_editor.connectivity_dictionary_converter import ConnectivityDictionaryConverter
 
 AGENT_NETWORK_HOCON_FILE: str = "agent_network_hocon_file"
 
@@ -99,6 +100,13 @@ class GetAgentNetworkDefinition(CodedTool):
 
         # Store in sly_data and validate
         if network_def:
+
+            if isinstance(network_def, list):
+                # We have a connectivity-style list of dictionaries
+                # Convert it to a connectivity-style dictionary before passing along to sly_data.
+                connectivity_dict_converter = ConnectivityDictionaryConverter()
+                network_def = connectivity_dict_converter.to_dict(network_def)
+
             sly_data[AGENT_NETWORK_DEFINITION] = network_def
             network_name: str = sly_data.get(AGENT_NETWORK_NAME)
             logger.info("The resulting %s agent network definition: \n %s", network_name, str(network_def))
