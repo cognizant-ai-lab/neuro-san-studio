@@ -20,7 +20,7 @@
         "sample_queries": [
             "Generate test cases for basic/coffee_finder_advanced",
             "Generate test cases for basic/coffee_finder_advanced with max coverage",
-            "Generate test cases for basic/music_nerd_pro with minimum coverage",
+            "Generate test cases for basic/music_nerd_pro",
             "Create a test fixture for basic/smart_home with normal coverage"
         ]
     },
@@ -129,7 +129,9 @@ Guidelines for planning scenarios:
 
 - Pay close attention to the `sly_data_schema` and `sly_data_output_schema` fields in the network summary -- they describe what sly_data keys each coded tool expects and what structured data it returns.
 
-- When a coded tool produces deterministic numeric values (e.g. an Accountant that adds 3.0 per call), note the exact expected values based on the tool's logic.
+- When a coded tool produces deterministic numeric values, note the exact expected values based on the tool's logic.
+
+- If the network summary includes an agent named "Accountant", plan for `running_cost` assertions in the response structure. The Accountant adds 3.0 per interaction turn. If there is no Accountant agent in the network, do NOT plan for `running_cost` assertions.
 
 - For multi-turn conversations, carefully reason about conversation state. If the user introduces their name in message 1, the agent will NOT ask for the name again in message 2.
 
@@ -243,6 +245,8 @@ Rules for building fixtures:
 - IMPORTANT: When the agent asks follow-up questions, it may ask them in ANY ORDER. Do NOT write gist assertions that assume a specific question order (e.g. do NOT assert "Asks for age" in turn 1 and "Asks for name" in turn 2). Instead, either: (a) provide all required info upfront in the first user message so only one follow-up round is needed, or (b) use order-agnostic gist like `"Asks a follow-up question to gather missing information"`.
 
 - When a coded tool produces deterministic numeric values, use `value` with the exact expected number based on the tool's logic. Always preserve the float type — use 3.0 not 3, 6.0 not 6, etc. The `value` stock test does an exact comparison, so the type must match.
+
+- If the network summary includes an agent named "Accountant", include `running_cost` in response.structure with `value: 3.0` for the first interaction, `value: 6.0` for the second, and so on (incrementing by 3.0 per turn). If there is no Accountant agent in the network, do NOT include `running_cost` assertions.
 
 - If `validation_errors` is provided, fix all listed errors before returning the fixture.
 
