@@ -169,7 +169,7 @@ class GetAgentNetworkDefinition(CodedTool):
             hocon = AbstractAsyncConfigRestorer(
                 file_purpose="get_agent_network_definition - custom instructions", must_exist=True
             )
-            config: dict[str, Any] = await hocon.restore(file_reference=use_file)
+            config: dict[str, Any] = await hocon.async_restore(file_reference=use_file)
             aaosa_instructions = config.get("aaosa_instructions", "")
         except FileNotFoundError:
             aaosa_instructions = ""

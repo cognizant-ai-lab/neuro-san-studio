@@ -160,7 +160,7 @@ class PersistAgentNetwork(CodedTool):
             )
         sly_data[AGENT_NETWORK_HOCON_TEXT] = hocon_text
 
-        self._deterimine_exported_network_definition(sly_data)
+        self._determine_exported_network_definition(sly_data)
 
         logger.info(">>>>>>>>>>>>>>>>>>>DONE !!!>>>>>>>>>>>>>>>>>>")
         return (
@@ -168,7 +168,7 @@ class PersistAgentNetwork(CodedTool):
             f"has been successfully created from the agent network definition: {network_def}."
         )
 
-    def _deterimine_exported_network_definition(self, sly_data: dict[str, Any]):
+    def _determine_exported_network_definition(self, sly_data: dict[str, Any]):
         """
         Check the AGENT_NETWORK_DESIGNER_PROGRESS_STYLE env var to determine how to export
         the agent network definition.

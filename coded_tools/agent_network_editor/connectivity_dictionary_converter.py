@@ -84,6 +84,9 @@ class ConnectivityDictionaryConverter(DictionaryConverter):
                 If obj_dict is not the correct type, it is also reasonable
                 to return None.
         """
+        if obj_dict is None:
+            return None
+
         connectivity: Connectivity = []
 
         inspector: AgentNetworkInspector = DesignerNetworkInspector(obj_dict)
@@ -111,7 +114,7 @@ class ConnectivityDictionaryConverter(DictionaryConverter):
     def copy_keys_not_found(self, source: dict[str, Any], dest: dict[str, Any]):
         """
         :param source: The source dictionary to copy key/value pairs from
-        :param dest: The destination dictionary to copy key/value paris to
+        :param dest: The destination dictionary to copy key/value pairs to
         """
         for key in self.include_keys:
             # Don't add stuff that doesn't exist in source or stuff that already exists in dest.
