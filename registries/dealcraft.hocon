@@ -1,0 +1,125 @@
+# =============================================================
+# DealCraft — AI-Powered BD Command Center
+# File: registries/dealcraft.hocon
+# Description: Consolidated agent network for DealCraft.
+#              Produces complete BD packages from a client name
+#              and/or RFP document using a multi-agent pipeline.
+# =============================================================
+{
+    # Load the shared LLM configuration from a single source of truth.
+    # Note that the file path here is relative to the root level of the repo.
+    include "registries/llm_config.hocon",
+
+    "metadata": {
+        "description": "DealCraft AI-Powered BD Command Center. A multi-agent pipeline that produces complete Business Development packages from a client name and/or RFP document. Agents cover client research, RFP analysis, competitive intelligence, proposal writing, and report assembly.",
+        "tags": ["dealcraft", "presales", "bd", "rfp"],
+        "sample_queries": [
+            "Generate a BD package for Wells Fargo",
+            "Analyze this RFP and create a competitive proposal for Acme Corp",
+            "Research Microsoft and identify key opportunities for Cognizant"
+        ]
+    },
+
+    "demo_mode": """You are part of the DealCraft demo system. When queried, produce realistic BD and pre-sales content as if you have access to real market data, client intelligence, and Cognizant's actual capabilities and win history.""",
+
+    "tools": [
+        # ---------------------------------------------------------
+        # Front Man: Orchestrator Agent
+        # Central coordinator — delegates tasks to all specialist
+        # agents and manages the BD pipeline workflow.
+        # ---------------------------------------------------------
+        {
+            "name": "orchestrator-agent",
+            "function": {
+                "description": "Central coordinator of the DealCraft BD pipeline. Accepts user input (client name and/or RFP document), delegates tasks to specialist agents in sequence, and ensures a complete BD package is produced."
+            },
+            "instructions": "dealcraft/prompts/orchestrator-prompt.md",
+            "llm_config": ${llm_config},
+            "tools": [
+                "client-research-agent",
+                "rfp-analyzer-agent",
+                "competitive-intel-agent",
+                "proposal-writer-agent",
+                "report-assembler-agent"
+            ]
+        },
+
+        # ---------------------------------------------------------
+        # Leaf Agent: Client Research
+        # ---------------------------------------------------------
+        {
+            "name": "client-research-agent",
+            "function": {
+                "description": "Researches the client company and produces a structured Client Intelligence Brief covering company overview, strategic priorities, pain points, recent news, technology landscape, and Cognizant relationship."
+            },
+            "instructions": "dealcraft/prompts/client-research-prompt.md",
+            "llm_config": ${llm_config},
+            "tools": []
+        },
+
+        # ---------------------------------------------------------
+        # Leaf Agent: RFP Analyzer
+        # ---------------------------------------------------------
+        {
+            "name": "rfp-analyzer-agent",
+            "function": {
+                "description": "Analyzes the RFP or RFI document and extracts key requirements, evaluation criteria, and fit analysis."
+            },
+            "instructions": "dealcraft/prompts/rfp-analyzer-prompt.md",
+            "llm_config": ${llm_config},
+            "tools": []
+        },
+
+        # ---------------------------------------------------------
+        # Leaf Agent: Competitive Intelligence
+        # ---------------------------------------------------------
+        {
+            "name": "competitive-intel-agent",
+            "function": {
+                "description": "Identifies likely competitors and produces a Competitive Positioning Sheet with win themes and differentiation strategies."
+            },
+            "instructions": "dealcraft/prompts/competitive-intel-prompt.md",
+            "llm_config": ${llm_config},
+            "tools": []
+        },
+
+        # ---------------------------------------------------------
+        # Leaf Agent: Proposal Writer
+        # ---------------------------------------------------------
+        {
+            "name": "proposal-writer-agent",
+            "function": {
+                "description": "Drafts a tailored proposal using all research inputs from client research, RFP analysis, and competitive intelligence."
+            },
+            "instructions": "dealcraft/prompts/proposal-writer-prompt.md",
+            "llm_config": ${llm_config},
+            "tools": []
+        },
+
+        # ---------------------------------------------------------
+        # Leaf Agent: Report Assembler
+        # ---------------------------------------------------------
+        {
+            "name": "report-assembler-agent",
+            "function": {
+                "description": "Assembles all agent outputs into a final DealCraft BD Package with executive summary, all sections, and appendices."
+            },
+            "instructions": "dealcraft/prompts/report-assembler-prompt.md",
+            "llm_config": ${llm_config},
+            "tools": []
+        },
+
+        # ---------------------------------------------------------
+        # Leaf Agent: Leadership Review (optional iterative review)
+        # ---------------------------------------------------------
+        {
+            "name": "leadership-review-agent",
+            "function": {
+                "description": "Takes an existing DealCraft BD package and leadership feedback, and produces a refined, improved version. Can be called multiple times iteratively."
+            },
+            "instructions": "dealcraft/prompts/leadership-review-prompt.md",
+            "llm_config": ${llm_config},
+            "tools": []
+        }
+    ]
+}

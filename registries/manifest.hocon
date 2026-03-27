@@ -87,4 +87,9 @@
     #     python -m run --server-http-port 8081 --nsflow-port 4174
     "agent_network_architect.hocon": false,
 
+    #
+    # DealCraft — AI-Powered BD Command Center
+    #
+    "dealcraft.hocon": true,
+
 }
