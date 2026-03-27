@@ -27,13 +27,13 @@ from coded_tools.agent_network_editor.constants import AGENT_NETWORK_NAME
 # pylint: disable=too-few-public-methods
 class ProgressHandler:
     """
-    Common handler for progress progress during the building of agent networks
+    Common handler for progress during the building of agent networks
     """
 
     @staticmethod
     async def report_progress(args: dict[str, Any], network_definition: dict[str, Any], name: str = None):
         """
-        Common handler for progress progress during the building of agent networks
+        Common handler for progress during the building of agent networks
 
         :param args: The arguments dictionary for the calling CodedTool
         :param network_definition: The network definition dictionary
@@ -47,7 +47,7 @@ class ProgressHandler:
         agent_progress_style: str = environ.get("AGENT_NETWORK_DESIGNER_PROGRESS_STYLE", "internal")
         if agent_progress_style == "connectivity":
             # The idea here is that a multi-user MAUI server can turn on this env variable
-            # so that agent network progress progress is converted to connectivity-style data format
+            # so that agent network progress is converted to connectivity-style data format
             # that it already knows how to render.  Using the different key name allows the AGENT_PROGRESS
             # dictionary to look just like a ConnectivityResponse from the service.
             use_key: str = "connectivity_info"

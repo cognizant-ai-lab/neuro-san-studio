@@ -179,7 +179,7 @@ class PersistAgentNetwork(CodedTool):
         agent_progress_style: str = environ.get("AGENT_NETWORK_DESIGNER_PROGRESS_STYLE", "internal")
         if agent_progress_style == "connectivity":
             # The idea here is that a multi-user MAUI server can turn on this env variable
-            # so that agent network progress progress is converted to connectivity-style data format
+            # so that agent network progress is converted to connectivity-style data format
             # that it already knows how to render.  Using the different key name allows the AGENT_PROGRESS
             # dictionary to look just like a ConnectivityResponse from the service.
             converter = ConnectivityDictionaryConverter()
