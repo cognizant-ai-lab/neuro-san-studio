@@ -43,7 +43,7 @@
                         "test_level": {
                             "type": "string",
                             "enum": ["minimum", "normal", "max"],
-                            "description": "Controls how many test scenarios to generate. 'minimum' = 2-3 core scenarios, 'normal' = 5-7 balanced scenarios (default), 'max' = 10-15 exhaustive scenarios."
+                            "description": "Controls how many test scenarios to generate. 'minimum' = 2-3 core scenarios (default), 'normal' = 5-7 balanced scenarios, 'max' = 10-15 exhaustive scenarios."
                         }
                     },
                     "required": ["agent_network_hocon_file"]
@@ -61,7 +61,7 @@ Follow these steps carefully:
 - Pass the full returned summary to the next steps.
 
 2) Plan test scenarios
-- Call `test_scenario_planner` with the network summary and the `test_level` (default "normal" if the user did not specify one).
+- Call `test_scenario_planner` with the network summary and the `test_level` (default "minimum" if the user did not specify one).
 - It will return a list of scenario descriptions, each describing what to test and what sly_data to use.
 
 3) Build test fixtures (batched)
@@ -96,7 +96,7 @@ Follow these steps carefully:
                         "test_level": {
                             "type": "string",
                             "enum": ["minimum", "normal", "max"],
-                            "description": "Controls how many scenarios to generate. 'minimum' = 2-3, 'normal' = 5-7, 'max' = 10-15."
+                            "description": "Controls how many scenarios to generate. 'minimum' = 2-3 (default), 'normal' = 5-7, 'max' = 10-15."
                         }
                     },
                     "required": ["network_summary", "test_level"]
