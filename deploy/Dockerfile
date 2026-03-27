@@ -88,8 +88,14 @@ COPY --from=builder /install /usr/local
 # Note: The registries directory where agent definitions live is mandatory
 #       The coded_tools directory where agent code lives is optional
 #       [s] allows for registries/coded_tools from within client repo or neuro-san repo
+#       The toolbox directory is mandatory if agent networks use tools from the standard toolbox
+#       The Agent Network Designer relies on:
+#       - its own toolbox in ./toolbox
+#       - ./middleware for validation of designed networks
 COPY ./registries ${APP_SOURCE}/registries
 COPY ./coded_tool[s] ${APP_SOURCE}/coded_tools
+COPY ./toolbox ${APP_SOURCE}/toolbox
+COPY ./middleware ${APP_SOURCE}/middleware
 COPY ./deploy/entrypoint.sh ${APP_SOURCE}/deploy/entrypoint.sh
 COPY ./deploy/logging.hocon ${APP_SOURCE}/deploy/logging.hocon
 COPY ./mcp/mcp_info.hocon ${APP_SOURCE}/mcp/mcp_info.hocon
@@ -159,7 +165,7 @@ ENV AGENT_LLM_INFO_FILE=""
 
 # A toolbox_info hocon file with user-provided base tool and coded tool
 # descriptions that are to be used in addition to the neuro-san defaults.
-ENV AGENT_TOOLBOX_INFO_FILE=""
+ENV AGENT_TOOLBOX_INFO_FILE="${APP_SOURCE}/toolbox/toolbox_info.hocon"
 
 # Where to find the classes for CodedTool class implementations
 # that are used by specific agent networks.
