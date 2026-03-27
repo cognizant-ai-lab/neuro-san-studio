@@ -115,7 +115,7 @@ class GetAgentNetworkDefinition(CodedTool):
         logger.warning(error_msg)
         return error_msg
 
-    async def _hocon_to_definition(self, network_hocon_file: dict[str, Any]) -> dict[str, Any]:
+    async def _hocon_to_definition(self, network_hocon_file: str | None) -> dict[str, Any] | None:
         """
         Convert hocon file path into agent network definition
         :param network_hocon_file: Agent network hocon file path
