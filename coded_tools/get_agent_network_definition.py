@@ -166,8 +166,9 @@ class GetAgentNetworkDefinition(CodedTool):
         # Aaosa and demo mode text (exact match)
         try:
             use_file = "registries/aaosa.hocon"
-            hocon = AbstractAsyncConfigRestorer(file_purpose="get_agent_network_definition - custom instructions",
-                                                must_exist=True)
+            hocon = AbstractAsyncConfigRestorer(
+                file_purpose="get_agent_network_definition - custom instructions", must_exist=True
+            )
             config: dict[str, Any] = await hocon.restore(file_reference=use_file)
             aaosa_instructions = config.get("aaosa_instructions", "")
         except FileNotFoundError:
