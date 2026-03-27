@@ -6,8 +6,6 @@ for existing agent networks. Provide the name of an agent network and it will:
 
 - Read the target network's HOCON definition (agents, instructions, metadata, sample queries).
 
-- Read the Python source code of any coded tools referenced by the network.
-
 - Analyze the network's capabilities and design test scenarios.
 
 - Build and validate test fixture HOCON files with interactions, expected responses, and sly\_data.
@@ -44,15 +42,11 @@ frontman agent with two specialized sub-agents and three coded tools:
 1. **Read the target network** -- The frontman calls the
 [`read_agent_network`](../coded_tools/agent_network_test_generator/read_agent_network.py)
 coded tool with the user-provided HOCON file path. This tool:
-   - Parses the target network's HOCON file using `EasyHoconPersistence`.
+   - Parses the target network's HOCON file using `AgentNetworkRestorer`.
    - Extracts a structured summary of every agent: name, instructions, description,
      parameters, sly\_data schemas, sub-tools, and class references.
-   - Locates and reads the Python source code of every coded tool referenced in the
-     network (e.g. `accountant.Accountant` resolves to
-     `coded_tools/basic/accountant.py`). Source code is truncated using AST-based
-     extraction to keep only essential class members (`__init__`, `invoke`/`async_invoke`,
-     constants, and helper methods), reducing token payload by up to 68%.
-   - Returns the full summary including `coded_tool_sources` to the frontman.
+   - Returns the full network summary to the frontman and stores `target_agent_name`
+     in `sly_data` for the `persist_test_fixture` tool.
 
 2. **Plan test scenarios** -- The frontman calls the `test_scenario_planner` sub-agent
 with the network summary and a `test_level`. The planner analyzes the network's
@@ -74,7 +68,7 @@ fails, the frontman retries the `test_fixture_builder` with the error messages (
 the [`persist_test_fixture`](../coded_tools/agent_network_test_generator/persist_test_fixture.py)
 coded tool, which:
    - Serializes the test fixture dictionary as human-readable JSON (valid HOCON).
-   - Prepends the Apache 2.0 license header and a reference comment linking to the
+   - Prepends a reference comment linking to the
      [test case HOCON schema documentation](https://github.com/cognizant-ai-lab/neuro-san/blob/main/docs/test_case_hocon_reference.md).
    - Writes the file to `tests/fixtures/<agent_name>/<file_name>.hocon`.
 
@@ -86,7 +80,7 @@ each one tests.
 ## Test Level
 
 The `test_level` parameter controls how many test scenarios are generated. It is
-optional and defaults to `normal` if not specified.
+optional and defaults to `minimum` if not specified.
 
 | Level     | Scenario Count | Description                                                                 |
 |-----------|----------------|-----------------------------------------------------------------------------|
@@ -102,7 +96,7 @@ Generate test cases for basic/music_nerd_pro with max coverage
 Generate test cases for basic/hello_world
 ```
 
-The last example defaults to `normal`.
+The last example defaults to `minimum`.
 
 ---
 
@@ -142,8 +136,7 @@ read-plan-build-validate-persist pipeline, and returns a summary of generated fi
 
 **Available Tools:**
 
-- `read_agent_network` -- Coded tool: reads and summarizes a target agent network HOCON,
-  including coded tool source code
+- `read_agent_network` -- Coded tool: reads and summarizes a target agent network HOCON
 - `test_scenario_planner` -- Sub-agent: designs test scenarios from the network summary
 - `test_fixture_builder` -- Sub-agent: builds complete test fixture dictionaries from
   scenario descriptions
@@ -163,7 +156,7 @@ many scenarios to generate.
 Key planning rules:
 - Uses the network's `sample_queries` as inspiration for realistic inputs
 - Plans deterministic sly\_data values (e.g. time overrides) using exact key names and
-  formats from the coded tool source code
+  formats from the `sly_data_schema` and `sly_data_output_schema` in the network summary
 - Accounts for multi-turn conversation state (e.g. information provided in message 1
   is not re-asked in message 2)
 - Plans separate interactions for each question-and-answer step when an agent collects
@@ -171,6 +164,8 @@ Key planning rules:
 - Does not assume a specific order of follow-up questions from the agent
 - Never pre-sets runtime-managed sly\_data keys (`running_cost`, `TopicMemory`,
   `username`)
+- If the network includes an agent named "Accountant", plans for `running_cost`
+  assertions (3.0 per interaction turn)
 
 #### `test_fixture_builder`
 
@@ -185,6 +180,8 @@ Key building rules:
 - Does not assume a specific order of follow-up questions from the agent
 - Preserves float types in `value` tests (e.g. `3.0` not `3`)
 - Never pre-sets runtime-managed sly\_data keys
+- If the network includes an agent named "Accountant", includes `running_cost`
+  assertions starting at 3.0 and incrementing by 3.0 per turn
 
 ### Coded Tools
 
@@ -192,20 +189,9 @@ Key building rules:
 
 [read\_agent\_network.py](../coded_tools/agent_network_test_generator/read_agent_network.py)
 
-- Parses the target network's HOCON file
+- Parses the target network's HOCON file using `AgentNetworkRestorer`
 - Extracts agent metadata, instructions, parameters, and sly\_data schemas
-- Resolves coded tool class references (e.g. `"accountant.Accountant"`) to their
-  Python source files under `coded_tools/` using multiple path resolution strategies:
-  1. `coded_tools/<parent_dir>/<module_path>.py`
-     (e.g. `coded_tools/basic/accountant.py`)
-  2. `coded_tools/<parent_dir>/<network_name>/<module_path>.py`
-     (e.g. `coded_tools/basic/coffee_finder_advanced/time_tool.py`)
-  3. `coded_tools/<module_path>.py`
-     (e.g. `coded_tools/experimental/kwik_agents/list_topics.py`)
-- Truncates coded tool source code using AST-based extraction, keeping only essential
-  class members (`__init__`, `invoke`/`async_invoke`, constants, helper methods) and
-  stripping license headers, imports, docstrings, and logger lines
-- Returns the full summary to the frontman and stores `target_agent_name` in
+- Returns the full network summary to the frontman and stores `target_agent_name` in
   `sly_data` for the `persist_test_fixture` tool
 
 #### `validate_test_fixture`
@@ -228,7 +214,7 @@ Key building rules:
 [persist\_test\_fixture.py](../coded_tools/agent_network_test_generator/persist_test_fixture.py)
 
 - Receives a test fixture dictionary and a file name
-- Serializes as indented JSON (valid HOCON) with license header
+- Serializes as indented JSON (valid HOCON) with a reference comment
 - Sanitizes the file name and ensures `.hocon` extension
 - Creates the output directory structure under `tests/fixtures/`
 
@@ -314,10 +300,6 @@ python -m pytest tests/integration/test_integration_test_hocons.py -v -k "yellow
   instructions in `agent_network_test_generator.hocon` for guidance on the correct format.
 - If a fixture fails validation, the frontman will automatically retry with error messages.
   Check the `validate_test_fixture` error output for specific schema violations.
-- If coded tool source code is not being read, check that the tool's class reference
-  in the target HOCON resolves to a file under `coded_tools/`.
-- Enable debug logging with `AGENT_SERVICE_LOG_JSON=logging.hocon` to see which coded
-  tool source files were found and loaded.
 - If the agent times out or hits max iterations, increase `max_execution_seconds` or
   `max_iterations` in `agent_network_test_generator.hocon`.
 
