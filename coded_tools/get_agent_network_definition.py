@@ -14,14 +14,14 @@
 #
 # END COPYRIGHT
 
-import asyncio
 import logging
 import re
 from typing import Any
 
-from leaf_common.persistence.easy.easy_hocon_persistence import EasyHoconPersistence
 from neuro_san.interfaces.coded_tool import CodedTool
+from neuro_san.internals.persistence.abstract_async_config_restorer import AbstractAsyncConfigRestorer
 
+from coded_tools.agent_network_editor.connectivity_dictionary_converter import ConnectivityDictionaryConverter
 from coded_tools.agent_network_editor.constants import AGENT_NETWORK_DEFINITION
 from coded_tools.agent_network_editor.constants import AGENT_NETWORK_NAME
 
@@ -39,7 +39,7 @@ class GetAgentNetworkDefinition(CodedTool):
     - a list of down-chain agents (agents reporting to it)
     """
 
-    def invoke(self, args: dict[str, Any], sly_data: dict[str, Any]) -> dict[str, Any] | str:
+    async def async_invoke(self, args: dict[str, Any], sly_data: dict[str, Any]) -> dict[str, Any] | str:
         """
         :param args: An argument dictionary whose keys are the parameters
                 to the coded tool and whose values are the values passed for them
@@ -81,7 +81,7 @@ class GetAgentNetworkDefinition(CodedTool):
         # Try to parse from hocon file name that the agent extracts from user input
         elif args.get("agent_network_hocon_file"):
             logger.info(">>>>>>>>>>>>>>>>>>>Reading & Parsing Agent Network HOCON File>>>>>>>>>>>>>>>>>>>")
-            network_def = self._hocon_to_definition(args.get("agent_network_hocon_file"))
+            network_def = await self._hocon_to_definition(args.get("agent_network_hocon_file"))
 
         # Fall back to sly data
         # First, check to see if there is a generated agent network definition
@@ -95,10 +95,16 @@ class GetAgentNetworkDefinition(CodedTool):
                 ">>>>>>>>>>>>>>>>>>>Reading & Parsing Agent Network HOCON File "
                 "from Key 'agent_network_hocon_file' in Sly Data>>>>>>>>>>>>>>>>>>>"
             )
-            network_def = self._hocon_to_definition(sly_data.get(AGENT_NETWORK_HOCON_FILE))
+            network_def = await self._hocon_to_definition(sly_data.get(AGENT_NETWORK_HOCON_FILE))
 
         # Store in sly_data and validate
         if network_def:
+            if isinstance(network_def, list):
+                # We have a connectivity-style list of dictionaries
+                # Convert it to a connectivity-style dictionary before passing along to sly_data.
+                connectivity_dict_converter = ConnectivityDictionaryConverter()
+                network_def = connectivity_dict_converter.to_dict(network_def)
+
             sly_data[AGENT_NETWORK_DEFINITION] = network_def
             network_name: str = sly_data.get(AGENT_NETWORK_NAME)
             logger.info("The resulting %s agent network definition: \n %s", network_name, str(network_def))
@@ -109,7 +115,7 @@ class GetAgentNetworkDefinition(CodedTool):
         logger.warning(error_msg)
         return error_msg
 
-    def _hocon_to_definition(self, network_hocon_file: dict[str, Any]) -> dict[str, Any]:
+    async def _hocon_to_definition(self, network_hocon_file: str | None) -> dict[str, Any] | None:
         """
         Convert hocon file path into agent network definition
         :param network_hocon_file: Agent network hocon file path
@@ -120,8 +126,8 @@ class GetAgentNetworkDefinition(CodedTool):
         # Converting hocon file to dict
         try:
             network_hocon_file = "registries/" + network_hocon_file
-            hocon = EasyHoconPersistence(full_ref=network_hocon_file, must_exist=True)
-            network_hocon = hocon.restore()
+            hocon = AbstractAsyncConfigRestorer(file_purpose="get_agent_network_definition", must_exist=True)
+            network_hocon = await hocon.async_restore(file_reference=network_hocon_file)
         except (FileNotFoundError, TypeError):
             return None
 
@@ -134,7 +140,7 @@ class GetAgentNetworkDefinition(CodedTool):
             instructions: str = agent.get("instructions")
             if instructions:
                 # Extract only the unique instructions (remove aaosa instructions, instructions prefix, and demo mode)
-                custom_instructions: str = self._extract_custom_instructions(instructions)
+                custom_instructions: str = await self._extract_custom_instructions(instructions)
                 network_def[agent_name]["instructions"] = custom_instructions
             tools: list[str] = agent.get("tools")
             if tools:
@@ -142,7 +148,7 @@ class GetAgentNetworkDefinition(CodedTool):
 
         return network_def
 
-    def _extract_custom_instructions(self, instructions: str) -> str:
+    async def _extract_custom_instructions(self, instructions: str) -> str:
         """
         Extract the custom part of instructions, excluding aaosa instructions, instructions prefix, and demo mode.
         :param instructions: The full instructions of an agent.
@@ -160,8 +166,10 @@ class GetAgentNetworkDefinition(CodedTool):
         # Aaosa and demo mode text (exact match)
         try:
             use_file = "registries/aaosa.hocon"
-            hocon = EasyHoconPersistence(full_ref=use_file, must_exist=True)
-            config: dict[str, Any] = hocon.restore()
+            hocon = AbstractAsyncConfigRestorer(
+                file_purpose="get_agent_network_definition - custom instructions", must_exist=True
+            )
+            config: dict[str, Any] = await hocon.async_restore(file_reference=use_file)
             aaosa_instructions = config.get("aaosa_instructions", "")
         except FileNotFoundError:
             aaosa_instructions = ""
@@ -187,7 +195,3 @@ class GetAgentNetworkDefinition(CodedTool):
         custom_part = " ".join(custom_part.split())
 
         return custom_part
-
-    async def async_invoke(self, args: dict[str, Any], sly_data: dict[str, Any]) -> dict[str, Any] | str:
-        """Run invoke asynchronously."""
-        return await asyncio.to_thread(self.invoke, args, sly_data)
