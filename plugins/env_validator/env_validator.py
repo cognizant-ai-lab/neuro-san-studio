@@ -30,6 +30,7 @@ from dataclasses import dataclass
 from enum import Enum
 from typing import Callable
 from typing import Optional
+from plugins.base_plugin import BasePlugin
 
 # Optional dependencies for live validation (Tier 3)
 try:
@@ -499,3 +500,54 @@ class EnvValidator:
             results = self.results
         warning_statuses = {ValidationStatus.NOT_SET, ValidationStatus.PLACEHOLDER}
         return any(r.status in warning_statuses for r in results)
+
+class EnvValidatorPlugin(BasePlugin):
+    """Plugin wrapper for environment variable validation."""
+
+    def __init__(self, args: dict = None):
+        super().__init__(plugin_name="Environment Validator", args=args)
+        self.validator = EnvValidator()
+
+    def _validate_keys(self):
+        """Validate LLM API keys when --validate-keys is specified."""
+        tier = self.args.get("validate_keys")
+        if not tier:
+            return
+
+        print(f"Validating LLM API keys (tier {tier})...")
+
+        if tier >= 3:
+            print("Live validation enabled - making API calls to verify keys...")
+
+        validator = EnvValidator()
+        results = validator.validate_all(tier=tier)
+        validator.print_results(results)
+
+        # Warn but don't block startup for missing/placeholder keys
+        if validator.has_warnings(results):
+            print("Note: Some API keys are not configured. Agents using those providers will fail.")
+            print("      Configure them in your .env file to enable all features.\n")
+
+        # For actual errors (invalid format, invalid key), warn more strongly
+        if validator.has_errors(results):
+            print("Error: Some API keys have validation errors. Check the results above.\n")
+
+    def pre_server_start_action(self, *args, **kwargs):
+        """Perform the plugin's main action (no-op, validation runs on startup)."""
+        self._validate_keys()
+
+    @staticmethod
+    def update_parser_args(parser):
+        """Add command-line arguments for environment variable validation."""
+        parser.add_argument(
+            "--validate-keys",
+            type=int,
+            nargs="?",
+            const=3,
+            default=None,
+            metavar="{1,2,3}",
+            help="Validate API keys up to the specified tier: "
+            "1=placeholder detection, 2=format validation, "
+            "3=live API calls (default when flag is passed without a value). "
+            "Omit to skip validation entirely.",
+        )

@@ -15,6 +15,7 @@
 # END COPYRIGHT
 from __future__ import annotations
 
+import os
 import copy
 import json
 import logging
@@ -34,6 +35,8 @@ from rich.logging import RichHandler
 from rich.syntax import Syntax
 from rich.text import Text
 from rich.theme import Theme
+
+from plugins.base_plugin import BasePlugin
 
 log_cfg = {
     # Refer rich guidelines for more options:
@@ -720,3 +723,31 @@ class ProcessLogBridge:
             lg.info(msg)
         else:
             lg.debug(msg)
+
+
+class ProcessLogBridgePlugin(BasePlugin):
+    """
+    Plugin wrapper for ProcessLogBridge.
+    Exposes a method to attach process loggers, which can be called from the runner.
+    """
+
+    def __init__(self, args=None):
+        """
+        Initialize the plugin and its internal ProcessLogBridge instance.
+        :param args (dict | None): Optional configuration for the logging bridge.
+        """
+        self.args = args or {}
+        self.plugin_name = "ProcessLogBridgePlugin"
+        self.log_brigde_enabled = self.args.get("logbridge_enabled")
+        self.log_file = os.path.join(self.args["logs_dir"], "runner.log")
+        if self.log_brigde_enabled:
+            self.log_bridge = ProcessLogBridge(
+                    level=self.args.get("log_level", "info"),
+                    runner_log_file=self.log_file,
+                )
+    
+    def post_server_start_action(self):
+        process = self.args.get("process")
+        process_name = self.args.get("process_name", "UnnamedProcess")
+        if self.log_brigde_enabled:
+            self.log_bridge.attach_process_logger(process, process_name, self.log_file)

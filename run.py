@@ -28,9 +28,8 @@ from typing import Dict
 from typing import Tuple
 
 from dotenv import load_dotenv
-from plugins.env_validator.env_validator import EnvValidator
-from plugins.log_bridge.process_log_bridge import ProcessLogBridge
-from plugins.phoenix.phoenix_plugin import PhoenixPlugin
+import json
+import importlib
 
 
 class NeuroSanRunner:
@@ -45,9 +44,28 @@ class NeuroSanRunner:
         self.thinking_file = os.path.join(self.logs_dir, "agent_thinking.txt")
         self.thinking_dir = os.path.join(self.logs_dir, "thinking_dir")
         print(f"Root directory: {self.root_dir}")
-
         # Load environment variables from .env file
         self.load_env_variables()
+
+        plugins_file = os.path.join(self.root_dir, "plugins", "default_plugins.json")
+        try:
+            with open(plugins_file, "r", encoding="utf-8") as f:
+                self.user_plugins_config = json.load(f)
+        except FileNotFoundError:
+            print(f"No plugins file found at {plugins_file}. Continuing without plugins.")
+            self.user_plugins_config = {}
+        except json.JSONDecodeError as e:
+            print(f"Failed to parse plugins file at {plugins_file}: {e}. Continuing without plugins.")
+            self.user_plugins_config = {}
+
+        self.plugin_classes = []
+        for plugin_info in self.user_plugins_config.get("plugins", []):
+            module = plugin_info.get("module")
+            class_name = plugin_info.get("class")
+            print(f"Loading plugin: {class_name} from module: {module}")
+            self.plugin_classes.append(getattr(importlib.import_module(module), class_name))
+        
+        
 
         # Default Configuration
         self.args: Dict[str, Any] = {
@@ -80,9 +98,11 @@ class NeuroSanRunner:
             "logs_dir": self.logs_dir,
         }
 
-        # Add Phoenix configuration defaults
-        self.args.update(PhoenixPlugin.get_default_config())
-
+        for plugin in self.plugin_classes:
+            if hasattr(plugin, "update_args_dict"):
+                print(f"Updating args dict with plugin: {plugin}")
+                plugin.update_args_dict(self.args)
+        
         # Ensure logs directory exists
         os.makedirs(self.logs_dir, exist_ok=True)
         os.makedirs(self.thinking_dir, exist_ok=True)
@@ -90,18 +110,16 @@ class NeuroSanRunner:
         # Parse command-line arguments
         self.args.update(self.parse_args())
 
-        if self.args.get("logbridge_enabled"):
-            self.log_bridge = ProcessLogBridge(
-                level=self.args.get("log_level", "info"),
-                runner_log_file=os.path.join(self.args["logs_dir"], "runner.log"),
-            )
+        # Instantiate plugins now that args are fully built
+        self.plugins = [cls(self.args) for cls in self.plugin_classes]
+        for plugin in self.plugins:
+            print(f"Loaded plugin: {plugin}")
+
         # Process references
         self.server_process = None
         self.flask_webclient_process = None
         self.nsflow_process = None
 
-        # Instantiate Phoenix plugin
-        self.phoenix_plugin = PhoenixPlugin(self.args)
 
     def load_env_variables(self):
         """Load .env file from project root and set variables."""
@@ -156,18 +174,11 @@ class NeuroSanRunner:
         parser.add_argument(
             "--use-flask-web-client", action="store_true", help="Use the flask based neuro-san-web-client"
         )
-        parser.add_argument(
-            "--validate-keys",
-            type=int,
-            nargs="?",
-            const=3,
-            default=None,
-            metavar="{1,2,3}",
-            help="Validate API keys up to the specified tier: "
-            "1=placeholder detection, 2=format validation, "
-            "3=live API calls (default when flag is passed without a value). "
-            "Omit to skip validation entirely.",
-        )
+
+        # add arguments from plugins        
+        for plugin in self.plugin_classes:
+            print(f"Updating parser args with plugin: {plugin}")
+            plugin.update_parser_args(parser)
 
         args, _ = parser.parse_known_args()
         explicitly_passed_args = {arg for arg in sys.argv[1:] if arg.startswith("--")}
@@ -207,8 +218,6 @@ class NeuroSanRunner:
         print(f"AGENT_MANIFEST_UPDATE_PERIOD_SECONDS set to: {os.environ['AGENT_MANIFEST_UPDATE_PERIOD_SECONDS']}")
         print(f"LOG_LEVEL set to: {os.environ['LOG_LEVEL']}\n")
 
-        # Phoenix / OpenTelemetry envs - delegate to PhoenixPlugin
-        self.phoenix_plugin.set_environment_variables()
 
         # Client-only env variables
         if not self.args["server_only"]:
@@ -244,30 +253,6 @@ class NeuroSanRunner:
             print(f"NEURO_SAN_SERVER_HTTP_PORT set to: {os.environ['NEURO_SAN_SERVER_HTTP_PORT']}\n")
 
         print("\n" + "=" * 50 + "\n")
-
-    def validate_keys(self):
-        """Validate LLM API keys when --validate-keys is specified."""
-        tier = self.args.get("validate_keys")
-        if not tier:
-            return
-
-        print(f"Validating LLM API keys (tier {tier})...")
-
-        if tier >= 3:
-            print("Live validation enabled - making API calls to verify keys...")
-
-        validator = EnvValidator()
-        results = validator.validate_all(tier=tier)
-        validator.print_results(results)
-
-        # Warn but don't block startup for missing/placeholder keys
-        if validator.has_warnings(results):
-            print("Note: Some API keys are not configured. Agents using those providers will fail.")
-            print("      Configure them in your .env file to enable all features.\n")
-
-        # For actual errors (invalid format, invalid key), warn more strongly
-        if validator.has_errors(results):
-            print("Error: Some API keys have validation errors. Check the results above.\n")
 
     @staticmethod
     def generate_html_files():
@@ -327,10 +312,12 @@ class NeuroSanRunner:
 
         print(f"Started {process_name} with PID {process.pid}")
 
-        if self.args.get("logbridge_enabled"):
-            # Let log_bridge own reading/parsing/printing/writing
-            self.log_bridge.attach_process_logger(process, process_name, log_file)
-        else:
+
+        for plugin in self.plugins:
+            plugin.args["process_name"] = process_name
+            plugin.args["process"] = process
+
+        if self.args.get("logbridge_enabled") is False:
             # Start streaming logs in separate threads
             stdout_thread = threading.Thread(target=self.stream_output, args=(process.stdout, log_file, process_name))
             stderr_thread = threading.Thread(target=self.stream_output, args=(process.stderr, log_file, process_name))
@@ -339,9 +326,6 @@ class NeuroSanRunner:
 
         return process
 
-    def start_phoenix(self):
-        """Start Phoenix server (UI + OTLP HTTP collector) if enabled."""
-        self.phoenix_plugin.start_phoenix_server()
 
     def start_neuro_san(self):
         """Start the Neuro SAN server."""
@@ -424,8 +408,9 @@ class NeuroSanRunner:
             else:
                 os.killpg(os.getpgid(self.nsflow_process.pid), signal.SIGKILL)
 
-        # Stop Phoenix using the initializer
-        self.phoenix_plugin.stop_phoenix_server()
+        for plugin in self.plugins:
+            print(f"Running cleanup for plugin: {plugin}")
+            plugin.cleanup()
 
         sys.exit(0)
 
@@ -539,9 +524,6 @@ class NeuroSanRunner:
                 print("\nExiting due to port conflicts.\n")
                 sys.exit(1)
 
-        # Start services only if ports are free
-        # 1) Phoenix first so other services point OTLP to it
-        self.start_phoenix()
         if not server_only:
             if use_flask:
                 if not no_html:
@@ -564,8 +546,11 @@ class NeuroSanRunner:
         # Set environment variables
         self.set_environment_variables()
 
-        # Validate LLM API keys if --validate-keys was specified
-        self.validate_keys()
+        for plugin in self.plugins:
+            print(f"Running pre server start action for plugin: {plugin}")
+            plugin.pre_server_start_action()
+
+        
 
         # Ensure logs directory exists
         os.makedirs("logs", exist_ok=True)
@@ -583,10 +568,15 @@ class NeuroSanRunner:
         # Start all relevant processes
         self.conditional_start_servers()
 
+        for plugin in self.plugins:
+            print(f"Running post server start action for plugin: {plugin}")
+            plugin.post_server_start_action()
+
         print("\n" + "=" * 50 + "\n")
         print("All processes now running.")
         print("Press Ctrl+C to stop any running processes.")
         print("\n" + "=" * 50 + "\n")
+
 
         # Wait on active processes to finish
         if self.nsflow_process:

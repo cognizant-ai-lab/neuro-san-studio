@@ -28,6 +28,8 @@ from typing import Type
 # Use lazy loading of types to avoid dependency bloat for stuff most people don't need.
 from leaf_common.config.resolver_util import ResolverUtil
 
+from plugins.base_plugin import BasePlugin
+
 
 class PhoenixPlugin:
     """
@@ -461,3 +463,27 @@ class PhoenixPlugin:
                 self.phoenix_process.terminate()
             else:
                 os.killpg(os.getpgid(self.phoenix_process.pid), signal.SIGKILL)
+
+class PhoenixStudioPlugin(PhoenixPlugin, BasePlugin):
+    """Plugin wrapper for Phoenix observability in Neuro-San Studio."""
+    
+    def __init__(self, args: dict = None):
+        super().__init__(config=self.get_default_config())
+        self.set_environment_variables()
+        self.args = args or {}
+        self.plugin_name = "PhoenixStudioPlugin"
+    
+    def pre_server_start_action(self):
+        """Initialize Phoenix and start server if enabled."""
+        self.start_phoenix_server()
+
+    @staticmethod
+    def update_args_dict(args_dict: dict):
+        """Update the plugin's internal configuration from a new args dictionary."""
+        # Update config with new values from args_dict
+        args_dict.update(PhoenixPlugin.get_default_config())
+
+    def cleanup(self):
+        """Stop Phoenix server if it was started by this plugin."""
+        self.stop_phoenix_server()
+

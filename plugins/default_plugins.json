@@ -1,0 +1,16 @@
+{
+    "plugins": [
+        {
+            "module": "plugins.env_validator.env_validator",
+            "class": "EnvValidatorPlugin"
+        },
+        {
+            "module": "plugins.phoenix.phoenix_plugin",
+            "class": "PhoenixStudioPlugin"
+        },
+        {
+            "module": "plugins.log_bridge.process_log_bridge",
+            "class": "ProcessLogBridgePlugin"
+        }
+    ]
+}
