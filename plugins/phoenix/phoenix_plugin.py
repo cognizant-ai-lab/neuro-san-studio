@@ -464,15 +464,16 @@ class PhoenixPlugin:
             else:
                 os.killpg(os.getpgid(self.phoenix_process.pid), signal.SIGKILL)
 
+
 class PhoenixStudioPlugin(PhoenixPlugin, BasePlugin):
     """Plugin wrapper for Phoenix observability in Neuro-San Studio."""
-    
+
     def __init__(self, args: dict = None):
         super().__init__(config=self.get_default_config())
         self.set_environment_variables()
         self.args = args or {}
         self.plugin_name = "PhoenixStudioPlugin"
-    
+
     def pre_server_start_action(self):
         """Initialize Phoenix and start server if enabled."""
         self.start_phoenix_server()
@@ -486,4 +487,3 @@ class PhoenixStudioPlugin(PhoenixPlugin, BasePlugin):
     def cleanup(self):
         """Stop Phoenix server if it was started by this plugin."""
         self.stop_phoenix_server()
-

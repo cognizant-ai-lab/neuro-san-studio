@@ -15,10 +15,10 @@
 # END COPYRIGHT
 from __future__ import annotations
 
-import os
 import copy
 import json
 import logging
+import os
 import re
 import threading
 from datetime import datetime
@@ -736,16 +736,17 @@ class ProcessLogBridgePlugin(BasePlugin):
         Initialize the plugin and its internal ProcessLogBridge instance.
         :param args (dict | None): Optional configuration for the logging bridge.
         """
+        super().__init__("ProcessLogBridgePlugin", args)
         self.args = args or {}
         self.plugin_name = "ProcessLogBridgePlugin"
-        self.log_brigde_enabled = self.args.get("logbridge_enabled","INFO")
+        self.log_brigde_enabled = self.args.get("logbridge_enabled", "INFO")
         self.log_file = os.path.join(self.args.get("logs_dir", "."), "runner.log")
         if self.log_brigde_enabled:
             self.log_bridge = ProcessLogBridge(
-                    level=self.args.get("log_level", "info"),
-                    runner_log_file=self.log_file,
-                )
-    
+                level=self.args.get("log_level", "info"),
+                runner_log_file=self.log_file,
+            )
+
     def post_server_start_action(self):
         process = self.args.get("process")
         process_name = self.args.get("process_name", "UnnamedProcess")

@@ -16,6 +16,8 @@
 
 import argparse
 import glob
+import importlib
+import json
 import os
 import signal
 import socket
@@ -28,8 +30,6 @@ from typing import Dict
 from typing import Tuple
 
 from dotenv import load_dotenv
-import json
-import importlib
 
 
 class NeuroSanRunner:
@@ -64,8 +64,6 @@ class NeuroSanRunner:
             class_name = plugin_info.get("class")
             print(f"Loading plugin: {class_name} from module: {module}")
             self.plugin_classes.append(getattr(importlib.import_module(module), class_name))
-        
-        
 
         # Default Configuration
         self.args: Dict[str, Any] = {
@@ -102,7 +100,7 @@ class NeuroSanRunner:
             if hasattr(plugin, "update_args_dict"):
                 print(f"Updating args dict with plugin: {plugin}")
                 plugin.update_args_dict(self.args)
-        
+
         # Ensure logs directory exists
         os.makedirs(self.logs_dir, exist_ok=True)
         os.makedirs(self.thinking_dir, exist_ok=True)
@@ -119,7 +117,6 @@ class NeuroSanRunner:
         self.server_process = None
         self.flask_webclient_process = None
         self.nsflow_process = None
-
 
     def load_env_variables(self):
         """Load .env file from project root and set variables."""
@@ -175,7 +172,7 @@ class NeuroSanRunner:
             "--use-flask-web-client", action="store_true", help="Use the flask based neuro-san-web-client"
         )
 
-        # add arguments from plugins        
+        # add arguments from plugins
         for plugin in self.plugin_classes:
             print(f"Updating parser args with plugin: {plugin}")
             plugin.update_parser_args(parser)
@@ -217,7 +214,6 @@ class NeuroSanRunner:
         print(f"NEURO_SAN_SERVER_CONNECTION set to: {os.environ['NEURO_SAN_SERVER_CONNECTION']}")
         print(f"AGENT_MANIFEST_UPDATE_PERIOD_SECONDS set to: {os.environ['AGENT_MANIFEST_UPDATE_PERIOD_SECONDS']}")
         print(f"LOG_LEVEL set to: {os.environ['LOG_LEVEL']}\n")
-
 
         # Client-only env variables
         if not self.args["server_only"]:
@@ -312,7 +308,6 @@ class NeuroSanRunner:
 
         print(f"Started {process_name} with PID {process.pid}")
 
-
         for plugin in self.plugins:
             plugin.args["process_name"] = process_name
             plugin.args["process"] = process
@@ -325,7 +320,6 @@ class NeuroSanRunner:
             stderr_thread.start()
 
         return process
-
 
     def start_neuro_san(self):
         """Start the Neuro SAN server."""
@@ -550,8 +544,6 @@ class NeuroSanRunner:
             print(f"Running pre server start action for plugin: {plugin}")
             plugin.pre_server_start_action()
 
-        
-
         # Ensure logs directory exists
         os.makedirs("logs", exist_ok=True)
 
@@ -576,7 +568,6 @@ class NeuroSanRunner:
         print("All processes now running.")
         print("Press Ctrl+C to stop any running processes.")
         print("\n" + "=" * 50 + "\n")
-
 
         # Wait on active processes to finish
         if self.nsflow_process:

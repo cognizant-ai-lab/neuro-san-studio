@@ -30,6 +30,7 @@ from dataclasses import dataclass
 from enum import Enum
 from typing import Callable
 from typing import Optional
+
 from plugins.base_plugin import BasePlugin
 
 # Optional dependencies for live validation (Tier 3)
@@ -501,6 +502,7 @@ class EnvValidator:
         warning_statuses = {ValidationStatus.NOT_SET, ValidationStatus.PLACEHOLDER}
         return any(r.status in warning_statuses for r in results)
 
+
 class EnvValidatorPlugin(BasePlugin):
     """Plugin wrapper for environment variable validation."""
 
@@ -532,7 +534,7 @@ class EnvValidatorPlugin(BasePlugin):
         if validator.has_errors(results):
             print("Error: Some API keys have validation errors. Check the results above.\n")
 
-    def pre_server_start_action(self, *args, **kwargs):
+    def pre_server_start_action(self, *_args, **_kwargs):
         """Perform the plugin's main action (no-op, validation runs on startup)."""
         self._validate_keys()
 
