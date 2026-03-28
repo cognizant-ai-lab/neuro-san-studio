@@ -738,8 +738,8 @@ class ProcessLogBridgePlugin(BasePlugin):
         """
         self.args = args or {}
         self.plugin_name = "ProcessLogBridgePlugin"
-        self.log_brigde_enabled = self.args.get("logbridge_enabled")
-        self.log_file = os.path.join(self.args["logs_dir"], "runner.log")
+        self.log_brigde_enabled = self.args.get("logbridge_enabled","INFO")
+        self.log_file = os.path.join(self.args.get("logs_dir", "."), "runner.log")
         if self.log_brigde_enabled:
             self.log_bridge = ProcessLogBridge(
                     level=self.args.get("log_level", "info"),

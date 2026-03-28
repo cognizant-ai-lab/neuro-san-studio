@@ -13,6 +13,10 @@ class BasePlugin:
     def cleanup(self):
         pass
 
+    def initialize(self):
+        """Initialize the plugin. This method is called during server startup."""
+        pass
+
     @staticmethod
     def update_args_dict(args_dict: dict):
         pass
