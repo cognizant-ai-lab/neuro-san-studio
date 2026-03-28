@@ -24,6 +24,8 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Check if PR is from a fork
         id: fork_check
@@ -42,7 +44,7 @@ jobs:
       - name: Install dependencies
         shell: bash
         run: |
-          apt-get update && apt-get install -y shellcheck make curl
+          apt-get update && apt-get install -y shellcheck make curl git
           python -m venv venv
           source venv/bin/activate
           pip install -r requirements-build.txt
@@ -69,7 +71,17 @@ jobs:
           https://github.com/lycheeverse/lychee/releases/latest/download/lychee-x86_64-unknown-linux-gnu.tar.gz \
           | tar --extract --gzip --directory /tmp
           # Accept 429 (rate limit) and 503 (temporary outage) to prevent flaky CI failures
-          /tmp/lychee --max-retries 3 --retry-wait-time 3 --verbose --accept '200,203,204,429,503' --exclude-path venv './**/*.md'
+          # Only check links in changed markdown files
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            CHANGED_MD=$(git diff --name-only --diff-filter=ACMR ${{ github.event.pull_request.base.sha }}..HEAD -- '*.md')
+          else
+            CHANGED_MD=$(git diff --name-only --diff-filter=ACMR HEAD~1 -- '*.md')
+          fi
+          if [ -n "$CHANGED_MD" ]; then
+            /tmp/lychee --max-retries 3 --retry-wait-time 3 --verbose --accept '200,203,204,429,503' --exclude-path venv $CHANGED_MD
+          else
+            echo "No markdown files changed — skipping link check."
+          fi
 
       - name: Run make test
         shell: bash
