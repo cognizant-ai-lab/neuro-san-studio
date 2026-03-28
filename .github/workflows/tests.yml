@@ -23,7 +23,9 @@ jobs:
 
     steps:
       - name: Install git
-        run: apt-get update && apt-get install -y git
+        run: |
+          apt-get update && apt-get install -y git
+          git config --global --add safe.directory "$GITHUB_WORKSPACE"
 
       - name: Checkout
         uses: actions/checkout@v4
