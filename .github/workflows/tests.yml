@@ -78,7 +78,7 @@ jobs:
           if [ "${{ github.event_name }}" = "pull_request" ]; then
             CHANGED_MD=$(git diff --name-only --diff-filter=ACMR ${{ github.event.pull_request.base.sha }}..HEAD -- '*.md')
           else
-            CHANGED_MD=$(git diff --name-only --diff-filter=ACMR HEAD~1 -- '*.md')
+            CHANGED_MD=$(git diff --name-only --diff-filter=ACMR ${{ github.event.before }}..HEAD -- '*.md' 2>/dev/null || git ls-files '*.md')
           fi
           if [ -n "$CHANGED_MD" ]; then
             /tmp/lychee --max-retries 3 --retry-wait-time 3 --verbose --accept '200,203,204,429,503' --exclude-path venv $CHANGED_MD
