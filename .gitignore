@@ -196,7 +196,7 @@ token.json
 TopicMemory.json
 
 # Cruse related local database
-cruse_threads.db
+*.db
 
 # Generated agent networks by the designer
 registries/generated/
