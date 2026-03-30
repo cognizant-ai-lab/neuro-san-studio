@@ -31,7 +31,7 @@ from leaf_common.config.resolver_util import ResolverUtil
 from plugins.base_plugin import BasePlugin
 
 
-class PhoenixPlugin:
+class PhoenixPluginBase:
     """
     Manages Phoenix/OpenTelemetry initialization for tracing and observability.
 
@@ -465,7 +465,7 @@ class PhoenixPlugin:
                 os.killpg(os.getpgid(self.phoenix_process.pid), signal.SIGKILL)
 
 
-class PhoenixStudioPlugin(PhoenixPlugin, BasePlugin):
+class PhoenixStudioPlugin(PhoenixPluginBase, BasePlugin):
     """Plugin wrapper for Phoenix observability in Neuro-San Studio."""
 
     def __init__(self, args: dict = None):
@@ -480,9 +480,9 @@ class PhoenixStudioPlugin(PhoenixPlugin, BasePlugin):
 
     @staticmethod
     def update_args_dict(args_dict: dict):
-        """Update the plugin's internal configuration from a new args dictionary."""
+        """Update the args with additional args needed for Phoenix configuration."""
         # Update config with new values from args_dict
-        args_dict.update(PhoenixPlugin.get_default_config())
+        args_dict.update(PhoenixPluginBase.get_default_config())
 
     def cleanup(self):
         """Stop Phoenix server if it was started by this plugin."""
