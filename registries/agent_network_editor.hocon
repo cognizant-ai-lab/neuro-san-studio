@@ -292,7 +292,7 @@ Think of this as building or refining a hierarchical organizational chart. Each 
 
         {
             "name": "get_agent_network_definition",
-            "class": "get_agent_network_definition.GetAgentNetworkDefinition",
+            "class": "coded_tools.get_agent_network_definition.GetAgentNetworkDefinition",
             "function": {
                 "description": "Get the agent network definition."
             }
