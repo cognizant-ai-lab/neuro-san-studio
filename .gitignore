@@ -195,7 +195,7 @@ token.json
 # example files from agent networks
 TopicMemory.json
 
-# Cruse related local database
+# local database
 *.db
 
 # Generated agent networks by the designer
