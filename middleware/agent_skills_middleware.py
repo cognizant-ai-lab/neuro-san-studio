@@ -157,19 +157,16 @@ class AgentSkillsMiddleware(AgentMiddleware):
         """
 
         # Inject skills section into system message
-        messages: list[BaseMessage] = list(request.messages)
+        system_message: BaseMessage = request.system_message
         skills_prompt: str = await self._format_skills_prompt()
 
         # If there is a skills prompt to inject
         if skills_prompt:
-            if messages and isinstance(messages[0], SystemMessage):
-                original_content: str = messages[0].content
-                new_content: str = f"{original_content}\n\n{skills_prompt}"
-                messages[0] = SystemMessage(content=new_content)
-            else:
-                messages.insert(0, SystemMessage(content=skills_prompt))
+            original_content: str = system_message.content
+            new_content: str = f"{original_content}\n\n{skills_prompt}"
+            system_message = SystemMessage(content=new_content)
 
-        return await handler(request.override(messages=messages))
+        return await handler(request.override(system_message=system_message))
 
     @override
     async def awrap_tool_call(
