@@ -49,8 +49,14 @@ RUN if [ -f ${APP_SOURCE}/requirements.txt ]; \
     fi
 
 # Optional: deploy-specific requirements (e.g., ns-usagelogger from a private repo).
-# When building locally this file won't exist and the step is a no-op.
-# In CI, the workflow copies a deploy-requirements.txt into the build context.
+# Following the unileaf pattern, the CI workflow creates a credentialed copy of
+# the requirements file (with tokens embedded in git+https:// URLs) and mounts
+# it as the "with_creds_requirements" Docker secret.
+# When building locally (without the secret), the install script is a no-op.
+#
+# We COPY the original (un-credentialed) requirements file first so that Docker
+# busts the layer cache whenever the file changes, even though the actual
+# install reads from the secret-mounted version.
 # hadolint ignore=DL3008
 RUN set -eux; \
     apt-get update; \
@@ -60,21 +66,9 @@ RUN set -eux; \
     rm -rf /var/lib/apt/lists/*
 
 COPY deploy-requirement[s].txt /tmp/
-RUN --mount=type=secret,id=GH_TOKEN,required=false \
-    set -eux; \
-    if [ -f /tmp/deploy-requirements.txt ]; then \
-        if [ -f /run/secrets/GH_TOKEN ]; then \
-            TOKEN="$(tr -d '\r\n' < /run/secrets/GH_TOKEN)"; \
-            AUTH="$(printf 'x-access-token:%s' "$TOKEN" | base64 -w0)"; \
-            git config --global \
-                http.https://github.com/.extraheader \
-                "Authorization: Basic ${AUTH}"; \
-        fi; \
-        python -m pip install --prefix=/install --no-cache-dir \
-            -r /tmp/deploy-requirements.txt; \
-        git config --global --unset-all \
-            http.https://github.com/.extraheader || true; \
-    fi
+COPY deploy/install_deploy_requirements.sh /tmp/install_deploy_requirements.sh
+RUN --mount=type=secret,id=with_creds_requirements,required=false \
+    /tmp/install_deploy_requirements.sh
 
 # Reset to the root directory
 WORKDIR /
