@@ -96,7 +96,7 @@ jobs:
             # - 429 (rate limit)
             # - 502 (bad gateway)
             # - 503 (temporary outage)
-            /tmp/lychee --max-retries 3 --retry-wait-time 3 --verbose --accept '200,203,204,403,429,502,503' --exclude-path venv $CHECK_FILES
+            /tmp/lychee --max-retries 3 --retry-wait-time 3 --max-concurrency 32 --verbose --accept '200,203,204,403,429,502,503' --exclude-path venv $CHECK_FILES
           else
             echo "No files changed — skipping link check."
           fi
