@@ -222,4 +222,6 @@ class GetAgentNetworkDefinition(CodedTool):
             except FileNotFoundError:
                 aaosa_instructions = ""
 
+            # Cache the loaded value in sly_data for subsequent calls
+            sly_data["aaosa_instructions"] = aaosa_instructions
         return aaosa_instructions
