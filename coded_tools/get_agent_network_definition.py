@@ -202,7 +202,7 @@ class GetAgentNetworkDefinition(CodedTool):
         :return: aaosa instructions
         """
         # Aaosa and demo mode text (exact match)
-        aaosa_instructions: str | None = None
+        aaosa_instructions: str = ""
 
         # Try to get aaosa_instructions from sly_data cache
         async with await SlyDataLock.get_lock(sly_data, "aaosa_instructions_lock"):
@@ -224,4 +224,5 @@ class GetAgentNetworkDefinition(CodedTool):
 
             # Cache the loaded value in sly_data for subsequent calls
             sly_data["aaosa_instructions"] = aaosa_instructions
+
         return aaosa_instructions
