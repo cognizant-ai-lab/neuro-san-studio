@@ -28,7 +28,6 @@ set -eu
 SECRET_PATH="/run/secrets/with_creds_requirements"
 
 if [ ! -f "${SECRET_PATH}" ]; then
-    echo "No deploy requirements secret found — skipping."
     exit 0
 fi
 

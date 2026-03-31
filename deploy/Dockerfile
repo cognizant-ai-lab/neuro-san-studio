@@ -58,15 +58,15 @@ RUN if [ -f ${APP_SOURCE}/requirements.txt ]; \
 # busts the layer cache whenever the file changes, even though the actual
 # install reads from the secret-mounted version.
 # hadolint ignore=DL3008
-RUN set -eux; \
+RUN set -eu; \
     apt-get update; \
     apt-get install --yes --no-install-recommends \
         git ca-certificates openssh-client \
     ; \
     rm -rf /var/lib/apt/lists/*
 
-COPY deploy-requirement[s].txt /tmp/
 COPY deploy/install_deploy_requirements.sh /tmp/install_deploy_requirements.sh
+COPY deploy-requirement[s].txt /tmp/
 RUN --mount=type=secret,id=with_creds_requirements,required=false \
     /tmp/install_deploy_requirements.sh
 
@@ -415,5 +415,4 @@ ENV AGENT_NETWORK_DESIGNER_RESERVATIONS_LIFETIME_IN_SECONDS="259200"
 # are sent are in the same format at the Connectivity() API for neuro-san.
 ENV AGENT_NETWORK_DESIGNER_PROGRESS_STYLE="connectivity"
 
-# Appease hadolint DL3025 with this ENTRYPOINT format
 ENTRYPOINT ["/bin/sh","-c","exec \"$APP_ENTRYPOINT\" \"$@\"","-"]
