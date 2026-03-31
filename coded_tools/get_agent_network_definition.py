@@ -24,6 +24,7 @@ from neuro_san.internals.persistence.abstract_async_config_restorer import Abstr
 from coded_tools.agent_network_editor.connectivity_dictionary_converter import ConnectivityDictionaryConverter
 from coded_tools.agent_network_editor.constants import AGENT_NETWORK_DEFINITION
 from coded_tools.agent_network_editor.constants import AGENT_NETWORK_NAME
+from coded_tools.agent_network_editor.sly_data_lock import SlyDataLock
 
 AGENT_NETWORK_HOCON_FILE: str = "agent_network_hocon_file"
 
@@ -81,7 +82,7 @@ class GetAgentNetworkDefinition(CodedTool):
         # Try to parse from hocon file name that the agent extracts from user input
         elif args.get("agent_network_hocon_file"):
             logger.info(">>>>>>>>>>>>>>>>>>>Reading & Parsing Agent Network HOCON File>>>>>>>>>>>>>>>>>>>")
-            network_def = await self._hocon_to_definition(args.get("agent_network_hocon_file"))
+            network_def = await self._hocon_to_definition(args.get("agent_network_hocon_file"), sly_data)
 
         # Fall back to sly data
         # First, check to see if there is a generated agent network definition
@@ -95,7 +96,7 @@ class GetAgentNetworkDefinition(CodedTool):
                 ">>>>>>>>>>>>>>>>>>>Reading & Parsing Agent Network HOCON File "
                 "from Key 'agent_network_hocon_file' in Sly Data>>>>>>>>>>>>>>>>>>>"
             )
-            network_def = await self._hocon_to_definition(sly_data.get(AGENT_NETWORK_HOCON_FILE))
+            network_def = await self._hocon_to_definition(sly_data.get(AGENT_NETWORK_HOCON_FILE), sly_data)
 
         # Store in sly_data and validate
         if network_def:
@@ -115,10 +116,12 @@ class GetAgentNetworkDefinition(CodedTool):
         logger.warning(error_msg)
         return error_msg
 
-    async def _hocon_to_definition(self, network_hocon_file: str | None) -> dict[str, Any] | None:
+    async def _hocon_to_definition(self, network_hocon_file: str | None,
+                                   sly_data: dict[str, Any]) -> dict[str, Any] | None:
         """
         Convert hocon file path into agent network definition
         :param network_hocon_file: Agent network hocon file path
+        :param sly_data: A dictionary whose keys are defined by the agent hierarchy
 
         :return: Agent network definition
         """
@@ -140,7 +143,7 @@ class GetAgentNetworkDefinition(CodedTool):
             instructions: str = agent.get("instructions")
             if instructions:
                 # Extract only the unique instructions (remove aaosa instructions, instructions prefix, and demo mode)
-                custom_instructions: str = await self._extract_custom_instructions(instructions)
+                custom_instructions: str = await self._extract_custom_instructions(instructions, sly_data)
                 network_def[agent_name]["instructions"] = custom_instructions
             tools: list[str] = agent.get("tools")
             if tools:
@@ -148,10 +151,11 @@ class GetAgentNetworkDefinition(CodedTool):
 
         return network_def
 
-    async def _extract_custom_instructions(self, instructions: str) -> str:
+    async def _extract_custom_instructions(self, instructions: str, sly_data: dict[str, Any]) -> str:
         """
         Extract the custom part of instructions, excluding aaosa instructions, instructions prefix, and demo mode.
         :param instructions: The full instructions of an agent.
+        :param sly_data: A dictionary whose keys are defined by the agent hierarchy
 
         :return: The part of instructions that is unique to the agent.
         """
@@ -163,20 +167,12 @@ class GetAgentNetworkDefinition(CodedTool):
             r"Do not mention what you can NOT do\. Only mention what you can do\."
         )
 
-        # Aaosa and demo mode text (exact match)
-        try:
-            use_file = "registries/aaosa.hocon"
-            hocon = AbstractAsyncConfigRestorer(
-                file_purpose="get_agent_network_definition - custom instructions", must_exist=True
-            )
-            config: dict[str, Any] = await hocon.async_restore(file_reference=use_file)
-            aaosa_instructions = config.get("aaosa_instructions", "")
-        except FileNotFoundError:
-            aaosa_instructions = ""
         demo_mode = (
             "You are part of a demo system, so when queried, make up a realistic response as if "
             "you are actually grounded in real data or you are operating a real application API or microservice."
         )
+
+        aaosa_instructions: str = await self._get_aaosa_instructions(sly_data)
 
         # Clean and normalize the input
         custom_part: str = instructions.strip()
@@ -195,3 +191,34 @@ class GetAgentNetworkDefinition(CodedTool):
         custom_part = " ".join(custom_part.split())
 
         return custom_part
+
+    async def _get_aaosa_instructions(self, sly_data: dict[str, Any]) -> str:
+        """
+        Get aaosa instructions potentially from cache in sly_data
+        :param sly_data: A dictionary whose keys are defined by the agent hierarchy
+
+        :return: aaosa instructions
+        """
+        # Aaosa and demo mode text (exact match)
+        aaosa_instructions: str = None
+
+        async with await SlyDataLock.get_lock(sly_data, "aaosa_instructions_lock"):
+
+            # Try to get aaosa_instructions from sly_data cache
+            aaosa_instructions = sly_data.get("aaosa_instructions")
+            if aaosa_instructions is not None:
+                # Return early with cached value
+                return aaosa_instructions
+
+            # Get from file
+            try:
+                use_file = "registries/aaosa.hocon"
+                hocon = AbstractAsyncConfigRestorer(
+                    file_purpose="get_agent_network_definition - custom instructions", must_exist=True
+                )
+                config: dict[str, Any] = await hocon.async_restore(file_reference=use_file)
+                aaosa_instructions = config.get("aaosa_instructions", "")
+            except FileNotFoundError:
+                aaosa_instructions = ""
+
+        return aaosa_instructions
