@@ -157,14 +157,16 @@ class AgentSkillsMiddleware(AgentMiddleware):
         """
 
         # Inject skills section into system message
-        system_message: BaseMessage = request.system_message
+        system_message: BaseMessage | None = request.system_message
         skills_prompt: str = await self._format_skills_prompt()
 
         # If there is a skills prompt to inject
         if skills_prompt:
-            original_content: str = system_message.content
-            new_content: str = f"{original_content}\n\n{skills_prompt}"
-            system_message = SystemMessage(content=new_content)
+            if system_message is not None:
+                original_content = system_message.content if isinstance(system_message.content, str) else ""
+                system_message = SystemMessage(content=f"{original_content}\n\n{skills_prompt}")
+            else:
+                system_message = SystemMessage(content=skills_prompt)
 
         return await handler(request.override(system_message=system_message))
 
