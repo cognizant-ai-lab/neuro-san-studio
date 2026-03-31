@@ -75,20 +75,29 @@ jobs:
           curl --silent --location \
           https://github.com/lycheeverse/lychee/releases/latest/download/lychee-x86_64-unknown-linux-gnu.tar.gz \
           | tar --extract --gzip --directory /tmp
-          # Only check links in changed files
+          # Determine which files to check based on the type of change:
+          # - If files were moved/renamed/deleted, check ALL .md files (links to those files may break elsewhere)
+          # - Otherwise, only check links in changed .md files
           if [ "${{ github.event_name }}" = "pull_request" ]; then
-            CHANGED_FILES=$(git diff --name-only --diff-filter=ACMR ${{ github.event.pull_request.base.sha }}..HEAD 2>/dev/null || git ls-files)
+            DIFF_BASE="${{ github.event.pull_request.base.sha }}"
           else
-            CHANGED_FILES=$(git diff --name-only --diff-filter=ACMR ${{ github.event.before }}..HEAD 2>/dev/null || git ls-files)
+            DIFF_BASE="${{ github.event.before }}"
           fi
-          if [ -n "$CHANGED_FILES" ]; then
+          HAS_MOVES=$(git diff --name-only --diff-filter=DR "$DIFF_BASE"..HEAD 2>/dev/null | head -1)
+          if [ -n "$HAS_MOVES" ]; then
+            echo "Detected moved/renamed/deleted files — checking all .md files."
+            CHECK_FILES=$(git ls-files '*.md')
+          else
+            CHECK_FILES=$(git diff --name-only --diff-filter=ACMR "$DIFF_BASE"..HEAD -- '*.md' 2>/dev/null || git ls-files '*.md')
+          fi
+          if [ -n "$CHECK_FILES" ]; then
             # To prevent flaky CI failures, accept:
             # - 403 (Forbidden) if the server blocks bots or requests without a browser-like User-Agent
             # - 429 (rate limit)
             # - 503 (temporary outage)
-            /tmp/lychee --max-retries 3 --retry-wait-time 3 --verbose --accept '200,203,204,403,429,503' --exclude-path venv $CHANGED_FILES
+            /tmp/lychee --max-retries 3 --retry-wait-time 3 --verbose --accept '200,203,204,403,429,503' --exclude-path venv $CHECK_FILES
           else
-            echo "No files changed — skipping link check."
+            echo "No markdown files changed — skipping link check."
           fi
 
       - name: Run make test
