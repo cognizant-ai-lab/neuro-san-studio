@@ -83,9 +83,9 @@ jobs:
           else
             DIFF_BASE="${{ github.event.before }}"
           fi
-          HAS_MOVES=$(git diff --name-only --diff-filter=DR "$DIFF_BASE"..HEAD 2>/dev/null | head -1)
-          if [ -n "$HAS_MOVES" ]; then
-            echo "Detected moved/renamed/deleted files — checking all files."
+          HAS_MOVES=$(git diff --name-only --diff-filter=DR "$DIFF_BASE"..HEAD 2>/dev/null | head -1 || true)
+          if [ -n "$HAS_MOVES" ] || ! git cat-file -e "$DIFF_BASE" 2>/dev/null; then
+            echo "Detected moved/renamed/deleted files or unreachable base — checking all files."
             CHECK_FILES=$(git ls-files)
           else
             CHECK_FILES=$(git diff --name-only --diff-filter=ACMR "$DIFF_BASE"..HEAD 2>/dev/null || git ls-files)
