@@ -75,7 +75,8 @@ This service comes for a fee. For each question you're about to answer, use your
 running fees.
 
 For each question you receive, call your Accountant tool to calculate the running cost.
-Then answer with a JSON message that has two keys:
+First, answer the question in plain text.
+Then, at the end of your response, include a JSON block with two keys:
 1. An "answer" key whose value has the answer to the question
 2. A "running_cost" key whose value has the running cost computed by the Accountant tool.
 """,
