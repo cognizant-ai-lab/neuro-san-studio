@@ -116,8 +116,9 @@ class GetAgentNetworkDefinition(CodedTool):
         logger.warning(error_msg)
         return error_msg
 
-    async def _hocon_to_definition(self, network_hocon_file: str | None,
-                                   sly_data: dict[str, Any]) -> dict[str, Any] | None:
+    async def _hocon_to_definition(
+        self, network_hocon_file: str | None, sly_data: dict[str, Any]
+    ) -> dict[str, Any] | None:
         """
         Convert hocon file path into agent network definition
         :param network_hocon_file: Agent network hocon file path
@@ -202,9 +203,8 @@ class GetAgentNetworkDefinition(CodedTool):
         # Aaosa and demo mode text (exact match)
         aaosa_instructions: str = None
 
+        # Try to get aaosa_instructions from sly_data cache
         async with await SlyDataLock.get_lock(sly_data, "aaosa_instructions_lock"):
-
-            # Try to get aaosa_instructions from sly_data cache
             aaosa_instructions = sly_data.get("aaosa_instructions")
             if aaosa_instructions is not None:
                 # Return early with cached value
