@@ -201,7 +201,6 @@ class GetAgentNetworkDefinition(CodedTool):
 
         :return: aaosa instructions
         """
-        # Aaosa and demo mode text (exact match)
         aaosa_instructions: str = ""
 
         # Try to get aaosa_instructions from sly_data cache
