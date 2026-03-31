@@ -49,7 +49,7 @@ jobs:
       - name: Install dependencies
         shell: bash
         run: |
-          apt-get update && apt-get install -y shellcheck make curl git
+          apt-get update && apt-get install -y shellcheck make curl
           python -m venv venv
           source venv/bin/activate
           pip install -r requirements-build.txt
@@ -81,7 +81,7 @@ jobs:
           # - 503 (temporary outage)
           # Only check links in changed markdown files
           if [ "${{ github.event_name }}" = "pull_request" ]; then
-            CHANGED_MD=$(git diff --name-only --diff-filter=ACMR ${{ github.event.pull_request.base.sha }}..HEAD -- '*.md')
+            CHANGED_MD=$(git diff --name-only --diff-filter=ACMR ${{ github.event.pull_request.base.sha }}..HEAD -- '*.md' 2>/dev/null || git ls-files '*.md')
           else
             CHANGED_MD=$(git diff --name-only --diff-filter=ACMR ${{ github.event.before }}..HEAD -- '*.md' 2>/dev/null || git ls-files '*.md')
           fi
