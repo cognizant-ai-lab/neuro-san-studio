@@ -48,6 +48,34 @@ RUN if [ -f ${APP_SOURCE}/requirements.txt ]; \
         pip install --prefix=/install --no-cache-dir -r ${APP_SOURCE}/requirements.txt ; \
     fi
 
+# Optional: deploy-specific requirements (e.g., ns-usagelogger from a private repo).
+# When building locally this file won't exist and the step is a no-op.
+# In CI, the workflow copies a deploy-requirements.txt into the build context.
+# hadolint ignore=DL3008
+RUN set -eux; \
+    apt-get update; \
+    apt-get install --yes --no-install-recommends \
+        git ca-certificates openssh-client \
+    ; \
+    rm -rf /var/lib/apt/lists/*
+
+COPY deploy-requirement[s].txt /tmp/
+RUN --mount=type=secret,id=GH_TOKEN,required=false \
+    set -eux; \
+    if [ -f /tmp/deploy-requirements.txt ]; then \
+        if [ -f /run/secrets/GH_TOKEN ]; then \
+            TOKEN="$(tr -d '\r\n' < /run/secrets/GH_TOKEN)"; \
+            AUTH="$(printf 'x-access-token:%s' "$TOKEN" | base64 -w0)"; \
+            git config --global \
+                http.https://github.com/.extraheader \
+                "Authorization: Basic ${AUTH}"; \
+        fi; \
+        python -m pip install --prefix=/install --no-cache-dir \
+            -r /tmp/deploy-requirements.txt; \
+        git config --global --unset-all \
+            http.https://github.com/.extraheader || true; \
+    fi
+
 # Reset to the root directory
 WORKDIR /
 
@@ -393,4 +421,5 @@ ENV AGENT_NETWORK_DESIGNER_RESERVATIONS_LIFETIME_IN_SECONDS="259200"
 # are sent are in the same format at the Connectivity() API for neuro-san.
 ENV AGENT_NETWORK_DESIGNER_PROGRESS_STYLE="connectivity"
 
-ENTRYPOINT "${APP_ENTRYPOINT}"
+# Appease hadolint DL3025 with this ENTRYPOINT format
+ENTRYPOINT ["/bin/sh","-c","exec \"$APP_ENTRYPOINT\" \"$@\"","-"]
