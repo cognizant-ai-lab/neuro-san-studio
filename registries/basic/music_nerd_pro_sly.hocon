@@ -75,10 +75,7 @@ Then answer with a JSON message that has two keys:
                     }
                 }
             },
-            "tools": ["Accountant"],
-
-            # Parse any JSON in responses into the structure field of the ChatMessage.
-            "structure_formats": "json"
+            "tools": ["Accountant"]
         },
         {
             "name": "Accountant",

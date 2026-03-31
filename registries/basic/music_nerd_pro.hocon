@@ -79,10 +79,7 @@ Then answer with a JSON message that has two keys:
 1. An "answer" key whose value has the answer to the question
 2. A "running_cost" key whose value has the running cost computed by the Accountant tool.
 """,
-            "tools": ["Accountant"],
-
-            # Parse any JSON in responses into the structure field of the ChatMessage.
-            "structure_formats": "json"
+            "tools": ["Accountant"]
         },
         {
             "name": "Accountant",
