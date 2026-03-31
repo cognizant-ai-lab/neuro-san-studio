@@ -75,9 +75,9 @@ jobs:
           curl --silent --location \
           https://github.com/lycheeverse/lychee/releases/latest/download/lychee-x86_64-unknown-linux-gnu.tar.gz \
           | tar --extract --gzip --directory /tmp
-          # Determine which files to check based on the type of change:
+          # Determine which files to check:
           # - If files were moved/renamed/deleted, check ALL .md files (links to those files may break elsewhere)
-          # - Otherwise, only check links in changed .md files
+          # - Otherwise, only check links in changed files
           if [ "${{ github.event_name }}" = "pull_request" ]; then
             DIFF_BASE="${{ github.event.pull_request.base.sha }}"
           else
@@ -88,7 +88,7 @@ jobs:
             echo "Detected moved/renamed/deleted files — checking all .md files."
             CHECK_FILES=$(git ls-files '*.md')
           else
-            CHECK_FILES=$(git diff --name-only --diff-filter=ACMR "$DIFF_BASE"..HEAD -- '*.md' 2>/dev/null || git ls-files '*.md')
+            CHECK_FILES=$(git diff --name-only --diff-filter=ACMR "$DIFF_BASE"..HEAD 2>/dev/null || git ls-files)
           fi
           if [ -n "$CHECK_FILES" ]; then
             # To prevent flaky CI failures, accept:
@@ -97,7 +97,7 @@ jobs:
             # - 503 (temporary outage)
             /tmp/lychee --max-retries 3 --retry-wait-time 3 --verbose --accept '200,203,204,403,429,503' --exclude-path venv $CHECK_FILES
           else
-            echo "No markdown files changed — skipping link check."
+            echo "No files changed — skipping link check."
           fi
 
       - name: Run make test
