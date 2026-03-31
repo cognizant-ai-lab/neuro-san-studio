@@ -75,20 +75,20 @@ jobs:
           curl --silent --location \
           https://github.com/lycheeverse/lychee/releases/latest/download/lychee-x86_64-unknown-linux-gnu.tar.gz \
           | tar --extract --gzip --directory /tmp
-          # To prevent flaky CI failures, accept:
-          # - 403 (Forbidden) if the server blocks bots or requests without a browser-like User-Agent
-          # - 429 (rate limit)
-          # - 503 (temporary outage)
-          # Only check links in changed markdown files
+          # Only check links in changed files
           if [ "${{ github.event_name }}" = "pull_request" ]; then
-            CHANGED_MD=$(git diff --name-only --diff-filter=ACMR ${{ github.event.pull_request.base.sha }}..HEAD -- '*.md' 2>/dev/null || git ls-files '*.md')
+            CHANGED_FILES=$(git diff --name-only --diff-filter=ACMR ${{ github.event.pull_request.base.sha }}..HEAD 2>/dev/null || git ls-files)
           else
-            CHANGED_MD=$(git diff --name-only --diff-filter=ACMR ${{ github.event.before }}..HEAD -- '*.md' 2>/dev/null || git ls-files '*.md')
+            CHANGED_FILES=$(git diff --name-only --diff-filter=ACMR ${{ github.event.before }}..HEAD 2>/dev/null || git ls-files)
           fi
-          if [ -n "$CHANGED_MD" ]; then
-            /tmp/lychee --max-retries 3 --retry-wait-time 3 --verbose --accept '200,203,204,403,429,503' --exclude-path venv $CHANGED_MD
+          if [ -n "$CHANGED_FILES" ]; then
+            # To prevent flaky CI failures, accept:
+            # - 403 (Forbidden) if the server blocks bots or requests without a browser-like User-Agent
+            # - 429 (rate limit)
+            # - 503 (temporary outage)
+            /tmp/lychee --max-retries 3 --retry-wait-time 3 --verbose --accept '200,203,204,403,429,503' --exclude-path venv $CHANGED_FILES
           else
-            echo "No markdown files changed — skipping link check."
+            echo "No files changed — skipping link check."
           fi
 
       - name: Run make test
