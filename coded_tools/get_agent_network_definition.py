@@ -128,6 +128,7 @@ class GetAgentNetworkDefinition(CodedTool):
         """
 
         # Converting hocon file to dict
+        # Note we don't need to cache this because we only expect to read the file once.
         try:
             network_hocon_file = "registries/" + network_hocon_file
             hocon = AbstractAsyncConfigRestorer(file_purpose="get_agent_network_definition", must_exist=True)
