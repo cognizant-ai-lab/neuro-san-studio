@@ -1,5 +1,5 @@
 
-# See.. https://docs.python.org/3/library/logging.config.html#dictionary-schema-details
+# See... https://docs.python.org/3/library/logging.config.html#dictionary-schema-details
 # as to how this file can be configured for your own needs.  Examples there are provided in YAML,
 # but these can be easily translated to JSON or HOCON (which we prefer, because it allows these
 # comments to be sprinkled throughout).
