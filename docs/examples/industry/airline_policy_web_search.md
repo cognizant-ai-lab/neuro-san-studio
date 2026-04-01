@@ -18,9 +18,9 @@ assistance, all grounded strictly in live content retrieved from the airline's o
 This network follows a three-tier hierarchical architecture using the [AAOSA](../../user_guide.md) pattern:
 
 1. **Frontman** (`Policy_Assistant`) — the sole interface with the customer. Routes queries to one or more domain agents.
-2. **Domain agents** — five mid-tier agents that coordinate a functional area and delegate to leaf agents.
-3. **Leaf agents** — specialized agents that each own a narrow topic and call a `webpage_rag` RAG tool to scrape the
-   airline's FAQ and policy pages at query time.
+2. **Domain agents** — eleven mid-tier agents, each covering a narrow policy area, that delegate to a RAG leaf tool.
+3. **RAG tools** — each domain agent owns a single `webpage_rag` tool that scrapes a fixed set of the airline's FAQ
+   and policy pages at query time.
 
 All answers are strictly grounded in content retrieved from the airline's webpages. External knowledge is never used.
 When multiple pages return conflicting information, the system surfaces the conflict to the user rather than silently
@@ -88,65 +88,46 @@ early boarding options.
 
 ### Domain Agents (Tools called by the Frontman)
 
-1. **Baggage_Handling**
-   - Covers all baggage policies: carry-on items, checked bags, bag fees and quantity limits, bag issues, and special baggage.
-   - Delegates to:
-     - `Baggage_Info` — carry-on and checked bag size/weight limits, pricing, overweight and oversized fees
-     - `Bag_Issues` — delayed, damaged, and missing item claims for checked bags
-     - `Special_Baggage` — sporting equipment, musical instruments, firearms, bicycles, and smart luggage
-
-2. **Fares_And_Seating**
-   - Covers fare types, bundle differences, seating categories, and in-flight amenities.
-   - Delegates to:
-     - `Fare_Info` — what is included or excluded in the base fare; Economy, Premium, and Business bundle differences
-     - `Seating_And_Amenities` — seat types, seat selection, elite upgrade windows, and in-flight food and beverages
-
-3. **Loyalty_And_Benefits**
-   - Covers the airline's loyalty program and military travel benefits.
-   - Delegates to:
-     - `Loyalty_Program` — earning miles and points, elite status tiers and travel benefits, co-branded credit card perks, and partner earning opportunities
-     - `Military_Benefits` — military baggage allowances, fee waivers, eligibility, and benefits for accompanying family members
-
-4. **Travel_Requirements**
-   - Covers pre-flight documentation and TSA restrictions.
-   - Delegates to:
-     - `Travel_Documents` — domestic ID requirements, international passports and travel documents, children's ID rules, permanent resident travel
-     - `Restricted_Items` — TSA allowed and prohibited items on flights
-
-5. **Special_Assistance**
-   - Covers passengers with special needs: families, pets, and accessibility services.
-   - Delegates to:
-     - `Kids_And_Family` — traveling with small children, Kids Fly Free program, family seating guarantee
-     - `Pets` — allowed species, carrier size limits, fees, minimum pet age, international restrictions
-     - `Accessibility` — wheelchair assistance, battery-powered mobility aids, traveling with oxygen and medical devices
+| Agent | Scope |
+|---|---|
+| `Baggage_Info` | Carry-on and checked bag size/weight limits, quantity limits, pricing, overweight/oversized fees, fare bundle inclusions, optional services |
+| `Bag_Issues` | Post-travel checked bag problems: delayed, damaged, or missing items |
+| `Special_Baggage` | Non-standard items: sporting equipment, musical instruments, firearms, bicycles, smart luggage |
+| `Fare_Info` | Fare inclusions/exclusions; Economy, Premium, and Business bundle differences |
+| `Seating_And_Amenities` | Seat categories (UpFront Plus, Premium, Preferred, standard), seat selection, elite upgrade windows, in-flight food and beverages |
+| `Loyalty_Program` | Elite status tiers (Silver, Gold, Platinum, Diamond), qualification thresholds, and associated travel benefits |
+| `Military_Benefits` | Travel benefits for military personnel and eligible accompanying family members |
+| `Travel_Documents_And_Guidelines` | Domestic ID requirements, international passports and travel documents, children's ID rules |
+| `Restricted_Items` | TSA allowed and prohibited items on flights |
+| `Kids_and_Pets` | Traveling with children and pets: lap infants, family seating, strollers, car seats, formula, pet species and fees |
+| `Accessibility` | Wheelchair assistance, mobility aids, oxygen and medical devices, service animals, sensory accommodations, unaccompanied minors |
 
 ---
 
 ## RAG Tools (Leaf Tool Layer)
 
-Each leaf agent owns a single `webpage_rag` tool from the toolbox that scrapes a fixed set of the airline's URLs at query time. The
-leaf agent answers solely from the retrieved content.
+Each domain agent owns a single `webpage_rag` tool from the toolbox that scrapes a fixed set of the airline's URLs at query time. The
+agent answers solely from the retrieved content.
 
 | RAG Tool | URLs Scraped |
 |---|---|
-| `Baggage_Info_RAG` | Bag size/weight limits FAQ, bag quantity FAQ, bag pricing FAQ, optional services page |
+| `Baggage_Info_RAG` | Optional services page, bag quantity limits FAQ |
 | `Bag_Issues_RAG` | Delayed bag FAQ, damaged bag FAQ, missing items FAQ |
-| `Special_Baggage_RAG` | Sporting/musical equipment FAQ, firearms FAQ, bicycle FAQ, smart luggage FAQ |
-| `Fare_Info_RAG` | What's included in fare FAQ, what's not included FAQ, bundle differences FAQ |
-| `Seating_And_Amenities_RAG` | Seating options page, upfront/premium/preferred seating FAQ, food and beverages FAQ |
-| `Loyalty_Program_RAG` | Miles and points earning FAQ, how-to-earn-miles page, elite status benefits FAQ |
+| `Special_Baggage_RAG` | Sporting/musical equipment FAQ, firearms FAQ, smart luggage FAQ |
+| `Fare_Info_RAG` | What's included in fare FAQ, bundle differences FAQ |
+| `Seating_And_Amenities_RAG` | Seating options page, food and beverages FAQ |
+| `Loyalty_Program_RAG` | Miles and points earning FAQ, elite status benefits FAQ |
 | `Military_Benefits_RAG` | Military personnel bags FAQ |
-| `Travel_Documents_RAG` | ID and travel documents FAQ, international travel and security page |
+| `Travel_Documents_And_Guidelines_RAG` | ID and travel documents FAQ |
 | `Restricted_Items_RAG` | TSA allowed/prohibited items FAQ |
-| `Kids_And_Family_RAG` | Traveling with small children FAQ, Kids Fly Free FAQ, family seating FAQ |
-| `Pets_RAG` | Pets on the plane FAQ |
-| `Accessibility_RAG` | Wheelchair travel FAQ, airport wheelchair availability FAQ, battery-powered mobility aid FAQ, oxygen FAQ, medicine and medical devices FAQ |
+| `Kids_and_Pets_RAG` | Traveling with children or pets FAQ |
+| `Accessibility_RAG` | Special services FAQ |
 
 ---
 
 ## Test Fixtures
 
-21 integration tests for this agent network are located in
+23 integration tests for this agent network are located in
 [tests/fixtures/industry/airline_policy_web_search/](../../../tests/fixtures/industry/airline_policy_web_search/).
 
 ---
@@ -155,8 +136,6 @@ leaf agent answers solely from the retrieved content.
 
 - **No external knowledge**: Every claim in the answer must trace back to a sub-agent response from a RAG tool.
   If the agent is hallucinating, check whether the tool is actually being called.
-- **Agent routing**: Confirm the frontman called all relevant domain agents for a given query. A query about
-  carry-on bags in Economy should route to both `Baggage_Handling` and `Fares_And_Seating`.
 - **RAG content gaps**: If a leaf agent says information is unavailable, verify the target URLs are reachable
   and returning expected content. Page structure changes can cause silent content gaps, or a page may have moved to a different URL.
 - **Conflicting pages**: The system is designed to surface conflicts across pages. If the answer omits a
