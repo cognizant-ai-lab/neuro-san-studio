@@ -129,8 +129,7 @@ class ValidateTestFixture(CodedTool):
     # Top-level validation
     # ------------------------------------------------------------------
 
-    @staticmethod
-    def _check_top_level(fixture: dict[str, Any], errors: list[str]) -> None:
+    def _check_top_level(self, fixture: dict[str, Any], errors: list[str]) -> None:
         """Validate required top-level keys and reject disallowed ones."""
         for key in ("agent", "success_ratio", "interactions"):
             if key not in fixture:
@@ -159,14 +158,13 @@ class ValidateTestFixture(CodedTool):
             errors.append("'interactions' must be a list.")
 
         # connections validation.
-        ValidateTestFixture._check_connections(fixture.get("connections"), errors)
+        self._check_connections(fixture.get("connections"), errors)
 
     # ------------------------------------------------------------------
     # Connections validation
     # ------------------------------------------------------------------
 
-    @staticmethod
-    def _check_connections(connections: Any, errors: list[str]) -> None:
+    def _check_connections(self, connections: Any, errors: list[str]) -> None:
         """Validate the optional 'connections' list."""
         if connections is None:
             return
@@ -184,8 +182,8 @@ class ValidateTestFixture(CodedTool):
     # Per-interaction validation
     # ------------------------------------------------------------------
 
-    @staticmethod
     def _check_interaction(
+        self,
         interaction: dict[str, Any],
         index: int,
         errors: list[str],
@@ -227,14 +225,14 @@ class ValidateTestFixture(CodedTool):
 
         response: Any = interaction.get("response")
         if isinstance(response, dict):
-            ValidateTestFixture._check_response(response, prefix, errors)
+            self._check_response(response, prefix, errors)
 
     # ------------------------------------------------------------------
     # Response validation
     # ------------------------------------------------------------------
 
-    @staticmethod
     def _check_response(
+        self,
         response: dict[str, Any],
         prefix: str,
         errors: list[str],
@@ -249,7 +247,7 @@ class ValidateTestFixture(CodedTool):
         if has_text:
             text_val = response["text"]
             if isinstance(text_val, dict):
-                ValidateTestFixture._check_stock_tests(text_val, f"{prefix}.response.text", errors)
+                self._check_stock_tests(text_val, f"{prefix}.response.text", errors)
             else:
                 errors.append(
                     f"{prefix}.response.text: must be a dictionary of stock tests "
@@ -261,7 +259,7 @@ class ValidateTestFixture(CodedTool):
         if has_structure:
             struct_val = response["structure"]
             if isinstance(struct_val, dict):
-                ValidateTestFixture._check_structure(struct_val, f"{prefix}.response.structure", errors)
+                self._check_structure(struct_val, f"{prefix}.response.structure", errors)
             else:
                 errors.append(f"{prefix}.response.structure: must be a dictionary, got {type(struct_val).__name__}.")
 
@@ -269,8 +267,8 @@ class ValidateTestFixture(CodedTool):
     # Shared stock-test value validation
     # ------------------------------------------------------------------
 
-    @staticmethod
     def _check_stock_test_value(
+        self,
         key: str,
         val: Any,
         path: str,
@@ -297,8 +295,8 @@ class ValidateTestFixture(CodedTool):
     # Stock-test validation (for response.text)
     # ------------------------------------------------------------------
 
-    @staticmethod
     def _check_stock_tests(
+        self,
         block: dict[str, Any],
         path: str,
         errors: list[str],
@@ -309,14 +307,14 @@ class ValidateTestFixture(CodedTool):
                 errors.append(
                     f"{path}: '{key}' is not a valid stock test. Valid tests are: {sorted(_VALID_STOCK_TESTS)}."
                 )
-            ValidateTestFixture._check_stock_test_value(key, val, path, errors)
+            self._check_stock_test_value(key, val, path, errors)
 
     # ------------------------------------------------------------------
     # Structure validation (for response.structure)
     # ------------------------------------------------------------------
 
-    @staticmethod
     def _check_structure(
+        self,
         structure: dict[str, Any],
         path: str,
         errors: list[str],
@@ -354,7 +352,7 @@ class ValidateTestFixture(CodedTool):
                         f"valid stock test. Valid tests are: "
                         f"{sorted(_VALID_STOCK_TESTS)}."
                     )
-                ValidateTestFixture._check_stock_test_value(test_name, test_val, field_path, errors)
+                self._check_stock_test_value(test_name, test_val, field_path, errors)
 
     # ------------------------------------------------------------------
     # Public interface
