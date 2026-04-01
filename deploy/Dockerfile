@@ -49,9 +49,6 @@ RUN if [ -f ${APP_SOURCE}/requirements.txt ]; \
     fi
 
 # Optional: deploy-specific requirements (e.g., ns-usagelogger from a private repo).
-# Following the unileaf pattern, the CI workflow creates a credentialed copy of
-# the requirements file (with tokens embedded in git+https:// URLs) and mounts
-# it as the "with_creds_requirements" Docker secret.
 # When building locally (without the secret), the install script is a no-op.
 #
 # We COPY the original (un-credentialed) requirements file first so that Docker
