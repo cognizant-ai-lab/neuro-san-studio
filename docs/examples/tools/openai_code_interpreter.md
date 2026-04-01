@@ -154,7 +154,7 @@ When developing or debugging the OpenAI Code Interpreter Assistant, keep the fol
 - [OpenAI Tools Guide](https://platform.openai.com/docs/guides/tools?api-mode=responses)  
   Complete guide to OpenAI's built-in tools and their capabilities.
 
-- [OpenAI Code Interpreter Documentation](https://platform.openai.com/docs/guides/tools-code-interpreter)  
+- [OpenAI Code Interpreter Documentation](https://developers.openai.com/api/docs/guides/tools-code-interpreter)  
   Detailed documentation for OpenAI's code interpreter functionality.
 
 - [LangChain OpenAI Responses API](https://python.langchain.com/docs/integrations/chat/openai/#responses-api)  
