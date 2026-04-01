@@ -147,7 +147,7 @@ leaf agent answers solely from the retrieved content.
 ## Test Fixtures
 
 21 integration tests for this agent network are located in
-[tests/fixtures/industry/airline_policy_web_search/](../../../../tests/fixtures/industry/airline_policy_web_search/).
+[tests/fixtures/industry/airline_policy_web_search/](../../../tests/fixtures/industry/airline_policy_web_search/).
 
 ---
 
