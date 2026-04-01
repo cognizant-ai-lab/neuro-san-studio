@@ -54,11 +54,12 @@ RUN if [ -f ${APP_SOURCE}/requirements.txt ]; \
 # We COPY the original (un-credentialed) requirements file first so that Docker
 # busts the layer cache whenever the file changes, even though the actual
 # install reads from the secret-mounted version.
-# hadolint ignore=DL3008
 RUN set -eu; \
     apt-get update; \
     apt-get install --yes --no-install-recommends \
-        git ca-certificates openssh-client \
+        git=1:2.47.3-0+deb13u1 \
+        ca-certificates=20250419 \
+        openssh-client=1:10.0p1-7+deb13u1 \
     ; \
     rm -rf /var/lib/apt/lists/*
 
