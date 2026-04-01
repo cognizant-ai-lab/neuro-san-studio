@@ -69,11 +69,15 @@ jobs:
           https://github.com/lycheeverse/lychee/releases/latest/download/lychee-x86_64-unknown-linux-gnu.tar.gz \
           | tar --extract --gzip --directory /tmp
           # To prevent flaky CI failures, accept:
+          # - 401 (Unauthorized) for API endpoints that require authentication
           # - 403 (Forbidden) if the server blocks bots or requests without a browser-like User-Agent
+          # - 405 (Method Not Allowed) for MCP/API endpoints that only accept POST, not GET
+          # - 406 (Not Acceptable) for MCP/API endpoints that serve non-HTML formats
+          # - 422 (Unprocessable Entity) for API endpoints that require query parameters
           # - 429 (rate limit)
           # - 502 (bad gateway) if the server is reachable but its backend momentarily failed to respond
-          # - 503 (temporary outage) 
-          /tmp/lychee --max-retries 3 --retry-wait-time 3 --max-concurrency 32 --verbose --accept '200,203,204,403,429,502,503' --exclude-path venv --include-verbatim '**/*.py' '**/*.md' '**/*.rst' '**/*.hocon' '**/*.txt' '**/*.yaml' '**/*.yml' '**/*.json' '**/*.html' '**/*.sh' .
+          # - 503 (temporary outage)
+          /tmp/lychee --max-retries 3 --retry-wait-time 3 --max-concurrency 32 --verbose --accept '200,203,204,401,403,405,406,422,429,502,503' --exclude-path venv --include-verbatim '**/*.py' '**/*.md' '**/*.rst' '**/*.hocon' '**/*.txt' '**/*.yaml' '**/*.yml' '**/*.json' '**/*.html' '**/*.sh' .
 
       - name: Run make test
         shell: bash
