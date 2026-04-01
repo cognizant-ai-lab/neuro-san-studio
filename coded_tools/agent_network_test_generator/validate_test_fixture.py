@@ -70,6 +70,7 @@ _ALLOWED_INTERACTION_KEYS: frozenset[str] = frozenset(
     }
 )
 
+# Matches "N/M" ratio strings, e.g. "1/1", "3/5", "10/12".
 _SUCCESS_RATIO_PATTERN: re.Pattern[str] = re.compile(r"^\d+/\d+$")
 
 # Valid connection types for the top-level "connections" array.
@@ -125,9 +126,12 @@ class ValidateTestFixture(CodedTool):
     # Top-level validation
     # ------------------------------------------------------------------
 
-    @staticmethod
-    def _check_top_level(fixture: dict[str, Any], errors: list[str]) -> None:
-        """Validate required top-level keys and reject disallowed ones."""
+    def _check_top_level(self, fixture: dict[str, Any], errors: list[str]) -> None:
+        """Validate required top-level keys and reject disallowed ones.
+
+        :param fixture: The fixture dictionary to validate.
+        :param errors: Accumulator list; new errors are appended in-place.
+        """
         for key in ("agent", "success_ratio", "interactions"):
             if key not in fixture:
                 errors.append(f"Missing required top-level key: '{key}'.")
@@ -155,15 +159,18 @@ class ValidateTestFixture(CodedTool):
             errors.append("'interactions' must be a list.")
 
         # connections validation.
-        ValidateTestFixture._check_connections(fixture.get("connections"), errors)
+        self._check_connections(fixture.get("connections"), errors)
 
     # ------------------------------------------------------------------
     # Connections validation
     # ------------------------------------------------------------------
 
-    @staticmethod
-    def _check_connections(connections: Any, errors: list[str]) -> None:
-        """Validate the optional 'connections' list."""
+    def _check_connections(self, connections: Any, errors: list[str]) -> None:
+        """Validate the optional 'connections' list.
+
+        :param connections: The connections value from the fixture.
+        :param errors: Accumulator list; new errors are appended in-place.
+        """
         if connections is None:
             return
         if not isinstance(connections, list):
@@ -180,13 +187,18 @@ class ValidateTestFixture(CodedTool):
     # Per-interaction validation
     # ------------------------------------------------------------------
 
-    @staticmethod
     def _check_interaction(
+        self,
         interaction: dict[str, Any],
         index: int,
         errors: list[str],
     ) -> None:
-        """Validate a single interaction entry."""
+        """Validate a single interaction entry.
+
+        :param interaction: A single interaction dictionary.
+        :param index: The zero-based index of this interaction.
+        :param errors: Accumulator list; new errors are appended in-place.
+        """
         prefix: str = f"interactions[{index}]"
 
         if not isinstance(interaction, dict):
@@ -223,19 +235,24 @@ class ValidateTestFixture(CodedTool):
 
         response: Any = interaction.get("response")
         if isinstance(response, dict):
-            ValidateTestFixture._check_response(response, prefix, errors)
+            self._check_response(response, prefix, errors)
 
     # ------------------------------------------------------------------
     # Response validation
     # ------------------------------------------------------------------
 
-    @staticmethod
     def _check_response(
+        self,
         response: dict[str, Any],
         prefix: str,
         errors: list[str],
     ) -> None:
-        """Validate the response block of an interaction."""
+        """Validate the response block of an interaction.
+
+        :param response: The response dictionary from an interaction.
+        :param prefix: Human-readable path prefix for error messages.
+        :param errors: Accumulator list; new errors are appended in-place.
+        """
         has_text: bool = "text" in response
         has_structure: bool = "structure" in response
 
@@ -245,7 +262,7 @@ class ValidateTestFixture(CodedTool):
         if has_text:
             text_val = response["text"]
             if isinstance(text_val, dict):
-                ValidateTestFixture._check_stock_tests(text_val, f"{prefix}.response.text", errors)
+                self._check_stock_tests(text_val, f"{prefix}.response.text", errors)
             else:
                 errors.append(
                     f"{prefix}.response.text: must be a dictionary of stock tests "
@@ -257,7 +274,7 @@ class ValidateTestFixture(CodedTool):
         if has_structure:
             struct_val = response["structure"]
             if isinstance(struct_val, dict):
-                ValidateTestFixture._check_structure(struct_val, f"{prefix}.response.structure", errors)
+                self._check_structure(struct_val, f"{prefix}.response.structure", errors)
             else:
                 errors.append(f"{prefix}.response.structure: must be a dictionary, got {type(struct_val).__name__}.")
 
@@ -265,14 +282,20 @@ class ValidateTestFixture(CodedTool):
     # Shared stock-test value validation
     # ------------------------------------------------------------------
 
-    @staticmethod
     def _check_stock_test_value(
+        self,
         key: str,
         val: Any,
         path: str,
         errors: list[str],
     ) -> None:
-        """Validate a single stock test key/value for type and length rules."""
+        """Validate a single stock test key/value for type and length rules.
+
+        :param key: The stock test name (e.g. "keywords", "value").
+        :param val: The value associated with the stock test.
+        :param path: Human-readable path prefix for error messages.
+        :param errors: Accumulator list; new errors are appended in-place.
+        """
         # Numeric stock tests must use float, not int.
         if key in _NUMERIC_STOCK_TESTS and isinstance(val, int) and not isinstance(val, bool):
             errors.append(
@@ -293,26 +316,31 @@ class ValidateTestFixture(CodedTool):
     # Stock-test validation (for response.text)
     # ------------------------------------------------------------------
 
-    @staticmethod
     def _check_stock_tests(
+        self,
         block: dict[str, Any],
         path: str,
         errors: list[str],
     ) -> None:
-        """Ensure every key in *block* is a recognised stock test."""
+        """Ensure every key in *block* is a recognised stock test.
+
+        :param block: Dictionary of stock test entries to validate.
+        :param path: Human-readable path prefix for error messages.
+        :param errors: Accumulator list; new errors are appended in-place.
+        """
         for key, val in block.items():
             if key not in _VALID_STOCK_TESTS:
                 errors.append(
                     f"{path}: '{key}' is not a valid stock test. Valid tests are: {sorted(_VALID_STOCK_TESTS)}."
                 )
-            ValidateTestFixture._check_stock_test_value(key, val, path, errors)
+            self._check_stock_test_value(key, val, path, errors)
 
     # ------------------------------------------------------------------
     # Structure validation (for response.structure)
     # ------------------------------------------------------------------
 
-    @staticmethod
     def _check_structure(
+        self,
         structure: dict[str, Any],
         path: str,
         errors: list[str],
@@ -321,6 +349,10 @@ class ValidateTestFixture(CodedTool):
 
         Each key should map to a dict of stock tests.  Reject common
         meta-fields the LLM tends to invent.
+
+        :param structure: The structure dictionary from a response.
+        :param path: Human-readable path prefix for error messages.
+        :param errors: Accumulator list; new errors are appended in-place.
         """
         for key, value in structure.items():
             field_path: str = f"{path}.{key}"
