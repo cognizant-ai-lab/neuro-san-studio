@@ -70,6 +70,10 @@ _ALLOWED_INTERACTION_KEYS: frozenset[str] = frozenset(
     }
 )
 
+# Matches "N/M" ratio strings, e.g. "1/1", "3/5", "10/12".
+# The ratio is set by the LLM builder agent as a best guess;
+# there is currently no explicit instruction beyond the "1/1"
+# example in agent_network_test_generator.hocon.
 _SUCCESS_RATIO_PATTERN: re.Pattern[str] = re.compile(r"^\d+/\d+$")
 
 # Valid connection types for the top-level "connections" array.
