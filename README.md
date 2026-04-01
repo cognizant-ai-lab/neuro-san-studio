@@ -332,13 +332,11 @@ an AI-powered multi-agent system for managing enterprise application access requ
 an app that evaluates F1 fan submissions about why they are the biggest F1 fans.
 * [PDF Knowledge Assistant](https://github.com/M-Elsaied/neuro-san-studio/tree/pdf-knowledge-base/apps/pdf_knowledge_assistant):
 a Flask web app that queries PDFs using RAG with topic-based long-term memory synthesis across documents.
-* [Vibe coding project evaluator](https://github.com/deepsaia/vibe-coding-eval):
-a scalable framework that evaluates vibe-coded projects on different criteria.
+* [Loopy Agents](https://github.com/babakatwork/loopy_agent):
+run Neuro SAN agents continuously or on triggers through a separate service, with asynchronous messaging.
 * [Annual Report Reader](https://github.com/shrushtiimehta/neuro-san-annual-report-reader):
 analyzes a LinkedIn profile and delivers a personalized summary of Cognizant's 2024 Annual Report,
 surfacing content most relevant to the user's industry and seniority level.
-* [Loopy Agents](https://github.com/babakatwork/loopy_agent):
-run Neuro SAN agents continuously or on triggers through a separate service, with asynchronous messaging.
 
 ### Utilities
 
