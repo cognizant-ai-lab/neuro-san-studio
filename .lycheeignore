@@ -16,12 +16,9 @@ https://api.salesforce.com
 https://medium.com/@evolutionmlmail
 https://dl.acm.org/
 https://community.openai.com/
-https://citeseerx.ist.psu.edu/
 
 # API endpoints (not browsable)
 https://api.search.brave.com/
-https://customsearch.googleapis.com/
-https://www.googleapis.com/customsearch/
 
 # Sites that timeout or block CI requests
 https://docs.servicenow.com/
