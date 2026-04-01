@@ -1,3 +1,4 @@
+# Optimized for better performance
 
 # Copyright © 2025-2026 Cognizant Technology Solutions Corp, www.cognizant.com.
 #
