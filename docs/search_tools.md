@@ -77,7 +77,7 @@ DDGS requires no API key, even though it may search Brave or Google. That is bec
 result pages and avoids official API endpoints (which require keys). For example, no Google API key needed, because
 it does not call
 
-[https://customsearch.googleapis.com/](https://customsearch.googleapis.com/)
+[https://www.googleapis.com/customsearch/v1](https://www.googleapis.com/customsearch/v1)
 
 Instead, it scrapes:
 

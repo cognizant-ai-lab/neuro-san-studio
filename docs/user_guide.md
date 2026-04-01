@@ -1581,9 +1581,7 @@ In this architecture, agents decide if they can answer inquiries or if they need
 
 Reference:
 [Iterative Statistical Language Model Generation for Use with an
-Agent-Oriented Natural Language Interface](https://citeseerx.ist.psu.edu/document?repid=rep1&type=pdf&doi=3004005f1e736815b367be83f2f90cc0fa9e0411)
-
-<!-- (https://citeseerx.ist.psu.edu/document?repid=rep1&type=pdf&doi=011fb718658d611294613286c0f4b143aed40f43) -->
+Agent-Oriented Natural Language Interface](https://www.sri.com/wp-content/uploads/2021/12/iterative_statistical_language_model_generation_for_use.pdf)
 
 Look at [../registries/basic/smart_home.hocon](../registries/basic/smart_home.hocon) and in particular:
 
