@@ -41,6 +41,9 @@ ${PIP} freeze
 PACKAGE_INSTALL=${PACKAGE_INSTALL:-.}
 echo "PACKAGE_INSTALL is ${PACKAGE_INSTALL}"
 
+echo "DIAGNOSTIC: Dumping sys.path and PYTHONPATH before server start..."
+${PYTHON} -c "import sys, os; print('DIAGNOSTIC sys.path:', sys.path); print('DIAGNOSTIC PYTHONPATH:', os.environ.get('PYTHONPATH'))"
+
 echo "Starting service with args '$1'..."
 ${PYTHON} "${PACKAGE_INSTALL}"/neuro_san/service/main_loop/server_main_loop.py "$@"
 
