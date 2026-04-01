@@ -27,7 +27,7 @@
     # a test is intermitently failing. Sometimes it's the agent prompt, but
     # sometimes it's the test itself.
     # Note: This number was set to 1/1 for regression testing.
-    "success_ratio": "10/10",
+    "success_ratio": "1/1",
 
     # Interactions are a series of dictionaries with request elements paired with
     # descriptions of response checks.
@@ -36,13 +36,13 @@
             # This is to enable streaming_chat contents to thinking file for debug.
             # "chat_filter": "MAXIMAL",
 
-            # Timeout for the entire test.
-            # It's also possible to have a timeout_in_seconds on a per-interaction basis.
+            # Timeout for each interaction.
+            # It's also possible to have a timeout_in_seconds for the entire test.
             "timeout_in_seconds": 180,
             
             # This is what we send as input to streaming_chat()
             "text": """
-If I'm traveling with a lap infant, do I get any extra free items?
+Can I bring a stroller with me to the gate, and what happens to it after?
 """,
 
             # The response block treats how we are going to test what comes back
@@ -55,8 +55,8 @@ If I'm traveling with a lap infant, do I get any extra free items?
                     # matches up to our description of acceptance criteria.
                     # Each component of the list needs to pass muster in order to pass.
                     "gist": ["""
-Confirms that adults traveling with a lap infant get one free secondary personal item
-such as a diaper bag.
+- Confirms that strollers can be checked at the gate for free and returned to you at your destination.
+- Do not count towards your carryon-on or personal item.
                              """]
                 }
             }

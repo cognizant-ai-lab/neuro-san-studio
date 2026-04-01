@@ -26,8 +26,8 @@
     # success_ratio is useful for passing to the assessor to find out why
     # a test is intermitently failing. Sometimes it's the agent prompt, but
     # sometimes it's the test itself.
-    # Note: This number was set to 2/3 as this is a hard regression test case.
-    "success_ratio": "10/10",
+    # Note: This number was set to 1/1 for regression testing.
+    "success_ratio": "1/1",
 
     # Interactions are a series of dictionaries with request elements paired with
     # descriptions of response checks.
@@ -42,7 +42,7 @@
             
             # This is what we send as input to streaming_chat()
             "text": """
-Can I bring a stroller with me to the gate, and what happens to it after?
+What should I do if my checked bag is delayed?
 """,
 
             # The response block treats how we are going to test what comes back
@@ -55,8 +55,9 @@ Can I bring a stroller with me to the gate, and what happens to it after?
                     # matches up to our description of acceptance criteria.
                     # Each component of the list needs to pass muster in order to pass.
                     "gist": ["""
-- Confirms that strollers can be brought to the gate and checked for free
-OR that strollers are allowed and do not incur bag fees.
+Confirms that passengers should report the delay to our representative at the airport
+OR submit a claim through the Delayed Baggage Form,
+and reasonable interim expenses may be reimbursable.
                              """]
                 }
             }

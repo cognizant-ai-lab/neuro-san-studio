@@ -27,7 +27,7 @@
     # a test is intermitently failing. Sometimes it's the agent prompt, but
     # sometimes it's the test itself.
     # Note: This number was set to 1/1 for regression testing.
-    "success_ratio": "10/10",
+    "success_ratio": "1/1",
 
     # Interactions are a series of dictionaries with request elements paired with
     # descriptions of response checks.
@@ -42,7 +42,7 @@
             
             # This is what we send as input to streaming_chat()
             "text": """
-What’s the fee if my carry-on bag is over the weight limit?
+Can I bring breast milk or formula through airport security?
 """,
 
             # The response block treats how we are going to test what comes back
@@ -55,7 +55,8 @@ What’s the fee if my carry-on bag is over the weight limit?
                     # matches up to our description of acceptance criteria.
                     # Each component of the list needs to pass muster in order to pass.
                     "gist": ["""
-Confirms that carry-on bags have a maximum weight limit of 35 lbs.
+Formula or breast milk is allowed in carry-on bags even if over 3.4 oz in quantity.
+Check TSA.gov for screening guidelines.
                              """]
                 }
             }

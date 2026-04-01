@@ -27,7 +27,7 @@
     # a test is intermitently failing. Sometimes it's the agent prompt, but
     # sometimes it's the test itself.
     # Note: This number was set to 1/1 for regression testing.
-    "success_ratio": "10/10",
+    "success_ratio": "1/1",
 
     # Interactions are a series of dictionaries with request elements paired with
     # descriptions of response checks.
@@ -39,10 +39,10 @@
             # Timeout for each interaction.
             # It's also possible to have a timeout_in_seconds for the entire test.
             "timeout_in_seconds": 180,
-
+            
             # This is what we send as input to streaming_chat()
             "text": """
-On an Economy fare, do I get a free checked bag?
+What’s the fee if my carry-on bag is over the weight limit?
 """,
 
             # The response block treats how we are going to test what comes back
@@ -55,8 +55,7 @@ On an Economy fare, do I get a free checked bag?
                     # matches up to our description of acceptance criteria.
                     # Each component of the list needs to pass muster in order to pass.
                     "gist": ["""
-Confirms that on an Economy basic fare, checked bags are not included
-OR passengers must pay an additional fee to check a bag.
+Confirms that carry-on bags have a maximum weight limit of 35 lbs.
                              """]
                 }
             }

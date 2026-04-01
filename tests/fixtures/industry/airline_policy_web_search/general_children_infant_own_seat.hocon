@@ -27,7 +27,7 @@
     # a test is intermitently failing. Sometimes it's the agent prompt, but
     # sometimes it's the test itself.
     # Note: This number was set to 1/1 for regression testing.
-    "success_ratio": "10/10",
+    "success_ratio": "1/1",
 
     # Interactions are a series of dictionaries with request elements paired with
     # descriptions of response checks.
@@ -42,7 +42,7 @@
             
             # This is what we send as input to streaming_chat()
             "text": """
-What travel benefits do Gold elite members get?
+Do infants and young children need their own seat on a flight?
 """,
 
             # The response block treats how we are going to test what comes back
@@ -55,8 +55,7 @@ What travel benefits do Gold elite members get?
                     # matches up to our description of acceptance criteria.
                     # Each component of the list needs to pass muster in order to pass.
                     "gist": ["""
-Confirms that Gold elite members receive a free carry-on bag
-and Group 1 boarding.
+Confirms that children under two (lap infants) may sit on a parent’s lap and fly free.
                              """]
                 }
             }

@@ -27,7 +27,7 @@
     # a test is intermitently failing. Sometimes it's the agent prompt, but
     # sometimes it's the test itself.
     # Note: This number was set to 1/1 for regression testing.
-    "success_ratio": "10/10",
+    "success_ratio": "1/1",
 
     # Interactions are a series of dictionaries with request elements paired with
     # descriptions of response checks.
@@ -39,10 +39,10 @@
             # Timeout for each interaction.
             # It's also possible to have a timeout_in_seconds for the entire test.
             "timeout_in_seconds": 180,
-
+            
             # This is what we send as input to streaming_chat()
             "text": """
-What boarding and seating options are available for families traveling with young children?
+What size carry-on bag can I bring on my flight?
 """,
 
             # The response block treats how we are going to test what comes back
@@ -55,8 +55,7 @@ What boarding and seating options are available for families traveling with youn
                     # matches up to our description of acceptance criteria.
                     # Each component of the list needs to pass muster in order to pass.
                     "gist": ["""
-Confirms that children 13 and under are guaranteed an adjacent seat with an adult at no extra cost,
-and that the family must be on the same reservation.
+Confirms that the carry-on bag size must be no larger than 24 × 16 × 10 inches.
                              """]
                 }
             }

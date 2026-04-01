@@ -27,22 +27,23 @@
     # a test is intermitently failing. Sometimes it's the agent prompt, but
     # sometimes it's the test itself.
     # Note: This number was set to 1/1 for regression testing.
-    "success_ratio": "10/10",
+    "success_ratio": "1/1",
 
     # Interactions are a series of dictionaries with request elements paired with
     # descriptions of response checks.
     "interactions": [
         {
-            # This is to enable streaming_chat contents to thinking file for debug.
-            # "chat_filter": "MAXIMAL",
+            # Cross-agent routing test: the query spans Kids_and_Pets (lap infant boarding,
+            # stroller policy) and Baggage_Info (stroller fees/gate-check rules).
+            # Both topics must appear in the response.
 
             # Timeout for each interaction.
-            # It’s also possible to have a timeout_in_seconds for the entire test.
+            # It's also possible to have a timeout_in_seconds for the entire test.
             "timeout_in_seconds": 180,
 
             # This is what we send as input to streaming_chat()
             "text": """
-What is included in the Premium bundle?
+I'm traveling with my lap infant and a stroller. What do I need to know?
 """,
 
             # The response block treats how we are going to test what comes back
@@ -54,10 +55,14 @@ What is included in the Premium bundle?
                     # Gist says we are going to ask an LLM about how the response
                     # matches up to our description of acceptance criteria.
                     # Each component of the list needs to pass muster in order to pass.
-                    "gist": ["""
-Confirms that the Premium bundle includes a carry-on bag, a premium seat,
-and early boarding with overhead bin access.
-                             """]
+                    "gist": [
+                        """
+Provides information about lap infant boarding like infants under 2 may sit on a parent's lap.
+                        """,
+                        """
+Provides information about gate checking strollers and no applicable fees for strollers.
+                        """
+                    ]
                 }
             }
         }

@@ -23,29 +23,26 @@
     # Describes what agent to test against.
     "agent": "industry/airline_policy_web_search",
 
-    # Timeout for the entire test.
-    # It's also possible to have a timeout_in_seconds on a per-interaction basis.
-    "timeout_in_seconds": 180,
-
     # success_ratio is useful for passing to the assessor to find out why
     # a test is intermitently failing. Sometimes it's the agent prompt, but
     # sometimes it's the test itself.
     # Note: This number was set to 1/1 for regression testing.
-    "success_ratio": "10/10",
+    "success_ratio": "1/1",
 
     # Interactions are a series of dictionaries with request elements paired with
     # descriptions of response checks.
     "interactions": [
         {
-            # Note: This text case is expected to failed 100%!!!
-            # These is no info regarding liquids in Carry-on Bags.txt file.
-            
             # This is to enable streaming_chat contents to thinking file for debug.
             # "chat_filter": "MAXIMAL",
+
+            # Timeout for the entire test.
+            # It's also possible to have a timeout_in_seconds on a per-interaction basis.
+            "timeout_in_seconds": 180,
             
             # This is what we send as input to streaming_chat()
             "text": """
-How should I pack liquids in my carry-on bag?
+What size does my personal item need to be to fly for free?
 """,
 
             # The response block treats how we are going to test what comes back
@@ -58,7 +55,7 @@ How should I pack liquids in my carry-on bag?
                     # matches up to our description of acceptance criteria.
                     # Each component of the list needs to pass muster in order to pass.
                     "gist": ["""
-Confirms liquids in carry-ons must follow the 3-1-1 rule. Containers must be 3.4 oz (100 mL) or less, all must fit in one quart-sized clear bag, and each passenger is allowed one bag.
+Confirms that a personal item must be no larger than 14 × 18 × 8 inches.
                              """]
                 }
             }

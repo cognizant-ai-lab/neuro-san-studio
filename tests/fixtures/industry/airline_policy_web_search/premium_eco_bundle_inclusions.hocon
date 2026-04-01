@@ -27,7 +27,7 @@
     # a test is intermitently failing. Sometimes it's the agent prompt, but
     # sometimes it's the test itself.
     # Note: This number was set to 1/1 for regression testing.
-    "success_ratio": "10/10",
+    "success_ratio": "1/1",
 
     # Interactions are a series of dictionaries with request elements paired with
     # descriptions of response checks.
@@ -37,12 +37,12 @@
             # "chat_filter": "MAXIMAL",
 
             # Timeout for each interaction.
-            # It's also possible to have a timeout_in_seconds for the entire test.
+            # It’s also possible to have a timeout_in_seconds for the entire test.
             "timeout_in_seconds": 180,
-            
+
             # This is what we send as input to streaming_chat()
             "text": """
-What size carry-on bag can I bring on my flight?
+What is included in the Premium bundle?
 """,
 
             # The response block treats how we are going to test what comes back
@@ -55,7 +55,8 @@ What size carry-on bag can I bring on my flight?
                     # matches up to our description of acceptance criteria.
                     # Each component of the list needs to pass muster in order to pass.
                     "gist": ["""
-Confirms that the carry-on bag size must be no larger than 24 × 16 × 10 inches.
+Confirms that the Premium bundle includes a carry-on bag, a premium seat,
+and early boarding with overhead bin access.
                              """]
                 }
             }

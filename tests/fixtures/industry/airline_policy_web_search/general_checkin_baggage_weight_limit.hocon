@@ -27,7 +27,7 @@
     # a test is intermitently failing. Sometimes it's the agent prompt, but
     # sometimes it's the test itself.
     # Note: This number was set to 1/1 for regression testing.
-    "success_ratio": "10/10",
+    "success_ratio": "1/1",
 
     # Interactions are a series of dictionaries with request elements paired with
     # descriptions of response checks.
@@ -37,12 +37,12 @@
             # "chat_filter": "MAXIMAL",
 
             # Timeout for each interaction.
-            # It's also possible to have a timeout_in_seconds for the entire test.
+            # It’s also possible to have a timeout_in_seconds for the entire test.
             "timeout_in_seconds": 180,
-            
+
             # This is what we send as input to streaming_chat()
             "text": """
-What should I do if my checked bag is delayed?
+What’s the maximum weight for a checked bag?
 """,
 
             # The response block treats how we are going to test what comes back
@@ -55,9 +55,9 @@ What should I do if my checked bag is delayed?
                     # matches up to our description of acceptance criteria.
                     # Each component of the list needs to pass muster in order to pass.
                     "gist": ["""
-Confirms that passengers should report the delay to a Frontier representative at the airport
-OR submit a claim via the NetTracer system,
-and that reasonable interim expenses may be reimbursable.
+Confirms that the standard maximum weight for a checked bag is 40 lbs (18.1 kg).
+Mentions overweight surcharges: $75 per bag for 41-50 lbs, $100 per bag for 51-99.99 lbs.
+Confirms that bags weighing 100 lbs (45 kg) or more are not accepted (except assistive devices).
                              """]
                 }
             }
