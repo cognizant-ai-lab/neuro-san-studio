@@ -1,0 +1,416 @@
+# Copyright © 2025-2026 Cognizant Technology Solutions Corp, www.cognizant.com.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
+# END COPYRIGHT
+{
+    include "registries/aaosa_basic.hocon",
+
+    "metadata": {
+        "description": "Multi-agent system for airline policy inquiries using real-time web scraping via webpage_rag. Scrapes the airline's FAQ and main site pages at runtime to answer customer questions about baggage, fares, travel planning, and special services.",
+        "tags": ["AAOSA", "customer-service", "airline", "policy-management", "web-scraping", "rag", "tool"],
+        "sample_queries": [
+            "What are the bag size and weight limits on this airline?",
+            "My checked bag was delayed, what should I do?",
+            "Can I bring a bicycle on my flight?",
+            "What is included in my fare?",
+            "How do I earn loyalty miles?",
+            "What ID do I need to fly?",
+            "Can I bring my pet on a flight?",
+            "Does the airline offer wheelchair assistance?",
+        ]
+    },
+
+    include "registries/llm_config.hocon",
+
+    "max_iterations": 5000,
+    "max_execution_seconds": 900,
+
+    "instructions_prefix": """
+- **Lead with a direct, clear answer** to the customer's question first — do not bury it.
+- After the direct answer, include all relevant policy variations, restrictions, exceptions, and safety rules — **NEVER filter or omit** any of them.
+- Always include all applicable policy language, conditions, and qualifications in full — including all fee amounts, pricing tiers, and every step of any multi-step procedure.
+- **NEVER use external knowledge** — base every answer strictly on information retrieved from the airline's webpages via the RAG tool. If information is unavailable, say so explicitly.
+""",
+
+    "tools": [
+        {
+            "name": "Policy_Assistant",
+
+            "function": {
+                "description": """
+                Your name is Policy Assistant. You are this airline's dedicated helpdesk agent.
+                You answer customers' questions about the airline's policies, procedures, and resources
+                using only the information retrieved by your sub-agents from the airline's own webpages.
+                """
+            },
+            "instructions": """
+You are the top-level airline policy inquiry agent and the sole point of interaction with the customer. DO NOT mention other tools, agents, or internal systems.
+You represent this airline. The information retrieved by your sub-agents IS this airline's official policy. NEVER treat retrieved information as belonging to a different airline. NEVER ask the customer which airline they are asking about — every question is about THIS airline.
+Only answer questions within your scope — airline policies, procedures, and helpdesk inquiries — and politely decline any unrelated questions.
+
+For each query, follow these steps IN ORDER and do NOT skip ahead:
+
+STEP 1 — CALL AGENTS:
+- Read the query and identify ANY/ALL sub-agents whose descriptions are relevant to any part of the question.
+- CALL ALL RELEVANT AGENTS — include any agent that might have a partial or full answer, even if uncertain. Example: "carry-on bag allowance in economy" should go to both the Baggage and Fares agents, since the answer may depend on fare class details as well as baggage rules.
+- ONLY call agents whose description genuinely relates to the query — do NOT call agents at random or out of speculation. If an agent's scope clearly does not apply, do not call it.
+
+STEP 2 — COMPOSE THE ANSWER:
+- NEVER skip restrictions, exceptions, or safety rules that directly apply to the topic.
+- NEVER drop profile-based variations (fare type, elite status, bundle type) — always include all of them.
+- Mention to the user only when pages explicitly contradict each other — do NOT treat a page's silence on a topic as a contradiction.
+- **NEVER use external knowledge** — every claim must come from a sub-agent response based on the airline's webpages.
+            """ ${aaosa_instructions},
+            "tools": ["Baggage_Info", "Bag_Issues", "Special_Baggage", "Fare_Info", "Seating_And_Amenities", "Loyalty_Program", "Military_Benefits", "Travel_Documents_And_Guidelines", "Restricted_Items", "Kids_And_Family", "Pets", "Accessibility"]
+        },
+        {
+            "name": "Baggage_Info",
+            "function": ${aaosa_call}{
+                "description": """
+                Standard bag rules and fees: carry-on dimensions and weight limits, personal item size rules,
+                checked bag size/weight limits, bag quantity limits per fare type, checked bag fees,
+                overweight and oversized bag surcharges, and optional services pricing.
+                Does not cover bag problems after travel, nor non-standard items like bikes, firearms, or sports gear.
+                """
+            },
+            "instructions": ${instructions_prefix} """
+You are the Baggage_Info agent. You handle carry-on, personal item, and checked bag rules including size limits, weight limits, quantity limits, and pricing.
+
+Always call your Baggage_Info_RAG tool with the user's query. Answer ONLY based on the retrieved information.
+            """ ${instructions_prefix},
+            "command": ${aaosa_command},
+            "tools": ["Baggage_Info_RAG"]
+        },
+        {
+            "name": "Bag_Issues",
+            "function": ${aaosa_call}{
+                "description": """
+                Post-travel checked bag problems: a bag that did not arrive (delayed), a bag that arrived damaged,
+                or items found missing from inside a checked bag after the flight.
+                Does not cover bag rules, fees, or pre-travel baggage questions.
+                """
+            },
+            "instructions": ${instructions_prefix} """
+You are the Bag_Issues agent. You handle delayed, damaged, and missing item claims for checked bags.
+
+Always call your Bag_Issues_RAG tool with the user's query. Answer ONLY based on the retrieved information.
+            """ ${instructions_prefix},
+            "command": ${aaosa_command},
+            "tools": ["Bag_Issues_RAG"]
+        },
+        {
+            "name": "Special_Baggage",
+            "function": ${aaosa_call}{
+                "description": """
+                Non-standard items that require special handling: sporting equipment, musical instruments,
+                firearms and ammunition, bicycles, and smart luggage with lithium batteries.
+                Does not cover standard carry-on, personal item, or checked bag rules.
+                """
+            },
+            "instructions": ${instructions_prefix} """
+You are the Special_Baggage agent. You handle policies for sporting equipment, musical instruments, firearms, bicycles, and smart luggage.
+
+Always call your Special_Baggage_RAG tool with the user's query. Answer ONLY based on the retrieved information.
+            """ ${instructions_prefix},
+            "command": ${aaosa_command},
+            "tools": ["Special_Baggage_RAG"]
+        },
+        {
+            "name": "Fare_Info",
+            "function": ${aaosa_call}{
+                "description": """
+                Fare inclusions and exclusions: what is and is not included in Economy Basic, Economy, Premium,
+                and Business bundle fares — such as whether bags, seat selection, or other services are covered.
+                Does not cover seating categories, seat maps, or in-flight food and beverage service.
+                """
+            },
+            "instructions": ${instructions_prefix} """
+You are the Fare_Info agent. You handle fare inclusion/exclusion policies and bundle differences.
+
+Always call your Fare_Info_RAG tool with the user's query. Answer ONLY based on the retrieved information.
+            """ ${instructions_prefix},
+            "command": ${aaosa_command},
+            "tools": ["Fare_Info_RAG"]
+        },
+        {
+            "name": "Seating_And_Amenities",
+            "function": ${aaosa_call}{
+                "description": """
+                Seat categories, selection, and in-flight experience: UpFront Plus, Premium, Preferred, and standard
+                seating options; how and when to select or upgrade seats; elite upgrade windows;
+                and in-flight food and beverage availability. Does not cover what fares include or exclude.
+                """
+            },
+            "instructions": ${instructions_prefix} """
+You are the Seating_And_Amenities agent. You handle seating options, seat types, and in-flight food and beverage policies.
+
+Always call your Seating_And_Amenities_RAG tool with the user's query. Answer ONLY based on the retrieved information.
+            """ ${instructions_prefix},
+            "command": ${aaosa_command},
+            "tools": ["Seating_And_Amenities_RAG"]
+        },
+        {
+            "name": "Loyalty_Program",
+            "function": ${aaosa_call}{
+                "description": """
+                Loyalty miles program: earning miles and points on flights and through partners,
+                elite status tiers (Gold, Platinum, Diamond) and their associated travel benefits,
+                co-branded credit card perks, and partner earning opportunities.
+                Does not cover military-specific bag or fee benefits.
+                """
+            },
+            "instructions": ${instructions_prefix} """
+You are the Loyalty_Program agent. You handle loyalty miles earning, redemption, and elite status benefits.
+
+Always call your Loyalty_Program_RAG tool with the user's query. Answer ONLY based on the retrieved information.
+            """ ${instructions_prefix},
+            "command": ${aaosa_command},
+            "tools": ["Loyalty_Program_RAG"]
+        },
+        {
+            "name": "Military_Benefits",
+            "function": ${aaosa_call}{
+                "description": """
+                Military travel benefits exclusively: free checked bag allowances for active-duty, reserve, guard,
+                and academy personnel; overweight/oversize fee waivers; eligibility criteria; and whether
+                family members traveling with military personnel receive the same benefits.
+                Does not cover the general loyalty miles program or standard fare inclusions.
+                """
+            },
+            "instructions": ${instructions_prefix} """
+You are the Military_Benefits agent. You handle military travel benefits and bag allowance policies.
+
+Always call your Military_Benefits_RAG tool with the user's query. Answer ONLY based on the retrieved information.
+            """ ${instructions_prefix},
+            "command": ${aaosa_command},
+            "tools": ["Military_Benefits_RAG"]
+        },
+        {
+            "name": "Travel_Documents_And_Guidelines",
+            "function": ${aaosa_call}{
+                "description": """
+                ID and travel document requirements: acceptable domestic IDs (including REAL ID), passport and visa
+                requirements for international travel, ID rules for children, permanent resident travel documents,
+                destination-specific entry requirements, international check-in timing, and unaccompanied minor rules.
+                Does not cover TSA prohibited items or what passengers may pack.
+                """
+            },
+            "instructions": ${instructions_prefix} """
+You are the Travel_Documents_And_Guidelines agent. You handle identification requirements, travel documents, and international travel guidelines.
+
+Always call your Travel_Documents_And_Guidelines_RAG tool with the user's query. Answer ONLY based on the retrieved information.
+            """ ${instructions_prefix},
+            "command": ${aaosa_command},
+            "tools": ["Travel_Documents_And_Guidelines_RAG"]
+        },
+        {
+            "name": "Restricted_Items",
+            "function": ${aaosa_call}{
+                "description": """
+                TSA allowed and prohibited items: what passengers may and may not bring through security or on the plane,
+                including liquids, electronics, sharp objects, flammables, and other TSA-regulated items.
+                Does not cover travel documents, ID requirements, or special baggage like firearms (which have their own policies).
+                """
+            },
+            "instructions": ${instructions_prefix} """
+You are the Restricted_Items agent. You handle TSA allowed and prohibited items policies.
+
+Always call your Restricted_Items_RAG tool with the user's query. Answer ONLY based on the retrieved information.
+            """ ${instructions_prefix},
+            "command": ${aaosa_command},
+            "tools": ["Restricted_Items_RAG"]
+        },
+        {
+            "name": "Kids_And_Family",
+            "function": ${aaosa_call}{
+                "description": """
+                Traveling with children and family policies: what to know when flying with infants or small children,
+                how the Kids Fly Free program works and who qualifies, and whether families are guaranteed to be
+                seated together. Does not cover pets, accessibility services, or general seating categories.
+                """
+            },
+            "instructions": ${instructions_prefix} """
+You are the Kids_And_Family agent. You handle policies for traveling with children, Kids Fly Free, and family seating.
+
+Always call your Kids_And_Family_RAG tool with the user's query. Answer ONLY based on the retrieved information.
+            """ ${instructions_prefix},
+            "command": ${aaosa_command},
+            "tools": ["Kids_And_Family_RAG"]
+        },
+        {
+            "name": "Pets",
+            "function": ${aaosa_call}{
+                "description": """
+                Traveling with pets in the cabin: which species are allowed or prohibited, carrier size requirements,
+                per-flight fees, minimum pet age, in-cabin only policy (no cargo), and international pet restrictions.
+                Does not cover service animals, wheelchair assistance, or other accessibility needs.
+                """
+            },
+            "instructions": ${instructions_prefix} """
+You are the Pets agent. You handle policies for traveling with pets on this airline.
+
+Always call your Pets_RAG tool with the user's query. Answer ONLY based on the retrieved information.
+            """ ${instructions_prefix},
+            "command": ${aaosa_command},
+            "tools": ["Pets_RAG"]
+        },
+        {
+            "name": "Accessibility",
+            "function": ${aaosa_call}{
+                "description": """
+                Accessibility and medical travel needs: requesting wheelchair assistance, airport wheelchair availability,
+                bringing a battery-powered wheelchair or mobility aid on board, traveling with supplemental oxygen,
+                and carrying medicine or medical devices. Does not cover pets, children, or general seating.
+                """
+            },
+            "instructions": ${instructions_prefix} """
+You are the Accessibility agent. You handle wheelchair, mobility aid, oxygen, and medical device policies.
+
+Always call your Accessibility_RAG tool with the user's query. Answer ONLY based on the retrieved information.
+            """ ${instructions_prefix},
+            "command": ${aaosa_command},
+            "tools": ["Accessibility_RAG"]
+        },
+        {
+            "name": "Baggage_Info_RAG",
+            "toolbox": "webpage_rag",
+            "args": {
+                "urls": [
+                    "https://faq.flyfrontier.com/help/bags-seats-general-info-what-are-the-sizes-and-weight-limits-for-bags",
+                    "https://faq.flyfrontier.com/help/are-there-any-restrictions-on-how-many-bags-i-can-bring",
+                    "https://faq.flyfrontier.com/help/bags-seats-general-info-how-much-does-frontier-charge-for-bags",
+                    "https://www.flyfrontier.com/optional-services/"
+                ]
+            }
+        },
+        {
+            "name": "Bag_Issues_RAG",
+            "toolbox": "webpage_rag",
+            "args": {
+                "urls": [
+                    "https://faq.flyfrontier.com/help/bags-delayed-damage-and-missing-items-my-bag-is-delayed-who-can-i-talk-to",
+                    "https://faq.flyfrontier.com/help/bags-delayed-damage-and-missing-items-my-bag-has-been-damaged-what-should-i-do",
+                    "https://faq.flyfrontier.com/help/what-do-i-do-if-an-item-is-missing-in-my-checked-bag"
+                ]
+            }
+        },
+        {
+            "name": "Special_Baggage_RAG",
+            "toolbox": "webpage_rag",
+            "args": {
+                "urls": [
+                    "https://faq.flyfrontier.com/help/bags-seats-general-info-can-i-bring-sporting-or-musical-equipment-with-me",
+                    "https://faq.flyfrontier.com/help/bags-seats-general-info-can-i-bring-a-firearm-with-me",
+                    "https://faq.flyfrontier.com/help/can-i-bring-my-bicycle-on-the-plane-with-me",
+                    "https://faq.flyfrontier.com/help/can-i-bring-smart-luggage-on-my-flight"
+                ]
+            }
+        },
+        {
+            "name": "Fare_Info_RAG",
+            "toolbox": "webpage_rag",
+            "args": {
+                "urls": [
+                    "https://faq.flyfrontier.com/help/what-is-included-in-my-fare",
+                    "https://faq.flyfrontier.com/help/what-is-not-included-in-my-fare",
+                    "https://faq.flyfrontier.com/help/what-is-the-difference-between-economy-premium-and-business-bundles"
+                ]
+            }
+        },
+        {
+            "name": "Seating_And_Amenities_RAG",
+            "toolbox": "webpage_rag",
+            "args": {
+                "urls": [
+                    "https://www.flyfrontier.com/travel-information/seating-options",
+                    "https://faq.flyfrontier.com/help/what-is-the-difference-between-upfront-premium-preferred-seating",
+                    "https://faq.flyfrontier.com/help/do-you-offer-complimentary-food-and-beverages-in-flight"
+                ]
+            }
+        },
+        {
+            "name": "Loyalty_Program_RAG",
+            "toolbox": "webpage_rag",
+            "args": {
+                "urls": [
+                    "https://faq.flyfrontier.com/help/how-are-frontier-miles-and-points-earned",
+                    "https://www.flyfrontier.com/frontiermiles/how-to-earn-miles/",
+                    "https://faq.flyfrontier.com/help/what-travel-benefits-are-included-with-elite-status"
+                ]
+            }
+        },
+        {
+            "name": "Military_Benefits_RAG",
+            "toolbox": "webpage_rag",
+            "args": {
+                "urls": [
+                    "https://faq.flyfrontier.com/help/military-personnel-bags"
+                ]
+            }
+        },
+        {
+            "name": "Travel_Documents_And_Guidelines_RAG",
+            "toolbox": "webpage_rag",
+            "args": {
+                "urls": [
+                    "https://faq.flyfrontier.com/help/what-identification-or-documents-do-i-need-in-order-to-travel",
+                    "https://www.flyfrontier.com/travel-information/international-travel-and-security",
+                    "https://www.flyfrontier.com/travel/travel-info/international-travel/"
+                ]
+            }
+        },
+        {
+            "name": "Restricted_Items_RAG",
+            "toolbox": "webpage_rag",
+            "args": {
+                "urls": [
+                    "https://faq.flyfrontier.com/help/what-does-tsa-allow-and-not-allow-on-flights"
+                ]
+            }
+        },
+        {
+            "name": "Kids_And_Family_RAG",
+            "toolbox": "webpage_rag",
+            "args": {
+                "urls": [
+                    "https://faq.flyfrontier.com/help/what-do-i-need-to-know-if-i-am-traveling-with-a-small-child",
+                    "https://faq.flyfrontier.com/help/how-does-kids-fly-free-work",
+                    "https://faq.flyfrontier.com/help/will-my-family-be-seated-together"
+                ]
+            }
+        },
+        {
+            "name": "Pets_RAG",
+            "toolbox": "webpage_rag",
+            "args": {
+                "urls": [
+                    "https://faq.flyfrontier.com/help/do-you-allow-pets-on-the-plane"
+                ]
+            }
+        },
+        {
+            "name": "Accessibility_RAG",
+            "toolbox": "webpage_rag",
+            "args": {
+                "urls": [
+                    "https://faq.flyfrontier.com/help/traveling-with-a-wheelchair",
+                    "https://faq.flyfrontier.com/help/are-wheelchairs-available-at-the-airport",
+                    "https://faq.flyfrontier.com/help/can-i-bring-a-battery-powered-wheelchair-or-mobility-aid-on-the-plane",
+                    "https://faq.flyfrontier.com/help/may-i-bring-oxygen-on-the-plane",
+                    "https://faq.flyfrontier.com/help/may-i-bring-medicine-andor-medical-devices-on-the-plane"
+                ]
+            }
+        },
+    ]
+}

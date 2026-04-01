@@ -22,6 +22,7 @@
     # Industry use cases
     #
     "industry/airline_policy.hocon": true,
+    "industry/airline_policy_web_search.hocon": true,
     "industry/banking_ops.hocon": true,
     "industry/cpg_agents.hocon": true,
     "industry/consumer_decision_assistant.hocon": true,

@@ -46,6 +46,7 @@ Here are a few examples ordered by level of complexity.
     - [Intranet Agents](#intranet-agents)
     - [Intranet Agents With Tools](#intranet-agents-with-tools)
     - [Airline Policy 360 Assistant](#airline-policy-360-assistant)
+    - [Airline Policy Web Search Assistant](#airline-policy-web-search-assistant)
     - [Telco Network Orchestration](#telco-network-orchestration)
     - [Telco Network Support](#telco-network-support)
     - [Real Estate Agent](#real-estate-agent)
@@ -392,6 +393,16 @@ real-world helpdesk with specialized teams, each handling a specific domain of a
 flights, international travel, and more.
 
 **Tags:** `tool`, `API`, `AAOSA`
+
+### Airline Policy Web Search Assistant
+
+[Airline Policy Web Search Assistant](examples/industry/airline_policy_web_search.md) is a multi-agent system that
+answers customer questions about airline policies by scraping the airline's official webpages at runtime — keeping
+information fresh without any cached state. Built entirely using AAOSA and the toolbox, it requires no coded tools and can be fully vibe coded. It covers
+baggage, fares, seating, loyalty programs, travel requirements, and special assistance — all grounded strictly in
+live content retrieved from the airline's own site.
+
+**Tags:** `tool`, `RAG`, `AAOSA`
 
 ### Telco Network Orchestration
 
