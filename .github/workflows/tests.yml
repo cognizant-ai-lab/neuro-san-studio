@@ -71,8 +71,9 @@ jobs:
           # To prevent flaky CI failures, accept:
           # - 403 (Forbidden) if the server blocks bots or requests without a browser-like User-Agent
           # - 429 (rate limit)
+          # - 502 (bad gateway) if the server is reachable but its backend momentarily failed to respond
           # - 503 (temporary outage) 
-          /tmp/lychee --max-retries 3 --retry-wait-time 3 --verbose --accept '200,203,204,403,429,503' --exclude-path venv './**/*.md'
+          /tmp/lychee --max-retries 3 --retry-wait-time 3 --verbose --accept '200,203,204,403,429,502,503' --exclude-path venv './**/*.md'
 
       - name: Run make test
         shell: bash
