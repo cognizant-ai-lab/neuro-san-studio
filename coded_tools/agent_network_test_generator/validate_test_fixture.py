@@ -382,7 +382,7 @@ class ValidateTestFixture(CodedTool):
                         f"valid stock test. Valid tests are: "
                         f"{sorted(_VALID_STOCK_TESTS)}."
                     )
-                ValidateTestFixture._check_stock_test_value(test_name, test_val, field_path, errors)
+                self._check_stock_test_value(test_name, test_val, field_path, errors)
 
     # ------------------------------------------------------------------
     # Public interface
