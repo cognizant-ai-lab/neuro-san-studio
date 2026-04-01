@@ -71,15 +71,15 @@ STEP 2 — COMPOSE THE ANSWER FOR THE USER:
 - **NEVER use external knowledge** — every claim must come from a sub-agent response based on the airline's webpages.
 - **NEVER expose implementation details** — do not mention truncation, retrieval, RAG, web scraping, agents, tools, or any other internal mechanism. Just state the information you have.
             """ ${aaosa_instructions},
-            "tools": ["Baggage_Info", "Bag_Issues", "Special_Baggage", "Seating_And_Amenities", "Loyalty_Program", "Military_Benefits", "Travel_Documents_And_Guidelines", "Restricted_Items", "Kids_and_Pets", "Accessibility"]
+            "tools": ["Baggage_Info", "Bag_Issues", "Special_Baggage", "Fare_Info", "Seating_And_Amenities", "Loyalty_Program", "Military_Benefits", "Travel_Documents_And_Guidelines", "Restricted_Items", "Kids_and_Pets", "Accessibility"]
         },
         {
             "name": "Baggage_Info",
             "function": ${aaosa_call}{
                 "description": """
                 Standard bag rules and fees: carry-on size/weight limits/fees, personal item size rules,
-                checked bag size/weight limits/fees, fare bundle inclusions (what each bundle covers),
-                overweight and oversized bag surcharges, optional services (airport agent assistant, board first, care agent, GoWild!),
+                checked bag size/weight limits/fees, overweight and oversized bag surcharges,
+                optional services (airport agent assistant, board first, care agent, GoWild!),
                 and booking cancellation/modification/name change pricing.
                 Does not cover bag problems after travel, nor non-standard items like bikes, firearms, or sports gear.
                 """
@@ -125,6 +125,23 @@ Always call your Special_Baggage_RAG tool with the user's query. Answer ONLY bas
             """ ${instructions_prefix},
             "command": ${aaosa_command},
             "tools": ["Special_Baggage_RAG"]
+        },
+        {
+            "name": "Fare_Info",
+            "function": ${aaosa_call}{
+                "description": """
+                Fare inclusions and exclusions: what is and is not included in Economy Basic, Economy, Premium,
+                and Business bundle fares — such as whether bags, seat selection, or other services are covered.
+                Does not cover seating categories, seat maps, or in-flight food and beverage service.
+                """
+            },
+            "instructions": ${instructions_prefix} """
+You are the Fare_Info agent. You handle fare inclusion/exclusion policies and bundle differences.
+
+Always call your Fare_Info_RAG tool with the user's query. Answer ONLY based on the retrieved information.
+            """ ${instructions_prefix},
+            "command": ${aaosa_command},
+            "tools": ["Fare_Info_RAG"]
         },
         {
             "name": "Seating_And_Amenities",
@@ -252,13 +269,23 @@ Always call your Accessibility_RAG tool with the user's query. Answer ONLY based
             "tools": ["Accessibility_RAG"]
         },
         {
+            "name": "Fare_Info_RAG",
+            "toolbox": "webpage_rag",
+            "args": {
+                "urls": [
+                    "https://faq.flyfrontier.com/help/what-is-included-in-my-fare",
+                    "https://faq.flyfrontier.com/help/what-is-the-difference-between-economy-premium-and-business-bundles"
+                ]
+            }
+        },
+        {
             "name": "Baggage_Info_RAG",
             "toolbox": "webpage_rag",
             "args": {
                 "urls": [
                     "https://www.flyfrontier.com/optional-services/",
                     "https://faq.flyfrontier.com/help/are-there-any-restrictions-on-how-many-bags-i-can-bring",
-                    "https://faq.flyfrontier.com/help/what-is-a-bundle"
+                    
                 ]
             }
         },
