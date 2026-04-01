@@ -45,12 +45,19 @@ https://mcp/
 # Sites that timeout or block CI requests
 https://docs.servicenow.com/
 
+# Jinja2 template URLs (lychee cannot resolve these at scan time)
+file://.*%7B%7B.*%7D%7D
+
 # Shell/template variable URLs (lychee cannot resolve these)
 https://go.dev/dl/go\$
 
 # Broken or private external links
 https://github.com/deepsaia/vibe-coding-eval
 https://pepy.tech/projects/neuro-san
+https://raw.githubusercontent.com/anthropics/skills/main/skills/internal-comms/
+
+# Sites that may be unreachable from CI
+https://docling-project.github.io/docling/
 
 # Shield badges (dynamic content, not actual pages)
 https://img.shields.io/
