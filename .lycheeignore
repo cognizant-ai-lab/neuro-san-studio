@@ -30,6 +30,7 @@ https://www.united.com/
 
 # API endpoints (not browsable or require API keys)
 https://api.search.brave.com/
+https://api.search.brave.com/res/v1/web/search
 https://api.nytimes.com/
 https://content.guardianapis.com/
 https://api.openai.com/
