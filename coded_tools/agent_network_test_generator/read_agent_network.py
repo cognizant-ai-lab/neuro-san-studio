@@ -29,7 +29,8 @@ class ReadAgentNetwork(CodedTool):
     sample queries, and sly_data schemas suitable for generating test cases.
     """
 
-    def _extract_agent_info(self, tool: dict[str, Any]) -> dict[str, Any]:
+    @staticmethod
+    def _extract_agent_info(tool: dict[str, Any]) -> dict[str, Any]:
         """
         Extract relevant information from a single tool/agent definition.
 

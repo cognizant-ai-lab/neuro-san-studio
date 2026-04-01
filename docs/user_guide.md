@@ -78,7 +78,7 @@
     - [Unit test](#unit-test)
     - [Integration Test](#integration-test)
       - [Add test case](#add-test-case)
-        - [Automatic Test Generation](#automatic-test-generation)
+        - [Automatic generation](#automatic-generation)
         - [Manual creation](#manual-creation)
         - [Register the fixture](#register-the-fixture)
       - [Run test](#run-test)
@@ -1667,7 +1667,7 @@ There are two ways to create a test case: automatically with the
 
 or manually.
 
-##### Automatic Test Generation
+##### Automatic generation
 
 The `agent_network_test_generator` agent network can analyze an existing agent network
 and produce test fixtures automatically. Start the server, open the client, select
