@@ -31,9 +31,6 @@ file://.*%7B%7B.*%7D%7D
 # Shell/template variable URLs (lychee cannot resolve these)
 https://go.dev/dl/go\$
 
-# Broken external links (to be fixed in code)
-https://raw.githubusercontent.com/anthropics/skills/main/skills/internal-comms/
-https://github.com/google/a2a-python/tree/main/examples
 
 # arxiv.org placeholder URLs (no paper ID)
 http://arxiv.org/abs/$
