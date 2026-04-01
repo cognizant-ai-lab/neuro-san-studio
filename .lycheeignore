@@ -63,6 +63,7 @@ http://arxiv.org/abs/$
 
 # Sites that may be unreachable from CI
 https://docling-project.github.io/docling/
+https://www.docker.com/get-started/
 
 # Shield badges (dynamic content, not actual pages)
 https://img.shields.io/
