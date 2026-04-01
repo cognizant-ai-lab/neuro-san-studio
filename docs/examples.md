@@ -398,9 +398,9 @@ flights, international travel, and more.
 
 [Airline Policy Web Search Assistant](examples/industry/airline_policy_web_search.md) is a multi-agent system that
 answers customer questions about airline policies by scraping the airline's official webpages at runtime — keeping
-information fresh without any cached state. Built entirely using AAOSA and the toolbox, it requires no coded tools and can be fully vibe coded. It covers
-baggage, fares, seating, loyalty programs, travel requirements, and special assistance — all grounded strictly in
-live content retrieved from the airline's own site.
+information fresh without any cached state. Built entirely using AAOSA and the toolbox, it requires no coded tools
+and can be fully vibe coded. It covers baggage, fares, seating, loyalty programs, travel requirements, and special
+assistance — all grounded strictly in live content retrieved from the airline's own site.
 
 **Tags:** `tool`, `RAG`, `AAOSA`
 
