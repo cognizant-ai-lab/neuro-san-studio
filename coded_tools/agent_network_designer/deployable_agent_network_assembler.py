@@ -82,12 +82,8 @@ class DeployableAgentNetworkAssembler(AgentNetworkAssembler):
 
         # Add metadata if sample queries are provided
         if sample_queries:
-            triple_quoted_queries = []
-            for query in sample_queries:
-                # Put each query in triple quotes to allow for multi-line queries and
-                # to avoid issues with special characters.
-                triple_quoted_queries.append(f'"""{query}"""')
-            agent_network["metadata"] = {"sample_queries": triple_quoted_queries}
+            # Store sample queries directly; the serializer will handle quoting and escaping.
+            agent_network["metadata"] = {"sample_queries": sample_queries}
 
         agent_name: str = None
         agent_def: dict[str, Any] = {}
