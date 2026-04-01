@@ -130,7 +130,12 @@ class ValidateTestFixture(CodedTool):
     # ------------------------------------------------------------------
 
     def _check_top_level(self, fixture: dict[str, Any], errors: list[str]) -> None:
-        """Validate required top-level keys and reject disallowed ones."""
+        """
+        Validate required top-level keys and reject disallowed ones.
+ 
+        :param fixture: The fixture dictionary to validate.
+        :param errors: Accumulator list; new errors are appended in-place.
+        """
         for key in ("agent", "success_ratio", "interactions"):
             if key not in fixture:
                 errors.append(f"Missing required top-level key: '{key}'.")
@@ -165,7 +170,12 @@ class ValidateTestFixture(CodedTool):
     # ------------------------------------------------------------------
 
     def _check_connections(self, connections: Any, errors: list[str]) -> None:
-        """Validate the optional 'connections' list."""
+        """
+        Validate the optional 'connections' list.
+
+        :param connections: The connections value from the fixture.
+        :param errors: Accumulator list; new errors are appended in-place.
+        """
         if connections is None:
             return
         if not isinstance(connections, list):
@@ -188,7 +198,13 @@ class ValidateTestFixture(CodedTool):
         index: int,
         errors: list[str],
     ) -> None:
-        """Validate a single interaction entry."""
+        """
+        Validate a single interaction entry.
+
+        :param interaction: A single interaction dictionary.
+        :param index: The zero-based index of this interaction.
+        :param errors: Accumulator list; new errors are appended in-place.
+        """
         prefix: str = f"interactions[{index}]"
 
         if not isinstance(interaction, dict):
@@ -237,7 +253,13 @@ class ValidateTestFixture(CodedTool):
         prefix: str,
         errors: list[str],
     ) -> None:
-        """Validate the response block of an interaction."""
+        """
+        Validate the response block of an interaction.
+
+        :param response: The response dictionary from an interaction.
+        :param prefix: Human-readable path prefix for error messages.
+        :param errors: Accumulator list; new errors are appended in-place.
+        """
         has_text: bool = "text" in response
         has_structure: bool = "structure" in response
 
@@ -274,7 +296,14 @@ class ValidateTestFixture(CodedTool):
         path: str,
         errors: list[str],
     ) -> None:
-        """Validate a single stock test key/value for type and length rules."""
+        """
+        Validate a single stock test key/value for type and length rules.
+
+        :param key: The stock test name (e.g. "keywords", "value").
+        :param val: The value associated with the stock test.
+        :param path: Human-readable path prefix for error messages.
+        :param errors: Accumulator list; new errors are appended in-place.
+        """
         # Numeric stock tests must use float, not int.
         if key in _NUMERIC_STOCK_TESTS and isinstance(val, int) and not isinstance(val, bool):
             errors.append(
@@ -301,7 +330,13 @@ class ValidateTestFixture(CodedTool):
         path: str,
         errors: list[str],
     ) -> None:
-        """Ensure every key in *block* is a recognised stock test."""
+        """
+        Ensure every key in *block* is a recognised stock test.
+
+        :param block: Dictionary of stock test entries to validate.
+        :param path: Human-readable path prefix for error messages.
+        :param errors: Accumulator list; new errors are appended in-place.
+        """
         for key, val in block.items():
             if key not in _VALID_STOCK_TESTS:
                 errors.append(
@@ -319,10 +354,15 @@ class ValidateTestFixture(CodedTool):
         path: str,
         errors: list[str],
     ) -> None:
-        """Validate response.structure entries.
+        """
+        Validate response.structure entries.
 
         Each key should map to a dict of stock tests.  Reject common
         meta-fields the LLM tends to invent.
+
+        :param structure: The structure dictionary from a response.
+        :param path: Human-readable path prefix for error messages.
+        :param errors: Accumulator list; new errors are appended in-place.
         """
         for key, value in structure.items():
             field_path: str = f"{path}.{key}"
