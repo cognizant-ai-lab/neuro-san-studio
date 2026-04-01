@@ -82,7 +82,6 @@ class DeployableAgentNetworkAssembler(AgentNetworkAssembler):
 
         # Add metadata if sample queries are provided
         if sample_queries:
-            # Store sample queries directly; the serializer will handle quoting and escaping.
             agent_network["metadata"] = {"sample_queries": sample_queries}
 
         agent_name: str = None
