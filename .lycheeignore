@@ -56,6 +56,10 @@ https://go.dev/dl/go\$
 https://github.com/deepsaia/vibe-coding-eval
 https://pepy.tech/projects/neuro-san
 https://raw.githubusercontent.com/anthropics/skills/main/skills/internal-comms/
+https://github.com/google/a2a-python/tree/main/examples
+
+# arxiv.org placeholder URLs (no paper ID)
+http://arxiv.org/abs/$
 
 # Sites that may be unreachable from CI
 https://docling-project.github.io/docling/
