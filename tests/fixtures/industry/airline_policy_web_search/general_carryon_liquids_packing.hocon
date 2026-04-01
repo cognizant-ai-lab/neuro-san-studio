@@ -37,8 +37,8 @@
     # descriptions of response checks.
     "interactions": [
         {
-            # Note: This text case is expected to failed 100%!!!
-            # These is no info regarding liquids in Carry-on Bags.txt file.
+            # Note: This test case is expected to fail 100%!!!
+            # There is no info regarding liquids in Carry-on Bags.txt file.
             
             # This is to enable streaming_chat contents to thinking file for debug.
             # "chat_filter": "MAXIMAL",

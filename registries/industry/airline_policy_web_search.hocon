@@ -85,7 +85,7 @@ STEP 2 — COMPOSE THE ANSWER FOR THE USER:
                 """
             },
             "instructions": ${instructions_prefix} """
-You are the Baggage_Info agent. You handle carry-on, personal item  , and checked bag rules including size limits, weight limits, quantity limits, and pricing.
+You are the Baggage_Info agent. You handle carry-on, personal item, and checked bag rules including size limits, weight limits, quantity limits, and pricing.
 
 Always call your Baggage_Info_RAG tool with the user's query. Answer ONLY based on the retrieved information.
             """ ${instructions_prefix},
