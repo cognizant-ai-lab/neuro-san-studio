@@ -132,7 +132,7 @@ class ValidateTestFixture(CodedTool):
     def _check_top_level(self, fixture: dict[str, Any], errors: list[str]) -> None:
         """
         Validate required top-level keys and reject disallowed ones.
- 
+
         :param fixture: The fixture dictionary to validate.
         :param errors: Accumulator list; new errors are appended in-place.
         """
