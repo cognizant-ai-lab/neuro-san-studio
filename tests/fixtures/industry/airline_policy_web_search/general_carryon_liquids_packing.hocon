@@ -37,12 +37,9 @@
     # descriptions of response checks.
     "interactions": [
         {
-            # Note: This test case is expected to fail 100%!!!
-            # There is no info regarding liquids in Carry-on Bags.txt file.
-            
             # This is to enable streaming_chat contents to thinking file for debug.
             # "chat_filter": "MAXIMAL",
-            
+
             # This is what we send as input to streaming_chat()
             "text": """
 How should I pack liquids in my carry-on bag?
