@@ -19,8 +19,6 @@ https://community.openai.com/
 
 # API endpoints (not browsable)
 https://api.search.brave.com/
-https://customsearch.googleapis.com/
-https://www.googleapis.com/customsearch/
 
 # Sites that timeout or block CI requests
 https://docs.servicenow.com/
