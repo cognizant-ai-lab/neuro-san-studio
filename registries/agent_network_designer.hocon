@@ -225,7 +225,7 @@ Operational notes:
 
         {
             "name": "get_agent_network_definition",
-            "class": "get_agent_network_definition.GetAgentNetworkDefinition",
+            "class": "coded_tools.get_agent_network_definition.GetAgentNetworkDefinition",
             "function": {
                 "description": "Retrieve the current agent network definition. Use the `agent_network_hocon_file` parameter only if the user explicitly specifies a HOCON file to be modified.",
                 "parameters": {

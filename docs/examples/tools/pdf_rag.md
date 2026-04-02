@@ -10,6 +10,14 @@ The **PDF RAG Assistant** answers user queries using Retrieval-Augmented Generat
 
 ---
 
+## Prerequisites
+
+* Install pymupdf package, a high-performance Python library for data extraction, analysis, conversion & manipulation of PDF (and other) documents:
+
+    ```bash
+    pip install pymupdf
+    ```
+
 ## Prerequisites for PostgreSQL Vector Store
 
 * Install Docker: https://www.docker.com/get-started/
