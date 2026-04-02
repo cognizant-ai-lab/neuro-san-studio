@@ -1,4 +1,3 @@
-
 # Copyright © 2025-2026 Cognizant Technology Solutions Corp, www.cognizant.com.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -24,7 +23,6 @@ from neuro_san.internals.validation.network.url_network_validator import UrlNetw
 from coded_tools.agent_network_editor.get_mcp_tool import GetMcpTool
 from coded_tools.agent_network_editor.get_subnetwork import GetSubnetwork
 from coded_tools.agent_network_editor.get_toolbox import GetToolbox
-
 from middleware.agent_network_validation_middleware import AgentNetworkValidationMiddleware
 
 
@@ -39,10 +37,7 @@ class AgentNetworkStructureValidationMiddleware(AgentNetworkValidationMiddleware
     """
 
     def no_network_error_message(self) -> str:
-        return (
-            "Error: No agent network found. "
-            "Please create a new agent network using `create_new_network` tool"
-        )
+        return "Error: No agent network found. Please create a new agent network using `create_new_network` tool"
 
     def validation_label(self) -> str:
         return "Structure"
