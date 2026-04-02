@@ -91,7 +91,7 @@ You are an internal communications assistant that helps with internal communicat
                         # scripts or reference tools and resources that are not available in your
                         # environment. Always review the skill contents carefully before using it
                         # in your agent.
-                        "skill_sources": ["https://github.com/anthropics/skills/tree/main/skills/internal-comms"],
+                        "skill_sources": ["https://raw.githubusercontent.com/anthropics/skills/main/skills/internal-comms"],
 
                         # Control how skill content is managed in the conversation context.
                         # 

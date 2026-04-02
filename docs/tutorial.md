@@ -915,7 +915,7 @@ See [job_guessing_skill.hocon](../registries/basic/job_guessing_skill.hocon) for
 
 ```hocon
 "args": {
-    "skill_sources": ["https://github.com/anthropics/skills/tree/main/skills/internal-comms"],
+    "skill_sources": ["https://raw.githubusercontent.com/anthropics/skills/main/skills/internal-comms"],
     "keep_skill_in_context": true,
     "http_timeout": 30.0
 }

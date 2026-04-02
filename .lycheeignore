@@ -7,7 +7,6 @@ http://192.168.
 
 # Placeholder and example URLs
 https://github.com/your-username/
-https://yoursite.atlassian.net
 https://mydomain.my.salesforce.com/
 https://your-instance.service-now.com/
 https://test.service-now.com/
@@ -25,6 +24,10 @@ https://mcp/
 https://api.anthropic.com/
 https://api.smith.langchain.com/
 https://api.salesforce.com
+
+# raw.githubusercontent.com returns 400 on directory URLs (no directory listing)
+# The middleware appends SKILL.md to this base URL at runtime and that works fine (200)
+https://raw.githubusercontent.com/anthropics/skills/main/skills/internal-comms
 
 # Jinja2 template URLs (lychee cannot resolve these at scan time)
 file://.*%7B%7B.*%7D%7D
