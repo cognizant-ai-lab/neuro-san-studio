@@ -64,6 +64,10 @@ RUN set -eu; \
     rm -rf /var/lib/apt/lists/*
 
 COPY deploy/install_deploy_requirements.sh /tmp/install_deploy_requirements.sh
+# The bracket glob syntax [s] makes this COPY optional: if deploy-requirements.txt
+# is absent from the build context (i.e. a plain neuro-san-studio build rather than
+# an automated one from neuro-san-deploy), Docker matches zero files and silently
+# skips the COPY instead of failing.
 COPY deploy-requirement[s].txt /tmp/
 RUN --mount=type=secret,id=with_creds_requirements,required=false \
     /tmp/install_deploy_requirements.sh
