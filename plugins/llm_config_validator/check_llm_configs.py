@@ -51,7 +51,6 @@ Examples:
 import asyncio
 import sys
 import traceback
-from io import BytesIO
 from typing import Any
 from typing import Dict
 from typing import List
@@ -63,14 +62,11 @@ from langchain_core.messages.human import HumanMessage
 # For per-agent config merging, same as CallingActivation.prepare_run_context_config
 from leaf_common.config.dictionary_overlay import DictionaryOverlay
 
-# For parsing standalone HOCON files (same deserializer the framework uses internally
-# via AbstractAsyncConfigRestorer.deserialize_file_contents)
-from leaf_common.serialization.format.hocon_serialization_format import HoconSerializationFormat
-
 # Framework imports - same classes the framework itself uses
 from neuro_san.internals.graph.persistence.agent_network_restorer import AgentNetworkRestorer
 from neuro_san.internals.graph.registry.agent_network import AgentNetwork
 from neuro_san.internals.interfaces.context_type_llm_factory import ContextTypeLlmFactory
+from neuro_san.internals.persistence.abstract_async_config_restorer import AbstractAsyncConfigRestorer
 from neuro_san.internals.run_context.factory.master_llm_factory import MasterLlmFactory
 from neuro_san.internals.run_context.langchain.llms.langchain_llm_resources import LangChainLlmResources
 
@@ -125,17 +121,15 @@ def redact_llm_config(config: Dict[str, Any]) -> Dict[str, Any]:
     return redacted
 
 
-def parse_hocon_file(hocon_path: str) -> Dict[str, Any]:
+def parse_hocon_file(network_hocon_file: str) -> Dict[str, Any]:
     """
-    Parse a raw HOCON file into a Python dict using the same
-    HoconSerializationFormat that the framework uses internally
-    (via AbstractAsyncConfigRestorer.deserialize_file_contents).
+    Parse a raw HOCON file into a Python dict via
+    AbstractAsyncConfigRestorer
     """
-    with open(hocon_path, "r", encoding="utf-8") as file_obj:
-        file_contents: str = file_obj.read()
-    string_file = BytesIO(file_contents.encode("utf-8"))
-    serialization = HoconSerializationFormat()
-    return serialization.to_object(string_file)
+    hocon = AbstractAsyncConfigRestorer(file_purpose="get_agent_network_definition_for_validation", must_exist=True)
+    hocon_file = hocon.restore(file_reference=network_hocon_file)
+
+    return hocon_file
 
 
 def is_agent_network_hocon(config: Dict[str, Any]) -> bool:
