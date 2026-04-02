@@ -30,9 +30,6 @@
 
     include "registries/llm_config.hocon",
 
-    "max_iterations": 5000,
-    "max_execution_seconds": 900,
-
     "instructions_prefix": """
 - **Lead with a direct, clear answer** to the customer's question first — do not bury it.
 - After the direct answer, include all relevant policy variations, restrictions, exceptions, and safety rules — **NEVER filter or omit** any of them. DO NOT include irrelevant information.
@@ -269,23 +266,12 @@ Always call your Accessibility_RAG tool with the user's query. Answer ONLY based
             "tools": ["Accessibility_RAG"]
         },
         {
-            "name": "Fare_Info_RAG",
-            "toolbox": "webpage_rag",
-            "args": {
-                "urls": [
-                    "https://faq.flyfrontier.com/help/what-is-included-in-my-fare",
-                    "https://faq.flyfrontier.com/help/what-is-the-difference-between-economy-premium-and-business-bundles"
-                ]
-            }
-        },
-        {
             "name": "Baggage_Info_RAG",
             "toolbox": "webpage_rag",
             "args": {
                 "urls": [
                     "https://www.flyfrontier.com/optional-services/",
-                    "https://faq.flyfrontier.com/help/are-there-any-restrictions-on-how-many-bags-i-can-bring",
-                    
+                    "https://faq.flyfrontier.com/help/are-there-any-restrictions-on-how-many-bags-i-can-bring"
                 ]
             }
         },
@@ -308,6 +294,16 @@ Always call your Accessibility_RAG tool with the user's query. Answer ONLY based
                     "https://faq.flyfrontier.com/help/bags-seats-general-info-can-i-bring-sporting-or-musical-equipment-with-me",
                     "https://faq.flyfrontier.com/help/bags-seats-general-info-can-i-bring-a-firearm-with-me",
                     "https://faq.flyfrontier.com/help/can-i-bring-smart-luggage-on-my-flight"
+                ]
+            }
+        },
+        {
+            "name": "Fare_Info_RAG",
+            "toolbox": "webpage_rag",
+            "args": {
+                "urls": [
+                    "https://faq.flyfrontier.com/help/what-is-included-in-my-fare",
+                    "https://faq.flyfrontier.com/help/what-is-the-difference-between-economy-premium-and-business-bundles"
                 ]
             }
         },
