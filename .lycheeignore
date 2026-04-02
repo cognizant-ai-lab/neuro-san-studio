@@ -19,15 +19,12 @@ http://arxiv.org/abs/$
 # Sites with network-level blocks (not resolvable via --accept)
 https://www.united.com/
 https://mcp/
+https://raw.githubusercontent.com/anthropics/skills/main/skills/internal-comms/
 
 # API endpoints whose bare domain returns 404 (not an accept-able status)
 https://api.anthropic.com/
 https://api.smith.langchain.com/
 https://api.salesforce.com
-
-# raw.githubusercontent.com returns 400 on directory URLs (no directory listing)
-# The middleware appends SKILL.md to this base URL at runtime and that works fine (200)
-https://raw.githubusercontent.com/anthropics/skills/main/skills/internal-comms
 
 # Jinja2 template URLs (lychee cannot resolve these at scan time)
 file://.*%7B%7B.*%7D%7D
