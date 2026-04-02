@@ -28,7 +28,9 @@ from typing import Dict
 from typing import Tuple
 
 from dotenv import load_dotenv
+
 from plugins.env_validator.env_validator import EnvValidator
+from plugins.llm_config_validator.llm_config_validator_plugin import LlmConfigValidatorPlugin
 from plugins.log_bridge.process_log_bridge import ProcessLogBridge
 from plugins.phoenix.phoenix_plugin import PhoenixPlugin
 
@@ -168,6 +170,22 @@ class NeuroSanRunner:
             "3=live API calls (default when flag is passed without a value). "
             "Omit to skip validation entirely.",
         )
+        default_llm_config = os.path.join(os.path.dirname(self.args["agent_manifest_file"]), "llm_config.hocon")
+        parser.add_argument(
+            "--check-llm-config",
+            nargs="?",
+            const=default_llm_config,
+            default=None,
+            metavar="HOCON_PATH",
+            help="Test every LLM configuration in a HOCON file by creating each "
+            "LLM instance and invoking it with a trivial prompt. "
+            "Accepts both agent network files (with a 'tools' list, testing each agent's "
+            "merged llm_config) and standalone studio llm_config files. "
+            "llm_configs that use a 'fallbacks' list are expanded and each model is tested individually. "
+            "Duplicate configurations are deduplicated so each unique model is called only once. "
+            "Exits with a non-zero code if any configuration fails. "
+            f"When passed without a value, defaults to {default_llm_config}.",
+        )
 
         args, _ = parser.parse_known_args()
         explicitly_passed_args = {arg for arg in sys.argv[1:] if arg.startswith("--")}
@@ -244,6 +262,13 @@ class NeuroSanRunner:
             print(f"NEURO_SAN_SERVER_HTTP_PORT set to: {os.environ['NEURO_SAN_SERVER_HTTP_PORT']}\n")
 
         print("\n" + "=" * 50 + "\n")
+
+    def check_llm_config(self):
+        """Validate LLM configurations when --check-llm-config is specified."""
+        hocon_path = self.args.get("check_llm_config")
+        if not hocon_path:
+            return
+        LlmConfigValidatorPlugin().check(hocon_path)
 
     def validate_keys(self):
         """Validate LLM API keys when --validate-keys is specified."""
@@ -566,6 +591,9 @@ class NeuroSanRunner:
 
         # Validate LLM API keys if --validate-keys was specified
         self.validate_keys()
+
+        # Validate LLM configurations if --check-llm-config was specified
+        self.check_llm_config()
 
         # Ensure logs directory exists
         os.makedirs("logs", exist_ok=True)
