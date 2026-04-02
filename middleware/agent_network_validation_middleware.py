@@ -18,9 +18,9 @@ import logging
 from abc import abstractmethod
 from typing import Any
 
-from langchain.agents.middleware import AgentMiddleware
-from langchain.agents.middleware import AgentState
-from langchain.agents.middleware import hook_config
+from langchain.agents.middleware.types import AgentMiddleware
+from langchain.agents.middleware.types import AgentState
+from langchain.agents.middleware.types import hook_config
 from langchain_core.messages import HumanMessage
 from langgraph.runtime import Runtime
 
@@ -33,7 +33,7 @@ class AgentNetworkValidationMiddleware(AgentMiddleware):
 
     Subclasses implement validate() to run their specific validators and
     provide custom error/log messages via no_network_error_message(),
-    validation_label(), and _format_error().
+    validation_label(), and format_error().
     """
 
     def __init__(self, sly_data: dict[str, Any]) -> None:
