@@ -15,8 +15,7 @@
 # END COPYRIGHT
 {
     "metadata": {
-        "description": "Agent network that generates data-driven test fixture HOCON files for existing agent networks. Provide the name of an agent network and it will read its definition, analyze its capabilities, and produce test cases with interactions, expected responses, and sly_data.",
-        "tags": ["tool", "testing"],
+        "description": "ANTeGen (Agent Network Test Generator) — generates data-driven test fixture HOCON files for existing agent networks. Provide the name of an agent network and it will read its definition, analyze its capabilities, and produce test cases with interactions, expected responses, and sly_data.",        "tags": ["tool", "testing"],
         "sample_queries": [
             "Generate test cases for basic/coffee_finder_advanced",
             "Generate test cases for basic/coffee_finder_advanced with max coverage",
