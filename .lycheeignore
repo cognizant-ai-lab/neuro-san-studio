@@ -19,9 +19,9 @@ http://arxiv.org/abs/$
 # Sites with network-level blocks (not resolvable via --accept)
 https://www.united.com/
 https://mcp/
-https://raw.githubusercontent.com/anthropics/skills/main/skills/internal-comms/
 
-# API endpoints whose bare domain returns 404 (not an accept-able status)
+# URLs whose base path is not browsable (returns 400 or 404)
+https://raw.githubusercontent.com/anthropics/skills/main/skills/internal-comms/
 https://api.anthropic.com/
 https://api.smith.langchain.com/
 https://api.salesforce.com
