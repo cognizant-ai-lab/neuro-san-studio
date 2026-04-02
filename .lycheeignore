@@ -15,6 +15,7 @@ https://your-resource.openai.azure.com/
 https://your-domain.atlassian.net
 http://otherdomain.com/
 file:///path/to/
+http://arxiv.org/abs/$
 
 # Sites with network-level blocks (not resolvable via --accept)
 https://www.united.com/
@@ -30,7 +31,3 @@ file://.*%7B%7B.*%7D%7D
 
 # Shell/template variable URLs (lychee cannot resolve these)
 https://go.dev/dl/go\$
-
-
-# arxiv.org placeholder URLs (no paper ID)
-http://arxiv.org/abs/$
