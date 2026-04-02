@@ -21,6 +21,7 @@ https://www.united.com/
 https://mcp/
 
 # URLs whose base path is not browsable (returns 400 or 404)
+# raw.githubusercontent.com requires a file path; the middleware appends SKILL.md at runtime, but 400 cannot be globally accepted without masking broken links
 https://raw.githubusercontent.com/anthropics/skills/main/skills/internal-comms/
 https://api.anthropic.com/
 https://api.smith.langchain.com/
