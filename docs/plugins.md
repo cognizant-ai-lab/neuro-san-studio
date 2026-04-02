@@ -45,10 +45,10 @@ It can be invoked via the `--check-llm-config` flag on `run.py`:
 
 ```bash
 # Check the default registries/llm_config.hocon
-python run.py --check-llm-config
+python -m run --check-llm-config
 
 # Check a specific agent network or llm_config HOCON file
-python run.py --check-llm-config registries/music_nerd.hocon
+python -m run --check-llm-config registries/basic/music_nerd.hocon
 ```
 
 Or run the script directly:
