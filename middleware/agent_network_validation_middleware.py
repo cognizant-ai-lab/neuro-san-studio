@@ -1,4 +1,3 @@
-
 # Copyright © 2025-2026 Cognizant Technology Solutions Corp, www.cognizant.com.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -15,15 +14,14 @@
 #
 # END COPYRIGHT
 
-from abc import abstractmethod
 import logging
+from abc import abstractmethod
 from typing import Any
 
 from langchain.agents.middleware.types import AgentMiddleware
 from langchain.agents.middleware.types import AgentState
 from langchain.agents.middleware.types import hook_config
 from langchain_core.messages import HumanMessage
-
 from langgraph.runtime import Runtime
 
 from coded_tools.agent_network_editor.constants import AGENT_NETWORK_DEFINITION
@@ -38,10 +36,7 @@ class AgentNetworkValidationMiddleware(AgentMiddleware):
     validation_label(), and format_error().
     """
 
-    def __init__(
-            self,
-            sly_data: dict[str, Any]
-    ) -> None:
+    def __init__(self, sly_data: dict[str, Any]) -> None:
         """
         Initialize agent network validation middleware.
 
@@ -122,11 +117,7 @@ class AgentNetworkValidationMiddleware(AgentMiddleware):
     # - https://docs.langchain.com/oss/python/langchain/middleware/custom#agent-jumps
     # - https://docs.langchain.com/oss/python/langchain/guardrails#before-agent-guardrails
     @hook_config(can_jump_to=["model"])
-    async def aafter_agent(
-        self,
-        state: AgentState,
-        runtime: Runtime
-    ) -> dict[str, Any] | None:
+    async def aafter_agent(self, state: AgentState, runtime: Runtime) -> dict[str, Any] | None:
         """
         Validate the agent network definition after each agent turn.
 
@@ -136,10 +127,7 @@ class AgentNetworkValidationMiddleware(AgentMiddleware):
         """
         network_def: dict[str, Any] = self.sly_data.get(AGENT_NETWORK_DEFINITION)
         if not network_def:
-            return {
-                "messages": [HumanMessage(self.no_network_error_message())],
-                "jump_to": "model"
-            }
+            return {"messages": [HumanMessage(self.no_network_error_message())], "jump_to": "model"}
 
         label: str = self.validation_label()
         self.logger.info(">>>>>>>>>>>>>>>>>>>Validate Agent Network %s>>>>>>>>>>>>>>>>>>", label)
@@ -152,7 +140,7 @@ class AgentNetworkValidationMiddleware(AgentMiddleware):
             return {
                 # Use human message to ensure that the model follows the instructions
                 "messages": [HumanMessage(content)],
-                "jump_to": "model"
+                "jump_to": "model",
             }
 
         self.logger.info("No %s errors found in the agent network.", label.lower())
