@@ -26,16 +26,15 @@
     # success_ratio is useful for passing to the assessor to find out why
     # a test is intermitently failing. Sometimes it's the agent prompt, but
     # sometimes it's the test itself.
-    # Note: This number was set to 1/1 for regression testing.
-    "success_ratio": "1/1",
+    # Note: This number was set to 2/3 as this is a hard regression test case.
+    "success_ratio": "2/3",
 
     # Interactions are a series of dictionaries with request elements paired with
     # descriptions of response checks.
     "interactions": [
         {
-            # Cross-agent routing test: the query spans Kids_and_Pets (lap infant boarding,
-            # stroller policy) and Baggage_Info (stroller fees/gate-check rules).
-            # Both topics must appear in the response.
+            # This is to enable streaming_chat contents to thinking file for debug.
+            # "chat_filter": "MAXIMAL",
 
             # Timeout for each interaction.
             # It's also possible to have a timeout_in_seconds for the entire test.

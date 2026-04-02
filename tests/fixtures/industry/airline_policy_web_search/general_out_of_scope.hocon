@@ -33,8 +33,8 @@
     # descriptions of response checks.
     "interactions": [
         {
-            # Negative test: query is entirely outside the scope of airline policy.
-            # The agent should politely decline rather than attempt an answer.
+            # This is to enable streaming_chat contents to thinking file for debug.
+            # "chat_filter": "MAXIMAL",
 
             # Timeout for each interaction.
             # It's also possible to have a timeout_in_seconds for the entire test.
