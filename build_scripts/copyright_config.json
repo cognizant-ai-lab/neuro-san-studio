@@ -5,9 +5,11 @@
         "deploy",
         "docs",
         "mcp",
+        "middleware",
         "plugins",
         "registries",
         "servers",
+        "skills",
         "tests",
         "toolbox"
     ]
