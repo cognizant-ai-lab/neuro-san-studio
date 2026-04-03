@@ -16,8 +16,8 @@
 
 import asyncio
 import logging
-from pathlib import Path
 import re
+from pathlib import Path
 from re import DOTALL
 from re import Match
 from typing import Any
@@ -30,9 +30,6 @@ import aiofiles
 from aiohttp import ClientError
 from aiohttp import ClientSession
 from aiohttp import ClientTimeout
-from yaml import safe_load
-from yaml import YAMLError
-
 from langchain.agents.middleware.types import AgentMiddleware
 from langchain.agents.middleware.types import AgentState
 from langchain.agents.middleware.types import ContextT
@@ -45,9 +42,11 @@ from langchain_core.messages import ToolMessage
 from langchain_core.messages.tool import ToolCall
 from langchain_core.tools import BaseTool
 from langchain_core.tools import StructuredTool
-from langgraph.runtime import Runtime
 from langgraph.prebuilt.tool_node import ToolCallRequest
+from langgraph.runtime import Runtime
 from langgraph.types import Command
+from yaml import YAMLError
+from yaml import safe_load
 
 
 class AgentSkillsMiddleware(AgentMiddleware):
@@ -83,10 +82,7 @@ class AgentSkillsMiddleware(AgentMiddleware):
     """
 
     def __init__(
-        self,
-        skill_sources: list[str],
-        keep_skill_in_context: bool = False,
-        http_timeout: float = 30.0
+        self, skill_sources: list[str], keep_skill_in_context: bool = False, http_timeout: float = 30.0
     ) -> None:
         """Initialize the skills middleware.
 
@@ -100,7 +96,7 @@ class AgentSkillsMiddleware(AgentMiddleware):
 
         # Session will be created in abefore_agent, and closed in aafter_agent
         self._session: ClientSession | None = None
-        self._timeout = ClientTimeout(total=http_timeout, connect=http_timeout/3, sock_read=http_timeout)
+        self._timeout = ClientTimeout(total=http_timeout, connect=http_timeout / 3, sock_read=http_timeout)
 
         # Register tools per Agent Skills progressive disclosure pattern
         # This is equivalent to adding tools in the network hocon file
@@ -114,11 +110,7 @@ class AgentSkillsMiddleware(AgentMiddleware):
         self.logger = logging.getLogger(__name__)
 
     @override
-    async def abefore_agent(
-        self,
-        state: AgentState,
-        runtime: Runtime[ContextT]
-    ) -> dict[str, Any] | None:
+    async def abefore_agent(self, state: AgentState, runtime: Runtime[ContextT]) -> dict[str, Any] | None:
         """
         Create HTTP session and load skills metadata and cache the content of SKILL.md before agent execution starts.
 
@@ -135,9 +127,10 @@ class AgentSkillsMiddleware(AgentMiddleware):
         # Skill contents and metadata from SKILL.md are loaded and cache in abefore_agent().
         # This happens once per session.
         #
-        # Note that the `_load_skills()`` method calls `load_skill_resource_local()` and `load_skill_resource_remote()` to
-        # read the skill in file system and on internet, respectively.
-        # These two skills are also registered as tools so the agent can read any additional files in the skill directory.
+        # Note that the `_load_skills()`` method calls `load_skill_resource_local()`
+        # and `load_skill_resource_remote()` to read the skill in file system and on internet, respectively.
+        # These two skills are also registered as tools so the agent can read any additional files in the skill
+        # directory.
         if not self.skills_dict:
             await self._load_skills()
 
@@ -172,9 +165,7 @@ class AgentSkillsMiddleware(AgentMiddleware):
 
     @override
     async def awrap_tool_call(
-        self,
-        request: ToolCallRequest,
-        handler: Callable[[ToolCallRequest], Awaitable[ToolMessage | Command[Any]]]
+        self, request: ToolCallRequest, handler: Callable[[ToolCallRequest], Awaitable[ToolMessage | Command[Any]]]
     ) -> ToolMessage | Command[Any]:
         """
         Tool messages for langchain BaseTool are written in the journal and put in chat context with
@@ -194,9 +185,8 @@ class AgentSkillsMiddleware(AgentMiddleware):
         if not self.keep_skill_in_context and tool_name in {
             "get_full_skill_content",
             "load_skill_resource_local",
-            "load_skill_resource_remote"
+            "load_skill_resource_remote",
         }:
-
             content: str = ""
             # Call the method directly instead of executing the tool to get content
             if tool_name == "get_full_skill_content":
@@ -227,11 +217,7 @@ class AgentSkillsMiddleware(AgentMiddleware):
         return await handler(request)
 
     @override
-    async def aafter_agent(
-        self,
-        state: AgentState,
-        runtime: Runtime[ContextT]
-    ) -> dict[str, Any] | None:
+    async def aafter_agent(self, state: AgentState, runtime: Runtime[ContextT]) -> dict[str, Any] | None:
         """Close HTTP session after agent execution completes.
 
         :param state: Current agent state
@@ -304,13 +290,13 @@ class AgentSkillsMiddleware(AgentMiddleware):
                 "properties": {
                     "skill_name": {
                         "type": "string",
-                        "description": "Name of the skill (must match skill name from available skills list)"
+                        "description": "Name of the skill (must match skill name from available skills list)",
                     }
                 },
-                "required": ["skill_name"]
+                "required": ["skill_name"],
             },
             # This is so neuro-san can write the journal and put tool response in context
-            tags=["langchain_tool"]
+            tags=["langchain_tool"],
         )
 
     async def load_skill_resource_local(self, resource_path: str) -> str:
@@ -330,7 +316,7 @@ class AgentSkillsMiddleware(AgentMiddleware):
             return f"Error: Resource file not found: {resource_path}"
 
         try:
-            async with aiofiles.open(path, mode='r', encoding='utf-8') as file:
+            async with aiofiles.open(path, mode="r", encoding="utf-8") as file:
                 return await file.read()
         except UnicodeDecodeError as unicode_error:
             return f"Error: Unable to decode file as UTF-8: {unicode_error}"
@@ -357,15 +343,14 @@ class AgentSkillsMiddleware(AgentMiddleware):
                     "resource_path": {
                         "type": "string",
                         "description": (
-                            "Full path to the resource file. "
-                            "Example: skills/my-skill/references/REFERENCE.md"
-                        )
+                            "Full path to the resource file. Example: skills/my-skill/references/REFERENCE.md"
+                        ),
                     }
                 },
-                "required": ["resource_path"]
+                "required": ["resource_path"],
             },
             # This is so neuro-san can write the journal and put tool response in context
-            tags=["langchain_tool"]
+            tags=["langchain_tool"],
         )
 
     async def load_skill_resource_remote(self, resource_url: str) -> str:
@@ -418,13 +403,13 @@ class AgentSkillsMiddleware(AgentMiddleware):
                         "description": (
                             "Full URL to the resource file. "
                             "Example: https://example.com/skills/my-skill/references/REFERENCE.md"
-                        )
+                        ),
                     }
                 },
-                "required": ["resource_url"]
+                "required": ["resource_url"],
             },
             # This is so neuro-san can write the journal and put tool response in context
-            tags=["langchain_tool"]
+            tags=["langchain_tool"],
         )
 
     async def _validate_resource_path(self, resource_path: str, is_url: bool) -> tuple[bool, str]:
@@ -547,16 +532,13 @@ class AgentSkillsMiddleware(AgentMiddleware):
                 "(must be 1-64 chars, lowercase alphanumeric and hyphens only, "
                 "no leading/trailing hyphens, no consecutive hyphens)",
                 name,
-                skill_path
+                skill_path,
             )
             return None
 
         # Validate description length per spec
         if len(description) > 1024:
-            self.logger.warning(
-                "Description exceeds 1024 character limit in %s (truncating)",
-                skill_path
-            )
+            self.logger.warning("Description exceeds 1024 character limit in %s (truncating)", skill_path)
             description = description[:1024]
 
         return {
@@ -582,10 +564,7 @@ class AgentSkillsMiddleware(AgentMiddleware):
             return False
 
         # Must be lowercase alphanumeric and hyphens only
-        return all(
-            c == "-" or (c.isalpha() and c.islower()) or c.isdigit()
-            for c in name
-        )
+        return all(c == "-" or (c.isalpha() and c.islower()) or c.isdigit() for c in name)
 
     async def _parse_allowed_tools(self, allowed_tools_value: None | str | list[str]) -> list[str]:
         """
@@ -612,8 +591,7 @@ class AgentSkillsMiddleware(AgentMiddleware):
 
         # Unexpected type - log warning and return empty
         self.logger.warning(
-            "allowed-tools has unexpected type %s, expected str or list. Ignoring.",
-            type(allowed_tools_value).__name__
+            "allowed-tools has unexpected type %s, expected str or list. Ignoring.", type(allowed_tools_value).__name__
         )
         return []
 
@@ -629,7 +607,7 @@ class AgentSkillsMiddleware(AgentMiddleware):
             "## Available Skills",
             "",
             "You have access to specialized skills that provide domain knowledge and structured workflows.",
-            ""
+            "",
         ]
 
         for skill in self.skills_dict.values():
@@ -645,22 +623,24 @@ class AgentSkillsMiddleware(AgentMiddleware):
 
             lines.append("")
 
-        lines.extend([
-            "## How to Use Skills (Progressive Disclosure)",
-            "",
-            "Skills follow the Agent Skills specification (https://agentskills.io/specification):",
-            "",
-            "1. **Identify relevant skill**: Match the user's request to a skill description above",
-            "2. **Load full instructions**: Use `get_full_skill_content(skill_name='...')` to load SKILL.md",
-            "3. **Follow the workflow**: Execute step-by-step instructions from SKILL.md",
-            "4. **Load additional resources**: If SKILL.md references other files:",
-            "   - For local skills: Use `load_skill_resource_local(resource_path='...')`",
-            "   - For remote skills: Use `load_skill_resource_remote(resource_url='...')`",
-            "   - Always use the full path/URL shown in the skill location information",
-            "",
-            "**Important**: Skills use relative paths. When you load a skill, you'll receive",
-            "the skill directory location. Prepend this to any relative file references.",
-            "",
-        ])
+        lines.extend(
+            [
+                "## How to Use Skills (Progressive Disclosure)",
+                "",
+                "Skills follow the Agent Skills specification (https://agentskills.io/specification):",
+                "",
+                "1. **Identify relevant skill**: Match the user's request to a skill description above",
+                "2. **Load full instructions**: Use `get_full_skill_content(skill_name='...')` to load SKILL.md",
+                "3. **Follow the workflow**: Execute step-by-step instructions from SKILL.md",
+                "4. **Load additional resources**: If SKILL.md references other files:",
+                "   - For local skills: Use `load_skill_resource_local(resource_path='...')`",
+                "   - For remote skills: Use `load_skill_resource_remote(resource_url='...')`",
+                "   - Always use the full path/URL shown in the skill location information",
+                "",
+                "**Important**: Skills use relative paths. When you load a skill, you'll receive",
+                "the skill directory location. Prepend this to any relative file references.",
+                "",
+            ]
+        )
 
         return "\n".join(lines)

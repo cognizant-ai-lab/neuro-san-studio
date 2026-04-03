@@ -1,4 +1,3 @@
-
 # Copyright © 2025-2026 Cognizant Technology Solutions Corp, www.cognizant.com.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -33,10 +32,7 @@ class AgentNetworkInstructionsValidationMiddleware(AgentNetworkValidationMiddlew
     """
 
     def no_network_error_message(self) -> str:
-        return (
-            "Error: No agent network found. "
-            "Cannot edit or create instructions."
-        )
+        return "Error: No agent network found. Cannot edit or create instructions."
 
     def validation_label(self) -> str:
         return "Instructions"
