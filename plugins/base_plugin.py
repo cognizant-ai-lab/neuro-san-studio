@@ -14,6 +14,7 @@
 #
 # END COPYRIGHT
 
+
 class BasePlugin:
     """Base class for all plugins in the system."""
 

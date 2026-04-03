@@ -19,11 +19,12 @@ Wrapper module that initializes plugins before starting the server.
 This module ensures that plugins are initialized in the same Python process as the Neuro SAN server,
 allowing, for instance, proper tracing and observability.
 """
+
 import importlib
+import json
 import os
 import signal
 import sys
-import json
 
 from neuro_san.service.main_loop.server_main_loop import ServerMainLoop
 
@@ -48,14 +49,14 @@ class NeuroSanServerWrapper:
         except json.JSONDecodeError as e:
             print(f"Failed to parse plugins file at {plugins_file}: {e}. Continuing without plugins.")
             self.user_plugins_config = {}
-        
+
         self.plugin_classes = []
         for plugin_info in self.user_plugins_config.get("plugins", []):
             module = plugin_info.get("module")
             class_name = plugin_info.get("class")
             print(f"Loading plugin: {class_name} from module: {module}")
             self.plugin_classes.append(getattr(importlib.import_module(module), class_name))
-        
+
         # Instantiate plugins now that args are fully built
         self.args = {}  # Placeholder for any args you want to pass to plugins
         self.plugins = [cls(self.args) for cls in self.plugin_classes]
