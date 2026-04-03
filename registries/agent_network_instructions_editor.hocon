@@ -101,7 +101,7 @@ Guardrails:
 
         {
             "name": "set_agent_instructions_tool",
-            "class": "set_agent_instructions.SetAgentInstructions"
+            "class": "coded_tools.agent_network_instructions_editor.set_agent_instructions.SetAgentInstructions"
             "function": {
                 "description": "Set the instructions for an agent in an agent network."
                 "parameters": {

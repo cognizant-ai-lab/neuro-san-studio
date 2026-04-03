@@ -202,7 +202,7 @@ Operational notes:
 
         {
             "name": "persist_agent_network",
-            "class": "persist_agent_network.PersistAgentNetwork"
+            "class": "coded_tools.agent_network_designer.persist_agent_network.PersistAgentNetwork"
             "function": {
                 "description": "Generate the complete persisted definition for an agent network and save it. Must always call this tool before giving response."
                 "parameters": {

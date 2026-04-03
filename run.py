@@ -31,6 +31,8 @@ from typing import Tuple
 
 from dotenv import load_dotenv
 
+from plugins.llm_config_validator.llm_config_validator_plugin import LlmConfigValidatorPlugin
+
 
 class NeuroSanRunner:
     """Command-line tool to run the Neuro SAN server and web client."""
@@ -171,6 +173,22 @@ class NeuroSanRunner:
         parser.add_argument(
             "--use-flask-web-client", action="store_true", help="Use the flask based neuro-san-web-client"
         )
+        default_llm_config = os.path.join(os.path.dirname(self.args["agent_manifest_file"]), "llm_config.hocon")
+        parser.add_argument(
+            "--check-llm-config",
+            nargs="?",
+            const=default_llm_config,
+            default=None,
+            metavar="HOCON_PATH",
+            help="Test every LLM configuration in a HOCON file by creating each "
+            "LLM instance and invoking it with a trivial prompt. "
+            "Accepts both agent network files (with a 'tools' list, testing each agent's "
+            "merged llm_config) and standalone studio llm_config files. "
+            "llm_configs that use a 'fallbacks' list are expanded and each model is tested individually. "
+            "Duplicate configurations are deduplicated so each unique model is called only once. "
+            "Exits with a non-zero code if any configuration fails. "
+            f"When passed without a value, defaults to {default_llm_config}.",
+        )
 
         # add arguments from plugins
         for plugin in self.plugin_classes:
@@ -249,6 +267,13 @@ class NeuroSanRunner:
             print(f"NEURO_SAN_SERVER_HTTP_PORT set to: {os.environ['NEURO_SAN_SERVER_HTTP_PORT']}\n")
 
         print("\n" + "=" * 50 + "\n")
+
+    def check_llm_config(self):
+        """Validate LLM configurations when --check-llm-config is specified."""
+        hocon_path = self.args.get("check_llm_config")
+        if not hocon_path:
+            return
+        LlmConfigValidatorPlugin().check(hocon_path)
 
     @staticmethod
     def generate_html_files():
@@ -543,6 +568,9 @@ class NeuroSanRunner:
         for plugin in self.plugins:
             print(f"Running pre server start action for plugin: {plugin}")
             plugin.pre_server_start_action()
+
+        # Validate LLM configurations if --check-llm-config was specified
+        self.check_llm_config()
 
         # Ensure logs directory exists
         os.makedirs("logs", exist_ok=True)
