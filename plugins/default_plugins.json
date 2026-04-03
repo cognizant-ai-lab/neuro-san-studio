@@ -9,8 +9,16 @@
             "class": "PhoenixStudioPlugin"
         },
         {
+            "module": "plugins.langfuse.langfuse_plugin",
+            "class": "LangfuseStudioPlugin"
+        },
+        {
             "module": "plugins.log_bridge.process_log_bridge",
             "class": "ProcessLogBridgePlugin"
+        },
+        {
+            "module": "plugins.llm_config_validator.llm_config_validator_plugin",
+            "class": "LlmConfigValidatorPlugin"
         }
     ]
 }

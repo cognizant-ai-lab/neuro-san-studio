@@ -188,11 +188,19 @@ class LangfusePlugin:
 class LangfuseStudioPlugin(LangfusePlugin, BasePlugin):
     """Studio plugin that integrates Langfuse for tracing and monitoring."""
 
-    def __init__(self):
-        """Initialize the Langfuse Studio plugin."""
+    def __init__(self, args: dict = None):
+        """Initialize the Langfuse Studio plugin.
+
+        Args:
+            args: Optional dictionary of arguments for the plugin.
+        """
         LangfusePlugin.__init__(self)
-        BasePlugin.__init__(self, "LangfuseStudio")
+        BasePlugin.__init__(self, "LangfuseStudio", args)
+
+    def initialize(self):
+        """Initialize Langfuse tracing and monitoring."""
+        LangfusePlugin.initialize(self)
 
     def cleanup(self):
         """Cleanup and shutdown the Langfuse plugin."""
-        return self.shutdown()
+        self.shutdown()

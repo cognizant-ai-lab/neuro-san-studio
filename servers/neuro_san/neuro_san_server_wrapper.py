@@ -20,13 +20,13 @@ This module ensures that plugins are initialized in the same Python process as t
 allowing, for instance, proper tracing and observability.
 """
 
-import importlib
-import json
 import os
 import signal
 import sys
 
 from neuro_san.service.main_loop.server_main_loop import ServerMainLoop
+
+from plugins.plugin_loader import PluginLoader
 
 
 class NeuroSanServerWrapper:
@@ -40,22 +40,7 @@ class NeuroSanServerWrapper:
             sys.path.insert(0, self.root_dir)
 
         plugins_file = os.path.join(self.root_dir, "plugins", "default_plugins.json")
-        try:
-            with open(plugins_file, "r", encoding="utf-8") as f:
-                self.user_plugins_config = json.load(f)
-        except FileNotFoundError:
-            print(f"No plugins file found at {plugins_file}. Continuing without plugins.")
-            self.user_plugins_config = {}
-        except json.JSONDecodeError as e:
-            print(f"Failed to parse plugins file at {plugins_file}: {e}. Continuing without plugins.")
-            self.user_plugins_config = {}
-
-        self.plugin_classes = []
-        for plugin_info in self.user_plugins_config.get("plugins", []):
-            module = plugin_info.get("module")
-            class_name = plugin_info.get("class")
-            print(f"Loading plugin: {class_name} from module: {module}")
-            self.plugin_classes.append(getattr(importlib.import_module(module), class_name))
+        self.plugin_classes = PluginLoader.load_plugin_classes(plugins_file)
 
         # Instantiate plugins now that args are fully built
         self.args = {}  # Placeholder for any args you want to pass to plugins

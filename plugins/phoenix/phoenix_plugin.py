@@ -469,10 +469,14 @@ class PhoenixStudioPlugin(PhoenixPluginBase, BasePlugin):
     """Plugin wrapper for Phoenix observability in Neuro-San Studio."""
 
     def __init__(self, args: dict = None):
-        super().__init__(config=self.get_default_config())
+        """Initialize the Phoenix Studio plugin.
+
+        Args:
+            args: Optional dictionary of arguments for the plugin.
+        """
+        PhoenixPluginBase.__init__(self, config=self.get_default_config())
+        BasePlugin.__init__(self, plugin_name="PhoenixStudioPlugin", args=args)
         self.set_environment_variables()
-        self.args = args or {}
-        self.plugin_name = "PhoenixStudioPlugin"
 
     def pre_server_start_action(self):
         """Initialize Phoenix and start server if enabled."""

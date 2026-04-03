@@ -6,6 +6,11 @@ Note that plugins are never required for Neuro SAN to function.
 <!-- TOC -->
 
 - [Plugins](#plugins)
+  - [Creating Custom Plugins](#creating-custom-plugins)
+    - [BasePlugin Interface](#baseplugin-interface)
+    - [Registering a Plugin](#registering-a-plugin)
+    - [Plugin Lifecycle](#plugin-lifecycle)
+    - [Example Plugin](#example-plugin)
   - [Authorization](#authorization)
     - [Open FGA](#open-fga)
   - [Diagnostics](#diagnostics)
@@ -18,6 +23,92 @@ Note that plugins are never required for Neuro SAN to function.
     - [LangSmith](#langsmith)
 
 <!-- TOC -->
+
+## Creating Custom Plugins
+
+All plugins extend the `BasePlugin` class in `plugins/base_plugin.py` and are registered in
+`plugins/default_plugins.json`.
+
+### BasePlugin Interface
+
+| Method | Type | Description |
+|---|---|---|
+| `__init__(name, args)` | Instance | Constructor. Receives the full args dict from the runner. |
+| `initialize()` | Instance | Called in the **server process** during startup. |
+| `cleanup()` | Instance | Called on shutdown to release resources. |
+| `pre_server_start_action()` | Instance | Called in **runner** before subprocesses start. |
+| `post_server_start_action()` | Instance | Called in **runner** after subprocesses start. |
+| `update_args_dict(args_dict)` | Static | Inject default config values into args before CLI parsing. |
+| `update_parser_args(parser)` | Static | Register plugin-specific CLI arguments on the parser. |
+
+### Registering a Plugin
+
+Add an entry to `plugins/default_plugins.json`:
+
+```json
+{
+    "plugins": [
+        {
+            "module": "plugins.my_plugin.my_plugin",
+            "class": "MyPlugin"
+        }
+    ]
+}
+```
+
+Each entry specifies the Python module path and the class name to import.
+If a plugin fails to import (e.g. missing dependency), it is skipped with a warning
+rather than crashing the entire startup.
+
+### Plugin Lifecycle
+
+Plugins are loaded in two contexts with different lifecycle methods:
+
+**Runner process** (`run.py`) -- manages subprocesses:
+
+1. `update_args_dict()` -- inject default config values
+2. `update_parser_args()` -- register CLI arguments
+3. Plugin instantiated with final args
+4. `pre_server_start_action()` -- before subprocesses start
+5. `post_server_start_action()` -- after subprocesses start
+6. `cleanup()` -- on shutdown (Ctrl+C / SIGTERM)
+
+**Server process** (`neuro_san_server_wrapper.py`) -- in-process server:
+
+1. Plugin instantiated
+2. `initialize()` -- called before the server main loop
+3. `cleanup()` -- called when the server exits
+
+### Example Plugin
+
+```python
+import os
+from plugins.base_plugin import BasePlugin
+
+
+class MyPlugin(BasePlugin):
+    """Example custom plugin."""
+
+    def __init__(self, args: dict = None):
+        """Initialize the plugin."""
+        super().__init__(plugin_name="MyPlugin", args=args)
+
+    def initialize(self):
+        """Set up in-process resources (runs in server process)."""
+        if os.getenv("MY_PLUGIN_ENABLED", "false").lower() == "true":
+            print("[MyPlugin] Initializing...")
+
+    def pre_server_start_action(self):
+        """Run before subprocesses start (runs in runner process)."""
+
+    def cleanup(self):
+        """Release resources on shutdown."""
+
+    @staticmethod
+    def update_parser_args(parser):
+        """Add CLI arguments."""
+        parser.add_argument("--my-flag", help="Enable my feature")
+```
 
 ## Authorization
 

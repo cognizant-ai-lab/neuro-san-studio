@@ -737,18 +737,17 @@ class ProcessLogBridgePlugin(BasePlugin):
         :param args (dict | None): Optional configuration for the logging bridge.
         """
         super().__init__("ProcessLogBridgePlugin", args)
-        self.args = args or {}
-        self.plugin_name = "ProcessLogBridgePlugin"
-        self.log_brigde_enabled = self.args.get("logbridge_enabled", "INFO")
+        self.log_bridge_enabled = self.args.get("logbridge_enabled", "INFO")
         self.log_file = os.path.join(self.args.get("logs_dir", "."), "runner.log")
-        if self.log_brigde_enabled:
+        if self.log_bridge_enabled:
             self.log_bridge = ProcessLogBridge(
                 level=self.args.get("log_level", "info"),
                 runner_log_file=self.log_file,
             )
 
     def post_server_start_action(self):
+        """Attach process logger after the server starts."""
         process = self.args.get("process")
         process_name = self.args.get("process_name", "UnnamedProcess")
-        if self.log_brigde_enabled:
+        if self.log_bridge_enabled:
             self.log_bridge.attach_process_logger(process, process_name, self.log_file)
