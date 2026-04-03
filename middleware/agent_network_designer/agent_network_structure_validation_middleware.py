@@ -25,7 +25,7 @@ from coded_tools.agent_network_editor.get_mcp_tool import GetMcpTool
 from coded_tools.agent_network_editor.get_subnetwork import GetSubnetwork
 from coded_tools.agent_network_editor.get_toolbox import GetToolbox
 
-from middleware.agent_network_validation_middleware import AgentNetworkValidationMiddleware
+from middleware.agent_network_designer.agent_network_validation_middleware import AgentNetworkValidationMiddleware
 
 
 class AgentNetworkStructureValidationMiddleware(AgentNetworkValidationMiddleware):

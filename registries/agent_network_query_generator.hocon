@@ -58,13 +58,15 @@ Provide a diverse range of queries to illustrate the network's functions.
 The queries should show how multiple sub networks might contribute to a consolidated response from the top agent.
 Just give the enumerated sample queries. Try to keep the queries simple and natural.
 Make some of the examples transactional. If not stated, return no more than 3-4 examples.
+
+**Always call `set_sample_queries_tool`**
             """,
             "allow": {
                 "to_upstream": {
-                    "sly_data": ["agent_network_definition"]
+                    "sly_data": ["agent_network_definition", "agent_network_queries"]
                 }
             },
-            "tools": ["get_agent_network_definition"]
+            "tools": ["get_agent_network_definition", "set_sample_queries_tool"]
         },
         {
             "name": "get_agent_network_definition",
@@ -72,6 +74,24 @@ Make some of the examples transactional. If not stated, return no more than 3-4 
             "function": {
                 "description": "Get the agent network definition."
             }
+        },
+        {
+            "name": "set_sample_queries_tool",
+            "class": "set_sample_queries.SetSampleQueries",
+            "function": {
+                "description": "Set the sample queries for the agent network.",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "sample_queries": {
+                            "type": "array",
+                            "items": {"type": "string"},
+                            "description": "the sample queries for the agent network."
+                        },
+                    },
+                    "required": ["sample_queries"]
+                }
+            },
         },
         
     ]
