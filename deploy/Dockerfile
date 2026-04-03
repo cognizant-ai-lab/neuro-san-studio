@@ -417,4 +417,4 @@ ENV AGENT_NETWORK_DESIGNER_RESERVATIONS_LIFETIME_IN_SECONDS="259200"
 # are sent are in the same format at the Connectivity() API for neuro-san.
 ENV AGENT_NETWORK_DESIGNER_PROGRESS_STYLE="connectivity"
 
-ENTRYPOINT ["/bin/sh","-c","exec \"$APP_ENTRYPOINT\" \"$@\"","-"]
+ENTRYPOINT "${APP_ENTRYPOINT}"
