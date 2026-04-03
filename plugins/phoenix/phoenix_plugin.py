@@ -13,6 +13,18 @@
 # limitations under the License.
 #
 # END COPYRIGHT
+
+"""
+Phoenix plugin for OpenTelemetry tracing and observability.
+
+Handles:
+- OpenTelemetry tracer provider configuration
+- SDK instrumentation (OpenAI, LangChain, Anthropic, etc.)
+- Phoenix integration via phoenix.otel.register()
+- Process-local initialization state tracking
+- Phoenix server process management (start/stop)
+"""
+
 import logging
 import os
 import signal
@@ -31,29 +43,22 @@ from leaf_common.config.resolver_util import ResolverUtil
 from plugins.base_plugin import BasePlugin
 
 
-class PhoenixPluginBase:
-    """
-    Manages Phoenix/OpenTelemetry initialization for tracing and observability.
+class PhoenixPlugin(BasePlugin):
+    """Plugin for Phoenix/OpenTelemetry observability in Neuro-San Studio."""
 
-    Handles:
-    - OpenTelemetry tracer provider configuration
-    - SDK instrumentation (OpenAI, LangChain, Anthropic, etc.)
-    - Phoenix integration via phoenix.otel.register()
-    - Process-local initialization state tracking
-    - Phoenix server process management (start/stop)
-    """
-
-    def __init__(self, config: Optional[dict] = None) -> None:
-        """Initialize the PhoenixPlugin with the optional configuration.
+    def __init__(self, args: dict = None):
+        """Initialize the Phoenix plugin.
 
         Args:
-            config: Optional configuration dictionary with phoenix settings
+            args: Optional dictionary of arguments for the plugin.
         """
+        super().__init__(plugin_name="Phoenix", args=args)
         self._initialized = False
         self._logger = logging.getLogger(__name__)
-        self.config = config or {}
+        self.config = self.get_default_config()
         self.phoenix_process = None
         self.is_windows = os.name == "nt"
+        self.set_environment_variables()
 
     @staticmethod
     def get_default_config() -> dict:
@@ -350,7 +355,7 @@ class PhoenixPluginBase:
         print(f"PHOENIX_OTEL_REGISTER set to: {os.environ['PHOENIX_OTEL_REGISTER']}\n")
 
     @staticmethod
-    def is_port_open(host: str, port: int, timeout: float = 1.0) -> bool:
+    def _is_port_open(host: str, port: int, timeout: float = 1.0) -> bool:
         """Check if a port is open on a given host.
 
         Args:
@@ -369,7 +374,7 @@ class PhoenixPluginBase:
             except (ConnectionRefusedError, TimeoutError, OSError):
                 return False
 
-    def start_process(self, command: list, log_file: str):
+    def _start_process(self, command: list, log_file: str):
         """Start a subprocess and return the process object.
 
         Args:
@@ -421,7 +426,7 @@ class PhoenixPluginBase:
         phoenix_port = self.config.get("phoenix_port", 6006)
 
         # If something is already listening on PHOENIX_PORT, assume Phoenix is running and skip autostart
-        if self.is_port_open(phoenix_host, phoenix_port):
+        if self._is_port_open(phoenix_host, phoenix_port):
             phoenix_url = f"http://{phoenix_host}:{phoenix_port}"
             print(f"Phoenix detected at {phoenix_url} — skipping autostart.")
         else:
@@ -430,7 +435,7 @@ class PhoenixPluginBase:
 
             # Use python -m form for better compatibility
             try:
-                self.phoenix_process = self.start_process(
+                self.phoenix_process = self._start_process(
                     [sys.executable, "-m", "phoenix.server.main", "serve"], "logs/phoenix.log"
                 )
 
@@ -438,7 +443,7 @@ class PhoenixPluginBase:
                 phoenix_ready = False
                 for _ in range(10):  # Try for up to 10 seconds
                     time.sleep(1)
-                    if self.is_port_open(phoenix_host, phoenix_port):
+                    if self._is_port_open(phoenix_host, phoenix_port):
                         phoenix_ready = True
                         break
 
@@ -464,29 +469,18 @@ class PhoenixPluginBase:
             else:
                 os.killpg(os.getpgid(self.phoenix_process.pid), signal.SIGKILL)
 
-
-class PhoenixStudioPlugin(PhoenixPluginBase, BasePlugin):
-    """Plugin wrapper for Phoenix observability in Neuro-San Studio."""
-
-    def __init__(self, args: dict = None):
-        """Initialize the Phoenix Studio plugin.
-
-        Args:
-            args: Optional dictionary of arguments for the plugin.
-        """
-        PhoenixPluginBase.__init__(self, config=self.get_default_config())
-        BasePlugin.__init__(self, plugin_name="PhoenixStudioPlugin", args=args)
-        self.set_environment_variables()
-
     def pre_server_start_action(self):
-        """Initialize Phoenix and start server if enabled."""
+        """Start Phoenix server if enabled."""
         self.start_phoenix_server()
 
     @staticmethod
     def update_args_dict(args_dict: dict):
-        """Update the args with additional args needed for Phoenix configuration."""
-        # Update config with new values from args_dict
-        args_dict.update(PhoenixPluginBase.get_default_config())
+        """Update the args with additional args needed for Phoenix configuration.
+
+        Args:
+            args_dict: Dictionary of arguments to update.
+        """
+        args_dict.update(PhoenixPlugin.get_default_config())
 
     def cleanup(self):
         """Stop Phoenix server if it was started by this plugin."""

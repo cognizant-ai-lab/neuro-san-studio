@@ -14,57 +14,62 @@
 #
 # END COPYRIGHT
 
-"""Tests for the PhoenixStudioPlugin wrapper."""
+"""Tests for the PhoenixPlugin."""
 
 from unittest.mock import patch
 
 from plugins.base_plugin import BasePlugin
-from plugins.phoenix.phoenix_plugin import PhoenixPluginBase
-from plugins.phoenix.phoenix_plugin import PhoenixStudioPlugin
+from plugins.phoenix.phoenix_plugin import PhoenixPlugin
 
 
-class TestPhoenixStudioPlugin:
-    """Tests for PhoenixStudioPlugin."""
+class TestPhoenixPlugin:
+    """Tests for PhoenixPlugin."""
 
-    def test_extends_both_parents(self):
-        """Test that PhoenixStudioPlugin extends both PhoenixPluginBase and BasePlugin."""
-        assert issubclass(PhoenixStudioPlugin, PhoenixPluginBase)
-        assert issubclass(PhoenixStudioPlugin, BasePlugin)
+    def test_extends_base_plugin(self):
+        """Test that PhoenixPlugin extends BasePlugin."""
+        assert issubclass(PhoenixPlugin, BasePlugin)
 
     def test_constructor_sets_plugin_name(self):
-        """Test that the constructor properly sets plugin_name via BasePlugin."""
-        plugin = PhoenixStudioPlugin(args={"test": True})
-        assert plugin.plugin_name == "PhoenixStudioPlugin"
+        """Test that the constructor properly sets plugin_name."""
+        plugin = PhoenixPlugin(args={"test": True})
+        assert plugin.plugin_name == "Phoenix"
 
     def test_constructor_sets_args(self):
-        """Test that the constructor properly sets args via BasePlugin."""
-        plugin = PhoenixStudioPlugin(args={"test": True})
+        """Test that the constructor properly sets args."""
+        plugin = PhoenixPlugin(args={"test": True})
         assert plugin.args == {"test": True}
 
-    def test_constructor_initializes_phoenix_base(self):
-        """Test that the constructor initializes PhoenixPluginBase with config."""
-        plugin = PhoenixStudioPlugin()
+    def test_constructor_initializes_config(self):
+        """Test that the constructor initializes config from defaults."""
+        plugin = PhoenixPlugin()
         assert plugin.config is not None
         assert isinstance(plugin.config, dict)
+        assert "phoenix_enabled" in plugin.config
 
-    @patch.object(PhoenixPluginBase, "start_phoenix_server")
+    def test_constructor_initializes_state(self):
+        """Test that the constructor initializes internal state."""
+        plugin = PhoenixPlugin()
+        assert plugin.is_initialized is False
+        assert plugin.phoenix_process is None
+
+    @patch.object(PhoenixPlugin, "start_phoenix_server")
     def test_pre_server_start_calls_start_phoenix(self, mock_start):
         """Test that pre_server_start_action delegates to start_phoenix_server."""
-        plugin = PhoenixStudioPlugin()
+        plugin = PhoenixPlugin()
         plugin.pre_server_start_action()
         mock_start.assert_called_once()
 
-    @patch.object(PhoenixPluginBase, "stop_phoenix_server")
+    @patch.object(PhoenixPlugin, "stop_phoenix_server")
     def test_cleanup_calls_stop_phoenix(self, mock_stop):
         """Test that cleanup delegates to stop_phoenix_server."""
-        plugin = PhoenixStudioPlugin()
+        plugin = PhoenixPlugin()
         plugin.cleanup()
         mock_stop.assert_called_once()
 
     def test_update_args_dict_adds_phoenix_config(self):
         """Test that update_args_dict adds Phoenix configuration keys."""
         args = {}
-        PhoenixStudioPlugin.update_args_dict(args)
+        PhoenixPlugin.update_args_dict(args)
         assert "phoenix_enabled" in args
         assert "phoenix_port" in args
         assert "otel_service_name" in args

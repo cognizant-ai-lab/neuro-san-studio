@@ -13,6 +13,16 @@
 # limitations under the License.
 #
 # END COPYRIGHT
+
+"""
+Langfuse plugin for tracing and observability.
+
+Handles:
+- LangChain callback handler integration (traces all LLM providers)
+- Process-local initialization state tracking
+- Environment variable management
+"""
+
 import logging
 import os
 from contextvars import ContextVar
@@ -27,18 +37,16 @@ from leaf_common.config.resolver_util import ResolverUtil
 from plugins.base_plugin import BasePlugin
 
 
-class LangfusePlugin:
-    """
-    Manages Langfuse initialization for tracing and observability.
+class LangfusePlugin(BasePlugin):
+    """Plugin that integrates Langfuse for tracing and monitoring."""
 
-    Handles:
-    - LangChain callback handler integration (traces all LLM providers)
-    - Process-local initialization state tracking
-    - Environment variable management
-    """
+    def __init__(self, args: dict = None):
+        """Initialize the Langfuse plugin.
 
-    def __init__(self) -> None:
-        """Initialize the LangfusePlugin."""
+        Args:
+            args: Optional dictionary of arguments for the plugin.
+        """
+        super().__init__("Langfuse", args)
         self._initialized = False
         self._logger = logging.getLogger(__name__)
         self._langfuse_client = None
@@ -62,6 +70,11 @@ class LangfusePlugin:
 
     @staticmethod
     def _is_valid_key() -> bool:
+        """Check if Langfuse API keys are configured.
+
+        Returns:
+            True if both secret and public keys are set, False otherwise
+        """
         secret_key = os.getenv("LANGFUSE_SECRET_KEY")
         public_key = os.getenv("LANGFUSE_PUBLIC_KEY")
 
@@ -170,7 +183,7 @@ class LangfusePlugin:
         """
         return self._initialized
 
-    def shutdown(self) -> None:
+    def cleanup(self) -> None:
         """Shutdown Langfuse client and flush remaining traces."""
         if not self._initialized:
             return
@@ -183,24 +196,3 @@ class LangfusePlugin:
             print("[Langfuse] Shutdown complete")
         except Exception as exc:  # pylint: disable=broad-exception-caught
             self._logger.warning("Failed to shutdown Langfuse cleanly: %s", exc)
-
-
-class LangfuseStudioPlugin(LangfusePlugin, BasePlugin):
-    """Studio plugin that integrates Langfuse for tracing and monitoring."""
-
-    def __init__(self, args: dict = None):
-        """Initialize the Langfuse Studio plugin.
-
-        Args:
-            args: Optional dictionary of arguments for the plugin.
-        """
-        LangfusePlugin.__init__(self)
-        BasePlugin.__init__(self, "LangfuseStudio", args)
-
-    def initialize(self):
-        """Initialize Langfuse tracing and monitoring."""
-        LangfusePlugin.initialize(self)
-
-    def cleanup(self):
-        """Cleanup and shutdown the Langfuse plugin."""
-        self.shutdown()

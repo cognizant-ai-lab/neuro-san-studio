@@ -14,48 +14,49 @@
 #
 # END COPYRIGHT
 
-"""Tests for the LangfuseStudioPlugin wrapper."""
+"""Tests for the LangfusePlugin."""
 
 from unittest.mock import patch
 
 from plugins.base_plugin import BasePlugin
 from plugins.langfuse.langfuse_plugin import LangfusePlugin
-from plugins.langfuse.langfuse_plugin import LangfuseStudioPlugin
 
 
-class TestLangfuseStudioPlugin:
-    """Tests for LangfuseStudioPlugin."""
+class TestLangfusePlugin:
+    """Tests for LangfusePlugin."""
 
-    def test_extends_both_parents(self):
-        """Test that LangfuseStudioPlugin extends both LangfusePlugin and BasePlugin."""
-        assert issubclass(LangfuseStudioPlugin, LangfusePlugin)
-        assert issubclass(LangfuseStudioPlugin, BasePlugin)
+    def test_extends_base_plugin(self):
+        """Test that LangfusePlugin extends BasePlugin."""
+        assert issubclass(LangfusePlugin, BasePlugin)
 
     def test_constructor_sets_plugin_name(self):
         """Test that the constructor properly sets plugin_name."""
-        plugin = LangfuseStudioPlugin()
-        assert plugin.plugin_name == "LangfuseStudio"
+        plugin = LangfusePlugin()
+        assert plugin.plugin_name == "Langfuse"
 
     def test_constructor_accepts_args(self):
         """Test that the constructor accepts args parameter."""
-        plugin = LangfuseStudioPlugin(args={"test": True})
+        plugin = LangfusePlugin(args={"test": True})
         assert plugin.args == {"test": True}
 
     def test_constructor_defaults_args(self):
         """Test that the constructor defaults args to empty dict."""
-        plugin = LangfuseStudioPlugin()
+        plugin = LangfusePlugin()
         assert plugin.args == {}
 
-    @patch.object(LangfusePlugin, "initialize")
-    def test_initialize_delegates_to_parent(self, mock_init):
-        """Test that initialize delegates to LangfusePlugin.initialize."""
-        plugin = LangfuseStudioPlugin()
-        plugin.initialize()
-        mock_init.assert_called_once()
+    def test_constructor_initializes_state(self):
+        """Test that the constructor initializes internal state."""
+        plugin = LangfusePlugin()
+        assert plugin.is_initialized is False
 
-    @patch.object(LangfusePlugin, "shutdown")
-    def test_cleanup_delegates_to_shutdown(self, mock_shutdown):
-        """Test that cleanup delegates to LangfusePlugin.shutdown."""
-        plugin = LangfuseStudioPlugin()
+    @patch.object(LangfusePlugin, "_get_bool_env", return_value=False)
+    def test_initialize_skips_when_disabled(self, _mock_env):
+        """Test that initialize is a no-op when LANGFUSE_ENABLED is false."""
+        plugin = LangfusePlugin()
+        plugin.initialize()
+        assert plugin.is_initialized is False
+
+    def test_cleanup_noop_when_not_initialized(self):
+        """Test that cleanup is a no-op when not initialized."""
+        plugin = LangfusePlugin()
         plugin.cleanup()
-        mock_shutdown.assert_called_once()

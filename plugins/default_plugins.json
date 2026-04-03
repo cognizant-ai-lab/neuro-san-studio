@@ -6,11 +6,11 @@
         },
         {
             "module": "plugins.phoenix.phoenix_plugin",
-            "class": "PhoenixStudioPlugin"
+            "class": "PhoenixPlugin"
         },
         {
             "module": "plugins.langfuse.langfuse_plugin",
-            "class": "LangfuseStudioPlugin"
+            "class": "LangfusePlugin"
         },
         {
             "module": "plugins.log_bridge.process_log_bridge",
