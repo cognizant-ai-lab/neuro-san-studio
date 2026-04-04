@@ -393,4 +393,15 @@ ENV AGENT_NETWORK_DESIGNER_RESERVATIONS_LIFETIME_IN_SECONDS="259200"
 # are sent are in the same format at the Connectivity() API for neuro-san.
 ENV AGENT_NETWORK_DESIGNER_PROGRESS_STYLE="connectivity"
 
+# Controls whether the Agent Network Designer runs in demo mode.
+# In demo mode, generated agents simulate grounded behavior without connecting to real systems.
+# Set to "false" once agents are wired to real APIs, databases, or tools via Toolbox or MCP.
+# Defaults to "true" if not set.
+ENV AGENT_NETWORK_DESIGNER_DEMO_MODE="true"
+
+# Subdirectory under the output path (registries/) where generated networks are saved.
+# Also determines where the manifest.hocon for generated networks is located.
+# Defaults to "generated" if not set.
+ENV AGENT_NETWORK_DESIGNER_SUBDIRECTORY="generated"
+
 ENTRYPOINT "${APP_ENTRYPOINT}"
