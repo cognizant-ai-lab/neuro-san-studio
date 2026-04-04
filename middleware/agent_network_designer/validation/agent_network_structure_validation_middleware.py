@@ -1,4 +1,3 @@
-
 # Copyright © 2025-2026 Cognizant Technology Solutions Corp, www.cognizant.com.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -40,10 +39,8 @@ class AgentNetworkStructureValidationMiddleware(AgentNetworkValidationMiddleware
 
     def no_network_error_message(self) -> str:
         """Return the error message when no agent network definition is found."""
-        return (
-            "Error: No agent network found. "
-            "Please create a new agent network using `create_new_network` tool"
-        )
+
+        return "Error: No agent network found. Please create a new agent network using `create_new_network` tool"
 
     def validation_label(self) -> str:
         """Return a label for log messages (e.g. 'Structure', 'Instructions')."""
