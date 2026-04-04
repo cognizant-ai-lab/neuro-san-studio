@@ -77,7 +77,7 @@ Make some of the examples transactional. If not stated, return no more than 3-4 
         },
         {
             "name": "set_sample_queries_tool",
-            "class": "set_sample_queries.SetSampleQueries",
+            "class": "coded_tools.agent_network_query_generator.set_sample_queries.SetSampleQueries",
             "function": {
                 "description": "Set the sample queries for the agent network.",
                 "parameters": {
