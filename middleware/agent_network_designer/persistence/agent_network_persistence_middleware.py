@@ -181,7 +181,12 @@ class AgentNetworkPersistenceMiddleware(AgentMiddleware):
         subnetwork_names: list[str] = GetSubnetwork.get_subnetwork_names(self.sly_data)
         mcp_servers: list[str] = self.sly_data.get(MCP_SERVERS, [])
         persistor: AgentNetworkPersistor = AgentNetworkPersistorFactory.create_persistor(
-            {"reservationist": self.reservationist}, WRITE_TO_FILE, DEMO_MODE, SUBDIRECTORY, subnetwork_names, mcp_servers
+            {"reservationist": self.reservationist},
+            WRITE_TO_FILE,
+            DEMO_MODE,
+            SUBDIRECTORY,
+            subnetwork_names,
+            mcp_servers,
         )
         assembler: AgentNetworkAssembler = persistor.get_assembler()
         top_agent_name: str = UnreachableNodesNetworkValidator().find_all_top_agents(network_def).pop()
