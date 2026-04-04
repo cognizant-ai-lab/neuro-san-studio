@@ -18,7 +18,6 @@ from __future__ import annotations
 import copy
 import json
 import logging
-import os
 import re
 import threading
 from datetime import datetime
@@ -36,7 +35,7 @@ from rich.syntax import Syntax
 from rich.text import Text
 from rich.theme import Theme
 
-from plugins.base_plugin import BasePlugin
+from neuro_san_studio.runner.process_logger_interface import ProcessLoggerInterface
 
 log_cfg = {
     # Refer rich guidelines for more options:
@@ -79,7 +78,7 @@ class TZFormatter(logging.Formatter):
 
 
 # pylint: disable=too-many-instance-attributes,too-few-public-methods
-class ProcessLogBridge:
+class ProcessLogBridge(ProcessLoggerInterface):
     """
     ProcessLogBridge: single-class logging bridge
     - Rich console with colored ISO+TZ timestamps
@@ -723,28 +722,3 @@ class ProcessLogBridge:
             lg.info(msg)
         else:
             lg.debug(msg)
-
-
-class ProcessLogBridgePlugin(BasePlugin):
-    """
-    Plugin wrapper for ProcessLogBridge.
-    Exposes a method to attach process loggers, which can be called from the runner.
-    """
-
-    def __init__(self, args=None):
-        """
-        Initialize the plugin and its internal ProcessLogBridge instance.
-        :param args (dict | None): Optional configuration for the logging bridge.
-        """
-        super().__init__("ProcessLogBridgePlugin", args)
-        self.log_file = os.path.join(self.args.get("logs_dir", "."), "runner.log")
-        self.log_bridge = ProcessLogBridge(
-            level=self.args.get("log_level", "info"),
-            runner_log_file=self.log_file,
-        )
-
-    def post_server_start_action(self):
-        """Attach process logger after the server starts."""
-        process = self.args.get("process")
-        process_name = self.args.get("process_name", "UnnamedProcess")
-        self.log_bridge.attach_process_logger(process, process_name, self.log_file)

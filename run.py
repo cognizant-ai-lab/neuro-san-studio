@@ -530,6 +530,25 @@ class NeuroSanRunner:
             print(f"Running post server start action for plugin: {plugin}")
             plugin.post_server_start_action()
 
+        # Fallback: if no plugin implements ProcessLoggerInterface, use a simple
+        # logger to drain subprocess pipes and prevent pipe buffer deadlocks.
+        # pylint: disable=import-outside-toplevel
+        from neuro_san_studio.runner.process_logger_interface import ProcessLoggerInterface
+
+        has_process_logger = any(isinstance(p, ProcessLoggerInterface) for p in self.plugins)
+        if not has_process_logger:
+            from neuro_san_studio.runner.simple_process_logger import SimpleProcessLogger
+
+            simple_logger = SimpleProcessLogger()
+            for name, proc in [
+                ("NeuroSan", self.server_process),
+                ("nsflow", self.nsflow_process),
+                ("FlaskWebClient", self.flask_webclient_process),
+            ]:
+                if proc is not None:
+                    log_file = os.path.join(self.logs_dir, f"{name.lower()}.log")
+                    simple_logger.attach_process_logger(proc, name, log_file)
+
         print("\n" + "=" * 50 + "\n")
         print("All processes now running.")
         print("Press Ctrl+C to stop any running processes.")
