@@ -56,9 +56,13 @@ class SetSampleQueries(CodedTool):
                 a text string an error message in the format:
                 "Error: <error message>"
         """
-        sample_queries: str = args.get("sample_queries")
+        sample_queries: list[str] = args.get("sample_queries")
         if not sample_queries:
             raise ValueError("Error: No sample_queries provided.")
+        if not isinstance(sample_queries, list):
+            raise ValueError("Error: sample_queries must be a list of strings.")
+        if not all(isinstance(sample_query, str) for sample_query in sample_queries):
+            raise ValueError("Error: sample_queries must be a list of strings.")
 
         logger = logging.getLogger(self.__class__.__name__)
         logger.info(">>>>>>>>>>>>>>>>>>>Set Sample Queries>>>>>>>>>>>>>>>>>>")
