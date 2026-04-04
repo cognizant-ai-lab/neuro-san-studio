@@ -27,7 +27,7 @@ is registries. You can change this by setting `OUTPUT_PATH` in
 - The generated agents are not grounded by default—they only simulate grounded behavior.
 Once you connect the agents to real systems (e.g., APIs or databases) via the `Toolbox` or `MCP`,
 you can disable demo mode by setting DEMO_MODE in
-[persist_agent_network.py](../../middleware/agent_network_designer/persistence/persist_agent_network.py)
+[agent_network_persistence_middleware.py](../../middleware/agent_network_designer/persistence/agent_network_persistence_middleware.py)
 
 ---
 
@@ -54,7 +54,7 @@ generates or refines the `instructions` for each agent in the network.
 [`agent_network_query_generator`](../../registries/agent_network_query_generator.hocon)
  subnetwork to produce example usage queries for the new agent network.
 
-4. Finally, the [persist_agent_network.py](../../coded_tools/agent_network_designer/persist_agent_network.py) coded tool converts the `agent_network_definition` into a HOCON file and saves it to disk.
+4. Finally, the [agent_network_persistence_middleware.py](../../middleware/agent_network_designer/persistence/agent_network_persistence_middleware.py) middleware converts the `agent_network_definition` into a HOCON file and saves it to disk.
 
     The **`agent_network_definition`** is a dictionary mapping agent names to their configurations
 (e.g., instructions, tools, or other agents they can call).
