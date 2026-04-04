@@ -254,10 +254,6 @@ class NeuroSanRunner:
 
     def start_process(self, command, process_name, log_file):
         """Start a subprocess and capture logs."""
-        # Initialize/clear the log file before starting
-        with open(log_file, "w", encoding="utf-8") as log:
-            log.write(f"Starting {process_name}...\n")
-
         # pylint: disable=consider-using-with
         if self.is_windows:
             # On Windows, don't use CREATE_NEW_PROCESS_GROUP to allow Ctrl+C propagation
@@ -286,6 +282,8 @@ class NeuroSanRunner:
         for plugin in self.plugins:
             plugin.args["process_name"] = process_name
             plugin.args["process"] = process
+            plugin.args["log_file"] = log_file
+            plugin.post_server_start_action()
 
         return process
 
@@ -527,10 +525,6 @@ class NeuroSanRunner:
 
         # Start all relevant processes
         self.conditional_start_servers()
-
-        for plugin in self.plugins:
-            self._logger.info("Running post server start action for plugin: %s", plugin)
-            plugin.post_server_start_action()
 
         # Fallback: if no plugin implements ProcessLoggerInterface, use a simple
         # logger to drain subprocess pipes and prevent pipe buffer deadlocks.

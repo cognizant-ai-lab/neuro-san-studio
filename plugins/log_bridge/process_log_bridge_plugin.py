@@ -58,4 +58,5 @@ class ProcessLogBridgePlugin(BasePlugin, ProcessLoggerInterface):
         """Attach process logger after the server starts."""
         process = self.args.get("process")
         process_name = self.args.get("process_name", "UnnamedProcess")
-        self.attach_process_logger(process, process_name, self.log_file)
+        log_file = self.args.get("log_file", self.log_file)
+        self.attach_process_logger(process, process_name, log_file)

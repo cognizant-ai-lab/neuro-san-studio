@@ -281,6 +281,7 @@ class ProcessLogBridge(ProcessLoggerInterface):
         """
         try:
             state["tee"].write(f"{raw}\n")
+            state["tee"].flush()
         except Exception:  # pylint: disable=broad-except
             pass
 
