@@ -17,13 +17,13 @@
 from os import environ
 from typing import Any
 
-from neuro_san.interfaces.reservation import Reservation
-from neuro_san.internals.reservations.reservation_util import ReservationUtil
-
 from middleware.agent_network_designer.persistence.agent_network_assembler import AgentNetworkAssembler
 from middleware.agent_network_designer.persistence.agent_network_persistor import AgentNetworkPersistor
-from middleware.agent_network_designer.persistence.deployable_agent_network_assembler \
-    import DeployableAgentNetworkAssembler
+from middleware.agent_network_designer.persistence.deployable_agent_network_assembler import (
+    DeployableAgentNetworkAssembler,
+)
+from neuro_san.interfaces.reservation import Reservation
+from neuro_san.internals.reservations.reservation_util import ReservationUtil
 
 
 class ReservationsAgentNetworkPersistor(AgentNetworkPersistor):

@@ -16,10 +16,10 @@
 
 from typing import Any
 
+from middleware.agent_network_designer.validation.agent_network_validation_middleware import (
+    AgentNetworkValidationMiddleware,
+)
 from neuro_san.internals.validation.network.keyword_network_validator import KeywordNetworkValidator
-
-from middleware.agent_network_designer.validation.agent_network_validation_middleware \
-    import AgentNetworkValidationMiddleware
 
 
 class AgentNetworkInstructionsValidationMiddleware(AgentNetworkValidationMiddleware):

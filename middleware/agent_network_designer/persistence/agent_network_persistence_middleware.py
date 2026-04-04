@@ -1,4 +1,3 @@
-
 # Copyright © 2025-2026 Cognizant Technology Solutions Corp, www.cognizant.com.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -15,8 +14,8 @@
 #
 # END COPYRIGHT
 
-from logging import getLogger
 from logging import Logger
+from logging import getLogger
 from os import environ
 from typing import Any
 
@@ -25,24 +24,24 @@ from langchain.agents.middleware import AgentState
 from langchain.agents.middleware import hook_config
 from langchain.messages import HumanMessage
 from langgraph.runtime import Runtime
-
+from middleware.agent_network_designer.persistence.agent_network_assembler import AgentNetworkAssembler
+from middleware.agent_network_designer.persistence.agent_network_persistor import AgentNetworkPersistor
+from middleware.agent_network_designer.persistence.agent_network_persistor_factory import AgentNetworkPersistorFactory
+from middleware.agent_network_designer.persistence.hocon_agent_network_assembler import HoconAgentNetworkAssembler
+from middleware.agent_network_designer.validation.agent_network_instructions_validation_middleware import (
+    AgentNetworkInstructionsValidationMiddleware,
+)
+from middleware.agent_network_designer.validation.agent_network_structure_validation_middleware import (
+    AgentNetworkStructureValidationMiddleware,
+)
 from neuro_san.interfaces.reservationist import Reservationist
-from neuro_san.internals.validation.network.unreachable_nodes_network_validator \
-    import UnreachableNodesNetworkValidator
+from neuro_san.internals.validation.network.unreachable_nodes_network_validator import UnreachableNodesNetworkValidator
 
 from coded_tools.agent_network_editor.connectivity_dictionary_converter import ConnectivityDictionaryConverter
 from coded_tools.agent_network_editor.constants import AGENT_NETWORK_DEFINITION
 from coded_tools.agent_network_editor.constants import AGENT_NETWORK_HOCON_TEXT
 from coded_tools.agent_network_editor.constants import AGENT_NETWORK_NAME
 from coded_tools.agent_network_query_generator.set_sample_queries import AGENT_NETWORK_QUERIES
-from middleware.agent_network_designer.persistence.agent_network_assembler import AgentNetworkAssembler
-from middleware.agent_network_designer.persistence.agent_network_persistor import AgentNetworkPersistor
-from middleware.agent_network_designer.persistence.agent_network_persistor_factory import AgentNetworkPersistorFactory
-from middleware.agent_network_designer.persistence.hocon_agent_network_assembler import HoconAgentNetworkAssembler
-from middleware.agent_network_designer.validation.agent_network_instructions_validation_middleware \
-    import AgentNetworkInstructionsValidationMiddleware
-from middleware.agent_network_designer.validation.agent_network_structure_validation_middleware \
-    import AgentNetworkStructureValidationMiddleware
 
 # To use reservations, turn this environment variable to true and also
 # export AGENT_TEMPORARY_NETWORK_UPDATE_PERIOD_SECONDS=5
@@ -65,11 +64,7 @@ class AgentNetworkPersistenceMiddleware(AgentMiddleware):
     it can self-correct.
     """
 
-    def __init__(
-            self,
-            reservationist: Reservationist,
-            sly_data: dict[str, Any]
-    ) -> None:
+    def __init__(self, reservationist: Reservationist, sly_data: dict[str, Any]) -> None:
         """
         Initialize agent network validation middleware.
 
@@ -105,8 +100,7 @@ class AgentNetworkPersistenceMiddleware(AgentMiddleware):
         network_def: dict[str, Any] = self.sly_data.get(AGENT_NETWORK_DEFINITION)
         if not network_def:
             return self._error_response(
-                "No agent network found. "
-                "Please create a new agent network using `/agent_network_editor` tool"
+                "No agent network found. Please create a new agent network using `/agent_network_editor` tool"
             )
 
         error_list: list[str] = await self._validate_network(network_def)
@@ -131,7 +125,7 @@ class AgentNetworkPersistenceMiddleware(AgentMiddleware):
         return {
             # Use human message to ensure that the model follows the instructions
             "messages": [HumanMessage(content)],
-            "jump_to": "model"
+            "jump_to": "model",
         }
 
     async def _validate_network(self, network_def: dict[str, Any]) -> list[str]:

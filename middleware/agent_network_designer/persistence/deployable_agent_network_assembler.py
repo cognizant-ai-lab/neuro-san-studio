@@ -19,13 +19,10 @@ from copy import deepcopy
 from typing import Any
 
 from leaf_common.config.file_of_class import FileOfClass
+from middleware.agent_network_designer.persistence.agent_network_assembler import AgentNetworkAssembler
 from neuro_san.internals.graph.filters.dictionary_common_defs_config_filter import DictionaryCommonDefsConfigFilter
 from neuro_san.internals.graph.filters.string_common_defs_config_filter import StringCommonDefsConfigFilter
 from neuro_san.internals.persistence.abstract_async_config_restorer import AbstractAsyncConfigRestorer
-
-from middleware.agent_network_designer.persistence.agent_network_assembler import (
-    AgentNetworkAssembler,
-)
 
 
 class DeployableAgentNetworkAssembler(AgentNetworkAssembler):
