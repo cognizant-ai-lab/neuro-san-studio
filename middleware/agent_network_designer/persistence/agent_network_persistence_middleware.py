@@ -50,7 +50,7 @@ from middleware.agent_network_designer.validation.agent_network_structure_valida
 WRITE_TO_FILE: bool = environ.get("AGENT_NETWORK_DESIGNER_USE_RESERVATIONS", "false").lower() != "true"
 
 # Set this to False if the agents are grounded and don't need demo mode instructions
-DEMO_MODE: bool = environ.get("AGENT_NETWORK_DESIGNER_DEMO_MODE", "false").lower() != "true"
+DEMO_MODE: bool = environ.get("AGENT_NETWORK_DESIGNER_DEMO_MODE", "true").lower() == "true"
 
 # Subdirectory under registries directory where networks are saved when using file persistence.
 SUBDIRECTORY: str = environ.get("AGENT_NETWORK_DESIGNER_SUBDIRECTORY", "generated")

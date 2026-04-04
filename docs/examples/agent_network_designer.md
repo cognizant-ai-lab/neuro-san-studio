@@ -11,23 +11,21 @@ Simply provide the frontman agent with the name of an organization or a descript
 
 - Generate several example usage queries.
 
-- After that, just restart your server and client to begin using the newly created agent network.
-
 Note that
 
-- This demo writes a file to your local directory and updates your `manifest.hocon`. To disable this behavior,
-set environment variable `AGENT_NETWORK_DESIGNER_USE_RESERVATIONS` to `true`
+- By default, the network is written to disk and your `manifest.hocon` is updated. To use temporary
+in-memory reservations instead, set `AGENT_NETWORK_DESIGNER_USE_RESERVATIONS=true`.
 
-- By default, the parent directory for the generated network (where your `manifest.hocon` should be located)
-is registries. You can change this by setting `OUTPUT_PATH` in
-[file_system_agent_network_persistor.py](../../middleware/agent_network_designer/persistence/file_system_agent_network_persistor.py)
+- Generated networks are saved under `registries/` by default. To change the root output path, update
+`OUTPUT_PATH` in
+[file_system_agent_network_persistor.py](../../middleware/agent_network_designer/persistence/file_system_agent_network_persistor.py).
 
-- All generated agent networks are stored in a `generated` subdirectory under the specified `OUTPUT_PATH`.
+- Within the output path, networks are saved in a subdirectory named `generated` by default.
+Override this with `AGENT_NETWORK_DESIGNER_SUBDIRECTORY`.
 
-- The generated agents are not grounded by default—they only simulate grounded behavior.
-Once you connect the agents to real systems (e.g., APIs or databases) via the `Toolbox` or `MCP`,
-you can disable demo mode by setting DEMO_MODE in
-[agent_network_persistence_middleware.py](../../middleware/agent_network_designer/persistence/agent_network_persistence_middleware.py)
+- Agents run in demo mode by default — they simulate grounded behavior without connecting to real systems.
+Once you wire them to real APIs, databases, or tools via `Toolbox` or `MCP`, disable demo mode by setting
+`AGENT_NETWORK_DESIGNER_DEMO_MODE=false`.
 
 ---
 
@@ -54,7 +52,10 @@ generates or refines the `instructions` for each agent in the network.
 [`agent_network_query_generator`](../../registries/agent_network_query_generator.hocon)
  subnetwork to produce example usage queries for the new agent network.
 
-4. Finally, the [agent_network_persistence_middleware.py](../../middleware/agent_network_designer/persistence/agent_network_persistence_middleware.py) middleware converts the `agent_network_definition` into a HOCON file and saves it to disk.
+4. Finally, the
+[agent_network_persistence_middleware.py](../../middleware/agent_network_designer/persistence/agent_network_persistence_middleware.py)
+middleware converts the `agent_network_definition` into a HOCON file saving it to disk or creates a temporary network,
+depending on the `AGENT_NETWORK_DESIGNER_USE_RESERVATIONS` environment variable.
 
     The **`agent_network_definition`** is a dictionary mapping agent names to their configurations
 (e.g., instructions, tools, or other agents they can call).
@@ -301,9 +302,8 @@ The frontman agent serves as the primary entry point for all user commands and o
 
 **Available Agents/Tools:**
 - `agent_network_editor` – Subnetwork for creating and modifying `agent_network_definition`
-- `agent_network_query_generator` – Subnetwork for createing sample queries
+- `agent_network_query_generator` – Subnetwork for creating sample queries
 - `agent_network_instructions_editor` – Subnetwork for creating and refining agent instructions
-- `produce_agent_network_hocon` – Generates final HOCON output
 - `get_agent_network_definition` – Retrieves current network state
 - `web_search` – Researches company domains and contexts
 
@@ -327,7 +327,7 @@ The frontman agent serves as the primary entry point for all user commands and o
 
 The system relies on several coded tools:
 
-#### Retrieval & Output Tools
+#### Retrieval Tool
 
 `get_agent_network_definition`
 - Retrieves the current agent network definition from sly data
@@ -337,12 +337,13 @@ by setting the file to `agent_network_hocon_file` sly data or
 specifically given the hocon file name in the user prompt
 - Used for state inspection throughout workflow
 
-`produce_agent_network_hocon`
-- Generates the complete HOCON-formatted configuration file by calling `persist_agent_network`
-- Validates the network definition for correctness and completeness
-- Saves output to local registries directory
-- Updates the local manifest.hocon file
-- Returns errors to the frontman if the network is incomplete or invalid
+#### Persistence (Middleware)
+
+[`AgentNetworkPersistenceMiddleware`](../../middleware/agent_network_designer/persistence/agent_network_persistence_middleware.py)
+- Runs after the agent finishes (no pending tool calls remain)
+- Validates the network definition for structural and instruction errors; re-injects any errors as a human message so the agent can self-correct
+- Converts the `agent_network_definition` to HOCON format and either saves it to the local registries directory (file mode) or registers it as a temporary network (reservations mode)
+- Updates the local `manifest.hocon` file in file mode
 
 ### Research Tool
 
