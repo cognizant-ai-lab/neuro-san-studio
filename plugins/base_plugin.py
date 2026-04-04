@@ -14,11 +14,45 @@
 #
 # END COPYRIGHT
 
+"""Base class for all plugins in the system."""
+
+import logging
 import os
+from abc import ABC
+
+# Ensure a basic console handler exists so plugin log messages are visible
+# even when ProcessLogBridge is not active.  This is idempotent — it only
+# adds a handler when the root logger has none.
+logging.basicConfig(level=logging.INFO, format="%(message)s")
 
 
-class BasePlugin:
-    """Base class for all plugins in the system."""
+class _PluginLoggerAdapter(logging.LoggerAdapter):
+    """Logger adapter that auto-prefixes messages with [ClassName]."""
+
+    def process(self, msg, kwargs):
+        """Prepend the plugin class name to every log message."""
+        return f"[{self.extra['plugin_name']}] {msg}", kwargs
+
+
+class BasePlugin(ABC):
+    """Abstract base class for all plugins in the system.
+
+    Subclasses may override any of the following hook methods to customize
+    plugin behavior.  All hooks have no-op defaults so subclasses only need
+    to implement the ones they care about.
+
+    Lifecycle hooks (called by the framework):
+        _do_initialize   -- Custom initialization logic (called by ``initialize``).
+        _do_cleanup       -- Custom cleanup logic (called by ``cleanup``).
+
+    Server hooks (called around server start):
+        pre_server_start_action  -- Runs before the server starts.
+        post_server_start_action -- Runs after the server starts.
+
+    Argument hooks (called during argument parsing):
+        update_args_dict   -- Inject default values into the args dictionary.
+        update_parser_args -- Add CLI flags to the argument parser.
+    """
 
     def __init__(self, plugin_name: str, args: dict = None):
         """Initialize the base plugin with a name and optional arguments.
@@ -29,18 +63,46 @@ class BasePlugin:
         """
         self.plugin_name = plugin_name
         self.args = args or {}
-
-    def pre_server_start_action(self):
-        """Perform actions before the server starts."""
-
-    def post_server_start_action(self):
-        """Perform actions after the server starts."""
-
-    def cleanup(self):
-        """Cleanup resources when the plugin is being unloaded."""
+        raw_logger = logging.getLogger(self.__class__.__name__)
+        self._logger = _PluginLoggerAdapter(raw_logger, {"plugin_name": self.__class__.__name__})
 
     def initialize(self):
-        """Initialize the plugin. This method is called during server startup."""
+        """Initialize the plugin. Logs entry/exit and delegates to _do_initialize."""
+        self._logger.info("Initializing (PID=%s)", os.getpid())
+        self._do_initialize()
+        self._logger.info("Initialized (PID=%s)", os.getpid())
+
+    def _do_initialize(self):
+        """Hook: override to provide custom initialisation logic.
+
+        Called by :meth:`initialize` between the entry and exit log messages.
+        The default implementation does nothing.
+        """
+
+    def cleanup(self):
+        """Cleanup resources. Logs entry/exit and delegates to _do_cleanup."""
+        self._logger.info("Cleaning up")
+        self._do_cleanup()
+        self._logger.info("Cleanup complete")
+
+    def _do_cleanup(self):
+        """Hook: override to provide custom cleanup logic.
+
+        Called by :meth:`cleanup` between the entry and exit log messages.
+        The default implementation does nothing.
+        """
+
+    def pre_server_start_action(self):
+        """Hook: override to run actions before the server starts.
+
+        The default implementation does nothing.
+        """
+
+    def post_server_start_action(self):
+        """Hook: override to run actions after the server starts.
+
+        The default implementation does nothing.
+        """
 
     @staticmethod
     def _get_bool_env(var_name: str, default: bool) -> bool:
@@ -60,7 +122,7 @@ class BasePlugin:
 
     @staticmethod
     def update_args_dict(args_dict: dict):
-        """Update the arguments dictionary.
+        """Hook: override to inject default values into the arguments dictionary.
 
         Args:
             args_dict: Dictionary of arguments to update.
@@ -68,7 +130,7 @@ class BasePlugin:
 
     @staticmethod
     def update_parser_args(parser):
-        """Update the argument parser with plugin-specific arguments.
+        """Hook: override to add plugin-specific flags to the argument parser.
 
         Args:
             parser: The argument parser to update.

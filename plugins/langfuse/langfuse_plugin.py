@@ -23,7 +23,6 @@ Handles:
 - Environment variable management
 """
 
-import logging
 import os
 from contextvars import ContextVar
 from typing import Any
@@ -48,7 +47,6 @@ class LangfusePlugin(BasePlugin):
         """
         super().__init__("Langfuse", args)
         self._initialized = False
-        self._logger = logging.getLogger(__name__)
         self._langfuse_client = None
         self._callback_handler = None
 
@@ -112,13 +110,13 @@ class LangfusePlugin(BasePlugin):
             langfuse_ctx_var.set(self._callback_handler)
             register_configure_hook(langfuse_ctx_var, inheritable=True)
 
-            print("[Langfuse] LangChain CallbackHandler registered globally")
+            self._logger.info("LangChain CallbackHandler registered globally")
             return True
         except Exception as exc:  # pylint: disable=broad-exception-caught
             self._logger.error("Failed to create Langfuse client or CallbackHandler: %s", exc)
             return False
 
-    def initialize(self) -> None:
+    def _do_initialize(self) -> None:
         """Initialize Langfuse observability.
 
         Checks whether already initialized (prevents double-init).
@@ -128,26 +126,22 @@ class LangfusePlugin(BasePlugin):
 
         This method is idempotent and safe to call multiple times.
         """
-        print(f"[Langfuse] initialize called, PID={os.getpid()}")
-
         if self._initialized:
-            print(f"[Langfuse] Already initialized in this process, skipping (PID={os.getpid()})")
+            self._logger.info("Already initialized, skipping (PID=%s)", os.getpid())
             return
 
         try:
-            print(f"[Langfuse] Attempting Langfuse setup (PID={os.getpid()})")
             setup_successful = self._try_langfuse_setup()
             if setup_successful:
-                print(f"[Langfuse] Setup succeeded (PID={os.getpid()})")
-                print(f"[Langfuse] Traces will be sent to: {os.getenv('LANGFUSE_HOST', 'https://cloud.langfuse.com')}")
-                print(f"[Langfuse] Project: {os.getenv('LANGFUSE_PROJECT_NAME', 'default')}")
+                self._logger.info(
+                    "Traces will be sent to: %s", os.getenv("LANGFUSE_HOST", "https://cloud.langfuse.com")
+                )
+                self._logger.info("Project: %s", os.getenv("LANGFUSE_PROJECT_NAME", "default"))
                 self._initialized = True
-                print(f"[Langfuse] Setup successful (PID={os.getpid()})")
             else:
-                print(f"[Langfuse] Setup failed (PID={os.getpid()})")
+                self._logger.warning("Setup failed (PID=%s)", os.getpid())
         except Exception as exc:  # pylint: disable=broad-exception-caught
-            print(f"[Langfuse] Initialization FAILED: {exc} (PID={os.getpid()})")
-            self._logger.warning("Langfuse initialization failed: %s", exc)
+            self._logger.warning("Initialization failed: %s", exc)
 
     @property
     def is_initialized(self) -> bool:
@@ -158,16 +152,14 @@ class LangfusePlugin(BasePlugin):
         """
         return self._initialized
 
-    def cleanup(self) -> None:
+    def _do_cleanup(self) -> None:
         """Shutdown Langfuse client and flush remaining traces."""
         if not self._initialized:
             return
-        print("[Langfuse] Shutting down...")
         try:
             self._langfuse_client.flush()
             self._initialized = False
             self._callback_handler = None
             self._langfuse_client = None
-            print("[Langfuse] Shutdown complete")
         except Exception as exc:  # pylint: disable=broad-exception-caught
-            self._logger.warning("Failed to shutdown Langfuse cleanly: %s", exc)
+            self._logger.warning("Failed to shutdown cleanly: %s", exc)

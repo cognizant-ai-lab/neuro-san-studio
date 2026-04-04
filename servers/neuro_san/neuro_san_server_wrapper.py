@@ -20,6 +20,7 @@ This module ensures that plugins are initialized in the same Python process as t
 allowing, for instance, proper tracing and observability.
 """
 
+import logging
 import os
 import signal
 import sys
@@ -34,6 +35,7 @@ class NeuroSanServerWrapper:
 
     def __init__(self):
         """Initialize the plugins."""
+        self._logger = logging.getLogger(self.__class__.__name__)
         self.root_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
         if self.root_dir not in sys.path:
@@ -46,14 +48,13 @@ class NeuroSanServerWrapper:
         self.args = {}  # Placeholder for any args you want to pass to plugins
         self.plugins = [cls(self.args) for cls in self.plugin_classes]
         for plugin in self.plugins:
-            print(f"Loaded plugin: {plugin}")
+            self._logger.info("Loaded plugin: %s", plugin)
 
     def run(self):
         """Initialize Phoenix and Langfuse and run the server main loop."""
         for plugin in self.plugins:
-            print(f"Initializing plugin: {plugin}")
+            self._logger.info("Initializing plugin: %s", plugin)
             plugin.initialize()
-            print(f"Plugin initialized: {plugin}")
 
         # Import and run the actual server main loop
         # Note: ServerMainLoop will parse sys.argv itself, so all command-line
@@ -68,9 +69,8 @@ class NeuroSanServerWrapper:
             ServerMainLoop().main_loop()
         finally:
             for plugin in self.plugins:
-                print(f"Cleaning up plugin: {plugin}")
+                self._logger.info("Cleaning up plugin: %s", plugin)
                 plugin.cleanup()
-                print(f"Plugin cleaned up: {plugin}")
 
 
 if __name__ == "__main__":

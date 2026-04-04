@@ -65,7 +65,7 @@ class LlmConfigValidatorPlugin(BasePlugin):
         Args:
             hocon_path: Path to the HOCON file to validate.
         """
-        print(f"\n[LlmConfigValidator] Checking LLM configs in: {hocon_path}\n")
+        self._logger.info("Checking LLM configs in: %s", hocon_path)
         success: bool = asyncio.run(run_checks(hocon_path))
         if not success:
             sys.exit(1)

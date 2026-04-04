@@ -25,7 +25,6 @@ Handles:
 - Phoenix server process management (start/stop)
 """
 
-import logging
 import os
 import signal
 import socket
@@ -54,7 +53,6 @@ class PhoenixPlugin(BasePlugin):
         """
         super().__init__(plugin_name="Phoenix", args=args)
         self._initialized = False
-        self._logger = logging.getLogger(__name__)
         self.config = self.get_default_config()
         self.phoenix_process = None
         self.is_windows = os.name == "nt"
@@ -83,8 +81,7 @@ class PhoenixPlugin(BasePlugin):
             "phoenix_otel_register": os.getenv("PHOENIX_OTEL_REGISTER", "true"),
         }
 
-    @staticmethod
-    def _configure_tracer_provider() -> None:
+    def _configure_tracer_provider(self) -> None:
         """Configure OpenTelemetry tracer provider with OTLP exporter.
 
         Sets up:
@@ -106,7 +103,7 @@ class PhoenixPlugin(BasePlugin):
         )
 
         if trace is None or TracerProvider is None:  # pragma: no cover
-            print("Skipping OpenTelemetry TracerProvider configuration")
+            self._logger.info("Skipping OpenTelemetry TracerProvider configuration")
             return
 
         # Avoid double-initialization if a provider already exists
@@ -138,7 +135,7 @@ class PhoenixPlugin(BasePlugin):
             install_if_missing="opentelemetry-exporter-otlp",
         )
         if OTLPSpanExporter is not None:
-            print("Configuring OTLPSpanExporter...")
+            self._logger.info("Configuring OTLPSpanExporter")
             # Prefer explicit traces endpoint if provided; fallback to Phoenix default
             endpoint: Optional[str] = os.getenv("OTEL_EXPORTER_OTLP_TRACES_ENDPOINT") or os.getenv(
                 "OTEL_EXPORTER_OTLP_ENDPOINT"
@@ -158,8 +155,7 @@ class PhoenixPlugin(BasePlugin):
 
         trace.set_tracer_provider(provider)
 
-    @staticmethod
-    def _instrument_sdks() -> None:
+    def _instrument_sdks(self) -> None:
         """Instrument various AI/ML SDKs for tracing.
 
         Instruments:
@@ -171,67 +167,31 @@ class PhoenixPlugin(BasePlugin):
 
         Failures are silently ignored to allow partial instrumentation.
         """
-        # Lazy imports from openinference
+        instrumentors = [
+            ("openinference.instrumentation.openai.OpenAIInstrumentor", "openinference-instrumentation-openai"),
+            (
+                "openinference.instrumentation.langchain.LangChainInstrumentor",
+                "openinference-instrumentation-langchain",
+            ),
+            ("openinference.instrumentation.litellm.LiteLLMInstrumentor", "openinference-instrumentation-litellm"),
+            (
+                "openinference.instrumentation.anthropic.AnthropicInstrumentor",
+                "openinference-instrumentation-anthropic",
+            ),
+            ("openinference.instrumentation.mcp.MCPInstrumentor", "openinference-instrumentation-mcp"),
+        ]
 
-        # Instrument OpenAI
-        # Lazily load the type
-        # pylint: disable=invalid-name
-        OpenAIInstrumentor: Type[Any] = ResolverUtil.create_type(
-            "openinference.instrumentation.openai.OpenAIInstrumentor",
-            raise_if_not_found=False,
-            install_if_missing="openinference-instrumentation-openai",
-        )
-        if OpenAIInstrumentor is not None:
-            print("Using OpenAIInstrumentor")
-            OpenAIInstrumentor().instrument()
-
-        # Instrument LangChain
-        # Lazily load the type
-        # pylint: disable=invalid-name
-        LangChainInstrumentor: Type[Any] = ResolverUtil.create_type(
-            "openinference.instrumentation.langchain.LangChainInstrumentor",
-            raise_if_not_found=False,
-            install_if_missing="openinference-instrumentation-langchain",
-        )
-        if LangChainInstrumentor is not None:
-            print("Using LangChainInstrumentor")
-            LangChainInstrumentor().instrument()
-
-        # Instrument LiteLLM (common in orchestration libs)
-        # Lazily load the type
-        # pylint: disable=invalid-name
-        LiteLLMInstrumentor: Type[Any] = ResolverUtil.create_type(
-            "openinference.instrumentation.litellm.LiteLLMInstrumentor",
-            raise_if_not_found=False,
-            install_if_missing="openinference-instrumentation-litellm",
-        )
-        if LiteLLMInstrumentor is not None:
-            print("Using LiteLLMInstrumentor")
-            LiteLLMInstrumentor().instrument()
-
-        # Instrument Anthropic
-        # Lazily load the type
-        # pylint: disable=invalid-name
-        AnthropicInstrumentor: Type[Any] = ResolverUtil.create_type(
-            "openinference.instrumentation.anthropic.AnthropicInstrumentor",
-            raise_if_not_found=False,
-            install_if_missing="openinference-instrumentation-anthropic",
-        )
-        if AnthropicInstrumentor is not None:
-            print("Using AnthropicInstrumentor")
-            AnthropicInstrumentor().instrument()
-
-        # Instrument MCP
-        # Lazily load the type
-        # pylint: disable=invalid-name
-        MCPInstrumentor: Type[Any] = ResolverUtil.create_type(
-            "openinference.instrumentation.mcp.MCPInstrumentor",
-            raise_if_not_found=False,
-            install_if_missing="openinference-instrumentation-mcp",
-        )
-        if MCPInstrumentor is not None:
-            print("Using MCPInstrumentor")
-            MCPInstrumentor().instrument()
+        for class_path, install_pkg in instrumentors:
+            # pylint: disable=invalid-name
+            InstrumentorClass: Type[Any] = ResolverUtil.create_type(
+                class_path,
+                raise_if_not_found=False,
+                install_if_missing=install_pkg,
+            )
+            if InstrumentorClass is not None:
+                short_name = class_path.rsplit(".", maxsplit=1)[-1]
+                self._logger.info("Using %s", short_name)
+                InstrumentorClass().instrument()
 
     def _try_phoenix_register(self) -> bool:
         """Try using phoenix.otel.register for first-class setup.
@@ -266,7 +226,7 @@ class PhoenixPlugin(BasePlugin):
             self._logger.info("Phoenix register not used: %s", exc)
             return False
 
-    def initialize(self) -> None:
+    def _do_initialize(self) -> None:
         """Initialize Phoenix observability if enabled.
 
         Checks whether already initialized (prevents double-init).
@@ -277,26 +237,22 @@ class PhoenixPlugin(BasePlugin):
 
         This method is idempotent and safe to call multiple times.
         """
-        print(f"[Phoenix] initialize called, PID={os.getpid()}")
-
         if self._initialized:
-            print(f"[Phoenix] Already initialized in this process, skipping (PID={os.getpid()})")
+            self._logger.info("Already initialized, skipping (PID=%s)", os.getpid())
             return
 
         try:
-            print(f"[Phoenix] Attempting phoenix.otel.register() (PID={os.getpid()})")
+            self._logger.info("Attempting phoenix.otel.register() (PID=%s)", os.getpid())
             used_phoenix_register = self._try_phoenix_register()
             if not used_phoenix_register:
-                print(f"[Phoenix] phoenix.otel.register() failed, using manual setup (PID={os.getpid()})")
+                self._logger.info("phoenix.otel.register() not available, using manual setup (PID=%s)", os.getpid())
                 self._configure_tracer_provider()
                 self._instrument_sdks()
             else:
-                print(f"[Phoenix] phoenix.otel.register() succeeded (PID={os.getpid()})")
+                self._logger.info("phoenix.otel.register() succeeded (PID=%s)", os.getpid())
             self._initialized = True
-            print(f"[Phoenix] Initialization complete (PID={os.getpid()})")
         except Exception as exc:  # pylint: disable=broad-except
-            print(f"[Phoenix] Initialization FAILED: {exc} (PID={os.getpid()})")
-            self._logger.warning("Phoenix initialization failed: %s", exc)
+            self._logger.warning("Initialization failed: %s (PID=%s)", exc, os.getpid())
 
     @property
     def is_initialized(self) -> bool:
@@ -316,16 +272,18 @@ class PhoenixPlugin(BasePlugin):
             "otel_exporter_otlp_traces_endpoint", "http://localhost:6006/v1/traces"
         )
 
-        print(f"OTEL_SERVICE_NAME set to: {os.environ['OTEL_SERVICE_NAME']}")
-        print(f"OTEL_SERVICE_VERSION set to: {os.environ['OTEL_SERVICE_VERSION']}")
-        print(f"OTEL_EXPORTER_OTLP_TRACES_ENDPOINT set to: {os.environ['OTEL_EXPORTER_OTLP_TRACES_ENDPOINT']}\n")
+        self._logger.info("OTEL_SERVICE_NAME set to: %s", os.environ["OTEL_SERVICE_NAME"])
+        self._logger.info("OTEL_SERVICE_VERSION set to: %s", os.environ["OTEL_SERVICE_VERSION"])
+        self._logger.info(
+            "OTEL_EXPORTER_OTLP_TRACES_ENDPOINT set to: %s", os.environ["OTEL_EXPORTER_OTLP_TRACES_ENDPOINT"]
+        )
 
         # Phoenix register settings
         os.environ["PHOENIX_PROJECT_NAME"] = str(self.config.get("phoenix_project_name", "default"))
         os.environ["PHOENIX_OTEL_REGISTER"] = str(self.config.get("phoenix_otel_register", "true")).lower()
 
-        print(f"PHOENIX_PROJECT_NAME set to: {os.environ['PHOENIX_PROJECT_NAME']}")
-        print(f"PHOENIX_OTEL_REGISTER set to: {os.environ['PHOENIX_OTEL_REGISTER']}\n")
+        self._logger.info("PHOENIX_PROJECT_NAME set to: %s", os.environ["PHOENIX_PROJECT_NAME"])
+        self._logger.info("PHOENIX_OTEL_REGISTER set to: %s", os.environ["PHOENIX_OTEL_REGISTER"])
 
     @staticmethod
     def _is_port_open(host: str, port: int, timeout: float = 1.0) -> bool:
@@ -384,7 +342,7 @@ class PhoenixPlugin(BasePlugin):
                 start_new_session=True,
             )
 
-        print(f"Started Phoenix with PID {process.pid}")
+        self._logger.info("Started Phoenix with PID %s", process.pid)
         return process
 
     def start_phoenix_server(self) -> None:
@@ -392,14 +350,14 @@ class PhoenixPlugin(BasePlugin):
         if str(self.config.get("phoenix_autostart", "false")).lower() not in ("true", "1", "yes", "on"):
             return
 
-        print("Starting Phoenix (AI observability)...")
+        self._logger.info("Starting Phoenix (AI observability)...")
         phoenix_host = self.config.get("phoenix_host", "127.0.0.1")
         phoenix_port = self.config.get("phoenix_port", 6006)
 
         # If something is already listening on PHOENIX_PORT, assume Phoenix is running and skip autostart
         if self._is_port_open(phoenix_host, phoenix_port):
             phoenix_url = f"http://{phoenix_host}:{phoenix_port}"
-            print(f"Phoenix detected at {phoenix_url} — skipping autostart.")
+            self._logger.info("Phoenix detected at %s — skipping autostart.", phoenix_url)
         else:
             # Disable gRPC on Windows (port binding issues)
             os.environ["PHOENIX_GRPC_PORT"] = "0"
@@ -419,22 +377,22 @@ class PhoenixPlugin(BasePlugin):
                         break
 
                 if phoenix_ready:
-                    print("Phoenix started successfully.")
+                    self._logger.info("Phoenix started successfully.")
                 else:
-                    print("Failed to start Phoenix automatically. Check logs/phoenix.log")
+                    self._logger.warning("Failed to start Phoenix automatically. Check logs/phoenix.log")
             except Exception as exc:  # pylint: disable=broad-exception-caught
-                print(f"Failed to start Phoenix automatically: {exc}")
+                self._logger.warning("Failed to start Phoenix automatically: %s", exc)
 
         # Update OTLP endpoint env to point to this phoenix instance if not explicitly overridden
         default_otlp = f"http://{phoenix_host}:{phoenix_port}/v1/traces"
         if os.getenv("OTEL_EXPORTER_OTLP_TRACES_ENDPOINT") in (None, "", "http://localhost:6006/v1/traces"):
             os.environ["OTEL_EXPORTER_OTLP_TRACES_ENDPOINT"] = default_otlp
-            print(f"OTEL_EXPORTER_OTLP_TRACES_ENDPOINT updated to: {default_otlp}")
+            self._logger.info("OTEL_EXPORTER_OTLP_TRACES_ENDPOINT updated to: %s", default_otlp)
 
     def stop_phoenix_server(self) -> None:
         """Stop the Phoenix process if it's running."""
         if self.phoenix_process:
-            print(f"Stopping PHOENIX (PID {self.phoenix_process.pid})...")
+            self._logger.info("Stopping Phoenix (PID %s)...", self.phoenix_process.pid)
             if self.is_windows:
                 self.phoenix_process.terminate()
             else:
@@ -453,6 +411,6 @@ class PhoenixPlugin(BasePlugin):
         """
         args_dict.update(PhoenixPlugin.get_default_config())
 
-    def cleanup(self):
+    def _do_cleanup(self):
         """Stop Phoenix server if it was started by this plugin."""
         self.stop_phoenix_server()

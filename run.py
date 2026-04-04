@@ -16,6 +16,7 @@
 
 import argparse
 import glob
+import logging
 import os
 import signal
 import socket
@@ -37,6 +38,7 @@ class NeuroSanRunner:
     # pylint: disable=too-many-instance-attributes
     def __init__(self):
         """Initialize configuration and parse CLI arguments."""
+        self._logger = logging.getLogger(self.__class__.__name__)
         self.is_windows = os.name == "nt"
         self.root_dir = os.path.dirname(os.path.abspath(__file__))
         self.logs_dir = os.path.join(self.root_dir, "logs")
@@ -81,7 +83,7 @@ class NeuroSanRunner:
 
         for plugin in self.plugin_classes:
             if hasattr(plugin, "update_args_dict"):
-                print(f"Updating args dict with plugin: {plugin}")
+                self._logger.info("Updating args dict with plugin: %s", plugin)
                 plugin.update_args_dict(self.args)
 
         # Ensure logs directory exists
@@ -94,7 +96,7 @@ class NeuroSanRunner:
         # Instantiate plugins now that args are fully built
         self.plugins = [cls(self.args) for cls in self.plugin_classes]
         for plugin in self.plugins:
-            print(f"Loaded plugin: {plugin}")
+            self._logger.info("Loaded plugin: %s", plugin)
 
         # Process references
         self.server_process = None
@@ -157,7 +159,7 @@ class NeuroSanRunner:
 
         # add arguments from plugins
         for plugin in self.plugin_classes:
-            print(f"Updating parser args with plugin: {plugin}")
+            self._logger.info("Updating parser args with plugin: %s", plugin)
             plugin.update_parser_args(parser)
 
         args, _ = parser.parse_known_args()
@@ -369,7 +371,7 @@ class NeuroSanRunner:
                 os.killpg(os.getpgid(self.nsflow_process.pid), signal.SIGKILL)
 
         for plugin in self.plugins:
-            print(f"Running cleanup for plugin: {plugin}")
+            self._logger.info("Running cleanup for plugin: %s", plugin)
             plugin.cleanup()
 
         sys.exit(0)
@@ -507,7 +509,7 @@ class NeuroSanRunner:
         self.set_environment_variables()
 
         for plugin in self.plugins:
-            print(f"Running pre server start action for plugin: {plugin}")
+            self._logger.info("Running pre server start action for plugin: %s", plugin)
             plugin.pre_server_start_action()
 
         # Ensure logs directory exists
@@ -527,7 +529,7 @@ class NeuroSanRunner:
         self.conditional_start_servers()
 
         for plugin in self.plugins:
-            print(f"Running post server start action for plugin: {plugin}")
+            self._logger.info("Running post server start action for plugin: %s", plugin)
             plugin.post_server_start_action()
 
         # Fallback: if no plugin implements ProcessLoggerInterface, use a simple

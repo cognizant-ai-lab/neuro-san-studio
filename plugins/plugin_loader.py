@@ -22,11 +22,14 @@ Used by both the runner (run.py) and the server wrapper
 """
 
 import importlib
+import logging
 from typing import List
 from typing import Type
 
 from pyhocon import ConfigFactory
 from pyhocon.exceptions import ConfigException
+
+_logger = logging.getLogger("PluginLoader")
 
 
 class PluginLoader:  # pylint: disable=too-few-public-methods
@@ -53,10 +56,10 @@ class PluginLoader:  # pylint: disable=too-few-public-methods
         try:
             config = ConfigFactory.parse_file(plugins_file)
         except FileNotFoundError:
-            print(f"No plugins file found at {plugins_file}. Continuing without plugins.")
+            _logger.info("No plugins file found at %s. Continuing without plugins.", plugins_file)
             return []
         except (ConfigException, Exception) as exc:  # pylint: disable=broad-exception-caught
-            print(f"Failed to parse plugins file at {plugins_file}: {exc}. Continuing without plugins.")
+            _logger.warning("Failed to parse plugins file at %s: %s. Continuing without plugins.", plugins_file, exc)
             return []
 
         plugin_classes: List[Type] = []
@@ -65,7 +68,7 @@ class PluginLoader:  # pylint: disable=too-few-public-methods
             enabled = plugin_entry.get("enabled", True)
 
             if not enabled:
-                print(f"Plugin {class_path} is disabled. Skipping.")
+                _logger.info("Plugin %s is disabled. Skipping.", class_path)
                 continue
 
             # Derive module path and class name from the fully qualified class path
@@ -77,8 +80,8 @@ class PluginLoader:  # pylint: disable=too-few-public-methods
                 module = importlib.import_module(module_path)
                 plugin_cls = getattr(module, class_name)
                 plugin_classes.append(plugin_cls)
-                print(f"Loading plugin: {class_name} from module: {module_path}")
+                _logger.info("Loading plugin: %s from module: %s", class_name, module_path)
             except (ImportError, AttributeError) as exc:
-                print(f"Warning: Failed to load plugin {class_name} from {module_path}: {exc}. Skipping.")
+                _logger.warning("Failed to load plugin %s from %s: %s. Skipping.", class_name, module_path, exc)
 
         return plugin_classes
