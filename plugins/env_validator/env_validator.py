@@ -521,17 +521,16 @@ class EnvValidatorPlugin(BasePlugin):
         if tier >= 3:
             self._logger.info("Live validation enabled - making API calls to verify keys...")
 
-        validator = EnvValidator()
-        results = validator.validate_all(tier=tier)
-        validator.print_results(results)
+        results = self.validator.validate_all(tier=tier)
+        self.validator.print_results(results)
 
         # Warn but don't block startup for missing/placeholder keys
-        if validator.has_warnings(results):
+        if self.validator.has_warnings(results):
             self._logger.warning("Some API keys are not configured. Agents using those providers will fail.")
             self._logger.warning("Configure them in your .env file to enable all features.")
 
         # For actual errors (invalid format, invalid key), warn more strongly
-        if validator.has_errors(results):
+        if self.validator.has_errors(results):
             self._logger.error("Some API keys have validation errors. Check the results above.")
 
     def pre_server_start_action(self, *_args, **_kwargs):

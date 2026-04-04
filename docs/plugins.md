@@ -15,6 +15,7 @@ Note that plugins are never required for Neuro SAN to function.
     - [Open FGA](#open-fga)
   - [Diagnostics](#diagnostics)
     - [LLM Config Validator](#llm-config-validator)
+    - [Env Validator](#env-validator)
   - [Logging](#logging)
     - [Log Bridge](#log-bridge)
   - [Observability](#observability)
@@ -166,6 +167,53 @@ Both HOCON formats are supported:
 Duplicate configurations are deduplicated so each unique model is called only once.
 The validator exits with a non-zero code if any configuration fails, blocking server startup
 until the issue is resolved.
+
+### Env Validator
+
+The Env Validator checks that LLM API keys and other critical environment variables are configured
+correctly before the server starts. It runs three progressively deeper tiers of validation:
+
+| Tier | Name | What it checks |
+|---|---|---|
+| 1 | Placeholder detection | Variable is set and not a placeholder (`YOUR_`, `REPLACE`, `TODO`, `<`, `>`, etc.). |
+| 2 | Format validation | Value matches the expected format for the key type (prefix, length, character set). |
+| 3 | Live validation | Makes a lightweight API call to verify the key with the provider (OpenAI, Anthropic, Google). |
+
+Each tier is cumulative — tier 2 includes tier 1, and tier 3 includes tiers 1 and 2.
+Tiers 1 and 2 run entirely offline; tier 3 requires network access to reach the provider APIs.
+
+**Keys validated:** `OPENAI_API_KEY`, `ANTHROPIC_API_KEY`, `GOOGLE_API_KEY`, `AWS_ACCESS_KEY_ID`,
+`AWS_SECRET_ACCESS_KEY`, `AZURE_OPENAI_API_KEY`, `AZURE_OPENAI_ENDPOINT`.
+
+**Usage:**
+
+```bash
+# Tier 1 only — placeholder detection (no format or network checks)
+python -m run --validate-keys 1
+
+# Tier 2 — placeholder + format checks (no network calls)
+python -m run --validate-keys 2
+
+# Tier 3 — all checks including live API calls (default when no value is given)
+python -m run --validate-keys
+python -m run --validate-keys 3
+```
+
+The validator prints a grouped results table (VALID / WARNING / ERROR) and logs a summary count.
+Missing or placeholder keys produce warnings but do not block startup — only format or
+authentication errors are flagged as errors.
+
+**Registration** (`config/plugins.hocon`):
+
+```hocon
+{
+    class = plugins.env_validator.env_validator.EnvValidatorPlugin
+    enabled = false
+}
+```
+
+The plugin is disabled by default. Enable it for a single run by passing `--validate-keys` on the
+command line, or set `enabled = true` in `plugins.hocon` to run validation on every startup.
 
 ## Logging
 
