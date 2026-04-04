@@ -16,19 +16,18 @@ Simply provide the frontman agent with the name of an organization or a descript
 Note that
 
 - This demo writes a file to your local directory and updates your `manifest.hocon`. To disable this behavior,
-set `WRITE_TO_FILE` to `False` in
-[persist_agent_network.py](../../coded_tools/agent_network_designer/persist_agent_network.py)
+set environment variable `AGENT_NETWORK_DESIGNER_USE_RESERVATIONS` to `true`
 
 - By default, the parent directory for the generated network (where your `manifest.hocon` should be located)
 is registries. You can change this by setting `OUTPUT_PATH` in
-[file_system_agent_network_persistor.py](../../coded_tools/agent_network_designer/file_system_agent_network_persistor.py)
+[file_system_agent_network_persistor.py](../../middleware/agent_network_designer/persistence/file_system_agent_network_persistor.py)
 
 - All generated agent networks are stored in a `generated` subdirectory under the specified `OUTPUT_PATH`.
 
 - The generated agents are not grounded by default—they only simulate grounded behavior.
 Once you connect the agents to real systems (e.g., APIs or databases) via the `Toolbox` or `MCP`,
 you can disable demo mode by setting DEMO_MODE in
-[persist_agent_network.py](../../coded_tools/agent_network_designer/persist_agent_network.py)
+[persist_agent_network.py](../../middleware/agent_network_designer/persistence/persist_agent_network.py)
 
 ---
 
