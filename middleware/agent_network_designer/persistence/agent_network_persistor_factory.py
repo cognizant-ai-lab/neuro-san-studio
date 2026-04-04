@@ -33,6 +33,8 @@ class AgentNetworkPersistorFactory:
     Factory class for AgentNetworkPersistors.
     """
 
+    # pylint: disable=too-many-arguments
+    # pylint: disable=too-many-positional-arguments
     @staticmethod
     def create_persistor(
         args: dict[str, Any],
