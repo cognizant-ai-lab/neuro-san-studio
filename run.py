@@ -21,7 +21,6 @@ import signal
 import socket
 import subprocess
 import sys
-import threading
 import time
 from typing import Any
 from typing import Dict
@@ -47,7 +46,7 @@ class NeuroSanRunner:
         # Load environment variables from .env file
         self.load_env_variables()
 
-        plugins_file = os.path.join(self.root_dir, "plugins", "default_plugins.json")
+        plugins_file = os.path.join(self.root_dir, "config", "plugins.hocon")
         self.plugin_classes = PluginLoader.load_plugin_classes(plugins_file)
 
         # Default Configuration
@@ -66,7 +65,6 @@ class NeuroSanRunner:
             "neuro_san_web_client_port": int(os.getenv("NEURO_SAN_WEB_CLIENT_PORT", "5003")),
             "thinking_file": os.getenv("THINKING_FILE", self.thinking_file),
             "thinking_dir": os.getenv("THINKING_DIR", self.thinking_dir),
-            "logbridge_enabled": os.getenv("LOGBRIDGE_ENABLED", "true"),
             # Ensure all paths are resolved relative to `self.root_dir`
             "agent_manifest_file": os.getenv(
                 "AGENT_MANIFEST_FILE", os.path.join(self.root_dir, "registries", "manifest.hocon")
@@ -252,16 +250,6 @@ class NeuroSanRunner:
                 if result.stderr:
                     print(result.stderr, file=sys.stderr)
 
-    @staticmethod
-    def stream_output(pipe, log_file, prefix):
-        """Stream subprocess output to console and log file in real-time."""
-        with open(log_file, "a", encoding="utf-8") as log:
-            for line in iter(pipe.readline, ""):
-                formatted_line = f"{prefix}: {line.strip()}"
-                print(formatted_line)  # Print to console
-                log.write(formatted_line + "\n")  # Write to log file
-        pipe.close()
-
     def start_process(self, command, process_name, log_file):
         """Start a subprocess and capture logs."""
         # Initialize/clear the log file before starting
@@ -296,13 +284,6 @@ class NeuroSanRunner:
         for plugin in self.plugins:
             plugin.args["process_name"] = process_name
             plugin.args["process"] = process
-
-        if self.args.get("logbridge_enabled") is False:
-            # Start streaming logs in separate threads
-            stdout_thread = threading.Thread(target=self.stream_output, args=(process.stdout, log_file, process_name))
-            stderr_thread = threading.Thread(target=self.stream_output, args=(process.stderr, log_file, process_name))
-            stdout_thread.start()
-            stderr_thread.start()
 
         return process
 

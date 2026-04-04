@@ -16,8 +16,6 @@
 
 """Tests for the LangfusePlugin."""
 
-from unittest.mock import patch
-
 from plugins.base_plugin import BasePlugin
 from plugins.langfuse.langfuse_plugin import LangfusePlugin
 
@@ -47,13 +45,6 @@ class TestLangfusePlugin:
     def test_constructor_initializes_state(self):
         """Test that the constructor initializes internal state."""
         plugin = LangfusePlugin()
-        assert plugin.is_initialized is False
-
-    @patch.object(LangfusePlugin, "_get_bool_env", return_value=False)
-    def test_initialize_skips_when_disabled(self, _mock_env):
-        """Test that initialize is a no-op when LANGFUSE_ENABLED is false."""
-        plugin = LangfusePlugin()
-        plugin.initialize()
         assert plugin.is_initialized is False
 
     def test_cleanup_noop_when_not_initialized(self):

@@ -44,7 +44,7 @@ class TestPhoenixPlugin:
         plugin = PhoenixPlugin()
         assert plugin.config is not None
         assert isinstance(plugin.config, dict)
-        assert "phoenix_enabled" in plugin.config
+        assert "phoenix_port" in plugin.config
 
     def test_constructor_initializes_state(self):
         """Test that the constructor initializes internal state."""
@@ -70,6 +70,5 @@ class TestPhoenixPlugin:
         """Test that update_args_dict adds Phoenix configuration keys."""
         args = {}
         PhoenixPlugin.update_args_dict(args)
-        assert "phoenix_enabled" in args
         assert "phoenix_port" in args
         assert "otel_service_name" in args

@@ -27,7 +27,7 @@ Note that plugins are never required for Neuro SAN to function.
 ## Creating Custom Plugins
 
 All plugins extend the `BasePlugin` class in `plugins/base_plugin.py` and are registered in
-`plugins/default_plugins.json`.
+`config/plugins.hocon`.
 
 ### BasePlugin Interface
 
@@ -43,22 +43,32 @@ All plugins extend the `BasePlugin` class in `plugins/base_plugin.py` and are re
 
 ### Registering a Plugin
 
-Add an entry to `plugins/default_plugins.json`:
+Add an entry to `config/plugins.hocon`:
 
-```json
+```hocon
+plugins = [
+    {
+        class = plugins.my_plugin.my_plugin.MyPlugin
+        enabled = true
+    }
+]
+```
+
+Each entry specifies the fully-qualified Python class path (module + class name).
+The `enabled` flag controls whether the plugin is loaded. You can override it with
+an environment variable using HOCON substitution:
+
+```hocon
 {
-    "plugins": [
-        {
-            "module": "plugins.my_plugin.my_plugin",
-            "class": "MyPlugin"
-        }
-    ]
+    class = plugins.my_plugin.my_plugin.MyPlugin
+    enabled = false
+    enabled = ${?MY_PLUGIN_ENABLED}
 }
 ```
 
-Each entry specifies the Python module path and the class name to import.
-If a plugin fails to import (e.g. missing dependency), it is skipped with a warning
-rather than crashing the entire startup.
+This sets the default to `false` but allows the `MY_PLUGIN_ENABLED` environment
+variable to override it at runtime. If a plugin fails to import (e.g. missing
+dependency), it is skipped with a warning rather than crashing the entire startup.
 
 ### Plugin Lifecycle
 

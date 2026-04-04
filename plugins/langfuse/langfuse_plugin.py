@@ -53,22 +53,6 @@ class LangfusePlugin(BasePlugin):
         self._callback_handler = None
 
     @staticmethod
-    def _get_bool_env(var_name: str, default: bool) -> bool:
-        """Parse a boolean environment variable.
-
-        Args:
-            var_name: Environment variable name
-            default: Default value if variable is not set
-
-        Returns:
-            Boolean value parsed from environment variable
-        """
-        val = os.getenv(var_name)
-        if val is None:
-            return default
-        return val.strip().lower() in {"1", "true", "yes", "on"}
-
-    @staticmethod
     def _is_valid_key() -> bool:
         """Check if Langfuse API keys are configured.
 
@@ -135,25 +119,16 @@ class LangfusePlugin(BasePlugin):
             return False
 
     def initialize(self) -> None:
-        """Initialize Langfuse observability if enabled.
+        """Initialize Langfuse observability.
 
-        Checks:
-        - Whether already initialized (prevents double-init)
-        - LANGFUSE_ENABLED environment variable
+        Checks whether already initialized (prevents double-init).
 
         Attempts LangChain CallbackHandler setup which automatically
         traces all LLM providers.
 
         This method is idempotent and safe to call multiple times.
         """
-        # Do NOTHING, not even log, if the plugin is not enabled.
-        # The plugin is NOT enabled, so it should not appear in the logs
-        if not self._get_bool_env("LANGFUSE_ENABLED", False):
-            return
-
         print(f"[Langfuse] initialize called, PID={os.getpid()}")
-        print(f"[Langfuse] _initialized={self._initialized}")
-        print(f"[Langfuse] LANGFUSE_ENABLED={os.getenv('LANGFUSE_ENABLED')}")
 
         if self._initialized:
             print(f"[Langfuse] Already initialized in this process, skipping (PID={os.getpid()})")

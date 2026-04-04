@@ -39,7 +39,7 @@ class NeuroSanServerWrapper:
         if self.root_dir not in sys.path:
             sys.path.insert(0, self.root_dir)
 
-        plugins_file = os.path.join(self.root_dir, "plugins", "default_plugins.json")
+        plugins_file = os.path.join(self.root_dir, "config", "plugins.hocon")
         self.plugin_classes = PluginLoader.load_plugin_classes(plugins_file)
 
         # Instantiate plugins now that args are fully built

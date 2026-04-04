@@ -14,6 +14,8 @@
 #
 # END COPYRIGHT
 
+import os
+
 
 class BasePlugin:
     """Base class for all plugins in the system."""
@@ -39,6 +41,22 @@ class BasePlugin:
 
     def initialize(self):
         """Initialize the plugin. This method is called during server startup."""
+
+    @staticmethod
+    def _get_bool_env(var_name: str, default: bool) -> bool:
+        """Parse a boolean environment variable.
+
+        Args:
+            var_name: Environment variable name
+            default: Default value if variable is not set
+
+        Returns:
+            Boolean value parsed from environment variable
+        """
+        val = os.getenv(var_name)
+        if val is None:
+            return default
+        return val.strip().lower() in {"1", "true", "yes", "on"}
 
     @staticmethod
     def update_args_dict(args_dict: dict):

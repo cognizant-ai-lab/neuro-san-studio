@@ -16,7 +16,6 @@
 
 """Tests for the PluginLoader utility."""
 
-import json
 import os
 import tempfile
 
@@ -27,18 +26,58 @@ from plugins.plugin_loader import PluginLoader
 class TestPluginLoader:
     """Tests for PluginLoader.load_plugin_classes."""
 
-    def test_load_from_valid_config(self):
-        """Test loading plugins from a valid JSON config."""
-        config = {
-            "plugins": [
-                {
-                    "module": "plugins.base_plugin",
-                    "class": "BasePlugin",
-                }
-            ]
-        }
-        with tempfile.NamedTemporaryFile(mode="w", suffix=".json", delete=False) as tmp:
-            json.dump(config, tmp)
+    def test_load_from_valid_hocon(self):
+        """Test loading plugins from a valid HOCON config."""
+        hocon = """
+plugins = [
+    {
+        class = plugins.base_plugin.BasePlugin
+        enabled = true
+    }
+]
+"""
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".hocon", delete=False) as tmp:
+            tmp.write(hocon)
+            tmp_path = tmp.name
+
+        try:
+            classes = PluginLoader.load_plugin_classes(tmp_path)
+            assert len(classes) == 1
+            assert classes[0] is BasePlugin
+        finally:
+            os.unlink(tmp_path)
+
+    def test_disabled_plugin_is_skipped(self):
+        """Test that a plugin with enabled = false is not loaded."""
+        hocon = """
+plugins = [
+    {
+        class = plugins.base_plugin.BasePlugin
+        enabled = false
+    }
+]
+"""
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".hocon", delete=False) as tmp:
+            tmp.write(hocon)
+            tmp_path = tmp.name
+
+        try:
+            classes = PluginLoader.load_plugin_classes(tmp_path)
+            assert not classes
+        finally:
+            os.unlink(tmp_path)
+
+    def test_missing_enabled_defaults_to_true(self):
+        """Test that a plugin without an enabled field defaults to enabled."""
+        hocon = """
+plugins = [
+    {
+        class = plugins.base_plugin.BasePlugin
+    }
+]
+"""
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".hocon", delete=False) as tmp:
+            tmp.write(hocon)
             tmp_path = tmp.name
 
         try:
@@ -50,13 +89,13 @@ class TestPluginLoader:
 
     def test_missing_file_returns_empty_list(self):
         """Test that a missing file returns an empty list."""
-        classes = PluginLoader.load_plugin_classes("/nonexistent/path/plugins.json")
+        classes = PluginLoader.load_plugin_classes("/nonexistent/path/plugins.hocon")
         assert not classes
 
-    def test_malformed_json_returns_empty_list(self):
-        """Test that malformed JSON returns an empty list."""
-        with tempfile.NamedTemporaryFile(mode="w", suffix=".json", delete=False) as tmp:
-            tmp.write("{invalid json")
+    def test_malformed_hocon_returns_empty_list(self):
+        """Test that malformed HOCON returns an empty list."""
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".hocon", delete=False) as tmp:
+            tmp.write("{{{invalid hocon")
             tmp_path = tmp.name
 
         try:
@@ -67,20 +106,20 @@ class TestPluginLoader:
 
     def test_bad_module_skipped_gracefully(self):
         """Test that a bad module import is skipped without crashing."""
-        config = {
-            "plugins": [
-                {
-                    "module": "nonexistent.module",
-                    "class": "FakePlugin",
-                },
-                {
-                    "module": "plugins.base_plugin",
-                    "class": "BasePlugin",
-                },
-            ]
-        }
-        with tempfile.NamedTemporaryFile(mode="w", suffix=".json", delete=False) as tmp:
-            json.dump(config, tmp)
+        hocon = """
+plugins = [
+    {
+        class = nonexistent.module.FakePlugin
+        enabled = true
+    }
+    {
+        class = plugins.base_plugin.BasePlugin
+        enabled = true
+    }
+]
+"""
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".hocon", delete=False) as tmp:
+            tmp.write(hocon)
             tmp_path = tmp.name
 
         try:
@@ -92,16 +131,16 @@ class TestPluginLoader:
 
     def test_bad_class_name_skipped_gracefully(self):
         """Test that a missing class attribute is skipped without crashing."""
-        config = {
-            "plugins": [
-                {
-                    "module": "plugins.base_plugin",
-                    "class": "NonexistentClass",
-                }
-            ]
-        }
-        with tempfile.NamedTemporaryFile(mode="w", suffix=".json", delete=False) as tmp:
-            json.dump(config, tmp)
+        hocon = """
+plugins = [
+    {
+        class = plugins.base_plugin.NonexistentClass
+        enabled = true
+    }
+]
+"""
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".hocon", delete=False) as tmp:
+            tmp.write(hocon)
             tmp_path = tmp.name
 
         try:
@@ -112,9 +151,9 @@ class TestPluginLoader:
 
     def test_empty_plugins_list(self):
         """Test that an empty plugins list returns an empty list."""
-        config = {"plugins": []}
-        with tempfile.NamedTemporaryFile(mode="w", suffix=".json", delete=False) as tmp:
-            json.dump(config, tmp)
+        hocon = "plugins = []"
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".hocon", delete=False) as tmp:
+            tmp.write(hocon)
             tmp_path = tmp.name
 
         try:
@@ -125,13 +164,37 @@ class TestPluginLoader:
 
     def test_no_plugins_key(self):
         """Test that a config without a 'plugins' key returns an empty list."""
-        config = {"other_key": "value"}
-        with tempfile.NamedTemporaryFile(mode="w", suffix=".json", delete=False) as tmp:
-            json.dump(config, tmp)
+        hocon = "other_key = value"
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".hocon", delete=False) as tmp:
+            tmp.write(hocon)
             tmp_path = tmp.name
 
         try:
             classes = PluginLoader.load_plugin_classes(tmp_path)
             assert not classes
+        finally:
+            os.unlink(tmp_path)
+
+    def test_mix_of_enabled_and_disabled(self):
+        """Test loading a mix of enabled and disabled plugins."""
+        hocon = """
+plugins = [
+    {
+        class = plugins.base_plugin.BasePlugin
+        enabled = true
+    }
+    {
+        class = plugins.base_plugin.BasePlugin
+        enabled = false
+    }
+]
+"""
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".hocon", delete=False) as tmp:
+            tmp.write(hocon)
+            tmp_path = tmp.name
+
+        try:
+            classes = PluginLoader.load_plugin_classes(tmp_path)
+            assert len(classes) == 1
         finally:
             os.unlink(tmp_path)

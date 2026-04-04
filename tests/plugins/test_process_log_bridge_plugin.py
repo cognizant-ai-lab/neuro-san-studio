@@ -33,30 +33,24 @@ class TestProcessLogBridgePlugin:
     @patch("plugins.log_bridge.process_log_bridge.ProcessLogBridge")
     def test_constructor_sets_plugin_name(self, _mock_bridge):
         """Test that the constructor sets the plugin name."""
-        plugin = ProcessLogBridgePlugin(args={"logbridge_enabled": True, "logs_dir": "/tmp"})
+        plugin = ProcessLogBridgePlugin(args={"logs_dir": "/tmp"})
         assert plugin.plugin_name == "ProcessLogBridgePlugin"
 
     @patch("plugins.log_bridge.process_log_bridge.ProcessLogBridge")
-    def test_constructor_with_bridge_enabled(self, mock_bridge_cls):
-        """Test that the log bridge is created when enabled."""
-        plugin = ProcessLogBridgePlugin(args={"logbridge_enabled": "true", "logs_dir": "/tmp", "log_level": "info"})
-        assert plugin.log_bridge_enabled == "true"
+    def test_constructor_creates_bridge(self, mock_bridge_cls):
+        """Test that the log bridge is always created."""
+        plugin = ProcessLogBridgePlugin(args={"logs_dir": "/tmp", "log_level": "info"})
         mock_bridge_cls.assert_called_once()
-
-    def test_constructor_with_bridge_disabled(self):
-        """Test that the log bridge is not created when disabled."""
-        plugin = ProcessLogBridgePlugin(args={"logbridge_enabled": False, "logs_dir": "/tmp"})
-        assert plugin.log_bridge_enabled is False
-        assert not hasattr(plugin, "log_bridge")
+        assert plugin.log_bridge is not None
 
     @patch("plugins.log_bridge.process_log_bridge.ProcessLogBridge")
     def test_post_server_start_action_attaches_logger(self, mock_bridge_cls):
-        """Test that post_server_start_action attaches process logger when enabled."""
+        """Test that post_server_start_action attaches process logger."""
         mock_bridge = MagicMock()
         mock_bridge_cls.return_value = mock_bridge
         mock_process = MagicMock()
 
-        plugin = ProcessLogBridgePlugin(args={"logbridge_enabled": "true", "logs_dir": "/tmp", "log_level": "info"})
+        plugin = ProcessLogBridgePlugin(args={"logs_dir": "/tmp", "log_level": "info"})
         plugin.args["process"] = mock_process
         plugin.args["process_name"] = "TestProcess"
         plugin.post_server_start_action()

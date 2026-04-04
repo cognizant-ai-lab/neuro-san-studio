@@ -69,7 +69,6 @@ class PhoenixPlugin(BasePlugin):
         """
         return {
             # Phoenix / OpenTelemetry defaults
-            "phoenix_enabled": os.getenv("PHOENIX_ENABLED", "false"),
             "otel_service_name": os.getenv("OTEL_SERVICE_NAME", "neuro-san-demos"),
             "otel_service_version": os.getenv("OTEL_SERVICE_VERSION", "dev"),
             "otel_exporter_otlp_traces_endpoint": os.getenv(
@@ -83,22 +82,6 @@ class PhoenixPlugin(BasePlugin):
             "phoenix_project_name": os.getenv("PHOENIX_PROJECT_NAME", "default"),
             "phoenix_otel_register": os.getenv("PHOENIX_OTEL_REGISTER", "true"),
         }
-
-    @staticmethod
-    def _get_bool_env(var_name: str, default: bool) -> bool:
-        """Parse a boolean environment variable.
-
-        Args:
-            var_name: Environment variable name
-            default: Default value if variable is not set
-
-        Returns:
-            Boolean value parsed from environment variable
-        """
-        val = os.getenv(var_name)
-        if val is None:
-            return default
-        return val.strip().lower() in {"1", "true", "yes", "on"}
 
     @staticmethod
     def _configure_tracer_provider() -> None:
@@ -286,9 +269,7 @@ class PhoenixPlugin(BasePlugin):
     def initialize(self) -> None:
         """Initialize Phoenix observability if enabled.
 
-        Checks:
-        - Whether already initialized (prevents double-init)
-        - PHOENIX_ENABLED environment variable
+        Checks whether already initialized (prevents double-init).
 
         Attempts:
         1. phoenix.otel.register() for automatic setup
@@ -297,15 +278,9 @@ class PhoenixPlugin(BasePlugin):
         This method is idempotent and safe to call multiple times.
         """
         print(f"[Phoenix] initialize called, PID={os.getpid()}")
-        print(f"[Phoenix] _initialized={self._initialized}")
-        print(f"[Phoenix] PHOENIX_ENABLED={os.getenv('PHOENIX_ENABLED')}")
 
         if self._initialized:
             print(f"[Phoenix] Already initialized in this process, skipping (PID={os.getpid()})")
-            return
-
-        if not self._get_bool_env("PHOENIX_ENABLED", True):
-            print(f"[Phoenix] Phoenix not enabled, skipping (PID={os.getpid()})")
             return
 
         try:
@@ -335,14 +310,12 @@ class PhoenixPlugin(BasePlugin):
     def set_environment_variables(self) -> None:
         """Set Phoenix and OpenTelemetry environment variables."""
         # Phoenix / OpenTelemetry envs
-        os.environ["PHOENIX_ENABLED"] = str(self.config.get("phoenix_enabled", "false")).lower()
         os.environ["OTEL_SERVICE_NAME"] = self.config.get("otel_service_name", "neuro-san-demos")
         os.environ["OTEL_SERVICE_VERSION"] = self.config.get("otel_service_version", "dev")
         os.environ["OTEL_EXPORTER_OTLP_TRACES_ENDPOINT"] = self.config.get(
             "otel_exporter_otlp_traces_endpoint", "http://localhost:6006/v1/traces"
         )
 
-        print(f"PHOENIX_ENABLED set to: {os.environ['PHOENIX_ENABLED']}")
         print(f"OTEL_SERVICE_NAME set to: {os.environ['OTEL_SERVICE_NAME']}")
         print(f"OTEL_SERVICE_VERSION set to: {os.environ['OTEL_SERVICE_VERSION']}")
         print(f"OTEL_EXPORTER_OTLP_TRACES_ENDPOINT set to: {os.environ['OTEL_EXPORTER_OTLP_TRACES_ENDPOINT']}\n")
@@ -415,10 +388,8 @@ class PhoenixPlugin(BasePlugin):
         return process
 
     def start_phoenix_server(self) -> None:
-        """Start Phoenix server (UI + OTLP HTTP collector) if enabled."""
+        """Start Phoenix server (UI + OTLP HTTP collector) if autostart is configured."""
         if str(self.config.get("phoenix_autostart", "false")).lower() not in ("true", "1", "yes", "on"):
-            return
-        if str(self.config.get("phoenix_enabled", "false")).lower() not in ("true", "1", "yes", "on"):
             return
 
         print("Starting Phoenix (AI observability)...")
