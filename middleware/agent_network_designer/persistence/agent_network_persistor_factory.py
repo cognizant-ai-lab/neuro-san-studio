@@ -16,6 +16,8 @@
 
 from typing import Any
 
+from neuro_san.interfaces.reservationist import Reservationist
+
 from middleware.agent_network_designer.persistence.agent_network_persistor import AgentNetworkPersistor
 from middleware.agent_network_designer.persistence.file_system_agent_network_persistor import (
     FileSystemAgentNetworkPersistor,
@@ -23,7 +25,6 @@ from middleware.agent_network_designer.persistence.file_system_agent_network_per
 from middleware.agent_network_designer.persistence.reservations_agent_network_persistor import (
     ReservationsAgentNetworkPersistor,
 )
-from neuro_san.interfaces.reservationist import Reservationist
 
 
 # pylint: disable=too-few-public-methods

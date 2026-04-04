@@ -16,9 +16,6 @@
 
 from typing import Any
 
-from middleware.agent_network_designer.validation.agent_network_validation_middleware import (
-    AgentNetworkValidationMiddleware,
-)
 from neuro_san.internals.validation.network.structure_network_validator import StructureNetworkValidator
 from neuro_san.internals.validation.network.toolbox_network_validator import ToolboxNetworkValidator
 from neuro_san.internals.validation.network.url_network_validator import UrlNetworkValidator
@@ -26,6 +23,9 @@ from neuro_san.internals.validation.network.url_network_validator import UrlNetw
 from coded_tools.agent_network_editor.constants import MCP_SERVERS
 from coded_tools.agent_network_editor.constants import SUBNETWORKS
 from coded_tools.agent_network_editor.constants import TOOLBOX_INFO
+from middleware.agent_network_designer.validation.agent_network_validation_middleware import (
+    AgentNetworkValidationMiddleware,
+)
 
 
 class AgentNetworkStructureValidationMiddleware(AgentNetworkValidationMiddleware):
