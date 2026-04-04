@@ -183,7 +183,7 @@ Operational notes:
                     ]
                 },
                 "from_downstream": {
-                    "sly_data": ["agent_network_definition", "agent_network_name", "agent_network_queries"],
+                    "sly_data": ["agent_network_definition", "agent_network_name", "agent_network_queries", "mcp_servers", "subnetworks", "toolbox_info"],
                     # Allow all messages sent from specific downstream agents to be reported
                     # as if they came back from this agent network
                     "messages": ["/agent_network_editor", "/agent_network_instructions_editor"]
@@ -195,7 +195,10 @@ Operational notes:
            "tools": ["/agent_network_editor", "/agent_network_query_generator", "/agent_network_instructions_editor", "get_agent_network_definition", "web_search"],
            "middleware": [
                 {
-                    "class": "middleware.agent_network_designer.agent_network_persistence_middleware.AgentNetworkPersistenceMiddleware",
+                    "class": "middleware.agent_network_designer.persistence.agent_network_persistence_middleware.AgentNetworkPersistenceMiddleware",
+                    "allow": {
+                        "reservations": true
+                    },
                     "args" {
                         "reservationist": true,
                         "sly_data": true,

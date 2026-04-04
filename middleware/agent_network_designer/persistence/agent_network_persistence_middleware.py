@@ -27,16 +27,22 @@ from langchain.messages import HumanMessage
 from langgraph.runtime import Runtime
 
 from neuro_san.interfaces.reservationist import Reservationist
-from neuro_san.internals.validation.network.unreachable_nodes_network_validator import UnreachableNodesNetworkValidator
+from neuro_san.internals.validation.network.unreachable_nodes_network_validator \
+    import UnreachableNodesNetworkValidator
 
-from coded_tools.agent_network_designer.agent_network_assembler import AgentNetworkAssembler
-from coded_tools.agent_network_designer.agent_network_persistor import AgentNetworkPersistor
-from coded_tools.agent_network_designer.agent_network_persistor_factory import AgentNetworkPersistorFactory
-from coded_tools.agent_network_designer.hocon_agent_network_assembler import HoconAgentNetworkAssembler
 from coded_tools.agent_network_editor.connectivity_dictionary_converter import ConnectivityDictionaryConverter
 from coded_tools.agent_network_editor.constants import AGENT_NETWORK_DEFINITION
 from coded_tools.agent_network_editor.constants import AGENT_NETWORK_HOCON_TEXT
 from coded_tools.agent_network_editor.constants import AGENT_NETWORK_NAME
+from coded_tools.agent_network_query_generator.set_sample_queries import AGENT_NETWORK_QUERIES
+from middleware.agent_network_designer.persistence.agent_network_assembler import AgentNetworkAssembler
+from middleware.agent_network_designer.persistence.agent_network_persistor import AgentNetworkPersistor
+from middleware.agent_network_designer.persistence.agent_network_persistor_factory import AgentNetworkPersistorFactory
+from middleware.agent_network_designer.persistence.hocon_agent_network_assembler import HoconAgentNetworkAssembler
+from middleware.agent_network_designer.validation.agent_network_instructions_validation_middleware \
+    import AgentNetworkInstructionsValidationMiddleware
+from middleware.agent_network_designer.validation.agent_network_structure_validation_middleware \
+    import AgentNetworkStructureValidationMiddleware
 
 # To use reservations, turn this environment variable to true and also
 # export AGENT_TEMPORARY_NETWORK_UPDATE_PERIOD_SECONDS=5
@@ -98,32 +104,63 @@ class AgentNetworkPersistenceMiddleware(AgentMiddleware):
         """
         network_def: dict[str, Any] = self.sly_data.get(AGENT_NETWORK_DEFINITION)
         if not network_def:
-            content: str = (
-                "Error: No agent network found. "
+            return self._error_response(
+                "No agent network found. "
                 "Please create a new agent network using `/agent_network_editor` tool"
             )
-            return {
-                # Use human message to ensure that the model follows the instructions
-                "messages": [HumanMessage(content)],
-                "jump_to": "model"
-            }
 
-        # Get sample queries from args
-        sample_queries: list[str] = self.sly_data.get("agent_network_queries")
+        error_list: list[str] = await self._validate_network(network_def)
+        if error_list:
+            self.logger.error("Error: %s", error_list)
+            return self._error_response(
+                f"The current agent network definition has the following issues: {error_list}. "
+                "Please fix these issues to ensure the agent network can be properly assembled and executed."
+            )
 
-        # Get the agent network name from sly data
-        the_agent_network_name: str = self.sly_data.get(AGENT_NETWORK_NAME)
-        # Prepend subdirectory to the agent network name before persisting
-        # if not already present.
-        # This is needed for the NSflow launcher to connect to the right network.
-        if not the_agent_network_name.startswith(SUBDIRECTORY):
-            # Neuro-SAN only allows '/' as path separator in agent network names.
-            the_agent_network_name = SUBDIRECTORY + the_agent_network_name
+        the_agent_network_name: str = self._normalize_network_name(self.sly_data.get(AGENT_NETWORK_NAME))
         self.sly_data[AGENT_NETWORK_NAME] = the_agent_network_name
+        sample_queries: list[str] = self.sly_data.get(AGENT_NETWORK_QUERIES, [])
 
+        await self._assemble_and_persist(network_def, the_agent_network_name, sample_queries)
+        self._determine_exported_network_definition(self.sly_data)
+
+        return None
+
+    def _error_response(self, content: str) -> dict[str, Any]:
+        """Return a jump-to-model response with the given error content."""
+        return {
+            # Use human message to ensure that the model follows the instructions
+            "messages": [HumanMessage(content)],
+            "jump_to": "model"
+        }
+
+    async def _validate_network(self, network_def: dict[str, Any]) -> list[str]:
+        """
+        Run all validators against the network definition, reusing the validation middlewares.
+
+        :return: List of error strings, empty if valid.
+        """
+        structure_errors = await AgentNetworkStructureValidationMiddleware(self.sly_data).validate(network_def)
+        instructions_errors = await AgentNetworkInstructionsValidationMiddleware(self.sly_data).validate(network_def)
+        return structure_errors + instructions_errors
+
+    def _normalize_network_name(self, name: str) -> str:
+        """Prepend SUBDIRECTORY prefix if not already present."""
+        if not name.startswith(SUBDIRECTORY):
+            # Neuro-SAN only allows '/' as path separator in agent network names.
+            return SUBDIRECTORY + name
+        return name
+
+    async def _assemble_and_persist(
+        self,
+        network_def: dict[str, Any],
+        the_agent_network_name: str,
+        sample_queries: list[str],
+    ) -> None:
+        """Assemble the agent network and persist it, then store HOCON text in sly_data."""
         self.logger.info(">>>>>>>>>>>>>>>>>>>Create Agent Network>>>>>>>>>>>>>>>>>>")
-        self.logger.info("Agent Network Name: %s", str(the_agent_network_name))
-        # Get the persistor first, as that will determine how we want to assemble the agent network
+        self.logger.info("Agent Network Name: %s", the_agent_network_name)
+
         persistor: AgentNetworkPersistor = AgentNetworkPersistorFactory.create_persistor(
             {"reservationist": self.reservationist}, WRITE_TO_FILE, DEMO_MODE, None, None
         )
@@ -132,31 +169,25 @@ class AgentNetworkPersistenceMiddleware(AgentMiddleware):
         persisted_content: str = await assembler.assemble_agent_network(
             network_def, top_agent_name, the_agent_network_name, sample_queries
         )
-        self.logger.info("The resulting agent network: \n %s", str(persisted_content))
+        self.logger.info("The resulting agent network: \n %s", persisted_content)
 
         persisted_reference: str | list[dict[str, Any]] = await persistor.async_persist(
             obj=persisted_content, file_reference=the_agent_network_name
         )
-
         if isinstance(persisted_reference, list):
             self.sly_data["agent_reservations"] = persisted_reference
 
-        hocon_text: str = persisted_content
         if not isinstance(assembler, HoconAgentNetworkAssembler):
             # We don't yet have client-consumable HOCON content, so we need to re-assemble
             # to send that back as a parting gift.
             assembler = HoconAgentNetworkAssembler(DEMO_MODE)
-            hocon_text: str = await assembler.assemble_agent_network(
+            persisted_content = await assembler.assemble_agent_network(
                 network_def, top_agent_name, the_agent_network_name, sample_queries
             )
-        self.sly_data[AGENT_NETWORK_HOCON_TEXT] = hocon_text
-
-        self._determine_exported_network_definition(self.sly_data)
+        self.sly_data[AGENT_NETWORK_HOCON_TEXT] = persisted_content
 
         self.logger.info(">>>>>>>>>>>>>>>>>>>DONE !!!>>>>>>>>>>>>>>>>>>")
 
-        return None
-    
     def _determine_exported_network_definition(self, sly_data: dict[str, Any]):
         """
         Check the AGENT_NETWORK_DESIGNER_PROGRESS_STYLE env var to determine how to export

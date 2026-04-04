@@ -174,7 +174,7 @@ Think of this as building or refining a hierarchical organizational chart. Each 
 """,
             "allow": {
                 "to_upstream": {
-                    "sly_data": ["agent_network_definition", "agent_network_name"]
+                    "sly_data": ["agent_network_definition", "agent_network_name", "mcp_servers", "subnetworks", "toolbox_info"]
                 }
             },
             "tools": [
@@ -189,7 +189,7 @@ Think of this as building or refining a hierarchical organizational chart. Each 
             ],
             "middleware": [
                 {
-                    "class": "middleware.agent_network_designer.agent_network_structure_validation_middleware.AgentNetworkStructureValidationMiddleware",
+                    "class": "middleware.agent_network_designer.validation.agent_network_structure_validation_middleware.AgentNetworkStructureValidationMiddleware",
                     "args": {
                         "sly_data": true
                     }

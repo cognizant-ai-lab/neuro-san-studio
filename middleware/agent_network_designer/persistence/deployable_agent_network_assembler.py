@@ -23,7 +23,9 @@ from neuro_san.internals.graph.filters.dictionary_common_defs_config_filter impo
 from neuro_san.internals.graph.filters.string_common_defs_config_filter import StringCommonDefsConfigFilter
 from neuro_san.internals.persistence.abstract_async_config_restorer import AbstractAsyncConfigRestorer
 
-from coded_tools.agent_network_designer.agent_network_assembler import AgentNetworkAssembler
+from middleware.agent_network_designer.persistence.agent_network_assembler import (
+    AgentNetworkAssembler,
+)
 
 
 class DeployableAgentNetworkAssembler(AgentNetworkAssembler):
@@ -45,7 +47,7 @@ class DeployableAgentNetworkAssembler(AgentNetworkAssembler):
         else:
             self.template_file: str = file_of_class.get_file_in_basis("deployable_template.hocon")
 
-        self.aaosa_file: str = file_of_class.get_file_in_basis("../../registries/aaosa.hocon")
+        self.aaosa_file: str = file_of_class.get_file_in_basis("../../../registries/aaosa.hocon")
 
         self.template: dict[str, Any] = None
         self.aaosa_defs: dict[str, Any] = None

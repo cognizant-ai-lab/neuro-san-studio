@@ -22,7 +22,7 @@
 
 {
     # This line references the base deployable template.
-    include "coded_tools/agent_network_designer/deployable_template.hocon"
+    include "middleware/agent_network_designer/persistence/deployable_template.hocon"
 
     # This part looks through the base template until it finds
     # the "commondefs" -> "replacement_strings" section and

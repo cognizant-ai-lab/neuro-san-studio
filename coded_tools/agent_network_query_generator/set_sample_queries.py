@@ -19,6 +19,8 @@ from typing import Any
 
 from neuro_san.interfaces.coded_tool import CodedTool
 
+AGENT_NETWORK_QUERIES: str = "agent_network_queries"
+
 
 class SetSampleQueries(CodedTool):
     """
@@ -60,7 +62,7 @@ class SetSampleQueries(CodedTool):
 
         logger = logging.getLogger(self.__class__.__name__)
         logger.info(">>>>>>>>>>>>>>>>>>>Set Sample Queries>>>>>>>>>>>>>>>>>>")
-        sly_data["agent_network_queries"] = sample_queries
+        sly_data[AGENT_NETWORK_QUERIES] = sample_queries
         logger.info("The Sample queries: %s", str(sample_queries))
 
         logger.info(">>>>>>>>>>>>>>>>>>>DONE !!!>>>>>>>>>>>>>>>>>>")

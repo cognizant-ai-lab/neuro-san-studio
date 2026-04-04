@@ -19,7 +19,8 @@ from typing import Any
 
 from neuro_san.internals.validation.network.keyword_network_validator import KeywordNetworkValidator
 
-from middleware.agent_network_designer.agent_network_validation_middleware import AgentNetworkValidationMiddleware
+from middleware.agent_network_designer.validation.agent_network_validation_middleware \
+    import AgentNetworkValidationMiddleware
 
 
 class AgentNetworkInstructionsValidationMiddleware(AgentNetworkValidationMiddleware):
@@ -33,16 +34,30 @@ class AgentNetworkInstructionsValidationMiddleware(AgentNetworkValidationMiddlew
     """
 
     def no_network_error_message(self) -> str:
+        """Return the error message when no agent network definition is found."""
         return (
             "Error: No agent network found. "
             "Cannot edit or create instructions."
         )
 
     def validation_label(self) -> str:
+        """Return a label for log messages (e.g. 'Structure', 'Instructions')."""
         return "Instructions"
 
     async def validate(self, network_def: dict[str, Any]) -> list[str]:
+        """
+        Run validators against the network definition.
+
+        :param network_def: The agent network definition to validate
+        :return: A list of error strings (empty if valid)
+        """
         return KeywordNetworkValidator().validate(network_def)
 
     def format_error(self, error_list: list[str]) -> str:
+        """
+        Format the list of validation errors into a message string.
+
+        :param error_list: Non-empty list of error strings
+        :return: Formatted error message
+        """
         return "Error(s):\n" + "\n".join(error_list)
