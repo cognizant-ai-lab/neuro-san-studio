@@ -1,0 +1,30 @@
+plugins = [
+    # Validation plugins
+    {
+        class = plugins.env_validator.env_validator.EnvValidatorPlugin
+        enabled = false
+    }
+    {
+        class = plugins.llm_config_validator.llm_config_validator_plugin.LlmConfigValidatorPlugin
+        enabled = false
+    }
+
+    # Observability plugins
+    {
+        class = plugins.phoenix.phoenix_plugin.PhoenixPlugin
+        enabled = false
+        enabled = ${?PHOENIX_ENABLED}
+    }
+    {
+        class = plugins.langfuse.langfuse_plugin.LangfusePlugin
+        enabled = false
+        enabled = ${?LANGFUSE_ENABLED}
+    }
+
+    # Logging plugins
+    {
+        class = plugins.log_bridge.process_log_bridge_plugin.ProcessLogBridgePlugin
+        enabled = true
+        enabled = ${?LOGBRIDGE_ENABLED}
+    }
+]
