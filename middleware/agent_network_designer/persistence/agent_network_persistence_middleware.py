@@ -56,18 +56,26 @@ SUBDIRECTORY: str = "generated/"
 # pylint: disable=too-few-public-methods
 class AgentNetworkPersistenceMiddleware(AgentMiddleware):
     """
-    Middleware that validates an agent network definition after each agent turn.
+    Middleware that validates and persists an agent network after the agent finishes
+    (i.e., no more tool calls are pending).
 
-    Runs structural, toolbox, and URL validators against the current network
-    definition stored in sly_data. If validation errors are found, an AI message
+    Runs structural, toolbox, URL, and keyword validators against the current network
+    definition stored in sly_data. If validation errors are found, a human message
     containing the errors is injected and control jumps back to the model so
     it can self-correct.
+
+    Note: Validation is intentionally duplicated here even though individual subnetworks
+    already perform their own validation. This is a safeguard for cases where the agent
+    returns a final response without having called the necessary tools or subnetworks —
+    meaning the subnetwork validators may never have run. By validating in this middleware,
+    we catch those premature completions and force the agent to correct itself.
     """
 
     def __init__(self, reservationist: Reservationist, sly_data: dict[str, Any]) -> None:
         """
-        Initialize agent network validation middleware.
+        Initialize agent network persistence middleware.
 
+        :param reservationist: Reservationist interface for making reservations on temporary networks
         :param sly_data: A dictionary whose keys are defined by the agent hierarchy,
                 but whose values are meant to be kept out of the chat stream.
 
@@ -88,10 +96,16 @@ class AgentNetworkPersistenceMiddleware(AgentMiddleware):
     @hook_config(can_jump_to=["model"])
     async def aafter_agent(self, state: AgentState, runtime: Runtime) -> dict[str, Any] | None:
         """
-        Validate the agent network definition after each agent turn.
+        Validate and persist the agent network after the agent finishes.
 
-        Runs structure, toolbox, and URL validators. If any errors are found,
-        returns an AI message with the errors and jumps back to the model.
+        Called when the agent has no more pending tool calls. Runs structure, toolbox,
+        URL, and keyword validators against the network definition in sly_data. If any
+        errors are found, injects a human message with the errors and jumps back to the
+        model so it can self-correct.
+
+        This validation acts as a final safety net: even if the agent bypassed calling
+        the necessary tools or subnetworks (and thus their built-in validators never ran),
+        errors will still be caught here before the network is persisted.
 
         :param state: Current agent state
         :param runtime: Runtime context
@@ -151,7 +165,12 @@ class AgentNetworkPersistenceMiddleware(AgentMiddleware):
         the_agent_network_name: str,
         sample_queries: list[str],
     ) -> None:
-        """Assemble the agent network and persist it, then store HOCON text in sly_data."""
+        """
+        Assemble the agent network and persist it, then store HOCON text in sly_data.
+
+        If WRITE_TO_FILE is True, the network is persisted by writing a HOCON file to disk.
+        Otherwise, it is registered as a temporary network via the reservationist interface.
+        """
         self.logger.info(">>>>>>>>>>>>>>>>>>>Create Agent Network>>>>>>>>>>>>>>>>>>")
         self.logger.info("Agent Network Name: %s", the_agent_network_name)
 
