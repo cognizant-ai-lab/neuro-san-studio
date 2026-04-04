@@ -31,6 +31,8 @@ from coded_tools.agent_network_editor.connectivity_dictionary_converter import C
 from coded_tools.agent_network_editor.constants import AGENT_NETWORK_DEFINITION
 from coded_tools.agent_network_editor.constants import AGENT_NETWORK_HOCON_TEXT
 from coded_tools.agent_network_editor.constants import AGENT_NETWORK_NAME
+from coded_tools.agent_network_editor.constants import MCP_SERVERS
+from coded_tools.agent_network_editor.get_subnetwork import GetSubnetwork
 from coded_tools.agent_network_query_generator.set_sample_queries import AGENT_NETWORK_QUERIES
 from middleware.agent_network_designer.persistence.agent_network_assembler import AgentNetworkAssembler
 from middleware.agent_network_designer.persistence.agent_network_persistor import AgentNetworkPersistor
@@ -45,12 +47,13 @@ from middleware.agent_network_designer.validation.agent_network_structure_valida
 
 # To use reservations, turn this environment variable to true and also
 # export AGENT_TEMPORARY_NETWORK_UPDATE_PERIOD_SECONDS=5
-WRITE_TO_FILE: bool = environ.get("AGENT_NETWORK_DESIGNER_USE_RESERVATIONS", "false") != "true"
+WRITE_TO_FILE: bool = environ.get("AGENT_NETWORK_DESIGNER_USE_RESERVATIONS", "false").lower() != "true"
 
-# Turn this to False if the agents are grouped and don't need demo mode instructions
-DEMO_MODE: bool = True
+# Set this to False if the agents are grounded and don't need demo mode instructions
+DEMO_MODE: bool = environ.get("AGENT_NETWORK_DESIGNER_DEMO_MODE", "false").lower() != "true"
 
-SUBDIRECTORY: str = "generated/"
+# Subdirectory under registries directory where networks are saved when using file persistence.
+SUBDIRECTORY: str = environ.get("AGENT_NETWORK_DESIGNER_SUBDIRECTORY", "generated")
 
 
 # pylint: disable=too-few-public-methods
@@ -154,9 +157,10 @@ class AgentNetworkPersistenceMiddleware(AgentMiddleware):
 
     def _normalize_network_name(self, name: str) -> str:
         """Prepend SUBDIRECTORY prefix if not already present."""
-        if not name.startswith(SUBDIRECTORY):
+        prefix = SUBDIRECTORY + "/"
+        if not name.startswith(prefix):
             # Neuro-SAN only allows '/' as path separator in agent network names.
-            return SUBDIRECTORY + name
+            return prefix + name
         return name
 
     async def _assemble_and_persist(
@@ -174,8 +178,10 @@ class AgentNetworkPersistenceMiddleware(AgentMiddleware):
         self.logger.info(">>>>>>>>>>>>>>>>>>>Create Agent Network>>>>>>>>>>>>>>>>>>")
         self.logger.info("Agent Network Name: %s", the_agent_network_name)
 
+        subnetwork_names: list[str] = GetSubnetwork.get_subnetwork_names(self.sly_data)
+        mcp_servers: list[str] = self.sly_data.get(MCP_SERVERS, [])
         persistor: AgentNetworkPersistor = AgentNetworkPersistorFactory.create_persistor(
-            {"reservationist": self.reservationist}, WRITE_TO_FILE, DEMO_MODE, None, None
+            {"reservationist": self.reservationist}, WRITE_TO_FILE, DEMO_MODE, SUBDIRECTORY, subnetwork_names, mcp_servers
         )
         assembler: AgentNetworkAssembler = persistor.get_assembler()
         top_agent_name: str = UnreachableNodesNetworkValidator().find_all_top_agents(network_def).pop()

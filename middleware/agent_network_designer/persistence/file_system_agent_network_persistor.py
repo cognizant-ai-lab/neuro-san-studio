@@ -31,15 +31,16 @@ class FileSystemAgentNetworkPersistor(AgentNetworkPersistor):
     """
 
     OUTPUT_PATH: str = "registries"
-    GENERATED: str = "generated"
 
-    def __init__(self, demo_mode: bool):
+    def __init__(self, demo_mode: bool, subdirectory: str = "generated"):
         """
         Creates a new persistor of the specified type.
 
         :param demo_mode: Whether to include demo mode instructions for agents
+        :param subdirectory: The subdirectory under OUTPUT_PATH where networks are saved
         """
         self.demo_mode: bool = demo_mode
+        self.subdirectory: str = subdirectory
 
     def get_assembler(self) -> AgentNetworkAssembler:
         """
@@ -71,7 +72,7 @@ class FileSystemAgentNetworkPersistor(AgentNetworkPersistor):
             await file.write(the_agent_network_hocon_str)
 
         # Update the manifest.hocon file
-        manifest_path: str = os.path.join(self.OUTPUT_PATH, self.GENERATED, "manifest.hocon")
+        manifest_path: str = os.path.join(self.OUTPUT_PATH, self.subdirectory, "manifest.hocon")
 
         # Create the generated directory if it doesn't exist
         os.makedirs(os.path.dirname(manifest_path), exist_ok=True)
