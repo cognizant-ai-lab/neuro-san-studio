@@ -337,6 +337,8 @@ run Neuro SAN agents continuously or on triggers through a separate service, wit
 * [Annual Report Reader](https://github.com/shrushtiimehta/neuro-san-annual-report-reader):
 analyzes a LinkedIn profile and delivers a personalized summary of Cognizant's 2024 Annual Report,
 surfacing content most relevant to the user's industry and seniority level.
+* [Aircraft Turnaround Process](https://github.com/jcyn2004/airline-turnaround):
+transforms airline turnaround process at airport. It's an example that could be used as reference to build agentic system for  Standard Operating Procedure (SOP) in any vertical.
 
 ### Utilities
 
