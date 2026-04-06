@@ -78,6 +78,9 @@
     - [Unit test](#unit-test)
     - [Integration Test](#integration-test)
       - [Add test case](#add-test-case)
+        - [Automatic Test Generation](#automatic-test-generation)
+        - [Manual creation](#manual-creation)
+        - [Register the fixture](#register-the-fixture)
       - [Run test](#run-test)
   - [Improving agent networks](#improving-agent-networks)
 
@@ -1653,7 +1656,78 @@ python -m pytest tests/ -v --cov=coded_tools,run.py -m "not integration"
 
 #### Add test case
 
-TBD
+Integration tests are data-driven: each test case is a single HOCON file under `tests/fixtures/`.
+The full schema is documented in the
+[test case HOCON reference](https://github.com/cognizant-ai-lab/neuro-san/blob/main/docs/test_case_hocon_reference.md).
+
+There are two ways to create a test case: automatically with the
+[Agent Network Test Generator](agent_network_test_generator.md),
+
+or manually.
+
+##### Automatic Test Generation
+
+The `agent_network_test_generator` agent network can analyze an existing agent network
+and produce test fixtures automatically. Start the server, open the client, select
+`agent_network_test_generator`, and type a prompt such as:
+
+```text
+Generate test cases for basic/coffee_finder_advanced
+```
+
+You can control how many scenarios are generated with the `test_level` parameter:
+
+```text
+Generate test cases for basic/coffee_finder_advanced with minimum coverage
+Generate test cases for basic/music_nerd_pro with max coverage
+```
+
+| Level     | Scenarios | Description                                                        |
+|-----------|-----------|--------------------------------------------------------------------|
+| `minimum` | 2--3      | One core happy-path and one critical edge case.                    |
+| `normal`  | 5--7      | Happy paths, edge cases, and at least one error/boundary scenario. |
+| `max`     | 10--15    | Exhaustive coverage of all capabilities and edge cases.            |
+
+The generator saves fixtures under `tests/fixtures/<agent_name>/`. Review the generated
+files before committing — you may need to adjust `gist` criteria, `keywords`, `value`
+checks, or `sly_data` values. See
+[Agent Network Test Generator](agent_network_test_generator.md) for full details.
+
+##### Manual creation
+
+Create a new `.hocon` file under `tests/fixtures/<group>/<agent_name>/`.
+For the full schema reference including all supported fields (`agent`, `success_ratio`,
+`connections`, `interactions`, `sly_data`, `response`, stock tests, etc.), see the
+[Data-Driven Test Case HOCON File Reference](https://github.com/cognizant-ai-lab/neuro-san/blob/main/docs/test_case_hocon_reference.md)
+in the neuro-san repository.
+
+For existing examples, look at the fixtures under `tests/fixtures/` in this repository.
+
+##### Register the fixture
+
+Generated and manually created fixtures are **not** automatically picked up by CI.
+To include a fixture in the integration test suite, add its path to the appropriate
+`@parameterized.expand` list in
+[test\_integration\_test\_hocons.py](../tests/integration/test_integration_test_hocons.py):
+
+```python
+@parameterized.expand(
+    DynamicHoconUnitTests.from_hocon_list(
+        [
+            # existing fixtures ...
+            "basic/coffee_finder_advanced/coffee_where_sly_data_8am.hocon",
+            # add your new fixture here
+            "basic/coffee_finder_advanced/your_new_fixture.hocon",
+        ]
+    ),
+    skip_on_empty=True,
+)
+```
+
+Each test method is tagged with `@pytest.mark` markers that mirror the folder grouping
+(e.g. `integration_basic`, `integration_basic_coffee_finder_advanced`). If you are adding
+fixtures for a new agent network that does not have an existing test method, create a new
+method following the same pattern.
 
 #### Run test
 
