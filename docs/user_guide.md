@@ -1433,11 +1433,13 @@ in both the middleware dictionary and the class constructor signature:
 - **`progress_reporter`** — an interface for reporting on an agent network's progress.
 - **`reservationist`** — an interface for making reservations on temporary networks. Requires reservations
   to be enabled in the agent's `allow` block:
+
     ```json
     "allow": {
         "reservations": true
     }
     ```
+
     See [Agent Network Designer](../registries/agent_network_designer.hocon) for an example.
 - **`sly_data`** — the agent's `sly_data` dictionary, shared across all middleware and coded tools for
   the current request. See [Sly data](#sly-data) for more information.
