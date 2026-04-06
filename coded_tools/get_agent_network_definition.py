@@ -109,7 +109,7 @@ class GetAgentNetworkDefinition(CodedTool):
             sly_data[AGENT_NETWORK_DEFINITION] = network_def
             network_name: str = sly_data.get(AGENT_NETWORK_NAME)
             logger.info("The resulting %s agent network definition: \n %s", network_name, str(network_def))
-            logger.debug(">>>>>>>>>>>>>>>>>>>DONE GETTING AGENT NETWORK DEFINITION !!!>>>>>>>>>>>>>>>>>>")
+            logger.debug(">>>>>>>>>>>>>>>>>>> DONE %s !!!>>>>>>>>>>>>>>>>>>", self.__class__.__name__)
             return network_def
 
         error_msg = "Error: No agent network definition found!"

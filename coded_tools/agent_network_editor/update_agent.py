@@ -89,5 +89,5 @@ class UpdateAgent(CodedTool):
 
         await ProgressHandler.report_progress(args, network_def)
 
-        logger.debug(">>>>>>>>>>>>>>>>>>>DONE UPDATING AGENT NETWORK !!!>>>>>>>>>>>>>>>>>>")
+        logger.debug(">>>>>>>>>>>>>>>>>>> DONE %s !!!>>>>>>>>>>>>>>>>>>", self.__class__.__name__)
         return network_def
