@@ -1325,7 +1325,8 @@ following methods.
 
 ### Examples
 
-For simple examples MCP servers in various languages (e.g. Python, Java) and connecting them to neuro-san please visit this repo: [neuro-san-mcp-examples](https://github.com/kaushik-cognizant/neuro-san-mcp-examples) 
+For simple examples of MCP servers in various languages (e.g. Python, Java) and connecting them to neuro-san,
+please visit this repo: [neuro-san-mcp-examples](https://github.com/kaushik-cognizant/neuro-san-mcp-examples)
 
 ## Middleware
 
