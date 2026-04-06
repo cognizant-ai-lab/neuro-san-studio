@@ -1371,8 +1371,8 @@ for details on how to implement one.
 
 #### Note on `hook_config`
 
-The `@hook_config` decorator declares which graph nodes a hook method is allowed to jump to. It creates the
-corresponding conditional edges in the agent graph at build time.
+The `@hook_config` decorator declares which nodes in the graph — `model`, `tools`, and `end`
+— a hook method is allowed to jump to.
 
 ```python
 @hook_config(can_jump_to=["end", "model", "tools"])

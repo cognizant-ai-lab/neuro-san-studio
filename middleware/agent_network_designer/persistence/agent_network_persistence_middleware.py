@@ -97,40 +97,10 @@ class AgentNetworkPersistenceMiddleware(AgentMiddleware):
         self.reservationist = reservationist
         self.sly_data = sly_data
 
-    # @hook_config declares which graph nodes this hook is allowed to jump to,
-    # creating the corresponding conditional edges in the agent graph at build time.
-    #
-    # Usage:
-    #   @hook_config(can_jump_to=["end", "model", "tools"])
-    #
-    # Supported jump targets:
-    #   - "end"   : exits the agent loop and returns to the caller (or the first
-    #               `after_agent` hook if one is registered)
-    #   - "model" : re-enters at the model node (or the first `before_model` hook)
-    #   - "tools" : re-enters at the tools node
-    #
-    # To trigger a jump, return a dict containing `"jump_to": "<target>"` from the
-    # decorated hook method. Returning None (or omitting `jump_to`) lets execution
-    # continue normally.
-    #
-    # Example — loop back to the model when validation fails:
-    #
-    #   @hook_config(can_jump_to=["model"])
-    #   async def aafter_agent(self, state: AgentState, runtime: Runtime):
-    #       if not self._is_valid(state):
-    #           return {"messages": [...], "jump_to": "model"}
-    #       return None
-    #
-    # Note: although the decorator is documented primarily for `before_model` /
-    # `after_model`, it works identically on `before_agent` and `after_agent`
-    # hooks (and their async `abefore_*` / `aafter_*` variants). Declare only the
-    # targets you actually use — undeclared targets will not have edges in the
-    # graph and cannot be jumped to at runtime.
-    #
-    # References:
-    # - https://reference.langchain.com/python/langchain/agents/middleware/types/hook_config
-    # - https://docs.langchain.com/oss/python/langchain/middleware/custom#agent-jumps
-    # - https://docs.langchain.com/oss/python/langchain/guardrails#before-agent-guardrails
+    # Reenter the agent loop at the model node if validation fails or there is no agent network definition.
+    # See https://github.com/cognizant-ai-lab/neuro-san-studio/blob/main/docs/user_guide.md#middleware and
+    # https://reference.langchain.com/python/langchain/agents/middleware/types/hook_config for details on
+    # hook_config and jump_to.
     @hook_config(can_jump_to=["model"])
     async def aafter_agent(self, state: AgentState, runtime: Runtime) -> dict[str, Any] | None:
         """
