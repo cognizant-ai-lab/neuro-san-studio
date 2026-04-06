@@ -87,5 +87,5 @@ class AddAgent(CodedTool):
 
         await ProgressHandler.report_progress(args, network_def)
 
-        logger.info(">>>>>>>>>>>>>>>>>>>DONE !!!>>>>>>>>>>>>>>>>>>")
+        logger.debug(">>>>>>>>>>>>>>>>>>>DONE ADDING AGENT !!!>>>>>>>>>>>>>>>>>>")
         return network_def

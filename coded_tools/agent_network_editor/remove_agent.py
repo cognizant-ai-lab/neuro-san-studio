@@ -82,5 +82,5 @@ class RemoveAgent(CodedTool):
 
         await ProgressHandler.report_progress(args, network_def)
 
-        logger.info(">>>>>>>>>>>>>>>>>>>DONE !!!>>>>>>>>>>>>>>>>>>")
+        logger.debug(">>>>>>>>>>>>>>>>>>>DONE REMOVING AGENT !!!>>>>>>>>>>>>>>>>>>")
         return network_def

@@ -69,5 +69,5 @@ class SetSampleQueries(CodedTool):
         sly_data[AGENT_NETWORK_QUERIES] = sample_queries
         logger.info("The Sample queries: %s", str(sample_queries))
 
-        logger.info(">>>>>>>>>>>>>>>>>>>DONE !!!>>>>>>>>>>>>>>>>>>")
+        logger.debug(">>>>>>>>>>>>>>>>>>>DONE SETTING SAMPLE QUERIES !!!>>>>>>>>>>>>>>>>>>")
         return "Sample queries have been set successfully."

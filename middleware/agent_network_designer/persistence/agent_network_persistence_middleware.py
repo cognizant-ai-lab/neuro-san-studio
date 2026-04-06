@@ -211,7 +211,7 @@ class AgentNetworkPersistenceMiddleware(AgentMiddleware):
             )
         self.sly_data[AGENT_NETWORK_HOCON_TEXT] = persisted_content
 
-        self.logger.info(">>>>>>>>>>>>>>>>>>>DONE !!!>>>>>>>>>>>>>>>>>>")
+        self.logger.debug(">>>>>>>>>>>>>>>>>>>DONE PERSISTING AGENT NETWORK !!!>>>>>>>>>>>>>>>>>>")
 
     def _determine_exported_network_definition(self, sly_data: dict[str, Any]):
         """
