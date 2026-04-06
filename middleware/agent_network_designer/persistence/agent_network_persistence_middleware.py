@@ -96,7 +96,7 @@ class AgentNetworkPersistenceMiddleware(AgentMiddleware):
         self.logger: Logger = getLogger(self.__class__.__name__)
         self.reservationist = reservationist
         self.sly_data = sly_data
-    
+
     # @hook_config declares which graph nodes this hook is allowed to jump to,
     # creating the corresponding conditional edges in the agent graph at build time.
     #
