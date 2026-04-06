@@ -185,7 +185,7 @@ you can quote only the non-substituted parts:
 "instructions": ${instruction_prefix} "main instruction" ${instruction_suffix}
 ```
 
-Also not that if you're using json notation you need to put the include with the curly braces:
+Also note that if you're using json notation you need to put the include with the curly braces:
 
 ```hocon
 {
@@ -674,7 +674,7 @@ Examples:
 
 Note:
 
-- `base_url` **must starts** with `http://` or `https://`, otherwise the server defaults to `http://localhost:11434`.
+- `base_url` **must start** with `http://` or `https://`, otherwise the server defaults to `http://localhost:11434`.
 
 - if the port is omitted:
 
