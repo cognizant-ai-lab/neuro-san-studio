@@ -136,10 +136,14 @@ include "registries/aaosa.hocon"
 
 > **Note**: Include path resolution depends on how the file is loaded:
 >
-> - **Top-level files** (loaded directly by neuro-san) resolve include paths relative to the **root folder** (the working directory where the server is started). Use paths like `registries/aaosa.hocon`.
-> - **Included files** (loaded via an `include` directive in another file) resolve their own include paths relative to **their own location** on disk. Use relative paths like `../../../registries/llm_config.hocon`.
+> - **Top-level files** (loaded directly by neuro-san) resolve include paths relative to the **root folder**
+(the working directory where the server is started). Use paths like `registries/aaosa.hocon`.
+> - **Included files** (loaded via an `include` directive in another file) resolve their own include paths relative to
+**their own location** on disk. Use relative paths like `../../../registries/llm_config.hocon`.
 >
-> A file that may be loaded either way cannot use the same include path for both contexts. The recommended pattern is to create a thin top-level wrapper file that includes the base file using a root-relative path; the base file can then safely use file-relative paths in its own includes.
+> A file that may be loaded either way cannot use the same include path for both contexts.
+The recommended pattern is to create a thin top-level wrapper file that includes the base file
+using a root-relative path; the base file can then safely use file-relative paths in its own includes.
 
 HOCON supports value substitution by referencing previously defined configuration values. This allows constants to be
 defined once and reused throughout the file.
