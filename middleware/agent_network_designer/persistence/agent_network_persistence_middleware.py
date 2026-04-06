@@ -37,6 +37,7 @@ from coded_tools.agent_network_query_generator.set_sample_queries import AGENT_N
 from middleware.agent_network_designer.persistence.agent_network_assembler import AgentNetworkAssembler
 from middleware.agent_network_designer.persistence.agent_network_persistor import AgentNetworkPersistor
 from middleware.agent_network_designer.persistence.agent_network_persistor_factory import AgentNetworkPersistorFactory
+from middleware.agent_network_designer.persistence.file_system_agent_network_persistor import DEFAULT_SUBDIRECTORY
 from middleware.agent_network_designer.persistence.hocon_agent_network_assembler import HoconAgentNetworkAssembler
 from middleware.agent_network_designer.validation.agent_network_instructions_validation_middleware import (
     AgentNetworkInstructionsValidationMiddleware,
@@ -53,7 +54,7 @@ WRITE_TO_FILE: bool = environ.get("AGENT_NETWORK_DESIGNER_USE_RESERVATIONS", "fa
 DEMO_MODE: bool = environ.get("AGENT_NETWORK_DESIGNER_DEMO_MODE", "true").lower() == "true"
 
 # Subdirectory under registries directory where networks are saved when using file persistence.
-SUBDIRECTORY: str = environ.get("AGENT_NETWORK_DESIGNER_SUBDIRECTORY", "generated")
+SUBDIRECTORY: str = environ.get("AGENT_NETWORK_DESIGNER_SUBDIRECTORY", DEFAULT_SUBDIRECTORY)
 
 
 # pylint: disable=too-few-public-methods

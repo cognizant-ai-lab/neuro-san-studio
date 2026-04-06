@@ -24,23 +24,34 @@ from middleware.agent_network_designer.persistence.agent_network_persistor impor
 from middleware.agent_network_designer.persistence.hocon_agent_network_assembler import HoconAgentNetworkAssembler
 
 
+DEFAULT_SUBDIRECTORY: str = "generated"
+
+
 class FileSystemAgentNetworkPersistor(AgentNetworkPersistor):
     """
     AgentNetworkPersistor implementation for saving agent networks to the file system
     as a hocon file. Also modifies the local manifest file.
     """
 
-    OUTPUT_PATH: str = "registries"
-
-    def __init__(self, demo_mode: bool, subdirectory: str = "generated"):
+    def __init__(self, demo_mode: bool, subdirectory: str = DEFAULT_SUBDIRECTORY):
         """
         Creates a new persistor of the specified type.
 
         :param demo_mode: Whether to include demo mode instructions for agents
-        :param subdirectory: The subdirectory under OUTPUT_PATH where networks are saved
+        :param subdirectory: The subdirectory under output_path where networks are saved.
         """
         self.demo_mode: bool = demo_mode
         self.subdirectory: str = subdirectory
+
+        # Derive output_path from the first file listed in AGENT_MANIFEST_FILE
+        agent_manifest_file: str = os.environ.get("AGENT_MANIFEST_FILE", "")
+        parts: list[str] = agent_manifest_file.split()
+        if parts:
+            self.output_path: str = os.path.dirname(parts[0])
+            self.main_manifest_path: str = parts[0]
+        else:
+            self.output_path = "registries"
+            self.main_manifest_path = os.path.join("registries", "manifest.hocon")
 
     def get_assembler(self) -> AgentNetworkAssembler:
         """
@@ -65,14 +76,14 @@ class FileSystemAgentNetworkPersistor(AgentNetworkPersistor):
         the_agent_network_name: str = file_reference
 
         # Write the agent network file
-        file_path: str = os.path.join(self.OUTPUT_PATH, the_agent_network_name + ".hocon")
+        file_path: str = os.path.join(self.output_path, the_agent_network_name + ".hocon")
         # Create parent directory automatically if necessary
         os.makedirs(os.path.dirname(file_path), exist_ok=True)
         async with aiofiles.open(file_path, "w") as file:
             await file.write(the_agent_network_hocon_str)
 
         # Update the manifest.hocon file
-        manifest_path: str = os.path.join(self.OUTPUT_PATH, self.subdirectory, "manifest.hocon")
+        manifest_path: str = os.path.join(self.output_path, self.subdirectory, "manifest.hocon")
 
         # Create the generated directory if it doesn't exist
         os.makedirs(os.path.dirname(manifest_path), exist_ok=True)
@@ -119,4 +130,37 @@ class FileSystemAgentNetworkPersistor(AgentNetworkPersistor):
         async with aiofiles.open(manifest_path, "w") as file:
             await file.write(updated_content)
 
+        # If using a non-default subdirectory, ensure it is included in the main manifest
+        if self.subdirectory != DEFAULT_SUBDIRECTORY:
+            await self._async_update_main_manifest()
+
         return file_path
+
+    async def _async_update_main_manifest(self) -> None:
+        """
+        Adds an include line for the current subdirectory's manifest into the main manifest,
+        if not already present.
+        """
+        if not os.path.exists(self.main_manifest_path):
+            return None
+
+        async with aiofiles.open(self.main_manifest_path, "r") as file:
+            content: str = await file.read()
+
+        registries_name: str = os.path.basename(self.output_path)
+        include_line: str = f'include "{registries_name}/{self.subdirectory}/manifest.hocon",'
+
+        if include_line in content:
+            return None
+
+        # Insert after the last existing include line
+        lines: list[str] = content.split("\n")
+        last_include_idx: int = -1
+        for i, line in enumerate(lines):
+            if line.strip().startswith("include "):
+                last_include_idx = i
+
+        if last_include_idx >= 0:
+            lines.insert(last_include_idx + 1, f"    {include_line}")
+            async with aiofiles.open(self.main_manifest_path, "w") as file:
+                await file.write("\n".join(lines))

@@ -16,9 +16,8 @@ Note that
 - By default, the network is written to disk and your `manifest.hocon` is updated. To use temporary
 in-memory reservations instead, set `AGENT_NETWORK_DESIGNER_USE_RESERVATIONS=true`.
 
-- Generated networks are saved under `registries/` by default. To change the root output path, update
-`OUTPUT_PATH` in
-[file_system_agent_network_persistor.py](../../middleware/agent_network_designer/persistence/file_system_agent_network_persistor.py).
+- The root output path is derived from the first file listed in the `AGENT_MANIFEST_FILE` environment variable
+(its parent directory). When `AGENT_MANIFEST_FILE` is not set, it falls back to `registries/`.
 
 - Within the output path, networks are saved in a subdirectory named `generated` by default.
 Override this with `AGENT_NETWORK_DESIGNER_SUBDIRECTORY`.
