@@ -18,9 +18,13 @@ from typing import Any
 
 from neuro_san.interfaces.reservationist import Reservationist
 
-from coded_tools.agent_network_designer.agent_network_persistor import AgentNetworkPersistor
-from coded_tools.agent_network_designer.file_system_agent_network_persistor import FileSystemAgentNetworkPersistor
-from coded_tools.agent_network_designer.reservations_agent_network_persistor import ReservationsAgentNetworkPersistor
+from middleware.agent_network_designer.persistence.agent_network_persistor import AgentNetworkPersistor
+from middleware.agent_network_designer.persistence.file_system_agent_network_persistor import (
+    FileSystemAgentNetworkPersistor,
+)
+from middleware.agent_network_designer.persistence.reservations_agent_network_persistor import (
+    ReservationsAgentNetworkPersistor,
+)
 
 
 # pylint: disable=too-few-public-methods
@@ -29,9 +33,16 @@ class AgentNetworkPersistorFactory:
     Factory class for AgentNetworkPersistors.
     """
 
+    # pylint: disable=too-many-arguments
+    # pylint: disable=too-many-positional-arguments
     @staticmethod
     def create_persistor(
-        args: dict[str, Any], write_to_file: bool, demo_mode: bool, subnetworks: list[str], mcp_servers: list[str]
+        args: dict[str, Any],
+        write_to_file: bool,
+        demo_mode: bool,
+        subdirectory: str,
+        subnetworks: list[str],
+        mcp_servers: list[str],
     ) -> AgentNetworkPersistor:
         """
         Creates a new persistor of the specified type.
@@ -39,6 +50,7 @@ class AgentNetworkPersistorFactory:
         :param args: The args from the calling CodedTool.
         :param write_to_file: True if the agent network should be written to a file.
         :param demo_mode: Whether to include demo mode instructions for agents
+        :param subdirectory: The subdirectory under the output path where networks are saved
         :param subnetworks: The subnetworks for the agent network
         :param mcp_servers: The MCP servers for the agent network
         :return: A new AgentNetworkPersistor of the specified type.
@@ -51,7 +63,7 @@ class AgentNetworkPersistorFactory:
 
         if write_to_file:
             # If the write_to_file flag is True, then that's what we're doing.
-            persistor = FileSystemAgentNetworkPersistor(demo_mode)
+            persistor = FileSystemAgentNetworkPersistor(demo_mode, subdirectory)
         elif reservationist:
             # If we have a reservationist as part of the args, use the ReservationsAgentNetworkPersistor
             persistor = ReservationsAgentNetworkPersistor(args, demo_mode, subnetworks, mcp_servers)

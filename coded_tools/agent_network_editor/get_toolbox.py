@@ -21,6 +21,7 @@ from typing import Any
 from neuro_san.interfaces.coded_tool import CodedTool
 from neuro_san.internals.run_context.langchain.toolbox.toolbox_info_restorer import ToolboxInfoRestorer
 
+from coded_tools.agent_network_editor.constants import TOOLBOX_INFO
 from coded_tools.agent_network_editor.sly_data_lock import SlyDataLock
 
 DEFAULT_TOOLBOX_INFO_FILE = os.path.join("toolbox", "agent_network_designer_toolbox_info.hocon")
@@ -66,7 +67,7 @@ class GetToolbox(CodedTool):
         tools: dict[str, Any] | str = None
         async with await SlyDataLock.get_lock(sly_data, "toolbox_info_lock"):
             # Try getting from sly_data
-            tools = sly_data.get("toolbox_info")
+            tools = sly_data.get(TOOLBOX_INFO)
             if tools is not None:
                 # Return whatever we had cached before
                 return tools
@@ -88,6 +89,6 @@ class GetToolbox(CodedTool):
                 logger.warning(tools)
 
             # Cache the results in sly_data - success or failure.
-            sly_data["toolbox_info"] = tools
+            sly_data[TOOLBOX_INFO] = tools
 
         return tools
