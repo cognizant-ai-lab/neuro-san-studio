@@ -23,7 +23,6 @@ from middleware.agent_network_designer.persistence.agent_network_assembler impor
 from middleware.agent_network_designer.persistence.agent_network_persistor import AgentNetworkPersistor
 from middleware.agent_network_designer.persistence.hocon_agent_network_assembler import HoconAgentNetworkAssembler
 
-
 DEFAULT_SUBDIRECTORY: str = "generated"
 
 
