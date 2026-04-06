@@ -43,7 +43,7 @@ class DeployableAgentNetworkAssembler(AgentNetworkAssembler):
         if demo_mode:
             self.template_file: str = file_of_class.get_file_in_basis("deployable_template_demo.hocon")
         else:
-            self.template_file: str = file_of_class.get_file_in_basis("deployable_template.hocon")
+            self.template_file: str = file_of_class.get_file_in_basis("deployable_template_standard.hocon")
 
         self.aaosa_file: str = file_of_class.get_file_in_basis("../../../registries/aaosa.hocon")
 

@@ -20,22 +20,12 @@
 # Note that we are not including aaosa.hocon in here as we have to do subsitutions in code
 # in order for the networks to be deployment-ready.
 
+# This wrapper exists so that deployable_template.hocon is always loaded as an
+# included file (giving it file-relative include resolution by pyhocon) rather than
+# as a top-level parse_string call (which would resolve includes relative to CWD,
+# breaking the ../../../registries/llm_config.hocon path inside that file).
 {
-    # This line references the base deployable template.
+    # The include path here is relative to CWD (repo root) because this file
+    # is loaded as the top-level file via parse_string.
     include "middleware/agent_network_designer/persistence/deployable_template.hocon"
-
-    # This part looks through the base template until it finds
-    # the "commondefs" -> "replacement_strings" section and
-    # replaces the "demo_mode" string with a demo-specific string.
-    # Note that if "demo_mode" is not in the base template, this will
-    # simply add it. It has no effect on any other fields of "commondefs"
-    # or other parts of the template.
-    "commondefs": {
-        "replacement_strings": {
-            "demo_mode": """
-You are part of a demo system, so when queried, make up a realistic response as if you
-are actually grounded in real data or you are operating a real application API or microservice.
-"""
-        }
-    }
 }
