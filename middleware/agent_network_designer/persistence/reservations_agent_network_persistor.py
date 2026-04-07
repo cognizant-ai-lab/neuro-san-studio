@@ -44,7 +44,7 @@ class ReservationsAgentNetworkPersistor(AgentNetworkPersistor):
         demo_mode: bool,
         subdirectory: str,
         external_networks: list[str],
-        mcp_servers: list[str]
+        mcp_servers: list[str],
     ):
         """
         Creates a new persistor of the specified type.
