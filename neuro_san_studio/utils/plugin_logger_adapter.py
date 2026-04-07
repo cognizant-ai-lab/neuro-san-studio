@@ -17,6 +17,8 @@
 """Logger adapter for plugins in the system."""
 
 import logging
+from collections.abc import MutableMapping
+from typing import Any
 
 # Ensure a basic console handler exists so plugin log messages are visible
 # even when ProcessLogBridge is not active.  This is idempotent — it only
@@ -27,6 +29,6 @@ logging.basicConfig(level=logging.INFO, format="%(message)s")
 class _PluginLoggerAdapter(logging.LoggerAdapter):
     """Logger adapter that auto-prefixes messages with [ClassName]."""
 
-    def process(self, msg, kwargs):
+    def process(self, msg: Any, kwargs: MutableMapping[str, Any]) -> tuple[str, MutableMapping[str, Any]]:
         """Prepend the plugin class name to every log message."""
         return f"[{self.extra['plugin_name']}] {msg}", kwargs
