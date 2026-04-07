@@ -24,8 +24,12 @@
 {
     # Every network will have an llm_config.
     # Use the deployment's llm_config.hocon as a basis.
-    # This needs to be a relative path from this file.
-    include "../../registries/llm_config.hocon",
+    # This path is relative to this file's location (not CWD) because pyhocon
+    # resolves includes file-relatively when this file is itself an included file.
+    # Do NOT load this file as a top-level parse_string call — use the wrapper
+    # files (deployable_template_standard.hocon or deployable_template_demo.hocon)
+    # which include it correctly from CWD.
+    include "../../../registries/llm_config.hocon",
 
     # These are common commondefs for every agent_network_designer-created network
     # In the final deployable network, {strings} and "values" will be replaced
@@ -51,9 +55,7 @@ Do not mention what you can NOT do. Only mention what you can do.
         # Top agent template
         {
             "name": "{agent_name}",
-            "function": {
-                "description": "An assistant that answer inquiries from the user."
-            },
+            "function": "aaosa_call",
             "instructions": """
 {instructions_prefix}
 

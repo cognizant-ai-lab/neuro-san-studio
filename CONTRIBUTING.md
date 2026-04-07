@@ -185,6 +185,7 @@ require to run the follow steps 1st:
 # Run all test cases that related to network agent name:
 - Run pytest -s -m "integration_basic_coffee_finder_advance"
 
+For detailed test organization, grouping strategies, and how to add new test cases, see the [User Guide](docs/user_guide.md#integration-test).
 ```
 
 For Windows (manual):

@@ -14,7 +14,10 @@
 #
 # END COPYRIGHT
 
-# Common dictionary key constants
+# Common dictionary key constants. These key may be used by the agent network designer.
 AGENT_NETWORK_DEFINITION: str = "agent_network_definition"
 AGENT_NETWORK_HOCON_TEXT: str = "agent_network_hocon_text"
 AGENT_NETWORK_NAME: str = "agent_network_name"
+MCP_SERVERS: str = "mcp_servers"
+SUBNETWORKS: str = "subnetworks"
+TOOLBOX_INFO: str = "toolbox_info"
