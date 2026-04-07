@@ -23,10 +23,15 @@ Used by both the runner (run.py) and the server wrapper
 
 import importlib
 import logging
+import types
+from typing import Any
+from typing import Dict
 from typing import List
+from typing import Optional
 from typing import Type
 
 from pyhocon import ConfigFactory
+from pyhocon import ConfigTree
 from pyhocon.exceptions import ConfigException
 
 _logger = logging.getLogger("PluginLoader")
@@ -54,7 +59,7 @@ class PluginLoader:  # pylint: disable=too-few-public-methods
             A list of successfully loaded plugin classes.
         """
         try:
-            config = ConfigFactory.parse_file(plugins_file)
+            config: ConfigTree = ConfigFactory.parse_file(plugins_file)
         except FileNotFoundError:
             _logger.info("No plugins file found at %s. Continuing without plugins.", plugins_file)
             return []
@@ -63,22 +68,23 @@ class PluginLoader:  # pylint: disable=too-few-public-methods
             return []
 
         plugin_classes: List[Type] = []
+        plugin_entry: Dict[str, Any]
         for plugin_entry in config.get("plugins", []):
-            class_path = plugin_entry.get("class")
-            enabled = plugin_entry.get("enabled", True)
+            class_path: Optional[str] = plugin_entry.get("class")
+            enabled: bool = plugin_entry.get("enabled", True)
 
             if not enabled:
                 _logger.info("Plugin %s is disabled. Skipping.", class_path)
                 continue
 
             # Derive module path and class name from the fully qualified class path
-            last_dot = class_path.rfind(".")
-            module_path = class_path[:last_dot]
-            class_name = class_path[last_dot + 1 :]
+            last_dot: int = class_path.rfind(".")
+            module_path: str = class_path[:last_dot]
+            class_name: str = class_path[last_dot + 1 :]
 
             try:
-                module = importlib.import_module(module_path)
-                plugin_cls = getattr(module, class_name)
+                module: types.ModuleType = importlib.import_module(module_path)
+                plugin_cls: Type = getattr(module, class_name)
                 plugin_classes.append(plugin_cls)
                 _logger.info("Loading plugin: %s from module: %s", class_name, module_path)
             except (ImportError, AttributeError) as exc:

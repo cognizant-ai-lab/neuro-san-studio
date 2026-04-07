@@ -19,8 +19,8 @@
 from unittest.mock import MagicMock
 from unittest.mock import patch
 
-from neuro_san_studio.runner.process_logger_interface import ProcessLoggerInterface
 from neuro_san_studio.interfaces.plugins import BasePlugin
+from neuro_san_studio.runner.process_logger_interface import ProcessLoggerInterface
 from plugins.log_bridge.process_log_bridge_plugin import ProcessLogBridgePlugin
 
 

@@ -30,4 +30,3 @@ class _PluginLoggerAdapter(logging.LoggerAdapter):
     def process(self, msg, kwargs):
         """Prepend the plugin class name to every log message."""
         return f"[{self.extra['plugin_name']}] {msg}", kwargs
-

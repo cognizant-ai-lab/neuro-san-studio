@@ -21,7 +21,6 @@ import tempfile
 
 from neuro_san_studio.interfaces.plugins import BasePlugin
 from neuro_san_studio.plugins.factory.plugin_loader import PluginLoader
-    
 
 
 class TestPluginLoader:
