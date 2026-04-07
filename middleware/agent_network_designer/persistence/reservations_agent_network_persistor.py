@@ -21,7 +21,6 @@ from neuro_san.interfaces.reservation import Reservation
 from neuro_san.internals.reservations.reservation_util import ReservationUtil
 
 from middleware.agent_network_designer.persistence.agent_network_assembler import AgentNetworkAssembler
-from middleware.agent_network_designer.persistence.agent_network_persistence_middleware import SUBDIRECTORY
 from middleware.agent_network_designer.persistence.agent_network_persistor import AgentNetworkPersistor
 from middleware.agent_network_designer.persistence.deployable_agent_network_assembler import (
     DeployableAgentNetworkAssembler,
@@ -37,18 +36,22 @@ class ReservationsAgentNetworkPersistor(AgentNetworkPersistor):
     # 1 hour
     DEFAULT_LIFETIME_IN_SECONDS: float = 60.0 * 60.0
 
-    def __init__(self, args: dict[str, Any], demo_mode: bool, external_networks: list[str], mcp_servers: list[str]):
+    def __init__(
+        self, args: dict[str, Any], demo_mode: bool, subdirectory: str, external_networks: list[str], mcp_servers: list[str]
+    ):
         """
         Creates a new persistor of the specified type.
 
         :param args: The arguments from the calling CodedTool.
                     It should contain a Reservationist instance.
         :param demo_mode: Whether to include demo mode instructions for agents
+        :param subdirectory: The subdirectory prefix to strip from the file reference
         :param external_networks: The external networks for the agent network
         :param mcp_servers: The MCP servers for the agent network
         """
         self.args: dict[str, Any] = args
         self.demo_mode: bool = demo_mode
+        self.subdirectory: str = subdirectory
         self.external_networks: list[str] = external_networks
         self.mcp_servers: list[str] = mcp_servers
 
@@ -72,10 +75,10 @@ class ReservationsAgentNetworkPersistor(AgentNetworkPersistor):
                 Otherwise, it is a list of agent reservation dictionaries.
         """
         agent_spec: dict[str, Any] = obj
-        # Remove the subdirectory prefix then strip any remaining forbidden characters (/, :, space)
-        agent_prefix: str = file_reference
-        for string_to_replace in [SUBDIRECTORY, "/", ":", " "]:
-            agent_prefix = agent_prefix.replace(string_to_replace, "")
+        # Strip the subdirectory prefix first, then remove any remaining forbidden characters (/, :, space)
+        agent_prefix: str = file_reference.removeprefix(self.subdirectory)
+        for char in ["/", ":", " "]:
+            agent_prefix = agent_prefix.replace(char, "")
 
         lifetime_in_seconds: float = self.DEFAULT_LIFETIME_IN_SECONDS
         lifetime_in_seconds_str: str = environ.get("AGENT_NETWORK_DESIGNER_RESERVATIONS_LIFETIME_IN_SECONDS", "")

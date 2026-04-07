@@ -66,7 +66,7 @@ class AgentNetworkPersistorFactory:
             persistor = FileSystemAgentNetworkPersistor(demo_mode, subdirectory)
         elif reservationist:
             # If we have a reservationist as part of the args, use the ReservationsAgentNetworkPersistor
-            persistor = ReservationsAgentNetworkPersistor(args, demo_mode, subnetworks, mcp_servers)
+            persistor = ReservationsAgentNetworkPersistor(args, demo_mode, subdirectory, subnetworks, mcp_servers)
         else:
             # Fallback null implementation
             persistor = AgentNetworkPersistor()
