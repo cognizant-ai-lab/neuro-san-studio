@@ -36,29 +36,18 @@ class ReservationsAgentNetworkPersistor(AgentNetworkPersistor):
     # 1 hour
     DEFAULT_LIFETIME_IN_SECONDS: float = 60.0 * 60.0
 
-    # pylint: disable=too-many-arguments
-    # pylint: disable=too-many-positional-arguments
-    def __init__(
-        self,
-        args: dict[str, Any],
-        demo_mode: bool,
-        subdirectory: str,
-        external_networks: list[str],
-        mcp_servers: list[str],
-    ):
+    def __init__(self, args: dict[str, Any], demo_mode: bool, external_networks: list[str], mcp_servers: list[str]):
         """
         Creates a new persistor of the specified type.
 
         :param args: The arguments from the calling CodedTool.
                     It should contain a Reservationist instance.
         :param demo_mode: Whether to include demo mode instructions for agents
-        :param subdirectory: The subdirectory prefix to strip from the file reference
         :param external_networks: The external networks for the agent network
         :param mcp_servers: The MCP servers for the agent network
         """
         self.args: dict[str, Any] = args
         self.demo_mode: bool = demo_mode
-        self.subdirectory: str = subdirectory
         self.external_networks: list[str] = external_networks
         self.mcp_servers: list[str] = mcp_servers
 
@@ -82,10 +71,6 @@ class ReservationsAgentNetworkPersistor(AgentNetworkPersistor):
                 Otherwise, it is a list of agent reservation dictionaries.
         """
         agent_spec: dict[str, Any] = obj
-        # Strip the subdirectory prefix first, then remove any remaining forbidden characters (/, :, space)
-        agent_prefix: str = file_reference.removeprefix(self.subdirectory)
-        for char in ["/", ":", " "]:
-            agent_prefix = agent_prefix.replace(char, "")
 
         lifetime_in_seconds: float = self.DEFAULT_LIFETIME_IN_SECONDS
         lifetime_in_seconds_str: str = environ.get("AGENT_NETWORK_DESIGNER_RESERVATIONS_LIFETIME_IN_SECONDS", "")
@@ -106,7 +91,7 @@ class ReservationsAgentNetworkPersistor(AgentNetworkPersistor):
             self.args,
             agent_spec,
             lifetime_in_seconds,
-            agent_prefix,
+            file_reference,
             external_networks=self.external_networks,
             mcp_servers=self.mcp_servers,
         )
