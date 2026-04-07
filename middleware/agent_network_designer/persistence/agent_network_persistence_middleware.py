@@ -140,6 +140,8 @@ class AgentNetworkPersistenceMiddleware(AgentMiddleware):
         await self._assemble_and_persist(network_def, the_agent_network_name, sample_queries)
         self._determine_exported_network_definition(self.sly_data)
 
+        self.logger.debug(">>>>>>>>>>>>>>>>>>> DONE %s !!!>>>>>>>>>>>>>>>>>>", self.__class__.__name__)
+
         return None
 
     def _error_response(self, content: str) -> dict[str, Any]:
@@ -214,8 +216,6 @@ class AgentNetworkPersistenceMiddleware(AgentMiddleware):
                 network_def, top_agent_name, the_agent_network_name, sample_queries
             )
         self.sly_data[AGENT_NETWORK_HOCON_TEXT] = persisted_content
-
-        self.logger.info(">>>>>>>>>>>>>>>>>>>DONE !!!>>>>>>>>>>>>>>>>>>")
 
     def _determine_exported_network_definition(self, sly_data: dict[str, Any]):
         """
