@@ -1,0 +1,316 @@
+# Copyright © 2025-2026 Cognizant Technology Solutions Corp, www.cognizant.com.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
+# END COPYRIGHT
+{
+    "metadata": {
+        "description": "ANTeGen (Agent Network Test Generator) — generates data-driven test fixture HOCON files for existing agent networks. Provide the name of an agent network and it will read its definition, analyze its capabilities, and produce test cases with interactions, expected responses, and sly_data.",        "tags": ["tool", "testing"],
+        "sample_queries": [
+            "Generate test cases for basic/coffee_finder_advanced",
+            "Generate test cases for basic/coffee_finder_advanced with max coverage",
+            "Generate test cases for basic/music_nerd_pro",
+            "Create a test fixture for basic/smart_home with normal coverage"
+        ]
+    },
+
+    include "registries/llm_config.hocon",
+    "max_iterations": 40000,
+    "max_execution_seconds": 6000,
+    "tools": [
+        {
+            "name": "agent_network_test_generator",
+            "function": {
+                "description": "Generate data-driven test fixture HOCON files for an existing agent network.",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "agent_network_hocon_file": {
+                            "type": "string",
+                            "description": "Path to the agent network HOCON file relative to registries/, e.g. 'basic/coffee_finder_advanced.hocon'."
+                        },
+                        "test_level": {
+                            "type": "string",
+                            "enum": ["minimum", "normal", "max"],
+                            "description": "Controls how many test scenarios to generate. 'minimum' = 2-3 core scenarios (default), 'normal' = 5-7 balanced scenarios, 'max' = 10-15 exhaustive scenarios."
+                        }
+                    },
+                    "required": ["agent_network_hocon_file"]
+                }
+            },
+            "instructions": """
+You orchestrate the generation of data-driven test fixture HOCON files for existing neuro-san agent networks.
+
+Only answer inquiries that are directly within your area of expertise. Do not try to help for other matters. Do not mention what you can NOT do. Only mention what you can do.
+
+Follow these steps carefully:
+
+1) Read the target agent network
+- Call `read_agent_network` with the user-provided HOCON file path.
+- Pass the full returned summary to the next steps.
+
+2) Plan test scenarios
+- Call `test_scenario_planner` with the network summary and the `test_level` (default "minimum" if the user did not specify one).
+- It will return a list of scenario descriptions, each describing what to test and what sly_data to use.
+
+3) Build test fixtures (batched)
+- Call `test_fixture_builder` ONCE with ALL scenarios from step 2 and the network summary.
+- It will return a JSON list of complete test fixture dictionaries — one per scenario.
+
+4) Validate each fixture
+- For each fixture from step 3, call `validate_test_fixture` with the fixture dictionary.
+- If validation fails, call `test_fixture_builder` again with ONLY the failed scenario and the error messages to fix the issues. Repeat until validation passes (up to 3 attempts per fixture).
+
+5) Persist each validated fixture
+- For each validated fixture, call `persist_test_fixture` with:
+  - `test_fixture`: the complete test case dictionary.
+  - `file_name`: a descriptive snake_case file name ending in .hocon.
+
+6) Return a summary of all generated test cases with their file paths and what each one tests.
+""",
+            "tools": ["read_agent_network", "test_scenario_planner", "test_fixture_builder", "validate_test_fixture", "persist_test_fixture"]
+        },
+
+        {
+            "name": "test_scenario_planner",
+            "function": {
+                "description": "Analyze an agent network summary and plan test scenarios to exercise its capabilities.",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "network_summary": {
+                            "type": "string",
+                            "description": "The full network summary returned by read_agent_network, including agents, metadata, sly_data schemas, and sample queries."
+                        },
+                        "test_level": {
+                            "type": "string",
+                            "enum": ["minimum", "normal", "max"],
+                            "description": "Controls how many scenarios to generate. 'minimum' = 2-3 (default), 'normal' = 5-7, 'max' = 10-15."
+                        }
+                    },
+                    "required": ["network_summary", "test_level"]
+                }
+            },
+            "instructions": """
+You are a test scenario planner. Given an agent network summary and a test level, you design a list of test scenarios.
+
+Each scenario you return must include:
+- `scenario_name`: a short snake_case name for the scenario (e.g. "coffee_open_at_8am", "repeat_order_flow").
+- `description`: what the scenario tests.
+- `interactions`: a list of the EXACT user messages for each turn, with sly_data and expected behaviour. For multi-turn scenarios, this list MUST contain multiple entries (one per turn). For example, a 3-turn scenario MUST have 3 interaction entries.
+
+The `test_level` parameter controls how many scenarios you must generate:
+- `minimum`: Generate 2-3 scenarios. Focus on the single most important happy-path and one critical edge case.
+- `normal`: Generate 5-7 scenarios. Cover the main happy paths, a few edge cases, and at least one error/boundary scenario.
+- `max`: Generate 10-15 scenarios. Exhaustively cover all agent capabilities, multiple edge cases, error handling, boundary conditions, and multi-turn flows.
+
+Guidelines for planning scenarios:
+
+- Use the network's `sample_queries` from metadata as inspiration for realistic inputs.
+
+- If the network uses sly_data (e.g. for time overrides), plan sly_data values that make the test deterministic.
+
+- IMPORTANT: Use the EXACT sly_data key names that the network's coded tools expect. Look at the agent instructions and any `sly_data_schema` declared in the network summary to determine the correct key names. For example, if a TimeTool reads `sly_data.get("time")`, use `"time"` (NOT `"fixed_time"` or any other variation).
+
+- IMPORTANT: Use sly_data values in the exact format the tool and downstream agents expect. Do not normalize, convert, or expand values unless the tool code explicitly requires it.
+  - If a tool passes sly_data through directly and agent instructions use human-readable formats (e.g., "7am to 6pm"), use simple clock-time strings like `"8 am"` or `"12:30 am"`.
+  - Do NOT use ISO 8601 datetime strings (e.g., `"2026-03-17T00:30:00-07:00"`) unless the tool explicitly parses that format.
+
+- Pay close attention to the `sly_data_schema` and `sly_data_output_schema` fields in the network summary -- they describe what sly_data keys each coded tool expects and what structured data it returns.
+
+- When a coded tool produces deterministic numeric values, note the exact expected values based on the tool's logic.
+
+- If the network summary includes an agent named "Accountant", plan for `running_cost` assertions in the response structure. The Accountant adds 3.0 per interaction turn. If there is no Accountant agent in the network, do NOT plan for `running_cost` assertions.
+
+- For multi-turn conversations, carefully reason about conversation state. If the user introduces their name in message 1, the agent will NOT ask for the name again in message 2.
+
+- IMPORTANT: Read the agent instructions carefully to understand what information the agent collects BEFORE completing an action (e.g. customer name, item preference, age verification). There are TWO valid strategies for ordering scenarios:
+
+  (A) UPFRONT strategy: Provide ALL required information in a single user message (e.g. "I'm Jordan, I'm 25, and I'd like a six-pack of beer"). This is more deterministic — use it for `minimum` and `normal` test levels. Be specific about items — "a six-pack of beer" not just "a six-pack".
+
+  (B) MULTI-TURN strategy: Deliberately withhold some information so the agent must ask follow-up questions (e.g. first message: "I'd like to order from the liquor store", then respond to follow-ups one by one). This tests the agent's conversation flow — use it for at least 1-2 scenarios at `normal` level and more at `max` level. When using this strategy, plan one interaction per question-answer step PLUS a final confirmation interaction. Only assert on business names, order IDs, and final details in the LAST interaction. For intermediate turns, use order-agnostic gist like "Asks a follow-up question to gather missing information".
+
+- IMPORTANT: Agents may ask follow-up questions in ANY ORDER (e.g. name first, then age, or age first, then name). Do NOT assume a specific order. For UPFRONT scenarios (strategy A), include all required info in the first message. For MULTI-TURN scenarios (strategy B), each user reply should answer ONLY the specific question asked and provide ONE piece of new information at a time (e.g. turn 1: "I'd like to order from the liquor store", turn 2: "My name is Sarah", turn 3: "I'm 25", turn 4: "A bottle of red wine"). Use order-agnostic gist assertions on intermediate turns like "Asks a follow-up question to gather missing information" since you cannot predict which question comes first.
+
+- Plan both positive scenarios (expected happy-path behaviour) and edge cases.
+
+- For time-sensitive scenarios, always specify the sly_data time value and describe which shops/services should be open or closed at that time.
+
+- Each scenario should be self-contained and deterministic given its sly_data.
+
+- IMPORTANT: NEVER include these runtime-managed keys in sly_data: `running_cost`, `TopicMemory`, `username`. These are managed internally by coded tools during execution and must NEVER be pre-set in sly_data. They may still appear in response assertions (e.g. response.structure) if the agent returns them.
+
+Return a JSON list of scenario objects.
+"""
+        },
+
+        {
+            "name": "test_fixture_builder",
+            "function": {
+                "description": "Build complete test fixture dictionaries from scenario descriptions and a network summary. Accepts one or more scenarios and returns a fixture for each.",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "scenarios": {
+                            "type": "string",
+                            "description": "A JSON list of scenario descriptions from test_scenario_planner. Each scenario includes scenario_name, interactions, and sly_data details. May also be a single scenario when retrying after validation failure."
+                        },
+                        "network_summary": {
+                            "type": "string",
+                            "description": "The full network summary from read_agent_network."
+                        },
+                        "validation_errors": {
+                            "type": "string",
+                            "description": "Optional. Error messages from validate_test_fixture if a previous attempt failed. Fix all listed errors. Only used when retrying a single scenario."
+                        }
+                    },
+                    "required": ["scenarios", "network_summary"]
+                }
+            },
+            "instructions": """
+You are a test fixture builder. Given one or more scenario descriptions and a network summary, you produce a complete test fixture dictionary for EACH scenario, conforming to the neuro-san test case HOCON schema.
+
+The fixture dictionary you return must have this structure:
+{{
+    "agent": "<network name without .hocon extension>",
+    "success_ratio": "1/1",
+    "connections": ["direct"],
+    "interactions": [ ... ]
+}}
+
+IMPORTANT: Only the keys shown above are allowed at the top level. Do NOT add `name`, `description`, `timeout_in_seconds`, or any other key.
+
+Each interaction in the list must have ONLY these keys:
+- `text`: the user message to send to the agent. Must be a natural user query only. Do NOT add instructional phrases like "Respond with JSON" or "Respond with the required JSON keys".
+- `timeout_in_seconds`: 60-180 for simple interactions, 300-500 for complex ones.
+- `response`: describes how to verify the agent's reply.
+- `sly_data` (optional): private data if the agent uses sly_data.
+Do NOT add `name`, `description`, or any other key to interactions.
+
+There are two ways to specify `response`:
+
+A) `response.text` -- for agents that return plain text.
+   Use stock tests directly under `text`.
+   Example: `"response": {{ "text": {{ "gist": ["Lists available coffee shops"] }} }}`
+   Example: `"response": {{ "text": {{ "keywords": ["Beatles"] }} }}`
+
+B) `response.structure` -- for agents that return a dictionary / structured response.
+   Each key in `structure` must exactly match a key in the agent's response dictionary.
+   The value for each key is a dictionary of stock tests.
+   Example: `"response": {{ "structure": {{ "answer": {{ "keywords": ["Beatles"] }}, "running_cost": {{ "value": 3.0 }} }} }}`
+
+Rules for building fixtures:
+
+- The ONLY valid stock tests are: `keywords`, `not_keywords`, `value`, `not_value`, `gist`, `not_gist`, `less`, `not_less`, `greater`, `not_greater`.
+
+- Do NOT use `type` as a test -- it does not exist.
+
+- Do NOT include meta-fields such as `type`, `required_keys`, `properties`, `required`, `items`, or `description` anywhere in the response block.
+
+- Do NOT put `timeout_in_seconds` at the top level. It must be inside each interaction.
+
+- Do NOT use regex patterns anywhere in the response. `response.text` must ALWAYS be a dictionary of stock tests, NEVER a regex string.
+
+- Do NOT add `name` or `description` fields at the top level or inside interactions. The only allowed top-level keys are: `agent`, `success_ratio`, `connections`, `interactions`.
+
+- Do NOT add `name` inside interactions. The only allowed interaction keys are: `text`, `timeout_in_seconds`, `response`, `sly_data`.
+
+- `success_ratio` must be a string in "N/M" format (e.g. "1/1"), NOT a number like 1.0.
+
+- Prefer `structure` over `gist` when the expected output can be validated deterministically.
+
+- Use `gist` when the response is natural language. Keep gist criteria short, specific, and focused on one essential fact each.
+
+- Be careful with `not_keywords`. It checks that a word does NOT appear ANYWHERE in the response text. Agents often mention unavailable/closed items by name when explaining why they are not options (e.g. "Bob's Coffee Shop is closed"). Do NOT use `not_keywords` for entities the agent might mention in passing. Only use `not_keywords` for words that should truly never appear in any context. Prefer `keywords` for what SHOULD be in the response and `gist` for overall meaning.
+
+- `keywords` matching is CASE-SENSITIVE. Use words exactly as they would appear in the agent's response. For example, use "ID" not "id" if the agent says "Order ID: 201". When unsure of exact casing, prefer `gist` instead. Avoid short generic words like "id", "ok", "no" as keywords — they are fragile. Use more specific phrases like "Order ID" or "black coffee". For order confirmations or action results that include IDs, order numbers, or dynamically formatted values, prefer `gist` over `keywords` — the exact phrasing varies between responses (e.g. "Order 201" vs "Order ID: 201"), making keyword matching fragile.
+
+- IMPORTANT: Each entry in `keywords` or `not_keywords` must be a SHORT distinctive phrase (max 5 words). Do NOT use full sentences as keywords. BAD: `"Order 201 placed successfully for Mike at Henry's Fast Food. Details: black coffee"`. GOOD: `["Order", "201", "black coffee", "Henry's Fast Food"]`. Use `gist` for full-sentence meaning checks instead.
+
+- IMPORTANT: Each interaction's response assertions must match what the agent will ACTUALLY say in THAT specific turn — not what it will say at the end of the full conversation. If the agent will ask a follow-up question in turn 1, assert on the question, NOT on the final order confirmation. Only assert on order confirmations / final results in the LAST interaction of a multi-turn scenario.
+
+- IMPORTANT: If the scenario description specifies multiple interactions (multi-turn), you MUST create a separate interaction entry for EACH turn. Do NOT collapse a multi-turn scenario into a single interaction. The number of interactions in your fixture must match the number of turns described in the scenario.
+
+- IMPORTANT: When the agent asks follow-up questions, it may ask them in ANY ORDER. Do NOT write gist assertions that assume a specific question order (e.g. do NOT assert "Asks for age" in turn 1 and "Asks for name" in turn 2). Instead, either: (a) provide all required info upfront in the first user message so only one follow-up round is needed, or (b) use order-agnostic gist like `"Asks a follow-up question to gather missing information"`.
+
+- When a coded tool produces deterministic numeric values, use `value` with the exact expected number based on the tool's logic. Always preserve the float type — use 3.0 not 3, 6.0 not 6, etc. The `value` stock test does an exact comparison, so the type must match.
+
+- If the network summary includes an agent named "Accountant", include `running_cost` in response.structure with `value: 3.0` for the first interaction, `value: 6.0` for the second, and so on (incrementing by 3.0 per turn). If there is no Accountant agent in the network, do NOT include `running_cost` assertions.
+
+- If `validation_errors` is provided, fix all listed errors before returning the fixture.
+
+- IMPORTANT: NEVER include these runtime-managed keys in sly_data: `running_cost`, `TopicMemory`, `username`. These are managed internally by coded tools during execution and must NEVER be pre-set in sly_data. They may still appear in response assertions (e.g. response.structure) if the agent returns them.
+
+Return a JSON list of fixture dictionaries — one per scenario. If only one scenario is provided, still return a list with one element.
+"""
+        },
+
+        {
+            "name": "read_agent_network",
+            "class": "agent_network_test_generator.read_agent_network.ReadAgentNetwork",
+            "function": {
+                "description": "Read an agent network HOCON file and return a structured summary of its agents, instructions, metadata, sample queries, and sly_data schemas.",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "agent_network_hocon_file": {
+                            "type": "string",
+                            "description": "Path to the agent network HOCON file relative to registries/, e.g. 'basic/coffee_finder_advanced.hocon'."
+                        }
+                    },
+                    "required": ["agent_network_hocon_file"]
+                }
+            }
+        },
+
+        {
+            "name": "validate_test_fixture",
+            "class": "agent_network_test_generator.validate_test_fixture.ValidateTestFixture",
+            "function": {
+                "description": "Programmatically validate a test fixture dictionary before persisting. Returns a result with valid (true/false) and, when invalid, an errors list with specific error messages.",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "test_fixture": {
+                            "type": "object",
+                            "description": "The complete test fixture dictionary to validate."
+                        }
+                    },
+                    "required": ["test_fixture"]
+                }
+            }
+        },
+
+        {
+            "name": "persist_test_fixture",
+            "class": "agent_network_test_generator.persist_test_fixture.PersistTestFixture",
+            "function": {
+                "description": "Save a generated test fixture dictionary as a HOCON file under tests/fixtures/.",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "test_fixture": {
+                            "type": "object",
+                            "description": "The complete test fixture dictionary conforming to the neuro-san test case HOCON schema. Must include 'agent', 'success_ratio', and 'interactions' (with per-interaction timeout_in_seconds)."
+                        },
+                        "file_name": {
+                            "type": "string",
+                            "description": "Descriptive snake_case file name for the test fixture (e.g. 'coffee_where_8am.hocon')."
+                        }
+                    },
+                    "required": ["test_fixture", "file_name"]
+                }
+            }
+        }
+    ]
+}

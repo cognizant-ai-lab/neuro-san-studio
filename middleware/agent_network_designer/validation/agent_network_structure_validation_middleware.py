@@ -20,10 +20,12 @@ from neuro_san.internals.validation.network.structure_network_validator import S
 from neuro_san.internals.validation.network.toolbox_network_validator import ToolboxNetworkValidator
 from neuro_san.internals.validation.network.url_network_validator import UrlNetworkValidator
 
-from coded_tools.agent_network_editor.get_mcp_tool import GetMcpTool
+from coded_tools.agent_network_editor.constants import MCP_SERVERS
+from coded_tools.agent_network_editor.constants import TOOLBOX_INFO
 from coded_tools.agent_network_editor.get_subnetwork import GetSubnetwork
-from coded_tools.agent_network_editor.get_toolbox import GetToolbox
-from middleware.agent_network_validation_middleware import AgentNetworkValidationMiddleware
+from middleware.agent_network_designer.validation.agent_network_validation_middleware import (
+    AgentNetworkValidationMiddleware,
+)
 
 
 class AgentNetworkStructureValidationMiddleware(AgentNetworkValidationMiddleware):
@@ -37,28 +39,40 @@ class AgentNetworkStructureValidationMiddleware(AgentNetworkValidationMiddleware
     """
 
     def no_network_error_message(self) -> str:
+        """Return the error message when no agent network definition is found."""
+
         return "Error: No agent network found. Please create a new agent network using `create_new_network` tool"
 
     def validation_label(self) -> str:
+        """Return a label for log messages (e.g. 'Structure', 'Instructions')."""
         return "Structure"
 
     async def validate(self, network_def: dict[str, Any]) -> list[str]:
-        # Get a dict of tools or error message if no toolbox found
-        tools: dict[str, Any] | str = await GetToolbox().async_invoke(None, self.sly_data)
+        """
+        Run validators against the network definition.
 
-        # Collect subnetwork names and MCP server URLs for URL validation
-        subnetwork_result: dict[str, Any] | str = await GetSubnetwork().async_invoke(None, self.sly_data)
-        subnetwork_names: list[str] = []
-        if isinstance(subnetwork_result, dict):
-            subnetwork_names = list(subnetwork_result.keys())
-        mcp_servers: list[str] = await GetMcpTool().get_mcp_servers(self.sly_data)
+        :param network_def: The agent network definition to validate
+        :return: A list of error strings (empty if valid)
+        """
+
+        # Get infos from sly_data. These should have been put there by the respective tools
+        # from the agent network editor.
+        subnetwork_names: list[str] = GetSubnetwork.get_subnetwork_names(self.sly_data)
+        mcp_servers: list[str] = self.sly_data.get(MCP_SERVERS, [])
+        toolbox_tools: dict[str, Any] = self.sly_data.get(TOOLBOX_INFO, {})
 
         return (
             StructureNetworkValidator().validate(network_def)
-            + ToolboxNetworkValidator(tools).validate(network_def)
+            + ToolboxNetworkValidator(toolbox_tools).validate(network_def)
             + UrlNetworkValidator(subnetwork_names, mcp_servers).validate(network_def)
         )
 
     def format_error(self, error_list: list[str]) -> str:
+        """
+        Format the list of validation errors into a message string.
+
+        :param error_list: Non-empty list of error strings
+        :return: Formatted error message
+        """
         formatted_errors = "\n".join(f"- {msg}" for msg in error_list)
         return f"Errors detected:\n{formatted_errors}\n\nUse your tools to fix the errors."
