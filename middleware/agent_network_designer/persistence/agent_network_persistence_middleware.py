@@ -158,7 +158,7 @@ class AgentNetworkPersistenceMiddleware(AgentMiddleware):
 
     def _normalize_network_name(self, name: str) -> str:
         """Prepend SUBDIRECTORY prefix if not already present."""
-        prefix = SUBDIRECTORY + "/"
+        prefix: str = SUBDIRECTORY.rstrip("/") + "/"
         if not name.startswith(prefix):
             # Neuro-SAN only allows '/' as path separator in agent network names.
             return prefix + name

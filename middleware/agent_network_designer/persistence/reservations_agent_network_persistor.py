@@ -21,6 +21,7 @@ from neuro_san.interfaces.reservation import Reservation
 from neuro_san.internals.reservations.reservation_util import ReservationUtil
 
 from middleware.agent_network_designer.persistence.agent_network_assembler import AgentNetworkAssembler
+from middleware.agent_network_designer.persistence.agent_network_persistence_middleware import SUBDIRECTORY
 from middleware.agent_network_designer.persistence.agent_network_persistor import AgentNetworkPersistor
 from middleware.agent_network_designer.persistence.deployable_agent_network_assembler import (
     DeployableAgentNetworkAssembler,
@@ -71,8 +72,10 @@ class ReservationsAgentNetworkPersistor(AgentNetworkPersistor):
                 Otherwise, it is a list of agent reservation dictionaries.
         """
         agent_spec: dict[str, Any] = obj
-        # Remove the generated/ prefix
-        agent_prefix: str = file_reference.replace("generated/", "")
+        # Remove the subdirectory prefix then strip any remaining forbidden characters (/, :, space)
+        agent_prefix: str = file_reference
+        for string_to_replace in [SUBDIRECTORY, "/", ":", " "]:
+            agent_prefix = agent_prefix.replace(string_to_replace, "")
 
         lifetime_in_seconds: float = self.DEFAULT_LIFETIME_IN_SECONDS
         lifetime_in_seconds_str: str = environ.get("AGENT_NETWORK_DESIGNER_RESERVATIONS_LIFETIME_IN_SECONDS", "")
