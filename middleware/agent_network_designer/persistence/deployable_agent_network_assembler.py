@@ -124,7 +124,8 @@ class DeployableAgentNetworkAssembler(AgentNetworkAssembler):
             # is replaced with the top agent's own description (analogous to
             # ${aaosa_call}{ "description": "..." } in HOCON).
             if agent_name == top_agent_name and isinstance(agent_spec.get("function"), dict):
-                # This hard-coded description is a temporary solution until we have a description generator/editor in place.
+                # This hard-coded description is a temporary solution
+                # until we have a description generator/editor in place.
                 agent_spec["function"]["description"] = "An assistant that answer inquiries from the user."
 
             # Add agent to tools
