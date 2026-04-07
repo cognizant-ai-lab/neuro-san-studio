@@ -126,7 +126,7 @@ class DeployableAgentNetworkAssembler(AgentNetworkAssembler):
             if agent_name == top_agent_name and isinstance(agent_spec.get("function"), dict):
                 # This hard-coded description is a temporary solution
                 # until we have a description generator/editor in place.
-                agent_spec["function"]["description"] = "An assistant that answer inquiries from the user."
+                agent_spec["function"]["description"] = "An assistant that answers inquiries from the user."
 
             # Add agent to tools
             agent_network["tools"].append(agent_spec)

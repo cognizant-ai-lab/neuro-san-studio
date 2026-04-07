@@ -67,7 +67,7 @@ TOP_AGENT_TEMPLATE = (
     '            "name": "%s",\n'
     '            "function": ${aaosa_call}{\n'
     '                "description": """\n'
-    "An assistant that answer inquiries from the user.\n"
+    "An assistant that answers inquiries from the user.\n"
     '                """\n'
     "            },\n"
     '            "instructions": ${instructions_prefix} """\n'
