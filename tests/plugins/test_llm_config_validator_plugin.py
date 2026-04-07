@@ -42,13 +42,13 @@ class TestLlmConfigValidatorPlugin:
     def test_update_parser_args_adds_check_llm_config(self):
         """Test that update_parser_args adds the --check-llm-config argument."""
         parser = argparse.ArgumentParser()
-        LlmConfigValidatorPlugin.update_parser_args(parser)
+        LlmConfigValidatorPlugin().update_parser_args(parser)
         args = parser.parse_args(["--check-llm-config", "path/to/config.hocon"])
         assert args.check_llm_config == "path/to/config.hocon"
 
     def test_update_parser_args_default_is_none(self):
         """Test that --check-llm-config defaults to None when not passed."""
         parser = argparse.ArgumentParser()
-        LlmConfigValidatorPlugin.update_parser_args(parser)
+        LlmConfigValidatorPlugin().update_parser_args(parser)
         args = parser.parse_args([])
         assert args.check_llm_config is None

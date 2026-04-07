@@ -120,16 +120,14 @@ class BasePlugin(ABC):
             return default
         return val.strip().lower() in {"1", "true", "yes", "on"}
 
-    @staticmethod
-    def update_args_dict(args_dict: dict):
+    def update_args_dict(self, args_dict: dict):
         """Hook: override to inject default values into the arguments dictionary.
 
         Args:
             args_dict: Dictionary of arguments to update.
         """
 
-    @staticmethod
-    def update_parser_args(parser):
+    def update_parser_args(self, parser):
         """Hook: override to add plugin-specific flags to the argument parser.
 
         Args:

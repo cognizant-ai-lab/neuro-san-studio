@@ -537,8 +537,7 @@ class EnvValidatorPlugin(BasePlugin):
         """Perform the plugin's main action (no-op, validation runs on startup)."""
         self._validate_keys()
 
-    @staticmethod
-    def update_parser_args(parser):
+    def update_parser_args(self, parser):
         """Add command-line arguments for environment variable validation."""
         parser.add_argument(
             "--validate-keys",

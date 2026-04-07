@@ -81,22 +81,21 @@ class NeuroSanRunner:
             "logs_dir": self.logs_dir,
         }
 
-        for plugin in self.plugin_classes:
-            if hasattr(plugin, "update_args_dict"):
-                self._logger.info("Updating args dict with plugin: %s", plugin)
-                plugin.update_args_dict(self.args)
-
         # Ensure logs directory exists
         os.makedirs(self.logs_dir, exist_ok=True)
         os.makedirs(self.thinking_dir, exist_ok=True)
-
-        # Parse command-line arguments
-        self.args.update(self.parse_args())
 
         # Instantiate plugins now that args are fully built
         self.plugins = [cls(self.args) for cls in self.plugin_classes]
         for plugin in self.plugins:
             self._logger.info("Loaded plugin: %s", plugin)
+
+        for plugin in self.plugins:
+            self._logger.info("Updating args dict with plugin: %s", plugin)
+            plugin.update_args_dict(self.args)
+
+        # Parse command-line arguments
+        self.args.update(self.parse_args())
 
         # Process references
         self.server_process = None
@@ -158,7 +157,7 @@ class NeuroSanRunner:
         )
 
         # add arguments from plugins
-        for plugin in self.plugin_classes:
+        for plugin in self.plugins:
             self._logger.info("Updating parser args with plugin: %s", plugin)
             plugin.update_parser_args(parser)
 

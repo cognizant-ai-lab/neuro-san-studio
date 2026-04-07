@@ -402,8 +402,7 @@ class PhoenixPlugin(BasePlugin):
         """Start Phoenix server if enabled."""
         self.start_phoenix_server()
 
-    @staticmethod
-    def update_args_dict(args_dict: dict):
+    def update_args_dict(self, args_dict: dict):
         """Update the args with additional args needed for Phoenix configuration.
 
         Args:

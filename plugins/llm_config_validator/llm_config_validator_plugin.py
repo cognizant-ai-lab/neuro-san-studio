@@ -70,8 +70,7 @@ class LlmConfigValidatorPlugin(BasePlugin):
         if not success:
             sys.exit(1)
 
-    @staticmethod
-    def update_parser_args(parser):
+    def update_parser_args(self, parser):
         """Add command-line arguments for LLM configuration validation.
 
         Args:

@@ -42,6 +42,6 @@ class TestEnvValidatorPlugin:
     def test_update_parser_args_adds_validate_keys(self):
         """Test that update_parser_args adds the --validate-keys argument."""
         parser = argparse.ArgumentParser()
-        EnvValidatorPlugin.update_parser_args(parser)
+        EnvValidatorPlugin().update_parser_args(parser)
         args = parser.parse_args(["--validate-keys", "2"])
         assert args.validate_keys == 2

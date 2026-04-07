@@ -24,7 +24,7 @@ plugins = [
     # Logging plugins
     {
         class = plugins.log_bridge.process_log_bridge_plugin.ProcessLogBridgePlugin
-        enabled = false
+        enabled = true
         enabled = ${?LOGBRIDGE_ENABLED}
     }
 ]

@@ -46,10 +46,16 @@ class TestBasePlugin:
         plugin.initialize()
         plugin.cleanup()
 
-    def test_static_methods_are_noop(self):
-        """Test that static configuration methods can be called without error."""
-        BasePlugin.update_args_dict({})
-        BasePlugin.update_parser_args(None)
+    def test_hook_methods_are_noop(self):
+        """Test that hook configuration methods can be called without error."""
+        BasePlugin("TestPlugin").update_args_dict({})
+        BasePlugin("TestPlugin").update_parser_args(None)
+
+    def test_update_args_dict_does_not_modify_dict(self):
+        """Test that the base update_args_dict hook leaves the dict unchanged."""
+        args = {"existing_key": "value"}
+        BasePlugin("TestPlugin").update_args_dict(args)
+        assert args == {"existing_key": "value"}
 
     def test_str_representation(self):
         """Test __str__ returns expected format."""

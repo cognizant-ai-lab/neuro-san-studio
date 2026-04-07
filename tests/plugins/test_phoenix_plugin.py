@@ -69,6 +69,6 @@ class TestPhoenixPlugin:
     def test_update_args_dict_adds_phoenix_config(self):
         """Test that update_args_dict adds Phoenix configuration keys."""
         args = {}
-        PhoenixPlugin.update_args_dict(args)
+        PhoenixPlugin().update_args_dict(args)
         assert "phoenix_port" in args
         assert "otel_service_name" in args
