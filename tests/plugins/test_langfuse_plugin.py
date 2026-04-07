@@ -16,7 +16,7 @@
 
 """Tests for the LangfusePlugin."""
 
-from plugins.base_plugin import BasePlugin
+from neuro_san_studio.interfaces.plugins import BasePlugin
 from plugins.langfuse.langfuse_plugin import LangfusePlugin
 
 

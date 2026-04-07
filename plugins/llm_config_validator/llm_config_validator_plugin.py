@@ -25,7 +25,7 @@ import asyncio
 import os
 import sys
 
-from plugins.base_plugin import BasePlugin
+from neuro_san_studio.interfaces.plugins import BasePlugin
 from plugins.llm_config_validator.check_llm_configs import run_checks
 
 

@@ -19,7 +19,7 @@
 import os
 
 from neuro_san_studio.runner.process_logger_interface import ProcessLoggerInterface
-from plugins.base_plugin import BasePlugin
+from neuro_san_studio.interfaces.plugins import BasePlugin
 from plugins.log_bridge.process_log_bridge import ProcessLogBridge
 
 

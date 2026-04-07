@@ -29,7 +29,7 @@ from typing import Tuple
 
 from dotenv import load_dotenv
 
-from plugins.plugin_loader import PluginLoader
+from neuro_san_studio.plugins.factory.plugin_loader import PluginLoader
 
 
 class NeuroSanRunner:

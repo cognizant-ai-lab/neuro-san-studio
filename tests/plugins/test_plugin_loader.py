@@ -19,8 +19,9 @@
 import os
 import tempfile
 
-from plugins.base_plugin import BasePlugin
-from plugins.plugin_loader import PluginLoader
+from neuro_san_studio.interfaces.plugins import BasePlugin
+from neuro_san_studio.plugins.factory.plugin_loader import PluginLoader
+    
 
 
 class TestPluginLoader:
@@ -31,7 +32,7 @@ class TestPluginLoader:
         hocon = """
 plugins = [
     {
-        class = plugins.base_plugin.BasePlugin
+        class = "neuro_san_studio.interfaces.plugins.BasePlugin"
         enabled = true
     }
 ]
@@ -52,7 +53,7 @@ plugins = [
         hocon = """
 plugins = [
     {
-        class = plugins.base_plugin.BasePlugin
+        class = "neuro_san_studio.interfaces.plugins.BasePlugin"
         enabled = false
     }
 ]
@@ -72,7 +73,7 @@ plugins = [
         hocon = """
 plugins = [
     {
-        class = plugins.base_plugin.BasePlugin
+        class = "neuro_san_studio.interfaces.plugins.BasePlugin"
     }
 ]
 """
@@ -113,7 +114,7 @@ plugins = [
         enabled = true
     }
     {
-        class = plugins.base_plugin.BasePlugin
+        class = neuro_san_studio.interfaces.plugins.BasePlugin
         enabled = true
     }
 ]
@@ -134,7 +135,7 @@ plugins = [
         hocon = """
 plugins = [
     {
-        class = plugins.base_plugin.NonexistentClass
+        class = neuro_san_studio.interfaces.plugins.NonexistentClass
         enabled = true
     }
 ]
@@ -180,11 +181,11 @@ plugins = [
         hocon = """
 plugins = [
     {
-        class = plugins.base_plugin.BasePlugin
+        class = "neuro_san_studio.interfaces.plugins.BasePlugin"
         enabled = true
     }
     {
-        class = plugins.base_plugin.BasePlugin
+        class = "neuro_san_studio.interfaces.plugins.BasePlugin"
         enabled = false
     }
 ]

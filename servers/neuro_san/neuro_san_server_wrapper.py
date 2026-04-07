@@ -27,7 +27,7 @@ import sys
 
 from neuro_san.service.main_loop.server_main_loop import ServerMainLoop
 
-from plugins.plugin_loader import PluginLoader
+from neuro_san_studio.plugins.factory.plugin_loader import PluginLoader
 
 
 class NeuroSanServerWrapper:

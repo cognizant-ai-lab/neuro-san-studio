@@ -18,7 +18,7 @@
 
 from unittest.mock import patch
 
-from plugins.base_plugin import BasePlugin
+from neuro_san_studio.interfaces.plugins import BasePlugin
 from plugins.phoenix.phoenix_plugin import PhoenixPlugin
 
 
