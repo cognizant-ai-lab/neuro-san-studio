@@ -1371,8 +1371,10 @@ for details on how to implement one.
 
 #### Note on `hook_config`
 
-The `@hook_config` decorator declares which nodes in the graph — `model`, `tools`, and `end`
-— a hook method is allowed to jump to.
+Each individual agent in Neuro SAN runs its own internal LangGraph control loop — a state machine with three
+core nodes: `model` (the LLM call), `tools` (tool execution), and `end` (exit). The `@hook_config` decorator
+declares which of these nodes a hook method is allowed to jump to, creating the corresponding conditional edges
+in that loop at build time.
 
 ```python
 @hook_config(can_jump_to=["end", "model", "tools"])
