@@ -42,8 +42,8 @@ class BasePlugin(ABC):
     to implement the ones they care about.
 
     Lifecycle hooks (called by the framework):
-        _do_initialize   -- Custom initialization logic (called by ``initialize``).
-        _do_cleanup       -- Custom cleanup logic (called by ``cleanup``).
+        do_initialize   -- Custom initialization logic (called by ``initialize``).
+        do_cleanup       -- Custom cleanup logic (called by ``cleanup``).
 
     Server hooks (called around server start):
         pre_server_start_action  -- Runs before the server starts.
@@ -67,12 +67,12 @@ class BasePlugin(ABC):
         self._logger = _PluginLoggerAdapter(raw_logger, {"plugin_name": self.__class__.__name__})
 
     def initialize(self):
-        """Initialize the plugin. Logs entry/exit and delegates to _do_initialize."""
+        """Initialize the plugin. Logs entry/exit and delegates to do_initialize."""
         self._logger.info("Initializing (PID=%s)", os.getpid())
-        self._do_initialize()
+        self.do_initialize()
         self._logger.info("Initialized (PID=%s)", os.getpid())
 
-    def _do_initialize(self):
+    def do_initialize(self):
         """Hook: override to provide custom initialisation logic.
 
         Called by :meth:`initialize` between the entry and exit log messages.
@@ -80,12 +80,12 @@ class BasePlugin(ABC):
         """
 
     def cleanup(self):
-        """Cleanup resources. Logs entry/exit and delegates to _do_cleanup."""
+        """Cleanup resources. Logs entry/exit and delegates to do_cleanup."""
         self._logger.info("Cleaning up")
-        self._do_cleanup()
+        self.do_cleanup()
         self._logger.info("Cleanup complete")
 
-    def _do_cleanup(self):
+    def do_cleanup(self):
         """Hook: override to provide custom cleanup logic.
 
         Called by :meth:`cleanup` between the entry and exit log messages.
@@ -105,7 +105,7 @@ class BasePlugin(ABC):
         """
 
     @staticmethod
-    def _get_bool_env(var_name: str, default: bool) -> bool:
+    def get_bool_env(var_name: str, default: bool) -> bool:
         """Parse a boolean environment variable.
 
         Args:

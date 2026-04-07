@@ -200,7 +200,7 @@ class PhoenixPlugin(BasePlugin):
             True if phoenix.otel.register() was successful, False otherwise
         """
         try:
-            if not self._get_bool_env("PHOENIX_OTEL_REGISTER", True):
+            if not self.get_bool_env("PHOENIX_OTEL_REGISTER", True):
                 return False
 
             # Lazily load the method
@@ -226,7 +226,7 @@ class PhoenixPlugin(BasePlugin):
             self._logger.info("Phoenix register not used: %s", exc)
             return False
 
-    def _do_initialize(self) -> None:
+    def do_initialize(self) -> None:
         """Initialize Phoenix observability if enabled.
 
         Checks whether already initialized (prevents double-init).
@@ -411,6 +411,6 @@ class PhoenixPlugin(BasePlugin):
         """
         args_dict.update(PhoenixPlugin.get_default_config())
 
-    def _do_cleanup(self):
+    def do_cleanup(self):
         """Stop Phoenix server if it was started by this plugin."""
         self.stop_phoenix_server()

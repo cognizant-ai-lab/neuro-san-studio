@@ -116,7 +116,7 @@ class LangfusePlugin(BasePlugin):
             self._logger.error("Failed to create Langfuse client or CallbackHandler: %s", exc)
             return False
 
-    def _do_initialize(self) -> None:
+    def do_initialize(self) -> None:
         """Initialize Langfuse observability.
 
         Checks whether already initialized (prevents double-init).
@@ -152,7 +152,7 @@ class LangfusePlugin(BasePlugin):
         """
         return self._initialized
 
-    def _do_cleanup(self) -> None:
+    def do_cleanup(self) -> None:
         """Shutdown Langfuse client and flush remaining traces."""
         if not self._initialized:
             return
