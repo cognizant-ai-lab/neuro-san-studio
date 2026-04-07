@@ -33,7 +33,7 @@ Sort the following list of numbers from highest to lowest:
     },
 
     # Note that we specifically call out the model that the prompts were tuned to
-    # as opposed to the standard including of "registries/deployment_config/llm_config.hocon" to
+    # as opposed to the standard including of "config/llm_config.hocon" to
     # get more correct answers.  This also happens to be a little lower cost.
     "llm_config": {
         "class": "openai",

@@ -16,16 +16,13 @@
 
 # Backward compatibility shim.
 # The LLM configuration has moved to:
-#   registries/deployment_config/llm_config.hocon
+#   config/llm_config.hocon
 #
 # This file is kept only to maintain compatibility with any existing
 # external references that still point to the old path.
 #
-# ⚠️ This shim will be discontinued in the future.
+# This shim will be discontinued in the future.
 # Please update your generated agent networks and any related
-# configurations to reference the new location directly.
-#
-# Do NOT reference llm_config from registries using this file.
-# Instead, always include the new configuration directly:
-#   include "registries/deployment_config/llm_config.hocon"
-include "deployment_config/llm_config.hocon"
+# configurations to reference the new location directly:
+#   include "config/llm_config.hocon"
+include "../config/llm_config.hocon"

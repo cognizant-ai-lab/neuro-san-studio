@@ -44,7 +44,7 @@ It can also check the `llm_config.hocon` for any issues.
 It can be invoked via the `--check-llm-config` flag on `run.py`:
 
 ```bash
-# Check the default registries/llm_config.hocon
+# Check the default config/llm_config.hocon
 python -m run --check-llm-config
 
 # Check a specific agent network or llm_config HOCON file
@@ -54,7 +54,7 @@ python -m run --check-llm-config registries/basic/music_nerd.hocon
 Or run the script directly:
 
 ```bash
-python plugins/llm_config_validator/check_llm_configs.py registries/llm_config.hocon
+python plugins/llm_config_validator/check_llm_configs.py config/llm_config.hocon
 ```
 
 Both HOCON formats are supported:

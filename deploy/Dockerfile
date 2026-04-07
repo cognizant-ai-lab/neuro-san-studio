@@ -99,9 +99,10 @@ COPY ./middleware ${APP_SOURCE}/middleware
 COPY ./deploy/entrypoint.sh ${APP_SOURCE}/deploy/entrypoint.sh
 COPY ./deploy/logging.hocon ${APP_SOURCE}/deploy/logging.hocon
 COPY ./mcp/mcp_info.hocon ${APP_SOURCE}/mcp/mcp_info.hocon
+COPY ./config ${APP_SOURCE}/config
 # To override the default LLM configuration at runtime, mount your custom
 # llm_config.hocon using a Docker volume, e.g.:
-# docker run -v /path/to/your/llm_config.hocon:${APP_SOURCE}/registries/deployment_config/llm_config.hocon ...
+# docker run -v /path/to/your/llm_config.hocon:${APP_SOURCE}/config/llm_config.hocon ...
 
 # Set up the entry point for when the container is run
 USER ${USERNAME}
