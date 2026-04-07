@@ -97,6 +97,10 @@ class AgentNetworkPersistenceMiddleware(AgentMiddleware):
         self.reservationist = reservationist
         self.sly_data = sly_data
 
+    # Reenter the agent loop at the model node if validation fails or there is no agent network definition.
+    # See https://github.com/cognizant-ai-lab/neuro-san-studio/blob/main/docs/user_guide.md#middleware and
+    # https://reference.langchain.com/python/langchain/agents/middleware/types/hook_config for details on
+    # hook_config and jump_to.
     @hook_config(can_jump_to=["model"])
     async def aafter_agent(self, state: AgentState, runtime: Runtime) -> dict[str, Any] | None:
         """
