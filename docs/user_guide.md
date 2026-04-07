@@ -10,6 +10,7 @@
     - [Agent network](#agent-network)
       - [Agent specifications](#agent-specifications)
       - [Tool specifications](#tool-specifications)
+      - [Middleware specifications](#middleware-specifications)
       - [LLM specifications](#llm-specifications)
   - [LLM configuration](#llm-configuration)
     - [OpenAI](#openai)
@@ -18,9 +19,12 @@
     - [Bedrock](#bedrock)
       - [Default Bedrock models](#default-bedrock-models)
     - [Gemini](#gemini)
+      - [Gemini with ADC](#gemini-with-adc)
+        - [Gemini with ADC Prerequisites](#gemini-with-adc-prerequisites)
+        - [Gemini with ADC Configuration](#gemini-with-adc-configuration)
     - [Ollama](#ollama)
-      - [Prerequisites](#prerequisites)
-      - [Configuration](#configuration)
+      - [Ollama Prerequisites](#ollama-prerequisites)
+      - [Ollama Configuration](#ollama-configuration)
       - [Using Ollama in Docker or Remote Server](#using-ollama-in-docker-or-remote-server)
       - [Example agent network](#example-agent-network)
     - [Configuring Default Models with Environment Variables](#configuring-default-models-with-environment-variables)
@@ -53,6 +57,15 @@
   - [MCP Servers](#mcp-servers)
     - [MCP Server Configuration](#mcp-server-configuration)
     - [Authentication](#authentication)
+  - [Middleware](#middleware)
+    - [class](#class)
+    - [args](#args)
+      - [Special args](#special-args)
+    - [Example](#example)
+  - [Agent Skills](#agent-skills)
+    - [How it works](#how-it-works)
+    - [SKILL.md format](#skillmd-format)
+    - [Configuration](#configuration)
   - [Logging](#logging)
   - [Debugging](#debugging)
   - [Advanced](#advanced)
@@ -65,7 +78,11 @@
     - [Unit test](#unit-test)
     - [Integration Test](#integration-test)
       - [Add test case](#add-test-case)
+        - [Automatic Test Generation](#automatic-test-generation)
+        - [Manual creation](#manual-creation)
+        - [Register the fixture](#register-the-fixture)
       - [Run test](#run-test)
+  - [Improving agent networks](#improving-agent-networks)
 
 <!-- TOC -->
 
@@ -120,8 +137,16 @@ whitespace and the path to the imported file as a quoted string:
 include "registries/aaosa.hocon"
 ```
 
-> **Note**: The file path in include should be an **absolute path**
-> or relative to the **root folder** to ensure it can be resolved correctly.
+> **Note**: Include path resolution depends on how the file is loaded:
+>
+> - **Top-level files** (loaded directly by neuro-san) resolve include paths relative to the **root folder**
+(the working directory where the server is started). Use paths like `registries/aaosa.hocon`.
+> - **Included files** (loaded via an `include` directive in another file) resolve their own include paths relative to
+**their own location** on disk. Use relative paths like `../../../registries/llm_config.hocon`.
+>
+> A file that may be loaded either way cannot use the same include path for both contexts.
+The recommended pattern is to create a thin top-level wrapper file that includes the base file
+using a root-relative path; the base file can then safely use file-relative paths in its own includes.
 
 HOCON supports value substitution by referencing previously defined configuration values. This allows constants to be
 defined once and reused throughout the file.
@@ -218,6 +243,7 @@ For more details, please check the [Agent Manifest HOCON File Reference](
 | instructions | Text that sets up the agent in detail for its task.                                                                                           |
 | command      | Text that sets the agent in motion after it receives all its inputs.                                                                          |
 | tools        | Optional list of references to other agents that this agent is allowed to call in the course of working through their input and instructions. |
+| middleware   | Optional list of AgentMiddleware instances to apply during agent execution. Order of appearance matters. See [Middleware](#middleware) for more details. |
 | llm_config   | Optional agent-specification for different LLMs for different purposes such as specialization, costs, etc.                                    |
 <!-- pyml enable line-length -->
 
@@ -230,6 +256,15 @@ For more details, please check the [Agent Manifest HOCON File Reference](
 | class     | A Python import path pointing to the class or function to invoke when the tool is called. Must follow the format `<module>.<Class>`. See [Coded tools](#coded-tools) for more details. |
 | function  | An OpenAI-compatible function schema that defines the expected input parameters for the tool specified in `class`.                                                                     |
 | toolbox   | The name of a predefined tool from the toolbox. If this field is set, you must not specify `class` or `function`.                                                                      |
+<!-- pyml enable line-length -->
+
+#### Middleware specifications
+
+<!-- pyml disable line-length -->
+| **Field** | **Description**                                                                                                                                                                  |
+|-----------|----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| class     | Fully-qualified class name of the `AgentMiddleware` to instantiate (e.g. `langchain.agents.middleware.PIIMiddleware`). Only class-based middleware is supported.    |
+| args      | Optional dictionary of keyword arguments passed to the middleware class constructor. Keys are argument names, values are argument values. See [Middleware](#middleware) for special framework-populated args (`origin`, `origin_str`, `sly_data`). |
 <!-- pyml enable line-length -->
 
 #### LLM specifications
@@ -460,13 +495,89 @@ and specify which model to use in the `model_name` field of the `llm_config` sec
 degraded reasoning performance, and failures on complex tasks. Therefore, this value should be explicitly set to avoid
 falling back to the default of `0.7`.
 
-You can get an Google Gemini API [key](https://ai.google.dev/gemini-api/docs/api-key) here.
+You can get a Google Gemini API [key](https://ai.google.dev/gemini-api/docs/api-key) here.
+
+#### Gemini with ADC
+
+If you are running in a **Google Cloud environment** (GCP VM, Cloud Run, GKE, etc.) or prefer to authenticate
+using your organization's GCP identity — without a personal API key — you can use
+**Application Default Credentials (ADC)**.
+
+ADC is Google's standard credential resolution mechanism. It automatically picks up credentials from:
+- `gcloud auth application-default login` (local development)
+- Attached service accounts (Cloud Run, GKE, Compute Engine)
+- Workload Identity Federation
+
+This approach is recommended for **enterprise and on-prem-to-cloud** deployments where managing individual
+API keys is not desirable or permitted.
+
+> An example implementation of Gemini with ADC can be found in the
+> [neuro-san-gemini-example](https://github.com/subhadeep-banerjee/neuro-san-gemini-example) repository.
+
+##### Gemini with ADC Prerequisites
+
+1. Install the [Google Cloud CLI](https://cloud.google.com/sdk/docs/install) (`gcloud`).
+
+2. Authenticate your local environment with ADC:
+
+    ```bash
+    gcloud auth application-default login
+    ```
+
+3. Install the required package (already included in `requirements.txt`):
+
+    ```bash
+    pip install langchain-google-vertexai
+    ```
+
+4. Set the following environment variables (or add them to your `.env` file):
+
+    ```bash
+    GCP_PROJECT_ID=your-gcp-project-id
+    GCP_REGION=your-vertex-ai-region   # e.g. us-central1, europe-west4, asia-south1
+    ```
+
+##### Gemini with ADC Configuration
+
+Because ADC-based Vertex AI access requires the `project` and `location` fields — which are not part of
+Neuro-SAN's default Gemini model definitions — you must use the `class` key to instantiate
+`ChatVertexAI` directly in your `llm_config`:
+
+```hocon
+llm_config: {
+    class: "langchain_google_vertexai.chat_models.ChatVertexAI"
+    model_name: "gemini-2.5-flash"   # configurable: any Vertex AI Gemini model (e.g. "gemini-2.0-flash", "gemini-1.5-pro")
+    temperature: 0.2                 # configurable: 0.0 (deterministic) to 1.0 (creative); use 1.0 for Gemini 3.0+ models
+    max_tokens: 2048                 # configurable: maximum number of tokens in the model's response
+    project: ${GCP_PROJECT_ID}
+    location: ${GCP_REGION}
+}
+```
+
+The `project` and `location` values are read from environment variables at startup via HOCON substitution.
+No API key is required — authentication is handled transparently by Google's ADC library.
+
+> ⚠️ Do **not** set `GOOGLE_API_KEY` when using ADC. The two authentication paths are mutually exclusive.
+> If `GOOGLE_API_KEY` is present in the environment, it may take precedence and cause unexpected errors.
+
+<!-- -->
+
+> **Tip**: To centralize the LLM configuration and reuse it across multiple agent networks, define it in a
+> separate file (e.g. `registries/llm_config.hocon`) and include it in your agent network HOCON files:
+>
+> ```hocon
+> include "registries/llm_config.hocon"
+> ```
+
+For more information on Vertex AI authentication and available models, see the
+[Vertex AI documentation](https://cloud.google.com/vertex-ai/docs/authentication) and the
+[LangChain ChatVertexAI reference](https://python.langchain.com/docs/integrations/chat/google_vertex_ai_palm/).
 
 ### Ollama
 
 This guide walks you through how to use a locally running LLM via [Ollama](https://github.com/ollama/ollama) in neuro-san.
 
-#### Prerequisites
+#### Ollama Prerequisites
 
 1. Download and Install Ollama
 
@@ -501,7 +612,7 @@ This guide walks you through how to use a locally running LLM via [Ollama](https
    To use the model in the `hocon` file, its name and relevant information, such as `max_token`, must be included in the
    [default llm info file](https://github.com/cognizant-ai-lab/neuro-san/blob/main/neuro_san/internals/run_context/langchain/llms/default_llm_info.hocon).
 
-#### Configuration
+#### Ollama Configuration
 
 In your agent network hocon file, set the model name in the `llm_config` section. For example:
 
@@ -1222,6 +1333,255 @@ following methods.
     directly in the agent network HOCON configuration.
    - For example, see [mcp_info.hocon](../mcp/mcp_info.hocon)
 
+## Middleware
+
+Middleware allows custom code to be injected at key points during agent execution — before or after the agent runs,
+and before or after each LLM call. This makes it possible to inspect, modify, or intercept data flowing through
+an agent without changing the agent's core logic.
+
+Middleware is configured per agent using the optional `middleware` key in an agent's specification.
+The value is a list of dictionaries, each describing one `AgentMiddleware` instance to apply.
+When multiple middleware are listed, order of appearance matters — they are applied in sequence.
+
+For an overview of middleware, see the [Overview](https://docs.langchain.com/oss/python/langchain/middleware/overview).
+
+For a working example, see [pii_middleware.hocon](../registries/basic/pii_middleware.hocon).
+
+### class
+
+_Required._ The fully-qualified class name of the `AgentMiddleware` to instantiate. For example:
+
+```hocon
+"class": "langchain.agents.middleware.PIIMiddleware"
+```
+
+An `AgentMiddleware` can hook into the following points of agent execution (asynchronous variants are preferred
+in the Neuro SAN server environment):
+
+- `abefore_agent()` — called before the agent execution starts
+- `aafter_agent()` — called after the agent execution completes
+- `abefore_model()` — called before each LLM call
+- `aafter_model()` — called after each LLM call
+- `awrap_model_call()` - intercept and control async model execution via handler callback
+- `awrap_tool_call()` - intercept and control async tool execution via handler callback
+
+Only class-based middleware is supported (not annotation-based). See
+[AgentMiddleware](https://docs.langchain.com/oss/python/langchain/middleware/custom#class-based-middleware)
+for details on how to implement one.
+
+#### Note on `hook_config`
+
+Each individual agent in Neuro SAN runs its own internal LangGraph control loop — a state machine with three
+core nodes: `model` (the LLM call), `tools` (tool execution), and `end` (exit). The `@hook_config` decorator
+declares which of these nodes a hook method is allowed to jump to, creating the corresponding conditional edges
+in that loop at build time.
+
+```python
+@hook_config(can_jump_to=["end", "model", "tools"])
+```
+
+Supported jump targets:
+
+- `"end"` — exits the agent loop and returns to the caller (or the first `after_agent` hook if one is registered)
+- `"model"` — re-enters at the model node (or the first `before_model` hook)
+- `"tools"` — re-enters at the tools node
+
+To trigger a jump, return a dict containing `"jump_to": "<target>"` from the decorated hook method. Returning
+`None` (or omitting `jump_to`) lets execution continue normally.
+
+```python
+@hook_config(can_jump_to=["model"])
+async def aafter_agent(self, state: AgentState, runtime: Runtime):
+    if not self._is_valid(state):
+        return {"messages": [...], "jump_to": "model"}
+    return None
+```
+
+`@hook_config` works on all hook variants — `before_agent`, `after_agent`, `before_model`, `after_model`, and
+their async `abefore_*` / `aafter_*` counterparts. Declare only the targets you actually use; undeclared targets
+will not have edges in the graph and cannot be jumped to at runtime.
+
+See also:
+- [hook_config reference](https://reference.langchain.com/python/langchain/agents/middleware/types/hook_config)
+- [Agent jumps](https://docs.langchain.com/oss/python/langchain/middleware/custom#agent-jumps)
+- [Before-agent guardrails](https://docs.langchain.com/oss/python/langchain/guardrails#before-agent-guardrails)
+
+### args
+
+A dictionary of keyword arguments passed to the middleware class constructor. Keys are argument names and
+values are argument values, matching the constructor signature of the class being instantiated. For example:
+
+```hocon
+"args": {
+    "pii_type": "phone_number",
+    "detector": "[a-zA-Z0-9]{3}-[a-zA-Z0-9]{4}",
+    "strategy": "redact",
+    "apply_to_output": true
+}
+```
+
+#### Special args
+
+The following argument names are recognized by the agent framework and automatically populated if they appear
+in both the middleware dictionary and the class constructor signature:
+
+- **`chat_history`** — a list of AI and human messages accumulated during the session. See
+  [neuro-san summarization middleware](https://github.com/cognizant-ai-lab/neuro-san/blob/main/neuro_san/middleware/neuro_san_summarization_middleware.py)
+  for an example.
+- **`journal`** — an interface for journaling chat messages.
+- **`origin`** — a list of dictionaries describing where in the agent network hierarchy this middleware
+  was instantiated.
+- **`origin_str`** — a simpler string representation of `origin`.
+- **`progress_reporter`** — an interface for reporting on an agent network's progress.
+- **`reservationist`** — an interface for making reservations on temporary networks. Requires reservations
+  to be enabled in the agent's `allow` block:
+
+    ```json
+    "allow": {
+        "reservations": true
+    }
+    ```
+
+    See [Agent Network Designer](../registries/agent_network_designer.hocon) for an example.
+- **`sly_data`** — the agent's `sly_data` dictionary, shared across all middleware and coded tools for
+  the current request. See [Sly data](#sly-data) for more information.
+
+### Example
+
+The following example shows a `prankster` agent that uses `PIIMiddleware` to detect and redact phone numbers
+from both inputs and outputs:
+
+```hocon
+{
+    "name": "prankster",
+    "function": {
+        "description": "Send me a phone number and I will leave a message on its voicemail for you.",
+        "parameters": {
+            "phone_number": {
+                "type": "string",
+                "description": "The phone number to send the message to."
+            },
+            "message": {
+                "type": "string",
+                "description": "The message to send to the phone number."
+            }
+        }
+    },
+    "instructions": "You are an impotent wannabe prank caller. ...",
+    "tools": [],
+    "middleware": [
+        {
+            "class": "langchain.agents.middleware.PIIMiddleware",
+            "args": {
+                "pii_type": "phone_number",
+                "detector": "[a-zA-Z0-9]{3}-[a-zA-Z0-9]{4}",
+                "strategy": "redact",
+                "apply_to_output": true
+            }
+        }
+    ]
+}
+```
+
+See [pii_middleware.hocon](../registries/basic/pii_middleware.hocon) for the full working network.
+
+## Agent Skills
+
+[Agent Skills](https://platform.claude.com/docs/en/agents-and-tools/agent-skills/overview) are supported
+using a middleware implementation. `AgentSkillsMiddleware` is a built-in middleware that implements the
+[Agent Skills specification](https://agentskills.io/specification). It gives an agent access to
+a library of **skills** — structured, reusable instruction sets stored as `SKILL.md` files — without
+loading their full content into the prompt upfront.
+
+### How it works
+
+The middleware uses a **progressive disclosure** pattern to keep token usage low:
+
+1. **At startup** (`abefore_agent`): scans all configured skill sources, parses the YAML
+   frontmatter (name, description) from each `SKILL.md`, and caches the full file content, but
+   only injects the parsed metadata into the system prompt.
+2. **Before each model call** (`awrap_model_call`): injects a compact list of available skills into
+   the system prompt so the agent knows what is available.
+3. **On demand**: when the agent decides a skill is relevant, it calls one of three tools registered
+   by the middleware to load the full content:
+
+| Tool | Description |
+|------|-------------|
+| `get_full_skill_content` | Loads the complete `SKILL.md` for a named skill |
+| `load_skill_resource_local` | Loads an additional file from a local skill directory |
+| `load_skill_resource_remote` | Loads an additional file from a remote skill URL |
+
+> **Security**: All three tools attempt to restrict file and URL access to paths that fall under
+> the configured `skill_sources` entries. This helps reduce the risk of SSRF and data
+> exfiltration attacks, but should not be relied on as a complete security boundary.
+
+### SKILL.md format
+
+Each skill directory must contain a `SKILL.md` file with a YAML frontmatter block followed by the
+skill's full instructions. The frontmatter must include at minimum `name` and `description`:
+
+```markdown
+---
+name: internal-comms
+description: Helps write internal communications such as newsletters and FAQs.
+allowed-tools: web_search
+compatibility: general
+license: Apache-2.0
+---
+
+# Internal Communications Skill
+
+... full instructions here ...
+```
+
+Frontmatter constraints (per the [Agent Skills spec](https://agentskills.io/specification)):
+
+- `name`: required, 1–64 characters, lowercase alphanumeric and hyphens only, no leading/trailing or consecutive hyphens
+- `description`: required, max 1024 characters
+- `allowed-tools`: optional, space-delimited or YAML list of recommended tool names
+- `compatibility`, `license`: optional free-text fields
+
+### Configuration
+
+Configure `AgentSkillsMiddleware` in the agent's `middleware` list:
+
+```hocon
+"middleware": [
+    {
+        "class": "middleware.agent_skills_middleware.AgentSkillsMiddleware",
+        "args": {
+            "skill_sources": ["skills/my-skill/"],
+            "keep_skill_in_context": false,
+            "http_timeout": 30.0
+        }
+    }
+]
+```
+
+- `skill_sources` accepts a list of local paths or remote URLs. Each entry must point to a directory
+containing a `SKILL.md` file. You can mix local and remote sources in the same list.
+
+    > ⚠️ **Security note**: Be cautious when using skills from the internet. Always review skill
+    > contents carefully before use — they may contain malicious scripts or reference tools or
+    > resources unavailable in your environment.
+
+<!-- pyml disable line-length -->
+- `keep_skill_in_context` argument controls whether full skill content stays in the conversation
+history after being loaded:
+
+    | Value | Behaviour | Best for |
+    |-------|-----------|----------|
+    | `false` (default) | Skill content removed from chat history after use; agent may re-load if needed | Most use cases; token-constrained environments |
+    | `true` | Skill content stays in chat history; agent can reference multiple skills simultaneously | Complex tasks requiring cross-skill synthesis |
+
+<!-- pyml enable line-length -->
+
+- `http_timeout` indicates timeout in seconds for HTTP requests. Only used for remote skills.
+
+For working examples, see:
+- [job_guessing_skill.hocon](../registries/basic/job_guessing_skill.hocon) — local skill source
+- [internal_communication_skill.hocon](../registries/basic/internal_communication_skill.hocon)
+
 ## Logging
 
 The client and server logs will be saved to `logs/nsflow.log` and `logs/server.log` respectively.
@@ -1281,9 +1641,7 @@ In this architecture, agents decide if they can answer inquiries or if they need
 
 Reference:
 [Iterative Statistical Language Model Generation for Use with an
-Agent-Oriented Natural Language Interface](https://citeseerx.ist.psu.edu/document?repid=rep1&type=pdf&doi=3004005f1e736815b367be83f2f90cc0fa9e0411)
-
-<!-- (https://citeseerx.ist.psu.edu/document?repid=rep1&type=pdf&doi=011fb718658d611294613286c0f4b143aed40f43) -->
+Agent-Oriented Natural Language Interface](https://www.sri.com/wp-content/uploads/2021/12/iterative_statistical_language_model_generation_for_use.pdf)
 
 Look at [../registries/basic/smart_home.hocon](../registries/basic/smart_home.hocon) and in particular:
 
@@ -1358,7 +1716,78 @@ python -m pytest tests/ -v --cov=coded_tools,run.py -m "not integration"
 
 #### Add test case
 
-TBD
+Integration tests are data-driven: each test case is a single HOCON file under `tests/fixtures/`.
+The full schema is documented in the
+[test case HOCON reference](https://github.com/cognizant-ai-lab/neuro-san/blob/main/docs/test_case_hocon_reference.md).
+
+There are two ways to create a test case: automatically with the
+[Agent Network Test Generator](agent_network_test_generator.md),
+
+or manually.
+
+##### Automatic Test Generation
+
+The `agent_network_test_generator` agent network can analyze an existing agent network
+and produce test fixtures automatically. Start the server, open the client, select
+`agent_network_test_generator`, and type a prompt such as:
+
+```text
+Generate test cases for basic/coffee_finder_advanced
+```
+
+You can control how many scenarios are generated with the `test_level` parameter:
+
+```text
+Generate test cases for basic/coffee_finder_advanced with minimum coverage
+Generate test cases for basic/music_nerd_pro with max coverage
+```
+
+| Level     | Scenarios | Description                                                        |
+|-----------|-----------|--------------------------------------------------------------------|
+| `minimum` | 2--3      | One core happy-path and one critical edge case.                    |
+| `normal`  | 5--7      | Happy paths, edge cases, and at least one error/boundary scenario. |
+| `max`     | 10--15    | Exhaustive coverage of all capabilities and edge cases.            |
+
+The generator saves fixtures under `tests/fixtures/<agent_name>/`. Review the generated
+files before committing — you may need to adjust `gist` criteria, `keywords`, `value`
+checks, or `sly_data` values. See
+[Agent Network Test Generator](agent_network_test_generator.md) for full details.
+
+##### Manual creation
+
+Create a new `.hocon` file under `tests/fixtures/<group>/<agent_name>/`.
+For the full schema reference including all supported fields (`agent`, `success_ratio`,
+`connections`, `interactions`, `sly_data`, `response`, stock tests, etc.), see the
+[Data-Driven Test Case HOCON File Reference](https://github.com/cognizant-ai-lab/neuro-san/blob/main/docs/test_case_hocon_reference.md)
+in the neuro-san repository.
+
+For existing examples, look at the fixtures under `tests/fixtures/` in this repository.
+
+##### Register the fixture
+
+Generated and manually created fixtures are **not** automatically picked up by CI.
+To include a fixture in the integration test suite, add its path to the appropriate
+`@parameterized.expand` list in
+[test\_integration\_test\_hocons.py](../tests/integration/test_integration_test_hocons.py):
+
+```python
+@parameterized.expand(
+    DynamicHoconUnitTests.from_hocon_list(
+        [
+            # existing fixtures ...
+            "basic/coffee_finder_advanced/coffee_where_sly_data_8am.hocon",
+            # add your new fixture here
+            "basic/coffee_finder_advanced/your_new_fixture.hocon",
+        ]
+    ),
+    skip_on_empty=True,
+)
+```
+
+Each test method is tagged with `@pytest.mark` markers that mirror the folder grouping
+(e.g. `integration_basic`, `integration_basic_coffee_finder_advanced`). If you are adding
+fixtures for a new agent network that does not have an existing test method, create a new
+method following the same pattern.
 
 #### Run test
 
@@ -1420,3 +1849,59 @@ Please select the execution option that best aligns with the level of validation
     ```bash
     pytest -s ./tests/integration/test_integration_test_hocons.py::TestIntegrationTestHocons::test_hocon_industry_0_industry_airline_policy_basic_eco_carryon_baggage
     ```
+
+## Improving agent networks
+
+<!-- pyml disable line-length -->
+
+Best practices for building and tuning AAOSA-based agent networks.
+
+- Partition knowledge documents cleanly across agents:
+   Organize content into per-agent subdirectories, join broken lines, and remove stale or redundant material. Clean, well-scoped inputs improve retrieval accuracy and agent reliability.
+
+- Choose a routing strategy that matches your document layout:
+   Use single-agent routing when domains are clearly distinct or when latency and token cost are a concern. Use multi-agent routing when document boundaries are ambiguous or overlap; fan out to all relevant agents and merge their results.
+
+- Add routing instructions to every agent that delegates (not just the frontman):
+   Any intermediate agent that calls sub-agents needs explicit routing logic. For simple queries with a clear single owner, instruct each routing agent to match the query to exactly one sub-agent and send it there directly. For anything more complex — queries that span multiple domains, require partial answers from several agents, or are ambiguous up front — **use AAOSA**. AAOSA is the preferred pattern for multi-agent coordination: each sub-agent independently assesses whether and how it can contribute, reports back, and the routing agent synthesizes a unified response. When in doubt, default to AAOSA; the overhead of unnecessary sub-agent calls is lower than the cost of misrouting or incomplete answers.
+
+- Design the agent network structure carefully:
+   Parent-child relationships, nesting depth, and peer groupings all affect routing accuracy. If a sub-agent spans multiple parent domains, consider promoting it to a top-level peer to avoid misrouting and reduce ambiguity.
+
+- Write rich function descriptions (they are your routing layer):
+   The top-level agent routes queries based on each sub-agent's `name` and `description` in the `function` block. Always override the `description` when extending `${aaosa_call}`. Choose agent names that reflect their full scope. Keep descriptions concise; one line is enough. Avoid putting lengthy descriptions in the prompt itself, as doing so inflates cost without added benefit.
+
+- Prefer negative instructions over positive ones:
+   In practice, "NEVER do X" is followed more reliably than "try to do X", especially when combined with capitalized keywords. When a rule is critical, phrase it as a prohibition.
+
+- Use capitalized keywords sparingly but strategically:
+   Words like `NEVER`, `ALWAYS`, and `ONLY` in all-caps are strong emphasis markers. Overusing them dilutes their effect — reserve capitalization for 3–5 of your most critical rules. Since LLMs parse instructions in Markdown format, combining caps with bold formatting (e.g., **NEVER**) provides an additional emphasis signal.
+
+- Use numbered lists for agent instructions, not prose:
+   Prose is appropriate for descriptions, but agent rules should be expressed as numbered steps (1, 2, 3 …). Structured lists are followed more reliably than dense paragraphs, and numbered ordering helps the LLM process instructions sequentially.
+
+- Repeat critical instructions at the top and bottom of the prompt:
+   LLM compliance improves when key rules appear more than once. Define cross-cutting rules in an `instructions_prefix` block (injected at the top) and repeat the most critical constraints at the end of each agent's `instructions`. Keep prompts concise; excess context increases the risk of rules being ignored.
+
+- Avoid the "lost in the middle" problem:
+   LLMs attend most strongly to the beginning and end of a prompt; content in the middle is most likely to be overlooked. Place agent identity and the most critical rules at the start, repeat key constraints at the end, and put edge cases and secondary rules in the middle.
+
+- Include explicit tool-call instructions with exact parameter values:
+   Spell out the tool name, parameter name, and expected value in the agent's instructions. Without this, agents may skip tool calls entirely and answer from pre-trained knowledge rather than the provided documents.
+
+- Use `aaosa_basic.hocon` over `aaosa.hocon`:
+   The basic variant includes only the core AAOSA variables, without additional features that may introduce unintended behavior. It is more refined and produces more reliable results in practice.
+
+- Use prompt optimization tools to iterate faster:
+   Feed your current prompt, failing test cases, and expected outputs to a prompt optimizer for the model you are using (e.g., [OpenAI Optimizer](https://platform.openai.com/chat/edit?models=gpt-5&optimize=true) or [Claude Optimizer](https://claude.ai/public/artifacts/422bb5fc-c03e-4488-9e49-9ad4239398fe)) and ask for a targeted rewrite. This is often faster than manual trial and error.
+
+- Structure agents with explicit query-processing pipelines:
+   Without step-by-step decomposition instructions, agents tend to call only one sub-agent even for multi-domain questions. Define an explicit processing pipeline (e.g., analyze → decompose → delegate → synthesize) for the frontman and apply similar step-by-step instructions to mid-level and leaf agents.
+
+- Add anti-summarization rules to preserve completeness:
+   LLMs default to summarizing responses, which drop important variations, exceptions, and edge cases. If agents must preserve the exact content of source documents, explicitly instruct them not to omit details — for example: "Include ALL details, categories, exceptions, and variations."
+
+- Keep prompts short and focused:
+   Every unnecessary sentence increases the probability that a rule will be ignored. Move lengthy explanations and domain knowledge to function descriptions or source documents, and reserve the instructions block for behavioral rules only.
+
+<!-- pyml enable line-length -->

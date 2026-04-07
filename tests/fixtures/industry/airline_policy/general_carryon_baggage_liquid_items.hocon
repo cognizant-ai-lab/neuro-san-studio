@@ -30,8 +30,8 @@
     # success_ratio is useful for passing to the assessor to find out why
     # a test is intermitently failing. Sometimes it's the agent prompt, but
     # sometimes it's the test itself.
-    # Note: This number was set to 3/3 to run each test 3 times for reliability testing.
-    "success_ratio": "3/3",
+    # Note: This number was set to 1/1 for regression testing.
+    "success_ratio": "1/1",
 
     # Interactions are a series of dictionaries with request elements paired with
     # descriptions of response checks.
@@ -57,8 +57,8 @@ How should I pack liquids in my carry-on bag?
                     # Gist says we are going to ask an LLM about how the response
                     # matches up to our description of acceptance criteria.
                     # Each component of the list needs to pass muster in order to pass.
-                    "not_gist": ["""
-Confirms that liquids in a carry-on must be 3.4 oz (100 ml) or less.
+                    "gist": ["""
+Confirms that liquids must be packed in a resealable bag, and any liquid over 3.4 oz (100 ml) must be packed in a checked bag.
                              """]
                 }
             }

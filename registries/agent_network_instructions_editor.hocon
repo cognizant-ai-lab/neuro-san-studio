@@ -82,19 +82,26 @@ Guardrails:
 - Skip agents that are not referenced/affected by the current request.
 - Do not modify instructions if they are semantically unchanged.
 - Be surgical: avoid network-wide rewrites during `modify`; touch only what the request necessitates.
-- Always call validate_instructions after making changes to ensure all non-function agents have instructions.
 """,
             "allow": {
                 "to_upstream": {
                     "sly_data": ["agent_network_definition"]
                 }
             },
-            "tools": ["get_agent_network_definition", "set_agent_instructions_tool", "validate_instructions"]
+            "tools": ["get_agent_network_definition", "set_agent_instructions_tool"],
+            "middleware": [
+                {
+                    "class": "middleware.agent_network_designer.validation.agent_network_instructions_validation_middleware.AgentNetworkInstructionsValidationMiddleware",
+                    "args": {
+                        "sly_data": true
+                    }
+                }
+            ]
         },
 
         {
             "name": "set_agent_instructions_tool",
-            "class": "set_agent_instructions.SetAgentInstructions"
+            "class": "coded_tools.agent_network_instructions_editor.set_agent_instructions.SetAgentInstructions"
             "function": {
                 "description": "Set the instructions for an agent in an agent network."
                 "parameters": {
@@ -116,18 +123,11 @@ Guardrails:
 
         {
             "name": "get_agent_network_definition",
-            "class": "get_agent_network_definition.GetAgentNetworkDefinition",
+            "class": "coded_tools.get_agent_network_definition.GetAgentNetworkDefinition",
             "function": {
                 "description": "Get the agent network definition."
             }
         },
 
-        {
-            "name": "validate_instructions",
-            "class": "validate_instructions.ValidateInstructions",
-            "function": {
-                "description": "Validate that all non-function agents in the agent network have instructions."
-            }
-        }
     ]
 }

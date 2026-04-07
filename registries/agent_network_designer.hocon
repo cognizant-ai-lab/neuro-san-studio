@@ -24,7 +24,7 @@
             "Create an agent network for Santa's Workshop"
         ]
     },
-    
+
     # Load the shared LLM configuration from a single source of truth.
     # This allows users to change the model in one file rather than
     # modifying the configuration for each agent network.
@@ -61,6 +61,79 @@
                         }
                     },
                     "required": ["agent_network_description", "mode"]
+                },
+
+                # You can optionally specify the schema needed for any sly_data as input.
+                # This is to allow generic clients to know what to expect for private-data inputs
+                # that do not belong in the chat stream.
+                "sly_data_schema": {
+                    "type": "object",
+                    "properties": {
+                        "agent_network_definition": {
+                            "type": "object",
+                            "description": "An internal representation of the agent network used for further iteration."
+                        },
+                        "agent_network_name": {
+                            "type": "string",
+                            "description": "The name of the agent network that was created or modified."
+                        },
+                    }
+                    # Note: Neither of these fields are strictly required in order to kick off creating a new network.
+                },
+
+                # You can also optionally specify the schema needed for any sly_data output.
+                # This is to allow generic clients to know what to expect for private-data outputs
+                # that do not belong in the chat stream.
+                "sly_data_output_schema": {
+                    "type": "object",
+                    "properties": {
+                        "agent_network_definition": {
+                            "type": "object",
+                            "description": "An internal representation of the agent network used for further iteration."
+                        },
+                        "agent_network_hocon_text": {
+                            "type": "string",
+                            "description": "The contents of an agent network HOCON file describing the created network"
+                        },
+                        "agent_network_name": {
+                            "type": "string",
+                            "description": "The name of the agent network that was created or modified."
+                        },
+                        "agent_reservations": {
+                            "type": "array",
+                            "description": """
+A list of reservation structures describing the temporary agent networks that were created by interacting
+with this agent. By convention, the last one in the list is a top-level handle which may reference any others listed.
+""",
+                            "items": {
+                                "type": "object",
+                                "properties": {
+                                    "reservation_id": {
+                                        "type": "string"
+                                        "description": """
+The unique identifier of the reserved temporary agent network.
+This can be used to invoke the newly created network later on the same server/cluster.
+"""
+                                    },
+                                    "lifetime_in_seconds": {
+                                        "type": "float",
+                                        "description": """
+Approximate lifetime (in seconds) of the temporary agent network reservation suitable for reporting to end users.
+"""
+                                    },
+                                    "expiration_time_in_seconds": {
+                                        "type": "float",
+                                        "description": """
+The number of seconds since the epoch (Jan 1, 1970) when the reservation will expire.
+After this time the network can no longer be counted upon to exist.
+"""
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    # Note: "agent_reservations" is not strictly required depending on env vars.
+                    "required": ["agent_network_definition", "agent_network_hocon_text", "agent_network_name"]
                 }
             },
             "instructions": """
@@ -94,11 +167,6 @@ However, you **must do step 4** for each user request.
 - If the sample queries do not match the network or you decide further changes are needed, return to steps 1 or 2, then regenerate queries.
 - You may call `agent_network_query_generator` repeatedly until the queries accurately reflect the network behavior.
 
-4) FINALIZE HOCON — ABSOLUTELY MANDATORY
-- **MUST call `persist_agent_network_hocon` before concluding the session**.
-- **Do not return a final answer, or claim completion until the `persist_agent_network` tool has been called successfully**.
-- Return the agent network definition together with the final 3–4 sample queries as example usage.
-
 Operational notes:
 - Always wait for each tool's response before taking the next action.
 - Use `get_agent_network_definition` liberally to inspect current state before deciding on changes.
@@ -115,44 +183,33 @@ Operational notes:
                     ]
                 },
                 "from_downstream": {
-                    "sly_data": ["agent_network_definition", "agent_network_name"],
+                    "sly_data": ["agent_network_definition", "agent_network_name", "agent_network_queries", "mcp_servers", "subnetworks", "toolbox_info"],
                     # Allow all messages sent from specific downstream agents to be reported
                     # as if they came back from this agent network
                     "messages": ["/agent_network_editor", "/agent_network_instructions_editor"]
                 },
                 "to_downstream": {
-                    "sly_data": ["agent_network_definition", "agent_network_name"]
+                    "sly_data": ["agent_network_definition", "agent_network_name", "agent_network_queries"]
                 }
             },
-           "tools": ["/agent_network_editor", "/agent_network_query_generator", "/agent_network_instructions_editor", "persist_agent_network", "get_agent_network_definition", "web_search"]
-        },
-
-        {
-            "name": "persist_agent_network",
-            "class": "persist_agent_network.PersistAgentNetwork"
-            "function": {
-                "description": "Generate the complete persisted definition for an agent network and save it. Must always call this tool before giving response."
-                "parameters": {
-                    "type": "object",
-                    "properties": {
-                        "sample_queries": {
-                            "type": "array",
-                            "items": {
-                                "type": "string"
-                            },
-                            "description": "List of sample queries"
-                        }
+           "tools": ["/agent_network_editor", "/agent_network_query_generator", "/agent_network_instructions_editor", "get_agent_network_definition", "web_search"],
+           "middleware": [
+                {
+                    "class": "middleware.agent_network_designer.persistence.agent_network_persistence_middleware.AgentNetworkPersistenceMiddleware",
+                    "allow": {
+                        "reservations": true
+                    },
+                    "args": {
+                        "reservationist": true,
+                        "sly_data": true,
                     }
                 }
-            },
-            "allow": {
-                "reservations": True
-            }
+            ]
         },
 
         {
             "name": "get_agent_network_definition",
-            "class": "get_agent_network_definition.GetAgentNetworkDefinition",
+            "class": "coded_tools.get_agent_network_definition.GetAgentNetworkDefinition",
             "function": {
                 "description": "Retrieve the current agent network definition. Use the `agent_network_hocon_file` parameter only if the user explicitly specifies a HOCON file to be modified.",
                 "parameters": {

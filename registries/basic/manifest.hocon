@@ -25,6 +25,8 @@
     "basic/coffee_finder_advanced.hocon": true,
     "basic/coffee_finder.hocon": true,
     "basic/hello_world.hocon": true,
+    "basic/internal_communication_skill.hocon": true,
+    "basic/job_guessing_skill.hocon": true,
     "basic/music_nerd.hocon": true,
     "basic/music_nerd_llm_fallbacks.hocon": true,
     "basic/music_nerd_local.hocon": true,

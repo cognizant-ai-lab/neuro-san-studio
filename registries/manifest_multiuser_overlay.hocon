@@ -60,5 +60,8 @@
     "experimental/cruse_widget_agent.hocon": {
         "serve": false,                                 # Reason #1
         "public": false
-    }
+    },
+
+    # Agent network test generator
+    "agent_network_test_generator.hocon": false,        # Reason #1
 }

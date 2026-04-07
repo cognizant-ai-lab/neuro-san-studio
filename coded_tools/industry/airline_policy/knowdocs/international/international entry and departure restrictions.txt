@@ -2,7 +2,6 @@ Africa
 Nigeria
 If you're denied boarding or if your flight is cancelled or delayed for at least one hour, you may be able to receive compensation or help.
 
-
 Asia, Australia and the Pacific
 Australia
 People visiting or returning to Australia need to pay attention to biosecurity requirements specifically for travelers coming from countries where African Swine Fever may be present. Travelers must declare any food and animal products and other risk items on their Incoming Passenger Card — including any clothing, footwear and equipment that has been in contact with animals or worn in a rural area.
@@ -84,8 +83,6 @@ Pests or live insects, such as pathogenic microorganisms, grasshoppers, beetles,
 Quarantined animals and animal products, such as meat and dairy.
 Learn more through Customs Administration.
 
-
-
 Bermuda and Caribbean
 Aruba
 If you're traveling to Aruba, all passengers including minors and infants, must complete the immigration form online before your trip. Learn more at Aruba's Immigration Service website.
@@ -134,7 +131,6 @@ If you’re traveling to Jamaica you must complete the customs and immigration f
 St. Lucia
 When you arrive in St. Lucia, you must have a completed Health Screening form. You can fill the form out ahead of time for a smooth arrival.
 
-
 Europe
 European Union
 You can’t bring meat, meat products, milk and milk products into European Union member states except in these cases:
@@ -145,11 +141,8 @@ All other meat, meat products, milk or milk products will be disposed of on arri
 
 Germany
 Airline participates in conciliation procedures of the Schlichtungsstelle Reise & Verkehr e.V. If you are not satisfied with our handling of your complaint, you can submit a request for conciliation to the conciliation body:
-
 Schlichtungsstelle Reise & Verkehr e.V.
-
 Fasanenstraße 81, D-10623 Berlin
-
 Schlichtungsstelle Reise & Verkehr e.V.
 
 Italy
@@ -187,7 +180,6 @@ Airline Kingdom Border Force offers the Registered Traveler program to expedite 
 UK Electronic Travel Authorization (ETA) program
 Electronic Travel Authorizations (ETAs) are being introduced worldwide for visitors to the UK who do not currently need a visa for short stays, or who do not already have a UK immigration status prior to travelling. Starting January 8, 2025, all U.S. nationals will need an ETA to enter or transit the UK. Visit the UK government’s website for more information.
 
-
 Mexico and Central America
 Belize
 Children under 18 who are going to Belize without one or both parents must show original, notarized letters of travel consent. For more information, visit the Belize Tourism Board’s website.
@@ -224,7 +216,6 @@ We recommend getting to the airport 4 hours before your flight, and to your gate
 Israel
 Starting January 1, 2025, all foreign nationals traveling to Israel must have a valid visa or an Electronic Travel Authorization (ETA-IL). You can apply for an ETA-IL through the official website. An ETA-IL is valid for multiple trips to Israel for up to 2 years. ETA-IL applications aren’t processed immediately and can take up to 72 hours. We recommend applying when you book your trip and at least 72 hours before you travel. After approval, download and print the ETA-IL for boarding and landing. We suggest you keep a digital copy on your phone.
 
-
 North America
 Canada
 Air Passenger Protection Regulation
@@ -234,15 +225,12 @@ Advance Declaration for customs
 Save time by using the Advance Declaration web or mobile app to make your customs and immigration declaration to the Canada Border Services Agency (CBSA). You can use it up to 72 hours in advance of your arrival in Canada.
 
 Passenger rights
-
 We’re committed to operating a reliable schedule for our customers. Safety considerations, weather, air traffic control, operations and other factors may occasionally cause lengthy tarmac delays. You can learn more about your rights and our delay contingency plans on our Canada passenger rights page.
 
 ATPDR
-
 Learn more about Canada’s Accessible Transportation for Persons with Disabilities (ATPDR) and about traveling with disabilities.
 
 eTA
-
 Most travelers need a visa or electronic travel authorization (eTA) to fly to or through Canada. If you’re a U.S. citizen or permanent resident, you don’t need an eTA or a visa Visit the Canadian government’s website for additional information or to apply.
 
 U.S.
@@ -250,7 +238,6 @@ Transit through the U.S.
 There are no international transit areas in the U.S. Travelers must clear immigration for entry to the U.S. Travelers need to have all applicable documentation, including ESTA if eligible.
 
 ESTA
-
 Visit our ESTA page to learn more about requirements if you don’t have a U.S. visa for a flight through or to the U.S.
 
 Visa Waiver Program
@@ -260,7 +247,6 @@ In addition, all VWP travelers are required to obtain an authorization via ESTA 
 
 OBIM notice
 The Office of Biometric Identity Management (OBIM) collects, stores and analyzes biometric data for the DHS. OBIM procedures currently apply to all international visitors entering the Airline States, including VWP participants. Find more information on the DHS website.
-
 
 South America
 Brazil
