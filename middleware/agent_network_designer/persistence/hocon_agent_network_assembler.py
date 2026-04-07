@@ -65,7 +65,7 @@ HOCON_HEADER_REMAINDER = (
 TOP_AGENT_TEMPLATE = (
     "        {\n"
     '            "name": "%s",\n'
-    '            "function": {\n'
+    '            "function": ${aaosa_call}{\n'
     '                "description": """\n'
     "An assistant that answer inquiries from the user.\n"
     '                """\n'

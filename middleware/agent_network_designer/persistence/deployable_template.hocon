@@ -55,9 +55,7 @@ Do not mention what you can NOT do. Only mention what you can do.
         # Top agent template
         {
             "name": "{agent_name}",
-            "function": {
-                "description": "An assistant that answer inquiries from the user."
-            },
+            "function": "aaosa_call",
             "instructions": """
 {instructions_prefix}
 
