@@ -164,7 +164,7 @@ class AgentNetworkPersistenceMiddleware(AgentMiddleware):
 
     def _normalize_network_name(self, name: str) -> str:
         """Prepend SUBDIRECTORY prefix if not already present."""
-        prefix = SUBDIRECTORY + "/"
+        prefix: str = SUBDIRECTORY.rstrip("/") + "/"
         if not name.startswith(prefix):
             # Neuro-SAN only allows '/' as path separator in agent network names.
             return prefix + name
@@ -202,8 +202,16 @@ class AgentNetworkPersistenceMiddleware(AgentMiddleware):
         )
         self.logger.info("The resulting agent network: \n %s", persisted_content)
 
+        if WRITE_TO_FILE:
+            file_reference: str = the_agent_network_name
+        else:
+            # Reservations API forbids '/', ':', and ' ' — strip subdirectory prefix then sanitize
+            file_reference = the_agent_network_name.removeprefix(SUBDIRECTORY)
+            for char in ["/", ":", " "]:
+                file_reference = file_reference.replace(char, "")
+
         persisted_reference: str | list[dict[str, Any]] = await persistor.async_persist(
-            obj=persisted_content, file_reference=the_agent_network_name
+            obj=persisted_content, file_reference=file_reference
         )
         if isinstance(persisted_reference, list):
             self.sly_data["agent_reservations"] = persisted_reference
