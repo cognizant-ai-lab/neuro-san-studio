@@ -53,7 +53,7 @@
         # This is a support network for agent_network_designer
         # We want it served up, but not listed as a public agent network
         "serve": true,
-        "public": false
+        "public": true
     },
     "agent_network_query_generator.hocon": { 
         # This is a support network for agent_network_designer
