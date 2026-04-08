@@ -99,6 +99,9 @@ COPY ./middleware ${APP_SOURCE}/middleware
 COPY ./deploy/entrypoint.sh ${APP_SOURCE}/deploy/entrypoint.sh
 COPY ./deploy/logging.hocon ${APP_SOURCE}/deploy/logging.hocon
 COPY ./mcp/mcp_info.hocon ${APP_SOURCE}/mcp/mcp_info.hocon
+# Deployment-specific configuration (LLM provider, model selection, etc.).
+# This directory is separate so it can be volume-mounted at runtime to swap
+# configs without rebuilding the image.
 COPY ./config ${APP_SOURCE}/config
 # To override the default LLM configuration at runtime, mount your custom
 # llm_config.hocon using a Docker volume, e.g.:
