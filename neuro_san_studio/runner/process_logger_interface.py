@@ -16,6 +16,7 @@
 
 """Interface for process loggers that drain subprocess pipes."""
 
+import subprocess
 from abc import ABC
 from abc import abstractmethod
 
@@ -29,7 +30,7 @@ class ProcessLoggerInterface(ABC):  # pylint: disable=too-few-public-methods
     """
 
     @abstractmethod
-    def attach_process_logger(self, process, process_name: str, log_file: str) -> None:
+    def attach_process_logger(self, process: subprocess.Popen[str], process_name: str, log_file: str) -> None:
         """Attach to a subprocess and drain its stdout/stderr pipes.
 
         Args:

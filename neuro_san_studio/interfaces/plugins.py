@@ -16,9 +16,12 @@
 
 """Base class for all plugins in the system."""
 
+import argparse
 import logging
 import os
 from abc import ABC
+from typing import Any
+from typing import Optional
 
 from neuro_san_studio.utils.plugin_logger_adapter import _PluginLoggerAdapter
 
@@ -48,7 +51,7 @@ class BasePlugin(ABC):
         update_parser_args -- Add CLI flags to the argument parser.
     """
 
-    def __init__(self, plugin_name: str, args: dict = None):
+    def __init__(self, plugin_name: str, args: Optional[dict[str, Any]] = None):
         """Initialize the base plugin with a name and optional arguments.
 
         Args:
@@ -60,39 +63,39 @@ class BasePlugin(ABC):
         raw_logger = logging.getLogger(self.__class__.__name__)
         self._logger = _PluginLoggerAdapter(raw_logger, {"plugin_name": self.__class__.__name__})
 
-    def initialize(self):
+    def initialize(self) -> None:
         """Initialize the plugin. Logs entry/exit and delegates to do_initialize."""
         self._logger.info("Initializing (PID=%s)", os.getpid())
         self.do_initialize()
         self._logger.info("Initialized (PID=%s)", os.getpid())
 
-    def do_initialize(self):
+    def do_initialize(self) -> None:
         """Hook: override to provide custom initialisation logic.
 
         Called by :meth:`initialize` between the entry and exit log messages.
         The default implementation does nothing.
         """
 
-    def cleanup(self):
+    def cleanup(self) -> None:
         """Cleanup resources. Logs entry/exit and delegates to do_cleanup."""
         self._logger.info("Cleaning up")
         self.do_cleanup()
         self._logger.info("Cleanup complete")
 
-    def do_cleanup(self):
+    def do_cleanup(self) -> None:
         """Hook: override to provide custom cleanup logic.
 
         Called by :meth:`cleanup` between the entry and exit log messages.
         The default implementation does nothing.
         """
 
-    def pre_server_start_action(self):
+    def pre_server_start_action(self) -> None:
         """Hook: override to run actions before the server starts.
 
         The default implementation does nothing.
         """
 
-    def post_server_start_action(self):
+    def post_server_start_action(self) -> None:
         """Hook: override to run actions after the server starts.
 
         The default implementation does nothing.
@@ -114,22 +117,22 @@ class BasePlugin(ABC):
             return default
         return val.strip().lower() in {"1", "true", "yes", "on"}
 
-    def update_args_dict(self, args_dict: dict):
+    def update_args_dict(self, args_dict: dict[str, Any]) -> None:
         """Hook: override to inject default values into the arguments dictionary.
 
         Args:
             args_dict: Dictionary of arguments to update.
         """
 
-    def update_parser_args(self, parser):
+    def update_parser_args(self, parser: argparse.ArgumentParser) -> None:
         """Hook: override to add plugin-specific flags to the argument parser.
 
         Args:
             parser: The argument parser to update.
         """
 
-    def __str__(self):
+    def __str__(self) -> str:
         return f"{self.plugin_name} Plugin"
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return f"{self.plugin_name} Plugin"

@@ -16,6 +16,7 @@
 
 """Simple process logger that drains subprocess pipes to console and file."""
 
+import subprocess
 import threading
 from pathlib import Path
 
@@ -30,7 +31,7 @@ class SimpleProcessLogger(ProcessLoggerInterface):  # pylint: disable=too-few-pu
     pipe buffer deadlocks, and writes raw lines to both the console and a log file.
     """
 
-    def attach_process_logger(self, process, process_name: str, log_file: str) -> None:
+    def attach_process_logger(self, process: subprocess.Popen[str], process_name: str, log_file: str) -> None:
         """Attach to a subprocess and drain its pipes with basic forwarding.
 
         Args:
