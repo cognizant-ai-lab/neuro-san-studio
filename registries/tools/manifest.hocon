@@ -138,4 +138,11 @@
 
     # Wikimedia media search
     "tools/wikimedia_search.hocon": true,
+
+    # Requirement to use this agent network:
+    # - neuro-san>=0.6.24
+    # - YDC_API_KEY
+    # - Get a free API key with $100 in credits (no credit card required) at https://you.com/platform
+    # - Use MCP_SERVERS_INFO_FILE for authentication. See https://github.com/cognizant-ai-lab/neuro-san-studio/blob/main/mcp/mcp_info.hocon and https://github.com/cognizant-ai-lab/neuro-san-studio/blob/main/docs/user_guide.md#authentication
+    "tools/you_search.hocon": true,
 }

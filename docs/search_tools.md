@@ -2,15 +2,59 @@
 
 Neuro SAN offers search capability via the following search engines:
 
-1. anthropic\_search — Web search via Anthropic's search tool
-2. brave\_search — Search using Brave Search API
-3. ddgs\_search — Search using DuckDuckGo (no API key required)
-4. google\_search — Search using Google Custom Search Engine
-5. google\_serper — Search using Google Serper API with advanced filtering
-6. openai\_search — Web search via OpenAI's search tool
-7. tavily\_search — AI-optimized search using Tavily API
+1. you\_search — Web search, content extraction, and AI research via You.com MCP server
+2. anthropic\_search — Web search via Anthropic's search tool
+3. brave\_search — Search using Brave Search API
+4. ddgs\_search — Search using DuckDuckGo (no API key required)
+5. google\_search — Search using Google Custom Search Engine
+6. google\_serper — Search using Google Serper API with advanced filtering
+7. openai\_search — Web search via OpenAI's search tool
+8. tavily\_search — AI-optimized search using Tavily API
 
 In this document, we will go over each search tools listed above and will also do a comparison.
+
+## You.com Search
+
+You.com is a developer-focused search platform designed for AI agents and automation. It integrates with Neuro SAN
+via the Model Context Protocol (MCP), exposing three tools through a single MCP server at `https://api.you.com/mcp`:
+
+- **`you-search`** (Web Search API) — Real-time web and news search with advanced filtering options including site
+  filtering, file type restrictions, language filtering, exact term matching, and date ranges. Pricing: $5 per 1,000
+  calls.
+- **`you-contents`** (Contents API) — Extracts full page content from URLs in Markdown or HTML format, useful for
+  documentation analysis and content processing. Pricing: $1 per 1,000 pages.
+- **`you-research`** (Research API) — A separate API that provides synthesized, citation-backed answers with
+  configurable effort levels: `lite`, `standard`, `deep`, `exhaustive`, and `frontier`. Higher effort levels use more
+  sources and deeper reasoning but take longer. Pricing: starting at ~$6.50 per 1,000 calls, varying by effort level.
+
+_Getting a Free API Key:_
+
+1. Go to [https://you.com/platform](https://you.com/platform)
+2. Sign up — no credit card required
+3. You automatically receive **$100 in free credits** upon signup
+4. Get your API key at [https://you.com/platform/api-keys](https://you.com/platform/api-keys)
+5. Set it using the `YDC_API_KEY` environment variable
+
+_Getting a Paid API Key:_
+
+1. Sign up at [https://you.com/platform](https://you.com/platform) if you haven't already
+2. After free credits are exhausted, add a payment method in your account
+3. Pay-as-you-go billing with no minimum spend
+4. Enterprise options are available with volume discounts, annual savings, SOC 2 certification, and zero data retention
+5. For full pricing details, see [https://you.com/pricing](https://you.com/pricing)
+
+_MCP Configuration:_
+
+You.com is integrated as an MCP server. To enable it, uncomment the You.com section in
+[mcp\_info.hocon](https://github.com/cognizant-ai-lab/neuro-san-studio/blob/main/mcp/mcp_info.hocon)
+and set the `YDC_API_KEY` environment variable.
+
+_Example Usage in Neuro San Studio:_
+
+<!-- pyml disable line-length -->
+[you\_search.hocon](https://github.com/cognizant-ai-lab/neuro-san-studio/blob/main/registries/tools/you_search.hocon),
+see also [MCP server configuration](https://github.com/cognizant-ai-lab/neuro-san-studio/blob/main/mcp/mcp_info.hocon)
+<!-- pyml enable line-length -->
 
 ## Anthropic Search
 
@@ -193,6 +237,7 @@ Available as a tool in [toolbox\_info.hocon](https://github.com/cognizant-ai-lab
 <!-- pyml disable line-length -->
 | Search Tool | What It Is | Search Engine? | Data Source / Index | Public API ? |
 | --- | --- | --- | --- | --- |
+| You.com | Developer-focused search platform with web search, content extraction, and AI research via MCP | No | Own search index + multiple web sources + AI synthesis | Yes |
 | Anthropic | built-in web search system used by Claude | No | Uses external APIs (e.g., Bing, Brave) | No |
 | Brave | Privacy-focused independent search engine | Yes | Own independent index | Yes |
 | DDGS | A meta-search library, aggregates results from diverse web search services | No | Scrapes public search result pages from DuckDuckGo, Bing, Brave, Google | No |
@@ -209,6 +254,7 @@ The cost and rate limit comparison is provided in the table below.
 <!-- pyml disable line-length -->
 | Search Tool | Free Tier | Paid Tier(s) |
 | --- | --- | --- |
+| You.com Search | Yes<br>$100 in free credits<br>No credit card required | Yes<br>Web Search: $5 per 1,000 calls<br>Contents: $1 per 1,000 pages<br>Research: from ~$6.50 per 1,000 calls |
 | Anthropic Search | Yes<br> (Internal to Claude)<br>Check Anthropic rate limits | Yes<br> (Internal to Claude)<br>Check Anthropic rate limits |
 | Brave Search | Yes<br> 1 request/second<br>2,000 request /month | Base AI: $5 per 1,000 requests<br>20 requests/second<br>20 million queries/month<br>Pro AI: $9 per 1,000 requests<br>50 requests/second<br>Unlimited queries/month |
 | DDGS | Yes<br>Rate limit: backend specific | No |
@@ -222,8 +268,9 @@ The cost and rate limit comparison is provided in the table below.
 Below please find links for cost and rate limit comparison data:
 
 <!-- pyml disable line-length -->
-1. [Brave Search](https://brave.com/search/api/)
-2. [Google Search](https://support.google.com/programmable-search/answer/9069107?hl=en)
-3. [Google Serper](https://serper.dev/)
-4. [Tavily Search](https://www.tavily.com/#pricing)
+1. [You.com Search](https://you.com/pricing)
+2. [Brave Search](https://brave.com/search/api/)
+3. [Google Search](https://support.google.com/programmable-search/answer/9069107?hl=en)
+4. [Google Serper](https://serper.dev/)
+5. [Tavily Search](https://www.tavily.com/#pricing)
 <!-- pyml enable line-length -->
