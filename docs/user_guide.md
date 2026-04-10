@@ -1369,6 +1369,43 @@ Only class-based middleware is supported (not annotation-based). See
 [AgentMiddleware](https://docs.langchain.com/oss/python/langchain/middleware/custom#class-based-middleware)
 for details on how to implement one.
 
+#### Note on `hook_config`
+
+Each individual agent in Neuro SAN runs its own internal LangGraph control loop — a state machine with three
+core nodes: `model` (the LLM call), `tools` (tool execution), and `end` (exit). The `@hook_config` decorator
+declares which of these nodes a hook method is allowed to jump to, creating the corresponding conditional edges
+in that loop at build time.
+
+```python
+@hook_config(can_jump_to=["end", "model", "tools"])
+```
+
+Supported jump targets:
+
+- `"end"` — exits the agent loop and returns to the caller (or the first `after_agent` hook if one is registered)
+- `"model"` — re-enters at the model node (or the first `before_model` hook)
+- `"tools"` — re-enters at the tools node
+
+To trigger a jump, return a dict containing `"jump_to": "<target>"` from the decorated hook method. Returning
+`None` (or omitting `jump_to`) lets execution continue normally.
+
+```python
+@hook_config(can_jump_to=["model"])
+async def aafter_agent(self, state: AgentState, runtime: Runtime):
+    if not self._is_valid(state):
+        return {"messages": [...], "jump_to": "model"}
+    return None
+```
+
+`@hook_config` works on all hook variants — `before_agent`, `after_agent`, `before_model`, `after_model`, and
+their async `abefore_*` / `aafter_*` counterparts. Declare only the targets you actually use; undeclared targets
+will not have edges in the graph and cannot be jumped to at runtime.
+
+See also:
+- [hook_config reference](https://reference.langchain.com/python/langchain/agents/middleware/types/hook_config)
+- [Agent jumps](https://docs.langchain.com/oss/python/langchain/middleware/custom#agent-jumps)
+- [Before-agent guardrails](https://docs.langchain.com/oss/python/langchain/guardrails#before-agent-guardrails)
+
 ### args
 
 A dictionary of keyword arguments passed to the middleware class constructor. Keys are argument names and
@@ -1388,9 +1425,24 @@ values are argument values, matching the constructor signature of the class bein
 The following argument names are recognized by the agent framework and automatically populated if they appear
 in both the middleware dictionary and the class constructor signature:
 
+- **`chat_history`** — a list of AI and human messages accumulated during the session. See
+  [neuro-san summarization middleware](https://github.com/cognizant-ai-lab/neuro-san/blob/main/neuro_san/middleware/neuro_san_summarization_middleware.py)
+  for an example.
+- **`journal`** — an interface for journaling chat messages.
 - **`origin`** — a list of dictionaries describing where in the agent network hierarchy this middleware
   was instantiated.
 - **`origin_str`** — a simpler string representation of `origin`.
+- **`progress_reporter`** — an interface for reporting on an agent network's progress.
+- **`reservationist`** — an interface for making reservations on temporary networks. Requires reservations
+  to be enabled in the agent's `allow` block:
+
+    ```json
+    "allow": {
+        "reservations": true
+    }
+    ```
+
+    See [Agent Network Designer](../registries/agent_network_designer.hocon) for an example.
 - **`sly_data`** — the agent's `sly_data` dictionary, shared across all middleware and coded tools for
   the current request. See [Sly data](#sly-data) for more information.
 
