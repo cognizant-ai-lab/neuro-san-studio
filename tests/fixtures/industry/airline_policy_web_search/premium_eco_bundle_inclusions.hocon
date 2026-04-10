@@ -57,7 +57,9 @@ What is included in the Premium bundle?
                     "gist": ["""
 Confirms that the Premium bundle includes a carry-on bag, a premium seat,
 and early boarding with overhead bin access.
-                             """]
+                             """],
+
+                    "keywords": ["https://faq.flyfrontier.com/help/what-is-the-difference-between-economy-premium-and-business-bundles"],
                 }
             }
         }

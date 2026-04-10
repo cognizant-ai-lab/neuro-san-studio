@@ -56,7 +56,9 @@ On a domestic Economy bundle fare, do I get a free carry-on bag?
                     # Each component of the list needs to pass muster in order to pass.
                     "gist": ["""
 Confirms that on an Economy bundle, carry-on bags are included for free.
-                             """]
+                            """],
+                    
+                    "keywords": ["https://faq.flyfrontier.com/help/what-is-the-difference-between-economy-premium-and-business-bundles"],
                 }
             }
         }

@@ -56,7 +56,9 @@ How do I become an Elite Gold member?
                     # Each component of the list needs to pass muster in order to pass.
                     "gist": ["""
 Confirms that accumulating 20,000 Elite Status Points in a calendar year qualifies a passenger for Elite Gold membership.
-                             """]
+                             """],
+
+                    "keywords": ["https://faq.flyfrontier.com/help/what-travel-benefits-are-included-with-elite-status"],
                 }
             }
         }

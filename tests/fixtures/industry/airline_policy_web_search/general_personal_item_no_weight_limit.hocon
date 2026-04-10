@@ -56,7 +56,9 @@ What is the weight limit for my personal item?
                     # Each component of the list needs to pass muster in order to pass.
                     "not_gist": ["""
 States a specific weight figure in pounds or kilograms as the personal item weight limit.
-                             """]
+                             """],
+
+                    "keywords": ["https://www.flyfrontier.com/optional-services/"],
                 }
             }
         }

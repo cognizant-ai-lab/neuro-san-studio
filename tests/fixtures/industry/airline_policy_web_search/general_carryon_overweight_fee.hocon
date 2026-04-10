@@ -56,7 +56,9 @@ What’s the fee if my carry-on bag is over the weight limit?
                     # Each component of the list needs to pass muster in order to pass.
                     "gist": ["""
 Confirms that carry-on bags have a maximum weight limit of 35 lbs.
-                             """]
+                             """],
+
+                    "keywords": ["https://www.flyfrontier.com/optional-services/"],
                 }
             }
         }

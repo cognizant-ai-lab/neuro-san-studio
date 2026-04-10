@@ -56,7 +56,9 @@ How should I pack liquids in my carry-on bag?
                     # Each component of the list needs to pass muster in order to pass.
                     "gist": ["""
 Confirms liquids in carry-ons must follow the 3-1-1 rule. Containers must be 3.4 oz (100 mL) or less, all must fit in one quart-sized clear bag, and each passenger is allowed one bag.
-                             """]
+                             """],
+
+                    "keywords": ["https://faq.flyfrontier.com/help/what-does-tsa-allow-and-not-allow-on-flights"],
                 }
             }
         }

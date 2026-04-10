@@ -56,9 +56,10 @@ What’s the maximum weight for a checked bag?
                     # Each component of the list needs to pass muster in order to pass.
                     "gist": ["""
 Confirms that the standard maximum weight for a checked bag is 40 lbs (18.1 kg).
-Mentions overweight surcharges: $75 per bag for 41-50 lbs, $100 per bag for 51-99.99 lbs.
 Confirms that bags weighing 100 lbs (45 kg) or more are not accepted (except assistive devices).
-                             """]
+                             """],
+
+                    "keywords": ["https://www.flyfrontier.com/optional-services/"],
                 }
             }
         }

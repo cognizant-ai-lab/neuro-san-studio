@@ -56,12 +56,11 @@ I'm traveling with my lap infant and a stroller. What do I need to know?
                     # Each component of the list needs to pass muster in order to pass.
                     "gist": [
                         """
-Provides information about lap infant boarding like infants under 2 may sit on a parent's lap.
-                        """,
+Provides information about lap infants under 2 sitting on a parent's lap and gate checking strollers at no additional fee.
                         """
-Provides information about gate checking strollers and no applicable fees for strollers.
-                        """
-                    ]
+                    ],
+
+                    "keywords": ["https://faq.flyfrontier.com/help/traveling-with-children-or-pets"],
                 }
             }
         }

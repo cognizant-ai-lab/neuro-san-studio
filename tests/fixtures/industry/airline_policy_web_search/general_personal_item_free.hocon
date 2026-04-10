@@ -56,7 +56,9 @@ Can I bring a personal item on my flight without additional fee?
                     # Each component of the list needs to pass muster in order to pass.
                     "gist": ["""
 Passengers are allowed to bring one personal item on their flight at no additional fee.
-                             """]
+                             """],
+
+                    "keywords": ["https://www.flyfrontier.com/optional-services/"],
                 }
             }
         }

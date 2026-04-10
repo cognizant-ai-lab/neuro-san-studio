@@ -57,7 +57,9 @@ What family seating options are available for me when traveling with children ag
                     "gist": ["""
 Confirms that children 13 and under are guaranteed an adjacent seat next to an accompanying adult
 at no extra cost, provided they are on the same reservation and adjacent seats are available at the time of booking.
-                             """]
+                             """],
+
+                    "keywords": ["https://www.flyfrontier.com/travel-information/seating-options"],
                 }
             }
         }

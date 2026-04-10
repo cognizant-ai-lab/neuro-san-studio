@@ -56,7 +56,9 @@ Do children need a passport for international flights?
                     # Each component of the list needs to pass muster in order to pass.
                     "gist": ["""
 Confirms that children are required to have a passport for international flights.
-                             """]
+                             """],
+
+                    "keywords": ["https://faq.flyfrontier.com/help/what-identification-or-documents-do-i-need-in-order-to-travel"],
                 }
             }
         }

@@ -57,7 +57,9 @@ If I'm traveling with a lap infant, do I get any extra free items?
                     "gist": ["""
 Confirms that adults traveling with a lap infant get one free secondary personal item
 such as a diaper bag.
-                             """]
+                             """],
+
+                    "keywords": ["https://faq.flyfrontier.com/help/traveling-with-children-or-pets"],
                 }
             }
         }

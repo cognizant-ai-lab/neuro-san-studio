@@ -26,8 +26,8 @@
     # success_ratio is useful for passing to the assessor to find out why
     # a test is intermittently failing. Sometimes it's the agent prompt, but
     # sometimes it's the test itself.
-    # Note: This number was set to 2/3 as this is a hard regression test case.
-    "success_ratio": "2/3",
+    # Note: This number was set to 1/1 for regression testing.
+    "success_ratio": "1/1",
 
     # Interactions are a series of dictionaries with request elements paired with
     # descriptions of response checks.
@@ -56,7 +56,9 @@ Do infants and young children need their own seat on a flight?
                     # Each component of the list needs to pass muster in order to pass.
                     "gist": ["""
 Confirms that children under two (lap infants) may sit on a parent’s lap and fly free.
-                             """]
+                             """],
+
+                    "keywords": ["https://faq.flyfrontier.com/help/traveling-with-children-or-pets"],
                 }
             }
         }

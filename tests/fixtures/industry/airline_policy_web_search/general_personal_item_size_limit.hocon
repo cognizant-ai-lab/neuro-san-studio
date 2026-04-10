@@ -56,7 +56,9 @@ What size does my personal item need to be to fly for free?
                     # Each component of the list needs to pass muster in order to pass.
                     "gist": ["""
 Confirms that a personal item must be no larger than 14 × 18 × 8 inches.
-                             """]
+                             """],
+
+                    "keywords": ["https://www.flyfrontier.com/optional-services/"],
                 }
             }
         }

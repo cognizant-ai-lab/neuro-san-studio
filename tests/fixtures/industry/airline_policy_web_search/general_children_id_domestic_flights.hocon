@@ -56,7 +56,9 @@ Do kids under 18 accompanied by an adult need an ID to fly on domestic flights?
                     # Each component of the list needs to pass muster in order to pass.
                     "gist": ["""
 Confirms that children under 18 do not need an ID on domestic flights.
-                             """]
+                             """],
+
+                    "keywords": ["https://faq.flyfrontier.com/help/what-identification-or-documents-do-i-need-in-order-to-travel"],
                 }
             }
         }

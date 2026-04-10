@@ -55,8 +55,10 @@ Can my child use a car seat on the plane, and where should it be placed?
                     # matches up to our description of acceptance criteria.
                     # Each component of the list needs to pass muster in order to pass.
                     "gist": ["""
-- Confirms that FAA-approved car seats with an approved label can be brought onboard if you’ve purchased a seat for your child.
-                             """]
+Confirms that FAA-approved car seats with an approved label can be brought onboard if you’ve purchased a seat for your child.
+                             """],
+
+                    "keywords": ["https://faq.flyfrontier.com/help/traveling-with-children-or-pets"],
                 }
             }
         }

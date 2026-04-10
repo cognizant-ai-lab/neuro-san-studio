@@ -56,7 +56,9 @@ What size carry-on bag can I bring on my flight?
                     # Each component of the list needs to pass muster in order to pass.
                     "gist": ["""
 Confirms that the carry-on bag size must be no larger than 24 × 16 × 10 inches.
-                             """]
+                             """],
+
+                    "keywords": ["https://www.flyfrontier.com/optional-services/"],
                 }
             }
         }
