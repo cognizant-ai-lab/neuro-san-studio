@@ -71,8 +71,6 @@ class ReservationsAgentNetworkPersistor(AgentNetworkPersistor):
                 Otherwise, it is a list of agent reservation dictionaries.
         """
         agent_spec: dict[str, Any] = obj
-        # Remove the generated/ prefix
-        agent_prefix: str = file_reference.replace("generated/", "")
 
         lifetime_in_seconds: float = self.DEFAULT_LIFETIME_IN_SECONDS
         lifetime_in_seconds_str: str = environ.get("AGENT_NETWORK_DESIGNER_RESERVATIONS_LIFETIME_IN_SECONDS", "")
@@ -93,7 +91,7 @@ class ReservationsAgentNetworkPersistor(AgentNetworkPersistor):
             self.args,
             agent_spec,
             lifetime_in_seconds,
-            agent_prefix,
+            file_reference,
             external_networks=self.external_networks,
             mcp_servers=self.mcp_servers,
         )
