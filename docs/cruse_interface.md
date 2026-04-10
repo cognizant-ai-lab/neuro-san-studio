@@ -1,8 +1,11 @@
 # CRUSE -  Interface
 
-CRUSE (Context-React User Experience) is a dynamic interface for interacting with agent networks. 
-It supports **dynamic form widgets**, offers visual tools like a **floating panel** for logs and agent flow, and 
-features **dynamic AI-generated themes** that give each agent network a unique visual identity and organizes your conversations into **threads**.
+CRUSE (Context-React User Experience) is a dynamic interface for interacting
+with agent networks. 
+It supports **dynamic form widgets**, offers visual tools like a **floating
+panel** for logs and agent flow, and 
+features **dynamic AI-generated themes** that give each agent network a unique
+visual identity and organizes your conversations into **threads**.
 
 ---
 
@@ -54,7 +57,7 @@ A collapsible panel at the bottom-right corner with two tabs:
 - **Logs**: Shows real-time execution logs from the agent network.
 - **Flow**: Displays a visual graph of the agent network and how agents connect.
 
-Toggle it from **Settings > Show Floating Menu**. You can resize it by dragging 
+Toggle it from **Settings > Show Floating Menu**. You can resize it by dragging
 the corner handle, and pin it open so it doesn't close when you click elsewhere.
 
 ---
@@ -76,7 +79,7 @@ Check **Modify Background** to evolve the current theme rather than generating a
 
 ## Good to Know
 
-- When you select a new agent network for the first time, wait a few seconds 
+- When you select a new agent network for the first time, wait a few seconds
   before interacting - the dynamic theme may take a moment to load.
 - The sidebar can be collapsed to icon-only mode for more chat space.
 - The last 10 messages in a thread are sent as context with each new message, so the agent remembers your conversation.
