@@ -57,6 +57,7 @@
   - [MCP Servers](#mcp-servers)
     - [MCP Server Configuration](#mcp-server-configuration)
     - [Authentication](#authentication)
+    - [Examples](#examples)
   - [Middleware](#middleware)
     - [class](#class)
     - [args](#args)
@@ -185,7 +186,7 @@ you can quote only the non-substituted parts:
 "instructions": ${instruction_prefix} "main instruction" ${instruction_suffix}
 ```
 
-Also not that if you're using json notation you need to put the include with the curly braces:
+Also note that if you're using json notation you need to put the include with the curly braces:
 
 ```hocon
 {
@@ -674,7 +675,7 @@ Examples:
 
 Note:
 
-- `base_url` **must starts** with `http://` or `https://`, otherwise the server defaults to `http://localhost:11434`.
+- `base_url` **must start** with `http://` or `https://`, otherwise the server defaults to `http://localhost:11434`.
 
 - if the port is omitted:
 
@@ -1332,6 +1333,11 @@ following methods.
    - Tool filtering from `MCP_SERVERS_INFO_FILE` is applied only if no tool filtering is defined
     directly in the agent network HOCON configuration.
    - For example, see [mcp_info.hocon](../mcp/mcp_info.hocon)
+
+### Examples
+
+For simple examples of MCP servers in various languages (e.g. Python, Java) and connecting them to neuro-san,
+please visit this repo: [neuro-san-mcp-examples](https://github.com/kaushik-cognizant/neuro-san-mcp-examples)
 
 ## Middleware
 

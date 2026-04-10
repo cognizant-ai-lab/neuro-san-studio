@@ -167,7 +167,7 @@ make lint-tests         # Run linting on test code
 make test               # Run all tests with coverage except integration test
 make test-integration   # run integration test
 
-require to run the follow steps 1st:
+required to run the following steps 1st:
 - goto top level neuro-san-studio
 - make install
 - ". venv/bin/activate"
