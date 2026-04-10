@@ -1,9 +1,9 @@
 # CRUSE -  Interface
 
 CRUSE (Context-React User Experience) is a dynamic interface for interacting
-with agent networks. 
+with agent networks.
 It supports **dynamic form widgets**, offers visual tools like a **floating
-panel** for logs and agent flow, and 
+panel** for logs and agent flow, and
 features **dynamic AI-generated themes** that give each agent network a unique
 visual identity and organizes your conversations into **threads**.
 
