@@ -19,29 +19,22 @@ from typing import Any
 
 from neuro_san.interfaces.coded_tool import CodedTool
 
-from coded_tools.agent_network_editor.constants import AGENT_NETWORK_DEFINITION
-from coded_tools.agent_network_editor.progress_handler import ProgressHandler
+AGENT_NETWORK_QUERIES: str = "agent_network_queries"
 
 
-class RemoveAgent(CodedTool):
+class SetSampleQueries(CodedTool):
     """
-    CodedTool implementation which removes an agent from the agent network definition in the sly data.
-
-    Agent network definition is a structured representation of an agent network, expressed as a dictionary.
-    Each key is an agent name, and its value is an object containing:
-    - a description of the agent
-    - an instructions to the agent
-    - a list of down-chain agents (agents reporting to it)
+    CodedTool implementation which sets the sample queries of the agent network in sly data.
     """
 
-    async def async_invoke(self, args: dict[str, Any], sly_data: dict[str, Any]) -> dict[str, Any] | str:
+    async def async_invoke(self, args: dict[str, Any], sly_data: dict[str, Any]) -> str:
         """
         :param args: An argument dictionary whose keys are the parameters
                 to the coded tool and whose values are the values passed for them
                 by the calling agent.  This dictionary is to be treated as read-only.
 
                 The argument dictionary expects the following keys:
-                    "agent_name": the name of the agent to remove.
+                    "sample_queries": sample queries for the agent network.
 
         :param sly_data: A dictionary whose keys are defined by the agent hierarchy,
                 but whose values are meant to be kept out of the chat stream.
@@ -54,33 +47,27 @@ class RemoveAgent(CodedTool):
                 adding the data is not invoke()-ed more than once.
 
                 Keys expected for this implementation are:
-                    "agent_network_definition": an outline of an agent network
+                    "agent_network_queries": a list of sample queries
 
         :return:
             In case of successful execution:
-                the agent network definition as a dictionary.
+                a text string indicating the sample queries were successfully set in the sly data.
             otherwise:
-                a text string of an error message in the format:
+                a text string an error message in the format:
                 "Error: <error message>"
         """
-        network_def: dict[str, Any] = sly_data.get(AGENT_NETWORK_DEFINITION)
-        if not network_def:
-            return "Error: No agent network definition in sly data!"
-
-        the_agent_name: str = args.get("agent_name")
-        if not the_agent_name:
-            return "Error: No agent_name provided."
-        if the_agent_name not in network_def:
-            return "Error: agent_name not in the agent network"
+        sample_queries: list[str] = args.get("sample_queries")
+        if not sample_queries:
+            raise ValueError("Error: No sample_queries provided.")
+        if not isinstance(sample_queries, list):
+            raise ValueError("Error: sample_queries must be a list of strings.")
+        if not all(isinstance(sample_query, str) for sample_query in sample_queries):
+            raise ValueError("Error: sample_queries must be a list of strings.")
 
         logger = logging.getLogger(self.__class__.__name__)
-        logger.info(">>>>>>>>>>>>>>>>>>>Remove Agent>>>>>>>>>>>>>>>>>>")
-        logger.info("Agent Name: %s", the_agent_name)
-        network_def.pop(the_agent_name, None)
-        logger.info("The resulting agent network definition: \n %s", str(network_def))
-        sly_data[AGENT_NETWORK_DEFINITION] = network_def
-
-        await ProgressHandler.report_progress(args, network_def)
+        logger.info(">>>>>>>>>>>>>>>>>>>Set Sample Queries>>>>>>>>>>>>>>>>>>")
+        sly_data[AGENT_NETWORK_QUERIES] = sample_queries
+        logger.info("The Sample queries: %s", str(sample_queries))
 
         logger.debug(">>>>>>>>>>>>>>>>>>> DONE %s !!!>>>>>>>>>>>>>>>>>>", self.__class__.__name__)
-        return network_def
+        return "Sample queries have been set successfully."

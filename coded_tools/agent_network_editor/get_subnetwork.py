@@ -22,6 +22,7 @@ from neuro_san.interfaces.coded_tool import CodedTool
 from neuro_san.internals.graph.persistence.registry_manifest_restorer import RegistryManifestRestorer
 from neuro_san.internals.graph.registry.agent_network import AgentNetwork
 
+from coded_tools.agent_network_editor.constants import SUBNETWORKS
 from coded_tools.agent_network_editor.sly_data_lock import SlyDataLock
 
 
@@ -31,6 +32,22 @@ class GetSubnetwork(CodedTool):
     """
 
     DEFAULT_MANIFEST_FILE = os.path.join("registries", "manifest.hocon")
+
+    @staticmethod
+    def get_subnetwork_names(sly_data: dict) -> list[str]:
+        """
+        Extract subnetwork names from sly_data.
+
+        The SUBNETWORKS entry may be a dict (name -> definition) populated by the
+        agent network editor tools, or absent/non-dict if no subnetworks were set.
+
+        :param sly_data: The sly_data dictionary from the agent hierarchy.
+        :return: List of subnetwork name strings, or empty list if none.
+        """
+        subnetworks_from_tool = sly_data.get(SUBNETWORKS)
+        if isinstance(subnetworks_from_tool, dict):
+            return list(subnetworks_from_tool.keys())
+        return []
 
     # pylint: disable=too-many-locals
     async def async_invoke(self, args: dict[str, Any], sly_data: dict[str, Any]) -> dict[str, Any] | str:
@@ -73,7 +90,7 @@ class GetSubnetwork(CodedTool):
         subnetworks: dict[str, str] | str = {}
         async with await SlyDataLock.get_lock(sly_data, "subnetworks_lock"):
             # Try getting from sly_data
-            subnetworks = sly_data.get("subnetworks")
+            subnetworks = sly_data.get(SUBNETWORKS)
             if subnetworks is not None:
                 # Exit early
                 return subnetworks
@@ -108,6 +125,6 @@ class GetSubnetwork(CodedTool):
                 logger.warning(subnetworks)
 
             # Cache whatever we found, including an error - no need to do this more than once.
-            sly_data["subnetworks"] = subnetworks
+            sly_data[SUBNETWORKS] = subnetworks
 
         return subnetworks

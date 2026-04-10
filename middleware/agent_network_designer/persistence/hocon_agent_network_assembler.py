@@ -18,7 +18,7 @@ import datetime
 from copy import copy as shallow_copy
 from typing import Any
 
-from coded_tools.agent_network_designer.agent_network_assembler import AgentNetworkAssembler
+from middleware.agent_network_designer.persistence.agent_network_assembler import AgentNetworkAssembler
 
 HOCON_HEADER_START = (
     "{\n"
@@ -65,9 +65,9 @@ HOCON_HEADER_REMAINDER = (
 TOP_AGENT_TEMPLATE = (
     "        {\n"
     '            "name": "%s",\n'
-    '            "function": {\n'
+    '            "function": ${aaosa_call}{\n'
     '                "description": """\n'
-    "An assistant that answer inquiries from the user.\n"
+    "An assistant that answers inquiries from the user.\n"
     '                """\n'
     "            },\n"
     '            "instructions": ${instructions_prefix} """\n'

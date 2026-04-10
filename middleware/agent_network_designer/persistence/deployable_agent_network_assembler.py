@@ -23,7 +23,7 @@ from neuro_san.internals.graph.filters.dictionary_common_defs_config_filter impo
 from neuro_san.internals.graph.filters.string_common_defs_config_filter import StringCommonDefsConfigFilter
 from neuro_san.internals.persistence.abstract_async_config_restorer import AbstractAsyncConfigRestorer
 
-from coded_tools.agent_network_designer.agent_network_assembler import AgentNetworkAssembler
+from middleware.agent_network_designer.persistence.agent_network_assembler import AgentNetworkAssembler
 
 
 class DeployableAgentNetworkAssembler(AgentNetworkAssembler):
@@ -43,9 +43,9 @@ class DeployableAgentNetworkAssembler(AgentNetworkAssembler):
         if demo_mode:
             self.template_file: str = file_of_class.get_file_in_basis("deployable_template_demo.hocon")
         else:
-            self.template_file: str = file_of_class.get_file_in_basis("deployable_template.hocon")
+            self.template_file: str = file_of_class.get_file_in_basis("deployable_template_standard.hocon")
 
-        self.aaosa_file: str = file_of_class.get_file_in_basis("../../registries/aaosa.hocon")
+        self.aaosa_file: str = file_of_class.get_file_in_basis("../../../registries/aaosa.hocon")
 
         self.template: dict[str, Any] = None
         self.aaosa_defs: dict[str, Any] = None
@@ -119,6 +119,14 @@ class DeployableAgentNetworkAssembler(AgentNetworkAssembler):
             agent_spec: dict[str, Any] = self.filter_agent(
                 agent_spec_template, string_replacements, value_replacements
             )
+
+            # For the top agent, aaosa_call is used as the function base but its description
+            # is replaced with the top agent's own description (analogous to
+            # ${aaosa_call}{ "description": "..." } in HOCON).
+            if agent_name == top_agent_name and isinstance(agent_spec.get("function"), dict):
+                # This hard-coded description is a temporary solution
+                # until we have a description generator/editor in place.
+                agent_spec["function"]["description"] = "An assistant that answers inquiries from the user."
 
             # Add agent to tools
             agent_network["tools"].append(agent_spec)

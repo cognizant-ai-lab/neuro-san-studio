@@ -23,6 +23,7 @@ from neuro_san.interfaces.coded_tool import CodedTool
 from neuro_san.internals.run_context.langchain.mcp.langchain_mcp_adapter import LangChainMcpAdapter
 from neuro_san.internals.run_context.langchain.mcp.mcp_servers_info_restorer import McpServersInfoRestorer
 
+from coded_tools.agent_network_editor.constants import MCP_SERVERS
 from coded_tools.agent_network_editor.sly_data_lock import SlyDataLock
 
 
@@ -53,7 +54,7 @@ class GetMcpTool(CodedTool):
 
         async with await SlyDataLock.get_lock(sly_data, "mcp_servers_lock"):
             # Try getting from sly_data
-            mcp_servers = sly_data.get("mcp_servers")
+            mcp_servers = sly_data.get(MCP_SERVERS)
             if mcp_servers is not None:
                 # Exit early
                 return mcp_servers
@@ -75,7 +76,7 @@ class GetMcpTool(CodedTool):
                 )
 
             mcp_servers = list(mcp_servers_from_file.keys())
-            sly_data["mcp_servers"] = mcp_servers
+            sly_data[MCP_SERVERS] = mcp_servers
 
         return mcp_servers
 
