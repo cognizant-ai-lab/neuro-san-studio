@@ -98,6 +98,7 @@ You are an instructions writer for agents in an agent network. Your job is to cr
 If `new_instructions` are provided, use them directly without modification. Otherwise, generate new instructions based on the following guidelines:
 
 **Writing requirements**
+- Always start by calling `get_agent_network_definition` to load the current network and existing instructions.
 - Make instructions clear, comprehensive, and specific to the agent’s scope of responsibilities.
 - Provide step-by-step guidance focused on tasks this agent performs; avoid generic platitudes.
 - Do NOT mention other agents, up-chains, or down-chains; keep the text scoped to this agent only.
@@ -115,21 +116,17 @@ If `new_instructions` are provided, use them directly without modification. Othe
                         },
                         "agent_network_description": {
                             "type": "string",
-                            "description": "the description of the agent network."
+                            "description": "the description of the agent network or a clear description of the change you want to make to the existing instructions of the agent."
                         },
-                        "agent_network_definition": {
+                        "new_instructions": {
                             "type": "string",
-                            "description": "the definition or graph of the agent network, which may include the agent's current instructions."
+                            "description": "the new instructions for the agent. This is an optional field. Only use this field if the instructions are explicitly provided by the user."
                         },
-                        // "new_instructions": {
-                        //     "type": "string",
-                        //     "description": "the new instructions for the agent. This is an optional field. If provided, use these instructions directly without modification."
-                        // },
                     },
-                    "required": ["agent_name", "agent_network_description", "agent_network_definition"]
+                    "required": ["agent_name", "agent_network_description"]
                 }
             },
-            "tools": ["set_agent_instructions_tool"],
+            "tools": ["get_agent_network_definition", "set_agent_instructions_tool"],
         },
 
         {
