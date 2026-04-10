@@ -298,7 +298,7 @@
             "function": ${aaosa_call}{
                 "description": """
                 Handles queries related to how Frontier miles and points are earned: earning rates per dollar spent,
-                FRONTIER Airlines World Mastercard earnings, and mileage partner earning.
+                FRONTIER Airlines World Mastercard earnings, and mileage partner earnings.
                 Does not cover elite status benefits or travel perks.
                 """
             },
