@@ -19,6 +19,7 @@ import logging
 from typing import Any
 from typing import Awaitable
 from typing import Callable
+from typing import override
 
 from langchain.agents.middleware.types import AgentMiddleware
 from langchain.agents.middleware.types import ContextT
@@ -60,6 +61,7 @@ class AgentNetworkDefinitionMiddleware(AgentMiddleware):
         self.sly_data = sly_data
         self.logger = logging.getLogger(self.__class__.__name__)
 
+    @override
     async def awrap_model_call(
         self,
         request: ModelRequest[ContextT],
