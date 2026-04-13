@@ -29,6 +29,7 @@ from langchain.agents.middleware.types import ResponseT
 from langchain_core.messages import BaseMessage
 from langchain_core.messages import SystemMessage
 
+from coded_tools.agent_network_editor.connectivity_dictionary_converter import ConnectivityDictionaryConverter
 from coded_tools.agent_network_editor.constants import AGENT_NETWORK_DEFINITION
 
 
@@ -75,9 +76,13 @@ class AgentNetworkDefinitionMiddleware(AgentMiddleware):
         :param handler: Handler to execute the model call
         :return: Model response from handler
         """
-        network_def: dict[str, Any] | None = self.sly_data.get(AGENT_NETWORK_DEFINITION)
+        network_def: dict[str, Any] | list[dict[str, Any]] | None = self.sly_data.get(AGENT_NETWORK_DEFINITION)
 
         if network_def:
+            if isinstance(network_def, list):
+                connectivity_dict_converter = ConnectivityDictionaryConverter()
+                network_def = connectivity_dict_converter.to_dict(network_def)
+
             self.logger.debug(
                 ">>>>>>>>>>>>>>>>>>>Injecting Agent Network Definition into System Prompt>>>>>>>>>>>>>>>>>>>"
             )
@@ -85,7 +90,7 @@ class AgentNetworkDefinitionMiddleware(AgentMiddleware):
 
             system_message: BaseMessage | None = request.system_message
             if system_message is not None:
-                original_content = system_message.content if isinstance(system_message.content, str) else ""
+                original_content: str = system_message.content if isinstance(system_message.content, str) else ""
                 system_message = SystemMessage(content=f"{original_content}\n\n{definition_prompt}")
             else:
                 system_message = SystemMessage(content=definition_prompt)
@@ -102,4 +107,4 @@ class AgentNetworkDefinitionMiddleware(AgentMiddleware):
         :return: Formatted prompt string
         """
         definition_str: str = json.dumps(network_def, indent=2)
-        return f"\n## Current Agent Network Definition\n\n```json\n{definition_str}\n```"
+        return f"## Current Agent Network Definition\n\n```json\n{definition_str}\n```"
