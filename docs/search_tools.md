@@ -152,14 +152,14 @@ _Environment Variables_:
 
 To use this search tool, you must
 
-1. Create a Custom Search Engine (CSE)  
-   * Go to [https://programmablesearchengine.google.com/](https://programmablesearchengine.google.com/)
-   * Click "Add" → Choose sites or use "\*" to search the whole web  
-   * Note your Search Engine ID (cx).  
-2. Get Google API key  
-   * Go to: [https://console.cloud.google.com/](https://console.cloud.google.com/)
-   * Enable the Custom Search API.  
-   * Create an API key under APIs & Services > Credentials.  
+1. Create a Custom Search Engine (CSE)
+   - Go to [https://programmablesearchengine.google.com/](https://programmablesearchengine.google.com/)
+   - Click "Add" → Choose sites or use "\*" to search the whole web
+   - Note your Search Engine ID (cx).
+2. Get Google API key
+   - Go to: [https://console.cloud.google.com/](https://console.cloud.google.com/)
+   - Enable the Custom Search API.
+   - Create an API key under APIs & Services > Credentials.  
 3. Use the CSE ID in step 1 to set `GOOGLE_SEARCH_CSE_ID` environment variable.  
 4. Use the API key in step 2 to set `GOOGLE_SEARCH_API_KEY` environment variable.
 5. You can optionally set a custom search URL and a custom timeout via the `GOOGLE_SEARCH_URL` and
