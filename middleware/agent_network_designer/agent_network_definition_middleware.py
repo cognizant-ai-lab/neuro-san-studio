@@ -76,7 +76,9 @@ class AgentNetworkDefinitionMiddleware(AgentMiddleware):
         network_def: dict[str, Any] | None = self.sly_data.get(AGENT_NETWORK_DEFINITION)
 
         if network_def:
-            self.logger.debug(">>>>>>>>>>>>>>>>>>>Injecting Agent Network Definition into System Prompt>>>>>>>>>>>>>>>>>>>")
+            self.logger.debug(
+                ">>>>>>>>>>>>>>>>>>>Injecting Agent Network Definition into System Prompt>>>>>>>>>>>>>>>>>>>"
+            )
             definition_prompt: str = self.format_definition_prompt(network_def)
 
             system_message: BaseMessage | None = request.system_message
