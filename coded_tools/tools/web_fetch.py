@@ -232,16 +232,18 @@ class WebFetch(CodedTool):
         try:
             async with session.head(url, allow_redirects=False) as head:
                 if head.status in (301, 302, 303, 307, 308):
+                    location = head.headers.get("Location", "unknown")
                     raise ValueError(
-                        f"url_not_allowed: '{url}' returned a redirect ({head.status}); "
+                        f"url_not_allowed: '{url}' redirects to '{location}' ({head.status}); "
                         "redirects are not followed."
                     )
                 if head.status == 405:
                     # Server does not support HEAD; probe with GET (no body read)
                     async with session.get(url, allow_redirects=False) as get:
                         if get.status in (301, 302, 303, 307, 308):
+                            location = get.headers.get("Location", "unknown")
                             raise ValueError(
-                                f"url_not_allowed: '{url}' returned a redirect ({get.status}); "
+                                f"url_not_allowed: '{url}' redirects to '{location}' ({get.status}); "
                                 "redirects are not followed."
                             )
                         get.raise_for_status()

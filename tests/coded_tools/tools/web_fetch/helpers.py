@@ -40,11 +40,14 @@ def make_head_session(
     content_type: str = "text/html",
     content_length: int | None = None,
     raise_for_status_exc: Exception | None = None,
+    extra_headers: dict[str, str] | None = None,
 ) -> tuple[MagicMock, MagicMock]:
     """Return (mock_session, mock_head_response) for HEAD-only tests."""
     headers: dict[str, str] = {"Content-Type": content_type}
     if content_length is not None:
         headers["Content-Length"] = str(content_length)
+    if extra_headers:
+        headers.update(extra_headers)
 
     head_response = MagicMock()
     head_response.status = status
