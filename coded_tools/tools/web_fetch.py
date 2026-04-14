@@ -15,6 +15,7 @@
 # END COPYRIGHT
 
 import asyncio
+import ipaddress
 from datetime import datetime
 from datetime import timezone
 from logging import Logger
@@ -52,11 +53,17 @@ class WebFetch(CodedTool):
     Uses aiohttp for HTTP requests and BeautifulSoup to strip HTML markup from
     the response. PDF URLs are handled via PyPDFLoader.
 
+    Note: IP-literal SSRF protection blocks private/loopback/reserved ranges and localhost, but
+    non-IP hostnames are not DNS-resolved. Use allowed_domains for stricter control.
+    The byte cap (MAX_RESPONSE_BYTES) is enforced via the Content-Length header only (checked
+    before download). A server that lies about or omits Content-Length can still deliver an
+    arbitrarily large body.
+
     Error types (raised as ValueError or aiohttp.ClientResponseError or aiohttp.ClientError with the specified message)
         invalid_input            – URL is missing, not a valid http/https URL, or a parameter has an invalid type.
         url_too_long             – URL exceeds MAX_URL_LENGTH characters.
-        url_not_allowed          – URL blocked by domain filtering rules.
-        url_not_accessible       – HTTP error while fetching the page.
+        url_not_allowed          – URL targets a private/reserved host or is blocked by domain rules.
+        url_not_accessible       – HTTP error or network failure while fetching the page.
         too_many_requests        – Server returned HTTP 429.
         unsupported_content_type – Content type is not text/HTML or PDF.
         response_too_large       – Content-Length header exceeds MAX_RESPONSE_BYTES.
@@ -146,6 +153,8 @@ class WebFetch(CodedTool):
         # but not "badexample.com".
         hostname: str = raw_hostname.lower()
 
+        self._validate_hostname_safety(hostname)
+
         allowed_domains: list[str] = self._validate_domain_list(args.get("allowed_domains"), "allowed_domains")
         if allowed_domains and not any(
             hostname == domain.lower() or hostname.endswith("." + domain.lower()) for domain in allowed_domains
@@ -159,6 +168,26 @@ class WebFetch(CodedTool):
             raise ValueError(f"url_not_allowed: Domain '{hostname}' is blocked.")
 
         return url
+
+    def _validate_hostname_safety(self, hostname: str) -> None:
+        """Reject IP literals in private/loopback/link-local/multicast/reserved ranges and localhost.
+
+        Note: non-IP hostnames are not DNS-resolved here; use allowed_domains for stricter control.
+        """
+        if hostname == "localhost" or hostname.endswith(".localhost"):
+            raise ValueError(f"url_not_allowed: Host '{hostname}' targets a loopback address.")
+
+        try:
+            addr = ipaddress.ip_address(hostname)
+        except ValueError:
+            # Not an IP literal; DNS-based checks are out of scope
+            return
+
+        if addr.is_loopback or addr.is_private or addr.is_link_local or addr.is_multicast or addr.is_reserved:
+            raise ValueError(
+                f"url_not_allowed: IP address '{hostname}' is in a private, loopback, "
+                "link-local, multicast, or reserved range."
+            )
 
     def _validate_domain_list(self, value: Any, param_name: str) -> list[str]:
         """Coerce and validate a domain list parameter. Accepts None, list[str], or a single str."""
@@ -247,7 +276,13 @@ class WebFetch(CodedTool):
                     raw_content: str = await response.text()
             except ClientResponseError as exc:
                 prefix: str = "too_many_requests" if exc.status == 429 else "url_not_accessible"
-                raise ClientError(f"{prefix}: HTTP {exc.status} for '{url}'.") from exc
+                raise ClientResponseError(
+                    exc.request_info,
+                    exc.history,
+                    status=exc.status,
+                    message=f"{prefix}: HTTP {exc.status} for '{url}'.",
+                    headers=exc.headers,
+                ) from exc
             except (ClientError, asyncio.TimeoutError) as exc:
                 raise ClientError(f"url_not_accessible: Failed to fetch '{url}': {exc}") from exc
 
