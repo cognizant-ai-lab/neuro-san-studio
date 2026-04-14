@@ -14,10 +14,10 @@
 #
 # END COPYRIGHT
 
-from logging import getLogger
-from logging import Logger
 from datetime import datetime
 from datetime import timezone
+from logging import Logger
+from logging import getLogger
 from typing import Any
 from urllib.parse import ParseResult
 from urllib.parse import urlparse
