@@ -195,9 +195,7 @@ class WebFetch(CodedTool):
             return
 
         if not addr.is_global:
-            raise ValueError(
-                f"url_not_allowed: IP address '{hostname}' is not a globally routable address."
-            )
+            raise ValueError(f"url_not_allowed: IP address '{hostname}' is not a globally routable address.")
 
     def _validate_domain_list(self, value: Any, param_name: str) -> list[str]:
         """Coerce and validate a domain list parameter. Accepts None, list[str], or a single str."""
