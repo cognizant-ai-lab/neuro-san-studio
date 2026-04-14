@@ -32,7 +32,7 @@ class TestAsyncInvoke(TestCase):
     def test_html_fetch_returns_correct_keys(self):
         """Tests that fetching an HTML page returns a result with url, content, and retrieved_at keys."""
         with (
-            patch.object(self.tool, "_get_content_type", new=AsyncMock(return_value="text/html")),
+            patch.object(self.tool, "_get_content_type", new=AsyncMock(return_value=("text/html", None))),
             patch.object(self.tool, "_fetch_text", new=AsyncMock(return_value="Hello world")),
         ):
             result = asyncio.run(self.tool.async_invoke({"url": "http://example.com"}, self.sly_data))
@@ -41,10 +41,23 @@ class TestAsyncInvoke(TestCase):
         self.assertEqual(result["content"], "Hello world")
         self.assertIn("retrieved_at", result)
 
+    def test_405_prefetched_body_skips_fetch_text(self):
+        """Tests that a prefetched body from the 405 GET fallback is used directly without calling _fetch_text."""
+        with (
+            patch.object(
+                self.tool, "_get_content_type", new=AsyncMock(return_value=("text/html", "<p>prefetched</p>"))
+            ),
+            patch.object(self.tool, "_fetch_text", new=AsyncMock(return_value="should not be called")) as mock_text,
+        ):
+            result = asyncio.run(self.tool.async_invoke({"url": "http://example.com"}, self.sly_data))
+
+        mock_text.assert_not_called()
+        self.assertIn("prefetched", result["content"])
+
     def test_pdf_by_content_type_calls_fetch_pdf(self):
         """Tests that an application/pdf content type routes to _fetch_pdf and not _fetch_text."""
         with (
-            patch.object(self.tool, "_get_content_type", new=AsyncMock(return_value="application/pdf")),
+            patch.object(self.tool, "_get_content_type", new=AsyncMock(return_value=("application/pdf", None))),
             patch.object(self.tool, "_fetch_pdf", new=AsyncMock(return_value="PDF content")) as mock_pdf,
             patch.object(self.tool, "_fetch_text", new=AsyncMock(return_value="should not be called")) as mock_text,
         ):
@@ -57,7 +70,9 @@ class TestAsyncInvoke(TestCase):
     def test_pdf_by_url_extension_calls_fetch_pdf(self):
         """Tests that a .pdf URL extension routes to _fetch_pdf regardless of content type."""
         with (
-            patch.object(self.tool, "_get_content_type", new=AsyncMock(return_value="application/octet-stream")),
+            patch.object(
+                self.tool, "_get_content_type", new=AsyncMock(return_value=("application/octet-stream", None))
+            ),
             patch.object(self.tool, "_fetch_pdf", new=AsyncMock(return_value="PDF content")) as mock_pdf,
         ):
             asyncio.run(self.tool.async_invoke({"url": "http://example.com/report.pdf"}, self.sly_data))
@@ -66,7 +81,7 @@ class TestAsyncInvoke(TestCase):
 
     def test_unsupported_content_type_raises(self):
         """Tests that an unsupported content type raises ValueError with unsupported_content_type."""
-        with patch.object(self.tool, "_get_content_type", new=AsyncMock(return_value="image/png")):
+        with patch.object(self.tool, "_get_content_type", new=AsyncMock(return_value=("image/png", None))):
             with self.assertRaises(ValueError) as ctx:
                 asyncio.run(self.tool.async_invoke({"url": "http://example.com/img.png"}, self.sly_data))
         self.assertIn("unsupported_content_type", str(ctx.exception))
@@ -75,7 +90,7 @@ class TestAsyncInvoke(TestCase):
         """Tests that fetched content is truncated to the specified max_content_chars limit."""
         long_text = "x" * 1000
         with (
-            patch.object(self.tool, "_get_content_type", new=AsyncMock(return_value="text/plain")),
+            patch.object(self.tool, "_get_content_type", new=AsyncMock(return_value=("text/plain", None))),
             patch.object(self.tool, "_fetch_text", new=AsyncMock(return_value=long_text)),
         ):
             result = asyncio.run(

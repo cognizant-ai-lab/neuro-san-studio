@@ -36,13 +36,14 @@ class TestGetContentType(TestCase):
         self.tool = WebFetch()
 
     def test_head_success_returns_content_type(self):
-        """Tests that a successful HEAD response returns the Content-Type header value."""
+        """Tests that a successful HEAD response returns the Content-Type header value with no prefetched body."""
         session, _ = make_head_session(status=200, content_type="text/html; charset=utf-8")
-        result = asyncio.run(self.tool._get_content_type("http://example.com", session))  # pylint: disable=protected-access
-        self.assertEqual(result, "text/html; charset=utf-8")
+        content_type, body = asyncio.run(self.tool._get_content_type("http://example.com", session))  # pylint: disable=protected-access
+        self.assertEqual(content_type, "text/html; charset=utf-8")
+        self.assertIsNone(body)
 
-    def test_head_405_falls_back_to_get(self):
-        """Tests that a 405 response from HEAD causes a fallback GET request to retrieve the content type."""
+    def test_head_405_falls_back_to_get_pdf(self):
+        """Tests that a 405 HEAD response falls back to GET and returns content type without body for PDF."""
         session, _ = make_head_session(status=405)
         get_response = MagicMock()
         get_response.status = 200
@@ -53,9 +54,27 @@ class TestGetContentType(TestCase):
         get_cm.__aexit__ = AsyncMock(return_value=False)
         session.get = MagicMock(return_value=get_cm)
 
-        result = asyncio.run(self.tool._get_content_type("http://example.com", session))  # pylint: disable=protected-access
-        self.assertEqual(result, "application/pdf")
+        content_type, body = asyncio.run(self.tool._get_content_type("http://example.com", session))  # pylint: disable=protected-access
+        self.assertEqual(content_type, "application/pdf")
+        self.assertIsNone(body)
         session.get.assert_called_once()
+
+    def test_head_405_falls_back_to_get_text_returns_body(self):
+        """Tests that a 405 HEAD response falls back to GET and returns the body for text content types."""
+        session, _ = make_head_session(status=405)
+        get_response = MagicMock()
+        get_response.status = 200
+        get_response.headers = {"Content-Type": "text/html"}
+        get_response.raise_for_status = MagicMock()
+        get_response.text = AsyncMock(return_value="<html>Hello</html>")
+        get_cm = MagicMock()
+        get_cm.__aenter__ = AsyncMock(return_value=get_response)
+        get_cm.__aexit__ = AsyncMock(return_value=False)
+        session.get = MagicMock(return_value=get_cm)
+
+        content_type, body = asyncio.run(self.tool._get_content_type("http://example.com", session))  # pylint: disable=protected-access
+        self.assertEqual(content_type, "text/html")
+        self.assertEqual(body, "<html>Hello</html>")
 
     def test_non_2xx_raises_with_url_not_accessible_prefix(self):
         """Tests that a non-2xx HTTP error raises ClientResponseError with url_not_accessible prefix."""
@@ -115,7 +134,7 @@ class TestGetContentType(TestCase):
         self.assertIn("http://other.com/", error)
 
     def test_405_get_redirect_raises_url_not_allowed(self):
-        """Tests that a 405 HEAD followed by a 3xx GET raises ValueError containing url_not_allowed and the Location URL."""
+        """Tests that a 405 HEAD + 3xx GET raises ValueError with url_not_allowed and the Location URL."""
         session, _ = make_head_session(status=405)
         get_response = MagicMock()
         get_response.status = 302

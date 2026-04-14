@@ -109,7 +109,7 @@ class WebFetch(CodedTool):
 
         timeout = ClientTimeout(total=TIMEOUT_SECONDS)
         async with ClientSession(timeout=timeout) as session:
-            content_type: str = await self._get_content_type(url, session)
+            content_type, prefetched_text = await self._get_content_type(url, session)
             is_pdf: bool = "application/pdf" in content_type or url.lower().endswith(".pdf")
 
             if not is_pdf and not any(ct in content_type for ct in SUPPORTED_CONTENT_TYPES):
@@ -121,6 +121,9 @@ class WebFetch(CodedTool):
             retrieved_at: str = datetime.now(timezone.utc).isoformat()
             if is_pdf:
                 text: str = await self._fetch_pdf(url)
+            elif prefetched_text is not None:
+                # Body was already fetched during the 405 HEAD fallback GET; no second request needed.
+                text = self._parse_raw_text(prefetched_text)
             else:
                 text = await self._fetch_text(url, session)
 
@@ -220,10 +223,25 @@ class WebFetch(CodedTool):
             raise ValueError(f"invalid_input: 'max_content_chars' must be a positive integer, got {value!r}.")
         return value
 
-    async def _get_content_type(self, url: str, session: ClientSession) -> str:
-        """Probe the URL with a HEAD request and return the Content-Type header.
+    def _raise_if_redirect(self, response: Any, url: str) -> None:
+        """Raise ValueError with url_not_allowed if the response is a 3xx redirect.
+
+        Must be called explicitly when allow_redirects=False, because raise_for_status()
+        only covers 4xx/5xx and silently passes 3xx responses through.
+        """
+        if response.status in (301, 302, 303, 307, 308):
+            location = response.headers.get("Location", "unknown")
+            raise ValueError(
+                f"url_not_allowed: '{url}' redirects to '{location}' ({response.status}); "
+                "redirects are not followed."
+            )
+
+    async def _get_content_type(self, url: str, session: ClientSession) -> tuple[str, str | None]:
+        """Probe the URL with a HEAD request and return (Content-Type, prefetched_body).
 
         Falls back to a GET request if the server returns 405 (Method Not Allowed).
+        In the 405 case the response body is read and returned as the second element so
+        async_invoke can skip a second GET for text content types.
         Redirects are not followed; a 3xx response raises ValueError with url_not_allowed.
         Raises ClientResponseError with a url_not_accessible / too_many_requests prefix on non-2xx,
         and ClientError with a url_not_accessible prefix on connection/DNS/timeout failures.
@@ -231,27 +249,21 @@ class WebFetch(CodedTool):
         """
         try:
             async with session.head(url, allow_redirects=False) as head:
-                if head.status in (301, 302, 303, 307, 308):
-                    location = head.headers.get("Location", "unknown")
-                    raise ValueError(
-                        f"url_not_allowed: '{url}' redirects to '{location}' ({head.status}); "
-                        "redirects are not followed."
-                    )
+                self._raise_if_redirect(head, url)
                 if head.status == 405:
-                    # Server does not support HEAD; probe with GET (no body read)
+                    # Server does not support HEAD; probe with GET and read the body so
+                    # async_invoke can reuse it and avoid a second round-trip.
                     async with session.get(url, allow_redirects=False) as get:
-                        if get.status in (301, 302, 303, 307, 308):
-                            location = get.headers.get("Location", "unknown")
-                            raise ValueError(
-                                f"url_not_allowed: '{url}' redirects to '{location}' ({get.status}); "
-                                "redirects are not followed."
-                            )
+                        self._raise_if_redirect(get, url)
                         get.raise_for_status()
                         self._check_content_length(get.headers.get("Content-Length"), url)
-                        return get.headers.get("Content-Type", "")
+                        content_type: str = get.headers.get("Content-Type", "")
+                        # Skip reading body for PDFs; PyPDFLoader handles those separately.
+                        body: str | None = None if "application/pdf" in content_type else await get.text()
+                        return content_type, body
                 head.raise_for_status()
                 self._check_content_length(head.headers.get("Content-Length"), url)
-                return head.headers.get("Content-Type", "")
+                return head.headers.get("Content-Type", ""), None
         except ClientResponseError as exc:
             prefix: str = "too_many_requests" if exc.status == 429 else "url_not_accessible"
             raise ClientResponseError(
@@ -298,12 +310,7 @@ class WebFetch(CodedTool):
                 # raise_for_status() only covers 4xx/5xx; 3xx passes through silently
                 # returning useless redirect-page HTML. Check explicitly so a server
                 # that behaves differently on GET vs the earlier HEAD probe is still caught.
-                if response.status in (301, 302, 303, 307, 308):
-                    location = response.headers.get("Location", "unknown")
-                    raise ValueError(
-                        f"url_not_allowed: '{url}' redirects to '{location}' ({response.status}); "
-                        "redirects are not followed."
-                    )
+                self._raise_if_redirect(response, url)
                 response.raise_for_status()
                 raw_content: str = await response.text()
         except ClientResponseError as exc:
@@ -318,10 +325,13 @@ class WebFetch(CodedTool):
         except (ClientError, asyncio.TimeoutError) as exc:
             raise ClientError(f"url_not_accessible: Failed to fetch '{url}': {exc}") from exc
 
-        if not raw_content.lstrip().startswith("<"):
-            return raw_content
+        return self._parse_raw_text(raw_content)
 
-        soup = BeautifulSoup(raw_content, "html.parser")
+    def _parse_raw_text(self, raw: str) -> str:
+        """Strip HTML markup from raw text if it looks like HTML; otherwise return as-is."""
+        if not raw.lstrip().startswith("<"):
+            return raw
+        soup = BeautifulSoup(raw, "html.parser")
         for tag in soup(["script", "style", "noscript"]):
             tag.decompose()
         return soup.get_text(separator="\n", strip=True)
