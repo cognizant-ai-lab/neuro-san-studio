@@ -116,3 +116,27 @@ class TestGetContentType(TestCase):
             with self.assertRaises(ValueError) as ctx:
                 asyncio.run(self.tool._get_content_type("http://example.com"))  # pylint: disable=protected-access
         self.assertIn("response_too_large", str(ctx.exception))
+
+    def test_head_redirect_raises_url_not_allowed(self):
+        """Tests that a 3xx HEAD response raises ValueError with url_not_allowed."""
+        session, _ = make_head_session(status=301)
+        with patch("coded_tools.tools.web_fetch.ClientSession", return_value=session):
+            with self.assertRaises(ValueError) as ctx:
+                asyncio.run(self.tool._get_content_type("http://example.com"))  # pylint: disable=protected-access
+        self.assertIn("url_not_allowed", str(ctx.exception))
+
+    def test_405_get_redirect_raises_url_not_allowed(self):
+        """Tests that a 405 HEAD followed by a 3xx GET response raises ValueError with url_not_allowed."""
+        session, _ = make_head_session(status=405)
+        get_response = MagicMock()
+        get_response.status = 302
+        get_response.headers = {}
+        get_cm = MagicMock()
+        get_cm.__aenter__ = AsyncMock(return_value=get_response)
+        get_cm.__aexit__ = AsyncMock(return_value=False)
+        session.get = MagicMock(return_value=get_cm)
+
+        with patch("coded_tools.tools.web_fetch.ClientSession", return_value=session):
+            with self.assertRaises(ValueError) as ctx:
+                asyncio.run(self.tool._get_content_type("http://example.com"))  # pylint: disable=protected-access
+        self.assertIn("url_not_allowed", str(ctx.exception))

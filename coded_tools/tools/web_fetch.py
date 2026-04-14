@@ -55,6 +55,7 @@ class WebFetch(CodedTool):
 
     Note: IP-literal SSRF protection blocks private/loopback/reserved ranges and localhost, but
     non-IP hostnames are not DNS-resolved. Use allowed_domains for stricter control.
+    Redirects are not followed; a 3xx response raises url_not_allowed.
     The byte cap (MAX_RESPONSE_BYTES) is enforced via the Content-Length header only (checked
     before download). A server that lies about or omits Content-Length can still deliver an
     arbitrarily large body.
@@ -62,7 +63,7 @@ class WebFetch(CodedTool):
     Error types (raised as ValueError or aiohttp.ClientResponseError or aiohttp.ClientError with the specified message)
         invalid_input            – URL is missing, not a valid http/https URL, or a parameter has an invalid type.
         url_too_long             – URL exceeds MAX_URL_LENGTH characters.
-        url_not_allowed          – URL targets a private/reserved host or is blocked by domain rules.
+        url_not_allowed          – URL targets a private/reserved host, is blocked by domain rules, or returns a redirect.
         url_not_accessible       – HTTP error or network failure while fetching the page.
         too_many_requests        – Server returned HTTP 429.
         unsupported_content_type – Content type is not text/HTML or PDF.
@@ -216,6 +217,7 @@ class WebFetch(CodedTool):
         """Probe the URL with a HEAD request and return the Content-Type header.
 
         Falls back to a GET request if the server returns 405 (Method Not Allowed).
+        Redirects are not followed; a 3xx response raises ValueError with url_not_allowed.
         Raises ClientResponseError with a url_not_accessible / too_many_requests prefix on non-2xx,
         and ClientError with a url_not_accessible prefix on connection/DNS/timeout failures.
         Raises ValueError with a response_too_large prefix when Content-Length exceeds MAX_RESPONSE_BYTES.
@@ -223,10 +225,18 @@ class WebFetch(CodedTool):
         timeout = ClientTimeout(total=TIMEOUT_SECONDS)
         async with ClientSession(timeout=timeout) as session:
             try:
-                async with session.head(url, allow_redirects=True) as head:
+                async with session.head(url, allow_redirects=False) as head:
+                    if head.status in (301, 302, 303, 307, 308):
+                        raise ValueError(
+                            f"url_not_allowed: '{url}' returned a redirect ({head.status}); redirects are not followed."
+                        )
                     if head.status == 405:
                         # Server does not support HEAD; probe with GET (no body read)
-                        async with session.get(url, allow_redirects=True) as get:
+                        async with session.get(url, allow_redirects=False) as get:
+                            if get.status in (301, 302, 303, 307, 308):
+                                raise ValueError(
+                                    f"url_not_allowed: '{url}' returned a redirect ({get.status}); redirects are not followed."
+                                )
                             get.raise_for_status()
                             self._check_content_length(get.headers.get("Content-Length"), url)
                             return get.headers.get("Content-Type", "")
