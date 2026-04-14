@@ -294,7 +294,16 @@ class WebFetch(CodedTool):
     async def _fetch_text(self, url: str, session: ClientSession) -> str:
         """Fetch a URL via aiohttp GET and return its plain-text body, stripping HTML if needed."""
         try:
-            async with session.get(url, allow_redirects=True) as response:
+            async with session.get(url, allow_redirects=False) as response:
+                # raise_for_status() only covers 4xx/5xx; 3xx passes through silently
+                # returning useless redirect-page HTML. Check explicitly so a server
+                # that behaves differently on GET vs the earlier HEAD probe is still caught.
+                if response.status in (301, 302, 303, 307, 308):
+                    location = response.headers.get("Location", "unknown")
+                    raise ValueError(
+                        f"url_not_allowed: '{url}' redirects to '{location}' ({response.status}); "
+                        "redirects are not followed."
+                    )
                 response.raise_for_status()
                 raw_content: str = await response.text()
         except ClientResponseError as exc:

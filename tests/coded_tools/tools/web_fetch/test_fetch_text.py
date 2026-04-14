@@ -66,6 +66,17 @@ class TestFetchText(TestCase):
             asyncio.run(self.tool._fetch_text("http://example.com", session))  # pylint: disable=protected-access
         self.assertIn("too_many_requests", ctx.exception.message)
 
+    def test_redirect_raises_url_not_allowed(self):
+        """Tests that a 3xx GET response raises ValueError with url_not_allowed and the Location URL."""
+        session, response = make_get_response(status=301)
+        response.headers["Location"] = "http://other.com/"
+
+        with self.assertRaises(ValueError) as ctx:
+            asyncio.run(self.tool._fetch_text("http://example.com", session))  # pylint: disable=protected-access
+        error = str(ctx.exception)
+        self.assertIn("url_not_allowed", error)
+        self.assertIn("http://other.com/", error)
+
     def test_connection_error_raises_client_error_with_prefix(self):
         """Tests that a connection error raises ClientError with url_not_accessible prefix."""
         response_cm = MagicMock()
