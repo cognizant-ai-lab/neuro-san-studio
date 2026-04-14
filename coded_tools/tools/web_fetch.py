@@ -14,6 +14,7 @@
 #
 # END COPYRIGHT
 
+from asyncio import TimeoutError
 from datetime import datetime
 from datetime import timezone
 from logging import Logger
@@ -28,8 +29,6 @@ from aiohttp import ClientSession
 from aiohttp import ClientTimeout
 from bs4 import BeautifulSoup
 from langchain_community.document_loaders import PyPDFLoader
-from langchain_community.tools.requests.tool import RequestsGetTool
-from langchain_community.utilities.requests import TextRequestsWrapper
 from langchain_core.documents import Document
 from neuro_san.interfaces.coded_tool import CodedTool
 
@@ -37,7 +36,12 @@ MAX_CHARS: int = 20_000
 MAX_URL_LENGTH: int = 250
 # Maximum bytes accepted via Content-Length header before downloading
 MAX_RESPONSE_BYTES: int = 10 * 1024 * 1024  # 10 MB
-SUPPORTED_CONTENT_TYPES: set[str] = {"text/html", "text/plain", "application/xhtml", "application/pdf"}
+SUPPORTED_CONTENT_TYPES: set[str] = {
+    "text/html",
+    "text/plain",
+    "application/xhtml+xml",
+    "application/pdf",
+}
 TIMEOUT_SECONDS: int = 15
 
 
@@ -45,8 +49,8 @@ class WebFetch(CodedTool):
     """
     CodedTool implementation that fetches a URL and returns its plain-text body.
 
-    Uses LangChain's RequestsGetTool for the HTTP request and BeautifulSoup
-    to strip HTML markup from the response. PDF URLs are handled via PyPDFLoader.
+    Uses aiohttp for HTTP requests and BeautifulSoup to strip HTML markup from
+    the response. PDF URLs are handled via PyPDFLoader.
 
     Error types (raised as ValueError or aiohttp.ClientResponseError or aiohttp.ClientError with the specified message)
         invalid_input            – URL is missing, not a valid http/https URL, or a parameter has an invalid type.
@@ -66,8 +70,8 @@ class WebFetch(CodedTool):
 
                 The argument dictionary expects the following keys:
                     "url"               (str, required): The URL to fetch.
-                    "allowed_domains"   (list, optional): Only fetch from these domains.
-                    "blocked_domains"   (list, optional): Refuse to fetch from these domains.
+                    "allowed_domains"   (list[str], optional): Only fetch from these domains.
+                    "blocked_domains"   (list[str], optional): Refuse to fetch from these domains.
                     "max_content_chars" (int, optional): Character cap on returned text.
                                         Defaults to MAX_CHARS. Must be a positive integer.
 
@@ -85,7 +89,7 @@ class WebFetch(CodedTool):
 
         :raises ValueError: invalid_input, url_too_long, url_not_allowed,
                             unsupported_content_type, response_too_large.
-        :raises aiohttp.ClientResponseError: url_not_accessible / too_many_requests (non-2xx HEAD).
+        :raises aiohttp.ClientResponseError: url_not_accessible / too_many_requests (non-2xx response).
         :raises aiohttp.ClientError: url_not_accessible when PDF or text fetch fails.
         """
         url: str = self._validate_url(args)
@@ -118,7 +122,11 @@ class WebFetch(CodedTool):
 
     def _validate_url(self, args: dict[str, Any]) -> str:
         """Validate URL format, length, and domain rules. Returns the cleaned URL."""
-        url: str = args.get("url", "").strip()
+        url_value: Any = args.get("url", "")
+        if not isinstance(url_value, str):
+            raise ValueError(f"invalid_input: 'url' must be a string, got {url_value!r}.")
+
+        url: str = url_value.strip()
         if not url:
             raise ValueError("invalid_input: No 'url' provided.")
 
@@ -129,24 +137,44 @@ class WebFetch(CodedTool):
         if len(url) > MAX_URL_LENGTH:
             raise ValueError(f"url_too_long: URL exceeds maximum length of {MAX_URL_LENGTH} characters.")
 
+        raw_hostname: str | None = parsed.hostname
+        if not raw_hostname:
+            raise ValueError("invalid_input: URL must include a hostname.")
+
         # Use parsed.hostname (strips port/credentials) and enforce a strict domain boundary:
         # an allowed/blocked entry "example.com" matches "example.com" and "sub.example.com"
         # but not "badexample.com".
-        hostname: str = (parsed.hostname or "").lower()
+        hostname: str = raw_hostname.lower()
 
-        allowed_domains: list[str] = args.get("allowed_domains", [])
+        allowed_domains: list[str] = self._validate_domain_list(args.get("allowed_domains"), "allowed_domains")
         if allowed_domains and not any(
             hostname == domain.lower() or hostname.endswith("." + domain.lower()) for domain in allowed_domains
         ):
             raise ValueError(f"url_not_allowed: Domain '{hostname}' is not in the allowed_domains list.")
 
-        blocked_domains: list[str] = args.get("blocked_domains", [])
+        blocked_domains: list[str] = self._validate_domain_list(args.get("blocked_domains"), "blocked_domains")
         if blocked_domains and any(
             hostname == domain.lower() or hostname.endswith("." + domain.lower()) for domain in blocked_domains
         ):
             raise ValueError(f"url_not_allowed: Domain '{hostname}' is blocked.")
 
         return url
+
+    def _validate_domain_list(self, value: Any, param_name: str) -> list[str]:
+        """Coerce and validate a domain list parameter. Accepts None, list[str], or a single str."""
+        if value is None:
+            return []
+        if isinstance(value, str):
+            return [value]
+        if not isinstance(value, list):
+            raise ValueError(f"invalid_input: '{param_name}' must be a list of strings, got {value!r}.")
+        for item in value:
+            if not isinstance(item, str):
+                raise ValueError(
+                    f"invalid_input: '{param_name}' must be a list of strings, "
+                    f"but contains non-string element {item!r}."
+                )
+        return value
 
     def _validate_max_content_chars(self, args: dict[str, Any]) -> int:
         """Return a validated max_content_chars value, raising invalid_input on bad input."""
@@ -159,9 +187,9 @@ class WebFetch(CodedTool):
         """Probe the URL with a HEAD request and return the Content-Type header.
 
         Falls back to a GET request if the server returns 405 (Method Not Allowed).
-        Raises ClientResponseError with a url_not_accessible prefix on any non-2xx response,
-        and raises ValueError with a response_too_large prefix when the Content-Length header
-        indicates the response exceeds MAX_RESPONSE_BYTES.
+        Raises ClientResponseError with a url_not_accessible / too_many_requests prefix on non-2xx,
+        and ClientError with a url_not_accessible prefix on connection/DNS/timeout failures.
+        Raises ValueError with a response_too_large prefix when Content-Length exceeds MAX_RESPONSE_BYTES.
         """
         timeout = ClientTimeout(total=TIMEOUT_SECONDS)
         async with ClientSession(timeout=timeout) as session:
@@ -185,6 +213,8 @@ class WebFetch(CodedTool):
                     message=f"{prefix}: HTTP {exc.status} for '{url}'.",
                     headers=exc.headers,
                 ) from exc
+            except (ClientError, TimeoutError) as exc:
+                raise ClientError(f"url_not_accessible: Could not reach '{url}': {exc}") from exc
 
     def _check_content_length(self, content_length_header: str | None, url: str) -> None:
         """Raise ValueError if Content-Length exceeds MAX_RESPONSE_BYTES."""
@@ -208,15 +238,18 @@ class WebFetch(CodedTool):
         return "\n".join(doc.page_content for doc in docs)
 
     async def _fetch_text(self, url: str) -> str:
-        """Fetch a URL and return its plain-text body, stripping HTML if needed."""
-        requests_tool = RequestsGetTool(
-            requests_wrapper=TextRequestsWrapper(),
-            allow_dangerous_requests=True,
-        )
-        try:
-            raw_content: str = await requests_tool.ainvoke(url)
-        except Exception as exc:
-            raise ClientError(f"url_not_accessible: Failed to fetch '{url}': {exc}") from exc
+        """Fetch a URL via aiohttp GET and return its plain-text body, stripping HTML if needed."""
+        timeout = ClientTimeout(total=TIMEOUT_SECONDS)
+        async with ClientSession(timeout=timeout) as session:
+            try:
+                async with session.get(url, allow_redirects=True) as response:
+                    response.raise_for_status()
+                    raw_content: str = await response.text()
+            except ClientResponseError as exc:
+                prefix: str = "too_many_requests" if exc.status == 429 else "url_not_accessible"
+                raise ClientError(f"{prefix}: HTTP {exc.status} for '{url}'.") from exc
+            except (ClientError, TimeoutError) as exc:
+                raise ClientError(f"url_not_accessible: Failed to fetch '{url}': {exc}") from exc
 
         if not raw_content.lstrip().startswith("<"):
             return raw_content
