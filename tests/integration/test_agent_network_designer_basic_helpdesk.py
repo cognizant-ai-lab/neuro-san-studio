@@ -39,6 +39,35 @@ SimpleOneShot cannot be used for AND generation because it does not expose
 the use_direct parameter. The streaming logic below replicates
 SimpleOneShot.get_answer_for() with use_direct=True added to the session
 creation.
+
+How to run:
+    Prerequisites:
+        export PYTHONPATH=$(pwd)
+        export AGENT_TOOL_PATH=coded_tools/
+        export AGENT_MANIFEST_FILE=registries/manifest.hocon
+
+    Option 1 - Direct mode (no server required):
+        pytest -s -v -k "test_and_generates_basic_helpdesk_direct" \
+            tests/integration/test_agent_network_designer_basic_helpdesk.py \
+            2>&1 | tee test_output.log
+
+    Option 2 - HTTP mode (requires running server first):
+        python -m run --server-only  # in a separate terminal
+        pytest -s -v -k "test_and_generates_basic_helpdesk_http" \
+            tests/integration/test_agent_network_designer_basic_helpdesk.py \
+            2>&1 | tee test_output.log
+
+    Run both:
+        pytest -s -v -m "integration_and_smoke" \
+            tests/integration/test_agent_network_designer_basic_helpdesk.py \
+            2>&1 | tee test_output.log
+
+    Adjust concurrency:
+        Edit success_ratio in the fixture HOCON files:
+        - tests/fixtures/generated/basic_helpdesk_test_direct.hocon
+        - tests/fixtures/generated/basic_helpdesk_test_http.hocon
+        e.g., "1/1" for single run, "5/5" for 5 concurrent, "10/10" for 10 concurrent
+        Note: 1/1 is recommended for CI right now other concurrency levels require a little more tuning to be stable. 
 """
 
 import os
