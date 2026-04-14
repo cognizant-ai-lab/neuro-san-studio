@@ -194,10 +194,9 @@ class WebFetch(CodedTool):
             # Not an IP literal; DNS-based checks are out of scope
             return
 
-        if addr.is_loopback or addr.is_private or addr.is_link_local or addr.is_multicast or addr.is_reserved:
+        if not addr.is_global:
             raise ValueError(
-                f"url_not_allowed: IP address '{hostname}' is in a private, loopback, "
-                "link-local, multicast, or reserved range."
+                f"url_not_allowed: IP address '{hostname}' is not a globally routable address."
             )
 
     def _validate_domain_list(self, value: Any, param_name: str) -> list[str]:

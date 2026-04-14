@@ -74,3 +74,21 @@ class TestValidateHostnameSafety(TestCase):
         with self.assertRaises(ValueError) as ctx:
             self._call("::1")
         self.assertIn("url_not_allowed", str(ctx.exception))
+
+    def test_unspecified_ipv4_blocked(self):
+        """Tests that the unspecified IPv4 address 0.0.0.0 is blocked with url_not_allowed."""
+        with self.assertRaises(ValueError) as ctx:
+            self._call("0.0.0.0")
+        self.assertIn("url_not_allowed", str(ctx.exception))
+
+    def test_unspecified_ipv6_blocked(self):
+        """Tests that the unspecified IPv6 address :: is blocked with url_not_allowed."""
+        with self.assertRaises(ValueError) as ctx:
+            self._call("::")
+        self.assertIn("url_not_allowed", str(ctx.exception))
+
+    def test_cgnat_blocked(self):
+        """Tests that a CGNAT address (100.64.0.0/10) is blocked with url_not_allowed."""
+        with self.assertRaises(ValueError) as ctx:
+            self._call("100.64.0.1")
+        self.assertIn("url_not_allowed", str(ctx.exception))
