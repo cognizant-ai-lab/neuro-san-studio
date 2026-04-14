@@ -84,41 +84,14 @@ class WebFetch(CodedTool):
         :raises aiohttp.ClientResponseError: url_not_accessible / too_many_requests (non-2xx HEAD).
         :raises aiohttp.ClientError: url_not_accessible when PDF or text fetch fails.
         """
-        # --- invalid_input: missing or non-http(s) URL ---
-        url: str = args.get("url", "").strip()
-        if not url:
-            raise ValueError("invalid_input: No 'url' provided.")
-        parsed: ParseResult = urlparse(url)
-        if parsed.scheme not in ("http", "https"):
-            raise ValueError(f"invalid_input: URL must use http or https scheme, got '{parsed.scheme}'.")
-
-        # --- url_too_long ---
-        if len(url) > MAX_URL_LENGTH:
-            raise ValueError(f"url_too_long: URL exceeds maximum length of {MAX_URL_LENGTH} characters.")
-
-        # --- url_not_allowed: domain filtering ---
-        domain: str = parsed.netloc.lower()
-        allowed_domains: list[str] = args.get("allowed_domains", [])
-        if allowed_domains and not any(domain.endswith(d.lower()) for d in allowed_domains):
-            raise ValueError(f"url_not_allowed: Domain '{domain}' is not in the allowed_domains list.")
-        blocked_domains: list[str] = args.get("blocked_domains", [])
-        if blocked_domains and any(domain.endswith(d.lower()) for d in blocked_domains):
-            raise ValueError(f"url_not_allowed: Domain '{domain}' is blocked.")
+        url: str = self._validate_url(args)
 
         logger: Logger = getLogger(self.__class__.__name__)
         logger.info("WebFetch: fetching %s", url)
 
-        # Probe content type with an async HEAD request before downloading.
-        timeout = ClientTimeout(total=TIMEOUT_SECONDS)
-        async with ClientSession(timeout=timeout) as session:
-            async with session.head(url, allow_redirects=True) as head:
-                # --- url_not_accessible / too_many_requests: raise on any non-2xx ---
-                head.raise_for_status()
-                content_type: str = head.headers.get("Content-Type", "")
-
+        content_type: str = await self._get_content_type(url)
         is_pdf: bool = "application/pdf" in content_type or url.lower().endswith(".pdf")
 
-        # --- unsupported_content_type ---
         if not is_pdf and not any(ct in content_type for ct in SUPPORTED_CONTENT_TYPES):
             raise ValueError(
                 f"unsupported_content_type: Content type '{content_type}' is not supported. "
@@ -126,33 +99,8 @@ class WebFetch(CodedTool):
             )
 
         retrieved_at: str = datetime.now(timezone.utc).isoformat()
-
-        if is_pdf:
-            try:
-                docs: list[Document] = await PyPDFLoader(url).aload()
-            except Exception as exc:
-                raise ClientError(f"url_not_accessible: Failed to load PDF '{url}': {exc}") from exc
-            text: str = "\n".join(doc.page_content for doc in docs)
-        else:
-            requests_tool = RequestsGetTool(
-                requests_wrapper=TextRequestsWrapper(),
-                allow_dangerous_requests=True,
-            )
-            try:
-                raw_content: str = await requests_tool.ainvoke(url)
-            except Exception as exc:
-                raise ClientError(f"url_not_accessible: Failed to fetch '{url}': {exc}") from exc
-
-            if raw_content.lstrip().startswith("<"):
-                soup = BeautifulSoup(raw_content, "html.parser")
-                for tag in soup(["script", "style", "noscript"]):
-                    tag.decompose()
-                text: str = soup.get_text(separator="\n", strip=True)
-            else:
-                text = raw_content
-
-        max_chars: int = args.get("max_content_chars", MAX_CHARS)
-        text = text[:max_chars]
+        text: str = await self._fetch_pdf(url) if is_pdf else await self._fetch_text(url)
+        text = text[: args.get("max_content_chars", MAX_CHARS)]
 
         logger.info("WebFetch: returned %d characters from %s", len(text), url)
 
@@ -162,3 +110,63 @@ class WebFetch(CodedTool):
             "content": text,
             "retrieved_at": retrieved_at,
         }
+
+    def _validate_url(self, args: dict[str, Any]) -> str:
+        """Validate URL format, length, and domain rules. Returns the cleaned URL."""
+        url: str = args.get("url", "").strip()
+        if not url:
+            raise ValueError("invalid_input: No 'url' provided.")
+
+        parsed: ParseResult = urlparse(url)
+        if parsed.scheme not in ("http", "https"):
+            raise ValueError(f"invalid_input: URL must use http or https scheme, got '{parsed.scheme}'.")
+
+        if len(url) > MAX_URL_LENGTH:
+            raise ValueError(f"url_too_long: URL exceeds maximum length of {MAX_URL_LENGTH} characters.")
+
+        domain: str = parsed.netloc.lower()
+        allowed_domains: list[str] = args.get("allowed_domains", [])
+        if allowed_domains and not any(domain.endswith(d.lower()) for d in allowed_domains):
+            raise ValueError(f"url_not_allowed: Domain '{domain}' is not in the allowed_domains list.")
+
+        blocked_domains: list[str] = args.get("blocked_domains", [])
+        if blocked_domains and any(domain.endswith(d.lower()) for d in blocked_domains):
+            raise ValueError(f"url_not_allowed: Domain '{domain}' is blocked.")
+
+        return url
+
+    async def _get_content_type(self, url: str) -> str:
+        """Probe the URL with a HEAD request and return the Content-Type header."""
+        timeout = ClientTimeout(total=TIMEOUT_SECONDS)
+        async with ClientSession(timeout=timeout) as session:
+            async with session.head(url, allow_redirects=True) as head:
+                # --- url_not_accessible / too_many_requests: raise on any non-2xx ---
+                head.raise_for_status()
+                return head.headers.get("Content-Type", "")
+
+    async def _fetch_pdf(self, url: str) -> str:
+        """Download and extract text from a PDF URL."""
+        try:
+            docs: list[Document] = await PyPDFLoader(url).aload()
+        except Exception as exc:
+            raise ClientError(f"url_not_accessible: Failed to load PDF '{url}': {exc}") from exc
+        return "\n".join(doc.page_content for doc in docs)
+
+    async def _fetch_text(self, url: str) -> str:
+        """Fetch a URL and return its plain-text body, stripping HTML if needed."""
+        requests_tool = RequestsGetTool(
+            requests_wrapper=TextRequestsWrapper(),
+            allow_dangerous_requests=True,
+        )
+        try:
+            raw_content: str = await requests_tool.ainvoke(url)
+        except Exception as exc:
+            raise ClientError(f"url_not_accessible: Failed to fetch '{url}': {exc}") from exc
+
+        if not raw_content.lstrip().startswith("<"):
+            return raw_content
+
+        soup = BeautifulSoup(raw_content, "html.parser")
+        for tag in soup(["script", "style", "noscript"]):
+            tag.decompose()
+        return soup.get_text(separator="\n", strip=True)
