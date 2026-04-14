@@ -107,17 +107,23 @@ class WebFetch(CodedTool):
         logger: Logger = getLogger(self.__class__.__name__)
         logger.info("WebFetch: fetching %s", url)
 
-        content_type: str = await self._get_content_type(url)
-        is_pdf: bool = "application/pdf" in content_type or url.lower().endswith(".pdf")
+        timeout = ClientTimeout(total=TIMEOUT_SECONDS)
+        async with ClientSession(timeout=timeout) as session:
+            content_type: str = await self._get_content_type(url, session)
+            is_pdf: bool = "application/pdf" in content_type or url.lower().endswith(".pdf")
 
-        if not is_pdf and not any(ct in content_type for ct in SUPPORTED_CONTENT_TYPES):
-            raise ValueError(
-                f"unsupported_content_type: Content type '{content_type}' is not supported. "
-                "Only text/HTML and PDF are accepted."
-            )
+            if not is_pdf and not any(ct in content_type for ct in SUPPORTED_CONTENT_TYPES):
+                raise ValueError(
+                    f"unsupported_content_type: Content type '{content_type}' is not supported. "
+                    "Only text/HTML and PDF are accepted."
+                )
 
-        retrieved_at: str = datetime.now(timezone.utc).isoformat()
-        text: str = await self._fetch_pdf(url) if is_pdf else await self._fetch_text(url)
+            retrieved_at: str = datetime.now(timezone.utc).isoformat()
+            if is_pdf:
+                text: str = await self._fetch_pdf(url)
+            else:
+                text = await self._fetch_text(url, session)
+
         text = text[:max_chars]
 
         logger.info("WebFetch: returned %d characters from %s", len(text), url)
@@ -214,7 +220,7 @@ class WebFetch(CodedTool):
             raise ValueError(f"invalid_input: 'max_content_chars' must be a positive integer, got {value!r}.")
         return value
 
-    async def _get_content_type(self, url: str) -> str:
+    async def _get_content_type(self, url: str, session: ClientSession) -> str:
         """Probe the URL with a HEAD request and return the Content-Type header.
 
         Falls back to a GET request if the server returns 405 (Method Not Allowed).
@@ -223,40 +229,38 @@ class WebFetch(CodedTool):
         and ClientError with a url_not_accessible prefix on connection/DNS/timeout failures.
         Raises ValueError with a response_too_large prefix when Content-Length exceeds MAX_RESPONSE_BYTES.
         """
-        timeout = ClientTimeout(total=TIMEOUT_SECONDS)
-        async with ClientSession(timeout=timeout) as session:
-            try:
-                async with session.head(url, allow_redirects=False) as head:
-                    if head.status in (301, 302, 303, 307, 308):
-                        raise ValueError(
-                            f"url_not_allowed: '{url}' returned a redirect ({head.status}); "
-                            "redirects are not followed."
-                        )
-                    if head.status == 405:
-                        # Server does not support HEAD; probe with GET (no body read)
-                        async with session.get(url, allow_redirects=False) as get:
-                            if get.status in (301, 302, 303, 307, 308):
-                                raise ValueError(
-                                    f"url_not_allowed: '{url}' returned a redirect ({get.status}); "
-                                    "redirects are not followed."
-                                )
-                            get.raise_for_status()
-                            self._check_content_length(get.headers.get("Content-Length"), url)
-                            return get.headers.get("Content-Type", "")
-                    head.raise_for_status()
-                    self._check_content_length(head.headers.get("Content-Length"), url)
-                    return head.headers.get("Content-Type", "")
-            except ClientResponseError as exc:
-                prefix: str = "too_many_requests" if exc.status == 429 else "url_not_accessible"
-                raise ClientResponseError(
-                    exc.request_info,
-                    exc.history,
-                    status=exc.status,
-                    message=f"{prefix}: HTTP {exc.status} for '{url}'.",
-                    headers=exc.headers,
-                ) from exc
-            except (ClientError, asyncio.TimeoutError) as exc:
-                raise ClientError(f"url_not_accessible: Could not reach '{url}': {exc}") from exc
+        try:
+            async with session.head(url, allow_redirects=False) as head:
+                if head.status in (301, 302, 303, 307, 308):
+                    raise ValueError(
+                        f"url_not_allowed: '{url}' returned a redirect ({head.status}); "
+                        "redirects are not followed."
+                    )
+                if head.status == 405:
+                    # Server does not support HEAD; probe with GET (no body read)
+                    async with session.get(url, allow_redirects=False) as get:
+                        if get.status in (301, 302, 303, 307, 308):
+                            raise ValueError(
+                                f"url_not_allowed: '{url}' returned a redirect ({get.status}); "
+                                "redirects are not followed."
+                            )
+                        get.raise_for_status()
+                        self._check_content_length(get.headers.get("Content-Length"), url)
+                        return get.headers.get("Content-Type", "")
+                head.raise_for_status()
+                self._check_content_length(head.headers.get("Content-Length"), url)
+                return head.headers.get("Content-Type", "")
+        except ClientResponseError as exc:
+            prefix: str = "too_many_requests" if exc.status == 429 else "url_not_accessible"
+            raise ClientResponseError(
+                exc.request_info,
+                exc.history,
+                status=exc.status,
+                message=f"{prefix}: HTTP {exc.status} for '{url}'.",
+                headers=exc.headers,
+            ) from exc
+        except (ClientError, asyncio.TimeoutError) as exc:
+            raise ClientError(f"url_not_accessible: Could not reach '{url}': {exc}") from exc
 
     def _check_content_length(self, content_length_header: str | None, url: str) -> None:
         """Raise ValueError if Content-Length exceeds MAX_RESPONSE_BYTES."""
@@ -272,32 +276,36 @@ class WebFetch(CodedTool):
                 )
 
     async def _fetch_pdf(self, url: str) -> str:
-        """Download and extract text from a PDF URL."""
+        """Download and extract text from a PDF URL.
+
+        Note: PyPDFLoader manages its own HTTP session internally, so the shared
+        ClientSession from async_invoke is not used here. This method is temporary:
+        once neuro-san supports multimodal input, the PDF can be passed as base64
+        directly to the model instead of being parsed to text.
+        """
         try:
             docs: list[Document] = await PyPDFLoader(url).aload()
         except Exception as exc:
             raise ClientError(f"url_not_accessible: Failed to load PDF '{url}': {exc}") from exc
         return "\n".join(doc.page_content for doc in docs)
 
-    async def _fetch_text(self, url: str) -> str:
+    async def _fetch_text(self, url: str, session: ClientSession) -> str:
         """Fetch a URL via aiohttp GET and return its plain-text body, stripping HTML if needed."""
-        timeout = ClientTimeout(total=TIMEOUT_SECONDS)
-        async with ClientSession(timeout=timeout) as session:
-            try:
-                async with session.get(url, allow_redirects=True) as response:
-                    response.raise_for_status()
-                    raw_content: str = await response.text()
-            except ClientResponseError as exc:
-                prefix: str = "too_many_requests" if exc.status == 429 else "url_not_accessible"
-                raise ClientResponseError(
-                    exc.request_info,
-                    exc.history,
-                    status=exc.status,
-                    message=f"{prefix}: HTTP {exc.status} for '{url}'.",
-                    headers=exc.headers,
-                ) from exc
-            except (ClientError, asyncio.TimeoutError) as exc:
-                raise ClientError(f"url_not_accessible: Failed to fetch '{url}': {exc}") from exc
+        try:
+            async with session.get(url, allow_redirects=True) as response:
+                response.raise_for_status()
+                raw_content: str = await response.text()
+        except ClientResponseError as exc:
+            prefix: str = "too_many_requests" if exc.status == 429 else "url_not_accessible"
+            raise ClientResponseError(
+                exc.request_info,
+                exc.history,
+                status=exc.status,
+                message=f"{prefix}: HTTP {exc.status} for '{url}'.",
+                headers=exc.headers,
+            ) from exc
+        except (ClientError, asyncio.TimeoutError) as exc:
+            raise ClientError(f"url_not_accessible: Failed to fetch '{url}': {exc}") from exc
 
         if not raw_content.lstrip().startswith("<"):
             return raw_content

@@ -18,7 +18,6 @@ import asyncio
 from unittest import TestCase
 from unittest.mock import AsyncMock
 from unittest.mock import MagicMock
-from unittest.mock import patch
 
 from aiohttp import ClientError
 from aiohttp import ClientResponseError
@@ -39,8 +38,7 @@ class TestGetContentType(TestCase):
     def test_head_success_returns_content_type(self):
         """Tests that a successful HEAD response returns the Content-Type header value."""
         session, _ = make_head_session(status=200, content_type="text/html; charset=utf-8")
-        with patch("coded_tools.tools.web_fetch.ClientSession", return_value=session):
-            result = asyncio.run(self.tool._get_content_type("http://example.com"))  # pylint: disable=protected-access
+        result = asyncio.run(self.tool._get_content_type("http://example.com", session))  # pylint: disable=protected-access
         self.assertEqual(result, "text/html; charset=utf-8")
 
     def test_head_405_falls_back_to_get(self):
@@ -55,8 +53,7 @@ class TestGetContentType(TestCase):
         get_cm.__aexit__ = AsyncMock(return_value=False)
         session.get = MagicMock(return_value=get_cm)
 
-        with patch("coded_tools.tools.web_fetch.ClientSession", return_value=session):
-            result = asyncio.run(self.tool._get_content_type("http://example.com"))  # pylint: disable=protected-access
+        result = asyncio.run(self.tool._get_content_type("http://example.com", session))  # pylint: disable=protected-access
         self.assertEqual(result, "application/pdf")
         session.get.assert_called_once()
 
@@ -64,9 +61,8 @@ class TestGetContentType(TestCase):
         """Tests that a non-2xx HTTP error raises ClientResponseError with url_not_accessible prefix."""
         exc = make_response_error(404)
         session, _ = make_head_session(status=404, raise_for_status_exc=exc)
-        with patch("coded_tools.tools.web_fetch.ClientSession", return_value=session):
-            with self.assertRaises(ClientResponseError) as ctx:
-                asyncio.run(self.tool._get_content_type("http://example.com"))  # pylint: disable=protected-access
+        with self.assertRaises(ClientResponseError) as ctx:
+            asyncio.run(self.tool._get_content_type("http://example.com", session))  # pylint: disable=protected-access
         self.assertIn("url_not_accessible", ctx.exception.message)
         self.assertEqual(ctx.exception.status, 404)
 
@@ -74,9 +70,8 @@ class TestGetContentType(TestCase):
         """Tests that a 429 response raises ClientResponseError with too_many_requests prefix."""
         exc = make_response_error(429)
         session, _ = make_head_session(status=429, raise_for_status_exc=exc)
-        with patch("coded_tools.tools.web_fetch.ClientSession", return_value=session):
-            with self.assertRaises(ClientResponseError) as ctx:
-                asyncio.run(self.tool._get_content_type("http://example.com"))  # pylint: disable=protected-access
+        with self.assertRaises(ClientResponseError) as ctx:
+            asyncio.run(self.tool._get_content_type("http://example.com", session))  # pylint: disable=protected-access
         self.assertIn("too_many_requests", ctx.exception.message)
 
     def test_connection_error_raises_with_url_not_accessible_prefix(self):
@@ -85,13 +80,10 @@ class TestGetContentType(TestCase):
         head_cm.__aenter__ = AsyncMock(side_effect=ClientError("DNS failure"))
         head_cm.__aexit__ = AsyncMock(return_value=False)
         session = MagicMock()
-        session.__aenter__ = AsyncMock(return_value=session)
-        session.__aexit__ = AsyncMock(return_value=False)
         session.head = MagicMock(return_value=head_cm)
 
-        with patch("coded_tools.tools.web_fetch.ClientSession", return_value=session):
-            with self.assertRaises(ClientError) as ctx:
-                asyncio.run(self.tool._get_content_type("http://example.com"))  # pylint: disable=protected-access
+        with self.assertRaises(ClientError) as ctx:
+            asyncio.run(self.tool._get_content_type("http://example.com", session))  # pylint: disable=protected-access
         self.assertIn("url_not_accessible", str(ctx.exception))
 
     def test_timeout_raises_with_url_not_accessible_prefix(self):
@@ -100,29 +92,24 @@ class TestGetContentType(TestCase):
         head_cm.__aenter__ = AsyncMock(side_effect=asyncio.TimeoutError())
         head_cm.__aexit__ = AsyncMock(return_value=False)
         session = MagicMock()
-        session.__aenter__ = AsyncMock(return_value=session)
-        session.__aexit__ = AsyncMock(return_value=False)
         session.head = MagicMock(return_value=head_cm)
 
-        with patch("coded_tools.tools.web_fetch.ClientSession", return_value=session):
-            with self.assertRaises(ClientError) as ctx:
-                asyncio.run(self.tool._get_content_type("http://example.com"))  # pylint: disable=protected-access
+        with self.assertRaises(ClientError) as ctx:
+            asyncio.run(self.tool._get_content_type("http://example.com", session))  # pylint: disable=protected-access
         self.assertIn("url_not_accessible", str(ctx.exception))
 
     def test_content_length_over_limit_raises_response_too_large(self):
         """Tests that a Content-Length header exceeding the limit raises ValueError with response_too_large."""
         session, _ = make_head_session(status=200, content_type="text/html", content_length=MAX_RESPONSE_BYTES + 1)
-        with patch("coded_tools.tools.web_fetch.ClientSession", return_value=session):
-            with self.assertRaises(ValueError) as ctx:
-                asyncio.run(self.tool._get_content_type("http://example.com"))  # pylint: disable=protected-access
+        with self.assertRaises(ValueError) as ctx:
+            asyncio.run(self.tool._get_content_type("http://example.com", session))  # pylint: disable=protected-access
         self.assertIn("response_too_large", str(ctx.exception))
 
     def test_head_redirect_raises_url_not_allowed(self):
         """Tests that a 3xx HEAD response raises ValueError with url_not_allowed."""
         session, _ = make_head_session(status=301)
-        with patch("coded_tools.tools.web_fetch.ClientSession", return_value=session):
-            with self.assertRaises(ValueError) as ctx:
-                asyncio.run(self.tool._get_content_type("http://example.com"))  # pylint: disable=protected-access
+        with self.assertRaises(ValueError) as ctx:
+            asyncio.run(self.tool._get_content_type("http://example.com", session))  # pylint: disable=protected-access
         self.assertIn("url_not_allowed", str(ctx.exception))
 
     def test_405_get_redirect_raises_url_not_allowed(self):
@@ -136,7 +123,6 @@ class TestGetContentType(TestCase):
         get_cm.__aexit__ = AsyncMock(return_value=False)
         session.get = MagicMock(return_value=get_cm)
 
-        with patch("coded_tools.tools.web_fetch.ClientSession", return_value=session):
-            with self.assertRaises(ValueError) as ctx:
-                asyncio.run(self.tool._get_content_type("http://example.com"))  # pylint: disable=protected-access
+        with self.assertRaises(ValueError) as ctx:
+            asyncio.run(self.tool._get_content_type("http://example.com", session))  # pylint: disable=protected-access
         self.assertIn("url_not_allowed", str(ctx.exception))

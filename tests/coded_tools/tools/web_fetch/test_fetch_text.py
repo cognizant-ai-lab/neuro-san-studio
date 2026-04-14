@@ -18,7 +18,6 @@ import asyncio
 from unittest import TestCase
 from unittest.mock import AsyncMock
 from unittest.mock import MagicMock
-from unittest.mock import patch
 
 from aiohttp import ClientError
 from aiohttp import ClientResponseError
@@ -38,16 +37,14 @@ class TestFetchText(TestCase):
     def test_plain_text_returned_as_is(self):
         """Tests that plain text body content is returned unchanged."""
         session, _ = make_get_response(body="just plain text")
-        with patch("coded_tools.tools.web_fetch.ClientSession", return_value=session):
-            result = asyncio.run(self.tool._fetch_text("http://example.com"))  # pylint: disable=protected-access
+        result = asyncio.run(self.tool._fetch_text("http://example.com", session))  # pylint: disable=protected-access
         self.assertEqual(result, "just plain text")
 
     def test_html_is_stripped(self):
         """Tests that HTML tags, scripts, and styles are stripped from the fetched content."""
         html = "<html><head><style>body{}</style></head><body><p>Hello</p><script>alert(1)</script></body></html>"
         session, _ = make_get_response(body=html)
-        with patch("coded_tools.tools.web_fetch.ClientSession", return_value=session):
-            result = asyncio.run(self.tool._fetch_text("http://example.com"))  # pylint: disable=protected-access
+        result = asyncio.run(self.tool._fetch_text("http://example.com", session))  # pylint: disable=protected-access
         self.assertIn("Hello", result)
         self.assertNotIn("<p>", result)
         self.assertNotIn("alert", result)
@@ -57,18 +54,16 @@ class TestFetchText(TestCase):
         """Tests that a non-2xx HTTP error raises ClientResponseError with url_not_accessible prefix."""
         exc = make_response_error(503)
         session, _ = make_get_response(status=503, raise_for_status_exc=exc)
-        with patch("coded_tools.tools.web_fetch.ClientSession", return_value=session):
-            with self.assertRaises(ClientResponseError) as ctx:
-                asyncio.run(self.tool._fetch_text("http://example.com"))  # pylint: disable=protected-access
+        with self.assertRaises(ClientResponseError) as ctx:
+            asyncio.run(self.tool._fetch_text("http://example.com", session))  # pylint: disable=protected-access
         self.assertIn("url_not_accessible", ctx.exception.message)
 
     def test_429_raises_with_too_many_requests_prefix(self):
         """Tests that a 429 response raises ClientResponseError with too_many_requests prefix."""
         exc = make_response_error(429)
         session, _ = make_get_response(status=429, raise_for_status_exc=exc)
-        with patch("coded_tools.tools.web_fetch.ClientSession", return_value=session):
-            with self.assertRaises(ClientResponseError) as ctx:
-                asyncio.run(self.tool._fetch_text("http://example.com"))  # pylint: disable=protected-access
+        with self.assertRaises(ClientResponseError) as ctx:
+            asyncio.run(self.tool._fetch_text("http://example.com", session))  # pylint: disable=protected-access
         self.assertIn("too_many_requests", ctx.exception.message)
 
     def test_connection_error_raises_client_error_with_prefix(self):
@@ -77,11 +72,8 @@ class TestFetchText(TestCase):
         response_cm.__aenter__ = AsyncMock(side_effect=ClientError("connection reset"))
         response_cm.__aexit__ = AsyncMock(return_value=False)
         session = MagicMock()
-        session.__aenter__ = AsyncMock(return_value=session)
-        session.__aexit__ = AsyncMock(return_value=False)
         session.get = MagicMock(return_value=response_cm)
 
-        with patch("coded_tools.tools.web_fetch.ClientSession", return_value=session):
-            with self.assertRaises(ClientError) as ctx:
-                asyncio.run(self.tool._fetch_text("http://example.com"))  # pylint: disable=protected-access
+        with self.assertRaises(ClientError) as ctx:
+            asyncio.run(self.tool._fetch_text("http://example.com", session))  # pylint: disable=protected-access
         self.assertIn("url_not_accessible", str(ctx.exception))
