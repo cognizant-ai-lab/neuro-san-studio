@@ -232,8 +232,7 @@ class WebFetch(CodedTool):
         if response.status in (301, 302, 303, 307, 308):
             location = response.headers.get("Location", "unknown")
             raise ValueError(
-                f"url_not_allowed: '{url}' redirects to '{location}' ({response.status}); "
-                "redirects are not followed."
+                f"url_not_allowed: '{url}' redirects to '{location}' ({response.status}); redirects are not followed."
             )
 
     async def _get_content_type(self, url: str, session: ClientSession) -> tuple[str, str | None]:
