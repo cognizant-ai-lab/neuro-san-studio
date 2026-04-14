@@ -123,9 +123,7 @@ class TestAgentNetworkDesignerBasicHelpdesk(TestCase):
         )
         input_processor = StreamingInputProcessor(session=session)
         processor: BasicMessageProcessor = input_processor.get_message_processor()
-        request: Dict[str, Any] = input_processor.formulate_chat_request(
-            self.AND_PROMPT
-        )
+        request: Dict[str, Any] = input_processor.formulate_chat_request(self.AND_PROMPT)
 
         empty: Dict[str, Any] = {}
         for chat_response in session.streaming_chat(request):
@@ -138,9 +136,7 @@ class TestAgentNetworkDesignerBasicHelpdesk(TestCase):
 
         # Verify file was created
         repo_root = os.path.dirname(os.path.dirname(os.path.dirname(__file__)))
-        hocon_path = os.path.join(
-            repo_root, "registries", "generated", "basic_helpdesk.hocon"
-        )
+        hocon_path = os.path.join(repo_root, "registries", "generated", "basic_helpdesk.hocon")
         self.assertTrue(
             os.path.exists(hocon_path),
             f"AND did not generate {hocon_path}",
