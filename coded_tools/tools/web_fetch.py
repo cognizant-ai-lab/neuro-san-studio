@@ -152,10 +152,7 @@ class WebFetch(CodedTool):
         """Return a validated max_content_chars value, raising invalid_input on bad input."""
         value: int = args.get("max_content_chars", MAX_CHARS)
         if not isinstance(value, int) or value <= 0:
-            raise ValueError(
-                "invalid_input: 'max_content_chars' must be a positive integer, "
-                f"got {value!r}."
-            )
+            raise ValueError(f"invalid_input: 'max_content_chars' must be a positive integer, got {value!r}.")
         return value
 
     async def _get_content_type(self, url: str) -> str:
