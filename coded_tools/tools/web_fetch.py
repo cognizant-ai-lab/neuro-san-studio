@@ -23,6 +23,7 @@ from urllib.parse import ParseResult
 from urllib.parse import urlparse
 
 from aiohttp import ClientError
+from aiohttp import ClientResponseError
 from aiohttp import ClientSession
 from aiohttp import ClientTimeout
 from bs4 import BeautifulSoup
@@ -34,6 +35,8 @@ from neuro_san.interfaces.coded_tool import CodedTool
 
 MAX_CHARS: int = 20_000
 MAX_URL_LENGTH: int = 250
+# Maximum bytes accepted via Content-Length header before downloading
+MAX_RESPONSE_BYTES: int = 10 * 1024 * 1024  # 10 MB
 SUPPORTED_CONTENT_TYPES: set[str] = {"text/html", "text/plain", "application/xhtml", "application/pdf"}
 TIMEOUT_SECONDS: int = 15
 
@@ -46,12 +49,13 @@ class WebFetch(CodedTool):
     to strip HTML markup from the response. PDF URLs are handled via PyPDFLoader.
 
     Error types (raised as ValueError or aiohttp.ClientResponseError or aiohttp.ClientError with the specified message)
-        invalid_input            – URL is missing or not a valid http/https URL.
+        invalid_input            – URL is missing, not a valid http/https URL, or a parameter has an invalid type.
         url_too_long             – URL exceeds MAX_URL_LENGTH characters.
         url_not_allowed          – URL blocked by domain filtering rules.
         url_not_accessible       – HTTP error while fetching the page.
         too_many_requests        – Server returned HTTP 429.
         unsupported_content_type – Content type is not text/HTML or PDF.
+        response_too_large       – Content-Length header exceeds MAX_RESPONSE_BYTES.
     """
 
     async def async_invoke(self, args: dict[str, Any], sly_data: dict[str, Any]) -> dict[str, Any]:
@@ -65,7 +69,7 @@ class WebFetch(CodedTool):
                     "allowed_domains"   (list, optional): Only fetch from these domains.
                     "blocked_domains"   (list, optional): Refuse to fetch from these domains.
                     "max_content_chars" (int, optional): Character cap on returned text.
-                                        Defaults to MAX_CHARS.
+                                        Defaults to MAX_CHARS. Must be a positive integer.
 
         :param sly_data: A dictionary whose keys are defined by the agent hierarchy,
                 but whose values are meant to be kept out of the chat stream.
@@ -80,11 +84,12 @@ class WebFetch(CodedTool):
                 "retrieved_at" (str): ISO-8601 UTC timestamp when the content was retrieved.
 
         :raises ValueError: invalid_input, url_too_long, url_not_allowed,
-                            unsupported_content_type.
+                            unsupported_content_type, response_too_large.
         :raises aiohttp.ClientResponseError: url_not_accessible / too_many_requests (non-2xx HEAD).
         :raises aiohttp.ClientError: url_not_accessible when PDF or text fetch fails.
         """
         url: str = self._validate_url(args)
+        max_chars: int = self._validate_max_content_chars(args)
 
         logger: Logger = getLogger(self.__class__.__name__)
         logger.info("WebFetch: fetching %s", url)
@@ -100,7 +105,7 @@ class WebFetch(CodedTool):
 
         retrieved_at: str = datetime.now(timezone.utc).isoformat()
         text: str = await self._fetch_pdf(url) if is_pdf else await self._fetch_text(url)
-        text = text[: args.get("max_content_chars", MAX_CHARS)]
+        text = text[:max_chars]
 
         logger.info("WebFetch: returned %d characters from %s", len(text), url)
 
@@ -124,25 +129,78 @@ class WebFetch(CodedTool):
         if len(url) > MAX_URL_LENGTH:
             raise ValueError(f"url_too_long: URL exceeds maximum length of {MAX_URL_LENGTH} characters.")
 
-        domain: str = parsed.netloc.lower()
+        # Use parsed.hostname (strips port/credentials) and enforce a strict domain boundary:
+        # an allowed/blocked entry "example.com" matches "example.com" and "sub.example.com"
+        # but not "badexample.com".
+        hostname: str = (parsed.hostname or "").lower()
+
         allowed_domains: list[str] = args.get("allowed_domains", [])
-        if allowed_domains and not any(domain.endswith(d.lower()) for d in allowed_domains):
-            raise ValueError(f"url_not_allowed: Domain '{domain}' is not in the allowed_domains list.")
+        if allowed_domains and not any(
+            hostname == domain.lower() or hostname.endswith("." + domain.lower()) for domain in allowed_domains
+        ):
+            raise ValueError(f"url_not_allowed: Domain '{hostname}' is not in the allowed_domains list.")
 
         blocked_domains: list[str] = args.get("blocked_domains", [])
-        if blocked_domains and any(domain.endswith(d.lower()) for d in blocked_domains):
-            raise ValueError(f"url_not_allowed: Domain '{domain}' is blocked.")
+        if blocked_domains and any(
+            hostname == domain.lower() or hostname.endswith("." + domain.lower()) for domain in blocked_domains
+        ):
+            raise ValueError(f"url_not_allowed: Domain '{hostname}' is blocked.")
 
         return url
 
+    def _validate_max_content_chars(self, args: dict[str, Any]) -> int:
+        """Return a validated max_content_chars value, raising invalid_input on bad input."""
+        value: int = args.get("max_content_chars", MAX_CHARS)
+        if not isinstance(value, int) or value <= 0:
+            raise ValueError(
+                "invalid_input: 'max_content_chars' must be a positive integer, "
+                f"got {value!r}."
+            )
+        return value
+
     async def _get_content_type(self, url: str) -> str:
-        """Probe the URL with a HEAD request and return the Content-Type header."""
+        """Probe the URL with a HEAD request and return the Content-Type header.
+
+        Falls back to a GET request if the server returns 405 (Method Not Allowed).
+        Raises ClientResponseError with a url_not_accessible prefix on any non-2xx response,
+        and raises ValueError with a response_too_large prefix when the Content-Length header
+        indicates the response exceeds MAX_RESPONSE_BYTES.
+        """
         timeout = ClientTimeout(total=TIMEOUT_SECONDS)
         async with ClientSession(timeout=timeout) as session:
-            async with session.head(url, allow_redirects=True) as head:
-                # --- url_not_accessible / too_many_requests: raise on any non-2xx ---
-                head.raise_for_status()
-                return head.headers.get("Content-Type", "")
+            try:
+                async with session.head(url, allow_redirects=True) as head:
+                    if head.status == 405:
+                        # Server does not support HEAD; probe with GET (no body read)
+                        async with session.get(url, allow_redirects=True) as get:
+                            get.raise_for_status()
+                            self._check_content_length(get.headers.get("Content-Length"), url)
+                            return get.headers.get("Content-Type", "")
+                    head.raise_for_status()
+                    self._check_content_length(head.headers.get("Content-Length"), url)
+                    return head.headers.get("Content-Type", "")
+            except ClientResponseError as exc:
+                prefix: str = "too_many_requests" if exc.status == 429 else "url_not_accessible"
+                raise ClientResponseError(
+                    exc.request_info,
+                    exc.history,
+                    status=exc.status,
+                    message=f"{prefix}: HTTP {exc.status} for '{url}'.",
+                    headers=exc.headers,
+                ) from exc
+
+    def _check_content_length(self, content_length_header: str | None, url: str) -> None:
+        """Raise ValueError if Content-Length exceeds MAX_RESPONSE_BYTES."""
+        if content_length_header is not None:
+            try:
+                size = int(content_length_header)
+            except ValueError:
+                return
+            if size > MAX_RESPONSE_BYTES:
+                raise ValueError(
+                    f"response_too_large: '{url}' reports Content-Length {size} bytes, "
+                    f"which exceeds the {MAX_RESPONSE_BYTES}-byte limit."
+                )
 
     async def _fetch_pdf(self, url: str) -> str:
         """Download and extract text from a PDF URL."""

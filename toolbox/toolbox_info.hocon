@@ -587,7 +587,7 @@ Options are `ascending` and `descending`. Default to `descending`.
                     "description": "Optional list of domains to block. URLs whose domain matches one of these will be rejected."
                 },
                 "max_content_chars": {
-                    "type": "integer",
+                    "type": "int",
                     "description": "Maximum number of characters to return from the fetched content. Defaults to 20000."
                 }
             },
