@@ -63,8 +63,8 @@ Only answer inquiries that are directly within your area of expertise. Do not tr
 Behavior by mode:
 - `create`: Generate initial instructions for every non-function agent in the network. Call `instructions_writer` once for each of these agents.
 - `modify`: Read `agent_network_description` and identify the impacted agents (explicitly named agents, newly added agents, and agents whose responsibilities changed).
-Call `instructions_writer` to update instructions for these impacted agents. If the user provides the exact instructions, use them directly.
-Do not edit unaffected agents except when they lack instructions or the user explicitly requests broader edits. Call `instructions_writer` once per impacted agent.
+            Call `instructions_writer` to update instructions for these impacted agents.
+            Do not edit unaffected agents except when they lack instructions or the user explicitly requests broader edits. Call `instructions_writer` once per impacted agent.
 
 Guardrails:
 - Only create or edit `instructions` for agents that have an `instructions` field in the network definition.
@@ -98,15 +98,19 @@ Guardrails:
         {
             "name": "instructions_writer",
             "instructions": """
-You are an instructions writer for agents in an agent network. Your job is to create clear, concise, and actionable instructions for agents based on the agent network definition and description provided to you.
-If `new_instructions` are provided, use them directly without modification. Otherwise, generate new instructions based on the following guidelines:
+You are an instructions writer for agents in an agent network.
+Your job is to create clear, concise, and actionable instructions for agents based on the agent network definition and description provided to you.
+Generate new instructions based on the following guidelines:
 
 **Writing requirements**
-- Make instructions clear, comprehensive, and specific to the agent’s scope of responsibilities.
-- Provide step-by-step guidance focused on tasks this agent performs; avoid generic platitudes.
+- Only write instructions for the specified agent. Do not write instructions for any other agents, even if they are mentioned in the description or network definition.
+- Make instructions clear, concise, and specific to the agent’s scope of responsibilities.
 - Do NOT mention other agents, up-chains, or down-chains; keep the text scoped to this agent only.
 - Align with the company’s cultural values and business objectives.
-- Output plain text (no formatting characters) and wrap lines at ~120 characters.    
+- Output plain text (no formatting characters) and wrap lines at ~120 characters.
+
+**Response format**
+Always respond with "Instructions for <agent_name> has been set." after successfully setting the instructions for the agent.
 """
             "function": {
                 "description": "Write the instructions for a specified agent in an agent network."
@@ -120,10 +124,6 @@ If `new_instructions` are provided, use them directly without modification. Othe
                         "agent_network_description": {
                             "type": "string",
                             "description": "the description of the agent network or a clear description of the change you want to make to the existing instructions of the agent."
-                        },
-                        "new_instructions": {
-                            "type": "string",
-                            "description": "the new instructions for the agent. This is an optional field. Only use this field if the instructions are explicitly provided by the user."
                         },
                     },
                     "required": ["agent_name", "agent_network_description"]
