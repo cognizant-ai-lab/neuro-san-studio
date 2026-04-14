@@ -14,7 +14,7 @@
 #
 # END COPYRIGHT
 
-from asyncio import TimeoutError
+import asyncio
 from datetime import datetime
 from datetime import timezone
 from logging import Logger
@@ -213,7 +213,7 @@ class WebFetch(CodedTool):
                     message=f"{prefix}: HTTP {exc.status} for '{url}'.",
                     headers=exc.headers,
                 ) from exc
-            except (ClientError, TimeoutError) as exc:
+            except (ClientError, asyncio.TimeoutError) as exc:
                 raise ClientError(f"url_not_accessible: Could not reach '{url}': {exc}") from exc
 
     def _check_content_length(self, content_length_header: str | None, url: str) -> None:
@@ -248,7 +248,7 @@ class WebFetch(CodedTool):
             except ClientResponseError as exc:
                 prefix: str = "too_many_requests" if exc.status == 429 else "url_not_accessible"
                 raise ClientError(f"{prefix}: HTTP {exc.status} for '{url}'.") from exc
-            except (ClientError, TimeoutError) as exc:
+            except (ClientError, asyncio.TimeoutError) as exc:
                 raise ClientError(f"url_not_accessible: Failed to fetch '{url}': {exc}") from exc
 
         if not raw_content.lstrip().startswith("<"):
