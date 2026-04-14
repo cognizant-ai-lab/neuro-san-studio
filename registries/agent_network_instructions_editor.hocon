@@ -58,14 +58,12 @@
 You are responsible for generating and editing instructions of agents based on the agent network description and definition.
 Only answer inquiries that are directly within your area of expertise. Do not try to help for other matters. Do not mention what you can NOT do. Only mention what you can do.
 
-Always start by calling `get_agent_network_definition` to load the current network and existing instructions.
-
 **Only create or edit `instructions` for agents that have an `instructions` field in the network definition. These are non-function agents.**
 
 Behavior by mode:
 - `create`: Generate initial instructions for every non-function agent in the network. Call `instructions_writer` once for each of these agents.
 - `modify`: Read `agent_network_description` and identify the impacted agents (explicitly named agents, newly added agents, and agents whose responsibilities changed).
-Call `instructions_writer` to update instructions for these impacted agents. If the user provides the exact instructions, use them directly. After applying the requested modifications, perform a final check by calling `get_agent_network_definition` and call `instructions_writer` for any agents that still lack them.
+Call `instructions_writer` to update instructions for these impacted agents. If the user provides the exact instructions, use them directly.
 Do not edit unaffected agents except when they lack instructions or the user explicitly requests broader edits. Call `instructions_writer` once per impacted agent.
 
 Guardrails:
@@ -80,8 +78,14 @@ Guardrails:
                     "sly_data": ["agent_network_definition"]
                 }
             },
-            "tools": ["get_agent_network_definition", "instructions_writer"],
+            "tools": ["instructions_writer"],
             "middleware": [
+                {
+                    "class": "middleware.agent_network_designer.agent_network_definition_middleware.AgentNetworkDefinitionMiddleware",
+                    "args": {
+                        "sly_data": true
+                    }
+                },
                 {
                     "class": "middleware.agent_network_designer.validation.agent_network_instructions_validation_middleware.AgentNetworkInstructionsValidationMiddleware",
                     "args": {
@@ -98,7 +102,6 @@ You are an instructions writer for agents in an agent network. Your job is to cr
 If `new_instructions` are provided, use them directly without modification. Otherwise, generate new instructions based on the following guidelines:
 
 **Writing requirements**
-- Always start by calling `get_agent_network_definition` to load the current network and existing instructions.
 - Make instructions clear, comprehensive, and specific to the agent’s scope of responsibilities.
 - Provide step-by-step guidance focused on tasks this agent performs; avoid generic platitudes.
 - Do NOT mention other agents, up-chains, or down-chains; keep the text scoped to this agent only.
@@ -126,7 +129,15 @@ If `new_instructions` are provided, use them directly without modification. Othe
                     "required": ["agent_name", "agent_network_description"]
                 }
             },
-            "tools": ["get_agent_network_definition", "set_agent_instructions_tool"],
+            "tools": ["set_agent_instructions_tool"],
+            "middleware": [
+                {
+                    "class": "middleware.agent_network_designer.agent_network_definition_middleware.AgentNetworkDefinitionMiddleware",
+                    "args": {
+                        "sly_data": true
+                    }
+                }
+            ]
         },
 
         {
@@ -149,15 +160,7 @@ If `new_instructions` are provided, use them directly without modification. Othe
                     "required": ["agent_name", "new_instructions"]
                 }
             },
-        },
-
-        {
-            "name": "get_agent_network_definition",
-            "class": "coded_tools.get_agent_network_definition.GetAgentNetworkDefinition",
-            "function": {
-                "description": "Get the agent network definition."
-            }
-        },
+        }
 
     ]
 }
