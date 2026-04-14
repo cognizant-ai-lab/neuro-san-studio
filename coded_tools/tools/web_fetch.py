@@ -63,7 +63,8 @@ class WebFetch(CodedTool):
     Error types (raised as ValueError or aiohttp.ClientResponseError or aiohttp.ClientError with the specified message)
         invalid_input            – URL is missing, not a valid http/https URL, or a parameter has an invalid type.
         url_too_long             – URL exceeds MAX_URL_LENGTH characters.
-        url_not_allowed          – URL targets a private/reserved host, is blocked by domain rules, or returns a redirect.
+        url_not_allowed          – URL targets a private/reserved host, is blocked by domain rules,
+                                    or returns a redirect.
         url_not_accessible       – HTTP error or network failure while fetching the page.
         too_many_requests        – Server returned HTTP 429.
         unsupported_content_type – Content type is not text/HTML or PDF.
@@ -228,14 +229,16 @@ class WebFetch(CodedTool):
                 async with session.head(url, allow_redirects=False) as head:
                     if head.status in (301, 302, 303, 307, 308):
                         raise ValueError(
-                            f"url_not_allowed: '{url}' returned a redirect ({head.status}); redirects are not followed."
+                            f"url_not_allowed: '{url}' returned a redirect ({head.status}); "
+                            "redirects are not followed."
                         )
                     if head.status == 405:
                         # Server does not support HEAD; probe with GET (no body read)
                         async with session.get(url, allow_redirects=False) as get:
                             if get.status in (301, 302, 303, 307, 308):
                                 raise ValueError(
-                                    f"url_not_allowed: '{url}' returned a redirect ({get.status}); redirects are not followed."
+                                    f"url_not_allowed: '{url}' returned a redirect ({get.status}); "
+                                    "redirects are not followed."
                                 )
                             get.raise_for_status()
                             self._check_content_length(get.headers.get("Content-Length"), url)
