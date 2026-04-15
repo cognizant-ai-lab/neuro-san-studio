@@ -110,7 +110,7 @@ Generate new instructions based on the following guidelines:
 - Output plain text (no formatting characters) and wrap lines at ~120 characters.
 
 **Response format**
-Always respond with "Instructions for <agent_name> has been set." after successfully setting the instructions for the agent.
+Always respond with "Instructions for <agent_name> have been set." after successfully setting the instructions for the agent.
 """
             "function": {
                 "description": "Write the instructions for a specified agent in an agent network."
