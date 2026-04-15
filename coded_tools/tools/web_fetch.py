@@ -15,9 +15,11 @@
 # END COPYRIGHT
 
 import asyncio
-import ipaddress
 from datetime import datetime
 from datetime import timezone
+from ipaddress import ip_address
+from ipaddress import IPv4Address
+from ipaddress import IPv6Address
 from logging import Logger
 from logging import getLogger
 from typing import Any
@@ -189,10 +191,10 @@ class WebFetch(CodedTool):
             raise ValueError(f"url_not_allowed: Host '{hostname}' targets a loopback address.")
 
         try:
-            addr = ipaddress.ip_address(hostname)
+            addr: IPv4Address | IPv6Address = ip_address(hostname)
         except ValueError:
             # Not an IP literal; DNS-based checks are out of scope
-            return
+            return None
 
         if not addr.is_global:
             raise ValueError(f"url_not_allowed: IP address '{hostname}' is not a globally routable address.")
@@ -227,7 +229,7 @@ class WebFetch(CodedTool):
         only covers 4xx/5xx and silently passes 3xx responses through.
         """
         if response.status in (301, 302, 303, 307, 308):
-            location = response.headers.get("Location", "unknown")
+            location: str = response.headers.get("Location", "unknown")
             raise ValueError(
                 f"url_not_allowed: '{url}' redirects to '{location}' ({response.status}); redirects are not followed."
             )
