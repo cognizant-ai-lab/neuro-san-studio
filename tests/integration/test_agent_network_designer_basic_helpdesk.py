@@ -67,20 +67,19 @@ How to run:
         - tests/fixtures/generated/basic_helpdesk_test_direct.hocon
         - tests/fixtures/generated/basic_helpdesk_test_http.hocon
         e.g., "1/1" for single run, "5/5" for 5 concurrent, "10/10" for 10 concurrent
-        Note: 1/1 is recommended for CI right now other concurrency levels require a little more tuning to be stable. 
+        Note: 1/1 is recommended for CI right now other concurrency levels require a little more tuning to be stable.
 """
 
 import os
 from typing import Any
 from typing import Dict
-
 from unittest import TestCase
 
 import pytest
 from neuro_san.client.agent_session_factory import AgentSessionFactory
+from neuro_san.client.streaming_input_processor import StreamingInputProcessor
 from neuro_san.interfaces.agent_session import AgentSession
 from neuro_san.message_processing.basic_message_processor import BasicMessageProcessor
-from neuro_san.client.streaming_input_processor import StreamingInputProcessor
 from neuro_san.test.unittest.dynamic_hocon_unit_tests import DynamicHoconUnitTests
 
 
