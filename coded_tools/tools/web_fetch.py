@@ -225,7 +225,7 @@ class WebFetch(CodedTool):
 
     def _is_redirection(self, status: int) -> bool:
         """Return True if the HTTP status code is a 3xx redirection."""
-        return HTTPStatus.MULTIPLE_CHOICES <= status < HTTPStatus.BAD_REQUEST
+        return 300 <= status <= 399
 
     def _raise_if_redirect(self, response: Any, url: str) -> None:
         """Raise ValueError with url_not_allowed if the response is a 3xx redirect.
