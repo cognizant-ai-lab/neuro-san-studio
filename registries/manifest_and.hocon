@@ -23,6 +23,6 @@
     include "registries/experimental/manifest.hocon",
 
     # Generated agent networks
-    include "registries/generated/manifest.hocon",
+    include "registries/generated/manifest.hocon"
 
 }
