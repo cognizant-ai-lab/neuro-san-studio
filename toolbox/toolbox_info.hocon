@@ -561,7 +561,7 @@ Options are `ascending` and `descending`. Default to `descending`.
     # ---------- Web Fetch Tool ----------
 
     # Fetches the content of a URL and returns its plain-text body.
-    # Supports HTML pages and PDFs. Requires: beautifulsoup4, aiohttp, pypdf, python>=3.12
+    # Supports HTML pages and PDFs. Requires: beautifulsoup4, aiohttp, pypdf
     "web_fetch": {
         "class": "coded_tools.tools.web_fetch.WebFetch",
         "description": "Fetches the content of a URL and returns its plain-text body along with metadata. Supports HTML pages and PDF documents.",

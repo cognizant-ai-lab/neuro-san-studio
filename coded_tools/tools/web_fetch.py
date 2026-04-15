@@ -223,13 +223,17 @@ class WebFetch(CodedTool):
             raise ValueError(f"invalid_input: 'max_content_chars' must be a positive integer, got {value!r}.")
         return value
 
+    def _is_redirection(self, status: int) -> bool:
+        """Return True if the HTTP status code is a 3xx redirection."""
+        return HTTPStatus.MULTIPLE_CHOICES <= status < HTTPStatus.BAD_REQUEST
+
     def _raise_if_redirect(self, response: Any, url: str) -> None:
         """Raise ValueError with url_not_allowed if the response is a 3xx redirect.
 
         Must be called explicitly when allow_redirects=False, because raise_for_status()
         only covers 4xx/5xx and silently passes 3xx responses through.
         """
-        if HTTPStatus(response.status).is_redirection:
+        if self._is_redirection(response.status):
             location: str = response.headers.get("Location", "unknown")
             raise ValueError(
                 f"url_not_allowed: '{url}' redirects to '{location}' ({response.status}); redirects are not followed."
