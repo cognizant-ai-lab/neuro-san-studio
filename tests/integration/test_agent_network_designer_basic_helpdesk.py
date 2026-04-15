@@ -117,9 +117,7 @@ class TestAgentNetworkDesignerBasicHelpdesk(TestCase):
         Uses direct mode with use_direct=True so AND can access the
         agent_network_editor tool. See module docstring for details.
         """
-        session: AgentSession = AgentSessionFactory().create_session(
-            "direct", "agent_network_designer"
-        )
+        session: AgentSession = AgentSessionFactory().create_session("direct", "agent_network_designer")
         input_processor = StreamingInputProcessor(session=session)
         processor: BasicMessageProcessor = input_processor.get_message_processor()
         request: Dict[str, Any] = input_processor.formulate_chat_request(self.AND_PROMPT)
