@@ -17,9 +17,9 @@
 import asyncio
 from datetime import datetime
 from datetime import timezone
-from ipaddress import ip_address
 from ipaddress import IPv4Address
 from ipaddress import IPv6Address
+from ipaddress import ip_address
 from logging import Logger
 from logging import getLogger
 from typing import Any
