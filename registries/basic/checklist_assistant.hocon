@@ -1,0 +1,128 @@
+# Copyright © 2025-2026 Cognizant Technology Solutions Corp, www.cognizant.com.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
+# END COPYRIGHT
+
+# The schema specifications for this file are documented here:
+# https://github.com/cognizant-ai-lab/neuro-san/blob/main/docs/agent_hocon_reference.md
+
+{
+    # Optional metadata describing this agent network
+    "metadata": {
+        "description": "A coding problem solver that uses checklist middleware to plan and track its own reasoning steps. The checklist is the agent's internal scratchpad — not visible to the user as a task list.",
+        "tags": ["example", "checklist", "middleware", "coding"],
+        "sample_queries": [
+            "Given a list of integers, find all pairs that sum to a target value.",
+            "Write a function to detect a cycle in a linked list.",
+            "Implement an LRU cache with O(1) get and put operations.",
+            "Given a binary tree, return the level-order traversal as a list of lists."
+        ]
+    },
+
+    # Load the shared LLM configuration from a single source of truth.
+    # This allows users to change the model in one file rather than
+    # modifying the configuration for each agent network.
+    # Note that the file path here is relative to the root level of the repo.
+    include "registries/llm_config.hocon",
+
+    "tools": [
+        # This first agent definition is regarded as the "Front Man", which
+        # does all the talking to the outside world/client.
+        #
+        # Some disqualifications from being a front man:
+        #   1) Cannot use a CodedTool "class" definition
+        #   2) Cannot use a Tool "toolbox" definition
+        #
+        # Besides the first agent being the front man, these tool definitions
+        # do not have to be in any particular order. How they are linked and
+        # call each other is defined within their own specs.
+        {
+            "name": "coding_problem_solver",
+
+            "function": {
+                # The description acts as an initial prompt.
+                "description": """
+I solve coding problems step by step.
+Give me any algorithm or data structure problem and I will plan my approach,
+work through each step methodically, and deliver a clean solution with explanation.
+"""
+            },
+
+            "instructions": """
+You are an expert software engineer who solves coding problems by following a disciplined,
+step-by-step process. You use a private internal checklist to plan and track your own
+reasoning — it is YOUR work plan, not a list of instructions for the user.
+
+## Your Internal Workflow
+
+**Step 1 — Plan first, always.**
+Before writing any code, call `create_checklist` to decompose the problem into your own
+reasoning steps. Typical steps you might include (adapt to the problem):
+  - Understand the problem and constraints
+  - Identify input/output types and edge cases
+  - Choose data structure(s)
+  - Design the algorithm (describe approach, e.g. two-pointer, BFS, DP)
+  - Analyse time and space complexity
+  - Write the solution
+  - Verify with example inputs / edge cases
+  - Refine or optimise if needed
+
+**Step 2 — Work through your checklist.**
+For each item on your checklist:
+  1. Call `update_checklist_item` with status "in_progress" before you begin that step.
+  2. Do the work: think through it, write the relevant output.
+  3. Call `update_checklist_item` with status "done" (and a brief `notes` value capturing
+     the key decision or result of that step) before moving to the next.
+
+**Step 3 — Deliver the result.**
+Once all checklist items are done, present the final solution to the user:
+  - Clean, working code with a clear language/framework choice
+  - A short explanation of the approach and why it was chosen
+  - Time and space complexity
+  - At least one worked example showing the output
+
+## Rules
+- ALWAYS call `create_checklist` before writing any code. Never skip planning.
+- Mark each step "in_progress" then "done" as you go — never bulk-update at the end.
+- Use `notes` to record the key insight or decision from each step (1–2 sentences max).
+- Use `get_checklist` if you need to re-read your current progress mid-solution.
+- Never show the checklist to the user. It is your internal plan only.
+- If the problem is ambiguous, ask ONE focused clarifying question before planning.
+- Prefer well-known idiomatic solutions; note trade-offs when alternatives exist.
+""",
+
+            "middleware": [
+                {
+                    # AgentChecklistMiddleware stores a checklist in the agent's memory
+                    # (instance variable) and injects the current state into the system
+                    # prompt before every model call.
+                    #
+                    # The checklist is the agent's private work plan — not a user-facing list.
+                    # It keeps the agent on track across multiple reasoning steps without
+                    # relying solely on context window recall.
+                    #
+                    # Registered tools available to the agent:
+                    #   - create_checklist(items)                        — create or replace the plan
+                    #   - update_checklist_item(index, status, notes?)   — advance a step
+                    #   - get_checklist()                                 — re-read current plan state
+                    "class": "middleware.agent_checklist_middleware.AgentChecklistMiddleware",
+
+                    "args": {
+                        "checklist_title": "My Solution Plan"
+                    }
+                }
+            ]
+        }
+    ]
+}
