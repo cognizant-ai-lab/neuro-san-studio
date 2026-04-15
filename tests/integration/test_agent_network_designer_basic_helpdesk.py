@@ -28,10 +28,10 @@ Two test options are provided:
         tools like agent_network_editor locally. This is the programmatic
         equivalent of the --local_externals_direct flag in agent_cli.
 
-    - test_and_generates_basic_helpdesk_http:
-        Uses "http" mode (connects to a running neuro-san server).
+    - test_and_generates_basic_helpdesk_mcp:
+        Uses "mcp" mode (connects to a running neuro-san server).
         Concurrency is controlled by success_ratio in the fixture HOCON.
-        In http mode, --local_externals_direct is NOT needed because the
+        In mcp mode, --local_externals_direct is NOT needed because the
         server handles tool resolution on its own.
         Requires a running server: python -m run --server-only
 
@@ -51,9 +51,9 @@ How to run:
             tests/integration/test_agent_network_designer_basic_helpdesk.py \
             2>&1 | tee test_output.log
 
-    Option 2 - HTTP mode (requires running server first):
+    Option 2 - MCP mode (requires running server first):
         python -m run --server-only  # in a separate terminal
-        pytest -s -v -k "test_and_generates_basic_helpdesk_http" \
+        pytest -s -v -k "test_and_generates_basic_helpdesk_mcp" \
             tests/integration/test_agent_network_designer_basic_helpdesk.py \
             2>&1 | tee test_output.log
 
@@ -65,7 +65,7 @@ How to run:
     Adjust concurrency:
         Edit success_ratio in the fixture HOCON files:
         - tests/fixtures/generated/basic_helpdesk_test_direct.hocon
-        - tests/fixtures/generated/basic_helpdesk_test_http.hocon
+        - tests/fixtures/generated/basic_helpdesk_test_mcp.hocon
         e.g., "1/1" for single run, "5/5" for 5 concurrent, "10/10" for 10 concurrent
         Note: 1/1 is recommended for CI right now other concurrency levels require a little more tuning to be stable.
 """
@@ -91,7 +91,7 @@ class TestAgentNetworkDesignerBasicHelpdesk(TestCase):
 
     Two test methods are provided as options:
     - direct: in-process, no server required (basic_helpdesk_test_direct.hocon)
-    - http: via running server, for concurrent load testing (basic_helpdesk_test_http.hocon)
+    - mcp: via running server, for concurrent load testing (basic_helpdesk_test_mcp.hocon)
     """
 
     DYNAMIC = DynamicHoconUnitTests(__file__, path_to_basis="../fixtures")
@@ -118,7 +118,7 @@ class TestAgentNetworkDesignerBasicHelpdesk(TestCase):
         agent_network_editor tool. See module docstring for details.
         """
         session: AgentSession = AgentSessionFactory().create_session(
-            "direct", "agent_network_designer", use_direct=True
+            "direct", "agent_network_designer"
         )
         input_processor = StreamingInputProcessor(session=session)
         processor: BasicMessageProcessor = input_processor.get_message_processor()
@@ -162,18 +162,18 @@ class TestAgentNetworkDesignerBasicHelpdesk(TestCase):
     @pytest.mark.timeout(600)
     @pytest.mark.integration
     @pytest.mark.integration_and_smoke
-    def test_and_generates_basic_helpdesk_http(self):
+    def test_and_generates_basic_helpdesk_mcp(self):
         """
-        Option 2: HTTP mode (requires a running neuro-san server).
+        Option 2: MCP mode (requires a running neuro-san server).
         Step 1: AND generates the basic_helpdesk network.
         Step 2: Verify the HOCON file exists on disk.
-        Step 3: Run the http fixture test (concurrent load testing, set in HOCON success_ratio).
+        Step 3: Run the mcp fixture test (concurrent load testing, set in HOCON success_ratio).
         Requires: python -m run --server-only
         """
         self._generate_basic_helpdesk()
 
         self.DYNAMIC.one_test_hocon(
             self,
-            "generated_basic_helpdesk_test_http",
-            "generated/basic_helpdesk_test_http.hocon",
+            "generated_basic_helpdesk_test_mcp",
+            "generated/basic_helpdesk_test_mcp.hocon",
         )
