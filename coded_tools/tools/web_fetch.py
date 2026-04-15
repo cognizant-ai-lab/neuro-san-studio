@@ -17,6 +17,7 @@
 import asyncio
 from datetime import datetime
 from datetime import timezone
+from http import HTTPStatus
 from ipaddress import IPv4Address
 from ipaddress import IPv6Address
 from ipaddress import ip_address
@@ -228,7 +229,7 @@ class WebFetch(CodedTool):
         Must be called explicitly when allow_redirects=False, because raise_for_status()
         only covers 4xx/5xx and silently passes 3xx responses through.
         """
-        if response.status in (301, 302, 303, 307, 308):
+        if HTTPStatus(response.status).is_redirection:
             location: str = response.headers.get("Location", "unknown")
             raise ValueError(
                 f"url_not_allowed: '{url}' redirects to '{location}' ({response.status}); redirects are not followed."
@@ -248,7 +249,7 @@ class WebFetch(CodedTool):
         try:
             async with session.head(url, allow_redirects=False) as head:
                 self._raise_if_redirect(head, url)
-                if head.status == 405:
+                if head.status == HTTPStatus.METHOD_NOT_ALLOWED:
                     # Server does not support HEAD; probe with GET and read the body so
                     # async_invoke can reuse it and avoid a second round-trip.
                     async with session.get(url, allow_redirects=False) as get:
@@ -263,7 +264,7 @@ class WebFetch(CodedTool):
                 self._check_content_length(head.headers.get("Content-Length"), url)
                 return head.headers.get("Content-Type", ""), None
         except ClientResponseError as exc:
-            prefix: str = "too_many_requests" if exc.status == 429 else "url_not_accessible"
+            prefix: str = "too_many_requests" if exc.status == HTTPStatus.TOO_MANY_REQUESTS else "url_not_accessible"
             raise ClientResponseError(
                 exc.request_info,
                 exc.history,
@@ -312,7 +313,7 @@ class WebFetch(CodedTool):
                 response.raise_for_status()
                 raw_content: str = await response.text()
         except ClientResponseError as exc:
-            prefix: str = "too_many_requests" if exc.status == 429 else "url_not_accessible"
+            prefix: str = "too_many_requests" if exc.status == HTTPStatus.TOO_MANY_REQUESTS else "url_not_accessible"
             raise ClientResponseError(
                 exc.request_info,
                 exc.history,
