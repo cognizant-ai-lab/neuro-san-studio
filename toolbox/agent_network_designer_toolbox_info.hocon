@@ -14,9 +14,7 @@
 #
 # END COPYRIGHT
 
-# This is a toolbox that allows user to add tools from langchain or shared coded tools for easy access.
-# For more information about tools in the default toolbox and how to use them in the agent network hocon, see
-# https://github.com/cognizant-ai-lab/neuro-san-studio/blob/main/docs/user_guide.md#toolbox
+# This is a toolbox configuration file that defines tools that are available for use in agent networks designed with the agent network designer.
 
 {
 
