@@ -27,7 +27,7 @@ https://api.smith.langchain.com/
 https://api.salesforce.com
 
 # Jinja2 template URLs (lychee cannot resolve these at scan time)
-file://.*%7B%7B.*%7D%7D
+%7B%7B
 
 # Shell/template variable URLs (lychee cannot resolve these)
 https://go.dev/dl/go\$
