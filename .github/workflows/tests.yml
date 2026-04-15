@@ -5,7 +5,6 @@ on:
     branches:
       - "**"
   pull_request:
-    types: [opened, reopened]
     branches:
       - main
 
@@ -17,7 +16,8 @@ jobs:
     runs-on: ubuntu-latest
     if: >
       (github.event_name == 'push' && github.ref != 'refs/heads/main') ||
-      (github.event_name == 'pull_request' && github.base_ref == 'main')
+      (github.event_name == 'pull_request' &&
+        github.event.pull_request.head.repo.full_name != github.repository)
     container:
       image: python:3.13-slim
 
