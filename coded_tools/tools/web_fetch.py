@@ -194,7 +194,7 @@ class WebFetch(CodedTool):
             addr: IPv4Address | IPv6Address = ip_address(hostname)
         except ValueError:
             # Not an IP literal; DNS-based checks are out of scope
-            return None
+            return
 
         if not addr.is_global:
             raise ValueError(f"url_not_allowed: IP address '{hostname}' is not a globally routable address.")
