@@ -90,4 +90,4 @@ class UpdateAgent(CodedTool):
         await ProgressHandler.report_progress(args, network_def)
 
         logger.debug(">>>>>>>>>>>>>>>>>>> DONE %s !!!>>>>>>>>>>>>>>>>>>", self.__class__.__name__)
-        return f"Successfully updated down-chains for {the_agent_name} in the agent network definition."
+        return network_def
