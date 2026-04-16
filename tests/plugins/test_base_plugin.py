@@ -16,7 +16,7 @@
 
 """Tests for the BasePlugin class."""
 
-from neuro_san_studio.interfaces.plugins import BasePlugin
+from neuro_san_studio.interfaces.base_plugin import BasePlugin
 
 
 class TestBasePlugin:

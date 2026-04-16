@@ -20,10 +20,9 @@ import argparse
 import logging
 import os
 from abc import ABC
+from collections.abc import MutableMapping
 from typing import Any
 from typing import Optional
-
-from neuro_san_studio.utils.plugin_logger_adapter import _PluginLoggerAdapter
 
 # Ensure a basic console handler exists so plugin log messages are visible
 # even when ProcessLogBridge is not active.  This is idempotent — it only
@@ -51,6 +50,13 @@ class BasePlugin(ABC):
         update_parser_args -- Add CLI flags to the argument parser.
     """
 
+    class _LoggerAdapter(logging.LoggerAdapter):
+        """Logger adapter that auto-prefixes messages with [ClassName]."""
+
+        def process(self, msg: Any, kwargs: MutableMapping[str, Any]) -> tuple[str, MutableMapping[str, Any]]:
+            """Prepend the plugin class name to every log message."""
+            return f"[{self.extra['plugin_name']}] {msg}", kwargs
+
     def __init__(self, plugin_name: str, args: Optional[dict[str, Any]] = None):
         """Initialize the base plugin with a name and optional arguments.
 
@@ -61,7 +67,7 @@ class BasePlugin(ABC):
         self.plugin_name = plugin_name
         self.args = args or {}
         raw_logger = logging.getLogger(self.__class__.__name__)
-        self._logger = _PluginLoggerAdapter(raw_logger, {"plugin_name": self.__class__.__name__})
+        self._logger = self._LoggerAdapter(raw_logger, {"plugin_name": self.__class__.__name__})
 
     def initialize(self) -> None:
         """Initialize the plugin. Logs entry/exit and delegates to do_initialize."""

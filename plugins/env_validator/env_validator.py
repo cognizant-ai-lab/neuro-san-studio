@@ -31,7 +31,7 @@ from enum import Enum
 from typing import Callable
 from typing import Optional
 
-from neuro_san_studio.interfaces.plugins import BasePlugin
+from neuro_san_studio.interfaces.base_plugin import BasePlugin
 
 # Optional dependencies for live validation (Tier 3)
 try:

@@ -18,7 +18,7 @@
 
 import argparse
 
-from neuro_san_studio.interfaces.plugins import BasePlugin
+from neuro_san_studio.interfaces.base_plugin import BasePlugin
 from plugins.llm_config_validator.llm_config_validator_plugin import LlmConfigValidatorPlugin
 
 
