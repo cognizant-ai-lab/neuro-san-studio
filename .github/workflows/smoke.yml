@@ -12,6 +12,14 @@ jobs:
   and-smoke-test:
     runs-on: ubuntu-latest
 
+    # Job-level ENV shared by all steps
+    env:
+      OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+      PYTHONPATH: "."
+      AGENT_TOOL_PATH: "coded_tools/"
+      AGENT_MANIFEST_FILE: "registries/manifest.hocon"
+      AGENT_TEMPORARY_NETWORK_UPDATE_PERIOD_SECONDS: 5
+
     # don't run this job in sync'd clones
     if: github.repository == 'cognizant-ai-lab/neuro-san-studio'
     container:
@@ -33,16 +41,12 @@ jobs:
           source venv/bin/activate
           pip freeze
 
-      - name: Start server for MCP test
+      - name: Start server & run AND smoke tests & print server log if any failure
         shell: bash
-        env:
-          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
-          PYTHONPATH: "."
-          AGENT_TOOL_PATH: "coded_tools/"
-          AGENT_MANIFEST_FILE: "registries/manifest.hocon"
-          AGENT_TEMPORARY_NETWORK_UPDATE_PERIOD_SECONDS: 5
         run: |
           source venv/bin/activate
+          mkdir -p logs
+
           nohup python -m run --server-only > logs/server.log 2>&1 &
           echo $! > server.pid
           sleep 2
@@ -72,17 +76,6 @@ jobs:
           fi
 
           echo "Server is ready"
-
-      - name: Run AND smoke tests & print server log if any failure
-        shell: bash
-        env:
-          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
-          PYTHONPATH: "."
-          AGENT_TOOL_PATH: "coded_tools/"
-          AGENT_MANIFEST_FILE: "registries/manifest.hocon"
-          AGENT_TEMPORARY_NETWORK_UPDATE_PERIOD_SECONDS: 5
-        run: |
-          source venv/bin/activate
 
           if ! pytest -s --verbose -m "integration_and_smoke" --timer-top-n 100; then
             echo "===================================================="
