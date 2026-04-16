@@ -2,7 +2,7 @@
 
 # Script to be run to start server before any of test case client that require HTTP services
 
-apt-get update && apt-get install -y netcat-openbsd procps curl net-tools
+apt-get update && apt-get install --yes netcat-openbsd procps curl net-tools
 
 source venv/bin/activate
 mkdir -p logs

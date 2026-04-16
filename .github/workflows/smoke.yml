@@ -26,13 +26,14 @@ jobs:
       image: python:3.13-slim
 
     steps:
+      # v4.3.1
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
 
       - name: Install dependencies
         shell: bash
         run: |
-          apt-get update && apt-get install -y make curl
+          apt-get update && apt-get install --yes make curl
           make install
 
       - name: Show installed packages
@@ -47,7 +48,7 @@ jobs:
           source venv/bin/activate
           build_scripts/server_start.sh
 
-          if ! pytest -s --verbose -m "integration_and_smoke" --timer-top-n 100; then
+          if ! pytest --capture=no --verbose -m "integration_and_smoke" --timer-top-n 100; then
             echo "===================================================="
             echo "=== Server Log ==="
             cat logs/server.log || echo "(no server.log found)"
@@ -55,24 +56,10 @@ jobs:
             exit 1
           fi
 
-      - name: Notify Slack on success
-        if: success()
-        uses: slackapi/slack-github-action@v1.24.0
+      - name: Notify Slack
+        if: ${{ !cancelled() }}
+        # 1.0.0
+        uses: cognizant-ai-lab/build-common/actions/slack-notify@455db3cc40e9ed6a0fb9bbaf8188888c1ae315c2
         with:
-          payload: |
-            {
-              "text": "AND Smoke Tests Passed for `${{ github.repository }}` on `${{ github.ref_name }}`"
-            }
-        env:
-          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
-
-      - name: Notify Slack on failure
-        if: failure()
-        uses: slackapi/slack-github-action@v1.24.0
-        with:
-          payload: |
-            {
-              "text": "AND Smoke Tests Failed for `${{ github.repository }}` on `${{ github.ref_name }}`"
-            }
-        env:
-          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+          status: ${{ job.status }}
+          webhook-url: ${{ secrets.SLACK_WEBHOOK_URL }}
