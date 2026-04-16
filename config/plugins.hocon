@@ -13,11 +13,13 @@ plugins = [
     {
         class = plugins.phoenix.phoenix_plugin.PhoenixPlugin
         enabled = false
+        # Override the enabled value with an environment variable, if provided.
         enabled = ${?PHOENIX_ENABLED}
     }
     {
         class = plugins.langfuse.langfuse_plugin.LangfusePlugin
         enabled = false
+        # Override the enabled value with an environment variable, if provided.
         enabled = ${?LANGFUSE_ENABLED}
     }
 
@@ -25,6 +27,7 @@ plugins = [
     {
         class = plugins.log_bridge.process_log_bridge_plugin.ProcessLogBridgePlugin
         enabled = true
+        # Override the enabled value with an environment variable, if provided.
         enabled = ${?LOGBRIDGE_ENABLED}
     }
 ]
