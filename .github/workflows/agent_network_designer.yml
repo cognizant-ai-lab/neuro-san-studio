@@ -64,8 +64,10 @@ jobs:
 
       - name: Notify Slack
         if: ${{ !cancelled() }}
-        # 1.0.1
-        uses: cognizant-ai-lab/build-common/actions/slack-notify@d6456eafd3f347c8c4fd0b1d2608f2685baa111b
+        # TEMPORARY: branch SHA from build-common#14 — restore to
+        # the 1.0.2 release SHA once that tag is cut.
+        # https://github.com/cognizant-ai-lab/build-common/pull/14
+        uses: cognizant-ai-lab/build-common/actions/slack-notify@a5eefc521884bb2a0e6e3e755214079f532e14a8
         with:
           status: ${{ job.status }}
           webhook-url: ${{ secrets.SLACK_WEBHOOK_URL }}
