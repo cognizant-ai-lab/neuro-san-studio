@@ -3,7 +3,7 @@
 
 # Tests
 coverage==7.6.1
-pytest==8.3.3
+pytest==9.0.3
 pytest-asyncio==0.23.5
 pytest-cov==5.0.0
 pytest-timer==1.0.0
