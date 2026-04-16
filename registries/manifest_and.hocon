@@ -19,9 +19,6 @@
     # Industry use cases
     include "registries/industry/manifest.hocon",
 
-    # Experimental and research
-    include "registries/experimental/manifest.hocon",
-
     # Generated agent networks
     include "registries/generated/manifest.hocon"
 
