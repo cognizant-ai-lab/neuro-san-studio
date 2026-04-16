@@ -1,8 +1,13 @@
 #!/bin/bash
 
 # Script to be run to start server before any of test case client that require HTTP services
-
-apt-get update && apt-get install --yes netcat-openbsd procps curl net-tools
+#
+# Expects the following system packages to be present on the PATH
+# (installed by the calling workflow's dependency step, not here):
+#   - netcat-openbsd  (nc, for port readiness polling)
+#   - procps          (ps, for PID liveness check)
+#   - net-tools       (netstat, for the final diagnostic)
+#   - curl            (transitively via Makefile/pip)
 
 source venv/bin/activate
 mkdir -p logs
