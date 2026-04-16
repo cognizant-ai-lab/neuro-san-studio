@@ -67,7 +67,7 @@ jobs:
         # TEMPORARY: branch SHA from build-common#14 — restore to
         # the 1.0.2 release SHA once that tag is cut.
         # https://github.com/cognizant-ai-lab/build-common/pull/14
-        uses: cognizant-ai-lab/build-common/actions/slack-notify@a5eefc521884bb2a0e6e3e755214079f532e14a8
+        uses: cognizant-ai-lab/build-common/actions/slack-notify@9b94efdf642dc13ab43d8896e057557c9c566b7f
         with:
           status: ${{ job.status }}
           webhook-url: ${{ secrets.SLACK_WEBHOOK_URL }}
