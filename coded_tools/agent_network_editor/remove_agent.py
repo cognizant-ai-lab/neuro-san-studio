@@ -83,4 +83,4 @@ class RemoveAgent(CodedTool):
         await ProgressHandler.report_progress(args, network_def)
 
         logger.debug(">>>>>>>>>>>>>>>>>>> DONE %s !!!>>>>>>>>>>>>>>>>>>", self.__class__.__name__)
-        return f"Successfully removed agent {the_agent_name} from the agent network definition."
+        return network_def
