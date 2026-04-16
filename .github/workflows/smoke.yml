@@ -58,8 +58,8 @@ jobs:
 
       - name: Notify Slack
         if: ${{ !cancelled() }}
-        # 1.0.0
-        uses: cognizant-ai-lab/build-common/actions/slack-notify@455db3cc40e9ed6a0fb9bbaf8188888c1ae315c2
+        # 1.0.1
+        uses: cognizant-ai-lab/build-common/actions/slack-notify@d6456eafd3f347c8c4fd0b1d2608f2685baa111b
         with:
           status: ${{ job.status }}
           webhook-url: ${{ secrets.SLACK_WEBHOOK_URL }}
