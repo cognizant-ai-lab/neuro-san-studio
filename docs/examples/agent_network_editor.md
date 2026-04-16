@@ -82,13 +82,13 @@ At the start of each session, the editor always call the following functions to 
 
 - `get_toolbox`
     — returns a dictionary where each key is a tool name and the value contains tool description.
-    - The available toolbox can be set with environment variable `AGENT_TOOLBOX_INFO_FILE`. If not provided,
-    [toolbox_info.hocon](../../toolbox/toolbox_info.hocon) will be used.
+    - The available toolbox can be set with environment variable `AGENT_NETWORK_DESIGNER_TOOLBOX_INFO_FILE`. If not provided,
+    [agent_network_designer_toolbox_info.hocon](../../toolbox/agent_network_designer_toolbox_info.hocon) will be used.
 
 - `get_subnetwork`
     — returns a dictionary of subnetworks, mapping each name to its frontman's description.
-    - The available manifest can be set with environment variable `AGENT_MANIFEST_FILE`. If omitted,
-    [manifest.hocon](../../registries/manifest.hocon) will be used.
+    - The available manifest can be set with environment variable `AGENT_NETWORK_DESIGNER_MANIFEST_FILE`. If omitted,
+    [manifest_and.hocon](../../registries/manifest_and.hocon) will be used.
 
 - `get_mcp_tool`
     — returns a dictionary of MCP server URLs and the capabilities of tools provided by each server.
