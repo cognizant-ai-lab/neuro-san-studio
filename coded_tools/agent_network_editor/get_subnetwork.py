@@ -31,7 +31,7 @@ class GetSubnetwork(CodedTool):
     CodedTool implementation which provides a way to get subnetwork names and descriptions from the manifest file
     """
 
-    DEFAULT_MANIFEST_FILE = os.path.join("registries", "manifest.hocon")
+    DEFAULT_MANIFEST_FILE = os.path.join("registries", "manifest_and.hocon")
 
     @staticmethod
     def get_subnetwork_names(sly_data: dict) -> list[str]:
@@ -82,7 +82,7 @@ class GetSubnetwork(CodedTool):
         logger = logging.getLogger(self.__class__.__name__)
 
         # Check manifest file from env var
-        manifest_file: str | list[str] = os.getenv("AGENT_MANIFEST_FILE")
+        manifest_file: str | list[str] = os.getenv("AGENT_NETWORK_DESIGNER_MANIFEST_FILE")
         if not manifest_file:
             # Use a default if no value provided
             manifest_file = self.DEFAULT_MANIFEST_FILE
