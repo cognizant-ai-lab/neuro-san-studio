@@ -197,4 +197,41 @@ Supports searching for images, audio files (mp3, ogg, flac, wav), and video file
         }
     },
 
+    # ---------- Web Fetch Tool ----------
+
+    # Fetches the content of a URL and returns its plain-text body.
+    # Supports HTML pages and PDFs. Requires: beautifulsoup4, aiohttp, pypdf
+    "web_fetch": {
+        "class": "coded_tools.tools.web_fetch.WebFetch",
+        "description": "Fetches the content of a URL and returns its plain-text body along with metadata. Supports HTML pages and PDF documents.",
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "url": {
+                    "type": "string",
+                    "description": "The URL to fetch. Must use http or https scheme and be at most 250 characters."
+                },
+                "allowed_domains": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    },
+                    "description": "Optional list of domains to allow. If set, only URLs whose domain matches one of these will be fetched."
+                },
+                "blocked_domains": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    },
+                    "description": "Optional list of domains to block. URLs whose domain matches one of these will be rejected."
+                },
+                "max_content_chars": {
+                    "type": "int",
+                    "description": "Maximum number of characters to return from the fetched content. Defaults to 20000."
+                }
+            },
+            "required": ["url"]
+        }
+    },
+
 }
