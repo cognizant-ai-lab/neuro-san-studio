@@ -70,7 +70,7 @@ class BasePlugin(ABC):
         self._logger.info("Initialized (PID=%s)", os.getpid())
 
     def do_initialize(self) -> None:
-        """Hook: override to provide custom initialisation logic.
+        """Hook: override to provide custom initialization logic.
 
         Called by :meth:`initialize` between the entry and exit log messages.
         The default implementation does nothing.
