@@ -44,6 +44,7 @@ jobs:
       - name: Start server & run AND smoke tests & print server log if any failure
         shell: bash
         run: |
+          source venv/bin/activate
           build_scripts/server_start.sh
 
           if ! pytest -s --verbose -m "integration_and_smoke" --timer-top-n 100; then
