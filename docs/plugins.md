@@ -92,7 +92,7 @@ Plugins are loaded in two contexts with different lifecycle methods:
 
 ### Example Plugin
 
-See [`BasePlugin`](../plugins/base_plugin.py) for the full interface and
+See [`BasePlugin`](../neuro_san_studio/interfaces/base_plugin.py) for the full interface and
 [`PhoenixPlugin`](../plugins/phoenix/phoenix_plugin.py) for a real-world implementation.
 
 ## Authorization
