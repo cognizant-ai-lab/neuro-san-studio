@@ -58,7 +58,7 @@ class RemoveAgent(CodedTool):
 
         :return:
             In case of successful execution:
-                the agent network definition as a dictionary.
+                a text string confirming successful removal of the agent from the agent network definition.
             otherwise:
                 a text string of an error message in the format:
                 "Error: <error message>"
@@ -82,5 +82,5 @@ class RemoveAgent(CodedTool):
 
         await ProgressHandler.report_progress(args, network_def)
 
-        logger.info(">>>>>>>>>>>>>>>>>>>DONE !!!>>>>>>>>>>>>>>>>>>")
-        return network_def
+        logger.debug(">>>>>>>>>>>>>>>>>>> DONE %s !!!>>>>>>>>>>>>>>>>>>", self.__class__.__name__)
+        return f"Successfully removed agent {the_agent_name} from the agent network definition."

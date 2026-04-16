@@ -160,7 +160,6 @@ class TestIntegrationTestHocons(TestCase, FailFastParamMixin):
     )
     @pytest.mark.integration
     @pytest.mark.integration_basic
-    @pytest.mark.integration_basic_coffee_finder_advanced
     @pytest.mark.integration_basic_coffee_finder_advanced_e2e
     def test_hocon_industry_coffee_finder_advanced_e2e(self, test_name: str, test_hocon: str):
         self.run_hocon_group_fail_fast_case(test_name, test_hocon)

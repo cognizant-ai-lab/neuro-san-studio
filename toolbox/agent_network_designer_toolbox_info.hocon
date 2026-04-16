@@ -14,16 +14,14 @@
 #
 # END COPYRIGHT
 
-# This is a toolbox that allows user to add tools from langchain or shared coded tools for easy access.
-# For more information about tools in the default toolbox and how to use them in the agent network hocon, see
-# https://github.com/cognizant-ai-lab/neuro-san-studio/blob/main/docs/user_guide.md#toolbox
+# This is a toolbox configuration file that defines tools that are available for use in agent networks designed with the agent network designer.
 
 {
 
     # ---------- Agent Network Tools ----------
 
     "call_agent": {
-        "class": "tools.call_agent.CallAgent",
+        "class": "coded_tools.tools.call_agent.CallAgent",
         "description": "Call the agent to respond to inquiry.",
         "parameters": {
             "type": "object",
@@ -61,7 +59,7 @@
     # https://python.langchain.com/docs/integrations/chat/openai/#responses-api
 
     "openai_code_interpreter": {
-        "class": "tools.openai_code_interpreter.OpenAICodeInterpreter",
+        "class": "coded_tools.tools.openai_code_interpreter.OpenAICodeInterpreter",
         "description": "Executes Python code and performs tasks such as plotting, data analysis, or math using the OpenAI Code Interpreter tool.",
         "parameters": {
             "type": "object",
@@ -76,7 +74,7 @@
     },
 
     "openai_image_generation": {
-        "class": "tools.openai_image_generation.OpenAIImageGeneration",
+        "class": "coded_tools.tools.openai_image_generation.OpenAIImageGeneration",
         "description": "Tool that generates image using OpenAI tool",
         "parameters": {
             "type": "object",
@@ -93,7 +91,7 @@
     },
 
     "openai_video_generation": {
-        "class": "tools.openai_video_generation.OpenAIVideoGeneration",
+        "class": "coded_tools.tools.openai_video_generation.OpenAIVideoGeneration",
         "description": "Tool that generates video using OpenAI models",
         "parameters": {
             "type": "object",
@@ -123,7 +121,7 @@
 
     "webpage_rag": {
         # This is a coded tool for RAG on webpages.
-        "class": "tools.webpage_rag.WebpageRag",
+        "class": "coded_tools.tools.webpage_rag.WebpageRag",
         "description": "Retrieve information from the given webpages",
         "parameters": {
             "type": "object",
@@ -146,7 +144,7 @@
 
     # Wikimedia Media search tool for retrieving image, audio, and video URLs from Wikimedia Commons.
     "wikimedia_media_search": {
-        "class": "tools.wikimedia_media_search.WikimediaMediaSearch",
+        "class": "coded_tools.tools.wikimedia_media_search.WikimediaMediaSearch",
         "description": """
         Searches Wikimedia Commons for media files (images, audio, video) and returns direct URLs with proper file extensions.
 This tool is excellent for finding high-quality, properly licensed multimedia content from Wikimedia Commons.
@@ -183,7 +181,7 @@ Supports searching for images, audio files (mp3, ogg, flac, wav), and video file
     # This search tool requires no API key.
     # Reference: https://github.com/deedy5/ddgs
     "ddgs_search": {
-        "class": "tools.ddgs_search.DdgsSearch",
+        "class": "coded_tools.tools.ddgs_search.DdgsSearch",
         "description": "Performs a web search using DDGS Search.",
         "parameters": {
             "type": "object",
@@ -194,6 +192,43 @@ Supports searching for images, audio files (mp3, ogg, flac, wav), and video file
                 },
             },
             "required": ["search_terms"]
+        }
+    },
+
+    # ---------- Web Fetch Tool ----------
+
+    # Fetches the content of a URL and returns its plain-text body.
+    # Supports HTML pages and PDFs. Requires: beautifulsoup4, aiohttp, pypdf
+    "web_fetch": {
+        "class": "coded_tools.tools.web_fetch.WebFetch",
+        "description": "Fetches the content of a URL and returns its plain-text body along with metadata. Supports HTML pages and PDF documents.",
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "url": {
+                    "type": "string",
+                    "description": "The URL to fetch. Must use http or https scheme and be at most 250 characters."
+                },
+                "allowed_domains": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    },
+                    "description": "Optional list of domains to allow. If set, only URLs whose domain matches one of these will be fetched."
+                },
+                "blocked_domains": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    },
+                    "description": "Optional list of domains to block. URLs whose domain matches one of these will be rejected."
+                },
+                "max_content_chars": {
+                    "type": "int",
+                    "description": "Maximum number of characters to return from the fetched content. Defaults to 20000."
+                }
+            },
+            "required": ["url"]
         }
     },
 

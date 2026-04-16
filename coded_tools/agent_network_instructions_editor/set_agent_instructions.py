@@ -91,5 +91,5 @@ class SetAgentInstructions(CodedTool):
 
         await ProgressHandler.report_progress(args, network_def)
 
-        logger.info(">>>>>>>>>>>>>>>>>>>DONE !!!>>>>>>>>>>>>>>>>>>")
-        return network_def
+        logger.debug(">>>>>>>>>>>>>>>>>>> DONE %s !!!>>>>>>>>>>>>>>>>>>", self.__class__.__name__)
+        return f"The instructions for '{the_agent_name}' have been set in 'agent_network_definition' successfully."

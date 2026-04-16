@@ -29,7 +29,7 @@
     # https://python.langchain.com/docs/integrations/chat/anthropic/#built-in-tools
 
     "anthropic_search": {
-        "class": "tools.anthropic_web_search.AnthropicWebSearch",
+        "class": "coded_tools.tools.anthropic_web_search.AnthropicWebSearch",
         "description": "Tool that provides web search capabilities",
         "parameters": {
             "type": "object",
@@ -43,7 +43,7 @@
         }
     },
     "anthropic_code_execution": {
-        "class": "tools.anthropic_code_execution.AnthropicCodeExecution",
+        "class": "coded_tools.tools.anthropic_code_execution.AnthropicCodeExecution",
         "description": "Executes Python code and performs tasks such as plotting, data analysis, or math using the Anthropic Code Execution tool.",
         "parameters": {
             "type": "object",
@@ -60,7 +60,7 @@
     # ---------- Agent Network Tools ----------
 
     "call_agent": {
-        "class": "tools.call_agent.CallAgent",
+        "class": "coded_tools.tools.call_agent.CallAgent",
         "description": "Call the agent to respond to inquiry.",
         "parameters": {
             "type": "object",
@@ -91,7 +91,7 @@
 
     # This tool uses pyvis to generate a html, and open it in chrome browser.
     "agent_network_html_generator": {
-        "class": "tools.agent_network_html_generator.AgentNetworkHtmlGenerator"
+        "class": "coded_tools.tools.agent_network_html_generator.AgentNetworkHtmlGenerator"
         "description": "Generate a html file from agent network hocon",
         "parameters": {
             "type": "object",
@@ -122,7 +122,7 @@
 
     "send_gmail_message_with_attachment": {
         # This is the coded tool for sending an email with attachment
-        "class": "tools.gmail_attachment.GmailAttachment"
+        "class": "coded_tools.tools.gmail_attachment.GmailAttachment"
         "description": "Send an email with attachment",
         "parameters": {
             "type": "object",
@@ -179,7 +179,7 @@
     # - https://ai.google.dev/gemini-api/docs/nanobanana
     # - https://ai.google.dev/gemini-api/docs/image-generation
     "gemini_image_generation": {
-        "class": "tools.gemini_image_generation.GeminiImageGeneration",
+        "class": "coded_tools.tools.gemini_image_generation.GeminiImageGeneration",
         "description": "Tool that generates image using Gemini models",
         "parameters": {
             "type": "object",
@@ -274,7 +274,7 @@
     # https://python.langchain.com/docs/integrations/chat/openai/#responses-api
 
     "openai_search": {
-        "class": "tools.openai_web_search.OpenAIWebSearch",
+        "class": "coded_tools.tools.openai_web_search.OpenAIWebSearch",
         "description": "Tool that provides web search capabilities",
         "parameters": {
             "type": "object",
@@ -288,7 +288,7 @@
         }
     },
     "openai_code_interpreter": {
-        "class": "tools.openai_code_interpreter.OpenAICodeInterpreter",
+        "class": "coded_tools.tools.openai_code_interpreter.OpenAICodeInterpreter",
         "description": "Executes Python code and performs tasks such as plotting, data analysis, or math using the OpenAI Code Interpreter tool.",
         "parameters": {
             "type": "object",
@@ -302,7 +302,7 @@
         }
     },
     "openai_image_generation": {
-        "class": "tools.openai_image_generation.OpenAIImageGeneration",
+        "class": "coded_tools.tools.openai_image_generation.OpenAIImageGeneration",
         "description": "Tool that generates image using OpenAI tool",
         "parameters": {
             "type": "object",
@@ -318,7 +318,7 @@
         }
     },
     "openai_video_generation": {
-        "class": "tools.openai_video_generation.OpenAIVideoGeneration",
+        "class": "coded_tools.tools.openai_video_generation.OpenAIVideoGeneration",
         "description": "Tool that generates video using OpenAI models",
         "parameters": {
             "type": "object",
@@ -356,7 +356,7 @@
     # as environment variable "JIRA_USERNAME" and "JIRA_API_TOKEN", respectively.
     "confluence_rag": {
         # This is a coded tool for RAG on confluence pages.
-        "class": "tools.confluence_rag.ConfluenceRag",
+        "class": "coded_tools.tools.confluence_rag.ConfluenceRag",
         "description": "Retrieve information from the given confluence documents",
         "parameters": {
             "type": "object",
@@ -376,7 +376,7 @@
         # This is a coded tool for RAG on multiple file format.
         # See https://python.langchain.com/docs/integrations/document_loaders/docling/ and
         # https://docling-project.github.io/docling/
-        "class": "tools.docling_rag.DoclingRag",
+        "class": "coded_tools.tools.docling_rag.DoclingRag",
         "description": "Retrieve information from the given files",
         "parameters": {
             "type": "object",
@@ -394,7 +394,7 @@
     #     pip install pymupdf >= 1.25.5
     "pdf_rag": {
         # This is a coded tool for RAG on PDF files.
-        "class": "tools.pdf_rag.PdfRag", 
+        "class": "coded_tools.tools.pdf_rag.PdfRag",
         "description": "Retrieve information from the given PDF files",
         "parameters": {
             "type": "object",
@@ -410,7 +410,7 @@
 
     "webpage_rag": {
         # This is a coded tool for RAG on webpages.
-        "class": "tools.webpage_rag.WebpageRag",
+        "class": "coded_tools.tools.webpage_rag.WebpageRag",
         "description": "Retrieve information from the given webpages",
         "parameters": {
             "type": "object",
@@ -435,7 +435,7 @@
     #     pip install wikipedia
     "wikipedia_rag": {
         # This is a coded tool for RAG on Wikipedia pages.
-        "class": "tools.wikipedia_rag.WikipediaRag",
+        "class": "coded_tools.tools.wikipedia_rag.WikipediaRag",
         "description": "Retrieve information from Wikipedia and answer a query using RAG.",
         "parameters": {
             "type": "object",
@@ -451,7 +451,7 @@
 
     # Wikimedia Media search tool for retrieving image, audio, and video URLs from Wikimedia Commons.
     "wikimedia_media_search": {
-        "class": "tools.wikimedia_media_search.WikimediaMediaSearch",
+        "class": "coded_tools.tools.wikimedia_media_search.WikimediaMediaSearch",
         "description": """
         Searches Wikimedia Commons for media files (images, audio, video) and returns direct URLs with proper file extensions.
 This tool is excellent for finding high-quality, properly licensed multimedia content from Wikimedia Commons.
@@ -489,7 +489,7 @@ Supports searching for images, audio files (mp3, ogg, flac, wav), and video file
     #     pip install pymupdf
     "arxiv_retriever": {
         # This is a coded tool for RAG on Arxiv Articles.
-        "class": "tools.arxiv_rag.ArxivRag",
+        "class": "coded_tools.tools.arxiv_rag.ArxivRag",
         "description": """This tool retrieves papers from arXiv using a query string.
 
 A query is a text string made of search terms and Boolean operators.
@@ -558,6 +558,43 @@ Options are `ascending` and `descending`. Default to `descending`.
         }
     },
 
+    # ---------- Web Fetch Tool ----------
+
+    # Fetches the content of a URL and returns its plain-text body.
+    # Supports HTML pages and PDFs. Requires: beautifulsoup4, aiohttp, pypdf
+    "web_fetch": {
+        "class": "coded_tools.tools.web_fetch.WebFetch",
+        "description": "Fetches the content of a URL and returns its plain-text body along with metadata. Supports HTML pages and PDF documents.",
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "url": {
+                    "type": "string",
+                    "description": "The URL to fetch. Must use http or https scheme and be at most 250 characters."
+                },
+                "allowed_domains": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    },
+                    "description": "Optional list of domains to allow. If set, only URLs whose domain matches one of these will be fetched."
+                },
+                "blocked_domains": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    },
+                    "description": "Optional list of domains to block. URLs whose domain matches one of these will be rejected."
+                },
+                "max_content_chars": {
+                    "type": "int",
+                    "description": "Maximum number of characters to return from the fetched content. Defaults to 20000."
+                }
+            },
+            "required": ["url"]
+        }
+    },
+
     # ---------- Search Tools ----------
 
     # To use this search tool, obtain an API key from: https://brave.com/search/api/
@@ -566,7 +603,7 @@ Options are `ascending` and `descending`. Default to `descending`.
     # If BRAVE_URL is not set, the default is: https://api.search.brave.com/res/v1/web/search?q=
     # You can also configure the request timeout (in seconds) using BRAVE_TIMEOUT; the default is 30 seconds.
     "brave_search": {
-        "class": "tools.brave_search.BraveSearch",
+        "class": "coded_tools.tools.brave_search.BraveSearch",
         "description": "Performs a web search using Brave Search.",
         "parameters": {
             "type": "object",
@@ -583,7 +620,7 @@ Options are `ascending` and `descending`. Default to `descending`.
     # This search tool requires no API key.
     # Reference: https://github.com/deedy5/ddgs
     "ddgs_search": {
-        "class": "tools.ddgs_search.DdgsSearch",
+        "class": "coded_tools.tools.ddgs_search.DdgsSearch",
         "description": "Performs a web search using DDGS Search.",
         "parameters": {
             "type": "object",
@@ -614,7 +651,7 @@ Options are `ascending` and `descending`. Default to `descending`.
     # You can optionally set a custom search URL and a custom timeout via the GOOGLE_SEARCH_URL and GOOGLE_SEARCH_TIMEOUT environment variables.
     # Otherwise, the default values of "https://www.googleapis.com/customsearch/v1" and "30" are used, respectively
     "google_search": {
-        "class": "tools.google_search.GoogleSearch",
+        "class": "coded_tools.tools.google_search.GoogleSearch",
         "description": "Performs a web search using Google Search.",
         "parameters": {
             "type": "object",
@@ -631,7 +668,7 @@ Options are `ascending` and `descending`. Default to `descending`.
     # To use this search tool, obtain an API key from: https://serper.dev/
     # Once you have the API key, set it using the SERPER_API_KEY environment variable.
     "google_serper": {
-        "class": "tools.google_serper.GoogleSerper",
+        "class": "coded_tools.tools.google_serper.GoogleSerper",
         "description": """Search the web using Google Serper API with customizable parameters.
         
         Supports multiple search types (web, news, images, places) with geographic and language localization.
