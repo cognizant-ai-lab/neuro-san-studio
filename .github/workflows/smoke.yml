@@ -1,0 +1,115 @@
+name: AND Smoke Tests
+
+permissions:
+    contents: read
+
+on:
+  schedule:
+    - cron: '0 12 * * *'  # 12:00 PM UTC = 4:00 AM PT (standard)
+  workflow_dispatch:      # enables manual triggering
+
+jobs:
+  and-smoke-test:
+    runs-on: ubuntu-latest
+
+    # don't run this job in sync'd clones
+    if: github.repository == 'cognizant-ai-lab/neuro-san-studio'
+    container:
+      image: python:3.13-slim
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install dependencies
+        shell: bash
+        run: |
+          apt-get update && apt-get install -y make netcat-openbsd curl
+          make install
+
+      - name: Show installed packages
+        shell: bash
+        run: |
+          source venv/bin/activate
+          pip freeze
+
+      - name: Start server for MCP test
+        shell: bash
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          PYTHONPATH: "."
+          AGENT_TOOL_PATH: "coded_tools/"
+          AGENT_MANIFEST_FILE: "registries/manifest.hocon"
+          AGENT_TEMPORARY_NETWORK_UPDATE_PERIOD_SECONDS: 5
+        run: |
+          source venv/bin/activate
+          nohup python -m run --server-only > logs/server.log 2>&1 &
+          echo $! > server.pid
+          sleep 2
+
+          if ! ps -p "$(cat server.pid)" > /dev/null; then
+            echo "Server process failed to start"
+            echo "----- server.log -----"
+            cat logs/server.log
+            exit 1
+          fi
+
+          echo "Server process started with PID $(cat server.pid)"
+
+          for i in $(seq 1 30); do
+            if nc -z localhost 8080; then
+              echo "Port 8080 is ready after awaiting $i seconds"
+              break
+            fi
+            echo "Waiting for port 8080... ($i/30)"
+            sleep 1
+          done
+
+          if ! nc -z localhost 8080; then
+            echo "Timeout: Port 8080 failed to open after 30 seconds"
+            cat logs/server.log
+            exit 1
+          fi
+
+          echo "Server is ready"
+
+      - name: Run AND smoke tests & print server log if any failure
+        shell: bash
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          PYTHONPATH: "."
+          AGENT_TOOL_PATH: "coded_tools/"
+          AGENT_MANIFEST_FILE: "registries/manifest.hocon"
+          AGENT_TEMPORARY_NETWORK_UPDATE_PERIOD_SECONDS: 5
+        run: |
+          source venv/bin/activate
+
+          if ! pytest -s --verbose -m "integration_and_smoke" --timer-top-n 100; then
+            echo "===================================================="
+            echo "=== Server Log ==="
+            cat logs/server.log || echo "(no server.log found)"
+            echo "===================================================="
+            exit 1
+          fi
+
+      - name: Notify Slack on success
+        if: success()
+        uses: slackapi/slack-github-action@v1.24.0
+        with:
+          payload: |
+            {
+              "text": "AND Smoke Tests Passed for `${{ github.repository }}` on `${{ github.ref_name }}`"
+            }
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+
+      - name: Notify Slack on failure
+        if: failure()
+        uses: slackapi/slack-github-action@v1.24.0
+        with:
+          payload: |
+            {
+              "text": "AND Smoke Tests Failed for `${{ github.repository }}` on `${{ github.ref_name }}`"
+            }
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
