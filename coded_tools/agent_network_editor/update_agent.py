@@ -60,7 +60,7 @@ class UpdateAgent(CodedTool):
 
         :return:
              In case of successful execution:
-                 the agent network definition as a dictionary.
+                 a text string confirming successful update of the agent in the agent network definition.
              otherwise:
                  a text string of an error message in the format:
                  "Error: <error message>"
@@ -90,4 +90,4 @@ class UpdateAgent(CodedTool):
         await ProgressHandler.report_progress(args, network_def)
 
         logger.debug(">>>>>>>>>>>>>>>>>>> DONE %s !!!>>>>>>>>>>>>>>>>>>", self.__class__.__name__)
-        return network_def
+        return f"Successfully updated down-chains for {the_agent_name} in the agent network definition."
