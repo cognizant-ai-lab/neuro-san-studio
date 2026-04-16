@@ -18,7 +18,7 @@
 
     "metadata": {
         "description": "Multi-agent system for airline policy inquiries using real-time web scraping via webpage_rag. Scrapes the airline's FAQ and main site pages at runtime to answer customer questions about baggage, fares, travel planning, and special services.",
-        "tags": ["AAOSA", "web-scraping", "rag", "tool"]
+        "tags": ["AAOSA", "customer-service", "airline", "policy-management", "web-scraping", "RAG", "tool"]
         "sample_queries": [
             "What are the bag size and weight limits on this airline?",
             "My checked bag was delayed, what should I do?",

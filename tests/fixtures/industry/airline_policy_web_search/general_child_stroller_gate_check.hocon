@@ -1,4 +1,3 @@
-
 # Copyright © 2025-2026 Cognizant Technology Solutions Corp, www.cognizant.com.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -56,7 +55,7 @@ Can I bring a stroller with me to the gate, and what happens to it after?
                     # Each component of the list needs to pass muster in order to pass.
                     "gist": ["""
 Confirms that strollers can be checked at the gate for free and returned to you at your destination.
-Do not count towards your carryon-on or personal item.
+Do not count towards your carry-on or personal item.
                              """],
 
                     "keywords": ["https://faq.flyfrontier.com/help/traveling-with-children-or-pets"],

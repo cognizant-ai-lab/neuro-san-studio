@@ -402,7 +402,7 @@ information fresh without any cached state. Built entirely using AAOSA and the t
 and can be fully vibe coded. It covers baggage, fares, seating, loyalty programs, travel requirements, and special
 assistance — all grounded strictly in live content retrieved from the airline's own site.
 
-**Tags:** `tool`, `RAG`, `AAOSA`
+**Tags:** `AAOSA`, `customer-service`, `airline`, `policy-management`, `web-scraping`, `RAG`, `tool`
 
 ### Telco Network Orchestration
 
