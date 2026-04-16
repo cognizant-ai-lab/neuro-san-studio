@@ -1,4 +1,4 @@
-name: AND Smoke Tests
+name: Agent Network Designer Tests
 
 permissions:
     contents: read
@@ -9,7 +9,7 @@ on:
   workflow_dispatch:      # enables manual triggering
 
 jobs:
-  and-smoke-test:
+  agent-network-designer-test:
     runs-on: ubuntu-latest
 
     # Job-level ENV shared by all steps
@@ -42,13 +42,13 @@ jobs:
           source venv/bin/activate
           pip freeze
 
-      - name: Start server & run AND smoke tests & print server log if any failure
+      - name: Start server & run agent network designer tests & print server log if any failure
         shell: bash
         run: |
           source venv/bin/activate
           build_scripts/server_start.sh
 
-          if ! pytest --capture=no --verbose -m "integration_and_smoke" --timer-top-n 100; then
+          if ! pytest --capture=no --verbose -m "integration_agent_network_designer" --timer-top-n 100; then
             echo "===================================================="
             echo "=== Server Log ==="
             cat logs/server.log || echo "(no server.log found)"
