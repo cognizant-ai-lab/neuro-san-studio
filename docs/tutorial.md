@@ -50,11 +50,11 @@ single command.
         * [Using Agent Skills Middleware](#using-agent-skills-middleware)
             * [Local Skill Source](#local-skill-source)
             * [Remote Skill Source](#remote-skill-source)
-            * [Tools in Skill Middleware](#tools-in-skills-middleware)
-    * [9. How to Access the Logs](#8-how-to-access-the-logs)
-    * [10. How to Stop the servers](#9-how-to-stop-the-servers)
-    * [11. Key Aspects of Neuro AI Multi-Agent Accelerator](#10-key-aspects-of-neuro-ai-multi-agent-accelerator)
-    * [12. End Notes](#11-end-notes)
+            * [Tools in Skills Middleware](#tools-in-skills-middleware)
+    * [9. How to Access the Logs](#9-how-to-access-the-logs)
+    * [10. How to Stop the servers](#10-how-to-stop-the-servers)
+    * [11. Key Aspects of Neuro AI Multi-Agent Accelerator](#11-key-aspects-of-neuro-ai-multi-agent-accelerator)
+    * [12. End Notes](#12-end-notes)
 
 <!-- TOC -->
 
@@ -345,7 +345,7 @@ that does not have a defined config always uses the default llm_config defined o
 ```hocon
 {
     "llm_config": {
-        "model_name": "gpt4-o",
+        "model_name": "gpt-4o",
     },
     "commondefs": {
         "replacement_strings": {
@@ -594,7 +594,7 @@ Neuro-San supports the following data types:
     {
       "name": "get_weather",
       "function": {
-        "description": "Provide weather at a given loaction.",
+        "description": "Provide weather at a given location.",
         "parameters": {
           "type": "object",
           "properties": {
@@ -644,7 +644,7 @@ class WeatherTool(CodedTool):
   "tools": [
     {
       "name": "datetime_agent",
-      "instructions": "Use your tool to provide current date and time..",
+      "instructions": "Use your tool to provide current date and time.",
       "tools": ["current_date_time"]
     },
     {
