@@ -31,7 +31,7 @@ class TestPluginLoader:
         hocon = """
 plugins = [
     {
-        class = "neuro_san_studio.interfaces.plugins.BasePlugin"
+        class = "neuro_san_studio.interfaces.base_plugin.BasePlugin"
         enabled = true
     }
 ]
@@ -52,7 +52,7 @@ plugins = [
         hocon = """
 plugins = [
     {
-        class = "neuro_san_studio.interfaces.plugins.BasePlugin"
+        class = "neuro_san_studio.interfaces.base_plugin.BasePlugin"
         enabled = false
     }
 ]
@@ -72,7 +72,7 @@ plugins = [
         hocon = """
 plugins = [
     {
-        class = "neuro_san_studio.interfaces.plugins.BasePlugin"
+        class = "neuro_san_studio.interfaces.base_plugin.BasePlugin"
     }
 ]
 """
@@ -113,7 +113,7 @@ plugins = [
         enabled = true
     }
     {
-        class = neuro_san_studio.interfaces.plugins.BasePlugin
+        class = neuro_san_studio.interfaces.base_plugin.BasePlugin
         enabled = true
     }
 ]
@@ -180,11 +180,11 @@ plugins = [
         hocon = """
 plugins = [
     {
-        class = "neuro_san_studio.interfaces.plugins.BasePlugin"
+        class = "neuro_san_studio.interfaces.base_plugin.BasePlugin"
         enabled = true
     }
     {
-        class = "neuro_san_studio.interfaces.plugins.BasePlugin"
+        class = "neuro_san_studio.interfaces.base_plugin.BasePlugin"
         enabled = false
     }
 ]
