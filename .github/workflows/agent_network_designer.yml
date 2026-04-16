@@ -7,6 +7,12 @@ on:
   schedule:
     - cron: '0 12 * * *'  # 12:00 PM UTC = 4:00 AM PT (standard)
   workflow_dispatch:      # enables manual triggering
+  # TEMPORARY: remove before merging to main. Lets us smoke-test the
+  # workflow end-to-end on this branch before workflow_dispatch is
+  # available on the default branch.
+  push:
+    branches:
+      - devin/1776349910-and-e2e-nightly-cron
 
 jobs:
   agent-network-designer-test:
