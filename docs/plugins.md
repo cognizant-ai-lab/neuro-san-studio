@@ -92,34 +92,8 @@ Plugins are loaded in two contexts with different lifecycle methods:
 
 ### Example Plugin
 
-```python
-import os
-from plugins.base_plugin import BasePlugin
-
-
-class MyPlugin(BasePlugin):
-    """Example custom plugin."""
-
-    def __init__(self, args: dict = None):
-        """Initialize the plugin."""
-        super().__init__(plugin_name="MyPlugin", args=args)
-
-    def initialize(self):
-        """Set up in-process resources (runs in server process)."""
-        if os.getenv("MY_PLUGIN_ENABLED", "false").lower() == "true":
-            print("[MyPlugin] Initializing...")
-
-    def pre_server_start_action(self):
-        """Run before subprocesses start (runs in runner process)."""
-
-    def cleanup(self):
-        """Release resources on shutdown."""
-
-    @staticmethod
-    def update_parser_args(parser):
-        """Add CLI arguments."""
-        parser.add_argument("--my-flag", help="Enable my feature")
-```
+See [`BasePlugin`](../plugins/base_plugin.py) for the full interface and
+[`PhoenixPlugin`](../plugins/phoenix/phoenix_plugin.py) for a real-world implementation.
 
 ## Authorization
 
