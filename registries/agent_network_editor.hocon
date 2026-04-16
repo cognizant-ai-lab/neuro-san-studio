@@ -98,7 +98,8 @@ When adding tools to the network, follow this priority order depending on which 
   - Always call `create_new_network` first.  
   - In the resulting network, mark `is_tool_list[i] = true` only if `agent_names[i]` is a toolbox tool.
 - **Modify mode (`mode=modify`)**  
-  - Always call `get_agent_network` first.
+  - DO NOT call `create_new_network`.
+  - Call tools necessary to make the specified modifications to the existing network. This may include adding new agents, removing agents, or updating relationships between agents.
 
 - **Adding agents**: Use `add_agent_to_network`.  
   - Set `is_tool = true` only if the `agent_name` comes from the toolbox.  
@@ -182,12 +183,17 @@ Think of this as building or refining a hierarchical organizational chart. Each 
                 "add_agent_to_network",
                 "remove_agent_from_network",
                 "update_agent_in_network",
-                "get_agent_network_definition",
                 "get_mcp_tool",
                 "get_subnetwork",
                 "get_toolbox",
             ],
             "middleware": [
+                {
+                    "class": "middleware.agent_network_designer.agent_network_definition_middleware.AgentNetworkDefinitionMiddleware",
+                    "args": {
+                        "sly_data": true
+                    }
+                },
                 {
                     "class": "middleware.agent_network_designer.validation.agent_network_structure_validation_middleware.AgentNetworkStructureValidationMiddleware",
                     "args": {
@@ -287,14 +293,6 @@ Think of this as building or refining a hierarchical organizational chart. Each 
                     },
                     "required": ["agent_name", "new_down_chains"]
                 }
-            }
-        },
-
-        {
-            "name": "get_agent_network_definition",
-            "class": "coded_tools.get_agent_network_definition.GetAgentNetworkDefinition",
-            "function": {
-                "description": "Get the agent network definition."
             }
         },
 
