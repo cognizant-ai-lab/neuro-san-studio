@@ -20,7 +20,7 @@ import subprocess
 import threading
 from pathlib import Path
 
-from neuro_san_studio.runner.process_logger_interface import ProcessLoggerInterface
+from neuro_san_studio.interfaces.process_logger_interface import ProcessLoggerInterface
 
 
 class SimpleProcessLogger(ProcessLoggerInterface):  # pylint: disable=too-few-public-methods

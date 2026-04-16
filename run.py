@@ -29,7 +29,9 @@ from typing import Tuple
 
 from dotenv import load_dotenv
 
+from neuro_san_studio.interfaces.process_logger_interface import ProcessLoggerInterface
 from neuro_san_studio.plugins.factory.plugin_loader import PluginLoader
+from neuro_san_studio.runner.simple_process_logger import SimpleProcessLogger
 
 
 class NeuroSanRunner:
@@ -527,13 +529,8 @@ class NeuroSanRunner:
 
         # Fallback: if no plugin implements ProcessLoggerInterface, use a simple
         # logger to drain subprocess pipes and prevent pipe buffer deadlocks.
-        # pylint: disable=import-outside-toplevel
-        from neuro_san_studio.runner.process_logger_interface import ProcessLoggerInterface
-
         has_process_logger = any(isinstance(p, ProcessLoggerInterface) for p in self.plugins)
         if not has_process_logger:
-            from neuro_san_studio.runner.simple_process_logger import SimpleProcessLogger
-
             simple_logger = SimpleProcessLogger()
             for name, proc in [
                 ("NeuroSan", self.server_process),

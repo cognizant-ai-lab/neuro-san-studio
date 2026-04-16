@@ -21,7 +21,7 @@ import os
 import tempfile
 import time
 
-from neuro_san_studio.runner.process_logger_interface import ProcessLoggerInterface
+from neuro_san_studio.interfaces.process_logger_interface import ProcessLoggerInterface
 from neuro_san_studio.runner.simple_process_logger import SimpleProcessLogger
 
 

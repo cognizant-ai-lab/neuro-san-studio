@@ -35,7 +35,7 @@ from rich.syntax import Syntax
 from rich.text import Text
 from rich.theme import Theme
 
-from neuro_san_studio.runner.process_logger_interface import ProcessLoggerInterface
+from neuro_san_studio.interfaces.process_logger_interface import ProcessLoggerInterface
 
 log_cfg = {
     # Refer rich guidelines for more options:
