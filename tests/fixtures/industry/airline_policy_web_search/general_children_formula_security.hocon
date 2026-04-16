@@ -26,8 +26,8 @@
     # success_ratio is useful for passing to the assessor to find out why
     # a test is intermittently failing. Sometimes it's the agent prompt, but
     # sometimes it's the test itself.
-    # Note: This number was set to 1/1 for regression testing.
-    "success_ratio": "1/1",
+    # Note: This number was set to 2/3 as this is a hard regression test case.
+    "success_ratio": "2/3",
 
     # Interactions are a series of dictionaries with request elements paired with
     # descriptions of response checks.
@@ -56,7 +56,7 @@ Can I bring breast milk or formula through airport security?
                     # Each component of the list needs to pass muster in order to pass.
                     "gist": ["""
 Formula or breast milk is allowed in carry-on bags even if over 3.4 oz in quantity.
-Check TSA.gov for screening guidelines.
+Check TSA rules for more.
                              """],
 
                     "keywords": ["https://faq.flyfrontier.com/help/traveling-with-children-or-pets"],

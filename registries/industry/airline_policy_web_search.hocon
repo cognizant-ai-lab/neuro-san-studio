@@ -18,7 +18,7 @@
 
     "metadata": {
         "description": "Multi-agent system for airline policy inquiries using real-time web scraping via webpage_rag. Scrapes the airline's FAQ and main site pages at runtime to answer customer questions about baggage, fares, travel planning, and special services.",
-        "tags": ["AAOSA", "customer-service", "airline", "policy-management", "web-scraping", "rag", "tool"],
+        "tags": ["AAOSA", "web-scraping", "rag", "tool"]
         "sample_queries": [
             "What are the bag size and weight limits on this airline?",
             "My checked bag was delayed, what should I do?",
@@ -32,10 +32,11 @@
 
     "instructions_prefix": """
 - **Lead with a direct, clear answer** to the customer's question first.
-- **NEVER omit** RELEVANT conditions, restrictions, variations, exceptions, qualifications — including fees, pricing tiers, and every step of any multi-step procedure.
+- **NEVER OMIT** RELEVANT conditions, restrictions, variations, exceptions, qualifications — including fees, pricing tiers, and every step of any multi-step procedure.
 - **NEVER use external knowledge**. Base every answer strictly on information retrieved from the tool. If information is unavailable, say so explicitly.
-- **NEVER paraphrase policy text**. Do NOT include irrelevant information.
-- Do NOT use quotes. Do NOT include a section titled anything like "Variations, restrictions, exceptions, and fees".
+- **NEVER PARAPHRASE POLICY TEXT**. Do NOT use quotes. Do NOT include a section titled anything like "Variations, ..."
+- The RAG tool returns document chunks. Each chunk contains a "metadata" field with a "source" key holding the page URL. Extract that URL and include it at the end of your reply as "Source URL: <url>".
+- ONLY include URLs mentioned by your tool.
 """,
 
     "tools": [
@@ -52,60 +53,17 @@
             NEVER ask the customer which airline they are asking about — all questions refer to this airline.
             Only answer questions within your scope — airline policies, procedures, and helpdesk inquiries — and politely decline any unrelated questions.
 
-            For every customer question, follow these steps in order:
-            1. Call Policy_Router with the customer's question exactly as received.
-            2. Extract the [USED_AGENTS] line from the end of Policy_Router's response.
-            3. Call Source_Resolver with only the agent names listed in [USED_AGENTS].
-            4. Compose your final response:
-               - Copy Policy_Router's full answer verbatim (remove the [USED_AGENTS] line). NEVER modify, summarize, or rewrite it.
-               - Append "Sources:" at the end followed by the URLs from Source_Resolver as a bulleted list.
-            """,
-            "tools": ["Policy_Router", "Source_Resolver"]
-        },
-
-        {
-            "name": "Source_Resolver",
-            "function": ${aaosa_call}{
-                 "description": "Given a list of agent names, returns the source URLs for those agents."
-            },
-            "instructions": """
-            Return only the URLs for the given agent names using the mapping below. No duplicates, no unlisted agents.
-
-            Agent-to-URL mapping:
-            1. Optional_Services_Pricing - https://www.flyfrontier.com/optional-services/
-            2. Bag_Count_Restrictions - https://faq.flyfrontier.com/help/are-there-any-restrictions-on-how-many-bags-i-can-bring
-            3. Bag_Delayed - https://faq.flyfrontier.com/help/bags-delayed-damage-and-missing-items-my-bag-is-delayed-who-can-i-talk-to
-            4. Bag_Damaged - https://faq.flyfrontier.com/help/bags-delayed-damage-and-missing-items-my-bag-has-been-damaged-what-should-i-do
-            5. Bag_Missing_Items - https://faq.flyfrontier.com/help/what-do-i-do-if-an-item-is-missing-in-my-checked-bag
-            6. Sporting_Musical_Equipment - https://faq.flyfrontier.com/help/bags-seats-general-info-can-i-bring-sporting-or-musical-equipment-with-me
-            7. Firearms_Policy - https://faq.flyfrontier.com/help/bags-seats-general-info-can-i-bring-a-firearm-with-me
-            8. Smart_Luggage - https://faq.flyfrontier.com/help/can-i-bring-smart-luggage-on-my-flight
-            9. Bundle_Differences - https://faq.flyfrontier.com/help/what-is-the-difference-between-economy-premium-and-business-bundles
-            10. Seating_Options - https://www.flyfrontier.com/travel-information/seating-options
-            11. Food_And_Beverages - https://faq.flyfrontier.com/help/do-you-offer-complimentary-food-and-beverages-in-flight
-            12. Miles_And_Points - https://faq.flyfrontier.com/help/how-are-frontier-miles-and-points-earned
-            13. Elite_Status_Benefits - https://faq.flyfrontier.com/help/what-travel-benefits-are-included-with-elite-status
-            14. Military_Benefits - https://faq.flyfrontier.com/help/military-personnel-bags
-            15. Travel_Documents - https://faq.flyfrontier.com/help/what-identification-or-documents-do-i-need-in-order-to-travel
-            16. Restricted_Items - https://faq.flyfrontier.com/help/what-does-tsa-allow-and-not-allow-on-flights
-            17. Kids_and_Pets - https://faq.flyfrontier.com/help/traveling-with-children-or-pets
-            18. Accessibility - https://faq.flyfrontier.com/help/special-services
-            """ ${aaosa_instructions}
-        },
-
-        {
-            "name": "Policy_Router",
-            "function": ${aaosa_call}{
-                "description": "Routes airline policy questions to the appropriate topic agents and composes a unified answer."
-            },
-            "instructions": ${instructions_prefix} """
             You route customer queries to topic-specific agents and compose a single answer. Follow these steps:
-            1. ROUTE — Call every agent whose description covers any part of the query. A query may need multiple agents.
-               Example: "Do I need an ID for my child?" goes to both Travel_Documents AND Kids_and_Pets.
-               DO NOT call agents whose scope does not apply. If NO agent applies, say the question is out of scope.
-            2. COMPOSE — Build a unified answer from the agent responses.
-            3. TAG — At the end, write [USED_AGENTS] followed by a comma-separated list of ONLY the agent names whose responses you incorporated into your answer.
-               Example: [USED_AGENTS] Optional_Services_Pricing, Kids_and_Pets
+            1. DECOMPOSE — Break the user query into simpler sub-questions.
+            2. ROUTE — For each sub-question, identify the one agent whose description best matches that topic and call that agent with only that sub-question.
+               Do NOT call agents whose scope is completely unrelated to the sub-question. If no agent applies to a sub-question, note that it is out of scope.
+            Example: "I'm traveling with my lap infant, ID requirements for my infant and a stroller. What do I need to know?" becomes:
+                 (a) "Information about traveling with a lap infant?" routed to agent: Kids_and_Pets
+                 (b) "Information about traveling with strollers?" routed to agent: Kids_and_Pets
+                 (c) "Information about ID requirements for infants?" routed to agent: Travel_Documents
+            3. COMPOSE — Build a unified answer from all agent responses.
+            4. SOURCES — At the end of your answer, list all "Source:" URLs from the agents you used under a **Sources:** header. Include one URL per line. Do not duplicate URLs.
+            Filter out URLs from agents whose answers you did not use. ONLY include URLs explicitly mentioned by the sub-agents.
             """ ${aaosa_instructions},
             "tools": ["Optional_Services_Pricing", "Bag_Count_Restrictions", "Bag_Delayed", "Bag_Damaged", "Bag_Missing_Items", "Sporting_Musical_Equipment",
             "Firearms_Policy", "Smart_Luggage", "Bundle_Differences", "Seating_Options", "Food_And_Beverages", "Miles_And_Points", "Elite_Status_Benefits",
@@ -391,7 +349,7 @@
             },
             "instructions": ${instructions_prefix} """
             You are the Kids_and_Pets agent. You handle traveling with children and pets: lap infants, family seating, strollers, car seats, and pet policies.
-            Always call your Kids_and_Pets_RAG tool with the user's query. Answer ONLY based on the retrieved information.
+            Call your Kids_and_Pets_RAG tool once per distinct topic in the user's query. Answer ONLY based on the retrieved information.
             """ ${aaosa_instructions},
             "command": ${aaosa_command},
             "tools": ["Kids_and_Pets_RAG"]

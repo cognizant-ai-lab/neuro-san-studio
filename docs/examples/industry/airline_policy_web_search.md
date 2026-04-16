@@ -15,12 +15,11 @@ assistance, all grounded strictly in live content retrieved from the airline's o
 
 ## Description
 
-This network follows a four-tier hierarchical architecture using the [AAOSA](../../user_guide.md) pattern:
+This network follows a three-tier hierarchical architecture using the [AAOSA](../../user_guide.md) pattern:
 
-1. **Frontman** (`Airline_Policy_Agent`) — the sole interface with the customer. Calls `Policy_Router` for answers and `Source_Resolver` for source URLs.
-2. **Router and Resolver** (`Policy_Router`, `Source_Resolver`) — `Policy_Router` routes queries to one or more domain agents and composes a unified answer. `Source_Resolver` maps the agents used to their source URLs.
-3. **Domain agents** — eighteen agents, each covering a narrow policy area, that delegate to a RAG leaf tool.
-4. **RAG tools** — each domain agent owns a single `webpage_rag` tool that scrapes a specific airline FAQ or policy page at query time.
+1. **Frontman** (`Airline_Policy_Agent`) — the sole interface with the customer. Decomposes queries into sub-questions, routes each to the relevant domain agent, composes a unified answer, and aggregates source URLs.
+2. **Domain agents** — eighteen agents, each covering a narrow policy area, that delegate to a RAG leaf tool.
+3. **RAG tools** — each domain agent owns a single `webpage_rag` tool that scrapes a specific airline FAQ or policy page at query time.
 
 All answers are strictly grounded in content retrieved from the airline's webpages. External knowledge is never used.
 When multiple pages return conflicting information, the system surfaces the conflict to the user rather than silently
@@ -81,22 +80,13 @@ Sources:
 ### Frontman Agent: **Airline_Policy_Agent**
 
 - Acts as the sole interface with the customer — does not expose sub-agents or internal systems.
-- Calls `Policy_Router` with the customer's question to get an answer and a list of agents used.
-- Calls `Source_Resolver` with the list of agents used to get source URLs.
-- Composes a final response by combining the answer with a "Sources:" section of URLs.
+- Decomposes the customer's query into sub-questions and routes each to the domain agent whose scope best matches.
+- Composes a unified answer from all domain agent responses.
+- Aggregates all source URLs from the domain agents and lists them under a **Sources:** header at the end of the reply.
 
 ---
 
-### Router and Resolver
-
-| Agent | Role |
-|---|---|
-| `Policy_Router` | Routes customer queries to the relevant domain agents and composes a unified answer. Tags each response with the agents used. |
-| `Source_Resolver` | Maps agent names to their source URLs using a fixed lookup table. |
-
----
-
-### Domain Agents (Tools called by Policy_Router)
+### Domain Agents (Tools called by Airline_Policy_Agent)
 
 | Agent | Scope |
 |---|---|
@@ -162,8 +152,8 @@ agent answers solely from the retrieved content.
   If the agent is hallucinating, check whether the tool is actually being called.
 - **RAG content gaps**: If a leaf agent says information is unavailable, verify the target URLs are reachable
   and returning expected content. Page structure changes can cause silent content gaps, or a page may have moved to a different URL.
-- **Missing sources**: `Airline_Policy_Agent` relies on parsing the `[USED_AGENTS]` tag from `Policy_Router`'s
-  response to call `Source_Resolver`. If sources are missing, check that `Policy_Router` is emitting the tag and
-  that every domain agent has a corresponding entry in `Source_Resolver`'s agent-to-URL mapping.
+- **Missing sources**: `Airline_Policy_Agent` collects source URLs directly from domain agent responses. If sources
+  are missing, verify that the domain agents are including source URLs in their replies and that the frontman's
+  instructions to aggregate them are being followed.
 - **Timeout**: Each integration test interaction has a 180-second timeout. If tests are timing out, check
   network connectivity to the scraped URLs.

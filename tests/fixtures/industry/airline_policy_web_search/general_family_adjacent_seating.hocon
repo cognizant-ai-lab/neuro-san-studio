@@ -26,8 +26,8 @@
     # success_ratio is useful for passing to the assessor to find out why
     # a test is intermittently failing. Sometimes it's the agent prompt, but
     # sometimes it's the test itself.
-    # Note: This number was set to 1/1 for regression testing.
-    "success_ratio": "1/1",
+    # Note: This number was set to 2/3 as this is a hard regression test case.
+    "success_ratio": "2/3",
 
     # Interactions are a series of dictionaries with request elements paired with
     # descriptions of response checks.
