@@ -39,7 +39,7 @@ jobs:
       - name: Install dependencies
         shell: bash
         run: |
-          apt-get update && apt-get install --yes make curl netcat-openbsd procps net-tools
+          apt-get update && apt-get install --yes make curl netcat-openbsd procps net-tools jq
           make install
 
       - name: Show installed packages
