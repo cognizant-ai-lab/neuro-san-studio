@@ -151,10 +151,17 @@ class AgentNetworkDefinitionMiddleware(AgentMiddleware):
         except (FileNotFoundError, TypeError):
             return None
 
-        # Only extract agents info and only "instructions" and "tools" parts
-        agents: list[dict[str, Any]] = network_hocon.get("tools")
-        network_def = {}
+        agents: list[dict[str, Any]] | None = network_hocon.get("tools")
+        if agents is None:
+            self.logger.warning("WARNING: No field 'tools' found in %s.", network_hocon_file)
+            return None
+        if not isinstance(agents, list):
+            self.logger.warning("WARNING: The 'tools' field in '%s' is not a list.", network_hocon_file)
+            return None
+
+        network_def: dict[str, Any] = {}
         for agent in agents:
+            # Only extract agents info and only "instructions" and "tools" parts
             agent_name: str = agent.get("name")
             network_def[agent_name] = {}
             instructions: str = agent.get("instructions")
