@@ -92,6 +92,19 @@ test-integration: install
 	export AGENT_TEMPORARY_NETWORK_UPDATE_PERIOD_SECONDS=5 && \
 	pytest -s -m "integration" --timer-top-n 100
 
+# Test the Agent Network Designer (AND)
+test-designer: install
+	# Start the neuro-san server
+	./build_scripts/server_start.sh
+
+	# Run the Agent Network Designer integration tests
+	@. venv/bin/activate && \
+	export PYTHONPATH=`pwd` && \
+	export AGENT_TOOL_PATH=coded_tools/ && \
+	export AGENT_MANIFEST_FILE=registries/manifest.hocon && \
+	export AGENT_TEMPORARY_NETWORK_UPDATE_PERIOD_SECONDS=5 && \
+	pytest --capture=no --verbose -m "integration_agent_network_designer" --timer-top-n 100
+
 help: ## Show this help message and exit
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | \
 	awk 'BEGIN {FS = ":.*?## "}; {printf "\033[36m%-20s\033[m %s\n", $$1, $$2}'
