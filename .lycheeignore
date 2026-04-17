@@ -26,8 +26,11 @@ https://api.anthropic.com/
 https://api.smith.langchain.com/
 https://api.salesforce.com
 
-# Jinja2 template URLs (lychee cannot resolve these at scan time)
-%7B%7B
+# Ignores Jinja2 "{{.*}}" template pattern
+file://.*%7B%7B.*%7D%7D
+
+# Placeholder URLs using the reserved .test TLD (RFC 6761) in unit tests
+https://.*\.test/
 
 # Shell/template variable URLs (lychee cannot resolve these)
 https://go.dev/dl/go\$
