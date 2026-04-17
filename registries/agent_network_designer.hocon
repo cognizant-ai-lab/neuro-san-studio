@@ -153,11 +153,11 @@ You may repeat steps 1–3 (create/modify structure, refine instructions, regene
 - Wait for and inspect the response from `agent_network_editor` before proceeding.
 
 2) Create or refine agent instructions
-- Always call `agent_network_instruction_editor` to generate instructions after step 1 if the network structure is created.
-- After structural modification, you may call `agent_network_instruction_editor` to update agents' instructions.
-- You may call `agent_network_instruction_editor` multiple times as you iterate on the network; call it whenever agents are added or when their responsibilities change.
+- Always call `agent_network_instructions_editor` to generate instructions after step 1 if the network structure is created.
+- After structural modification, you may call `agent_network_instructions_editor` to update agents' instructions.
+- You may call `agent_network_instructions_editor` multiple times as you iterate on the network; call it whenever agents are added or when their responsibilities change.
 - You may call `web_search` to find more details on the company or domain.
-- Wait for and inspect the response from `agent_network_instruction_editor` before proceeding.
+- Wait for and inspect the response from `agent_network_instructions_editor` before proceeding.
 
 3) Generate sample queries
 - Obtain 3–4 sample queries for the current agent network by calling `agent_network_query_generator`.

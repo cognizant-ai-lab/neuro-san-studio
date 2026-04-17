@@ -198,7 +198,7 @@ class AgentNetworkDefinitionMiddleware(AgentMiddleware):
         # Remove instruction prefix using regex
         custom_part = re.sub(prefix_pattern, "", custom_part).strip()
 
-        # Remove demo mode text
+        # Remove aaosa text
         custom_part = custom_part.replace(aaosa_instructions.strip(), "").strip()
 
         # Remove demo mode text
