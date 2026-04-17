@@ -110,7 +110,7 @@ class TestValidateUrl(TestCase):
     def test_allowed_domains_does_not_match_partial_prefix(self):
         """Tests that a hostname sharing a suffix but not a domain boundary is rejected."""
         with self.assertRaises(ValueError) as ctx:
-            self._call({"url": "https://badexample.test/", "allowed_domains": ["example.com"]})
+            self._call({"url": "https://badexample.test/", "allowed_domains": ["example.test"]})
         self.assertIn("url_not_allowed", str(ctx.exception))
 
     def test_blocked_domains_rejects(self):
@@ -122,7 +122,7 @@ class TestValidateUrl(TestCase):
     def test_blocked_domains_subdomain_rejected(self):
         """Tests that a subdomain of a blocked domain is also rejected."""
         with self.assertRaises(ValueError) as ctx:
-            self._call({"url": "https://sub.blocked.test/", "blocked_domains": ["blocked.com"]})
+            self._call({"url": "https://sub.blocked.test/", "blocked_domains": ["blocked.test"]})
         self.assertIn("url_not_allowed", str(ctx.exception))
 
     def test_blocked_domains_partial_prefix_not_blocked(self):
