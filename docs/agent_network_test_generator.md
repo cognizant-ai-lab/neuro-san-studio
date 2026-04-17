@@ -300,7 +300,7 @@ python -m pytest tests/integration/test_integration_test_hocons.py -v -k "yellow
   instructions in `agent_network_test_generator.hocon` for guidance on the correct format.
 - If a fixture fails validation, the frontman will automatically retry with error messages.
   Check the `validate_test_fixture` error output for specific schema violations.
-- If the agent times out or hits max iterations, increase `max_execution_seconds` or
-  `max_iterations` in `agent_network_test_generator.hocon`.
+- If the agent times out or hits max steps, increase `max_execution_seconds` or
+  `max_steps` in `agent_network_test_generator.hocon`.
 
 ---

@@ -25,6 +25,7 @@ from coded_tools.experimental.mdap_decomposer.solver_parsing import SolverParsin
 from coded_tools.tools.coded_tool_agent_caller import CodedToolAgentCaller
 
 
+# pylint: disable=too-many-ancestors
 class DecompositionSolver(BranchActivation, CodedTool):
     """
     A CodedTool implementation that uses the NeuroSanSolver to break down
