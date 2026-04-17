@@ -94,11 +94,17 @@ test-integration: install
 
 # Test the Agent Network Designer (AND)
 test-designer: install
-	# Start the neuro-san server
-	export NEURO_SAN_SERVER_HTTP_PORT=8080 && ./build_scripts/server_start.sh
-
-	# Run the Agent Network Designer integration tests
 	@. venv/bin/activate && \
+	cleanup() { \
+		if [ -f server.pid ]; then \
+			kill "$$(cat server.pid)" 2>/dev/null || true; \
+			rm -f server.pid; \
+		fi; \
+	}; \
+	trap cleanup EXIT; \
+	echo "# Start the neuro-san server" && \
+	export NEURO_SAN_SERVER_HTTP_PORT=8080 && ./build_scripts/server_start.sh && \
+	echo "# Run the Agent Network Designer integration tests" && \
 	export PYTHONPATH=`pwd` && \
 	export AGENT_TOOL_PATH=coded_tools/ && \
 	export AGENT_MANIFEST_FILE=registries/manifest.hocon && \
