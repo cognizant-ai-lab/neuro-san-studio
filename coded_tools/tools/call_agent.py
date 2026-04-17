@@ -27,6 +27,7 @@ from coded_tools.tools.coded_tool_agent_caller import CodedToolAgentCaller
 logger = logging.getLogger(__name__)
 
 
+# pylint: disable=too-many-ancestors
 class CallAgent(BranchActivation, CodedTool):
     """
     CodedTool implementation which provides a way to call an agent network.
