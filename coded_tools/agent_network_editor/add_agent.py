@@ -88,4 +88,4 @@ class AddAgent(CodedTool):
         await ProgressHandler.report_progress(args, network_def)
 
         logger.debug(">>>>>>>>>>>>>>>>>>> DONE %s !!!>>>>>>>>>>>>>>>>>>", self.__class__.__name__)
-        return network_def
+        return f"Successfully added agent {the_agent_name} to the agent network definition."
