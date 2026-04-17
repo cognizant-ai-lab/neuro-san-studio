@@ -83,9 +83,9 @@ class AgentNetworkDefinitionMiddleware(AgentMiddleware):
         """
 
         # First, check to see if there is a generated agent network definition
-        if self.sly_data.get(AGENT_NETWORK_DEFINITION):
+        network_def: dict[str, Any] | list[dict[str, Any]] | None = self.sly_data.get(AGENT_NETWORK_DEFINITION)
+        if network_def:
             self.logger.debug(">>>>>>>>>>>>>>>>>>>Getting Agent Network Definition from Sly Data>>>>>>>>>>>>>>>>>>>")
-            network_def: dict[str, Any] | list[dict[str, Any]] | None = self.sly_data.get(AGENT_NETWORK_DEFINITION)
 
         # Next, check to see if the user provides HOCON file via sly data
         else:
