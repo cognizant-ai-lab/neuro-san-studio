@@ -60,7 +60,7 @@ class NeuroSanRunner:
             "default_sly_data": str(os.getenv("DEFAULT_SLY_DATA", "")),
             "nsflow_host": os.getenv("NSFLOW_HOST", "localhost"),
             "nsflow_port": int(os.getenv("NSFLOW_PORT", "4173")),
-            "nsflow_plugin_cruse": os.getenv("NSFLOW_PLUGIN_CRUSE", "false"),
+            "nsflow_plugin_cruse": os.getenv("NSFLOW_PLUGIN_CRUSE", "true").lower() in ("true", "1", "yes"),
             "log_level": os.getenv("LOG_LEVEL", "info"),
             "vite_api_protocol": os.getenv("VITE_API_PROTOCOL", "http"),
             "vite_ws_protocol": os.getenv("VITE_WS_PROTOCOL", "ws"),
