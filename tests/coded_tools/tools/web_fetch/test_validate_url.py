@@ -122,7 +122,7 @@ class TestValidateUrl(TestCase):
     def test_blocked_domains_subdomain_rejected(self):
         """Tests that a subdomain of a blocked domain is also rejected."""
         with self.assertRaises(ValueError) as ctx:
-            self._call({"url": "https://test-sub.blocked.com/", "blocked_domains": ["test-blocked.com"]})
+            self._call({"url": "https://test-sub.blocked.com/", "blocked_domains": ["blocked.com"]})
         self.assertIn("url_not_allowed", str(ctx.exception))
 
     def test_blocked_domains_partial_prefix_not_blocked(self):
