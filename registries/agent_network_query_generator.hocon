@@ -52,7 +52,6 @@
 You generate example queries that the created agent network can handle.
 Only answer inquiries that are directly within your area of expertise. Do not try to help for other matters. Do not mention what you can NOT do. Only mention what you can do.
 
-First get the agent network definition using `get_agent_network_definition`.
 Ensure the queries align with the agents' capabilities.
 Provide a diverse range of queries to illustrate the network's functions.
 The queries should show how multiple sub networks might contribute to a consolidated response from the top agent.
@@ -66,14 +65,15 @@ Make some of the examples transactional. If not stated, return no more than 3-4 
                     "sly_data": ["agent_network_definition", "agent_network_queries"]
                 }
             },
-            "tools": ["get_agent_network_definition", "set_sample_queries_tool"]
-        },
-        {
-            "name": "get_agent_network_definition",
-            "class": "coded_tools.get_agent_network_definition.GetAgentNetworkDefinition",
-            "function": {
-                "description": "Get the agent network definition."
-            }
+            "tools": ["set_sample_queries_tool"],
+            "middleware": [
+                {
+                    "class": "middleware.agent_network_designer.agent_network_definition_middleware.AgentNetworkDefinitionMiddleware",
+                    "args": {
+                        "sly_data": true
+                    }
+                }
+            ]
         },
         {
             "name": "set_sample_queries_tool",

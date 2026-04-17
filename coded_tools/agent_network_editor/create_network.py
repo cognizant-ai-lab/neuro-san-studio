@@ -64,7 +64,7 @@ class CreateNetwork(CodedTool):
 
         :return:
             In case of successful execution:
-                the agent network definition as a dictionary.
+                a text string confirming successful creation of the agent network definition.
             otherwise:
                 a text string of an error message in the format:
                 "Error: <error message>"

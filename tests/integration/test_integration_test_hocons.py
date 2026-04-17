@@ -249,6 +249,57 @@ class TestIntegrationTestHocons(TestCase, FailFastParamMixin):
                 # These can be in any order.
                 # Ideally more basic functionality will come first.
                 # Barring that, try to stick to alphabetical order.
+                "industry/airline_policy_web_search/basic_eco_carryon_included.hocon",
+                "industry/airline_policy_web_search/basic_eco_checkin_not_included.hocon",
+                "industry/airline_policy_web_search/basic_eco_checkin_overweight_fees.hocon",
+                "industry/airline_policy_web_search/general_carryon_lap_infant_extra_item.hocon",
+                "industry/airline_policy_web_search/general_carryon_liquids_packing.hocon",
+                "industry/airline_policy_web_search/general_carryon_overweight_fee.hocon",
+                "industry/airline_policy_web_search/general_carryon_size_limit.hocon",
+                "industry/airline_policy_web_search/general_checkin_bag_delayed.hocon",
+                "industry/airline_policy_web_search/general_checkin_baggage_weight_limit.hocon",
+                "industry/airline_policy_web_search/general_child_car_seat_placement.hocon",
+                "industry/airline_policy_web_search/general_child_stroller_gate_check.hocon",
+                "industry/airline_policy_web_search/general_children_formula_security.hocon",
+                "industry/airline_policy_web_search/general_children_id_domestic_flights.hocon",
+                "industry/airline_policy_web_search/general_children_infant_own_seat.hocon",
+                "industry/airline_policy_web_search/general_children_passport_international.hocon",
+                "industry/airline_policy_web_search/general_family_adjacent_seating.hocon",
+                "industry/airline_policy_web_search/general_infant_with_stroller.hocon",
+                "industry/airline_policy_web_search/general_out_of_scope.hocon",
+                "industry/airline_policy_web_search/general_personal_item_free.hocon",
+                "industry/airline_policy_web_search/general_personal_item_no_weight_limit.hocon",
+                "industry/airline_policy_web_search/general_personal_item_size_limit.hocon",
+                "industry/airline_policy_web_search/premier_gold_status_qualification.hocon",
+                "industry/airline_policy_web_search/premium_eco_bundle_inclusions.hocon",
+                # List more hocon files as they become available here.
+            ]
+        ),
+        skip_on_empty=True,
+    )
+    @pytest.mark.integration
+    @pytest.mark.integration_industry
+    @pytest.mark.integration_industry_airline_policy_web_search
+    def test_hocon_industry_airline_policy_web_search(self, test_name: str, test_hocon: str):
+        """
+        Test method for a single parameterized test case specified by a hocon file.
+        Arguments to this method are given by the iteration that happens as a result
+        of the magic of the @parameterized.expand annotation above.
+
+        :param test_name: The name of a single test.
+        :param test_hocon: The hocon file of a single data-driven test case.
+        """
+        # Call the guts of the dynamic test driver.
+        # This will expand the test_hocon file name from the expanded list to
+        # include the file basis implied by the __file__ and path_to_basis above.
+        self.DYNAMIC.one_test_hocon(self, test_name, test_hocon)
+
+    @parameterized.expand(
+        DynamicHoconUnitTests.from_hocon_list(
+            [
+                # These can be in any order.
+                # Ideally more basic functionality will come first.
+                # Barring that, try to stick to alphabetical order.
                 "experimental/copy_cat/copy_hello_world.hocon",
                 "experimental/mdap_decomposer/long_multiplication.hocon",
                 "experimental/mdap_decomposer/list_sorting.hocon",
