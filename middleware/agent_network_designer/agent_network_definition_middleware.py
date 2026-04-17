@@ -161,8 +161,18 @@ class AgentNetworkDefinitionMiddleware(AgentMiddleware):
 
         network_def: dict[str, Any] = {}
         for agent in agents:
+            if not isinstance(agent, dict):
+                self.logger.warning(
+                    "WARNING: Skipping non-dict entry in 'tools' list in '%s': %r", network_hocon_file, agent
+                )
+                continue
             # Only extract agents info and only "instructions" and "tools" parts
             agent_name: str = agent.get("name")
+            if not isinstance(agent_name, str) or not agent_name:
+                self.logger.warning(
+                    "WARNING: Skipping agent with missing/invalid 'name' in '%s': %r", network_hocon_file, agent
+                )
+                continue
             network_def[agent_name] = {}
             instructions: str = agent.get("instructions")
             if instructions:
