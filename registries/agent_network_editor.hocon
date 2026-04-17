@@ -63,7 +63,7 @@
                             "description": "Indicates whether to use MCP tools (default: true)"
                         }
                     },
-                    "required": ["agent_network_description", "mode", "toolbox", "subnetwork", "mcp_tool"]
+                    "required": ["agent_network_description", "mode"]
                 }
             },
             "instructions": """
