@@ -355,7 +355,7 @@ specifically given the hocon file name in the user prompt
 
 ## Debugging Hints
 
-- Since there are many steps, the agent may time out or hit max iterations before it finishes.
+- Since there are many steps, the agent may time out or hit maximum number of steps before it finishes.
 This can be prevented by setting higher `max_execution_seconds`, `max_steps`, respectively.
 - If the agent stops working mid-process, it is possible that the max token limit has been reached.
 
