@@ -95,7 +95,7 @@ test-integration: install
 # Test the Agent Network Designer (AND)
 test-designer: install
 	# Start the neuro-san server
-	./build_scripts/server_start.sh
+	export NEURO_SAN_SERVER_HTTP_PORT=8080 && ./build_scripts/server_start.sh
 
 	# Run the Agent Network Designer integration tests
 	@. venv/bin/activate && \
