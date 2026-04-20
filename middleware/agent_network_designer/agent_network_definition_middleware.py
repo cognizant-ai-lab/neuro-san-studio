@@ -104,9 +104,8 @@ class AgentNetworkDefinitionMiddleware(AgentMiddleware):
             if isinstance(network_def, list):
                 connectivity_dict_converter = ConnectivityDictionaryConverter()
                 network_def = connectivity_dict_converter.to_dict(network_def)
-
-            # Cache the agent network definition in sly_data for subsequent calls within the same session.
-            self.sly_data[AGENT_NETWORK_DEFINITION] = network_def
+                # Cache the agent network definition as dict in sly_data for subsequent calls within the same session.
+                self.sly_data[AGENT_NETWORK_DEFINITION] = network_def
 
             self.logger.debug(
                 ">>>>>>>>>>>>>>>>>>>Injecting Agent Network Definition into System Prompt>>>>>>>>>>>>>>>>>>>"
