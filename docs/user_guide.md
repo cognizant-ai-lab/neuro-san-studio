@@ -1732,12 +1732,12 @@ There are two ways to create a test case: automatically with the
 or manually.
 
 ##### Automatic Test Generation
- 
+
 The `agent_network_test_generator` agent network can analyze an existing network and
 produce test fixtures automatically. Start the server, select
 `agent_network_test_generator`, and provide a prompt like
 `Generate test cases for basic/coffee_finder_advanced`.
- 
+
 For test levels, example prompts, and review tips, see the full
 [Agent Network Test Generator](agent_network_test_generator.md) documentation.
 
@@ -1752,7 +1752,7 @@ in the neuro-san repository.
 For existing examples, look at the fixtures under `tests/fixtures/` in this repository.
 
 ##### Register the fixture
- 
+
 Generated and manually created fixtures are **not** automatically picked up by CI.
 See [Running a Generated Test Fixture — Option B](agent_network_test_generator.md#option-b-register-in-the-integration-test-suite)
 for how to add them to the integration test suite.
