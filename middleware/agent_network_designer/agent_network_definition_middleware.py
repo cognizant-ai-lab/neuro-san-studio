@@ -151,18 +151,35 @@ class AgentNetworkDefinitionMiddleware(AgentMiddleware):
         except (FileNotFoundError, TypeError):
             return None
 
-        # Only extract agents info and only "instructions" and "tools" parts
-        agents: list[dict[str, Any]] = network_hocon.get("tools")
-        network_def = {}
+        agents: list[dict[str, Any]] | None = network_hocon.get("tools")
+        if agents is None:
+            self.logger.warning("WARNING: No field 'tools' found in %s.", network_hocon_file)
+            return None
+        if not isinstance(agents, list):
+            self.logger.warning("WARNING: The 'tools' field in '%s' is not a list.", network_hocon_file)
+            return None
+
+        network_def: dict[str, Any] = {}
         for agent in agents:
-            agent_name: str = agent.get("name")
+            if not isinstance(agent, dict):
+                self.logger.warning(
+                    "WARNING: Skipping non-dict entry in 'tools' list in '%s': %r", network_hocon_file, agent
+                )
+                continue
+            # Only extract agents info and only "instructions" and "tools" parts
+            agent_name: str | None = agent.get("name")
+            if not isinstance(agent_name, str) or not agent_name:
+                self.logger.warning(
+                    "WARNING: Skipping agent with missing/invalid 'name' in '%s': %r", network_hocon_file, agent
+                )
+                continue
             network_def[agent_name] = {}
-            instructions: str = agent.get("instructions")
+            instructions: str | None = agent.get("instructions")
             if instructions:
                 # Extract only the unique instructions (remove aaosa instructions, instructions prefix, and demo mode)
                 custom_instructions: str = await self._extract_custom_instructions(instructions, sly_data)
                 network_def[agent_name]["instructions"] = custom_instructions
-            tools: list[str] = agent.get("tools")
+            tools: list[str] | None = agent.get("tools")
             if tools:
                 network_def[agent_name]["tools"] = tools
 

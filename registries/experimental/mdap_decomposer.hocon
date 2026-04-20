@@ -41,7 +41,7 @@ Sort the following list of numbers from highest to lowest:
     },
 
     # Increase these from defaults of 20 and 120 (2 minutes) respecively for larger problems.
-    # "max_iterations": 40000, #3000
+    # "max_steps": 40000, #3000
     # "max_execution_seconds": 7200, #600
 
     "tools": [
