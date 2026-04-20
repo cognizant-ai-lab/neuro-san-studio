@@ -24,6 +24,7 @@ from langchain.agents.middleware.types import hook_config
 from langchain_core.messages import HumanMessage
 from langgraph.runtime import Runtime
 
+from coded_tools.agent_network_editor.connectivity_dictionary_converter import ConnectivityDictionaryConverter
 from coded_tools.agent_network_editor.constants import AGENT_NETWORK_DEFINITION
 
 
@@ -95,9 +96,15 @@ class AgentNetworkValidationMiddleware(AgentMiddleware):
         :param runtime: Runtime context
         :return: Dict with error message and jump directive, or None if valid
         """
-        network_def: dict[str, Any] = self.sly_data.get(AGENT_NETWORK_DEFINITION)
+        network_def: dict[str, Any] | list[dict[str, Any]] | None = self.sly_data.get(AGENT_NETWORK_DEFINITION)
         if not network_def:
             return {"messages": [HumanMessage(self.no_network_error_message())], "jump_to": "model"}
+
+        # Normalize connectivity (list) format to internal dict format before validating.
+        # Mirrors AgentNetworkDefinitionMiddleware's handling.
+        if isinstance(network_def, list):
+            network_def = ConnectivityDictionaryConverter().to_dict(network_def)
+            self.sly_data[AGENT_NETWORK_DEFINITION] = network_def
 
         label: str = self.validation_label()
         self.logger.info(">>>>>>>>>>>>>>>>>>>Validate Agent Network %s>>>>>>>>>>>>>>>>>>", label)

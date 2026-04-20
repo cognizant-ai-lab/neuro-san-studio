@@ -118,11 +118,19 @@ class AgentNetworkPersistenceMiddleware(AgentMiddleware):
         :param runtime: Runtime context
         :return: Dict with error message and jump directive, or None if valid
         """
-        network_def: dict[str, Any] = self.sly_data.get(AGENT_NETWORK_DEFINITION)
+        network_def: dict[str, Any] | list[dict[str, Any]] | None = self.sly_data.get(AGENT_NETWORK_DEFINITION)
         if not network_def:
             return self._error_response(
                 "No agent network found. Please create a new agent network using `/agent_network_editor` tool"
             )
+
+        # The network definition may arrive in connectivity (list) format — e.g. when the
+        # previous turn's output was round-tripped through sly_data. Normalize to the
+        # internal dict format before validating, and persist the normalized form so
+        # downstream middleware/tools see a consistent shape.
+        if isinstance(network_def, list):
+            network_def = ConnectivityDictionaryConverter().to_dict(network_def)
+            self.sly_data[AGENT_NETWORK_DEFINITION] = network_def
 
         error_list: list[str] = await self._validate_network(network_def)
         if error_list:
