@@ -18,6 +18,7 @@ from logging import Logger
 from logging import getLogger
 from typing import Awaitable
 from typing import Callable
+from typing import Optional
 from typing import override
 
 from langchain.agents.middleware.types import AgentMiddleware
@@ -29,6 +30,7 @@ from langchain_core.messages import BaseMessage
 from langchain_core.messages import SystemMessage
 from langchain_core.tools import BaseTool
 from langchain_core.tools import StructuredTool
+from neuro_san.interfaces.agent_progress_reporter import AgentProgressReporter
 
 VALID_STATUSES: set[str] = {"pending", "in_progress", "done", "skipped"}
 
@@ -84,6 +86,7 @@ class AgentChecklistMiddleware(AgentMiddleware):
         self,
         checklist_title: str = "Task Checklist",
         initial_checklist: list[dict[str, str]] | None = None,
+        progress_reporter: Optional[AgentProgressReporter] | None = None,
     ) -> None:
         """Initialize the checklist middleware.
 
@@ -91,10 +94,14 @@ class AgentChecklistMiddleware(AgentMiddleware):
         :param initial_checklist: Optional list of items to pre-populate.
             Each item should be a dict with ``item`` (required), ``status``
             (optional, defaults to "pending"), and ``notes`` (optional).
+        :param progress_reporter: Optional progress reporter for emitting checklist
+            progress (0.0–1.0) to the client. Injected automatically by the framework
+            when ``"progress_reporter": null`` is listed in the middleware ``args``.
         """
         self.logger: Logger = getLogger(__name__)
         self.checklist_title: str = checklist_title
         self.checklist: list[dict[str, str]] = []
+        self.progress_reporter: AgentProgressReporter | None = progress_reporter
 
         if initial_checklist:
             for entry in initial_checklist:
@@ -122,7 +129,7 @@ class AgentChecklistMiddleware(AgentMiddleware):
         :param handler: Handler to execute the model call
         :return: Model response from handler
         """
-        checklist_prompt: str = self._format_checklist_prompt()
+        checklist_prompt: str = await self._format_checklist_prompt()
 
         if checklist_prompt:
             system_message: BaseMessage | None = request.system_message
@@ -166,7 +173,7 @@ class AgentChecklistMiddleware(AgentMiddleware):
         # Returns the formatted checklist.
         # This is actually not necessary since the agent will see the updated checklist in the next model call,
         # but it can be helpful for debugging.
-        return self._format_checklist_prompt()
+        return await self._format_checklist_prompt()
 
     async def update_checklist_item(
         self,
@@ -205,7 +212,7 @@ class AgentChecklistMiddleware(AgentMiddleware):
         # Returns the formatted checklist.
         # This is actually not necessary since the agent will see the updated checklist in the next model call,
         # but it can be helpful for debugging.
-        return self._format_checklist_prompt()
+        return await self._format_checklist_prompt()
 
     async def edit_checklist_item(self, item_index: int, new_item: str) -> str:
         """Rewrite the description of a checklist item without changing its status or notes.
@@ -238,7 +245,7 @@ class AgentChecklistMiddleware(AgentMiddleware):
         # Returns the formatted checklist.
         # This is actually not necessary since the agent will see the updated checklist in the next model call,
         # but it can be helpful for debugging.
-        return self._format_checklist_prompt()
+        return await self._format_checklist_prompt()
 
     # ------------------------------------------------------------------
     # Tool factories
@@ -356,8 +363,11 @@ class AgentChecklistMiddleware(AgentMiddleware):
             "notes": entry.get("notes", ""),
         }
 
-    def _format_checklist_prompt(self) -> str:
-        """Format checklist for injection into system prompt.
+    async def _format_checklist_prompt(self) -> str:
+        """Format checklist for injection into system prompt and report progress.
+
+        If a ``progress_reporter`` was provided, emits the current completion ratio
+        (done + skipped / total) as ``{"progress": float}`` to the client.
 
         :return: Formatted checklist section, or empty string if checklist is empty
         """
@@ -387,5 +397,9 @@ class AgentChecklistMiddleware(AgentMiddleware):
             elif item.get("status") == "skipped":
                 skipped += 1
         lines.extend(["", f"Progress: {done}/{total} done, {skipped} skipped", ""])
+
+        if self.progress_reporter is not None:
+            progress: float = (done + skipped) / total if total > 0 else 0.0
+            await self.progress_reporter.async_report_progress({"progress": progress})
 
         return "\n".join(lines)
