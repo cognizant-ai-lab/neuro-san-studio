@@ -92,6 +92,7 @@ class AgentChecklistMiddleware(AgentMiddleware):
             Each item should be a dict with ``item`` (required), ``status``
             (optional, defaults to "pending"), and ``notes`` (optional).
         """
+        self.logger: Logger = getLogger(__name__)
         self.checklist_title: str = checklist_title
         self.checklist: list[dict[str, str]] = []
 
@@ -104,8 +105,6 @@ class AgentChecklistMiddleware(AgentMiddleware):
             self._create_update_checklist_item_tool(),
             self._create_edit_checklist_item_tool(),
         ]
-
-        self.logger: Logger = getLogger(__name__)
 
     # ------------------------------------------------------------------
     # AgentMiddleware hooks
