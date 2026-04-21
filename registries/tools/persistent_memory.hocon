@@ -1,0 +1,104 @@
+# Copyright © 2025-2026 Cognizant Technology Solutions Corp, www.cognizant.com.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
+# END COPYRIGHT
+
+# Persistent Memory — example agent network (middleware path).
+#
+# ONE block is enough. Drop a ``middleware`` entry on any agent that needs
+# long-term memory and the ``persistent_memory`` tool is registered
+# automatically — no separate tool entry, no tool name in ``tools: [...]``.
+#
+# Backend selection (precedence, later wins):
+#     1. The ``store_config`` block in middleware ``args``
+#     2. ``MEMORY_STORE_CONFIG`` env var (JSON object, shallow-merged)
+#     3. Individual ``MEMORY_*`` env vars (``MEMORY_BACKEND``, ``MEMORY_ROOT_PATH``)
+#
+# Available backends: ``file_system`` (markdown) and ``json_file`` (JSON).
+
+{
+    include "registries/llm_config.hocon",
+
+    "metadata": {
+        "description": "Persistent per-topic long-term memory, attached via MemoryMiddleware. CRUD + search + list with env-overridable config.",
+        "tags": ["memory", "long-term-memory", "middleware"],
+        "sample_queries": [
+            "Remember that I prefer email communication over chat.",
+            "What do you know about me?",
+            "Forget my old department and update it to Engineering.",
+            "Search your memory for my communication preferences.",
+            "List everything you remember about me.",
+        ]
+    },
+
+    "tools": [
+
+        # ── Front Man ────────────────────────────────────────────────────────
+        # A single agent with a single `middleware` block. No `tools:` entry
+        # for persistent_memory — the middleware registers it on startup.
+        {
+            "name": "MemoryAssistant",
+
+            "function": {
+                "description": "A conversational assistant that remembers facts about you across sessions."
+            },
+
+            "instructions": """You are a helpful assistant with long-term memory.
+
+At the start of every conversation:
+1. Call persistent_memory with operation="search" and the user's message as the query, to surface
+   any relevant memories about this user.
+2. Use the retrieved memories as context when formulating your response.
+
+During the conversation:
+- If the user shares a new fact about themselves (preference, role, department, etc.),
+  call persistent_memory with operation="create" and pass the fact as 'content'.
+- If the user asks you to update or correct a memory, use operation="update" with the key and new 'content'.
+- If the user asks you to forget something, use operation="delete" with the key.
+- If the user asks what you remember about a topic, use operation="search" with a query.
+- If the user asks for a full inventory, use operation="list".
+- If the user refers to a specific memory key, use operation="read" with that key.
+
+Never fabricate memories. Only report what the tool returns.""",
+
+            "tools": [],
+
+            "middleware": [
+                {
+                    "class": "middleware.memory_middleware.MemoryMiddleware",
+                    "args": {
+                        # First two parts of the memory namespace. Third part
+                        # (topic) is auto-filled from sly_data["user_id"] if
+                        # the LLM does not pass an explicit 'topic' arg.
+                        "agent_network_name": "persistent_memory",
+                        "agent_name":         "MemoryAssistant",
+
+                        # Backend configuration. Omit this block entirely to
+                        # let the factory resolve everything from env vars.
+                        "store_config": {
+                            "backend":   "file_system",
+                            "root_path": "./memory"
+                        },
+
+                        # Which operations the LLM may use. Omit to allow all six.
+                        # Useful restrictions:
+                        #   Read-only agent:  ["read", "search", "list"]
+                        #   Write-only agent: ["create", "update"]
+                        "enabled_operations": ["create", "read", "update", "delete", "search", "list"]
+                    }
+                }
+            ]
+        }
+    ]
+}

@@ -1681,7 +1681,70 @@ Look at [Consumer Decision Assistant](examples/industry/consumer_decision_assist
 
 ### Memory
 
-TBD
+Agents can be given long-term memory via the `MemoryMiddleware`. It attaches a single
+`persistent_memory` tool to the agent that supports seven operations: `create`, `read`,
+`update`, `append`, `delete`, `search`, and `list`. Memory is persisted to disk and scoped
+by `(agent_network_name, agent_name, topic)` — each topic gets its own file, so different
+users, projects, or sessions never collide.
+
+Attach it with a single `middleware` entry — no separate tool entry, no tool name in
+`tools: [...]`:
+
+```hocon
+"middleware": [
+    {
+        "class": "middleware.memory_middleware.MemoryMiddleware",
+        "args": {
+            "agent_network_name": "my_network",
+            "agent_name":         "my_agent",
+            "store_config": {
+                "backend":   "file_system",
+                "root_path": "./memory"
+            },
+            "enabled_operations": ["create", "read", "update", "append", "delete", "search", "list"]
+        }
+    }
+]
+```
+
+Every call from the LLM must include a `topic` argument — it becomes the on-disk filename
+for that slice of memory (e.g. `mike.md`, `project_alpha.md`). Write operations also take
+a `content` argument carrying the information to store. If `topic` is omitted, the
+middleware falls back to `sly_data["user_id"]` so authenticated multi-tenant deployments
+work without prompt-level scoping.
+
+Two backends are available:
+
+- `file_system` — one markdown file per topic (human-readable, easy to hand-edit).
+- `json_file` — one JSON file per topic (unambiguous for other processes to parse).
+
+Backend selection is layered (later wins): the HOCON `store_config` block, then the
+`MEMORY_STORE_CONFIG` env var (a JSON object), then individual `MEMORY_BACKEND` and
+`MEMORY_ROOT_PATH` env vars. This lets you swap backends at deploy time without editing
+HOCON.
+
+An optional summariser can be configured under `args.summarizer` to compress accumulated
+memory before it reaches the LLM — useful for agents that `append` many entries and want
+a concise current-state view on `read` or `search`. Setting `compact_on_write = true` also
+rewrites the on-disk file in place once it crosses `compact_threshold` characters, so the
+file stays bounded across sessions. An optional `personalization` string is appended to
+the base instructions on every summariser call — a hook for per-deployment tone or
+content preferences that the user can edit without touching the base prompt.
+
+```hocon
+"summarizer": {
+    "enabled"           = true
+    "model"             = "gpt-4.1-mini"
+    "instructions"      = "You are a summariser. Keep the output under 500 chars."
+    "compact_on_write"  = true
+    "compact_threshold" = 500
+    "personalization"   = ""   # optional user-editable extension to the instructions
+}
+```
+
+See [persistent_memory.hocon](../registries/tools/persistent_memory.hocon) for a minimal
+working example, and [coffee_finder_advanced.hocon](../registries/basic/coffee_finder_advanced.hocon)
+for an append-only usage with a summariser.
 
 ## Connect with other agent frameworks
 
