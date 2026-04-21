@@ -1719,9 +1719,8 @@ Two backends are available:
 - `markdown_file` — one markdown file per topic (human-readable, easy to hand-edit).
 
 Backend selection is layered (later wins): the HOCON `store_config` block, then the
-`MEMORY_STORE_CONFIG` env var (a JSON object), then individual `MEMORY_BACKEND` and
-`MEMORY_ROOT_PATH` env vars. This lets you swap backends at deploy time without editing
-HOCON.
+individual `MEMORY_BACKEND` and `MEMORY_ROOT_PATH` env vars. This lets you swap backends
+at deploy time without editing HOCON.
 
 The default `root_path` is `./memory`. Like every other file path in the example HOCONs,
 it is resolved relative to the **process working directory** when the neuro-san server

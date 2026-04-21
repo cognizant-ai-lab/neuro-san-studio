@@ -24,8 +24,7 @@
 #
 # Backend selection (precedence, later wins):
 #     1. The ``store_config`` block in middleware ``args``
-#     2. ``MEMORY_STORE_CONFIG`` env var (JSON object, shallow-merged)
-#     3. Individual ``MEMORY_*`` env vars (``MEMORY_BACKEND``, ``MEMORY_ROOT_PATH``)
+#     2. Individual ``MEMORY_*`` env vars (``MEMORY_BACKEND``, ``MEMORY_ROOT_PATH``)
 #
 # Available backends: ``markdown_file`` (markdown) and ``json_file`` (JSON).
 

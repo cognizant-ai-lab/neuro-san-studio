@@ -49,8 +49,7 @@ deterministic behaviour under a different working directory.
 Backend selection is layered — later wins:
 
 1. `store_config` block inside the middleware `args` in HOCON.
-2. `MEMORY_STORE_CONFIG` env var (a JSON object, shallow-merged on top of the HOCON).
-3. Individual env vars: `MEMORY_BACKEND`, `MEMORY_ROOT_PATH`.
+2. Individual env vars: `MEMORY_BACKEND`, `MEMORY_ROOT_PATH`.
 
 This lets you ship HOCON with one backend and swap it at deploy time without
 editing files.

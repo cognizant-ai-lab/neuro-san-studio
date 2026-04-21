@@ -20,7 +20,6 @@ Configuration dataclass for memory store backends, with env-override resolution.
 
 from __future__ import annotations
 
-import json
 import logging
 import os
 from dataclasses import dataclass
@@ -66,32 +65,13 @@ class MemoryStoreConfig:
 
         Precedence (later wins):
             1. ``hocon_dict`` — the ``store_config`` block read from HOCON.
-            2. ``MEMORY_STORE_CONFIG`` — a JSON object env var, shallow-merged
-               over the HOCON dict. Useful for swapping whole backends at
-               deploy time without editing HOCON.
-            3. Individual ``MEMORY_*`` env vars — field-level overrides. The
-               most surgical layer; a single var can point the tool at a new
-               Postgres URL or S3 bucket while everything else stays HOCON.
+            2. Individual ``MEMORY_*`` env vars — field-level overrides.
+               ``MEMORY_BACKEND`` and ``MEMORY_ROOT_PATH`` each win over the
+               corresponding HOCON field, so a deployer can point the tool at
+               a different backend or root without editing HOCON.
         """
         merged: dict[str, Any] = dict(hocon_dict or {})
 
-        env_json: Optional[str] = os.environ.get("MEMORY_STORE_CONFIG")
-        if env_json:
-            try:
-                parsed: Any = json.loads(env_json)
-            except json.JSONDecodeError as error:
-                logger.warning("MEMORY_STORE_CONFIG is not valid JSON; ignoring. (%s)", error)
-            else:
-                if isinstance(parsed, dict):
-                    merged.update(parsed)
-                else:
-                    logger.warning(
-                        "MEMORY_STORE_CONFIG must be a JSON object; got %s. Ignoring.",
-                        type(parsed).__name__,
-                    )
-
-        # Individual vars win over MEMORY_STORE_CONFIG so a deployer can pin a
-        # single field without rebuilding the whole JSON blob.
         env_field_map: dict[str, str] = {
             "MEMORY_BACKEND": "backend",
             "MEMORY_ROOT_PATH": "root_path",

@@ -18,7 +18,7 @@
 Tests for ``MemoryStoreFactory`` and ``MemoryStoreConfig.resolve``.
 
 Focus is on the env-override precedence chain:
-HOCON < MEMORY_STORE_CONFIG JSON < individual MEMORY_* vars.
+HOCON < individual MEMORY_* vars.
 """
 
 import os
@@ -32,7 +32,7 @@ from tests.coded_tools.tools.persistent_memory._base import MemoryTestBase
 
 
 class TestResolveConfigPrecedence(MemoryTestBase):
-    """The three-layer precedence chain: HOCON → JSON env → individual env vars."""
+    """The two-layer precedence chain: HOCON → individual MEMORY_* env vars."""
 
     def test_defaults_when_nothing_supplied(self):
         """No HOCON, no env: markdown_file backend under ./memory."""
