@@ -92,6 +92,25 @@ test-integration: install
 	export AGENT_TEMPORARY_NETWORK_UPDATE_PERIOD_SECONDS=5 && \
 	pytest -s -m "integration" --timer-top-n 100
 
+# Test the Agent Network Designer (AND)
+test-designer: install
+	@. venv/bin/activate && \
+	cleanup() { \
+		if [ -f server.pid ]; then \
+			kill "$$(cat server.pid)" 2>/dev/null || true; \
+			rm -f server.pid; \
+		fi; \
+	}; \
+	trap cleanup EXIT; \
+	echo "# Start the neuro-san server" && \
+	export NEURO_SAN_SERVER_HTTP_PORT=8080 && ./build_scripts/server_start.sh && \
+	echo "# Run the Agent Network Designer integration tests" && \
+	export PYTHONPATH=`pwd` && \
+	export AGENT_TOOL_PATH=coded_tools/ && \
+	export AGENT_MANIFEST_FILE=registries/manifest.hocon && \
+	export AGENT_TEMPORARY_NETWORK_UPDATE_PERIOD_SECONDS=5 && \
+	pytest --capture=no --verbose -m "integration_agent_network_designer" --timer-top-n 100
+
 help: ## Show this help message and exit
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | \
 	awk 'BEGIN {FS = ":.*?## "}; {printf "\033[36m%-20s\033[m %s\n", $$1, $$2}'
