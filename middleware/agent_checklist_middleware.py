@@ -151,7 +151,11 @@ class AgentChecklistMiddleware(AgentMiddleware):
         if not items:
             return "Error: Cannot create an empty checklist. Provide at least one item."
 
-        stripped_items: list[str] = [item.strip() for item in items if item.strip()]
+        # Strip whitespace from each item and discard any that are blank after stripping
+        stripped_items: list[str] = []
+        for item in items:
+            if item.strip():
+                stripped_items.append(item.strip())
         if not stripped_items:
             return "Error: Cannot create an empty checklist. Provide at least one item."
 
@@ -378,8 +382,13 @@ class AgentChecklistMiddleware(AgentMiddleware):
                 lines.append(f"   > {entry['notes']}")
 
         total = len(self.checklist)
-        done = sum(1 for e in self.checklist if e["status"] == "done")
-        skipped = sum(1 for e in self.checklist if e["status"] == "skipped")
+        done = 0
+        skipped = 0
+        for item in self.checklist:
+            if item.get("status") == "done":
+                done += 1
+            elif item.get("status") == "skipped":
+                skipped += 1
         lines.extend(["", f"Progress: {done}/{total} done, {skipped} skipped", ""])
 
         return "\n".join(lines)
