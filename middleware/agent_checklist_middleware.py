@@ -145,21 +145,18 @@ class AgentChecklistMiddleware(AgentMiddleware):
         All new items start with status "pending". Any existing checklist is
         replaced entirely.
 
-        :param items: List of item descriptions
-        :return: Confirmation message with the created checklist
+        :param items: List of item descriptions. If empty (or all blank), the checklist is cleared.
+        :return: Formatted checklist prompt, or empty string if no items were provided
         """
-        if not items:
-            return "Error: Cannot create an empty checklist. Provide at least one item."
-
         # Strip whitespace from each item and discard any that are blank after stripping
         stripped_items: list[str] = []
         for item in items:
             if item.strip():
                 stripped_items.append(item.strip())
-        if not stripped_items:
-            return "Error: Cannot create an empty checklist. Provide at least one item."
 
-        # Reset the checklist with new items, all starting as "pending"
+        # Reset the checklist with new items, all starting as "pending".
+        # An empty input is treated as a no-op clear rather than an error,
+        # since a dynamic generation process may legitimately produce zero items.
         self.checklist = []
         for item in stripped_items:
             self.checklist.append({"item": item, "status": "pending", "notes": ""})
@@ -182,7 +179,7 @@ class AgentChecklistMiddleware(AgentMiddleware):
         :param item_index: 1-based index of the item to update
         :param status: New status — one of "pending", "in_progress", "done", "skipped"
         :param notes: Optional notes to attach to the item
-        :return: Confirmation message or error
+        :return: Formatted checklist prompt or error message
         """
         if not self.checklist:
             return "Error: No checklist exists. Use create_checklist first."
@@ -218,7 +215,7 @@ class AgentChecklistMiddleware(AgentMiddleware):
 
         :param item_index: 1-based index of the item to edit
         :param new_item: New description for the item
-        :return: Confirmation message or error
+        :return: Formatted checklist prompt or error message
         """
         if not self.checklist:
             return "Error: No checklist exists. Use create_checklist first."
