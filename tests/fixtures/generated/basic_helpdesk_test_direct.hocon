@@ -68,7 +68,7 @@
                         "The response provides structured troubleshooting for a connectivity or internet dropping issue.",
                         "The response asks whether the issue affects all devices or just one device.",
                         "The response identifies this as a technical or connectivity issue, or provides technical support for connection issue or billing.",
-                        "The response suggests an Ethernet isolation test to determine if the problem is Wi-Fi specific or affects wired connections too."
+                        “The response explicitly instructs the user to test a device over Ethernet to isolate whether the issue is Wi-Fi-only or also affects wired connectivity.”
                     ]
                 }
             }
