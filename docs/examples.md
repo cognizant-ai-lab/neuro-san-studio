@@ -76,6 +76,7 @@ Here are a few examples ordered by level of complexity.
 ## 🔰 Basic Examples
 
 Introductory examples designed to help users get started with Neuro SAN.
+Ordered by simplicity — the simplest examples come first.
 
 ### Hello World
 
@@ -191,7 +192,7 @@ The agent decomposes each problem into reasoning steps, tracks its own progress 
 checklist injected into the system prompt, and validates its solution with the
 `code_interpreter` tool before delivering the answer.
 
-**Tags:** `middleware` `checklist` `tool`
+**Tags:** `basic` `checklist` `example` `middleware`
 
 ## 🧰 Tool Integration Examples
 

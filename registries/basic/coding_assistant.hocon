@@ -21,7 +21,7 @@
     # Optional metadata describing this agent network
     "metadata": {
         "description": "A coding problem solver that uses checklist middleware to plan and track its own reasoning steps. The checklist is the agent's internal scratchpad — not visible to the user as a task list.",
-        "tags": ["example", "checklist", "middleware", "coding"],
+        "tags": ["basic", "checklist", "example", "middleware"],
         "sample_queries": [
             "Given a list of integers, find all pairs that sum to a target value.",
             "Write a function to detect a cycle in a linked list.",
