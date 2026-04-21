@@ -59,6 +59,10 @@ work through each step methodically, and deliver a clean solution with explanati
 """
             },
 
+            # Here the solver agent is responsible for both planning and execution — it creates
+            # the checklist itself before writing any code. An alternative design would split
+            # these concerns: a dedicated planner agent decomposes the problem and comes up with a plan,
+            # then hands off to a separate executor agent to work through it.
             "instructions": """
 You are an expert software engineer who solves coding problems by following a disciplined,
 step-by-step process. You use a private internal checklist to plan and track your own
@@ -67,7 +71,7 @@ reasoning — it is YOUR work plan, not a list of instructions for the user.
 ## Your Internal Workflow
 
 **Step 1 — Plan first, always.**
-Before writing any code, call `create_checklist` to decompose the problem into your own
+Before writing any code, create checklist to decompose the problem into your own
 reasoning steps. Typical steps you might include (adapt to the problem):
   - Understand the problem and constraints
   - Identify input/output types and edge cases
@@ -75,28 +79,38 @@ reasoning steps. Typical steps you might include (adapt to the problem):
   - Design the algorithm (describe approach, e.g. two-pointer, BFS, DP)
   - Analyse time and space complexity
   - Write the solution
-  - Verify with example inputs / edge cases
+  - Run solution with example inputs via code_interpreter
+  - Fix any errors found and re-run
   - Refine or optimise if needed
 
 **Step 2 — Work through your checklist.**
 For each item on your checklist:
-  1. Call `update_checklist_item` with status "in_progress" before you begin that step.
+  1. Update checklist item with status "in_progress" before you begin that step.
   2. Do the work: think through it, write the relevant output.
-  3. Call `update_checklist_item` with status "done" (and a brief `notes` value capturing
+  3. Update checklist item with status "done" (and a brief `notes` value capturing
      the key decision or result of that step) before moving to the next.
 
-**Step 3 — Deliver the result.**
-Once all checklist items are done, present the final solution to the user:
+**Step 3 — Validate with code_interpreter.**
+Before presenting the solution, ALWAYS call `code_interpreter` to execute the code with:
+  - The provided example inputs
+  - At least one edge case (empty input, single element, duplicates, etc.)
+If the output is wrong or an exception is raised, update the affected checklist step back
+to "in_progress", fix the code, and re-run until all tests pass.
+
+**Step 4 — Deliver the result.**
+Once all checklist items are done and the code has been verified, present the final solution:
   - Clean, working code with a clear language/framework choice
   - A short explanation of the approach and why it was chosen
   - Time and space complexity
-  - At least one worked example showing the output
+  - The actual output from code_interpreter as the worked example
 
 ## Rules
-- ALWAYS call `create_checklist` before writing any code. Never skip planning.
+- ALWAYS create checklist before writing any code. Never skip planning.
+- ALWAYS call `code_interpreter` to run the code before delivering the answer. Never present unverified code.
 - Mark each step "in_progress" then "done" as you go — never bulk-update at the end.
 - Use `notes` to record the key insight or decision from each step (1–2 sentences max).
-- Use `get_checklist` if you need to re-read your current progress mid-solution.
+- If your approach changes mid-solution, edit checklist item to rewrite the affected
+  step(s) in place — do NOT recreate the whole checklist and lose completed progress.
 - Never show the checklist to the user. It is your internal plan only.
 - If the problem is ambiguous, ask ONE focused clarifying question before planning.
 - Prefer well-known idiomatic solutions; note trade-offs when alternatives exist.
@@ -115,14 +129,29 @@ Once all checklist items are done, present the final solution to the user:
                     # Registered tools available to the agent:
                     #   - create_checklist(items)                        — create or replace the plan
                     #   - update_checklist_item(index, status, notes?)   — advance a step
-                    #   - get_checklist()                                 — re-read current plan state
+                    #   - edit_checklist_item(index, new_item)           — rewrite a step when the plan changes
+                    #
+                    # The current checklist state is always injected into the system prompt
+                    # automatically by awrap_model_call — no read-back tool needed.
                     "class": "middleware.agent_checklist_middleware.AgentChecklistMiddleware",
 
                     "args": {
                         "checklist_title": "My Solution Plan"
                     }
                 }
-            ]
-        }
+            ],
+            "tools": ["code_interpreter"]
+        },
+
+        {
+            "name": "code_interpreter",            
+            "toolbox": "openai_code_interpreter",
+
+            # --- Optional Arguments ---
+            "args": {
+                # OpenAI model calls the built-in web search tool. Default to gpt-4o-2024-08-06.
+                "openai_model": "gpt-4.1"
+            }
+        },
     ]
 }

@@ -14,11 +14,10 @@
 #
 # END COPYRIGHT
 
-import logging
-from typing import Any
+from logging import getLogger
+from logging import Logger
 from typing import Awaitable
 from typing import Callable
-from typing import Literal
 from typing import override
 
 from langchain.agents.middleware.types import AgentMiddleware
@@ -31,9 +30,6 @@ from langchain_core.messages import BaseMessage
 from langchain_core.messages import SystemMessage
 from langchain_core.tools import BaseTool
 from langchain_core.tools import StructuredTool
-from langgraph.runtime import Runtime
-
-ChecklistStatus = Literal["pending", "in_progress", "done", "skipped"]
 
 VALID_STATUSES: set[str] = {"pending", "in_progress", "done", "skipped"}
 
@@ -59,13 +55,19 @@ class AgentChecklistMiddleware(AgentMiddleware):
         2. ``awrap_model_call()``: injects current checklist state into system prompt
         3. Agent calls ``create_checklist`` to create or replace the checklist
         4. Agent calls ``update_checklist_item`` to mark items done/skipped/etc.
-        5. Agent calls ``get_checklist`` to read the current checklist state
+        5. Agent calls ``edit_checklist_item`` to rewrite a step when the plan changes
+        6. Current state is always visible to the agent via the injected system prompt
 
     Checklist Item Schema:
         Each item is a dict with:
         - ``item``: str — description of the task
         - ``status``: str — one of "pending", "in_progress", "done", "skipped"
         - ``notes``: str — optional notes (default empty string)
+
+    Future Considerations:
+        The checklist currently lives only in memory for the duration of the agent session.
+        A future implementation may consider persisting the checklist (e.g. to a file or
+        database) so that progress can survive agent restarts or be shared across sessions.
 
     Example:
         .. code-block:: python
@@ -101,10 +103,10 @@ class AgentChecklistMiddleware(AgentMiddleware):
         self.tools: list[BaseTool] = [
             self._create_create_checklist_tool(),
             self._create_update_checklist_item_tool(),
-            self._create_get_checklist_tool(),
+            self._create_edit_checklist_item_tool(),
         ]
 
-        self.logger = logging.getLogger(__name__)
+        self.logger: Logger = getLogger(__name__)
 
     # ------------------------------------------------------------------
     # AgentMiddleware hooks
@@ -151,10 +153,18 @@ class AgentChecklistMiddleware(AgentMiddleware):
         if not items:
             return "Error: Cannot create an empty checklist. Provide at least one item."
 
-        self.checklist = [{"item": item.strip(), "status": "pending", "notes": ""} for item in items if item.strip()]
+        # Reset the checklist with new items, all starting as "pending"
+        self.checklist = []
+        for item in items:
+            if item.strip():
+                self.checklist.append({"item": item.strip(), "status": "pending", "notes": ""})
 
         self.logger.info("Checklist created with %d items", len(self.checklist))
-        return f"Checklist created with {len(self.checklist)} items.\n\n{self.get_checklist()}"
+
+        # Returns the formatted checklist.
+        # This is actually not necessary since the agent will see the updated checklist in the next model call,
+        # but it can be helpful for debugging.
+        return self._format_checklist_prompt()
 
     async def update_checklist_item(
         self,
@@ -176,7 +186,7 @@ class AgentChecklistMiddleware(AgentMiddleware):
             return f"Error: Invalid status '{status}'. Must be one of: {', '.join(sorted(VALID_STATUSES))}"
 
         # Convert to 0-based index
-        idx = item_index - 1
+        idx: int = item_index - 1
         if idx < 0 or idx >= len(self.checklist):
             return (
                 f"Error: Item index {item_index} is out of range. "
@@ -187,31 +197,46 @@ class AgentChecklistMiddleware(AgentMiddleware):
         if notes:
             self.checklist[idx]["notes"] = notes
 
-        item_desc = self.checklist[idx]["item"]
+        item_desc: str = self.checklist[idx].get("item", "Unknown item")
         self.logger.info("Checklist item %d updated to '%s': %s", item_index, status, item_desc)
-        return f"Item {item_index} updated to '{status}': {item_desc}\n\n{self.get_checklist()}"
 
-    def get_checklist(self) -> str:
-        """Return the current checklist as a formatted string.
+        # Returns the formatted checklist.
+        # This is actually not necessary since the agent will see the updated checklist in the next model call,
+        # but it can be helpful for debugging.
+        return self._format_checklist_prompt()
 
-        :return: Formatted checklist or message if empty
+    async def edit_checklist_item(self, item_index: int, new_item: str) -> str:
+        """Rewrite the description of a checklist item without changing its status or notes.
+
+        Use this when the plan changes and a step needs to be replaced with a different
+        approach. The item's current status and notes are preserved.
+
+        :param item_index: 1-based index of the item to edit
+        :param new_item: New description for the item
+        :return: Confirmation message or error
         """
         if not self.checklist:
-            return "Checklist is empty."
+            return "Error: No checklist exists. Use create_checklist first."
 
-        lines: list[str] = [f"## {self.checklist_title}", ""]
-        for i, entry in enumerate(self.checklist, start=1):
-            symbol = STATUS_SYMBOLS.get(entry["status"], "[ ]")
-            lines.append(f"{i}. {symbol} {entry['item']}")
-            if entry.get("notes"):
-                lines.append(f"   > {entry['notes']}")
+        if not new_item or not new_item.strip():
+            return "Error: new_item cannot be empty."
 
-        total = len(self.checklist)
-        done = sum(1 for e in self.checklist if e["status"] == "done")
-        skipped = sum(1 for e in self.checklist if e["status"] == "skipped")
-        lines.extend(["", f"Progress: {done}/{total} done, {skipped} skipped"])
+        idx = item_index - 1
+        if idx < 0 or idx >= len(self.checklist):
+            return (
+                f"Error: Item index {item_index} is out of range. "
+                f"Checklist has {len(self.checklist)} item(s) (use 1-based index)."
+            )
 
-        return "\n".join(lines)
+        old_desc: str = self.checklist[idx].get("item", "Unknown item")
+        self.checklist[idx]["item"] = new_item.strip()
+
+        self.logger.info("Checklist item %d rewritten: '%s' -> '%s'", item_index, old_desc, new_item.strip())
+
+        # Returns the formatted checklist.
+        # This is actually not necessary since the agent will see the updated checklist in the next model call,
+        # but it can be helpful for debugging.
+        return self._format_checklist_prompt()
 
     # ------------------------------------------------------------------
     # Tool factories
@@ -279,23 +304,32 @@ class AgentChecklistMiddleware(AgentMiddleware):
             tags=["langchain_tool"],
         )
 
-    def _create_get_checklist_tool(self) -> BaseTool:
-        """Create tool for reading the current checklist.
+    def _create_edit_checklist_item_tool(self) -> BaseTool:
+        """Create tool for rewriting a checklist item's description.
 
-        :return: StructuredTool for checklist retrieval
+        :return: StructuredTool for item text edits
         """
         return StructuredTool.from_function(
-            # Synchronous — no I/O needed
-            func=self.get_checklist,
-            name="get_checklist",
+            coroutine=self.edit_checklist_item,
+            name="edit_checklist_item",
             description=(
-                "Get the current checklist with all items and their statuses. "
-                "Use this to review what has been done and what remains."
+                "Rewrite the description of a checklist item when the plan changes. "
+                "The item's status and notes are preserved — only the text is replaced. "
+                "Use this instead of recreating the whole checklist when only one step needs to change."
             ),
             args_schema={
                 "type": "object",
-                "properties": {},
-                "required": [],
+                "properties": {
+                    "item_index": {
+                        "type": "integer",
+                        "description": "1-based index of the checklist item to rewrite",
+                    },
+                    "new_item": {
+                        "type": "string",
+                        "description": "New description to replace the current item text",
+                    },
+                },
+                "required": ["item_index", "new_item"],
             },
             tags=["langchain_tool"],
         )

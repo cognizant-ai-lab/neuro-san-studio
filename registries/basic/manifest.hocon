@@ -22,7 +22,7 @@
     # Basic examples
     #
     "basic/advanced_calculator.hocon": false,
-    "basic/checklist_assistant.hocon": true,
+    "basic/coding_assistant.hocon": true,
     "basic/coffee_finder_advanced.hocon": true,
     "basic/coffee_finder.hocon": true,
     "basic/hello_world.hocon": true,
