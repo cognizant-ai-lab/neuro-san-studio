@@ -15,76 +15,46 @@
 # END COPYRIGHT
 
 """
-Tests for MemoryMiddleware — the wrapper that exposes PersistentMemoryTool
+Tests for PersistentMemoryMiddleware — the wrapper that exposes PersistentMemoryTool
 as a LangChain ``AgentMiddleware`` / ``StructuredTool``.
 """
 
 import asyncio
-import os
-import shutil
-import tempfile
 from unittest import TestCase
 from unittest.mock import AsyncMock
 from unittest.mock import patch
 
-from middleware.memory_middleware import MEMORY_TOOL_NAME
-from middleware.memory_middleware import MemoryMiddleware
-from middleware.memory_middleware import build_preamble
+from middleware.persistent_memory import MemorySummariser
+from middleware.persistent_memory import PersistentMemoryMiddleware
+from middleware.persistent_memory.persistent_memory_middleware import MEMORY_TOOL_NAME
+
+from tests.coded_tools.tools.persistent_memory._base import MemoryTestBase
 
 
-def _clean_env_dict() -> dict[str, str]:
-    return {k: v for k, v in os.environ.items() if not k.startswith("MEMORY_")}
-
-
-def _make_middleware(root_path: str, sly_data=None, enabled_operations=None) -> MemoryMiddleware:
-    """Build a middleware on the file_system backend under an isolated tmpdir."""
-    return MemoryMiddleware(
-        agent_network_name="test_net",
-        agent_name="test_agent",
-        store_config={"backend": "file_system", "root_path": root_path},
-        enabled_operations=enabled_operations,
-        sly_data=sly_data or {"user_id": "alice"},
-    )
-
-
-class TestMemoryMiddlewareRegistration(TestCase):
+class TestPersistentMemoryMiddlewareRegistration(MemoryTestBase):
     """The middleware registers exactly one tool, named ``persistent_memory``."""
-
-    def setUp(self) -> None:
-        self._env_patch = patch.dict(os.environ, _clean_env_dict(), clear=True)
-        self._env_patch.start()
-        self.addCleanup(self._env_patch.stop)
-        self._tmp = tempfile.mkdtemp()
-        self.addCleanup(shutil.rmtree, self._tmp, ignore_errors=True)
 
     def test_registers_single_named_tool(self):
         """One dispatcher tool, named as MEMORY_TOOL_NAME, tagged for journalling."""
-        mw = _make_middleware(root_path=self._tmp)
+        mw = self.make_middleware()
         self.assertEqual(len(mw.tools), 1)
         self.assertEqual(mw.tools[0].name, MEMORY_TOOL_NAME)
         self.assertIn("langchain_tool", mw.tools[0].tags or [])
 
     def test_schema_enum_reflects_enabled_operations(self):
         """The tool's arg schema constrains 'operation' to the enabled ops — the LLM cannot pick a disabled one."""
-        mw = _make_middleware(root_path=self._tmp, enabled_operations=["read", "search"])
+        mw = self.make_middleware(enabled_operations=["read", "search"])
         schema = mw.tools[0].args_schema
         enum_values = schema["properties"]["operation"]["enum"]
         self.assertCountEqual(enum_values, ["read", "search"])
 
 
-class TestMemoryMiddlewareDispatch(TestCase):
+class TestPersistentMemoryMiddlewareDispatch(MemoryTestBase):
     """The tool forwards to PersistentMemoryTool.async_invoke with the right args + sly_data."""
-
-    def setUp(self) -> None:
-        self._env_patch = patch.dict(os.environ, _clean_env_dict(), clear=True)
-        self._env_patch.start()
-        self.addCleanup(self._env_patch.stop)
-        self._tmp = tempfile.mkdtemp()
-        self.addCleanup(shutil.rmtree, self._tmp, ignore_errors=True)
 
     def test_end_to_end_create_then_search(self):
         """A create via the middleware's tool is searchable via the same tool."""
-        mw = _make_middleware(root_path=self._tmp)
+        mw = self.make_middleware()
         tool_fn = mw.tools[0]
 
         create_result = asyncio.run(tool_fn.coroutine(operation="create", key="k1", content="loves dark coffee"))
@@ -96,7 +66,7 @@ class TestMemoryMiddlewareDispatch(TestCase):
 
     def test_forwarding_passes_sly_data_to_underlying_tool(self):
         """Middleware's sly_data reaches PersistentMemoryTool.async_invoke."""
-        mw = _make_middleware(root_path=self._tmp, sly_data={"user_id": "alice"})
+        mw = self.make_middleware(sly_data={"user_id": "alice"})
         mock_invoke = AsyncMock(return_value={"result": {"ok": True}})
         with patch.object(mw.persistent_memory_tool, "async_invoke", mock_invoke):
             asyncio.run(mw.tools[0].coroutine(operation="list"))
@@ -110,75 +80,56 @@ class TestMemoryMiddlewareDispatch(TestCase):
         self.assertEqual(called_sly, {"user_id": "alice"})
 
 
-class TestMemoryMiddlewarePreamble(TestCase):
-    """``_build_preamble`` yields a short, operation-aware string."""
-
-    def setUp(self) -> None:
-        self._env_patch = patch.dict(os.environ, _clean_env_dict(), clear=True)
-        self._env_patch.start()
-        self.addCleanup(self._env_patch.stop)
-        self._tmp = tempfile.mkdtemp()
-        self.addCleanup(shutil.rmtree, self._tmp, ignore_errors=True)
+class TestPersistentMemoryMiddlewarePreamble(MemoryTestBase):
+    """``PersistentMemoryMiddleware.build_preamble`` yields a short, operation-aware string."""
 
     def test_preamble_mentions_tool_name_and_ops(self):
         """The system-prompt preamble mentions the tool name and each enabled op."""
-        mw = _make_middleware(root_path=self._tmp, enabled_operations=["read", "search"])
-        text = build_preamble(mw.persistent_memory_tool.enabled_operations)
+        mw = self.make_middleware(enabled_operations=["read", "search"])
+        text = PersistentMemoryMiddleware.build_preamble(mw.persistent_memory_tool.enabled_operations)
         self.assertIn(MEMORY_TOOL_NAME, text)
         self.assertIn("read", text)
         self.assertIn("search", text)
 
 
-class TestMemoryMiddlewareClose(TestCase):
+class TestPersistentMemoryMiddlewareClose(MemoryTestBase):
     """``aafter_agent`` closes the underlying tool and swallows errors."""
-
-    def setUp(self) -> None:
-        self._env_patch = patch.dict(os.environ, _clean_env_dict(), clear=True)
-        self._env_patch.start()
-        self.addCleanup(self._env_patch.stop)
-        self._tmp = tempfile.mkdtemp()
-        self.addCleanup(shutil.rmtree, self._tmp, ignore_errors=True)
 
     def test_aafter_agent_calls_tool_close(self):
         """Lifecycle hook delegates cleanup to PersistentMemoryTool.close."""
-        mw = _make_middleware(root_path=self._tmp)
+        mw = self.make_middleware()
         mock_close = AsyncMock()
         with patch.object(mw.persistent_memory_tool, "close", mock_close):
             asyncio.run(mw.aafter_agent(state=None, runtime=None))
         mock_close.assert_awaited_once()
 
 
-class TestMemoryMiddlewareAutoCompact(TestCase):
+class TestPersistentMemoryMiddlewareAutoCompact(MemoryTestBase):
     """After a write, if the file has grown past ``compact_threshold``,
     the middleware rewrites it in-place with a summarised version."""
 
-    def setUp(self) -> None:
-        self._env_patch = patch.dict(os.environ, _clean_env_dict(), clear=True)
-        self._env_patch.start()
-        self.addCleanup(self._env_patch.stop)
-        self._tmp = tempfile.mkdtemp()
-        self.addCleanup(shutil.rmtree, self._tmp, ignore_errors=True)
+    def _mw_with_summariser(self, *, compact_on_write: bool, threshold: int):
+        """Build a middleware with a stubbed summariser so we can drive compaction without hitting a real LLM.
 
-    def _mw_with_summarizer(self, *, compact_on_write: bool, threshold: int):
-        """Build a middleware with a stubbed summarizer so we can drive compaction without hitting a real LLM."""
-        mw = _make_middleware(root_path=self._tmp)
-        # Replace the real _Summarizer instance with a stub that does not need
+        :param compact_on_write: Value to set on the stub summariser.
+        :param threshold: Compact threshold to set on the stub.
+        :return: ``(middleware, stub_summariser)`` tuple.
+        """
+        mw = self.make_middleware()
+        # Replace the real MemorySummariser instance with a stub that does not need
         # an API key. We only care about the public surface _maybe_compact uses.
-        # pylint: disable=import-outside-toplevel
-        from middleware.memory_middleware import _Summarizer
-
-        stub = _Summarizer.__new__(_Summarizer)
+        stub = MemorySummariser.__new__(MemorySummariser)
         stub.compact_on_write = compact_on_write
         stub.compact_threshold = threshold
         stub.summarise = AsyncMock(return_value="SUMMARISED")
         stub.post_process = AsyncMock(side_effect=lambda _op, result: result)
         # pylint: disable=protected-access
-        mw._summarizer = stub
+        mw._summariser = stub
         return mw, stub
 
     def test_write_past_threshold_triggers_compact(self):
         """A create that pushes the file past the threshold is rewritten with the summary."""
-        mw, stub = self._mw_with_summarizer(compact_on_write=True, threshold=20)
+        mw, stub = self._mw_with_summariser(compact_on_write=True, threshold=20)
         tool_fn = mw.tools[0]
 
         # Long content → crosses threshold of 20 chars.
@@ -194,7 +145,7 @@ class TestMemoryMiddlewareAutoCompact(TestCase):
 
     def test_write_under_threshold_skips_compact(self):
         """A short write does not trigger the summariser — avoid unnecessary LLM calls."""
-        mw, stub = self._mw_with_summarizer(compact_on_write=True, threshold=200)
+        mw, stub = self._mw_with_summariser(compact_on_write=True, threshold=200)
         tool_fn = mw.tools[0]
 
         asyncio.run(tool_fn.coroutine(operation="create", key="k1", content="short"))
@@ -207,7 +158,7 @@ class TestMemoryMiddlewareAutoCompact(TestCase):
 
     def test_compact_disabled_skips_even_when_over_threshold(self):
         """With compact_on_write=False the file is kept verbatim regardless of size."""
-        mw, stub = self._mw_with_summarizer(compact_on_write=False, threshold=10)
+        mw, stub = self._mw_with_summariser(compact_on_write=False, threshold=10)
         tool_fn = mw.tools[0]
 
         long_content = "y" * 100
@@ -227,20 +178,14 @@ class TestMemoryMiddlewareAutoCompact(TestCase):
         auto-compact still needs to rewrite the file, so it uses the tool's
         internal backdoor which bypasses the whitelist.
         """
-        mw = _make_middleware(
-            root_path=self._tmp,
-            enabled_operations=["read", "append", "delete", "search"],
-        )
-        # pylint: disable=import-outside-toplevel
-        from middleware.memory_middleware import _Summarizer
-
-        stub = _Summarizer.__new__(_Summarizer)
+        mw = self.make_middleware(enabled_operations=["read", "append", "delete", "search"])
+        stub = MemorySummariser.__new__(MemorySummariser)
         stub.compact_on_write = True
         stub.compact_threshold = 20
         stub.summarise = AsyncMock(return_value="SUMMARISED")
         stub.post_process = AsyncMock(side_effect=lambda _op, result: result)
         # pylint: disable=protected-access
-        mw._summarizer = stub
+        mw._summariser = stub
 
         tool_fn = mw.tools[0]
         long_content = "x" * 50
@@ -256,7 +201,7 @@ class TestMemoryMiddlewareAutoCompact(TestCase):
 
     def test_compact_failure_does_not_break_write(self):
         """If the summariser errors, the original write is still visible — compaction is best-effort."""
-        mw, stub = self._mw_with_summarizer(compact_on_write=True, threshold=10)
+        mw, stub = self._mw_with_summariser(compact_on_write=True, threshold=10)
         stub.summarise = AsyncMock(side_effect=RuntimeError("LLM exploded"))
         tool_fn = mw.tools[0]
 
@@ -270,30 +215,27 @@ class TestMemoryMiddlewareAutoCompact(TestCase):
         self.assertEqual(read["result"]["content"], long_content)
 
 
-class TestSummarizerPersonalization(TestCase):
+class TestMemorySummariserPersonalization(TestCase):
     """Optional HOCON 'personalization' field is appended to the base instructions at call time."""
 
     def test_personalization_from_config_is_appended_to_system_prompt(self):
         """from_config reads 'personalization' and summarise() passes it to the LLM."""
-        # pylint: disable=import-outside-toplevel
-        from middleware.memory_middleware import _Summarizer
-
-        with patch("langchain_openai.ChatOpenAI") as fake_chat_cls:
+        with patch("middleware.persistent_memory.memory_summariser.ChatOpenAI") as fake_chat_cls:
             fake_llm = AsyncMock()
             fake_response = AsyncMock()
             fake_response.content = "ok"
             fake_llm.ainvoke = AsyncMock(return_value=fake_response)
             fake_chat_cls.return_value = fake_llm
 
-            summarizer = _Summarizer.from_config(
+            summariser = MemorySummariser.from_config(
                 {
                     "enabled": True,
                     "instructions": "Base instructions.",
                     "personalization": "Always mention the user's favourite colour is teal.",
                 }
             )
-            self.assertIsNotNone(summarizer)
-            asyncio.run(summarizer.summarise("x" * 400))
+            self.assertIsNotNone(summariser)
+            asyncio.run(summariser.summarise("x" * 400))
 
         fake_llm.ainvoke.assert_awaited_once()
         messages = fake_llm.ainvoke.call_args[0][0]

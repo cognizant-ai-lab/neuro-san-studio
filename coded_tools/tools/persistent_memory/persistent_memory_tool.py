@@ -34,8 +34,8 @@ Supported operations (each independently enabled/disabled via HOCON):
     list    — list all keys in the topic's namespace
 
 The backend is selected by the ``MEMORY_BACKEND`` environment variable (or by
-the ``store_config`` block in HOCON). See :py:func:`create_store` in
-``coded_tools.tools.persistent_memory.base_memory_store`` for the full
+the ``store_config`` block in HOCON). See :py:class:`MemoryStoreFactory`
+in ``coded_tools.tools.persistent_memory.memory_store_factory`` for the full
 resolution chain.
 
 Example HOCON snippet::
@@ -47,7 +47,7 @@ Example HOCON snippet::
         "agent_network_name": "intranet_agents",
         "agent_name":         "hr_agent",
         "store_config": {
-            "backend":   "file_system",
+            "backend":   "markdown_file",
             "root_path": "./memory"
         },
         "enabled_operations": ["create", "read", "update", "delete", "search", "list"]
@@ -57,54 +57,20 @@ Example HOCON snippet::
 """
 
 import logging
-import re
 from typing import Any
+from typing import Awaitable
+from typing import Callable
 from typing import Optional
 
 from neuro_san.interfaces.coded_tool import CodedTool
 
-from coded_tools.tools.persistent_memory.base_memory_store import BaseMemoryStore
-from coded_tools.tools.persistent_memory.base_memory_store import MemoryItem
-from coded_tools.tools.persistent_memory.base_memory_store import Namespace
-from coded_tools.tools.persistent_memory.memory_store_factory import create_store
+from coded_tools.tools.persistent_memory.memory_item import MemoryItem
+from coded_tools.tools.persistent_memory.memory_item import Namespace
+from coded_tools.tools.persistent_memory.memory_store import MemoryStore
+from coded_tools.tools.persistent_memory.memory_store_factory import MemoryStoreFactory
+from coded_tools.tools.persistent_memory.path_component import PathComponent
 
 logger = logging.getLogger(__name__)
-
-# All valid operation names. ``enabled_operations`` in HOCON selects a subset
-# of these; unknown names there are logged and ignored.
-_OP_CREATE: str = "create"
-_OP_READ: str = "read"
-_OP_UPDATE: str = "update"
-_OP_APPEND: str = "append"
-_OP_DELETE: str = "delete"
-_OP_SEARCH: str = "search"
-_OP_LIST: str = "list"
-
-ALL_OPERATIONS: frozenset[str] = frozenset(
-    {
-        _OP_CREATE,
-        _OP_READ,
-        _OP_UPDATE,
-        _OP_APPEND,
-        _OP_DELETE,
-        _OP_SEARCH,
-        _OP_LIST,
-    }
-)
-
-# Default number of results returned by ``search`` if the LLM does not supply one.
-DEFAULT_SEARCH_LIMIT: int = 5
-
-# Default topic when the caller supplies none. All callers that omit a
-# topic share this one file — almost always a misconfiguration, so we log
-# a warning when the fallback fires.
-_DEFAULT_TOPIC: str = "default"
-
-# Default entry key when the LLM omits ``key``. Agents that want clean prose
-# files ("one blob per topic", no section scaffolding) can instruct the LLM
-# to drop the ``key`` arg entirely — everything then lands under this key
-# and the file-system backend writes it without a heading.
-_DEFAULT_KEY: str = "content"
 
 
 class PersistentMemoryTool(CodedTool):
@@ -116,6 +82,46 @@ class PersistentMemoryTool(CodedTool):
     ``tool_config.enabled_operations`` — the LLM cannot expand it.
     """
 
+    # ------------------------------------------------------------------
+    # Class constants
+    # ------------------------------------------------------------------
+
+    # Valid operation names. ``enabled_operations`` in HOCON selects a subset
+    # of these; unknown names there are logged and ignored.
+    _OP_CREATE: str = "create"
+    _OP_READ: str = "read"
+    _OP_UPDATE: str = "update"
+    _OP_APPEND: str = "append"
+    _OP_DELETE: str = "delete"
+    _OP_SEARCH: str = "search"
+    _OP_LIST: str = "list"
+
+    ALL_OPERATIONS: frozenset[str] = frozenset(
+        {
+            _OP_CREATE,
+            _OP_READ,
+            _OP_UPDATE,
+            _OP_APPEND,
+            _OP_DELETE,
+            _OP_SEARCH,
+            _OP_LIST,
+        }
+    )
+
+    # Default number of results returned by ``search`` if the LLM does not supply one.
+    DEFAULT_SEARCH_LIMIT: int = 5
+
+    # Default topic when the caller supplies none. All callers that omit a
+    # topic share this one file — almost always a misconfiguration, so we log
+    # a warning when the fallback fires.
+    _DEFAULT_TOPIC: str = "default"
+
+    # Default entry key when the LLM omits ``key``. Agents that want clean prose
+    # files ("one blob per topic", no section scaffolding) can instruct the LLM
+    # to drop the ``key`` arg entirely — everything then lands under this key
+    # and the file-system backend writes it without a heading.
+    _DEFAULT_KEY: str = "content"
+
     def __init__(self, tool_config: Optional[dict[str, Any]] = None) -> None:
         """
         :param tool_config: Dict from the HOCON ``tool_config`` block. Keys:
@@ -123,7 +129,7 @@ class PersistentMemoryTool(CodedTool):
             agent_network_name   (str, required) — first part of the namespace.
             agent_name           (str, required) — second part of the namespace.
             store_config         (dict, optional) — backend configuration. See
-                                 ``base_memory_store.resolve_config``.
+                                 ``memory_store_config.MemoryStoreConfig.resolve``.
             enabled_operations   (list[str], optional) — subset of
                                  ``ALL_OPERATIONS``. Defaults to all six.
         """
@@ -134,14 +140,14 @@ class PersistentMemoryTool(CodedTool):
 
         # Build the backend. Failures here (bad config, missing optional dep)
         # surface immediately at agent startup rather than on the first LLM call.
-        self._store: BaseMemoryStore = create_store(config.get("store_config"))
+        self._store: MemoryStore = MemoryStoreFactory.create(config.get("store_config"))
 
         # Resolve enabled operations.
-        raw_ops: list[str] = list(config.get("enabled_operations") or ALL_OPERATIONS)
+        raw_ops: list[str] = list(config.get("enabled_operations") or self.ALL_OPERATIONS)
         cleaned_ops: set[str] = {str(op).strip().lower() for op in raw_ops if op}
-        self._enabled_operations: frozenset[str] = frozenset(cleaned_ops) & ALL_OPERATIONS
+        self._enabled_operations: frozenset[str] = frozenset(cleaned_ops) & self.ALL_OPERATIONS
 
-        unknown_ops: set[str] = cleaned_ops - ALL_OPERATIONS
+        unknown_ops: set[str] = cleaned_ops - self.ALL_OPERATIONS
         if unknown_ops:
             logger.warning(
                 "PersistentMemoryTool (%s/%s): ignoring unknown operations in enabled_operations: %s",
@@ -164,6 +170,9 @@ class PersistentMemoryTool(CodedTool):
     async def async_invoke(self, args: dict[str, Any], sly_data: dict[str, Any]) -> dict[str, Any]:
         """
         Route one LLM call to the right handler.
+
+        Overrides :py:meth:`neuro_san.interfaces.coded_tool.CodedTool.async_invoke`
+        — the single entry point neuro-san invokes for every tool call.
 
         :param args: Arguments provided by the LLM. Expected keys:
 
@@ -192,6 +201,10 @@ class PersistentMemoryTool(CodedTool):
     async def async_invoke_internal(self, args: dict[str, Any], sly_data: dict[str, Any]) -> dict[str, Any]:
         """Run an operation bypassing the LLM-facing ``enabled_operations`` whitelist.
 
+        Custom entry point (not a framework hook). Shaped like ``async_invoke``
+        on purpose so middleware / plumbing code can reuse the dispatch path
+        for trusted internal operations (e.g. auto-compact).
+
         Intended for middleware-driven internal operations (e.g. auto-compact
         rewriting a file) where the caller is trusted and the whitelist exists
         only to constrain the LLM's schema. Still validates that the operation
@@ -203,15 +216,20 @@ class PersistentMemoryTool(CodedTool):
         """
         operation: str = str(args.get("operation") or "").strip().lower()
         if not operation:
-            return _error("Missing 'operation'. Must be one of: " + ", ".join(sorted(ALL_OPERATIONS)))
-        if operation not in ALL_OPERATIONS:
-            return _error(f"Unknown operation '{operation}'. Must be one of: {', '.join(sorted(ALL_OPERATIONS))}")
+            return self._error("Missing 'operation'. Must be one of: " + ", ".join(sorted(self.ALL_OPERATIONS)))
+        if operation not in self.ALL_OPERATIONS:
+            return self._error(
+                f"Unknown operation '{operation}'. Must be one of: {', '.join(sorted(self.ALL_OPERATIONS))}"
+            )
         return await self._dispatch_operation(operation, args, sly_data)
 
     async def _dispatch_operation(
         self, operation: str, args: dict[str, Any], sly_data: dict[str, Any]
     ) -> dict[str, Any]:
         """Build the namespace and run the operation's handler with uniform error handling.
+
+        Custom helper (not a framework hook). Shared by :py:meth:`async_invoke`
+        and :py:meth:`async_invoke_internal`.
 
         :param operation: Validated operation name (already in ``ALL_OPERATIONS``).
         :param args: Dispatcher args from the caller.
@@ -221,7 +239,7 @@ class PersistentMemoryTool(CodedTool):
         namespace: Namespace = (
             self._agent_network_name,
             self._agent_name,
-            _resolve_topic(args, sly_data),
+            self._resolve_topic(args, sly_data),
         )
 
         handler = self._handlers[operation]
@@ -233,20 +251,25 @@ class PersistentMemoryTool(CodedTool):
         # traceback is logged.
         except Exception as error:  # pylint: disable=broad-exception-caught
             logger.exception("PersistentMemoryTool: error during '%s'", operation)
-            return _error(f"Unexpected error during '{operation}': {error}")
+            return self._error(f"Unexpected error during '{operation}': {error}")
 
     def _validate_operation(self, operation: str) -> Optional[dict[str, Any]]:
         """Check that ``operation`` is known AND enabled for this tool.
+
+        Custom helper (not a framework hook). Used only by the LLM-facing
+        :py:meth:`async_invoke`; internal callers skip the whitelist check.
 
         :param operation: Lower-cased operation name from the caller.
         :return: An error envelope if missing / unknown / disabled, else ``None``.
         """
         if not operation:
-            return _error("Missing 'operation'. Must be one of: " + ", ".join(sorted(ALL_OPERATIONS)))
-        if operation not in ALL_OPERATIONS:
-            return _error(f"Unknown operation '{operation}'. Must be one of: {', '.join(sorted(ALL_OPERATIONS))}")
+            return self._error("Missing 'operation'. Must be one of: " + ", ".join(sorted(self.ALL_OPERATIONS)))
+        if operation not in self.ALL_OPERATIONS:
+            return self._error(
+                f"Unknown operation '{operation}'. Must be one of: {', '.join(sorted(self.ALL_OPERATIONS))}"
+            )
         if operation not in self._enabled_operations:
-            return _error(
+            return self._error(
                 f"Operation '{operation}' is not enabled for this agent. "
                 f"Enabled: {', '.join(sorted(self._enabled_operations))}"
             )
@@ -256,16 +279,20 @@ class PersistentMemoryTool(CodedTool):
     def _handlers(self) -> dict[str, Any]:
         """Dispatch table from operation name to its handler coroutine.
 
+        Custom helper (not a framework hook). Exposed as a property so
+        subclasses can override or extend the table without touching
+        :py:meth:`_dispatch_operation`.
+
         :return: Mapping of operation name → bound ``_handle_*`` coroutine.
         """
         return {
-            _OP_CREATE: self._handle_create,
-            _OP_READ: self._handle_read,
-            _OP_UPDATE: self._handle_update,
-            _OP_APPEND: self._handle_append,
-            _OP_DELETE: self._handle_delete,
-            _OP_SEARCH: self._handle_search,
-            _OP_LIST: self._handle_list,
+            self._OP_CREATE: self._handle_create,
+            self._OP_READ: self._handle_read,
+            self._OP_UPDATE: self._handle_update,
+            self._OP_APPEND: self._handle_append,
+            self._OP_DELETE: self._handle_delete,
+            self._OP_SEARCH: self._handle_search,
+            self._OP_LIST: self._handle_list,
         }
 
     # ------------------------------------------------------------------
@@ -284,11 +311,11 @@ class PersistentMemoryTool(CodedTool):
         :param namespace: Resolved ``(network, agent, topic)`` namespace.
         :return: Result envelope with ``status`` and ``key``.
         """
-        content: str = _str(args.get("content"))
+        content: str = self._str(args.get("content"))
         if not content:
-            return _error("Operation 'create' requires 'content'.")
+            return self._error("Operation 'create' requires 'content'.")
 
-        key: str = _str(args.get("key")) or _DEFAULT_KEY
+        key: str = self._str(args.get("key")) or self._DEFAULT_KEY
         await self._store.create(namespace, key, {"content": content})
 
         logger.debug("PersistentMemoryTool: created key='%s' in %s", key, namespace)
@@ -301,11 +328,11 @@ class PersistentMemoryTool(CodedTool):
         :param namespace: Resolved ``(network, agent, topic)`` namespace.
         :return: Result envelope with ``key`` and ``content``, or an error if absent.
         """
-        key: str = _str(args.get("key")) or _DEFAULT_KEY
+        key: str = self._str(args.get("key")) or self._DEFAULT_KEY
 
         item: Optional[MemoryItem] = await self._store.read(namespace, key)
         if item is None:
-            return _error(f"No memory entry found for key='{key}'.")
+            return self._error(f"No memory entry found for key='{key}'.")
 
         logger.debug("PersistentMemoryTool: read key='%s' from %s", key, namespace)
         return {"result": {"key": key, "content": item.value.get("content", "")}}
@@ -321,10 +348,10 @@ class PersistentMemoryTool(CodedTool):
         :param namespace: Resolved ``(network, agent, topic)`` namespace.
         :return: Result envelope with ``status`` and ``key``.
         """
-        key: str = _str(args.get("key")) or _DEFAULT_KEY
-        content: str = _str(args.get("content"))
+        key: str = self._str(args.get("key")) or self._DEFAULT_KEY
+        content: str = self._str(args.get("content"))
         if not content:
-            return _error("Operation 'update' requires 'content'.")
+            return self._error("Operation 'update' requires 'content'.")
 
         await self._store.update(namespace, key, {"content": content})
 
@@ -347,10 +374,10 @@ class PersistentMemoryTool(CodedTool):
         :param namespace: Resolved ``(network, agent, topic)`` namespace.
         :return: Result envelope with ``status`` and ``key``.
         """
-        key: str = _str(args.get("key")) or _DEFAULT_KEY
-        content: str = _str(args.get("content"))
+        key: str = self._str(args.get("key")) or self._DEFAULT_KEY
+        content: str = self._str(args.get("content"))
         if not content:
-            return _error("Operation 'append' requires 'content'.")
+            return self._error("Operation 'append' requires 'content'.")
 
         existing: Optional[MemoryItem] = await self._store.read(namespace, key)
         if existing is None:
@@ -371,7 +398,7 @@ class PersistentMemoryTool(CodedTool):
         :param namespace: Resolved ``(network, agent, topic)`` namespace.
         :return: Result envelope with ``status`` and ``key``.
         """
-        key: str = _str(args.get("key")) or _DEFAULT_KEY
+        key: str = self._str(args.get("key")) or self._DEFAULT_KEY
 
         await self._store.delete(namespace, key)
 
@@ -388,11 +415,11 @@ class PersistentMemoryTool(CodedTool):
         :param namespace: Resolved ``(network, agent, topic)`` namespace.
         :return: Result envelope with a ``results`` list of ``{key, content, score?}``.
         """
-        query: str = _str(args.get("query"))
+        query: str = self._str(args.get("query"))
         if not query:
-            return _error("Operation 'search' requires 'query'.")
+            return self._error("Operation 'search' requires 'query'.")
 
-        limit: int = _parse_limit(args.get("limit"), DEFAULT_SEARCH_LIMIT)
+        limit: int = self._parse_limit(args.get("limit"), self.DEFAULT_SEARCH_LIMIT)
         raw_results: list[MemoryItem] = await self._store.search(namespace, query, limit)
 
         results: list[dict[str, Any]] = []
@@ -420,6 +447,9 @@ class PersistentMemoryTool(CodedTool):
         :param namespace: Resolved ``(network, agent, topic)`` namespace.
         :return: Result envelope with a sorted ``keys`` list.
         """
+        # ``list`` takes no caller args — the signature exists only to match
+        # the uniform ``(args, namespace)`` shape every ``_handle_*`` shares.
+        # Explicit ``del`` keeps linters (unused-arg) quiet and signals intent.
         del args
         keys: list[str] = await self._store.list(namespace)
         logger.debug(
@@ -437,105 +467,142 @@ class PersistentMemoryTool(CodedTool):
         """
         return self._enabled_operations
 
+    async def atomic_update_entry(
+        self,
+        args: dict[str, Any],
+        sly_data: dict[str, Any],
+        transform: Callable[[Optional[str]], Awaitable[Optional[str]]],
+    ) -> Optional[str]:
+        """Read-transform-write a single entry's ``content`` atomically.
+
+        Custom entry point (not a framework hook). Exists so middleware — e.g.
+        auto-compact in
+        :py:class:`middleware.persistent_memory.persistent_memory_middleware.PersistentMemoryMiddleware` —
+        can rewrite an entry under one lock acquisition. The read inside the
+        transform and the subsequent write share the namespace lock, so
+        concurrent writers cannot interleave between them.
+
+        The transform receives the current ``content`` string (or ``None`` if
+        the key is absent) and returns the replacement content. Returning
+        ``None`` signals "no change" — the file is left untouched.
+
+        :param args: Dispatcher args; resolves ``topic`` and ``key`` from here.
+        :param sly_data: Neuro-SAN private data; used for topic fallback.
+        :param transform: Async callable receiving current content string,
+                          returning the new content string or ``None``.
+        :return: The content string that was written, or ``None`` if the
+                 transform opted out.
+        """
+        namespace: Namespace = (
+            self._agent_network_name,
+            self._agent_name,
+            self._resolve_topic(args, sly_data),
+        )
+        key: str = self._str(args.get("key")) or self._DEFAULT_KEY
+
+        async def _value_transform(current: Optional[dict[str, Any]]) -> Optional[dict[str, Any]]:
+            """Translate between the tool-level (content string) and store-level
+            (whole value dict) shapes of the transform callable."""
+            current_content: Optional[str] = None
+            if current is not None:
+                current_content = str(current.get("content") or "")
+            new_content: Optional[str] = await transform(current_content)
+            if new_content is None:
+                return None
+            return {"content": new_content}
+
+        new_value: Optional[dict[str, Any]] = await self._store.atomic_update_entry(namespace, key, _value_transform)
+        if new_value is None:
+            return None
+        return str(new_value.get("content") or "")
+
     async def close(self) -> None:
         """Release the underlying store's resources.
 
-        Callable by :py:class:`middleware.memory_middleware.MemoryMiddleware`
+        Callable by :py:class:`middleware.persistent_memory.persistent_memory_middleware.PersistentMemoryMiddleware`
         in its ``aafter_agent`` hook. Safe to call multiple times.
         """
         await self._store.close()
 
+    # ------------------------------------------------------------------
+    # Argument helpers
+    # ------------------------------------------------------------------
 
-# ------------------------------------------------------------------
-# Module-level helpers
-# ------------------------------------------------------------------
+    @classmethod
+    def _resolve_topic(cls, args: dict[str, Any], sly_data: dict[str, Any]) -> str:
+        """Resolve the topic — the on-disk file name for this slice of memory.
 
+        A topic can be anything the caller wants: a user's name, a project id,
+        a session id, a feature area. It simply becomes the filename.
 
-def _resolve_topic(args: dict[str, Any], sly_data: dict[str, Any]) -> str:
-    """Resolve the topic — the on-disk file name for this slice of memory.
+        Priority:
+            1. ``args["topic"]`` — LLM-supplied per-call topic (prompt-driven).
+               The agent's HOCON instructs the LLM to pass whatever scoping value
+               makes sense, so each topic gets its own file (``mike.md``,
+               ``project_alpha.md``, ``session_42.md``).
+            2. ``sly_data["user_id"]`` — set by the client (e.g. nsflow) when a
+               user identifier is supplied on the request. Handy for truly
+               authenticated multi-tenant deployments where the topic IS the user.
+            3. :py:attr:`_DEFAULT_TOPIC` — hard fallback.
 
-    A topic can be anything the caller wants: a user's name, a project id,
-    a session id, a feature area. It simply becomes the filename.
+        In all cases the result is normalised to a filesystem-safe slug so the
+        backend can use it as a filename without further sanitisation risk.
 
-    Priority:
-        1. ``args["topic"]`` — LLM-supplied per-call topic (prompt-driven).
-           The agent's HOCON instructs the LLM to pass whatever scoping value
-           makes sense, so each topic gets its own file (``mike.md``,
-           ``project_alpha.md``, ``session_42.md``).
-        2. ``sly_data["user_id"]`` — set by the client (e.g. nsflow) when a
-           user identifier is supplied on the request. Handy for truly
-           authenticated multi-tenant deployments where the topic IS the user.
-        3. ``_DEFAULT_TOPIC`` — hard fallback.
+        :param args: Dispatcher args; may contain ``topic``.
+        :param sly_data: Neuro-SAN private data; may contain ``user_id``.
+        :return: Filesystem-safe slug for the topic file name.
+        """
+        raw: Any = args.get("topic") if args else None
+        if not raw:
+            raw = sly_data.get("user_id") if sly_data else None
 
-    In all cases the result is normalised to a filesystem-safe slug so the
-    backend can use it as a filename without further sanitisation risk.
+        if raw:
+            slug: str = PathComponent.slugify(str(raw))
+            if slug:
+                return slug
 
-    :param args: Dispatcher args; may contain ``topic``.
-    :param sly_data: Neuro-SAN private data; may contain ``user_id``.
-    :return: Filesystem-safe slug for the topic file name.
-    """
-    raw: Any = args.get("topic") if args else None
-    if not raw:
-        raw = sly_data.get("user_id") if sly_data else None
+        # Not operator-actionable — a missing topic is normally just an agent
+        # network configured without per-user scoping. DEBUG keeps it observable
+        # when diagnosing cross-user contamination without noise in prod logs.
+        logger.debug(
+            "PersistentMemoryTool: no 'topic' arg or sly_data['user_id']; falling "
+            "back to '%s'. All callers without a topic will share the same file.",
+            cls._DEFAULT_TOPIC,
+        )
+        return cls._DEFAULT_TOPIC
 
-    if raw:
-        slug: str = _slugify_topic(str(raw))
-        if slug:
-            return slug
+    @staticmethod
+    def _str(value: Any) -> str:
+        """Normalise an LLM-supplied argument to a trimmed string.
 
-    logger.warning(
-        "PersistentMemoryTool: no 'topic' arg or sly_data['user_id']; falling "
-        "back to '%s'. All callers without a topic will share the same file.",
-        _DEFAULT_TOPIC,
-    )
-    return _DEFAULT_TOPIC
+        :param value: Any value the LLM may have passed.
+        :return: Trimmed string, or ``''`` if ``value`` is ``None``.
+        """
+        if value is None:
+            return ""
+        return str(value).strip()
 
+    @staticmethod
+    def _parse_limit(value: Any, default: int) -> int:
+        """Best-effort int parse. LLMs sometimes pass strings here.
 
-# Safe topic characters. Anything else collapses to ``_`` so the topic is
-# filesystem-safe on every mainstream OS.
-_TOPIC_UNSAFE: re.Pattern = re.compile(r"[^a-z0-9._-]+")
+        :param value: Raw value the LLM supplied for ``limit``.
+        :param default: Fallback if ``value`` is missing or unparsable.
+        :return: Positive int limit.
+        """
+        if value is None or value == "":
+            return default
+        try:
+            parsed: int = int(value)
+        except (TypeError, ValueError):
+            return default
+        return parsed if parsed > 0 else default
 
+    @staticmethod
+    def _error(message: str) -> dict[str, Any]:
+        """Build the uniform error envelope returned to the LLM.
 
-def _slugify_topic(name: str) -> str:
-    """Lowercase, collapse unsafe runs to ``_``, trim leading/trailing ``_``.
-
-    :param name: Raw topic string.
-    :return: Filesystem-safe slug (may be empty if ``name`` is all unsafe chars).
-    """
-    return _TOPIC_UNSAFE.sub("_", name.strip().lower()).strip("_")
-
-
-def _str(value: Any) -> str:
-    """Normalise an LLM-supplied argument to a trimmed string.
-
-    :param value: Any value the LLM may have passed.
-    :return: Trimmed string, or ``''`` if ``value`` is ``None``.
-    """
-    if value is None:
-        return ""
-    return str(value).strip()
-
-
-def _parse_limit(value: Any, default: int) -> int:
-    """Best-effort int parse. LLMs sometimes pass strings here.
-
-    :param value: Raw value the LLM supplied for ``limit``.
-    :param default: Fallback if ``value`` is missing or unparsable.
-    :return: Positive int limit.
-    """
-    if value is None or value == "":
-        return default
-    try:
-        parsed: int = int(value)
-    except (TypeError, ValueError):
-        return default
-    return parsed if parsed > 0 else default
-
-
-def _error(message: str) -> dict[str, Any]:
-    """Build the uniform error envelope returned to the LLM.
-
-    :param message: Human-readable error message.
-    :return: ``{"error": message}`` dict.
-    """
-    return {"error": message}
+        :param message: Human-readable error message.
+        :return: ``{"error": message}`` dict.
+        """
+        return {"error": message}

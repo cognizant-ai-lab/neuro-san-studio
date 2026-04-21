@@ -140,6 +140,6 @@
     "tools/wikimedia_search.hocon": true,
 
     # Long-term memory tool (CRUD + keyword search, per user per agent).
-    # File-backed: markdown (file_system) or JSON (json_file).
+    # File-backed: markdown (markdown_file) or JSON (json_file).
     "tools/persistent_memory.hocon": true,
 }

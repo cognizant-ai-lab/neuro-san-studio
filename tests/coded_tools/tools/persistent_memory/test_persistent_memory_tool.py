@@ -15,45 +15,24 @@
 # END COPYRIGHT
 
 import asyncio
-import os
-import shutil
-import tempfile
-from unittest import TestCase
-from unittest.mock import patch
 
-from coded_tools.tools.persistent_memory.persistent_memory_tool import PersistentMemoryTool
+from tests.coded_tools.tools.persistent_memory._base import MemoryTestBase
 
 
-def _clean_env_dict() -> dict[str, str]:
-    """Strip MEMORY_* env vars so test host env cannot alter tool behaviour."""
-    return {k: v for k, v in os.environ.items() if not k.startswith("MEMORY_")}
-
-
-def _make_tool(root_path: str, enabled_operations=None) -> PersistentMemoryTool:
-    """Build a tool backed by the file_system store under an isolated tmpdir."""
-    return PersistentMemoryTool(
-        tool_config={
-            "agent_network_name": "test_net",
-            "agent_name": "test_agent",
-            "store_config": {"backend": "file_system", "root_path": root_path},
-            "enabled_operations": enabled_operations,
-        }
-    )
-
-
-class TestPersistentMemoryToolDispatch(TestCase):
+class TestPersistentMemoryToolDispatch(MemoryTestBase):
     """The six operations, their required fields, and error envelopes."""
 
     def setUp(self) -> None:
-        self._env_patch = patch.dict(os.environ, _clean_env_dict(), clear=True)
-        self._env_patch.start()
-        self.addCleanup(self._env_patch.stop)
-        self._tmp = tempfile.mkdtemp()
-        self.addCleanup(shutil.rmtree, self._tmp, ignore_errors=True)
-        self.tool = _make_tool(root_path=self._tmp)
+        super().setUp()
+        self.tool = self.make_tool()
         self.sly_data = {"user_id": "alice"}
 
     def _invoke(self, args: dict) -> dict:
+        """Run one tool call synchronously against ``self.tool``.
+
+        :param args: Tool args.
+        :return: Tool result envelope.
+        """
         return asyncio.run(self.tool.async_invoke(args, self.sly_data))
 
     def test_create_auto_generates_key_when_omitted(self):
@@ -133,37 +112,23 @@ class TestPersistentMemoryToolDispatch(TestCase):
         self.assertIn("error", result)
 
 
-class TestPersistentMemoryToolEnabledOperations(TestCase):
+class TestPersistentMemoryToolEnabledOperations(MemoryTestBase):
     """``enabled_operations`` locks down what the LLM can do."""
-
-    def setUp(self) -> None:
-        self._env_patch = patch.dict(os.environ, _clean_env_dict(), clear=True)
-        self._env_patch.start()
-        self.addCleanup(self._env_patch.stop)
-        self._tmp = tempfile.mkdtemp()
-        self.addCleanup(shutil.rmtree, self._tmp, ignore_errors=True)
 
     def test_disabled_operation_returns_error(self):
         """An enabled-op check runs before any store access."""
-        tool = _make_tool(root_path=self._tmp, enabled_operations=["read", "search"])
+        tool = self.make_tool(enabled_operations=["read", "search"])
         result = asyncio.run(tool.async_invoke({"operation": "create", "content": "v"}, {"user_id": "alice"}))
         self.assertIn("error", result)
         self.assertIn("not enabled", result["error"].lower())
 
 
-class TestPersistentMemoryToolUserScoping(TestCase):
+class TestPersistentMemoryToolUserScoping(MemoryTestBase):
     """``sly_data['user_id']`` drives the topic component of the namespace."""
-
-    def setUp(self) -> None:
-        self._env_patch = patch.dict(os.environ, _clean_env_dict(), clear=True)
-        self._env_patch.start()
-        self.addCleanup(self._env_patch.stop)
-        self._tmp = tempfile.mkdtemp()
-        self.addCleanup(shutil.rmtree, self._tmp, ignore_errors=True)
 
     def test_different_users_have_isolated_memory(self):
         """Alice's create is not visible to Bob's read."""
-        tool = _make_tool(root_path=self._tmp)
+        tool = self.make_tool()
         asyncio.run(tool.async_invoke({"operation": "create", "key": "k1", "content": "alice"}, {"user_id": "alice"}))
         result = asyncio.run(tool.async_invoke({"operation": "read", "key": "k1"}, {"user_id": "bob"}))
         self.assertIn("error", result)

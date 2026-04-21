@@ -20,20 +20,20 @@ import tempfile
 from pathlib import Path
 from unittest import TestCase
 
-from coded_tools.tools.persistent_memory.md_file_store import DEFAULT_KEY
-from coded_tools.tools.persistent_memory.md_file_store import MdFileStoreBackend
+from coded_tools.tools.persistent_memory.markdown_file_store import DEFAULT_KEY
+from coded_tools.tools.persistent_memory.markdown_file_store import MarkdownFileStore
 
 NS = ("net", "agent", "mike")
 
 
-class TestMdFileStoreBackend(TestCase):
+class TestMarkdownFileStore(TestCase):
     """CRUD + one-file-per-user markdown layout + path-traversal sanitisation."""
 
     def setUp(self) -> None:
         self._tmp = tempfile.mkdtemp()
         self.addCleanup(shutil.rmtree, self._tmp, ignore_errors=True)
         self.root = Path(self._tmp)
-        self.store = MdFileStoreBackend(root_path=str(self.root))
+        self.store = MarkdownFileStore(root_path=str(self.root))
 
     def test_put_then_get_returns_stored_value(self):
         """Round-trip via the filesystem returns the written value."""
@@ -44,7 +44,7 @@ class TestMdFileStoreBackend(TestCase):
     def test_entries_survive_new_backend_instance(self):
         """Data is persistent: a fresh backend over the same root_path sees prior writes."""
         asyncio.run(self.store.create(NS, "name", {"content": "persisted"}))
-        fresh = MdFileStoreBackend(root_path=str(self.root))
+        fresh = MarkdownFileStore(root_path=str(self.root))
         item = asyncio.run(fresh.read(NS, "name"))
         self.assertIsNotNone(item)
         self.assertEqual(item.value["content"], "persisted")

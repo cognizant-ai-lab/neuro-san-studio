@@ -21,19 +21,19 @@ import tempfile
 from pathlib import Path
 from unittest import TestCase
 
-from coded_tools.tools.persistent_memory.json_file_store import JsonFileStoreBackend
+from coded_tools.tools.persistent_memory.json_file_store import JsonFileStore
 
 NS = ("net", "agent", "mike")
 
 
-class TestJsonFileStoreBackend(TestCase):
+class TestJsonFileStore(TestCase):
     """CRUD + one-JSON-file-per-user layout + path-traversal sanitisation."""
 
     def setUp(self) -> None:
         self._tmp = tempfile.mkdtemp()
         self.addCleanup(shutil.rmtree, self._tmp, ignore_errors=True)
         self.root = Path(self._tmp)
-        self.store = JsonFileStoreBackend(root_path=str(self.root))
+        self.store = JsonFileStore(root_path=str(self.root))
 
     def test_extra_fields_are_preserved_in_json(self):
         """Non-``content`` fields round-trip as-is through the JSON serialiser."""

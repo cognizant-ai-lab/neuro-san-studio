@@ -1681,7 +1681,7 @@ Look at [Consumer Decision Assistant](examples/industry/consumer_decision_assist
 
 ### Memory
 
-Agents can be given long-term memory via the `MemoryMiddleware`. It attaches a single
+Agents can be given long-term memory via the `PersistentMemoryMiddleware`. It attaches a single
 `persistent_memory` tool to the agent that supports seven operations: `create`, `read`,
 `update`, `append`, `delete`, `search`, and `list`. Memory is persisted to disk and scoped
 by `(agent_network_name, agent_name, topic)` — each topic gets its own file, so different
@@ -1693,12 +1693,12 @@ Attach it with a single `middleware` entry — no separate tool entry, no tool n
 ```hocon
 "middleware": [
     {
-        "class": "middleware.memory_middleware.MemoryMiddleware",
+        "class": "middleware.persistent_memory.persistent_memory_middleware.PersistentMemoryMiddleware",
         "args": {
             "agent_network_name": "my_network",
             "agent_name":         "my_agent",
             "store_config": {
-                "backend":   "file_system",
+                "backend":   "markdown_file",
                 "root_path": "./memory"
             },
             "enabled_operations": ["create", "read", "update", "append", "delete", "search", "list"]
@@ -1715,7 +1715,7 @@ work without prompt-level scoping.
 
 Two backends are available:
 
-- `file_system` — one markdown file per topic (human-readable, easy to hand-edit).
+- `markdown_file` — one markdown file per topic (human-readable, easy to hand-edit).
 - `json_file` — one JSON file per topic (unambiguous for other processes to parse).
 
 Backend selection is layered (later wins): the HOCON `store_config` block, then the
@@ -1723,7 +1723,7 @@ Backend selection is layered (later wins): the HOCON `store_config` block, then 
 `MEMORY_ROOT_PATH` env vars. This lets you swap backends at deploy time without editing
 HOCON.
 
-An optional summariser can be configured under `args.summarizer` to compress accumulated
+An optional summariser can be configured under `args.memory_summariser` to compress accumulated
 memory before it reaches the LLM — useful for agents that `append` many entries and want
 a concise current-state view on `read` or `search`. Setting `compact_on_write = true` also
 rewrites the on-disk file in place once it crosses `compact_threshold` characters, so the
@@ -1732,7 +1732,7 @@ the base instructions on every summariser call — a hook for per-deployment ton
 content preferences that the user can edit without touching the base prompt.
 
 ```hocon
-"summarizer": {
+"memory_summariser": {
     "enabled"           = true
     "model"             = "gpt-4.1-mini"
     "instructions"      = "You are a summariser. Keep the output under 500 chars."

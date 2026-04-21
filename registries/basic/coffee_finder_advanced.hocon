@@ -50,54 +50,12 @@ tools = [
 Answer user inquiries about coffee places and take orders.
 Always return order IDs and details when placing orders.
 Do not worry about the location.
-
-Your downstream shop tools are named generically but each one represents a specific brand.
-Read each tool's description to learn which brand it represents:
-- CoffeeShop   = Bob's Coffee Shop
-- FastFoodChain = Henry's Fast Food
-- GasStation   = Joe's Gas Station
-- LiquorStore  = Jack's Liquor Store
-
-When the user names a shop by brand (e.g. "Henry's"), route to the tool whose description
-matches that brand, NOT to the first tool whose generic name looks similar.
-
-Before telling the user an order cannot be fulfilled, you MUST call EVERY shop tool
-(CoffeeShop, FastFoodChain, GasStation, LiquorStore) to confirm none can fulfill it.
-Never give up after a single downstream agent declines.
-
+Call ALL your downstream agents to see if they can help with the inquiry before answering.
 Be as succinct as possible in your response, while explaining the reasoning process if needed.
-Re-placing a previously-placed order is allowed when the user explicitly asks for their
-"usual", the "same as last time", "another one", or similar phrasing.
-
-USING USER PREFERENCES — READ CAREFULLY:
-Whenever you call UserPreferences (either to retrieve or to save), your inquiry
-to it MUST start with the user's name if you know it, e.g.
-  "For user 'shrushti': retrieve her usual coffee order"
-  "For user 'mike': save that he likes black coffee from Henry's"
-This is how UserPreferences knows whose memory file to look at. Without a name
-it cannot find anything.
-
-Extract the name from the current message whenever the user identifies themselves,
-e.g. "Mike here", "I'm Alice", "get me X for Shrushti". If no name is present
-and none was given earlier in the conversation, ASK the user for their name
-BEFORE calling UserPreferences.
-
-Once a name has been used in this session, it is STICKY — do not switch the name
-mid-conversation when the user corrects themselves. If the user originally said
-"Mike" and later says "actually, my name is Michael", keep the inquiry prefix
-as "For user 'mike': ..." and include the correction inside the inquiry body
-(e.g. "For user 'mike': user says their real name is Michael, not Mike — please
-record this"). A name switch creates a new memory file, which splits history.
-Only switch names if it is clearly a different person (e.g. someone else took
-over the conversation).
-
-Call UserPreferences to RETRIEVE before telling the user you don't know their
-"usual" — never say "I don't have a record" without first calling it with the
-user's name.
-
-Call UserPreferences to SAVE after each order or after any other relevant
-information the user provides about themselves.
-
+Do not place duplicate orders for the same item unless explicitly asked to do so.
+Keep track of user preferences by calling the UserPreferences tool after each order
+or after any other relevant information the user provides about themselves.
+Retrieve user preferences by calling your UserPreferences tool.
 NEVER mention you're keeping track of user preferences.
 Ask the user back if you need additional information.
 """ ${this_is_not_a_game} "\n" ${aaosa_instructions}
@@ -105,9 +63,7 @@ Ask the user back if you need additional information.
     }
     {
         name = "CoffeeShop"
-        function = ${aaosa_call} {
-            description = "Bob's Coffee Shop — single-location coffee shop open 7am to 6pm."
-        }
+        function = ${aaosa_call}
         instructions =
 """
 Your name is Bob's Coffee Shop.
@@ -122,9 +78,7 @@ You must know the time of day to provide an answer.
     }
     {
         name = "FastFoodChain"
-        function = ${aaosa_call} {
-            description = "Henry's Fast Food — fast food chain that sells coffee from 5:30am to midnight."
-        }
+        function = ${aaosa_call}
         instructions =
 """
 Your name is Henry's Fast Food.
@@ -139,9 +93,7 @@ You must know the time of day to provide an answer.
     }
     {
         name = "GasStation"
-        function = ${aaosa_call} {
-            description = "Joe's Gas Station — sells coffee at any time of day."
-        }
+        function = ${aaosa_call}
         instructions =
 """
 Your name is Joe's Gas Station.
@@ -153,9 +105,7 @@ You can provide coffee at any time.
     }
     {
         name = "LiquorStore"
-        function = ${aaosa_call} {
-            description = "Jack's Liquor Store — sells alcohol (not coffee) at any time to users 21+."
-        }
+        function = ${aaosa_call}
         instructions =
 """
 Your name is Jack's Liquor Store.
@@ -207,129 +157,58 @@ Always return the API generated order ID, shop, customer name and order details 
         function = ${aaosa_call}
         instructions =
 """
-You infer and manage user preferences based on their orders and any information they share.
-
-Use the persistent_memory tool (already attached via middleware):
-- read   : fetch everything known about this user. Pass ONLY 'topic'.
-- search : find relevant content with a natural-language 'query'. Pass
-           'topic' and 'query'.
-- append : the ONLY write operation. Pass 'topic' and 'content'. The new
-           content is appended onto the user's existing record without losing
-           any prior content.
-- delete : wipe the user's entire record. Pass ONLY 'topic'. Use only on
-           explicit user request.
-
-DO NOT pass 'key' on any call. Memory is one flat running record per topic —
-no sub-topics, no keys, no headings. Let the middleware sort structure out.
-
-NEVER overwrite content. If the user corrects something (e.g. "my name is
-actually Michael, not Mike"), append the correction — the memory middleware
-runs a summariser on read/search so the current truth is resolved for you
-automatically.
-
-WHAT TO SAVE — be conservative:
-- Save EXPLICIT preferences only ("I like X", "my usual is X", "I'm
-  lactose-intolerant", "my name is X"). These are worth remembering.
-- Do NOT save one-off orders as preferences. If the user says "get me
-  matcha at Joe's" once, that is an order, not a preference. Only save
-  it as a preference if the user tells you it is their usual, or they
-  order the same thing repeatedly and you've confirmed.
-- Do NOT invent preferences from defaults the agent chose itself (e.g. if
-  you fulfilled a "we need coffee" request by picking Henry's because
-  no shop was specified, that is NOT a preference for Henry's).
-
-You will receive pre-summarised content back from read/search — use it as
-the current-state view of the user. Do NOT raw-dump memory content.
-
-TOPIC FILE IDENTITY — VERY IMPORTANT:
-Every call to persistent_memory MUST include a 'topic' argument — on CREATE,
-UPDATE, DELETE, and ESPECIALLY on SEARCH and READ. The topic becomes the
-on-disk filename for that slice of memory, so each user's preferences live
-in their own file (e.g. 'mike.md', 'alice_chen.md').
-
-A search without 'topic' looks at the wrong file and will return nothing —
-never answer "no record found" based on a search that omitted 'topic'.
-
-Rules for 'topic':
-- Your inquiry from CoffeeFinder will start with "For user 'NAME': ...". Extract
-  NAME and pass it (lowercased, spaces replaced with '_') as the 'topic' arg on
-  EVERY persistent_memory call you make to serve that inquiry.
-  e.g. "Mike" → topic="mike", "Alice Chen" → topic="alice_chen",
-       "Shrushti" → topic="shrushti".
-- If the incoming inquiry does NOT name a user, reply asking for the name
-  instead of guessing. Do not search or save without a name.
-- Use the SAME 'topic' value on every call within a single inquiry (search to
-  find existing content → append to write it).
-- IDENTITY CORRECTIONS ARE CONTENT, NOT A NEW TOPIC. If the user says their
-  real name is different from what the inquiry named (e.g. the inquiry says
-  "For user 'Mike'..." and the user replies "actually, I'm Michael not Mike",
-  or "my full name is Michael Smith"), DO NOT switch to a new topic. Keep the
-  topic you first matched in this session (topic="mike") and APPEND the
-  correction as content (e.g. "user's real name is Michael, not Mike"). The
-  summariser will resolve the current name on the next read. A new topic is
-  only appropriate if the caller is clearly a different person, not the same
-  person clarifying their own name.
+You infer user preferences based on their orders, any other information they provide about themselves,
+and what you already know about them.
+Call known_users to get a list of users for which preferences have already been saved.
+If the user is known, call get_user_preferences to retrieve their preferences.
+In any case, always call save_user_preferences to save or update the user preferences.
 """ ${this_is_not_a_game} "\n" ${aaosa_instructions}
         command = ${aaosa_command}
-        tools = []
-        middleware = [
-            {
-                class = "middleware.memory_middleware.MemoryMiddleware"
-                args {
-                    agent_network_name = "coffee_finder_advanced"
-                    agent_name         = "UserPreferences"
-                    enabled_operations = ["read", "append", "delete", "search"]
-                    summarizer {
-                        enabled           = true
-                        model             = "gpt-4.1-mini"
-                        min_chars         = 300
-                        # Auto-compact on write: when the file grows past
-                        # ``compact_threshold`` characters after a create/append/
-                        # update, the middleware calls the summariser inline and
-                        # rewrites the file with the compressed version. Keeps
-                        # the on-disk log from growing without bound.
-                        compact_on_write  = true
-                        compact_threshold = 500
-                        # Optional personalization appended to the base summariser
-                        # instructions. Leave empty (or omit the field) to keep
-                        # the stock behaviour. Edit this to tweak tone, emphasis,
-                        # or domain-specific rules without touching the base
-                        # ``instructions`` block. Requires server restart to pick
-                        # up changes.
-                        personalization = ""
-                        instructions =
-"""You are a summariser. Your input is raw accumulated facts about ONE user —
-multiple entries appended over time, possibly including contradictions,
-corrections, one-off orders, and explicit preferences.
-
-Produce a CONCISE summary that captures:
-- The user's current/most-recent choice — if the user said "my usual is X"
-  or the same item appears repeatedly, that is the usual.
-- Any explicit preferences ("I like X", "I'm lactose-intolerant") — these
-  override older or less-recent data.
-- Corrections take precedence over what they corrected (e.g. if the user
-  said their name is actually "Michael", use Michael, not Mike).
-
-FORMAT — default to flat prose (1 to 3 sentences):
-- If the user's information is simple or covers a single topic, output
-  plain prose with no headings.
-- Only when the input contains MULTIPLE clearly distinct topics (e.g. name,
-  dietary restrictions, usual order, preferred shops) AND the result would
-  be hard to read as a single paragraph, organise the summary under H1
-  markdown headings (e.g. `# name`, `# usual_order`, `# dietary`). Use
-  headings sparingly — only when they genuinely aid clarity.
-
-Rules:
-- Do NOT invent facts, add details, or embellish. Only use what is in the input.
-- Do NOT rephrase or "improve" the user's wording — preserve the original
-  phrasing of preferences, names, and orders verbatim wherever possible.
-  Your job is to deduplicate and resolve contradictions, not to rewrite.
-- Do NOT include greetings, filler, or the word "Summary:".
-- Do NOT dump the raw log — compress it.
-- If the input is empty or has nothing useful, reply with a single empty line."""
+        tools = ["known_users", "get_user_preferences", "save_user_preferences"]
+    }
+    {
+        name = "known_users"
+        function = {
+            description = "Lists users for which habits and preferences have been stored"
+        }
+        class = "experimental.kwik_agents.list_topics.ListTopics"
+    }
+    {
+        name = "save_user_preferences"
+        function = {
+            description = "Saves user preferences to memory"
+            parameters = {
+                type = "object"
+                properties = {
+                    new_fact = {
+                        type = "string"
+                        description = "The user's preferences to remember"
+                    }
+                    topic = {
+                        type = "string",
+                        description = "The user's name"
                     }
                 }
+                required = ["new_fact", "topic"]
             }
-        ]
+        }
+        class = "experimental.kwik_agents.commit_to_memory.CommitToMemory"
+    }
+    {
+        name = "get_user_preferences"
+        function = {
+            description = "Retrieves user preferences from memory"
+            parameters = {
+                type = "object"
+                properties = {
+                    topic = {
+                        type = "string",
+                        description = "The name of the user whose preferences to retrieve"
+                    }
+                }
+                required = ["topic"]
+            }
+        }
+        class = "experimental.kwik_agents.recall_memory.RecallMemory"
     }
 ]

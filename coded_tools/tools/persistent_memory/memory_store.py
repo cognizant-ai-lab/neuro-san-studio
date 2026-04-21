@@ -15,9 +15,9 @@
 # END COPYRIGHT
 
 """
-Abstract base class and shared types for persistent-memory store backends.
+Abstract base class for persistent-memory store backends.
 
-``BaseMemoryStore`` is a one-file-per-topic ABC that owns locking, atomic
+``MemoryStore`` is a one-file-per-topic ABC that owns locking, atomic
 writes, path handling, and the CRUD+search+list machinery. Subclasses pick
 a serialisation format by implementing :py:meth:`_serialise` and
 :py:meth:`_deserialise` and setting ``_EXTENSION``.
@@ -26,162 +26,30 @@ The backend factory lives next door in
 :py:mod:`coded_tools.tools.persistent_memory.memory_store_factory`.
 """
 
+from __future__ import annotations
+
 import asyncio
-import json
 import logging
 import os
-import re
 from abc import ABC
 from abc import abstractmethod
-from dataclasses import dataclass
-from dataclasses import fields
+from collections import OrderedDict
 from pathlib import Path
 from typing import Any
+from typing import Awaitable
+from typing import Callable
 from typing import Optional
 
 import aiofiles
 
+from coded_tools.tools.persistent_memory.memory_item import MemoryItem
+from coded_tools.tools.persistent_memory.memory_item import Namespace
+from coded_tools.tools.persistent_memory.path_component import PathComponent
+
 logger = logging.getLogger(__name__)
 
 
-# Namespace is always a 3-tuple: (agent_network_name, agent_name, topic).
-# Kept as a plain tuple rather than a dataclass so it is hashable and cheap to
-# pass around. Backends destructure it themselves.
-Namespace = tuple[str, str, str]
-
-
-@dataclass
-class MemoryItem:
-    """
-    Normalised item returned by every store backend.
-
-    :param key:   The entry's key within its namespace.
-    :param value: The stored payload. Shape is controlled by the tool layer, not
-                  the store — currently ``{"content": "..."}``.
-    :param score: Optional similarity / relevance score returned by ``search``.
-                  ``None`` for lookups that do not produce a score.
-    """
-
-    key: str
-    value: dict[str, Any]
-    score: Optional[float] = None
-
-
-@dataclass
-class MemoryStoreConfig:
-    """
-    Configuration for a memory store backend.
-
-    :param backend:   Backend identifier. See ``VALID_BACKENDS`` in the factory.
-    :param root_path: Root directory for file-based backends.
-    """
-
-    backend: str = "file_system"
-    root_path: str = "./memory"
-
-    @classmethod
-    def from_dict(cls, data: Optional[dict[str, Any]]) -> "MemoryStoreConfig":
-        """
-        Build a ``MemoryStoreConfig`` from a plain dict, ignoring unknown keys.
-
-        :param data: A dict read from HOCON ``tool_config`` or from a JSON env var.
-                     ``None`` and ``{}`` both yield a default config.
-        :return:     A populated ``MemoryStoreConfig``.
-        """
-        if not data:
-            return cls()
-
-        known_fields: set[str] = {f.name for f in fields(cls)}
-        kwargs: dict[str, Any] = {k: v for k, v in data.items() if k in known_fields}
-        return cls(**kwargs)
-
-    @classmethod
-    def resolve(cls, hocon_dict: Optional[dict[str, Any]]) -> "MemoryStoreConfig":
-        """
-        Resolve the final config by layering env overrides on top of HOCON.
-
-        Precedence (later wins):
-            1. ``hocon_dict`` — the ``store_config`` block read from HOCON.
-            2. ``MEMORY_STORE_CONFIG`` — a JSON object env var, shallow-merged
-               over the HOCON dict. Useful for swapping whole backends at
-               deploy time without editing HOCON.
-            3. Individual ``MEMORY_*`` env vars — field-level overrides. The
-               most surgical layer; a single var can point the tool at a new
-               Postgres URL or S3 bucket while everything else stays HOCON.
-        """
-        merged: dict[str, Any] = dict(hocon_dict or {})
-
-        env_json: Optional[str] = os.environ.get("MEMORY_STORE_CONFIG")
-        if env_json:
-            try:
-                parsed: Any = json.loads(env_json)
-            except json.JSONDecodeError as error:
-                logger.warning("MEMORY_STORE_CONFIG is not valid JSON; ignoring. (%s)", error)
-            else:
-                if isinstance(parsed, dict):
-                    merged.update(parsed)
-                else:
-                    logger.warning(
-                        "MEMORY_STORE_CONFIG must be a JSON object; got %s. Ignoring.",
-                        type(parsed).__name__,
-                    )
-
-        # Individual vars win over MEMORY_STORE_CONFIG so a deployer can pin a
-        # single field without rebuilding the whole JSON blob.
-        env_field_map: dict[str, str] = {
-            "MEMORY_BACKEND": "backend",
-            "MEMORY_ROOT_PATH": "root_path",
-        }
-        for env_name, field_name in env_field_map.items():
-            value: Optional[str] = os.environ.get(env_name)
-            if value is not None and value != "":
-                merged[field_name] = value
-
-        return cls.from_dict(merged)
-
-
-# Only characters safe on every mainstream filesystem. Anything else in a
-# namespace component becomes an underscore — prevents path-traversal or
-# unexpected directory behaviour.
-_SAFE_PATH_COMPONENT: re.Pattern = re.compile(r"[^A-Za-z0-9._-]+")
-
-
-def sanitise_path_component(part: str) -> str:
-    """Replace unsafe filesystem characters with underscores."""
-    return _SAFE_PATH_COMPONENT.sub("_", str(part)) or "_"
-
-
-def keyword_rank(
-    entries: list[tuple[str, dict[str, Any]]],
-    query: str,
-    limit: int,
-) -> list[MemoryItem]:
-    """
-    Rank ``entries`` by how many query words appear in each entry's ``content``.
-
-    :param entries: ``(key, value)`` pairs to score.
-    :param query:   Free-text query. Empty query yields no results.
-    :param limit:   Maximum number of results to return.
-    :return:        ``MemoryItem`` list sorted by descending score.
-    """
-    query_words: set[str] = {word for word in query.lower().split() if word}
-    if not query_words:
-        return []
-
-    scored: list[MemoryItem] = []
-    for key, value in entries:
-        content_text: str = str(value.get("content", "")).lower()
-        hits: int = sum(1 for word in query_words if word in content_text)
-        if hits == 0:
-            continue
-        score: float = hits / len(query_words)
-        scored.append(MemoryItem(key=key, value=dict(value), score=round(score, 4)))
-
-    scored.sort(key=lambda item: item.score or 0.0, reverse=True)
-    return scored[:limit]
-
-
-class BaseMemoryStore(ABC):
+class MemoryStore(ABC):
     """
     Abstract one-file-per-topic memory backend.
 
@@ -203,9 +71,17 @@ class BaseMemoryStore(ABC):
     #: File extension without the leading dot. Override in each subclass.
     _EXTENSION: str = ""
 
+    #: Max number of per-namespace locks retained in memory. On overflow we
+    #: evict the least-recently-used lock that is not currently held. Keeps
+    #: long-running servers from accumulating one ``asyncio.Lock`` per distinct
+    #: topic ever touched.
+    _MAX_LOCKS: int = 1024
+
     def __init__(self, root_path: str) -> None:
         self._root: Path = Path(root_path).expanduser().resolve()
-        self._locks: dict[Namespace, asyncio.Lock] = {}
+        # OrderedDict gives us O(1) LRU reorder via ``move_to_end`` on access,
+        # so we can evict cold namespaces without scanning when the cache fills.
+        self._locks: OrderedDict[Namespace, asyncio.Lock] = OrderedDict()
         # Guards ``self._locks`` itself — per-namespace locks are created
         # lazily and must not race when inserting into the dict.
         self._locks_guard: asyncio.Lock = asyncio.Lock()
@@ -244,13 +120,52 @@ class BaseMemoryStore(ABC):
             entries: dict[str, dict[str, Any]] = await self._read_file(namespace)
         if not entries:
             return []
-        return keyword_rank(list(entries.items()), query, limit)
+        return self._keyword_rank(list(entries.items()), query, limit)
 
     async def list(self, namespace: Namespace) -> list[str]:
         """Return every key currently stored under ``namespace``, sorted."""
         async with await self._lock_for(namespace):
             entries: dict[str, dict[str, Any]] = await self._read_file(namespace)
         return sorted(entries.keys())
+
+    async def atomic_update_entry(
+        self,
+        namespace: Namespace,
+        key: str,
+        transform: Callable[[Optional[dict[str, Any]]], Awaitable[Optional[dict[str, Any]]]],
+    ) -> Optional[dict[str, Any]]:
+        """Read ``key``, apply an async ``transform``, write the result atomically.
+
+        Holds the namespace lock across the whole read / transform / write
+        cycle so no concurrent writer can interleave between the read and the
+        write. Returns the value produced by ``transform`` so callers can tell
+        whether a rewrite happened.
+
+        ``transform`` receives the current value (or ``None`` if the key is
+        absent). Returning ``None`` signals "no change" — the file is left
+        untouched. Returning a dict replaces the entry with that dict.
+
+        Typical use: compaction, where the middleware needs to rewrite a single
+        entry with its summarised version under a single lock acquisition.
+
+        :param namespace: Resolved namespace to update in.
+        :param key:       Entry key to read / replace.
+        :param transform: Async callable receiving the current value and
+                          returning the new value (or ``None`` for no change).
+        :return:          The new value that was written, or ``None`` if the
+                          transform opted out of rewriting.
+        """
+        async with await self._lock_for(namespace):
+            entries: dict[str, dict[str, Any]] = await self._read_file(namespace)
+            current: Optional[dict[str, Any]] = entries.get(key)
+            # Copy so callers cannot accidentally mutate our in-memory state
+            # before deciding what to return.
+            new_value: Optional[dict[str, Any]] = await transform(dict(current) if current is not None else None)
+            if new_value is None:
+                return None
+            entries[key] = dict(new_value)
+            await self._write_file(namespace, entries)
+            return new_value
 
     async def _upsert(self, namespace: Namespace, key: str, value: dict[str, Any]) -> None:
         """Shared implementation for :meth:`create` and :meth:`update`."""
@@ -272,13 +187,42 @@ class BaseMemoryStore(ABC):
         """Parse on-disk text back into ``{key: value_dict}``."""
 
     async def _lock_for(self, namespace: Namespace) -> asyncio.Lock:
-        """Return the asyncio lock guarding writes to ``namespace``, lazily creating it."""
+        """Return the asyncio lock guarding writes to ``namespace``, lazily creating it.
+
+        Uses an LRU-bounded cache keyed by namespace. On a hit, the entry is
+        moved to the most-recent end; on a miss, a fresh lock is created and,
+        if the cache has grown past :attr:`_MAX_LOCKS`, the oldest *unlocked*
+        entry is evicted. We never evict a held lock — doing so would break
+        mutual exclusion for the holder.
+        """
         async with self._locks_guard:
             lock: Optional[asyncio.Lock] = self._locks.get(namespace)
-            if lock is None:
-                lock = asyncio.Lock()
-                self._locks[namespace] = lock
+            if lock is not None:
+                self._locks.move_to_end(namespace)
+                return lock
+            lock = asyncio.Lock()
+            self._locks[namespace] = lock
+            self._evict_locked_out()
         return lock
+
+    def _evict_locked_out(self) -> None:
+        """Trim the LRU cache back to ``_MAX_LOCKS`` entries.
+
+        Called with ``_locks_guard`` held. Walks from the oldest end and drops
+        the first entry whose lock is not currently held, stopping as soon as
+        we are back within budget. If every retained lock is in use (extremely
+        unlikely under normal load) we simply let the cache overshoot — mutual
+        exclusion is worth more than a hard cap.
+        """
+        if len(self._locks) <= self._MAX_LOCKS:
+            return
+        # Snapshot keys in LRU order — we must not mutate the OrderedDict
+        # while iterating it.
+        for candidate in list(self._locks.keys()):
+            if len(self._locks) <= self._MAX_LOCKS:
+                return
+            if not self._locks[candidate].locked():
+                del self._locks[candidate]
 
     def _path_for(self, namespace: Namespace) -> Path:
         """
@@ -287,8 +231,41 @@ class BaseMemoryStore(ABC):
         The last namespace component (topic) is the filename so each topic's
         whole memory lives in a single readable file.
         """
-        parts: list[str] = [sanitise_path_component(part) for part in namespace]
+        parts: list[str] = [PathComponent.sanitise(part) for part in namespace]
         return self._root.joinpath(*parts[:-1], f"{parts[-1]}.{self._EXTENSION}")
+
+    @staticmethod
+    def _keyword_rank(
+        entries: list[tuple[str, dict[str, Any]]],
+        query: str,
+        limit: int,
+    ) -> list[MemoryItem]:
+        """Rank ``entries`` by how many query words appear in each entry's ``content``.
+
+        Kept on the base class so concrete backends can override ranking
+        (e.g. to plug in a vector or BM25 implementation) without forking
+        the surrounding locking / IO machinery.
+
+        :param entries: ``(key, value)`` pairs to score.
+        :param query:   Free-text query. Empty query yields no results.
+        :param limit:   Maximum number of results to return.
+        :return:        ``MemoryItem`` list sorted by descending score.
+        """
+        query_words: set[str] = {word for word in query.lower().split() if word}
+        if not query_words:
+            return []
+
+        scored: list[MemoryItem] = []
+        for key, value in entries:
+            content_text: str = str(value.get("content", "")).lower()
+            hits: int = sum(1 for word in query_words if word in content_text)
+            if hits == 0:
+                continue
+            score: float = hits / len(query_words)
+            scored.append(MemoryItem(key=key, value=dict(value), score=round(score, 4)))
+
+        scored.sort(key=lambda item: item.score or 0.0, reverse=True)
+        return scored[:limit]
 
     async def _read_file(self, namespace: Namespace) -> dict[str, dict[str, Any]]:
         """Read and deserialise the topic's file. Missing/unreadable file → empty dict."""
@@ -324,6 +301,15 @@ class BaseMemoryStore(ABC):
             if tmp_path.exists():
                 try:
                     tmp_path.unlink()
-                except OSError:
-                    pass
+                # Best-effort cleanup — the original write already failed and
+                # we're about to re-raise. Log at DEBUG so a missing tmp file
+                # (e.g. already gone, permission quirk) is observable without
+                # drowning production logs.
+                except OSError as cleanup_error:
+                    logger.debug(
+                        "%s: could not remove tmp file %s after failed write: %s",
+                        self.__class__.__name__,
+                        tmp_path,
+                        cleanup_error,
+                    )
             raise

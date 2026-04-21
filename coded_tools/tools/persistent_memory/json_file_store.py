@@ -15,7 +15,7 @@
 # END COPYRIGHT
 
 """
-JSON-file implementation of ``BaseMemoryStore``.
+JSON-file implementation of ``MemoryStore``.
 
 One JSON file per topic, laid out as::
 
@@ -37,19 +37,19 @@ memory files — JSON is unambiguous and trivial to parse, at the cost of being
 less pleasant to hand-edit than the markdown backend.
 
 Shared filesystem machinery (locking, atomic writes, path resolution) lives in
-``BaseMemoryStore``; this module only owns the JSON serialisation format.
+``MemoryStore``; this module only owns the JSON serialisation format.
 """
 
 import json
 import logging
 from typing import Any
 
-from coded_tools.tools.persistent_memory.base_memory_store import BaseMemoryStore
+from coded_tools.tools.persistent_memory.memory_store import MemoryStore
 
 logger = logging.getLogger(__name__)
 
 
-class JsonFileStoreBackend(BaseMemoryStore):
+class JsonFileStore(MemoryStore):
     """
     One-JSON-file-per-topic store backend.
 
@@ -68,11 +68,11 @@ class JsonFileStoreBackend(BaseMemoryStore):
         try:
             parsed: Any = json.loads(content)
         except json.JSONDecodeError as error:
-            logger.warning("JsonFileStoreBackend: malformed JSON (%s). Treating as empty.", error)
+            logger.warning("JsonFileStore: malformed JSON (%s). Treating as empty.", error)
             return {}
         if not isinstance(parsed, dict):
             logger.warning(
-                "JsonFileStoreBackend: top-level JSON is %s, expected object. Ignoring.",
+                "JsonFileStore: top-level JSON is %s, expected object. Ignoring.",
                 type(parsed).__name__,
             )
             return {}

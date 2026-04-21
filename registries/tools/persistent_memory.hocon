@@ -20,12 +20,14 @@
 # long-term memory and the ``persistent_memory`` tool is registered
 # automatically — no separate tool entry, no tool name in ``tools: [...]``.
 #
+# Class path: middleware.persistent_memory.persistent_memory_middleware.PersistentMemoryMiddleware
+#
 # Backend selection (precedence, later wins):
 #     1. The ``store_config`` block in middleware ``args``
 #     2. ``MEMORY_STORE_CONFIG`` env var (JSON object, shallow-merged)
 #     3. Individual ``MEMORY_*`` env vars (``MEMORY_BACKEND``, ``MEMORY_ROOT_PATH``)
 #
-# Available backends: ``file_system`` (markdown) and ``json_file`` (JSON).
+# Available backends: ``markdown_file`` (markdown) and ``json_file`` (JSON).
 
 {
     include "registries/llm_config.hocon",
@@ -76,7 +78,7 @@ Never fabricate memories. Only report what the tool returns.""",
 
             "middleware": [
                 {
-                    "class": "middleware.memory_middleware.MemoryMiddleware",
+                    "class": "middleware.persistent_memory.persistent_memory_middleware.PersistentMemoryMiddleware",
                     "args": {
                         # First two parts of the memory namespace. Third part
                         # (topic) is auto-filled from sly_data["user_id"] if
@@ -87,7 +89,7 @@ Never fabricate memories. Only report what the tool returns.""",
                         # Backend configuration. Omit this block entirely to
                         # let the factory resolve everything from env vars.
                         "store_config": {
-                            "backend":   "file_system",
+                            "backend":   "json_file",
                             "root_path": "./memory"
                         },
 

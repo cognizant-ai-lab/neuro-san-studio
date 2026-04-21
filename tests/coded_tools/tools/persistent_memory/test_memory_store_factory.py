@@ -15,79 +15,65 @@
 # END COPYRIGHT
 
 """
-Tests for the ``create_store`` factory and ``MemoryStoreConfig.resolve``.
+Tests for ``MemoryStoreFactory`` and ``MemoryStoreConfig.resolve``.
 
 Focus is on the env-override precedence chain:
 HOCON < MEMORY_STORE_CONFIG JSON < individual MEMORY_* vars.
 """
 
 import os
-from unittest import TestCase
 from unittest.mock import patch
 
-from coded_tools.tools.persistent_memory.base_memory_store import MemoryStoreConfig
-from coded_tools.tools.persistent_memory.json_file_store import JsonFileStoreBackend
-from coded_tools.tools.persistent_memory.md_file_store import MdFileStoreBackend
-from coded_tools.tools.persistent_memory.memory_store_factory import create_store
-from coded_tools.tools.persistent_memory.memory_store_factory import resolve_config
-
-# All MEMORY_* vars the factory inspects. Cleared in each test so host-env
-# values cannot leak in and corrupt assertions.
-_MEMORY_ENV_VARS: tuple[str, ...] = (
-    "MEMORY_STORE_CONFIG",
-    "MEMORY_BACKEND",
-    "MEMORY_ROOT_PATH",
-)
+from coded_tools.tools.persistent_memory.json_file_store import JsonFileStore
+from coded_tools.tools.persistent_memory.markdown_file_store import MarkdownFileStore
+from coded_tools.tools.persistent_memory.memory_store_config import MemoryStoreConfig
+from coded_tools.tools.persistent_memory.memory_store_factory import MemoryStoreFactory
+from tests.coded_tools.tools.persistent_memory._base import MemoryTestBase
 
 
-def _clean_env() -> dict[str, str]:
-    """Return a dict copy of ``os.environ`` with every MEMORY_* var stripped."""
-    return {k: v for k, v in os.environ.items() if k not in _MEMORY_ENV_VARS}
-
-
-class TestResolveConfigPrecedence(TestCase):
+class TestResolveConfigPrecedence(MemoryTestBase):
     """The three-layer precedence chain: HOCON → JSON env → individual env vars."""
 
     def test_defaults_when_nothing_supplied(self):
-        """No HOCON, no env: file_system backend under ./memory."""
-        with patch.dict(os.environ, _clean_env(), clear=True):
-            config: MemoryStoreConfig = resolve_config(None)
-        self.assertEqual(config.backend, "file_system")
+        """No HOCON, no env: markdown_file backend under ./memory."""
+        with patch.dict(os.environ, self.clean_env_dict(), clear=True):
+            config: MemoryStoreConfig = MemoryStoreFactory.resolve_config(None)
+        self.assertEqual(config.backend, "markdown_file")
         self.assertEqual(config.root_path, "./memory")
 
     def test_hocon_only(self):
         """With no env overrides, HOCON values flow through unchanged."""
-        with patch.dict(os.environ, _clean_env(), clear=True):
-            config = resolve_config({"backend": "json_file", "root_path": "/some/path"})
+        with patch.dict(os.environ, self.clean_env_dict(), clear=True):
+            config = MemoryStoreFactory.resolve_config({"backend": "json_file", "root_path": "/some/path"})
         self.assertEqual(config.backend, "json_file")
         self.assertEqual(config.root_path, "/some/path")
 
     def test_individual_env_var_beats_hocon(self):
         """Setting only an individual MEMORY_* var overrides the HOCON field."""
-        env = _clean_env()
+        env = self.clean_env_dict()
         env["MEMORY_ROOT_PATH"] = "/from/env"
         with patch.dict(os.environ, env, clear=True):
-            config = resolve_config({"backend": "file_system", "root_path": "/from/hocon"})
+            config = MemoryStoreFactory.resolve_config({"backend": "markdown_file", "root_path": "/from/hocon"})
         self.assertEqual(config.root_path, "/from/env")
 
 
-class TestCreateStore(TestCase):
+class TestCreateStore(MemoryTestBase):
     """Factory instantiation for the file-backed backends."""
 
-    def test_file_system_backend(self):
-        """``file_system`` yields a markdown-backed store."""
-        with patch.dict(os.environ, _clean_env(), clear=True):
-            store = create_store({"backend": "file_system", "root_path": "./memory"})
-        self.assertIsInstance(store, MdFileStoreBackend)
+    def test_markdown_file_backend(self):
+        """``markdown_file`` yields a markdown-backed store."""
+        with patch.dict(os.environ, self.clean_env_dict(), clear=True):
+            store = MemoryStoreFactory.create({"backend": "markdown_file", "root_path": "./memory"})
+        self.assertIsInstance(store, MarkdownFileStore)
 
     def test_json_file_backend(self):
         """``json_file`` yields a JSON-backed store."""
-        with patch.dict(os.environ, _clean_env(), clear=True):
-            store = create_store({"backend": "json_file", "root_path": "./memory"})
-        self.assertIsInstance(store, JsonFileStoreBackend)
+        with patch.dict(os.environ, self.clean_env_dict(), clear=True):
+            store = MemoryStoreFactory.create({"backend": "json_file", "root_path": "./memory"})
+        self.assertIsInstance(store, JsonFileStore)
 
     def test_unknown_backend_raises(self):
         """An unrecognised backend name is a configuration error, not a silent fall-through."""
-        with patch.dict(os.environ, _clean_env(), clear=True):
+        with patch.dict(os.environ, self.clean_env_dict(), clear=True):
             with self.assertRaises(ValueError):
-                create_store({"backend": "not_a_real_backend"})
+                MemoryStoreFactory.create({"backend": "not_a_real_backend"})
