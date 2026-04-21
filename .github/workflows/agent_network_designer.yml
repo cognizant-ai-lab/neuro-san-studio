@@ -1,0 +1,65 @@
+name: Agent Network Designer Tests
+
+permissions:
+    contents: read
+
+on:
+  schedule:
+    - cron: '0 12 * * *'  # 12:00 PM UTC = 4:00 AM PT (standard)
+  workflow_dispatch:      # enables manual triggering
+
+jobs:
+  agent-network-designer-test:
+    runs-on: ubuntu-latest
+
+    # Job-level ENV shared by all steps
+    env:
+      OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+      PYTHONPATH: "."
+      AGENT_TOOL_PATH: "coded_tools/"
+      AGENT_MANIFEST_FILE: "registries/manifest.hocon"
+      AGENT_TEMPORARY_NETWORK_UPDATE_PERIOD_SECONDS: 5
+
+    # don't run this job in sync'd clones
+    if: github.repository == 'cognizant-ai-lab/neuro-san-studio'
+    container:
+      image: python:3.13-slim
+
+    steps:
+      # v6.0.2
+      - name: Checkout
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
+
+      - name: Install dependencies
+        shell: bash
+        run: |
+          apt-get update && apt-get install --yes make curl netcat-openbsd procps net-tools
+          make install
+
+      - name: Show installed packages
+        shell: bash
+        run: |
+          source venv/bin/activate
+          pip freeze
+
+      - name: Start server & run agent network designer tests & print server log if any failure
+        shell: bash
+        run: |
+          source venv/bin/activate
+          build_scripts/server_start.sh
+
+          if ! pytest --capture=no --verbose -m "integration_agent_network_designer" --timer-top-n 100; then
+            echo "===================================================="
+            echo "=== Server Log ==="
+            cat logs/server.log || echo "(no server.log found)"
+            echo "===================================================="
+            exit 1
+          fi
+
+      - name: Notify Slack
+        if: ${{ !cancelled() }}
+        # 1.0.3
+        uses: cognizant-ai-lab/build-common/actions/slack-notify@a5d90457ea6e44b8f24f878755f77c00216e2947
+        with:
+          status: ${{ job.status }}
+          webhook-url: ${{ secrets.SLACK_WEBHOOK_URL }}
