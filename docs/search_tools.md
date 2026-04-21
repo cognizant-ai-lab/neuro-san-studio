@@ -9,8 +9,52 @@ Neuro SAN offers search capability via the following search engines:
 5. google\_serper — Search using Google Serper API with advanced filtering
 6. openai\_search — Web search via OpenAI's search tool
 7. tavily\_search — AI-optimized search using Tavily API
+8. you\_search — Web search, content extraction, and AI research via You.com MCP server
 
 In this document, we will go over each search tools listed above and will also do a comparison.
+
+## You.com Search
+
+You.com is a developer-focused search platform designed for AI agents and automation. It integrates with Neuro SAN
+via the Model Context Protocol (MCP), exposing three tools through a single MCP server at `https://api.you.com/mcp`:
+
+- **`you-search`** (Web Search API) — Real-time web and news search with advanced filtering options including site
+  filtering, file type restrictions, language filtering, exact term matching, and date ranges. Pricing: $5 per 1,000
+  calls.
+- **`you-contents`** (Contents API) — Extracts full page content from URLs in Markdown or HTML format, useful for
+  documentation analysis and content processing. Pricing: $1 per 1,000 pages.
+- **`you-research`** (Research API) — A separate API that provides synthesized, citation-backed answers with
+  configurable effort levels: `lite`, `standard`, `deep`, `exhaustive`, and `frontier`. Higher effort levels use more
+  sources and deeper reasoning but take longer. Pricing: starting at ~$6.50 per 1,000 calls, varying by effort level.
+
+_Getting a Free API Key:_
+
+1. Go to [https://you.com/platform](https://you.com/platform)
+2. Sign up — no credit card required
+3. You automatically receive **$100 in free credits** upon signup
+4. Get your API key at [https://you.com/platform/api-keys](https://you.com/platform/api-keys)
+5. Set it using the `YDC_API_KEY` environment variable
+
+_Getting a Paid API Key:_
+
+1. Sign up at [https://you.com/platform](https://you.com/platform) if you haven't already
+2. After free credits are exhausted, add a payment method in your account
+3. Pay-as-you-go billing with no minimum spend
+4. Enterprise options are available with volume discounts, annual savings, SOC 2 certification, and zero data retention
+5. For full pricing details, see [https://you.com/pricing](https://you.com/pricing)
+
+_MCP Configuration:_
+
+You.com is integrated as an MCP server. To enable it, uncomment the You.com section in
+[mcp\_info.hocon](https://github.com/cognizant-ai-lab/neuro-san-studio/blob/main/mcp/mcp_info.hocon)
+and set the `YDC_API_KEY` environment variable.
+
+_Example Usage in Neuro San Studio:_
+
+<!-- pyml disable line-length -->
+[you\_search.hocon](../registries/tools/you_search.hocon),
+see also [MCP server configuration](../mcp/mcp_info.hocon)
+<!-- pyml enable line-length -->
 
 ## Anthropic Search
 
@@ -108,14 +152,14 @@ _Environment Variables_:
 
 To use this search tool, you must
 
-1. Create a Custom Search Engine (CSE)  
-   * Go to [https://programmablesearchengine.google.com/](https://programmablesearchengine.google.com/)
-   * Click "Add" → Choose sites or use "\*" to search the whole web  
-   * Note your Search Engine ID (cx).  
-2. Get Google API key  
-   * Go to: [https://console.cloud.google.com/](https://console.cloud.google.com/)
-   * Enable the Custom Search API.  
-   * Create an API key under APIs & Services > Credentials.  
+1. Create a Custom Search Engine (CSE)
+   - Go to [https://programmablesearchengine.google.com/](https://programmablesearchengine.google.com/)
+   - Click "Add" → Choose sites or use "\*" to search the whole web
+   - Note your Search Engine ID (cx).
+2. Get Google API key
+   - Go to: [https://console.cloud.google.com/](https://console.cloud.google.com/)
+   - Enable the Custom Search API.
+   - Create an API key under APIs & Services > Credentials.  
 3. Use the CSE ID in step 1 to set `GOOGLE_SEARCH_CSE_ID` environment variable.  
 4. Use the API key in step 2 to set `GOOGLE_SEARCH_API_KEY` environment variable.
 5. You can optionally set a custom search URL and a custom timeout via the `GOOGLE_SEARCH_URL` and
@@ -200,6 +244,7 @@ Available as a tool in [toolbox\_info.hocon](https://github.com/cognizant-ai-lab
 | Serper | Third-party Google Search API service that scrapes Google Search results in JSON format | No | Real Google Search results via scraping | Yes |
 | OpenAI | Built-in web search system used by ChatGP | No | Uses Bing API + other sources | No |
 | Tavily | Search API designed specifically for LLMs, AI agents, and automation | No | Mix of search providers + own crawlers + extraction pipeline | Yes |
+| You.com | Developer-focused search platform with web search, content extraction, and AI research via MCP | No | Own search index + multiple web sources + AI synthesis | Yes |
 <!-- pyml enable line-length -->
 <!-- pyml enable no-inline-html -->
 
@@ -216,6 +261,7 @@ The cost and rate limit comparison is provided in the table below.
 | Google Serper | Yes<br>2,500 queries (one-time) | Yes<br>$50, 50k queries, 50 queries/sec |
 | OpenAI Search | Yes (Internal to ChatGPT)<br>Check OpenAI rate limits | Yes (Internal to ChatGPT)<br>Check OpenAI rate limits |
 | Tavily Search | Yes<br>1,000 API credits/month | Yes<br>Pay-as-you-go: $0.008 per credit<br>Monthly plans: $0.0075 - $0.005 per credit |
+| You.com Search | Yes<br>$100 in free credits<br>No credit card required | Yes<br>Web Search: $5 per 1,000 calls<br>Contents: $1 per 1,000 pages<br>Research: from ~$6.50 per 1,000 calls |
 <!-- pyml enable line-length -->
 <!-- pyml enable no-inline-html -->
 
@@ -226,4 +272,5 @@ Below please find links for cost and rate limit comparison data:
 2. [Google Search](https://support.google.com/programmable-search/answer/9069107?hl=en)
 3. [Google Serper](https://serper.dev/)
 4. [Tavily Search](https://www.tavily.com/#pricing)
+5. [You.com Search](https://you.com/pricing)
 <!-- pyml enable line-length -->
