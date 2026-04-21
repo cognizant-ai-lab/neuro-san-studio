@@ -33,14 +33,17 @@
     include "registries/llm_config.hocon",
 
     "metadata": {
-        "description": "Persistent per-topic long-term memory, attached via MemoryMiddleware. CRUD + search + list with env-overridable config.",
+        "description": "Remembers facts you share (preferences, role, personal details) and recalls them in later conversations. Scoped per user, so one user's memories stay private to them.",
         "tags": ["memory", "long-term-memory", "middleware"],
         "sample_queries": [
+            # Ordered as a natural first-run flow: introduce yourself, record
+            # a fact, update it, ask about it, then list / forget.
+            "Hi, my name is Mike and I work in Sales.",
             "Remember that I prefer email communication over chat.",
+            "Update my department to Engineering.",
             "What do you know about me?",
-            "Forget my old department and update it to Engineering.",
-            "Search your memory for my communication preferences.",
             "List everything you remember about me.",
+            "Forget my communication preference.",
         ]
     },
 
@@ -67,6 +70,7 @@ During the conversation:
 - If the user shares a new fact about themselves (preference, role, department, etc.),
   call persistent_memory with operation="create" and pass the fact as 'content'.
 - If the user asks you to update or correct a memory, use operation="update" with the key and new 'content'.
+- If the user asks you to add to an existing memory (rather than replace it), use operation="append" with the key and extra 'content'.
 - If the user asks you to forget something, use operation="delete" with the key.
 - If the user asks what you remember about a topic, use operation="search" with a query.
 - If the user asks for a full inventory, use operation="list".
@@ -88,16 +92,19 @@ Never fabricate memories. Only report what the tool returns.""",
 
                         # Backend configuration. Omit this block entirely to
                         # let the factory resolve everything from env vars.
+                        # Note that ``root_path`` here is relative to the root
+                        # level of the repo (the process working directory
+                        # when the neuro-san server starts).
                         "store_config": {
                             "backend":   "json_file",
                             "root_path": "./memory"
                         },
 
-                        # Which operations the LLM may use. Omit to allow all six.
+                        # Which operations the LLM may use. Omit to allow all seven.
                         # Useful restrictions:
-                        #   Read-only agent:  ["read", "search", "list"]
-                        #   Write-only agent: ["create", "update"]
-                        "enabled_operations": ["create", "read", "update", "delete", "search", "list"]
+                        #   Read-only agent:    ["read", "search", "list"]
+                        #   Append-only agent:  ["read", "append", "search", "list"]
+                        "enabled_operations": ["create", "read", "update", "append", "delete", "search", "list"]
                     }
                 }
             ]

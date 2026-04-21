@@ -15,23 +15,20 @@
 # END COPYRIGHT
 
 import asyncio
-import shutil
-import tempfile
 from pathlib import Path
-from unittest import TestCase
 
 from coded_tools.tools.persistent_memory.markdown_file_store import DEFAULT_KEY
 from coded_tools.tools.persistent_memory.markdown_file_store import MarkdownFileStore
+from tests.coded_tools.tools.persistent_memory._base import MemoryTestBase
 
 NS = ("net", "agent", "mike")
 
 
-class TestMarkdownFileStore(TestCase):
+class TestMarkdownFileStore(MemoryTestBase):
     """CRUD + one-file-per-user markdown layout + path-traversal sanitisation."""
 
     def setUp(self) -> None:
-        self._tmp = tempfile.mkdtemp()
-        self.addCleanup(shutil.rmtree, self._tmp, ignore_errors=True)
+        super().setUp()
         self.root = Path(self._tmp)
         self.store = MarkdownFileStore(root_path=str(self.root))
 

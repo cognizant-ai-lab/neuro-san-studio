@@ -1698,7 +1698,7 @@ Attach it with a single `middleware` entry — no separate tool entry, no tool n
             "agent_network_name": "my_network",
             "agent_name":         "my_agent",
             "store_config": {
-                "backend":   "markdown_file",
+                "backend":   "json_file",
                 "root_path": "./memory"
             },
             "enabled_operations": ["create", "read", "update", "append", "delete", "search", "list"]
@@ -1715,19 +1715,25 @@ work without prompt-level scoping.
 
 Two backends are available:
 
+- `json_file` (default) — one JSON file per topic (unambiguous for other processes to parse).
 - `markdown_file` — one markdown file per topic (human-readable, easy to hand-edit).
-- `json_file` — one JSON file per topic (unambiguous for other processes to parse).
 
 Backend selection is layered (later wins): the HOCON `store_config` block, then the
 `MEMORY_STORE_CONFIG` env var (a JSON object), then individual `MEMORY_BACKEND` and
 `MEMORY_ROOT_PATH` env vars. This lets you swap backends at deploy time without editing
 HOCON.
 
+The default `root_path` is `./memory`. Like every other file path in the example HOCONs,
+it is resolved relative to the **process working directory** when the neuro-san server
+starts — in practice the root of the repo, since that is where the server launch scripts
+are invoked from. Pass an absolute path if you need deterministic behaviour under a
+different working directory.
+
 An optional summariser can be configured under `args.memory_summariser` to compress accumulated
 memory before it reaches the LLM — useful for agents that `append` many entries and want
 a concise current-state view on `read` or `search`. Setting `compact_on_write = true` also
 rewrites the on-disk file in place once it crosses `compact_threshold` characters, so the
-file stays bounded across sessions. An optional `personalization` string is appended to
+file stays bounded across sessions. An optional `personalisation` string is appended to
 the base instructions on every summariser call — a hook for per-deployment tone or
 content preferences that the user can edit without touching the base prompt.
 
@@ -1738,13 +1744,13 @@ content preferences that the user can edit without touching the base prompt.
     "instructions"      = "You are a summariser. Keep the output under 500 chars."
     "compact_on_write"  = true
     "compact_threshold" = 500
-    "personalization"   = ""   # optional user-editable extension to the instructions
+    "personalisation"   = ""   # optional user-editable extension to the instructions
 }
 ```
 
 See [persistent_memory.hocon](../registries/tools/persistent_memory.hocon) for a minimal
-working example, and [coffee_finder_advanced.hocon](../registries/basic/coffee_finder_advanced.hocon)
-for an append-only usage with a summariser.
+working example, and [examples/tools/persistent_memory.md](./examples/tools/persistent_memory.md)
+for a full walk-through with backend selection, summariser options, and a sample conversation.
 
 ## Connect with other agent frameworks
 

@@ -20,13 +20,12 @@ as a LangChain ``AgentMiddleware`` / ``StructuredTool``.
 """
 
 import asyncio
-from unittest import TestCase
 from unittest.mock import AsyncMock
 from unittest.mock import patch
 
-from middleware.persistent_memory import MemorySummariser
-from middleware.persistent_memory import PersistentMemoryMiddleware
+from middleware.persistent_memory.memory_summariser import MemorySummariser
 from middleware.persistent_memory.persistent_memory_middleware import MEMORY_TOOL_NAME
+from middleware.persistent_memory.persistent_memory_middleware import PersistentMemoryMiddleware
 
 from tests.coded_tools.tools.persistent_memory._base import MemoryTestBase
 
@@ -215,11 +214,11 @@ class TestPersistentMemoryMiddlewareAutoCompact(MemoryTestBase):
         self.assertEqual(read["result"]["content"], long_content)
 
 
-class TestMemorySummariserPersonalization(TestCase):
-    """Optional HOCON 'personalization' field is appended to the base instructions at call time."""
+class TestMemorySummariserPersonalisation(MemoryTestBase):
+    """Optional HOCON 'personalisation' field is appended to the base instructions at call time."""
 
-    def test_personalization_from_config_is_appended_to_system_prompt(self):
-        """from_config reads 'personalization' and summarise() passes it to the LLM."""
+    def test_personalisation_from_config_is_appended_to_system_prompt(self):
+        """from_config reads 'personalisation' and summarise() passes it to the LLM."""
         with patch("middleware.persistent_memory.memory_summariser.ChatOpenAI") as fake_chat_cls:
             fake_llm = AsyncMock()
             fake_response = AsyncMock()
@@ -231,7 +230,7 @@ class TestMemorySummariserPersonalization(TestCase):
                 {
                     "enabled": True,
                     "instructions": "Base instructions.",
-                    "personalization": "Always mention the user's favourite colour is teal.",
+                    "personalisation": "Always mention the user's favourite colour is teal.",
                 }
             )
             self.assertIsNotNone(summariser)

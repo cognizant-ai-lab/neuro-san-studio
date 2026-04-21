@@ -22,13 +22,42 @@ the ``Namespace`` tuple alias used to key those items.
 from __future__ import annotations
 
 from dataclasses import dataclass
+from enum import Enum
 from typing import Any
 from typing import Optional
+
+
+class MemoryOperation(str, Enum):
+    """Canonical set of operations the persistent-memory tool understands.
+
+    Inherits from ``str`` so members compare equal to their raw string
+    values — keeps HOCON configs (``enabled_operations = ["read", ...]``)
+    and LLM tool-call payloads (``{"operation": "create", ...}``) working
+    without any conversion at the boundary. The Enum exists so there is a
+    single source of truth for the fixed value set; callers use
+    ``MemoryOperation.CREATE.value`` (or just ``MemoryOperation.CREATE``
+    in a string context) rather than a floating ``"create"`` literal.
+    """
+
+    CREATE = "create"
+    READ = "read"
+    UPDATE = "update"
+    APPEND = "append"
+    DELETE = "delete"
+    SEARCH = "search"
+    LIST = "list"
+
 
 # Namespace is always a 3-tuple: (agent_network_name, agent_name, topic).
 # Kept as a plain tuple rather than a dataclass so it is hashable and cheap to
 # pass around. Backends destructure it themselves.
 Namespace = tuple[str, str, str]
+
+# Canonical key used when a namespace holds exactly one unnamed entry (e.g.
+# a plain prose markdown file with no H1 headings). Centralised here so the
+# store, the tool, and the test modules all import the same constant —
+# avoids drift between independent copies of the string ``"content"``.
+DEFAULT_KEY: str = "content"
 
 
 @dataclass

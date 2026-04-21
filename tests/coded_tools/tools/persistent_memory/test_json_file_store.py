@@ -16,22 +16,19 @@
 
 import asyncio
 import json
-import shutil
-import tempfile
 from pathlib import Path
-from unittest import TestCase
 
 from coded_tools.tools.persistent_memory.json_file_store import JsonFileStore
+from tests.coded_tools.tools.persistent_memory._base import MemoryTestBase
 
 NS = ("net", "agent", "mike")
 
 
-class TestJsonFileStore(TestCase):
+class TestJsonFileStore(MemoryTestBase):
     """CRUD + one-JSON-file-per-user layout + path-traversal sanitisation."""
 
     def setUp(self) -> None:
-        self._tmp = tempfile.mkdtemp()
-        self.addCleanup(shutil.rmtree, self._tmp, ignore_errors=True)
+        super().setUp()
         self.root = Path(self._tmp)
         self.store = JsonFileStore(root_path=str(self.root))
 

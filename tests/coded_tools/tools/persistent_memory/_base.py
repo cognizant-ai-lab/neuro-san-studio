@@ -37,7 +37,7 @@ from typing import Optional
 from unittest import TestCase
 from unittest.mock import patch
 
-from middleware.persistent_memory import PersistentMemoryMiddleware
+from middleware.persistent_memory.persistent_memory_middleware import PersistentMemoryMiddleware
 
 from coded_tools.tools.persistent_memory.persistent_memory_tool import PersistentMemoryTool
 

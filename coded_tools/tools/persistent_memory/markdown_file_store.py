@@ -47,13 +47,14 @@ import logging
 import re
 from typing import Any
 
+from coded_tools.tools.persistent_memory.memory_item import DEFAULT_KEY
 from coded_tools.tools.persistent_memory.memory_store import MemoryStore
 
 logger = logging.getLogger(__name__)
 
-# Re-exported as a module-level alias for callers / tests that want to refer to
-# the canonical default-entry key without reaching into the class.
-DEFAULT_KEY: str = "content"
+# Re-exported for test modules that import the constant from this file.
+# Single source of truth lives in ``memory_item`` — do not redefine it here.
+__all__ = ["DEFAULT_KEY", "MarkdownFileStore"]
 
 
 class MarkdownFileStore(MemoryStore):
@@ -74,11 +75,6 @@ class MarkdownFileStore(MemoryStore):
     _JSON_FENCE_OPEN: str = "```json\n"
     _JSON_FENCE_CLOSE: str = "\n```"
 
-    # Key used when the file contains a single entry with no heading — i.e. the
-    # "one blob per topic" layout. Callers that read/append without specifying a
-    # key land here, so the file stays clean prose (no ``# key`` scaffolding).
-    DEFAULT_KEY: str = DEFAULT_KEY
-
     def _serialise(self, entries: dict[str, dict[str, Any]]) -> str:
         """Render the topic's whole memory as a markdown document.
 
@@ -97,7 +93,7 @@ class MarkdownFileStore(MemoryStore):
         # deterministic round-trips for callers that DO use explicit keys.
         if len(entries) == 1:
             only_key: str = next(iter(entries.keys()))
-            if only_key == self.DEFAULT_KEY:
+            if only_key == DEFAULT_KEY:
                 return self._serialise_body(entries[only_key])
         sections: list[str] = []
         for key in sorted(entries.keys()):
@@ -123,7 +119,7 @@ class MarkdownFileStore(MemoryStore):
         raw_sections: list[str] = self._SECTION_SPLIT.split(content)
         if len(raw_sections) < 2:
             # No H1 headings anywhere — treat the whole file as a single entry.
-            return {self.DEFAULT_KEY: self._parse_section_body(content)}
+            return {DEFAULT_KEY: self._parse_section_body(content)}
 
         result: dict[str, dict[str, Any]] = {}
         for chunk in raw_sections[1:]:

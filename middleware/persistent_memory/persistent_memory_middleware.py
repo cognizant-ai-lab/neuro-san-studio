@@ -77,8 +77,9 @@ class PersistentMemoryMiddleware(AgentMiddleware):
                                to the tool so ``user_id`` scoping works.
     :param options:            Extra HOCON kwargs. Recognised keys:
 
-        * ``enabled_operations`` — subset of the six operations the LLM may use.
-          ``None`` / missing means all six.
+        * ``enabled_operations`` — subset of the seven operations the LLM may
+          use (``create``, ``read``, ``update``, ``append``, ``delete``,
+          ``search``, ``list``). ``None`` / missing means all seven.
         * ``memory_summariser`` — HOCON block configuring post-processing of
           ``read`` and ``search`` results. See :py:class:`MemorySummariser`.
     """
@@ -183,8 +184,10 @@ class PersistentMemoryMiddleware(AgentMiddleware):
         try:
             await self.persistent_memory_tool.close()
         # Closing is best-effort — log and swallow so agent-level shutdown
-        # is not disrupted by a slow or flaky backend.
-        except Exception as error:  # pylint: disable=broad-exception-caught
+        # is not disrupted by a slow or flaky backend. We catch the concrete
+        # error families a store close() path can raise (filesystem I/O,
+        # connection teardown, malformed state); unexpected errors propagate.
+        except (OSError, RuntimeError) as error:
             logger.warning("PersistentMemoryMiddleware: error closing store: %s", error)
         return None
 
@@ -257,9 +260,11 @@ class PersistentMemoryMiddleware(AgentMiddleware):
                 self._sly_data,
                 self._compact_transform,
             )
-        # Compaction is best-effort: swallow any store or summariser error so
-        # the original write the caller made stays successful.
-        except Exception as error:  # pylint: disable=broad-exception-caught
+        # Compaction is best-effort: swallow the concrete error families the
+        # store + summariser path can raise (filesystem I/O, LLM SDK errors,
+        # malformed payloads) so the original write stays successful. Truly
+        # unexpected errors still propagate.
+        except (OSError, RuntimeError, ValueError, TypeError, KeyError) as error:
             logger.warning("PersistentMemoryMiddleware: auto-compact failed: %s", error)
 
     async def _compact_transform(self, current: Optional[str]) -> Optional[str]:

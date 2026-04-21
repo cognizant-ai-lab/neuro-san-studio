@@ -57,6 +57,14 @@ class MemorySummariser:
 
     If ``enabled`` is false, ``from_config`` returns ``None`` and the
     middleware skips summarisation entirely.
+
+    Lifecycle note: ``compact_on_write``, ``compact_threshold``, and
+    ``personalisation`` are public attributes that are only mutated by
+    ``from_config`` immediately after construction. After that point they
+    are treated as read-only and are safe to read concurrently. A single
+    summariser instance is owned by the middleware that constructed it;
+    do not share one instance across unrelated middleware and then mutate
+    its attributes.
     """
 
     _DEFAULT_MODEL: str = "gpt-4.1-mini"
@@ -64,8 +72,10 @@ class MemorySummariser:
     # just adds latency and cost for no real compression benefit.
     _DEFAULT_MIN_CHARS: int = 300
     # File size past which ``compact_on_write`` triggers a disk-level rewrite.
-    # Tuned lower than ``min_chars`` because compaction is about controlling
-    # storage growth — we want to fire before the file is "too big to skim".
+    # Tuned lower than ``_DEFAULT_MIN_CHARS`` because compaction is about
+    # controlling long-term storage growth — we want to fire before the file
+    # is "too big to skim", which is earlier than the point at which a
+    # single read payload is worth summarising.
     _DEFAULT_COMPACT_THRESHOLD: int = 200
 
     def __init__(
@@ -96,9 +106,9 @@ class MemorySummariser:
         # feature OFF unless ``from_config`` explicitly turns it on.
         self.compact_on_write: bool = False
         self.compact_threshold: int = self._DEFAULT_COMPACT_THRESHOLD
-        # Optional user-editable personalization appended to the base
+        # Optional user-editable personalisation appended to the base
         # instructions on every summariser call. Empty by default.
-        self.personalization: str = ""
+        self.personalisation: str = ""
 
     @classmethod
     def from_config(cls, config: Optional[dict[str, Any]]) -> Optional["MemorySummariser"]:
@@ -123,7 +133,7 @@ class MemorySummariser:
         summariser.compact_threshold = max(
             0, cls._parse_int(config.get("compact_threshold"), cls._DEFAULT_COMPACT_THRESHOLD)
         )
-        summariser.personalization = str(config.get("personalization") or "").strip()
+        summariser.personalisation = str(config.get("personalisation") or "").strip()
         return summariser
 
     async def summarise(self, raw: str) -> str:
@@ -136,13 +146,13 @@ class MemorySummariser:
         :return: Summarised content; falls back to ``raw`` if the LLM returns empty.
         """
         system_prompt: str = self._instructions
-        if self.personalization:
+        if self.personalisation:
             system_prompt = (
                 f"{system_prompt}\n\n"
-                "User personalization (additional instructions supplied by the "
+                "User personalisation (additional instructions supplied by the "
                 "agent network's operator — follow these on top of the base "
                 "instructions above):\n"
-                f"{self.personalization}"
+                f"{self.personalisation}"
             )
         messages: list[BaseMessage] = [
             SystemMessage(content=system_prompt),
@@ -187,10 +197,12 @@ class MemorySummariser:
                         raw_entry: str = str(entry.get("content") or "")
                         if self._should_summarise(raw_entry):
                             entry["content"] = await self.summarise(raw_entry)
-        # Summarisation is best-effort. A failure (network, rate limit, bad
-        # API key) must not swallow the underlying memory — return the raw
-        # result so the agent still sees the data.
-        except Exception as error:  # pylint: disable=broad-exception-caught
+        # Summarisation is best-effort. A failure from the LLM SDK (network,
+        # rate limit, auth, bad response shape) must not swallow the
+        # underlying memory — return the raw result so the agent still sees
+        # the data. We catch the concrete error families the LLM path can
+        # raise; truly unexpected errors propagate.
+        except (OSError, RuntimeError, ValueError, TypeError, KeyError) as error:
             logger.warning("Memory summariser failed; returning raw: %s", error)
 
         return result

@@ -16,7 +16,8 @@
 
 """
 PersistentMemoryTool — a CodedTool exposing persistent long-term memory
-as a single dispatcher tool with six operations.
+as a single dispatcher tool with seven operations
+(``create``, ``read``, ``update``, ``append``, ``delete``, ``search``, ``list``).
 
 Memory is scoped per topic, per agent, per agent network. A topic can be
 anything the caller wants — a user's name, a project id, a session id —
@@ -64,7 +65,9 @@ from typing import Optional
 
 from neuro_san.interfaces.coded_tool import CodedTool
 
+from coded_tools.tools.persistent_memory.memory_item import DEFAULT_KEY
 from coded_tools.tools.persistent_memory.memory_item import MemoryItem
+from coded_tools.tools.persistent_memory.memory_item import MemoryOperation
 from coded_tools.tools.persistent_memory.memory_item import Namespace
 from coded_tools.tools.persistent_memory.memory_store import MemoryStore
 from coded_tools.tools.persistent_memory.memory_store_factory import MemoryStoreFactory
@@ -86,27 +89,12 @@ class PersistentMemoryTool(CodedTool):
     # Class constants
     # ------------------------------------------------------------------
 
-    # Valid operation names. ``enabled_operations`` in HOCON selects a subset
-    # of these; unknown names there are logged and ignored.
-    _OP_CREATE: str = "create"
-    _OP_READ: str = "read"
-    _OP_UPDATE: str = "update"
-    _OP_APPEND: str = "append"
-    _OP_DELETE: str = "delete"
-    _OP_SEARCH: str = "search"
-    _OP_LIST: str = "list"
-
-    ALL_OPERATIONS: frozenset[str] = frozenset(
-        {
-            _OP_CREATE,
-            _OP_READ,
-            _OP_UPDATE,
-            _OP_APPEND,
-            _OP_DELETE,
-            _OP_SEARCH,
-            _OP_LIST,
-        }
-    )
+    # Valid operation names. The canonical set lives on ``MemoryOperation``
+    # (see ``memory_item``); this frozenset is just the string values
+    # materialised once for O(1) membership tests against raw HOCON / LLM
+    # payload strings. ``enabled_operations`` in HOCON selects a subset;
+    # unknown names there are logged and ignored.
+    ALL_OPERATIONS: frozenset[str] = frozenset(op.value for op in MemoryOperation)
 
     # Default number of results returned by ``search`` if the LLM does not supply one.
     DEFAULT_SEARCH_LIMIT: int = 5
@@ -119,8 +107,10 @@ class PersistentMemoryTool(CodedTool):
     # Default entry key when the LLM omits ``key``. Agents that want clean prose
     # files ("one blob per topic", no section scaffolding) can instruct the LLM
     # to drop the ``key`` arg entirely — everything then lands under this key
-    # and the file-system backend writes it without a heading.
-    _DEFAULT_KEY: str = "content"
+    # and the file-system backend writes it without a heading. The string
+    # itself is defined once in ``memory_item.DEFAULT_KEY`` — imported here
+    # so there is a single source of truth across store, tool, and tests.
+    _DEFAULT_KEY: str = DEFAULT_KEY
 
     def __init__(self, tool_config: Optional[dict[str, Any]] = None) -> None:
         """
@@ -131,7 +121,7 @@ class PersistentMemoryTool(CodedTool):
             store_config         (dict, optional) — backend configuration. See
                                  ``memory_store_config.MemoryStoreConfig.resolve``.
             enabled_operations   (list[str], optional) — subset of
-                                 ``ALL_OPERATIONS``. Defaults to all six.
+                                 ``ALL_OPERATIONS``. Defaults to all seven.
         """
         config: dict[str, Any] = tool_config or {}
 
@@ -155,6 +145,13 @@ class PersistentMemoryTool(CodedTool):
                 self._agent_name,
                 sorted(unknown_ops),
             )
+
+        # Build the dispatch table once per instance rather than per call. The
+        # bound-method identities are stable for the life of the tool, so
+        # there is no benefit to reconstructing the dict every invocation.
+        # Subclasses that want to extend the table should override
+        # :py:meth:`_build_handlers`.
+        self._handlers: dict[str, Any] = self._build_handlers()
 
         logger.info(
             "PersistentMemoryTool initialised for %s/%s with operations: %s",
@@ -246,10 +243,13 @@ class PersistentMemoryTool(CodedTool):
         try:
             return await handler(args, namespace)
 
-        # Catching broadly so that a backend failure returns a readable error
-        # to the LLM instead of blowing up the whole agent call. The full
-        # traceback is logged.
-        except Exception as error:  # pylint: disable=broad-exception-caught
+        # Catching the concrete error families the handler stack can raise
+        # (filesystem I/O, malformed JSON, bad args, backend misconfig) so
+        # that a backend failure returns a readable error to the LLM instead
+        # of blowing up the whole agent call. Truly unexpected errors (e.g.
+        # KeyboardInterrupt, programmer errors) still propagate. Full
+        # traceback is logged via logger.exception.
+        except (OSError, ValueError, TypeError, KeyError) as error:
             logger.exception("PersistentMemoryTool: error during '%s'", operation)
             return self._error(f"Unexpected error during '{operation}': {error}")
 
@@ -275,24 +275,23 @@ class PersistentMemoryTool(CodedTool):
             )
         return None
 
-    @property
-    def _handlers(self) -> dict[str, Any]:
-        """Dispatch table from operation name to its handler coroutine.
+    def _build_handlers(self) -> dict[str, Any]:
+        """Build the dispatch table from operation name to handler coroutine.
 
-        Custom helper (not a framework hook). Exposed as a property so
-        subclasses can override or extend the table without touching
-        :py:meth:`_dispatch_operation`.
+        Custom helper (not a framework hook). Called once from ``__init__`` —
+        the returned dict is cached on ``self._handlers``. Subclasses that
+        want to extend or replace the table should override this method.
 
         :return: Mapping of operation name → bound ``_handle_*`` coroutine.
         """
         return {
-            self._OP_CREATE: self._handle_create,
-            self._OP_READ: self._handle_read,
-            self._OP_UPDATE: self._handle_update,
-            self._OP_APPEND: self._handle_append,
-            self._OP_DELETE: self._handle_delete,
-            self._OP_SEARCH: self._handle_search,
-            self._OP_LIST: self._handle_list,
+            MemoryOperation.CREATE.value: self._handle_create,
+            MemoryOperation.READ.value: self._handle_read,
+            MemoryOperation.UPDATE.value: self._handle_update,
+            MemoryOperation.APPEND.value: self._handle_append,
+            MemoryOperation.DELETE.value: self._handle_delete,
+            MemoryOperation.SEARCH.value: self._handle_search,
+            MemoryOperation.LIST.value: self._handle_list,
         }
 
     # ------------------------------------------------------------------

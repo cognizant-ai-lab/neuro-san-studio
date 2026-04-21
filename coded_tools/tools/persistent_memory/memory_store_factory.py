@@ -95,6 +95,11 @@ class MemoryStoreFactory:
 
         See :py:meth:`MemoryStoreConfig.resolve` for the precedence rules.
 
+        Kept as a factory-level entry point (rather than asking callers to
+        reach into ``MemoryStoreConfig`` directly) so the factory remains the
+        single import for code that just wants "the configured store" without
+        knowing the config dataclass exists.
+
         :param tool_config_store: ``store_config`` dict from HOCON. ``None`` or
                                   ``{}`` yields a config populated purely from env.
         :return: A populated config.
