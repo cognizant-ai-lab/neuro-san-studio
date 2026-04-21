@@ -152,13 +152,13 @@ class AgentChecklistMiddleware(AgentMiddleware):
         if not items:
             return "Error: Cannot create an empty checklist. Provide at least one item."
 
-        normalized_items = [item.strip() for item in items if item.strip()]
-        if not normalized_items:
+        stripped_items: list[str] = [item.strip() for item in items if item.strip()]
+        if not stripped_items:
             return "Error: Cannot create an empty checklist. Provide at least one item."
 
         # Reset the checklist with new items, all starting as "pending"
         self.checklist = []
-        for item in normalized_items:
+        for item in stripped_items:
             self.checklist.append({"item": item, "status": "pending", "notes": ""})
 
         self.logger.info("Checklist created with %d items", len(self.checklist))
