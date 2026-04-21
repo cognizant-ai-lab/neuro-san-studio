@@ -40,23 +40,6 @@
     #     # filter the tool to only create_issue.
     # },
 
-    # Uncomment this section to use You.com MCP server for web search, content extraction, and AI research.
-    # Get a free API key with $100 in credits (no credit card required) at https://you.com/platform
-    # Make sure to set the environment variable YDC_API_KEY with a valid API key.
-    # "https://api.you.com/mcp": {
-    #     "http_headers": {
-    #        # YDC_API_KEY is an environment variable that should contain a valid You.com API key.
-    #        # "${...}" syntax will substitute the value of the environment variable at runtime.
-    #         "Authorization": "Bearer "${YDC_API_KEY}
-    #     },
-    #     "tools": ["you-search", "you-contents", "you-research"]
-    #     # This MCP server provides three tools:
-    #     # you-search: Comprehensive web and news search with advanced filtering (site, file type, language, date ranges).
-    #     # you-contents: Extracts full page content from URLs in Markdown or HTML format.
-    #     # you-research: Synthesized, citation-backed answers with configurable effort levels (lite, standard, deep, exhaustive, frontier).
-    #     # See https://docs.you.com/build-with-agents/mcp-server for more details on the tools and how to get started.
-    # },
-
     # Uncomment this section to use Google Maps Platform Grounding Lite MCP server.
     # Make sure to set the environment variable GOOGLE_API_KEY with a valid API key and enable the Maps Grounding Lite API.
     # "https://mapstools.googleapis.com/mcp": {
@@ -73,5 +56,22 @@
     #     # Compute routes: Request information about driving or walking routes between two locations and return route distance and duration information.
     #     # Note: Grounding Lite does not provide step-by-step routing, directions, real-time traffic, or navigation information
     #     # See https://developers.google.com/maps/ai/grounding-lite for more details on the tools and how to get started.
+    # },
+
+    # Uncomment this section to use You.com MCP server for web search, content extraction, and AI research.
+    # Get a free API key with $100 in credits (no credit card required) at https://you.com/platform
+    # Make sure to set the environment variable YDC_API_KEY with a valid API key.
+    # "https://api.you.com/mcp": {
+    #     "http_headers": {
+    #        # YDC_API_KEY is an environment variable that should contain a valid You.com API key.
+    #        # "${...}" syntax will substitute the value of the environment variable at runtime.
+    #         "Authorization": "Bearer "${YDC_API_KEY}
+    #     },
+    #     "tools": ["you-search", "you-contents", "you-research"]
+    #     # This MCP server provides three tools:
+    #     # you-search: Comprehensive web and news search with advanced filtering (site, file type, language, date ranges).
+    #     # you-contents: Extracts full page content from URLs in Markdown or HTML format.
+    #     # you-research: Synthesized, citation-backed answers with configurable effort levels (lite, standard, deep, exhaustive, frontier).
+    #     # See https://docs.you.com/build-with-agents/mcp-server for more details on the tools and how to get started.
     # },
 }

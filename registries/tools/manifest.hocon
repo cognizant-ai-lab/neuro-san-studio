@@ -140,5 +140,5 @@
     "tools/wikimedia_search.hocon": true,
 
     # Requires YDC_API_KEY. See docs/search_tools.md and mcp/mcp_info.hocon for setup.
-    "tools/you_search.hocon": true,
+    "tools/you_search.hocon": false,
 }
