@@ -18,7 +18,6 @@ from logging import Logger
 from logging import getLogger
 from typing import Awaitable
 from typing import Callable
-from typing import Optional
 from typing import override
 
 from langchain.agents.middleware.types import AgentMiddleware
@@ -86,7 +85,7 @@ class AgentChecklistMiddleware(AgentMiddleware):
         self,
         checklist_title: str = "Task Checklist",
         initial_checklist: list[dict[str, str]] | None = None,
-        progress_reporter: Optional[AgentProgressReporter] | None = None,
+        progress_reporter: AgentProgressReporter | None = None,
     ) -> None:
         """Initialize the checklist middleware.
 
