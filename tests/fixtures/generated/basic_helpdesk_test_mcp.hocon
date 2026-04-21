@@ -68,9 +68,9 @@
                     # matches up to our description of acceptance criteria.
                     # Each component of the list needs to pass muster in order to pass.
                     "gist": [
-                        "The response was routed to technical support and provides structured connectivity troubleshooting.",
+                        "The response provides structured troubleshooting for a connectivity or internet dropping issue.",
                         "The response asks whether the issue affects all devices or just one device.",
-                        "The response identifies this as a technical or connectivity issue.",
+                        "The response identifies this as a technical or connectivity issue, or provides technical support for connection issue or billing.",
                         "The response suggests an Ethernet isolation test to determine if the problem is Wi-Fi specific or affects wired connections too."
                     ]
                 }
