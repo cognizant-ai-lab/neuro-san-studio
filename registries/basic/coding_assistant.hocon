@@ -149,7 +149,7 @@ Once all checklist items are done and the code has been verified, present the fi
 
             # --- Optional Arguments ---
             "args": {
-                # OpenAI model calls the built-in web search tool. Default to gpt-4o-2024-08-06.
+                # OpenAI code interpreter uses this model. Default to gpt-4o-2024-08-06.
                 "openai_model": "gpt-4.1"
             }
         },
