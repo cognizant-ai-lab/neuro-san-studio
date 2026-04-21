@@ -14,14 +14,13 @@
 #
 # END COPYRIGHT
 
-from logging import getLogger
 from logging import Logger
+from logging import getLogger
 from typing import Awaitable
 from typing import Callable
 from typing import override
 
 from langchain.agents.middleware.types import AgentMiddleware
-from langchain.agents.middleware.types import AgentState
 from langchain.agents.middleware.types import ContextT
 from langchain.agents.middleware.types import ModelRequest
 from langchain.agents.middleware.types import ModelResponse
