@@ -117,8 +117,8 @@ class MemoryMiddleware(AgentMiddleware):
         self.persistent_memory_tool: PersistentMemoryTool = PersistentMemoryTool(
             tool_config={
                 "agent_network_name": agent_network_name,
-                "agent_name":         agent_name,
-                "store_config":       store_config,
+                "agent_name": agent_name,
+                "store_config": store_config,
                 "enabled_operations": options.get("enabled_operations"),
             }
         )
@@ -133,8 +133,7 @@ class MemoryMiddleware(AgentMiddleware):
         self.tools: list[BaseTool] = [self._build_dispatcher_tool()]
 
         logger.info(
-            "MemoryMiddleware initialised for %s/%s. Enabled operations: %s. "
-            "Summariser: %s",
+            "MemoryMiddleware initialised for %s/%s. Enabled operations: %s. Summariser: %s",
             agent_network_name,
             agent_name,
             sorted(self.persistent_memory_tool.enabled_operations),
@@ -175,9 +174,7 @@ class MemoryMiddleware(AgentMiddleware):
         return await handler(request.override(system_message=new_system))
 
     @override
-    async def aafter_agent(
-        self, state: AgentState, runtime: Runtime[ContextT]
-    ) -> Optional[dict[str, Any]]:
+    async def aafter_agent(self, state: AgentState, runtime: Runtime[ContextT]) -> Optional[dict[str, Any]]:
         """Close the underlying tool so store backends release resources.
 
         :param state: Agent state at shutdown (unused).
@@ -271,9 +268,7 @@ class MemoryMiddleware(AgentMiddleware):
                 if call_args.get(key_name) is not None:
                     args[key_name] = call_args[key_name]
 
-            result: dict[str, Any] = await self.persistent_memory_tool.async_invoke(
-                args, self._sly_data
-            )
+            result: dict[str, Any] = await self.persistent_memory_tool.async_invoke(args, self._sly_data)
 
             # Summarise read/search output if a summariser is configured. Writes
             # (create / append / update / delete) and list pass through untouched.
@@ -315,15 +310,15 @@ class MemoryMiddleware(AgentMiddleware):
                     "topic": {
                         "type": "string",
                         "description": "Identifier for this slice of memory — becomes the "
-                                       "on-disk file name. Can be anything the caller wants "
-                                       "(user name, project id, session id) in lowercase "
-                                       "(spaces → '_'), e.g. 'mike', 'project_alpha'. Pass the "
-                                       "SAME value on every call for a given topic.",
+                        "on-disk file name. Can be anything the caller wants "
+                        "(user name, project id, session id) in lowercase "
+                        "(spaces → '_'), e.g. 'mike', 'project_alpha'. Pass the "
+                        "SAME value on every call for a given topic.",
                     },
                     "key": {
                         "type": "string",
                         "description": "Entry key. Required for read/update/delete; "
-                                       "optional for create (auto-generated if omitted).",
+                        "optional for create (auto-generated if omitted).",
                     },
                     "content": {
                         "type": "string",
@@ -420,6 +415,7 @@ class _Summarizer:
         # Import lazily so agent networks that do not use the summariser do
         # not need ``langchain_openai`` installed.
         from langchain_openai import ChatOpenAI  # pylint: disable=import-outside-toplevel
+
         self._llm = ChatOpenAI(model=model_name)
         self._instructions: str = instructions.strip()
         # Threshold below which we return the raw content without an LLM call.
@@ -444,10 +440,7 @@ class _Summarizer:
             return None
         instructions: str = str(config.get("instructions") or "").strip()
         if not instructions:
-            logger.warning(
-                "MemoryMiddleware summarizer is enabled but has no 'instructions'; "
-                "disabling."
-            )
+            logger.warning("MemoryMiddleware summarizer is enabled but has no 'instructions'; disabling.")
             return None
         model_name: str = str(config.get("model") or _DEFAULT_SUMMARIZER_MODEL).strip()
         summarizer = cls(
@@ -456,15 +449,11 @@ class _Summarizer:
             min_chars=_parse_int(config.get("min_chars"), _DEFAULT_SUMMARIZER_MIN_CHARS),
         )
         summarizer.compact_on_write = bool(config.get("compact_on_write", False))
-        summarizer.compact_threshold = max(
-            0, _parse_int(config.get("compact_threshold"), _DEFAULT_COMPACT_THRESHOLD)
-        )
+        summarizer.compact_threshold = max(0, _parse_int(config.get("compact_threshold"), _DEFAULT_COMPACT_THRESHOLD))
         summarizer.personalization = str(config.get("personalization") or "").strip()
         return summarizer
 
-    async def post_process(
-        self, operation: str, result: dict[str, Any]
-    ) -> dict[str, Any]:
+    async def post_process(self, operation: str, result: dict[str, Any]) -> dict[str, Any]:
         """Replace raw ``content`` strings in ``read`` / ``search`` results with summaries.
 
         Errors fall back to the raw result so a broken LLM never hides the

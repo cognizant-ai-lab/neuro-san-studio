@@ -23,7 +23,6 @@ from unittest import TestCase
 
 from coded_tools.tools.persistent_memory.json_file_store import JsonFileStoreBackend
 
-
 NS = ("net", "agent", "mike")
 
 
@@ -38,9 +37,7 @@ class TestJsonFileStoreBackend(TestCase):
 
     def test_extra_fields_are_preserved_in_json(self):
         """Non-``content`` fields round-trip as-is through the JSON serialiser."""
-        asyncio.run(
-            self.store.create(NS, "drink", {"content": "likes dark coffee", "category": "beverage"})
-        )
+        asyncio.run(self.store.create(NS, "drink", {"content": "likes dark coffee", "category": "beverage"}))
         item = asyncio.run(self.store.read(NS, "drink"))
         self.assertEqual(item.value["content"], "likes dark coffee")
         self.assertEqual(item.value["category"], "beverage")
@@ -52,10 +49,14 @@ class TestJsonFileStoreBackend(TestCase):
         """A user can edit the JSON file directly — any valid object loads."""
         directory = self.root / "net" / "agent"
         directory.mkdir(parents=True, exist_ok=True)
-        (directory / "mike.json").write_text(json.dumps({
-            "name": {"content": "The user's name is Mike."},
-            "favorite_coffee_order": {"content": "Black, from Henry's."},
-        }))
+        (directory / "mike.json").write_text(
+            json.dumps(
+                {
+                    "name": {"content": "The user's name is Mike."},
+                    "favorite_coffee_order": {"content": "Black, from Henry's."},
+                }
+            )
+        )
         self.assertEqual(asyncio.run(self.store.list(NS)), ["favorite_coffee_order", "name"])
         item = asyncio.run(self.store.read(NS, "name"))
         self.assertIn("Mike", item.value["content"])

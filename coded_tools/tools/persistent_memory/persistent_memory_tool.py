@@ -73,16 +73,24 @@ logger = logging.getLogger(__name__)
 # All valid operation names. ``enabled_operations`` in HOCON selects a subset
 # of these; unknown names there are logged and ignored.
 _OP_CREATE: str = "create"
-_OP_READ:   str = "read"
+_OP_READ: str = "read"
 _OP_UPDATE: str = "update"
 _OP_APPEND: str = "append"
 _OP_DELETE: str = "delete"
 _OP_SEARCH: str = "search"
-_OP_LIST:   str = "list"
+_OP_LIST: str = "list"
 
-ALL_OPERATIONS: frozenset[str] = frozenset({
-    _OP_CREATE, _OP_READ, _OP_UPDATE, _OP_APPEND, _OP_DELETE, _OP_SEARCH, _OP_LIST,
-})
+ALL_OPERATIONS: frozenset[str] = frozenset(
+    {
+        _OP_CREATE,
+        _OP_READ,
+        _OP_UPDATE,
+        _OP_APPEND,
+        _OP_DELETE,
+        _OP_SEARCH,
+        _OP_LIST,
+    }
+)
 
 # Default number of results returned by ``search`` if the LLM does not supply one.
 DEFAULT_SEARCH_LIMIT: int = 5
@@ -136,8 +144,7 @@ class PersistentMemoryTool(CodedTool):
         unknown_ops: set[str] = cleaned_ops - ALL_OPERATIONS
         if unknown_ops:
             logger.warning(
-                "PersistentMemoryTool (%s/%s): ignoring unknown operations in "
-                "enabled_operations: %s",
+                "PersistentMemoryTool (%s/%s): ignoring unknown operations in enabled_operations: %s",
                 self._agent_network_name,
                 self._agent_name,
                 sorted(unknown_ops),
@@ -182,9 +189,7 @@ class PersistentMemoryTool(CodedTool):
 
         return await self._dispatch_operation(operation, args, sly_data)
 
-    async def async_invoke_internal(
-        self, args: dict[str, Any], sly_data: dict[str, Any]
-    ) -> dict[str, Any]:
+    async def async_invoke_internal(self, args: dict[str, Any], sly_data: dict[str, Any]) -> dict[str, Any]:
         """Run an operation bypassing the LLM-facing ``enabled_operations`` whitelist.
 
         Intended for middleware-driven internal operations (e.g. auto-compact
@@ -198,15 +203,9 @@ class PersistentMemoryTool(CodedTool):
         """
         operation: str = str(args.get("operation") or "").strip().lower()
         if not operation:
-            return _error(
-                "Missing 'operation'. Must be one of: "
-                + ", ".join(sorted(ALL_OPERATIONS))
-            )
+            return _error("Missing 'operation'. Must be one of: " + ", ".join(sorted(ALL_OPERATIONS)))
         if operation not in ALL_OPERATIONS:
-            return _error(
-                f"Unknown operation '{operation}'. "
-                f"Must be one of: {', '.join(sorted(ALL_OPERATIONS))}"
-            )
+            return _error(f"Unknown operation '{operation}'. Must be one of: {', '.join(sorted(ALL_OPERATIONS))}")
         return await self._dispatch_operation(operation, args, sly_data)
 
     async def _dispatch_operation(
@@ -243,15 +242,9 @@ class PersistentMemoryTool(CodedTool):
         :return: An error envelope if missing / unknown / disabled, else ``None``.
         """
         if not operation:
-            return _error(
-                "Missing 'operation'. Must be one of: "
-                + ", ".join(sorted(ALL_OPERATIONS))
-            )
+            return _error("Missing 'operation'. Must be one of: " + ", ".join(sorted(ALL_OPERATIONS)))
         if operation not in ALL_OPERATIONS:
-            return _error(
-                f"Unknown operation '{operation}'. "
-                f"Must be one of: {', '.join(sorted(ALL_OPERATIONS))}"
-            )
+            return _error(f"Unknown operation '{operation}'. Must be one of: {', '.join(sorted(ALL_OPERATIONS))}")
         if operation not in self._enabled_operations:
             return _error(
                 f"Operation '{operation}' is not enabled for this agent. "
@@ -267,21 +260,19 @@ class PersistentMemoryTool(CodedTool):
         """
         return {
             _OP_CREATE: self._handle_create,
-            _OP_READ:   self._handle_read,
+            _OP_READ: self._handle_read,
             _OP_UPDATE: self._handle_update,
             _OP_APPEND: self._handle_append,
             _OP_DELETE: self._handle_delete,
             _OP_SEARCH: self._handle_search,
-            _OP_LIST:   self._handle_list,
+            _OP_LIST: self._handle_list,
         }
 
     # ------------------------------------------------------------------
     # Handlers
     # ------------------------------------------------------------------
 
-    async def _handle_create(
-        self, args: dict[str, Any], namespace: Namespace
-    ) -> dict[str, Any]:
+    async def _handle_create(self, args: dict[str, Any], namespace: Namespace) -> dict[str, Any]:
         """Store a new memory entry. Key is auto-generated if not supplied.
 
         Uses upsert semantics: if the caller supplies a ``key`` that already
@@ -303,9 +294,7 @@ class PersistentMemoryTool(CodedTool):
         logger.debug("PersistentMemoryTool: created key='%s' in %s", key, namespace)
         return {"result": {"status": "created", "key": key}}
 
-    async def _handle_read(
-        self, args: dict[str, Any], namespace: Namespace
-    ) -> dict[str, Any]:
+    async def _handle_read(self, args: dict[str, Any], namespace: Namespace) -> dict[str, Any]:
         """Retrieve a single entry by key (defaults to the canonical key).
 
         :param args: Dispatcher args; ``key`` optional.
@@ -321,9 +310,7 @@ class PersistentMemoryTool(CodedTool):
         logger.debug("PersistentMemoryTool: read key='%s' from %s", key, namespace)
         return {"result": {"key": key, "content": item.value.get("content", "")}}
 
-    async def _handle_update(
-        self, args: dict[str, Any], namespace: Namespace
-    ) -> dict[str, Any]:
+    async def _handle_update(self, args: dict[str, Any], namespace: Namespace) -> dict[str, Any]:
         """Overwrite an existing entry.
 
         Treated as an upsert — we do not error if the key does not already
@@ -344,9 +331,7 @@ class PersistentMemoryTool(CodedTool):
         logger.debug("PersistentMemoryTool: updated key='%s' in %s", key, namespace)
         return {"result": {"status": "updated", "key": key}}
 
-    async def _handle_append(
-        self, args: dict[str, Any], namespace: Namespace
-    ) -> dict[str, Any]:
+    async def _handle_append(self, args: dict[str, Any], namespace: Namespace) -> dict[str, Any]:
         """Append new content to an existing entry's ``content`` field.
 
         Unlike ``update`` (which overwrites), ``append`` concatenates the new
@@ -379,9 +364,7 @@ class PersistentMemoryTool(CodedTool):
         logger.debug("PersistentMemoryTool: appended to key='%s' in %s", key, namespace)
         return {"result": {"status": "appended", "key": key}}
 
-    async def _handle_delete(
-        self, args: dict[str, Any], namespace: Namespace
-    ) -> dict[str, Any]:
+    async def _handle_delete(self, args: dict[str, Any], namespace: Namespace) -> dict[str, Any]:
         """Remove an entry by key (defaults to the canonical key).
 
         :param args: Dispatcher args; ``key`` optional.
@@ -395,9 +378,7 @@ class PersistentMemoryTool(CodedTool):
         logger.debug("PersistentMemoryTool: deleted key='%s' from %s", key, namespace)
         return {"result": {"status": "deleted", "key": key}}
 
-    async def _handle_search(
-        self, args: dict[str, Any], namespace: Namespace
-    ) -> dict[str, Any]:
+    async def _handle_search(self, args: dict[str, Any], namespace: Namespace) -> dict[str, Any]:
         """Search entries for the current topic.
 
         Scoring is keyword-based. The tool does not re-rank or filter — it
@@ -432,9 +413,7 @@ class PersistentMemoryTool(CodedTool):
         )
         return {"result": {"results": results}}
 
-    async def _handle_list(
-        self, args: dict[str, Any], namespace: Namespace
-    ) -> dict[str, Any]:
+    async def _handle_list(self, args: dict[str, Any], namespace: Namespace) -> dict[str, Any]:
         """List all keys in the topic's namespace.
 
         :param args: Dispatcher args (unused).

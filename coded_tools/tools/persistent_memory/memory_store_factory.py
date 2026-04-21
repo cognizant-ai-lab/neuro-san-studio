@@ -37,10 +37,12 @@ logger = logging.getLogger(__name__)
 BACKEND_FILE_SYSTEM: str = "file_system"
 BACKEND_JSON_FILE: str = "json_file"
 
-VALID_BACKENDS: frozenset[str] = frozenset({
-    BACKEND_FILE_SYSTEM,
-    BACKEND_JSON_FILE,
-})
+VALID_BACKENDS: frozenset[str] = frozenset(
+    {
+        BACKEND_FILE_SYSTEM,
+        BACKEND_JSON_FILE,
+    }
+)
 
 
 def resolve_config(tool_config_store: Optional[dict[str, Any]] = None) -> MemoryStoreConfig:
@@ -68,10 +70,7 @@ def create_store(tool_config_store: Optional[dict[str, Any]] = None) -> BaseMemo
     backend: str = (config.backend or "").strip().lower()
 
     if backend not in VALID_BACKENDS:
-        raise ValueError(
-            f"Unknown memory backend '{config.backend}'. "
-            f"Valid options: {sorted(VALID_BACKENDS)}."
-        )
+        raise ValueError(f"Unknown memory backend '{config.backend}'. Valid options: {sorted(VALID_BACKENDS)}.")
 
     logger.info(
         "Creating memory store backend: %s (root_path=%s)",

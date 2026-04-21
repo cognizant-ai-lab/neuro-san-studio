@@ -116,9 +116,7 @@ class MemoryStoreConfig:
             try:
                 parsed: Any = json.loads(env_json)
             except json.JSONDecodeError as error:
-                logger.warning(
-                    "MEMORY_STORE_CONFIG is not valid JSON; ignoring. (%s)", error
-                )
+                logger.warning("MEMORY_STORE_CONFIG is not valid JSON; ignoring. (%s)", error)
             else:
                 if isinstance(parsed, dict):
                     merged.update(parsed)
@@ -131,7 +129,7 @@ class MemoryStoreConfig:
         # Individual vars win over MEMORY_STORE_CONFIG so a deployer can pin a
         # single field without rebuilding the whole JSON blob.
         env_field_map: dict[str, str] = {
-            "MEMORY_BACKEND":   "backend",
+            "MEMORY_BACKEND": "backend",
             "MEMORY_ROOT_PATH": "root_path",
         }
         for env_name, field_name in env_field_map.items():
@@ -211,9 +209,7 @@ class BaseMemoryStore(ABC):
         # Guards ``self._locks`` itself — per-namespace locks are created
         # lazily and must not race when inserting into the dict.
         self._locks_guard: asyncio.Lock = asyncio.Lock()
-        logger.info(
-            "%s initialised. Root path: %s", self.__class__.__name__, self._root
-        )
+        logger.info("%s initialised. Root path: %s", self.__class__.__name__, self._root)
 
     async def create(self, namespace: Namespace, key: str, value: dict[str, Any]) -> None:
         """Store a new entry under ``key`` in ``namespace``. Upsert semantics."""
@@ -303,15 +299,11 @@ class BaseMemoryStore(ABC):
             async with aiofiles.open(path, mode="r", encoding="utf-8") as handle:
                 content: str = await handle.read()
         except OSError as error:
-            logger.error(
-                "%s: failed to read %s: %s", self.__class__.__name__, path, error
-            )
+            logger.error("%s: failed to read %s: %s", self.__class__.__name__, path, error)
             return {}
         return self._deserialise(content)
 
-    async def _write_file(
-        self, namespace: Namespace, entries: dict[str, dict[str, Any]]
-    ) -> None:
+    async def _write_file(self, namespace: Namespace, entries: dict[str, dict[str, Any]]) -> None:
         """
         Atomically rewrite the topic's file.
 
@@ -328,9 +320,7 @@ class BaseMemoryStore(ABC):
                 await handle.write(payload)
             os.replace(tmp_path, path)
         except OSError as error:
-            logger.error(
-                "%s: failed to write %s: %s", self.__class__.__name__, path, error
-            )
+            logger.error("%s: failed to write %s: %s", self.__class__.__name__, path, error)
             if tmp_path.exists():
                 try:
                     tmp_path.unlink()

@@ -172,7 +172,7 @@ def _deserialise(document: str) -> dict[str, dict[str, Any]]:
             body: str = ""
         else:
             key = chunk[:newline_index].strip()
-            body = chunk[newline_index + 1:]
+            body = chunk[newline_index + 1 :]
         if not key:
             continue
         result[key] = _parse_section_body(body)
@@ -188,11 +188,11 @@ def _parse_section_body(body: str) -> dict[str, Any]:
     trimmed: str = body.lstrip("\n")
 
     if trimmed.startswith(_JSON_FENCE_OPEN):
-        rest: str = trimmed[len(_JSON_FENCE_OPEN):]
+        rest: str = trimmed[len(_JSON_FENCE_OPEN) :]
         close_index: int = rest.find(_JSON_FENCE_CLOSE)
         if close_index != -1:
             json_text: str = rest[:close_index]
-            remainder: str = rest[close_index + len(_JSON_FENCE_CLOSE):]
+            remainder: str = rest[close_index + len(_JSON_FENCE_CLOSE) :]
             try:
                 parsed: Any = json.loads(json_text)
             except json.JSONDecodeError:

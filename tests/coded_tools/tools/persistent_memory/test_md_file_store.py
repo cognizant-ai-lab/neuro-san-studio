@@ -23,7 +23,6 @@ from unittest import TestCase
 from coded_tools.tools.persistent_memory.md_file_store import DEFAULT_KEY
 from coded_tools.tools.persistent_memory.md_file_store import MdFileStoreBackend
 
-
 NS = ("net", "agent", "mike")
 
 
@@ -56,9 +55,7 @@ class TestMdFileStoreBackend(TestCase):
         at <root>/<network>/<agent>/<actor>.md, with one H1 section per topic.
         """
         asyncio.run(self.store.create(NS, "name", {"content": "The user's name is Mike."}))
-        asyncio.run(
-            self.store.create(NS, "favorite_coffee_order", {"content": "Black coffee from Henry's."})
-        )
+        asyncio.run(self.store.create(NS, "favorite_coffee_order", {"content": "Black coffee from Henry's."}))
         path = self.root / "net" / "agent" / "mike.md"
         self.assertTrue(path.exists(), f"expected one file per user at {path}")
         text = path.read_text()
@@ -70,9 +67,7 @@ class TestMdFileStoreBackend(TestCase):
 
     def test_extra_fields_render_as_fenced_json_block(self):
         """Fields other than 'content' are written as a ```json block inside the section."""
-        asyncio.run(
-            self.store.create(NS, "drink", {"content": "likes dark coffee", "category": "beverage"})
-        )
+        asyncio.run(self.store.create(NS, "drink", {"content": "likes dark coffee", "category": "beverage"}))
         text = (self.root / "net" / "agent" / "mike.md").read_text()
         self.assertIn("# drink", text)
         self.assertIn("```json", text)

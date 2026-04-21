@@ -31,7 +31,6 @@ from coded_tools.tools.persistent_memory.md_file_store import MdFileStoreBackend
 from coded_tools.tools.persistent_memory.memory_store_factory import create_store
 from coded_tools.tools.persistent_memory.memory_store_factory import resolve_config
 
-
 # All MEMORY_* vars the factory inspects. Cleared in each test so host-env
 # values cannot leak in and corrupt assertions.
 _MEMORY_ENV_VARS: tuple[str, ...] = (
@@ -70,6 +69,7 @@ class TestResolveConfigPrecedence(TestCase):
         with patch.dict(os.environ, env, clear=True):
             config = resolve_config({"backend": "file_system", "root_path": "/from/hocon"})
         self.assertEqual(config.root_path, "/from/env")
+
 
 class TestCreateStore(TestCase):
     """Factory instantiation for the file-backed backends."""

@@ -34,8 +34,8 @@ def _make_tool(root_path: str, enabled_operations=None) -> PersistentMemoryTool:
     return PersistentMemoryTool(
         tool_config={
             "agent_network_name": "test_net",
-            "agent_name":         "test_agent",
-            "store_config":       {"backend": "file_system", "root_path": root_path},
+            "agent_name": "test_agent",
+            "store_config": {"backend": "file_system", "root_path": root_path},
             "enabled_operations": enabled_operations,
         }
     )
@@ -132,6 +132,7 @@ class TestPersistentMemoryToolDispatch(TestCase):
         result = self._invoke({"operation": "explode"})
         self.assertIn("error", result)
 
+
 class TestPersistentMemoryToolEnabledOperations(TestCase):
     """``enabled_operations`` locks down what the LLM can do."""
 
@@ -145,9 +146,7 @@ class TestPersistentMemoryToolEnabledOperations(TestCase):
     def test_disabled_operation_returns_error(self):
         """An enabled-op check runs before any store access."""
         tool = _make_tool(root_path=self._tmp, enabled_operations=["read", "search"])
-        result = asyncio.run(
-            tool.async_invoke({"operation": "create", "content": "v"}, {"user_id": "alice"})
-        )
+        result = asyncio.run(tool.async_invoke({"operation": "create", "content": "v"}, {"user_id": "alice"}))
         self.assertIn("error", result)
         self.assertIn("not enabled", result["error"].lower())
 
@@ -165,10 +164,6 @@ class TestPersistentMemoryToolUserScoping(TestCase):
     def test_different_users_have_isolated_memory(self):
         """Alice's create is not visible to Bob's read."""
         tool = _make_tool(root_path=self._tmp)
-        asyncio.run(
-            tool.async_invoke({"operation": "create", "key": "k1", "content": "alice"}, {"user_id": "alice"})
-        )
-        result = asyncio.run(
-            tool.async_invoke({"operation": "read", "key": "k1"}, {"user_id": "bob"})
-        )
+        asyncio.run(tool.async_invoke({"operation": "create", "key": "k1", "content": "alice"}, {"user_id": "alice"}))
+        result = asyncio.run(tool.async_invoke({"operation": "read", "key": "k1"}, {"user_id": "bob"}))
         self.assertIn("error", result)

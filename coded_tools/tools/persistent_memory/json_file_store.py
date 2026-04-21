@@ -68,9 +68,7 @@ class JsonFileStoreBackend(BaseMemoryStore):
         try:
             parsed: Any = json.loads(content)
         except json.JSONDecodeError as error:
-            logger.warning(
-                "JsonFileStoreBackend: malformed JSON (%s). Treating as empty.", error
-            )
+            logger.warning("JsonFileStoreBackend: malformed JSON (%s). Treating as empty.", error)
             return {}
         if not isinstance(parsed, dict):
             logger.warning(

@@ -87,9 +87,7 @@ class TestMemoryMiddlewareDispatch(TestCase):
         mw = _make_middleware(root_path=self._tmp)
         tool_fn = mw.tools[0]
 
-        create_result = asyncio.run(
-            tool_fn.coroutine(operation="create", key="k1", content="loves dark coffee")
-        )
+        create_result = asyncio.run(tool_fn.coroutine(operation="create", key="k1", content="loves dark coffee"))
         self.assertEqual(create_result["result"]["status"], "created")
 
         search_result = asyncio.run(tool_fn.coroutine(operation="search", query="coffee"))
@@ -190,9 +188,7 @@ class TestMemoryMiddlewareAutoCompact(TestCase):
         stub.summarise.assert_awaited_once_with(long_content)
 
         read = asyncio.run(
-            mw.persistent_memory_tool.async_invoke(
-                {"operation": "read", "key": "k1"}, {"user_id": "alice"}
-            )
+            mw.persistent_memory_tool.async_invoke({"operation": "read", "key": "k1"}, {"user_id": "alice"})
         )
         self.assertEqual(read["result"]["content"], "SUMMARISED")
 
@@ -205,9 +201,7 @@ class TestMemoryMiddlewareAutoCompact(TestCase):
 
         stub.summarise.assert_not_awaited()
         read = asyncio.run(
-            mw.persistent_memory_tool.async_invoke(
-                {"operation": "read", "key": "k1"}, {"user_id": "alice"}
-            )
+            mw.persistent_memory_tool.async_invoke({"operation": "read", "key": "k1"}, {"user_id": "alice"})
         )
         self.assertEqual(read["result"]["content"], "short")
 
@@ -221,9 +215,7 @@ class TestMemoryMiddlewareAutoCompact(TestCase):
 
         stub.summarise.assert_not_awaited()
         read = asyncio.run(
-            mw.persistent_memory_tool.async_invoke(
-                {"operation": "read", "key": "k1"}, {"user_id": "alice"}
-            )
+            mw.persistent_memory_tool.async_invoke({"operation": "read", "key": "k1"}, {"user_id": "alice"})
         )
         self.assertEqual(read["result"]["content"], long_content)
 
@@ -258,9 +250,7 @@ class TestMemoryMiddlewareAutoCompact(TestCase):
         stub.summarise.assert_awaited_once_with(long_content)
 
         read = asyncio.run(
-            mw.persistent_memory_tool.async_invoke_internal(
-                {"operation": "read", "key": "k1"}, {"user_id": "alice"}
-            )
+            mw.persistent_memory_tool.async_invoke_internal({"operation": "read", "key": "k1"}, {"user_id": "alice"})
         )
         self.assertEqual(read["result"]["content"], "SUMMARISED")
 
@@ -271,15 +261,11 @@ class TestMemoryMiddlewareAutoCompact(TestCase):
         tool_fn = mw.tools[0]
 
         long_content = "z" * 100
-        result = asyncio.run(
-            tool_fn.coroutine(operation="create", key="k1", content=long_content)
-        )
+        result = asyncio.run(tool_fn.coroutine(operation="create", key="k1", content=long_content))
         self.assertNotIn("error", result)
 
         read = asyncio.run(
-            mw.persistent_memory_tool.async_invoke(
-                {"operation": "read", "key": "k1"}, {"user_id": "alice"}
-            )
+            mw.persistent_memory_tool.async_invoke({"operation": "read", "key": "k1"}, {"user_id": "alice"})
         )
         self.assertEqual(read["result"]["content"], long_content)
 
@@ -299,11 +285,13 @@ class TestSummarizerPersonalization(TestCase):
             fake_llm.ainvoke = AsyncMock(return_value=fake_response)
             fake_chat_cls.return_value = fake_llm
 
-            summarizer = _Summarizer.from_config({
-                "enabled":         True,
-                "instructions":    "Base instructions.",
-                "personalization": "Always mention the user's favourite colour is teal.",
-            })
+            summarizer = _Summarizer.from_config(
+                {
+                    "enabled": True,
+                    "instructions": "Base instructions.",
+                    "personalization": "Always mention the user's favourite colour is teal.",
+                }
+            )
             self.assertIsNotNone(summarizer)
             asyncio.run(summarizer.summarise("x" * 400))
 
