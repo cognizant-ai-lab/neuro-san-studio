@@ -16,6 +16,7 @@
 
 from logging import Logger
 from logging import getLogger
+from typing import Any
 from typing import Awaitable
 from typing import Callable
 from typing import override
@@ -27,8 +28,12 @@ from langchain.agents.middleware.types import ModelResponse
 from langchain.agents.middleware.types import ResponseT
 from langchain_core.messages import BaseMessage
 from langchain_core.messages import SystemMessage
+from langchain_core.messages import ToolMessage
+from langchain_core.messages.tool import ToolCall
 from langchain_core.tools import BaseTool
 from langchain_core.tools import StructuredTool
+from langgraph.prebuilt.tool_node import ToolCallRequest
+from langgraph.types import Command
 from neuro_san.interfaces.agent_progress_reporter import AgentProgressReporter
 
 VALID_STATUSES: set[str] = {"pending", "in_progress", "done", "skipped"}
@@ -85,6 +90,7 @@ class AgentChecklistMiddleware(AgentMiddleware):
         self,
         checklist_title: str = "Task Checklist",
         initial_checklist: list[dict[str, str]] | None = None,
+        keep_checklist_in_context: bool = False,
         progress_reporter: AgentProgressReporter | None = None,
     ) -> None:
         """Initialize the checklist middleware.
@@ -93,6 +99,10 @@ class AgentChecklistMiddleware(AgentMiddleware):
         :param initial_checklist: Optional list of items to pre-populate.
             Each item should be a dict with ``item`` (required), ``status``
             (optional, defaults to "pending"), and ``notes`` (optional).
+        :param keep_checklist_in_context: Whether to keep checklist tool responses in
+            the chat context. When ``False`` (default), tool call results are intercepted
+            and returned directly without being written to the journal, keeping the context
+            clean. The agent still sees the updated checklist via system prompt injection.
         :param progress_reporter: Optional progress reporter for emitting checklist
             progress (0.0–1.0) to the client. Injected automatically by the framework
             when ``"progress_reporter": null`` is listed in the middleware ``args``.
@@ -100,6 +110,7 @@ class AgentChecklistMiddleware(AgentMiddleware):
         self.logger: Logger = getLogger(__name__)
         self.checklist_title: str = checklist_title
         self.checklist: list[dict[str, str]] = []
+        self.keep_checklist_in_context: bool = keep_checklist_in_context
         self.progress_reporter: AgentProgressReporter | None = progress_reporter
 
         if initial_checklist:
@@ -138,6 +149,58 @@ class AgentChecklistMiddleware(AgentMiddleware):
             else:
                 system_message = SystemMessage(content=checklist_prompt)
             return await handler(request.override(system_message=system_message))
+
+        return await handler(request)
+
+    @override
+    async def awrap_tool_call(
+        self,
+        request: ToolCallRequest,
+        handler: Callable[[ToolCallRequest], Awaitable[ToolMessage | Command[Any]]],
+    ) -> ToolMessage | Command[Any]:
+        """Intercept checklist tool calls to prevent their responses from polluting chat context.
+
+        When ``keep_checklist_in_context`` is ``False``, calls the middleware methods directly
+        and returns a ``ToolMessage`` without going through the journal, so the tool responses
+        are not written into the chat history. The agent still sees the updated checklist state
+        via the system prompt injection in ``awrap_model_call``.
+
+        :param request: Tool call request
+        :param handler: Handler to execute the tool call
+        :return: ToolMessage with checklist content, or delegated to handler
+        """
+        tool_call: ToolCall = request.tool_call
+        tool_name: str = tool_call.get("name", "")
+        tool_call_id: str = tool_call.get("id", "")
+
+        checklist_tool_names: set[str] = {"create_checklist", "update_checklist_item", "edit_checklist_item"}
+
+        if not self.keep_checklist_in_context and tool_name in checklist_tool_names:
+            args: dict[str, Any] = tool_call.get("args", {})
+            content: str = ""
+
+            if tool_name == "create_checklist":
+                items = args.get("items", [])
+                content = await self.create_checklist(items)
+
+            elif tool_name == "update_checklist_item":
+                item_index = args.get("item_index")
+                status = args.get("status")
+                notes = args.get("notes", "")
+                if item_index is None or status is None:
+                    content = "Error: 'item_index' and 'status' are required."
+                else:
+                    content = await self.update_checklist_item(item_index, status, notes)
+
+            elif tool_name == "edit_checklist_item":
+                item_index = args.get("item_index")
+                new_item = args.get("new_item")
+                if item_index is None or new_item is None:
+                    content = "Error: 'item_index' and 'new_item' are required."
+                else:
+                    content = await self.edit_checklist_item(item_index, new_item)
+
+            return ToolMessage(content=content, tool_call_id=tool_call_id)
 
         return await handler(request)
 
