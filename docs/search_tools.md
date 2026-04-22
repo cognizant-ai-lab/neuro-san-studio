@@ -1,31 +1,17 @@
 # Neuro SAN Search Tools
 
-<!-- TOC -->
-
-- [Neuro SAN Search Tools](#neuro-san-search-tools)
-  - [Anthropic Search](#anthropic-search)
-  - [Brave Search](#brave-search)
-  - [Dux Distributed Global Search (DDGS)](#dux-distributed-global-search-ddgs)
-  - [Google Custom Search Engine](#google-custom-search-engine)
-  - [Google Serper](#google-serper)
-  - [OpenAI Search](#openai-search)
-  - [Tavily Search](#tavily-search)
-  - [You.com Search](#youcom-search)
-  - [Comparison of Search Tools](#comparison-of-search-tools)
-
-<!-- TOC -->
-
 Neuro SAN offers search capability via the following search engines:
-1. anthropic\_search — Web search via Anthropic's search tool
-2. brave\_search — Search using Brave Search API
-3. ddgs\_search — Search using DuckDuckGo (no API key required)
-4. google\_search — Search using Google Custom Search Engine
-5. google\_serper — Search using Google Serper API with advanced filtering
-6. openai\_search — Web search via OpenAI's search tool
-7. tavily\_search — AI-optimized search using Tavily API
-8. you\_search — Web search, content extraction, and AI research via You.com MCP server
 
-In this document, we will go over each search tool listed above and will also do a comparison.
+1. [Anthropic Search](#anthropic-search) — Web search via Anthropic's search tool
+2. [Brave Search](#brave-search) — Search using Brave Search API
+3. [Dux Distributed Global Search (DDGS)](#dux-distributed-global-search-ddgs) — Search using DuckDuckGo (no API key required)
+4. [Google Custom Search Engine](#google-custom-search-engine) — Search using Google Custom Search Engine
+5. [Google Serper](#google-serper) — Search using Google Serper API with advanced filtering
+6. [OpenAI Search](#openai-search) — Web search via OpenAI's search tool
+7. [Tavily Search](#tavily-search) — AI-optimized search using Tavily API
+8. [You.com Search](#youcom-search) — Web search, content extraction, and AI research via You.com MCP server
+
+See also: [Comparison of Search Tools](#comparison-of-search-tools)
 
 ## Anthropic Search
 
