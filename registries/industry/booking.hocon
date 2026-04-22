@@ -481,7 +481,7 @@ Alignment with Booking.com Values:
          "name": "BookingSearch",
          "function": {
             "description": """
-First, use your tool to search expedia for options.
+First, use your tool to search booking.com for options.
 Returns the URL to various Booking.com accommodation and travel options.
             """,
             "parameters": {
@@ -489,7 +489,7 @@ Returns the URL to various Booking.com accommodation and travel options.
                "properties": {
                   "inquiry": {
                         "type": "string",
-                        "description": "URL (should always be 'carmax.com') and Search terms to return options."
+                        "description": "URL (should always be 'booking.com') and Search terms to return options."
                   },
                },
                "required": ["inquiry"]
