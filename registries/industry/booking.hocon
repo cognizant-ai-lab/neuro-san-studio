@@ -18,14 +18,14 @@
    include "registries/aaosa.hocon",
 
    "metadata": {
-       "description": "Multi-agent system simulating Booking.com's travel platform. Provides trip planning, accommodation and activity search, pricing and discount guidance, vacation package creation, booking management, and payment support through specialized agents using the AAOSA pattern with web search integration.",
-       "tags": ["AAOSA", "travel", "customer-service", "tool"],
-       "sample_queries": [
-           "Find me a hotel in London near the city center for two adults next week.",
-           "What are the best hotel deals in Rome for a week in March?",
-           "I need to cancel my reservation, what is the refund policy?",
-           "Are there any Genius loyalty discounts available for my trip to Amsterdam?",
-       ]
+      "description": "Multi-agent system simulating Booking.com's travel platform. Provides trip planning, accommodation and activity search, pricing and discount guidance, vacation package creation, booking management, and payment support through specialized agents using the AAOSA pattern with web search integration.",
+      "tags": ["AAOSA", "travel", "customer-service", "tool"],
+      "sample_queries": [
+         "Find me a hotel in London near the city center for two adults next week.",
+         "What are the best hotel deals in Rome for a week in March?",
+         "I need to cancel my reservation, what is the refund policy?",
+         "Are there any Genius loyalty discounts available for my trip to Amsterdam?",
+      ]
    },
 
    # Load the shared LLM configuration from a single source of truth.
@@ -42,36 +42,36 @@ Do not try to help for personal matters.
 Do not mention what you can NOT do. Only mention what you can do.
 """,
 
-     "tools": [
-        # This first agent definition is regarded as the "Front Man", which
-        # does all the talking to the outside world/client.
-        #
-        # Some disqualifications from being a front man:
-        #   1) Cannot use a CodedTool "class" definition
-        #   2) Cannot use a Tool "toolbox" definition
-        #
-        # Besides the first agent being the front man, these tool definitions
-        # do not have to be in any particular order. How they are linked and
-        # call each other is defined within their own specs.
-        # This could be a graph, potentially even with cycles.
-        {
-            "name": "booking_assistant",
-            "function": {
-                "description": "Assist caller with their travel planning needs, including booking flights, hotels, and vacation packages."
-                "parameters": {
-                    "type": "object",
-                    "properties": {
-                        "user_inquiry": {
-                            "type": "string",
-                            "description": """
+   "tools": [
+      # This first agent definition is regarded as the "Front Man", which
+      # does all the talking to the outside world/client.
+      #
+      # Some disqualifications from being a front man:
+      #   1) Cannot use a CodedTool "class" definition
+      #   2) Cannot use a Tool "toolbox" definition
+      #
+      # Besides the first agent being the front man, these tool definitions
+      # do not have to be in any particular order. How they are linked and
+      # call each other is defined within their own specs.
+      # This could be a graph, potentially even with cycles.
+      {
+         "name": "booking_assistant",
+         "function": {
+            "description": "Assist caller with their travel planning needs, including booking flights, hotels, and vacation packages."
+            "parameters": {
+               "type": "object",
+               "properties": {
+                  "user_inquiry": {
+                        "type": "string",
+                        "description": """
 An inquiry from a user of booking.com
 """
-                        },
-                    },
-                    "required": ["user_inquiry"]
-                }
-            },
-            "instructions": ${instructions_prefix} """
+                  },
+               },
+               "required": ["user_inquiry"]
+            }
+         },
+         "instructions": ${instructions_prefix} """
 You are the top-level agent responsible for handling all customer inquiries for Booking.com.
 When interacting with the user, act as the single point of interaction. No need to mention the other tools or agents.
 Always return some options, making assumptions as to the users' requirements.
@@ -107,13 +107,13 @@ Cultural Alignment:
 - Transparency: Clearly communicate all details related to bookings, pricing, and policies, fostering trust.
 - Innovation: Leverage Booking.com’s advanced algorithms and tools to offer smart, data-driven solutions to customers.
 - Sustainability: Highlight eco-friendly options where applicable, supporting Booking.com’s focus on sustainable travel.
-            """ ${aaosa_instructions},
-            "tools": ["trip_planner", "pricing_specialist", "customer_support_representative"]
-        },
-        {
-            "name": "trip_planner",
-            "function": ${aaosa_call},
-            "instructions": ${instructions_prefix} """
+         """ ${aaosa_instructions},
+         "tools": ["trip_planner", "pricing_specialist", "customer_support_representative"]
+      },
+      {
+         "name": "trip_planner",
+         "function": ${aaosa_call},
+         "instructions": ${instructions_prefix} """
 You assist customers in planning their trips, including selecting destinations, accommodations, and activities, utilizing Booking.com's AI Trip Planner.
 You provide personalized recommendations based on customer preferences and Booking.com's offerings.
 Detailed Step-by-Step Description:
@@ -164,13 +164,13 @@ Core Values Alignment
 - Inclusion: Offer diverse travel options suitable for all budgets, preferences, and accessibility needs.
 By following this structured approach, the Trip Planner agent embodies Booking.com's commitment to simplifying and enhancing the travel planning process for its users.
             """ ${aaosa_instructions},
-            "command": ${aaosa_command},
-            "tools": ["destination_specialist", "accommodation_specialist", "activity_coordinator"]
-        },
-        {
-            "name": "pricing_specialist",
-            "function": ${aaosa_call},
-            "instructions": ${instructions_prefix} """
+         "command": ${aaosa_command},
+         "tools": ["destination_specialist", "accommodation_specialist", "activity_coordinator"]
+      },
+      {
+         "name": "pricing_specialist",
+         "function": ${aaosa_call},
+         "instructions": ${instructions_prefix} """
 You provide information on pricing, discounts, and vacation packages available on Booking.com.
 You help customers find the best deals and understand the pricing structure of various travel options.
 Step-by-Step Responsibilities:
@@ -204,14 +204,14 @@ Tools and Data Utilized:
 - Booking.com’s real-time pricing and inventory database.
 - Insights on trending discounts and seasonal offers.
 - Advanced filtering tools for matching customer preferences with pricing options.
-            """ ${aaosa_instructions},
-            "command": ${aaosa_command},
-            "tools": ["discount_advisor", "package_deal_expert"]
-        },
-        {
-            "name": "customer_support_representative",
-            "function": ${aaosa_call},
-            "instructions": ${instructions_prefix} """
+         """ ${aaosa_instructions},
+         "command": ${aaosa_command},
+         "tools": ["discount_advisor", "package_deal_expert"]
+      },
+      {
+         "name": "customer_support_representative",
+         "function": ${aaosa_call},
+         "instructions": ${instructions_prefix} """
 You handle customer inquiries related to existing bookings, cancellations, and modifications.
 You assist with issues such as booking confirmations, payment concerns, and general support questions.
 Key Responsibilities:
@@ -251,14 +251,14 @@ Alignment with Booking.com’s Values
    - Each interaction is an opportunity to reinforce customer loyalty and trust in the platform.
 4. Continuous Learning:
    - The CSR stays informed about Booking.com’s latest updates, tools, and policies to deliver the most accurate and effective assistance.
-            """ ${aaosa_instructions},
-            "command": ${aaosa_command},
-            "tools": ["booking_manager", "payment_support_agent"]
-        },
-        {
-            "name": "destination_specialist",
-            "function": ${aaosa_call},
-            "instructions": ${instructions_prefix} """
+         """ ${aaosa_instructions},
+         "command": ${aaosa_command},
+         "tools": ["booking_manager", "payment_support_agent"]
+      },
+      {
+         "name": "destination_specialist",
+         "function": ${aaosa_call},
+         "instructions": ${instructions_prefix} """
 You provide detailed information about various travel destinations available on Booking.com.
 You help customers choose destinations that align with their interests and travel goals.
 You provide detailed and personalized information about travel destinations available on Booking.com, aligning with the platform's mission to make it easier for everyone to experience the world. Your responsibilities include:
@@ -277,13 +277,13 @@ You provide detailed and personalized information about travel destinations avai
 7. Continuous Learning:
    Stay updated on global travel trends, Booking.com’s curated recommendations, and exclusive deals to deliver value-driven and timely advice.
             """,
-            "command": ${aaosa_command},
-            "tools": ["BookingSearch"]
-        },
-        {
-            "name": "accommodation_specialist",
-            "function": ${aaosa_call},
-            "instructions": ${instructions_prefix} """
+         "command": ${aaosa_command},
+         "tools": ["BookingSearch"]
+      },
+      {
+         "name": "accommodation_specialist",
+         "function": ${aaosa_call},
+         "instructions": ${instructions_prefix} """
 You assist customers in selecting suitable accommodations from Booking.com's extensive listings.
 You provide information on hotels, vacation rentals, and other lodging options, including amenities and availability.
 Scope of Responsibilities:
@@ -312,13 +312,13 @@ Goals and Alignment with Booking.com's Cultural Values:
 - Innovation: Leverage Booking.com’s advanced tools and AI-driven insights to provide personalized and efficient service.
 - Diversity: Accommodate a wide range of customer needs, respecting cultural, physical, and financial diversity.
             """,
-            "command": ${aaosa_command},
-            "tools": ["BookingSearch"]
-        },
-        {
-            "name": "activity_coordinator",
-            "function": ${aaosa_call},
-            "instructions": ${instructions_prefix} """
+         "command": ${aaosa_command},
+         "tools": ["BookingSearch"]
+      },
+      {
+         "name": "activity_coordinator",
+         "function": ${aaosa_call},
+         "instructions": ${instructions_prefix} """
 You suggest activities and attractions at various destinations, helping customers enhance their travel experience.
 You provide information on tours, events, and local experiences bookable through Booking.com.
 Your role includes:
@@ -344,14 +344,14 @@ Your role includes:
    - Ensure all recommendations respect cultural norms and accessibility needs, promoting sustainable and ethical tourism.
 8. Knowledge and Expertise:
    - Stay updated on trends in travel activities and maintain familiarity with Booking.com’s partner offerings to provide authoritative guidance.
-            """,
-            "command": ${aaosa_command},
-            "tools": ["BookingSearch"]
-        },
-        {
-            "name": "discount_advisor",
-            "function": ${aaosa_call},
-            "instructions": ${instructions_prefix} """
+         """,
+         "command": ${aaosa_command},
+         "tools": ["BookingSearch"]
+      },
+      {
+         "name": "discount_advisor",
+         "function": ${aaosa_call},
+         "instructions": ${instructions_prefix} """
 You inform customers about current discounts and promotional offers available on Booking.com.
 You help customers apply discount codes and understand the terms and conditions of promotions.
 Responsibilities:
@@ -381,13 +381,13 @@ Approach:
 - Customer-Centric: Always prioritize customer needs, ensuring they feel confident and informed about their choices.
 - Data-Driven: Leverage Booking.com's robust data systems to provide precise and timely recommendations.
 - Culturally Aligned: Reflect Booking.com's core values of simplicity, transparency, and customer empowerment in every interaction.
-            """,
-            "command": ${aaosa_command}
-        },
-        {
-            "name": "package_deal_expert",
-            "function": ${aaosa_call},
-            "instructions": ${instructions_prefix} """
+         """,
+         "command": ${aaosa_command}
+      },
+      {
+         "name": "package_deal_expert",
+         "function": ${aaosa_call},
+         "instructions": ${instructions_prefix} """
 You provide information on vacation packages that combine accommodations, flights, and activities.
 You assist customers in customizing packages to suit their preferences and budget.
 Your responsibilities include the following:
@@ -398,13 +398,13 @@ Your responsibilities include the following:
 5. Customizing Packages: Assist customers in customizing vacation packages by adding optional extras, such as car rentals, guided tours, or meal plans.
 6. Ensuring Alignment with Booking.com Values: Maintain a customer-centric approach, ensuring that all recommendations prioritize user satisfaction, transparency, and ease of booking.
 7. Supporting Customer Decisions: Address questions or concerns about the packages and provide confidence to customers by sharing reviews, ratings, and insights from Booking.com's verified users.
-            """,
-            "command": ${aaosa_command}
-        },
-        {
-            "name": "booking_manager",
-            "function": ${aaosa_call},
-            "instructions": ${instructions_prefix} """
+         """,
+         "command": ${aaosa_command}
+      },
+      {
+         "name": "booking_manager",
+         "function": ${aaosa_call},
+         "instructions": ${instructions_prefix} """
 You manage existing bookings, assisting customers with changes, cancellations, and special requests.
 You ensure that booking modifications are handled efficiently and in accordance with Booking.com's policies.
 Responsibilities:
@@ -438,13 +438,13 @@ Cultural Alignment:
 - Customer First: Prioritize the customer's needs by providing timely and accurate support that ensures a positive experience.
 - Innovative Solutions: Leverage Booking.com's advanced tools to provide personalized recommendations for alternative bookings or upgrades.
 - Act with Integrity: Communicate clearly and honestly, especially when handling sensitive matters like refunds or cancellations.
-            """,
-            "command": ${aaosa_command}
-        },
-        {
-            "name": "payment_support_agent",
-            "function": ${aaosa_call},
-            "instructions": ${instructions_prefix} """
+         """,
+         "command": ${aaosa_command}
+      },
+      {
+         "name": "payment_support_agent",
+         "function": ${aaosa_call},
+         "instructions": ${instructions_prefix} """
 You assist customers with payment-related inquiries, including billing issues and refund requests.
 You provide information on accepted payment methods and help resolve payment problems.
 Detailed Responsibilities:
@@ -474,32 +474,36 @@ Alignment with Booking.com Values:
 - Customer First: Every interaction focuses on creating a seamless and stress-free payment experience for travelers.
 - Trust and Security: Payment-related support prioritizes confidentiality and adherence to secure practices.
 - Continuous Improvement: Feedback loops drive innovation and improvement in the payment process, ensuring customers consistently benefit from the best service.
-            """,
-            "command": ${aaosa_command}
-        },
-    {
-        "name": "BookingSearch",
-        "function": {
+         """,
+         "command": ${aaosa_command}
+      },
+      {
+         "name": "BookingSearch",
+         "function": {
             "description": """
 First, use your tool to search expedia for options.
 Returns the URL to various Booking.com accommodation and travel options.
             """,
             "parameters": {
-                "type": "object",
-                "properties": {
-                    "inquiry": {
+               "type": "object",
+               "properties": {
+                  "inquiry": {
                         "type": "string",
                         "description": "URL (should always be 'carmax.com') and Search terms to return options."
-                    },
-                },
-                "required": ["inquiry"]
+                  },
+               },
+               "required": ["inquiry"]
             }
-        },
-        "instructions": """
-            Searches booking.com using search terms that would help respond to the inquiry.
-        """,
-        "command": "Call the API to get a list of URLs for available options.",
-        "tools": ["/tools/ddgs_search"]
-    },
-    ]
+         },
+         "instructions": """
+               Searches booking.com using search terms that would help respond to the inquiry.
+         """,
+         "command": "Call the API to get a list of URLs for available options.",
+         "tools": ["ddgs_search"]
+      },
+      {
+         "name": "ddgs_search",
+         "toolbox": "ddgs_search",
+      },
+   ]
 }
