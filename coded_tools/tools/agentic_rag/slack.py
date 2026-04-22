@@ -16,7 +16,7 @@
 
 """Tool module for reading messages from a slack channel"""
 
-import ast
+import json
 from typing import Any
 from typing import Dict
 from typing import Literal
@@ -54,6 +54,7 @@ class Slack(CodedTool):
                 once.
         """
 
+    # pylint: disable=too-many-return-statements
     async def async_invoke(self, args: Dict[str, Any], sly_data: Dict[str, Any]) -> str:
         """
         Get messages on the provided slack channel.
@@ -89,18 +90,20 @@ class Slack(CodedTool):
         # a following format:
         # '[{"user": "WU0JH", "text": "Yes", "ts": "1744677036.155459"}, ...]'
         try:
-            # Get a str of channel ids and names
+            # Get a JSON-serialized str of channel ids and names
             channel_id_name_str: str = await SlackGetChannel().ainvoke(input=EMPTY)
-            # Convert the str to list
-            channel_id_name_list: list = ast.literal_eval(channel_id_name_str)
+            channel_id_name_list: list = json.loads(channel_id_name_str)
             # Make a lookup table with channel names as keys and ids as values
             channel_id_name_dict: dict = {channel["name"]: channel["id"] for channel in channel_id_name_list}
 
             # Get channel id and return the messages if possible.
             channel_id: str = channel_id_name_dict.get(channel_name)
-            if channel_id:
-                return await SlackGetMessage().ainvoke(channel_id)
-            return f"The {channel_name} channel not found."
+            if not channel_id:
+                return f"The {channel_name} channel not found."
+            return await SlackGetMessage().ainvoke(channel_id)
+
+        except json.JSONDecodeError as err:
+            return f"Error: Could not parse slack channel list: {err}"
 
         # If slack-sdk is not installed, PydanticUserError is triggered
         # Return a mock message depending on the channel_name
