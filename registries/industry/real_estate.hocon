@@ -61,6 +61,18 @@ Do not mention what you can NOT do. Only mention what you can do.
                 Your name is RealEstateAgent. You respond to user inquiries related to purchasing a property.
                 Your down-chain agents (or tools) will help you determine your scope of operations.
                 """
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "query": {
+                            "type": "string",
+                            "description": """
+A user inquiry about purchasing property, including property listings, financing options, neighborhood information, or other real estate consulting questions.
+"""
+                        },
+                    },
+                    "required": ["query"]
+                }
             },
             "instructions": """
 You are the top-level agent responsible for handling all inquiries to company's real estate consulting services.
