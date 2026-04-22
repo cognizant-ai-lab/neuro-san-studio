@@ -17,6 +17,7 @@
 import json
 import logging
 import re
+from pathlib import Path
 from typing import Any
 from typing import Awaitable
 from typing import Callable
@@ -33,6 +34,7 @@ from neuro_san.internals.persistence.abstract_async_config_restorer import Abstr
 
 from coded_tools.agent_network_editor.connectivity_dictionary_converter import ConnectivityDictionaryConverter
 from coded_tools.agent_network_editor.constants import AGENT_NETWORK_DEFINITION
+from coded_tools.agent_network_editor.constants import AGENT_NETWORK_NAME
 from coded_tools.agent_network_editor.sly_data_lock import SlyDataLock
 
 AGENT_NETWORK_HOCON_FILE: str = "agent_network_hocon_file"
@@ -93,7 +95,12 @@ class AgentNetworkDefinitionMiddleware(AgentMiddleware):
                 ">>>>>>>>>>>>>>>>>>>Reading & Parsing Agent Network HOCON File "
                 "from Key 'agent_network_hocon_file' in Sly Data>>>>>>>>>>>>>>>>>>>"
             )
-            network_def = await self._hocon_to_definition(self.sly_data.get(AGENT_NETWORK_HOCON_FILE), self.sly_data)
+            hocon_file: str | None = self.sly_data.get(AGENT_NETWORK_HOCON_FILE)
+            network_def = await self._hocon_to_definition(hocon_file, self.sly_data)
+            # When loading from hocon, use the file name (without extension) as the agent network name.
+            # This is because the agent network name is only created when using the CreateNetwork tool.
+            if hocon_file and network_def:
+                self.sly_data[AGENT_NETWORK_NAME] = Path(hocon_file).stem
 
         # If we have a network definition from either source, inject it into the system prompt.
         if network_def:
@@ -104,8 +111,8 @@ class AgentNetworkDefinitionMiddleware(AgentMiddleware):
             if isinstance(network_def, list):
                 connectivity_dict_converter = ConnectivityDictionaryConverter()
                 network_def = connectivity_dict_converter.to_dict(network_def)
-                # Cache the agent network definition as dict in sly_data for subsequent calls within the same session.
-                self.sly_data[AGENT_NETWORK_DEFINITION] = network_def
+            # Cache the agent network definition as dict in sly_data for subsequent calls within the same session.
+            self.sly_data[AGENT_NETWORK_DEFINITION] = network_def
 
             self.logger.debug(
                 ">>>>>>>>>>>>>>>>>>>Injecting Agent Network Definition into System Prompt>>>>>>>>>>>>>>>>>>>"
