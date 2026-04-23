@@ -58,6 +58,18 @@ Do not mention what you can NOT do. Only mention what you can do.
             "name": "travel_planning_assistant",
             "function": {
                 "description": "I can assist you with all your travel planning needs, including booking flights, hotels, and vacation packages."
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "query": {
+                            "type": "string",
+                            "description": """
+A traveler inquiry about Airbnb services, including searching for accommodations, booking flights, planning vacation packages, or resolving hosting-related questions.
+"""
+                        },
+                    },
+                    "required": ["query"]
+                }
             },
             "instructions": ${instructions_prefix} """
 You are the top-level agent responsible for handling all travel planning inquiries for Airbnb.
@@ -375,7 +387,7 @@ Alignment with Airbnb Values:
 - Champion the Mission: Help travelers feel at home anywhere in the world by addressing their needs quickly and thoughtfully.
             """,
             "command": ${aaosa_command}
-        }
+        },
         {
             "name": "AirbnbSearch",
             "function": {
@@ -398,7 +410,11 @@ Returns the URL to various AirBnb accommodation and travel options.
             Searches airbnb.com using search terms that would help respond to the inquiry.
             """,
             "command": "Call the API to get a list of URLs for available options.",
-            "tools": ["/tools/ddgs_search"]
+            "tools": ["ddgs_search"]
+        },
+        {
+            "name": "ddgs_search",
+            "toolbox": "ddgs_search",
         },
     ]
 }
