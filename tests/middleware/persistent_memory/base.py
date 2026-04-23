@@ -24,25 +24,11 @@ from typing import Any
 from typing import Optional
 from unittest import TestCase
 
-from middleware.persistent_memory.coded_tool import PersistentMemoryTool
 from middleware.persistent_memory.json_file_store import JsonFileStore
-from middleware.persistent_memory.middleware import PersistentMemoryMiddleware
+from middleware.persistent_memory.persistent_memory_middleware import PersistentMemoryMiddleware
+from middleware.persistent_memory.persistent_memory_tool import PersistentMemoryTool
 from middleware.persistent_memory.topic_store import TopicStore
-
-
-class _ShouldSummarise:  # pylint: disable=too-few-public-methods
-    """Callable wrapping the ``max_topic_size`` threshold used in tests.
-
-    Mirrors :py:meth:`TopicSummariser.should_summarise` so mocks can be
-    swapped in without recreating the threshold logic in every test.
-    """
-
-    def __init__(self, threshold: int) -> None:
-        self._threshold: int = threshold
-
-    def __call__(self, content: str) -> bool:
-        """Return ``True`` when ``content`` exceeds the configured threshold."""
-        return self._threshold > 0 and len(content) > self._threshold
+from tests.middleware.persistent_memory.should_summarize import ShouldSummarize
 
 
 class MemoryTestBase(TestCase):
@@ -58,7 +44,7 @@ class MemoryTestBase(TestCase):
         self,
         enabled_operations: Optional[list[str]] = None,
         store: Optional[TopicStore] = None,
-        summariser: Optional[Any] = None,
+        summarizer: Optional[Any] = None,
         max_topic_size: Optional[int] = None,
     ) -> PersistentMemoryTool:
         """Construct a ``PersistentMemoryTool`` wired to the test namespace.
@@ -66,34 +52,34 @@ class MemoryTestBase(TestCase):
         :param enabled_operations: Optional whitelist of operations.
         :param store:              Optional pre-built store (default: JSON
                                    store rooted in the scratch directory).
-        :param summariser:         Optional summariser to attach.
-        :param max_topic_size:     When supplied with ``summariser``, wires
-                                   a ``should_summarise`` predicate onto
-                                   the summariser that returns ``True``
+        :param summarizer:         Optional summarizer to attach.
+        :param max_topic_size:     When supplied with ``summarizer``, wires
+                                   a ``should_summarize`` predicate onto
+                                   the summarizer that returns ``True``
                                    when ``len(content) > max_topic_size``
                                    and ``max_topic_size > 0``.
         :return:                   A ready-to-use tool.
         """
         resolved_store: TopicStore = store if store is not None else JsonFileStore(root_path=self._tmp)
-        if summariser is not None and max_topic_size is not None:
-            summariser.should_summarise = self._make_should_summarise(max_topic_size)
+        if summarizer is not None and max_topic_size is not None:
+            summarizer.should_summarize = self._make_should_summarize(max_topic_size)
         return PersistentMemoryTool(
             tool_config={
                 "namespace_key": "test_net.test_agent",
                 "enabled_operations": enabled_operations,
             },
             store=resolved_store,
-            summariser=summariser,
+            summarizer=summarizer,
         )
 
-    def _make_should_summarise(self, max_topic_size: int) -> "_ShouldSummarise":
-        """Return a ``should_summarise`` predicate matching ``TopicSummariser``.
+    def _make_should_summarize(self, max_topic_size: int) -> ShouldSummarize:
+        """Return a ``should_summarize`` predicate matching ``TopicSummarizer``.
 
-        :param max_topic_size: Threshold length; ``<= 0`` disables summarisation.
+        :param max_topic_size: Threshold length; ``<= 0`` disables summarization.
         :return:               Callable-object wrapping the threshold.
         """
         del self
-        return _ShouldSummarise(max_topic_size)
+        return ShouldSummarize(max_topic_size)
 
     def make_middleware(
         self,
@@ -105,14 +91,14 @@ class MemoryTestBase(TestCase):
 
         :param backend:            Backend id (``json_file`` or ``markdown_file``).
         :param enabled_operations: Optional whitelist of operations.
-        :param max_topic_size:     Summariser trigger threshold.
+        :param max_topic_size:     Summarizer trigger threshold.
         :return:                   A ready-to-use middleware.
         """
         return PersistentMemoryMiddleware(
             origin_str="test_net.test_agent-1.dispatch",
             memory_config={
                 "storage": {"backend": backend, "root_path": self._tmp},
-                "summarisation": {"max_topic_size": max_topic_size},
+                "summarization": {"max_topic_size": max_topic_size},
                 "enabled_operations": enabled_operations,
             },
         )

@@ -17,7 +17,7 @@
 """
 Middleware that wires persistent memory into an agent.
 
-Builds the store and summariser from HOCON, registers a single
+Builds the store and summarizer from HOCON, registers a single
 ``persistent_memory`` tool, and adds a short "you have memory" blurb to
 the system prompt. All disk I/O happens inside the tool, not here.
 """
@@ -27,7 +27,6 @@ from __future__ import annotations
 import logging
 import re
 from logging import Logger
-from pathlib import Path
 from typing import Any
 from typing import Awaitable
 from typing import Callable
@@ -44,31 +43,32 @@ from langchain_core.messages import SystemMessage
 from langchain_core.tools import BaseTool
 from langchain_core.tools import StructuredTool
 
-from middleware.persistent_memory.coded_tool import PersistentMemoryTool
+from middleware.persistent_memory.persistent_memory_tool import PersistentMemoryTool
+from middleware.persistent_memory.store_config import StoreConfig
 from middleware.persistent_memory.topic_store import TopicStore
 from middleware.persistent_memory.topic_store_factory import TopicStoreFactory
-from middleware.persistent_memory.topic_summariser import TopicSummariser
+from middleware.persistent_memory.topic_summarizer import TopicSummarizer
 
 
 class PersistentMemoryMiddleware(AgentMiddleware):
     """
     Wraps ``PersistentMemoryTool`` and plugs it into the agent lifecycle.
 
-    :param origin_str:    Dotted call path from the framework; used to derive
-                          the memory namespace.
-    :param memory_config: HOCON memory settings (store, summarisation, and
+    :param origin_str:    When ``True`` (the default), asks the framework to
+                          inject the runtime dotted call path at startup.
+                          When a string, it is used directly as the origin.
+                          In both cases the value is parsed to derive the
+                          ``(network, agent)`` memory namespace.
+    :param memory_config: HOCON memory settings (store, summarization, and
                           enabled operations). Unknown keys are ignored.
     """
 
     MEMORY_TOOL_NAME: ClassVar[str] = "persistent_memory"
 
-    _DEFAULT_SEARCH_LIMIT: ClassVar[int] = 5
     _DEFAULT_MAX_TOPIC_SIZE: ClassVar[int] = 500
-    _DEFAULT_SUMMARISATION_MODEL: ClassVar[str] = "gpt-5.4-mini"
-    _DEFAULT_MEMORY_FILE_NAME: ClassVar[str] = "memory"
 
-    _MEMORY_CONFIG_KEYS: ClassVar[frozenset[str]] = frozenset({"storage", "summarisation", "enabled_operations"})
-    _SUMMARISATION_CONFIG_KEYS: ClassVar[frozenset[str]] = frozenset({"max_topic_size", "model", "personalisation"})
+    _MEMORY_CONFIG_KEYS: ClassVar[frozenset[str]] = frozenset({"storage", "summarization", "enabled_operations"})
+    _SUMMARIZATION_CONFIG_KEYS: ClassVar[frozenset[str]] = frozenset({"max_topic_size", "model", "personalization"})
     _DISPATCH_ARG_KEYS: ClassVar[tuple[str, ...]] = ("topic", "content", "query", "limit")
     _INDEX_SUFFIX_RE: ClassVar[re.Pattern[str]] = re.compile(r"-\d+$")
 
@@ -88,23 +88,17 @@ class PersistentMemoryMiddleware(AgentMiddleware):
         agent_network_name, agent_name = self._parse_origin_str(origin_str)
         namespace_key: str = f"{agent_network_name}.{agent_name}"
 
-        store_config, summarisation_config, enabled_operations = self._parse_memory_config(memory_config)
+        store_config, summarization_config, enabled_operations = self._parse_memory_config(memory_config)
         enabled_operations: frozenset[str] = self._clean_enabled_operations(enabled_operations, namespace_key)
 
-        # The JSON backend takes ``memory_file_name``; the markdown backend ignores it.
-        # The backend appends the extension itself, so strip any extension the
-        # user supplied ("memory.json" → "memory") before sanitising. Sanitising
-        # catches the same escape attempts as origin_str ("../memory" → "memory").
-        resolved_store: dict[str, Any] = dict(store_config)
-        raw_file_name: str = str(resolved_store.get("memory_file_name") or self._DEFAULT_MEMORY_FILE_NAME)
-        resolved_store["memory_file_name"] = self._safe_path_segment(Path(raw_file_name).stem)
+        max_topic_size, summarization_model, personalization = self._parse_summarization_config(summarization_config)
 
-        max_topic_size, summarisation_model, personalisation = self._parse_summarisation_config(summarisation_config)
-
-        self._store: TopicStore = TopicStoreFactory.create(resolved_store)
-        self._summariser: TopicSummariser = TopicSummariser(
-            model_name=summarisation_model,
-            personalisation=personalisation,
+        # ``JsonFileStore`` defaults + sanitises ``memory_file_name`` on its own;
+        # the markdown backend ignores it. See ``JsonFileStore.__init__``.
+        self._store: TopicStore = TopicStoreFactory.create(StoreConfig.from_dict(store_config))
+        self._summarizer: TopicSummarizer = TopicSummarizer(
+            model_name=summarization_model,
+            personalization=personalization,
             max_topic_size=max_topic_size,
         )
 
@@ -114,13 +108,13 @@ class PersistentMemoryMiddleware(AgentMiddleware):
                 "enabled_operations": enabled_operations,
             },
             store=self._store,
-            summariser=self._summariser,
+            summarizer=self._summarizer,
         )
 
         self.tools: list[BaseTool] = [self._build_dispatcher_tool()]
 
         self.logger.info(
-            "PersistentMemoryMiddleware initialised for %s. Enabled operations: %s",
+            "Initialised for %s. Enabled operations: %s",
             namespace_key,
             sorted(self.persistent_memory_tool.enabled_operations),
         )
@@ -161,8 +155,9 @@ class PersistentMemoryMiddleware(AgentMiddleware):
         """
         args: dict[str, Any] = {"operation": operation}
         for key in self._DISPATCH_ARG_KEYS:
-            if call_args.get(key) is not None:
-                args[key] = call_args[key]
+            value: Any = call_args.get(key)
+            if value is not None:
+                args[key] = value
         return await self.persistent_memory_tool.async_invoke(args)
 
     def _build_dispatcher_tool(self) -> BaseTool:
@@ -199,8 +194,8 @@ class PersistentMemoryMiddleware(AgentMiddleware):
                     "topic": {
                         "type": "string",
                         "description": (
-                            "Topic name — identifies the slice of memory. Required for create/read/append/delete."
-                            "Use a short, plain identifier (letters, digits, hyphens, underscores)."
+                            "Topic name — identifies the slice of memory. Required for create/read/append/delete. "
+                            "Use a short, plain identifier (letters, digits, hyphens, underscores). "
                             "Do not include path separators, '..', or file extensions."
                         ),
                     },
@@ -214,7 +209,9 @@ class PersistentMemoryMiddleware(AgentMiddleware):
                     },
                     "limit": {
                         "type": "string",
-                        "description": (f"Max results for search. Defaults to {self._DEFAULT_SEARCH_LIMIT}."),
+                        "description": (
+                            f"Max results for search. Defaults to {PersistentMemoryTool.DEFAULT_SEARCH_LIMIT}."
+                        ),
                     },
                 },
                 "required": ["operation"],
@@ -230,7 +227,7 @@ class PersistentMemoryMiddleware(AgentMiddleware):
         Split the HOCON memory_config into its three sub-configs. Warns on unknown keys.
 
         :param memory_config: Raw HOCON ``memory_config`` dict; may be ``None``.
-        :return: ``(store_config, summarisation_config, enabled_operations)`` tuple.
+        :return: ``(store_config, summarization_config, enabled_operations)`` tuple.
         """
         config: dict[str, Any] = dict(memory_config or {})
         unknown: set[str] = set(config) - self._MEMORY_CONFIG_KEYS
@@ -241,12 +238,12 @@ class PersistentMemoryMiddleware(AgentMiddleware):
                 sorted(self._MEMORY_CONFIG_KEYS),
             )
         store_config: dict[str, Any] = dict(config.get("storage") or {})
-        summarisation_config: dict[str, Any] = dict(config.get("summarisation") or {})
+        summarization_config: dict[str, Any] = dict(config.get("summarization") or {})
         enabled_operations_raw: Any = config.get("enabled_operations")
         enabled_operations: Optional[list[str]] = (
             list(enabled_operations_raw) if enabled_operations_raw is not None else None
         )
-        return (store_config, summarisation_config, enabled_operations)
+        return (store_config, summarization_config, enabled_operations)
 
     def _clean_enabled_operations(
         self,
@@ -270,41 +267,41 @@ class PersistentMemoryMiddleware(AgentMiddleware):
         unknown: set[str] = cleaned - PersistentMemoryTool.ALL_OPERATIONS
         if unknown:
             self.logger.warning(
-                "PersistentMemoryMiddleware (%s): ignoring unknown operations: %s",
+                "(%s) ignoring unknown operations: %s",
                 namespace_key,
                 sorted(unknown),
             )
         resolved: frozenset[str] = frozenset(cleaned) & PersistentMemoryTool.ALL_OPERATIONS
         if not resolved:
             raise ValueError(
-                f"PersistentMemoryMiddleware ({namespace_key}): 'enabled_operations' matched no "
-                f"known ops (got {sorted(cleaned)}). Valid ops: "
+                f"({namespace_key}) 'enabled_operations' matched no known ops "
+                f"(got {sorted(cleaned)}). Valid ops: "
                 f"{sorted(PersistentMemoryTool.ALL_OPERATIONS)}."
             )
         return resolved
 
-    def _parse_summarisation_config(
+    def _parse_summarization_config(
         self,
-        summarisation_config: Optional[dict[str, Any]],
+        summarization_config: Optional[dict[str, Any]],
     ) -> tuple[int, str, str]:
         """
-        Pull the summariser settings out of the HOCON block. Warns on unknown keys.
+        Pull the summarizer settings out of the HOCON block. Warns on unknown keys.
 
-        :param summarisation_config: Raw ``summarisation`` dict; may be ``None``.
-        :return: ``(max_topic_size, model, personalisation)`` tuple.
+        :param summarization_config: Raw ``summarization`` dict; may be ``None``.
+        :return: ``(max_topic_size, model, personalization)`` tuple.
         """
-        config: dict[str, Any] = dict(summarisation_config or {})
-        unknown: set[str] = set(config) - self._SUMMARISATION_CONFIG_KEYS
+        config: dict[str, Any] = dict(summarization_config or {})
+        unknown: set[str] = set(config) - self._SUMMARIZATION_CONFIG_KEYS
         if unknown:
             self.logger.warning(
-                "PersistentMemoryMiddleware: ignoring unknown summarisation keys: %s. Recognised keys: %s.",
+                "Ignoring unknown summarization keys: %s. Recognised keys: %s.",
                 sorted(unknown),
-                sorted(self._SUMMARISATION_CONFIG_KEYS),
+                sorted(self._SUMMARIZATION_CONFIG_KEYS),
             )
         max_topic_size: int = int(config.get("max_topic_size", self._DEFAULT_MAX_TOPIC_SIZE))
-        model: str = str(config.get("model", self._DEFAULT_SUMMARISATION_MODEL))
-        personalisation: str = str(config.get("personalisation", ""))
-        return (max_topic_size, model, personalisation)
+        model: str = str(config.get("model", TopicSummarizer.DEFAULT_MODEL))
+        personalization: str = str(config.get("personalization", ""))
+        return (max_topic_size, model, personalization)
 
     @classmethod
     def _parse_origin_str(cls, origin_str: bool | str) -> tuple[str, str]:
@@ -322,8 +319,7 @@ class PersistentMemoryMiddleware(AgentMiddleware):
         """
         if not origin_str or not isinstance(origin_str, str):
             logging.getLogger(f"{__name__}.{cls.__name__}").warning(
-                "PersistentMemoryMiddleware: empty or unexpanded origin_str; "
-                "falling back to 'unknown.unknown' namespace."
+                "Empty or unexpanded origin_str; falling back to 'unknown.unknown' namespace."
             )
             return ("unknown", "unknown")
         parts: list[str] = origin_str.split(".")
@@ -365,7 +361,7 @@ class PersistentMemoryMiddleware(AgentMiddleware):
             "- Before writing, check the list. If a topic already covers the subject, use "
             "'append' with that exact key — 'create' OVERWRITES.\n"
             "- 'append' is the default for new or changed facts on an existing subject.\n"
-            "- The store summariser consolidates long topics on its own — do not prune manually.\n"
+            "- The store summarizer consolidates long topics on its own — do not prune manually.\n"
             "- Only use 'delete' + 'create' when a topic must be replaced wholesale because "
             "the old content is factually wrong."
         )

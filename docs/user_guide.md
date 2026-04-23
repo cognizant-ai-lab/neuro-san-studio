@@ -1693,17 +1693,17 @@ Minimal wiring — only `class` is required, every other key has a sensible defa
 ```hocon
 "middleware": [
     {
-        "class": "middleware.persistent_memory.middleware.PersistentMemoryMiddleware"  # (required)
+        "class": "middleware.persistent_memory.persistent_memory_middleware.PersistentMemoryMiddleware"  # (required)
     }
 ]
 ```
 
 Two storage backends ship: `json_file` (one `memory.json` per agent, default) and
-`markdown_file` (one `.md` per topic). Oversized topics are summarised inline under the
+`markdown_file` (one `.md` per topic). Oversized topics are summarized inline under the
 same lock that did the write, so readers never see an intermediate oversized state.
 See [examples/tools/persistent_memory.md](./examples/tools/persistent_memory.md)
 for the full tutorial — building the HOCON from scratch, a sample conversation,
-backend trade-offs, summariser tuning, and debugging tips. The minimal working
+backend trade-offs, summarizer tuning, and debugging tips. The minimal working
 network lives at [persistent_memory.hocon](../registries/tools/persistent_memory.hocon).
 
 ## Connect with other agent frameworks

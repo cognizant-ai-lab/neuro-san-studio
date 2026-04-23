@@ -23,8 +23,8 @@ import json
 from pathlib import Path
 from unittest.mock import AsyncMock
 
-from middleware.persistent_memory.middleware import PersistentMemoryMiddleware
-from tests.middleware.persistent_memory._base import MemoryTestBase
+from middleware.persistent_memory.persistent_memory_middleware import PersistentMemoryMiddleware
+from tests.middleware.persistent_memory.base import MemoryTestBase
 
 
 class PersistentMemoryMiddlewareRegistrationTests(MemoryTestBase):
@@ -60,27 +60,27 @@ class PersistentMemoryMiddlewareDispatchTests(MemoryTestBase):
         create_result = asyncio.run(
             tool_fn.coroutine(operation="create", topic="coffee", content="black")  # pylint: disable=not-callable
         )
-        self.assertEqual(create_result["result"]["status"], "created")
+        self.assertEqual(create_result.get("result", {}).get("status"), "created")
         search_result = asyncio.run(
             tool_fn.coroutine(operation="search", query="black")  # pylint: disable=not-callable
         )
-        topics = [r["topic"] for r in search_result["result"]["results"]]
+        topics = [r.get("topic") for r in search_result.get("result", {}).get("results", [])]
         self.assertIn("coffee", topics)
 
 
-class PersistentMemoryMiddlewareSummariserTests(MemoryTestBase):
-    """Summariser fires from the tool after oversized writes."""
+class PersistentMemoryMiddlewareSummarizerTests(MemoryTestBase):
+    """Summarizer fires from the tool after oversized writes."""
 
-    def test_summarises_when_topic_exceeds_max_size(self) -> None:
+    def test_summarizes_when_topic_exceeds_max_size(self) -> None:
         """A topic larger than ``max_topic_size`` is replaced with its summary."""
         mw = self.make_middleware(max_topic_size=20)
         # pylint: disable=protected-access
-        mw._summariser.summarise_topic = AsyncMock(return_value="SHORT")  # type: ignore[attr-defined]
+        mw._summarizer.summarize_topic = AsyncMock(return_value="SHORT")  # type: ignore[attr-defined]
 
         asyncio.run(
             mw.tools[0].coroutine(operation="create", topic="t", content="x" * 50)  # pylint: disable=not-callable
         )
 
-        mw._summariser.summarise_topic.assert_awaited_once()  # type: ignore[attr-defined]
+        mw._summarizer.summarize_topic.assert_awaited_once()  # type: ignore[attr-defined]
         disk: dict = json.loads((Path(self._tmp) / "test_net" / "test_agent" / "memory.json").read_text())
-        self.assertEqual(disk["t"], "SHORT")
+        self.assertEqual(disk.get("t"), "SHORT")

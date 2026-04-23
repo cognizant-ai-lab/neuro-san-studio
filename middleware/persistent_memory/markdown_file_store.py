@@ -29,6 +29,7 @@ import re
 from pathlib import Path
 from typing import ClassVar
 from typing import Optional
+from typing import override
 
 import aiofiles
 
@@ -44,6 +45,7 @@ class MarkdownFileStore(TopicStore):
     # Runs of non-word / non-hyphen chars collapse to ``_`` for filenames.
     _UNSAFE_FILENAME: ClassVar[re.Pattern] = re.compile(r"[^\w\-]")
 
+    @override
     def _lock_key(self, namespace: str, topic: str) -> tuple[str, ...]:
         """
         Per-topic lock.
@@ -54,6 +56,7 @@ class MarkdownFileStore(TopicStore):
         """
         return ("md", namespace, self._sanitise_filename(topic))
 
+    @override
     def _list_lock_key(self, namespace: str) -> tuple[str, ...]:
         """
         Agent-level lock; does not block per-topic writers.
@@ -63,6 +66,7 @@ class MarkdownFileStore(TopicStore):
         """
         return ("md-list", namespace)
 
+    @override
     async def load_all(self, namespace: str) -> TopicStore.AgentMemory:
         """
         Load every ``*.md`` file under the agent's directory.
@@ -75,6 +79,7 @@ class MarkdownFileStore(TopicStore):
             return {}
         return await self._load_agent_dir(base)
 
+    @override
     async def save_all(self, namespace: str, memory: TopicStore.AgentMemory) -> None:
         """
         Write each topic as its own ``.md`` file, deleting orphans.
@@ -90,6 +95,7 @@ class MarkdownFileStore(TopicStore):
         for topic, content in memory.items():
             await self._write_topic_file(base, topic, content)
 
+    @override
     async def _read_topic(self, namespace: str, topic: str) -> Optional[str]:
         """
         Read one topic's ``.md`` body, or ``None``.
@@ -107,6 +113,7 @@ class MarkdownFileStore(TopicStore):
         _, body = parsed
         return body
 
+    @override
     async def _write_topic(self, namespace: str, topic: str, content: str) -> None:
         """
         Atomically persist one topic as a single ``.md`` file.
@@ -119,6 +126,7 @@ class MarkdownFileStore(TopicStore):
         base.mkdir(parents=True, exist_ok=True)
         await self._write_topic_file(base, topic, content)
 
+    @override
     async def _remove_topic(self, namespace: str, topic: str) -> bool:
         """
         Unlink the topic's ``.md`` file.
@@ -133,10 +141,11 @@ class MarkdownFileStore(TopicStore):
         try:
             path.unlink()
             return True
-        except OSError as error:
-            self.logger.warning("MarkdownFileStore: failed to delete %s: %s", path, error)
+        except OSError:
+            self.logger.warning("Failed to delete %s", path, exc_info=True)
             return False
 
+    @override
     async def _read_bucket(self, namespace: str) -> dict[str, str]:
         """
         Load every topic for this agent.
@@ -176,8 +185,8 @@ class MarkdownFileStore(TopicStore):
         try:
             async with aiofiles.open(path, mode="r", encoding="utf-8") as handle:
                 raw: str = await handle.read()
-        except (OSError, UnicodeDecodeError) as error:
-            self.logger.warning("MarkdownFileStore: failed to read %s: %s", path, error)
+        except (OSError, UnicodeDecodeError):
+            self.logger.warning("Failed to read %s", path, exc_info=True)
             return None
         return self._extract_topic(raw)
 
@@ -197,8 +206,8 @@ class MarkdownFileStore(TopicStore):
             async with aiofiles.open(tmp_path, mode="w", encoding="utf-8") as handle:
                 await handle.write(body)
             os.replace(tmp_path, path)
-        except OSError as error:
-            self.logger.error("MarkdownFileStore: failed to write %s: %s", path, error)
+        except OSError:
+            self.logger.error("Failed to write %s", path, exc_info=True)
 
     def _topic_path(self, namespace: str, topic: str) -> Path:
         """
@@ -266,5 +275,5 @@ class MarkdownFileStore(TopicStore):
                 continue
             try:
                 md_file.unlink()
-            except OSError as error:
-                self.logger.warning("MarkdownFileStore: failed to remove orphan %s: %s", md_file, error)
+            except OSError:
+                self.logger.warning("Failed to remove orphan %s", md_file, exc_info=True)

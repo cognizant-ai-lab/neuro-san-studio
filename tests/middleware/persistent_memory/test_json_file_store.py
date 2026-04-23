@@ -23,7 +23,7 @@ import json
 from pathlib import Path
 
 from middleware.persistent_memory.json_file_store import JsonFileStore
-from tests.middleware.persistent_memory._base import MemoryTestBase
+from tests.middleware.persistent_memory.base import MemoryTestBase
 
 
 class JsonFileStoreTests(MemoryTestBase):

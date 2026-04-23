@@ -15,7 +15,7 @@
 # END COPYRIGHT
 
 """
-LLM-powered summariser for one topic at a time. Errors keep the original.
+LLM-powered summarizer for one topic at a time. Errors keep the original.
 """
 
 from __future__ import annotations
@@ -29,81 +29,81 @@ from langchain_core.messages import HumanMessage
 from langchain_openai import ChatOpenAI
 
 
-class TopicSummariser:
+class TopicSummarizer:
     """
-    Summarises a single topic's accumulated content via ChatOpenAI.
+    Summarizes a single topic's accumulated content via ChatOpenAI.
 
     :param model_name:      Which OpenAI model to use.
-    :param personalisation: Extra sentence appended to the prompt; optional.
-    :param max_topic_size:  Size threshold above which summarisation kicks in;
+    :param personalization: Extra sentence appended to the prompt; optional.
+    :param max_topic_size:  Size threshold above which summarization kicks in;
                             ``0`` disables it entirely.
     """
 
-    _DEFAULT_MODEL: ClassVar[str] = "gpt-5.4-mini"
+    DEFAULT_MODEL: ClassVar[str] = "gpt-5.4-mini"
 
     def __init__(
         self,
-        model_name: str = _DEFAULT_MODEL,
-        personalisation: str = "",
+        model_name: str = DEFAULT_MODEL,
+        personalization: str = "",
         max_topic_size: int = 0,
     ) -> None:
         self.logger: Logger = logging.getLogger(f"{__name__}.{self.__class__.__name__}")
-        self._model_name: str = (model_name or self._DEFAULT_MODEL).strip()
-        self._personalisation: str = (personalisation or "").strip()
+        self._model_name: str = (model_name or self.DEFAULT_MODEL).strip()
+        self._personalization: str = (personalization or "").strip()
         self._max_topic_size: int = max(0, int(max_topic_size))
 
-    def should_summarise(self, content: str) -> bool:
+    def should_summarize(self, content: str) -> bool:
         """
         Whether ``content`` is over the configured size threshold.
 
         :param content: The topic's current content to check.
-        :return: ``True`` if summarisation should run, else ``False``.
+        :return: ``True`` if summarization should run, else ``False``.
         """
         if self._max_topic_size <= 0:
             return False
         return len(content) > self._max_topic_size
 
-    async def summarise_topic(self, topic: str, content: str) -> str:
+    async def summarize_topic(self, topic: str, content: str) -> str:
         """
-        Ask the LLM to summarise ``content``. Returns the original if anything fails.
+        Ask the LLM to summarize ``content``. Returns the original if anything fails.
 
         :param topic:   Topic name, used in the prompt for context.
         :param content: Current topic content to compress.
-        :return: The summarised content, or the original if summarisation fails.
+        :return: The summarized content, or the original if summarization fails.
         """
         prompt: str = (
-            f"Summarise the following timestamped facts about '{topic}' into a "
+            f"Summarize the following timestamped facts about '{topic}' into a "
             "concise summary. Preserve the most recent and most important details. "
             "Keep names, specific preferences, and key facts. "
             "Drop redundant or outdated entries. "
             "Return ONLY the summary, no preamble."
         )
-        if self._personalisation:
-            prompt = f"Important instructions:\n{self._personalisation}\n\n{prompt}"
+        if self._personalization:
+            prompt = f"Important instructions:\n{self._personalization}\n\n{prompt}"
         prompt = f"{prompt}\n\n{content}"
 
         try:
-            summary: str = await self._invoke_summariser(prompt)
-        # Summarisation is best-effort — a failure from the LLM SDK (network,
+            summary: str = await self._invoke_summarizer(prompt)
+        # Summarization is best-effort — a failure from the LLM SDK (network,
         # auth, rate limit, bad response shape) must not discard memory.
-        except Exception as error:  # pylint: disable=broad-except
+        except Exception:  # pylint: disable=broad-except
             self.logger.warning(
-                "TopicSummariser: failed to summarise topic '%s': %s. Keeping original content.",
+                "Failed to summarize topic '%s'. Keeping original content.",
                 topic,
-                error,
+                exc_info=True,
             )
             return content
         if not summary:
             return content
         self.logger.debug(
-            "TopicSummariser: summarised topic '%s' from %d to %d chars",
+            "Summarized topic '%s' from %d to %d chars",
             topic,
             len(content),
             len(summary),
         )
         return summary
 
-    async def _invoke_summariser(self, prompt: str) -> str:
+    async def _invoke_summarizer(self, prompt: str) -> str:
         """
         Call the LLM. May raise any SDK error — caller handles it.
 
@@ -122,7 +122,4 @@ class TopicSummariser:
         :param response: The LangChain chat-model response object.
         :return: The response's text content, stripped.
         """
-        content: Any = getattr(response, "content", "")
-        if isinstance(content, str):
-            return content.strip()
-        return str(content).strip()
+        return str(response.content or "").strip()

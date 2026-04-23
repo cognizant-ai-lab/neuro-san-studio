@@ -33,7 +33,7 @@ required; every other key is optional and falls back to the value below.
 ```hocon
 "middleware": [
     {
-        "class": "middleware.persistent_memory.middleware.PersistentMemoryMiddleware",  # (required)
+        "class": "middleware.persistent_memory.persistent_memory_middleware.PersistentMemoryMiddleware",  # (required)
         "args": {
             "origin_str": true,                          # framework-injected dotted call path; used to derive the (network, agent) namespace
             "memory_config": {
@@ -42,10 +42,10 @@ required; every other key is optional and falls back to the value below.
                     "root_path":        "./memory",      # relative to the server's CWD
                     "memory_file_name": "memory"         # json_file backend only
                 },
-                "summarisation": {
-                    "max_topic_size":  500,              # 0 disables summarisation
+                "summarization": {
+                    "max_topic_size":  500,              # 0 disables summarization
                     "model":           "gpt-5.4-mini",
-                    "personalisation": ""                # appended to the summariser prompt
+                    "personalization": ""                # appended to the summarizer prompt
                 },
                 "enabled_operations": ["create", "read", "append", "delete", "search", "list"]
             }
@@ -163,35 +163,35 @@ The three keys:
   final path is `<root_path>/<network>/<agent>/<memory_file_name>.json`.
   Ignored by the markdown backend. Defaults to `memory`.
 
-## Summarisation
+## Summarization
 
 Topics grow. Left alone, a single topic can balloon past the context
-window. The summariser consolidates oversized topics inline, under the
+window. The summarizer consolidates oversized topics inline, under the
 same lock that performed the write, so no concurrent reader ever observes
 the oversized intermediate state.
 
 ```hocon
-"summarisation": {
+"summarization": {
     "max_topic_size":  500,
     "model":           "gpt-5.4-mini",
-    "personalisation": "Write summaries in a warm, concise tone."
+    "personalization": "Write summaries in a warm, concise tone."
 }
 ```
 
 The three keys:
 
 - **`max_topic_size`** — character threshold past which a topic is
-  summarised. Any write, `read`, or `search` that sees
-  `len(content) > max_topic_size` fires the summariser inline. Set to `0`
-  (or omit the whole `summarisation` block) to disable summarisation
+  summarized. Any write, `read`, or `search` that sees
+  `len(content) > max_topic_size` fires the summarizer inline. Set to `0`
+  (or omit the whole `summarization` block) to disable summarization
   entirely.
 - **`model`** — OpenAI model used to generate the summary. Defaults to
   `gpt-5.4-mini`.
-- **`personalisation`** — optional string appended to the summariser
+- **`personalization`** — optional string appended to the summarizer
   prompt. A hook for per-deployment tone ("warm and concise", "strictly
   factual", etc.).
 
-`list` returns keys only, so it never triggers the summariser. Summariser
+`list` returns keys only, so it never triggers the summarizer. Summarizer
 failures are caught — the original content stays on disk, so a transient
 LLM error cannot destroy memory.
 
@@ -226,7 +226,7 @@ tools".
                ▼
 ┌───────────────────────────────────────────────────────────────┐
 │ PersistentMemoryMiddleware                                    │
-│   - Parses HOCON → TopicStore + TopicSummariser               │
+│   - Parses HOCON → TopicStore + TopicSummarizer               │
 │   - Registers the `persistent_memory` tool on the agent       │
 │   - Injects a preamble into the system prompt                 │
 └───────────────────────────────────────────────────────────────┘
@@ -236,7 +236,7 @@ tools".
 │ PersistentMemoryTool                                          │
 │   - Validates args, dispatches to _handle_<op>                │
 │   - Talks to the store under the store's lock                 │
-│   - Runs the summariser inline on oversized content           │
+│   - Runs the summarizer inline on oversized content           │
 └───────────────────────────────────────────────────────────────┘
                │
                ▼
@@ -286,8 +286,8 @@ agent's topics.
 - **"Operation X is not enabled"** — check `enabled_operations` in your
   HOCON. The error message lists exactly what is enabled.
 - **Summaries never appear** — either `max_topic_size` is too high for
-  your content, the `model` string is wrong, or the summariser is
-  erroring and swallowing the failure. Every summariser error is logged
+  your content, the `model` string is wrong, or the summarizer is
+  erroring and swallowing the failure. Every summarizer error is logged
   at `WARNING`.
 - **`unknown` in filesystem paths** — `origin_str` was empty or
   malformed. In almost every deployment this means `"origin_str": true`
@@ -296,11 +296,11 @@ agent's topics.
 ### Source
 
 - `middleware/persistent_memory/middleware.py` — the middleware itself.
-- `middleware/persistent_memory/coded_tool.py` — the `persistent_memory`
-  tool the LLM calls.
+- `middleware/persistent_memory/persistent_memory_tool.py` — the
+  `persistent_memory` tool the LLM calls.
 - `middleware/persistent_memory/topic_store.py` — abstract store base.
 - `middleware/persistent_memory/json_file_store.py`,
   `markdown_file_store.py` — backends.
-- `middleware/persistent_memory/topic_summariser.py` — the `ChatOpenAI`
+- `middleware/persistent_memory/topic_summarizer.py` — the `ChatOpenAI`
   wrapper.
 - `registries/tools/persistent_memory.hocon` — the reference network.

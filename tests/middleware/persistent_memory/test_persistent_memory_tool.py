@@ -22,7 +22,7 @@ import asyncio
 from unittest.mock import AsyncMock
 
 from middleware.persistent_memory.json_file_store import JsonFileStore
-from tests.middleware.persistent_memory._base import MemoryTestBase
+from tests.middleware.persistent_memory.base import MemoryTestBase
 
 
 class PersistentMemoryToolDispatchTests(MemoryTestBase):
@@ -44,20 +44,20 @@ class PersistentMemoryToolDispatchTests(MemoryTestBase):
     def test_create_writes_to_disk_immediately(self) -> None:
         """create persists the topic to disk before returning."""
         result = self._invoke({"operation": "create", "topic": "coffee", "content": "black"})
-        self.assertEqual(result["result"]["status"], "created")
+        self.assertEqual(result.get("result", {}).get("status"), "created")
         self.assertEqual(self._bucket(), {"coffee": "black"})
 
     def test_read_returns_stored_content(self) -> None:
         """read returns the string previously stored under ``topic``."""
         self._invoke({"operation": "create", "topic": "coffee", "content": "black"})
         result = self._invoke({"operation": "read", "topic": "coffee"})
-        self.assertEqual(result["result"]["content"], "black")
+        self.assertEqual(result.get("result", {}).get("content"), "black")
 
     def test_append_timestamps_and_concatenates(self) -> None:
         """append adds a timestamped line onto the existing content."""
         self._invoke({"operation": "create", "topic": "orders", "content": "matcha"})
         self._invoke({"operation": "append", "topic": "orders", "content": "latte"})
-        content: str = self._bucket()["orders"]
+        content: str = self._bucket().get("orders", "")
         self.assertTrue(content.startswith("matcha"))
         self.assertIn("latte", content)
         self.assertIn("[", content)  # timestamp marker present
@@ -73,7 +73,7 @@ class PersistentMemoryToolDispatchTests(MemoryTestBase):
         self._invoke({"operation": "create", "topic": "t1", "content": "loves coffee"})
         self._invoke({"operation": "create", "topic": "t2", "content": "loves tea"})
         result = self._invoke({"operation": "search", "query": "coffee"})
-        topics = [entry["topic"] for entry in result["result"]["results"]]
+        topics = [entry.get("topic") for entry in result.get("result", {}).get("results", [])]
         self.assertEqual(topics, ["t1"])
 
     def test_list_returns_sorted_topics(self) -> None:
@@ -81,7 +81,7 @@ class PersistentMemoryToolDispatchTests(MemoryTestBase):
         self._invoke({"operation": "create", "topic": "b", "content": "v"})
         self._invoke({"operation": "create", "topic": "a", "content": "v"})
         result = self._invoke({"operation": "list"})
-        self.assertEqual(result["result"]["topics"], ["a", "b"])
+        self.assertEqual(result.get("result", {}).get("topics"), ["a", "b"])
 
 
 class PersistentMemoryToolEnabledOperationsTests(MemoryTestBase):
@@ -92,31 +92,31 @@ class PersistentMemoryToolEnabledOperationsTests(MemoryTestBase):
         tool = self.make_tool(enabled_operations=["read", "search"])
         result = asyncio.run(tool.async_invoke({"operation": "create", "topic": "x", "content": "v"}))
         self.assertIn("error", result)
-        self.assertIn("not enabled", result["error"].lower())
+        self.assertIn("not enabled", result.get("error", "").lower())
 
 
-class PersistentMemoryToolSummariserTests(MemoryTestBase):
-    """Summariser fires from the tool after oversized writes."""
+class PersistentMemoryToolSummarizerTests(MemoryTestBase):
+    """Summarizer fires from the tool after oversized writes."""
 
-    def test_summariser_fires_after_oversized_write(self) -> None:
-        """A write past ``max_topic_size`` triggers the summariser and rewrites disk."""
+    def test_summarizer_fires_after_oversized_write(self) -> None:
+        """A write past ``max_topic_size`` triggers the summarizer and rewrites disk."""
         store: JsonFileStore = JsonFileStore(root_path=self._tmp)
-        summariser = AsyncMock()
-        summariser.summarise_topic = AsyncMock(return_value="SHORT")
-        tool = self.make_tool(store=store, summariser=summariser, max_topic_size=10)
+        summarizer = AsyncMock()
+        summarizer.summarize_topic = AsyncMock(return_value="SHORT")
+        tool = self.make_tool(store=store, summarizer=summarizer, max_topic_size=10)
         asyncio.run(tool.async_invoke({"operation": "create", "topic": "t", "content": "x" * 50}))
-        summariser.summarise_topic.assert_awaited_once()
+        summarizer.summarize_topic.assert_awaited_once()
         memory: dict = asyncio.run(store.load_all("test_net.test_agent"))
-        self.assertEqual(memory["t"], "SHORT")
+        self.assertEqual(memory.get("t"), "SHORT")
 
-    def test_summariser_failure_keeps_original_write(self) -> None:
-        """If the summariser raises, the original write still survives on disk."""
+    def test_summarizer_failure_keeps_original_write(self) -> None:
+        """If the summarizer raises, the original write still survives on disk."""
         store: JsonFileStore = JsonFileStore(root_path=self._tmp)
-        summariser = AsyncMock()
-        summariser.summarise_topic = AsyncMock(side_effect=RuntimeError("boom"))
-        tool = self.make_tool(store=store, summariser=summariser, max_topic_size=10)
+        summarizer = AsyncMock()
+        summarizer.summarize_topic = AsyncMock(side_effect=RuntimeError("boom"))
+        tool = self.make_tool(store=store, summarizer=summarizer, max_topic_size=10)
         original: str = "z" * 100
         asyncio.run(tool.async_invoke({"operation": "create", "topic": "t", "content": original}))
-        summariser.summarise_topic.assert_awaited_once()
+        summarizer.summarize_topic.assert_awaited_once()
         memory: dict = asyncio.run(store.load_all("test_net.test_agent"))
-        self.assertEqual(memory["t"], original)
+        self.assertEqual(memory.get("t"), original)

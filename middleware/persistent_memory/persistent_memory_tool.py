@@ -18,7 +18,7 @@
 The ``persistent_memory`` tool the LLM actually calls.
 
 Each call goes to a handler for that operation, which talks to the store.
-If a summariser was attached, it runs inline while the store lock is held.
+If a summarizer was attached, it runs inline while the store lock is held.
 """
 
 from __future__ import annotations
@@ -30,13 +30,13 @@ from typing import Any
 from typing import ClassVar
 from typing import Optional
 
+from middleware.persistent_memory.topic_store import SearchResult
 from middleware.persistent_memory.topic_store import TopicStore
-from middleware.persistent_memory.topic_store_factory import TopicStoreFactory
 
 
 class PersistentMemoryTool:
     """
-    Routes LLM calls to the store, summarising oversized topics inline.
+    Routes LLM calls to the store, summarizing oversized topics inline.
     """
 
     ALL_OPERATIONS: ClassVar[frozenset[str]] = frozenset({"create", "read", "append", "delete", "search", "list"})
@@ -50,13 +50,13 @@ class PersistentMemoryTool:
         "list": (),
     }
 
-    _DEFAULT_SEARCH_LIMIT: ClassVar[int] = 5
+    DEFAULT_SEARCH_LIMIT: ClassVar[int] = 5
 
     def __init__(
         self,
-        tool_config: Optional[dict[str, Any]] = None,
-        store: Optional[TopicStore] = None,
-        summariser: Optional[Any] = None,
+        tool_config: Optional[dict[str, Any]],
+        store: TopicStore,
+        summarizer: Optional[Any] = None,
     ) -> None:
         """
         Configure the dispatcher.
@@ -64,7 +64,7 @@ class PersistentMemoryTool:
         :param tool_config: Config dict assembled by the middleware from the
                             parsed origin path and the HOCON settings.
         :param store:       Pre-built store, injected by the middleware.
-        :param summariser:  Optional summariser, injected by the middleware.
+        :param summarizer:  Optional summarizer, injected by the middleware.
         """
         self.logger: Logger = logging.getLogger(f"{__name__}.{self.__class__.__name__}")
         config: dict[str, Any] = tool_config or {}
@@ -73,17 +73,13 @@ class PersistentMemoryTool:
         enabled_ops: Any = config.get("enabled_operations")
         self._enabled_operations: frozenset[str] = frozenset(enabled_ops) if enabled_ops else self.ALL_OPERATIONS
 
-        if store is not None:
-            self._store: TopicStore = store
-        else:
-            self._store = TopicStoreFactory.create(config.get("store_config"))
-
-        self._summariser: Optional[Any] = summariser
+        self._store: TopicStore = store
+        self._summarizer: Optional[Any] = summarizer
 
         self._handlers: dict[str, Any] = self._build_handlers()
 
         self.logger.info(
-            "PersistentMemoryTool initialised for %s with operations: %s",
+            "Initialised for %s with operations: %s",
             self._namespace_key,
             sorted(self._enabled_operations),
         )
@@ -117,7 +113,7 @@ class PersistentMemoryTool:
         try:
             return await handler(args)
         except (ValueError, TypeError, KeyError) as err:
-            self.logger.exception("PersistentMemoryTool: error during '%s'", operation)
+            self.logger.exception("Error during '%s'", operation)
             return self._error(f"Unexpected error during '{operation}': {err}")
 
     def _build_handlers(self) -> dict[str, Any]:
@@ -170,7 +166,7 @@ class PersistentMemoryTool:
             self._namespace_key,
             topic,
             content,
-            post_write=self._summariser_callback(topic),
+            post_write=self._summarizer_callback(topic),
         )
         return {"result": {"status": "created", "topic": topic}}
 
@@ -185,7 +181,7 @@ class PersistentMemoryTool:
         content: Optional[str] = await self._store.get_topic(
             self._namespace_key,
             topic,
-            post_read=self._summariser_callback(topic),
+            post_read=self._summarizer_callback(topic),
         )
         if content is None:
             return self._error(f"No memory entry found for topic='{topic}'.")
@@ -204,7 +200,7 @@ class PersistentMemoryTool:
             self._namespace_key,
             topic,
             content,
-            post_write=self._summariser_callback(topic),
+            post_write=self._summarizer_callback(topic),
         )
         return {"result": {"status": "appended", "topic": topic}}
 
@@ -227,12 +223,12 @@ class PersistentMemoryTool:
         :return: ``{"result": {"results": [...]}}`` with ranked hits.
         """
         query: str = self._get_arg(args, "query")
-        limit: int = self._parse_limit(args.get("limit"), self._DEFAULT_SEARCH_LIMIT)
-        results: list[dict[str, Any]] = await self._store.search_topics(
+        limit: int = self._parse_limit(args.get("limit"), self.DEFAULT_SEARCH_LIMIT)
+        results: list[SearchResult] = await self._store.search_topics(
             self._namespace_key,
             query,
             limit,
-            post_read_factory=self._summariser_callback,
+            post_read_factory=self._summarizer_callback,
         )
         return {"result": {"results": results}}
 
@@ -247,28 +243,28 @@ class PersistentMemoryTool:
         topics: list[str] = await self._store.list_topics(self._namespace_key)
         return {"result": {"topics": topics}}
 
-    def _summariser_callback(self, topic: str) -> Optional[Any]:
+    def _summarizer_callback(self, topic: str) -> Optional[Any]:
         """
-        Build the ``post_write`` / ``post_read`` callback; ``None`` if no summariser.
+        Build the ``post_write`` / ``post_read`` callback; ``None`` if no summarizer.
 
         :param topic: Topic name to bind into the callback.
-        :return: A callable, or ``None`` if no summariser is configured.
+        :return: A callable, or ``None`` if no summarizer is configured.
         """
-        if self._summariser is None:
+        if self._summarizer is None:
             return None
-        return functools.partial(self._maybe_summarise, topic)
+        return functools.partial(self._maybe_summarize, topic)
 
-    async def _maybe_summarise(self, topic: str, observed_content: str) -> Optional[str]:
+    async def _maybe_summarize(self, topic: str, observed_content: str) -> Optional[str]:
         """
-        Summarise iff the summariser says to; return the new content or ``None``.
+        Summarize iff the summarizer says to; return the new content or ``None``.
 
         :param topic:            Topic name.
         :param observed_content: Current content seen by the store.
         :return: The new summary if one was produced, else ``None``.
         """
-        if not self._summariser.should_summarise(observed_content):
+        if not self._summarizer.should_summarize(observed_content):
             return None
-        summary: str = await self._summariser.summarise_topic(topic, observed_content)
+        summary: str = await self._summarizer.summarize_topic(topic, observed_content)
         if not summary or summary == observed_content:
             return None
         return summary
@@ -294,6 +290,8 @@ class PersistentMemoryTool:
         :param default: Fallback when parsing fails or value is non-positive.
         :return: Positive int, or ``default``.
         """
+        # LLMs can decide to pass 'limit' as None, a string, or garbage.
+        # Fall back to the default on every failure so search never raises.
         try:
             parsed: int = int(value)
         except (TypeError, ValueError):

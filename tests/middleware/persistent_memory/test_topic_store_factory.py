@@ -20,8 +20,9 @@ from __future__ import annotations
 
 from middleware.persistent_memory.json_file_store import JsonFileStore
 from middleware.persistent_memory.markdown_file_store import MarkdownFileStore
+from middleware.persistent_memory.store_config import StoreConfig
 from middleware.persistent_memory.topic_store_factory import TopicStoreFactory
-from tests.middleware.persistent_memory._base import MemoryTestBase
+from tests.middleware.persistent_memory.base import MemoryTestBase
 
 
 class TopicStoreFactoryTests(MemoryTestBase):
@@ -29,23 +30,34 @@ class TopicStoreFactoryTests(MemoryTestBase):
 
     def test_default_backend_is_json_file(self) -> None:
         """With no config supplied the factory builds a JSON-backed store."""
-        store = TopicStoreFactory.create(None)
+        store = TopicStoreFactory.create(StoreConfig())
         self.assertIsInstance(store, JsonFileStore)
 
     def test_markdown_file_backend(self) -> None:
         """``markdown_file`` yields a markdown-backed store."""
-        store = TopicStoreFactory.create({"backend": "markdown_file", "root_path": self._tmp})
+        store = TopicStoreFactory.create(StoreConfig(backend="markdown_file", root_path=self._tmp))
         self.assertIsInstance(store, MarkdownFileStore)
 
     def test_unknown_backend_raises(self) -> None:
         """An unrecognised backend name raises ``ValueError``."""
         with self.assertRaises(ValueError):
-            TopicStoreFactory.create({"backend": "no_such_backend"})
+            TopicStoreFactory.create(StoreConfig(backend="no_such_backend"))
 
     def test_memory_file_name_propagates_to_json_backend(self) -> None:
         """The ``memory_file_name`` HOCON field is forwarded to ``JsonFileStore``."""
-        store = TopicStoreFactory.create({"backend": "json_file", "root_path": self._tmp, "memory_file_name": "notes"})
+        store = TopicStoreFactory.create(
+            StoreConfig(backend="json_file", root_path=self._tmp, memory_file_name="notes")
+        )
         self.assertIsInstance(store, JsonFileStore)
         # Internal check: the resolved file path uses the custom stem.
         path = store._path_for("net.agent")  # pylint: disable=protected-access
         self.assertTrue(str(path).endswith("notes.json"))
+
+    def test_from_dict_round_trip(self) -> None:
+        """``StoreConfig.from_dict`` normalises HOCON dicts into typed configs."""
+        config: StoreConfig = StoreConfig.from_dict(
+            {"backend": "  MARKDOWN_FILE  ", "root_path": self._tmp, "memory_file_name": "notes"}
+        )
+        self.assertEqual(config.backend, "markdown_file")
+        self.assertEqual(config.root_path, self._tmp)
+        self.assertEqual(config.memory_file_name, "notes")

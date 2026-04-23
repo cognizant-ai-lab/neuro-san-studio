@@ -23,7 +23,7 @@ from pathlib import Path
 from typing import Optional
 
 from middleware.persistent_memory.markdown_file_store import MarkdownFileStore
-from tests.middleware.persistent_memory._base import MemoryTestBase
+from tests.middleware.persistent_memory.base import MemoryTestBase
 
 
 class MarkdownFileStoreTests(MemoryTestBase):

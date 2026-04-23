@@ -15,53 +15,44 @@
 # END COPYRIGHT
 
 """
-Factory that builds a concrete ``TopicStore`` from a HOCON ``store`` dict.
+Factory that builds a concrete ``TopicStore`` from a :py:class:`StoreConfig`.
 """
 
 from __future__ import annotations
 
 import logging
 from logging import Logger
-from typing import Any
 from typing import ClassVar
-from typing import Optional
 
 from middleware.persistent_memory.json_file_store import JsonFileStore
 from middleware.persistent_memory.markdown_file_store import MarkdownFileStore
+from middleware.persistent_memory.store_config import StoreConfig
 from middleware.persistent_memory.topic_store import TopicStore
 
 
 class TopicStoreFactory:  # pylint: disable=too-few-public-methods
     """
-    Builds the right store from a HOCON ``store`` dict.
+    Builds the right store from a :py:class:`StoreConfig`.
     """
-
-    _DEFAULT_BACKEND: ClassVar[str] = "json_file"
-    _DEFAULT_ROOT_PATH: ClassVar[str] = "./memory"
-    _DEFAULT_MEMORY_FILE_NAME: ClassVar[str] = "memory"
 
     _logger: ClassVar[Logger] = logging.getLogger(f"{__name__}.TopicStoreFactory")
 
     @classmethod
-    def create(cls, config: Optional[dict[str, Any]] = None) -> TopicStore:
+    def create(cls, config: StoreConfig) -> TopicStore:
         """
-        Build the backend named by ``config['backend']``. Raises on unknown names.
+        Build the backend named by ``config.backend``. Raises on unknown names.
 
-        :param config: HOCON ``storage`` dict; recognised keys are ``backend``,
-                       ``root_path``, and (json backend only) ``memory_file_name``.
+        :param config: Typed store config (see :py:class:`StoreConfig`).
         :return: A concrete ``TopicStore`` subclass instance.
         """
-        cfg: dict[str, Any] = config or {}
-        backend: str = str(cfg.get("backend") or cls._DEFAULT_BACKEND).strip().lower()
-        root_path: str = cfg.get("root_path") or cls._DEFAULT_ROOT_PATH
+        cls._logger.info("Creating memory store backend: %s (root_path=%s)", config.backend, config.root_path)
 
-        cls._logger.info("Creating memory store backend: %s (root_path=%s)", backend, root_path)
-
-        if backend == "json_file":
+        if config.backend == "json_file":
+            # ``JsonFileStore`` applies the default and sanitises the stem itself.
             return JsonFileStore(
-                root_path=root_path,
-                memory_file_name=cfg.get("memory_file_name") or cls._DEFAULT_MEMORY_FILE_NAME,
+                root_path=config.root_path,
+                memory_file_name=config.memory_file_name or JsonFileStore.DEFAULT_MEMORY_FILE_NAME,
             )
-        if backend == "markdown_file":
-            return MarkdownFileStore(root_path=root_path)
-        raise ValueError(f"Unknown memory backend '{backend}'. Valid options: ['json_file', 'markdown_file'].")
+        if config.backend == "markdown_file":
+            return MarkdownFileStore(root_path=config.root_path)
+        raise ValueError(f"Unknown memory backend '{config.backend}'. Valid options: ['json_file', 'markdown_file'].")

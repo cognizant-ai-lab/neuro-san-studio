@@ -25,10 +25,12 @@ from __future__ import annotations
 
 import json
 import os
+import re
 from pathlib import Path
 from typing import Any
 from typing import ClassVar
 from typing import Optional
+from typing import override
 
 import aiofiles
 
@@ -40,13 +42,21 @@ class JsonFileStore(TopicStore):
     One JSON file per agent.
     """
 
-    _DEFAULT_FILE_NAME: ClassVar[str] = "memory"
+    DEFAULT_MEMORY_FILE_NAME: ClassVar[str] = "memory"
 
     _EXTENSION: ClassVar[str] = "json"
+    # Collapses anything outside ``[A-Za-z0-9_-]`` (including ``..`` and path
+    # separators) to ``_`` so a user-supplied ``memory_file_name`` cannot
+    # escape the agent's directory.
+    _UNSAFE_FILE_CHARS: ClassVar[re.Pattern[str]] = re.compile(r"[^A-Za-z0-9_-]")
 
-    def __init__(self, root_path: str, memory_file_name: str = _DEFAULT_FILE_NAME) -> None:
+    def __init__(self, root_path: str, memory_file_name: str = DEFAULT_MEMORY_FILE_NAME) -> None:
         super().__init__(root_path)
-        self._memory_file_name: str = (memory_file_name or self._DEFAULT_FILE_NAME).strip()
+        # Accept ``"memory.json"`` / path-like values and reduce to a safe stem.
+        raw: str = (memory_file_name or self.DEFAULT_MEMORY_FILE_NAME).strip()
+        stem: str = Path(raw).stem or self.DEFAULT_MEMORY_FILE_NAME
+        cleaned: str = self._UNSAFE_FILE_CHARS.sub("_", stem).strip("_")
+        self._memory_file_name: str = cleaned or self.DEFAULT_MEMORY_FILE_NAME
 
     def _path_for(self, namespace: str) -> Path:
         """
@@ -58,6 +68,7 @@ class JsonFileStore(TopicStore):
         network, agent = self._split_namespace(namespace)
         return self._root / network / agent / f"{self._memory_file_name}.{self._EXTENSION}"
 
+    @override
     def _lock_key(self, namespace: str, topic: str) -> tuple[str, ...]:
         """
         Per-agent lock — the file is shared.
@@ -69,6 +80,7 @@ class JsonFileStore(TopicStore):
         del topic
         return ("json", namespace)
 
+    @override
     def _list_lock_key(self, namespace: str) -> tuple[str, ...]:
         """
         Shares the per-agent lock.
@@ -78,6 +90,7 @@ class JsonFileStore(TopicStore):
         """
         return ("json", namespace)
 
+    @override
     async def load_all(self, namespace: str) -> TopicStore.AgentMemory:
         """
         Read and parse the agent's JSON file.
@@ -87,6 +100,7 @@ class JsonFileStore(TopicStore):
         """
         return await self._load_unlocked(namespace)
 
+    @override
     async def save_all(self, namespace: str, memory: TopicStore.AgentMemory) -> None:
         """
         Persist the full memory dict as one JSON file.
@@ -97,6 +111,7 @@ class JsonFileStore(TopicStore):
         async with await self._lock_for(self._lock_key(namespace, "")):
             await self._write_unlocked(namespace, memory)
 
+    @override
     async def _read_topic(self, namespace: str, topic: str) -> Optional[str]:
         """
         Return one topic's content, or ``None``.
@@ -109,6 +124,7 @@ class JsonFileStore(TopicStore):
         value: Optional[str] = memory.get(topic)
         return value
 
+    @override
     async def _write_topic(self, namespace: str, topic: str, content: str) -> None:
         """
         Read-modify-write the agent's JSON file.
@@ -121,6 +137,7 @@ class JsonFileStore(TopicStore):
         memory[topic] = content
         await self._write_unlocked(namespace, memory)
 
+    @override
     async def _remove_topic(self, namespace: str, topic: str) -> bool:
         """
         Drop the topic and rewrite the file.
@@ -136,6 +153,7 @@ class JsonFileStore(TopicStore):
         await self._write_unlocked(namespace, memory)
         return True
 
+    @override
     async def _read_bucket(self, namespace: str) -> dict[str, str]:
         """
         Return the agent's ``{topic: content}`` dict.
@@ -159,8 +177,8 @@ class JsonFileStore(TopicStore):
         try:
             async with aiofiles.open(path, mode="r", encoding="utf-8") as handle:
                 raw: str = await handle.read()
-        except (OSError, UnicodeDecodeError) as error:
-            self.logger.warning("JsonFileStore: failed to read %s: %s", path, error)
+        except (OSError, UnicodeDecodeError):
+            self.logger.warning("Failed to read %s", path, exc_info=True)
             return {}
         return self._parse(raw)
 
@@ -179,8 +197,8 @@ class JsonFileStore(TopicStore):
             async with aiofiles.open(tmp_path, mode="w", encoding="utf-8") as handle:
                 await handle.write(payload)
             os.replace(tmp_path, path)
-        except OSError as error:
-            self.logger.error("JsonFileStore: failed to write %s: %s", path, error)
+        except OSError:
+            self.logger.error("Failed to write %s", path, exc_info=True)
 
     def _parse(self, raw: str) -> TopicStore.AgentMemory:
         """
@@ -194,11 +212,11 @@ class JsonFileStore(TopicStore):
         try:
             parsed: Any = json.loads(raw)
         except json.JSONDecodeError as error:
-            self.logger.warning("JsonFileStore: malformed JSON (%s); treating as empty.", error)
+            self.logger.warning("Malformed JSON (%s); treating as empty.", error)
             return {}
         if not isinstance(parsed, dict):
             self.logger.warning(
-                "JsonFileStore: top-level JSON is %s, expected object. Ignoring.",
+                "Top-level JSON is %s, expected object. Ignoring.",
                 type(parsed).__name__,
             )
             return {}

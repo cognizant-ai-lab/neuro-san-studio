@@ -20,7 +20,7 @@
 # needs long-term memory, and the ``persistent_memory`` tool is registered
 # automatically — no separate tool entry, and no tool name in ``tools: [...]``.
 #
-# Class path: middleware.persistent_memory.middleware.PersistentMemoryMiddleware
+# Class path: middleware.persistent_memory.persistent_memory_middleware.PersistentMemoryMiddleware
 #
 # Backend selection happens via the ``memory_config.storage`` block in the
 # middleware ``args``. Two backends ship out of the box:
@@ -29,7 +29,7 @@
 #
 # Lifecycle: write-per-call. Every tool call is a read-modify-write against
 # disk under a per-key ``asyncio.Lock``. Any topic longer than
-# ``max_topic_size`` characters is summarised inline, under the same lock
+# ``max_topic_size`` characters is summarized inline, under the same lock
 # that performed the write, so concurrent readers never observe the
 # oversized intermediate content.
 
@@ -52,14 +52,11 @@
     },
 
     "tools": [
-
         {
             "name": "MemoryAssistant",
-
             "function": {
                 "description": "A conversational assistant that remembers facts about you across sessions."
             },
-
             "instructions": """
 You are a helpful assistant that remembers facts the user shares about themselves —
 names, roles, preferences, relationships, and personal details.
@@ -71,21 +68,16 @@ lives under their topic.
 If memory has nothing on what the user is asking about, say so and ask them to
 confirm or share the information — do not guess.
 """,
-
             "tools": [],
-
             "middleware": [
                 {
-                    "class": "middleware.persistent_memory.middleware.PersistentMemoryMiddleware",
+                    "class": "middleware.persistent_memory.persistent_memory_middleware.PersistentMemoryMiddleware",
                     "args": {
-
                         # Allowing the framework to auto-inject information.
                         # ``origin_str`` is parsed by the middleware to derive network and agent name.
                         "origin_str": true,
-
                         # All memory settings live under a single ``memory_config`` block with three sub-keys.
                         "memory_config": {
-
                             # Backend configuration.
                             #   ``backend``:          ``json_file`` or ``markdown_file``.
                             #   ``root_path``:        where memory files are written, relative to the repo root.
@@ -94,19 +86,17 @@ confirm or share the information — do not guess.
                             "storage": {
                                 "backend":          "markdown_file",
                                 "root_path":        "./memory",
-                                "memory_file_name": "memory"
+                                "memory_file_name": "memory"  # ignored by markdown_file backend
                             },
-
-                            # Summariser configuration.
-                            #   ``max_topic_size``:  character threshold past which topics are summarised inline.
-                            #   ``model``:           OpenAI model used by the summariser, failures keep the original.
-                            #   ``personalisation``: optional sentence appended to the prompt.
-                            "summarisation": {
+                            # Summarizer configuration.
+                            #   ``max_topic_size``:  character threshold past which topics are summarized inline.
+                            #   ``model``:           OpenAI model used by the summarizer, failures keep the original.
+                            #   ``personalization``: optional sentence appended to the prompt.
+                            "summarization": {
                                 "max_topic_size":  500,
                                 "model":           "gpt-5.4-mini"
-                                # "personalisation": "Write summaries in a warm, concise tone."
+                                # "personalization": "Write summaries in a warm, concise tone."
                             },
-
                             # Which operations the LLM may use. Leave empty to allow all six.
                             # Useful restrictions:
                             #   Read-only agent:    ["read", "search", "list"]
