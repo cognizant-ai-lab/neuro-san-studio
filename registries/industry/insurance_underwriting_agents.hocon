@@ -59,6 +59,18 @@ if you are actually grounded in real data or you are operating a real applicatio
             "name": "insurance_agent",
             "function": {
                 "description": "I gather, analyze, and make decisions for underwriting insurance policies at an insurance company."
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "query": {
+                            "type": "string",
+                            "description": """
+An inquiry about insurance underwriting, including risk assessment, policy evaluation, applicant information, or underwriting decisions for business insurance.
+"""
+                        },
+                    },
+                    "required": ["query"]
+                }
             },
             "instructions": ${instructions_prefix} ${demo_mode} """
 You are the top-level agent responsible for handling all insurance inquiries for an insurance company's business insurance processes.

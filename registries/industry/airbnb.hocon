@@ -58,6 +58,18 @@ Do not mention what you can NOT do. Only mention what you can do.
             "name": "travel_planning_assistant",
             "function": {
                 "description": "I can assist you with all your travel planning needs, including booking flights, hotels, and vacation packages."
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "query": {
+                            "type": "string",
+                            "description": """
+A traveler inquiry about Airbnb services, including searching for accommodations, booking flights, planning vacation packages, or resolving hosting-related questions.
+"""
+                        },
+                    },
+                    "required": ["query"]
+                }
             },
             "instructions": ${instructions_prefix} """
 You are the top-level agent responsible for handling all travel planning inquiries for Airbnb.
