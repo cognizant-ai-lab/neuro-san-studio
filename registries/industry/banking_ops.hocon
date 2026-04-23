@@ -59,6 +59,18 @@
             "name": "customer_service_representative",
             "function": {
                 "description": "Handles day-to-day customer inquiries and support for banking products such as checking accounts, loans, and credit cards."
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "query": {
+                            "type": "string",
+                            "description": """
+A customer inquiry about banking products and services, such as checking accounts, savings accounts, loans, credit cards, or other banking-related questions.
+"""
+                        },
+                    },
+                    "required": ["query"]
+                }
             },
             "instructions": """
 You are the top-level agent responsible for handling all incoming customer service requests.

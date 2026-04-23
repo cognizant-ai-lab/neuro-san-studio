@@ -137,7 +137,11 @@ Once all checklist items are done and the code has been verified, present the fi
 
                     "args": {
                         "checklist_title": "My Solution Plan",
-                        # Declaring "progress_reporter" here to inject
+                        # When false (default), checklist tool responses are intercepted and
+                        # not written to the chat context, keeping the conversation history clean.
+                        # The agent still sees the updated checklist via system prompt injection.
+                        "keep_checklist_in_context": true,
+                        # Declaring "progress_reporter" here causes the framework to inject
                         # a ProgressJournal instance, enabling real-time progress updates
                         # (0.0–1.0) streamed to the client as the checklist advances.
                         "progress_reporter": true
