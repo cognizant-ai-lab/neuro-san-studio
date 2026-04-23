@@ -46,6 +46,18 @@
                 "description": """
                 Handles all customer questions about airline policies, procedures, and services and provides source links.
                 """
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "query": {
+                            "type": "string",
+                            "description": """
+A customer question about airline policies, procedures, or services that may require web search to retrieve up-to-date information and source links.
+"""
+                        },
+                    },
+                    "required": ["query"]
+                }
             },
             "instructions": """
             You are the top-level airline policy inquiry agent and the sole point of interaction with the customer.
