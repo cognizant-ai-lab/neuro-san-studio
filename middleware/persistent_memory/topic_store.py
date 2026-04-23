@@ -107,7 +107,7 @@ class TopicStore(ABC):
         namespace: str,
         query: str,
         limit: int = 5,
-        post_read_factory: Optional[Callable[[str], Callable[[str], Awaitable[Optional[str]]]]] = None,
+        post_read_factory: Optional[Callable[[str], Optional[Callable[[str], Awaitable[Optional[str]]]]]] = None,
     ) -> list[SearchResult]:
         """
         Rank topics by keyword match against ``query``.
@@ -134,7 +134,7 @@ class TopicStore(ABC):
         self,
         namespace: str,
         results: list[SearchResult],
-        post_read_factory: Callable[[str], Callable[[str], Awaitable[Optional[str]]]],
+        post_read_factory: Callable[[str], Optional[Callable[[str], Awaitable[Optional[str]]]]],
     ) -> list[SearchResult]:
         """
         Run per-topic ``post_read`` callbacks under the write lock and rewrite hits in place.
@@ -148,7 +148,7 @@ class TopicStore(ABC):
             topic: str = str(entry.get("topic") or "")
             if not topic:
                 continue
-            post_read: Callable[[str], Awaitable[Optional[str]]] = post_read_factory(topic)
+            post_read: Optional[Callable[[str], Awaitable[Optional[str]]]] = post_read_factory(topic)
             if post_read is None:
                 continue
             async with await self._lock_for(self._lock_key(namespace, topic)):

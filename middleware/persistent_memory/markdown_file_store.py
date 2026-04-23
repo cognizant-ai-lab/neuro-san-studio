@@ -43,7 +43,7 @@ class MarkdownFileStore(TopicStore):
 
     _EXTENSION: ClassVar[str] = "md"
     # Runs of non-word / non-hyphen chars collapse to ``_`` for filenames.
-    _UNSAFE_FILENAME: ClassVar[re.Pattern] = re.compile(r"[^\w\-]")
+    _UNSAFE_FILENAME: ClassVar[re.Pattern[str]] = re.compile(r"[^\w\-]")
 
     @override
     def _lock_key(self, namespace: str, topic: str) -> tuple[str, ...]:

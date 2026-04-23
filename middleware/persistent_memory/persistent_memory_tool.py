@@ -192,17 +192,19 @@ class PersistentMemoryTool:
         Append a timestamped line.
 
         :param args: Tool-call args; requires ``topic`` and ``content``.
-        :return: ``{"result": {"status": "appended", "topic": ...}}``.
+        :return: ``{"result": {"status": "appended", "topic": ..., "content": ...}}``
+                 where ``content`` is the full post-append (and possibly
+                 post-summarization) text.
         """
         topic: str = self._get_arg(args, "topic")
         content: str = self._get_arg(args, "content")
-        await self._store.append_to_topic(
+        new_content: str = await self._store.append_to_topic(
             self._namespace_key,
             topic,
             content,
             post_write=self._summarizer_callback(topic),
         )
-        return {"result": {"status": "appended", "topic": topic}}
+        return {"result": {"status": "appended", "topic": topic, "content": new_content}}
 
     async def _handle_delete(self, args: dict[str, Any]) -> dict[str, Any]:
         """

@@ -48,10 +48,11 @@ class TopicStoreFactory:  # pylint: disable=too-few-public-methods
         cls._logger.info("Creating memory store backend: %s (root_path=%s)", config.backend, config.root_path)
 
         if config.backend == "json_file":
-            # ``JsonFileStore`` applies the default and sanitises the stem itself.
+            # ``JsonFileStore`` applies the default and sanitises the stem itself;
+            # an empty string here collapses to ``DEFAULT_MEMORY_FILE_NAME`` inside.
             return JsonFileStore(
                 root_path=config.root_path,
-                memory_file_name=config.memory_file_name or JsonFileStore.DEFAULT_MEMORY_FILE_NAME,
+                memory_file_name=config.memory_file_name or "",
             )
         if config.backend == "markdown_file":
             return MarkdownFileStore(root_path=config.root_path)

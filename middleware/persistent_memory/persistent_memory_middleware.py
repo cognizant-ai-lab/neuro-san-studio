@@ -88,8 +88,8 @@ class PersistentMemoryMiddleware(AgentMiddleware):
         agent_network_name, agent_name = self._parse_origin_str(origin_str)
         namespace_key: str = f"{agent_network_name}.{agent_name}"
 
-        store_config, summarization_config, enabled_operations = self._parse_memory_config(memory_config)
-        enabled_operations: frozenset[str] = self._clean_enabled_operations(enabled_operations, namespace_key)
+        store_config, summarization_config, enabled_operations_raw = self._parse_memory_config(memory_config)
+        enabled_operations: frozenset[str] = self._clean_enabled_operations(enabled_operations_raw, namespace_key)
 
         max_topic_size, summarization_model, personalization = self._parse_summarization_config(summarization_config)
 
@@ -156,7 +156,7 @@ class PersistentMemoryMiddleware(AgentMiddleware):
         args: dict[str, Any] = {"operation": operation}
         for key in self._DISPATCH_ARG_KEYS:
             value: Any = call_args.get(key)
-            if value is not None:
+            if value:
                 args[key] = value
         return await self.persistent_memory_tool.async_invoke(args)
 

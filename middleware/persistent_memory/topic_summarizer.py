@@ -122,4 +122,5 @@ class TopicSummarizer:
         :param response: The LangChain chat-model response object.
         :return: The response's text content, stripped.
         """
-        return str(response.content or "").strip()
+        content: Any = getattr(response, "content", "") or ""
+        return str(content).strip()
