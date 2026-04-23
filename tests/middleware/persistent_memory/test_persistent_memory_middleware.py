@@ -58,11 +58,11 @@ class PersistentMemoryMiddlewareDispatchTests(MemoryTestBase):
         mw = self.make_middleware()
         tool_fn = mw.tools[0]
         create_result = asyncio.run(
-            tool_fn.coroutine(operation="create", topic="coffee", content="black")  # pylint: disable=not-callable
+            tool_fn.coroutine(operation="create", topic="coffee", content="black")
         )
         self.assertEqual(create_result.get("result", {}).get("status"), "created")
         search_result = asyncio.run(
-            tool_fn.coroutine(operation="search", query="black")  # pylint: disable=not-callable
+            tool_fn.coroutine(operation="search", query="black")
         )
         topics = [r.get("topic") for r in search_result.get("result", {}).get("results", [])]
         self.assertIn("coffee", topics)
@@ -78,7 +78,7 @@ class PersistentMemoryMiddlewareSummarizerTests(MemoryTestBase):
         mw._summarizer.summarize_topic = AsyncMock(return_value="SHORT")  # type: ignore[attr-defined]
 
         asyncio.run(
-            mw.tools[0].coroutine(operation="create", topic="t", content="x" * 50)  # pylint: disable=not-callable
+            mw.tools[0].coroutine(operation="create", topic="t", content="x" * 50)
         )
 
         mw._summarizer.summarize_topic.assert_awaited_once()  # type: ignore[attr-defined]

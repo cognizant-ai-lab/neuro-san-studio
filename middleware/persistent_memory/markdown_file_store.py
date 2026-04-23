@@ -71,29 +71,39 @@ class MarkdownFileStore(TopicStore):
         """
         Load every ``*.md`` file under the agent's directory.
 
+        Held under the agent-level list lock so the caller sees a consistent
+        snapshot: either the state before a concurrent ``save_all`` or the
+        state after, never a half-applied mix.
+
         :param namespace: ``"<network>.<agent>"`` key.
         :return: The agent's full ``{topic: content}`` dict.
         """
-        base: Path = self._agent_dir(namespace)
-        if not base.exists():
-            return {}
-        return await self._load_agent_dir(base)
+        async with await self._lock_for(self._list_lock_key(namespace)):
+            base: Path = self._agent_dir(namespace)
+            if not base.exists():
+                return {}
+            return await self._load_agent_dir(base)
 
     @override
     async def save_all(self, namespace: str, memory: TopicStore.AgentMemory) -> None:
         """
         Write each topic as its own ``.md`` file, deleting orphans.
 
+        Held under the agent-level list lock so the orphan sweep cannot race
+        with a concurrent ``set_topic`` — without it, a topic written just
+        before we snapshot ``expected`` could be deleted as an orphan.
+
         :param namespace: ``"<network>.<agent>"`` key.
         :param memory:    Full ``{topic: content}`` dict to persist.
         """
-        base: Path = self._agent_dir(namespace)
-        base.mkdir(parents=True, exist_ok=True)
+        async with await self._lock_for(self._list_lock_key(namespace)):
+            base: Path = self._agent_dir(namespace)
+            base.mkdir(parents=True, exist_ok=True)
 
-        expected: set[str] = {self._sanitise_filename(topic) + f".{self._EXTENSION}" for topic in memory}
-        self._remove_orphans(base, expected)
-        for topic, content in memory.items():
-            await self._write_topic_file(base, topic, content)
+            expected: set[str] = {self._sanitise_filename(topic) + f".{self._EXTENSION}" for topic in memory}
+            self._remove_orphans(base, expected)
+            for topic, content in memory.items():
+                await self._write_topic_file(base, topic, content)
 
     @override
     async def _read_topic(self, namespace: str, topic: str) -> Optional[str]:
@@ -149,6 +159,10 @@ class MarkdownFileStore(TopicStore):
     async def _read_bucket(self, namespace: str) -> dict[str, str]:
         """
         Load every topic for this agent.
+
+        Callers (``list_topics``, ``search_topics``) already hold the
+        agent-level list lock, so this runs unlocked by convention — locking
+        again would deadlock on the non-reentrant ``asyncio.Lock``.
 
         :param namespace: ``"<network>.<agent>"`` key.
         :return: The agent's ``{topic: content}`` dict; empty if none yet.

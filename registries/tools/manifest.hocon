@@ -131,7 +131,7 @@
     
     # File-backed long-term memory tool (per-user, per-agent): CRUD + keyword search.
     # Defaults to JSON format (``json_file``).
-    # Set ``store_config.backend`` to ``markdown_file`` to use the Markdown backend instead.
+    # Set ``memory_config.storage.backend`` to ``markdown_file`` to use the Markdown backend instead.
     "tools/persistent_memory.hocon": true,
 
     # To use this agent network, follow the instructions in ./docs/examples/visual_question_answering.md

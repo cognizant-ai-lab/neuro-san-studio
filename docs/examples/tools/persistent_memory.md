@@ -131,8 +131,8 @@ Only drinks matcha lattes.
 ## Storage backends
 
 Two backends ship. Both share the same on-disk layout
-(`<root>/<network>/<agent>/…`) and the same atomic write (temp-file rename,
-so an interrupted write never leaves a torn file).
+(`<folder_name>/<network>/<agent>/…`) and the same atomic write (temp-file
+rename, so an interrupted write never leaves a torn file).
 
 | Backend         | Layout                         | Lock granularity                | Best for                                   |
 | :-------------- | :----------------------------- | :------------------------------ | :----------------------------------------- |
@@ -144,7 +144,7 @@ the `storage` block:
 
 ```hocon
 "storage": {
-    "backend":     "markdown_file",
+    "backend":     "json_file",
     "folder_name": "./memory",
     "file_name":   "memory"
 }
@@ -280,7 +280,7 @@ agent's topics.
 
 ### Debugging
 
-- **Inspect on disk.** `<root>/<network>/<agent>/` holds the raw files
+- **Inspect on disk.** `<folder_name>/<network>/<agent>/` holds the raw files
   for either backend. Hand-edit them and the next `read` picks up your
   change.
 - **"Operation X is not enabled"** — check `enabled_operations` in your
@@ -295,7 +295,7 @@ agent's topics.
 
 ### Source
 
-- `middleware/persistent_memory/middleware.py` — the middleware itself.
+- `middleware/persistent_memory/persistent_memory_middleware.py` — the middleware itself.
 - `middleware/persistent_memory/persistent_memory_tool.py` — the
   `persistent_memory` tool the LLM calls.
 - `middleware/persistent_memory/topic_store.py` — abstract store base.

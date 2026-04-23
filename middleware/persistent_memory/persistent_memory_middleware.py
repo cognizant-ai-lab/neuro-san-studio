@@ -307,21 +307,22 @@ class PersistentMemoryMiddleware(AgentMiddleware):
         """
         Pull the network and agent names out of the framework's dotted origin.
 
-        First segment is the network, second-to-last is the agent; any
-        trailing ``-<digits>`` invocation index is stripped. Empty input —
-        or a bare ``True`` that the framework never expanded — falls back to
-        ``("unknown", "unknown")``.
+        First segment is the network, second-to-last is the agent; any trailing
+        ``-<digits>`` invocation index is stripped. Anything that can't be
+        parsed — non-string, empty, or fewer than two dot-segments — falls
+        back to ``("unknown", "unknown")``.
 
         :param origin_str: Framework-supplied dotted call path, or ``True``
                            when the framework has not yet expanded the sentinel.
         :return: ``(network, agent)`` tuple.
         """
-        if not origin_str or not isinstance(origin_str, str):
+        parts: list[str] = origin_str.split(".") if isinstance(origin_str, str) else []
+        if len(parts) < 2:
             logging.getLogger(f"{__name__}.{cls.__name__}").warning(
-                "Empty or unexpanded origin_str; falling back to 'unknown.unknown' namespace."
+                "Empty, unexpanded, or malformed origin_str %r; falling back to 'unknown.unknown' namespace.",
+                origin_str,
             )
             return ("unknown", "unknown")
-        parts: list[str] = origin_str.split(".")
         network: str = cls._INDEX_SUFFIX_RE.sub("", parts[0])
         agent: str = cls._INDEX_SUFFIX_RE.sub("", parts[-2])
         return (cls._safe_path_segment(network), cls._safe_path_segment(agent))
