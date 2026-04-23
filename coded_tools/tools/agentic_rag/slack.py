@@ -90,17 +90,18 @@ class Slack(CodedTool):
         # a following format:
         # '[{"user": "WU0JH", "text": "Yes", "ts": "1744677036.155459"}, ...]'
         try:
-            # Get a JSON-serialized str of channel ids and names
+            # Get a str of channel ids and names
             channel_id_name_str: str = await SlackGetChannel().ainvoke(input=EMPTY)
+            # Convert the JSON str to a list
             channel_id_name_list: list = json.loads(channel_id_name_str)
             # Make a lookup table with channel names as keys and ids as values
             channel_id_name_dict: dict = {channel["name"]: channel["id"] for channel in channel_id_name_list}
 
             # Get channel id and return the messages if possible.
             channel_id: str = channel_id_name_dict.get(channel_name)
-            if not channel_id:
-                return f"The {channel_name} channel not found."
-            return await SlackGetMessage().ainvoke(channel_id)
+            if channel_id:
+                return await SlackGetMessage().ainvoke(channel_id)
+            return f"The {channel_name} channel not found."
 
         except json.JSONDecodeError as err:
             return f"Error: Could not parse slack channel list: {err}"
