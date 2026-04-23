@@ -374,7 +374,7 @@ per-user, per-agent memory: a CRUD + keyword-search store that survives across s
 LLM as a single `persistent_memory` tool and registered automatically by a middleware. File-backed (JSON or
 Markdown) with an optional LLM summariser for auto-compaction of long entries.
 
-**Tags:** `tool`, `middleware`, `memory`, `long-term-memory`
+**Tags:** `tool`, `middleware`, `memory`
 
 ## 🏢 Industry-Specific Examples
 

@@ -27,6 +27,7 @@ from __future__ import annotations
 import logging
 import re
 from logging import Logger
+from pathlib import Path
 from typing import Any
 from typing import Awaitable
 from typing import Callable
@@ -63,13 +64,18 @@ class PersistentMemoryMiddleware(AgentMiddleware):
 
     _DEFAULT_SEARCH_LIMIT: ClassVar[int] = 5
     _DEFAULT_MAX_TOPIC_SIZE: ClassVar[int] = 500
-    _DEFAULT_SUMMARISATION_MODEL: ClassVar[str] = "gpt-4o"
+    _DEFAULT_SUMMARISATION_MODEL: ClassVar[str] = "gpt-5.4-mini"
     _DEFAULT_MEMORY_FILE_NAME: ClassVar[str] = "memory"
 
     _MEMORY_CONFIG_KEYS: ClassVar[frozenset[str]] = frozenset({"storage", "summarisation", "enabled_operations"})
     _SUMMARISATION_CONFIG_KEYS: ClassVar[frozenset[str]] = frozenset({"max_topic_size", "model", "personalisation"})
     _DISPATCH_ARG_KEYS: ClassVar[tuple[str, ...]] = ("topic", "content", "query", "limit")
     _INDEX_SUFFIX_RE: ClassVar[re.Pattern[str]] = re.compile(r"-\d+$")
+
+    # Namespace segments are joined into a filesystem path by the store.
+    # Collapse anything outside ``[A-Za-z0-9_-]`` — including ``..``, ``/``,
+    # and null bytes — to ``_`` so no ``origin_str`` can escape the root.
+    _UNSAFE_PATH_CHARS: ClassVar[re.Pattern[str]] = re.compile(r"[^A-Za-z0-9_-]")
 
     def __init__(
         self,
@@ -86,8 +92,12 @@ class PersistentMemoryMiddleware(AgentMiddleware):
         enabled_operations: frozenset[str] = self._clean_enabled_operations(enabled_operations, namespace_key)
 
         # The JSON backend takes ``memory_file_name``; the markdown backend ignores it.
+        # The backend appends the extension itself, so strip any extension the
+        # user supplied ("memory.json" → "memory") before sanitising. Sanitising
+        # catches the same escape attempts as origin_str ("../memory" → "memory").
         resolved_store: dict[str, Any] = dict(store_config)
-        resolved_store.setdefault("memory_file_name", self._DEFAULT_MEMORY_FILE_NAME)
+        raw_file_name: str = str(resolved_store.get("memory_file_name") or self._DEFAULT_MEMORY_FILE_NAME)
+        resolved_store["memory_file_name"] = self._safe_path_segment(Path(raw_file_name).stem)
 
         max_topic_size, summarisation_model, personalisation = self._parse_summarisation_config(summarisation_config)
 
@@ -190,6 +200,8 @@ class PersistentMemoryMiddleware(AgentMiddleware):
                         "type": "string",
                         "description": (
                             "Topic name — identifies the slice of memory. Required for create/read/append/delete."
+                            "Use a short, plain identifier (letters, digits, hyphens, underscores)."
+                            "Do not include path separators, '..', or file extensions."
                         ),
                     },
                     "content": {
@@ -317,7 +329,23 @@ class PersistentMemoryMiddleware(AgentMiddleware):
         parts: list[str] = origin_str.split(".")
         network: str = cls._INDEX_SUFFIX_RE.sub("", parts[0])
         agent: str = cls._INDEX_SUFFIX_RE.sub("", parts[-2])
-        return (network, agent)
+        return (cls._safe_path_segment(network), cls._safe_path_segment(agent))
+
+    @classmethod
+    def _safe_path_segment(cls, segment: str) -> str:
+        """
+        Strip anything that could escape the store root.
+
+        The namespace is joined into a filesystem path by the store, so a
+        segment like ``"../etc"`` would land a write outside the memory
+        root. Unsafe characters collapse to ``_``; empty or all-unsafe
+        input falls back to ``"unknown"``.
+
+        :param segment: Raw segment (network or agent name) from ``origin_str``.
+        :return:        A segment safe to use as a path component.
+        """
+        cleaned: str = cls._UNSAFE_PATH_CHARS.sub("_", segment).strip("_")
+        return cleaned or "unknown"
 
     @classmethod
     def build_preamble(cls) -> str:

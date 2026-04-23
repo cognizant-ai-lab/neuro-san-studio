@@ -44,7 +44,7 @@ required; every other key is optional and falls back to the value below.
                 },
                 "summarisation": {
                     "max_topic_size":  500,              # 0 disables summarisation
-                    "model":           "gpt-4o",
+                    "model":           "gpt-5.4-mini",
                     "personalisation": ""                # appended to the summariser prompt
                 },
                 "enabled_operations": ["create", "read", "append", "delete", "search", "list"]
@@ -173,7 +173,7 @@ the oversized intermediate state.
 ```hocon
 "summarisation": {
     "max_topic_size":  500,
-    "model":           "gpt-4o",
+    "model":           "gpt-5.4-mini",
     "personalisation": "Write summaries in a warm, concise tone."
 }
 ```
@@ -186,7 +186,7 @@ The three keys:
   (or omit the whole `summarisation` block) to disable summarisation
   entirely.
 - **`model`** — OpenAI model used to generate the summary. Defaults to
-  `gpt-4o`.
+  `gpt-5.4-mini`.
 - **`personalisation`** — optional string appended to the summariser
   prompt. A hook for per-deployment tone ("warm and concise", "strictly
   factual", etc.).

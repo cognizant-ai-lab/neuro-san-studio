@@ -52,7 +52,7 @@ class MarkdownFileStore(TopicStore):
         :param topic:     Topic name.
         :return: The lock-cache key for this topic.
         """
-        return ("md", namespace, self._sanitize_filename(topic))
+        return ("md", namespace, self._sanitise_filename(topic))
 
     def _list_lock_key(self, namespace: str) -> tuple[str, ...]:
         """
@@ -85,7 +85,7 @@ class MarkdownFileStore(TopicStore):
         base: Path = self._agent_dir(namespace)
         base.mkdir(parents=True, exist_ok=True)
 
-        expected: set[str] = {self._sanitize_filename(topic) + f".{self._EXTENSION}" for topic in memory}
+        expected: set[str] = {self._sanitise_filename(topic) + f".{self._EXTENSION}" for topic in memory}
         self._remove_orphans(base, expected)
         for topic, content in memory.items():
             await self._write_topic_file(base, topic, content)
@@ -189,7 +189,7 @@ class MarkdownFileStore(TopicStore):
         :param topic:   Topic name, used for the heading and filename.
         :param content: Body content to write.
         """
-        filename: str = self._sanitize_filename(topic) + f".{self._EXTENSION}"
+        filename: str = self._sanitise_filename(topic) + f".{self._EXTENSION}"
         path: Path = base / filename
         tmp_path: Path = path.with_suffix(path.suffix + ".tmp")
         body: str = f"# {topic}\n\n{content}\n"
@@ -208,7 +208,7 @@ class MarkdownFileStore(TopicStore):
         :param topic:     Topic name.
         :return: Absolute path to the topic's ``.md`` file.
         """
-        filename: str = self._sanitize_filename(topic) + f".{self._EXTENSION}"
+        filename: str = self._sanitise_filename(topic) + f".{self._EXTENSION}"
         return self._agent_dir(namespace) / filename
 
     def _agent_dir(self, namespace: str) -> Path:
@@ -222,7 +222,7 @@ class MarkdownFileStore(TopicStore):
         return self._root / network / agent
 
     @staticmethod
-    def _sanitize_filename(topic: str) -> str:
+    def _sanitise_filename(topic: str) -> str:
         """
         Topic → safe lower-case filename stem; empty → ``"untitled"``.
 

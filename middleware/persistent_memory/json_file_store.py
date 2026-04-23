@@ -159,7 +159,7 @@ class JsonFileStore(TopicStore):
         try:
             async with aiofiles.open(path, mode="r", encoding="utf-8") as handle:
                 raw: str = await handle.read()
-        except OSError as error:
+        except (OSError, UnicodeDecodeError) as error:
             self.logger.warning("JsonFileStore: failed to read %s: %s", path, error)
             return {}
         return self._parse(raw)

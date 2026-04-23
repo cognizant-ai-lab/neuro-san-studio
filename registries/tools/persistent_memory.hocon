@@ -103,7 +103,7 @@ confirm or share the information — do not guess.
                             #   ``personalisation``: optional sentence appended to the prompt.
                             "summarisation": {
                                 "max_topic_size":  500,
-                                "model":           "gpt-4o"
+                                "model":           "gpt-5.4-mini"
                                 # "personalisation": "Write summaries in a warm, concise tone."
                             },
 

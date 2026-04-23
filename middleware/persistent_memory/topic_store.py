@@ -343,6 +343,9 @@ class TopicStore(ABC):
         """
         Split ``"<network>.<agent>"``; missing halves fall back to ``"unknown"``.
 
+        The middleware sanitises both halves before building this key, so
+        the store trusts the input to be filesystem-safe.
+
         :param namespace: ``"<network>.<agent>"`` key.
         :return: ``(network, agent)`` tuple.
         """
