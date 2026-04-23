@@ -38,9 +38,9 @@ required; every other key is optional and falls back to the value below.
             "origin_str": true,                          # framework-injected dotted call path; used to derive the (network, agent) namespace
             "memory_config": {
                 "storage": {
-                    "backend":          "json_file",     # or "markdown_file"
-                    "folder_name":        "./memory",      # relative to the server's CWD
-                    "file_name": "memory"         # json_file backend only
+                    "backend":     "json_file",     # or "markdown_file"
+                    "folder_name": "./memory",      # relative to the server's CWD
+                    "file_name":   "memory"         # json_file backend only
                 },
                 "summarization": {
                     "max_topic_size":  1000,              # 0 disables summarization
@@ -144,9 +144,9 @@ the `storage` block:
 
 ```hocon
 "storage": {
-    "backend":          "markdown_file",
-    "folder_name":        "./memory",
-    "file_name": "memory"
+    "backend":     "markdown_file",
+    "folder_name": "./memory",
+    "file_name":   "memory"
 }
 ```
 

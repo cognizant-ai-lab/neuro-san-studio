@@ -79,14 +79,14 @@ confirm or share the information — do not guess.
                         # All memory settings live under a single ``memory_config`` block with three sub-keys.
                         "memory_config": {
                             # Backend configuration.
-                            #   ``backend``:          ``json_file`` or ``markdown_file``.
-                            #   ``folder_name``:        where memory files are written, relative to the repo root.
-                            #   ``file_name``: JSON-only file stem; written to
-                            #                         ``<folder_name>/<agent_network_name>/<agent_name>/<file_name>.json``.
+                            #   ``backend``:     ``json_file`` or ``markdown_file``.
+                            #   ``folder_name``: where memory files are written, relative to the repo root.
+                            #   ``file_name``:   JSON-only file stem; written to
+                            #                    ``<folder_name>/<agent_network_name>/<agent_name>/<file_name>.json``.
                             "storage": {
-                                "backend":          "markdown_file",
-                                "folder_name":        "./memory",
-                                "file_name": "memory"  # ignored by markdown_file backend
+                                "backend":     "json_file",
+                                "folder_name": "./memory",
+                                "file_name":   "memory"  # ignored by markdown_file backend
                             },
                             # Summarizer configuration.
                             #   ``max_topic_size``:  character threshold past which topics are summarized inline.

@@ -44,9 +44,7 @@ class TopicStoreFactoryTests(MemoryTestBase):
 
     def test_file_name_propagates_to_json_backend(self) -> None:
         """The ``file_name`` HOCON field is forwarded to ``JsonFileStore``."""
-        store = TopicStoreFactory.create(
-            {"backend": "json_file", "folder_name": self._tmp, "file_name": "notes"}
-        )
+        store = TopicStoreFactory.create({"backend": "json_file", "folder_name": self._tmp, "file_name": "notes"})
         self.assertIsInstance(store, JsonFileStore)
         # Internal check: the resolved file path uses the custom stem.
         path = store._path_for("net.agent")  # pylint: disable=protected-access
@@ -54,7 +52,5 @@ class TopicStoreFactoryTests(MemoryTestBase):
 
     def test_backend_name_normalised(self) -> None:
         """Backend names are lower-cased and stripped before dispatch."""
-        store = TopicStoreFactory.create(
-            {"backend": "  MARKDOWN_FILE  ", "folder_name": self._tmp}
-        )
+        store = TopicStoreFactory.create({"backend": "  MARKDOWN_FILE  ", "folder_name": self._tmp})
         self.assertIsInstance(store, MarkdownFileStore)
