@@ -181,7 +181,7 @@ Operational notes:
                     "sly_data": ["agent_network_definition", "agent_network_name", "agent_network_queries", "mcp_servers", "subnetworks", "toolbox_info"],
                     # Allow all messages sent from specific downstream agents to be reported
                     # as if they came back from this agent network
-                    "messages": ["/agent_network_editor", "/agent_network_instructions_editor"]
+                    "messages": ["/agent_network_editor", "/agent_network_query_generator", "/agent_network_instructions_editor"]
                 },
                 "to_downstream": {
                     "sly_data": ["agent_network_definition", "agent_network_name", "agent_network_queries"]
