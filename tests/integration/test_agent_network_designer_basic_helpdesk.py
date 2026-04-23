@@ -58,7 +58,7 @@ How to run:
             2>&1 | tee test_output.log
 
     Run both:
-        pytest -s -v -m "integration_and_smoke" \
+        pytest -s -v -m "integration_agent_network_designer" \
             tests/integration/test_agent_network_designer_basic_helpdesk.py \
             2>&1 | tee test_output.log
 
@@ -141,7 +141,7 @@ class TestAgentNetworkDesignerBasicHelpdesk(TestCase):
 
     @pytest.mark.timeout(600)
     @pytest.mark.integration
-    @pytest.mark.integration_and_smoke
+    @pytest.mark.integration_agent_network_designer
     def test_and_generates_basic_helpdesk_direct(self):
         """
         Option 1: Direct mode (in-process, no server required).
@@ -159,7 +159,7 @@ class TestAgentNetworkDesignerBasicHelpdesk(TestCase):
 
     @pytest.mark.timeout(600)
     @pytest.mark.integration
-    @pytest.mark.integration_and_smoke
+    @pytest.mark.integration_agent_network_designer
     def test_and_generates_basic_helpdesk_mcp(self):
         """
         Option 2: MCP mode (requires a running neuro-san server).

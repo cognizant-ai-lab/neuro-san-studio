@@ -6,8 +6,6 @@ Here are a few examples ordered by level of complexity.
 
 - [Examples](#examples)
   - [🔰 Basic Examples](#-basic-examples)
-    - [Coffee Finder](#coffee-finder)
-    - [Coffee Finder Advanced](#coffee-finder-advanced)
     - [Hello World](#hello-world)
     - [Music Nerd](#music-nerd)
     - [Music Nerd Pro](#music-nerd-pro)
@@ -16,9 +14,12 @@ Here are a few examples ordered by level of complexity.
     - [Music Nerd Pro Sly](#music-nerd-pro-sly)
     - [Music Nerd Pro Sly Local](#music-nerd-pro-sly-local)
     - [Music Nerd LLM Fallbacks](#music-nerd-llm-fallbacks)
+    - [Coffee Finder](#coffee-finder)
+    - [Coffee Finder Advanced](#coffee-finder-advanced)
+    - [PII Middleware](#pii-middleware)
     - [Internal Communication Skill](#internal-communication-skill)
     - [Job Guessing Skill](#job-guessing-skill)
-    - [PII Middleware](#pii-middleware)
+    - [Coding Assistant](#coding-assistant)
   - [🧰 Tool Integration Examples](#-tool-integration-examples)
     - [Anthropic Code Execution](#anthropic-code-execution)
     - [Anthropic Web Search](#anthropic-web-search)
@@ -46,6 +47,7 @@ Here are a few examples ordered by level of complexity.
     - [Intranet Agents](#intranet-agents)
     - [Intranet Agents With Tools](#intranet-agents-with-tools)
     - [Airline Policy 360 Assistant](#airline-policy-360-assistant)
+    - [Airline Policy Web Search Assistant](#airline-policy-web-search-assistant)
     - [Telco Network Orchestration](#telco-network-orchestration)
     - [Telco Network Support](#telco-network-support)
     - [Real Estate Agent](#real-estate-agent)
@@ -74,6 +76,15 @@ Here are a few examples ordered by level of complexity.
 ## 🔰 Basic Examples
 
 Introductory examples designed to help users get started with Neuro SAN.
+Ordered by simplicity — the simplest examples come first.
+
+### Hello World
+
+[Hello World](examples/basic/hello_world.md) is an agent network that
+demonstrates how one agent can call another using a basic hocon file.
+Given specific input, there is a good chance you will get output something like "Hello World!".
+
+**Tags:** `basic` `example`
 
 ### Music Nerd
 
@@ -146,13 +157,13 @@ This is a good example to:
 
 **Tags:** `AAOSA` `tool` `time` `sly_data` `memory`
 
-### Hello World
+### PII Middleware
 
-[Hello World](examples/basic/hello_world.md) is an agent network that
-demonstrates how one agent can call another using a basic hocon file.
-Given specific input, there is a good chance you will get output something like "Hello World!".
+[PII Middleware](examples/basic/pii_middleware.md) is an agent network that demonstrates the use of PII redaction
+via AgentMiddleware.  This just scratches the surface of what you can do with middleware, but it is the
+simplest example to learn how to integrate middleware.
 
-**Tags:** `basic` `example`
+**Tags:** `basic` `example` `middleware`
 
 ### Internal Communication Skill
 
@@ -173,13 +184,15 @@ a person's career, location, and salary from their name, showcasing token-optimi
 
 **Tags:** `basic` `example` `middleware` `skills`
 
-### PII Middleware
+### Coding Assistant
 
-[PII Middleware](examples/basic/pii_middleware.md) is an agent network that demonstrates the use of PII redaction
-via AgentMiddleware.  This just scratches the surface of what you can do with middleware, but it is the
-simplest example to learn how to integrate middleware.
+[Coding Assistant](examples/basic/coding_assistant.md) is a coding problem solver that
+uses `AgentChecklistMiddleware` to maintain a private internal plan across model calls.
+The agent decomposes each problem into reasoning steps, tracks its own progress via a
+checklist injected into the system prompt, and validates its solution with the
+`code_interpreter` tool before delivering the answer.
 
-**Tags:** `basic` `example` `middleware`
+**Tags:** `basic` `checklist` `example` `middleware`
 
 ## 🧰 Tool Integration Examples
 
@@ -392,6 +405,16 @@ real-world helpdesk with specialized teams, each handling a specific domain of a
 flights, international travel, and more.
 
 **Tags:** `tool`, `API`, `AAOSA`
+
+### Airline Policy Web Search Assistant
+
+[Airline Policy Web Search Assistant](examples/industry/airline_policy_web_search.md) is a multi-agent system that
+answers customer questions about airline policies by scraping the airline's official webpages at runtime — keeping
+information fresh without any cached state. Built entirely using AAOSA and the toolbox, it requires no coded tools
+and can be fully vibe coded. It covers baggage, fares, seating, loyalty programs, travel requirements, and special
+assistance — all grounded strictly in live content retrieved from the airline's own site.
+
+**Tags:** `AAOSA`, `customer-service`, `airline`, `policy-management`, `web-scraping`, `RAG`, `tool`
 
 ### Telco Network Orchestration
 

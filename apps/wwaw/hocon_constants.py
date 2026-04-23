@@ -20,7 +20,7 @@ HOCON_HEADER_START = (
     '        "class": "openai",\n'
     '        "use_model_name": "gpt-4.1-2025-04-14",\n'
     "    },\n"
-    '"max_iterations": 40000,\n'
+    '"max_steps": 40000,\n'
     '"max_execution_seconds": 6000,\n'
     '    "commondefs": {\n'
     '        "replacement_strings": {\n'

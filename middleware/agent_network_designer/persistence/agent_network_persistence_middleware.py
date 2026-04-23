@@ -57,7 +57,6 @@ DEMO_MODE: bool = environ.get("AGENT_NETWORK_DESIGNER_DEMO_MODE", "true").lower(
 SUBDIRECTORY: str = environ.get("AGENT_NETWORK_DESIGNER_SUBDIRECTORY", DEFAULT_SUBDIRECTORY)
 
 
-# pylint: disable=too-few-public-methods
 class AgentNetworkPersistenceMiddleware(AgentMiddleware):
     """
     Middleware that validates and persists an agent network after the agent finishes

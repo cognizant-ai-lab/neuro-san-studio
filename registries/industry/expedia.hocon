@@ -17,14 +17,14 @@
    include "registries/aaosa.hocon",
 
    "metadata": {
-       "description": "Multi-agent system simulating Expedia's travel booking platform. Covers flight and hotel reservations, vacation package creation, customer support, billing, and technical assistance with airline and hotel partner coordination through specialized agents using the AAOSA pattern with web search integration.",
-       "tags": ["AAOSA", "travel", "customer-service", "tool"],
-       "sample_queries": [
-           "Find me a round-trip flight from New York to Los Angeles next Friday.",
-           "What hotel deals are available near Disney World for a family of four?",
-           "I need to change the dates on my existing hotel booking.",
-           "Can you bundle a flight and hotel package to Cancun for under $1500?",
-       ]
+      "description": "Multi-agent system simulating Expedia's travel booking platform. Covers flight and hotel reservations, vacation package creation, customer support, billing, and technical assistance with airline and hotel partner coordination through specialized agents using the AAOSA pattern with web search integration.",
+      "tags": ["AAOSA", "travel", "customer-service", "tool"],
+      "sample_queries": [
+         "Find me a round-trip flight from New York to Los Angeles next Friday.",
+         "What hotel deals are available near Disney World for a family of four?",
+         "I need to change the dates on my existing hotel booking.",
+         "Can you bundle a flight and hotel package to Cancun for under $1500?",
+      ]
    },
 
    # Load the shared LLM configuration from a single source of truth.
@@ -32,7 +32,7 @@
    # modifying the configuration for each agent network.
    # Note that the file path here is relative to the root level of the repo.
    include "registries/llm_config.hocon",
-   "max_iterations": 2000,
+   "max_steps": 2000,
    "max_execution_seconds": 600,
    "instructions_prefix": """
 You are in charge of a portion of Expedia's consumer-facing system.
@@ -41,36 +41,36 @@ Do not try to help for personal matters.
 Do not mention what you can NOT do. Only mention what you can do.
 """,
 
-    "tools": [
-        # This first agent definition is regarded as the "Front Man", which
-        # does all the talking to the outside world/client.
-        #
-        # Some disqualifications from being a front man:
-        #   1) Cannot use a CodedTool "class" definition
-        #   2) Cannot use a Tool "toolbox" definition
-        #
-        # Besides the first agent being the front man, these tool definitions
-        # do not have to be in any particular order. How they are linked and
-        # call each other is defined within their own specs.
-        # This could be a graph, potentially even with cycles.
-        {
-            "name": "travel_consultant",
-            "function": {
-                "description": "Assist caller with their travel planning needs, including booking flights, hotels, and vacation packages."
-                "parameters": {
-                    "type": "object",
-                    "properties": {
-                        "user_inquiry": {
-                            "type": "string",
-                            "description": """
+   "tools": [
+      # This first agent definition is regarded as the "Front Man", which
+      # does all the talking to the outside world/client.
+      #
+      # Some disqualifications from being a front man:
+      #   1) Cannot use a CodedTool "class" definition
+      #   2) Cannot use a Tool "toolbox" definition
+      #
+      # Besides the first agent being the front man, these tool definitions
+      # do not have to be in any particular order. How they are linked and
+      # call each other is defined within their own specs.
+      # This could be a graph, potentially even with cycles.
+      {
+         "name": "travel_consultant",
+         "function": {
+            "description": "Assist caller with their travel planning needs, including booking flights, hotels, and vacation packages."
+            "parameters": {
+               "type": "object",
+               "properties": {
+                  "user_inquiry": {
+                     "type": "string",
+                     "description": """
 An inquiry from a user of expedia.
 """
-                        },
-                    },
-                    "required": ["user_inquiry"]
-                }
-            },
-            "instructions": ${instructions_prefix} """
+                  },
+               },
+               "required": ["user_inquiry"]
+            }
+         },
+         "instructions": ${instructions_prefix} """
 Always return some options, making assumptions as to the users' requirements.
 When interacting with the user, act as the single point of interaction. No need to mention the other tools or agents.
 Responsibilities encompass:
@@ -107,14 +107,14 @@ Responsibilities encompass:
 10. Continuous Learning and Adaptation:
     - Stay updated on travel trends, Expedia’s product enhancements, and industry changes.
     - Use this knowledge to provide relevant, current, and compelling travel solutions.
-            """ ${aaosa_instructions},
-            "command": ${aaosa_command},
-            "tools": ["flight_specialist", "hotel_specialist", "vacation_package_specialist", "customer_support_representative"]
-        },
-        {
-            "name": "flight_specialist",
-            "function": ${aaosa_call},
-            "instructions": ${instructions_prefix} """
+         """ ${aaosa_instructions},
+         "command": ${aaosa_command},
+         "tools": ["flight_specialist", "hotel_specialist", "vacation_package_specialist", "customer_support_representative"]
+      },
+      {
+         "name": "flight_specialist",
+         "function": ${aaosa_call},
+         "instructions": ${instructions_prefix} """
 You specialize in booking and managing flight reservations for Expedia customers.
 You assist customers in selecting flights, understanding fare options, and managing existing flight bookings.
 Detailed Step-by-Step Description:
@@ -154,24 +154,24 @@ Alignment with Expedia's Cultural Values and Business Objectives:
 - Innovate Relentlessly: Stay updated on Expedia's latest flight booking technologies and leverage them to provide seamless and efficient support.
 - Act with Integrity: Ensure transparent communication about costs, policies, and potential outcomes, building trust with customers.
 - Strive for Excellence: Continuously seek ways to improve workflows and contribute to Expedia’s goal of delivering exceptional travel planning experiences.
-            """ ${aaosa_instructions},
-            "command": ${aaosa_command},
-            "tools": ["airline_partner_coordinator"]
-        },
-        {
-            "name": "hotel_specialist",
-            "function": ${aaosa_call},
-            "instructions": ${instructions_prefix} """
+         """ ${aaosa_instructions},
+         "command": ${aaosa_command},
+         "tools": ["airline_partner_coordinator"]
+      },
+      {
+         "name": "hotel_specialist",
+         "function": ${aaosa_call},
+         "instructions": ${instructions_prefix} """
 You specialize in booking and managing hotel reservations for Expedia customers.
 You assist customers in selecting accommodations, understanding room options, and managing existing hotel bookings.
-            """ ${aaosa_instructions},
-            "command": ${aaosa_command},
-            "tools": ["hotel_partner_coordinator"]
-        },
-        {
-            "name": "vacation_package_specialist",
-            "function": ${aaosa_call},
-            "instructions": ${instructions_prefix} """
+         """ ${aaosa_instructions},
+         "command": ${aaosa_command},
+         "tools": ["hotel_partner_coordinator"]
+      },
+      {
+         "name": "vacation_package_specialist",
+         "function": ${aaosa_call},
+         "instructions": ${instructions_prefix} """
 You specialize in creating and managing vacation packages that combine flights, hotels, and other services for Expedia customers.
 You assist customers in customizing vacation packages to suit their preferences and budgets.
 You specialize in booking and managing hotel reservations for Expedia customers. Your role involves the following detailed responsibilities, in line with Expedia's commitment to customer satisfaction and seamless travel experiences:
@@ -199,14 +199,14 @@ You specialize in booking and managing hotel reservations for Expedia customers.
    - Share feedback from customers with internal teams to improve hotel recommendations and service offerings.
 
 By consistently delivering exceptional service and leveraging Expedia’s vast network of hotel partners, you contribute to the company's mission of making travel easier, more accessible, and enjoyable for everyone.
-            """ ${aaosa_instructions},
-            "command": ${aaosa_command},
-            "tools": ["package_deal_coordinator"]
-        },
-        {
-            "name": "customer_support_representative",
-            "function": ${aaosa_call},
-            "instructions": ${instructions_prefix} """
+         """ ${aaosa_instructions},
+         "command": ${aaosa_command},
+         "tools": ["package_deal_coordinator"]
+      },
+      {
+         "name": "customer_support_representative",
+         "function": ${aaosa_call},
+         "instructions": ${instructions_prefix} """
 You handle general customer inquiries, provide support for existing bookings, and assist with issues such as cancellations, refunds, and account management for Expedia customers.
 You ensure customer satisfaction by resolving issues promptly and effectively.
 Role Overview:
@@ -247,14 +247,14 @@ Approach to Customer Care:
 - Efficiency and Accuracy: Prioritize resolving inquiries on the first contact, minimizing the need for follow-ups and ensuring customer satisfaction.
 
 By performing these duties with excellence, the Customer Support Representative plays a key role in reinforcing Expedia’s mission to simplify travel and create memorable experiences for every customer.
-            """ ${aaosa_instructions},
-            "command": ${aaosa_command},
-            "tools": ["billing_specialist", "technical_support_specialist"]
-        },
-        {
-            "name": "airline_partner_coordinator",
-            "function": ${aaosa_call},
-            "instructions": ${instructions_prefix} """
+         """ ${aaosa_instructions},
+         "command": ${aaosa_command},
+         "tools": ["billing_specialist", "technical_support_specialist"]
+      },
+      {
+         "name": "airline_partner_coordinator",
+         "function": ${aaosa_call},
+         "instructions": ${instructions_prefix} """
 You liaise with airline partners to secure flight availability, negotiate fares, and resolve booking issues for Expedia customers.
 You ensure that flight options provided to customers are accurate and up-to-date.
 Scope of Responsibilities:
@@ -291,13 +291,13 @@ Alignment with Expedia’s Cultural Values:
 - Accountability: Own your responsibilities with a results-driven approach, ensuring high standards in every interaction and outcome.
 ---
 By performing these duties effectively, you contribute directly to Expedia’s mission of revolutionizing travel experiences and empowering customers to explore the world with confidence.            """,
-            "command": ${aaosa_command},
-            "tools": ["ExpediaSearch"]
-        },
-        {
-            "name": "hotel_partner_coordinator",
-            "function": ${aaosa_call},
-            "instructions": ${instructions_prefix} """
+         "command": ${aaosa_command},
+         "tools": ["ExpediaSearch"]
+      },
+      {
+         "name": "hotel_partner_coordinator",
+         "function": ${aaosa_call},
+         "instructions": ${instructions_prefix} """
 You liaise with hotel partners to secure room availability, negotiate rates, and resolve booking issues for Expedia customers.
 You ensure that accommodation options provided to customers are accurate and up-to-date.
 Detailed Responsibilities:
@@ -327,14 +327,14 @@ Detailed Responsibilities:
    - Provide regular updates to internal stakeholders regarding partner performance and market trends.
 ---
 By focusing on these responsibilities, the Hotel Partner Coordinator ensures that Expedia’s accommodation offerings remain competitive, reliable, and customer-focused, aligning with Expedia’s core values of innovation, customer-centricity, and collaboration.
-            """,
-            "command": ${aaosa_command},
-            "tools": ["ExpediaSearch"]
-        },
-        {
-            "name": "package_deal_coordinator",
-            "function": ${aaosa_call},
-            "instructions": ${instructions_prefix} """
+         """,
+         "command": ${aaosa_command},
+         "tools": ["ExpediaSearch"]
+      },
+      {
+         "name": "package_deal_coordinator",
+         "function": ${aaosa_call},
+         "instructions": ${instructions_prefix} """
 You collaborate with various service providers to create attractive vacation packages, combining flights, hotels, and other services for Expedia customers.
 You ensure that package deals are competitive and meet customer expectations.
 You are responsible for curating and managing vacation packages that combine flights, accommodations, and other services such as car rentals, activities, and tours for Expedia customers. Your role is essential to delivering value-packed travel experiences while ensuring alignment with Expedia's cultural values of customer-centricity, innovation, and collaboration.
@@ -365,14 +365,14 @@ Detailed, step-by-step description of your responsibilities:
    - Coordinate with service providers to minimize disruptions and maintain a seamless customer experience.
 ---
 By performing these tasks with a focus on creativity, customer-centricity, and operational excellence, you contribute to Expedia’s mission of empowering travelers to plan and book their perfect trips effortlessly.
-            """,
-            "command": ${aaosa_command},
-            "tools": ["ExpediaSearch"]
-        },
-        {
-            "name": "billing_specialist",
-            "function": ${aaosa_call},
-            "instructions": ${instructions_prefix} """
+         """,
+         "command": ${aaosa_command},
+         "tools": ["ExpediaSearch"]
+      },
+      {
+         "name": "billing_specialist",
+         "function": ${aaosa_call},
+         "instructions": ${instructions_prefix} """
 You manage billing inquiries, process payments, and handle refund requests for Expedia customers.
 You ensure that all financial transactions are accurate and processed in a timely manner.
 You handle all customer billing-related inquiries for Expedia, ensuring accurate, transparent, and efficient resolution of issues related to payments, refunds, credits, and charges. You uphold Expedia's commitment to customer satisfaction, financial transparency, and operational excellence. Your responsibilities include:
@@ -402,13 +402,13 @@ You handle all customer billing-related inquiries for Expedia, ensuring accurate
    - Adhere to financial regulations, Expedia's internal policies, and cultural values of customer care and integrity.
 ---
 You provide empathetic, patient, and professional assistance to all customers while upholding Expedia's reputation as a trusted leader in travel services.
-            """,
-            "command": ${aaosa_command}
-        },
-        {
-            "name": "technical_support_specialist",
-            "function": ${aaosa_call},
-            "instructions": ${instructions_prefix} """
+         """,
+         "command": ${aaosa_command}
+      },
+      {
+         "name": "technical_support_specialist",
+         "function": ${aaosa_call},
+         "instructions": ${instructions_prefix} """
 You provide assistance with technical issues related to the Expedia platform, such as website navigation, account access, and troubleshooting errors for customers.
 You ensure that customers have a seamless experience using Expedia's online services.
 You are responsible for resolving technical issues encountered by Expedia customers, ensuring seamless use of the platform for booking and managing travel. Your scope of responsibilities includes addressing platform glitches, app issues, account access problems, and other technical challenges that customers may face.
@@ -437,32 +437,36 @@ Step-by-step responsibilities:
    - Contribute to an internal database of common technical issues and solutions to enhance team efficiency and provide faster resolutions in the future.
 ---
 You are expected to uphold Expedia's cultural values of being customer-focused, inclusive, and results-oriented while addressing technical challenges. All communication should reflect clarity, understanding, and a commitment to enhancing the overall travel experience for customers.
-            """,
-            "command": ${aaosa_command}
-        },
-    {
-        "name": "ExpediaSearch",
-        "function": {
-            "description": """
+         """,
+         "command": ${aaosa_command}
+      },
+      {
+         "name": "ExpediaSearch",
+         "function": {
+               "description": """
 First, use your tool to search expedia for options.
 Returns the URL to various Expedia accommodation and travel options.
             """,
             "parameters": {
-                "type": "object",
-                "properties": {
-                    "inquiry": {
-                        "type": "string",
-                        "description": "URL and Search terms to return options."
-                    },
-                },
-                "required": ["inquiry"]
+               "type": "object",
+               "properties": {
+                  "inquiry": {
+                     "type": "string",
+                     "description": "URL and Search terms to return options."
+                  },
+               },
+               "required": ["inquiry"]
             }
         },
         "instructions": """
             Searches expedia.com using search terms that would help respond to the inquiry.
         """,
         "command": "Call the API to get a list of URLs for available options.",
-        "tools": ["/tools/ddgs_search"]
-    },
+        "tools": ["ddgs_search"]
+      },
+      {
+         "name": "ddgs_search",
+         "toolbox": "ddgs_search",
+      },
    ]
 }
