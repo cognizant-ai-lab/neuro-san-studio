@@ -71,9 +71,7 @@ class PersistentMemoryTool:
         self._namespace_key: str = config.get("namespace_key") or "unknown_network.unknown_agent"
 
         enabled_ops: Any = config.get("enabled_operations")
-        self._enabled_operations: frozenset[str] = (
-            frozenset(enabled_ops) if enabled_ops else self.ALL_OPERATIONS
-        )
+        self._enabled_operations: frozenset[str] = frozenset(enabled_ops) if enabled_ops else self.ALL_OPERATIONS
 
         if store is not None:
             self._store: TopicStore = store

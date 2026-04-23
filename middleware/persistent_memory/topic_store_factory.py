@@ -64,6 +64,4 @@ class TopicStoreFactory:  # pylint: disable=too-few-public-methods
             )
         if backend == "markdown_file":
             return MarkdownFileStore(root_path=root_path)
-        raise ValueError(
-            f"Unknown memory backend '{backend}'. Valid options: ['json_file', 'markdown_file']."
-        )
+        raise ValueError(f"Unknown memory backend '{backend}'. Valid options: ['json_file', 'markdown_file'].")

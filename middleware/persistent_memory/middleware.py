@@ -89,9 +89,7 @@ class PersistentMemoryMiddleware(AgentMiddleware):
         resolved_store: dict[str, Any] = dict(store_config)
         resolved_store.setdefault("memory_file_name", self._DEFAULT_MEMORY_FILE_NAME)
 
-        max_topic_size, summarisation_model, personalisation = self._parse_summarisation_config(
-            summarisation_config
-        )
+        max_topic_size, summarisation_model, personalisation = self._parse_summarisation_config(summarisation_config)
 
         self._store: TopicStore = TopicStoreFactory.create(resolved_store)
         self._summariser: TopicSummariser = TopicSummariser(
@@ -191,8 +189,7 @@ class PersistentMemoryMiddleware(AgentMiddleware):
                     "topic": {
                         "type": "string",
                         "description": (
-                            "Topic name — identifies the slice of memory. "
-                            "Required for create/read/append/delete."
+                            "Topic name — identifies the slice of memory. Required for create/read/append/delete."
                         ),
                     },
                     "content": {
@@ -227,8 +224,7 @@ class PersistentMemoryMiddleware(AgentMiddleware):
         unknown: set[str] = set(config) - self._MEMORY_CONFIG_KEYS
         if unknown:
             self.logger.warning(
-                "Ignoring unknown memory_config keys: %s. "
-                "Recognised keys: %s.",
+                "Ignoring unknown memory_config keys: %s. Recognised keys: %s.",
                 sorted(unknown),
                 sorted(self._MEMORY_CONFIG_KEYS),
             )
@@ -289,8 +285,7 @@ class PersistentMemoryMiddleware(AgentMiddleware):
         unknown: set[str] = set(config) - self._SUMMARISATION_CONFIG_KEYS
         if unknown:
             self.logger.warning(
-                "PersistentMemoryMiddleware: ignoring unknown summarisation keys: %s. "
-                "Recognised keys: %s.",
+                "PersistentMemoryMiddleware: ignoring unknown summarisation keys: %s. Recognised keys: %s.",
                 sorted(unknown),
                 sorted(self._SUMMARISATION_CONFIG_KEYS),
             )
