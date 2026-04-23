@@ -30,7 +30,7 @@ class PersistentMemoryToolDispatchTests(MemoryTestBase):
 
     def setUp(self) -> None:
         super().setUp()
-        self.store: JsonFileStore = JsonFileStore(root_path=self._tmp)
+        self.store: JsonFileStore = JsonFileStore(folder_name=self._tmp)
         self.tool = self.make_tool(store=self.store)
 
     def _invoke(self, args: dict) -> dict:
@@ -100,7 +100,7 @@ class PersistentMemoryToolSummarizerTests(MemoryTestBase):
 
     def test_summarizer_fires_after_oversized_write(self) -> None:
         """A write past ``max_topic_size`` triggers the summarizer and rewrites disk."""
-        store: JsonFileStore = JsonFileStore(root_path=self._tmp)
+        store: JsonFileStore = JsonFileStore(folder_name=self._tmp)
         summarizer = AsyncMock()
         summarizer.summarize_topic = AsyncMock(return_value="SHORT")
         tool = self.make_tool(store=store, summarizer=summarizer, max_topic_size=10)
@@ -111,7 +111,7 @@ class PersistentMemoryToolSummarizerTests(MemoryTestBase):
 
     def test_summarizer_failure_keeps_original_write(self) -> None:
         """If the summarizer raises, the original write still survives on disk."""
-        store: JsonFileStore = JsonFileStore(root_path=self._tmp)
+        store: JsonFileStore = JsonFileStore(folder_name=self._tmp)
         summarizer = AsyncMock()
         summarizer.summarize_topic = AsyncMock(side_effect=RuntimeError("boom"))
         tool = self.make_tool(store=store, summarizer=summarizer, max_topic_size=10)

@@ -31,7 +31,7 @@ class JsonFileStoreTests(MemoryTestBase):
 
     def _make_store(self, name: str = "memory") -> JsonFileStore:
         """Build a fresh store rooted in the scratch directory."""
-        return JsonFileStore(root_path=self._tmp, memory_file_name=name)
+        return JsonFileStore(folder_name=self._tmp, file_name=name)
 
     def test_load_missing_file_returns_empty(self) -> None:
         """load_all on an unseen agent returns an empty dict."""
@@ -50,8 +50,8 @@ class JsonFileStoreTests(MemoryTestBase):
         loaded: dict = asyncio.run(store.load_all("net.agent"))
         self.assertEqual(loaded, payload)
 
-    def test_custom_memory_file_name(self) -> None:
-        """Configured memory_file_name is honoured."""
+    def test_custom_file_name(self) -> None:
+        """Configured file_name is honoured."""
         store: JsonFileStore = self._make_store(name="custom")
         asyncio.run(store.save_all("net.agent", {"t": "v"}))
         expected: Path = Path(self._tmp) / "net" / "agent" / "custom.json"

@@ -30,7 +30,6 @@ from typing import Any
 from typing import ClassVar
 from typing import Optional
 
-from middleware.persistent_memory.topic_store import SearchResult
 from middleware.persistent_memory.topic_store import TopicStore
 
 
@@ -226,7 +225,7 @@ class PersistentMemoryTool:
         """
         query: str = self._get_arg(args, "query")
         limit: int = self._parse_limit(args.get("limit"), self.DEFAULT_SEARCH_LIMIT)
-        results: list[SearchResult] = await self._store.search_topics(
+        results: list[dict[str, Any]] = await self._store.search_topics(
             self._namespace_key,
             query,
             limit,

@@ -31,7 +31,7 @@ class MarkdownFileStoreTests(MemoryTestBase):
 
     def _make_store(self) -> MarkdownFileStore:
         """Build a store rooted in the scratch directory."""
-        return MarkdownFileStore(root_path=self._tmp)
+        return MarkdownFileStore(folder_name=self._tmp)
 
     def test_load_missing_tree_returns_empty(self) -> None:
         """load_all without any files returns an empty dict."""

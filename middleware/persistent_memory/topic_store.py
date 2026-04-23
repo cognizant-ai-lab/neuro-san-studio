@@ -31,19 +31,11 @@ from collections import OrderedDict
 from datetime import datetime
 from logging import Logger
 from pathlib import Path
+from typing import Any
 from typing import Awaitable
 from typing import Callable
 from typing import ClassVar
 from typing import Optional
-from typing import TypedDict
-
-
-class SearchResult(TypedDict):
-    """One keyword-ranked hit returned by :py:meth:`TopicStore.search_topics`."""
-
-    topic: str
-    content: str
-    score: float
 
 
 class TopicStore(ABC):
@@ -57,9 +49,9 @@ class TopicStore(ABC):
 
     _MAX_LOCKS: ClassVar[int] = 256
 
-    def __init__(self, root_path: str) -> None:
+    def __init__(self, folder_name: str) -> None:
         self.logger: Logger = logging.getLogger(f"{__name__}.{self.__class__.__name__}")
-        self._root: Path = Path(root_path).expanduser().resolve()
+        self._root: Path = Path(folder_name).expanduser().resolve()
         self._locks: OrderedDict[tuple[str, ...], asyncio.Lock] = OrderedDict()
         self._locks_guard: asyncio.Lock = asyncio.Lock()
         self.logger.info("Initialised. Root path: %s", self._root)
@@ -108,7 +100,7 @@ class TopicStore(ABC):
         query: str,
         limit: int = 5,
         post_read_factory: Optional[Callable[[str], Optional[Callable[[str], Awaitable[Optional[str]]]]]] = None,
-    ) -> list[SearchResult]:
+    ) -> list[dict[str, Any]]:
         """
         Rank topics by keyword match against ``query``.
 
@@ -121,11 +113,11 @@ class TopicStore(ABC):
         :param post_read_factory: Optional factory returning a per-topic
                                   post-read callback (same semantics as
                                   ``get_topic``'s ``post_read``).
-        :return: List of ``SearchResult`` dicts, best first.
+        :return: List of dicts with ``topic``, ``content`` and ``score`` keys, best first.
         """
         async with await self._lock_for(self._list_lock_key(namespace)):
             bucket: dict[str, str] = await self._read_bucket(namespace)
-        results: list[SearchResult] = self._keyword_rank(bucket, query, limit)
+        results: list[dict[str, Any]] = self._keyword_rank(bucket, query, limit)
         if post_read_factory is None:
             return results
         return await self._rewrite_search_results(namespace, results, post_read_factory)
@@ -133,9 +125,9 @@ class TopicStore(ABC):
     async def _rewrite_search_results(
         self,
         namespace: str,
-        results: list[SearchResult],
+        results: list[dict[str, Any]],
         post_read_factory: Callable[[str], Optional[Callable[[str], Awaitable[Optional[str]]]]],
-    ) -> list[SearchResult]:
+    ) -> list[dict[str, Any]]:
         """
         Run per-topic ``post_read`` callbacks under the write lock and rewrite hits in place.
 
@@ -398,14 +390,14 @@ class TopicStore(ABC):
         bucket: dict[str, str],
         query: str,
         limit: int,
-    ) -> list[SearchResult]:
+    ) -> list[dict[str, Any]]:
         """
         Score topics by query-word hits / query-word count; return top ``limit``, sorted desc.
 
         :param bucket: ``{topic: content}`` dict to rank.
         :param query:  Free-text query; split on whitespace, lowercased.
         :param limit:  Max number of hits to return.
-        :return: List of ``SearchResult`` dicts, best first.
+        :return: List of dicts with ``topic``, ``content`` and ``score`` keys, best first.
         """
         words: set[str] = {word for word in query.lower().split() if word}
         if not words:
@@ -419,4 +411,4 @@ class TopicStore(ABC):
             score: float = round(hits / len(words), 4)
             scored.append((score, topic, content))
         scored.sort(key=lambda triple: triple[0], reverse=True)
-        return [SearchResult(topic=topic, content=content, score=score) for score, topic, content in scored[:limit]]
+        return [{"topic": topic, "content": content, "score": score} for score, topic, content in scored[:limit]]

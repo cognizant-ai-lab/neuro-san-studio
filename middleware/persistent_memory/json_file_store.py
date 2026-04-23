@@ -42,31 +42,31 @@ class JsonFileStore(TopicStore):
     One JSON file per agent.
     """
 
-    DEFAULT_MEMORY_FILE_NAME: ClassVar[str] = "memory"
+    DEFAULT_FILE_NAME: ClassVar[str] = "memory"
 
     _EXTENSION: ClassVar[str] = "json"
     # Collapses anything outside ``[A-Za-z0-9_-]`` (including ``..`` and path
-    # separators) to ``_`` so a user-supplied ``memory_file_name`` cannot
+    # separators) to ``_`` so a user-supplied ``file_name`` cannot
     # escape the agent's directory.
     _UNSAFE_FILE_CHARS: ClassVar[re.Pattern[str]] = re.compile(r"[^A-Za-z0-9_-]")
 
-    def __init__(self, root_path: str, memory_file_name: str = DEFAULT_MEMORY_FILE_NAME) -> None:
-        super().__init__(root_path)
+    def __init__(self, folder_name: str, file_name: str = DEFAULT_FILE_NAME) -> None:
+        super().__init__(folder_name)
         # Accept ``"memory.json"`` / path-like values and reduce to a safe stem.
-        raw: str = (memory_file_name or self.DEFAULT_MEMORY_FILE_NAME).strip()
-        stem: str = Path(raw).stem or self.DEFAULT_MEMORY_FILE_NAME
+        raw: str = (file_name or self.DEFAULT_FILE_NAME).strip()
+        stem: str = Path(raw).stem or self.DEFAULT_FILE_NAME
         cleaned: str = self._UNSAFE_FILE_CHARS.sub("_", stem).strip("_")
-        self._memory_file_name: str = cleaned or self.DEFAULT_MEMORY_FILE_NAME
+        self._file_name: str = cleaned or self.DEFAULT_FILE_NAME
 
     def _path_for(self, namespace: str) -> Path:
         """
-        Resolve ``<root>/<network>/<agent>/<memory_file_name>.json``.
+        Resolve ``<root>/<network>/<agent>/<file_name>.json``.
 
         :param namespace: ``"<network>.<agent>"`` key.
         :return: Absolute path to the agent's JSON memory file.
         """
         network, agent = self._split_namespace(namespace)
-        return self._root / network / agent / f"{self._memory_file_name}.{self._EXTENSION}"
+        return self._root / network / agent / f"{self._file_name}.{self._EXTENSION}"
 
     @override
     def _lock_key(self, namespace: str, topic: str) -> tuple[str, ...]:

@@ -80,20 +80,20 @@ confirm or share the information — do not guess.
                         "memory_config": {
                             # Backend configuration.
                             #   ``backend``:          ``json_file`` or ``markdown_file``.
-                            #   ``root_path``:        where memory files are written, relative to the repo root.
-                            #   ``memory_file_name``: JSON-only file stem; written to
-                            #                         ``<root_path>/<agent_network_name>/<agent_name>/<memory_file_name>.json``.
+                            #   ``folder_name``:        where memory files are written, relative to the repo root.
+                            #   ``file_name``: JSON-only file stem; written to
+                            #                         ``<folder_name>/<agent_network_name>/<agent_name>/<file_name>.json``.
                             "storage": {
                                 "backend":          "markdown_file",
-                                "root_path":        "./memory",
-                                "memory_file_name": "memory"  # ignored by markdown_file backend
+                                "folder_name":        "./memory",
+                                "file_name": "memory"  # ignored by markdown_file backend
                             },
                             # Summarizer configuration.
                             #   ``max_topic_size``:  character threshold past which topics are summarized inline.
                             #   ``model``:           OpenAI model used by the summarizer, failures keep the original.
                             #   ``personalization``: optional sentence appended to the prompt.
                             "summarization": {
-                                "max_topic_size":  500,
+                                "max_topic_size":  1000,
                                 "model":           "gpt-5.4-mini"
                                 # "personalization": "Write summaries in a warm, concise tone."
                             },

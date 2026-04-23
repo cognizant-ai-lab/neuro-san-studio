@@ -44,7 +44,6 @@ from langchain_core.tools import BaseTool
 from langchain_core.tools import StructuredTool
 
 from middleware.persistent_memory.persistent_memory_tool import PersistentMemoryTool
-from middleware.persistent_memory.store_config import StoreConfig
 from middleware.persistent_memory.topic_store import TopicStore
 from middleware.persistent_memory.topic_store_factory import TopicStoreFactory
 from middleware.persistent_memory.topic_summarizer import TopicSummarizer
@@ -65,7 +64,7 @@ class PersistentMemoryMiddleware(AgentMiddleware):
 
     MEMORY_TOOL_NAME: ClassVar[str] = "persistent_memory"
 
-    _DEFAULT_MAX_TOPIC_SIZE: ClassVar[int] = 500
+    _DEFAULT_MAX_TOPIC_SIZE: ClassVar[int] = 1000
 
     _MEMORY_CONFIG_KEYS: ClassVar[frozenset[str]] = frozenset({"storage", "summarization", "enabled_operations"})
     _SUMMARIZATION_CONFIG_KEYS: ClassVar[frozenset[str]] = frozenset({"max_topic_size", "model", "personalization"})
@@ -93,9 +92,9 @@ class PersistentMemoryMiddleware(AgentMiddleware):
 
         max_topic_size, summarization_model, personalization = self._parse_summarization_config(summarization_config)
 
-        # ``JsonFileStore`` defaults + sanitises ``memory_file_name`` on its own;
+        # ``JsonFileStore`` defaults + sanitises ``file_name`` on its own;
         # the markdown backend ignores it. See ``JsonFileStore.__init__``.
-        self._store: TopicStore = TopicStoreFactory.create(StoreConfig.from_dict(store_config))
+        self._store: TopicStore = TopicStoreFactory.create(store_config)
         self._summarizer: TopicSummarizer = TopicSummarizer(
             model_name=summarization_model,
             personalization=personalization,

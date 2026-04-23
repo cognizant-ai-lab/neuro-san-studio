@@ -39,11 +39,11 @@ required; every other key is optional and falls back to the value below.
             "memory_config": {
                 "storage": {
                     "backend":          "json_file",     # or "markdown_file"
-                    "root_path":        "./memory",      # relative to the server's CWD
-                    "memory_file_name": "memory"         # json_file backend only
+                    "folder_name":        "./memory",      # relative to the server's CWD
+                    "file_name": "memory"         # json_file backend only
                 },
                 "summarization": {
-                    "max_topic_size":  500,              # 0 disables summarization
+                    "max_topic_size":  1000,              # 0 disables summarization
                     "model":           "gpt-5.4-mini",
                     "personalization": ""                # appended to the summarizer prompt
                 },
@@ -145,8 +145,8 @@ the `storage` block:
 ```hocon
 "storage": {
     "backend":          "markdown_file",
-    "root_path":        "./memory",
-    "memory_file_name": "memory"
+    "folder_name":        "./memory",
+    "file_name": "memory"
 }
 ```
 
@@ -155,12 +155,12 @@ The three keys:
 - **`backend`** — which store to use. Either `json_file` (one
   `memory.json` per agent) or `markdown_file` (one `.md` file per
   topic). Defaults to `json_file`.
-- **`root_path`** — directory where memory files are written, relative
+- **`folder_name`** — directory where memory files are written, relative
   to the server's working directory. The middleware appends
   `/<network>/<agent>/` beneath it so each agent gets its own slice.
   Defaults to `./memory`.
-- **`memory_file_name`** — file stem for the JSON backend only; the
-  final path is `<root_path>/<network>/<agent>/<memory_file_name>.json`.
+- **`file_name`** — file stem for the JSON backend only; the
+  final path is `<folder_name>/<network>/<agent>/<file_name>.json`.
   Ignored by the markdown backend. Defaults to `memory`.
 
 ## Summarization
@@ -172,7 +172,7 @@ the oversized intermediate state.
 
 ```hocon
 "summarization": {
-    "max_topic_size":  500,
+    "max_topic_size":  1000,
     "model":           "gpt-5.4-mini",
     "personalization": "Write summaries in a warm, concise tone."
 }

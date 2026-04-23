@@ -60,7 +60,7 @@ class MemoryTestBase(TestCase):
                                    and ``max_topic_size > 0``.
         :return:                   A ready-to-use tool.
         """
-        resolved_store: TopicStore = store if store is not None else JsonFileStore(root_path=self._tmp)
+        resolved_store: TopicStore = store if store is not None else JsonFileStore(folder_name=self._tmp)
         if summarizer is not None and max_topic_size is not None:
             summarizer.should_summarize = self._make_should_summarize(max_topic_size)
         return PersistentMemoryTool(
@@ -97,7 +97,7 @@ class MemoryTestBase(TestCase):
         return PersistentMemoryMiddleware(
             origin_str="test_net.test_agent-1.dispatch",
             memory_config={
-                "storage": {"backend": backend, "root_path": self._tmp},
+                "storage": {"backend": backend, "folder_name": self._tmp},
                 "summarization": {"max_topic_size": max_topic_size},
                 "enabled_operations": enabled_operations,
             },
