@@ -16,30 +16,35 @@
 
 # Persistent Memory — example agent network (middleware path).
 #
-# ONE block is enough. Drop a ``middleware`` entry on any agent that needs
-# long-term memory and the ``persistent_memory`` tool is registered
-# automatically — no separate tool entry, no tool name in ``tools: [...]``.
+# A single ``middleware`` block is all you need. Drop it on any agent that
+# needs long-term memory, and the ``persistent_memory`` tool is registered
+# automatically — no separate tool entry, and no tool name in ``tools: [...]``.
 #
-# Class path: middleware.persistent_memory.persistent_memory_middleware.PersistentMemoryMiddleware
+# Class path: middleware.persistent_memory.middleware.PersistentMemoryMiddleware
 #
-# Backend selection (precedence, later wins):
-#     1. The ``store_config`` block in middleware ``args``
-#     2. Individual ``MEMORY_*`` env vars (``MEMORY_BACKEND``, ``MEMORY_ROOT_PATH``)
+# Backend selection happens via the ``memory_config.storage`` block in the
+# middleware ``args``. Two backends ship out of the box:
+#   - ``markdown_file``: one ``.md`` file per topic.
+#   - ``json_file``:     one ``memory.json`` per agent (the default).
 #
-# Available backends: ``markdown_file`` (markdown) and ``json_file`` (JSON).
+# Lifecycle: write-per-call. Every tool call is a read-modify-write against
+# disk under a per-key ``asyncio.Lock``. Any topic longer than
+# ``max_topic_size`` characters is summarised inline, under the same lock
+# that performed the write, so concurrent readers never observe the
+# oversized intermediate content.
 
 {
     include "registries/llm_config.hocon",
 
     "metadata": {
-        "description": "Remembers facts you share (preferences, role, personal details) and recalls them in later conversations. Scoped per user, so one user's memories stay private to them.",
+        "description": "Remembers facts you share (preferences, role, personal details) and recalls them in later conversations.",
         "tags": ["memory", "long-term-memory", "middleware"],
         "sample_queries": [
             # Ordered as a natural first-run flow: introduce yourself, record
-            # a fact, update it, ask about it, then list / forget.
+            # a fact, add to it, ask about it, then list / forget.
             "Hi, my name is Mike and I work in Sales.",
             "Remember that I prefer email communication over chat.",
-            "Update my department to Engineering.",
+            "Also note that I have moved to the Engineering department.",
             "What do you know about me?",
             "List everything you remember about me.",
             "Forget my communication preference.",
@@ -48,9 +53,6 @@
 
     "tools": [
 
-        # ── Front Man ────────────────────────────────────────────────────────
-        # A single agent with a single `middleware` block. No `tools:` entry
-        # for persistent_memory — the middleware registers it on startup.
         {
             "name": "MemoryAssistant",
 
@@ -58,52 +60,59 @@
                 "description": "A conversational assistant that remembers facts about you across sessions."
             },
 
-            "instructions": """You are a helpful assistant with long-term memory.
+            "instructions": """
+You are a helpful assistant that remembers facts the user shares about themselves —
+names, roles, preferences, relationships, and personal details.
 
-At the start of every conversation:
-1. Call persistent_memory with operation="search" and the user's message as the query, to surface
-   any relevant memories about this user.
-2. Use the retrieved memories as context when formulating your response.
+Save each fact as a topic/content pair. The topic is the person's name, lower-cased
+and underscore-separated ("michael_brown", "tom"); every fact about that person
+lives under their topic.
 
-During the conversation:
-- If the user shares a new fact about themselves (preference, role, department, etc.),
-  call persistent_memory with operation="create" and pass the fact as 'content'.
-- If the user asks you to update or correct a memory, use operation="update" with the key and new 'content'.
-- If the user asks you to add to an existing memory (rather than replace it), use operation="append" with the key and extra 'content'.
-- If the user asks you to forget something, use operation="delete" with the key.
-- If the user asks what you remember about a topic, use operation="search" with a query.
-- If the user asks for a full inventory, use operation="list".
-- If the user refers to a specific memory key, use operation="read" with that key.
-
-Never fabricate memories. Only report what the tool returns.""",
+If memory has nothing on what the user is asking about, say so and ask them to
+confirm or share the information — do not guess.
+""",
 
             "tools": [],
 
             "middleware": [
                 {
-                    "class": "middleware.persistent_memory.persistent_memory_middleware.PersistentMemoryMiddleware",
+                    "class": "middleware.persistent_memory.middleware.PersistentMemoryMiddleware",
                     "args": {
-                        # First two parts of the memory namespace. Third part
-                        # (topic) is auto-filled from sly_data["user_id"] if
-                        # the LLM does not pass an explicit 'topic' arg.
-                        "agent_network_name": "persistent_memory",
-                        "agent_name":         "MemoryAssistant",
 
-                        # Backend configuration. Omit this block entirely to
-                        # let the factory resolve everything from env vars.
-                        # Note that ``root_path`` here is relative to the root
-                        # level of the repo (the process working directory
-                        # when the neuro-san server starts).
-                        "store_config": {
-                            "backend":   "json_file",
-                            "root_path": "./memory"
-                        },
+                        # Allowing the framework to auto-inject information.
+                        # ``origin_str`` is parsed by the middleware to derive network and agent name.
+                        "origin_str": true,
 
-                        # Which operations the LLM may use. Omit to allow all seven.
-                        # Useful restrictions:
-                        #   Read-only agent:    ["read", "search", "list"]
-                        #   Append-only agent:  ["read", "append", "search", "list"]
-                        "enabled_operations": ["create", "read", "update", "append", "delete", "search", "list"]
+                        # All memory settings live under a single ``memory_config`` block with three sub-keys.
+                        "memory_config": {
+
+                            # Backend configuration.
+                            #   ``backend``:          ``json_file`` or ``markdown_file``.
+                            #   ``root_path``:        where memory files are written, relative to the repo root.
+                            #   ``memory_file_name``: JSON-only file stem; written to
+                            #                         ``<root_path>/<agent_network_name>/<agent_name>/<memory_file_name>.json``.
+                            "storage": {
+                                "backend":          "markdown_file",
+                                "root_path":        "./memory",
+                                "memory_file_name": "memory"
+                            },
+
+                            # Summariser configuration.
+                            #   ``max_topic_size``:  character threshold past which topics are summarised inline.
+                            #   ``model``:           OpenAI model used by the summariser, failures keep the original.
+                            #   ``personalisation``: optional sentence appended to the prompt.
+                            "summarisation": {
+                                "max_topic_size":  500,
+                                "model":           "gpt-4o"
+                                # "personalisation": "Write summaries in a warm, concise tone."
+                            },
+
+                            # Which operations the LLM may use. Leave empty to allow all six.
+                            # Useful restrictions:
+                            #   Read-only agent:    ["read", "search", "list"]
+                            #   Append-only agent:  ["read", "append", "search", "list"]
+                            "enabled_operations": ["create", "read", "append", "delete", "search", "list"]
+                        }
                     }
                 }
             ]

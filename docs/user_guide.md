@@ -1681,75 +1681,30 @@ Look at [Consumer Decision Assistant](examples/industry/consumer_decision_assist
 
 ### Memory
 
-Agents can be given long-term memory via the `PersistentMemoryMiddleware`. It attaches a single
-`persistent_memory` tool to the agent that supports seven operations: `create`, `read`,
-`update`, `append`, `delete`, `search`, and `list`. Memory is persisted to disk and scoped
-by `(agent_network_name, agent_name, topic)` — each topic gets its own file, so different
-users, projects, or sessions never collide.
+Agents can be given long-term memory by attaching the `PersistentMemoryMiddleware`.
+The middleware registers a single `persistent_memory` tool on the agent
+(six operations: `create`, `read`, `append`, `delete`, `search`, `list`) and
+persists each topic to disk, scoped by `(agent_network_name, agent_name, topic)`.
+Writes land as soon as the tool call returns — no bookended load/save, and a
+crash mid-turn loses at most the call that was in-flight.
 
-Attach it with a single `middleware` entry — no separate tool entry, no tool name in
-`tools: [...]`:
+Minimal wiring — only `class` is required, every other key has a sensible default.
 
 ```hocon
 "middleware": [
     {
-        "class": "middleware.persistent_memory.persistent_memory_middleware.PersistentMemoryMiddleware",
-        "args": {
-            "agent_network_name": "my_network",
-            "agent_name":         "my_agent",
-            "store_config": {
-                "backend":   "json_file",
-                "root_path": "./memory"
-            },
-            "enabled_operations": ["create", "read", "update", "append", "delete", "search", "list"]
-        }
+        "class": "middleware.persistent_memory.middleware.PersistentMemoryMiddleware"  # (required)
     }
 ]
 ```
 
-Every call from the LLM must include a `topic` argument — it becomes the on-disk filename
-for that slice of memory (e.g. `mike.md`, `project_alpha.md`). Write operations also take
-a `content` argument carrying the information to store. If `topic` is omitted, the
-middleware falls back to `sly_data["user_id"]` so authenticated multi-tenant deployments
-work without prompt-level scoping.
-
-Two backends are available:
-
-- `json_file` (default) — one JSON file per topic (unambiguous for other processes to parse).
-- `markdown_file` — one markdown file per topic (human-readable, easy to hand-edit).
-
-Backend selection is layered (later wins): the HOCON `store_config` block, then the
-individual `MEMORY_BACKEND` and `MEMORY_ROOT_PATH` env vars. This lets you swap backends
-at deploy time without editing HOCON.
-
-The default `root_path` is `./memory`. Like every other file path in the example HOCONs,
-it is resolved relative to the **process working directory** when the neuro-san server
-starts — in practice the root of the repo, since that is where the server launch scripts
-are invoked from. Pass an absolute path if you need deterministic behaviour under a
-different working directory.
-
-An optional summariser can be configured under `args.memory_summariser` to compress accumulated
-memory before it reaches the LLM — useful for agents that `append` many entries and want
-a concise current-state view on `read` or `search`. Setting `compact_on_write = true` also
-rewrites the on-disk file in place once it crosses `compact_threshold` characters, so the
-file stays bounded across sessions. An optional `personalisation` string is appended to
-the base instructions on every summariser call — a hook for per-deployment tone or
-content preferences that the user can edit without touching the base prompt.
-
-```hocon
-"memory_summariser": {
-    "enabled"           = true
-    "model"             = "gpt-4.1-mini"
-    "instructions"      = "You are a summariser. Keep the output under 500 chars."
-    "compact_on_write"  = true
-    "compact_threshold" = 500
-    "personalisation"   = ""   # optional user-editable extension to the instructions
-}
-```
-
-See [persistent_memory.hocon](../registries/tools/persistent_memory.hocon) for a minimal
-working example, and [examples/tools/persistent_memory.md](./examples/tools/persistent_memory.md)
-for a full walk-through with backend selection, summariser options, and a sample conversation.
+Two storage backends ship: `json_file` (one `memory.json` per agent, default) and
+`markdown_file` (one `.md` per topic). Oversized topics are summarised inline under the
+same lock that did the write, so readers never see an intermediate oversized state.
+See [examples/tools/persistent_memory.md](./examples/tools/persistent_memory.md)
+for the full tutorial — building the HOCON from scratch, a sample conversation,
+backend trade-offs, summariser tuning, and debugging tips. The minimal working
+network lives at [persistent_memory.hocon](../registries/tools/persistent_memory.hocon).
 
 ## Connect with other agent frameworks
 
