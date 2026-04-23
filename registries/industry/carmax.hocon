@@ -338,7 +338,11 @@ When calling your search tool, always format your inquiry as follows: 'search ur
             Searches carmax.com using search terms that would help respond to the inquiry.
         """,
         "command": "Call the API to get a list of URLs for available options. always format your inquiry as follows: 'search url: carmax.com for <inquiry>'",
-        "tools": ["/tools/ddgs_search"]
-    }
+        "tools": ["ddgs_search"]
+        },
+        {
+            "name": "ddgs_search",
+            "toolbox": "ddgs_search",
+        },
     ]
 }
