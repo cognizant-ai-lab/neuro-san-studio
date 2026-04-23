@@ -22,7 +22,6 @@ import asyncio
 from unittest.mock import AsyncMock
 
 from middleware.persistent_memory.json_file_store import JsonFileStore
-
 from tests.middleware.persistent_memory._base import MemoryTestBase
 
 
@@ -84,15 +83,14 @@ class PersistentMemoryToolDispatchTests(MemoryTestBase):
         result = self._invoke({"operation": "list"})
         self.assertEqual(result["result"]["topics"], ["a", "b"])
 
+
 class PersistentMemoryToolEnabledOperationsTests(MemoryTestBase):
     """The ``enabled_operations`` whitelist constrains the LLM."""
 
     def test_disabled_operation_returns_error(self) -> None:
         """Calling a disabled operation surfaces a ``not enabled`` error."""
         tool = self.make_tool(enabled_operations=["read", "search"])
-        result = asyncio.run(
-            tool.async_invoke({"operation": "create", "topic": "x", "content": "v"})
-        )
+        result = asyncio.run(tool.async_invoke({"operation": "create", "topic": "x", "content": "v"}))
         self.assertIn("error", result)
         self.assertIn("not enabled", result["error"].lower())
 
@@ -106,9 +104,7 @@ class PersistentMemoryToolSummariserTests(MemoryTestBase):
         summariser = AsyncMock()
         summariser.summarise_topic = AsyncMock(return_value="SHORT")
         tool = self.make_tool(store=store, summariser=summariser, max_topic_size=10)
-        asyncio.run(
-            tool.async_invoke({"operation": "create", "topic": "t", "content": "x" * 50})
-        )
+        asyncio.run(tool.async_invoke({"operation": "create", "topic": "t", "content": "x" * 50}))
         summariser.summarise_topic.assert_awaited_once()
         memory: dict = asyncio.run(store.load_all("test_net.test_agent"))
         self.assertEqual(memory["t"], "SHORT")
@@ -120,9 +116,7 @@ class PersistentMemoryToolSummariserTests(MemoryTestBase):
         summariser.summarise_topic = AsyncMock(side_effect=RuntimeError("boom"))
         tool = self.make_tool(store=store, summariser=summariser, max_topic_size=10)
         original: str = "z" * 100
-        asyncio.run(
-            tool.async_invoke({"operation": "create", "topic": "t", "content": original})
-        )
+        asyncio.run(tool.async_invoke({"operation": "create", "topic": "t", "content": original}))
         summariser.summarise_topic.assert_awaited_once()
         memory: dict = asyncio.run(store.load_all("test_net.test_agent"))
         self.assertEqual(memory["t"], original)

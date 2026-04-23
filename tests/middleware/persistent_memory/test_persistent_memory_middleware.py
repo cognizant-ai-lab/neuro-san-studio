@@ -24,7 +24,6 @@ from pathlib import Path
 from unittest.mock import AsyncMock
 
 from middleware.persistent_memory.middleware import PersistentMemoryMiddleware
-
 from tests.middleware.persistent_memory._base import MemoryTestBase
 
 
@@ -44,11 +43,12 @@ class PersistentMemoryMiddlewareOriginParsingTests(MemoryTestBase):
 
     def test_parses_network_and_agent_stripping_index_suffix(self) -> None:
         """Numeric ``-N`` suffixes are stripped from both segments."""
-        network, agent = PersistentMemoryMiddleware._parse_origin_str(
+        network, agent = PersistentMemoryMiddleware._parse_origin_str(  # pylint: disable=protected-access
             "persistent_memory.MemoryAssistant-1.dispatch"
         )
         self.assertEqual(network, "persistent_memory")
         self.assertEqual(agent, "MemoryAssistant")
+
 
 class PersistentMemoryMiddlewareDispatchTests(MemoryTestBase):
     """Dispatch forwards to ``PersistentMemoryTool`` and the result hits disk."""
@@ -57,9 +57,13 @@ class PersistentMemoryMiddlewareDispatchTests(MemoryTestBase):
         """A create via the dispatcher is searchable via the same dispatcher."""
         mw = self.make_middleware()
         tool_fn = mw.tools[0]
-        create_result = asyncio.run(tool_fn.coroutine(operation="create", topic="coffee", content="black"))
+        create_result = asyncio.run(
+            tool_fn.coroutine(operation="create", topic="coffee", content="black")  # pylint: disable=not-callable
+        )
         self.assertEqual(create_result["result"]["status"], "created")
-        search_result = asyncio.run(tool_fn.coroutine(operation="search", query="black"))
+        search_result = asyncio.run(
+            tool_fn.coroutine(operation="search", query="black")  # pylint: disable=not-callable
+        )
         topics = [r["topic"] for r in search_result["result"]["results"]]
         self.assertIn("coffee", topics)
 
@@ -70,9 +74,12 @@ class PersistentMemoryMiddlewareSummariserTests(MemoryTestBase):
     def test_summarises_when_topic_exceeds_max_size(self) -> None:
         """A topic larger than ``max_topic_size`` is replaced with its summary."""
         mw = self.make_middleware(max_topic_size=20)
+        # pylint: disable=protected-access
         mw._summariser.summarise_topic = AsyncMock(return_value="SHORT")  # type: ignore[attr-defined]
 
-        asyncio.run(mw.tools[0].coroutine(operation="create", topic="t", content="x" * 50))
+        asyncio.run(
+            mw.tools[0].coroutine(operation="create", topic="t", content="x" * 50)  # pylint: disable=not-callable
+        )
 
         mw._summariser.summarise_topic.assert_awaited_once()  # type: ignore[attr-defined]
         disk: dict = json.loads((Path(self._tmp) / "test_net" / "test_agent" / "memory.json").read_text())

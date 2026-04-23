@@ -30,7 +30,7 @@ from middleware.persistent_memory.middleware import PersistentMemoryMiddleware
 from middleware.persistent_memory.topic_store import TopicStore
 
 
-class _ShouldSummarise:
+class _ShouldSummarise:  # pylint: disable=too-few-public-methods
     """Callable wrapping the ``max_topic_size`` threshold used in tests.
 
     Mirrors :py:meth:`TopicSummariser.should_summarise` so mocks can be

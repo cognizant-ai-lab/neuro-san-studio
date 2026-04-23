@@ -21,7 +21,6 @@ from __future__ import annotations
 from middleware.persistent_memory.json_file_store import JsonFileStore
 from middleware.persistent_memory.markdown_file_store import MarkdownFileStore
 from middleware.persistent_memory.topic_store_factory import TopicStoreFactory
-
 from tests.middleware.persistent_memory._base import MemoryTestBase
 
 
@@ -45,9 +44,7 @@ class TopicStoreFactoryTests(MemoryTestBase):
 
     def test_memory_file_name_propagates_to_json_backend(self) -> None:
         """The ``memory_file_name`` HOCON field is forwarded to ``JsonFileStore``."""
-        store = TopicStoreFactory.create(
-            {"backend": "json_file", "root_path": self._tmp, "memory_file_name": "notes"}
-        )
+        store = TopicStoreFactory.create({"backend": "json_file", "root_path": self._tmp, "memory_file_name": "notes"})
         self.assertIsInstance(store, JsonFileStore)
         # Internal check: the resolved file path uses the custom stem.
         path = store._path_for("net.agent")  # pylint: disable=protected-access
