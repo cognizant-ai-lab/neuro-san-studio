@@ -109,6 +109,7 @@ Each scenario you return must include:
 - `description`: what the scenario tests.
 - `interactions`: a list of the EXACT user messages for each turn, with sly_data and expected behaviour. For multi-turn scenarios, this list MUST contain multiple entries (one per turn). For example, a 3-turn scenario MUST have 3 interaction entries.
 
+# Canonical descriptions in docs/agent_network_test_generator.md — keep in sync.
 The `test_level` parameter controls how many scenarios you must generate:
 - `minimum`: Generate 2-3 scenarios. Focus on the single most important happy-path and one critical edge case.
 - `normal`: Generate 5-7 scenarios. Cover the main happy paths, a few edge cases, and at least one error/boundary scenario.

@@ -33,7 +33,7 @@ jobs:
       - name: Install dependencies
         shell: bash
         run: |
-          apt-get update && apt-get install --yes make curl netcat-openbsd procps net-tools jq
+          apt-get update && apt-get install --yes make curl netcat-openbsd procps net-tools
           make install
 
       - name: Show installed packages
@@ -58,8 +58,8 @@ jobs:
 
       - name: Notify Slack
         if: ${{ !cancelled() }}
-        # 1.0.2
-        uses: cognizant-ai-lab/build-common/actions/slack-notify@2cfeaf2a0356ce46aff80ae2a2983fe68d47bf4f
+        # 1.0.3
+        uses: cognizant-ai-lab/build-common/actions/slack-notify@a5d90457ea6e44b8f24f878755f77c00216e2947
         with:
           status: ${{ job.status }}
           webhook-url: ${{ secrets.SLACK_WEBHOOK_URL }}

@@ -57,6 +57,18 @@ Do not mention what you can NOT do. Only mention what you can do.
             "name": "decision_consultant",
             "function": {
                 "description": "I can help you research and weigh options for any decision, ranging from retail purchasing to life choices and investments."
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "query": {
+                            "type": "string",
+                            "description": """
+A decision-making inquiry where the user needs help researching and weighing options, ranging from retail purchases and financial investments to major life choices.
+"""
+                        },
+                    },
+                    "required": ["query"]
+                }
             },
             "instructions": ${instructions_prefix} """
 You are the top-level agent responsible for helping users make informed decisions across various domains by guiding them through research and evaluation processes.
@@ -674,6 +686,19 @@ Scope of Work:
             """,
             "command": ${aaosa_command}
             "tools": ["/industry/LinkedInJobSeekerSupportNetwork"]
+            "allow": {
+               "from_downstream": {
+                  # Report messages from the external tool that is downstream.
+                  # For "security by default" this is normally off, but for
+                  # illustrative purposes and debugging, it's useful to have on.
+                  # Most agents would not want to have this reporting on
+                  # in a production environment.
+                  # This field can be either "messages" or "reporting" and can take several forms depending on
+                  # the level of control needed.
+                  # See https://github.com/cognizant-ai-lab/neuro-san/blob/main/docs/agent_hocon_reference.md#messages
+                  "messages": [ "/industry/LinkedInJobSeekerSupportNetwork" ]
+               }
+            }
         },
         {
             "name": "skill_development_advisor",

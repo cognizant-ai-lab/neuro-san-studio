@@ -57,6 +57,18 @@
             "name": "client_relationship_manager",
             "function": {
                 "description": "I can assist you with all your banking and financial service needs at KeyBank."
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "query": {
+                            "type": "string",
+                            "description": """
+A client inquiry about KeyBank banking and financial services, including accounts, loans, investments, or relationship management.
+"""
+                        },
+                    },
+                    "required": ["query"]
+                }
             },
             "instructions": ${instructions_prefix} """
 You are the top-level agent responsible for handling all client inquiries.

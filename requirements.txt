@@ -1,6 +1,6 @@
 # Neuro SAN
-neuro-san==0.6.47
-nsflow==0.6.14
+neuro-san==0.6.48
+nsflow==0.6.15
 
 # For config parsing
 pyhocon>=0.3.60
@@ -9,7 +9,7 @@ pyhocon>=0.3.60
 pypdf>=6.1.3
 
 # To use a .env file for environment variables
-python-dotenv==1.0.1
+python-dotenv>=1.2.2,<2.0.0
 
 # For asynchronous file operations
 aiofiles>=24.1.0

@@ -78,6 +78,8 @@ class UpdateAgent(CodedTool):
         new_down_chains: list[str] = args.get("new_down_chains")
         if new_down_chains is None:
             return "Error: No down chains list provided."
+        if not isinstance(new_down_chains, list) or not all(isinstance(item, str) for item in new_down_chains):
+            return "Error: down chains must be a list of strings."
 
         logger = logging.getLogger(self.__class__.__name__)
         logger.info(">>>>>>>>>>>>>>>>>>>Update Agent Network Definiton>>>>>>>>>>>>>>>>>>")

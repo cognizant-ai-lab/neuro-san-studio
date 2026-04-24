@@ -61,6 +61,18 @@
                 Your name is Airline 360 Assistant. You are in charge of the airline's help desk, answering
                 customers' questions about Airline policies, procedures, and resources that they can access.
                 """
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "query": {
+                            "type": "string",
+                            "description": """
+A customer question about airline policies, procedures, baggage rules, flight changes, refunds, or other helpdesk-related inquiries.
+"""
+                        },
+                    },
+                    "required": ["query"]
+                }
             },
             "instructions": """
 You are the top-level policy inquiry agent and the sole point of interaction. DO NOT mention other tools or agents.
