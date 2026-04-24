@@ -24,7 +24,7 @@
         ]
     },
 
-    include "registries/llm_config.hocon",
+    include "config/llm_config.hocon",
     "max_steps": 40000,
     "max_execution_seconds": 6000,
     "tools": [

@@ -185,8 +185,8 @@ class TestExtractLlmConfigsFromStudioConfig(TestCase):
     def test_simple_llm_config_uses_hocon_path_as_label(self):
         """A plain llm_config with no fallbacks uses the HOCON file path as the label."""
         config = {"llm_config": {"model_name": "gpt-5-mini"}}
-        result = extract_llm_configs_from_studio_config(config, "registries/llm_config.hocon")
-        self.assertEqual(result, [("registries/llm_config.hocon", {"model_name": "gpt-5-mini"})])
+        result = extract_llm_configs_from_studio_config(config, "config/llm_config.hocon")
+        self.assertEqual(result, [("config/llm_config.hocon", {"model_name": "gpt-5-mini"})])
 
     def test_llm_config_with_fallbacks_is_expanded(self):
         """A studio llm_config that uses a fallbacks list is expanded into one entry per fallback."""
@@ -198,11 +198,11 @@ class TestExtractLlmConfigsFromStudioConfig(TestCase):
                 ]
             }
         }
-        result = extract_llm_configs_from_studio_config(config, "registries/llm_config.hocon")
+        result = extract_llm_configs_from_studio_config(config, "config/llm_config.hocon")
         self.assertEqual(len(result), 2)
-        self.assertEqual(result[0][0], "registries/llm_config.hocon (fallback 0)")
+        self.assertEqual(result[0][0], "config/llm_config.hocon (fallback 0)")
         self.assertEqual(result[0][1], {"model_name": "gpt-5-mini"})
-        self.assertEqual(result[1][0], "registries/llm_config.hocon (fallback 1)")
+        self.assertEqual(result[1][0], "config/llm_config.hocon (fallback 1)")
         self.assertEqual(result[1][1], {"model_name": "claude-sonnet-4-6"})
 
 

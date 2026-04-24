@@ -16,7 +16,7 @@
 
 """
 crewAI agent executor for an A2A server example
-See https://github.com/google/a2a-python/tree/main/examples
+See https://github.com/a2aproject/a2a-samples/tree/main/samples/python
 """
 
 from typing_extensions import override

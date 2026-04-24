@@ -143,7 +143,7 @@ include "registries/aaosa.hocon"
 > - **Top-level files** (loaded directly by neuro-san) resolve include paths relative to the **root folder**
 (the working directory where the server is started). Use paths like `registries/aaosa.hocon`.
 > - **Included files** (loaded via an `include` directive in another file) resolve their own include paths relative to
-**their own location** on disk. Use relative paths like `../../../registries/llm_config.hocon`.
+**their own location** on disk. Use relative paths like `../../../config/llm_config.hocon`.
 >
 > A file that may be loaded either way cannot use the same include path for both contexts.
 The recommended pattern is to create a thin top-level wrapper file that includes the base file
@@ -564,10 +564,10 @@ No API key is required — authentication is handled transparently by Google's A
 <!-- -->
 
 > **Tip**: To centralize the LLM configuration and reuse it across multiple agent networks, define it in a
-> separate file (e.g. `registries/llm_config.hocon`) and include it in your agent network HOCON files:
+> separate file (e.g. `config/llm_config.hocon`) and include it in your agent network HOCON files:
 >
 > ```hocon
-> include "registries/llm_config.hocon"
+> include "config/llm_config.hocon"
 > ```
 
 For more information on Vertex AI authentication and available models, see the

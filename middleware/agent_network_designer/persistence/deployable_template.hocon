@@ -29,7 +29,7 @@
     # Do NOT load this file as a top-level parse_string call — use the wrapper
     # files (deployable_template_standard.hocon or deployable_template_demo.hocon)
     # which include it correctly from CWD.
-    include "../../../registries/llm_config.hocon",
+    include "../../../config/llm_config.hocon",
 
     # These are common commondefs for every agent_network_designer-created network
     # In the final deployable network, {strings} and "values" will be replaced
