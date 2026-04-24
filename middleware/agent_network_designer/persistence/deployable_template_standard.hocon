@@ -23,7 +23,7 @@
 # This wrapper exists so that deployable_template.hocon is always loaded as an
 # included file (giving it file-relative include resolution by pyhocon) rather than
 # as a top-level parse_string call (which would resolve includes relative to CWD,
-# breaking the ../../../registries/llm_config.hocon path inside that file).
+# breaking the ../../../config/llm_config.hocon path inside that file).
 {
     # The include path here is relative to CWD (repo root) because this file
     # is loaded as the top-level file via parse_string.

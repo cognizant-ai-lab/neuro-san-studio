@@ -28,7 +28,7 @@
         ]
     },
 
-    include "registries/llm_config.hocon",
+    include "config/llm_config.hocon",
 
     "instructions_prefix": """
 - **Lead with a direct, clear answer** to the customer's question first.
