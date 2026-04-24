@@ -116,7 +116,7 @@ class TestValidateUrl(TestCase):
     def test_blocked_domains_rejects(self):
         """Tests that a URL exactly matching a blocked domain raises ValueError with url_not_allowed."""
         with self.assertRaises(ValueError) as ctx:
-            self._call({"url": "https://blocked.com/", "blocked_domains": ["blocked.com"]})
+            self._call({"url": "https://test-blocked.com/", "blocked_domains": ["test-blocked.com"]})
         self.assertIn("url_not_allowed", str(ctx.exception))
 
     def test_blocked_domains_subdomain_rejected(self):
