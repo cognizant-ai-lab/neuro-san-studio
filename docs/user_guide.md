@@ -57,6 +57,7 @@
   - [MCP Servers](#mcp-servers)
     - [MCP Server Configuration](#mcp-server-configuration)
     - [Authentication](#authentication)
+    - [Examples](#examples)
   - [Middleware](#middleware)
     - [class](#class)
     - [args](#args)
@@ -185,7 +186,7 @@ you can quote only the non-substituted parts:
 "instructions": ${instruction_prefix} "main instruction" ${instruction_suffix}
 ```
 
-Also not that if you're using json notation you need to put the include with the curly braces:
+Also note that if you're using json notation you need to put the include with the curly braces:
 
 ```hocon
 {
@@ -674,7 +675,7 @@ Examples:
 
 Note:
 
-- `base_url` **must starts** with `http://` or `https://`, otherwise the server defaults to `http://localhost:11434`.
+- `base_url` **must start** with `http://` or `https://`, otherwise the server defaults to `http://localhost:11434`.
 
 - if the port is omitted:
 
@@ -1333,6 +1334,11 @@ following methods.
     directly in the agent network HOCON configuration.
    - For example, see [mcp_info.hocon](../mcp/mcp_info.hocon)
 
+### Examples
+
+For simple examples of MCP servers in various languages (e.g. Python, Java) and connecting them to neuro-san,
+please visit this repo: [neuro-san-mcp-examples](https://github.com/kaushik-cognizant/neuro-san-mcp-examples)
+
 ## Middleware
 
 Middleware allows custom code to be injected at key points during agent execution — before or after the agent runs,
@@ -1727,31 +1733,13 @@ or manually.
 
 ##### Automatic Test Generation
 
-The `agent_network_test_generator` agent network can analyze an existing agent network
-and produce test fixtures automatically. Start the server, open the client, select
-`agent_network_test_generator`, and type a prompt such as:
+The `agent_network_test_generator` agent network can analyze an existing network and
+produce test fixtures automatically. Start the server, select
+`agent_network_test_generator`, and provide a prompt like
+`Generate test cases for basic/coffee_finder_advanced`.
 
-```text
-Generate test cases for basic/coffee_finder_advanced
-```
-
-You can control how many scenarios are generated with the `test_level` parameter:
-
-```text
-Generate test cases for basic/coffee_finder_advanced with minimum coverage
-Generate test cases for basic/music_nerd_pro with max coverage
-```
-
-| Level     | Scenarios | Description                                                        |
-|-----------|-----------|--------------------------------------------------------------------|
-| `minimum` | 2--3      | One core happy-path and one critical edge case.                    |
-| `normal`  | 5--7      | Happy paths, edge cases, and at least one error/boundary scenario. |
-| `max`     | 10--15    | Exhaustive coverage of all capabilities and edge cases.            |
-
-The generator saves fixtures under `tests/fixtures/<agent_name>/`. Review the generated
-files before committing — you may need to adjust `gist` criteria, `keywords`, `value`
-checks, or `sly_data` values. See
-[Agent Network Test Generator](agent_network_test_generator.md) for full details.
+For test levels, example prompts, and review tips, see the full
+[Agent Network Test Generator](agent_network_test_generator.md) documentation.
 
 ##### Manual creation
 
@@ -1766,28 +1754,8 @@ For existing examples, look at the fixtures under `tests/fixtures/` in this repo
 ##### Register the fixture
 
 Generated and manually created fixtures are **not** automatically picked up by CI.
-To include a fixture in the integration test suite, add its path to the appropriate
-`@parameterized.expand` list in
-[test\_integration\_test\_hocons.py](../tests/integration/test_integration_test_hocons.py):
-
-```python
-@parameterized.expand(
-    DynamicHoconUnitTests.from_hocon_list(
-        [
-            # existing fixtures ...
-            "basic/coffee_finder_advanced/coffee_where_sly_data_8am.hocon",
-            # add your new fixture here
-            "basic/coffee_finder_advanced/your_new_fixture.hocon",
-        ]
-    ),
-    skip_on_empty=True,
-)
-```
-
-Each test method is tagged with `@pytest.mark` markers that mirror the folder grouping
-(e.g. `integration_basic`, `integration_basic_coffee_finder_advanced`). If you are adding
-fixtures for a new agent network that does not have an existing test method, create a new
-method following the same pattern.
+See [Running a Generated Test Fixture — Option B](agent_network_test_generator.md#option-b-register-in-the-integration-test-suite)
+for how to add them to the integration test suite.
 
 #### Run test
 

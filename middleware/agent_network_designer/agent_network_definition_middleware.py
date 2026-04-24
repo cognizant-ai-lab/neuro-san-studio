@@ -14,11 +14,22 @@
 #
 # END COPYRIGHT
 
+import json
 import logging
 import re
+from pathlib import Path
 from typing import Any
+from typing import Awaitable
+from typing import Callable
+from typing import override
 
-from neuro_san.interfaces.coded_tool import CodedTool
+from langchain.agents.middleware.types import AgentMiddleware
+from langchain.agents.middleware.types import ContextT
+from langchain.agents.middleware.types import ModelRequest
+from langchain.agents.middleware.types import ModelResponse
+from langchain.agents.middleware.types import ResponseT
+from langchain_core.messages import BaseMessage
+from langchain_core.messages import SystemMessage
 from neuro_san.internals.persistence.abstract_async_config_restorer import AbstractAsyncConfigRestorer
 
 from coded_tools.agent_network_editor.connectivity_dictionary_converter import ConnectivityDictionaryConverter
@@ -29,25 +40,18 @@ from coded_tools.agent_network_editor.sly_data_lock import SlyDataLock
 AGENT_NETWORK_HOCON_FILE: str = "agent_network_hocon_file"
 
 
-class GetAgentNetworkDefinition(CodedTool):
+class AgentNetworkDefinitionMiddleware(AgentMiddleware):
     """
-    CodedTool implementation which provides a way to get agent network definition in a user-specified args or sly data.
+    Middleware that reads the agent network definition from sly_data and injects it
+    into the system prompt before each model call.
 
-    Agent network definition is a structured representation of an agent network, expressed as a dictionary.
-    Each key is an agent name, and its value is an object containing:
-    - a description of the agent
-    - an instructions to the agent
-    - a list of down-chain agents (agents reporting to it)
+    This allows the LLM to reason about the current agent network structure without
+    requiring it to be passed explicitly through the chat stream.
     """
 
-    async def async_invoke(self, args: dict[str, Any], sly_data: dict[str, Any]) -> dict[str, Any] | str:
+    def __init__(self, sly_data: dict[str, Any]) -> None:
         """
-        :param args: An argument dictionary whose keys are the parameters
-                to the coded tool and whose values are the values passed for them
-                by the calling agent.  This dictionary is to be treated as read-only.
-
-                The argument dictionary expects the following keys:
-                     "agent_network_definition": an outline of an agent network
+        Initialize agent network definition middleware.
 
         :param sly_data: A dictionary whose keys are defined by the agent hierarchy,
                 but whose values are meant to be kept out of the chat stream.
@@ -61,60 +65,80 @@ class GetAgentNetworkDefinition(CodedTool):
 
                 Keys expected for this implementation are:
                     "agent_network_definition": an outline of an agent network
-
-        :return:
-            In case of successful execution:
-                the agent network definition as a dictionary.
-            otherwise:
-                a text string of an error message in the format:
-                "Error: <error message>"
         """
-        logger = logging.getLogger(self.__class__.__name__)
+        self.sly_data = sly_data
+        self.logger = logging.getLogger(self.__class__.__name__)
 
-        # Priority order: user_network_def > network_hocon_file > sly_data > user_hocon_sly_data
-        network_def = None
+    @override
+    async def awrap_model_call(
+        self,
+        request: ModelRequest[ContextT],
+        handler: Callable[[ModelRequest[ContextT]], Awaitable[ModelResponse[ResponseT]]],
+    ) -> ModelResponse[ResponseT]:
+        """
+        Inject the agent network definition from sly_data into the system prompt
+        before each model call.
 
-        # Check for user-specified definition
-        if args.get("agent_network_definition"):
-            logger.info(">>>>>>>>>>>>>>>>>>>Using User-Specified Agent Network Definition>>>>>>>>>>>>>>>>>>>")
-            network_def = args.get("agent_network_definition")
+        :param request: Model request containing messages and state
+        :param handler: Handler to execute the model call
+        :return: Model response from handler
+        """
 
-        # Try to parse from hocon file name that the agent extracts from user input
-        elif args.get("agent_network_hocon_file"):
-            logger.info(">>>>>>>>>>>>>>>>>>>Reading & Parsing Agent Network HOCON File>>>>>>>>>>>>>>>>>>>")
-            network_def = await self._hocon_to_definition(args.get("agent_network_hocon_file"), sly_data)
-
-        # Fall back to sly data
         # First, check to see if there is a generated agent network definition
-        elif sly_data.get(AGENT_NETWORK_DEFINITION):
-            logger.info(">>>>>>>>>>>>>>>>>>>Getting Agent Network Definition from Sly Data>>>>>>>>>>>>>>>>>>>")
-            network_def = sly_data.get(AGENT_NETWORK_DEFINITION)
+        network_def: dict[str, Any] | list[dict[str, Any]] | None = self.sly_data.get(AGENT_NETWORK_DEFINITION)
+        if network_def:
+            self.logger.debug(">>>>>>>>>>>>>>>>>>>Getting Agent Network Definition from Sly Data>>>>>>>>>>>>>>>>>>>")
 
-        # Lastly, check to see if the user provides HOCON file via sly data
+        # Next, check to see if the user provides HOCON file via sly data
         else:
-            logger.info(
+            self.logger.debug(
                 ">>>>>>>>>>>>>>>>>>>Reading & Parsing Agent Network HOCON File "
                 "from Key 'agent_network_hocon_file' in Sly Data>>>>>>>>>>>>>>>>>>>"
             )
-            network_def = await self._hocon_to_definition(sly_data.get(AGENT_NETWORK_HOCON_FILE), sly_data)
+            hocon_file: str | None = self.sly_data.get(AGENT_NETWORK_HOCON_FILE)
+            network_def = await self._hocon_to_definition(hocon_file, self.sly_data)
+            # When loading from hocon, use the file name (without extension) as the agent network name.
+            # This is because the agent network name is only created when using the CreateNetwork tool.
+            if hocon_file and network_def:
+                self.sly_data[AGENT_NETWORK_NAME] = Path(hocon_file).stem
 
-        # Store in sly_data and validate
+        # If we have a network definition from either source, inject it into the system prompt.
         if network_def:
+            # The agent network definition can be provided in either:
+            # - dict format (internal), used when creating or editing the network, or
+            # - list format (connectivity), which is the native Neuro-San representation.
+            # If the definition is in connectivity format, convert it to dict format before editing.
             if isinstance(network_def, list):
-                # We have a connectivity-style list of dictionaries
-                # Convert it to a connectivity-style dictionary before passing along to sly_data.
                 connectivity_dict_converter = ConnectivityDictionaryConverter()
                 network_def = connectivity_dict_converter.to_dict(network_def)
+            # Cache the agent network definition as dict in sly_data for subsequent calls within the same session.
+            self.sly_data[AGENT_NETWORK_DEFINITION] = network_def
 
-            sly_data[AGENT_NETWORK_DEFINITION] = network_def
-            network_name: str = sly_data.get(AGENT_NETWORK_NAME)
-            logger.info("The resulting %s agent network definition: \n %s", network_name, str(network_def))
-            logger.debug(">>>>>>>>>>>>>>>>>>> DONE %s !!!>>>>>>>>>>>>>>>>>>", self.__class__.__name__)
-            return network_def
+            self.logger.debug(
+                ">>>>>>>>>>>>>>>>>>>Injecting Agent Network Definition into System Prompt>>>>>>>>>>>>>>>>>>>"
+            )
+            definition_prompt: str = self.format_definition_prompt(network_def)
 
-        error_msg = "Error: No agent network definition found!"
-        logger.warning(error_msg)
-        return error_msg
+            system_message: BaseMessage | None = request.system_message
+            if system_message is not None:
+                original_content: str = system_message.content if isinstance(system_message.content, str) else ""
+                system_message = SystemMessage(content=f"{original_content}\n\n{definition_prompt}")
+            else:
+                system_message = SystemMessage(content=definition_prompt)
+
+            return await handler(request.override(system_message=system_message))
+
+        return await handler(request)
+
+    def format_definition_prompt(self, network_def: dict[str, Any]) -> str:
+        """
+        Format the agent network definition as a system prompt section.
+
+        :param network_def: The agent network definition dictionary
+        :return: Formatted prompt string
+        """
+        definition_str: str = json.dumps(network_def, indent=2)
+        return f"## Current Agent Network Definition\n\n```json\n{definition_str}\n```"
 
     async def _hocon_to_definition(
         self, network_hocon_file: str | None, sly_data: dict[str, Any]
@@ -136,18 +160,35 @@ class GetAgentNetworkDefinition(CodedTool):
         except (FileNotFoundError, TypeError):
             return None
 
-        # Only extract agents info and only "instructions" and "tools" parts
-        agents: list[dict[str, Any]] = network_hocon.get("tools")
-        network_def = {}
+        agents: list[dict[str, Any]] | None = network_hocon.get("tools")
+        if agents is None:
+            self.logger.warning("WARNING: No field 'tools' found in %s.", network_hocon_file)
+            return None
+        if not isinstance(agents, list):
+            self.logger.warning("WARNING: The 'tools' field in '%s' is not a list.", network_hocon_file)
+            return None
+
+        network_def: dict[str, Any] = {}
         for agent in agents:
-            agent_name: str = agent.get("name")
+            if not isinstance(agent, dict):
+                self.logger.warning(
+                    "WARNING: Skipping non-dict entry in 'tools' list in '%s': %r", network_hocon_file, agent
+                )
+                continue
+            # Only extract agents info and only "instructions" and "tools" parts
+            agent_name: str | None = agent.get("name")
+            if not isinstance(agent_name, str) or not agent_name:
+                self.logger.warning(
+                    "WARNING: Skipping agent with missing/invalid 'name' in '%s': %r", network_hocon_file, agent
+                )
+                continue
             network_def[agent_name] = {}
-            instructions: str = agent.get("instructions")
+            instructions: str | None = agent.get("instructions")
             if instructions:
                 # Extract only the unique instructions (remove aaosa instructions, instructions prefix, and demo mode)
                 custom_instructions: str = await self._extract_custom_instructions(instructions, sly_data)
                 network_def[agent_name]["instructions"] = custom_instructions
-            tools: list[str] = agent.get("tools")
+            tools: list[str] | None = agent.get("tools")
             if tools:
                 network_def[agent_name]["tools"] = tools
 
@@ -183,7 +224,7 @@ class GetAgentNetworkDefinition(CodedTool):
         # Remove instruction prefix using regex
         custom_part = re.sub(prefix_pattern, "", custom_part).strip()
 
-        # Remove demo mode text
+        # Remove aaosa text
         custom_part = custom_part.replace(aaosa_instructions.strip(), "").strip()
 
         # Remove demo mode text

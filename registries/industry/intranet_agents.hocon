@@ -52,6 +52,18 @@
                 # The description acts as an initial prompt. 
 
                 "description": "I can help you with your intranet needs."
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "query": {
+                            "type": "string",
+                            "description": """
+An employee inquiry about company intranet resources, internal documents, policies, or services.
+"""
+                        },
+                    },
+                    "required": ["query"]
+                }
             },
             "instructions": """
 You are the top-level agent responsible for handling all inquiries.

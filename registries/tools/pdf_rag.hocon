@@ -75,8 +75,7 @@
                 # List of PDF URLs to use for Retrieval-Augmented Generation (RAG)
                 # Items in the list can also be file paths, such as "/Users/Documents/example.pdf".
                 "urls": [
-                    """https://www.replicon.com/wp-content/uploads/2016/06/RFP-Template_Replicon.pdf""",
-                    """https://www.usac.org/wp-content/uploads/rural-health-care/documents/samples/LargeProjectScopeRFP.pdf"""
+                    """https://www.usac.org/wp-content/uploads/rural-health-care/documents/samples/LargeProjectScopeRFP.pdf""",
                 ],
 
                 # --- Optional Arguments ---

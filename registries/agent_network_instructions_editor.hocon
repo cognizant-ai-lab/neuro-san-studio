@@ -19,7 +19,7 @@
     # modifying the configuration for each agent network.
     # Note that the file path here is relative to the root level of the repo.
     include "config/llm_config.hocon",
-    "max_iterations": 40000,
+    "max_steps": 40000,
     "max_execution_seconds": 6000,
 
     "tools": [
@@ -58,27 +58,17 @@
 You are responsible for generating and editing instructions of agents based on the agent network description and definition.
 Only answer inquiries that are directly within your area of expertise. Do not try to help for other matters. Do not mention what you can NOT do. Only mention what you can do.
 
-Always start by calling `get_agent_network_definition` to load the current network and existing instructions.
-
 **Only create or edit `instructions` for agents that have an `instructions` field in the network definition. These are non-function agents.**
 
 Behavior by mode:
-- `create`: Generate initial instructions for every non-function agent in the network. Use the network description and each agent’s role/title to author concise, actionable guidance.
-Call `set_agent_instructions_tool` once per agent you authored or meaningfully improved. Do not overwrite agents that already have explicit, adequate instructions unless you can provide a clear improvement.
+- `create`: Generate initial instructions for every non-function agent in the network. Call `instructions_writer` once for each of these agents.
 - `modify`: Read `agent_network_description` and identify the impacted agents (explicitly named agents, newly added agents, and agents whose responsibilities changed).
-Update instructions for these impacted agents. If the user provides the exact instructions, use them directly. After applying the requested modifications, perform a final check by calling `get_agent_network_definition` and create instructions for any agents that still lack them.
-Do not rewrite unaffected agents except when they lack instructions or the user explicitly requests broader edits. Call `set_agent_instructions_tool` once per impacted agent and once for any agent authored during the final sweep.
-
-Writing requirements (apply to every instruction you set):
-- Ensure that each and every non-function agent has the instructions.
-- Make instructions clear, comprehensive, and specific to the single agent’s scope of responsibilities.
-- Provide step-by-step guidance focused on tasks this agent performs; avoid generic platitudes.
-- Do NOT mention other agents, up-chains, or down-chains; keep the text scoped to this agent only.
-- Align with the company’s cultural values and business objectives.
-- Output plain text (no formatting characters) and wrap lines at ~120 characters.
+            Call `instructions_writer` to update instructions for these impacted agents.
+            Do not edit unaffected agents except when they lack instructions or the user explicitly requests broader edits. Call `instructions_writer` once per impacted agent.
 
 Guardrails:
 - Only create or edit `instructions` for agents that have an `instructions` field in the network definition.
+- Ensure that each and every agent with `instructions` field has the instructions.
 - Skip agents that are not referenced/affected by the current request.
 - Do not modify instructions if they are semantically unchanged.
 - Be surgical: avoid network-wide rewrites during `modify`; touch only what the request necessitates.
@@ -88,10 +78,61 @@ Guardrails:
                     "sly_data": ["agent_network_definition"]
                 }
             },
-            "tools": ["get_agent_network_definition", "set_agent_instructions_tool"],
+            "tools": ["instructions_writer"],
             "middleware": [
                 {
+                    "class": "middleware.agent_network_designer.agent_network_definition_middleware.AgentNetworkDefinitionMiddleware",
+                    "args": {
+                        "sly_data": true
+                    }
+                },
+                {
                     "class": "middleware.agent_network_designer.validation.agent_network_instructions_validation_middleware.AgentNetworkInstructionsValidationMiddleware",
+                    "args": {
+                        "sly_data": true
+                    }
+                }
+            ]
+        },
+
+        {
+            "name": "instructions_writer",
+            "instructions": """
+You are an instructions writer for agents in an agent network.
+Your job is to create clear, concise, and actionable instructions for agents based on the agent network definition and description provided to you.
+Generate new instructions based on the following guidelines:
+
+**Writing requirements**
+- Only write instructions for the specified agent. Do not write instructions for any other agents, even if they are mentioned in the description or network definition.
+- Make instructions clear, concise, and specific to the agent’s scope of responsibilities.
+- Do NOT mention other agents, up-chains, or down-chains; keep the text scoped to this agent only.
+- Align with the company’s cultural values and business objectives.
+- Output plain text (no formatting characters) and wrap lines at ~120 characters.
+
+**Response format**
+Always respond with "Instructions for <agent_name> have been set." after successfully setting the instructions for the agent.
+"""
+            "function": {
+                "description": "Write the instructions for a specified agent in an agent network."
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "agent_name": {
+                            "type": "string",
+                            "description": "the name of the agent whose instruction is being set."
+                        },
+                        "agent_network_description": {
+                            "type": "string",
+                            "description": "the description of the agent network or a clear description of the change you want to make to the existing instructions of the agent."
+                        },
+                    },
+                    "required": ["agent_name", "agent_network_description"]
+                }
+            },
+            "tools": ["set_agent_instructions_tool"],
+            "middleware": [
+                {
+                    "class": "middleware.agent_network_designer.agent_network_definition_middleware.AgentNetworkDefinitionMiddleware",
                     "args": {
                         "sly_data": true
                     }
@@ -119,15 +160,7 @@ Guardrails:
                     "required": ["agent_name", "new_instructions"]
                 }
             },
-        },
-
-        {
-            "name": "get_agent_network_definition",
-            "class": "coded_tools.get_agent_network_definition.GetAgentNetworkDefinition",
-            "function": {
-                "description": "Get the agent network definition."
-            }
-        },
+        }
 
     ]
 }

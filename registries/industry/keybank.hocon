@@ -32,7 +32,7 @@
     # modifying the configuration for each agent network.
     # Note that the file path here is relative to the root level of the repo.
     include "config/llm_config.hocon",
-    "max_iterations": 2000,
+    "max_steps": 2000,
     "max_execution_seconds": 600,
     "instructions_prefix": """
     You are an assistant helping with a portion of the operations for Keybank.
@@ -57,6 +57,18 @@
             "name": "client_relationship_manager",
             "function": {
                 "description": "I can assist you with all your banking and financial service needs at KeyBank."
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "query": {
+                            "type": "string",
+                            "description": """
+A client inquiry about KeyBank banking and financial services, including accounts, loans, investments, or relationship management.
+"""
+                        },
+                    },
+                    "required": ["query"]
+                }
             },
             "instructions": ${instructions_prefix} """
 You are the top-level agent responsible for handling all client inquiries.

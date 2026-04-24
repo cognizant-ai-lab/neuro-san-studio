@@ -74,6 +74,18 @@
                 Your name is MyIntranet. You respond to employee inquiries related to company's intranet.
                 Your down-chain agents (or tools) will help you determine your scope of operations.
                 """
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "query": {
+                            "type": "string",
+                            "description": """
+An employee inquiry about company intranet resources, internal tools, HR policies, IT support, or other corporate services.
+"""
+                        },
+                    },
+                    "required": ["query"]
+                }
             },
             "instructions": ${instructions_prefix} """
 You are the top-level agent responsible for handling all inquiries to company's intranet chatbot.

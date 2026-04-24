@@ -16,7 +16,7 @@
 
 """
 A2A server example
-See https://github.com/google/a2a-python/tree/main/examples
+See https://github.com/a2aproject/a2a-samples/tree/main/samples/python
 and https://a2a-protocol.org/latest/specification/
 
 Before running this server

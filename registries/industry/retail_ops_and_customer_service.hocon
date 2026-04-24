@@ -52,6 +52,18 @@
             "name": "customer_service_rep",
             "function": {
                 "description": "I handle customer inquiries, complaints, and returns, and provide assistance regarding products and services. I also respond to associate inquiries."
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "query": {
+                            "type": "string",
+                            "description": """
+A customer or associate inquiry about orders, returns, refunds, products, or other retail-related questions.
+"""
+                        },
+                    },
+                    "required": ["query"]
+                }
             },
             "instructions": """You are the top-level agent responsible for customer support. You are the single point of contact for the user.
 Handle all issues related to orders, returns, refunds, and product inquiries. Respond with clear, final answers.

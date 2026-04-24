@@ -103,6 +103,18 @@ If mode is 'Fulfill' or "Follow up", respond to the inquiry and return a json bl
                 "description": """
 An assistant that answer inquiries from the user.
                 """
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "query": {
+                            "type": "string",
+                            "description": """
+An inquiry about national telecom network operations, including traffic rerouting, load balancing, regional performance, SLA compliance, or regulatory reporting.
+"""
+                        },
+                    },
+                    "required": ["query"]
+                }
             },
             "instructions": """
 {instructions_prefix}

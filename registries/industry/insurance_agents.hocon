@@ -48,6 +48,18 @@
             "name": "customer_service_representative",
             "function": {
                 "description": "Handles general customer inquiries, policy information, and claims status updates."
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "query": {
+                            "type": "string",
+                            "description": """
+A customer inquiry about insurance policies, coverage options, claims status, or other insurance-related questions.
+"""
+                        },
+                    },
+                    "required": ["query"]
+                }
             },
             "instructions": """
 You are the front-line contact for customers. You assist with inquiries regarding policies, claims, and coverage options.

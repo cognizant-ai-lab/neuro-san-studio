@@ -40,7 +40,7 @@
         # Note:
         # - For Ollama, the model must be downloaded locally before use.
         # - Additional LLM parameters (e.g., `temperature`, `max_tokens`) can be configured below.
-        # - Agent-level control (e.g., `max_iterations`) can also be set here.
+        # - Agent-level control (e.g., `max_steps`) can also be set here.
         # - It is possible to have a separate llm_config describing a different LLM with different parameters for each agent network hocon file
         #or even for each agent within a network.
         #

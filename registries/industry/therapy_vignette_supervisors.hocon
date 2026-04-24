@@ -55,6 +55,18 @@ Do not mention what you can NOT do. Only mention what you can do.
                 "description": """
 An assistant that answer inquiries from the user.
                 """
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "query": {
+                            "type": "string",
+                            "description": """
+An inquiry about therapy vignettes, clinical supervision, therapeutic approaches, or mental health support scenarios.
+"""
+                        },
+                    },
+                    "required": ["query"]
+                }
             },
             "instructions": ${instructions_prefix} """
 You are the moderator of a supervision session to come up with a treatment plan for a given vignette. The treatment plan should include the following: a diagnosis, therapeutic goals, interventions, and ethical considerations, as follows:

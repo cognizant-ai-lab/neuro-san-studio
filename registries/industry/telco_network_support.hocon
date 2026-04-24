@@ -49,6 +49,18 @@
             "name": "customer_support_rep",
             "function": {
                 "description": "I can help you with your network needs."
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "query": {
+                            "type": "string",
+                            "description": """
+A customer inquiry about telecom network services, connectivity issues, billing, or other telecom support needs.
+"""
+                        },
+                    },
+                    "required": ["query"]
+                }
             },
             "instructions": """
 You are the top-level agent responsible for handling all inquiries.

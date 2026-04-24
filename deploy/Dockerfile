@@ -409,4 +409,12 @@ ENV AGENT_NETWORK_DESIGNER_DEMO_MODE="true"
 # Defaults to "generated" if not set.
 ENV AGENT_NETWORK_DESIGNER_SUBDIRECTORY="generated"
 
+# Manifest file(s) providing available external agents for the Agent Network Designer to choose from.
+# Defaults to "registries/manifest_and.hocon" if not set.
+ENV AGENT_NETWORK_DESIGNER_MANIFEST_FILE="registries/manifest_and.hocon"
+
+# Toolbox info info file providing available tools for the Agent Network Designer to choose from.
+# Defaults to "toolbox/agent_network_designer_toolbox_info.hocon" if not set.
+ENV AGENT_NETWORK_DESIGNER_TOOLBOX_INFO_FILE="toolbox/agent_network_designer_toolbox_info.hocon"
+
 ENTRYPOINT "${APP_ENTRYPOINT}"

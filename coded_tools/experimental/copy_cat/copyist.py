@@ -27,6 +27,7 @@ from neuro_san.internals.graph.registry.agent_network import AgentNetwork
 from neuro_san.internals.reservations.reservation_util import ReservationUtil
 
 
+# pylint: disable=too-many-ancestors
 class Copyist(BranchActivation, CodedTool):
     """
     CodedTool implementation of a copyist for the copy_cat reservations example.

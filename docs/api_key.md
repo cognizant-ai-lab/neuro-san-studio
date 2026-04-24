@@ -106,7 +106,7 @@ You can also test individual API keys using the scripts below:
     python3 ./tests/apps/openai_api_key.py
     ```
 
-- You will recieve a message indicating success or failure.
+- You will receive a message indicating success or failure.
 
 ### Azure OpenAI API Key
 
@@ -131,7 +131,7 @@ You can also test individual API keys using the scripts below:
     ```
 
 <!-- pyml disable line-length-->
-- You will recieve a message indicating success or failure.
+- You will receive a message indicating success or failure.
 - See [Azure OpenAI Quickstart](https://learn.microsoft.com/en-us/azure/ai-services/openai/chatgpt-quickstart?tabs=keyless%2Ctypescript-keyless%2Cpython-new%2Ccommand-line&pivots=programming-language-python) for more information.
 <!-- pyml enable line-length-->
 
@@ -150,7 +150,7 @@ You can also test individual API keys using the scripts below:
     python3 ./tests/apps/anthropic_api_key.py
     ```
 
-- You will recieve a message indicating success or failure.
+- You will receive a message indicating success or failure.
 
 ### Gemini API Key
 
@@ -166,4 +166,4 @@ You can also test individual API keys using the scripts below:
     python3 ./tests/apps/gemini_api_key.py
     ```
 
-- You will recieve a message indicating success or failure.
+- You will receive a message indicating success or failure.
