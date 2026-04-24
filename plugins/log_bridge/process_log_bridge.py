@@ -468,7 +468,7 @@ class ProcessLogBridge(ProcessLoggerInterface):
             return default
         # Search only the log prefix before any JSON payload.
         brace_pos = line.find("{")
-        prefix = line[:brace_pos] if brace_pos > 0 else line
+        prefix = line[:brace_pos] if brace_pos >= 0 else line
         m = self._LEVEL_WORD.search(prefix)
         if not m:
             if "traceback" in line.lower():
