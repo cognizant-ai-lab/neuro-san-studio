@@ -104,13 +104,13 @@ class TestValidateUrl(TestCase):
     def test_allowed_domains_rejects_unrelated(self):
         """Tests that a URL not matching any allowed domain raises ValueError with url_not_allowed."""
         with self.assertRaises(ValueError) as ctx:
-            self._call({"url": "https://other.com/", "allowed_domains": ["example.com"]})
+            self._call({"url": "https://test-other.com/", "allowed_domains": ["test-example.com"]})
         self.assertIn("url_not_allowed", str(ctx.exception))
 
     def test_allowed_domains_does_not_match_partial_prefix(self):
         """Tests that a hostname sharing a suffix but not a domain boundary is rejected."""
         with self.assertRaises(ValueError) as ctx:
-            self._call({"url": "https://badexample.com/", "allowed_domains": ["example.com"]})
+            self._call({"url": "https://test-badexample.com/", "allowed_domains": ["test-example.com"]})
         self.assertIn("url_not_allowed", str(ctx.exception))
 
     def test_blocked_domains_rejects(self):
@@ -122,13 +122,13 @@ class TestValidateUrl(TestCase):
     def test_blocked_domains_subdomain_rejected(self):
         """Tests that a subdomain of a blocked domain is also rejected."""
         with self.assertRaises(ValueError) as ctx:
-            self._call({"url": "https://sub.blocked.com/", "blocked_domains": ["blocked.com"]})
+            self._call({"url": "https://test-sub.blocked.com/", "blocked_domains": ["blocked.com"]})
         self.assertIn("url_not_allowed", str(ctx.exception))
 
     def test_blocked_domains_partial_prefix_not_blocked(self):
         """Tests that a domain sharing a suffix with a blocked domain but not a boundary is allowed."""
-        url = self._call({"url": "https://notblocked.com/", "blocked_domains": ["blocked.com"]})
-        self.assertEqual(url, "https://notblocked.com/")
+        url = self._call({"url": "https://test-notblocked.com/", "blocked_domains": ["test-blocked.com"]})
+        self.assertEqual(url, "https://test-notblocked.com/")
 
     def test_url_with_port_matches_domain(self):
         """Tests that a URL with a port number still matches the allowed domain correctly."""
