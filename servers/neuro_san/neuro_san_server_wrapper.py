@@ -19,11 +19,15 @@ Wrapper module that initializes plugins before starting the server.
 This module ensures that plugins are initialized in the same Python process as the Neuro SAN server,
 allowing, for instance, proper tracing and observability.
 """
+
+import logging
 import os
 import signal
 import sys
 
 from neuro_san.service.main_loop.server_main_loop import ServerMainLoop
+
+from neuro_san_studio.plugins.factory.plugin_loader import PluginLoader
 
 
 class NeuroSanServerWrapper:
@@ -31,59 +35,26 @@ class NeuroSanServerWrapper:
 
     def __init__(self):
         """Initialize the plugins."""
-        # Phoenix
-        self.phoenix_enabled = os.getenv("PHOENIX_ENABLED", "false").lower() in ("true", "1", "yes", "on")
-        # Langfuse
-        self.langfuse_enabled = os.getenv("LANGFUSE_ENABLED", "false").lower() in ("true", "1", "yes", "on")
+        self._logger = logging.getLogger(self.__class__.__name__)
+        self.root_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-    def _init_phoenix(self):
-        """Initialize Phoenix instrumentation if enabled."""
-        if not self.phoenix_enabled:
-            return
+        if self.root_dir not in sys.path:
+            sys.path.insert(0, self.root_dir)
 
-        try:
-            from plugins.phoenix.phoenix_plugin import PhoenixPlugin
+        plugins_file = os.path.join(self.root_dir, "config", "plugins.hocon")
+        self.plugin_classes = PluginLoader.load_plugin_classes(plugins_file)
 
-            print("Initializing Phoenix in server process...")
-            PhoenixPlugin().initialize()
-            print("Phoenix initialization complete.")
-        except ImportError:
-            print("Warning: Phoenix plugin not installed.")
-            print("Install with: pip install -r plugins/phoenix/requirements.txt")
-        except Exception as e:  # pylint: disable=broad-exception-caught
-            print(f"Warning: Phoenix initialization failed: {e}")
-
-    def _init_langfuse(self):
-        """Initialize Langfuse instrumentation if enabled.
-
-        Returns:
-            LangfusePlugin instance if initialized, None otherwise
-        """
-        if not self.langfuse_enabled:
-            return None
-
-        try:
-            from plugins.langfuse.langfuse_plugin import LangfusePlugin
-
-            print("Initializing Langfuse in server process...")
-            plugin = LangfusePlugin()
-            plugin.initialize()
-            print("Langfuse initialization complete.")
-            return plugin
-        except ImportError:
-            print("Warning: Langfuse plugin not installed.")
-            print("Install with: pip install -r plugins/langfuse/requirements.txt")
-        except Exception as e:  # pylint: disable=broad-exception-caught
-            print(f"Warning: Langfuse initialization failed: {e}")
-        return None
+        # Instantiate plugins now that args are fully built
+        self.args = {}  # Placeholder for any args you want to pass to plugins
+        self.plugins = [cls(self.args) for cls in self.plugin_classes]
+        for plugin in self.plugins:
+            self._logger.info("Loaded plugin: %s", plugin)
 
     def run(self):
         """Initialize Phoenix and Langfuse and run the server main loop."""
-        # Initialize Phoenix before starting the server
-        self._init_phoenix()
-
-        # Initialize Langfuse before starting the server
-        langfuse_plugin = self._init_langfuse()
+        for plugin in self.plugins:
+            self._logger.info("Initializing plugin: %s", plugin)
+            plugin.initialize()
 
         # Import and run the actual server main loop
         # Note: ServerMainLoop will parse sys.argv itself, so all command-line
@@ -97,8 +68,9 @@ class NeuroSanServerWrapper:
         try:
             ServerMainLoop().main_loop()
         finally:
-            if langfuse_plugin is not None:
-                langfuse_plugin.shutdown()
+            for plugin in self.plugins:
+                self._logger.info("Cleaning up plugin: %s", plugin)
+                plugin.cleanup()
 
 
 if __name__ == "__main__":

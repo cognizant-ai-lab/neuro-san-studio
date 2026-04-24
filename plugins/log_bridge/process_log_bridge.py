@@ -35,6 +35,8 @@ from rich.syntax import Syntax
 from rich.text import Text
 from rich.theme import Theme
 
+from neuro_san_studio.interfaces.process_logger_interface import ProcessLoggerInterface
+
 log_cfg = {
     # Refer rich guidelines for more options:
     # https://rich.readthedocs.io/en/latest/index.html
@@ -59,24 +61,8 @@ log_cfg = {
 }
 
 
-class TZFormatter(logging.Formatter):
-    """
-    File-handler formatter that emits timezone-aware timestamps.
-    :extend: logging.Formatter
-    """
-
-    def formatTime(self, record, datefmt=None):
-        """
-        :param: record: A log record.
-        :param datefmt (str | None): Ignored. Exists for Formatter API compatibility.
-        :return: str: Timestamp formatted as `"YYYY-MM-DD HH:MM:SS <TZNAME>"`.
-        """
-        dt = datetime.fromtimestamp(record.created).astimezone()
-        return f"{dt.strftime('%Y-%m-%d %H:%M:%S')} {dt.tzname()}"
-
-
 # pylint: disable=too-many-instance-attributes,too-few-public-methods
-class ProcessLogBridge:
+class ProcessLogBridge(ProcessLoggerInterface):
     """
     ProcessLogBridge: single-class logging bridge
     - Rich console with colored ISO+TZ timestamps
@@ -86,6 +72,14 @@ class ProcessLogBridge:
     - Tee raw lines to per-process log files
     - Multi-line JSON reassembly (brace-balanced)
     """
+
+    class _TZFormatter(logging.Formatter):
+        """File-handler formatter that emits timezone-aware timestamps."""
+
+        def formatTime(self, record, datefmt=None):
+            """Format timestamp as 'YYYY-MM-DD HH:MM:SS <TZNAME>'."""
+            dt = datetime.fromtimestamp(record.created).astimezone()
+            return f"{dt.strftime('%Y-%m-%d %H:%M:%S')} {dt.tzname()}"
 
     # ---------- constants ----------
     _LEVEL_WORD = re.compile(r"\b(DEBUG|INFO|WARNING|ERROR|CRITICAL|FATAL)\b", re.IGNORECASE)
@@ -184,7 +178,7 @@ class ProcessLogBridge:
             )
             self.file_handler.setLevel(logging.DEBUG)
             # keep tz-aware timestamps for file logs
-            self.file_handler.setFormatter(TZFormatter(fmt=fmt))
+            self.file_handler.setFormatter(self._TZFormatter(fmt=fmt))
 
         # root logger config
         root = logging.getLogger()
@@ -279,6 +273,7 @@ class ProcessLogBridge:
         """
         try:
             state["tee"].write(f"{raw}\n")
+            state["tee"].flush()
         except Exception:  # pylint: disable=broad-except
             pass
 

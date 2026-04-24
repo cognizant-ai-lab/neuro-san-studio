@@ -31,6 +31,8 @@ from enum import Enum
 from typing import Callable
 from typing import Optional
 
+from neuro_san_studio.interfaces.base_plugin import BasePlugin
+
 # Optional dependencies for live validation (Tier 3)
 try:
     from anthropic import Anthropic
@@ -499,3 +501,53 @@ class EnvValidator:
             results = self.results
         warning_statuses = {ValidationStatus.NOT_SET, ValidationStatus.PLACEHOLDER}
         return any(r.status in warning_statuses for r in results)
+
+
+class EnvValidatorPlugin(BasePlugin):
+    """Plugin wrapper for environment variable validation."""
+
+    def __init__(self, args: dict = None):
+        super().__init__(plugin_name="Environment Validator", args=args)
+        self.validator = EnvValidator()
+
+    def _validate_keys(self):
+        """Validate LLM API keys when --validate-keys is specified."""
+        tier = self.args.get("validate_keys")
+        if not tier:
+            return
+
+        self._logger.info("Validating LLM API keys (tier %s)...", tier)
+
+        if tier >= 3:
+            self._logger.info("Live validation enabled - making API calls to verify keys...")
+
+        results = self.validator.validate_all(tier=tier)
+        self.validator.print_results(results)
+
+        # Warn but don't block startup for missing/placeholder keys
+        if self.validator.has_warnings(results):
+            self._logger.warning("Some API keys are not configured. Agents using those providers will fail.")
+            self._logger.warning("Configure them in your .env file to enable all features.")
+
+        # For actual errors (invalid format, invalid key), warn more strongly
+        if self.validator.has_errors(results):
+            self._logger.error("Some API keys have validation errors. Check the results above.")
+
+    def pre_server_start_action(self, *_args, **_kwargs):
+        """Perform the plugin's main action (no-op, validation runs on startup)."""
+        self._validate_keys()
+
+    def update_parser_args(self, parser):
+        """Add command-line arguments for environment variable validation."""
+        parser.add_argument(
+            "--validate-keys",
+            type=int,
+            nargs="?",
+            const=3,
+            default=None,
+            metavar="{1,2,3}",
+            help="Validate API keys up to the specified tier: "
+            "1=placeholder detection, 2=format validation, "
+            "3=live API calls (default when flag is passed without a value). "
+            "Omit to skip validation entirely.",
+        )

@@ -16,12 +16,12 @@
 
 import argparse
 import glob
+import logging
 import os
 import signal
 import socket
 import subprocess
 import sys
-import threading
 import time
 from typing import Any
 from typing import Dict
@@ -29,10 +29,9 @@ from typing import Tuple
 
 from dotenv import load_dotenv
 
-from plugins.env_validator.env_validator import EnvValidator
-from plugins.llm_config_validator.llm_config_validator_plugin import LlmConfigValidatorPlugin
-from plugins.log_bridge.process_log_bridge import ProcessLogBridge
-from plugins.phoenix.phoenix_plugin import PhoenixPlugin
+from neuro_san_studio.interfaces.process_logger_interface import ProcessLoggerInterface
+from neuro_san_studio.plugins.factory.plugin_loader import PluginLoader
+from neuro_san_studio.runner.simple_process_logger import SimpleProcessLogger
 
 
 class NeuroSanRunner:
@@ -41,15 +40,18 @@ class NeuroSanRunner:
     # pylint: disable=too-many-instance-attributes
     def __init__(self):
         """Initialize configuration and parse CLI arguments."""
+        self._logger = logging.getLogger(self.__class__.__name__)
         self.is_windows = os.name == "nt"
         self.root_dir = os.path.dirname(os.path.abspath(__file__))
         self.logs_dir = os.path.join(self.root_dir, "logs")
         self.thinking_file = os.path.join(self.logs_dir, "agent_thinking.txt")
         self.thinking_dir = os.path.join(self.logs_dir, "thinking_dir")
         print(f"Root directory: {self.root_dir}")
-
         # Load environment variables from .env file
         self.load_env_variables()
+
+        plugins_file = os.path.join(self.root_dir, "config", "plugins.hocon")
+        self.plugin_classes = PluginLoader.load_plugin_classes(plugins_file)
 
         # Default Configuration
         self.args: Dict[str, Any] = {
@@ -67,7 +69,6 @@ class NeuroSanRunner:
             "neuro_san_web_client_port": int(os.getenv("NEURO_SAN_WEB_CLIENT_PORT", "5003")),
             "thinking_file": os.getenv("THINKING_FILE", self.thinking_file),
             "thinking_dir": os.getenv("THINKING_DIR", self.thinking_dir),
-            "logbridge_enabled": os.getenv("LOGBRIDGE_ENABLED", "true"),
             # Ensure all paths are resolved relative to `self.root_dir`
             "agent_manifest_file": os.getenv(
                 "AGENT_MANIFEST_FILE", os.path.join(self.root_dir, "registries", "manifest.hocon")
@@ -82,28 +83,26 @@ class NeuroSanRunner:
             "logs_dir": self.logs_dir,
         }
 
-        # Add Phoenix configuration defaults
-        self.args.update(PhoenixPlugin.get_default_config())
-
         # Ensure logs directory exists
         os.makedirs(self.logs_dir, exist_ok=True)
         os.makedirs(self.thinking_dir, exist_ok=True)
 
+        # Instantiate plugins now that args are fully built
+        self.plugins = [cls(self.args) for cls in self.plugin_classes]
+        for plugin in self.plugins:
+            self._logger.info("Loaded plugin: %s", plugin)
+
+        for plugin in self.plugins:
+            self._logger.info("Updating args dict with plugin: %s", plugin)
+            plugin.update_args_dict(self.args)
+
         # Parse command-line arguments
         self.args.update(self.parse_args())
 
-        if self.args.get("logbridge_enabled"):
-            self.log_bridge = ProcessLogBridge(
-                level=self.args.get("log_level", "info"),
-                runner_log_file=os.path.join(self.args["logs_dir"], "runner.log"),
-            )
         # Process references
         self.server_process = None
         self.flask_webclient_process = None
         self.nsflow_process = None
-
-        # Instantiate Phoenix plugin
-        self.phoenix_plugin = PhoenixPlugin(self.args)
 
     def load_env_variables(self):
         """Load .env file from project root and set variables."""
@@ -158,34 +157,11 @@ class NeuroSanRunner:
         parser.add_argument(
             "--use-flask-web-client", action="store_true", help="Use the flask based neuro-san-web-client"
         )
-        parser.add_argument(
-            "--validate-keys",
-            type=int,
-            nargs="?",
-            const=3,
-            default=None,
-            metavar="{1,2,3}",
-            help="Validate API keys up to the specified tier: "
-            "1=placeholder detection, 2=format validation, "
-            "3=live API calls (default when flag is passed without a value). "
-            "Omit to skip validation entirely.",
-        )
-        default_llm_config = os.path.join(os.path.dirname(self.args["agent_manifest_file"]), "llm_config.hocon")
-        parser.add_argument(
-            "--check-llm-config",
-            nargs="?",
-            const=default_llm_config,
-            default=None,
-            metavar="HOCON_PATH",
-            help="Test every LLM configuration in a HOCON file by creating each "
-            "LLM instance and invoking it with a trivial prompt. "
-            "Accepts both agent network files (with a 'tools' list, testing each agent's "
-            "merged llm_config) and standalone studio llm_config files. "
-            "llm_configs that use a 'fallbacks' list are expanded and each model is tested individually. "
-            "Duplicate configurations are deduplicated so each unique model is called only once. "
-            "Exits with a non-zero code if any configuration fails. "
-            f"When passed without a value, defaults to {default_llm_config}.",
-        )
+
+        # add arguments from plugins
+        for plugin in self.plugins:
+            self._logger.info("Updating parser args with plugin: %s", plugin)
+            plugin.update_parser_args(parser)
 
         args, _ = parser.parse_known_args()
         explicitly_passed_args = {arg for arg in sys.argv[1:] if arg.startswith("--")}
@@ -225,9 +201,6 @@ class NeuroSanRunner:
         print(f"AGENT_MANIFEST_UPDATE_PERIOD_SECONDS set to: {os.environ['AGENT_MANIFEST_UPDATE_PERIOD_SECONDS']}")
         print(f"LOG_LEVEL set to: {os.environ['LOG_LEVEL']}\n")
 
-        # Phoenix / OpenTelemetry envs - delegate to PhoenixPlugin
-        self.phoenix_plugin.set_environment_variables()
-
         # Client-only env variables
         if not self.args["server_only"]:
             os.environ["THINKING_FILE"] = self.args["thinking_file"]
@@ -263,37 +236,6 @@ class NeuroSanRunner:
 
         print("\n" + "=" * 50 + "\n")
 
-    def check_llm_config(self):
-        """Validate LLM configurations when --check-llm-config is specified."""
-        hocon_path = self.args.get("check_llm_config")
-        if not hocon_path:
-            return
-        LlmConfigValidatorPlugin().check(hocon_path)
-
-    def validate_keys(self):
-        """Validate LLM API keys when --validate-keys is specified."""
-        tier = self.args.get("validate_keys")
-        if not tier:
-            return
-
-        print(f"Validating LLM API keys (tier {tier})...")
-
-        if tier >= 3:
-            print("Live validation enabled - making API calls to verify keys...")
-
-        validator = EnvValidator()
-        results = validator.validate_all(tier=tier)
-        validator.print_results(results)
-
-        # Warn but don't block startup for missing/placeholder keys
-        if validator.has_warnings(results):
-            print("Note: Some API keys are not configured. Agents using those providers will fail.")
-            print("      Configure them in your .env file to enable all features.\n")
-
-        # For actual errors (invalid format, invalid key), warn more strongly
-        if validator.has_errors(results):
-            print("Error: Some API keys have validation errors. Check the results above.\n")
-
     @staticmethod
     def generate_html_files():
         """Generate .html files for all registry files except manifest.hocon."""
@@ -311,22 +253,8 @@ class NeuroSanRunner:
                 if result.stderr:
                     print(result.stderr, file=sys.stderr)
 
-    @staticmethod
-    def stream_output(pipe, log_file, prefix):
-        """Stream subprocess output to console and log file in real-time."""
-        with open(log_file, "a", encoding="utf-8") as log:
-            for line in iter(pipe.readline, ""):
-                formatted_line = f"{prefix}: {line.strip()}"
-                print(formatted_line)  # Print to console
-                log.write(formatted_line + "\n")  # Write to log file
-        pipe.close()
-
     def start_process(self, command, process_name, log_file):
         """Start a subprocess and capture logs."""
-        # Initialize/clear the log file before starting
-        with open(log_file, "w", encoding="utf-8") as log:
-            log.write(f"Starting {process_name}...\n")
-
         # pylint: disable=consider-using-with
         if self.is_windows:
             # On Windows, don't use CREATE_NEW_PROCESS_GROUP to allow Ctrl+C propagation
@@ -352,21 +280,13 @@ class NeuroSanRunner:
 
         print(f"Started {process_name} with PID {process.pid}")
 
-        if self.args.get("logbridge_enabled"):
-            # Let log_bridge own reading/parsing/printing/writing
-            self.log_bridge.attach_process_logger(process, process_name, log_file)
-        else:
-            # Start streaming logs in separate threads
-            stdout_thread = threading.Thread(target=self.stream_output, args=(process.stdout, log_file, process_name))
-            stderr_thread = threading.Thread(target=self.stream_output, args=(process.stderr, log_file, process_name))
-            stdout_thread.start()
-            stderr_thread.start()
+        for plugin in self.plugins:
+            plugin.args["process_name"] = process_name
+            plugin.args["process"] = process
+            plugin.args["log_file"] = log_file
+            plugin.post_server_start_action()
 
         return process
-
-    def start_phoenix(self):
-        """Start Phoenix server (UI + OTLP HTTP collector) if enabled."""
-        self.phoenix_plugin.start_phoenix_server()
 
     def start_neuro_san(self):
         """Start the Neuro SAN server."""
@@ -449,8 +369,9 @@ class NeuroSanRunner:
             else:
                 os.killpg(os.getpgid(self.nsflow_process.pid), signal.SIGKILL)
 
-        # Stop Phoenix using the initializer
-        self.phoenix_plugin.stop_phoenix_server()
+        for plugin in self.plugins:
+            self._logger.info("Running cleanup for plugin: %s", plugin)
+            plugin.cleanup()
 
         sys.exit(0)
 
@@ -564,9 +485,6 @@ class NeuroSanRunner:
                 print("\nExiting due to port conflicts.\n")
                 sys.exit(1)
 
-        # Start services only if ports are free
-        # 1) Phoenix first so other services point OTLP to it
-        self.start_phoenix()
         if not server_only:
             if use_flask:
                 if not no_html:
@@ -589,11 +507,9 @@ class NeuroSanRunner:
         # Set environment variables
         self.set_environment_variables()
 
-        # Validate LLM API keys if --validate-keys was specified
-        self.validate_keys()
-
-        # Validate LLM configurations if --check-llm-config was specified
-        self.check_llm_config()
+        for plugin in self.plugins:
+            self._logger.info("Running pre server start action for plugin: %s", plugin)
+            plugin.pre_server_start_action()
 
         # Ensure logs directory exists
         os.makedirs("logs", exist_ok=True)
@@ -610,6 +526,20 @@ class NeuroSanRunner:
 
         # Start all relevant processes
         self.conditional_start_servers()
+
+        # Fallback: if no plugin implements ProcessLoggerInterface, use a simple
+        # logger to drain subprocess pipes and prevent pipe buffer deadlocks.
+        has_process_logger = any(isinstance(p, ProcessLoggerInterface) for p in self.plugins)
+        if not has_process_logger:
+            simple_logger = SimpleProcessLogger()
+            for name, proc in [
+                ("NeuroSan", self.server_process),
+                ("nsflow", self.nsflow_process),
+                ("FlaskWebClient", self.flask_webclient_process),
+            ]:
+                if proc is not None:
+                    log_file = os.path.join(self.logs_dir, f"{name.lower()}.log")
+                    simple_logger.attach_process_logger(proc, name, log_file)
 
         print("\n" + "=" * 50 + "\n")
         print("All processes now running.")
