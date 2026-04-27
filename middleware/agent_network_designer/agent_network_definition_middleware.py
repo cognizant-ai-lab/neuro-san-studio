@@ -151,7 +151,11 @@ class AgentNetworkDefinitionMiddleware(AgentMiddleware):
         :return: Agent network definition
         """
 
-        if network_hocon_file is None:
+        if not isinstance(network_hocon_file, str) or not network_hocon_file:
+            self.logger.warning(
+                "WARNING: Invalid network_hocon_file value (expected str, got %r); skipping.",
+                network_hocon_file,
+            )
             return None
 
         # Converting hocon file to dict
