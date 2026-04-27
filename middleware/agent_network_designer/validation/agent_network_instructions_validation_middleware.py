@@ -50,7 +50,7 @@ class AgentNetworkInstructionsValidationMiddleware(AgentNetworkValidationMiddlew
         :return: A list of error strings (empty if valid)
         """
         # Copy network_def and modify the copy so that the "description" is under "function".
-        # This allows the keyword validatior to check for missing "description" fields.
+        # This allows the keyword validator to check for missing "description" fields.
         use_network_def: dict[str, Any] = {}
         for agent_name, agent_def in network_def.items():
             agent_copy: dict[str, Any] = agent_def.copy()

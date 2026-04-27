@@ -218,7 +218,8 @@ class AgentNetworkDefinitionMiddleware(AgentMiddleware):
                 # (remove aaosa instructions, instructions prefix, and demo mode)
                 agent_def["instructions"] = await self._extract_custom_instructions(instructions.strip(), sly_data)
 
-        description: str | None = agent.get("function", {}).get("description")
+        function: dict[str, Any] = agent.get("function", {})
+        description: str | None = function.get("description") if isinstance(function, dict) else None
         if description is not None:
             if not isinstance(description, str):
                 self.logger.warning(

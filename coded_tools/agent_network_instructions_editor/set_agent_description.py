@@ -74,8 +74,11 @@ class SetAgentDescription(CodedTool):
             return "Error: No agent_name provided."
         if the_agent_name not in network_def:
             return f"Error: Agent not found: {the_agent_name}"
-        if network_def[the_agent_name].get("description") is None:
-            return f"Error: Agent has no description field: {the_agent_name}. It is a function agent."
+        # Use "instructions" field existence to determine if it is a function agent
+        # instead of "description" field to allow backwards compatibility with agent network definitions
+        # that do not have "description" field for function agents
+        if network_def[the_agent_name].get("instructions") is None:
+            return f"Error: Agent has no instructions field: {the_agent_name}. It is a function agent."
 
         new_description: str = args.get("new_description")
         if not new_description:
@@ -92,4 +95,4 @@ class SetAgentDescription(CodedTool):
         await ProgressHandler.report_progress(args, network_def)
 
         logger.debug(">>>>>>>>>>>>>>>>>>> DONE %s !!!>>>>>>>>>>>>>>>>>>", self.__class__.__name__)
-        return f"The description for '{the_agent_name}' have been set in 'agent_network_definition' successfully."
+        return f"The description for '{the_agent_name}' has been set in 'agent_network_definition' successfully."
