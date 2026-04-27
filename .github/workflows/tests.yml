@@ -65,9 +65,11 @@ jobs:
       - name: Run dead link checker
         shell: bash
         run: |
-          curl --silent --location \
+          curl --silent --location --fail \
           https://github.com/lycheeverse/lychee/releases/latest/download/lychee-x86_64-unknown-linux-gnu.tar.gz \
-          | tar --extract --gzip --directory /tmp
+          -o /tmp/lychee.tar.gz
+          tar --extract --gzip --directory /tmp --file /tmp/lychee.tar.gz
+          ls /tmp/lychee
           # To prevent flaky CI failures, accept:
           # - 401 (Unauthorized) for API endpoints that require authentication
           # - 403 (Forbidden) if the server blocks bots or requests without a browser-like User-Agent
