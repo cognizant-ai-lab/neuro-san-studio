@@ -224,8 +224,9 @@ class HoconAgentNetworkAssembler(AgentNetworkAssembler):
 
         :return: The rendered agent block as a string.
         """
-        tools: str = self._format_tools(agent.get("tools", []))
-        # Note that get() or "" is used to avoid issues if the field is set to None.
+        # Note that `get() or`` pattern is used to avoid issues if the field is set to None.
+        raw_tools: list[str] = agent.get("tools") or []
+        tools: str = self._format_tools(raw_tools)
         description: str = (agent.get("description") or "").strip()
         instructions: str = (agent.get("instructions") or "").strip()
 
@@ -233,10 +234,10 @@ class HoconAgentNetworkAssembler(AgentNetworkAssembler):
             use_description = description or "An assistant that answers inquiries from the user."
             return TOP_AGENT_TEMPLATE % (agent_name, use_description, instructions, tools)
 
-        if agent.get("tools"):
+        if raw_tools:
             return REGULAR_AGENT_TEMPLATE % (agent_name, description, instructions, tools)
 
-        if agent.get("instructions"):
+        if instructions:
             demo_prefix = "${demo_mode}" if self.demo_mode else ""
             return LEAF_NODE_AGENT_TEMPLATE % (agent_name, description, demo_prefix, instructions)
         return TOOLBOX_AGENT_TEMPLATE % (agent_name, agent_name)
