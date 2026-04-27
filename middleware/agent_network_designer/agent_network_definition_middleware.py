@@ -209,7 +209,8 @@ class AgentNetworkDefinitionMiddleware(AgentMiddleware):
             if not isinstance(instructions, str):
                 self.logger.warning(
                     "WARNING: Skipping agent %s due to non-string 'instructions' in '%s'",
-                    agent_name, network_hocon_file
+                    agent_name,
+                    network_hocon_file
                 )
                 return agent_name, agent_def
             if instructions.strip():
@@ -222,7 +223,8 @@ class AgentNetworkDefinitionMiddleware(AgentMiddleware):
             if not isinstance(description, str):
                 self.logger.warning(
                     "WARNING: Skipping agent %s due to non-string 'description' in '%s'",
-                    agent_name, network_hocon_file
+                    agent_name,
+                    network_hocon_file
                 )
                 return agent_name, agent_def
             if description.strip():
