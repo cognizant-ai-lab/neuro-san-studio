@@ -71,7 +71,7 @@ class TestInferLevelFromText:
         line = (
             '{"message": "Received a StreamingChat request for '
             "'handle error messages and error text from users'\""
-            ", \"message_type\": \"Other\"}"
+            ', "message_type": "Other"}'
         )
         assert bridge._infer_level_from_text(line) == logging.INFO
 
