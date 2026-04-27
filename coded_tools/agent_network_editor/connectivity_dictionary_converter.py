@@ -46,7 +46,7 @@ class ConnectivityDictionaryConverter(DictionaryConverter):
         """
         self.include_keys = include_keys
         if include_keys is None:
-            self.include_keys = ["tools", "instructions"]
+            self.include_keys = ["tools", "instructions", "description"]
 
     def to_dict(self, obj: Connectivity) -> dict[str, Any]:
         """

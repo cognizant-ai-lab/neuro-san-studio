@@ -55,6 +55,9 @@ Do not mention what you can NOT do. Only mention what you can do.
         # Top agent template
         {
             "name": "{agent_name}",
+            # Use "agent_description" since there could also be a "parameter_description",
+            # and we want to avoid confusion between the two.
+            "agent_description": "{agent_description}",
             "function": "aaosa_call",
             "instructions": """
 {instructions_prefix}
@@ -73,6 +76,9 @@ call all the relevant tools and make sure the command is fully serviced and expr
         # Regular agent template
         {
             "name": "{agent_name}",
+            # Use "agent_description" since there could also be a "parameter_description",
+            # and we want to avoid confusion between the two.
+            "agent_description": "{agent_description}",
             "function": "aaosa_call",
             "instructions": """
 {instructions_prefix}
@@ -88,6 +94,9 @@ call all the relevant tools and make sure the command is fully serviced and expr
         # Leaf agent template
         {
             "name": "{agent_name}",
+            # Use "agent_description" since there could also be a "parameter_description",
+            # and we want to avoid confusion between the two.
+            "agent_description": "{agent_description}",
             "function": "aaosa_call",
             "instructions": """
 {instructions_prefix}

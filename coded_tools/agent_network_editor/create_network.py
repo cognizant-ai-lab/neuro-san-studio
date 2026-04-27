@@ -91,6 +91,7 @@ class CreateNetwork(CodedTool):
             sly_data[AGENT_NETWORK_DEFINITION][agent_name] = {}
             if not is_tool_list[i]:
                 sly_data[AGENT_NETWORK_DEFINITION][agent_name]["instructions"] = ""
+                sly_data[AGENT_NETWORK_DEFINITION][agent_name]["description"] = ""
         logger.info("The resulting agent network definition: \n %s", str(sly_data[AGENT_NETWORK_DEFINITION]))
 
         # Put the agent network name in the sly data

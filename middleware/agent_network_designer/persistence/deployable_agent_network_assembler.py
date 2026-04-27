@@ -94,7 +94,9 @@ class DeployableAgentNetworkAssembler(AgentNetworkAssembler):
             # Note that these are only set up for per-agent replacement values.
             string_replacements: dict[str, Any] = {
                 "agent_name": agent_name,
-                "agent_instructions": agent_def.get("instructions"),
+                # Note that get() or "" is used to avoid issues if the field is set to None.
+                "agent_instructions": (agent_def.get("instructions") or "").strip(),
+                "agent_description": (agent_def.get("description") or "").strip(),
                 "agent_network_name": agent_network_name,
             }
             value_replacements: dict[str, Any] = {"tools": tools}
@@ -120,13 +122,16 @@ class DeployableAgentNetworkAssembler(AgentNetworkAssembler):
                 agent_spec_template, string_replacements, value_replacements
             )
 
-            # For the top agent, aaosa_call is used as the function base but its description
-            # is replaced with the top agent's own description (analogous to
-            # ${aaosa_call}{ "description": "..." } in HOCON).
-            if agent_name == top_agent_name and isinstance(agent_spec.get("function"), dict):
-                # This hard-coded description is a temporary solution
-                # until we have a description generator/editor in place.
-                agent_spec["function"]["description"] = "An assistant that answers inquiries from the user."
+            # Move agent_description (substituted from the template) into function.description,
+            # analogous to ${aaosa_call}{ "description": "..." } in HOCON.
+            description: str = agent_spec.pop("agent_description", "")
+            if isinstance(agent_spec.get("function"), dict):
+                if agent_name == top_agent_name:
+                    agent_spec["function"]["description"] = (
+                        description or "An assistant that answers inquiries from the user."
+                    )
+                else:
+                    agent_spec["function"]["description"] = description
 
             # Add agent to tools
             agent_network["tools"].append(agent_spec)
