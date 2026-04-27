@@ -60,7 +60,7 @@ class SetAgentDescription(CodedTool):
 
         :return:
             In case of successful execution:
-                a text string indicating the new value of "description" of the agent.
+                a text string indicating the new value of "description" of the agent has been set.
             otherwise:
                 a text string an error message in the format:
                 "Error: <error message>"
