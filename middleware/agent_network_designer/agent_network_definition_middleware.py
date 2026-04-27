@@ -212,11 +212,15 @@ class AgentNetworkDefinitionMiddleware(AgentMiddleware):
                     agent_name,
                     network_hocon_file,
                 )
-                return agent_name, agent_def
+                return None, {}
             if instructions.strip():
                 # Extract only the unique instructions
                 # (remove aaosa instructions, instructions prefix, and demo mode)
                 agent_def["instructions"] = await self._extract_custom_instructions(instructions.strip(), sly_data)
+
+            # Initialize description for non-function agents so the description setter
+            # can distinguish them from function/toolbox agents (which have no description key).
+            agent_def["description"] = ""
 
         function: dict[str, Any] = agent.get("function", {})
         description: str | None = function.get("description") if isinstance(function, dict) else None
@@ -227,7 +231,7 @@ class AgentNetworkDefinitionMiddleware(AgentMiddleware):
                     agent_name,
                     network_hocon_file,
                 )
-                return agent_name, agent_def
+                return None, {}
             if description.strip():
                 agent_def["description"] = description.strip()
 
