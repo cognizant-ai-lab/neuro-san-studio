@@ -212,7 +212,7 @@ observability in Neuro SAN Studio, providing comprehensive monitoring and analys
 
 ### Langfuse
 
-The [Langfuse plugin](../plugins/langfuse/README.md) integrates [Langfuse](https://langfuse.com/) for AI
+The [Langfuse plugin](../neuro_san_studio/plugins/langfuse/README.md) integrates [Langfuse](https://langfuse.com/) for AI
 observability in Neuro SAN Studio, providing trace collection, cost tracking, and performance metrics
 for LLM interactions. It supports both cloud and self-hosted Langfuse instances.
 
