@@ -20,7 +20,7 @@ import os
 import tempfile
 
 from neuro_san_studio.interfaces.base_plugin import BasePlugin
-from neuro_san_studio.plugins.factory.plugin_loader import PluginLoader
+from neuro_san_studio.plugins.plugin_loader import PluginLoader
 
 
 class TestPluginLoader:
