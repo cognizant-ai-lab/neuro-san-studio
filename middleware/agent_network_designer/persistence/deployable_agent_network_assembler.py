@@ -98,7 +98,6 @@ class DeployableAgentNetworkAssembler(AgentNetworkAssembler):
             string_replacements: dict[str, Any] = {
                 "agent_name": agent_name,
                 "agent_instructions": agent_instructions,
-                "agent_description": agent_description,
                 "agent_network_name": agent_network_name,
             }
             value_replacements: dict[str, Any] = {"tools": tools}
@@ -125,16 +124,15 @@ class DeployableAgentNetworkAssembler(AgentNetworkAssembler):
                 agent_spec_template, string_replacements, value_replacements
             )
 
-            # Move agent_description (substituted from the template) into function.description,
+            # Set function.description directly from the agent_network_definition,
             # analogous to ${aaosa_call}{ "description": "..." } in HOCON.
-            description: str = agent_spec.pop("agent_description", "")
             if isinstance(agent_spec.get("function"), dict):
                 if agent_name == top_agent_name:
                     agent_spec["function"]["description"] = (
-                        description or "An assistant that answers inquiries from the user."
+                        agent_description or "An assistant that answers inquiries from the user."
                     )
                 else:
-                    agent_spec["function"]["description"] = description
+                    agent_spec["function"]["description"] = agent_description
 
             # Add agent to tools
             agent_network["tools"].append(agent_spec)
