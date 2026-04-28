@@ -93,7 +93,7 @@ Plugins are loaded in two contexts with different lifecycle methods:
 ### Example Plugin
 
 See [`BasePlugin`](../neuro_san_studio/interfaces/base_plugin.py) for the full interface and
-[`PhoenixPlugin`](../plugins/phoenix/phoenix_plugin.py) for a real-world implementation.
+[`PhoenixPlugin`](../neuro_san_studio/plugins/phoenix/phoenix_plugin.py) for a real-world implementation.
 
 ## Authorization
 
@@ -207,7 +207,7 @@ allowing developers to monitor and analyze their networks in real-time.
 
 ### Arize Phoenix
 
-The [Arize Phoenix plugin](../plugins/phoenix/README.md) integrates [Arize Phoenix](https://phoenix.arize.com/) for AI
+The [Arize Phoenix plugin](../neuro_san_studio/plugins/phoenix/README.md) integrates [Arize Phoenix](https://phoenix.arize.com/) for AI
 observability in Neuro SAN Studio, providing comprehensive monitoring and analysis of LLM interactions.
 
 ### Langfuse

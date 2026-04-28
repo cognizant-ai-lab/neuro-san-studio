@@ -19,7 +19,7 @@
 from unittest.mock import patch
 
 from neuro_san_studio.interfaces.base_plugin import BasePlugin
-from plugins.phoenix.phoenix_plugin import PhoenixPlugin
+from neuro_san_studio.plugins.phoenix import PhoenixPlugin
 
 
 class TestPhoenixPlugin:
