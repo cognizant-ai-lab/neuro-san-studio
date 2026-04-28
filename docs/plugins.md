@@ -196,7 +196,7 @@ providing structured, human-readable output from server and client subprocesses.
 
 ### Log Bridge
 
-The [Log Bridge plugin](../plugins/log_bridge/README.md) provides Rich-based structured logging for
+The [Log Bridge plugin](../neuro_san_studio/plugins/log_bridge/README.md) provides Rich-based structured logging for
 Neuro SAN Studio, replacing raw subprocess output with colored, pretty-printed, and severity-aware
 console logs. It is enabled by default.
 
