@@ -43,6 +43,7 @@ Here are a few examples ordered by level of complexity.
     - [ArXiv Assistant](#arxiv-assistant)
     - [ServiceNow AI Agents](#servicenow-ai-agents)
     - [Visual Question Answering](#visual-question-answering)
+    - [Persistent Memory](#persistent-memory)
   - [🏢 Industry-Specific Examples](#-industry-specific-examples)
     - [Intranet Agents](#intranet-agents)
     - [Intranet Agents With Tools](#intranet-agents-with-tools)
@@ -377,6 +378,15 @@ procurement, and other enterprise processes.
 queries against images or videos. It uses Apple's ml-fastvlm library to answer the queries.
 
 **Tags:** `tool`, `Visual Question Answering`, `VQA`, `Vision Language Models`, `VLM`, `ml-fastvlm`
+
+### Persistent Memory
+
+[Persistent Memory](examples/tools/persistent_memory.md) is an agent network that gives an agent long-term,
+per-user, per-agent memory: a CRUD + keyword-search store that survives across sessions. It is exposed to the
+LLM as a single `persistent_memory` tool and registered automatically by a middleware. File-backed (JSON or
+Markdown) with an optional LLM summariser for auto-compaction of long entries.
+
+**Tags:** `tool`, `middleware`, `memory`
 
 ## 🏢 Industry-Specific Examples
 

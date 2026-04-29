@@ -1681,7 +1681,30 @@ Look at [Consumer Decision Assistant](examples/industry/consumer_decision_assist
 
 ### Memory
 
-TBD
+Agents can be given long-term memory by attaching the `PersistentMemoryMiddleware`.
+The middleware registers a single `persistent_memory` tool on the agent
+(six operations: `create`, `read`, `append`, `delete`, `search`, `list`) and
+persists each topic to disk, scoped by `(agent_network_name, agent_name, topic)`.
+Writes land as soon as the tool call returns — no bookended load/save, and a
+crash mid-turn loses at most the call that was in-flight.
+
+Minimal wiring — only `class` is required, every other key has a sensible default.
+
+```hocon
+"middleware": [
+    {
+        "class": "middleware.persistent_memory.persistent_memory_middleware.PersistentMemoryMiddleware"  # (required)
+    }
+]
+```
+
+Two storage backends ship: `json_file` (one `memory.json` per agent, default) and
+`markdown_file` (one `.md` per topic). Oversized topics are summarized inline under the
+same lock that did the write, so readers never see an intermediate oversized state.
+See [examples/tools/persistent_memory.md](./examples/tools/persistent_memory.md)
+for the full tutorial — building the HOCON from scratch, a sample conversation,
+backend trade-offs, summarizer tuning, and debugging tips. The minimal working
+network lives at [persistent_memory.hocon](../registries/tools/persistent_memory.hocon).
 
 ## Connect with other agent frameworks
 

@@ -128,6 +128,11 @@
     # To use this agent network, start by installing the required package:
     #     pip install pymupdf >= 1.25.5
     "tools/pdf_rag.hocon": false,
+    
+    # File-backed long-term memory tool (per-user, per-agent): CRUD + keyword search.
+    # Defaults to JSON format (``json_file``).
+    # Set ``memory_config.storage.backend`` to ``markdown_file`` to use the Markdown backend instead.
+    "tools/persistent_memory.hocon": true,
 
     # To use this agent network, follow the instructions in ./docs/examples/visual_question_answering.md
     "tools/visual_question_answering.hocon": false,

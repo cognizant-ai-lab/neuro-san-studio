@@ -1,0 +1,111 @@
+# Copyright © 2025-2026 Cognizant Technology Solutions Corp, www.cognizant.com.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
+# END COPYRIGHT
+
+# Persistent Memory — example agent network (middleware path).
+#
+# A single ``middleware`` block is all you need. Drop it on any agent that
+# needs long-term memory, and the ``persistent_memory`` tool is registered
+# automatically — no separate tool entry, and no tool name in ``tools: [...]``.
+#
+# Class path: middleware.persistent_memory.persistent_memory_middleware.PersistentMemoryMiddleware
+#
+# Backend selection happens via the ``memory_config.storage`` block in the
+# middleware ``args``. Two backends ship out of the box:
+#   - ``markdown_file``: one ``.md`` file per topic.
+#   - ``json_file``:     one ``memory.json`` per agent (the default).
+#
+# Lifecycle: write-per-call. Every tool call is a read-modify-write against
+# disk under a per-key ``asyncio.Lock``. Any topic longer than
+# ``max_topic_size`` characters is summarized inline, under the same lock
+# that performed the write, so concurrent readers never observe the
+# oversized intermediate content.
+
+{
+    include "registries/llm_config.hocon",
+
+    "metadata": {
+        "description": "Remembers facts you share (preferences, role, personal details) and recalls them in later conversations.",
+        "tags": ["memory", "long-term-memory", "middleware"],
+        "sample_queries": [
+            # Ordered as a natural first-run flow: introduce yourself, record
+            # a fact, add to it, ask about it, then list / forget.
+            "Hi, my name is Mike and I work in Sales.",
+            "Remember that I prefer email communication over chat.",
+            "Also note that I have moved to the Engineering department.",
+            "What do you know about me?",
+            "List everything you remember about me.",
+            "Forget my communication preference.",
+        ]
+    },
+
+    "tools": [
+        {
+            "name": "MemoryAssistant",
+            "function": {
+                "description": "A conversational assistant that remembers facts about you across sessions."
+            },
+            "instructions": """
+You are a helpful assistant that remembers facts the user shares about themselves —
+names, roles, preferences, relationships, and personal details.
+
+Save each fact as a topic/content pair. The topic is the person's name, lower-cased
+and underscore-separated ("michael_brown", "tom"); every fact about that person
+lives under their topic.
+
+If memory has nothing on what the user is asking about, say so and ask them to
+confirm or share the information — do not guess.
+""",
+            "tools": [],
+            "middleware": [
+                {
+                    "class": "middleware.persistent_memory.persistent_memory_middleware.PersistentMemoryMiddleware",
+                    "args": {
+                        # Allowing the framework to auto-inject information.
+                        # ``origin_str`` is parsed by the middleware to derive network and agent name.
+                        "origin_str": true,
+                        # All memory settings live under a single ``memory_config`` block with three sub-keys.
+                        "memory_config": {
+                            # Backend configuration.
+                            #   ``backend``:     ``json_file`` or ``markdown_file``.
+                            #   ``folder_name``: where memory files are written, relative to the repo root.
+                            #   ``file_name``:   JSON-only file stem; written to
+                            #                    ``<folder_name>/<agent_network_name>/<agent_name>/<file_name>.json``.
+                            "storage": {
+                                "backend":     "json_file",
+                                "folder_name": "./memory",
+                                "file_name":   "memory"  # ignored by markdown_file backend
+                            },
+                            # Summarizer configuration.
+                            #   ``max_topic_size``:  character threshold past which topics are summarized inline.
+                            #   ``model``:           OpenAI model used by the summarizer, failures keep the original.
+                            #   ``personalization``: optional sentence appended to the prompt.
+                            "summarization": {
+                                "max_topic_size":  1000,
+                                "model":           "gpt-5.4-mini"
+                                # "personalization": "Write summaries in a warm, concise tone."
+                            },
+                            # Which operations the LLM may use. Leave empty to allow all six.
+                            # Useful restrictions:
+                            #   Read-only agent:    ["read", "search", "list"]
+                            #   Append-only agent:  ["read", "append", "search", "list"]
+                            "enabled_operations": ["create", "read", "append", "delete", "search", "list"]
+                        }
+                    }
+                }
+            ]
+        }
+    ]
+}
