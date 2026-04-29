@@ -87,27 +87,31 @@ class DeployableAgentNetworkAssembler(AgentNetworkAssembler):
         agent_name: str = None
         agent_def: dict[str, Any] = {}
         for agent_name, agent_def in use_network_def.items():
-            # Find bits and pieces from the agent definition in the larger network definition
-            tools: list[str] = agent_def.get("tools", None)
+            # Find bits and pieces from the agent definition in the larger network definition.
+            # Note that `or` pattern is used to avoid issues if the field is set to None.
+            tools: list[str] = agent_def.get("tools") or []
+            agent_instructions: str = (agent_def.get("instructions") or "").strip()
+            agent_description: str = (agent_def.get("description") or "").strip()
 
             # Set up replacement strings and values for the filter
             # Note that these are only set up for per-agent replacement values.
             string_replacements: dict[str, Any] = {
                 "agent_name": agent_name,
-                "agent_instructions": agent_def.get("instructions"),
+                "agent_instructions": agent_instructions,
                 "agent_network_name": agent_network_name,
             }
             value_replacements: dict[str, Any] = {"tools": tools}
 
-            # Find what node template to use from the tools
+            # Find what node template to use from the normalized values to stay consistent
+            # with what will be rendered after stripping.
             template_index: int = -1
             if agent_name == top_agent_name:
                 # Top agent
                 template_index = 0
-            elif agent_def.get("tools"):
+            elif tools:
                 # Regular agent
                 template_index = 1
-            elif agent_def.get("instructions"):
+            elif agent_instructions:
                 # Leaf agent
                 template_index = 2
             else:
@@ -120,13 +124,15 @@ class DeployableAgentNetworkAssembler(AgentNetworkAssembler):
                 agent_spec_template, string_replacements, value_replacements
             )
 
-            # For the top agent, aaosa_call is used as the function base but its description
-            # is replaced with the top agent's own description (analogous to
-            # ${aaosa_call}{ "description": "..." } in HOCON).
-            if agent_name == top_agent_name and isinstance(agent_spec.get("function"), dict):
-                # This hard-coded description is a temporary solution
-                # until we have a description generator/editor in place.
-                agent_spec["function"]["description"] = "An assistant that answers inquiries from the user."
+            # Set function.description directly from the agent_network_definition,
+            # analogous to ${aaosa_call}{ "description": "..." } in HOCON.
+            if isinstance(agent_spec.get("function"), dict):
+                if agent_name == top_agent_name:
+                    agent_spec["function"]["description"] = (
+                        agent_description or "An assistant that answers inquiries from the user."
+                    )
+                else:
+                    agent_spec["function"]["description"] = agent_description
 
             # Add agent to tools
             agent_network["tools"].append(agent_spec)
