@@ -132,28 +132,33 @@ Think of this as building or refining a hierarchical organizational chart. Each 
   (
     "customer_support_rep": (
       "instructions": "",
+      "description": "",
       "tools": ["network_engineer", "account_manager", "project_manager", "https://example.com/mcp"],
     )
   ),
   (
     "network_engineer": (
       "instructions": "",
+      "description": "",
       "tools": ["network_ops_center_specialist", "field_technician"],
     )
   ),
   (
     "field_technician": (
       "instructions": "",
+      "description": "",
     )
   ),
   (
     "network_ops_center_specialist": (
       "instructions": "",
+      "description": "",
     )
   ),
   (
     "account_manager": (
       "instructions": "",
+      "description": "",
       "tools": ["billing_tool", "/banking_ops"],
     )
   ),
@@ -163,12 +168,14 @@ Think of this as building or refining a hierarchical organizational chart. Each 
   (
     "project_manager": (
       "instructions": "",
+      "description": "",
       "tools": ["logistics_coordinator"],
     )
   ),
   (
     "logistics_coordinator": (
       "instructions": "",
+      "description": "",
     )
   )
 ]

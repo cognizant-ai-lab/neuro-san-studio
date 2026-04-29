@@ -38,7 +38,7 @@
         {
             "name": "instructions_editor",
             "function": {
-                "description": "Create or modify instructions of agents in the agent network.",
+                "description": "Create or modify instructions and descriptions of agents in the agent network.",
                 "parameters": {
                     "type": "object",
                     "properties": {
@@ -55,22 +55,22 @@
                 }
             },
             "instructions": """
-You are responsible for generating and editing instructions of agents based on the agent network description and definition.
+You are responsible for coordinating the writing of instructions and descriptions for agents based on the agent network description and definition.
 Only answer inquiries that are directly within your area of expertise. Do not try to help for other matters. Do not mention what you can NOT do. Only mention what you can do.
 
-**Only create or edit `instructions` for agents that have an `instructions` field in the network definition. These are non-function agents.**
+**Only coordinate writing of `instructions` and `description` for agents that have these fields in the network definition. These are non-function agents.**
 
 Behavior by mode:
-- `create`: Generate initial instructions for every non-function agent in the network. Call `instructions_writer` once for each of these agents.
+- `create`: Call `instructions_writer` once for each non-function agent in the network to set both its instructions and description.
 - `modify`: Read `agent_network_description` and identify the impacted agents (explicitly named agents, newly added agents, and agents whose responsibilities changed).
-            Call `instructions_writer` to update instructions for these impacted agents.
-            Do not edit unaffected agents except when they lack instructions or the user explicitly requests broader edits. Call `instructions_writer` once per impacted agent.
+            Call `instructions_writer` to update instructions and description for these impacted agents.
+            Do not involve unaffected agents except when they lack instructions/description or the user explicitly requests broader edits. Call `instructions_writer` once per impacted agent.
 
 Guardrails:
-- Only create or edit `instructions` for agents that have an `instructions` field in the network definition.
-- Ensure that each and every agent with `instructions` field has the instructions.
+- Only coordinate writing of `instructions` and `description` for agents that have these fields in the network definition.
+- Ensure that each and every non-function agent has both instructions and description set.
 - Skip agents that are not referenced/affected by the current request.
-- Do not modify instructions if they are semantically unchanged.
+- Do not trigger rewrites if instructions and description are semantically unchanged.
 - Be surgical: avoid network-wide rewrites during `modify`; touch only what the request necessitates.
 """,
             "allow": {
@@ -98,19 +98,20 @@ Guardrails:
         {
             "name": "instructions_writer",
             "instructions": """
-You are an instructions writer for agents in an agent network.
-Your job is to create clear, concise, and actionable instructions for agents based on the agent network definition and description provided to you.
-Generate new instructions based on the following guidelines:
+You are an instructions and description writer for agents in an agent network.
+Your job is to write both the instructions and description for a specified agent based on the agent network definition and description provided to you.
+For each agent, call `set_agent_instructions_tool` and `set_agent_description_tool`.
 
 **Writing requirements**
-- Only write instructions for the specified agent. Do not write instructions for any other agents, even if they are mentioned in the description or network definition.
+- Only write instructions and description for the specified agent. Do not write for any other agents, even if they are mentioned in the description or network definition.
 - Make instructions clear, concise, and specific to the agent’s scope of responsibilities.
+- Write the description as a short summary of what the agent does, suitable for its callers to understand when to invoke it.
 - Do NOT mention other agents, up-chains, or down-chains; keep the text scoped to this agent only.
 - Align with the company’s cultural values and business objectives.
 - Output plain text (no formatting characters) and wrap lines at ~120 characters.
 
 **Response format**
-Always respond with "Instructions for <agent_name> have been set." after successfully setting the instructions for the agent.
+Always respond with "Instructions/description for <agent_name> have been set." after successfully setting the instructions and description for the agent.
 """
             "function": {
                 "description": "Write the instructions for a specified agent in an agent network."
@@ -129,7 +130,7 @@ Always respond with "Instructions for <agent_name> have been set." after success
                     "required": ["agent_name", "agent_network_description"]
                 }
             },
-            "tools": ["set_agent_instructions_tool"],
+            "tools": ["set_agent_instructions_tool", "set_agent_description_tool"],
             "middleware": [
                 {
                     "class": "middleware.agent_network_designer.agent_network_definition_middleware.AgentNetworkDefinitionMiddleware",
@@ -158,6 +159,28 @@ Always respond with "Instructions for <agent_name> have been set." after success
                         },
                     },
                     "required": ["agent_name", "new_instructions"]
+                }
+            },
+        },
+
+        {
+            "name": "set_agent_description_tool",
+            "class": "coded_tools.agent_network_instructions_editor.set_agent_description.SetAgentDescription"
+            "function": {
+                "description": "Set the description for an agent in an agent network."
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "agent_name": {
+                            "type": "string",
+                            "description": "the name of the agent whose description is being set."
+                        },
+                        "new_description": {
+                            "type": "string",
+                            "description": "the new description for the agent."
+                        },
+                    },
+                    "required": ["agent_name", "new_description"]
                 }
             },
         }

@@ -67,7 +67,7 @@ TOP_AGENT_TEMPLATE = (
     '            "name": "%s",\n'
     '            "function": ${aaosa_call}{\n'
     '                "description": """\n'
-    "An assistant that answers inquiries from the user.\n"
+    "%s\n"
     '                """\n'
     "            },\n"
     '            "instructions": ${instructions_prefix} """\n'
@@ -82,7 +82,11 @@ TOP_AGENT_TEMPLATE = (
 REGULAR_AGENT_TEMPLATE = (
     "        {\n"
     '            "name": "%s",\n'
-    '            "function": ${aaosa_call},\n'
+    '            "function": ${aaosa_call}{\n'
+    '                "description": """\n'
+    "%s\n"
+    '                """\n'
+    "            },\n"
     '            "instructions": ${instructions_prefix} """\n'
     "%s\n"
     '""" ${aaosa_instructions},\n'
@@ -93,7 +97,11 @@ REGULAR_AGENT_TEMPLATE = (
 LEAF_NODE_AGENT_TEMPLATE = (
     "        {\n"
     '            "name": "%s",\n'
-    '            "function": ${aaosa_call},\n'
+    '            "function": ${aaosa_call}{\n'
+    '                "description": """\n'
+    "%s\n"
+    '                """\n'
+    "            },\n"
     '            "instructions": ${instructions_prefix} %s """\n'
     "%s\n"
     '""",\n'
@@ -138,12 +146,12 @@ class HoconAgentNetworkAssembler(AgentNetworkAssembler):
 
         :return: A full agent network HOCON as a string.
         """
-        use_network_def = shallow_copy(network_def)
+        use_network_def: dict[str, Any] = shallow_copy(network_def)
         use_network_def = self._move_top_agent_first(use_network_def, top_agent_name)
 
-        header = self._build_header(agent_network_name, sample_queries)
+        header: str = self._build_header(agent_network_name, sample_queries)
 
-        body = []
+        body: list[str] = []
         for agent_name, agent in use_network_def.items():
             body.append(self._render_agent_block(agent_name, agent, top_agent_name))
 
@@ -159,7 +167,7 @@ class HoconAgentNetworkAssembler(AgentNetworkAssembler):
         :return: Updated network definition with top agent first.
         """
         if top_agent_name != next(iter(network_def)):
-            top_agent = network_def.pop(top_agent_name)
+            top_agent: dict[str, Any] = network_def.pop(top_agent_name)
             return {top_agent_name: top_agent, **network_def}
         return network_def
 
@@ -171,9 +179,9 @@ class HoconAgentNetworkAssembler(AgentNetworkAssembler):
 
         :return: Formatted sample queries as a string.
         """
-        formatted_queries = ""
+        formatted_queries: str = ""
         if sample_queries:
-            parts = []
+            parts: list[str] = []
             for query in sample_queries:
                 # Put each query in triple quotes to allow for multi-line queries and
                 # to avoid issues with special characters.
@@ -190,9 +198,9 @@ class HoconAgentNetworkAssembler(AgentNetworkAssembler):
 
         :return: The header of the HOCON agent network file as a string.
         """
-        formatted_queries = self._format_sample_queries(sample_queries)
-        date_created = datetime.datetime.now(tz=datetime.timezone.utc).isoformat()
-        demo_mode_block = (
+        formatted_queries: str = self._format_sample_queries(sample_queries)
+        date_created: str = datetime.datetime.now(tz=datetime.timezone.utc).isoformat()
+        demo_mode_block: str = (
             '   "demo_mode": "You are part of a demo system, so when queried, make up a realistic '
             "response as if you are actually grounded in real data or you are operating a real "
             'application API or microservice.",\n'
@@ -216,18 +224,22 @@ class HoconAgentNetworkAssembler(AgentNetworkAssembler):
 
         :return: The rendered agent block as a string.
         """
-        tools = self._format_tools(agent.get("tools", []))
+        # Note that `get() or`` pattern is used to avoid issues if the field is set to None.
+        raw_tools: list[str] = agent.get("tools") or []
+        tools: str = self._format_tools(raw_tools)
+        description: str = (agent.get("description") or "").strip()
+        instructions: str = (agent.get("instructions") or "").strip()
 
         if agent_name == top_agent_name:
-            return TOP_AGENT_TEMPLATE % (agent_name, agent["instructions"], tools)
+            use_description = description or "An assistant that answers inquiries from the user."
+            return TOP_AGENT_TEMPLATE % (agent_name, use_description, instructions, tools)
 
-        if agent.get("tools"):
-            return REGULAR_AGENT_TEMPLATE % (agent_name, agent["instructions"], tools)
+        if raw_tools:
+            return REGULAR_AGENT_TEMPLATE % (agent_name, description, instructions, tools)
 
-        if agent.get("instructions"):
+        if instructions:
             demo_prefix = "${demo_mode}" if self.demo_mode else ""
-            return LEAF_NODE_AGENT_TEMPLATE % (agent_name, demo_prefix, agent["instructions"])
-
+            return LEAF_NODE_AGENT_TEMPLATE % (agent_name, description, demo_prefix, instructions)
         return TOOLBOX_AGENT_TEMPLATE % (agent_name, agent_name)
 
     def _format_tools(self, tools: list[str]) -> str:
