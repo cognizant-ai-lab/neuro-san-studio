@@ -301,7 +301,7 @@ class ProcessLogBridge(ProcessLoggerInterface):
         - Cleans up the pipe and tee file when finished.
         :param pipe: A file-like object (stdout or stderr from a subprocess).
         :param process_name (str): Label for the process.
-        :param stream_tag (str): `"STDOUT"` or `"STDERR"`—used as part of the state key.
+        :param stream_tag (str): `"STDOUT"` or `"STDERR"`--used as part of the state key.
         """
         key = (process_name, stream_tag)
         state = self._streams[key]
@@ -453,9 +453,12 @@ class ProcessLogBridge(ProcessLoggerInterface):
         """
         Infer a log level from textual content.
         Rules:
-            - If the line contains a severity word (INFO, WARNING, ERROR, etc.)
-              that level is returned.
-            - If the line looks like a traceback, ERROR is returned.
+            - Only the log prefix (text before the first '{') is searched
+              for severity keywords, so that words like "error" inside
+              JSON message payloads do not cause false positives.
+            - If the prefix contains a severity word (INFO, WARNING, ERROR,
+              etc.) that level is returned.
+            - If the full line looks like a traceback, ERROR is returned.
             - Otherwise, the provided default is used.
         :param line (str): The raw text line.
         :param default (int): Fallback level.
@@ -463,7 +466,10 @@ class ProcessLogBridge(ProcessLoggerInterface):
         """
         if not line:
             return default
-        m = self._LEVEL_WORD.search(line)
+        # Search only the log prefix before any JSON payload.
+        brace_pos = line.find("{")
+        prefix = line[:brace_pos] if brace_pos >= 0 else line
+        m = self._LEVEL_WORD.search(prefix)
         if not m:
             if "traceback" in line.lower():
                 return logging.ERROR
@@ -675,9 +681,9 @@ class ProcessLogBridge(ProcessLoggerInterface):
         """
         Emit a reconstructed multiline block.
         Decision logic:
-            - If block parses as JSON → emit as JSON.
-            - If it matches NeuroSan request-reporting → rebuild + emit.
-            - Otherwise → treat as text (flatten whitespace).
+            - If block parses as JSON -> emit as JSON.
+            - If it matches NeuroSan request-reporting -> rebuild + emit.
+            - Otherwise -> treat as text (flatten whitespace).
         :param state (dict): Per-stream state.
         :param block (str): Reassembled multiline block.
         """
