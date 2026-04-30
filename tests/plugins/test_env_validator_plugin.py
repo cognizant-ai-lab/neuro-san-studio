@@ -19,7 +19,7 @@
 import argparse
 
 from neuro_san_studio.interfaces.base_plugin import BasePlugin
-from neuro_san_studio.plugins.env_validator import EnvValidatorPlugin
+from neuro_san_studio.plugins.env_validator.env_validator import EnvValidatorPlugin
 
 
 class TestEnvValidatorPlugin:

@@ -290,8 +290,8 @@ class TestExtractLlmConfigsFromAgentNetwork(TestCase):
         self.assertEqual(labels, ["AgentA", "AgentB", "AgentC"])
 
 
-_CHECKS_MODULE = "plugins.llm_config_validator.check_llm_configs"
-_PLUGIN_MODULE = "plugins.llm_config_validator.llm_config_validator_plugin"
+_CHECKS_MODULE = "neuro_san_studio.plugins.llm_config_validator.check_llm_configs"
+_PLUGIN_MODULE = "neuro_san_studio.plugins.llm_config_validator.llm_config_validator_plugin"
 
 
 class TestLlmConfigValidatorPlugin(TestCase):
