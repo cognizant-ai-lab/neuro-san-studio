@@ -207,8 +207,9 @@ allowing developers to monitor and analyze their networks in real-time.
 
 ### Arize Phoenix
 
-The [Arize Phoenix plugin](../neuro_san_studio/plugins/phoenix/README.md) integrates [Arize Phoenix](https://phoenix.arize.com/) for AI
-observability in Neuro SAN Studio, providing comprehensive monitoring and analysis of LLM interactions.
+The [Arize Phoenix plugin](../neuro_san_studio/plugins/phoenix/README.md) integrates
+[Arize Phoenix](https://phoenix.arize.com/) for AI observability in Neuro SAN Studio,
+providing comprehensive monitoring and analysis of LLM interactions.
 
 ### Langfuse
 
@@ -218,6 +219,6 @@ for LLM interactions. It supports both cloud and self-hosted Langfuse instances.
 
 ### LangSmith
 
-[LangSmith](../neuro_san_studio/plugins/langsmith/README.md) is LangChain's built-in observability platform. Since Neuro SAN uses LangChain
-internally, LangSmith tracing works out of the box with no plugin required — just set
+[LangSmith](../neuro_san_studio/plugins/langsmith/README.md) is LangChain's built-in observability platform.
+Since Neuro SAN uses LangChain internally, LangSmith tracing works out of the box with no plugin required — just set
 `LANGSMITH_TRACING=true` and `LANGSMITH_API_KEY` in your `.env` file.
