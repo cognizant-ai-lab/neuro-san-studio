@@ -13,6 +13,7 @@
 # limitations under the License.
 #
 # END COPYRIGHT
+from copy import deepcopy
 from typing import Any
 
 from leaf_common.serialization.interface.dictionary_converter import DictionaryConverter
@@ -72,7 +73,9 @@ class ConnectivityDictionaryConverter(DictionaryConverter):
             value: dict[str, Any] = {}
             self.copy_keys_not_found(connectivity_entry, value)
 
-            result_dict[name] = value
+            # Don't include agent that start with "/" since those are external agents.
+            if not name.startswith("/"):
+                result_dict[name] = value
 
         return result_dict
 
@@ -87,15 +90,21 @@ class ConnectivityDictionaryConverter(DictionaryConverter):
         if obj_dict is None:
             return None
 
+        # Add toolbox key for toolbox agents so that connectivity reporter can set display correctly.
+        obj_dict_copy: dict[str, Any] = deepcopy(obj_dict)
+        for name, entry in obj_dict_copy.items():
+            if not entry:
+                entry["toolbox"] = name
+
         connectivity: Connectivity = []
 
-        inspector: AgentNetworkInspector = DesignerNetworkInspector(obj_dict)
+        inspector: AgentNetworkInspector = DesignerNetworkInspector(obj_dict_copy)
 
         reporter: ConnectivityReporter = ConnectivityReporter(inspector)
         connectivity = reporter.report_network_connectivity()
 
         # Add any keys that are not already in the connectivity report
-        for name, internal_entry in obj_dict.items():
+        for name, internal_entry in obj_dict_copy.items():
             # Find the corresponding entry in the connectivity list.
             found_entry: dict[str, Any] = None
             for connectivity_entry in connectivity:
@@ -119,4 +128,6 @@ class ConnectivityDictionaryConverter(DictionaryConverter):
         for key in self.include_keys:
             # Don't add stuff that doesn't exist in source or stuff that already exists in dest.
             if key in source and key not in dest:
-                dest[key] = source.get(key)
+                # Only put the key in dest if it has a value in source.  Don't put keys with None or empty values.
+                if source.get(key):
+                    dest[key] = source.get(key)
