@@ -192,6 +192,7 @@ Operational notes:
                 {
                     "class": "middleware.agent_network_designer.agent_network_definition_middleware.AgentNetworkDefinitionMiddleware",
                     "args": {
+                        "progress_reporter": true,
                         "sly_data": true
                     }
                 },

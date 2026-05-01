@@ -83,6 +83,7 @@ Guardrails:
                 {
                     "class": "middleware.agent_network_designer.agent_network_definition_middleware.AgentNetworkDefinitionMiddleware",
                     "args": {
+                        "progress_reporter": true,
                         "sly_data": true
                     }
                 },
@@ -135,6 +136,7 @@ Always respond with "Instructions/description for <agent_name> have been set." a
                 {
                     "class": "middleware.agent_network_designer.agent_network_definition_middleware.AgentNetworkDefinitionMiddleware",
                     "args": {
+                        "progress_reporter": true,
                         "sly_data": true
                     }
                 }

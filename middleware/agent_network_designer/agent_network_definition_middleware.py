@@ -30,11 +30,13 @@ from langchain.agents.middleware.types import ModelResponse
 from langchain.agents.middleware.types import ResponseT
 from langchain_core.messages import BaseMessage
 from langchain_core.messages import SystemMessage
+from neuro_san.interfaces.agent_progress_reporter import AgentProgressReporter
 from neuro_san.internals.persistence.abstract_async_config_restorer import AbstractAsyncConfigRestorer
 
 from coded_tools.agent_network_editor.connectivity_dictionary_converter import ConnectivityDictionaryConverter
 from coded_tools.agent_network_editor.constants import AGENT_NETWORK_DEFINITION
 from coded_tools.agent_network_editor.constants import AGENT_NETWORK_NAME
+from coded_tools.agent_network_editor.progress_handler import ProgressHandler
 from coded_tools.agent_network_editor.sly_data_lock import SlyDataLock
 
 AGENT_NETWORK_HOCON_FILE: str = "agent_network_hocon_file"
@@ -49,7 +51,7 @@ class AgentNetworkDefinitionMiddleware(AgentMiddleware):
     requiring it to be passed explicitly through the chat stream.
     """
 
-    def __init__(self, sly_data: dict[str, Any]) -> None:
+    def __init__(self, sly_data: dict[str, Any], progress_reporter: AgentProgressReporter | None = None) -> None:
         """
         Initialize agent network definition middleware.
 
@@ -65,7 +67,10 @@ class AgentNetworkDefinitionMiddleware(AgentMiddleware):
 
                 Keys expected for this implementation are:
                     "agent_network_definition": an outline of an agent network
+        :param progress_reporter: An optional AgentProgressReporter instance for
+                reporting agent_network_definition to the client.
         """
+        self.progress_reporter: AgentProgressReporter | None = progress_reporter
         self.sly_data = sly_data
         self.logger = logging.getLogger(self.__class__.__name__)
 
@@ -125,6 +130,10 @@ class AgentNetworkDefinitionMiddleware(AgentMiddleware):
                 system_message = SystemMessage(content=f"{original_content}\n\n{definition_prompt}")
             else:
                 system_message = SystemMessage(content=definition_prompt)
+
+            await ProgressHandler.report_progress(
+                {"progress_reporter": self.progress_reporter}, network_def, self.sly_data.get(AGENT_NETWORK_NAME)
+            )
 
             return await handler(request.override(system_message=system_message))
 
