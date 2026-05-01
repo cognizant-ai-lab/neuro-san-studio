@@ -70,7 +70,7 @@
     "agent_checklist_middleware": {
         "middleware_class": "middleware.agent_checklist_middleware.AgentChecklistMiddleware",
         "description": """
-    Middleware for managing a in-memory checklist during agent execution.
+    Middleware for managing an in-memory checklist during agent execution.
     The checklist is stored as an instance variable so it persists across all model
     calls within a single agent session. The agent can create and update the checklist
     via registered tools, and the current checklist state is automatically injected
