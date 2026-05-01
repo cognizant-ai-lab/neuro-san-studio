@@ -27,7 +27,7 @@ Note that plugins are never required for Neuro SAN to function.
 
 ## Creating Custom Plugins
 
-All plugins extend the `BasePlugin` class in `plugins/base_plugin.py` and are registered in
+All plugins extend the `BasePlugin` class in `neuro_san_studio/plugins/base_plugin.py` and are registered in
 `config/plugins.hocon`.
 
 ### BasePlugin Interface
@@ -130,7 +130,7 @@ python -m run --check-llm-config registries/basic/music_nerd.hocon
 Or run the script directly:
 
 ```bash
-python plugins/llm_config_validator/check_llm_configs.py config/llm_config.hocon
+python neuro_san_studio/plugins/llm_config_validator/check_llm_configs.py config/llm_config.hocon
 ```
 
 Both HOCON formats are supported:
