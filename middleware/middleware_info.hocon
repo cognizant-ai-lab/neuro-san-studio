@@ -1,0 +1,132 @@
+# Copyright © 2025-2026 Cognizant Technology Solutions Corp, www.cognizant.com.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
+# END COPYRIGHT
+
+# This is a middleware configuration file that defines middlewares that are available for use in agent networks designed
+# by the experimental agent harness designer.
+
+{
+    "pii_middleware": {
+        "middleware_class": "langchain.agents.middleware.PIIMiddleware",
+        "description": """
+    Detect and handle Personally Identifiable Information (PII) in conversations using configurable strategies.
+        """,
+        "args": {
+            "type": "object",
+            "properties": {
+                "pii_type": {
+                    "type": "string",
+                    "description": """Type of PII to detect. Built-in types: 'email', 'credit_card', 'ip', 'mac_address'
+                    , 'url'. Can also be a custom type name when paired with a custom detector.
+                    """
+                },
+                "strategy": {
+                    "type": "string",
+                    "enum": ["block", "redact", "mask", "hash"],
+                    "description": """
+                How to handle detected PII. 'block' raises an exception, 'redact' replaces with [REDACTED_{PII_TYPE}],
+                'mask' partially obscures (e.g. ****-****-****-1234), 'hash' substitutes a deterministic hash.
+                    """,
+                    "default": "redact"
+                },
+                "detector": {
+                    "type": "string",
+                    "description": """Custom detector as a regex pattern string. Used when pii_type is a custom name or
+                    when overriding a built-in detector.
+                    """
+                },
+                "apply_to_input": {
+                    "type": "boolean",
+                    "description": "Whether to scan user input messages before the model call.",
+                    "default": true
+                },
+                "apply_to_output": {
+                    "type": "boolean",
+                    "description": "Whether to scan AI response messages after the model call.",
+                    "default": false
+                },
+                "apply_to_tool_results": {
+                    "type": "boolean",
+                    "description": "Whether to scan tool result messages after tool execution.",
+                    "default": false
+                }
+            },
+            "required": ["pii_type"]
+        }
+    },
+
+    "agent_checklist_middleware": {
+        "middleware_class": "middleware.agent_checklist_middleware.AgentChecklistMiddleware",
+        "description": """
+    Middleware for managing a in-memory checklist during agent execution.
+    The checklist is stored as an instance variable so it persists across all model
+    calls within a single agent session. The agent can create and update the checklist
+    via registered tools, and the current checklist state is automatically injected
+    into the system prompt before each model call.
+        """,
+        "args": {
+            "type": "object",
+            "properties": {
+                "checklist_title": {
+                    "type": "string",
+                    "description": "A title for the checklist to provide context to the agent."
+                },
+            },
+            "required": ["checklist_title"]
+        } 
+    },
+
+    "agent_skills_middleware": {
+        "middleware_class": "middleware.agent_skills_middleware.AgentSkillsMiddleware",
+        "description": """
+    Middleware for loading and managing agent skills per the Agent Skills specification
+    (https://agentskills.io/specification). Uses a progressive disclosure pattern: skill
+    metadata is loaded upfront, and full SKILL.md content is retrieved on demand when the
+    agent activates a skill. Supports remote URLs as skill sources.
+        """,
+        "args": {
+            "type": "object",
+            "properties": {
+                "skill_sources": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    },
+                    "description": """List of URLs to scan for SKILL.md files.
+                    Available URLs
+                    - https://raw.githubusercontent.com/anthropics/skills/main/skills/brand-guidelines/
+                    - https://raw.githubusercontent.com/anthropics/skills/main/skills/doc-coauthoring/
+                    - https://raw.githubusercontent.com/anthropics/skills/main/skills/internal-comms/
+                    """
+                },
+                "keep_skill_in_context": {
+                    "type": "boolean",
+                    "description": """Whether to keep full skill content in the chat context after loading.
+                    If false (default), skill content is injected directly into the model request
+                    without appearing as a tool message in the conversation history.
+                    """,
+                    "default": false
+                },
+                "http_timeout": {
+                    "type": "number",
+                    "description": "Timeout in seconds for HTTP requests when loading remote skills.",
+                    "default": 30.0
+                }
+            },
+            "required": ["skill_sources"]
+        }
+    },
+
+}

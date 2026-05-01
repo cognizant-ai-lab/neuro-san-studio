@@ -155,7 +155,7 @@ class HoconAgentNetworkAssembler(AgentNetworkAssembler):
         for agent_name, agent in use_network_def.items():
             body.append(self._render_agent_block(agent_name, agent, top_agent_name))
 
-        return header + "".join(body) + "]\n}\n"
+        return header + "".join(body) + "    ]\n}\n"
 
     def _move_top_agent_first(self, network_def: dict[str, Any], top_agent_name: str) -> dict[str, Any]:
         """
@@ -229,18 +229,77 @@ class HoconAgentNetworkAssembler(AgentNetworkAssembler):
         tools: str = self._format_tools(raw_tools)
         description: str = (agent.get("description") or "").strip()
         instructions: str = (agent.get("instructions") or "").strip()
+        middleware_block: str = self._render_middleware(agent.get("middleware", []))
 
         if agent_name == top_agent_name:
             use_description = description or "An assistant that answers inquiries from the user."
-            return TOP_AGENT_TEMPLATE % (agent_name, use_description, instructions, tools)
-
-        if raw_tools:
-            return REGULAR_AGENT_TEMPLATE % (agent_name, description, instructions, tools)
-
-        if instructions:
+            block: str = TOP_AGENT_TEMPLATE % (agent_name, use_description, instructions, tools)
+        elif raw_tools:
+            block = REGULAR_AGENT_TEMPLATE % (agent_name, description, instructions, tools)
+        elif instructions:
             demo_prefix = "${demo_mode}" if self.demo_mode else ""
-            return LEAF_NODE_AGENT_TEMPLATE % (agent_name, description, demo_prefix, instructions)
-        return TOOLBOX_AGENT_TEMPLATE % (agent_name, agent_name)
+            block = LEAF_NODE_AGENT_TEMPLATE % (agent_name, description, demo_prefix, instructions)
+        else:
+            return TOOLBOX_AGENT_TEMPLATE % (agent_name, agent_name)
+
+        if middleware_block:
+            block = self._insert_middleware(block, middleware_block)
+        return block
+
+    def _insert_middleware(self, block: str, middleware_block: str) -> str:
+        """
+        Insert a middleware block before the closing brace of an agent block.
+
+        All agent templates end with "        },\\n". This method removes that suffix,
+        ensures the last property line has a trailing comma, appends the middleware block,
+        then re-adds the closing brace.
+
+        :param block: The rendered agent block string
+        :param middleware_block: The rendered middleware block string
+        :return: The agent block with middleware inserted inside its closing brace.
+        """
+        close = "        },\n"
+        prefix = block[: -len(close)]
+        prefix = prefix.rstrip("\n")
+        if not prefix.endswith(","):
+            prefix += ","
+        return prefix + "\n" + middleware_block + close
+
+    def _render_middleware(self, middleware: list[dict[str, Any]]) -> str:
+        """
+        Render the middleware list as a HOCON array string.
+
+        :param middleware: List of middleware dicts, each with "class" and optional "args"
+
+        :return: Formatted middleware block as a string, or empty string if none.
+        """
+        if not middleware:
+            return ""
+
+        lines: list[str] = ['            "middleware": [']
+        for i, entry in enumerate(middleware):
+            lines.append("                {")
+            lines.append(f'                    "class": "{entry["class"]}",')
+            args = entry.get("args")
+            if args:
+                args_lines = []
+                for k, v in args.items():
+                    if isinstance(v, bool):
+                        args_lines.append(f'                        "{k}": {"true" if v else "false"}')
+                    elif isinstance(v, str):
+                        args_lines.append(f'                        "{k}": "{v}"')
+                    else:
+                        args_lines.append(f'                        "{k}": {v}')
+                lines.append('                    "args": {')
+                lines.append(",\n".join(args_lines))
+                lines.append("                    }")
+            else:
+                # Remove the trailing comma from "class" line since it's the last field
+                lines[-1] = lines[-1].rstrip(",")
+            comma = "," if i < len(middleware) - 1 else ""
+            lines.append(f"                }}{comma}")
+        lines.append("            ]")
+        return "\n".join(lines) + "\n"
 
     def _format_tools(self, tools: list[str]) -> str:
         """

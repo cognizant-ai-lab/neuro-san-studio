@@ -134,6 +134,11 @@ class DeployableAgentNetworkAssembler(AgentNetworkAssembler):
                 else:
                     agent_spec["function"]["description"] = agent_description
 
+            # Carry over middleware if present in the agent definition
+            middleware: list[dict[str, Any]] | None = agent_def.get("middleware")
+            if middleware:
+                agent_spec["middleware"] = middleware
+
             # Add agent to tools
             agent_network["tools"].append(agent_spec)
 
