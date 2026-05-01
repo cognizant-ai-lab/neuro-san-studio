@@ -75,9 +75,7 @@ class MiddlewareInfoMiddleware(AgentMiddleware):
         middleware_info: dict[str, Any] | None = self.sly_data.get(MIDDLEWARE_INFO)
 
         if middleware_info is None:
-            middleware_info_file: str = os.getenv(
-                "MIDDLEWARE_INFO_FILE", DEFAULT_MIDDLEWARE_INFO_FILE
-            )
+            middleware_info_file: str = os.getenv("MIDDLEWARE_INFO_FILE", DEFAULT_MIDDLEWARE_INFO_FILE)
             self.logger.debug(
                 ">>>>>>>>>>>>>>>>>>>Loading Middleware Info from '%s'>>>>>>>>>>>>>>>>>>>",
                 middleware_info_file,
@@ -95,9 +93,7 @@ class MiddlewareInfoMiddleware(AgentMiddleware):
             self.sly_data[MIDDLEWARE_INFO] = middleware_info
 
         if middleware_info:
-            self.logger.debug(
-                ">>>>>>>>>>>>>>>>>>>Injecting Middleware Info into System Prompt>>>>>>>>>>>>>>>>>>>"
-            )
+            self.logger.debug(">>>>>>>>>>>>>>>>>>>Injecting Middleware Info into System Prompt>>>>>>>>>>>>>>>>>>>")
             info_prompt: str = self.format_middleware_info_prompt(middleware_info)
 
             system_message: BaseMessage | None = request.system_message

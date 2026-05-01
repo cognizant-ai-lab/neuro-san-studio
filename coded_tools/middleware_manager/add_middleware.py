@@ -82,9 +82,7 @@ class AddMiddleware(CodedTool):
         # Check for duplicate
         for entry in existing_middleware:
             if entry.get("class") == middleware_class:
-                return (
-                    f"Error: Middleware '{middleware_class}' is already present on agent '{agent_name}'."
-                )
+                return f"Error: Middleware '{middleware_class}' is already present on agent '{agent_name}'."
 
         new_entry: dict[str, Any] = {"class": middleware_class}
         if middleware_args:

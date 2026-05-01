@@ -79,9 +79,7 @@ class RemoveMiddleware(CodedTool):
         updated_middleware = [entry for entry in existing_middleware if entry.get("class") != middleware_class]
 
         if len(updated_middleware) == len(existing_middleware):
-            return (
-                f"Error: Middleware '{middleware_class}' is not present on agent '{agent_name}'."
-            )
+            return f"Error: Middleware '{middleware_class}' is not present on agent '{agent_name}'."
 
         agent_def[MIDDLEWARE_KEY] = updated_middleware
         network_def[agent_name] = agent_def
