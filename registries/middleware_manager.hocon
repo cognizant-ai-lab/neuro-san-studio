@@ -161,7 +161,7 @@ is a dict with zero or more of these fields:
                     "properties": {
                         "agent_name": {
                             "type": "string",
-                            "description": "The name of the agent to remove from the network."
+                            "description": "The name of the agent from which the middleware will be removed."
                         },
                         "middleware_class": {
                             "type": "string",
