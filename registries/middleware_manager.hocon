@@ -171,7 +171,7 @@ is a dict with zero or more of these fields:
                             """
                         },
                     },
-                    "required": ["agent_name", "class"]
+                    "required": ["agent_name", "middleware_class"]
                 }
             }
         },
