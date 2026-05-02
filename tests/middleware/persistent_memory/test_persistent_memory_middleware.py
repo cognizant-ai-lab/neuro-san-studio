@@ -27,8 +27,8 @@ from middleware.persistent_memory.persistent_memory_middleware import Persistent
 from tests.middleware.persistent_memory.base import MemoryTestBase
 
 
-class PersistentMemoryMiddlewareRegistrationTests(MemoryTestBase):
-    """Middleware registers exactly one tool, named ``persistent_memory``."""
+class PersistentMemoryMiddlewareTests(MemoryTestBase):
+    """Registration, origin parsing, dispatch, and summarizer tests."""
 
     def test_registers_single_named_tool(self) -> None:
         """One dispatcher tool is exposed with the right name and tag."""
@@ -37,10 +37,6 @@ class PersistentMemoryMiddlewareRegistrationTests(MemoryTestBase):
         self.assertEqual(mw.tools[0].name, PersistentMemoryMiddleware.MEMORY_TOOL_NAME)
         self.assertIn("langchain_tool", mw.tools[0].tags or [])
 
-
-class PersistentMemoryMiddlewareOriginParsingTests(MemoryTestBase):
-    """``origin_str`` is parsed into ``(network, agent)`` with index suffixes stripped."""
-
     def test_parses_network_and_agent_stripping_index_suffix(self) -> None:
         """Numeric ``-N`` suffixes are stripped from both segments."""
         network, agent = PersistentMemoryMiddleware._parse_origin_str(  # pylint: disable=protected-access
@@ -48,10 +44,6 @@ class PersistentMemoryMiddlewareOriginParsingTests(MemoryTestBase):
         )
         self.assertEqual(network, "persistent_memory")
         self.assertEqual(agent, "MemoryAssistant")
-
-
-class PersistentMemoryMiddlewareDispatchTests(MemoryTestBase):
-    """Dispatch forwards to ``PersistentMemoryTool`` and the result hits disk."""
 
     # pylint: disable=not-callable
     def test_end_to_end_create_then_search(self) -> None:
@@ -63,10 +55,6 @@ class PersistentMemoryMiddlewareDispatchTests(MemoryTestBase):
         search_result = asyncio.run(tool_fn.coroutine(operation="search", query="black"))
         topics = [r.get("topic") for r in search_result.get("result", {}).get("results", [])]
         self.assertIn("coffee", topics)
-
-
-class PersistentMemoryMiddlewareSummarizerTests(MemoryTestBase):
-    """Summarizer fires from the tool after oversized writes."""
 
     def test_summarizes_when_topic_exceeds_max_size(self) -> None:
         """A topic larger than ``max_topic_size`` is replaced with its summary."""
