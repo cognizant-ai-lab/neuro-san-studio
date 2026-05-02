@@ -15,6 +15,7 @@
 # END COPYRIGHT
 
 # Import for asynchronous file operations
+import logging
 import os
 
 import aiofiles
@@ -22,6 +23,8 @@ import aiofiles
 from middleware.agent_network_designer.persistence.agent_network_assembler import AgentNetworkAssembler
 from middleware.agent_network_designer.persistence.agent_network_persistor import AgentNetworkPersistor
 from middleware.agent_network_designer.persistence.hocon_agent_network_assembler import HoconAgentNetworkAssembler
+
+_logger = logging.getLogger(__name__)
 
 DEFAULT_SUBDIRECTORY: str = "generated"
 
@@ -58,6 +61,25 @@ class FileSystemAgentNetworkPersistor(AgentNetworkPersistor):
         """
         return HoconAgentNetworkAssembler(self.demo_mode)
 
+    async def _async_read_text(self, path: str) -> str:
+        """
+        Reads a text file, trying UTF-8 first with a fallback to platform default encoding.
+
+        Writes always use UTF-8, so most files decode on the first attempt. The fallback
+        handles files created manually on Windows where the editor used the system locale
+        encoding (typically cp1252).
+        """
+        try:
+            async with aiofiles.open(path, "r", encoding="utf-8") as file:
+                return await file.read()
+        except UnicodeDecodeError:
+            _logger.warning(
+                "File '%s' is not valid UTF-8; retrying with platform default encoding.",
+                path,
+            )
+        async with aiofiles.open(path, "r", encoding="locale") as file:
+            return await file.read()
+
     async def async_persist(self, obj: str, file_reference: str = None) -> str:
         """
         Persists the object passed in.
@@ -78,7 +100,7 @@ class FileSystemAgentNetworkPersistor(AgentNetworkPersistor):
         file_path: str = os.path.join(self.output_path, the_agent_network_name + ".hocon")
         # Create parent directory automatically if necessary
         os.makedirs(os.path.dirname(file_path), exist_ok=True)
-        async with aiofiles.open(file_path, "w") as file:
+        async with aiofiles.open(file_path, "w", encoding="utf-8", newline="\n") as file:
             await file.write(the_agent_network_hocon_str)
 
         # Update the manifest.hocon file
@@ -89,13 +111,12 @@ class FileSystemAgentNetworkPersistor(AgentNetworkPersistor):
 
         # Create the manifest file if it doesn't exist
         if not os.path.exists(manifest_path):
-            async with aiofiles.open(manifest_path, "w") as file:
+            async with aiofiles.open(manifest_path, "w", encoding="utf-8", newline="\n") as file:
                 # Initialize with empty JSON format
                 await file.write("{\n}")
 
         # Read the current manifest content
-        async with aiofiles.open(manifest_path, "r") as file:
-            manifest_content: str = await file.read()
+        manifest_content: str = await self._async_read_text(manifest_path)
 
         # Check if the entry already exists to avoid duplicates
         if (
@@ -126,7 +147,7 @@ class FileSystemAgentNetworkPersistor(AgentNetworkPersistor):
             updated_content = manifest_content.rstrip() + "\n" + manifest_entry
 
         # Write the updated content back to the manifest file
-        async with aiofiles.open(manifest_path, "w") as file:
+        async with aiofiles.open(manifest_path, "w", encoding="utf-8", newline="\n") as file:
             await file.write(updated_content)
 
         # If using a non-default subdirectory, ensure it is included in the main manifest
@@ -143,8 +164,7 @@ class FileSystemAgentNetworkPersistor(AgentNetworkPersistor):
         if not os.path.exists(self.main_manifest_path):
             return None
 
-        async with aiofiles.open(self.main_manifest_path, "r") as file:
-            content: str = await file.read()
+        content: str = await self._async_read_text(self.main_manifest_path)
 
         registries_name: str = os.path.basename(self.output_path)
         include_line: str = f'include "{registries_name}/{self.subdirectory}/manifest.hocon",'
@@ -161,5 +181,5 @@ class FileSystemAgentNetworkPersistor(AgentNetworkPersistor):
 
         if last_include_idx >= 0:
             lines.insert(last_include_idx + 1, f"    {include_line}")
-            async with aiofiles.open(self.main_manifest_path, "w") as file:
+            async with aiofiles.open(self.main_manifest_path, "w", encoding="utf-8", newline="\n") as file:
                 await file.write("\n".join(lines))
