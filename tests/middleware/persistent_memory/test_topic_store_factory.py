@@ -38,7 +38,7 @@ class TopicStoreFactoryTests(MemoryTestBase):
         self.assertIsInstance(store, MarkdownFileStore)
 
     def test_unknown_backend_raises(self) -> None:
-        """An unrecognised backend name raises ``ValueError``."""
+        """An unrecognized backend name raises ``ValueError``."""
         with self.assertRaises(ValueError):
             TopicStoreFactory.create({"backend": "no_such_backend"})
 
@@ -50,7 +50,7 @@ class TopicStoreFactoryTests(MemoryTestBase):
         path = store._path_for("net.agent")  # pylint: disable=protected-access
         self.assertTrue(str(path).endswith("notes.json"))
 
-    def test_backend_name_normalised(self) -> None:
+    def test_backend_name_normalized(self) -> None:
         """Backend names are lower-cased and stripped before dispatch."""
         store = TopicStoreFactory.create({"backend": "  MARKDOWN_FILE  ", "folder_name": self._tmp})
         self.assertIsInstance(store, MarkdownFileStore)
