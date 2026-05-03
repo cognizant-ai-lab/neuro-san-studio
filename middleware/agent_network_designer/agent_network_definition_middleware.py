@@ -103,6 +103,10 @@ class AgentNetworkDefinitionMiddleware(AgentMiddleware):
         :param runtime: Runtime context
         :return: Dict with error message and jump directive, or None if no error
         """
+        # Reset error_message before each resolve. In practice this is unreachable since a previous load
+        # failure jumps to end and terminates the loop, but resetting here is a precaution against
+        # stale errors persisting if the control flow ever changes.
+        self.error_message = ""
         self.network_def = await self._resolve_network_def()
         if self.error_message:
             # Loading errors (HOCON file or S3 reservation) only occur in the top-level agent_network_designer
