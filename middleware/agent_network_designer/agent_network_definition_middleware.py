@@ -15,12 +15,12 @@
 # END COPYRIGHT
 
 import json
-from logging import getLogger
-from logging import Logger
 import os
 import re
-from re import Match
+from logging import Logger
+from logging import getLogger
 from pathlib import Path
+from re import Match
 from typing import Any
 from typing import Awaitable
 from typing import Callable
@@ -30,12 +30,12 @@ from botocore.exceptions import ClientError
 from langchain.agents.middleware.types import AgentMiddleware
 from langchain.agents.middleware.types import AgentState
 from langchain.agents.middleware.types import ContextT
-from langchain.agents.middleware.types import hook_config
 from langchain.agents.middleware.types import ModelRequest
 from langchain.agents.middleware.types import ModelResponse
 from langchain.agents.middleware.types import ResponseT
-from langchain_core.messages import BaseMessage
+from langchain.agents.middleware.types import hook_config
 from langchain_core.messages import AIMessage
+from langchain_core.messages import BaseMessage
 from langchain_core.messages import SystemMessage
 from neuro_san.interfaces.agent_progress_reporter import AgentProgressReporter
 from neuro_san.internals.persistence.abstract_async_config_restorer import AbstractAsyncConfigRestorer
@@ -131,7 +131,7 @@ class AgentNetworkDefinitionMiddleware(AgentMiddleware):
             return await handler(request)
 
         # Ensure that agent network definition is in dict (internal) format so that the designer agents know
-        # how to modify it and cache in sly data. 
+        # how to modify it and cache in sly data.
         network_def = self._normalize_network_def(self.network_def)
         return await self._inject_into_request(network_def, request, handler)
 
@@ -250,9 +250,7 @@ class AgentNetworkDefinitionMiddleware(AgentMiddleware):
         )
         return await self._config_to_network_def(config, reservation_id, self.sly_data)
 
-    def _normalize_network_def(
-        self, network_def: dict[str, Any] | list[dict[str, Any]]
-    ) -> dict[str, Any]:
+    def _normalize_network_def(self, network_def: dict[str, Any] | list[dict[str, Any]]) -> dict[str, Any]:
         """
         Ensure the network definition is in dict format, converting from connectivity list if needed,
         and cache it in sly_data.
@@ -395,16 +393,12 @@ class AgentNetworkDefinitionMiddleware(AgentMiddleware):
         :return: (agent_name, agent_def) where agent_name is None if the entry should be skipped
         """
         if not isinstance(agent, dict):
-            self.logger.warning(
-                "WARNING: Skipping non-dict entry in 'tools' list in '%s': %r", source, agent
-            )
+            self.logger.warning("WARNING: Skipping non-dict entry in 'tools' list in '%s': %r", source, agent)
             return None, {}
 
         agent_name: str | None = agent.get("name")
         if not isinstance(agent_name, str) or not agent_name:
-            self.logger.warning(
-                "WARNING: Skipping agent with missing/invalid 'name' in '%s': %r", source, agent
-            )
+            self.logger.warning("WARNING: Skipping agent with missing/invalid 'name' in '%s': %r", source, agent)
             return None, {}
 
         # Only extract agents info and only "instructions" and "tools" parts
@@ -538,12 +532,10 @@ class AgentNetworkDefinitionMiddleware(AgentMiddleware):
         #
         # re.IGNORECASE makes it match both uppercase and lowercase hex (a-f or A-F)
         match: Match | None = re.search(
-            r"-[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
-            reservation_id,
-            re.IGNORECASE
+            r"-[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$", reservation_id, re.IGNORECASE
         )
 
         # match.start() gives the index where the UUID pattern begins in the string
         # reservation_id[:match.start()] slices the string from the beginning up to (not including) that index
         # if no UUID is found (match is None), we just return the original string unchanged
-        return reservation_id[:match.start()] if match else reservation_id
+        return reservation_id[: match.start()] if match else reservation_id
