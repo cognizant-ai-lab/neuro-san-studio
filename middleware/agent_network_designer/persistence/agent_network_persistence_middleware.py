@@ -62,10 +62,14 @@ class AgentNetworkPersistenceMiddleware(AgentMiddleware):
     Middleware that validates and persists an agent network after the agent finishes
     (i.e., no more tool calls are pending).
 
-    Runs structural, toolbox, URL, and keyword validators against the current network
-    definition stored in sly_data. If validation errors are found, a human message
-    containing the errors is injected and control jumps back to the model so
-    it can self-correct.
+    If an agent network definition is present in sly_data, runs structural and instruction
+    validators against it. If validation errors are found, a human message containing the
+    errors is injected and control jumps back to the model so it can self-correct.
+
+    If no agent network definition is present, this middleware does nothing and returns None,
+    allowing the agent to respond freely. This handles cases where loading failed upstream
+    (e.g., in AgentNetworkDefinitionMiddleware) and the agent needs to report that error
+    rather than produce a network definition.
 
     Note: Validation is intentionally duplicated here even though individual subnetworks
     already perform their own validation. This is a safeguard for cases where the agent
@@ -96,7 +100,8 @@ class AgentNetworkPersistenceMiddleware(AgentMiddleware):
         self.reservationist = reservationist
         self.sly_data = sly_data
 
-    # Reenter the agent loop at the model node if validation fails or there is no agent network definition.
+    # Reenter the agent loop at the model node if validation fails.
+    # If no agent network definition is present, return None to let the agent respond freely.
     # See https://github.com/cognizant-ai-lab/neuro-san-studio/blob/main/docs/user_guide.md#middleware and
     # https://reference.langchain.com/python/langchain/agents/middleware/types/hook_config for details on
     # hook_config and jump_to.
@@ -105,10 +110,11 @@ class AgentNetworkPersistenceMiddleware(AgentMiddleware):
         """
         Validate and persist the agent network after the agent finishes.
 
-        Called when the agent has no more pending tool calls. Runs structure, toolbox,
-        URL, and keyword validators against the network definition in sly_data. If any
-        errors are found, injects a human message with the errors and jumps back to the
-        model so it can self-correct.
+        Called when the agent has no more pending tool calls. If an agent network definition
+        is present in sly_data, runs structure and instruction validators against it. If any
+        errors are found, injects a human message with the errors and jumps back to the model
+        so it can self-correct. If no definition is present, returns None so the agent can
+        respond freely (e.g., to report a loading error from AgentNetworkDefinitionMiddleware).
 
         This validation acts as a final safety net: even if the agent bypassed calling
         the necessary tools or subnetworks (and thus their built-in validators never ran),
