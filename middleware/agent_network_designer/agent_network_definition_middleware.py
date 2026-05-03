@@ -49,6 +49,7 @@ from coded_tools.agent_network_editor.sly_data_lock import SlyDataLock
 
 AGENT_NETWORK_HOCON_FILE: str = "agent_network_hocon_file"
 AGENT_RESERVATIONS: str = "agent_reservations"
+RESERVATION_ID: str = "reservation_id"
 
 
 class AgentNetworkDefinitionMiddleware(AgentMiddleware):
@@ -189,15 +190,27 @@ class AgentNetworkDefinitionMiddleware(AgentMiddleware):
             )
             return None
 
-        last_reservation: dict[str, Any] = agent_reservations[-1]
-        if "reservation_id" not in last_reservation:
+        last_reservation: Any = agent_reservations[-1]
+        if not isinstance(last_reservation, dict):
+            self.logger.warning(
+                "Warning: Last entry in '%s' is not a dict: %s (expected a dictionary)",
+                AGENT_RESERVATIONS,
+                type(last_reservation).__name__,
+            )
+            return None
+        if RESERVATION_ID not in last_reservation:
+            self.logger.warning(
+                "Warning: No %s field in %s",
+                RESERVATION_ID,
+                last_reservation,
+            )
             return None
 
         error_message: str = "Error: Failed to load agent network definition from S3 reservation for unknown reasons."
-        reservation_id: str | None = last_reservation.get("reservation_id")
+        reservation_id: str | None = last_reservation.get(RESERVATION_ID)
         if not isinstance(reservation_id, str) or not reservation_id:
             error_message = (
-                f"Error: Invalid 'reservation_id' value: {type(reservation_id).__name__} "
+                f"Error: Invalid '{RESERVATION_ID}' value: {type(reservation_id).__name__} "
                 "(expected a non-empty string)."
             )
             self.logger.error(error_message)
