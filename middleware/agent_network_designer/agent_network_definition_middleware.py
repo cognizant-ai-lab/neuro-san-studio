@@ -166,28 +166,20 @@ class AgentNetworkDefinitionMiddleware(AgentMiddleware):
             return network_def
 
         # Lastly, check the reservation ID in agent reservation field in sly data.
-        return await self._resolve_network_def_from_s3(agent_reservations)
+        if agent_reservations:
+            return await self._resolve_network_def_from_s3(agent_reservations)
 
-    async def _resolve_network_def_from_s3(
-        self, agent_reservations: list[dict[str, Any]] | None
-    ) -> dict[str, Any] | None:
-        """
-        Resolve the agent network definition from an S3 reservation.
+        return network_def
 
-        :param agent_reservations: A list of reservation structures describing the temporary agent networks that were
-                    created by interacting with this agent. By convention, the last one in the list is a top-level
-                    handle which may reference any others listed.
-        :return: Agent network definition, or None if no reservation ID is provided
-                    or if there are issues retrieving/parsing the reservation
+    def _extract_reservation_id(self, agent_reservations: list[dict[str, Any]] | None) -> str | None:
         """
-        if not agent_reservations:
-            return None
-        if not isinstance(agent_reservations, list):
-            self.logger.warning(
-                "Warning: Invalid '%s' value: %s (expected a list)",
-                AGENT_RESERVATIONS,
-                type(agent_reservations).__name__,
-            )
+        Validate agent_reservations and extract the reservation ID from the last entry.
+
+        :param agent_reservations: A list of reservation structures. The last entry is expected to be a dict
+                    with a 'reservation_id' key.
+        :return: The reservation ID string, or None if the input is missing or malformed.
+        """
+        if not agent_reservations or not isinstance(agent_reservations, list):
             return None
 
         last_reservation: Any = agent_reservations[-1]
@@ -206,9 +198,26 @@ class AgentNetworkDefinitionMiddleware(AgentMiddleware):
             )
             return None
 
+        return last_reservation.get(RESERVATION_ID)
+
+    async def _resolve_network_def_from_s3(
+        self, agent_reservations: list[dict[str, Any]] | None
+    ) -> dict[str, Any] | None:
+        """
+        Resolve the agent network definition from an S3 reservation.
+
+        :param agent_reservations: A list of reservation structures describing the temporary agent networks that were
+                    created by interacting with this agent. By convention, the last one in the list is a top-level
+                    handle which may reference any others listed.
+        :return: Agent network definition, or None if no reservation ID is provided
+                    or if there are issues retrieving/parsing the reservation
+        """
+        reservation_id: str | None = self._extract_reservation_id(agent_reservations)
+        if not reservation_id:
+            return None
+
         error_message: str = "Error: Failed to load agent network definition from S3 reservation for unknown reasons."
-        reservation_id: str | None = last_reservation.get(RESERVATION_ID)
-        if not isinstance(reservation_id, str) or not reservation_id:
+        if not isinstance(reservation_id, str):
             error_message = (
                 f"Error: Invalid '{RESERVATION_ID}' value: {type(reservation_id).__name__} "
                 "(expected a non-empty string)."
