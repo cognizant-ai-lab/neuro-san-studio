@@ -119,27 +119,28 @@ class AgentNetworkPersistenceMiddleware(AgentMiddleware):
         :return: Dict with error message and jump directive, or None if valid
         """
         network_def: dict[str, Any] = self.sly_data.get(AGENT_NETWORK_DEFINITION)
-        if not network_def:
-            return self._error_response(
-                "No agent network found. Please create a new agent network using `/agent_network_editor` tool"
-            )
+        # Only validate and persist if there is an agent_network_definition; otherwise let the agent
+        # respond to the user freely. This allows the agent to ask clarifying questions or report issues
+        # without being forced to produce a network definition — for example, when
+        # AgentNetworkDefinitionMiddleware failed to load from a HOCON file or S3 reservation and
+        # already reported the error (jumping to end), so no network definition will be present.
+        if network_def:
+            error_list: list[str] = await self._validate_network(network_def)
+            if error_list:
+                self.logger.error("Error: %s", error_list)
+                return self._error_response(
+                    f"The current agent network definition has the following issues: {error_list}. "
+                    "Please fix these issues to ensure the agent network can be properly assembled and executed."
+                )
 
-        error_list: list[str] = await self._validate_network(network_def)
-        if error_list:
-            self.logger.error("Error: %s", error_list)
-            return self._error_response(
-                f"The current agent network definition has the following issues: {error_list}. "
-                "Please fix these issues to ensure the agent network can be properly assembled and executed."
-            )
+            the_agent_network_name: str = self._normalize_network_name(self.sly_data.get(AGENT_NETWORK_NAME))
+            self.sly_data[AGENT_NETWORK_NAME] = the_agent_network_name
+            sample_queries: list[str] = self.sly_data.get(AGENT_NETWORK_QUERIES, [])
 
-        the_agent_network_name: str = self._normalize_network_name(self.sly_data.get(AGENT_NETWORK_NAME))
-        self.sly_data[AGENT_NETWORK_NAME] = the_agent_network_name
-        sample_queries: list[str] = self.sly_data.get(AGENT_NETWORK_QUERIES, [])
+            await self._assemble_and_persist(network_def, the_agent_network_name, sample_queries)
+            self._determine_exported_network_definition(self.sly_data)
 
-        await self._assemble_and_persist(network_def, the_agent_network_name, sample_queries)
-        self._determine_exported_network_definition(self.sly_data)
-
-        self.logger.debug(">>>>>>>>>>>>>>>>>>> DONE %s !!!>>>>>>>>>>>>>>>>>>", self.__class__.__name__)
+            self.logger.debug(">>>>>>>>>>>>>>>>>>> DONE %s !!!>>>>>>>>>>>>>>>>>>", self.__class__.__name__)
 
         return None
 
