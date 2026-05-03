@@ -91,7 +91,7 @@ with this agent. By convention, the last one in the list is a top-level handle w
                                 "type": "object",
                                 "properties": {
                                     "reservation_id": {
-                                        "type": "string"
+                                        "type": "string",
                                         "description": """
 The unique identifier of the reserved temporary agent network.
 This can be used to invoke the newly created network later on the same server/cluster.
@@ -132,7 +132,7 @@ with this agent. By convention, the last one in the list is a top-level handle w
                                 "type": "object",
                                 "properties": {
                                     "reservation_id": {
-                                        "type": "string"
+                                        "type": "string",
                                         "description": """
 The unique identifier of the reserved temporary agent network.
 This can be used to invoke the newly created network later on the same server/cluster.
