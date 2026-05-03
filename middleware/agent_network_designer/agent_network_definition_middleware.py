@@ -167,7 +167,9 @@ class AgentNetworkDefinitionMiddleware(AgentMiddleware):
         # Lastly, check the reservation ID in agent reservation field in sly data.
         return await self._resolve_network_def_from_s3(agent_reservations)
 
-    async def _resolve_network_def_from_s3(self, agent_reservations: list[dict[str, Any]]) -> dict[str, Any] | None:
+    async def _resolve_network_def_from_s3(
+        self, agent_reservations: list[dict[str, Any]] | None
+    ) -> dict[str, Any] | None:
         """
         Resolve the agent network definition from an S3 reservation.
 
