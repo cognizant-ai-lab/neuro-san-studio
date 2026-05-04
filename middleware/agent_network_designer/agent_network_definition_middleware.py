@@ -116,6 +116,11 @@ class AgentNetworkDefinitionMiddleware(AgentMiddleware):
                 "messages": [AIMessage(self.error_message)],
                 "jump_to": "end",
             }
+        if self.sly_data.get("skip_designer") and self.sly_data.get(AGENT_NETWORK_NAME) and self.network_def:
+            return {
+                "messages": [AIMessage(content=f"The network {self.sly_data.get(AGENT_NETWORK_NAME)} has been modified by user.")],
+                "jump_to": "end",
+            }
         return None
 
     @override
