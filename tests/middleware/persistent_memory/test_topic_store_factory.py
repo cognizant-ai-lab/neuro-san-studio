@@ -21,6 +21,7 @@ from __future__ import annotations
 from middleware.persistent_memory.json_file_store import JsonFileStore
 from middleware.persistent_memory.markdown_file_store import MarkdownFileStore
 from middleware.persistent_memory.topic_store_factory import TopicStoreFactory
+
 from tests.middleware.persistent_memory.base import MemoryTestBase
 
 
@@ -50,7 +51,7 @@ class TopicStoreFactoryTests(MemoryTestBase):
         path = store._path_for("net.agent")  # pylint: disable=protected-access
         self.assertTrue(str(path).endswith("notes.json"))
 
-    def test_backend_name_normalised(self) -> None:
+    def test_backend_name_normalized(self) -> None:
         """Backend names are lower-cased and stripped before dispatch."""
         store = TopicStoreFactory.create({"backend": "  MARKDOWN_FILE  ", "folder_name": self._tmp})
         self.assertIsInstance(store, MarkdownFileStore)

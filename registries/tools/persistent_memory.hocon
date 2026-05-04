@@ -38,6 +38,11 @@
 #   - ``mem0``:          Mem0 cloud — requires MEM0_API_KEY env var and
 #                        ``"sly_data": true`` in middleware args for per-user scoping.
 #
+# Scope: this is the *agent's* memory, not per-user memory. All users
+# sharing the same agent share the same memory namespace. Designed for
+# local, single-user usage. Multi-tenant / per-user isolation is out of
+# scope for this middleware.
+#
 # Lifecycle: write-per-call. Every tool call is a read-modify-write against
 # disk under a per-key ``asyncio.Lock``. Any topic longer than
 # ``max_topic_size`` characters is summarized inline, under the same lock

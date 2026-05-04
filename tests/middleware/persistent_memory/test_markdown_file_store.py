@@ -23,6 +23,7 @@ from pathlib import Path
 from typing import Optional
 
 from middleware.persistent_memory.markdown_file_store import MarkdownFileStore
+
 from tests.middleware.persistent_memory.base import MemoryTestBase
 
 
@@ -43,7 +44,7 @@ class MarkdownFileStoreTests(MemoryTestBase):
         store: MarkdownFileStore = self._make_store()
         memory: dict = {
             "mike": "Works in Sales.",
-            "shrushti": "Works in Education.",
+            "john": "Works in Education.",
         }
         asyncio.run(store.save_all("net.agent", memory))
         loaded: dict = asyncio.run(store.load_all("net.agent"))

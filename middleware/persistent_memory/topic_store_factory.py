@@ -90,7 +90,7 @@ class TopicStoreFactory:  # pylint: disable=too-few-public-methods
         cls._logger.info("Creating memory store backend: %s (folder_name=%s)", backend, folder_name)
 
         if backend == "json_file":
-            # ``JsonFileStore`` applies the default and sanitises the stem itself;
+            # ``JsonFileStore`` applies the default and sanitizes the stem itself;
             # an empty string here collapses to ``DEFAULT_FILE_NAME`` inside.
             return JsonFileStore(folder_name=folder_name, file_name=file_name or "")
         if backend == "markdown_file":

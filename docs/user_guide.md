@@ -73,6 +73,8 @@
     - [AAOSA](#aaosa)
     - [External Agent Networks](#external-agent-networks)
     - [Memory](#memory)
+      - [Chat Context](#chat-context)
+      - [Persistent Memory](#persistent-memory)
   - [Connect with other agent frameworks](#connect-with-other-agent-frameworks)
   - [Plugins](#plugins)
   - [Test](#test)
@@ -1681,26 +1683,33 @@ Look at [Consumer Decision Assistant](examples/industry/consumer_decision_assist
 
 ### Memory
 
-#### Memory vs. chat context
+#### Chat Context
 
 **Chat context** is the in-session message history between the user and the
 agent. It is managed automatically by the framework and resets when the session
 ends.
 
+#### Persistent Memory
+
 **Persistent memory** is disk-backed storage that survives across sessions. The
-agent explicitly reads and writes it via the `persistent_memory` tool. It holds
+agent explicitly reads and writes it via the `PersistentMemoryMiddleware`. It holds
 user-facing information — personal details, preferences, and facts the user has
-shared. It is not for internal LLM state such as tool call results, pass/fail
-outcomes, or execution traces.
+shared. It is not for internal LLM state such as LLM call results, pass/fail
+outcomes, or execution traces. This middleware is designed for local, single-user
+usage. Memory is scoped per `(network, agent)` — not per user — so all users
+sharing the same agent share the same memory namespace. Multi-tenant / per-user
+isolation is out of scope; server-side backends are planned separately.
 
 Agents can be given long-term memory by attaching the `PersistentMemoryMiddleware`.
-The middleware registers a single `persistent_memory` tool on the agent
-(six operations: `create`, `read`, `append`, `delete`, `search`, `list`) and
-persists each topic to disk, scoped by `(agent_network_name, agent_name, topic)`.
-Writes land as soon as the tool call returns — no bookended load/save, and a
-crash mid-turn loses at most the call that was in-flight.
+The middleware exposes six operations (`create`, `read`, `append`, `delete`,
+`search`, `list`) and persists each topic to disk, scoped by
+`(agent_network_name, agent_name, topic)`. Writes land as soon as the LLM call
+returns — no bookended load/save, and a crash mid-turn loses at most the call
+that was in-flight.
 
 Minimal wiring — only `class` is required, every other key has a sensible default.
+See the [full configuration reference](./examples/tools/persistent_memory.md#configuration)
+for all available options.
 
 ```hocon
 "middleware": [
@@ -1710,13 +1719,17 @@ Minimal wiring — only `class` is required, every other key has a sensible defa
 ]
 ```
 
-Two storage backends ship: `json_file` (one `memory.json` per agent, default) and
-`markdown_file` (one `.md` per topic). Oversized topics are summarized inline under the
-same lock that did the write, so readers never see an intermediate oversized state.
-See [examples/tools/persistent_memory.md](./examples/tools/persistent_memory.md)
-for the full tutorial — building the HOCON from scratch, a sample conversation,
-backend trade-offs, summarizer tuning, and debugging tips. The minimal working
-network lives at [persistent_memory.hocon](../registries/tools/persistent_memory.hocon).
+The middleware includes two storage backends. The `json_file` backend (default)
+stores all topics for an agent in a single `memory.json` file. The
+`markdown_file` backend stores each topic as a separate `.md` file. Oversized
+topics are summarized inline under the same lock that performed the write,
+ensuring readers never observe an intermediate oversized state.
+
+For a complete walkthrough — including HOCON configuration, a sample
+conversation, backend trade-offs, summarizer tuning, and debugging tips — see
+the [persistent memory documentation](./examples/tools/persistent_memory.md).
+A minimal working network is available at
+[persistent_memory.hocon](../registries/tools/persistent_memory.hocon).
 
 ## Connect with other agent frameworks
 

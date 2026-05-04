@@ -22,11 +22,12 @@ import asyncio
 from unittest.mock import AsyncMock
 
 from middleware.persistent_memory.json_file_store import JsonFileStore
+
 from tests.middleware.persistent_memory.base import MemoryTestBase
 
 
-class PersistentMemoryToolDispatchTests(MemoryTestBase):
-    """The six operations persist to disk on every call."""
+class PersistentMemoryToolTests(MemoryTestBase):
+    """Dispatch, enabled-operations, and summarizer tests."""
 
     def setUp(self) -> None:
         super().setUp()
@@ -83,20 +84,12 @@ class PersistentMemoryToolDispatchTests(MemoryTestBase):
         result = self._invoke({"operation": "list"})
         self.assertEqual(result.get("result", {}).get("topics"), ["a", "b"])
 
-
-class PersistentMemoryToolEnabledOperationsTests(MemoryTestBase):
-    """The ``enabled_operations`` whitelist constrains the LLM."""
-
     def test_disabled_operation_returns_error(self) -> None:
         """Calling a disabled operation surfaces a ``not enabled`` error."""
         tool = self.make_tool(enabled_operations=["read", "search"])
         result = asyncio.run(tool.async_invoke({"operation": "create", "topic": "x", "content": "v"}))
         self.assertIn("error", result)
         self.assertIn("not enabled", result.get("error", "").lower())
-
-
-class PersistentMemoryToolSummarizerTests(MemoryTestBase):
-    """Summarizer fires from the tool after oversized writes."""
 
     def test_summarizer_fires_after_oversized_write(self) -> None:
         """A write past ``max_topic_size`` triggers the summarizer and rewrites disk."""

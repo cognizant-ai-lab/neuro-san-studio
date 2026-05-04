@@ -28,6 +28,7 @@ from middleware.persistent_memory.json_file_store import JsonFileStore
 from middleware.persistent_memory.persistent_memory_middleware import PersistentMemoryMiddleware
 from middleware.persistent_memory.persistent_memory_tool import PersistentMemoryTool
 from middleware.persistent_memory.topic_store import TopicStore
+
 from tests.middleware.persistent_memory.should_summarize import ShouldSummarize
 
 

@@ -53,7 +53,7 @@ class TopicStore(ABC):
         self._root: Path = Path(folder_name).expanduser().resolve()
         self._locks: OrderedDict[tuple[str, ...], asyncio.Lock] = OrderedDict()
         self._locks_guard: asyncio.Lock = asyncio.Lock()
-        self.logger.info("Initialised. Root path: %s", self._root)
+        self.logger.info("Initialized. Root path: %s", self._root)
 
     async def get_topic(
         self,
@@ -344,7 +344,7 @@ class TopicStore(ABC):
         """
         Split ``"<network>.<agent>"``; missing halves fall back to ``"unknown"``.
 
-        The middleware sanitises both halves before building this key, so
+        The middleware sanitizes both halves before building this key, so
         the store trusts the input to be filesystem-safe.
 
         :param namespace: ``"<network>.<agent>"`` key.
