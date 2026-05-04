@@ -21,7 +21,7 @@ from unittest.mock import patch
 
 from neuro_san_studio.interfaces.base_plugin import BasePlugin
 from neuro_san_studio.interfaces.process_logger_interface import ProcessLoggerInterface
-from plugins.log_bridge.process_log_bridge_plugin import ProcessLogBridgePlugin
+from neuro_san_studio.plugins.log_bridge.process_log_bridge_plugin import ProcessLogBridgePlugin
 
 
 class TestProcessLogBridgePlugin:
@@ -35,20 +35,20 @@ class TestProcessLogBridgePlugin:
         """Test that ProcessLogBridgePlugin implements ProcessLoggerInterface."""
         assert issubclass(ProcessLogBridgePlugin, ProcessLoggerInterface)
 
-    @patch("plugins.log_bridge.process_log_bridge_plugin.ProcessLogBridge")
+    @patch("neuro_san_studio.plugins.log_bridge.process_log_bridge_plugin.ProcessLogBridge")
     def test_constructor_sets_plugin_name(self, _mock_bridge):
         """Test that the constructor sets the plugin name."""
         plugin = ProcessLogBridgePlugin(args={"logs_dir": "/tmp"})
         assert plugin.plugin_name == "ProcessLogBridgePlugin"
 
-    @patch("plugins.log_bridge.process_log_bridge_plugin.ProcessLogBridge")
+    @patch("neuro_san_studio.plugins.log_bridge.process_log_bridge_plugin.ProcessLogBridge")
     def test_constructor_creates_bridge(self, mock_bridge_cls):
         """Test that the log bridge is always created."""
         plugin = ProcessLogBridgePlugin(args={"logs_dir": "/tmp", "log_level": "info"})
         mock_bridge_cls.assert_called_once()
         assert plugin.log_bridge is not None
 
-    @patch("plugins.log_bridge.process_log_bridge_plugin.ProcessLogBridge")
+    @patch("neuro_san_studio.plugins.log_bridge.process_log_bridge_plugin.ProcessLogBridge")
     def test_post_server_start_action_attaches_logger(self, mock_bridge_cls):
         """Test that post_server_start_action attaches process logger."""
         mock_bridge = MagicMock()
@@ -62,7 +62,7 @@ class TestProcessLogBridgePlugin:
 
         mock_bridge.attach_process_logger.assert_called_once_with(mock_process, "TestProcess", plugin.log_file)
 
-    @patch("plugins.log_bridge.process_log_bridge_plugin.ProcessLogBridge")
+    @patch("neuro_san_studio.plugins.log_bridge.process_log_bridge_plugin.ProcessLogBridge")
     def test_attach_process_logger_delegates_to_bridge(self, mock_bridge_cls):
         """Test that attach_process_logger delegates to the internal bridge."""
         mock_bridge = MagicMock()
