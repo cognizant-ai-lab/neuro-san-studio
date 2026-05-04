@@ -381,11 +381,11 @@ queries against images or videos. It uses Apple's ml-fastvlm library to answer t
 
 ### Persistent Memory
 
-[Persistent Memory](examples/tools/persistent_memory.md) is a middleware that gives an agent long-term,
-file-backed memory: a CRUD and keyword-search store that survives across sessions. It is registered
-automatically by attaching `PersistentMemoryMiddleware` to an agent's middleware block. Two storage
-backends are available (JSON or Markdown), with an optional LLM summarizer for auto-compaction of
-long entries.
+[Persistent Memory](examples/tools/persistent_memory.md) is an agent network with middleware that
+gives the agent long-term, file-backed memory: a CRUD and keyword-search store that survives across
+sessions. The memory is registered automatically by attaching `PersistentMemoryMiddleware` to an
+agent's middleware block. Two storage backends are available (JSON or Markdown), with an optional
+LLM summarizer for auto-compaction of long entries.
 
 **Tags:** `tool`, `middleware`, `memory`
 
