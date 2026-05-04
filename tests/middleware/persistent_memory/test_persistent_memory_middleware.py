@@ -24,7 +24,6 @@ from pathlib import Path
 from unittest.mock import AsyncMock
 
 from middleware.persistent_memory.persistent_memory_middleware import PersistentMemoryMiddleware
-
 from tests.middleware.persistent_memory.base import MemoryTestBase
 
 
