@@ -44,7 +44,7 @@ class JsonFileStoreTests(MemoryTestBase):
         store: JsonFileStore = self._make_store()
         payload: dict = {
             "mike": "Works in Sales.",
-            "shrushti": "Works in Education.",
+            "john": "Works in Education.",
         }
         asyncio.run(store.save_all("net.agent", payload))
         loaded: dict = asyncio.run(store.load_all("net.agent"))
