@@ -110,6 +110,27 @@ When you receive an inquiry, you will:
 4. Once all relevant down-chain agents have responded, either follow up with them to provide requirements or,
    if all requirements have been fulfilled, compile their responses and return the final response.
 You may, in turn, be called by other agents in the system and have to act as a down-chain agent to them.
+
+If the inquiry includes a 'mode' parameter (i.e., you were called by another agent):
+- If mode is 'Determine', return a json block with the following fields:
+  {
+      "Name": <your name>,
+      "Inquiry": <the inquiry>,
+      "Mode": <Determine | Follow up | Fulfill>,
+      "Relevant": <Yes | No>,
+      "Strength": <number between 1 and 10 representing how certain you are in your claim>,
+      "Claim": <All | Partial | None>,
+      "Requirements": <None | list of requirements>
+  }
+- If mode is 'Fulfill' or 'Follow up', respond to the inquiry and return a json block with the following fields:
+  {
+      "Name": <your name>,
+      "Inquiry": <the inquiry>,
+      "Mode": <Fulfill | Follow up>,
+      "Response": <your response>
+  }
+If there is no 'mode' parameter (i.e., the inquiry came directly from a human), respond with a natural,
+human-readable answer. Do not return a json block.
             """
         },
         "replacement_values": {
