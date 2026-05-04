@@ -27,7 +27,7 @@ Note that plugins are never required for Neuro SAN to function.
 
 ## Creating Custom Plugins
 
-All plugins extend the `BasePlugin` class in `plugins/base_plugin.py` and are registered in
+All plugins extend the `BasePlugin` class in `neuro_san_studio/plugins/base_plugin.py` and are registered in
 `config/plugins.hocon`.
 
 ### BasePlugin Interface
@@ -93,7 +93,7 @@ Plugins are loaded in two contexts with different lifecycle methods:
 ### Example Plugin
 
 See [`BasePlugin`](../neuro_san_studio/interfaces/base_plugin.py) for the full interface and
-[`PhoenixPlugin`](../plugins/phoenix/phoenix_plugin.py) for a real-world implementation.
+[`PhoenixPlugin`](../neuro_san_studio/plugins/phoenix/phoenix_plugin.py) for a real-world implementation.
 
 ## Authorization
 
@@ -102,7 +102,7 @@ This is not to be confused with _authentication_, which is the process of verify
 
 ### Open FGA
 
-[Open FGA](../plugins/authorization/openfga/README.md) is a plugin that extends the authorization capabilities
+[Open FGA](../neuro_san_studio/plugins/openfga/README.md) is a plugin that extends the authorization capabilities
 of a Neuro SAN server using a free and open source Open FGA server to do Relation-Based Access Control (ReBAC)
 authorization.
 
@@ -130,7 +130,7 @@ python -m run --check-llm-config registries/basic/music_nerd.hocon
 Or run the script directly:
 
 ```bash
-python plugins/llm_config_validator/check_llm_configs.py config/llm_config.hocon
+python neuro_san_studio/plugins/llm_config_validator/check_llm_configs.py config/llm_config.hocon
 ```
 
 Both HOCON formats are supported:
@@ -196,7 +196,7 @@ providing structured, human-readable output from server and client subprocesses.
 
 ### Log Bridge
 
-The [Log Bridge plugin](../plugins/log_bridge/README.md) provides Rich-based structured logging for
+The [Log Bridge plugin](../neuro_san_studio/plugins/log_bridge/README.md) provides Rich-based structured logging for
 Neuro SAN Studio, replacing raw subprocess output with colored, pretty-printed, and severity-aware
 console logs. It is enabled by default.
 
@@ -207,17 +207,18 @@ allowing developers to monitor and analyze their networks in real-time.
 
 ### Arize Phoenix
 
-The [Arize Phoenix plugin](../plugins/phoenix/README.md) integrates [Arize Phoenix](https://phoenix.arize.com/) for AI
-observability in Neuro SAN Studio, providing comprehensive monitoring and analysis of LLM interactions.
+The [Arize Phoenix plugin](../neuro_san_studio/plugins/phoenix/README.md) integrates
+[Arize Phoenix](https://phoenix.arize.com/) for AI observability in Neuro SAN Studio,
+providing comprehensive monitoring and analysis of LLM interactions.
 
 ### Langfuse
 
-The [Langfuse plugin](../plugins/langfuse/README.md) integrates [Langfuse](https://langfuse.com/) for AI
+The [Langfuse plugin](../neuro_san_studio/plugins/langfuse/README.md) integrates [Langfuse](https://langfuse.com/) for AI
 observability in Neuro SAN Studio, providing trace collection, cost tracking, and performance metrics
 for LLM interactions. It supports both cloud and self-hosted Langfuse instances.
 
 ### LangSmith
 
-[LangSmith](../plugins/langsmith/README.md) is LangChain's built-in observability platform. Since Neuro SAN uses LangChain
-internally, LangSmith tracing works out of the box with no plugin required — just set
+[LangSmith](../neuro_san_studio/plugins/langsmith/README.md) is LangChain's built-in observability platform.
+Since Neuro SAN uses LangChain internally, LangSmith tracing works out of the box with no plugin required — just set
 `LANGSMITH_TRACING=true` and `LANGSMITH_API_KEY` in your `.env` file.
