@@ -28,7 +28,7 @@ from langchain_openai import OpenAIEmbeddings
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from neuro_san.interfaces.coded_tool import CodedTool
 
-PDF_FILE_URL = "https://www.replicon.com/wp-content/uploads/2016/06/RFP-Template_Replicon.pdf"
+PDF_FILE_URL = "https://www.usac.org/wp-content/uploads/rural-health-care/documents/samples/LargeProjectScopeRFP.pdf"
 
 
 class Rag(CodedTool):
