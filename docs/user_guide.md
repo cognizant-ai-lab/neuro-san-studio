@@ -1692,22 +1692,24 @@ ends.
 #### Persistent Memory
 
 **Persistent memory** is disk-backed storage that survives across sessions. The
-agent explicitly reads and writes it via the `persistent_memory` tool. It holds
+agent explicitly reads and writes it via the `PersistentMemoryMiddleware`. It holds
 user-facing information — personal details, preferences, and facts the user has
-shared. It is not for internal LLM state such as tool call results, pass/fail
+shared. It is not for internal LLM state such as LLM call results, pass/fail
 outcomes, or execution traces. This middleware is designed for local, single-user
 usage. Memory is scoped per `(network, agent)` — not per user — so all users
 sharing the same agent share the same memory namespace. Multi-tenant / per-user
 isolation is out of scope; server-side backends are planned separately.
 
 Agents can be given long-term memory by attaching the `PersistentMemoryMiddleware`.
-The middleware registers a single `persistent_memory` tool on the agent
-(six operations: `create`, `read`, `append`, `delete`, `search`, `list`) and
-persists each topic to disk, scoped by `(agent_network_name, agent_name, topic)`.
-Writes land as soon as the tool call returns — no bookended load/save, and a
-crash mid-turn loses at most the call that was in-flight.
+The middleware exposes six operations (`create`, `read`, `append`, `delete`,
+`search`, `list`) and persists each topic to disk, scoped by
+`(agent_network_name, agent_name, topic)`. Writes land as soon as the LLM call
+returns — no bookended load/save, and a crash mid-turn loses at most the call
+that was in-flight.
 
 Minimal wiring — only `class` is required, every other key has a sensible default.
+See the [full configuration reference](./examples/tools/persistent_memory.md#configuration)
+for all available options.
 
 ```hocon
 "middleware": [
