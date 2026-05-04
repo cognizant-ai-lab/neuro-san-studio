@@ -17,7 +17,7 @@ This plugin integrates [Arize Phoenix](https://phoenix.arize.com/) for AI observ
 1. Install the Phoenix plugin dependencies:
 
 ```bash
-pip install -r plugins/phoenix/requirements.txt
+pip install -r neuro_san_studio/plugins/phoenix/requirements.txt
 ```
 
 2. Enable Phoenix by setting environment variables in your `.env` file:
@@ -76,14 +76,14 @@ OTEL_SERVICE_VERSION=1.0.0
 Phoenix observability is implemented as a self-contained plugin following a refactoring in [PR #404](https://github.com/cognizant-ai-lab/neuro-san-studio/pull/404). The design prioritizes:
 
 - **Non-invasive integration**: Phoenix initialization occurs only when the Neuro SAN server starts, not during pip operations or tests
-- **Centralized logic**: All Phoenix-related code is consolidated in the `plugins/phoenix/` directory
+- **Centralized logic**: All Phoenix-related code is consolidated in the `neuro_san_studio/plugins/phoenix/` directory
 - **Clean lifecycle management**: The `PhoenixPlugin` class encapsulates server startup, configuration, and shutdown
 
 ### Key Components
 
 #### PhoenixPlugin Class
 
-The `PhoenixPlugin` class (in `plugins/phoenix/phoenix_plugin.py`) manages:
+The `PhoenixPlugin` class (in `neuro_san_studio/plugins/phoenix/phoenix_plugin.py`) manages:
 
 - **Configuration**: Reads environment variables and provides defaults via `get_default_config()`
 - **Initialization**: Sets up OpenTelemetry tracer provider and instruments LLM SDKs (OpenAI, Anthropic, LangChain, LiteLLM, MCP)
@@ -106,7 +106,7 @@ Key decisions from the refactoring:
 - **Removed `sitecustomize.py`**: Previously, Phoenix auto-initialized in all Python processes (including pip and tests). This was too invasive and caused unintended side effects.
 - **Plugin pattern**: Enables future extensibility for other observability tools without requiring core code changes
 - **Lazy initialization**: Phoenix only initializes when explicitly enabled and the server starts, reducing overhead for users who don't need observability
-- **Separate requirements**: Phoenix dependencies are isolated in `plugins/phoenix/requirements.txt`, making it easy to install only when needed
+- **Separate requirements**: Phoenix dependencies are isolated in `neuro_san_studio/plugins/phoenix/requirements.txt`, making it easy to install only when needed
 
 ### Future Considerations
 
@@ -174,7 +174,7 @@ Or simply remove the Phoenix environment variables.
 Make sure you've installed the plugin requirements:
 
 ```bash
-pip install -r plugins/phoenix/requirements.txt
+pip install -r neuro_san_studio/plugins/phoenix/requirements.txt
 ```
 
 ## Learn More

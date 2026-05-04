@@ -26,7 +26,7 @@ import os
 import sys
 
 from neuro_san_studio.interfaces.base_plugin import BasePlugin
-from plugins.llm_config_validator.check_llm_configs import run_checks
+from neuro_san_studio.plugins.llm_config_validator.check_llm_configs import run_checks
 
 
 class LlmConfigValidatorPlugin(BasePlugin):
@@ -76,12 +76,7 @@ class LlmConfigValidatorPlugin(BasePlugin):
         Args:
             parser: The argument parser to update.
         """
-        default_llm_config = os.path.join(
-            os.getenv("AGENT_MANIFEST_FILE", os.path.join("registries", "manifest.hocon")),
-            "..",
-            "llm_config.hocon",
-        )
-        default_llm_config = os.path.normpath(default_llm_config)
+        default_llm_config = os.path.join("config", "llm_config.hocon")
         parser.add_argument(
             "--check-llm-config",
             nargs="?",
