@@ -255,7 +255,9 @@ class ReadFile(CodedTool):
           3. blocked_extensions: None or [] = skip; non-empty = deny matching extensions.
           4. blocked_paths:      None or [] = skip; non-empty = deny matching paths/dirs.
         """
-        suffix: str = file_path.suffix.lower()
+        # For dotfiles like ".env", pathlib returns suffix="" and stem=".env".
+        # Use the full filename in that case so callers can match by e.g. ".env".
+        suffix: str = file_path.suffix.lower() or file_path.name.lower()
 
         # 1. allowed_extensions
         if allowed_extensions is not None:
