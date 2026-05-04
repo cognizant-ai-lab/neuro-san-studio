@@ -32,9 +32,11 @@
 # Class path: middleware.persistent_memory.persistent_memory_middleware.PersistentMemoryMiddleware
 #
 # Backend selection happens via the ``memory_config.storage`` block in the
-# middleware ``args``. Two backends ship out of the box:
-#   - ``markdown_file``: one ``.md`` file per topic.
+# middleware ``args``. Three backends ship out of the box:
 #   - ``json_file``:     one ``memory.json`` per agent (the default).
+#   - ``markdown_file``: one ``.md`` file per topic.
+#   - ``mem0``:          Mem0 cloud — requires MEM0_API_KEY env var and
+#                        ``"sly_data": true`` in middleware args for per-user scoping.
 #
 # Lifecycle: write-per-call. Every tool call is a read-modify-write against
 # disk under a per-key ``asyncio.Lock``. Any topic longer than
@@ -88,10 +90,15 @@ confirm or share the information — do not guess.
                         # All memory settings live under a single ``memory_config`` block with three sub-keys.
                         "memory_config": {
                             # Backend configuration.
-                            #   ``backend``:     ``json_file`` or ``markdown_file``.
+                            #   ``backend``:     ``json_file``, ``markdown_file``, or ``mem0``.
                             #   ``folder_name``: where memory files are written, always resolved relative to the repo root.
                             #   ``file_name``:   JSON-only file stem; written to
                             #                    ``<folder_name>/<agent_network_name>/<agent_name>/<file_name>.json``.
+                            #
+                            # To use the Mem0 cloud backend instead, replace the storage block with:
+                            #   "storage": { "backend": "mem0" }
+                            # and add ``"sly_data": true`` alongside ``origin_str`` above so the
+                            # framework injects the per-request user ID for Mem0 scoping.
                             "storage": {
                                 "backend":     "json_file",
                                 "folder_name": "memory",
