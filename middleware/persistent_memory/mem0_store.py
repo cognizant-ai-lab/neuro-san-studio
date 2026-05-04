@@ -35,7 +35,7 @@ from typing import Any
 from typing import ClassVar
 from typing import override
 
-from mem0 import MemoryClient
+from mem0 import MemoryClient  # pylint: disable=import-error
 
 from middleware.persistent_memory.topic_store import TopicStore
 
@@ -51,7 +51,7 @@ class Mem0Store(TopicStore):
 
     _DEFAULT_USER_ID: ClassVar[str] = "default_user"
 
-    def __init__(self, sly_data: dict[str, Any] | None = None) -> None:
+    def __init__(self, sly_data: dict[str, Any] | None = None) -> None:  # pylint: disable=super-init-not-called
         # Bypass TopicStore.__init__ — no filesystem root is needed for a
         # cloud backend. Initialise only the attributes the base class methods
         # rely on: logger, lock cache, and lock-cache guard.
@@ -118,9 +118,7 @@ class Mem0Store(TopicStore):
         async with await self._lock_for(self._list_lock_key(namespace)):
             existing = self._fetch_for_namespace(client, user_id, network, agent)
             existing_by_topic: dict[str, str] = {
-                m["metadata"]["topic"]: m["id"]
-                for m in existing
-                if m.get("metadata", {}).get("topic")
+                m["metadata"]["topic"]: m["id"] for m in existing if m.get("metadata", {}).get("topic")
             }
 
             # Remove topics that are no longer in the provided memory dict.
@@ -204,16 +202,14 @@ class Mem0Store(TopicStore):
         client = self._client()
         user_id = self._user_id()
         memories = self._fetch_for_namespace(client, user_id, network, agent)
-        return {
-            m["metadata"]["topic"]: m.get("memory", "")
-            for m in memories
-            if m.get("metadata", {}).get("topic")
-        }
+        return {m["metadata"]["topic"]: m.get("memory", "") for m in memories if m.get("metadata", {}).get("topic")}
 
     # ------------------------------------------------------------------
     # Mem0 cloud helpers
     # ------------------------------------------------------------------
 
+    # pylint: disable=too-many-arguments
+    # pylint: disable=too-many-positional-arguments
     def _upsert(
         self,
         client: MemoryClient,
@@ -262,15 +258,15 @@ class Mem0Store(TopicStore):
         :param agent:   Agent name to filter on.
         :return: Filtered list of Mem0 memory dicts.
         """
-        all_results: list[dict[str, Any]] = client.get_all(
-            filters={"user_id": user_id}
-        ).get("results", [])
+        all_results: list[dict[str, Any]] = client.get_all(filters={"user_id": user_id}).get("results", [])
         return [
-            m for m in all_results
-            if m.get("metadata", {}).get("network") == network
-            and m.get("metadata", {}).get("agent") == agent
+            m
+            for m in all_results
+            if m.get("metadata", {}).get("network") == network and m.get("metadata", {}).get("agent") == agent
         ]
 
+    # pylint: disable=too-many-arguments
+    # pylint: disable=too-many-positional-arguments
     def _find_topic_id(
         self,
         client: MemoryClient,

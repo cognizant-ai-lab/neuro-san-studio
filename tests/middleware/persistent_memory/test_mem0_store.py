@@ -22,6 +22,8 @@ Live Mem0 API calls are mocked so the suite runs without ``MEM0_API_KEY``.
 from __future__ import annotations
 
 import asyncio
+import json
+import os
 from typing import Any
 from unittest import TestCase
 from unittest.mock import MagicMock
@@ -41,8 +43,6 @@ class Mem0StoreUserIdTests(TestCase):
 
     def test_env_var_fallback(self) -> None:
         """Falls back to DEFAULT_SLY_DATA env var when sly_data is absent."""
-        import json
-        import os
         env_payload = json.dumps({"user_id": "env_user"})
         with patch.dict(os.environ, {"DEFAULT_SLY_DATA": env_payload}):
             store = Mem0Store()
@@ -50,7 +50,6 @@ class Mem0StoreUserIdTests(TestCase):
 
     def test_default_user_fallback(self) -> None:
         """Returns 'default_user' when both sly_data and env var are absent."""
-        import os
         with patch.dict(os.environ, {}, clear=False):
             os.environ.pop("DEFAULT_SLY_DATA", None)
             store = Mem0Store()
@@ -58,8 +57,6 @@ class Mem0StoreUserIdTests(TestCase):
 
     def test_sly_data_overrides_env_var(self) -> None:
         """sly_data takes priority over DEFAULT_SLY_DATA env var."""
-        import json
-        import os
         env_payload = json.dumps({"user_id": "env_user"})
         with patch.dict(os.environ, {"DEFAULT_SLY_DATA": env_payload}):
             store = Mem0Store(sly_data={"user_id": "sly_user"})
@@ -67,7 +64,6 @@ class Mem0StoreUserIdTests(TestCase):
 
     def test_empty_sly_data_falls_back(self) -> None:
         """Empty sly_data dict falls back to env var / default."""
-        import os
         os.environ.pop("DEFAULT_SLY_DATA", None)
         store = Mem0Store(sly_data={})
         self.assertEqual(store._user_id(), "default_user")  # pylint: disable=protected-access
@@ -90,7 +86,6 @@ class Mem0StoreFactoryTests(TestCase):
 
     def test_factory_sly_data_none_by_default(self) -> None:
         """No sly_data → falls back to default_user."""
-        import os
         os.environ.pop("DEFAULT_SLY_DATA", None)
         store = TopicStoreFactory.create({"backend": "mem0"})
         self.assertEqual(store._user_id(), "default_user")  # pylint: disable=protected-access
@@ -110,7 +105,7 @@ class Mem0StoreCrudTests(TestCase):
         return client
 
     def _run(self, coro: Any) -> Any:
-        return asyncio.get_event_loop().run_until_complete(coro)
+        return asyncio.run(coro)
 
     def test_read_topic_returns_content(self) -> None:
         """_read_topic returns the memory text for a matching topic."""
@@ -156,9 +151,11 @@ class Mem0StoreCrudTests(TestCase):
         client = self._mock_client(memories)
         with patch.object(store, "_client", return_value=client):
             self._run(store._write_topic(self._NAMESPACE, "mike", "new content"))  # pylint: disable=protected-access
-        client.update.assert_called_once_with(memory_id="mem-1", text="new content",
-                                              metadata={"network": "coffee_finder_advanced",
-                                                        "agent": "UserPreferences", "topic": "mike"})
+        client.update.assert_called_once_with(
+            memory_id="mem-1",
+            text="new content",
+            metadata={"network": "coffee_finder_advanced", "agent": "UserPreferences", "topic": "mike"},
+        )
 
     def test_remove_topic_returns_true_when_found(self) -> None:
         """_remove_topic deletes the entry and returns True."""
@@ -186,8 +183,16 @@ class Mem0StoreCrudTests(TestCase):
     def test_read_bucket_returns_all_topics(self) -> None:
         """_read_bucket returns all topics for the namespace as a dict."""
         memories = [
-            {"id": "1", "memory": "black coffee", "metadata": {"network": "coffee_finder_advanced", "agent": "UserPreferences", "topic": "mike"}},
-            {"id": "2", "memory": "latte", "metadata": {"network": "coffee_finder_advanced", "agent": "UserPreferences", "topic": "alice"}},
+            {
+                "id": "1",
+                "memory": "black coffee",
+                "metadata": {"network": "coffee_finder_advanced", "agent": "UserPreferences", "topic": "mike"},
+            },
+            {
+                "id": "2",
+                "memory": "latte",
+                "metadata": {"network": "coffee_finder_advanced", "agent": "UserPreferences", "topic": "alice"},
+            },
         ]
         store = self._make_store()
         with patch.object(store, "_client", return_value=self._mock_client(memories)):
@@ -197,9 +202,21 @@ class Mem0StoreCrudTests(TestCase):
     def test_fetch_filters_by_network_and_agent(self) -> None:
         """_fetch_for_namespace excludes entries from other networks/agents."""
         memories = [
-            {"id": "1", "memory": "keep", "metadata": {"network": "coffee_finder_advanced", "agent": "UserPreferences", "topic": "mike"}},
-            {"id": "2", "memory": "skip", "metadata": {"network": "other_network", "agent": "UserPreferences", "topic": "alice"}},
-            {"id": "3", "memory": "skip", "metadata": {"network": "coffee_finder_advanced", "agent": "OtherAgent", "topic": "bob"}},
+            {
+                "id": "1",
+                "memory": "keep",
+                "metadata": {"network": "coffee_finder_advanced", "agent": "UserPreferences", "topic": "mike"},
+            },
+            {
+                "id": "2",
+                "memory": "skip",
+                "metadata": {"network": "other_network", "agent": "UserPreferences", "topic": "alice"},
+            },
+            {
+                "id": "3",
+                "memory": "skip",
+                "metadata": {"network": "coffee_finder_advanced", "agent": "OtherAgent", "topic": "bob"},
+            },
         ]
         store = self._make_store()
         client = self._mock_client(memories)
