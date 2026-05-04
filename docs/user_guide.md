@@ -1719,13 +1719,17 @@ for all available options.
 ]
 ```
 
-Two storage backends ship: `json_file` (one `memory.json` per agent, default) and
-`markdown_file` (one `.md` per topic). Oversized topics are summarized inline under the
-same lock that did the write, so readers never see an intermediate oversized state.
-See [examples/tools/persistent_memory.md](./examples/tools/persistent_memory.md)
-for the full tutorial — building the HOCON from scratch, a sample conversation,
-backend trade-offs, summarizer tuning, and debugging tips. The minimal working
-network lives at [persistent_memory.hocon](../registries/tools/persistent_memory.hocon).
+The middleware includes two storage backends. The `json_file` backend (default)
+stores all topics for an agent in a single `memory.json` file. The
+`markdown_file` backend stores each topic as a separate `.md` file. Oversized
+topics are summarized inline under the same lock that performed the write,
+ensuring readers never observe an intermediate oversized state.
+
+For a complete walkthrough — including HOCON configuration, a sample
+conversation, backend trade-offs, summarizer tuning, and debugging tips — see
+the [persistent memory documentation](./examples/tools/persistent_memory.md).
+A minimal working network is available at
+[persistent_memory.hocon](../registries/tools/persistent_memory.hocon).
 
 ## Connect with other agent frameworks
 
