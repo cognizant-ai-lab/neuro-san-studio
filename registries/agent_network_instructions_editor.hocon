@@ -74,7 +74,7 @@ Guardrails:
 - Be surgical: avoid network-wide rewrites during `modify`; touch only what the request necessitates.
 
 **Response format**
-Always respond with "Instructions/description have been set in agent network." when sucessful.
+Always respond with "Instructions/description have been set in the agent network." when successful.
 """,
             "allow": {
                 "to_upstream": {
