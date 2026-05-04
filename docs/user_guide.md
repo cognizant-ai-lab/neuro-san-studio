@@ -73,6 +73,8 @@
     - [AAOSA](#aaosa)
     - [External Agent Networks](#external-agent-networks)
     - [Memory](#memory)
+      - [Chat Context](#chat-context)
+      - [Persistent Memory](#persistent-memory)
   - [Connect with other agent frameworks](#connect-with-other-agent-frameworks)
   - [Plugins](#plugins)
   - [Test](#test)
@@ -1681,17 +1683,22 @@ Look at [Consumer Decision Assistant](examples/industry/consumer_decision_assist
 
 ### Memory
 
-#### Memory vs. chat context
+#### Chat Context
 
 **Chat context** is the in-session message history between the user and the
 agent. It is managed automatically by the framework and resets when the session
 ends.
 
+#### Persistent Memory
+
 **Persistent memory** is disk-backed storage that survives across sessions. The
 agent explicitly reads and writes it via the `persistent_memory` tool. It holds
 user-facing information — personal details, preferences, and facts the user has
 shared. It is not for internal LLM state such as tool call results, pass/fail
-outcomes, or execution traces.
+outcomes, or execution traces. This middleware is designed for local, single-user
+usage. Memory is scoped per `(network, agent)` — not per user — so all users
+sharing the same agent share the same memory namespace. Multi-tenant / per-user
+isolation is out of scope; server-side backends are planned separately.
 
 Agents can be given long-term memory by attaching the `PersistentMemoryMiddleware`.
 The middleware registers a single `persistent_memory` tool on the agent

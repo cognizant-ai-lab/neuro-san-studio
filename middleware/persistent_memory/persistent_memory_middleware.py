@@ -52,6 +52,11 @@ class PersistentMemoryMiddleware(AgentMiddleware):
     """
     Wraps ``PersistentMemoryTool`` and plugs it into the agent lifecycle.
 
+    Designed for **local, single-user** usage. Memory is scoped per
+    ``(network, agent)`` — not per user. All users sharing the same agent
+    share the same memory namespace. Multi-tenant / per-user isolation is
+    out of scope; server-side backends are planned separately.
+
     :param origin_str:    When ``True`` (the default), asks the framework to
                           inject the runtime dotted call path at startup.
                           When a string, it is used directly as the origin.
@@ -90,7 +95,7 @@ class PersistentMemoryMiddleware(AgentMiddleware):
 
         max_topic_size, summarization_model, personalization = self._parse_summarization_config(summarization_config)
 
-        # ``JsonFileStore`` defaults + sanitises ``file_name`` on its own;
+        # ``JsonFileStore`` defaults + sanitizes ``file_name`` on its own;
         # the markdown backend ignores it. See ``JsonFileStore.__init__``.
         self._store: TopicStore = TopicStoreFactory.create(store_config)
         self._summarizer: TopicSummarizer = TopicSummarizer(
@@ -111,7 +116,7 @@ class PersistentMemoryMiddleware(AgentMiddleware):
         self.tools: list[BaseTool] = [self._build_dispatcher_tool()]
 
         self.logger.info(
-            "Initialised for %s. Enabled operations: %s",
+            "Initialized for %s. Enabled operations: %s",
             namespace_key,
             sorted(self.persistent_memory_tool.enabled_operations),
         )
@@ -233,7 +238,7 @@ class PersistentMemoryMiddleware(AgentMiddleware):
         unknown: set[str] = set(config) - self._MEMORY_CONFIG_KEYS
         if unknown:
             self.logger.warning(
-                "Ignoring unknown memory_config keys: %s. Recognised keys: %s.",
+                "Ignoring unknown memory_config keys: %s. Recognized keys: %s.",
                 sorted(unknown),
                 sorted(self._MEMORY_CONFIG_KEYS),
             )
@@ -251,7 +256,7 @@ class PersistentMemoryMiddleware(AgentMiddleware):
         namespace_key: str,
     ) -> frozenset[str]:
         """
-        Normalise the HOCON whitelist, drop unknown ops, warn on typos.
+        Normalize the HOCON whitelist, drop unknown ops, warn on typos.
 
         Omitting ``enabled_operations`` or passing an empty list enables every
         operation. Unknown entries are dropped with a warning. If every entry
@@ -294,7 +299,7 @@ class PersistentMemoryMiddleware(AgentMiddleware):
         unknown: set[str] = set(config) - self._SUMMARIZATION_CONFIG_KEYS
         if unknown:
             self.logger.warning(
-                "Ignoring unknown summarization keys: %s. Recognised keys: %s.",
+                "Ignoring unknown summarization keys: %s. Recognized keys: %s.",
                 sorted(unknown),
                 sorted(self._SUMMARIZATION_CONFIG_KEYS),
             )
