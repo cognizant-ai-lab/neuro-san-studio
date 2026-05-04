@@ -28,7 +28,6 @@ HOCON_HEADER_START = (
     '# This "aaosa.hocon" file contains key-value pairs used for substitution.\n'
     "# Specifically, it provides values for the following keys:\n"
     "#   - aaosa_call\n"
-    "#   - aaosa_command\n"
     "#   - aaosa_instructions\n"
     "# IMPORTANT:\n"
     "# Ensure that you run `python -m run` from the top level of the repository.\n"
@@ -90,7 +89,6 @@ REGULAR_AGENT_TEMPLATE = (
     '            "instructions": ${instructions_prefix} """\n'
     "%s\n"
     '""" ${aaosa_instructions},\n'
-    '            "command": ${aaosa_command},\n'
     '            "tools": [%s]\n'
     "        },\n"
 )

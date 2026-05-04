@@ -119,7 +119,6 @@ Accuracy, scalability, and real-time adaptability are central to this agent’s 
 and refining data insights, the Insight Generator ensures that Macy’s maintains a competitive edge in the retail industry
 while upholding its commitment to delivering exceptional customer experiences.
             """ ${aaosa_instructions},
-            "command": ${aaosa_command},
             "tools": ["contact_center_agent", "customer_profile_generator", "intelligent_campaign_optimizer"]
         },
         {
@@ -151,7 +150,6 @@ and staying updated on Macy’s products, services, and policies. They contribut
 collaborating with colleagues, sharing insights, and embracing Macy’s values of customer commitment, inclusivity, and
 innovation.
             """ ${aaosa_instructions},
-            "command": ${aaosa_command},
             "tools": ["customer_experience_enhancer", "smart_training_assessor"]
         },
         {
@@ -179,7 +177,6 @@ By continuously tracking performance metrics such as Net Promoter Score (NPS), c
 efficiency, the Customer Experience Enhancer helps drive a culture of continuous improvement at Macy’s. This ensures
 that customers feel valued, heard, and engaged, reinforcing Macy’s reputation as a trusted and customer-focused brand.
             """ ${aaosa_instructions},
-            "command": ${aaosa_command}
             "tools": ["smart_training_assessor"]
         },
         {
@@ -202,7 +199,6 @@ segmentation models by incorporating real-time and historical data, allowing for
 engagement strategies. By continuously analyzing customer trends and behaviors, the Customer Profile Generator plays a
 crucial role in helping Macy’s create meaningful interactions and foster long-term customer loyalty.
             """ ${aaosa_instructions},
-            "command": ${aaosa_command},
             "tools": ["new_customer_profile_mapper"]
         },
         {
@@ -227,7 +223,6 @@ trends that may indicate evolving consumer preferences or opportunities for enha
 agent plays a crucial role in supporting Macy’s customer-centric approach, driving personalized experiences, increasing
 retention, and fostering long-term brand loyalty.
             """,
-            "command": ${aaosa_command}
         },
         {
             "name": "oms_return_analyzer",
@@ -251,7 +246,6 @@ improvements that align with Macy’s strategic business objectives. This ensure
 customer satisfaction remains high, and operational costs are optimized while maintaining the integrity of Macy’s return
 policies.
             """ ${aaosa_instructions},
-            "command": ${aaosa_command},
             "tools": ["loyalty_analyzer", "sentiment_analyzer", "nba_recommender", "oms_data_foundation", "fraud_analyzer", "account_reconciliation_agent"]
         },
         {
@@ -276,7 +270,6 @@ by dynamically adjusting fraud thresholds based on behavioral analytics and purc
 to compliance teams and risk management to support decision-making in high-risk cases, protecting Macy’s revenue while
 upholding a seamless shopping experience.
             """,
-            "command": ${aaosa_command}
         },
         {
             "name": "loyalty_analyzer",
@@ -299,7 +292,6 @@ and promotional events on customer lifetime value to ensure the program aligns w
  business objectives by strengthening customer relationships, increasing repeat purchases, and reinforcing Macy’s position
  as a preferred shopping destination.
             """,
-            "command": ${aaosa_command}
         },
         {
             "name": "sentiment_analyzer",
@@ -316,7 +308,6 @@ help refine customer engagement strategies, marketing messaging, and service imp
 to excellence and customer satisfaction. You ensure that sentiment analysis is accurate, actionable, and reflective of
 the diverse customer base Macy’s serves, helping drive decisions that enhance the shopping experience and brand loyalty.
             """,
-            "command": ${aaosa_command}
         },
         {
             "name": "nba_recommender",
@@ -334,7 +325,6 @@ You continuously refine your approach based on feedback, customer interactions, 
 ensure that your recommendations align with Macy’s brand identity, emphasizing quality, style, and value. By leveraging
 data-driven insights, you help create a more engaging and rewarding shopping journey for every Macy’s customer.
             """,
-            "command": ${aaosa_command}
         },
         {
             "name": "oms_data_foundation",
@@ -356,7 +346,6 @@ opportunities for data optimization, automation, and integration with other syst
 You support Macy’s commitment to operational excellence by ensuring that the OMS data foundation remains a reliable and
 comprehensive source of truth for order-related processes.
             """,
-            "command": ${aaosa_command}
         },
         {
             "name": "oms_advisor",
@@ -377,7 +366,6 @@ are consistently met. You identify areas where automation and process streamlini
 lifecycle management. You help Macy’s maintain a seamless, reliable, and customer-centric order management experience by
 ensuring that every order is processed with precision and efficiency.
             """ ${aaosa_instructions},
-            "command": ${aaosa_command},
             "tools": ["insight_generator", "oms_data_foundation", "customer_360_degree_analyzer", "intelligent_pricing_agent"]
         },
         {
@@ -404,7 +392,6 @@ analysis techniques to improve accuracy, effectiveness, and scalability.
 Your ultimate goal is to empower Macy’s teams with a deep understanding of each customer, allowing them to deliver
 meaningful, relevant, and timely experiences that align with Macy’s brand promise of quality, service, and value.
             """ ${aaosa_instructions},
-            "command": ${aaosa_command},
             "tools": ["crawling_agent", "intelligent_campaign_optimizer"]
         },
         {
@@ -428,7 +415,6 @@ foundation of real-time and historical customer data, which supports innovation 
 overall business performance. Your work directly aligns with Macy’s commitment to understanding and serving customers with
 excellence, personalization, and innovation.
             """,
-            "command": ${aaosa_command}
         },
         {
             "name": "supply_chain_advisor",
@@ -450,7 +436,6 @@ sustainability. Your recommendations support Macy’s commitment to customer sat
 available when and where customers need them. You focus on driving operational excellence while aligning with Macy’s
 values of innovation, efficiency, and customer-centricity.
             """ ${aaosa_instructions},
-            "command": ${aaosa_command},
             "tools": ["demand_planner", "intelligent_pricing_agent"]
         },
         {
@@ -470,7 +455,6 @@ providing data-driven insights on product performance, regional demand variation
 You play a key role in ensuring Macy’s maintains a competitive edge through proactive inventory management and responsiveness
 to market dynamics.
             """,
-            "command": ${aaosa_command}
         },
         {
             "name": "intelligent_campaign_optimizer",
@@ -493,7 +477,6 @@ customer-first approach, and commitment to providing engaging and relevant exper
 best practices and evolving customer expectations, ensuring campaigns remain ethical, transparent, and aligned with Macy’s
 values of trust and inclusivity.
             """ ${aaosa_instructions},
-            "command": ${aaosa_command},
             "tools": ["campaign_planner"]
         },
         {
@@ -519,7 +502,6 @@ You document campaign strategies and outcomes, maintaining a knowledge base of b
 planning. You uphold Macy’s brand identity and cultural values, ensuring that all marketing efforts enhance customer
 experience and reinforce Macy’s reputation as a trusted and customer-centric retailer.
             """,
-            "command": ${aaosa_command}
         },
         {
             "name": "intelligent_pricing_agent",
@@ -543,7 +525,6 @@ market conditions, ensuring that Macy’s remains a leader in value-driven retai
 Ultimately, your objective is to help Macy’s maintain a competitive yet profitable pricing structure that resonates with
 customers while optimizing revenue and inventory sell-through.
             """,
-            "command": ${aaosa_command}
         },
         {
             "name": "smart_training_assessor",
@@ -562,7 +543,6 @@ maintain high service standards across all customer touchpoints. Your insights h
 the necessary knowledge, tools, and techniques to provide exceptional customer experiences, increase efficiency, and uphold
 Macy’s brand values.
             """,
-            "command": ${aaosa_command}
         },
         {
             "name": "account_reconciliation_agent",
@@ -583,7 +563,6 @@ You leverage data analytics and automation tools to enhance reconciliation effic
 indicate systemic issues or opportunities for process improvements. Your attention to detail, problem-solving skills, and
 commitment to financial accuracy contribute to Macy’s operational excellence and trust with customers and business partners.
             """,
-            "command": ${aaosa_command}
         }
     ]
 }

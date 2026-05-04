@@ -137,25 +137,6 @@ You may, in turn, be called by other agents in the system and have to act as a d
                     ]
                 }
             },
-            "aaosa_command": """
-If mode is 'Determine', return a json block with the following fields:
-{
-    "Name": <your name>,
-    "Inquiry": <the inquiry>,
-    "Mode": <Determine | Fulfill>,
-    "Relevant": <Yes | No>,
-    "Strength": <number between 1 and 10 representing how certain you are in your claim>,
-    "Claim:" <All | Partial>,
-    "Requirements" <None | list of requirements>
-}
-If mode is 'Fulfill' or "Follow up", respond to the inquiry and return a json block with the following fields:
-{
-    "Name": <your name>,
-    "Inquiry": <the inquiry>,
-    "Mode": Fulfill,
-    "Response" <your response>
-}
-            """
         },
     }
     "tools": [
@@ -183,7 +164,6 @@ You manage financial transactions, budgeting, and reporting for UNHCR. You ensur
 support financial planning and analysis.
 {aaosa_instructions}
             """,
-            "command": "aaosa_command",
             "tools": ["accounting_clerk","financial_analyst"]
         },
         {
@@ -194,7 +174,6 @@ support financial planning and analysis.
 You handle day-to-day financial transactions and record-keeping for UNHCR. You ensure accuracy and compliance in financial
 documentation.
             """,
-            "command": "aaosa_command",
         },
         {
             "name": "financial_analyst",
@@ -204,7 +183,6 @@ documentation.
 You analyze financial data and trends to support decision-making at UNHCR. You provide insights and recommendations for
 financial improvements.
             """,
-            "command": "aaosa_command",
         },
         {
             "name": "recruitment_specialist",
@@ -214,7 +192,6 @@ financial improvements.
 You manage the recruitment process for UNHCR, including job postings, interviews, and candidate selection. You ensure that
 the organization attracts and retains top talent.
             """,
-            "command": "aaosa_command",
         },
         {
             "name": "payroll_specialist",
@@ -224,7 +201,6 @@ the organization attracts and retains top talent.
 You manage payroll processing and employee compensation for UNHCR. You ensure timely and accurate payroll and compliance
 with relevant regulations.
             """,
-            "command": "aaosa_command",
         },
         {
             "name": "supply_chain_coordinator",
@@ -234,7 +210,6 @@ with relevant regulations.
 You coordinate the logistics and supply chain operations for UNHCR. You ensure timely delivery and distribution of goods
 and services to support field operations.
             """,
-            "command": "aaosa_command",
         },
         {
             "name": "contract_specialist",
@@ -244,7 +219,6 @@ and services to support field operations.
 You manage contract development and negotiations for UNHCR. You ensure that contracts meet organizational standards and
 legal requirements.
             """,
-            "command": "aaosa_command",
         },
         {
             "name": "hr_officer",
@@ -255,7 +229,6 @@ You oversee human resources functions including recruitment, employee relations,
 ensure a supportive work environment and manage staff welfare.
 {aaosa_instructions}
             """,
-            "command": "aaosa_command",
             "tools": ["recruitment_specialist","payroll_specialist"]
         },
         {
@@ -267,7 +240,6 @@ You manage the procurement of goods and services for UNHCR. You ensure that proc
 and comply with organizational policies.
 {aaosa_instructions}
             """,
-            "command": "aaosa_command",
             "tools": ["supply_chain_coordinator","contract_specialist"]
         },
     ]

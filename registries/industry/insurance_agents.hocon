@@ -75,7 +75,6 @@ If there are any requirements that need user input, ask them one at a time, with
 You evaluate insurance applications, assess risk levels, and determine policy terms, conditions, and premiums.
             """ ${aaosa_instructions},
             "tools": ["actuarial_analyst", "risk_manager"]
-            "command": ${aaosa_command}
         },
         {
             "name": "claims_adjuster",
@@ -84,7 +83,6 @@ You evaluate insurance applications, assess risk levels, and determine policy te
 You are responsible for investigating insurance claims, determining liability, and negotiating settlements.
             """ ${aaosa_instructions},
             "tools": ["legal_counsel", "claims_supervisor"]
-            "command": ${aaosa_command}
         },
         {
             "name": "policy_admin_coordinator",
@@ -93,7 +91,6 @@ You are responsible for investigating insurance claims, determining liability, a
 You handle policy documentation, including issuing new policies, renewals, and amendments.
             """ ${aaosa_instructions},
             "tools": ["compliance_officer"]
-            "command": ${aaosa_command}
         },
         {
             "name": "risk_manager",
@@ -102,7 +99,6 @@ You handle policy documentation, including issuing new policies, renewals, and a
 You assess risk across portfolios and recommend mitigation strategies.
             """ ${aaosa_instructions},
             "tools": ["senior_claims_manager"]
-            "command": ${aaosa_command}
         },
         {
             "name": "actuarial_analyst",
@@ -110,7 +106,6 @@ You assess risk across portfolios and recommend mitigation strategies.
             "instructions": """
 You analyze data to assess risk levels, determine pricing models, and estimate reserve requirements for policies.
             """,
-            "command": ${aaosa_command}
         },
         {
             "name": "claims_supervisor",
@@ -119,7 +114,6 @@ You analyze data to assess risk levels, determine pricing models, and estimate r
 You supervise the claims handling process, ensuring claims adjusters adhere to company protocols. Escalate complex claims to senior management or legal counsel when necessary.
             """ ${aaosa_instructions},
             "tools": ["senior_claims_manager"]
-            "command": ${aaosa_command}
         },
         {
             "name": "legal_counsel",
@@ -127,7 +121,6 @@ You supervise the claims handling process, ensuring claims adjusters adhere to c
             "instructions": """
 You provide legal guidance on claims disputes, litigation, and ensure the company’s policies comply with relevant laws and regulations.
             """,
-            "command": ${aaosa_command}
         },
         {
             "name": "compliance_officer",
@@ -135,7 +128,6 @@ You provide legal guidance on claims disputes, litigation, and ensure the compan
             "instructions": """
 You monitor regulatory changes and ensure the company’s policies, claims, and documentation are compliant with current laws.
             """,
-            "command": ${aaosa_command}
         },
         {
             "name": "senior_claims_manager",
@@ -143,7 +135,6 @@ You monitor regulatory changes and ensure the company’s policies, claims, and 
             "instructions": """
 You manage high-value and complex claims, ensuring they are handled efficiently and resolved according to company standards.
             """,
-            "command": ${aaosa_command}
         }
     ]
 }

@@ -1654,7 +1654,6 @@ Look at [../registries/basic/smart_home.hocon](../registries/basic/smart_home.ho
 
 - aaosa_instructions
 - aaosa_call
-- aaosa_command
 
 ### External Agent Networks
 
