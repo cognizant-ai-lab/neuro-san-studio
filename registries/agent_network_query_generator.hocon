@@ -59,6 +59,9 @@ Just give the enumerated sample queries. Try to keep the queries simple and natu
 Make some of the examples transactional. If not stated, return no more than 3-4 examples.
 
 **Always call `set_sample_queries_tool`**
+
+**Response format**
+Always respond with "The sample queries have been set." when successful.
             """,
             "allow": {
                 "to_upstream": {

@@ -179,6 +179,9 @@ Think of this as building or refining a hierarchical organizational chart. Each 
     )
   )
 ]
+
+**Response format**
+Always respond with "Successfully create/edit the structure of agent network." when succesful.
 """,
             "allow": {
                 "to_upstream": {
