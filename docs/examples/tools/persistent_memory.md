@@ -14,10 +14,16 @@ in flight.
 ## Why middleware, not a coded tool
 
 Memory needs two things the agent lifecycle already gives you: a tool the
-LLM calls, and a preamble that teaches the LLM when to call it. A coded
-tool can register the former but not the latter, so every HOCON would have
-to copy the rules by hand. Middleware ships both together. See
-[Middleware](../../user_guide.md#middleware) for the generic concept.
+LLM calls, and a preamble that shapes how the LLM uses it. The tool
+description teaches the LLM what the tool does and when to call it (e.g.
+"only use when chat context is insufficient"). The preamble adds
+behavioral rules the LLM should follow — workflow patterns like "check
+memory before answering personal questions", guardrails like "never
+fabricate memories", and conventions like "prefer append over create". A
+coded tool can register the description but not the preamble, so every
+HOCON would have to copy those rules by hand. Middleware ships both
+together. See [Middleware](../../user_guide.md#middleware) for the generic
+concept.
 
 ## Configuration
 
@@ -39,7 +45,7 @@ required; every other key is optional and falls back to the value below.
             "memory_config": {
                 "storage": {
                     "backend":     "json_file",     # or "markdown_file"
-                    "folder_name": "./memory",      # relative to the server's CWD
+                    "folder_name": "memory",        # always resolved relative to the repo root
                     "file_name":   "memory"         # json_file backend only
                 },
                 "summarization": {
@@ -134,10 +140,10 @@ Two backends ship. Both share the same on-disk layout
 (`<folder_name>/<network>/<agent>/…`) and the same atomic write (temp-file
 rename, so an interrupted write never leaves a torn file).
 
-| Backend         | Layout                         | Lock granularity                | Best for                                   |
-| :-------------- | :----------------------------- | :------------------------------ | :----------------------------------------- |
-| `json_file`     | one `memory.json` per agent    | one lock per `(network, agent)` | Few topics, many writes per topic          |
-| `markdown_file` | one `<topic>.md` per topic     | one lock per topic              | Many topics, parallel writes, hand-editing |
+| Backend         | Layout                      | Lock granularity       | Best for                    |
+| :-------------- | :-------------------------- | :--------------------- | :-------------------------- |
+| `json_file`     | one `memory.json` per agent | per `(network, agent)` | Few topics, many writes     |
+| `markdown_file` | one `<topic>.md` per topic  | per topic              | Many topics, hand-editing   |
 
 Either backend works; pick whichever fits your setup. Configure it via
 the `storage` block:
@@ -145,7 +151,7 @@ the `storage` block:
 ```hocon
 "storage": {
     "backend":     "json_file",
-    "folder_name": "./memory",
+    "folder_name": "memory",
     "file_name":   "memory"
 }
 ```
@@ -155,10 +161,10 @@ The three keys:
 - **`backend`** — which store to use. Either `json_file` (one
   `memory.json` per agent) or `markdown_file` (one `.md` file per
   topic). Defaults to `json_file`.
-- **`folder_name`** — directory where memory files are written, relative
-  to the server's working directory. The middleware appends
+- **`folder_name`** — directory where memory files are written, always
+  resolved relative to the repository root. The middleware appends
   `/<network>/<agent>/` beneath it so each agent gets its own slice.
-  Defaults to `./memory`.
+  Defaults to `memory`.
 - **`file_name`** — file stem for the JSON backend only; the
   final path is `<folder_name>/<network>/<agent>/<file_name>.json`.
   Ignored by the markdown backend. Defaults to `memory`.
@@ -217,7 +223,7 @@ tools".
 
 ## Architecture
 
-```
+```text
 ┌───────────────────────────────────────────────────────────────┐
 │ HOCON                                                         │
 │   "middleware": [ PersistentMemoryMiddleware ]                │

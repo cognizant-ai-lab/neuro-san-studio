@@ -35,6 +35,8 @@ from rich.syntax import Syntax
 from rich.text import Text
 from rich.theme import Theme
 
+from neuro_san_studio.interfaces.process_logger_interface import ProcessLoggerInterface
+
 log_cfg = {
     # Refer rich guidelines for more options:
     # https://rich.readthedocs.io/en/latest/index.html
@@ -59,24 +61,8 @@ log_cfg = {
 }
 
 
-class TZFormatter(logging.Formatter):
-    """
-    File-handler formatter that emits timezone-aware timestamps.
-    :extend: logging.Formatter
-    """
-
-    def formatTime(self, record, datefmt=None):
-        """
-        :param: record: A log record.
-        :param datefmt (str | None): Ignored. Exists for Formatter API compatibility.
-        :return: str: Timestamp formatted as `"YYYY-MM-DD HH:MM:SS <TZNAME>"`.
-        """
-        dt = datetime.fromtimestamp(record.created).astimezone()
-        return f"{dt.strftime('%Y-%m-%d %H:%M:%S')} {dt.tzname()}"
-
-
 # pylint: disable=too-many-instance-attributes,too-few-public-methods
-class ProcessLogBridge:
+class ProcessLogBridge(ProcessLoggerInterface):
     """
     ProcessLogBridge: single-class logging bridge
     - Rich console with colored ISO+TZ timestamps
@@ -86,6 +72,14 @@ class ProcessLogBridge:
     - Tee raw lines to per-process log files
     - Multi-line JSON reassembly (brace-balanced)
     """
+
+    class _TZFormatter(logging.Formatter):
+        """File-handler formatter that emits timezone-aware timestamps."""
+
+        def formatTime(self, record, datefmt=None):
+            """Format timestamp as 'YYYY-MM-DD HH:MM:SS <TZNAME>'."""
+            dt = datetime.fromtimestamp(record.created).astimezone()
+            return f"{dt.strftime('%Y-%m-%d %H:%M:%S')} {dt.tzname()}"
 
     # ---------- constants ----------
     _LEVEL_WORD = re.compile(r"\b(DEBUG|INFO|WARNING|ERROR|CRITICAL|FATAL)\b", re.IGNORECASE)
@@ -184,7 +178,7 @@ class ProcessLogBridge:
             )
             self.file_handler.setLevel(logging.DEBUG)
             # keep tz-aware timestamps for file logs
-            self.file_handler.setFormatter(TZFormatter(fmt=fmt))
+            self.file_handler.setFormatter(self._TZFormatter(fmt=fmt))
 
         # root logger config
         root = logging.getLogger()
@@ -279,6 +273,7 @@ class ProcessLogBridge:
         """
         try:
             state["tee"].write(f"{raw}\n")
+            state["tee"].flush()
         except Exception:  # pylint: disable=broad-except
             pass
 
@@ -306,7 +301,7 @@ class ProcessLogBridge:
         - Cleans up the pipe and tee file when finished.
         :param pipe: A file-like object (stdout or stderr from a subprocess).
         :param process_name (str): Label for the process.
-        :param stream_tag (str): `"STDOUT"` or `"STDERR"`—used as part of the state key.
+        :param stream_tag (str): `"STDOUT"` or `"STDERR"`--used as part of the state key.
         """
         key = (process_name, stream_tag)
         state = self._streams[key]
@@ -458,9 +453,12 @@ class ProcessLogBridge:
         """
         Infer a log level from textual content.
         Rules:
-            - If the line contains a severity word (INFO, WARNING, ERROR, etc.)
-              that level is returned.
-            - If the line looks like a traceback, ERROR is returned.
+            - Only the log prefix (text before the first '{') is searched
+              for severity keywords, so that words like "error" inside
+              JSON message payloads do not cause false positives.
+            - If the prefix contains a severity word (INFO, WARNING, ERROR,
+              etc.) that level is returned.
+            - If the full line looks like a traceback, ERROR is returned.
             - Otherwise, the provided default is used.
         :param line (str): The raw text line.
         :param default (int): Fallback level.
@@ -468,7 +466,10 @@ class ProcessLogBridge:
         """
         if not line:
             return default
-        m = self._LEVEL_WORD.search(line)
+        # Search only the log prefix before any JSON payload.
+        brace_pos = line.find("{")
+        prefix = line[:brace_pos] if brace_pos >= 0 else line
+        m = self._LEVEL_WORD.search(prefix)
         if not m:
             if "traceback" in line.lower():
                 return logging.ERROR
@@ -680,9 +681,9 @@ class ProcessLogBridge:
         """
         Emit a reconstructed multiline block.
         Decision logic:
-            - If block parses as JSON → emit as JSON.
-            - If it matches NeuroSan request-reporting → rebuild + emit.
-            - Otherwise → treat as text (flatten whitespace).
+            - If block parses as JSON -> emit as JSON.
+            - If it matches NeuroSan request-reporting -> rebuild + emit.
+            - Otherwise -> treat as text (flatten whitespace).
         :param state (dict): Per-stream state.
         :param block (str): Reassembled multiline block.
         """

@@ -14,6 +14,15 @@
 #
 # END COPYRIGHT
 
+# "Memory" here refers to persistent, disk-backed storage that survives across
+# sessions — the agent explicitly reads/writes it via the persistent_memory tool.
+# This is distinct from chat context (the in-session message history), which
+# resets when the session ends.
+#
+# The data stored is user-facing information: personal details, preferences,
+# and facts the user has shared. It is not for internal LLM state such as
+# tool call results, pass/fail outcomes, or execution traces.
+#
 # Persistent Memory — example agent network (middleware path).
 #
 # A single ``middleware`` block is all you need. Drop it on any agent that
@@ -80,12 +89,12 @@ confirm or share the information — do not guess.
                         "memory_config": {
                             # Backend configuration.
                             #   ``backend``:     ``json_file`` or ``markdown_file``.
-                            #   ``folder_name``: where memory files are written, relative to the repo root.
+                            #   ``folder_name``: where memory files are written, always resolved relative to the repo root.
                             #   ``file_name``:   JSON-only file stem; written to
                             #                    ``<folder_name>/<agent_network_name>/<agent_name>/<file_name>.json``.
                             "storage": {
                                 "backend":     "json_file",
-                                "folder_name": "./memory",
+                                "folder_name": "memory",
                                 "file_name":   "memory"  # ignored by markdown_file backend
                             },
                             # Summarizer configuration.

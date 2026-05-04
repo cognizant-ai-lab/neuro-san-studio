@@ -82,6 +82,7 @@ class AddAgent(CodedTool):
         network_def[the_agent_name] = {}
         if not is_tool:
             network_def[the_agent_name]["instructions"] = ""
+            network_def[the_agent_name]["description"] = ""
         logger.info("The resulting agent network definition: \n %s", str(network_def))
         sly_data[AGENT_NETWORK_DEFINITION] = network_def
 

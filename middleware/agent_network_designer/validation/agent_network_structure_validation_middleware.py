@@ -16,6 +16,7 @@
 
 from typing import Any
 
+from neuro_san.internals.validation.network.keyword_network_validator import KeywordNetworkValidator
 from neuro_san.internals.validation.network.structure_network_validator import StructureNetworkValidator
 from neuro_san.internals.validation.network.toolbox_network_validator import ToolboxNetworkValidator
 from neuro_san.internals.validation.network.url_network_validator import UrlNetworkValidator
@@ -65,6 +66,11 @@ class AgentNetworkStructureValidationMiddleware(AgentNetworkValidationMiddleware
             StructureNetworkValidator().validate(network_def)
             + ToolboxNetworkValidator(toolbox_tools).validate(network_def)
             + UrlNetworkValidator(subnetwork_names, mcp_servers).validate(network_def)
+            # Check that "tools" field is a list of str.
+            # Note that keywords argument is for check specific keywords.
+            # Available keywords are "description", "instructions", and "tools".
+            # If keywords is not provided, all keywords will be checked.
+            + KeywordNetworkValidator(keywords=["tools"]).validate(network_def)
         )
 
     def format_error(self, error_list: list[str]) -> str:

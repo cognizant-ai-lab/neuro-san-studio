@@ -14,7 +14,7 @@
 #
 # END COPYRIGHT
 {
-    include "registries/llm_config.hocon",
+    include "config/llm_config.hocon",
 
     metadata {
         description =

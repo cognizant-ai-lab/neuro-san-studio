@@ -22,9 +22,9 @@ from __future__ import annotations
 
 import logging
 from logging import Logger
+from pathlib import Path
 from typing import Any
 from typing import ClassVar
-from typing import Optional
 
 from middleware.persistent_memory.json_file_store import JsonFileStore
 from middleware.persistent_memory.markdown_file_store import MarkdownFileStore
@@ -37,12 +37,38 @@ class TopicStoreFactory:  # pylint: disable=too-few-public-methods
     """
 
     DEFAULT_BACKEND: ClassVar[str] = "json_file"
-    DEFAULT_FOLDER_NAME: ClassVar[str] = "./memory"
+    DEFAULT_FOLDER_NAME: ClassVar[str] = "memory"
+
+    # Anchor HOCON folder names to the repository root (the parent of the
+    # ``middleware/`` package) so memory always lands inside the project
+    # tree regardless of the process working directory.
+    _REPO_ROOT: ClassVar[Path] = Path(__file__).resolve().parent.parent.parent
 
     _logger: ClassVar[Logger] = logging.getLogger(f"{__name__}.TopicStoreFactory")
 
     @classmethod
-    def create(cls, config: Optional[dict[str, Any]]) -> TopicStore:
+    def _resolve_folder(cls, folder_name: str) -> str:
+        """Anchor *folder_name* to the repository root.
+
+        ``memory``, ``./memory``, and ``/memory`` all resolve to
+        ``<repo_root>/memory``.  ``data/memory``, ``./data/memory``,
+        and ``/data/memory`` all resolve to ``<repo_root>/data/memory``.
+
+        Absolute paths that already exist on disk (e.g. a test tmpdir)
+        are returned as-is so unit tests are not affected.
+
+        :param folder_name: Raw value from HOCON or the default.
+        :return: Absolute path string anchored to the repo root.
+        """
+        raw: Path = Path(folder_name).expanduser()
+        if raw.is_absolute():
+            if raw.exists():
+                return str(raw.resolve())
+            raw = Path(str(raw).lstrip("/"))
+        return str((cls._REPO_ROOT / raw).resolve())
+
+    @classmethod
+    def create(cls, config: dict[str, Any] | None) -> TopicStore:
         """
         Build the backend named by ``config["backend"]``. Raises on unknown names.
 
@@ -51,8 +77,8 @@ class TopicStoreFactory:  # pylint: disable=too-few-public-methods
         """
         data: dict[str, Any] = config or {}
         backend: str = str(data.get("backend") or cls.DEFAULT_BACKEND).strip().lower()
-        folder_name: str = str(data.get("folder_name") or cls.DEFAULT_FOLDER_NAME)
-        file_name: Optional[str] = data.get("file_name")
+        folder_name: str = cls._resolve_folder(str(data.get("folder_name") or cls.DEFAULT_FOLDER_NAME))
+        file_name: str | None = data.get("file_name")
 
         cls._logger.info("Creating memory store backend: %s (folder_name=%s)", backend, folder_name)
 

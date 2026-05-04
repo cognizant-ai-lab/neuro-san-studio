@@ -29,7 +29,6 @@ import re
 from pathlib import Path
 from typing import Any
 from typing import ClassVar
-from typing import Optional
 from typing import override
 
 import aiofiles
@@ -112,7 +111,7 @@ class JsonFileStore(TopicStore):
             await self._write_unlocked(namespace, memory)
 
     @override
-    async def _read_topic(self, namespace: str, topic: str) -> Optional[str]:
+    async def _read_topic(self, namespace: str, topic: str) -> str | None:
         """
         Return one topic's content, or ``None``.
 
@@ -121,7 +120,7 @@ class JsonFileStore(TopicStore):
         :return: The topic's content, or ``None`` if absent.
         """
         memory: TopicStore.AgentMemory = await self._load_unlocked(namespace)
-        value: Optional[str] = memory.get(topic)
+        value: str | None = memory.get(topic)
         return value
 
     @override

@@ -17,6 +17,7 @@
 import json
 import logging
 import re
+from pathlib import Path
 from typing import Any
 from typing import Awaitable
 from typing import Callable
@@ -29,10 +30,13 @@ from langchain.agents.middleware.types import ModelResponse
 from langchain.agents.middleware.types import ResponseT
 from langchain_core.messages import BaseMessage
 from langchain_core.messages import SystemMessage
+from neuro_san.interfaces.agent_progress_reporter import AgentProgressReporter
 from neuro_san.internals.persistence.abstract_async_config_restorer import AbstractAsyncConfigRestorer
 
 from coded_tools.agent_network_editor.connectivity_dictionary_converter import ConnectivityDictionaryConverter
 from coded_tools.agent_network_editor.constants import AGENT_NETWORK_DEFINITION
+from coded_tools.agent_network_editor.constants import AGENT_NETWORK_NAME
+from coded_tools.agent_network_editor.progress_handler import ProgressHandler
 from coded_tools.agent_network_editor.sly_data_lock import SlyDataLock
 
 AGENT_NETWORK_HOCON_FILE: str = "agent_network_hocon_file"
@@ -47,7 +51,7 @@ class AgentNetworkDefinitionMiddleware(AgentMiddleware):
     requiring it to be passed explicitly through the chat stream.
     """
 
-    def __init__(self, sly_data: dict[str, Any]) -> None:
+    def __init__(self, sly_data: dict[str, Any], progress_reporter: AgentProgressReporter | None = None) -> None:
         """
         Initialize agent network definition middleware.
 
@@ -63,7 +67,10 @@ class AgentNetworkDefinitionMiddleware(AgentMiddleware):
 
                 Keys expected for this implementation are:
                     "agent_network_definition": an outline of an agent network
+        :param progress_reporter: An optional AgentProgressReporter instance for
+                reporting agent_network_definition to the client.
         """
+        self.progress_reporter: AgentProgressReporter | None = progress_reporter
         self.sly_data = sly_data
         self.logger = logging.getLogger(self.__class__.__name__)
 
@@ -93,7 +100,12 @@ class AgentNetworkDefinitionMiddleware(AgentMiddleware):
                 ">>>>>>>>>>>>>>>>>>>Reading & Parsing Agent Network HOCON File "
                 "from Key 'agent_network_hocon_file' in Sly Data>>>>>>>>>>>>>>>>>>>"
             )
-            network_def = await self._hocon_to_definition(self.sly_data.get(AGENT_NETWORK_HOCON_FILE), self.sly_data)
+            hocon_file: str | None = self.sly_data.get(AGENT_NETWORK_HOCON_FILE)
+            network_def = await self._hocon_to_definition(hocon_file, self.sly_data)
+            # When loading from hocon, use the file name (without extension) as the agent network name.
+            # This is because the agent network name is only created when using the CreateNetwork tool.
+            if hocon_file and network_def:
+                self.sly_data[AGENT_NETWORK_NAME] = Path(hocon_file).stem
 
         # If we have a network definition from either source, inject it into the system prompt.
         if network_def:
@@ -104,8 +116,8 @@ class AgentNetworkDefinitionMiddleware(AgentMiddleware):
             if isinstance(network_def, list):
                 connectivity_dict_converter = ConnectivityDictionaryConverter()
                 network_def = connectivity_dict_converter.to_dict(network_def)
-                # Cache the agent network definition as dict in sly_data for subsequent calls within the same session.
-                self.sly_data[AGENT_NETWORK_DEFINITION] = network_def
+            # Cache the agent network definition as dict in sly_data for subsequent calls within the same session.
+            self.sly_data[AGENT_NETWORK_DEFINITION] = network_def
 
             self.logger.debug(
                 ">>>>>>>>>>>>>>>>>>>Injecting Agent Network Definition into System Prompt>>>>>>>>>>>>>>>>>>>"
@@ -118,6 +130,11 @@ class AgentNetworkDefinitionMiddleware(AgentMiddleware):
                 system_message = SystemMessage(content=f"{original_content}\n\n{definition_prompt}")
             else:
                 system_message = SystemMessage(content=definition_prompt)
+
+            if self.progress_reporter is not None:
+                await ProgressHandler.report_progress(
+                    {"progress_reporter": self.progress_reporter}, network_def, self.sly_data.get(AGENT_NETWORK_NAME)
+                )
 
             return await handler(request.override(system_message=system_message))
 
@@ -144,48 +161,99 @@ class AgentNetworkDefinitionMiddleware(AgentMiddleware):
         :return: Agent network definition
         """
 
+        if not isinstance(network_hocon_file, str) or not network_hocon_file:
+            self.logger.warning(
+                "WARNING: Invalid network_hocon_file value (expected str, got %r); skipping.",
+                network_hocon_file,
+            )
+            return None
+
         # Converting hocon file to dict
         # Note we don't need to cache this because we only expect to read the file once.
         try:
-            network_hocon_file = "registries/" + network_hocon_file
             hocon = AbstractAsyncConfigRestorer(file_purpose="get_agent_network_definition", must_exist=True)
-            network_hocon = await hocon.async_restore(file_reference=network_hocon_file)
-        except (FileNotFoundError, TypeError):
+            network_hocon = await hocon.async_restore(file_reference="registries/" + network_hocon_file)
+        except FileNotFoundError:
             return None
 
         agents: list[dict[str, Any]] | None = network_hocon.get("tools")
-        if agents is None:
-            self.logger.warning("WARNING: No field 'tools' found in %s.", network_hocon_file)
-            return None
         if not isinstance(agents, list):
-            self.logger.warning("WARNING: The 'tools' field in '%s' is not a list.", network_hocon_file)
+            msg = "No field 'tools' found" if agents is None else "The 'tools' field is not a list"
+            self.logger.warning("WARNING: %s in '%s'.", msg, network_hocon_file)
             return None
 
         network_def: dict[str, Any] = {}
         for agent in agents:
-            if not isinstance(agent, dict):
-                self.logger.warning(
-                    "WARNING: Skipping non-dict entry in 'tools' list in '%s': %r", network_hocon_file, agent
-                )
-                continue
-            # Only extract agents info and only "instructions" and "tools" parts
-            agent_name: str | None = agent.get("name")
-            if not isinstance(agent_name, str) or not agent_name:
-                self.logger.warning(
-                    "WARNING: Skipping agent with missing/invalid 'name' in '%s': %r", network_hocon_file, agent
-                )
-                continue
-            network_def[agent_name] = {}
-            instructions: str | None = agent.get("instructions")
-            if instructions:
-                # Extract only the unique instructions (remove aaosa instructions, instructions prefix, and demo mode)
-                custom_instructions: str = await self._extract_custom_instructions(instructions, sly_data)
-                network_def[agent_name]["instructions"] = custom_instructions
-            tools: list[str] | None = agent.get("tools")
-            if tools:
-                network_def[agent_name]["tools"] = tools
+            name, agent_def = await self._parse_agent(agent, network_hocon_file, sly_data)
+            if name is not None:
+                network_def[name] = agent_def
 
         return network_def
+
+    async def _parse_agent(
+        self, agent: Any, network_hocon_file: str, sly_data: dict[str, Any]
+    ) -> tuple[str | None, dict[str, Any]]:
+        """
+        Parse a single agent entry from the hocon 'tools' list.
+
+        :param agent: A single entry from the 'tools' list in the hocon file
+        :param network_hocon_file: Agent network hocon file path (used for warning messages)
+        :param sly_data: A dictionary whose keys are defined by the agent hierarchy
+
+        :return: (agent_name, agent_def) where agent_name is None if the entry should be skipped
+        """
+        if not isinstance(agent, dict):
+            self.logger.warning(
+                "WARNING: Skipping non-dict entry in 'tools' list in '%s': %r", network_hocon_file, agent
+            )
+            return None, {}
+
+        agent_name: str | None = agent.get("name")
+        if not isinstance(agent_name, str) or not agent_name:
+            self.logger.warning(
+                "WARNING: Skipping agent with missing/invalid 'name' in '%s': %r", network_hocon_file, agent
+            )
+            return None, {}
+
+        # Only extract agents info and only "instructions" and "tools" parts
+        agent_def: dict[str, Any] = {}
+
+        instructions: str | None = agent.get("instructions")
+        if instructions is not None:
+            if not isinstance(instructions, str):
+                self.logger.warning(
+                    "WARNING: Skipping agent %s due to non-string 'instructions' in '%s'",
+                    agent_name,
+                    network_hocon_file,
+                )
+                return None, {}
+            if instructions.strip():
+                # Extract only the unique instructions
+                # (remove aaosa instructions, instructions prefix, and demo mode)
+                agent_def["instructions"] = await self._extract_custom_instructions(instructions.strip(), sly_data)
+
+            # Initialize description for non-function agents so the description setter
+            # can distinguish them from function/toolbox agents (which have no description key).
+            agent_def["description"] = ""
+
+        function: dict[str, Any] = agent.get("function", {})
+        description: str | None = function.get("description") if isinstance(function, dict) else None
+        if description is not None:
+            if not isinstance(description, str):
+                self.logger.warning(
+                    "WARNING: Skipping agent %s due to non-string 'description' in '%s'",
+                    agent_name,
+                    network_hocon_file,
+                )
+                return None, {}
+            if description.strip():
+                agent_def["description"] = description.strip()
+
+        tools: list[str] | None = agent.get("tools")
+        if tools:
+            agent_def["tools"] = tools
+
+        return agent_name, agent_def
 
     async def _extract_custom_instructions(self, instructions: str, sly_data: dict[str, Any]) -> str:
         """

@@ -35,7 +35,6 @@ from typing import Any
 from typing import Awaitable
 from typing import Callable
 from typing import ClassVar
-from typing import Optional
 
 
 class TopicStore(ABC):
@@ -60,8 +59,8 @@ class TopicStore(ABC):
         self,
         namespace: str,
         topic: str,
-        post_read: Optional[Callable[[str], Awaitable[Optional[str]]]] = None,
-    ) -> Optional[str]:
+        post_read: Callable[[str], Awaitable[str | None]] | None = None,
+    ) -> str | None:
         """
         Read one topic, or ``None`` if absent.
 
@@ -77,10 +76,10 @@ class TopicStore(ABC):
         :return: The topic's content (possibly rewritten), or ``None`` if absent.
         """
         async with await self._lock_for(self._lock_key(namespace, topic)):
-            content: Optional[str] = await self._read_topic(namespace, topic)
+            content: str | None = await self._read_topic(namespace, topic)
             if content is None or post_read is None:
                 return content
-            replacement: Optional[str] = await self._run_post_access(namespace, topic, content, post_read)
+            replacement: str | None = await self._run_post_access(namespace, topic, content, post_read)
             return replacement if replacement is not None else content
 
     async def list_topics(self, namespace: str) -> list[str]:
@@ -99,7 +98,7 @@ class TopicStore(ABC):
         namespace: str,
         query: str,
         limit: int = 5,
-        post_read_factory: Optional[Callable[[str], Optional[Callable[[str], Awaitable[Optional[str]]]]]] = None,
+        post_read_factory: Callable[[str], Callable[[str], Awaitable[str | None]] | None] | None = None,
     ) -> list[dict[str, Any]]:
         """
         Rank topics by keyword match against ``query``.
@@ -126,7 +125,7 @@ class TopicStore(ABC):
         self,
         namespace: str,
         results: list[dict[str, Any]],
-        post_read_factory: Callable[[str], Optional[Callable[[str], Awaitable[Optional[str]]]]],
+        post_read_factory: Callable[[str], Callable[[str], Awaitable[str | None]] | None],
     ) -> list[dict[str, Any]]:
         """
         Run per-topic ``post_read`` callbacks under the write lock and rewrite hits in place.
@@ -140,14 +139,14 @@ class TopicStore(ABC):
             topic: str = str(entry.get("topic") or "")
             if not topic:
                 continue
-            post_read: Optional[Callable[[str], Awaitable[Optional[str]]]] = post_read_factory(topic)
+            post_read: Callable[[str], Awaitable[str | None]] | None = post_read_factory(topic)
             if post_read is None:
                 continue
             async with await self._lock_for(self._lock_key(namespace, topic)):
-                current: Optional[str] = await self._read_topic(namespace, topic)
+                current: str | None = await self._read_topic(namespace, topic)
                 if current is None:
                     continue
-                replacement: Optional[str] = await self._run_post_access(namespace, topic, current, post_read)
+                replacement: str | None = await self._run_post_access(namespace, topic, current, post_read)
                 entry["content"] = replacement if replacement is not None else current
         return results
 
@@ -156,7 +155,7 @@ class TopicStore(ABC):
         namespace: str,
         topic: str,
         content: str,
-        post_write: Optional[Callable[[str], Awaitable[Optional[str]]]] = None,
+        post_write: Callable[[str], Awaitable[str | None]] | None = None,
     ) -> None:
         """
         Create or overwrite a topic. ``post_write`` runs under the same lock.
@@ -176,7 +175,7 @@ class TopicStore(ABC):
         namespace: str,
         topic: str,
         content: str,
-        post_write: Optional[Callable[[str], Awaitable[Optional[str]]]] = None,
+        post_write: Callable[[str], Awaitable[str | None]] | None = None,
     ) -> str:
         """
         Append a timestamped line to the topic and return the new full content.
@@ -193,10 +192,10 @@ class TopicStore(ABC):
         stamp: str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         line: str = f"[{stamp}] {content}"
         async with await self._lock_for(self._lock_key(namespace, topic)):
-            existing: Optional[str] = await self._read_topic(namespace, topic)
+            existing: str | None = await self._read_topic(namespace, topic)
             new_content: str = f"{existing}\n{line}" if existing else line
             await self._write_topic(namespace, topic, new_content)
-            replacement: Optional[str] = await self._run_post_write(namespace, topic, new_content, post_write)
+            replacement: str | None = await self._run_post_write(namespace, topic, new_content, post_write)
             return replacement if replacement is not None else new_content
 
     async def _run_post_write(
@@ -204,8 +203,8 @@ class TopicStore(ABC):
         namespace: str,
         topic: str,
         written_content: str,
-        post_write: Optional[Callable[[str], Awaitable[Optional[str]]]],
-    ) -> Optional[str]:
+        post_write: Callable[[str], Awaitable[str | None]] | None,
+    ) -> str | None:
         """
         Write-path shim over :py:meth:`_run_post_access`.
 
@@ -224,8 +223,8 @@ class TopicStore(ABC):
         namespace: str,
         topic: str,
         observed_content: str,
-        callback: Callable[[str], Awaitable[Optional[str]]],
-    ) -> Optional[str]:
+        callback: Callable[[str], Awaitable[str | None]],
+    ) -> str | None:
         """
         Run ``callback`` under the caller's lock; rewrite if it returns a non-empty different string.
 
@@ -238,7 +237,7 @@ class TopicStore(ABC):
         :return: The replacement content if rewritten, else ``None``.
         """
         try:
-            replacement: Optional[str] = await callback(observed_content)
+            replacement: str | None = await callback(observed_content)
         # Callback is best-effort — any error (network, summarizer SDK, etc.)
         # must not lose the content that is already on disk.
         except Exception:  # pylint: disable=broad-except
@@ -283,7 +282,7 @@ class TopicStore(ABC):
         """
 
     @abstractmethod
-    async def _read_topic(self, namespace: str, topic: str) -> Optional[str]:
+    async def _read_topic(self, namespace: str, topic: str) -> str | None:
         """
         Read one topic from disk.
 
@@ -364,7 +363,7 @@ class TopicStore(ABC):
         :return: The ``asyncio.Lock`` for this key.
         """
         async with self._locks_guard:
-            lock: Optional[asyncio.Lock] = self._locks.get(key)
+            lock: asyncio.Lock | None = self._locks.get(key)
             if lock is not None:
                 self._locks.move_to_end(key)
                 return lock

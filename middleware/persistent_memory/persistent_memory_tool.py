@@ -28,7 +28,6 @@ import logging
 from logging import Logger
 from typing import Any
 from typing import ClassVar
-from typing import Optional
 
 from middleware.persistent_memory.topic_store import TopicStore
 
@@ -53,9 +52,9 @@ class PersistentMemoryTool:
 
     def __init__(
         self,
-        tool_config: Optional[dict[str, Any]],
+        tool_config: dict[str, Any] | None,
         store: TopicStore,
-        summarizer: Optional[Any] = None,
+        summarizer: Any | None = None,
     ) -> None:
         """
         Configure the dispatcher.
@@ -73,7 +72,7 @@ class PersistentMemoryTool:
         self._enabled_operations: frozenset[str] = frozenset(enabled_ops) if enabled_ops else self.ALL_OPERATIONS
 
         self._store: TopicStore = store
-        self._summarizer: Optional[Any] = summarizer
+        self._summarizer: Any | None = summarizer
 
         self._handlers: dict[str, Any] = self._build_handlers()
 
@@ -105,7 +104,7 @@ class PersistentMemoryTool:
         :return: ``{"result": ...}`` envelope on success, ``{"error": ...}`` otherwise.
         """
         operation: str = str(args.get("operation") or "").strip().lower()
-        error: Optional[dict[str, Any]] = self._validate_call(operation, args)
+        error: dict[str, Any] | None = self._validate_call(operation, args)
         if error is not None:
             return error
         handler = self._handlers[operation]
@@ -130,7 +129,7 @@ class PersistentMemoryTool:
             "list": self._handle_list,
         }
 
-    def _validate_call(self, operation: str, args: dict[str, Any]) -> Optional[dict[str, Any]]:
+    def _validate_call(self, operation: str, args: dict[str, Any]) -> dict[str, Any] | None:
         """
         Check the operation is known, enabled, and has every required arg.
 
@@ -177,7 +176,7 @@ class PersistentMemoryTool:
         :return: ``{"result": {"topic", "content"}}`` or an error envelope.
         """
         topic: str = self._get_arg(args, "topic")
-        content: Optional[str] = await self._store.get_topic(
+        content: str | None = await self._store.get_topic(
             self._namespace_key,
             topic,
             post_read=self._summarizer_callback(topic),
@@ -244,7 +243,7 @@ class PersistentMemoryTool:
         topics: list[str] = await self._store.list_topics(self._namespace_key)
         return {"result": {"topics": topics}}
 
-    def _summarizer_callback(self, topic: str) -> Optional[Any]:
+    def _summarizer_callback(self, topic: str) -> Any | None:
         """
         Build the ``post_write`` / ``post_read`` callback; ``None`` if no summarizer.
 
@@ -255,7 +254,7 @@ class PersistentMemoryTool:
             return None
         return functools.partial(self._maybe_summarize, topic)
 
-    async def _maybe_summarize(self, topic: str, observed_content: str) -> Optional[str]:
+    async def _maybe_summarize(self, topic: str, observed_content: str) -> str | None:
         """
         Summarize iff the summarizer says to; return the new content or ``None``.
 

@@ -28,7 +28,6 @@ import os
 import re
 from pathlib import Path
 from typing import ClassVar
-from typing import Optional
 from typing import override
 
 import aiofiles
@@ -106,7 +105,7 @@ class MarkdownFileStore(TopicStore):
                 await self._write_topic_file(base, topic, content)
 
     @override
-    async def _read_topic(self, namespace: str, topic: str) -> Optional[str]:
+    async def _read_topic(self, namespace: str, topic: str) -> str | None:
         """
         Read one topic's ``.md`` body, or ``None``.
 
@@ -117,7 +116,7 @@ class MarkdownFileStore(TopicStore):
         path: Path = self._topic_path(namespace, topic)
         if not path.exists():
             return None
-        parsed: Optional[tuple[str, str]] = await self._load_topic_file(path)
+        parsed: tuple[str, str] | None = await self._load_topic_file(path)
         if parsed is None:
             return None
         _, body = parsed
@@ -181,7 +180,7 @@ class MarkdownFileStore(TopicStore):
         """
         topics: dict[str, str] = {}
         for md_file in sorted(base.glob(f"*.{self._EXTENSION}")):
-            parsed: Optional[tuple[str, str]] = await self._load_topic_file(md_file)
+            parsed: tuple[str, str] | None = await self._load_topic_file(md_file)
             if parsed is None:
                 continue
             topic, content = parsed
@@ -189,7 +188,7 @@ class MarkdownFileStore(TopicStore):
                 topics[topic] = content
         return topics
 
-    async def _load_topic_file(self, path: Path) -> Optional[tuple[str, str]]:
+    async def _load_topic_file(self, path: Path) -> tuple[str, str] | None:
         """
         Read one ``.md`` file; return ``(topic, body)`` or ``None`` on error.
 

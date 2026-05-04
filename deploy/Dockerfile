@@ -89,6 +89,7 @@ COPY --from=builder /install /usr/local
 #       The coded_tools directory where agent code lives is optional
 #       [s] allows for registries/coded_tools from within client repo or neuro-san repo
 #       The toolbox directory is mandatory if agent networks use tools from the standard toolbox
+#       The config directory where the LLM configuration lives is mandatory
 #       The Agent Network Designer relies on:
 #       - its own toolbox in ./toolbox
 #       - ./middleware for validation of designed networks
@@ -99,6 +100,10 @@ COPY ./middleware ${APP_SOURCE}/middleware
 COPY ./deploy/entrypoint.sh ${APP_SOURCE}/deploy/entrypoint.sh
 COPY ./deploy/logging.hocon ${APP_SOURCE}/deploy/logging.hocon
 COPY ./mcp/mcp_info.hocon ${APP_SOURCE}/mcp/mcp_info.hocon
+COPY ./config ${APP_SOURCE}/config
+# To override the default LLM configuration at runtime, mount your custom
+# llm_config.hocon using a Docker volume, e.g.:
+# docker run -v /path/to/your/llm_config.hocon:${APP_SOURCE}/config/llm_config.hocon ...
 
 # Set up the entry point for when the container is run
 USER ${USERNAME}

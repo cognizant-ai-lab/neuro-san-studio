@@ -15,7 +15,7 @@
 # END COPYRIGHT
 
 {
-    include "registries/llm_config.hocon",
+    include "config/llm_config.hocon",
 
     "metadata": {
         "description": "Simulates a large-scale telecommunication network orchestration system, including monitoring, fault detection and resource allocation, for a telco company in Australia. The network is organized into regions (NSW: New South Wales, VIC: Victoria, QLD: Queensland), each with a site manager and a set of nodes. The agents are NOT grounded and will simulate access to the network's systems instead.",
@@ -103,6 +103,18 @@ If mode is 'Fulfill' or "Follow up", respond to the inquiry and return a json bl
                 "description": """
 An assistant that answer inquiries from the user.
                 """
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "query": {
+                            "type": "string",
+                            "description": """
+An inquiry about national telecom network operations, including traffic rerouting, load balancing, regional performance, SLA compliance, or regulatory reporting.
+"""
+                        },
+                    },
+                    "required": ["query"]
+                }
             },
             "instructions": """
 {instructions_prefix}

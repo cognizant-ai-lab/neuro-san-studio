@@ -31,7 +31,6 @@ from typing import Any
 from typing import Awaitable
 from typing import Callable
 from typing import ClassVar
-from typing import Optional
 from typing import override
 
 from langchain.agents.middleware.types import AgentMiddleware
@@ -79,9 +78,8 @@ class PersistentMemoryMiddleware(AgentMiddleware):
     def __init__(
         self,
         origin_str: bool | str = True,
-        memory_config: Optional[dict[str, Any]] = None,
+        memory_config: dict[str, Any] | None = None,
     ) -> None:
-        super().__init__()
         self.logger: Logger = logging.getLogger(f"{__name__}.{self.__class__.__name__}")
 
         agent_network_name, agent_name = self._parse_origin_str(origin_str)
@@ -171,7 +169,10 @@ class PersistentMemoryMiddleware(AgentMiddleware):
             coroutine=self._dispatch,
             name=self.MEMORY_TOOL_NAME,
             description=(
-                "Persistent long-term memory. Pass 'topic' on every call to "
+                "Persistent long-term memory for facts that must survive across sessions. "
+                "Only use this tool when the current conversation context does not contain "
+                "the information needed to answer the user's question. "
+                "Pass 'topic' on every call to "
                 "name the slice of memory (e.g. 'coffee_preference', 'role'). "
                 "Call with 'operation' set to one of: "
                 f"{', '.join(allowed)}. "
@@ -220,8 +221,8 @@ class PersistentMemoryMiddleware(AgentMiddleware):
 
     def _parse_memory_config(
         self,
-        memory_config: Optional[dict[str, Any]],
-    ) -> tuple[dict[str, Any], dict[str, Any], Optional[list[str]]]:
+        memory_config: dict[str, Any] | None,
+    ) -> tuple[dict[str, Any], dict[str, Any], list[str] | None]:
         """
         Split the HOCON memory_config into its three sub-configs. Warns on unknown keys.
 
@@ -239,14 +240,14 @@ class PersistentMemoryMiddleware(AgentMiddleware):
         store_config: dict[str, Any] = dict(config.get("storage") or {})
         summarization_config: dict[str, Any] = dict(config.get("summarization") or {})
         enabled_operations_raw: Any = config.get("enabled_operations")
-        enabled_operations: Optional[list[str]] = (
+        enabled_operations: list[str] | None = (
             list(enabled_operations_raw) if enabled_operations_raw is not None else None
         )
         return (store_config, summarization_config, enabled_operations)
 
     def _clean_enabled_operations(
         self,
-        enabled_operations: Optional[list[str]],
+        enabled_operations: list[str] | None,
         namespace_key: str,
     ) -> frozenset[str]:
         """
@@ -281,7 +282,7 @@ class PersistentMemoryMiddleware(AgentMiddleware):
 
     def _parse_summarization_config(
         self,
-        summarization_config: Optional[dict[str, Any]],
+        summarization_config: dict[str, Any] | None,
     ) -> tuple[int, str, str]:
         """
         Pull the summarizer settings out of the HOCON block. Warns on unknown keys.
@@ -354,10 +355,13 @@ class PersistentMemoryMiddleware(AgentMiddleware):
             f"You have a '{cls.MEMORY_TOOL_NAME}' tool for facts that must survive "
             "across turns and sessions.\n\n"
             "Rules:\n"
+            "- Only call the memory tool when the current conversation context does not "
+            "contain the information needed. If the answer is already in the chat, "
+            "respond directly without using memory.\n"
             "- Topic keys and content come from the user — never invent them.\n"
             "- Report only what the tool returns; never fabricate memories.\n"
-            "- Every turn, start by calling 'list', then 'search' with relevant words "
-            "from the user's message to surface related topics. Use the results as context.\n"
+            "- When you do need memory, start by calling 'list', then 'search' with relevant "
+            "words from the user's message to surface related topics. Use the results as context.\n"
             "- Before writing, check the list. If a topic already covers the subject, use "
             "'append' with that exact key — 'create' OVERWRITES.\n"
             "- 'append' is the default for new or changed facts on an existing subject.\n"

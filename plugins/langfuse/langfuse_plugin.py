@@ -13,7 +13,16 @@
 # limitations under the License.
 #
 # END COPYRIGHT
-import logging
+
+"""
+Langfuse plugin for tracing and observability.
+
+Handles:
+- LangChain callback handler integration (traces all LLM providers)
+- Process-local initialization state tracking
+- Environment variable management
+"""
+
 import os
 from contextvars import ContextVar
 from typing import Any
@@ -24,42 +33,30 @@ from langchain_core.tracers.context import register_configure_hook
 # Use lazy loading of types to avoid dependency bloat for stuff most people don't need.
 from leaf_common.config.resolver_util import ResolverUtil
 
+from neuro_san_studio.interfaces.base_plugin import BasePlugin
 
-class LangfusePlugin:
-    """
-    Manages Langfuse initialization for tracing and observability.
 
-    Handles:
-    - LangChain callback handler integration (traces all LLM providers)
-    - Process-local initialization state tracking
-    - Environment variable management
-    """
+class LangfusePlugin(BasePlugin):
+    """Plugin that integrates Langfuse for tracing and monitoring."""
 
-    def __init__(self) -> None:
-        """Initialize the LangfusePlugin."""
+    def __init__(self, args: dict = None):
+        """Initialize the Langfuse plugin.
+
+        Args:
+            args: Optional dictionary of arguments for the plugin.
+        """
+        super().__init__("Langfuse", args)
         self._initialized = False
-        self._logger = logging.getLogger(__name__)
         self._langfuse_client = None
         self._callback_handler = None
 
     @staticmethod
-    def _get_bool_env(var_name: str, default: bool) -> bool:
-        """Parse a boolean environment variable.
-
-        Args:
-            var_name: Environment variable name
-            default: Default value if variable is not set
+    def _is_valid_key() -> bool:
+        """Check if Langfuse API keys are configured.
 
         Returns:
-            Boolean value parsed from environment variable
+            True if both secret and public keys are set, False otherwise
         """
-        val = os.getenv(var_name)
-        if val is None:
-            return default
-        return val.strip().lower() in {"1", "true", "yes", "on"}
-
-    @staticmethod
-    def _is_valid_key() -> bool:
         secret_key = os.getenv("LANGFUSE_SECRET_KEY")
         public_key = os.getenv("LANGFUSE_PUBLIC_KEY")
 
@@ -113,51 +110,38 @@ class LangfusePlugin:
             langfuse_ctx_var.set(self._callback_handler)
             register_configure_hook(langfuse_ctx_var, inheritable=True)
 
-            print("[Langfuse] LangChain CallbackHandler registered globally")
+            self._logger.info("LangChain CallbackHandler registered globally")
             return True
         except Exception as exc:  # pylint: disable=broad-exception-caught
             self._logger.error("Failed to create Langfuse client or CallbackHandler: %s", exc)
             return False
 
-    def initialize(self) -> None:
-        """Initialize Langfuse observability if enabled.
+    def do_initialize(self) -> None:
+        """Initialize Langfuse observability.
 
-        Checks:
-        - Whether already initialized (prevents double-init)
-        - LANGFUSE_ENABLED environment variable
+        Checks whether already initialized (prevents double-init).
 
         Attempts LangChain CallbackHandler setup which automatically
         traces all LLM providers.
 
         This method is idempotent and safe to call multiple times.
         """
-        # Do NOTHING, not even log, if the plugin is not enabled.
-        # The plugin is NOT enabled, so it should not appear in the logs
-        if not self._get_bool_env("LANGFUSE_ENABLED", False):
-            return
-
-        print(f"[Langfuse] initialize called, PID={os.getpid()}")
-        print(f"[Langfuse] _initialized={self._initialized}")
-        print(f"[Langfuse] LANGFUSE_ENABLED={os.getenv('LANGFUSE_ENABLED')}")
-
         if self._initialized:
-            print(f"[Langfuse] Already initialized in this process, skipping (PID={os.getpid()})")
+            self._logger.info("Already initialized, skipping (PID=%s)", os.getpid())
             return
 
         try:
-            print(f"[Langfuse] Attempting Langfuse setup (PID={os.getpid()})")
             setup_successful = self._try_langfuse_setup()
             if setup_successful:
-                print(f"[Langfuse] Setup succeeded (PID={os.getpid()})")
-                print(f"[Langfuse] Traces will be sent to: {os.getenv('LANGFUSE_HOST', 'https://cloud.langfuse.com')}")
-                print(f"[Langfuse] Project: {os.getenv('LANGFUSE_PROJECT_NAME', 'default')}")
+                self._logger.info(
+                    "Traces will be sent to: %s", os.getenv("LANGFUSE_HOST", "https://cloud.langfuse.com")
+                )
+                self._logger.info("Project: %s", os.getenv("LANGFUSE_PROJECT_NAME", "default"))
                 self._initialized = True
-                print(f"[Langfuse] Setup successful (PID={os.getpid()})")
             else:
-                print(f"[Langfuse] Setup failed (PID={os.getpid()})")
+                self._logger.warning("Setup failed (PID=%s)", os.getpid())
         except Exception as exc:  # pylint: disable=broad-exception-caught
-            print(f"[Langfuse] Initialization FAILED: {exc} (PID={os.getpid()})")
-            self._logger.warning("Langfuse initialization failed: %s", exc)
+            self._logger.warning("Initialization failed: %s", exc)
 
     @property
     def is_initialized(self) -> bool:
@@ -168,16 +152,14 @@ class LangfusePlugin:
         """
         return self._initialized
 
-    def shutdown(self) -> None:
+    def do_cleanup(self) -> None:
         """Shutdown Langfuse client and flush remaining traces."""
         if not self._initialized:
             return
-        print("[Langfuse] Shutting down...")
         try:
             self._langfuse_client.flush()
             self._initialized = False
             self._callback_handler = None
             self._langfuse_client = None
-            print("[Langfuse] Shutdown complete")
         except Exception as exc:  # pylint: disable=broad-exception-caught
-            self._logger.warning("Failed to shutdown Langfuse cleanly: %s", exc)
+            self._logger.warning("Failed to shutdown cleanly: %s", exc)
