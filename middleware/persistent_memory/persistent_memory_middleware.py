@@ -64,6 +64,8 @@ class PersistentMemoryMiddleware(AgentMiddleware):
                           ``(network, agent)`` memory namespace.
     :param memory_config: HOCON memory settings (store, summarization, and
                           enabled operations). Unknown keys are ignored.
+    :param sly_data:      Per-request data dict injected by the framework;
+                          forwarded to cloud store backends for per-user scoping.
     """
 
     MEMORY_TOOL_NAME: ClassVar[str] = "persistent_memory"
@@ -84,6 +86,7 @@ class PersistentMemoryMiddleware(AgentMiddleware):
         self,
         origin_str: bool | str = True,
         memory_config: dict[str, Any] | None = None,
+        sly_data: dict[str, Any] | None = None,
     ) -> None:
         self.logger: Logger = logging.getLogger(f"{__name__}.{self.__class__.__name__}")
 
@@ -97,7 +100,8 @@ class PersistentMemoryMiddleware(AgentMiddleware):
 
         # ``JsonFileStore`` defaults + sanitizes ``file_name`` on its own;
         # the markdown backend ignores it. See ``JsonFileStore.__init__``.
-        self._store: TopicStore = TopicStoreFactory.create(store_config)
+        # ``sly_data`` is forwarded for cloud backends that need per-user scoping.
+        self._store: TopicStore = TopicStoreFactory.create(store_config, sly_data=sly_data)
         self._summarizer: TopicSummarizer = TopicSummarizer(
             model_name=summarization_model,
             personalization=personalization,
