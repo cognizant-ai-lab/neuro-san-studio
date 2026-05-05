@@ -39,7 +39,7 @@ LOGBRIDGE_ENABLED=false
 
 ### Advanced Configuration
 
-The `log_cfg` dictionary at the top of `plugins/log_bridge/process_log_bridge.py` controls formatting details. You can customize it without code changes by passing an override `config` dict when constructing `ProcessLogBridge`.
+The `log_cfg` dictionary at the top of `neuro_san_studio/plugins/log_bridge/process_log_bridge.py` controls formatting details. You can customize it without code changes by passing an override `config` dict when constructing `ProcessLogBridge`.
 
 #### Theme (colors and styles)
 
@@ -75,13 +75,13 @@ Rich supports named colors (`"cyan"`, `"bright_cyan"`, `"magenta"`), hex (`"#34d
 
 ### Plugin-Based Design
 
-The Log Bridge is a self-contained plugin in `plugins/log_bridge/`. When enabled, it intercepts subprocess stdout/stderr streams and processes each line through a parsing pipeline before emitting formatted output to the console. When disabled, `run.py` falls back to basic threaded log streaming.
+The Log Bridge is a self-contained plugin in `neuro_san_studio/plugins/log_bridge/`. When enabled, it intercepts subprocess stdout/stderr streams and processes each line through a parsing pipeline before emitting formatted output to the console. When disabled, `run.py` falls back to basic threaded log streaming.
 
 ### Key Components
 
 #### ProcessLogBridge Class
 
-The `ProcessLogBridge` class (in `plugins/log_bridge/process_log_bridge.py`) manages:
+The `ProcessLogBridge` class (in `neuro_san_studio/plugins/log_bridge/process_log_bridge.py`) manages:
 
 - **Initialization**: Configures a Rich console with themed `RichHandler`, optional `TimedRotatingFileHandler` for runner-wide log files, and reconfigures the root Python logger
 - **Process attachment**: `attach_process_logger()` spawns daemon threads that drain subprocess stdout/stderr pipes

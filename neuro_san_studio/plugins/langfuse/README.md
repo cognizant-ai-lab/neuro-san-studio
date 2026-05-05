@@ -16,7 +16,7 @@ The Langfuse plugin enables comprehensive monitoring and analysis of LLM interac
 Install the Langfuse SDK:
 
 ```bash
-pip install -r plugins/langfuse/requirements.txt
+pip install -r neuro_san_studio/plugins/langfuse/requirements.txt
 ```
 
 ## Quick Start
