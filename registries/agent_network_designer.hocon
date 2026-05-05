@@ -73,10 +73,33 @@
                             "type": "object",
                             "description": "An internal representation of the agent network used for further iteration."
                         },
+                        "agent_network_hocon_file": {
+                            "type": "string",
+                            "description": "The file name (with .hocon extension) of an agent network HOCON file located in the registries folder. This is for users who want to provide the full agent network definition in HOCON format as input."
+                        },
                         "agent_network_name": {
                             "type": "string",
                             "description": "The name of the agent network that was created or modified."
                         },
+                        "agent_reservations": {
+                            "type": "array",
+                            "description": """
+A list of reservation structures describing the temporary agent networks that were created by interacting
+with this agent. By convention, the last one in the list is a top-level handle which may reference any others listed.
+""",
+                            "items": {
+                                "type": "object",
+                                "properties": {
+                                    "reservation_id": {
+                                        "type": "string",
+                                        "description": """
+The unique identifier of the reserved temporary agent network.
+This can be used to invoke the newly created network later on the same server/cluster.
+"""
+                                    }
+                                }
+                            }
+                        }
                     }
                     # Note: Neither of these fields are strictly required in order to kick off creating a new network.
                 },
@@ -109,7 +132,7 @@ with this agent. By convention, the last one in the list is a top-level handle w
                                 "type": "object",
                                 "properties": {
                                     "reservation_id": {
-                                        "type": "string"
+                                        "type": "string",
                                         "description": """
 The unique identifier of the reserved temporary agent network.
 This can be used to invoke the newly created network later on the same server/cluster.
