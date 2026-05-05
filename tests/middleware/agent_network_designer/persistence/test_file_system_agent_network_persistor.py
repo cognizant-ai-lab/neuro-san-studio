@@ -21,8 +21,6 @@ import os
 import tempfile
 from unittest.mock import patch
 
-from leaf_common.serialization.util.text_file_reader import TextFileReader
-
 from middleware.agent_network_designer.persistence.file_system_agent_network_persistor import (
     FileSystemAgentNetworkPersistor,
 )
@@ -32,66 +30,92 @@ class TestFileSystemAgentNetworkPersistor:
     """Tests for FileSystemAgentNetworkPersistor."""
 
     @staticmethod
-    def _make_persistor(tmp_dir: str) -> FileSystemAgentNetworkPersistor:
+    def _make_persistor(tmp_dir: str, subdirectory: str = "generated") -> FileSystemAgentNetworkPersistor:
         """Creates a persistor pointing at the given temp directory."""
         manifest_path = os.path.join(tmp_dir, "manifest.hocon")
         with patch.dict(os.environ, {"AGENT_MANIFEST_FILE": manifest_path}):
             persistor = FileSystemAgentNetworkPersistor(demo_mode=False)
         persistor.output_path = tmp_dir
-        persistor.subdirectory = "generated"
+        persistor.subdirectory = subdirectory
         return persistor
 
-    # Test cases for TextFileReader integration
+    # Tests for async_persist reading a manifest with various encodings
 
-    def test_read_utf8_file(self):
-        """Reads a UTF-8 file with non-ASCII content correctly."""
-        with tempfile.NamedTemporaryFile(mode="wb", suffix=".hocon", delete=False) as tmp:
-            tmp.write('description = "café résumé"\n'.encode("utf-8"))
-            tmp_path = tmp.name
+    def test_persist_appends_to_utf8_manifest(self):
+        """async_persist reads and updates a UTF-8 manifest with non-ASCII content."""
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            persistor = self._make_persistor(tmp_dir)
+            manifest_dir = os.path.join(tmp_dir, "generated")
+            os.makedirs(manifest_dir)
+            manifest_path = os.path.join(manifest_dir, "manifest.hocon")
+            with open(manifest_path, "wb") as f:
+                f.write('{\n    "café_network.hocon": true,\n}\n'.encode("utf-8"))
 
-        try:
-            result = asyncio.run(TextFileReader.async_read_text_file(tmp_path))
-            assert "café résumé" in result
-        finally:
-            os.unlink(tmp_path)
+            asyncio.run(persistor.async_persist("agent = {}", "generated/new_net"))
 
-    def test_read_ascii_file(self):
-        """Reads a pure-ASCII file (valid in both UTF-8 and cp1252)."""
-        with tempfile.NamedTemporaryFile(mode="wb", suffix=".hocon", delete=False) as tmp:
-            tmp.write(b'{\n    "network.hocon": true\n}\n')
-            tmp_path = tmp.name
+            with open(manifest_path, "rb") as f:
+                raw = f.read()
+            content = raw.decode("utf-8")
+            assert '"generated/new_net.hocon": true' in content
+            assert "café_network.hocon" in content
 
-        try:
-            result = asyncio.run(TextFileReader.async_read_text_file(tmp_path))
-            assert '"network.hocon": true' in result
-        finally:
-            os.unlink(tmp_path)
+    def test_persist_appends_to_cp1252_manifest(self):
+        """async_persist reads a cp1252-encoded manifest and appends a new entry."""
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            persistor = self._make_persistor(tmp_dir)
+            manifest_dir = os.path.join(tmp_dir, "generated")
+            os.makedirs(manifest_dir)
+            manifest_path = os.path.join(manifest_dir, "manifest.hocon")
+            # 0xe9 is e-acute in cp1252, invalid as a UTF-8 continuation byte
+            with open(manifest_path, "wb") as f:
+                f.write(b'{\n    "caf\xe9_network.hocon": true,\n}\n')
 
-    def test_reads_non_utf8_via_cp1252_fallback(self):
-        """Decodes a file with cp1252 content (0x80 = euro sign)."""
-        with tempfile.NamedTemporaryFile(mode="wb", suffix=".hocon", delete=False) as tmp:
-            tmp.write(b'key = "val\x80ue"\n')
-            tmp_path = tmp.name
+            asyncio.run(persistor.async_persist("agent = {}", "generated/new_net"))
 
-        try:
-            result = asyncio.run(TextFileReader.async_read_text_file(tmp_path))
-            assert "val€ue" in result
-        finally:
-            os.unlink(tmp_path)
+            with open(manifest_path, "rb") as f:
+                content = f.read().decode("utf-8")
+            assert '"generated/new_net.hocon": true' in content
 
-    def test_reads_cp1252_encoded_content(self):
-        """Decodes cp1252 bytes where e-acute = 0xe9."""
-        with tempfile.NamedTemporaryFile(mode="wb", suffix=".hocon", delete=False) as tmp:
-            tmp.write(b'description = "caf\xe9"\n')
-            tmp_path = tmp.name
+    def test_persist_detects_duplicate_in_cp1252_manifest(self):
+        """async_persist correctly finds an existing entry in a cp1252-encoded manifest."""
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            persistor = self._make_persistor(tmp_dir)
+            manifest_dir = os.path.join(tmp_dir, "generated")
+            os.makedirs(manifest_dir)
+            manifest_path = os.path.join(manifest_dir, "manifest.hocon")
+            with open(manifest_path, "wb") as f:
+                f.write(b'{\n    "generated/existing.hocon": true,\n    "caf\xe9.hocon": true,\n}\n')
 
-        try:
-            result = asyncio.run(TextFileReader.async_read_text_file(tmp_path))
-            assert "café" in result
-        finally:
-            os.unlink(tmp_path)
+            result = asyncio.run(persistor.async_persist("agent = {}", "generated/existing"))
 
-    # Tests for async_persist file encoding and line endings."""
+            assert result is None
+            with open(manifest_path, "rb") as f:
+                raw = f.read()
+            assert raw.count(b"existing.hocon") == 1
+
+    # Tests for _async_update_main_manifest reading non-UTF-8 content
+
+    def test_update_main_manifest_reads_cp1252(self):
+        """_async_update_main_manifest reads a cp1252-encoded main manifest."""
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            persistor = self._make_persistor(tmp_dir, subdirectory="custom")
+            main_manifest = os.path.join(tmp_dir, "manifest.hocon")
+            # Write main manifest with cp1252 content and an existing include line
+            with open(main_manifest, "wb") as f:
+                f.write(
+                    b'# caf\xe9 comment\n'
+                    b'    include "registries/generated/manifest.hocon",\n'
+                )
+            persistor.main_manifest_path = main_manifest
+
+            asyncio.run(persistor._async_update_main_manifest())  # pylint: disable=protected-access
+
+            with open(main_manifest, "rb") as f:
+                content = f.read().decode("utf-8")
+            base = os.path.basename(tmp_dir)
+            assert f'include "{base}/custom/manifest.hocon"' in content
+
+    # Tests for async_persist file encoding and line endings
 
     def test_persist_writes_utf8(self):
         """Persisted files are encoded as UTF-8."""
