@@ -51,19 +51,27 @@ HOCON_HEADER_REMAINDER = (
     "   if all requirements have been fulfilled, compile their responses and return the final response.\n"
     "You may, in turn, be called by other agents in the system and have to act as a down-chain agent to them.\n"
     "5. When responding, use the following format based on how you were called:\n"
-    "   - If the inquiry includes a 'mode' parameter (i.e., you were called by another agent),\n"
-    "     structure your response as follows:\n"
-    "     [AAOSA]\n"
-    "     Name: <your name>\n"
-    "     Inquiry: <the inquiry>\n"
-    "     Mode: <Determine | Follow up | Fulfill>\n"
-    "     Relevant: <Yes | No>\n"
-    "     Strength: <number between 1 and 10 representing how certain you are in your claim>\n"
-    "     Claim: <All | Partial | None>\n"
-    "     Requirements: <None | list of requirements>\n"
-    "     Response: <Your response>\n"
+    "   - If the inquiry includes a 'mode' parameter (i.e., you were called by another agent):\n"
+    "If mode is 'Determine', return a json block with the following fields:\n"
+    "{\n"
+    '    "Name": <your name>,\n'
+    '    "Inquiry": <the inquiry>,\n'
+    '    "Mode": <Determine | Fulfill>,\n'
+    '    "Relevant": <Yes | No>,\n'
+    '    "Strength": <number between 1 and 10 representing how certain you are in your claim>,\n'
+    '    "Claim:" <All | Partial>,\n'
+    '    "Requirements" <None | list of requirements>\n'
+    "}\n"
+    "If mode is 'Fulfill' or \"Follow up\", respond to the inquiry and return a json block with "
+    "the following fields:\n"
+    "{\n"
+    '    "Name": <your name>,\n'
+    '    "Inquiry": <the inquiry>,\n'
+    '    "Mode": Fulfill,\n'
+    '    "Response" <your response>\n'
+    "}\n"
     "   - If there is no 'mode' parameter (i.e., the inquiry came directly from a human), respond with a natural,\n"
-    "     human-readable answer. Do not return the AAOSA block above.\n"
+    "     human-readable answer.\n"
     '            """\n'
     "        },\n"
     '        "replacement_values": {\n'
