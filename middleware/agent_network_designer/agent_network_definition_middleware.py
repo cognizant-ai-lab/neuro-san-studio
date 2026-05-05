@@ -94,15 +94,20 @@ class AgentNetworkDefinitionMiddleware(AgentMiddleware):
     @hook_config(can_jump_to=["end"])
     async def abefore_model(self, state: AgentState[Any], runtime: Any) -> dict[str, Any] | None:
         """
-        Resolve agent network definition before the model call, if there was an error loading
-        the agent network definition from HOCON file or S3 reservation, report that error back to the client.
+        Resolve and normalize the agent network definition before each model call.
 
-        Note that this is done before model, not before agent, because the definition may change between
-        each model call (e.g., when the agent calls a tool that updates the network definition).
+        If loading from a HOCON file or S3 reservation fails, or if the agent network name is
+        missing or invalid, reports the error back to the client and jumps to end.
+
+        If skip_designer is set, normalizes the definition and jumps to end immediately so the
+        persistence middleware can save the user-modified network without LLM involvement.
+
+        Note that this is done before model, not before agent, because the definition may change
+        between each model call (e.g., when the agent calls a tool that updates the network definition).
 
         :param state: Current agent state
         :param runtime: Runtime context
-        :return: Dict with error message and jump directive, or None if no error
+        :return: Dict with error message or skip notification and jump directive, or None to proceed normally
         """
         # Reset error_message before each resolve. In practice this is unreachable since a previous load
         # failure jumps to end and terminates the loop, but resetting here is a precaution against
@@ -141,14 +146,22 @@ class AgentNetworkDefinitionMiddleware(AgentMiddleware):
                 "jump_to": "end",
             }
 
-        # This is used for manual editing where users modify the agent network definition and only want to use the
-        # agent network designer to persist the changes, skipping the LLM entirely.
-        # Strict boolean check to match the schema (type: boolean); "false" as a string would be truthy otherwise.
-        if self.sly_data.get(SKIP_DESIGNER) is True and agent_network_name and self.network_def:
-            return {
-                "messages": [AIMessage(content=f"The network {agent_network_name} has been modified by the user.")],
-                "jump_to": "end",
-            }
+        # Normalize to dict format here so both the skip_designer and normal (awrap_model_call) paths
+        # always receive a dict. Without this, a connectivity-list definition would reach the persistence
+        # middleware as a list and crash validators that expect a dict (e.g. network_def.items()).
+        if self.network_def:
+            self.network_def = self._normalize_network_def(self.network_def)
+
+            # This is used for manual editing where users modify the agent network definition and only want to use the
+            # agent network designer to persist the changes, skipping the LLM entirely.
+            # Strict boolean check to match the schema (type: boolean); "false" as a string would be truthy otherwise.
+            if self.sly_data.get(SKIP_DESIGNER) is True and agent_network_name:
+                return {
+                    "messages": [
+                        AIMessage(content=f"The network {agent_network_name} has been modified by the user.")
+                    ],
+                    "jump_to": "end",
+                }
         return None
 
     @override
@@ -158,8 +171,7 @@ class AgentNetworkDefinitionMiddleware(AgentMiddleware):
         handler: Callable[[ModelRequest[ContextT]], Awaitable[ModelResponse[ResponseT]]],
     ) -> ModelResponse[ResponseT]:
         """
-        Normalize the agent network definition format, cache in sly data, and inject it into the system prompt
-        before each model call.
+        Inject the agent network definition into the system prompt before each model call.
 
         :param request: Model request containing messages and state
         :param handler: Handler to execute the model call
@@ -168,10 +180,7 @@ class AgentNetworkDefinitionMiddleware(AgentMiddleware):
         if not self.network_def:
             return await handler(request)
 
-        # Ensure that agent network definition is in dict (internal) format so that the designer agents know
-        # how to modify it and cache in sly data.
-        network_def = self._normalize_network_def(self.network_def)
-        return await self._inject_into_request(network_def, request, handler)
+        return await self._inject_into_request(self.network_def, request, handler)
 
     async def _resolve_network_def(self) -> dict[str, Any] | list[dict[str, Any]] | None:
         """
