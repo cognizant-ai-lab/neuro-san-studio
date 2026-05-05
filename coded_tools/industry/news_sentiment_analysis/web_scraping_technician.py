@@ -29,6 +29,7 @@ import backoff
 import feedparser
 import requests
 from bs4 import BeautifulSoup
+from leaf_common.serialization.util.text_file_reader import TextFileReader
 from neuro_san.interfaces.coded_tool import CodedTool
 from newspaper import Article
 from newspaper import ArticleException
@@ -343,8 +344,8 @@ class WebScrapingTechnician(CodedTool):
         for result in [nyt_result, guardian_result, aljazeera_result]:
             file_path = result.get("file")
             if file_path and os.path.exists(file_path):
-                with open(file_path, "r", encoding="utf-8") as f:
-                    all_articles.extend(line.strip() for line in f if line.strip())
+                text = TextFileReader.read_text_file(file_path)
+                all_articles.extend(line.strip() for line in text.splitlines() if line.strip())
 
         combined_filename = os.path.join(save_dir, "all_news_articles.txt")
         with open(combined_filename, "w", encoding="utf-8") as f:

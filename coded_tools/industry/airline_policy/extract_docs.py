@@ -20,6 +20,7 @@ from typing import Any
 from typing import Dict
 from typing import Union
 
+from leaf_common.serialization.util.text_file_reader import TextFileReader
 from neuro_san.interfaces.coded_tool import CodedTool
 from pypdf import PdfReader
 from pypdf.errors import PyPdfError
@@ -162,8 +163,7 @@ class ExtractDocs(CodedTool):
         :return: Content of the text file.
         """
         try:
-            with open(txt_path, "r", encoding="utf-8") as f:
-                return f.read()
+            return TextFileReader.read_text_file(txt_path)
         except OSError as e:
             error = f"Error reading TXT {txt_path}: {e}"
             logger.error(error)
