@@ -18,6 +18,7 @@ import json
 import os
 import re
 
+from leaf_common.serialization.util.text_file_reader import TextFileReader
 from neuro_san.client.agent_session_factory import AgentSessionFactory
 from neuro_san.client.streaming_input_processor import StreamingInputProcessor
 
@@ -122,8 +123,7 @@ def parse_log_files(directory_path, log_analyzer, analysis_session, analysis_thr
         print(f"Processing file: {log_file}")
 
         try:
-            with open(file_path, "r", encoding="utf-8") as f:
-                content = f.read()
+            content = TextFileReader.read_text_file(file_path)
 
             # Extract system prompt
             system_prompt = extract_system_prompt(content)
@@ -139,7 +139,7 @@ def parse_log_files(directory_path, log_analyzer, analysis_session, analysis_thr
                     )
                     print(analysis)
 
-        except (FileNotFoundError, UnicodeDecodeError, IOError) as e:
+        except (FileNotFoundError, IOError) as e:
             print(f"Error processing file {file_path}: {str(e)}")
 
         except Exception as e:

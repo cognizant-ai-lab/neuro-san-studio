@@ -17,12 +17,11 @@
 """Tests for FileSystemAgentNetworkPersistor encoding behavior."""
 
 import asyncio
-import logging
 import os
 import tempfile
 from unittest.mock import patch
 
-import aiofiles
+from leaf_common.serialization.util.text_file_reader import TextFileReader
 
 from middleware.agent_network_designer.persistence.file_system_agent_network_persistor import (
     FileSystemAgentNetworkPersistor,
@@ -42,7 +41,7 @@ class TestFileSystemAgentNetworkPersistor:
         persistor.subdirectory = "generated"
         return persistor
 
-    # Test cases for _async_read_text
+    # Test cases for TextFileReader integration
 
     def test_read_utf8_file(self):
         """Reads a UTF-8 file with non-ASCII content correctly."""
@@ -51,8 +50,7 @@ class TestFileSystemAgentNetworkPersistor:
             tmp_path = tmp.name
 
         try:
-            persistor = self._make_persistor(os.path.dirname(tmp_path))
-            result = asyncio.run(persistor._async_read_text(tmp_path))  # pylint: disable=protected-access
+            result = asyncio.run(TextFileReader.async_read_text_file(tmp_path))
             assert "café résumé" in result
         finally:
             os.unlink(tmp_path)
@@ -64,66 +62,31 @@ class TestFileSystemAgentNetworkPersistor:
             tmp_path = tmp.name
 
         try:
-            persistor = self._make_persistor(os.path.dirname(tmp_path))
-            result = asyncio.run(persistor._async_read_text(tmp_path))  # pylint: disable=protected-access
+            result = asyncio.run(TextFileReader.async_read_text_file(tmp_path))
             assert '"network.hocon": true' in result
         finally:
             os.unlink(tmp_path)
 
-    def test_fallback_called_on_non_utf8(self, caplog):
-        """Logs a warning and falls back when file is not valid UTF-8."""
+    def test_reads_non_utf8_via_cp1252_fallback(self):
+        """Decodes a file with cp1252 content (0x80 = euro sign)."""
         with tempfile.NamedTemporaryFile(mode="wb", suffix=".hocon", delete=False) as tmp:
-            # 0x80 is invalid UTF-8 start byte but valid in cp1252 (euro sign)
             tmp.write(b'key = "val\x80ue"\n')
             tmp_path = tmp.name
 
         try:
-            persistor = self._make_persistor(os.path.dirname(tmp_path))
-
-            # Mock the fallback open to simulate a Windows platform where
-            # encoding="locale" would be cp1252
-            original_open = aiofiles.open
-
-            call_count = {"n": 0}
-
-            def mock_open(path, mode="r", **kwargs):
-                call_count["n"] += 1
-                if call_count["n"] == 2:
-                    # Second call is the fallback — force cp1252
-                    kwargs["encoding"] = "cp1252"
-                return original_open(path, mode, **kwargs)
-
-            with patch("aiofiles.open", side_effect=mock_open):
-                with caplog.at_level(logging.WARNING):
-                    result = asyncio.run(persistor._async_read_text(tmp_path))  # pylint: disable=protected-access
-
-            assert "not valid UTF-8" in caplog.text
+            result = asyncio.run(TextFileReader.async_read_text_file(tmp_path))
             assert "val€ue" in result
         finally:
             os.unlink(tmp_path)
 
-    def test_fallback_reads_cp1252_content(self):
-        """Verifies the fallback correctly decodes cp1252 bytes."""
+    def test_reads_cp1252_encoded_content(self):
+        """Decodes cp1252 bytes where e-acute = 0xe9."""
         with tempfile.NamedTemporaryFile(mode="wb", suffix=".hocon", delete=False) as tmp:
-            # Write cp1252-encoded content: café where é = 0xe9 in cp1252
             tmp.write(b'description = "caf\xe9"\n')
             tmp_path = tmp.name
 
         try:
-            persistor = self._make_persistor(os.path.dirname(tmp_path))
-
-            original_open = aiofiles.open
-            call_count = {"n": 0}
-
-            def mock_open(path, mode="r", **kwargs):
-                call_count["n"] += 1
-                if call_count["n"] == 2:
-                    kwargs["encoding"] = "cp1252"
-                return original_open(path, mode, **kwargs)
-
-            with patch("aiofiles.open", side_effect=mock_open):
-                result = asyncio.run(persistor._async_read_text(tmp_path))  # pylint: disable=protected-access
-
+            result = asyncio.run(TextFileReader.async_read_text_file(tmp_path))
             assert "café" in result
         finally:
             os.unlink(tmp_path)
