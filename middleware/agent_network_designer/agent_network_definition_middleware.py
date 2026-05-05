@@ -50,6 +50,7 @@ from coded_tools.agent_network_editor.sly_data_lock import SlyDataLock
 AGENT_NETWORK_HOCON_FILE: str = "agent_network_hocon_file"
 AGENT_RESERVATIONS: str = "agent_reservations"
 RESERVATION_ID: str = "reservation_id"
+SKIP_DESIGNER: str = "skip_designer"
 
 
 class AgentNetworkDefinitionMiddleware(AgentMiddleware):
@@ -108,6 +109,26 @@ class AgentNetworkDefinitionMiddleware(AgentMiddleware):
         # stale errors persisting if the control flow ever changes.
         self.error_message = ""
         self.network_def = await self._resolve_network_def()
+        agent_network_name: Any = self.sly_data.get(AGENT_NETWORK_NAME)
+
+        # Type check agent network name, but only report an error if no prior load error occurred,
+        # since a load failure (e.g. missing HOCON file) may have prevented the name from being set.
+        if agent_network_name is not None and not isinstance(agent_network_name, str) and not self.error_message:
+            self.error_message = f"Error: {AGENT_NETWORK_NAME} has to be str. Got {type(agent_network_name).__name__}"
+            self.logger.error(self.error_message)
+
+        # If a network definition was resolved but the name is missing, report an actionable error.
+        # Agent network name is required for persistence (saving the result back to S3 or disk).
+        # This can happen when the user passes agent_network_definition directly without agent_network_name.
+        # It does not apply to HOCON or S3 loading, which derive the name automatically.
+        # Also skip if a prior error is already set (e.g. type error above) to avoid overwriting it.
+        if self.network_def and not agent_network_name and not self.error_message:
+            self.error_message = f"""Error: "{AGENT_NETWORK_NAME}" is missing from sly_data.
+To edit an existing agent network, provide both "{AGENT_NETWORK_DEFINITION}" and "{AGENT_NETWORK_NAME}" in sly_data.
+Alternatively, provide the network via "{AGENT_NETWORK_HOCON_FILE}" or "{AGENT_RESERVATIONS}" (with "{RESERVATION_ID}"),
+which supply the name automatically."""
+            self.logger.error(self.error_message)
+
         if self.error_message:
             # Loading errors (HOCON file or S3 reservation) only occur in the top-level agent_network_designer
             # network, not in its subnetworks, since loading is only triggered from the main network's sly_data.
@@ -116,9 +137,13 @@ class AgentNetworkDefinitionMiddleware(AgentMiddleware):
                 "messages": [AIMessage(self.error_message)],
                 "jump_to": "end",
             }
-        if self.sly_data.get("skip_designer") and self.sly_data.get(AGENT_NETWORK_NAME) and self.network_def:
+
+        # This is used for manual editing where users modify the agent network definition and only want to use the
+        # agent network designer to persist the changes, skipping the LLM entirely.
+        # Any truthy value for the key is accepted (e.g. True, 1, "yes").
+        if self.sly_data.get(SKIP_DESIGNER) and agent_network_name and self.network_def:
             return {
-                "messages": [AIMessage(content=f"The network {self.sly_data.get(AGENT_NETWORK_NAME)} has been modified by user.")],
+                "messages": [AIMessage(content=f"The network {agent_network_name} has been modified by user.")],
                 "jump_to": "end",
             }
         return None
