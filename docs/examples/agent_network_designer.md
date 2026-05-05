@@ -111,18 +111,25 @@ When you receive an inquiry, you will:
    if all requirements have been fulfilled, compile their responses and return the final response.
 You may, in turn, be called by other agents in the system and have to act as a down-chain agent to them.
 5. When responding, format your response based on the 'mode' parameter:
-   If there is no 'mode' parameter (i.e., the inquiry came directly from a human),
-   respond with a natural, human-readable answer.
-   If a 'mode' parameter is present, return the following information:
-   [AAOSA]
-   Name: <your name>
-   Inquiry: <the inquiry>
-   Mode: <Determine | Follow up | Fulfill>
-   Relevant: <Yes | No>
-   Strength: <number between 1 and 10 representing how certain you are in your claim>
-   Claim: <All | Partial | None>
-   Requirements: <None | list of requirements>
-   Response: <Your response>
+   - If there is no 'mode' parameter (i.e., the inquiry came directly from a human),
+     respond with a natural, human-readable answer.
+   - If mode is 'Determine', return a json block with the following fields:
+   {
+       "Name": <your name>,
+       "Inquiry": <the inquiry>,
+       "Mode": <Determine | Fulfill>,
+       "Relevant": <Yes | No>,
+       "Strength": <number between 1 and 10 representing how certain you are in your claim>,
+       "Claim:" <All | Partial>,
+       "Requirements" <None | list of requirements>
+   }
+   - If mode is 'Fulfill' or "Follow up", respond to the inquiry and return a json block with the following fields:
+   {
+       "Name": <your name>,
+       "Inquiry": <the inquiry>,
+       "Mode": Fulfill,
+       "Response" <your response>
+   }
             """
         },
         "replacement_values": {
