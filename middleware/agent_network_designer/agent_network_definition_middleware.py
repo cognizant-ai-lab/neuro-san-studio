@@ -143,7 +143,7 @@ Alternatively, provide the network via "{AGENT_NETWORK_HOCON_FILE}" or "{AGENT_R
         # Strict boolean check to match the schema (type: boolean); "false" as a string would be truthy otherwise.
         if self.sly_data.get(SKIP_DESIGNER) is True and agent_network_name and self.network_def:
             return {
-                "messages": [AIMessage(content=f"The network {agent_network_name} has been modified by user.")],
+                "messages": [AIMessage(content=f"The network {agent_network_name} has been modified by the user.")],
                 "jump_to": "end",
             }
         return None
