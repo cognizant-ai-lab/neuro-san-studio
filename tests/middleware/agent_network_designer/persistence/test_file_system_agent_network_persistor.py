@@ -102,10 +102,7 @@ class TestFileSystemAgentNetworkPersistor:
             main_manifest = os.path.join(tmp_dir, "manifest.hocon")
             # Write main manifest with cp1252 content and an existing include line
             with open(main_manifest, "wb") as f:
-                f.write(
-                    b'# caf\xe9 comment\n'
-                    b'    include "registries/generated/manifest.hocon",\n'
-                )
+                f.write(b'# caf\xe9 comment\n    include "registries/generated/manifest.hocon",\n')
             persistor.main_manifest_path = main_manifest
 
             asyncio.run(persistor._async_update_main_manifest())  # pylint: disable=protected-access
