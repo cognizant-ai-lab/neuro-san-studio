@@ -77,7 +77,7 @@ class PersistentMemoryTool:
         self._handlers: dict[str, Any] = self._build_handlers()
 
         self.logger.info(
-            "Initialised for %s with operations: %s",
+            "Initialized for %s with operations: %s",
             self._namespace_key,
             sorted(self._enabled_operations),
         )

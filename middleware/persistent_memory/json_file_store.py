@@ -219,10 +219,10 @@ class JsonFileStore(TopicStore):
                 type(parsed).__name__,
             )
             return {}
-        normalised: TopicStore.AgentMemory = {}
+        normalized: TopicStore.AgentMemory = {}
         for topic, value in parsed.items():
-            normalised[str(topic)] = JsonFileStore._coerce_value(value)
-        return normalised
+            normalized[str(topic)] = JsonFileStore._coerce_value(value)
+        return normalized
 
     @staticmethod
     def _coerce_value(value: Any) -> str:

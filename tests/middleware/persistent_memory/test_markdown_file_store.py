@@ -43,7 +43,7 @@ class MarkdownFileStoreTests(MemoryTestBase):
         store: MarkdownFileStore = self._make_store()
         memory: dict = {
             "mike": "Works in Sales.",
-            "shrushti": "Works in Education.",
+            "john": "Works in Education.",
         }
         asyncio.run(store.save_all("net.agent", memory))
         loaded: dict = asyncio.run(store.load_all("net.agent"))

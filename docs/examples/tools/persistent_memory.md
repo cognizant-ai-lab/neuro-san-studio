@@ -11,6 +11,16 @@ read-modify-write against disk, guarded by a per-key `asyncio.Lock`. There
 is no end-of-turn flush — a crash mid-turn loses at most the call that was
 in flight.
 
+## Scope and limitations
+
+This middleware is designed for **local, single-user** usage. Memory is
+scoped per `(network, agent)` — not per user. All users sharing the same
+agent share the same memory namespace, which means one user can ask the
+agent about topics another user stored. This is by design for
+single-user local development, but may be surprising in multi-user
+deployments. Multi-tenant / per-user memory isolation is out of scope
+for this middleware; server-side backends are planned separately.
+
 ## Why middleware, not a coded tool
 
 Memory needs two things the agent lifecycle already gives you: a tool the
