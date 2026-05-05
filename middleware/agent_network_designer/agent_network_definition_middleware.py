@@ -50,6 +50,7 @@ from coded_tools.agent_network_editor.sly_data_lock import SlyDataLock
 AGENT_NETWORK_HOCON_FILE: str = "agent_network_hocon_file"
 AGENT_RESERVATIONS: str = "agent_reservations"
 RESERVATION_ID: str = "reservation_id"
+SKIP_DESIGNER: str = "skip_designer"
 
 
 class AgentNetworkDefinitionMiddleware(AgentMiddleware):
@@ -93,21 +94,49 @@ class AgentNetworkDefinitionMiddleware(AgentMiddleware):
     @hook_config(can_jump_to=["end"])
     async def abefore_model(self, state: AgentState[Any], runtime: Any) -> dict[str, Any] | None:
         """
-        Resolve agent network definition before the model call, if there was an error loading
-        the agent network definition from HOCON file or S3 reservation, report that error back to the client.
+        Resolve and normalize the agent network definition before each model call.
 
-        Note that this is done before model, not before agent, because the definition may change between
-        each model call (e.g., when the agent calls a tool that updates the network definition).
+        If loading from a HOCON file or S3 reservation fails, or if the agent network name is
+        missing or invalid, reports the error back to the client and jumps to end.
+
+        If skip_designer is set, normalizes the definition and jumps to end immediately so the
+        persistence middleware can save the user-modified network without LLM involvement.
+
+        Note that this is done before model, not before agent, because the definition may change
+        between each model call (e.g., when the agent calls a tool that updates the network definition).
 
         :param state: Current agent state
         :param runtime: Runtime context
-        :return: Dict with error message and jump directive, or None if no error
+        :return: Dict with error message or skip notification and jump directive, or None to proceed normally
         """
         # Reset error_message before each resolve. In practice this is unreachable since a previous load
         # failure jumps to end and terminates the loop, but resetting here is a precaution against
         # stale errors persisting if the control flow ever changes.
         self.error_message = ""
         self.network_def = await self._resolve_network_def()
+        agent_network_name: str = self.sly_data.get(AGENT_NETWORK_NAME)
+
+        # Type check agent network name, but only report an error if no prior load error occurred,
+        # since a load failure (e.g. missing HOCON file) may have prevented the name from being set.
+        if agent_network_name is not None and not isinstance(agent_network_name, str) and not self.error_message:
+            self.error_message = f"Error: {AGENT_NETWORK_NAME} has to be str. Got {type(agent_network_name).__name__}"
+            self.logger.error(self.error_message)
+
+        # If a network definition was resolved but the name is missing, report an actionable error.
+        # Agent network name is required for persistence (saving the result back to S3 or disk).
+        # This can happen when the user passes agent_network_definition directly without agent_network_name.
+        # It does not apply to HOCON or S3 loading, which derive the name automatically.
+        # Also skip if a prior error is already set (e.g. type error above) to avoid overwriting it.
+        if self.network_def and not agent_network_name and not self.error_message:
+            self.error_message = (
+                f'Error: "{AGENT_NETWORK_NAME}" is missing from sly_data.\n'
+                f'To edit an existing agent network, provide both "{AGENT_NETWORK_DEFINITION}" '
+                f'and "{AGENT_NETWORK_NAME}" in sly_data.\n'
+                f'Alternatively, provide the network via "{AGENT_NETWORK_HOCON_FILE}" or '
+                f'"{AGENT_RESERVATIONS}" (with "{RESERVATION_ID}"), which supply the name automatically.'
+            )
+            self.logger.error(self.error_message)
+
         if self.error_message:
             # Loading errors (HOCON file or S3 reservation) only occur in the top-level agent_network_designer
             # network, not in its subnetworks, since loading is only triggered from the main network's sly_data.
@@ -116,6 +145,23 @@ class AgentNetworkDefinitionMiddleware(AgentMiddleware):
                 "messages": [AIMessage(self.error_message)],
                 "jump_to": "end",
             }
+
+        # Normalize to dict format here so both the skip_designer and normal (awrap_model_call) paths
+        # always receive a dict. Without this, a connectivity-list definition would reach the persistence
+        # middleware as a list and crash validators that expect a dict (e.g. network_def.items()).
+        if self.network_def:
+            self.network_def = self._normalize_network_def(self.network_def)
+
+            # This is used for manual editing where users modify the agent network definition and only want to use the
+            # agent network designer to persist the changes, skipping the LLM entirely.
+            # Strict boolean check to match the schema (type: boolean); "false" as a string would be truthy otherwise.
+            if self.sly_data.get(SKIP_DESIGNER) is True and agent_network_name:
+                return {
+                    "messages": [
+                        AIMessage(content=f"The network {agent_network_name} has been modified by the user.")
+                    ],
+                    "jump_to": "end",
+                }
         return None
 
     @override
@@ -125,8 +171,7 @@ class AgentNetworkDefinitionMiddleware(AgentMiddleware):
         handler: Callable[[ModelRequest[ContextT]], Awaitable[ModelResponse[ResponseT]]],
     ) -> ModelResponse[ResponseT]:
         """
-        Normalize the agent network definition format, cache in sly data, and inject it into the system prompt
-        before each model call.
+        Inject the agent network definition into the system prompt before each model call.
 
         :param request: Model request containing messages and state
         :param handler: Handler to execute the model call
@@ -135,10 +180,7 @@ class AgentNetworkDefinitionMiddleware(AgentMiddleware):
         if not self.network_def:
             return await handler(request)
 
-        # Ensure that agent network definition is in dict (internal) format so that the designer agents know
-        # how to modify it and cache in sly data.
-        network_def = self._normalize_network_def(self.network_def)
-        return await self._inject_into_request(network_def, request, handler)
+        return await self._inject_into_request(self.network_def, request, handler)
 
     async def _resolve_network_def(self) -> dict[str, Any] | list[dict[str, Any]] | None:
         """
