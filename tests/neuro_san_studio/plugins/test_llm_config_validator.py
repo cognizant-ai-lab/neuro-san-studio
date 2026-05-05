@@ -20,12 +20,12 @@ from unittest.mock import AsyncMock
 from unittest.mock import MagicMock
 from unittest.mock import patch
 
-from plugins.llm_config_validator.check_llm_configs import _expand_fallbacks
-from plugins.llm_config_validator.check_llm_configs import extract_llm_configs_from_agent_network
-from plugins.llm_config_validator.check_llm_configs import extract_llm_configs_from_studio_config
-from plugins.llm_config_validator.check_llm_configs import redact_llm_config
-from plugins.llm_config_validator.check_llm_configs import run_checks
-from plugins.llm_config_validator.llm_config_validator_plugin import LlmConfigValidatorPlugin
+from neuro_san_studio.plugins.llm_config_validator.check_llm_configs import _expand_fallbacks
+from neuro_san_studio.plugins.llm_config_validator.check_llm_configs import extract_llm_configs_from_agent_network
+from neuro_san_studio.plugins.llm_config_validator.check_llm_configs import extract_llm_configs_from_studio_config
+from neuro_san_studio.plugins.llm_config_validator.check_llm_configs import redact_llm_config
+from neuro_san_studio.plugins.llm_config_validator.check_llm_configs import run_checks
+from neuro_san_studio.plugins.llm_config_validator.llm_config_validator_plugin import LlmConfigValidatorPlugin
 
 
 class TestExpandFallbacks(TestCase):
@@ -290,8 +290,8 @@ class TestExtractLlmConfigsFromAgentNetwork(TestCase):
         self.assertEqual(labels, ["AgentA", "AgentB", "AgentC"])
 
 
-_CHECKS_MODULE = "plugins.llm_config_validator.check_llm_configs"
-_PLUGIN_MODULE = "plugins.llm_config_validator.llm_config_validator_plugin"
+_CHECKS_MODULE = "neuro_san_studio.plugins.llm_config_validator.check_llm_configs"
+_PLUGIN_MODULE = "neuro_san_studio.plugins.llm_config_validator.llm_config_validator_plugin"
 
 
 class TestLlmConfigValidatorPlugin(TestCase):

@@ -1,7 +1,7 @@
 [tool.ruff]
 target-version = "py312"
 line-length = 119
-src = ["apps", "coded_tools", "plugins", "tests"]
+src = ["apps", "coded_tools", "neuro_san_studio", "tests"]
 
 [tool.ruff.lint]
 select = [
