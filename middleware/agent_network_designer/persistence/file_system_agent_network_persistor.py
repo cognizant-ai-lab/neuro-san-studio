@@ -15,16 +15,14 @@
 # END COPYRIGHT
 
 # Import for asynchronous file operations
-import logging
 import os
 
 import aiofiles
+from leaf_common.serialization.util.text_file_reader import TextFileReader
 
 from middleware.agent_network_designer.persistence.agent_network_assembler import AgentNetworkAssembler
 from middleware.agent_network_designer.persistence.agent_network_persistor import AgentNetworkPersistor
 from middleware.agent_network_designer.persistence.hocon_agent_network_assembler import HoconAgentNetworkAssembler
-
-_logger = logging.getLogger(__name__)
 
 DEFAULT_SUBDIRECTORY: str = "generated"
 
@@ -60,25 +58,6 @@ class FileSystemAgentNetworkPersistor(AgentNetworkPersistor):
         :return: An assembler instance associated with this persistor
         """
         return HoconAgentNetworkAssembler(self.demo_mode)
-
-    async def _async_read_text(self, path: str) -> str:
-        """
-        Reads a text file, trying UTF-8 first with a fallback to platform default encoding.
-
-        Writes always use UTF-8, so most files decode on the first attempt. The fallback
-        handles files created manually on Windows where the editor used the system locale
-        encoding (typically cp1252).
-        """
-        try:
-            async with aiofiles.open(path, "r", encoding="utf-8") as file:
-                return await file.read()
-        except UnicodeDecodeError:
-            _logger.warning(
-                "File '%s' is not valid UTF-8; retrying with platform default encoding.",
-                path,
-            )
-        async with aiofiles.open(path, "r", encoding="locale") as file:
-            return await file.read()
 
     async def async_persist(self, obj: str, file_reference: str = None) -> str:
         """
@@ -116,7 +95,7 @@ class FileSystemAgentNetworkPersistor(AgentNetworkPersistor):
                 await file.write("{\n}")
 
         # Read the current manifest content
-        manifest_content: str = await self._async_read_text(manifest_path)
+        manifest_content: str = await TextFileReader.async_read_text_file(manifest_path)
 
         # Check if the entry already exists to avoid duplicates
         if (
@@ -164,7 +143,7 @@ class FileSystemAgentNetworkPersistor(AgentNetworkPersistor):
         if not os.path.exists(self.main_manifest_path):
             return None
 
-        content: str = await self._async_read_text(self.main_manifest_path)
+        content: str = await TextFileReader.async_read_text_file(self.main_manifest_path)
 
         registries_name: str = os.path.basename(self.output_path)
         include_line: str = f'include "{registries_name}/{self.subdirectory}/manifest.hocon",'
