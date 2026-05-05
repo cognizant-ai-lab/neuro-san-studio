@@ -123,10 +123,13 @@ class AgentNetworkDefinitionMiddleware(AgentMiddleware):
         # It does not apply to HOCON or S3 loading, which derive the name automatically.
         # Also skip if a prior error is already set (e.g. type error above) to avoid overwriting it.
         if self.network_def and not agent_network_name and not self.error_message:
-            self.error_message = f"""Error: "{AGENT_NETWORK_NAME}" is missing from sly_data.
-To edit an existing agent network, provide both "{AGENT_NETWORK_DEFINITION}" and "{AGENT_NETWORK_NAME}" in sly_data.
-Alternatively, provide the network via "{AGENT_NETWORK_HOCON_FILE}" or "{AGENT_RESERVATIONS}" (with "{RESERVATION_ID}")
-, which supply the name automatically."""
+            self.error_message = (
+                f'Error: "{AGENT_NETWORK_NAME}" is missing from sly_data.\n'
+                f'To edit an existing agent network, provide both "{AGENT_NETWORK_DEFINITION}" '
+                f'and "{AGENT_NETWORK_NAME}" in sly_data.\n'
+                f'Alternatively, provide the network via "{AGENT_NETWORK_HOCON_FILE}" or '
+                f'"{AGENT_RESERVATIONS}" (with "{RESERVATION_ID}"), which supply the name automatically.'
+            )
             self.logger.error(self.error_message)
 
         if self.error_message:
