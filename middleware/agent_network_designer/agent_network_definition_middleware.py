@@ -109,7 +109,7 @@ class AgentNetworkDefinitionMiddleware(AgentMiddleware):
         # stale errors persisting if the control flow ever changes.
         self.error_message = ""
         self.network_def = await self._resolve_network_def()
-        agent_network_name: Any = self.sly_data.get(AGENT_NETWORK_NAME)
+        agent_network_name: str = self.sly_data.get(AGENT_NETWORK_NAME)
 
         # Type check agent network name, but only report an error if no prior load error occurred,
         # since a load failure (e.g. missing HOCON file) may have prevented the name from being set.
@@ -126,7 +126,7 @@ class AgentNetworkDefinitionMiddleware(AgentMiddleware):
             self.error_message = f"""Error: "{AGENT_NETWORK_NAME}" is missing from sly_data.
 To edit an existing agent network, provide both "{AGENT_NETWORK_DEFINITION}" and "{AGENT_NETWORK_NAME}" in sly_data.
 Alternatively, provide the network via "{AGENT_NETWORK_HOCON_FILE}" or "{AGENT_RESERVATIONS}" (with "{RESERVATION_ID}")
-,which supply the name automatically."""
+, which supply the name automatically."""
             self.logger.error(self.error_message)
 
         if self.error_message:
@@ -140,8 +140,8 @@ Alternatively, provide the network via "{AGENT_NETWORK_HOCON_FILE}" or "{AGENT_R
 
         # This is used for manual editing where users modify the agent network definition and only want to use the
         # agent network designer to persist the changes, skipping the LLM entirely.
-        # Any truthy value for the key is accepted (e.g. True, 1, "yes").
-        if self.sly_data.get(SKIP_DESIGNER) and agent_network_name and self.network_def:
+        # Strict boolean check to match the schema (type: boolean); "false" as a string would be truthy otherwise.
+        if self.sly_data.get(SKIP_DESIGNER) is True and agent_network_name and self.network_def:
             return {
                 "messages": [AIMessage(content=f"The network {agent_network_name} has been modified by user.")],
                 "jump_to": "end",
