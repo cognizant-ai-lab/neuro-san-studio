@@ -15,23 +15,31 @@
 # END COPYRIGHT
 
 import json
-import logging
+import os
 import re
+from logging import Logger
+from logging import getLogger
 from pathlib import Path
+from re import Match
 from typing import Any
 from typing import Awaitable
 from typing import Callable
 from typing import override
 
+from botocore.exceptions import ClientError
 from langchain.agents.middleware.types import AgentMiddleware
+from langchain.agents.middleware.types import AgentState
 from langchain.agents.middleware.types import ContextT
 from langchain.agents.middleware.types import ModelRequest
 from langchain.agents.middleware.types import ModelResponse
 from langchain.agents.middleware.types import ResponseT
+from langchain.agents.middleware.types import hook_config
+from langchain_core.messages import AIMessage
 from langchain_core.messages import BaseMessage
 from langchain_core.messages import SystemMessage
 from neuro_san.interfaces.agent_progress_reporter import AgentProgressReporter
 from neuro_san.internals.persistence.abstract_async_config_restorer import AbstractAsyncConfigRestorer
+from neuro_san.service.watcher.temp_networks.s3_reservations_storage import S3ReservationsStorage
 
 from coded_tools.agent_network_editor.connectivity_dictionary_converter import ConnectivityDictionaryConverter
 from coded_tools.agent_network_editor.constants import AGENT_NETWORK_DEFINITION
@@ -40,6 +48,9 @@ from coded_tools.agent_network_editor.progress_handler import ProgressHandler
 from coded_tools.agent_network_editor.sly_data_lock import SlyDataLock
 
 AGENT_NETWORK_HOCON_FILE: str = "agent_network_hocon_file"
+AGENT_RESERVATIONS: str = "agent_reservations"
+RESERVATION_ID: str = "reservation_id"
+SKIP_DESIGNER: str = "skip_designer"
 
 
 class AgentNetworkDefinitionMiddleware(AgentMiddleware):
@@ -72,7 +83,86 @@ class AgentNetworkDefinitionMiddleware(AgentMiddleware):
         """
         self.progress_reporter: AgentProgressReporter | None = progress_reporter
         self.sly_data = sly_data
-        self.logger = logging.getLogger(self.__class__.__name__)
+
+        self.logger: Logger = getLogger(self.__class__.__name__)
+        # Initialize agent network definition
+        self.network_def: dict[str, Any] | list[dict[str, Any]] | None = None
+        # Initialize an error message to store issues encountered during loading from HOCON file or S3 reservation.
+        self.error_message: str = ""
+
+    @override
+    @hook_config(can_jump_to=["end"])
+    async def abefore_model(self, state: AgentState[Any], runtime: Any) -> dict[str, Any] | None:
+        """
+        Resolve and normalize the agent network definition before each model call.
+
+        If loading from a HOCON file or S3 reservation fails, or if the agent network name is
+        missing or invalid, reports the error back to the client and jumps to end.
+
+        If skip_designer is set, normalizes the definition and jumps to end immediately so the
+        persistence middleware can save the user-modified network without LLM involvement.
+
+        Note that this is done before model, not before agent, because the definition may change
+        between each model call (e.g., when the agent calls a tool that updates the network definition).
+
+        :param state: Current agent state
+        :param runtime: Runtime context
+        :return: Dict with error message or skip notification and jump directive, or None to proceed normally
+        """
+        # Reset error_message before each resolve. In practice this is unreachable since a previous load
+        # failure jumps to end and terminates the loop, but resetting here is a precaution against
+        # stale errors persisting if the control flow ever changes.
+        self.error_message = ""
+        self.network_def = await self._resolve_network_def()
+        agent_network_name: str = self.sly_data.get(AGENT_NETWORK_NAME)
+
+        # Type check agent network name, but only report an error if no prior load error occurred,
+        # since a load failure (e.g. missing HOCON file) may have prevented the name from being set.
+        if agent_network_name is not None and not isinstance(agent_network_name, str) and not self.error_message:
+            self.error_message = f"Error: {AGENT_NETWORK_NAME} has to be str. Got {type(agent_network_name).__name__}"
+            self.logger.error(self.error_message)
+
+        # If a network definition was resolved but the name is missing, report an actionable error.
+        # Agent network name is required for persistence (saving the result back to S3 or disk).
+        # This can happen when the user passes agent_network_definition directly without agent_network_name.
+        # It does not apply to HOCON or S3 loading, which derive the name automatically.
+        # Also skip if a prior error is already set (e.g. type error above) to avoid overwriting it.
+        if self.network_def and not agent_network_name and not self.error_message:
+            self.error_message = (
+                f'Error: "{AGENT_NETWORK_NAME}" is missing from sly_data.\n'
+                f'To edit an existing agent network, provide both "{AGENT_NETWORK_DEFINITION}" '
+                f'and "{AGENT_NETWORK_NAME}" in sly_data.\n'
+                f'Alternatively, provide the network via "{AGENT_NETWORK_HOCON_FILE}" or '
+                f'"{AGENT_RESERVATIONS}" (with "{RESERVATION_ID}"), which supply the name automatically.'
+            )
+            self.logger.error(self.error_message)
+
+        if self.error_message:
+            # Loading errors (HOCON file or S3 reservation) only occur in the top-level agent_network_designer
+            # network, not in its subnetworks, since loading is only triggered from the main network's sly_data.
+            # Therefore, this jump will only fire in the agent_network_designer agent itself.
+            return {
+                "messages": [AIMessage(self.error_message)],
+                "jump_to": "end",
+            }
+
+        # Normalize to dict format here so both the skip_designer and normal (awrap_model_call) paths
+        # always receive a dict. Without this, a connectivity-list definition would reach the persistence
+        # middleware as a list and crash validators that expect a dict (e.g. network_def.items()).
+        if self.network_def:
+            self.network_def = self._normalize_network_def(self.network_def)
+
+            # This is used for manual editing where users modify the agent network definition and only want to use the
+            # agent network designer to persist the changes, skipping the LLM entirely.
+            # Strict boolean check to match the schema (type: boolean); "false" as a string would be truthy otherwise.
+            if self.sly_data.get(SKIP_DESIGNER) is True and agent_network_name:
+                return {
+                    "messages": [
+                        AIMessage(content=f"The network {agent_network_name} has been modified by the user.")
+                    ],
+                    "jump_to": "end",
+                }
+        return None
 
     @override
     async def awrap_model_call(
@@ -81,64 +171,206 @@ class AgentNetworkDefinitionMiddleware(AgentMiddleware):
         handler: Callable[[ModelRequest[ContextT]], Awaitable[ModelResponse[ResponseT]]],
     ) -> ModelResponse[ResponseT]:
         """
-        Inject the agent network definition from sly_data into the system prompt
-        before each model call.
+        Inject the agent network definition into the system prompt before each model call.
 
         :param request: Model request containing messages and state
         :param handler: Handler to execute the model call
         :return: Model response from handler
         """
+        if not self.network_def:
+            return await handler(request)
 
-        # First, check to see if there is a generated agent network definition
+        return await self._inject_into_request(self.network_def, request, handler)
+
+    async def _resolve_network_def(self) -> dict[str, Any] | list[dict[str, Any]] | None:
+        """
+        Resolve the agent network definition from sly_data, HOCON file, or S3 reservation.
+
+        :return: Agent network definition, or None if not found
+        """
         network_def: dict[str, Any] | list[dict[str, Any]] | None = self.sly_data.get(AGENT_NETWORK_DEFINITION)
+        hocon_file: str | None = self.sly_data.get(AGENT_NETWORK_HOCON_FILE)
+        agent_reservations: list[dict[str, Any]] | None = self.sly_data.get(AGENT_RESERVATIONS)
+
+        # First, check to see if there is a generated agent network definition in sly_data.
         if network_def:
+            # This log level is set to debug since this gets called before every model call and can be quite verbose.
             self.logger.debug(">>>>>>>>>>>>>>>>>>>Getting Agent Network Definition from Sly Data>>>>>>>>>>>>>>>>>>>")
+            return network_def
 
         # Next, check to see if the user provides HOCON file via sly data
-        else:
-            self.logger.debug(
-                ">>>>>>>>>>>>>>>>>>>Reading & Parsing Agent Network HOCON File "
-                "from Key 'agent_network_hocon_file' in Sly Data>>>>>>>>>>>>>>>>>>>"
+        if hocon_file:
+            self.logger.info(
+                ">>>>>>>>>>>>>>>>>>>Reading & Parsing from Agent Network HOCON File '%s'>>>>>>>>>>>>>>>>>>>",
+                hocon_file,
             )
-            hocon_file: str | None = self.sly_data.get(AGENT_NETWORK_HOCON_FILE)
             network_def = await self._hocon_to_definition(hocon_file, self.sly_data)
             # When loading from hocon, use the file name (without extension) as the agent network name.
             # This is because the agent network name is only created when using the CreateNetwork tool.
-            if hocon_file and network_def:
+            if network_def:
                 self.sly_data[AGENT_NETWORK_NAME] = Path(hocon_file).stem
+            return network_def
 
-        # If we have a network definition from either source, inject it into the system prompt.
-        if network_def:
-            # The agent network definition can be provided in either:
-            # - dict format (internal), used when creating or editing the network, or
-            # - list format (connectivity), which is the native Neuro-San representation.
-            # If the definition is in connectivity format, convert it to dict format before editing.
-            if isinstance(network_def, list):
-                connectivity_dict_converter = ConnectivityDictionaryConverter()
-                network_def = connectivity_dict_converter.to_dict(network_def)
-            # Cache the agent network definition as dict in sly_data for subsequent calls within the same session.
-            self.sly_data[AGENT_NETWORK_DEFINITION] = network_def
+        # Lastly, check the reservation ID in agent reservation field in sly data.
+        if agent_reservations:
+            return await self._resolve_network_def_from_s3(agent_reservations)
 
-            self.logger.debug(
-                ">>>>>>>>>>>>>>>>>>>Injecting Agent Network Definition into System Prompt>>>>>>>>>>>>>>>>>>>"
+        return network_def
+
+    def _extract_reservation_id(self, agent_reservations: list[dict[str, Any]] | None) -> str | None:
+        """
+        Validate agent_reservations and extract the reservation ID from the last entry.
+
+        :param agent_reservations: A list of reservation structures. The last entry is expected to be a dict
+                    with a 'reservation_id' key.
+        :return: The reservation ID string, or None if the input is missing or malformed.
+        """
+        if not agent_reservations or not isinstance(agent_reservations, list):
+            return None
+
+        last_reservation: Any = agent_reservations[-1]
+        if not isinstance(last_reservation, dict):
+            self.logger.warning(
+                "Warning: Last entry in '%s' is not a dict: %s (expected a dictionary)",
+                AGENT_RESERVATIONS,
+                type(last_reservation).__name__,
             )
-            definition_prompt: str = self.format_definition_prompt(network_def)
+            return None
+        if RESERVATION_ID not in last_reservation:
+            self.logger.warning(
+                "Warning: No %s field in %s",
+                RESERVATION_ID,
+                last_reservation,
+            )
+            return None
 
-            system_message: BaseMessage | None = request.system_message
-            if system_message is not None:
-                original_content: str = system_message.content if isinstance(system_message.content, str) else ""
-                system_message = SystemMessage(content=f"{original_content}\n\n{definition_prompt}")
-            else:
-                system_message = SystemMessage(content=definition_prompt)
+        return last_reservation.get(RESERVATION_ID)
 
-            if self.progress_reporter is not None:
-                await ProgressHandler.report_progress(
-                    {"progress_reporter": self.progress_reporter}, network_def, self.sly_data.get(AGENT_NETWORK_NAME)
+    async def _resolve_network_def_from_s3(
+        self, agent_reservations: list[dict[str, Any]] | None
+    ) -> dict[str, Any] | None:
+        """
+        Resolve the agent network definition from an S3 reservation.
+
+        :param agent_reservations: A list of reservation structures describing the temporary agent networks that were
+                    created by interacting with this agent. By convention, the last one in the list is a top-level
+                    handle which may reference any others listed.
+        :return: Agent network definition, or None if no reservation ID is provided
+                    or if there are issues retrieving/parsing the reservation
+        """
+        reservation_id: str | None = self._extract_reservation_id(agent_reservations)
+        if not reservation_id:
+            return None
+
+        error_message: str = "Error: Failed to load agent network definition from S3 reservation for unknown reasons."
+        if not isinstance(reservation_id, str):
+            error_message = (
+                f"Error: Invalid '{RESERVATION_ID}' value: {type(reservation_id).__name__} "
+                "(expected a non-empty string)."
+            )
+            self.logger.error(error_message)
+            self.error_message = error_message
+            return None
+
+        config: dict[str, Any] | None = None
+        try:
+            # Setting up AWS credentials in environment variables is required for S3ReservationsStorage to work.
+            # AWS_ACCESS_KEY_ID="your-access-key"
+            # AWS_SECRET_ACCESS_KEY="your-secret-key"
+            # AWS_DEFAULT_REGION="us-east-1" or your region
+            # (Optional if your credentials file has the region specified)
+            # Other options include:
+            # AWS profile: AWS_PROFILE="your-profile" (reads from ~/.aws/credentials)
+            # Session token (temporary creds): add AWS_SESSION_TOKEN="your-token"
+            # IAM role: no env vars needed if running on EC2/ECS/Lambda with an attached role
+            #
+            # This env var must be set to the S3 Bucket that the network reservations is stored.
+            # AGENT_RESERVATIONS_S3_BUCKET
+            s3_storage = S3ReservationsStorage()
+            s3_storage.start()
+            try:
+                _, agent_network = s3_storage.get_one_reservation(reservation_id)
+                config = agent_network.get_config()
+            except AttributeError as attribute_error:
+                error_message = (
+                    f"Error: Reservation '{reservation_id}' does not contain an agent network or config. "
+                    f"{attribute_error}"
                 )
+                self.logger.error(error_message)
+            except ClientError as client_error:
+                error_message = f"Error: Failed to retrieve reservation '{reservation_id}' from S3. {client_error}"
+                self.logger.error(error_message)
+            finally:
+                s3_storage.stop()
+        except ValueError as value_error:
+            error_message = f"Error: Failed to initialize S3 storage for reservation '{reservation_id}'. {value_error}"
+            self.logger.error(error_message)
 
-            return await handler(request.override(system_message=system_message))
+        if not config:
+            self.error_message = error_message
+            return None
 
-        return await handler(request)
+        # When loading from s3, use extract the name from id and used as the agent network name.
+        # This is because the agent network name is only created when using the CreateNetwork tool.
+        self.sly_data[AGENT_NETWORK_NAME] = self._extract_name_from_reservation_id(reservation_id)
+        self.logger.info(
+            ">>>>>>>>>>>>>Reading & Parsing Agent Network Config from Reservation %s in %s S3 Bucket>>>>>>>>>>>>>>>>>",
+            reservation_id,
+            os.getenv("AGENT_RESERVATIONS_S3_BUCKET"),
+        )
+        return await self._config_to_network_def(config, reservation_id, self.sly_data)
+
+    def _normalize_network_def(self, network_def: dict[str, Any] | list[dict[str, Any]]) -> dict[str, Any]:
+        """
+        Ensure the network definition is in dict format, converting from connectivity list if needed,
+        and cache it in sly_data.
+
+        :param network_def: Network definition in dict or connectivity list format
+        :return: Network definition as a dict
+        """
+        # The agent network definition can be provided in either:
+        # - dict format (internal), used when creating or editing the network, or
+        # - list format (connectivity), which is the native Neuro-San representation.
+        # If the definition is in connectivity format, convert it to dict format before editing.
+        if isinstance(network_def, list):
+            connectivity_dict_converter = ConnectivityDictionaryConverter()
+            network_def = connectivity_dict_converter.to_dict(network_def)
+        # Cache the agent network definition as dict in sly_data for subsequent calls within the same session.
+        self.sly_data[AGENT_NETWORK_DEFINITION] = network_def
+        return network_def
+
+    async def _inject_into_request(
+        self,
+        network_def: dict[str, Any],
+        request: ModelRequest[ContextT],
+        handler: Callable[[ModelRequest[ContextT]], Awaitable[ModelResponse[ResponseT]]],
+    ) -> ModelResponse[ResponseT]:
+        """
+        Inject the network definition into the system prompt and invoke the handler.
+
+        :param network_def: Agent network definition dict
+        :param request: Model request containing messages and state
+        :param handler: Handler to execute the model call
+        :return: Model response from handler
+        """
+        self.logger.debug(
+            ">>>>>>>>>>>>>>>>>>>Injecting Agent Network Definition into System Prompt>>>>>>>>>>>>>>>>>>>"
+        )
+        definition_prompt: str = self.format_definition_prompt(network_def)
+
+        system_message: BaseMessage | None = request.system_message
+        if system_message is not None:
+            original_content: str = system_message.content if isinstance(system_message.content, str) else ""
+            system_message = SystemMessage(content=f"{original_content}\n\n{definition_prompt}")
+        else:
+            system_message = SystemMessage(content=definition_prompt)
+
+        if self.progress_reporter is not None:
+            await ProgressHandler.report_progress(
+                {"progress_reporter": self.progress_reporter}, network_def, self.sly_data.get(AGENT_NETWORK_NAME)
+            )
+
+        return await handler(request.override(system_message=system_message))
 
     def format_definition_prompt(self, network_def: dict[str, Any]) -> str:
         """
@@ -160,59 +392,83 @@ class AgentNetworkDefinitionMiddleware(AgentMiddleware):
 
         :return: Agent network definition
         """
+        config: dict[str, Any] | None = await self._hocon_to_config(network_hocon_file)
+        if config is None:
+            return None
+        return await self._config_to_network_def(config, network_hocon_file, sly_data)
 
+    async def _hocon_to_config(self, network_hocon_file: str | None) -> dict[str, Any] | None:
+        """
+        Read and parse a HOCON file into a raw config dictionary.
+
+        :param network_hocon_file: Agent network hocon file path
+        :return: Parsed HOCON contents as a dict, or None if network_hocon_file is invalid or not found
+        """
         if not isinstance(network_hocon_file, str) or not network_hocon_file:
-            self.logger.warning(
-                "WARNING: Invalid network_hocon_file value (expected str, got %r); skipping.",
-                network_hocon_file,
+            error_message: str = (
+                f"Error: Invalid network_hocon_file value: {type(network_hocon_file).__name__} "
+                "(expected non-empty string)."
             )
+            self.logger.error(error_message)
+            self.error_message = error_message
             return None
 
-        # Converting hocon file to dict
         # Note we don't need to cache this because we only expect to read the file once.
         try:
             hocon = AbstractAsyncConfigRestorer(file_purpose="get_agent_network_definition", must_exist=True)
-            network_hocon = await hocon.async_restore(file_reference="registries/" + network_hocon_file)
+            return await hocon.async_restore(file_reference="registries/" + network_hocon_file)
         except FileNotFoundError:
+            error_message = f"Error: Agent network HOCON file not found: registries/{network_hocon_file}"
+            self.logger.error(error_message)
+            self.error_message = error_message
             return None
 
-        agents: list[dict[str, Any]] | None = network_hocon.get("tools")
+    async def _config_to_network_def(
+        self, config: dict[str, Any], source: str, sly_data: dict[str, Any]
+    ) -> dict[str, Any] | None:
+        """
+        Convert a parsed HOCON config dictionary into an agent network definition.
+
+        :param config: Parsed HOCON config
+        :param source: Identifier for the config source (hocon file path or reservation ID), used for error messages
+        :param sly_data: A dictionary whose keys are defined by the agent hierarchy
+        :return: Agent network definition, or None on failure
+        """
+        agents: list[dict[str, Any]] | None = config.get("tools")
         if not isinstance(agents, list):
-            msg = "No field 'tools' found" if agents is None else "The 'tools' field is not a list"
-            self.logger.warning("WARNING: %s in '%s'.", msg, network_hocon_file)
+            msg: str = "No field 'tools' found" if agents is None else "The 'tools' field is not a list"
+            error_message: str = f"Error: {msg} in config from {source}."
+            self.logger.error(error_message)
+            self.error_message = error_message
             return None
 
         network_def: dict[str, Any] = {}
         for agent in agents:
-            name, agent_def = await self._parse_agent(agent, network_hocon_file, sly_data)
+            name, agent_def = await self._parse_agent(agent, source, sly_data)
             if name is not None:
                 network_def[name] = agent_def
 
         return network_def
 
     async def _parse_agent(
-        self, agent: Any, network_hocon_file: str, sly_data: dict[str, Any]
+        self, agent: Any, source: str, sly_data: dict[str, Any]
     ) -> tuple[str | None, dict[str, Any]]:
         """
         Parse a single agent entry from the hocon 'tools' list.
 
         :param agent: A single entry from the 'tools' list in the hocon file
-        :param network_hocon_file: Agent network hocon file path (used for warning messages)
+        :param source: Identifier for the config source (hocon file path or reservation ID), used for warning messages
         :param sly_data: A dictionary whose keys are defined by the agent hierarchy
 
         :return: (agent_name, agent_def) where agent_name is None if the entry should be skipped
         """
         if not isinstance(agent, dict):
-            self.logger.warning(
-                "WARNING: Skipping non-dict entry in 'tools' list in '%s': %r", network_hocon_file, agent
-            )
+            self.logger.warning("WARNING: Skipping non-dict entry in 'tools' list in '%s': %r", source, agent)
             return None, {}
 
         agent_name: str | None = agent.get("name")
         if not isinstance(agent_name, str) or not agent_name:
-            self.logger.warning(
-                "WARNING: Skipping agent with missing/invalid 'name' in '%s': %r", network_hocon_file, agent
-            )
+            self.logger.warning("WARNING: Skipping agent with missing/invalid 'name' in '%s': %r", source, agent)
             return None, {}
 
         # Only extract agents info and only "instructions" and "tools" parts
@@ -224,7 +480,7 @@ class AgentNetworkDefinitionMiddleware(AgentMiddleware):
                 self.logger.warning(
                     "WARNING: Skipping agent %s due to non-string 'instructions' in '%s'",
                     agent_name,
-                    network_hocon_file,
+                    source,
                 )
                 return None, {}
             if instructions.strip():
@@ -243,7 +499,7 @@ class AgentNetworkDefinitionMiddleware(AgentMiddleware):
                 self.logger.warning(
                     "WARNING: Skipping agent %s due to non-string 'description' in '%s'",
                     agent_name,
-                    network_hocon_file,
+                    source,
                 )
                 return None, {}
             if description.strip():
@@ -327,3 +583,29 @@ class AgentNetworkDefinitionMiddleware(AgentMiddleware):
             sly_data["aaosa_instructions"] = aaosa_instructions
 
         return aaosa_instructions
+
+    def _extract_name_from_reservation_id(self, reservation_id: str) -> str:
+        # re.search() scans through the string looking for the UUID pattern
+        # The pattern explained:
+        #   -           matches a literal hyphen (separator between name and UUID)
+        #   [0-9a-f]    matches any hex character (digits 0-9 or letters a-f)
+        #   {8}         exactly 8 hex characters  → "550e8400"
+        #   -           literal hyphen
+        #   [0-9a-f]{4} exactly 4 hex characters  → "e29b"
+        #   -           literal hyphen
+        #   [0-9a-f]{4} exactly 4 hex characters  → "41d4"
+        #   -           literal hyphen
+        #   [0-9a-f]{4} exactly 4 hex characters  → "a716"
+        #   -           literal hyphen
+        #   [0-9a-f]{12} exactly 12 hex characters → "446655440000"
+        #   $           end of string (UUID must be at the very end)
+        #
+        # re.IGNORECASE makes it match both uppercase and lowercase hex (a-f or A-F)
+        match: Match | None = re.search(
+            r"-[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$", reservation_id, re.IGNORECASE
+        )
+
+        # match.start() gives the index where the UUID pattern begins in the string
+        # reservation_id[:match.start()] slices the string from the beginning up to (not including) that index
+        # if no UUID is found (match is None), we just return the original string unchanged
+        return reservation_id[: match.start()] if match else reservation_id

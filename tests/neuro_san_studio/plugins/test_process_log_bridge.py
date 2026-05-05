@@ -19,7 +19,7 @@
 import logging
 from unittest.mock import patch
 
-from plugins.log_bridge.process_log_bridge import ProcessLogBridge
+from neuro_san_studio.plugins.log_bridge.process_log_bridge import ProcessLogBridge
 
 
 class TestInferLevelFromText:

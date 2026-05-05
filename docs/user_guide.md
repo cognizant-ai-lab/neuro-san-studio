@@ -1598,8 +1598,9 @@ Note:
 - All console logs are color-coded and pretty-formatted using the rich based log bridge plugin.
 - Enable or disable rich logs via setting an env variable `LOGBRIDGE_ENABLED` on terminal or in your .env file.
   By default the value is set to `true`.
-- Any updates to console logs can be managed via this plugin at `plugins/log_bridge/`.
-- Use the `log_cfg` dict located at `plugins/log_bridge/process_log_bridge.py` to configure the formatting of logs.
+- Any updates to console logs can be managed via this plugin at `neuro_san_studio/plugins/log_bridge/`.
+- Use the `log_cfg` dict located at `neuro_san_studio/plugins/log_bridge/process_log_bridge.py`
+  to configure the formatting of logs.
 
 ## Debugging
 
