@@ -484,7 +484,21 @@ To find which models are available in your region, refer to the official AWS doc
 
 ### Gemini
 
-To use Gemini models, set the `GOOGLE_API_KEY` environment variable to your Google Gemini API key
+To use Gemini models:
+
+1. Confirm that `langchain-google-genai` is installed:
+
+    ```bash
+    pip show langchain-google-genai
+    ```
+
+2. If not installed, install it:
+
+    ```bash
+    pip install langchain-google-genai
+    ```
+
+3. Set the `GOOGLE_API_KEY` environment variable to your Google Gemini API key
 and specify which model to use in the `model_name` field of the `llm_config` section of an agent network hocon file:
 
 ```hocon
