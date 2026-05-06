@@ -140,7 +140,7 @@ its `llm_config` to automatically try another LLM config if the first one fails.
 
 ### Book Recommender with Multiple LLM Configs
 
-[Book Recommender with Multiple LLM Configs](examples/basic/Book_recommender_multiple_llm_configs.md) is a book recommendation
+[Book Recommender with Multiple LLM Configs](examples/basic/book_recommender_multiple_llm_configs.md) is a book recommendation
 network that demonstrates how to use per-agent `llm_config` to assign different Anthropic models
 (Opus, Sonnet, Haiku) to individual agents within a single network.
 

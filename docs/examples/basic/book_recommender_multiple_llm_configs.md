@@ -10,7 +10,7 @@ It's good for testing:
 
 ## File
 
-[Book_recommender_multiple_llm_configs.hocon](../../../registries/basic/Book_recommender_multiple_llm_configs.hocon)
+[book_recommender_multiple_llm_configs.hocon](../../../registries/basic/book_recommender_multiple_llm_configs.hocon)
 
 ## Description
 
@@ -18,7 +18,7 @@ Each agent has its own `llm_config` specifying an Anthropic model:
 
 | Agent | Model | Role |
 |-------|-------|------|
-| **BookClubHost** | `claude-opus` | Frontman — routes requests to genre experts |
+| **BookRecommender** | `claude-opus` | Frontman — routes requests to genre experts |
 | **FictionExpert** | `claude-sonnet` | Recommends fiction and literary novels |
 | **NonFictionExpert** | `claude-sonnet` | Recommends non-fiction books |
 | **MysteryExpert** | `claude-sonnet` | Recommends mystery and thriller books |
@@ -51,7 +51,6 @@ Since you have not specified a particular genre, I consulted all of our experts 
 If you can share more about your preferences -- such as genre, mood, or themes you enjoy -- I would be happy to narrow it down further. Otherwise, any of these three would be an excellent choice.
 ```
 
-Following up:
 
 ```text
 Human:
@@ -69,7 +68,6 @@ Both our Science Fiction and Mystery/Thriller experts independently pointed to t
 It strikes an excellent balance between gripping suspense and smart science fiction -- a perfect fit for what you are looking for.
 ```
 
-Following up again:
 
 ```text
 Human:

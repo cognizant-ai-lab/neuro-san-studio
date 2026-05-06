@@ -29,7 +29,7 @@
 
     "tools": [
         {
-            "name": "BookClubHost",
+            "name": "BookRecommender",
 
             "function": {
                 "description": """
@@ -43,11 +43,13 @@ Tell me what kind of book you're looking for.
             },
 
             "instructions": """
-You are a book club host. When you receive a request, determine which genre
-expert is most relevant and consult them. If the request spans multiple genres,
-consult all relevant experts and combine their recommendations.
-Present the final recommendation back to the user in a concise, professional way.
-Do not use emoticons in your responses.
+You are a book recommender. Route each request to the matching genre expert(s):
+fiction, non-fiction, mystery/thriller, or science fiction. If the request
+spans multiple genres, consult all relevant experts and combine their
+recommendations. If none match, call the closest expert.
+Then call QuickSummary for a one-line summary of each recommended book and
+include those summaries in your final response.
+Keep the response concise and professional. Do not use emoticons.
 """ ${aaosa_instructions},
             "tools": ["FictionExpert", "NonFictionExpert", "MysteryExpert", "SciFiExpert", "QuickSummary"]
         },
