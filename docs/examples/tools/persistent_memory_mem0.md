@@ -40,7 +40,8 @@ simpler, faster, and have no external dependency. Stay on
 
 ## Prerequisites
 
-1. **Install the Mem0 client.** It is already pinned in `requirements.txt`:
+1. **Install the Mem0 client.** It is not included in the base
+   `requirements.txt` — install it manually:
 
    ```bash
    pip install mem0ai

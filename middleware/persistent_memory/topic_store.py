@@ -48,7 +48,7 @@ class TopicStore(ABC):
 
     _MAX_LOCKS: ClassVar[int] = 256
 
-    def __init__(self) -> None:
+    def __init__(self, folder_name: str | None = None) -> None:
         self.logger: Logger = logging.getLogger(f"{__name__}.{self.__class__.__name__}")
         self._locks: OrderedDict[tuple[str, ...], asyncio.Lock] = OrderedDict()
         self._locks_guard: asyncio.Lock = asyncio.Lock()

@@ -52,10 +52,10 @@ class PersistentMemoryMiddleware(AgentMiddleware):
     """
     Wraps ``PersistentMemoryTool`` and plugs it into the agent lifecycle.
 
-    Designed for **local, single-user** usage. Memory is scoped per
-    ``(network, agent)`` — not per user. All users sharing the same agent
-    share the same memory namespace. Multi-tenant / per-user isolation is
-    out of scope; server-side backends are planned separately.
+    Memory is scoped per ``(network, agent)`` by default.  File-based
+    backends (``json_file``, ``markdown_file``) are single-user; all
+    callers share the same namespace.  The ``mem0`` cloud backend adds
+    per-user isolation via ``sly_data["user_id"]``.
 
     :param origin_str:    When ``True`` (the default), asks the framework to
                           inject the runtime dotted call path at startup.

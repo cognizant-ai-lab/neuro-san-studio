@@ -25,15 +25,16 @@ import asyncio
 import json
 import os
 from typing import Any
-from unittest import TestCase
 from unittest.mock import MagicMock
 from unittest.mock import patch
 
 from middleware.persistent_memory.mem0_store import Mem0Store
 from middleware.persistent_memory.topic_store_factory import TopicStoreFactory
 
+from tests.middleware.persistent_memory.base import MemoryTestBase
 
-class Mem0StoreTests(TestCase):
+
+class Mem0StoreTests(MemoryTestBase):
     """Mem0Store: user_id resolution, factory wiring, and CRUD lifecycle."""
 
     _NAMESPACE = "coffee_finder_advanced.UserPreferences"
@@ -45,9 +46,6 @@ class Mem0StoreTests(TestCase):
         client = MagicMock()
         client.get_all.return_value = {"results": memories}
         return client
-
-    def _run(self, coro: Any) -> Any:
-        return asyncio.run(coro)
 
     def test_sly_data_user_id_takes_priority(self) -> None:
         """sly_data["user_id"] is used when present."""
@@ -110,14 +108,14 @@ class Mem0StoreTests(TestCase):
         ]
         store = self._make_store()
         with patch.object(store, "_client", return_value=self._mock_client(memories)):
-            result = self._run(store._read_topic(self._NAMESPACE, "mike"))  # pylint: disable=protected-access
+            result = asyncio.run(store._read_topic(self._NAMESPACE, "mike"))  # pylint: disable=protected-access
         self.assertEqual(result, "black coffee, no sugar")
 
     def test_read_topic_returns_none_when_absent(self) -> None:
         """_read_topic returns None when no entry matches the topic."""
         store = self._make_store()
         with patch.object(store, "_client", return_value=self._mock_client([])):
-            result = self._run(store._read_topic(self._NAMESPACE, "mike"))  # pylint: disable=protected-access
+            result = asyncio.run(store._read_topic(self._NAMESPACE, "mike"))  # pylint: disable=protected-access
         self.assertIsNone(result)
 
     def test_write_topic_calls_add_when_new(self) -> None:
@@ -125,7 +123,7 @@ class Mem0StoreTests(TestCase):
         store = self._make_store()
         client = self._mock_client([])
         with patch.object(store, "_client", return_value=client):
-            self._run(store._write_topic(self._NAMESPACE, "mike", "black coffee"))  # pylint: disable=protected-access
+            asyncio.run(store._write_topic(self._NAMESPACE, "mike", "black coffee"))  # pylint: disable=protected-access
         client.add.assert_called_once()
         _, kwargs = client.add.call_args
         self.assertEqual(kwargs.get("user_id") or client.add.call_args[0][1], "test_user")
@@ -142,7 +140,7 @@ class Mem0StoreTests(TestCase):
         store = self._make_store()
         client = self._mock_client(memories)
         with patch.object(store, "_client", return_value=client):
-            self._run(store._write_topic(self._NAMESPACE, "mike", "new content"))  # pylint: disable=protected-access
+            asyncio.run(store._write_topic(self._NAMESPACE, "mike", "new content"))  # pylint: disable=protected-access
         client.update.assert_called_once_with(
             memory_id="mem-1",
             text="new content",
@@ -161,7 +159,7 @@ class Mem0StoreTests(TestCase):
         store = self._make_store()
         client = self._mock_client(memories)
         with patch.object(store, "_client", return_value=client):
-            result = self._run(store._remove_topic(self._NAMESPACE, "mike"))  # pylint: disable=protected-access
+            result = asyncio.run(store._remove_topic(self._NAMESPACE, "mike"))  # pylint: disable=protected-access
         self.assertTrue(result)
         client.delete.assert_called_once_with(memory_id="mem-1")
 
@@ -169,7 +167,7 @@ class Mem0StoreTests(TestCase):
         """_remove_topic returns False when the topic does not exist."""
         store = self._make_store()
         with patch.object(store, "_client", return_value=self._mock_client([])):
-            result = self._run(store._remove_topic(self._NAMESPACE, "mike"))  # pylint: disable=protected-access
+            result = asyncio.run(store._remove_topic(self._NAMESPACE, "mike"))  # pylint: disable=protected-access
         self.assertFalse(result)
 
     def test_read_bucket_returns_all_topics(self) -> None:
@@ -188,7 +186,7 @@ class Mem0StoreTests(TestCase):
         ]
         store = self._make_store()
         with patch.object(store, "_client", return_value=self._mock_client(memories)):
-            result = self._run(store._read_bucket(self._NAMESPACE))  # pylint: disable=protected-access
+            result = asyncio.run(store._read_bucket(self._NAMESPACE))  # pylint: disable=protected-access
         self.assertEqual(result, {"mike": "black coffee", "alice": "latte"})
 
     def test_fetch_filters_by_network_and_agent(self) -> None:

@@ -222,7 +222,7 @@ All six operations are available by default. Narrow the whitelist to
 constrain the LLM:
 
 ```hocon
-"enabled_operations": ["read", "search", "list", "delete", "append", "write"]
+"enabled_operations": ["read", "search", "list", "delete", "append", "create"]
 ```
 
 The JSON-schema `enum` visible to the LLM is narrowed at startup — it

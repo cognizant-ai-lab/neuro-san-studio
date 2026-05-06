@@ -45,7 +45,7 @@ class MarkdownFileStore(TopicStore):
     _UNSAFE_FILENAME: ClassVar[re.Pattern[str]] = re.compile(r"[^\w\-]")
 
     def __init__(self, folder_name: str) -> None:
-        super().__init__()
+        super().__init__(folder_name=folder_name)
         self._root: Path = Path(folder_name).expanduser().resolve()
         self.logger.info("Root path: %s", self._root)
 

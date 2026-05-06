@@ -25,7 +25,7 @@
 # Class path: middleware.persistent_memory.persistent_memory_middleware.PersistentMemoryMiddleware
 #
 # Prerequisites:
-#   1. ``pip install mem0ai`` (already pinned in ``requirements.txt``).
+#   1. ``pip install mem0ai`` (not in the base ``requirements.txt``).
 #   2. Set ``MEM0_API_KEY`` in your environment. Get a key at
 #      https://app.mem0.ai/. The store reads the key on first use and raises
 #      ``EnvironmentError`` if it is missing; subsequent calls reuse the
