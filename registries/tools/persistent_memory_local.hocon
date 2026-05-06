@@ -110,7 +110,7 @@ confirm or share the information — do not guess.
                             #   ``personalization``: optional sentence appended to the prompt.
                             "summarization": {
                                 "max_topic_size":  1000,
-                                "model":           "gpt-5.4-mini"
+                                "model":           "gpt-5.4-mini",
                                 "personalization": ""  # optional, e.g. "Write summaries in a warm, concise tone."
                             },
                             # Which operations the LLM may use. Leave empty to allow all six.

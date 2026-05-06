@@ -38,7 +38,7 @@
 #   Mem0 memories are partitioned by ``user_id``. ``Mem0Store`` resolves
 #   the user ID in this order:
 #     1. ``sly_data["user_id"]`` — the per-request value the framework injects.
-#     2. ``DEFAULT_SLY_DATA`` env var (JSON string with a ``"user_id"`` key) —
+#     2. ``MEM0_DEFAULT_USER_ID`` env var (plain string) —
 #        a server-wide default useful for local testing.
 #     3. ``"default_user"`` — fallback when neither is provided.
 #   This is the key practical difference from the file-backed backends:
@@ -114,7 +114,7 @@ confirm or share the information — do not guess.
                             #   ``personalization``: optional sentence appended to the summarizer prompt.
                             "summarization": {
                                 "max_topic_size":  1000,
-                                "model":           "gpt-5.4-mini"
+                                "model":           "gpt-5.4-mini",
                                 "personalization": ""  # optional, e.g. "Write summaries in a warm, concise tone."
                             },
                             # Which operations the LLM may use. Leave empty to allow all six.

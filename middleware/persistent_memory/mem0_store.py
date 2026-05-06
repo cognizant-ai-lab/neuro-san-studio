@@ -21,14 +21,13 @@ Stores each topic as one memory entry in the Mem0 cloud, tagged with
 ``network``, ``agent``, and ``topic`` metadata for scoped reads and writes.
 ``user_id`` is resolved at call time in priority order:
 1. ``sly_data["user_id"]`` — per-request value injected by the framework.
-2. ``DEFAULT_SLY_DATA`` environment variable (JSON with a ``"user_id"`` key).
+2. ``MEM0_DEFAULT_USER_ID`` environment variable (plain string).
 3. ``"default_user"`` — fallback when neither is available.
 """
 
 from __future__ import annotations
 
 import asyncio
-import json
 import os
 import threading
 from typing import Any
@@ -36,6 +35,7 @@ from typing import ClassVar
 from typing import override
 
 from mem0 import MemoryClient  # pylint: disable=import-error
+from mem0.exceptions import MemoryError as Mem0Error
 
 from middleware.persistent_memory.topic_store import TopicStore
 
@@ -55,7 +55,7 @@ class Mem0Store(TopicStore):
         self._sly_data: dict[str, Any] | None = sly_data
         self._memory_client: MemoryClient | None = None
         self._client_lock: threading.Lock = threading.Lock()
-        self.logger.info("Initialised Mem0 cloud store backend.")
+        self.logger.info("Initialized Mem0 cloud store backend.")
 
     @override
     def _lock_key(self, namespace: str, topic: str) -> tuple[str, ...]:
@@ -163,7 +163,7 @@ class Mem0Store(TopicStore):
             return False
         try:
             await asyncio.to_thread(self._client().delete, memory_id=existing_id)
-        except Exception:
+        except Mem0Error:
             self.logger.error(
                 "Mem0 API error deleting topic '%s' in namespace '%s'.",
                 topic,
@@ -213,7 +213,7 @@ class Mem0Store(TopicStore):
             else:
                 client.add(messages=content, user_id=self._user_id(), metadata=metadata)
                 self.logger.debug("Added new memory for topic=%s", topic)
-        except Exception:
+        except Mem0Error:
             self.logger.error(
                 "Mem0 API error during upsert for topic '%s' in namespace '%s'.",
                 topic,
@@ -240,7 +240,7 @@ class Mem0Store(TopicStore):
             all_results: list[dict[str, Any]] = (
                 self._client().get_all(filters={"user_id": self._user_id()}).get("results", [])
             )
-        except Exception:
+        except Mem0Error:
             self.logger.error(
                 "Mem0 API error fetching memories for namespace '%s'.",
                 namespace,
@@ -277,10 +277,15 @@ class Mem0Store(TopicStore):
         match: dict[str, Any] | None = self._find_memory(namespace, topic)
         return match.get("id") if match else None
 
+    @property
+    def user_id(self) -> str:
+        """Public read-only accessor for the resolved Mem0 user ID."""
+        return self._user_id()
+
     def _user_id(self) -> str:
         """
         Resolve the Mem0 user ID from per-request ``sly_data``, falling back to
-        the ``DEFAULT_SLY_DATA`` environment variable and then ``"default_user"``.
+        the ``MEM0_DEFAULT_USER_ID`` environment variable and then ``"default_user"``.
 
         Per-request ``sly_data`` is preferred so each caller is isolated to their
         own Mem0 scope; the env-var fallback supports server-level defaults and
@@ -292,20 +297,11 @@ class Mem0Store(TopicStore):
             user_id: str | None = self._sly_data.get("user_id")
             if user_id:
                 return user_id
-        raw: str = os.environ.get("DEFAULT_SLY_DATA", "")
-        if raw:
-            try:
-                env_user_id: str | None = json.loads(raw).get("user_id")
-                if env_user_id:
-                    return env_user_id
-            except (json.JSONDecodeError, AttributeError):
-                self.logger.warning(
-                    "DEFAULT_SLY_DATA is not valid JSON; falling back to '%s'.",
-                    self._DEFAULT_USER_ID,
-                )
-                return self._DEFAULT_USER_ID
+        env_user_id: str = os.environ.get("MEM0_DEFAULT_USER_ID", "")
+        if env_user_id:
+            return env_user_id
         self.logger.warning(
-            "No user_id found in sly_data or DEFAULT_SLY_DATA; "
+            "No user_id found in sly_data or MEM0_DEFAULT_USER_ID; "
             "falling back to '%s'. All users will share one memory scope.",
             self._DEFAULT_USER_ID,
         )

@@ -22,14 +22,18 @@ Live Mem0 API calls are mocked so the suite runs without ``MEM0_API_KEY``.
 from __future__ import annotations
 
 import asyncio
-import json
 import os
+
+import pytest  # noqa: F401 — importorskip must run before local imports.
+
+pytest.importorskip("mem0")
 from typing import Any
 from unittest.mock import MagicMock
 from unittest.mock import patch
 
 from middleware.persistent_memory.mem0_store import Mem0Store
 from middleware.persistent_memory.topic_store_factory import TopicStoreFactory
+
 from tests.middleware.persistent_memory.base import MemoryTestBase
 
 
@@ -49,34 +53,32 @@ class Mem0StoreTests(MemoryTestBase):
     def test_sly_data_user_id_takes_priority(self) -> None:
         """sly_data["user_id"] is used when present."""
         store = Mem0Store(sly_data={"user_id": "alice"})
-        self.assertEqual(store._user_id(), "alice")  # pylint: disable=protected-access
+        self.assertEqual(store.user_id, "alice")
 
     def test_env_var_fallback(self) -> None:
-        """Falls back to DEFAULT_SLY_DATA env var when sly_data is absent."""
-        env_payload = json.dumps({"user_id": "env_user"})
-        with patch.dict(os.environ, {"DEFAULT_SLY_DATA": env_payload}):
+        """Falls back to MEM0_DEFAULT_USER_ID env var when sly_data is absent."""
+        with patch.dict(os.environ, {"MEM0_DEFAULT_USER_ID": "env_user"}):
             store = Mem0Store()
-            self.assertEqual(store._user_id(), "env_user")  # pylint: disable=protected-access
+            self.assertEqual(store.user_id, "env_user")
 
     def test_default_user_fallback(self) -> None:
         """Returns 'default_user' when both sly_data and env var are absent."""
         with patch.dict(os.environ, {}, clear=False):
-            os.environ.pop("DEFAULT_SLY_DATA", None)
+            os.environ.pop("MEM0_DEFAULT_USER_ID", None)
             store = Mem0Store()
-            self.assertEqual(store._user_id(), "default_user")  # pylint: disable=protected-access
+            self.assertEqual(store.user_id, "default_user")
 
     def test_sly_data_overrides_env_var(self) -> None:
-        """sly_data takes priority over DEFAULT_SLY_DATA env var."""
-        env_payload = json.dumps({"user_id": "env_user"})
-        with patch.dict(os.environ, {"DEFAULT_SLY_DATA": env_payload}):
+        """sly_data takes priority over MEM0_DEFAULT_USER_ID env var."""
+        with patch.dict(os.environ, {"MEM0_DEFAULT_USER_ID": "env_user"}):
             store = Mem0Store(sly_data={"user_id": "sly_user"})
-            self.assertEqual(store._user_id(), "sly_user")  # pylint: disable=protected-access
+            self.assertEqual(store.user_id, "sly_user")
 
     def test_empty_sly_data_falls_back(self) -> None:
         """Empty sly_data dict falls back to env var / default."""
-        os.environ.pop("DEFAULT_SLY_DATA", None)
+        os.environ.pop("MEM0_DEFAULT_USER_ID", None)
         store = Mem0Store(sly_data={})
-        self.assertEqual(store._user_id(), "default_user")  # pylint: disable=protected-access
+        self.assertEqual(store.user_id, "default_user")
 
     def test_factory_creates_mem0_store(self) -> None:
         """backend='mem0' yields a Mem0Store instance."""
@@ -88,13 +90,13 @@ class Mem0StoreTests(MemoryTestBase):
         sly: dict[str, Any] = {"user_id": "bob"}
         store = TopicStoreFactory.create({"backend": "mem0"}, sly_data=sly)
         self.assertIsInstance(store, Mem0Store)
-        self.assertEqual(store._user_id(), "bob")  # pylint: disable=protected-access
+        self.assertEqual(store.user_id, "bob")
 
     def test_factory_sly_data_none_by_default(self) -> None:
         """No sly_data → falls back to default_user."""
-        os.environ.pop("DEFAULT_SLY_DATA", None)
+        os.environ.pop("MEM0_DEFAULT_USER_ID", None)
         store = TopicStoreFactory.create({"backend": "mem0"})
-        self.assertEqual(store._user_id(), "default_user")  # pylint: disable=protected-access
+        self.assertEqual(store.user_id, "default_user")
 
     def test_read_topic_returns_content(self) -> None:
         """_read_topic returns the memory text for a matching topic."""

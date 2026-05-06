@@ -50,7 +50,7 @@ simpler, faster, and have no external dependency. Stay on
 2. **Get a Mem0 API key.** Sign up at <https://app.mem0.ai/> and create a
    key from the dashboard. The store reads the key from the
    `MEM0_API_KEY` environment variable on first use and raises
-   `EnvironmentError` if it is missing; subsequent calls reuse the
+   `ValueError` if it is missing; subsequent calls reuse the
    cached client and HTTP session.
 
    ```bash
@@ -102,28 +102,13 @@ A complete reference agent using this middleware lives at
 
 ## Quick try
 
-Make sure `MEM0_API_KEY` is set, start the server, and point your client
-at the `persistent_memory_mem0` agent network. Have a short conversation:
+The conversation flow is the same as
+[Local Quick try](persistent_memory_local.md#quick-try).
+Make sure `MEM0_API_KEY` is set and point your client at the
+`persistent_memory_mem0` agent network.
 
-```text
-You:   Hi, I'm Mike. I always order black coffee from Henry's.
-Agent: Got it, Mike — I'll remember that.
-
-You:   By the way, my friend Jason only drinks matcha lattes.
-Agent: Noted — I'll remember Jason's matcha preference too.
-```
-
-Behind the scenes the agent made two calls, one per person:
-
-```text
-persistent_memory(operation="create", topic="mike",
-                  content="Orders black coffee from Henry's.")
-persistent_memory(operation="create", topic="jason",
-                  content="Only drinks matcha lattes.")
-```
-
-Each call resolves to a single `client.add(...)` against Mem0, with a
-metadata payload like:
+Each write resolves to a single `client.add(...)` against Mem0, with
+metadata like:
 
 ```json
 {
@@ -134,20 +119,8 @@ metadata payload like:
 ```
 
 Restart the server and open a fresh session — as long as the same
-`user_id` resolves, the agent reconstructs both facts from Mem0:
-
-```text
-You:   What does Jason drink?
-Agent: Jason only drinks matcha lattes.
-
-You:   And what's my usual?
-Agent: Your usual is a black coffee from Henry's.
-```
-
-You can confirm the writes by visiting the
-[Mem0 dashboard](https://app.mem0.ai/) — each topic shows up as a
-separate memory under the active user, with the `network`, `agent`, and
-`topic` metadata attached.
+`user_id` resolves, the agent reconstructs the facts from Mem0.
+Confirm writes on the [Mem0 dashboard](https://app.mem0.ai/).
 
 ## User scoping
 
@@ -159,11 +132,11 @@ the active `user_id` on every call, in this order:
    injects when the middleware was constructed with `"sly_data": true`.
    This is the path used in production: each user's request carries
    their own `sly_data`, so each user gets their own Mem0 scope.
-2. **`DEFAULT_SLY_DATA` env var** — a JSON string with a `"user_id"` key,
+2. **`MEM0_DEFAULT_USER_ID` env var** — a plain string user ID,
    useful as a server-wide default for local testing or single-tenant
    deployments. Example:
    ```bash
-   export DEFAULT_SLY_DATA='{"user_id": "alice"}'
+   export MEM0_DEFAULT_USER_ID="alice"
    ```
 3. **`"default_user"`** — fallback when neither of the above is set.
    Everything lands under a single shared scope; only useful for the
@@ -177,7 +150,7 @@ between calls, the next call lands in the new scope.
 
 If you omit `"sly_data": true` from the middleware args, the framework
 will not inject the per-request dict, and the store falls back to
-`DEFAULT_SLY_DATA` / `"default_user"` for every call. In a multi-user
+`MEM0_DEFAULT_USER_ID` / `"default_user"` for every call. In a multi-user
 deployment this collapses every user's memory into a single shared
 scope — which is the bug the file-backed backends already have. Always
 keep `"sly_data": true` when using the Mem0 backend.
@@ -202,36 +175,6 @@ done client-side. This is fine for typical agent-sized memories
 (dozens to hundreds of topics per user); if you expect tens of
 thousands of entries per user, the file-backed backends or a custom
 store will be a better fit.
-
-## Summarization
-
-Summarization works exactly the same as the file-backed backends —
-oversized topics are summarized inline under the same lock that
-performed the write, so concurrent readers never see the
-intermediate state.
-
-```hocon
-"summarization": {
-    "max_topic_size":  1000,
-    "model":           "gpt-5.4-mini",
-    "personalization": "Write summaries in a warm, concise tone."
-}
-```
-
-See the [Summarization section in the Local docs](persistent_memory_local.md#summarization)
-for the per-key reference; the keys behave identically here.
-
-## Restricting operations
-
-Same `enabled_operations` whitelist as the file-backed variant. Common
-shapes:
-
-- **Read-only:** `["read", "search", "list"]`
-- **Append-only:** `["read", "append", "search", "list"]`
-- **Full:** omit the key, or list all six
-
-See [Restricting operations in the Local docs](persistent_memory_local.md#restricting-operations)
-for the full reference.
 
 ## Architecture
 
@@ -286,28 +229,21 @@ back to `unknown.unknown` and you'll see a warning in the logs.
 
 ### Operations
 
-| Operation | Required args      | Returns                                    |
-| :-------- | :----------------- | :----------------------------------------- |
-| `create`  | `topic`, `content` | `{"status": "created", "topic": ...}`      |
-| `read`    | `topic`            | `{"topic": ..., "content": ...}`           |
-| `append`  | `topic`, `content` | `{"status": "appended", "topic": ...}`     |
-| `delete`  | `topic`            | `{"status": "deleted", "topic": ...}`      |
-| `search`  | `query`, `limit?`  | `{"results": [{"topic", "content", ...}]}` |
-| `list`    | —                  | `{"topics": [...]}`                        |
+Same six operations as the file-backed variant — see the
+[Operations table in Local docs](persistent_memory_local.md#operations).
 
-`create` overwrites the topic's Mem0 entry. `append` adds a timestamped
-line to the existing entry. `delete` removes the entry for that topic
-under the active `user_id`. `search` keyword-ranks across this user's
-topics for this `(network, agent)` pair.
+Mem0-specific behavior: `delete` removes the entry under the active
+`user_id` only. `search` keyword-ranks across this user's topics for
+this `(network, agent)` pair.
 
 ### Debugging
 
-- **`EnvironmentError: MEM0_API_KEY environment variable is not set.`** —
+- **`ValueError: MEM0_API_KEY environment variable is not set.`** —
   the store could not authenticate. Export the key in the same shell
   that started the server.
 - **Memories disappear between sessions** — the most common cause is
   `user_id` drift. Confirm that `sly_data["user_id"]` is the same on
-  both calls (or that `DEFAULT_SLY_DATA` is set the same way). When the
+  both calls (or that `MEM0_DEFAULT_USER_ID` is set the same way). When the
   ID resolves to `"default_user"` you'll see a warning in the logs.
 - **Memories from a different agent show up** — verify that
   `"origin_str": true` is set; without it the namespace collapses to
