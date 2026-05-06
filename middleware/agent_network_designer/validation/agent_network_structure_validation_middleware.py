@@ -21,8 +21,6 @@ from neuro_san.internals.validation.network.structure_network_validator import S
 from neuro_san.internals.validation.network.toolbox_network_validator import ToolboxNetworkValidator
 from neuro_san.internals.validation.network.url_network_validator import UrlNetworkValidator
 
-from coded_tools.agent_network_editor.constants import MCP_SERVERS
-from coded_tools.agent_network_editor.constants import TOOLBOX_INFO
 from coded_tools.agent_network_editor.get_mcp_tool import GetMcpTool
 from coded_tools.agent_network_editor.get_subnetwork import GetSubnetwork
 from coded_tools.agent_network_editor.get_toolbox import GetToolbox
