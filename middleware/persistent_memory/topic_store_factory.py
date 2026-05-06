@@ -87,17 +87,17 @@ class TopicStoreFactory:  # pylint: disable=too-few-public-methods
         cls._logger.info("Creating memory store backend: %s (folder_name=%s)", backend, folder_name)
 
         if backend == "json_file":
-            from middleware.persistent_memory.json_file_store import JsonFileStore
+            from middleware.persistent_memory.json_file_store import JsonFileStore  # pylint: disable=import-outside-toplevel  # noqa: I001
 
             # ``JsonFileStore`` applies the default and sanitizes the stem itself;
             # an empty string here collapses to ``DEFAULT_FILE_NAME`` inside.
             return JsonFileStore(folder_name=folder_name, file_name=file_name or "")
         if backend == "markdown_file":
-            from middleware.persistent_memory.markdown_file_store import MarkdownFileStore
+            from middleware.persistent_memory.markdown_file_store import MarkdownFileStore  # pylint: disable=import-outside-toplevel  # noqa: I001
 
             return MarkdownFileStore(folder_name=folder_name)
         if backend == "mem0":
-            from middleware.persistent_memory.mem0_store import Mem0Store
+            from middleware.persistent_memory.mem0_store import Mem0Store  # pylint: disable=import-outside-toplevel  # noqa: I001
 
             return Mem0Store(sly_data=sly_data)
         raise ValueError(f"Unknown memory backend '{backend}'. Valid options: ['json_file', 'markdown_file', 'mem0'].")
