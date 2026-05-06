@@ -35,7 +35,7 @@ from typing import ClassVar
 from typing import override
 
 from mem0 import MemoryClient  # pylint: disable=import-error
-from mem0.exceptions import MemoryError as Mem0Error
+from mem0.exceptions import MemoryError as Mem0Error  # pylint: disable=import-error
 
 from middleware.persistent_memory.topic_store import TopicStore
 
