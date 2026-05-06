@@ -17,7 +17,7 @@
     include "registries/aaosa_basic.hocon",
 
     "metadata": {
-        "description": "A simple book recommendation network with 6 agents using Anthropic Opus, Sonnet, and Haiku models. Demonstrates per-agent llm_config.",
+        "description": "An example book recommendation network that uses multiple LLM backends, including Anthropic Opus, Sonnet, and Haiku models, demonstrating per-agent llm_config customization.",
         "tags": ["basic", "example", "AAOSA", "llm_config", "anthropic"],
         "sample_queries": [
             "Suggest me a good book to read.",
@@ -40,7 +40,7 @@ Tell me what kind of book you're looking for.
 
             "llm_config": {
                 "class": "anthropic",
-                "model_name": "claude-opus-4-0-20250115"
+                "model_name": "claude-opus"
             },
 
             "instructions": """
@@ -58,7 +58,7 @@ Present the final recommendation back to the user in a friendly, concise way.
             },
             "llm_config": {
                 "class": "anthropic",
-                "model_name": "claude-sonnet-4-20250514"
+                "model_name": "claude-sonnet"
             },
             "instructions": """
 Your name is FictionExpert. You recommend fiction and literary novels.
@@ -72,7 +72,7 @@ Recommend one book with a brief reason why it fits the request.
             },
             "llm_config": {
                 "class": "anthropic",
-                "model_name": "claude-sonnet-4-20250514"
+                "model_name": "claude-sonnet"
             },
             "instructions": """
 Your name is NonFictionExpert. You recommend non-fiction books.
@@ -86,7 +86,7 @@ Recommend one book with a brief reason why it fits the request.
             },
             "llm_config": {
                 "class": "anthropic",
-                "model_name": "claude-3-5-haiku-20241022"
+                "model_name": "claude-haiku"
             },
             "instructions": """
 Your name is MysteryExpert. You recommend mystery and thriller books.
@@ -100,7 +100,7 @@ Recommend one book with a brief reason why it fits the request.
             },
             "llm_config": {
                 "class": "anthropic",
-                "model_name": "claude-3-5-haiku-20241022"
+                "model_name": "claude-haiku"
             },
             "instructions": """
 Your name is SciFiExpert. You recommend science fiction books.
@@ -114,7 +114,7 @@ Recommend one book with a brief reason why it fits the request.
             },
             "llm_config": {
                 "class": "anthropic",
-                "model_name": "claude-3-5-haiku-20241022"
+                "model_name": "claude-haiku"
             },
             "instructions": """
 Your name is QuickSummary. You provide a brief one-line summary
