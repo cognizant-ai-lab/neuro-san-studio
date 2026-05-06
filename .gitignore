@@ -201,5 +201,8 @@ TopicMemory.json
 # Generated agent networks by the designer
 registries/generated/
 
+# Persistent memory tool default root (per-user, per-agent memory files)
+memory/
+
 # test local only
 registries/manifest.hocon.test
