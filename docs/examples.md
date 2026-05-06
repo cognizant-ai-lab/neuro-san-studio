@@ -14,13 +14,13 @@ Here are a few examples ordered by level of complexity.
     - [Music Nerd Pro Sly](#music-nerd-pro-sly)
     - [Music Nerd Pro Sly Local](#music-nerd-pro-sly-local)
     - [Music Nerd LLM Fallbacks](#music-nerd-llm-fallbacks)
+    - [Book Recommender with Multiple LLM Configs](#book-recommender-with-multiple-llm-configs)
     - [Coffee Finder](#coffee-finder)
     - [Coffee Finder Advanced](#coffee-finder-advanced)
     - [PII Middleware](#pii-middleware)
     - [Internal Communication Skill](#internal-communication-skill)
     - [Job Guessing Skill](#job-guessing-skill)
     - [Coding Assistant](#coding-assistant)
-    - [Book Recommender with Multiple LLM Configs](#book-recommender-with-multiple-llm-configs)
   - [🧰 Tool Integration Examples](#-tool-integration-examples)
     - [Anthropic Code Execution](#anthropic-code-execution)
     - [Anthropic Web Search](#anthropic-web-search)
@@ -138,6 +138,14 @@ its `llm_config` to automatically try another LLM config if the first one fails.
 
 **Tags:** `llm_config` `llm_fallbacks`
 
+### Book Recommender with Multiple LLM Configs
+
+[Book Recommender with Multiple LLM Configs](examples/basic/book_recommender_multiple_llm_configs.md) is a book recommendation
+network that demonstrates how to use per-agent `llm_config` to assign different Anthropic models
+(Opus, Sonnet, Haiku) to individual agents within a single network.
+
+**Tags:** `AAOSA` `llm_config` `anthropic`
+
 ### Coffee Finder
 
 [Coffee Finder](examples/basic/coffee_finder.md) is an agent network that helps
@@ -195,14 +203,6 @@ checklist injected into the system prompt, and validates its solution with the
 `code_interpreter` tool before delivering the answer.
 
 **Tags:** `basic` `checklist` `example` `middleware`
-
-### Book Recommender with Multiple LLM Configs
-
-[Book Recommender with Multiple LLM Configs](examples/basic/book_recommender_multiple_llm_configs.md) is a book recommendation
-network that demonstrates how to use per-agent `llm_config` to assign different Anthropic models
-(Opus, Sonnet, Haiku) to individual agents within a single network.
-
-**Tags:** `AAOSA` `llm_config` `anthropic`
 
 ## 🧰 Tool Integration Examples
 
