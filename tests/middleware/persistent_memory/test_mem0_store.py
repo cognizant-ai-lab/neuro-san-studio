@@ -23,17 +23,17 @@ from __future__ import annotations
 
 import asyncio
 import os
-
-import pytest  # noqa: F401 — importorskip must run before local imports.
-
-pytest.importorskip("mem0")
 from typing import Any
 from unittest.mock import MagicMock
 from unittest.mock import patch
 
-from middleware.persistent_memory.mem0_store import Mem0Store
-from middleware.persistent_memory.topic_store_factory import TopicStoreFactory
-from tests.middleware.persistent_memory.base import MemoryTestBase
+import pytest
+
+pytest.importorskip("mem0")
+
+from middleware.persistent_memory.mem0_store import Mem0Store  # pylint: disable=wrong-import-position
+from middleware.persistent_memory.topic_store_factory import TopicStoreFactory  # pylint: disable=wrong-import-position
+from tests.middleware.persistent_memory.base import MemoryTestBase  # pylint: disable=wrong-import-position
 
 
 class Mem0StoreTests(MemoryTestBase):
