@@ -26,23 +26,18 @@ from neuro_san.internals.run_context.langchain.mcp.mcp_servers_info_restorer imp
 from coded_tools.agent_network_editor.constants import MCP_SERVERS
 from coded_tools.agent_network_editor.sly_data_lock import SlyDataLock
 
+# Use deepwiki MCP server as default since it is free and does not require authorization.
+DEFAULT_MCP_INFO_FILE = os.path.join("mcp", "mcp_info.hocon")
+logger = logging.getLogger(__name__)
+
 
 class GetMcpTool(CodedTool):
     """
     CodedTool implementation which provides a way to get tool definition from given MCP servers
     """
 
-    # Use deepwiki MCP server as default since it is free and does not require authorization.
-    DEFAULT_MCP_INFO_FILE = os.path.join("mcp", "mcp_info.hocon")
-
-    def __init__(self):
-        """
-        Constructor
-        """
-        # Initialize a logger
-        self.logger = logging.getLogger(self.__class__.__name__)
-
-    async def get_mcp_servers(self, sly_data: dict[str, Any]) -> list[str]:
+    @staticmethod
+    async def get_mcp_servers(sly_data: dict[str, Any]) -> list[str]:
         """
         Read the MCP servers associated with this instance
         either from a cache on sly_data or from a file.
@@ -50,12 +45,12 @@ class GetMcpTool(CodedTool):
         :param sly_data: sly_data possibly containing cached mcp_servers info
         :return: list of MCP servers
         """
-        mcp_servers: list[str] = None
+        mcp_servers: list[str] = []
 
         async with await SlyDataLock.get_lock(sly_data, "mcp_servers_lock"):
             # Try getting from sly_data
-            mcp_servers = sly_data.get(MCP_SERVERS)
-            if mcp_servers is not None:
+            mcp_servers = sly_data.get(MCP_SERVERS, {})
+            if mcp_servers:
                 # Exit early
                 return mcp_servers
 
@@ -63,7 +58,7 @@ class GetMcpTool(CodedTool):
             use_mcp_info_file: str = os.getenv("MCP_SERVERS_INFO_FILE")
             if not use_mcp_info_file:
                 # Use a default if no value specified
-                use_mcp_info_file = self.DEFAULT_MCP_INFO_FILE
+                use_mcp_info_file = DEFAULT_MCP_INFO_FILE
 
             # Try to restore
             mcp_servers_from_file: dict[str, Any] = {}
@@ -71,7 +66,7 @@ class GetMcpTool(CodedTool):
                 restorer = McpServersInfoRestorer()
                 mcp_servers_from_file = await restorer.async_restore(file_reference=use_mcp_info_file)
             except FileNotFoundError:
-                self.logger.warning(
+                logger.warning(
                     "MCP servers info file not found at %s. No MCP Servers will be used.", use_mcp_info_file
                 )
 
@@ -111,7 +106,7 @@ class GetMcpTool(CodedTool):
         """
 
         # Get tool list from MCP servers
-        self.logger.info(">>>>>>>>>>>>>>>>>>>Getting Tool Definition from MCP Servers>>>>>>>>>>>>>>>>>>>")
+        logger.info(">>>>>>>>>>>>>>>>>>>Getting Tool Definition from MCP Servers>>>>>>>>>>>>>>>>>>>")
 
         async with await SlyDataLock.get_lock(sly_data, "tool_dict_lock"):
             if "tool_dict" not in sly_data:
@@ -120,9 +115,9 @@ class GetMcpTool(CodedTool):
                 mcp_servers: list[str] = await self.get_mcp_servers(sly_data)
                 for mcp_server in mcp_servers:
                     try:
-                        self.logger.info("MCP Server: %s", mcp_server)
+                        logger.info("MCP Server: %s", mcp_server)
                         tools: list[BaseTool] = await LangChainMcpAdapter().get_mcp_tools(mcp_server)
-                        self.logger.info("Successfully loaded the following tools: %s", str(tools))
+                        logger.info("Successfully loaded the following tools: %s", str(tools))
 
                         # Gather each tool's description into one string.
                         tool_dict[mcp_server] = ""
@@ -131,7 +126,7 @@ class GetMcpTool(CodedTool):
 
                     except ExceptionGroup as exception:
                         error_msg = f"Error: Failed to load tools from {mcp_server}. {str(exception)}"
-                        self.logger.warning(error_msg)
+                        logger.warning(error_msg)
 
                 # Stash a string representation of the tool_dict
                 sly_data["tool_dict"] = str(tool_dict)

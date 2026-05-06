@@ -31,7 +31,7 @@ from coded_tools.agent_network_editor.connectivity_dictionary_converter import C
 from coded_tools.agent_network_editor.constants import AGENT_NETWORK_DEFINITION
 from coded_tools.agent_network_editor.constants import AGENT_NETWORK_HOCON_TEXT
 from coded_tools.agent_network_editor.constants import AGENT_NETWORK_NAME
-from coded_tools.agent_network_editor.constants import MCP_SERVERS
+from coded_tools.agent_network_editor.get_mcp_tool import GetMcpTool
 from coded_tools.agent_network_editor.get_subnetwork import GetSubnetwork
 from coded_tools.agent_network_query_generator.set_sample_queries import AGENT_NETWORK_QUERIES
 from middleware.agent_network_designer.persistence.agent_network_assembler import AgentNetworkAssembler
@@ -193,8 +193,8 @@ class AgentNetworkPersistenceMiddleware(AgentMiddleware):
         self.logger.info(">>>>>>>>>>>>>>>>>>>Create Agent Network>>>>>>>>>>>>>>>>>>")
         self.logger.info("Agent Network Name: %s", the_agent_network_name)
 
-        subnetwork_names: list[str] = GetSubnetwork.get_subnetwork_names(self.sly_data)
-        mcp_servers: list[str] = self.sly_data.get(MCP_SERVERS, [])
+        subnetwork_names: list[str] = await GetSubnetwork.get_subnetwork_names(self.sly_data)
+        mcp_servers: list[str] = GetMcpTool.get_mcp_servers(self.sly_data)
         persistor: AgentNetworkPersistor = AgentNetworkPersistorFactory.create_persistor(
             {"reservationist": self.reservationist},
             WRITE_TO_FILE,

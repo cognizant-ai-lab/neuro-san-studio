@@ -25,6 +25,7 @@ from coded_tools.agent_network_editor.constants import TOOLBOX_INFO
 from coded_tools.agent_network_editor.sly_data_lock import SlyDataLock
 
 DEFAULT_TOOLBOX_INFO_FILE = os.path.join("toolbox", "agent_network_designer_toolbox_info.hocon")
+logger = logging.getLogger(__name__)
 
 
 class GetToolbox(CodedTool):
@@ -32,7 +33,51 @@ class GetToolbox(CodedTool):
     CodedTool implementation which provides a way to get tool definition from toolbox info file
     """
 
-    async def async_invoke(self, args: dict[str, Any], sly_data: dict[str, Any]) -> dict[str, Any] | str:
+    @staticmethod
+    async def get_toolbox_info(sly_data: dict[str, Any]) -> dict[str, Any]:
+        """
+        Read the toolbox info associated with this instance
+        either from a cache on sly_data or from a file.
+
+        :param sly_data: sly_data possibly containing cached toolbox info
+        :return: dict of tool name to description, or an error string
+        """
+        tools: dict[str, Any] = {}
+
+        async with await SlyDataLock.get_lock(sly_data, "toolbox_info_lock"):
+            # Try getting from sly_data
+            tools = sly_data.get(TOOLBOX_INFO, {})
+            if tools:
+                # Return whatever we had cached before
+                return tools
+
+            # Check for toolbox info file in env var
+            toolbox_info_file: str = os.getenv("AGENT_NETWORK_DESIGNER_TOOLBOX_INFO_FILE")
+            if not toolbox_info_file:
+                # Use a default if no value specified
+                toolbox_info_file = DEFAULT_TOOLBOX_INFO_FILE
+
+            # Go fish, but only once.
+            logger.info(">>>>>>>>>>>>>>>>>>>Getting Tool Definition from Toolbox>>>>>>>>>>>>>>>>>>>")
+            logger.info("Toolbox info file: %s", toolbox_info_file)
+            try:
+                # Need to do the load
+                tools = await ToolboxInfoRestorer().async_restore(toolbox_info_file)
+                logger.info("Successfully loaded the following toolbox: %s", str(tools))
+
+                # Clean up the dict so that it only contains "description" key.
+                for tool_name, tool_info in tools.items():
+                    tools[tool_name] = tool_info.get("description", "")
+
+            except FileNotFoundError:
+                logger.warning("Error: Failed to load toolbox info from %s.", toolbox_info_file)
+
+            # Cache the results in sly_data - success or failure.
+            sly_data[TOOLBOX_INFO] = tools
+
+        return tools
+
+    async def async_invoke(self, args: dict[str, Any], sly_data: dict[str, Any]) -> dict[str, Any]:
         """
         :param args: An argument dictionary whose keys are the parameters
                 to the coded tool and whose values are the values passed for them
@@ -58,37 +103,6 @@ class GetToolbox(CodedTool):
             In case of successful execution:
                 the tool definition from toolbox as a dictionary.
             otherwise:
-                a text string of an error message in the format:
-                "Error: <error message>"
+                an empty dictionary.
         """
-        logger = logging.getLogger(self.__class__.__name__)
-        toolbox_info_file: str = os.getenv("AGENT_NETWORK_DESIGNER_TOOLBOX_INFO_FILE", DEFAULT_TOOLBOX_INFO_FILE)
-
-        tools: dict[str, Any] | str = None
-        async with await SlyDataLock.get_lock(sly_data, "toolbox_info_lock"):
-            # Try getting from sly_data
-            tools = sly_data.get(TOOLBOX_INFO)
-            if tools is not None:
-                # Return whatever we had cached before
-                return tools
-
-            # Go fish, but only once.
-            logger.info(">>>>>>>>>>>>>>>>>>>Getting Tool Definition from Toolbox>>>>>>>>>>>>>>>>>>>")
-            logger.info("Toolbox info file: %s", toolbox_info_file)
-            try:
-                # Need to do the load
-                tools = await ToolboxInfoRestorer().async_restore(toolbox_info_file)
-                logger.info("Successfully loaded the following toolbox: %s", str(tools))
-
-                # Clean up the dict so that it only contains "description" key.
-                for tool_name, tool_info in tools.items():
-                    tools[tool_name] = tool_info.get("description", "")
-
-            except FileNotFoundError as not_found_err:
-                tools = f"Error: Failed to load toolbox info from {toolbox_info_file}. {str(not_found_err)}"
-                logger.warning(tools)
-
-            # Cache the results in sly_data - success or failure.
-            sly_data[TOOLBOX_INFO] = tools
-
-        return tools
+        return await self.get_toolbox_info(sly_data)
