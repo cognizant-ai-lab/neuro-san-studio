@@ -34,7 +34,7 @@ export OPENAI_API_KEY="your_openai_api_key_here"
 
 For more information on setting up OpenAI tools, see:
 
-- [OpenAI Tools Guide](https://platform.openai.com/docs/guides/tools?api-mode=responses)
+- [OpenAI Tools Guide](https://developers.openai.com/api/docs/guides/tools)
 
 - [LangChain OpenAI Responses API](https://python.langchain.com/docs/integrations/chat/openai/#responses-api)
 
@@ -131,16 +131,16 @@ When developing or debugging the OpenAI Web Search Assistant, keep the following
 
 ## Resources
 
-- [OpenAI Tools Guide](https://platform.openai.com/docs/guides/tools?api-mode=responses)  
+- [OpenAI Tools Guide](https://developers.openai.com/api/docs/guides/tools)  
   Complete guide to OpenAI's built-in tools and their capabilities.
 
-- [OpenAI Web Search Tool Documentation](https://platform.openai.com/docs/guides/tools-web-search?api-mode=responses)  
+- [OpenAI Web Search Tool Documentation](https://developers.openai.com/api/docs/guides/tools-web-search)  
   Detailed specifications and parameters for OpenAI's web search tool.
 
 - [LangChain OpenAI Responses API](https://python.langchain.com/docs/integrations/chat/openai/#responses-api)  
   Documentation on using OpenAI's Responses API within the LangChain framework.
 
-- [OpenAI API Reference](https://platform.openai.com/docs/api-reference)  
+- [OpenAI API Reference](https://developers.openai.com/docs/api-reference)  
   Complete API reference for OpenAI's services and endpoints.
 
 - [Coded Tools Implementation Guide](https://github.com/cognizant-ai-lab/neuro-san-studio/blob/main/docs/user_guide.md#coded-tools)  
