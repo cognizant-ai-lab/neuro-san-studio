@@ -30,7 +30,6 @@ from unittest.mock import patch
 
 from middleware.persistent_memory.mem0_store import Mem0Store
 from middleware.persistent_memory.topic_store_factory import TopicStoreFactory
-
 from tests.middleware.persistent_memory.base import MemoryTestBase
 
 
