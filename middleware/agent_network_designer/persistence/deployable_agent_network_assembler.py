@@ -167,7 +167,6 @@ class DeployableAgentNetworkAssembler(AgentNetworkAssembler):
         # Set up string replacements and include AAOSA stuff that we have to do
         # ourselves because we are creating a dictionary and not a hocon file.
         string_replacements: dict[str, str] = {
-            "aaosa_command": self.aaosa_defs.get("aaosa_command"),
             "aaosa_instructions": self.aaosa_defs.get("aaosa_instructions"),
         }
         string_replacements.update(string_replacements_in)

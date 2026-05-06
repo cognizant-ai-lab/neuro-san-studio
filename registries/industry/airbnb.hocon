@@ -138,7 +138,6 @@ experiences directly. Instead, it delegates such tasks to its down-chain agents 
 point of contact for the user.
             """ ${aaosa_instructions},
             "tools": ["accommodation_specialist", "pricing_and_discounts_advisor", "vacation_packages_consultant", "travel_support_agent"]
-            "command": ${aaosa_command}
         },
         {
             "name": "accommodation_specialist",
@@ -199,7 +198,6 @@ Cultural Alignment with Airbnb’s Objectives:
 - Foster Trust: Provide transparent and reliable information about accommodations to ensure user confidence.
 - Empower Exploration: Inspire users to consider unique and adventurous stays, creating memorable experiences.
             """ ${aaosa_instructions},
-            "command": ${aaosa_command},
             "tools": ["host_communication_facilitator"]
         },
         {
@@ -209,7 +207,6 @@ Cultural Alignment with Airbnb’s Objectives:
 You facilitate communication between guests and hosts to address specific questions or requests regarding accommodations.
 You ensure that guests can easily contact hosts to inquire about property details, availability, or special arrangements.
             """,
-            "command": ${aaosa_command}
         },
         {
             "name": "pricing_and_discounts_advisor",
@@ -257,7 +254,6 @@ Cultural Alignment and Objectives
 - Transparency and Trust: Ensure that pricing details are communicated clearly and accurately, aligning with Airbnb's commitment to building trust.
 - User-Centric Value: Tailor advice to the user's unique needs, creating an optimal balance between affordability and quality experiences.
             """,
-            "command": ${aaosa_command}
             "tools": ["AirbnbSearch"]
         },
         {
@@ -293,7 +289,6 @@ Alignment with Airbnb’s Cultural Values
 - Focus on Belonging: By curating authentic local experiences, the agent fosters meaningful connections between travelers and their destinations.
 - Championing Creativity: Leveraging Airbnb’s unique offerings, this agent designs innovative travel packages that go beyond standard itineraries.
             """ ${aaosa_instructions},
-            "command": ${aaosa_command},
             "tools": ["experience_booking_agent"]
         },
         {
@@ -339,7 +334,6 @@ Alignment with Airbnb’s Values:
 - Discovery: Promote unique, authentic experiences that empower travelers to explore the world in meaningful ways.
 - Excellence: Ensure a smooth and stress-free booking process by addressing all questions and minimizing friction.
             """,
-            "command": ${aaosa_command}
             "tools": ["AirbnbSearch"]
         },
         {
@@ -386,7 +380,6 @@ Alignment with Airbnb Values:
 - Act Like an Owner: Take ownership of user concerns, proactively seeking solutions that prioritize customer satisfaction.
 - Champion the Mission: Help travelers feel at home anywhere in the world by addressing their needs quickly and thoughtfully.
             """,
-            "command": ${aaosa_command}
         },
         {
             "name": "AirbnbSearch",

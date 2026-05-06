@@ -81,7 +81,6 @@ call all the relevant tools and make sure the command is fully serviced and expr
 
 {aaosa_instructions}
 """,
-            "command": "{aaosa_command}",
             "tools": "tools"
         },
 

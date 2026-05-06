@@ -121,7 +121,6 @@ STEP 2 — COMPOSE AND DELIVER THE ANSWER:
 - Merge all sub-agent responses into a complete answer. The calling agent is responsible for filtering — do NOT drop or summarize any details here.
 - Include any relevant policy URLs to help the user take next steps.
             """ ${instructions_prefix} ${aaosa_instructions},
-            "command": ${aaosa_command},
             "tools": ["Carry_On_Baggage", "Checked_Baggage", "Bag_Issues", "Special_Baggage", "Bag_Fee_Calculator"]
         },
         {
@@ -147,7 +146,6 @@ STEP 2 — COMPOSE AND DELIVER THE ANSWER:
 - Merge all sub-agent responses into a complete answer. The calling agent is responsible for filtering — do NOT drop or summarize any details here.
 - Include any relevant policy URLs to help the user take next steps.
             """ ${instructions_prefix} ${aaosa_instructions},
-            "command": ${aaosa_command},
             "tools": ["Military_Personnel", "Cabin_Class", "Mileage_Plus"]
         },
         {
@@ -168,7 +166,6 @@ Always call ExtractDocs (app_name: "International Travel Docs") to get the full 
 To obtain the official policy URL, use URLProvider with app_name "International Travel Docs". Always provide the official URL so passengers can verify current requirements.
 For international checked bag limits, also use URLProvider with app_name "International Checked Bag Limits" to provide the direct policy URL.
             """ ${instructions_prefix},
-            "command": ${aaosa_command},
             "tools": ["ExtractDocs", "URLProvider"]
         },
         {
@@ -197,7 +194,6 @@ STEP 2 — COMPOSE AND DELIVER THE ANSWER:
 - Merge all sub-agent responses into a complete answer. The calling agent is responsible for filtering — do NOT drop or summarize any details here.
 - Include any relevant policy URLs to help the user take next steps.
             """ ${instructions_prefix} ${aaosa_instructions},
-            "command": ${aaosa_command},
             "tools": ["Traveling_With_Dependents", "Accessibility_And_Special_Needs", "Restricted_Items"]
         },
         {
@@ -216,7 +212,6 @@ You are the Bag Fee Calculator agent. You direct passengers to the online calcul
 Always direct the passenger to use the calculator for their specific itinerary — you do not hold static fee tables.
 Use URLProvider with app_name "Bag Fee Calculator" to retrieve the direct URL to the calculator tool. Always provide this URL so the passenger can compute their specific fees.
             """ ${instructions_prefix},
-            "command": ${aaosa_command},
             "tools": ["URLProvider"]
         },
         {
@@ -237,7 +232,6 @@ If policy details vary by cabin, fare, status, loyalty, or membership, always li
 Always call ExtractDocs (app_name: "Carry On Baggage") to get the full policy text. Answer only based on the full policy text ONLY.
 To obtain the official policy URL, use URLProvider with app_name "Carry On Baggage". Always provide the official URL so passengers can verify information.
             """ ${instructions_prefix},
-            "command": ${aaosa_command},
             "tools": ["ExtractDocs", "URLProvider"]
         },
         {
@@ -259,7 +253,6 @@ If policy details vary by cabin, fare, status, loyalty, or membership, always li
 Always call ExtractDocs (app_name: "Checked Baggage") to get the full policy text. Answer only based on the full policy text ONLY.
 To obtain the official policy URL, use URLProvider with app_name "Checked Baggage". Always provide the official URL so passengers can verify information.
             """ ${instructions_prefix},
-            "command": ${aaosa_command},
             "tools": ["ExtractDocs", "URLProvider"]
         },
         {
@@ -280,7 +273,6 @@ You are the Bag Issues agent. You handle delayed, lost, damaged, and missing ite
 Always call ExtractDocs (app_name: "Bag Issues") to get the full policy text. Answer only based on the full policy text ONLY.
 To obtain the official policy URL, use URLProvider with app_name "Bag Issues". Always provide the official URL so passengers can verify information.
             """ ${instructions_prefix},
-            "command": ${aaosa_command},
             "tools": ["ExtractDocs", "URLProvider"]
         },
         {
@@ -298,7 +290,6 @@ You are the Special Baggage agent. You handle policies for sports equipment, fra
 Always call ExtractDocs (app_name: "Special Baggage") to get the full policy text. Answer only based on the full policy text ONLY.
 To obtain the official policy URL, use URLProvider with app_name "Special Baggage". Always provide the official URL so passengers can verify information.
             """ ${instructions_prefix},
-            "command": ${aaosa_command},
             "tools": ["ExtractDocs", "URLProvider"]
         },
         {
@@ -317,7 +308,6 @@ You are the Military Personnel agent. You handle military travel benefits, check
 Always call ExtractDocs (app_name: "Military Personnel") to get the full policy text. Answer only based on the full policy text ONLY.
 To obtain the official policy URL, use URLProvider with app_name "Military Personnel". Always provide the official URL so military passengers can verify entitlements before travel.
             """ ${instructions_prefix},
-            "command": ${aaosa_command},
             "tools": ["ExtractDocs", "URLProvider"]
         },
         {
@@ -336,7 +326,6 @@ You are the Cabin Class agent. You handle Basic Economy and Airline Economy fare
 Always call ExtractDocs (app_name: "Cabin Class") to get the full policy text. Answer only based on the full policy text ONLY.
 To obtain the official policy URL, use URLProvider with app_name "Cabin Class". Always provide the official URL so passengers can verify what they agreed to when booking.
             """ ${instructions_prefix},
-            "command": ${aaosa_command},
             "tools": ["ExtractDocs", "URLProvider"]
         },
         {
@@ -356,7 +345,6 @@ You are the Mileage Plus agent. You handle MileagePlus loyalty program membershi
 Always call ExtractDocs (app_name: "Mileage Plus") to get the full policy text. Answer only based on the full policy text ONLY.
 To obtain the official policy URL, use URLProvider with app_name "Mileage Plus". Always provide the official URL so passengers can verify tier and credit card perks.
             """ ${instructions_prefix},
-            "command": ${aaosa_command},
             "tools": ["ExtractDocs", "URLProvider"]
         },
         {
@@ -375,7 +363,6 @@ You are the Traveling With Dependents agent. You handle policies for flying with
 Always call ExtractDocs (app_name: "Traveling With Dependents") to get the full policy text. Answer only based on the full policy text ONLY.
 To obtain the official policy URL, use URLProvider with app_name "Traveling With Dependents". Always provide the official URL so passengers can verify information.
             """ ${instructions_prefix},
-            "command": ${aaosa_command},
             "tools": ["ExtractDocs", "URLProvider"]
         },
         {
@@ -393,7 +380,6 @@ You are the Accessibility and Special Needs agent. You handle policies for wheel
 Always call ExtractDocs (app_name: "Accessibility And Special Needs") to get the full policy text. Answer only based on the full policy text ONLY.
 To obtain the official policy URL, use URLProvider with app_name "Accessibility And Special Needs". Always provide the official URL so passengers can verify information.
             """ ${instructions_prefix},
-            "command": ${aaosa_command},
             "tools": ["ExtractDocs", "URLProvider"]
         },
         {
@@ -411,7 +397,6 @@ You are the Restricted Items agent. You handle policies for dangerous/prohibited
 Always call ExtractDocs (app_name: "Restricted Items") to get the full policy text. Answer only based on the full policy text ONLY.
 To obtain the official policy URL, use URLProvider with app_name "Restricted Items". Always provide the official URL so passengers can verify information.
             """ ${instructions_prefix},
-            "command": ${aaosa_command},
             "tools": ["ExtractDocs", "URLProvider"]
         },
         {
