@@ -138,14 +138,6 @@ its `llm_config` to automatically try another LLM config if the first one fails.
 
 **Tags:** `llm_config` `llm_fallbacks`
 
-### Book Recommender with Multiple LLM Configs
-
-[Book Recommender with Multiple LLM Configs](examples/basic/book_recommender_multiple_llm_configs.md) is a book recommendation
-network that demonstrates how to use per-agent `llm_config` to assign different Anthropic models
-(Opus, Sonnet, Haiku) to individual agents within a single network.
-
-**Tags:** `AAOSA` `llm_config` `anthropic`
-
 ### Coffee Finder
 
 [Coffee Finder](examples/basic/coffee_finder.md) is an agent network that helps
@@ -203,6 +195,14 @@ checklist injected into the system prompt, and validates its solution with the
 `code_interpreter` tool before delivering the answer.
 
 **Tags:** `basic` `checklist` `example` `middleware`
+
+### Book Recommender with Multiple LLM Configs
+
+[Book Recommender with Multiple LLM Configs](examples/basic/book_recommender_multiple_llm_configs.md) is a book recommendation
+network that demonstrates how to use per-agent `llm_config` to assign different Anthropic models
+(Opus, Sonnet, Haiku) to individual agents within a single network.
+
+**Tags:** `AAOSA` `llm_config` `anthropic`
 
 ## 🧰 Tool Integration Examples
 

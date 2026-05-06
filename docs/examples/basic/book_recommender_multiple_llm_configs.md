@@ -8,6 +8,14 @@ It's good for testing:
 * how to use per-agent `llm_config` to assign different models within one network
 * how to use different models for different task complexities
 
+## Prerequisites
+
+This agent network requires an Anthropic API key:
+
+```bash
+export ANTHROPIC_API_KEY="your_anthropic_api_key_here"
+```
+
 ## File
 
 [book_recommender_multiple_llm_configs.hocon](../../../registries/basic/book_recommender_multiple_llm_configs.hocon)
