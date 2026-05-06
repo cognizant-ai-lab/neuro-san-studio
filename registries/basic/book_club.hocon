@@ -1,0 +1,208 @@
+# Copyright © 2025-2026 Cognizant Technology Solutions Corp, www.cognizant.com.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
+# END COPYRIGHT
+{
+    "metadata": {
+        "description": "A simple book recommendation network with 6 agents using Anthropic Opus, Sonnet, and Haiku models. Demonstrates per-agent llm_config.",
+        "tags": ["basic", "example", "llm_config", "anthropic"],
+        "sample_queries": [
+            "Suggest me a good book to read.",
+            "I want something thrilling and suspenseful.",
+            "What's a good science fiction book for beginners?",
+            "I'd like a non-fiction book about history.",
+        ]
+    },
+
+    "llm_config": {
+        "class": "anthropic",
+        "model_name": "claude-sonnet-4-20250514"
+    },
+
+    "tools": [
+        # This first agent definition is regarded as the "Front Man", which
+        # does all the talking to the outside world/client.
+        #
+        # Some disqualifications from being a front man:
+        #   1) Cannot use a CodedTool "class" definition
+        #   2) Cannot use a Tool "toolbox" definition
+        #
+        # Besides the first agent being the front man, these tool definitions
+        # do not have to be in any particular order. How they are linked and
+        # call each other is defined within their own specs.
+        # This could be a graph, potentially even with cycles.
+        {
+            "name": "BookClubHost",
+
+            "function": {
+                "description": """
+I can recommend books across different genres.
+Tell me what kind of book you're looking for.
+"""
+            },
+
+            "llm_config": {
+                "class": "anthropic",
+                "model_name": "claude-opus-4-0-20250115"
+            },
+
+            "instructions": """
+You are a book club host. When you receive a request, determine which genre
+expert is most relevant and consult them. If the request spans multiple genres,
+consult all relevant experts and combine their recommendations.
+Present the final recommendation back to the user in a friendly, concise way.
+""",
+            "tools": ["FictionExpert", "NonFictionExpert", "MysteryExpert", "SciFiExpert", "QuickSummary"]
+        },
+        {
+            "name": "FictionExpert",
+            "function": {
+                "description": """
+Recommends fiction and literary novels including contemporary fiction,
+historical fiction, romance, and classic literature.
+""",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "request": {
+                            "type": "string",
+                            "description": "What the user is looking for"
+                        }
+                    },
+                    "required": ["request"]
+                }
+            },
+            "llm_config": {
+                "class": "anthropic",
+                "model_name": "claude-sonnet-4-20250514"
+            },
+            "instructions": """
+Your name is FictionExpert. You recommend fiction and literary novels.
+Recommend one book with a brief reason why it fits the request.
+""",
+            "command": "Recommend a fiction book."
+        },
+        {
+            "name": "NonFictionExpert",
+            "function": {
+                "description": """
+Recommends non-fiction books including history, science, biography,
+self-help, and business.
+""",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "request": {
+                            "type": "string",
+                            "description": "What the user is looking for"
+                        }
+                    },
+                    "required": ["request"]
+                }
+            },
+            "llm_config": {
+                "class": "anthropic",
+                "model_name": "claude-sonnet-4-20250514"
+            },
+            "instructions": """
+Your name is NonFictionExpert. You recommend non-fiction books.
+Recommend one book with a brief reason why it fits the request.
+""",
+            "command": "Recommend a non-fiction book."
+        },
+        {
+            "name": "MysteryExpert",
+            "function": {
+                "description": """
+Recommends mystery and thriller books including detective stories,
+psychological thrillers, and crime fiction.
+""",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "request": {
+                            "type": "string",
+                            "description": "What the user is looking for"
+                        }
+                    },
+                    "required": ["request"]
+                }
+            },
+            "llm_config": {
+                "class": "anthropic",
+                "model_name": "claude-3-5-haiku-20241022"
+            },
+            "instructions": """
+Your name is MysteryExpert. You recommend mystery and thriller books.
+Recommend one book with a brief reason why it fits the request.
+""",
+            "command": "Recommend a mystery book."
+        },
+        {
+            "name": "SciFiExpert",
+            "function": {
+                "description": """
+Recommends science fiction books including space opera, cyberpunk,
+dystopian, and hard science fiction.
+""",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "request": {
+                            "type": "string",
+                            "description": "What the user is looking for"
+                        }
+                    },
+                    "required": ["request"]
+                }
+            },
+            "llm_config": {
+                "class": "anthropic",
+                "model_name": "claude-3-5-haiku-20241022"
+            },
+            "instructions": """
+Your name is SciFiExpert. You recommend science fiction books.
+Recommend one book with a brief reason why it fits the request.
+""",
+            "command": "Recommend a sci-fi book."
+        },
+        {
+            "name": "QuickSummary",
+            "function": {
+                "description": """
+Provides a brief one-line summary of any recommended book.
+""",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "book_title": {
+                            "type": "string",
+                            "description": "The title of the book to summarize"
+                        }
+                    },
+                    "required": ["book_title"]
+                }
+            },
+            "llm_config": {
+                "class": "anthropic",
+                "model_name": "claude-3-5-haiku-20241022"
+            },
+            "instructions": """
+Your name is QuickSummary. You provide a brief one-line summary
+of a recommended book when asked.
+""",
+            "command": "Summarize the book in one line."
+        }
+    ]
+}
