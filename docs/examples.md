@@ -20,6 +20,7 @@ Here are a few examples ordered by level of complexity.
     - [Internal Communication Skill](#internal-communication-skill)
     - [Job Guessing Skill](#job-guessing-skill)
     - [Coding Assistant](#coding-assistant)
+    - [Book Club Multiple LLM Config](#book-club-multiple-llm-config)
   - [🧰 Tool Integration Examples](#-tool-integration-examples)
     - [Anthropic Code Execution](#anthropic-code-execution)
     - [Anthropic Web Search](#anthropic-web-search)
@@ -136,6 +137,14 @@ a **tool-calling** LLM that runs locally with Ollama.
 its `llm_config` to automatically try another LLM config if the first one fails.
 
 **Tags:** `llm_config` `llm_fallbacks`
+
+### Book Club Multiple LLM Config
+
+[Book Club Multiple LLM Config](examples/basic/book_club_multiple_llm_config.md) is a book recommendation
+network that demonstrates how to use per-agent `llm_config` to assign different Anthropic models
+(Opus, Sonnet, Haiku) to individual agents within a single network.
+
+**Tags:** `AAOSA` `llm_config` `anthropic`
 
 ### Coffee Finder
 

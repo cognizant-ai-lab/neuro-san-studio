@@ -6,8 +6,7 @@ different Anthropic models to individual agents using per-agent `llm_config`.
 It's good for testing:
 
 * how to use per-agent `llm_config` to assign different models within one network
-* how to mix Anthropic Opus, Sonnet, and Haiku for different task complexities
-* how AAOSA delegation works across agents with different LLM backends
+* how to use different models for different task complexities
 
 ## File
 
@@ -22,8 +21,8 @@ Each agent has its own `llm_config` specifying an Anthropic model:
 | **BookClubHost** | `claude-opus` | Frontman — routes requests to genre experts |
 | **FictionExpert** | `claude-sonnet` | Recommends fiction and literary novels |
 | **NonFictionExpert** | `claude-sonnet` | Recommends non-fiction books |
-| **MysteryExpert** | `claude-haiku` | Recommends mystery and thriller books |
-| **SciFiExpert** | `claude-haiku` | Recommends science fiction books |
+| **MysteryExpert** | `claude-sonnet` | Recommends mystery and thriller books |
+| **SciFiExpert** | `claude-sonnet` | Recommends science fiction books |
 | **QuickSummary** | `claude-haiku` | Provides brief one-line book summaries |
 
 The per-agent `llm_config` is set like this:

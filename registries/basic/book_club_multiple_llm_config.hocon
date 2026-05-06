@@ -86,7 +86,7 @@ Recommend one book with a brief reason why it fits the request.
             },
             "llm_config": {
                 "class": "anthropic",
-                "model_name": "claude-haiku"
+                "model_name": "claude-sonnet"
             },
             "instructions": """
 Your name is MysteryExpert. You recommend mystery and thriller books.
@@ -100,7 +100,7 @@ Recommend one book with a brief reason why it fits the request.
             },
             "llm_config": {
                 "class": "anthropic",
-                "model_name": "claude-haiku"
+                "model_name": "claude-sonnet"
             },
             "instructions": """
 Your name is SciFiExpert. You recommend science fiction books.
