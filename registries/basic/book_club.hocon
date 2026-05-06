@@ -14,9 +14,11 @@
 #
 # END COPYRIGHT
 {
+    include "registries/aaosa_basic.hocon",
+
     "metadata": {
         "description": "A simple book recommendation network with 6 agents using Anthropic Opus, Sonnet, and Haiku models. Demonstrates per-agent llm_config.",
-        "tags": ["basic", "example", "llm_config", "anthropic"],
+        "tags": ["basic", "example", "AAOSA", "llm_config", "anthropic"],
         "sample_queries": [
             "Suggest me a good book to read.",
             "I want something thrilling and suspenseful.",
@@ -25,23 +27,7 @@
         ]
     },
 
-    "llm_config": {
-        "class": "anthropic",
-        "model_name": "claude-sonnet-4-20250514"
-    },
-
     "tools": [
-        # This first agent definition is regarded as the "Front Man", which
-        # does all the talking to the outside world/client.
-        #
-        # Some disqualifications from being a front man:
-        #   1) Cannot use a CodedTool "class" definition
-        #   2) Cannot use a Tool "toolbox" definition
-        #
-        # Besides the first agent being the front man, these tool definitions
-        # do not have to be in any particular order. How they are linked and
-        # call each other is defined within their own specs.
-        # This could be a graph, potentially even with cycles.
         {
             "name": "BookClubHost",
 
@@ -62,12 +48,12 @@ You are a book club host. When you receive a request, determine which genre
 expert is most relevant and consult them. If the request spans multiple genres,
 consult all relevant experts and combine their recommendations.
 Present the final recommendation back to the user in a friendly, concise way.
-""",
+""" ${aaosa_instructions},
             "tools": ["FictionExpert", "NonFictionExpert", "MysteryExpert", "SciFiExpert", "QuickSummary"]
         },
         {
             "name": "FictionExpert",
-            "function": {
+            "function": ${aaosa_call}{
                 "description": "Recommends fiction and literary novels."
             },
             "llm_config": {
@@ -77,12 +63,11 @@ Present the final recommendation back to the user in a friendly, concise way.
             "instructions": """
 Your name is FictionExpert. You recommend fiction and literary novels.
 Recommend one book with a brief reason why it fits the request.
-""",
-            "command": "Recommend a fiction book."
+""" ${aaosa_instructions}
         },
         {
             "name": "NonFictionExpert",
-            "function": {
+            "function": ${aaosa_call}{
                 "description": "Recommends non-fiction books."
             },
             "llm_config": {
@@ -92,12 +77,11 @@ Recommend one book with a brief reason why it fits the request.
             "instructions": """
 Your name is NonFictionExpert. You recommend non-fiction books.
 Recommend one book with a brief reason why it fits the request.
-""",
-            "command": "Recommend a non-fiction book."
+""" ${aaosa_instructions}
         },
         {
             "name": "MysteryExpert",
-            "function": {
+            "function": ${aaosa_call}{
                 "description": "Recommends mystery and thriller books."
             },
             "llm_config": {
@@ -107,12 +91,11 @@ Recommend one book with a brief reason why it fits the request.
             "instructions": """
 Your name is MysteryExpert. You recommend mystery and thriller books.
 Recommend one book with a brief reason why it fits the request.
-""",
-            "command": "Recommend a mystery book."
+""" ${aaosa_instructions}
         },
         {
             "name": "SciFiExpert",
-            "function": {
+            "function": ${aaosa_call}{
                 "description": "Recommends science fiction books."
             },
             "llm_config": {
@@ -122,12 +105,11 @@ Recommend one book with a brief reason why it fits the request.
             "instructions": """
 Your name is SciFiExpert. You recommend science fiction books.
 Recommend one book with a brief reason why it fits the request.
-""",
-            "command": "Recommend a sci-fi book."
+""" ${aaosa_instructions}
         },
         {
             "name": "QuickSummary",
-            "function": {
+            "function": ${aaosa_call}{
                 "description": "Provides a brief one-line summary of a recommended book."
             },
             "llm_config": {
@@ -137,8 +119,7 @@ Recommend one book with a brief reason why it fits the request.
             "instructions": """
 Your name is QuickSummary. You provide a brief one-line summary
 of a recommended book when asked.
-""",
-            "command": "Summarize the book in one line."
+""" ${aaosa_instructions}
         }
     ]
 }
