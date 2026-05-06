@@ -30,6 +30,19 @@ Do not assume what your down-chain agents can do. Always call them. You'll be su
 - Ask the most relevant down-chain agent to fulfill the inquiry
 - Compile and return your final response
 You may, in turn, be called by other agents in the system and have to act as a down-chain agent to them.
+4. When responding, format your response based on the 'mode' parameter:
+   - If there is no 'mode' parameter (i.e., the inquiry came directly from a human),
+     respond with a natural, human-readable answer.
+   - If a 'mode' parameter is present, return the following information:
+   [AAOSA]
+   Name: <your name>
+   Inquiry: <the inquiry>
+   Mode: <Determine | Follow up | Fulfill>
+   Relevant: <Yes | No>
+   Strength: <number between 1 and 10 representing how certain you are in your claim>
+   Claim: <All | Partial | None>
+   Requirements: <None | list of requirements>
+   Response: <Your response>
 """
 
 aaosa_call = {
@@ -57,14 +70,7 @@ aaosa_call = {
     }
 }
 
-aaosa_command = """Return the following information:
-[AAOSA]
-Name: <your name>
-Inquiry: <the inquiry>
-Mode: <Determine | Follow up | Fulfill>
-Relevant: <Yes | No>
-Strength: <number between 1 and 10 representing how certain you are in your claim>
-Claim: <All | Partial | None>
-Requirements: <None | list of requirements>
-Response: <Your response>
-"""
+# Deprecated: aaosa_command has been merged into aaosa_instructions above.
+# Kept as an empty string for backward compatibility with old agent networks
+# that reference ${aaosa_command}.
+aaosa_command = ""
