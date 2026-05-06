@@ -43,7 +43,7 @@ export OPENAI_API_KEY="your_openai_api_key_here"
 
 For more information on setting up OpenAI tools, see:
 
-- [OpenAI Video Generation Guide](https://platform.openai.com/docs/guides/video-generation)
+- [OpenAI Video Generation Guide](https://developers.openai.com/api/docs/guides/video-generation)
 
 ---
 
@@ -189,13 +189,13 @@ videos.
 
 ## Resources
 
-- [OpenAI Video Generation Guide](https://platform.openai.com/docs/guides/video-generation)
+- [OpenAI Video Generation Guide](https://developers.openai.com/api/docs/guides/video-generation)
   Complete guide to OpenAI's video generation capabilities and best practices.
 - [OpenAI Video API Reference](https://developers.openai.com/api/reference/resources/videos)
   Detailed specifications and parameters for OpenAI's video generation API.
 - [LangChain OpenAI Integration](https://python.langchain.com/docs/integrations/chat/openai/)
   Documentation on using OpenAI's services within the LangChain framework.
-- [OpenAI API Reference](https://platform.openai.com/docs/api-reference)
+- [OpenAI API Reference](https://developers.openai.com/docs/api-reference)
   Complete API reference for OpenAI's services and endpoints.
 - [Coded Tools Implementation Guide](https://github.com/cognizant-ai-lab/neuro-san-studio/blob/main/docs/user_guide.md#coded-tools)
   Learn how to implement and integrate custom coded tools in Neuro-SAN Studio.
