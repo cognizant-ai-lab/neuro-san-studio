@@ -34,6 +34,3 @@ pyvis~=0.3.2
 
 # For web search tools without needing API keys, using DuckDuckGo's search results
 ddgs>=9.4.1
-
-# For the Mem0 cloud memory store backend
-mem0ai>=0.1.0

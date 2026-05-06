@@ -1708,7 +1708,7 @@ returns — no bookended load/save, and a crash mid-turn loses at most the call
 that was in-flight.
 
 Minimal wiring — only `class` is required, every other key has a sensible default.
-See the [full configuration reference](./examples/tools/persistent_memory.md#configuration)
+See the [full configuration reference](./examples/tools/persistent_memory_local.md#configuration)
 for all available options.
 
 ```hocon
@@ -1719,17 +1719,25 @@ for all available options.
 ]
 ```
 
-The middleware includes two storage backends. The `json_file` backend (default)
+The middleware includes three storage backends. The `json_file` backend (default)
 stores all topics for an agent in a single `memory.json` file. The
-`markdown_file` backend stores each topic as a separate `.md` file. Oversized
-topics are summarized inline under the same lock that performed the write,
-ensuring readers never observe an intermediate oversized state.
+`markdown_file` backend stores each topic as a separate `.md` file. The `mem0`
+backend stores topics as memory entries in the [Mem0](https://mem0.ai) cloud
+and partitions them by `user_id` for per-user scoping. Oversized topics are
+summarized inline under the same lock that performed the write, ensuring
+readers never observe an intermediate oversized state.
 
-For a complete walkthrough — including HOCON configuration, a sample
-conversation, backend trade-offs, summarizer tuning, and debugging tips — see
-the [persistent memory documentation](./examples/tools/persistent_memory.md).
-A minimal working network is available at
-[persistent_memory.hocon](../registries/tools/persistent_memory.hocon).
+For a complete walkthrough of the file-backed backends — including HOCON
+configuration, a sample conversation, backend trade-offs, summarizer tuning,
+and debugging tips — see the
+[Persistent Memory (Local) documentation](./examples/tools/persistent_memory_local.md). A minimal
+working network is available at
+[persistent_memory_local.hocon](../registries/tools/persistent_memory_local.hocon).
+
+For the cloud-hosted variant with per-user scoping, see the
+[Persistent Memory (Mem0) documentation](./examples/tools/persistent_memory_mem0.md) and its
+reference network at
+[persistent_memory_mem0.hocon](../registries/tools/persistent_memory_mem0.hocon).
 
 ## Connect with other agent frameworks
 

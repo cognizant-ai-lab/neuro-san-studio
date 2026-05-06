@@ -25,12 +25,8 @@ environment variable (key ``"user_id"``), falling back to ``"default_user"``.
 
 from __future__ import annotations
 
-import asyncio
 import json
-import logging
 import os
-from collections import OrderedDict
-from logging import Logger
 from typing import Any
 from typing import ClassVar
 from typing import override
@@ -44,51 +40,40 @@ class Mem0Store(TopicStore):
     """
     One Mem0 memory entry per topic, scoped by network, agent, and user.
 
-    The filesystem root used by the file-backed stores is not applicable here;
-    ``__init__`` initialises only the lock infrastructure shared with the base
-    class without calling ``super().__init__()``.
+    Inherits the base class's logger and lock cache; no filesystem state
+    is needed for this cloud backend.
     """
 
     _DEFAULT_USER_ID: ClassVar[str] = "default_user"
 
-    def __init__(self, sly_data: dict[str, Any] | None = None) -> None:  # pylint: disable=super-init-not-called
-        # Bypass TopicStore.__init__ — no filesystem root is needed for a
-        # cloud backend. Initialise only the attributes the base class methods
-        # rely on: logger, lock cache, and lock-cache guard.
-        self.logger: Logger = logging.getLogger(f"{__name__}.{self.__class__.__name__}")
-        self._locks: OrderedDict[tuple[str, ...], asyncio.Lock] = OrderedDict()
-        self._locks_guard: asyncio.Lock = asyncio.Lock()
+    def __init__(self, sly_data: dict[str, Any] | None = None) -> None:
+        super().__init__()
         self._sly_data: dict[str, Any] | None = sly_data
+        self._memory_client: MemoryClient | None = None
         self.logger.info("Initialised Mem0 cloud store backend.")
-
-    # ------------------------------------------------------------------
-    # Lock-key strategy — per-topic (each entry is independent in Mem0)
-    # ------------------------------------------------------------------
 
     @override
     def _lock_key(self, namespace: str, topic: str) -> tuple[str, ...]:
         """
-        Per-topic lock — each Mem0 entry is independent.
+        Per-user, per-topic lock — each Mem0 entry is independent and
+        Mem0 storage is partitioned by ``user_id``, so unrelated users
+        on the same agent/topic must not block each other.
 
         :param namespace: ``"<network>.<agent>"`` key.
         :param topic:     Topic name.
         :return: The lock-cache key for this topic.
         """
-        return ("mem0", namespace, topic)
+        return ("mem0", self._user_id(), namespace, topic)
 
     @override
     def _list_lock_key(self, namespace: str) -> tuple[str, ...]:
         """
-        Per-namespace lock for list and search operations.
+        Per-user, per-namespace lock for list and search operations.
 
         :param namespace: ``"<network>.<agent>"`` key.
         :return: The lock-cache key for list/search ops.
         """
-        return ("mem0-list", namespace)
-
-    # ------------------------------------------------------------------
-    # Admin / bulk operations
-    # ------------------------------------------------------------------
+        return ("mem0-list", self._user_id(), namespace)
 
     @override
     async def load_all(self, namespace: str) -> TopicStore.AgentMemory:
@@ -111,17 +96,16 @@ class Mem0Store(TopicStore):
         :param namespace: ``"<network>.<agent>"`` key.
         :param memory:    Full ``{topic: content}`` dict to persist.
         """
-        network, agent = self._split_namespace(namespace)
-        client = self._client()
-        user_id = self._user_id()
-
         async with await self._lock_for(self._list_lock_key(namespace)):
-            existing = self._fetch_for_namespace(client, user_id, network, agent)
+            existing = self._fetch_for_namespace(namespace)
             existing_by_topic: dict[str, str] = {
-                m["metadata"]["topic"]: m["id"] for m in existing if m.get("metadata", {}).get("topic")
+                m["metadata"]["topic"]: m["id"]
+                for m in existing
+                if m.get("metadata", {}).get("topic") and m.get("id")
             }
 
             # Remove topics that are no longer in the provided memory dict.
+            client: MemoryClient = self._client()
             for topic, memory_id in existing_by_topic.items():
                 if topic not in memory:
                     client.delete(memory_id=memory_id)
@@ -130,11 +114,7 @@ class Mem0Store(TopicStore):
             # Upsert every topic in the provided memory dict.
             for topic, content in memory.items():
                 existing_id: str | None = existing_by_topic.get(topic)
-                self._upsert(client, user_id, network, agent, topic, content, existing_id)
-
-    # ------------------------------------------------------------------
-    # Core read / write / delete
-    # ------------------------------------------------------------------
+                self._upsert(namespace, topic, content, existing_id)
 
     @override
     async def _read_topic(self, namespace: str, topic: str) -> str | None:
@@ -145,15 +125,8 @@ class Mem0Store(TopicStore):
         :param topic:     Topic name.
         :return: The topic's content, or ``None`` if no entry exists.
         """
-        network, agent = self._split_namespace(namespace)
-        client = self._client()
-        user_id = self._user_id()
-        memories = self._fetch_for_namespace(client, user_id, network, agent)
-        for m in memories:
-            if m.get("metadata", {}).get("topic") == topic:
-                content: str | None = m.get("memory") or None
-                return content
-        return None
+        match: dict[str, Any] | None = self._find_memory(namespace, topic)
+        return match.get("memory") or None if match else None
 
     @override
     async def _write_topic(self, namespace: str, topic: str, content: str) -> None:
@@ -166,11 +139,9 @@ class Mem0Store(TopicStore):
         :param topic:     Topic name.
         :param content:   New content for the topic.
         """
-        network, agent = self._split_namespace(namespace)
-        client = self._client()
-        user_id = self._user_id()
-        existing_id: str | None = self._find_topic_id(client, user_id, network, agent, topic)
-        self._upsert(client, user_id, network, agent, topic, content, existing_id)
+        match: dict[str, Any] | None = self._find_memory(namespace, topic)
+        existing_id: str | None = match.get("id") if match else None
+        self._upsert(namespace, topic, content, existing_id)
 
     @override
     async def _remove_topic(self, namespace: str, topic: str) -> bool:
@@ -181,13 +152,11 @@ class Mem0Store(TopicStore):
         :param topic:     Topic name.
         :return: ``True`` if an entry existed and was deleted.
         """
-        network, agent = self._split_namespace(namespace)
-        client = self._client()
-        user_id = self._user_id()
-        existing_id: str | None = self._find_topic_id(client, user_id, network, agent, topic)
+        match: dict[str, Any] | None = self._find_memory(namespace, topic)
+        existing_id: str | None = match.get("id") if match else None
         if existing_id is None:
             return False
-        client.delete(memory_id=existing_id)
+        self._client().delete(memory_id=existing_id)
         return True
 
     @override
@@ -198,24 +167,12 @@ class Mem0Store(TopicStore):
         :param namespace: ``"<network>.<agent>"`` key.
         :return: The agent's full memory dict; empty if none yet.
         """
-        network, agent = self._split_namespace(namespace)
-        client = self._client()
-        user_id = self._user_id()
-        memories = self._fetch_for_namespace(client, user_id, network, agent)
+        memories = self._fetch_for_namespace(namespace)
         return {m["metadata"]["topic"]: m.get("memory", "") for m in memories if m.get("metadata", {}).get("topic")}
 
-    # ------------------------------------------------------------------
-    # Mem0 cloud helpers
-    # ------------------------------------------------------------------
-
-    # pylint: disable=too-many-arguments
-    # pylint: disable=too-many-positional-arguments
     def _upsert(
         self,
-        client: MemoryClient,
-        user_id: str,
-        network: str,
-        agent: str,
+        namespace: str,
         topic: str,
         content: str,
         existing_id: str | None,
@@ -223,72 +180,53 @@ class Mem0Store(TopicStore):
         """
         Update an existing Mem0 entry or add a new one.
 
-        :param client:      Authenticated ``MemoryClient``.
-        :param user_id:     Mem0 user scope.
-        :param network:     Agent network name, stored in metadata.
-        :param agent:       Agent name, stored in metadata.
+        :param namespace:   ``"<network>.<agent>"`` key.
         :param topic:       Topic name, stored in metadata.
         :param content:     Memory text to persist.
         :param existing_id: Memory ID to update, or ``None`` to add.
         """
+        network, agent = self._split_namespace(namespace)
         metadata: dict[str, str] = self._build_metadata(network, agent, topic)
+        client: MemoryClient = self._client()
         if existing_id is not None:
             client.update(memory_id=existing_id, text=content, metadata=metadata)
             self.logger.debug("Updated memory %s (topic=%s)", existing_id, topic)
         else:
-            client.add(messages=content, user_id=user_id, metadata=metadata)
+            client.add(messages=content, user_id=self._user_id(), metadata=metadata)
             self.logger.debug("Added new memory for topic=%s", topic)
 
-    def _fetch_for_namespace(
-        self,
-        client: MemoryClient,
-        user_id: str,
-        network: str,
-        agent: str,
-    ) -> list[dict[str, Any]]:
+    def _fetch_for_namespace(self, namespace: str) -> list[dict[str, Any]]:
         """
         Fetch all Mem0 memories that belong to this network and agent.
 
-        Retrieves all memories for ``user_id`` and filters in Python because
-        the Mem0 API does not support metadata predicates in ``get_all``.
+        Retrieves all memories for the active ``user_id`` and filters in
+        Python because the Mem0 API does not support metadata predicates
+        in ``get_all``.
 
-        :param client:  Authenticated ``MemoryClient``.
-        :param user_id: Mem0 user scope.
-        :param network: Agent network name to filter on.
-        :param agent:   Agent name to filter on.
+        :param namespace: ``"<network>.<agent>"`` key.
         :return: Filtered list of Mem0 memory dicts.
         """
-        all_results: list[dict[str, Any]] = client.get_all(filters={"user_id": user_id}).get("results", [])
+        network, agent = self._split_namespace(namespace)
+        all_results: list[dict[str, Any]] = self._client().get_all(filters={"user_id": self._user_id()}).get(
+            "results", []
+        )
         return [
             m
             for m in all_results
             if m.get("metadata", {}).get("network") == network and m.get("metadata", {}).get("agent") == agent
         ]
 
-    # pylint: disable=too-many-arguments
-    # pylint: disable=too-many-positional-arguments
-    def _find_topic_id(
-        self,
-        client: MemoryClient,
-        user_id: str,
-        network: str,
-        agent: str,
-        topic: str,
-    ) -> str | None:
+    def _find_memory(self, namespace: str, topic: str) -> dict[str, Any] | None:
         """
-        Return the Mem0 memory ID for ``topic``, or ``None`` if absent.
+        Return the Mem0 memory dict for ``topic``, or ``None`` if absent.
 
-        :param client:  Authenticated ``MemoryClient``.
-        :param user_id: Mem0 user scope.
-        :param network: Agent network name.
-        :param agent:   Agent name.
-        :param topic:   Topic name to locate.
-        :return: The memory ID string, or ``None``.
+        :param namespace: ``"<network>.<agent>"`` key.
+        :param topic:     Topic name to locate.
+        :return: The memory dict, or ``None`` if no entry matches.
         """
-        memories = self._fetch_for_namespace(client, user_id, network, agent)
-        for m in memories:
-            if m.get("metadata", {}).get("topic") == topic:
-                return m.get("id")
+        for memory in self._fetch_for_namespace(namespace):
+            if memory.get("metadata", {}).get("topic") == topic:
+                return memory
         return None
 
     def _user_id(self) -> str:
@@ -316,15 +254,22 @@ class Mem0Store(TopicStore):
 
     def _client(self) -> MemoryClient:
         """
-        Build an authenticated ``MemoryClient`` from the ``MEM0_API_KEY`` environment variable.
+        Return a cached authenticated ``MemoryClient``, building one on first use.
 
-        :raises EnvironmentError: If ``MEM0_API_KEY`` is not set.
+        The ``MEM0_API_KEY`` environment variable is read once on first call;
+        subsequent calls reuse the same client (and its underlying HTTP
+        session).
+
+        :raises EnvironmentError: If ``MEM0_API_KEY`` is not set on first call.
         :return: A ready-to-use ``MemoryClient``.
         """
+        if self._memory_client is not None:
+            return self._memory_client
         api_key: str | None = os.environ.get("MEM0_API_KEY")
         if not api_key:
             raise EnvironmentError("MEM0_API_KEY environment variable is not set.")
-        return MemoryClient(api_key=api_key)
+        self._memory_client = MemoryClient(api_key=api_key)
+        return self._memory_client
 
     @staticmethod
     def _build_metadata(network: str, agent: str, topic: str) -> dict[str, str]:

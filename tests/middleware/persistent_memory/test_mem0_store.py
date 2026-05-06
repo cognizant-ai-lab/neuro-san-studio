@@ -14,7 +14,7 @@
 #
 # END COPYRIGHT
 
-"""Tests for ``Mem0Store`` — covers user_id resolution and factory wiring.
+"""Tests for ``Mem0Store`` — covers user_id resolution, factory wiring, and CRUD.
 
 Live Mem0 API calls are mocked so the suite runs without ``MEM0_API_KEY``.
 """
@@ -33,8 +33,21 @@ from middleware.persistent_memory.mem0_store import Mem0Store
 from middleware.persistent_memory.topic_store_factory import TopicStoreFactory
 
 
-class Mem0StoreUserIdTests(TestCase):
-    """_user_id() resolution priority."""
+class Mem0StoreTests(TestCase):
+    """Mem0Store: user_id resolution, factory wiring, and CRUD lifecycle."""
+
+    _NAMESPACE = "coffee_finder_advanced.UserPreferences"
+
+    def _make_store(self, user_id: str = "test_user") -> Mem0Store:
+        return Mem0Store(sly_data={"user_id": user_id})
+
+    def _mock_client(self, memories: list[dict[str, Any]]) -> MagicMock:
+        client = MagicMock()
+        client.get_all.return_value = {"results": memories}
+        return client
+
+    def _run(self, coro: Any) -> Any:
+        return asyncio.run(coro)
 
     def test_sly_data_user_id_takes_priority(self) -> None:
         """sly_data["user_id"] is used when present."""
@@ -68,10 +81,6 @@ class Mem0StoreUserIdTests(TestCase):
         store = Mem0Store(sly_data={})
         self.assertEqual(store._user_id(), "default_user")  # pylint: disable=protected-access
 
-
-class Mem0StoreFactoryTests(TestCase):
-    """TopicStoreFactory wires sly_data through to Mem0Store."""
-
     def test_factory_creates_mem0_store(self) -> None:
         """backend='mem0' yields a Mem0Store instance."""
         store = TopicStoreFactory.create({"backend": "mem0"})
@@ -89,23 +98,6 @@ class Mem0StoreFactoryTests(TestCase):
         os.environ.pop("DEFAULT_SLY_DATA", None)
         store = TopicStoreFactory.create({"backend": "mem0"})
         self.assertEqual(store._user_id(), "default_user")  # pylint: disable=protected-access
-
-
-class Mem0StoreCrudTests(TestCase):
-    """Read / write / delete cycle with a mocked MemoryClient."""
-
-    _NAMESPACE = "coffee_finder_advanced.UserPreferences"
-
-    def _make_store(self, user_id: str = "test_user") -> Mem0Store:
-        return Mem0Store(sly_data={"user_id": user_id})
-
-    def _mock_client(self, memories: list[dict[str, Any]]) -> MagicMock:
-        client = MagicMock()
-        client.get_all.return_value = {"results": memories}
-        return client
-
-    def _run(self, coro: Any) -> Any:
-        return asyncio.run(coro)
 
     def test_read_topic_returns_content(self) -> None:
         """_read_topic returns the memory text for a matching topic."""
@@ -219,7 +211,7 @@ class Mem0StoreCrudTests(TestCase):
             },
         ]
         store = self._make_store()
-        client = self._mock_client(memories)
-        result = store._fetch_for_namespace(client, "test_user", "coffee_finder_advanced", "UserPreferences")  # pylint: disable=protected-access
+        with patch.object(store, "_client", return_value=self._mock_client(memories)):
+            result = store._fetch_for_namespace(self._NAMESPACE)  # pylint: disable=protected-access
         self.assertEqual(len(result), 1)
         self.assertEqual(result[0]["id"], "1")

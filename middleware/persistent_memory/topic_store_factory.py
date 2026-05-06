@@ -96,7 +96,5 @@ class TopicStoreFactory:  # pylint: disable=too-few-public-methods
         if backend == "markdown_file":
             return MarkdownFileStore(folder_name=folder_name)
         if backend == "mem0":
-            # Mem0 is a cloud backend; folder_name and file_name are not applicable.
-            # sly_data is forwarded for per-request user_id scoping.
             return Mem0Store(sly_data=sly_data)
         raise ValueError(f"Unknown memory backend '{backend}'. Valid options: ['json_file', 'markdown_file', 'mem0'].")

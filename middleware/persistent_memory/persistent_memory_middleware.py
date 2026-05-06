@@ -98,9 +98,6 @@ class PersistentMemoryMiddleware(AgentMiddleware):
 
         max_topic_size, summarization_model, personalization = self._parse_summarization_config(summarization_config)
 
-        # ``JsonFileStore`` defaults + sanitizes ``file_name`` on its own;
-        # the markdown backend ignores it. See ``JsonFileStore.__init__``.
-        # ``sly_data`` is forwarded for cloud backends that need per-user scoping.
         self._store: TopicStore = TopicStoreFactory.create(store_config, sly_data=sly_data)
         self._summarizer: TopicSummarizer = TopicSummarizer(
             model_name=summarization_model,

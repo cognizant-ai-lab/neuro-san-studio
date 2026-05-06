@@ -50,12 +50,14 @@ class JsonFileStore(TopicStore):
     _UNSAFE_FILE_CHARS: ClassVar[re.Pattern[str]] = re.compile(r"[^A-Za-z0-9_-]")
 
     def __init__(self, folder_name: str, file_name: str = DEFAULT_FILE_NAME) -> None:
-        super().__init__(folder_name)
+        super().__init__()
+        self._root: Path = Path(folder_name).expanduser().resolve()
         # Accept ``"memory.json"`` / path-like values and reduce to a safe stem.
         raw: str = (file_name or self.DEFAULT_FILE_NAME).strip()
         stem: str = Path(raw).stem or self.DEFAULT_FILE_NAME
         cleaned: str = self._UNSAFE_FILE_CHARS.sub("_", stem).strip("_")
         self._file_name: str = cleaned or self.DEFAULT_FILE_NAME
+        self.logger.info("Root path: %s", self._root)
 
     def _path_for(self, namespace: str) -> Path:
         """

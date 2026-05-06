@@ -44,6 +44,11 @@ class MarkdownFileStore(TopicStore):
     # Runs of non-word / non-hyphen chars collapse to ``_`` for filenames.
     _UNSAFE_FILENAME: ClassVar[re.Pattern[str]] = re.compile(r"[^\w\-]")
 
+    def __init__(self, folder_name: str) -> None:
+        super().__init__()
+        self._root: Path = Path(folder_name).expanduser().resolve()
+        self.logger.info("Root path: %s", self._root)
+
     @override
     def _lock_key(self, namespace: str, topic: str) -> tuple[str, ...]:
         """

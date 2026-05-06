@@ -23,7 +23,7 @@
 # and facts the user has shared. It is not for internal LLM state such as
 # tool call results, pass/fail outcomes, or execution traces.
 #
-# Persistent Memory — example agent network (middleware path).
+# Persistent Memory (Local) — example agent network using a file-backed store.
 #
 # A single ``middleware`` block is all you need. Drop it on any agent that
 # needs long-term memory, and the ``persistent_memory`` tool is registered
@@ -31,12 +31,12 @@
 #
 # Class path: middleware.persistent_memory.persistent_memory_middleware.PersistentMemoryMiddleware
 #
-# Backend selection happens via the ``memory_config.storage`` block in the
-# middleware ``args``. Three backends ship out of the box:
+# This network uses one of the two file-backed backends:
 #   - ``json_file``:     one ``memory.json`` per agent (the default).
 #   - ``markdown_file``: one ``.md`` file per topic.
-#   - ``mem0``:          Mem0 cloud — requires MEM0_API_KEY env var and
-#                        ``"sly_data": true`` in middleware args for per-user scoping.
+#
+# For the cloud-hosted Mem0 backend (per-user scoping, no local files), see
+# ``registries/tools/persistent_memory_mem0.hocon``.
 #
 # Scope: this is the *agent's* memory, not per-user memory. All users
 # sharing the same agent share the same memory namespace. Designed for
@@ -94,16 +94,11 @@ confirm or share the information — do not guess.
                         "origin_str": true,
                         # All memory settings live under a single ``memory_config`` block with three sub-keys.
                         "memory_config": {
-                            # Backend configuration.
-                            #   ``backend``:     ``json_file``, ``markdown_file``, or ``mem0``.
+                            # Backend configuration (file-backed).
+                            #   ``backend``:     ``json_file`` or ``markdown_file``.
                             #   ``folder_name``: where memory files are written, always resolved relative to the repo root.
                             #   ``file_name``:   JSON-only file stem; written to
                             #                    ``<folder_name>/<agent_network_name>/<agent_name>/<file_name>.json``.
-                            #
-                            # To use the Mem0 cloud backend instead, replace the storage block with:
-                            #   "storage": { "backend": "mem0" }
-                            # and add ``"sly_data": true`` alongside ``origin_str`` above so the
-                            # framework injects the per-request user ID for Mem0 scoping.
                             "storage": {
                                 "backend":     "json_file",
                                 "folder_name": "memory",
@@ -116,7 +111,7 @@ confirm or share the information — do not guess.
                             "summarization": {
                                 "max_topic_size":  1000,
                                 "model":           "gpt-5.4-mini"
-                                # "personalization": "Write summaries in a warm, concise tone."
+                                "personalization": ""  # optional, e.g. "Write summaries in a warm, concise tone."
                             },
                             # Which operations the LLM may use. Leave empty to allow all six.
                             # Useful restrictions:
