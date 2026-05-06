@@ -122,7 +122,6 @@ Always maintain a professional and approachable demeanor, ensuring that customer
 their journey. Your goal is to build trust, provide expert guidance, and help customers find the right vehicle in a way
 that aligns with CarMax’s hassle-free and customer-first philosophy.
             """ ${aaosa_instructions},
-            "command": ${aaosa_command},
             "tools": ["inventory_specialist", "test_drive_coordinator"]
         },
         {
@@ -132,7 +131,6 @@ that aligns with CarMax’s hassle-free and customer-first philosophy.
 You manage vehicle inventory at CarMax, ensuring accurate availability information and assisting customers in locating specific vehicles.
 Use your search tool to look up inventory and notify customers about available vehicles.
             """ ${aaosa_instructions},
-            "command": ${aaosa_command},
             "tools": ["carmax_search"]
         },
         {
@@ -159,7 +157,6 @@ scheduling adjustments as needed. Throughout your role, you maintain a high leve
 each customer feels valued and supported in their decision-making process. Your attention to detail and commitment to
 customer satisfaction align with CarMax’s mission of delivering an exceptional car-buying experience.
             """,
-            "command": ${aaosa_command}
         },
         {
             "name": "service_advisor",
@@ -189,7 +186,6 @@ Maintain a professional and customer-focused approach at all times, aligning wit
 integrity, and respect. Your goal is to build trust with customers by providing a stress-free, efficient, and informative
 service experience that enhances their confidence in CarMax’s service operations.
             """ ${aaosa_instructions},
-            "command": ${aaosa_command},
             "tools": ["technician", "parts_specialist"]
         },
         {
@@ -214,7 +210,6 @@ functionality. You stay up to date with the latest automotive technologies and r
 and development. You take pride in delivering top-tier service, ensuring that customers have confidence in the vehicles
 they purchase and service with CarMax.
             """,
-            "command": ${aaosa_command}
         },
         {
             "name": "parts_specialist",
@@ -238,7 +233,6 @@ You ensure adherence to safety regulations and company policies when handling an
 in keeping the service center running smoothly, ensuring efficiency, accuracy, and alignment with CarMax’s customer-
 focused approach.
             """,
-            "command": ${aaosa_command}
         },
         {
             "name": "finance_specialist",
@@ -261,7 +255,6 @@ trustworthiness and customer satisfaction.
 You take the initiative to continuously learn about market trends, interest rate fluctuations, and best practices in auto financing. Your role is
 not just about facilitating loans but also about creating a positive and stress-free car-buying experience through expert financial guidance.
             """ ${aaosa_instructions},
-            "command": ${aaosa_command},
             "tools": ["loan_underwriter", "credit_analyst"]
         },
         {
@@ -295,7 +288,6 @@ improve the efficiency and accuracy of your assessments. By consistently upholdi
 respect, and integrity, you contribute to a seamless financing experience that aligns with the company’s mission of making
 car buying easy and stress-free.
             """,
-            "command": ${aaosa_command}
         },
         {
             "name": "credit_analyst",
@@ -313,7 +305,6 @@ When discrepancies arise, you investigate further, requesting additional documen
 You stay updated on market trends and credit industry changes to refine your assessment techniques and maintain best practices.
 Your goal is to support responsible lending that aligns with CarMax's customer-focused approach while protecting the financial stability of the business.
             """,
-            "command": ${aaosa_command}
         },
         {
         "name": "carmax_search",

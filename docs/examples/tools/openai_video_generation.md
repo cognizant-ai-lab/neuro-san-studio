@@ -105,7 +105,7 @@ OpenAI's built-in video generation capabilities.
 "1792x1024"; defaults to "720x1280")
 
 For additional parameters, see
-[OpenAI Video Generation API Reference](https://platform.openai.com/docs/api-reference/videos)
+[OpenAI Video Generation API Reference](https://developers.openai.com/api/reference/resources/videos)
 
 Note: `input_reference` is not currently supported.
 
@@ -191,7 +191,7 @@ videos.
 
 - [OpenAI Video Generation Guide](https://platform.openai.com/docs/guides/video-generation)
   Complete guide to OpenAI's video generation capabilities and best practices.
-- [OpenAI Video API Reference](https://platform.openai.com/docs/api-reference/videos)
+- [OpenAI Video API Reference](https://developers.openai.com/api/reference/resources/videos)
   Detailed specifications and parameters for OpenAI's video generation API.
 - [LangChain OpenAI Integration](https://python.langchain.com/docs/integrations/chat/openai/)
   Documentation on using OpenAI's services within the LangChain framework.
