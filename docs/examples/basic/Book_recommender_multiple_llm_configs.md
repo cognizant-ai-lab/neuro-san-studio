@@ -1,4 +1,4 @@
-# Book Club Multiple LLM Config
+# Book Recommender with Multiple LLM Configs
 
 A book recommendation network that demonstrates how to assign
 different Anthropic models to individual agents using per-agent `llm_config`.
@@ -10,7 +10,7 @@ It's good for testing:
 
 ## File
 
-[book_club_multiple_llm_config.hocon](../../../registries/basic/book_club_multiple_llm_config.hocon)
+[Book_recommender_multiple_llm_configs.hocon](../../../registries/basic/Book_recommender_multiple_llm_configs.hocon)
 
 ## Description
 

@@ -20,7 +20,7 @@ Here are a few examples ordered by level of complexity.
     - [Internal Communication Skill](#internal-communication-skill)
     - [Job Guessing Skill](#job-guessing-skill)
     - [Coding Assistant](#coding-assistant)
-    - [Book Club Multiple LLM Config](#book-club-multiple-llm-config)
+    - [Book Recommender with Multiple LLM Configs](#book-recommender-with-multiple-llm-configs)
   - [🧰 Tool Integration Examples](#-tool-integration-examples)
     - [Anthropic Code Execution](#anthropic-code-execution)
     - [Anthropic Web Search](#anthropic-web-search)
@@ -138,9 +138,9 @@ its `llm_config` to automatically try another LLM config if the first one fails.
 
 **Tags:** `llm_config` `llm_fallbacks`
 
-### Book Club Multiple LLM Config
+### Book Recommender with Multiple LLM Configs
 
-[Book Club Multiple LLM Config](examples/basic/book_club_multiple_llm_config.md) is a book recommendation
+[Book Recommender with Multiple LLM Configs](examples/basic/Book_recommender_multiple_llm_configs.md) is a book recommendation
 network that demonstrates how to use per-agent `llm_config` to assign different Anthropic models
 (Opus, Sonnet, Haiku) to individual agents within a single network.
 

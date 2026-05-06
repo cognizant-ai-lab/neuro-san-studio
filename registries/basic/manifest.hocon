@@ -37,5 +37,5 @@
     "basic/music_nerd_pro_sly_local.hocon": true,
     "basic/pii_middleware.hocon": true,
     "basic/smart_home.hocon": true,
-    "basic/book_club_multiple_llm_config.hocon": true,
+    "basic/Book_recommender_multiple_llm_configs.hocon": true,
 }
