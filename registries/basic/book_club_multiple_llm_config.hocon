@@ -39,7 +39,6 @@ Tell me what kind of book you're looking for.
             },
 
             "llm_config": {
-                "class": "anthropic",
                 "model_name": "claude-opus"
             },
 
@@ -47,7 +46,8 @@ Tell me what kind of book you're looking for.
 You are a book club host. When you receive a request, determine which genre
 expert is most relevant and consult them. If the request spans multiple genres,
 consult all relevant experts and combine their recommendations.
-Present the final recommendation back to the user in a friendly, concise way.
+Present the final recommendation back to the user in a concise, professional way.
+Do not use emoticons in your responses.
 """ ${aaosa_instructions},
             "tools": ["FictionExpert", "NonFictionExpert", "MysteryExpert", "SciFiExpert", "QuickSummary"]
         },
@@ -57,7 +57,6 @@ Present the final recommendation back to the user in a friendly, concise way.
                 "description": "Recommends fiction and literary novels."
             },
             "llm_config": {
-                "class": "anthropic",
                 "model_name": "claude-sonnet"
             },
             "instructions": """
@@ -71,7 +70,6 @@ Recommend one book with a brief reason why it fits the request.
                 "description": "Recommends non-fiction books."
             },
             "llm_config": {
-                "class": "anthropic",
                 "model_name": "claude-sonnet"
             },
             "instructions": """
@@ -85,7 +83,6 @@ Recommend one book with a brief reason why it fits the request.
                 "description": "Recommends mystery and thriller books."
             },
             "llm_config": {
-                "class": "anthropic",
                 "model_name": "claude-sonnet"
             },
             "instructions": """
@@ -99,7 +96,6 @@ Recommend one book with a brief reason why it fits the request.
                 "description": "Recommends science fiction books."
             },
             "llm_config": {
-                "class": "anthropic",
                 "model_name": "claude-sonnet"
             },
             "instructions": """
@@ -113,7 +109,6 @@ Recommend one book with a brief reason why it fits the request.
                 "description": "Provides a brief one-line summary of a recommended book."
             },
             "llm_config": {
-                "class": "anthropic",
                 "model_name": "claude-haiku"
             },
             "instructions": """
