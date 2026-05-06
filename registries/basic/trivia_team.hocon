@@ -1,0 +1,167 @@
+# Copyright © 2025-2026 Cognizant Technology Solutions Corp, www.cognizant.com.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
+# END COPYRIGHT
+
+# The schema specifications for this file are documented here:
+# https://github.com/cognizant-ai-lab/neuro-san/blob/main/docs/agent_hocon_reference.md
+
+{
+    "metadata": {
+        "description": "A simple trivia team network with 5 agents using Anthropic models (Opus, Sonnet, Haiku) to answer trivia questions across different domains.",
+        "tags": ["basic", "example", "llm_config", "anthropic"],
+        "sample_queries": [
+            "What causes the northern lights?",
+            "Who built the Great Wall of China and why?",
+            "What is the tallest mountain in Africa?",
+            "Which country has won the most FIFA World Cup titles?"
+        ]
+    },
+
+    "llm_config": {
+        "class": "anthropic",
+        "model_name": "claude-sonnet-4-20250514"
+    },
+
+    "tools": [
+        {
+            "name": "trivia_host",
+
+            "function": {
+                "description": """
+I am a trivia host with a team of experts. Ask me any trivia question about
+science, history, geography, or sports and I will consult the right expert.
+"""
+            },
+
+            "llm_config": {
+                "class": "anthropic",
+                "model_name": "claude-opus-4-0-20250115"
+            },
+
+            "instructions": """
+You are a friendly trivia host. When you receive a question, determine which
+domain it belongs to and delegate it to the appropriate expert:
+- Science questions go to science_expert.
+- History questions go to history_expert.
+- Geography questions go to geography_expert.
+- Sports questions go to sports_expert.
+If a question spans multiple domains, consult all relevant experts and combine
+their answers into one clear response. Always present the final answer in a
+concise and friendly way.
+""",
+            "tools": ["science_expert", "history_expert", "geography_expert", "sports_expert"]
+        },
+        {
+            "name": "science_expert",
+            "function": {
+                "description": "Answers science and nature trivia questions.",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "question": {
+                            "type": "string",
+                            "description": "A science or nature trivia question"
+                        }
+                    },
+                    "required": ["question"]
+                }
+            },
+            "llm_config": {
+                "class": "anthropic",
+                "model_name": "claude-sonnet-4-20250514"
+            },
+            "instructions": """
+You are a science trivia expert. Answer the given science or nature question
+accurately and concisely. Include one interesting fact if relevant.
+""",
+            "command": "Answer the science trivia question."
+        },
+        {
+            "name": "history_expert",
+            "function": {
+                "description": "Answers history trivia questions.",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "question": {
+                            "type": "string",
+                            "description": "A history trivia question"
+                        }
+                    },
+                    "required": ["question"]
+                }
+            },
+            "llm_config": {
+                "class": "anthropic",
+                "model_name": "claude-sonnet-4-20250514"
+            },
+            "instructions": """
+You are a history trivia expert. Answer the given history question accurately
+and concisely. Include one interesting fact if relevant.
+""",
+            "command": "Answer the history trivia question."
+        },
+        {
+            "name": "geography_expert",
+            "function": {
+                "description": "Answers geography trivia questions.",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "question": {
+                            "type": "string",
+                            "description": "A geography trivia question"
+                        }
+                    },
+                    "required": ["question"]
+                }
+            },
+            "llm_config": {
+                "class": "anthropic",
+                "model_name": "claude-3-5-haiku-20241022"
+            },
+            "instructions": """
+You are a geography trivia expert. Answer the given geography question
+accurately and concisely. Include one interesting fact if relevant.
+""",
+            "command": "Answer the geography trivia question."
+        },
+        {
+            "name": "sports_expert",
+            "function": {
+                "description": "Answers sports trivia questions.",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "question": {
+                            "type": "string",
+                            "description": "A sports trivia question"
+                        }
+                    },
+                    "required": ["question"]
+                }
+            },
+            "llm_config": {
+                "class": "anthropic",
+                "model_name": "claude-3-5-haiku-20241022"
+            },
+            "instructions": """
+You are a sports trivia expert. Answer the given sports question accurately
+and concisely. Include one interesting fact if relevant.
+""",
+            "command": "Answer the sports trivia question."
+        }
+    ]
+}

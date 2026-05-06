@@ -37,4 +37,5 @@
     "basic/music_nerd_pro_sly_local.hocon": true,
     "basic/pii_middleware.hocon": true,
     "basic/smart_home.hocon": true,
+    "basic/trivia_team.hocon": true,
 }
