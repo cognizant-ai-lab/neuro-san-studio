@@ -68,20 +68,7 @@ Present the final recommendation back to the user in a friendly, concise way.
         {
             "name": "FictionExpert",
             "function": {
-                "description": """
-Recommends fiction and literary novels including contemporary fiction,
-historical fiction, romance, and classic literature.
-""",
-                "parameters": {
-                    "type": "object",
-                    "properties": {
-                        "request": {
-                            "type": "string",
-                            "description": "What the user is looking for"
-                        }
-                    },
-                    "required": ["request"]
-                }
+                "description": "Recommends fiction and literary novels."
             },
             "llm_config": {
                 "class": "anthropic",
@@ -96,20 +83,7 @@ Recommend one book with a brief reason why it fits the request.
         {
             "name": "NonFictionExpert",
             "function": {
-                "description": """
-Recommends non-fiction books including history, science, biography,
-self-help, and business.
-""",
-                "parameters": {
-                    "type": "object",
-                    "properties": {
-                        "request": {
-                            "type": "string",
-                            "description": "What the user is looking for"
-                        }
-                    },
-                    "required": ["request"]
-                }
+                "description": "Recommends non-fiction books."
             },
             "llm_config": {
                 "class": "anthropic",
@@ -124,20 +98,7 @@ Recommend one book with a brief reason why it fits the request.
         {
             "name": "MysteryExpert",
             "function": {
-                "description": """
-Recommends mystery and thriller books including detective stories,
-psychological thrillers, and crime fiction.
-""",
-                "parameters": {
-                    "type": "object",
-                    "properties": {
-                        "request": {
-                            "type": "string",
-                            "description": "What the user is looking for"
-                        }
-                    },
-                    "required": ["request"]
-                }
+                "description": "Recommends mystery and thriller books."
             },
             "llm_config": {
                 "class": "anthropic",
@@ -152,20 +113,7 @@ Recommend one book with a brief reason why it fits the request.
         {
             "name": "SciFiExpert",
             "function": {
-                "description": """
-Recommends science fiction books including space opera, cyberpunk,
-dystopian, and hard science fiction.
-""",
-                "parameters": {
-                    "type": "object",
-                    "properties": {
-                        "request": {
-                            "type": "string",
-                            "description": "What the user is looking for"
-                        }
-                    },
-                    "required": ["request"]
-                }
+                "description": "Recommends science fiction books."
             },
             "llm_config": {
                 "class": "anthropic",
@@ -180,19 +128,7 @@ Recommend one book with a brief reason why it fits the request.
         {
             "name": "QuickSummary",
             "function": {
-                "description": """
-Provides a brief one-line summary of any recommended book.
-""",
-                "parameters": {
-                    "type": "object",
-                    "properties": {
-                        "book_title": {
-                            "type": "string",
-                            "description": "The title of the book to summarize"
-                        }
-                    },
-                    "required": ["book_title"]
-                }
+                "description": "Provides a brief one-line summary of a recommended book."
             },
             "llm_config": {
                 "class": "anthropic",
