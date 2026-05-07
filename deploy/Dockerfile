@@ -41,12 +41,20 @@ RUN pip3 install --upgrade pip==${PIP3_VERSION} --no-cache-dir ; mkdir -p ${APP_
 
 # Having a requirements.txt file for your coded_tool dependencies is optional
 COPY ./requirements.txt ${APP_SOURCE}/requirements.txt
+COPY ./neuro_san_studio ${APP_SOURCE}/neuro_san_studio
+
 # Move the work dir to the app source to find the requirements.
 WORKDIR ${APP_SOURCE}
 RUN if [ -f ${APP_SOURCE}/requirements.txt ]; \
     then \
         pip install --prefix=/install --no-cache-dir -r ${APP_SOURCE}/requirements.txt ; \
     fi
+
+# Install plugin dependencies.
+# To install additional plugins, add more lines following this pattern:
+#   pip install --prefix=/install --no-cache-dir -r ${APP_SOURCE}/neuro_san_studio/plugins/<plugin>/requirements.txt
+RUN pip install --prefix=/install --no-cache-dir \
+    -r ${APP_SOURCE}/neuro_san_studio/plugins/langfuse/requirements.txt
 
 # Reset to the root directory
 WORKDIR /
@@ -93,6 +101,8 @@ COPY --from=builder /install /usr/local
 #       The Agent Network Designer relies on:
 #       - its own toolbox in ./toolbox
 #       - ./middleware for validation of designed networks
+COPY ./neuro_san_studio ${APP_SOURCE}/neuro_san_studio
+COPY ./servers ${APP_SOURCE}/servers
 COPY ./registries ${APP_SOURCE}/registries
 COPY ./coded_tool[s] ${APP_SOURCE}/coded_tools
 COPY ./toolbox ${APP_SOURCE}/toolbox
@@ -254,6 +264,12 @@ ENV AGENT_TRACING_METADATA_REQUEST_KEYS=""
 # The defaults given here are standard Kubernetes environment variables for any given deployment pod.
 # Only environment variables that are set to something other than the empty string will be forwarded.
 ENV AGENT_TRACING_METADATA_ENV_VARS="POD_NAME POD_NAMESPACE POD_IP NODE_NAME"
+
+# Langfuse observability
+ENV LANGFUSE_ENABLED=""
+ENV LANGFUSE_SECRET_KEY=""
+ENV LANGFUSE_PUBLIC_KEY=""
+ENV LANGFUSE_HOST=""
 
 # Size of backlog for TCP connections to http server.
 # Sets the maximum number of pending TCP connections waiting to be accepted by the server.
