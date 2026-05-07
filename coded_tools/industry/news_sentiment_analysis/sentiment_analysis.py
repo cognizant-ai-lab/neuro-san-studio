@@ -24,6 +24,7 @@ from typing import Optional
 from typing import Tuple
 
 # pylint: disable=import-error
+from leaf_common.serialization.util.text_file_reader import TextFileReader
 from neuro_san.interfaces.coded_tool import CodedTool
 from nupunkt import sent_tokenize
 from vaderSentiment.vaderSentiment import SentimentIntensityAnalyzer
@@ -115,9 +116,8 @@ class SentimentAnalysis(CodedTool):
 
         path = os.path.join(input_dir or self.input_dir, file_name)
         try:
-            with open(path, "r", encoding="utf-8") as f:
-                content = f.read().strip()
-        except (OSError, UnicodeDecodeError):
+            content = TextFileReader.read_text_file(path).strip()
+        except OSError:
             logger.exception("Error reading file: %s", path)
             return None
 

@@ -102,7 +102,7 @@ If the user ask you to describe a video, you MUST call your video_describer tool
                 # Output resolution formatted as width x height (allowed values: 720x1280, 1280x720, 1024x1792, 1792x1024). Defaults to 720x1280.
                 "size": "720x1280"
 
-                # For more information, please see https://platform.openai.com/docs/api-reference/videos
+                # For more information, please see https://developers.openai.com/api/reference/resources/videos
                 # Note that "input_reference" is not currently supported.
             }
         },

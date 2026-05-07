@@ -26,7 +26,6 @@ from typing import Callable
 from typing import override
 from urllib.parse import urljoin
 
-import aiofiles
 from aiohttp import ClientError
 from aiohttp import ClientSession
 from aiohttp import ClientTimeout
@@ -45,6 +44,7 @@ from langchain_core.tools import StructuredTool
 from langgraph.prebuilt.tool_node import ToolCallRequest
 from langgraph.runtime import Runtime
 from langgraph.types import Command
+from leaf_common.serialization.util.text_file_reader import TextFileReader
 from yaml import YAMLError
 from yaml import safe_load
 
@@ -316,10 +316,7 @@ class AgentSkillsMiddleware(AgentMiddleware):
             return f"Error: Resource file not found: {resource_path}"
 
         try:
-            async with aiofiles.open(path, mode="r", encoding="utf-8") as file:
-                return await file.read()
-        except UnicodeDecodeError as unicode_error:
-            return f"Error: Unable to decode file as UTF-8: {unicode_error}"
+            return await TextFileReader.async_read_text_file(str(path))
         except IOError as io_error:
             return f"Error: Failed to read file: {io_error}"
 

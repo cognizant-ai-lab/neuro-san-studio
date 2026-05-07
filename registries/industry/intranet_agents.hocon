@@ -78,7 +78,6 @@ If there are any requirements that need user input, ask them one at a time, with
             "instructions": """
 You are responsible for IT-related inquiries.
             """ ${aaosa_instructions},
-            "command": ${aaosa_command},
             "tools": ["Security_agent", "Networking_agent"]
         },
         {
@@ -87,7 +86,6 @@ You are responsible for IT-related inquiries.
             "instructions": """`
 Handles security-related tasks, including system protection, cybersecurity, and data security.
             """,
-            "command": ${aaosa_command}
         },
         {
             "name": "Networking_agent",
@@ -95,7 +93,6 @@ Handles security-related tasks, including system protection, cybersecurity, and 
             "instructions": """
 Handles network-related tasks, including network setup, maintenance, and troubleshooting.
             """,
-            "command": ${aaosa_command}
         },
         {
             "name": "Finance_agent",
@@ -103,7 +100,6 @@ Handles network-related tasks, including network setup, maintenance, and trouble
             "instructions": """
 Handles finance-related inquiries, including budgeting, accounting, and financial reporting.
             """ ${aaosa_instructions},
-            "command": ${aaosa_command},
             "tools": ["Budgeting_agent", "Accounting_agent", "Financial_reporting_agent"]
         },
         {
@@ -112,7 +108,6 @@ Handles finance-related inquiries, including budgeting, accounting, and financia
             "instructions": """
 Handles budgeting tasks, including budget planning, allocation, and tracking.
             """,
-            "command": ${aaosa_command}
         },
         {
             "name": "Accounting_agent",
@@ -120,7 +115,6 @@ Handles budgeting tasks, including budget planning, allocation, and tracking.
             "instructions": """
 Handles accounting tasks, including bookkeeping, financial records, and audits.
             """,
-            "command": ${aaosa_command}
         },
         {
             "name": "Financial_reporting_agent",
@@ -128,7 +122,6 @@ Handles accounting tasks, including bookkeeping, financial records, and audits.
             "instructions": """
 Handles financial reporting tasks, including preparing financial statements, regulatory reporting, and performance analysis.
             """,
-            "command": ${aaosa_command}
         },
         {
             "name": "Procurement_agent",
@@ -136,7 +129,6 @@ Handles financial reporting tasks, including preparing financial statements, reg
             "instructions": """
 Handles procurement-related tasks.
             """ ${aaosa_instructions},
-            "command": ${aaosa_command},
             "tools": ["Purchasing_agent", "Vendor_management_agent", "Contract_negotiation_agent"]
         },
         {
@@ -145,7 +137,6 @@ Handles procurement-related tasks.
             "instructions": """
 Handles purchasing-related tasks, including ordering, supply management, and procurement processes.
             """,
-            "command": ${aaosa_command}
         },
         {
             "name": "Vendor_management_agent",
@@ -153,7 +144,6 @@ Handles purchasing-related tasks, including ordering, supply management, and pro
             "instructions": """
 Handles vendor management tasks, including vendor selection, performance monitoring, and relationship management.
             """,
-            "command": ${aaosa_command}
         },
         {
             "name": "Contract_negotiation_agent",
@@ -161,7 +151,6 @@ Handles vendor management tasks, including vendor selection, performance monitor
             "instructions": """
 Handles contract negotiation tasks, including drafting, reviewing, and finalizing procurement contracts.
             """,
-            "command": ${aaosa_command}
         },
         {
             "name": "Legal_agent",
@@ -169,7 +158,6 @@ Handles contract negotiation tasks, including drafting, reviewing, and finalizin
             "instructions": """
 Handles legal-related inquiries.
             """ ${aaosa_instructions},
-            "command": ${aaosa_command},
             "tools": ["Contracts_agent", "Compliance_agent", "Legal_advice_agent"]
         },
         {
@@ -178,7 +166,6 @@ Handles legal-related inquiries.
             "instructions": """
 Handles contract-related tasks, including drafting, reviewing, and enforcing legal agreements.
             """,
-            "command": ${aaosa_command}
         },
         {
             "name": "Compliance_agent",
@@ -186,7 +173,6 @@ Handles contract-related tasks, including drafting, reviewing, and enforcing leg
             "instructions": """
 Handles compliance-related tasks, including ensuring adherence to laws, regulations, and internal policies.
             """,
-            "command": ${aaosa_command}
         },
         {
             "name": "Legal_advice_agent",
@@ -194,7 +180,6 @@ Handles compliance-related tasks, including ensuring adherence to laws, regulati
             "instructions": """
 Handles legal advice tasks, including providing legal counsel, risk assessment, and legal strategy.
             """,
-            "command": ${aaosa_command}
         },
         {
             "name": "HR_agent",
@@ -202,7 +187,6 @@ Handles legal advice tasks, including providing legal counsel, risk assessment, 
             "instructions": """
 You are responsible for HR-related inquiries.
             """ ${aaosa_instructions},
-            "command": ${aaosa_command},
             "tools": ["Benefits_agent", "Payroll_agent"]
         },
         {
@@ -211,7 +195,6 @@ You are responsible for HR-related inquiries.
             "instructions": """
 Handles benefits-related tasks, including employee benefits, health insurance, and retirement plans.
             """,
-            "command": ${aaosa_command}
         },
         {
             "name": "Payroll_agent",
@@ -219,7 +202,6 @@ Handles benefits-related tasks, including employee benefits, health insurance, a
             "instructions": """
 Handles payroll-related tasks, including salary processing, tax deductions, and pay slips.
             """,
-            "command": ${aaosa_command}
         }
     ]
 }
