@@ -60,10 +60,9 @@ class GetSubnetwork(CodedTool):
 
         async with await SlyDataLock.get_lock(sly_data, "subnetworks_lock"):
             # Try getting from sly_data
-            subnetworks = sly_data.get(SUBNETWORKS, {})
-            if subnetworks:
-                # Exit early
-                return subnetworks
+            if SUBNETWORKS in sly_data:
+                # Exit early, including for an explicitly cached empty mapping
+                return sly_data[SUBNETWORKS]
 
             # Check manifest file from env var
             manifest_file: str | list[str] = os.getenv("AGENT_NETWORK_DESIGNER_MANIFEST_FILE")
