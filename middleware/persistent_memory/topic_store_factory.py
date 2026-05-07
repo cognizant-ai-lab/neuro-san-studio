@@ -95,7 +95,14 @@ class TopicStoreFactory:  # pylint: disable=too-few-public-methods
         if backend == "markdown_file":
             return MarkdownFileStore(folder_name=folder_name)
         if backend == "mem0":
-            from middleware.persistent_memory.mem0_store import Mem0Store  # pylint: disable=import-outside-toplevel  # noqa: I001
+            try:
+                from middleware.persistent_memory.mem0_store import Mem0Store  # pylint: disable=import-outside-toplevel  # noqa: I001
+            except ImportError as exc:
+                raise ImportError(
+                    "The 'mem0' memory backend requires the optional 'mem0ai' dependency. "
+                    "Install it with 'pip install mem0ai' and refer to the Mem0 backend "
+                    "setup documentation if additional configuration is required."
+                ) from exc
 
             return Mem0Store(sly_data=sly_data)
         raise ValueError(f"Unknown memory backend '{backend}'. Valid options: ['json_file', 'markdown_file', 'mem0'].")
