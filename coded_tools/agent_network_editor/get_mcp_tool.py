@@ -49,9 +49,9 @@ class GetMcpTool(CodedTool):
 
         async with await SlyDataLock.get_lock(sly_data, "mcp_servers_lock"):
             # Try getting from sly_data
-            mcp_servers = sly_data.get(MCP_SERVERS, {})
-            if mcp_servers:
-                # Exit early
+            if MCP_SERVERS in sly_data:
+                mcp_servers = sly_data.get(MCP_SERVERS, [])
+                # Exit early, including when the cached value is an empty list
                 return mcp_servers
 
             # Check for MCP servers info file in env var
