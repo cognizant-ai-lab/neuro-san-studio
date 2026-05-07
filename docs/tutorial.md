@@ -86,7 +86,7 @@ Below is a simplified view of the reference project structure. You can adapt it 
 ├── logs
 │   ├── client.log
 │   └── server.log
-└── neuro_san_studio
+├── neuro_san_studio
 │   └── run.py
 ├── registries
 │   ├── basic
