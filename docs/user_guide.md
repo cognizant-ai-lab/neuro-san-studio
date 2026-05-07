@@ -293,6 +293,9 @@ You can specify it at two levels:
 - **Network-level**: Applies to all agents in the file.
 - **Agent-level**: Overrides the network-level configuration for a specific agent.
 
+For a full working example of per-agent configuration using different Anthropic models, see the
+[Book Recommender with Multiple LLM Configs](examples/basic/book_recommender_multiple_llm_configs.md) example.
+
 Neuro-SAN includes several predefined LLM providers and models. To use one of these, set the `model_name` key to
 the name of the model you want. In addition, model-specific parameters (such as `temperature`, `max_tokens`, etc.)
 can be set alongside `model_name`.
@@ -484,7 +487,21 @@ To find which models are available in your region, refer to the official AWS doc
 
 ### Gemini
 
-To use Gemini models, set the `GOOGLE_API_KEY` environment variable to your Google Gemini API key
+To use Gemini models:
+
+1. Confirm that `langchain-google-genai` is installed:
+
+    ```bash
+    pip show langchain-google-genai
+    ```
+
+2. If not installed, install it:
+
+    ```bash
+    pip install langchain-google-genai
+    ```
+
+3. Set the `GOOGLE_API_KEY` environment variable to your Google Gemini API key
 and specify which model to use in the `model_name` field of the `llm_config` section of an agent network hocon file:
 
 ```hocon
@@ -1598,8 +1615,9 @@ Note:
 - All console logs are color-coded and pretty-formatted using the rich based log bridge plugin.
 - Enable or disable rich logs via setting an env variable `LOGBRIDGE_ENABLED` on terminal or in your .env file.
   By default the value is set to `true`.
-- Any updates to console logs can be managed via this plugin at `plugins/log_bridge/`.
-- Use the `log_cfg` dict located at `plugins/log_bridge/process_log_bridge.py` to configure the formatting of logs.
+- Any updates to console logs can be managed via this plugin at `neuro_san_studio/plugins/log_bridge/`.
+- Use the `log_cfg` dict located at `neuro_san_studio/plugins/log_bridge/process_log_bridge.py`
+  to configure the formatting of logs.
 
 ## Debugging
 
@@ -1655,7 +1673,6 @@ Look at [../registries/basic/smart_home.hocon](../registries/basic/smart_home.ho
 
 - aaosa_instructions
 - aaosa_call
-- aaosa_command
 
 ### External Agent Networks
 

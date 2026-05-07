@@ -38,13 +38,13 @@ in a Docker container.
 1. Install the Python requirements for the Neuro SAN OpenFGA Authorization plugin in your virtual environment.
 
 ```bash
-pip install -r plugins/authorization/openfga/requirements.txt
+pip install -r neuro_san_studio/plugins/openfga/requirements.txt
 ```
 
 2. We encapsulate the starting of a SQLite-based OpenFGA server in the following script:
 
 ```bash
-./plugins/authorization/openfga/run_openfga_server.sh
+./neuro_san_studio/plugins/openfga/run_openfga_server.sh
 ```
 
    Your output will look something like:
@@ -108,7 +108,7 @@ export AGENT_AUTHORIZER_ALLOW_RELATION=read
 export FGA_API_URL=http://localhost:8082
 
 # The file containing the authorization policy
-export FGA_POLICY_FILE=plugins/authorization/openfga/sample_authorization_model.json
+export FGA_POLICY_FILE=neuro_san_studio/plugins/openfga/sample_authorization_model.json
 
 # The name of the authorization store to use
 export FGA_STORE_NAME=default
@@ -121,7 +121,7 @@ export FGA_STORE_NAME=default
    This command is given from the neuro-san-studio repo top-level directory.
 
 ```bash
-python plugins/authorization/openfga/authorize.py
+python neuro_san_studio/plugins/openfga/authorize.py
 ```
 
     You will see the results of reading in the manifest and authorizing the current user for each network.
@@ -171,7 +171,7 @@ For any of the below extra credit exercizes, you will need the fga command line 
 To install the fga command line tool use the script below if you are running on linux.
 
 ```bash
-sudo plugins/authorization/openfga/install_fga_cli.sh
+sudo neuro_san_studio/plugins/openfga/install_fga_cli.sh
 ```
 
 Note that this script:
@@ -188,7 +188,7 @@ tool installed.  See https://openfga.dev/docs/getting-started/cli for more info.
 
 ```bash
     # Validate the fga file
-    fga model validate --file plugins/authorization/openfga/sample_authorization_model.fga
+    fga model validate --file neuro_san_studio/plugins/openfga/sample_authorization_model.fga
 ```
 
    Output will look something like:
@@ -204,7 +204,7 @@ tool installed.  See https://openfga.dev/docs/getting-started/cli for more info.
 
 ```bash
     # Transform the .fga DSL to a JSON description which is importable by the OpenFGA API
-    fga model transform --file plugins/authorization/openfga/sample_authorization_model.fga | python -m json.tool > plugins/authorization/openfga/sample_authorization_model.json
+    fga model transform --file neuro_san_studio/plugins/openfga/sample_authorization_model.fga | python -m json.tool > neuro_san_studio/plugins/openfga/sample_authorization_model.json
 ```
 
    There will not be any real output from this step, but the file sample_authorization_model.json
@@ -218,7 +218,7 @@ It is possible to create tests for an OpenFGA model to be sure that the relation
 are defined correctly.  We have included one test with this example. To run it:
 
 ```bash
-    fga model test --tests plugins/authorization/openfga/agent_network_access_test.fga.yml
+    fga model test --tests neuro_san_studio/plugins/openfga/agent_network_access_test.fga.yml
 ```
 
 ---

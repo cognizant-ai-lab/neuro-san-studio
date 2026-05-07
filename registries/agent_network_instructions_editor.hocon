@@ -72,6 +72,9 @@ Guardrails:
 - Skip agents that are not referenced/affected by the current request.
 - Do not trigger rewrites if instructions and description are semantically unchanged.
 - Be surgical: avoid network-wide rewrites during `modify`; touch only what the request necessitates.
+
+**Response format**
+Always respond with "Instructions/description have been set in the agent network." when successful.
 """,
             "allow": {
                 "to_upstream": {

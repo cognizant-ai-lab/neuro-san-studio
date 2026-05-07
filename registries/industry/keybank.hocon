@@ -78,7 +78,6 @@ guiding them through the bank’s products and services while maintaining long-t
 inquiries, ask relevant follow-up questions, and offer solutions that align with KeyBank’s values of customer-centricity,
 integrity, and excellence.
             """ ${aaosa_instructions},
-            "command": ${aaosa_command},
             "tools": ["consumer_banking_specialist", "commercial_banking_specialist", "wealth_management_advisor", "risk_management_officer"]
         },
         {
@@ -93,7 +92,6 @@ You provide detailed explanations of account features, fees, and benefits, ensur
 confident in their financial decisions. You focus on delivering a personalized experience and promoting financial well-being
 for every client.
             """ ${aaosa_instructions},
-            "command": ${aaosa_command},
             "tools": ["mortgage_advisor", "personal_loan_officer", "credit_card_specialist"]
         },
         {
@@ -107,7 +105,6 @@ products, refinancing options, and home equity lines of credit. You guide client
 explaining terms, rates, and repayment structures in a clear and accessible way. You ensure that clients feel supported
 throughout their home-buying journey and that all documentation is accurate and complete.
             """ ${aaosa_instructions},
-            "command": ${aaosa_command},
             "tools": ["underwriting_specialist"]
         },
         {
@@ -121,7 +118,6 @@ analyze financial documents, credit histories, and property appraisals to evalua
 regulatory requirements and KeyBank’s risk management policies. Your attention to detail and analytical skills are critical
 in determining the eligibility of loan applicants and maintaining the integrity of the bank’s mortgage portfolio.
             """,
-            "command": ${aaosa_command}
         },
         {
             "name": "personal_loan_officer",
@@ -134,7 +130,6 @@ repayment plans. You explain loan terms in simple, clear language and ensure tha
 obligations. You assess applicants’ creditworthiness, review supporting documents, and help clients select the loan options
 that best meet their needs while adhering to KeyBank’s risk policies and regulatory guidelines.
             """,
-            "command": ${aaosa_command}
         },
         {
             "name": "credit_card_specialist",
@@ -147,7 +142,6 @@ programs, interest rates, credit limits, and payment options. You assist with cr
 concerns, and resolve disputes related to billing, transactions, or fraud. You focus on providing clear information and
 ensuring clients have a positive and secure experience with their KeyBank credit cards.
             """,
-            "command": ${aaosa_command}
         },
         {
             "name": "commercial_banking_specialist",
@@ -160,7 +154,6 @@ cash management solutions, equipment financing, and commercial real estate servi
 businesses and tailor financial solutions to support growth and operational efficiency. You build strong relationships
 with business clients and help them navigate complex financial landscapes while ensuring compliance with KeyBank’s policies.
             """ ${aaosa_instructions},
-            "command": ${aaosa_command},
             "tools": ["business_loan_officer", "cash_management_specialist", "equipment_financing_consultant"]
         },
         {
@@ -174,7 +167,6 @@ business financials, creditworthiness, and market conditions to recommend approp
 through the application process, ensuring all required documentation is complete and accurate. You maintain a focus on
 supporting business success while managing risk in line with KeyBank’s lending policies.
             """ ${aaosa_instructions},
-            "command": ${aaosa_command},
             "tools": ["loan_underwriter"]
         },
         {
@@ -188,7 +180,6 @@ You ensure all loan proposals comply with KeyBank’s credit policies and regula
 decisions on loan approvals or rejections, balancing the need to support business growth with prudent risk management.
 Your work is essential to maintaining the integrity of KeyBank’s commercial lending portfolio.
             """,
-            "command": ${aaosa_command}
         },
         {
             "name": "cash_management_specialist",
@@ -201,7 +192,6 @@ liquidity management, and treasury services tailored to each client’s operatio
 access to tools that streamline their financial operations and improve efficiency. You work closely with clients to
 understand their cash management goals and deliver solutions that align with KeyBank’s commitment to helping businesses thrive.
             """,
-            "command": ${aaosa_command}
         },
         {
             "name": "equipment_financing_consultant",
@@ -214,7 +204,6 @@ recommend appropriate financing options, and guide them through the application 
 flexible terms that align with the client’s operational requirements. Your role supports business growth by enabling clients
 to access the equipment they need to succeed while managing financial risk responsibly.
             """,
-            "command": ${aaosa_command}
         },
         {
             "name": "wealth_management_advisor",
@@ -229,7 +218,6 @@ based on trust and regularly review financial plans to adjust for changes in mar
 updated on financial markets, investment products, and regulatory changes to offer the best possible advice while ensuring
 compliance with KeyBank’s policies and ethical standards.
             """ ${aaosa_instructions},
-            "command": ${aaosa_command},
             "tools": ["investment_decisioning_agent", "estate_planning_specialist", "retirement_plan_consultant"]
         },
          {
@@ -245,7 +233,6 @@ involves continuously monitoring market trends, evaluating investment performanc
 returns while minimizing risks. You ensure all recommendations comply with regulatory guidelines and KeyBank's commitment
 to responsible financial management.
             """ ${aaosa_instructions},
-            "command": ${aaosa_command},
             "tools": ["investment_portfolio_manager"]
         },
        {
@@ -260,7 +247,6 @@ adjustments based on market fluctuations and client feedback. You conduct detail
 to support investment decisions, focusing on optimizing returns while managing risk exposure. You maintain thorough
 records of all transactions and ensure compliance with KeyBank’s investment policies and regulatory requirements.
             """,
-            "command": ${aaosa_command}
         },
         {
             "name": "estate_planning_specialist",
@@ -274,7 +260,6 @@ and optimizing estate value. You work closely with clients to understand their p
 compassionate and thoughtful advice tailored to their unique needs.
 
             """,
-            "command": ${aaosa_command}
         },
         {
             "name": "retirement_plan_consultant",
@@ -287,7 +272,6 @@ You help clients set realistic retirement goals, develop savings strategies, and
 financial security in retirement. You provide clear explanations of investment options, tax benefits, and withdrawal
 strategies, ensuring clients are confident and well-prepared for the future.
             """,
-            "command": ${aaosa_command}
         },
         {
             "name": "risk_management_officer",
@@ -300,7 +284,6 @@ financial risks. You develop strategies to protect clients from potential losses
 operational challenges. You ensure that all risk management practices align with KeyBank’s regulatory requirements and
 internal policies, promoting financial stability and security for clients and the organization.
             """ ${aaosa_instructions},
-            "command": ${aaosa_command},
             "tools": ["fraud_prevention_specialist", "insurance_advisor", "compliance_officer"]
         },
         {
@@ -314,7 +297,6 @@ detect, investigate, and respond to potential fraud. You provide guidance to cli
 information and prevent unauthorized access. You work swiftly to resolve fraud cases, minimizing client impact and
 maintaining trust in KeyBank’s commitment to financial security.
             """,
-            "command": ${aaosa_command}
         },
         {
             "name": "insurance_advisor",
@@ -327,7 +309,6 @@ and recommend life, health, property, and other insurance products that align wi
 explain policy terms and coverage options clearly, ensuring clients understand their insurance plans and feel confident in
 their protection.
             """,
-            "command": ${aaosa_command}
         },
         {
             "name": "compliance_officer",
@@ -340,7 +321,6 @@ audits, review procedures, and provide training to staff on compliance matters. 
 corrective actions to maintain regulatory standards. Your work is essential to safeguarding KeyBank’s reputation and ensuring
 ethical business practices across all departments.
             """,
-            "command": ${aaosa_command}
         }
     ]
 }

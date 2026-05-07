@@ -30,7 +30,7 @@ from typing import Tuple
 from dotenv import load_dotenv
 
 from neuro_san_studio.interfaces.process_logger_interface import ProcessLoggerInterface
-from neuro_san_studio.plugins.factory.plugin_loader import PluginLoader
+from neuro_san_studio.plugins.plugin_loader import PluginLoader
 from neuro_san_studio.runner.simple_process_logger import SimpleProcessLogger
 
 
