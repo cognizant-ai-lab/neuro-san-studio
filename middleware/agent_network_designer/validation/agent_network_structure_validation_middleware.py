@@ -21,9 +21,9 @@ from neuro_san.internals.validation.network.structure_network_validator import S
 from neuro_san.internals.validation.network.toolbox_network_validator import ToolboxNetworkValidator
 from neuro_san.internals.validation.network.url_network_validator import UrlNetworkValidator
 
-from coded_tools.agent_network_editor.constants import MCP_SERVERS
-from coded_tools.agent_network_editor.constants import TOOLBOX_INFO
+from coded_tools.agent_network_editor.get_mcp_tool import GetMcpTool
 from coded_tools.agent_network_editor.get_subnetwork import GetSubnetwork
+from coded_tools.agent_network_editor.get_toolbox import GetToolbox
 from middleware.agent_network_designer.validation.agent_network_validation_middleware import (
     AgentNetworkValidationMiddleware,
 )
@@ -58,9 +58,9 @@ class AgentNetworkStructureValidationMiddleware(AgentNetworkValidationMiddleware
 
         # Get infos from sly_data. These should have been put there by the respective tools
         # from the agent network editor.
-        subnetwork_names: list[str] = GetSubnetwork.get_subnetwork_names(self.sly_data)
-        mcp_servers: list[str] = self.sly_data.get(MCP_SERVERS, [])
-        toolbox_tools: dict[str, Any] = self.sly_data.get(TOOLBOX_INFO, {})
+        subnetwork_names: list[str] = await GetSubnetwork.get_subnetwork_names(self.sly_data)
+        mcp_servers: list[str] = await GetMcpTool.get_mcp_servers(self.sly_data)
+        toolbox_tools: dict[str, Any] = await GetToolbox.get_toolbox_info(self.sly_data)
 
         return (
             StructureNetworkValidator().validate(network_def)
