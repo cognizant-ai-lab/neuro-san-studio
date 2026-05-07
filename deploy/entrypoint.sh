@@ -26,6 +26,9 @@ echo "Using python ${PYTHON}"
 PIP=pip3
 echo "Using pip ${PIP}"
 
+# Disable the log bridge plugin: we only start the neuro SAN server here.
+export LOGBRIDGE_ENABLED=false
+
 echo "Preparing app..."
 if [ -z "${PYTHONPATH}" ]
 then
