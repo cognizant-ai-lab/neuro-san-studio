@@ -79,7 +79,6 @@ Below is a simplified view of the reference project structure. You can adapt it 
 
 ```bash
 .
-├── README.md
 ├── coded_tools
 │   └── basic
 │     └── advanced_calculator
@@ -87,24 +86,24 @@ Below is a simplified view of the reference project structure. You can adapt it 
 ├── logs
 │   ├── client.log
 │   └── server.log
+└── neuro_san_studio
+│   └── run.py
 ├── registries
 │   ├── basic
 │   │      └── advanced_calculator.hocon
 │   └── manifest.hocon
-├── requirements.txt
-└── neuro_san_studio
-    └── run.py
+├── README.md
+└── requirements.txt
 ```
 
 ### Key directories and files
 
 * `coded_tools/`: Contains custom-coded tool classes (e.g., `calculator_tool.py`).
-* `registries/`: Holds `.hocon` files that define multi-agent networks and their configurations.
 * `logs/`: Where client and server logs are written.
 * `neuro_san_studio/run.py`: A starter script to run the server and the web client.
+* `registries/`: Holds `.hocon` files that define multi-agent networks and their configurations.
 
-* Here are the detailed [instructions](https://github.com/cognizant-ai-lab/neuro-san-studio/blob/main/README.md) to run
-an agent network along with a web client.
+Here are the detailed [instructions](../README.md) to run an agent network along with a web client.
 
 ---
 
@@ -130,8 +129,7 @@ source venv/bin/activate && export PYTHONPATH=`pwd`
 pip install -r requirements.txt
 ```
 
-Please find the detailed [instructions](https://github.com/cognizant-ai-lab/neuro-san-studio/blob/main/README.md) to
-run an agent network along with a web client.
+Please find the detailed [instructions](../README.md) to run an agent network along with a web client.
 
 Note: You may need to adapt the filenames if versions differ.
 
