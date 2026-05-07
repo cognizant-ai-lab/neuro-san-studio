@@ -24,19 +24,20 @@ from __future__ import annotations
 import asyncio
 import os
 from typing import Any
+from unittest import TestCase
 from unittest.mock import MagicMock
 from unittest.mock import patch
 
 import pytest
 
-pytest.importorskip("mem0")
+try:
+    from middleware.persistent_memory.mem0_store import Mem0Store
+    from middleware.persistent_memory.topic_store_factory import TopicStoreFactory
+except ImportError:
+    pytest.skip("mem0 not installed", allow_module_level=True)
 
-from middleware.persistent_memory.mem0_store import Mem0Store  # pylint: disable=wrong-import-position
-from middleware.persistent_memory.topic_store_factory import TopicStoreFactory  # pylint: disable=wrong-import-position
-from tests.middleware.persistent_memory.base import MemoryTestBase  # pylint: disable=wrong-import-position
 
-
-class Mem0StoreTests(MemoryTestBase):
+class Mem0StoreTests(TestCase):
     """Mem0Store: user_id resolution, factory wiring, and CRUD lifecycle."""
 
     _NAMESPACE = "coffee_finder_advanced.UserPreferences"

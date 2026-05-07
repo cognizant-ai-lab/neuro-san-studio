@@ -52,7 +52,6 @@ class TopicStore(ABC):
         self.logger: Logger = logging.getLogger(f"{__name__}.{self.__class__.__name__}")
         self._locks: OrderedDict[tuple[str, ...], asyncio.Lock] = OrderedDict()
         self._locks_guard: asyncio.Lock = asyncio.Lock()
-        self.logger.info("Initialized.")
 
     async def get_topic(
         self,

@@ -28,7 +28,7 @@
 #   1. ``pip install mem0ai`` (not in the base ``requirements.txt``).
 #   2. Set ``MEM0_API_KEY`` in your environment. Get a key at
 #      https://app.mem0.ai/. The store reads the key on first use and raises
-#      ``EnvironmentError`` if it is missing; subsequent calls reuse the
+#      ``ValueError`` if it is missing; subsequent calls reuse the
 #      cached client.
 #   3. Keep ``"sly_data": true`` in the middleware ``args`` below. The
 #      framework injects per-request ``sly_data`` so the store can scope

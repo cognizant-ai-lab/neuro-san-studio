@@ -35,7 +35,6 @@ from typing import ClassVar
 from typing import override
 
 from mem0 import MemoryClient  # pylint: disable=import-error
-from mem0.exceptions import MemoryError as Mem0Error  # pylint: disable=import-error
 
 from middleware.persistent_memory.topic_store import TopicStore
 
@@ -55,7 +54,7 @@ class Mem0Store(TopicStore):
         self._sly_data: dict[str, Any] | None = sly_data
         self._memory_client: MemoryClient | None = None
         self._client_lock: threading.Lock = threading.Lock()
-        self.logger.info("Initialized Mem0 cloud store backend.")
+        self._warned_default_user: bool = False
 
     @override
     def _lock_key(self, namespace: str, topic: str) -> tuple[str, ...]:
@@ -161,16 +160,7 @@ class Mem0Store(TopicStore):
         existing_id: str | None = await asyncio.to_thread(self._find_memory_id, namespace, topic)
         if existing_id is None:
             return False
-        try:
-            await asyncio.to_thread(self._client().delete, memory_id=existing_id)
-        except Mem0Error:
-            self.logger.error(
-                "Mem0 API error deleting topic '%s' in namespace '%s'.",
-                topic,
-                namespace,
-                exc_info=True,
-            )
-            raise
+        await asyncio.to_thread(self._client().delete, memory_id=existing_id)
         return True
 
     @override
@@ -206,21 +196,12 @@ class Mem0Store(TopicStore):
         network, agent = self._split_namespace(namespace)
         metadata: dict[str, str] = self._build_metadata(network, agent, topic)
         client: MemoryClient = self._client()
-        try:
-            if existing_id is not None:
-                client.update(memory_id=existing_id, text=content, metadata=metadata)
-                self.logger.debug("Updated memory %s (topic=%s)", existing_id, topic)
-            else:
-                client.add(messages=content, user_id=self._user_id(), metadata=metadata)
-                self.logger.debug("Added new memory for topic=%s", topic)
-        except Mem0Error:
-            self.logger.error(
-                "Mem0 API error during upsert for topic '%s' in namespace '%s'.",
-                topic,
-                namespace,
-                exc_info=True,
-            )
-            raise
+        if existing_id is not None:
+            client.update(memory_id=existing_id, text=content, metadata=metadata)
+            self.logger.debug("Updated memory %s (topic=%s)", existing_id, topic)
+        else:
+            client.add(messages=content, user_id=self._user_id(), metadata=metadata)
+            self.logger.debug("Added new memory for topic=%s", topic)
 
     def _fetch_for_namespace(self, namespace: str) -> list[dict[str, Any]]:
         """
@@ -236,17 +217,9 @@ class Mem0Store(TopicStore):
         :return: Filtered list of Mem0 memory dicts.
         """
         network, agent = self._split_namespace(namespace)
-        try:
-            all_results: list[dict[str, Any]] = (
-                self._client().get_all(filters={"user_id": self._user_id()}).get("results", [])
-            )
-        except Mem0Error:
-            self.logger.error(
-                "Mem0 API error fetching memories for namespace '%s'.",
-                namespace,
-                exc_info=True,
-            )
-            raise
+        all_results: list[dict[str, Any]] = (
+            self._client().get_all(filters={"user_id": self._user_id()}).get("results", [])
+        )
         return [
             m
             for m in all_results
@@ -300,11 +273,13 @@ class Mem0Store(TopicStore):
         env_user_id: str = os.environ.get("MEM0_DEFAULT_USER_ID", "")
         if env_user_id:
             return env_user_id
-        self.logger.warning(
-            "No user_id found in sly_data or MEM0_DEFAULT_USER_ID; "
-            "falling back to '%s'. All users will share one memory scope.",
-            self._DEFAULT_USER_ID,
-        )
+        if not self._warned_default_user:
+            self.logger.warning(
+                "No user_id found in sly_data or MEM0_DEFAULT_USER_ID; "
+                "falling back to '%s'. All users will share one memory scope.",
+                self._DEFAULT_USER_ID,
+            )
+            self._warned_default_user = True
         return self._DEFAULT_USER_ID
 
     def _client(self) -> MemoryClient:

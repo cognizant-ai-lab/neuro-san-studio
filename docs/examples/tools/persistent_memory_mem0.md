@@ -100,6 +100,36 @@ rest mirrors the file-backed variant.
 A complete reference agent using this middleware lives at
 [`registries/tools/persistent_memory_mem0.hocon`](../../../registries/tools/persistent_memory_mem0.hocon).
 
+> **Important:** If you omit `"sly_data": true` from the middleware args,
+> the framework will not inject the per-request dict, and the store falls
+> back to `MEM0_DEFAULT_USER_ID` / `"default_user"` for every call. In a
+> multi-user deployment this collapses every user's memory into a single
+> shared scope — which is the bug the file-backed backends already have.
+> Always keep `"sly_data": true` when using the Mem0 backend.
+
+> **Important:** Each agent's slice of memory is identified by the same
+> `(network, agent)` pair as the file-backed backends — for example, a
+> `MemoryAssistant` in the `persistent_memory_mem0` network writes entries
+> tagged `network=persistent_memory_mem0, agent=MemoryAssistant`. The
+> middleware figures this pair out automatically from the agent's runtime
+> call path (`origin_str`); if you forget `"origin_str": true`, the
+> namespace falls back to `unknown.unknown` and you'll see a warning in
+> the logs.
+
+## Operations
+
+Same six operations as the file-backed variant — see the
+[Operations table in Local docs](persistent_memory_local.md#operations).
+
+Mem0-specific behavior: `delete` removes the entry under the active
+`user_id` only. `search` keyword-ranks across this user's topics for
+this `(network, agent)` pair.
+
+## Summarization
+
+Summarization works identically to the file-backed backends — see
+[Summarization in Local docs](persistent_memory_local.md#summarization).
+
 ## Quick try
 
 The conversation flow is the same as
@@ -146,36 +176,6 @@ The resolution happens inside `Mem0Store._user_id()`, which is called on
 every read/write. There is no caching — if `sly_data["user_id"]` changes
 between calls, the next call lands in the new scope.
 
-### Forgetting `"sly_data": true`
-
-If you omit `"sly_data": true` from the middleware args, the framework
-will not inject the per-request dict, and the store falls back to
-`MEM0_DEFAULT_USER_ID` / `"default_user"` for every call. In a multi-user
-deployment this collapses every user's memory into a single shared
-scope — which is the bug the file-backed backends already have. Always
-keep `"sly_data": true` when using the Mem0 backend.
-
-## Storage layout
-
-Mem0 has no on-disk layout to inspect. Each topic is stored as one
-memory entry on the Mem0 side, addressed by:
-
-| Field         | Source                                  | Used for                       |
-| :------------ | :-------------------------------------- | :----------------------------- |
-| `user_id`     | `sly_data["user_id"]` (resolved above)  | Mem0's native scoping          |
-| `network`     | parsed from `origin_str`                | filtering on read/list/search  |
-| `agent`       | parsed from `origin_str`                | filtering on read/list/search  |
-| `topic`       | LLM-supplied tool argument              | the slice of memory the LLM is reading or writing |
-| `memory`      | LLM-supplied content                    | the actual fact stored         |
-
-Reads call `client.get_all(filters={"user_id": ...})` and filter by
-`network` + `agent` + `topic` in Python — the Mem0 API does not yet
-support metadata predicates inside `get_all`, so the filtering is
-done client-side. This is fine for typical agent-sized memories
-(dozens to hundreds of topics per user); if you expect tens of
-thousands of entries per user, the file-backed backends or a custom
-store will be a better fit.
-
 ## Architecture
 
 ```text
@@ -217,26 +217,7 @@ store will be a better fit.
 └───────────────────────────────────────────────────────────────┘
 ```
 
-Each agent's slice of memory is identified by the same
-`(network, agent)` pair as the file-backed backends — for example, a
-`MemoryAssistant` in the `persistent_memory_mem0` network writes entries tagged
-`network=persistent_memory_mem0, agent=MemoryAssistant`. The middleware figures
-this pair out automatically from the agent's runtime call path
-(`origin_str`); if you forget `"origin_str": true`, the namespace falls
-back to `unknown.unknown` and you'll see a warning in the logs.
-
-## Reference
-
-### Operations
-
-Same six operations as the file-backed variant — see the
-[Operations table in Local docs](persistent_memory_local.md#operations).
-
-Mem0-specific behavior: `delete` removes the entry under the active
-`user_id` only. `search` keyword-ranks across this user's topics for
-this `(network, agent)` pair.
-
-### Debugging
+## Debugging
 
 - **`ValueError: MEM0_API_KEY environment variable is not set.`** —
   the store could not authenticate. Export the key in the same shell
@@ -261,7 +242,7 @@ this `(network, agent)` pair.
   failures are logged at `WARNING` and the original content is
   preserved.
 
-### Source
+## Source
 
 - `middleware/persistent_memory/persistent_memory_middleware.py` — the middleware itself.
 - `middleware/persistent_memory/persistent_memory_tool.py` — the
