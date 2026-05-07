@@ -83,7 +83,7 @@ Summary: 3/7 valid, 4 warnings, 0 errors
 ```
 
 > **Source Code:** The validation logic lives in
-> [`plugins/env_validator/env_validator.py`](../plugins/env_validator/env_validator.py).
+> [`neuro_san_studio/plugins/env_validator/env_validator.py`](../neuro_san_studio/plugins/env_validator/env_validator.py).
 > You can inspect or extend this file to add support for additional providers.
 
 ---
