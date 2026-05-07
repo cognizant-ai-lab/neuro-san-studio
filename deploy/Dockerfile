@@ -41,7 +41,7 @@ RUN pip3 install --upgrade pip==${PIP3_VERSION} --no-cache-dir ; mkdir -p ${APP_
 
 # Having a requirements.txt file for your coded_tool dependencies is optional
 COPY ./requirements.txt ${APP_SOURCE}/requirements.txt
-COPY ./neuro_san_studio ${APP_SOURCE}/neuro_san_studio
+COPY ./neuro_san_studio/plugins/langfuse/requirements.txt ${APP_SOURCE}/neuro_san_studio/plugins/langfuse/requirements.txt
 
 # Move the work dir to the app source to find the requirements.
 WORKDIR ${APP_SOURCE}
