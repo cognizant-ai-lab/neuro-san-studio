@@ -762,7 +762,7 @@ Simply set the `MODEL_NAME` environment variable before starting the server:
 >
 > ```bash
 > export MODEL_NAME="claude-3-7-sonnet"
-> python -m run
+> python -m neuro_san_studio.run
 > ```
 
 ### See also
@@ -1780,7 +1780,7 @@ make test
 or
 
 ```bash
-python -m pytest tests/ -v --cov=coded_tools,run.py -m "not integration"
+python -m pytest tests/ -v --cov=coded_tools,neuro_san_studio -m "not integration"
 ```
 
 ### Integration Test

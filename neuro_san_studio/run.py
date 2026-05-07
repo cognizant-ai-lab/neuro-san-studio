@@ -42,7 +42,7 @@ class NeuroSanRunner:
         """Initialize configuration and parse CLI arguments."""
         self._logger = logging.getLogger(self.__class__.__name__)
         self.is_windows = os.name == "nt"
-        self.root_dir = os.path.dirname(os.path.abspath(__file__))
+        self.root_dir = os.getcwd()
         self.logs_dir = os.path.join(self.root_dir, "logs")
         self.thinking_file = os.path.join(self.logs_dir, "agent_thinking.txt")
         self.thinking_dir = os.path.join(self.logs_dir, "thinking_dir")
