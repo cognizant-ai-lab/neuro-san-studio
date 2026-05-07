@@ -102,7 +102,6 @@ COPY --from=builder /install /usr/local
 #       - its own toolbox in ./toolbox
 #       - ./middleware for validation of designed networks
 COPY ./neuro_san_studio ${APP_SOURCE}/neuro_san_studio
-COPY ./servers ${APP_SOURCE}/servers
 COPY ./registries ${APP_SOURCE}/registries
 COPY ./coded_tool[s] ${APP_SOURCE}/coded_tools
 COPY ./toolbox ${APP_SOURCE}/toolbox
