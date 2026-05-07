@@ -1,3 +1,39 @@
+[build-system]
+requires = ["setuptools>=61.0", "wheel", "setuptools-scm==8.1.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "neuro-san-studio"
+dynamic = ["version", "dependencies", "optional-dependencies", "readme"]
+description = "Multi-agent orchestration studio built on the neuro-san framework."
+requires-python = ">=3.10"
+license = { file = "LICENSE.txt" }
+authors = [{ name = "Cognizant AI Lab" }]
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: Apache Software License",
+    "Operating System :: OS Independent",
+]
+
+[project.scripts]
+neuro-san-studio = "neuro_san_studio.run:main"
+
+[project.urls]
+Homepage = "https://github.com/cognizant-ai-lab/neuro-san-studio"
+
+[tool.setuptools.dynamic]
+dependencies = { file = ["requirements.txt"] }
+optional-dependencies.dev = { file = ["requirements-build.txt"] }
+readme = { file = ["README.md"], content-type = "text/markdown" }
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["neuro_san_studio*"]
+exclude = ["tests*", "coded_tools*", "apps*", "middleware*", "servers*", "registries*", "config*", "toolbox*", "mcp*", "docs*", "deploy*", "build_scripts*", "skills*"]
+
+[tool.setuptools_scm]
+fallback_version = "0.0.0"
+
 [tool.ruff]
 target-version = "py312"
 line-length = 119
