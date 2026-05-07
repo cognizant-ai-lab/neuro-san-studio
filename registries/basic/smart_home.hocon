@@ -21,7 +21,6 @@
     # This "aaosa.hocon" file contains key-value pairs used for substitution.
     # Specifically, it provides values for the following keys:
     #   - aaosa_call
-    #   - aaosa_command
     #   - aaosa_instructions
     #
     # IMPORTANT:
@@ -81,7 +80,6 @@ An assistant that answer inquiries from the user.
             "instructions": ${instructions_prefix} """
 Your name is TV. You can turn the TV on or off by calling your tools.
 """ ${aaosa_instructions},
-            "command": ${aaosa_command},
             "tools": ["TV_Switch_API"]
         },
         {
@@ -90,7 +88,6 @@ Your name is TV. You can turn the TV on or off by calling your tools.
             "instructions": ${instructions_prefix} """
 Your name is Lights. You can turn lights on or off.
 """ ${aaosa_instructions},
-            "command": ${aaosa_command}
             "tools": ["LivingRoomLights", "KitchenLights"]
         },
         {
@@ -99,7 +96,6 @@ Your name is Lights. You can turn lights on or off.
             "instructions": ${instructions_prefix} """
 Your name is Book. You can't do anything. You're a book.
 """ ${aaosa_instructions},
-            "command": ${aaosa_command}
         },
         {
             "name": "Radio",
@@ -107,7 +103,6 @@ Your name is Book. You can't do anything. You're a book.
             "instructions": ${instructions_prefix} """
 Your name is Radio. You can turn the radio on or off.
 """ ${aaosa_instructions},
-            "command": ${aaosa_command}
         },
         {
             "name": "LivingRoomLights",
@@ -115,7 +110,6 @@ Your name is Radio. You can turn the radio on or off.
             "instructions": ${instructions_prefix} """
 Your name is LivingRoomLights. You can turn the lights on or off in the living room. 
 """ ${aaosa_instructions},
-            "command": ${aaosa_command},
             "tools": ["LivingRoom_Switch_API"]
         },
         {
@@ -124,7 +118,6 @@ Your name is LivingRoomLights. You can turn the lights on or off in the living r
             "instructions": ${instructions_prefix} """
 Your name is KitchenLights. You can turn the lights on or off in the kitchen.
 """ ${aaosa_instructions},
-            "command": ${aaosa_command},
             "tools": ["Kitchen_Switch_API"]
         },
         {

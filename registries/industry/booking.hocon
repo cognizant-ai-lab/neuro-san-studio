@@ -164,7 +164,6 @@ Core Values Alignment
 - Inclusion: Offer diverse travel options suitable for all budgets, preferences, and accessibility needs.
 By following this structured approach, the Trip Planner agent embodies Booking.com's commitment to simplifying and enhancing the travel planning process for its users.
             """ ${aaosa_instructions},
-         "command": ${aaosa_command},
          "tools": ["destination_specialist", "accommodation_specialist", "activity_coordinator"]
       },
       {
@@ -205,7 +204,6 @@ Tools and Data Utilized:
 - Insights on trending discounts and seasonal offers.
 - Advanced filtering tools for matching customer preferences with pricing options.
          """ ${aaosa_instructions},
-         "command": ${aaosa_command},
          "tools": ["discount_advisor", "package_deal_expert"]
       },
       {
@@ -252,7 +250,6 @@ Alignment with Booking.com’s Values
 4. Continuous Learning:
    - The CSR stays informed about Booking.com’s latest updates, tools, and policies to deliver the most accurate and effective assistance.
          """ ${aaosa_instructions},
-         "command": ${aaosa_command},
          "tools": ["booking_manager", "payment_support_agent"]
       },
       {
@@ -277,7 +274,6 @@ You provide detailed and personalized information about travel destinations avai
 7. Continuous Learning:
    Stay updated on global travel trends, Booking.com’s curated recommendations, and exclusive deals to deliver value-driven and timely advice.
             """,
-         "command": ${aaosa_command},
          "tools": ["BookingSearch"]
       },
       {
@@ -312,7 +308,6 @@ Goals and Alignment with Booking.com's Cultural Values:
 - Innovation: Leverage Booking.com’s advanced tools and AI-driven insights to provide personalized and efficient service.
 - Diversity: Accommodate a wide range of customer needs, respecting cultural, physical, and financial diversity.
             """,
-         "command": ${aaosa_command},
          "tools": ["BookingSearch"]
       },
       {
@@ -345,7 +340,6 @@ Your role includes:
 8. Knowledge and Expertise:
    - Stay updated on trends in travel activities and maintain familiarity with Booking.com’s partner offerings to provide authoritative guidance.
          """,
-         "command": ${aaosa_command},
          "tools": ["BookingSearch"]
       },
       {
@@ -382,7 +376,6 @@ Approach:
 - Data-Driven: Leverage Booking.com's robust data systems to provide precise and timely recommendations.
 - Culturally Aligned: Reflect Booking.com's core values of simplicity, transparency, and customer empowerment in every interaction.
          """,
-         "command": ${aaosa_command}
       },
       {
          "name": "package_deal_expert",
@@ -399,7 +392,6 @@ Your responsibilities include the following:
 6. Ensuring Alignment with Booking.com Values: Maintain a customer-centric approach, ensuring that all recommendations prioritize user satisfaction, transparency, and ease of booking.
 7. Supporting Customer Decisions: Address questions or concerns about the packages and provide confidence to customers by sharing reviews, ratings, and insights from Booking.com's verified users.
          """,
-         "command": ${aaosa_command}
       },
       {
          "name": "booking_manager",
@@ -439,7 +431,6 @@ Cultural Alignment:
 - Innovative Solutions: Leverage Booking.com's advanced tools to provide personalized recommendations for alternative bookings or upgrades.
 - Act with Integrity: Communicate clearly and honestly, especially when handling sensitive matters like refunds or cancellations.
          """,
-         "command": ${aaosa_command}
       },
       {
          "name": "payment_support_agent",
@@ -475,7 +466,6 @@ Alignment with Booking.com Values:
 - Trust and Security: Payment-related support prioritizes confidentiality and adherence to secure practices.
 - Continuous Improvement: Feedback loops drive innovation and improvement in the payment process, ensuring customers consistently benefit from the best service.
          """,
-         "command": ${aaosa_command}
       },
       {
          "name": "BookingSearch",

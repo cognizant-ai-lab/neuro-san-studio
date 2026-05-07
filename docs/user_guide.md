@@ -73,6 +73,8 @@
     - [AAOSA](#aaosa)
     - [External Agent Networks](#external-agent-networks)
     - [Memory](#memory)
+      - [Chat Context](#chat-context)
+      - [Persistent Memory](#persistent-memory)
   - [Connect with other agent frameworks](#connect-with-other-agent-frameworks)
   - [Plugins](#plugins)
   - [Test](#test)
@@ -482,7 +484,21 @@ To find which models are available in your region, refer to the official AWS doc
 
 ### Gemini
 
-To use Gemini models, set the `GOOGLE_API_KEY` environment variable to your Google Gemini API key
+To use Gemini models:
+
+1. Confirm that `langchain-google-genai` is installed:
+
+    ```bash
+    pip show langchain-google-genai
+    ```
+
+2. If not installed, install it:
+
+    ```bash
+    pip install langchain-google-genai
+    ```
+
+3. Set the `GOOGLE_API_KEY` environment variable to your Google Gemini API key
 and specify which model to use in the `model_name` field of the `llm_config` section of an agent network hocon file:
 
 ```hocon
@@ -1654,7 +1670,6 @@ Look at [../registries/basic/smart_home.hocon](../registries/basic/smart_home.ho
 
 - aaosa_instructions
 - aaosa_call
-- aaosa_command
 
 ### External Agent Networks
 
@@ -1682,7 +1697,53 @@ Look at [Consumer Decision Assistant](examples/industry/consumer_decision_assist
 
 ### Memory
 
-TBD
+#### Chat Context
+
+**Chat context** is the in-session message history between the user and the
+agent. It is managed automatically by the framework and resets when the session
+ends.
+
+#### Persistent Memory
+
+**Persistent memory** is disk-backed storage that survives across sessions. The
+agent explicitly reads and writes it via the `PersistentMemoryMiddleware`. It holds
+user-facing information — personal details, preferences, and facts the user has
+shared. It is not for internal LLM state such as LLM call results, pass/fail
+outcomes, or execution traces. This middleware is designed for local, single-user
+usage. Memory is scoped per `(network, agent)` — not per user — so all users
+sharing the same agent share the same memory namespace. Multi-tenant / per-user
+isolation is out of scope; server-side backends are planned separately.
+
+Agents can be given long-term memory by attaching the `PersistentMemoryMiddleware`.
+The middleware exposes six operations (`create`, `read`, `append`, `delete`,
+`search`, `list`) and persists each topic to disk, scoped by
+`(agent_network_name, agent_name, topic)`. Writes land as soon as the LLM call
+returns — no bookended load/save, and a crash mid-turn loses at most the call
+that was in-flight.
+
+Minimal wiring — only `class` is required, every other key has a sensible default.
+See the [full configuration reference](./examples/tools/persistent_memory.md#configuration)
+for all available options.
+
+```hocon
+"middleware": [
+    {
+        "class": "middleware.persistent_memory.persistent_memory_middleware.PersistentMemoryMiddleware"  # (required)
+    }
+]
+```
+
+The middleware includes two storage backends. The `json_file` backend (default)
+stores all topics for an agent in a single `memory.json` file. The
+`markdown_file` backend stores each topic as a separate `.md` file. Oversized
+topics are summarized inline under the same lock that performed the write,
+ensuring readers never observe an intermediate oversized state.
+
+For a complete walkthrough — including HOCON configuration, a sample
+conversation, backend trade-offs, summarizer tuning, and debugging tips — see
+the [persistent memory documentation](./examples/tools/persistent_memory.md).
+A minimal working network is available at
+[persistent_memory.hocon](../registries/tools/persistent_memory.hocon).
 
 ## Connect with other agent frameworks
 

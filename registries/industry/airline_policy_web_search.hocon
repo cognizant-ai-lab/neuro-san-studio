@@ -99,7 +99,6 @@ A customer question about airline policies, procedures, or services that may req
             You are the Optional_Services_Pricing agent. You handle pricing for optional services: baggage fees, booking extras, premium services, and other charges.
             Always call your Optional_Services_Pricing_RAG tool with the user's query. Answer ONLY based on the retrieved information.
             """ ${aaosa_instructions},
-            "command": ${aaosa_command},
             "tools": ["Optional_Services_Pricing_RAG"]
         },
 
@@ -115,7 +114,6 @@ A customer question about airline policies, procedures, or services that may req
             You are the Bag_Count_Restrictions agent. You handle how many carry-on, personal item, and checked bags a passenger can bring.
             Always call your Bag_Count_Restrictions_RAG tool with the user's query. Answer ONLY based on the retrieved information.
             """ ${aaosa_instructions},
-            "command": ${aaosa_command},
             "tools": ["Bag_Count_Restrictions_RAG"]
         },
 
@@ -131,7 +129,6 @@ A customer question about airline policies, procedures, or services that may req
             You are the Bag_Delayed agent. You handle delayed or missing checked bag claims, tracking, and resolution.
             Always call your Bag_Delayed_RAG tool with the user's query. Answer ONLY based on the retrieved information.
             """ ${aaosa_instructions},
-            "command": ${aaosa_command},
             "tools": ["Bag_Delayed_RAG"]
         },
 
@@ -147,7 +144,6 @@ A customer question about airline policies, procedures, or services that may req
             You are the Bag_Damaged agent. You handle damaged checked bag claims and what qualifies as damage.
             Always call your Bag_Damaged_RAG tool with the user's query. Answer ONLY based on the retrieved information.
             """ ${aaosa_instructions},
-            "command": ${aaosa_command},
             "tools": ["Bag_Damaged_RAG"]
         },
 
@@ -163,7 +159,6 @@ A customer question about airline policies, procedures, or services that may req
             You are the Bag_Missing_Items agent. You handle items missing from inside a checked bag or left on the aircraft or at the airport.
             Always call your Bag_Missing_Items_RAG tool with the user's query. Answer ONLY based on the retrieved information.
             """ ${aaosa_instructions},
-            "command": ${aaosa_command},
             "tools": ["Bag_Missing_Items_RAG"]
         },
 
@@ -179,7 +174,6 @@ A customer question about airline policies, procedures, or services that may req
             You are the Sporting_Musical_Equipment agent. You handle policies for traveling with sporting equipment and musical instruments.
             Always call your Sporting_Musical_Equipment_RAG tool with the user's query. Answer ONLY based on the retrieved information.
             """ ${aaosa_instructions},
-            "command": ${aaosa_command},
             "tools": ["Sporting_Musical_Equipment_RAG"]
         },
 
@@ -195,7 +189,6 @@ A customer question about airline policies, procedures, or services that may req
             You are the Firearms_Policy agent. You handle rules, restrictions, and fees for traveling with firearms and ammunition.
             Always call your Firearms_Policy_RAG tool with the user's query. Answer ONLY based on the retrieved information.
             """ ${aaosa_instructions},
-            "command": ${aaosa_command},
             "tools": ["Firearms_Policy_RAG"]
         },
 
@@ -211,7 +204,6 @@ A customer question about airline policies, procedures, or services that may req
             You are the Smart_Luggage agent. You handle rules, restrictions, and fees for traveling with smart luggage containing lithium batteries.
             Always call your Smart_Luggage_RAG tool with the user's query. Answer ONLY based on the retrieved information.
             """ ${aaosa_instructions},
-            "command": ${aaosa_command},
             "tools": ["Smart_Luggage_RAG"]
         },
 
@@ -227,7 +219,6 @@ A customer question about airline policies, procedures, or services that may req
             You are the Bundle_Differences agent. You handle differences between Economy, Premium, and Business bundles and what each includes.
             Always call your Bundle_Differences_RAG tool with the user's query. Answer ONLY based on the retrieved information.
             """ ${aaosa_instructions},
-            "command": ${aaosa_command},
             "tools": ["Bundle_Differences_RAG"]
         },
 
@@ -244,7 +235,6 @@ A customer question about airline policies, procedures, or services that may req
             You are the Seating_Options agent. You handle seat categories, seat selection, elite seat upgrades, and family seating.
             Always call your Seating_Options_RAG tool with the user's query. Answer ONLY based on the retrieved information.
             """ ${aaosa_instructions},
-            "command": ${aaosa_command},
             "tools": ["Seating_Options_RAG"]
         },
 
@@ -259,7 +249,6 @@ A customer question about airline policies, procedures, or services that may req
             You are the Food_And_Beverages agent. You handle in-flight food and beverage availability.
             Always call your Food_And_Beverages_RAG tool with the user's query. Answer ONLY based on the retrieved information.
             """ ${aaosa_instructions},
-            "command": ${aaosa_command},
             "tools": ["Food_And_Beverages_RAG"]
         },
 
@@ -276,7 +265,6 @@ A customer question about airline policies, procedures, or services that may req
             You are the Miles_And_Points agent. You handle how Frontier miles and points are earned: spending, credit card, and mileage partners.
             Always call your Miles_And_Points_RAG tool with the user's query. Answer ONLY based on the retrieved information.
             """ ${aaosa_instructions},
-            "command": ${aaosa_command},
             "tools": ["Miles_And_Points_RAG"]
         },
 
@@ -294,7 +282,6 @@ A customer question about airline policies, procedures, or services that may req
             You are the Elite_Status_Benefits agent. You handle Elite Status tiers (Silver, Gold, Platinum, Diamond) and their travel benefits.
             Always call your Elite_Status_Benefits_RAG tool with the user's query. Answer ONLY based on the retrieved information.
             """ ${aaosa_instructions},
-            "command": ${aaosa_command},
             "tools": ["Elite_Status_Benefits_RAG"]
         },
 
@@ -311,7 +298,6 @@ A customer question about airline policies, procedures, or services that may req
             You are the Military_Benefits agent. You handle travel benefits for active U.S. military personnel and their accompanying family.
             Always call your Military_Benefits_RAG tool with the user's query. Answer ONLY based on the retrieved information.
             """ ${aaosa_instructions},
-            "command": ${aaosa_command},
             "tools": ["Military_Benefits_RAG"]
         },
 
@@ -328,7 +314,6 @@ A customer question about airline policies, procedures, or services that may req
             You are the Travel_Documents agent. You handle accepted forms of ID and travel document requirements for domestic and international travel.
             Always call your Travel_Documents_RAG tool with the user's query. Answer ONLY based on the retrieved information.
             """ ${aaosa_instructions},
-            "command": ${aaosa_command},
             "tools": ["Travel_Documents_RAG"]
         },
 
@@ -345,7 +330,6 @@ A customer question about airline policies, procedures, or services that may req
             You are the Restricted_Items agent. You handle TSA allowed and prohibited items in carry-on and checked bags.
             Always call your Restricted_Items_RAG tool with the user's query. Answer ONLY based on the retrieved information.
             """ ${aaosa_instructions},
-            "command": ${aaosa_command},
             "tools": ["Restricted_Items_RAG"]
         },
 
@@ -363,7 +347,6 @@ A customer question about airline policies, procedures, or services that may req
             You are the Kids_and_Pets agent. You handle traveling with children and pets: lap infants, family seating, strollers, car seats, and pet policies.
             Call your Kids_and_Pets_RAG tool once per distinct topic in the user's query. Answer ONLY based on the retrieved information.
             """ ${aaosa_instructions},
-            "command": ${aaosa_command},
             "tools": ["Kids_and_Pets_RAG"]
         },
 
@@ -383,7 +366,6 @@ A customer question about airline policies, procedures, or services that may req
             You are the Accessibility agent. You handle accessibility and special services: wheelchairs, mobility devices, oxygen, medical devices, service animals, allergies, and accommodations.
             Always call your Accessibility_RAG tool with the user's query. Answer ONLY based on the retrieved information.
             """ ${aaosa_instructions},
-            "command": ${aaosa_command},
             "tools": ["Accessibility_RAG"]
         },
 

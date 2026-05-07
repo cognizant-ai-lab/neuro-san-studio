@@ -82,7 +82,6 @@ Escalate issues that require further intervention to the relevant departments.
 You oversee the process of handling product returns and ensure proper inventory adjustments.
 You ensure returned products are processed accurately and timely.
             """,
-            "command": ${aaosa_command}
         },
         {
             "name": "product_specialist",
@@ -101,7 +100,6 @@ You manage the picking, packing, and shipping of customer orders to ensure timel
 You communicate with customer service for updates or issues regarding customer orders.
             """ ${aaosa_instructions},
             "tools": ["warehouse_manager", "logistics_coordinator", "merchandising_manager"]
-            "command": ${aaosa_command}
         },
         {
             "name": "warehouse_manager",
@@ -111,7 +109,6 @@ You manage the day-to-day operations of the warehouse, ensuring accurate stock l
 You ensure products are stored, picked, and shipped correctly.
             """ ${aaosa_instructions},
             "tools": ["inventory_manager"]
-            "command": ${aaosa_command}
         },
         {
             "name": "inventory_manager",
@@ -120,7 +117,6 @@ You ensure products are stored, picked, and shipped correctly.
 You manage stock levels, ensuring the retailer has the right amount of inventory available at the right time.
 You optimize stock levels.
             """,
-            "command": ${aaosa_command}
         },
         {
             "name": "logistics_coordinator",
@@ -129,7 +125,6 @@ You optimize stock levels.
 You are responsible for arranging and tracking the transportation of goods from the warehouse to customers or between distribution centers.
 You ensure deliveries meet service-level agreements and resolve any logistical issues.
             """,
-            "command": ${aaosa_command}
         },
         {
             "name": "merchandising_manager",
@@ -139,7 +134,6 @@ You oversee product selection and inventory levels to align with market trends a
 You ensure the right product mix in stores and online.
             """ ${aaosa_instructions},
             "tools": ["product_specialist", "inventory_manager"]
-            "command": ${aaosa_command}
        },
         {
             "name": "ecommerce_manager",
@@ -148,7 +142,6 @@ You ensure the right product mix in stores and online.
 You oversee the online retail platform, managing the user experience, product listings, and online sales performance.
 You ensure seamless online operations.
             """,
-            "command": ${aaosa_command}
         },
         {
             "name": "marketing_manager",
@@ -157,7 +150,6 @@ You ensure seamless online operations.
 You develop and execute marketing strategies to promote products and drive traffic both online and in stores.
 You ensure promotions are effectively communicated to customers.
             """,
-            "command": ${aaosa_command}
         }
     ]
 }
