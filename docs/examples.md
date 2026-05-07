@@ -14,6 +14,7 @@ Here are a few examples ordered by level of complexity.
     - [Music Nerd Pro Sly](#music-nerd-pro-sly)
     - [Music Nerd Pro Sly Local](#music-nerd-pro-sly-local)
     - [Music Nerd LLM Fallbacks](#music-nerd-llm-fallbacks)
+    - [Book Recommender with Multiple LLM Configs](#book-recommender-with-multiple-llm-configs)
     - [Coffee Finder](#coffee-finder)
     - [Coffee Finder Advanced](#coffee-finder-advanced)
     - [PII Middleware](#pii-middleware)
@@ -43,6 +44,7 @@ Here are a few examples ordered by level of complexity.
     - [ArXiv Assistant](#arxiv-assistant)
     - [ServiceNow AI Agents](#servicenow-ai-agents)
     - [Visual Question Answering](#visual-question-answering)
+    - [Persistent Memory](#persistent-memory)
   - [🏢 Industry-Specific Examples](#-industry-specific-examples)
     - [Intranet Agents](#intranet-agents)
     - [Intranet Agents With Tools](#intranet-agents-with-tools)
@@ -135,6 +137,14 @@ a **tool-calling** LLM that runs locally with Ollama.
 its `llm_config` to automatically try another LLM config if the first one fails.
 
 **Tags:** `llm_config` `llm_fallbacks`
+
+### Book Recommender with Multiple LLM Configs
+
+[Book Recommender with Multiple LLM Configs](examples/basic/book_recommender_multiple_llm_configs.md) is a book recommendation
+network that demonstrates how to use per-agent `llm_config` to assign different Anthropic models
+(Opus, Sonnet, Haiku) to individual agents within a single network.
+
+**Tags:** `AAOSA` `llm_config` `anthropic`
 
 ### Coffee Finder
 
@@ -377,6 +387,16 @@ procurement, and other enterprise processes.
 queries against images or videos. It uses Apple's ml-fastvlm library to answer the queries.
 
 **Tags:** `tool`, `Visual Question Answering`, `VQA`, `Vision Language Models`, `VLM`, `ml-fastvlm`
+
+### Persistent Memory
+
+[Persistent Memory](examples/tools/persistent_memory.md) is an agent network with middleware that
+gives the agent long-term, file-backed memory: a CRUD and keyword-search store that survives across
+sessions. The memory is registered automatically by attaching `PersistentMemoryMiddleware` to an
+agent's middleware block. Two storage backends are available (JSON or Markdown), with an optional
+LLM summarizer for auto-compaction of long entries.
+
+**Tags:** `tool`, `middleware`, `memory`
 
 ## 🏢 Industry-Specific Examples
 

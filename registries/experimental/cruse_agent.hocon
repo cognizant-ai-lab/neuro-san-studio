@@ -21,7 +21,6 @@
     # This "aaosa.hocon" file contains key-value pairs used for substitution.
     # Specifically, it provides values for the following keys:
     #   - aaosa_call
-    #   - aaosa_command
     #   - aaosa_instructions
     #
     # IMPORTANT:

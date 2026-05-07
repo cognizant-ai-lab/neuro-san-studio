@@ -31,9 +31,10 @@ from coded_tools.agent_network_editor.connectivity_dictionary_converter import C
 from coded_tools.agent_network_editor.constants import AGENT_NETWORK_DEFINITION
 from coded_tools.agent_network_editor.constants import AGENT_NETWORK_HOCON_TEXT
 from coded_tools.agent_network_editor.constants import AGENT_NETWORK_NAME
-from coded_tools.agent_network_editor.constants import MCP_SERVERS
+from coded_tools.agent_network_editor.get_mcp_tool import GetMcpTool
 from coded_tools.agent_network_editor.get_subnetwork import GetSubnetwork
 from coded_tools.agent_network_query_generator.set_sample_queries import AGENT_NETWORK_QUERIES
+from middleware.agent_network_designer.agent_network_definition_middleware import SKIP_DESIGNER
 from middleware.agent_network_designer.persistence.agent_network_assembler import AgentNetworkAssembler
 from middleware.agent_network_designer.persistence.agent_network_persistor import AgentNetworkPersistor
 from middleware.agent_network_designer.persistence.agent_network_persistor_factory import AgentNetworkPersistorFactory
@@ -125,12 +126,14 @@ class AgentNetworkPersistenceMiddleware(AgentMiddleware):
         :return: Dict with error message and jump directive, or None if valid
         """
         network_def: dict[str, Any] = self.sly_data.get(AGENT_NETWORK_DEFINITION)
-        # Only validate and persist if there is an agent_network_definition; otherwise let the agent
-        # respond to the user freely. This allows the agent to ask clarifying questions or report issues
-        # without being forced to produce a network definition — for example, when
+        agent_network_name: str = self.sly_data.get(AGENT_NETWORK_NAME)
+        # Only validate and persist if there is an agent_network_definition with a valid name; otherwise let
+        # the agent respond to the user freely. This allows the agent to ask clarifying questions or report
+        # issues without being forced to produce a network definition — for example, when
         # AgentNetworkDefinitionMiddleware failed to load from a HOCON file or S3 reservation and
         # already reported the error (jumping to end), so no network definition will be present.
-        if network_def:
+        # A valid name is also required to avoid crashing in _normalize_network_name.
+        if network_def and agent_network_name and isinstance(agent_network_name, str):
             error_list: list[str] = await self._validate_network(network_def)
             if error_list:
                 self.logger.error("Error: %s", error_list)
@@ -139,7 +142,7 @@ class AgentNetworkPersistenceMiddleware(AgentMiddleware):
                     "Please fix these issues to ensure the agent network can be properly assembled and executed."
                 )
 
-            the_agent_network_name: str = self._normalize_network_name(self.sly_data.get(AGENT_NETWORK_NAME))
+            the_agent_network_name: str = self._normalize_network_name(agent_network_name)
             self.sly_data[AGENT_NETWORK_NAME] = the_agent_network_name
             sample_queries: list[str] = self.sly_data.get(AGENT_NETWORK_QUERIES, [])
 
@@ -152,6 +155,12 @@ class AgentNetworkPersistenceMiddleware(AgentMiddleware):
 
     def _error_response(self, content: str) -> dict[str, Any]:
         """Return a jump-to-model response with the given error content."""
+        # Set the skip designer value to False to prevent infinite loop since jumping to model actually jump to the
+        # before model method in AgentNetworkDefinitionMiddleware, which jumps back to here if skip designer is True.
+        # This is also an indicator for client that there are issues with input agent_network_definition and that the
+        # designer has made changes to the definition.
+        if self.sly_data.get(SKIP_DESIGNER) is True:
+            self.sly_data[SKIP_DESIGNER] = False
         return {
             # Use human message to ensure that the model follows the instructions
             "messages": [HumanMessage(content)],
@@ -191,8 +200,8 @@ class AgentNetworkPersistenceMiddleware(AgentMiddleware):
         self.logger.info(">>>>>>>>>>>>>>>>>>>Create Agent Network>>>>>>>>>>>>>>>>>>")
         self.logger.info("Agent Network Name: %s", the_agent_network_name)
 
-        subnetwork_names: list[str] = GetSubnetwork.get_subnetwork_names(self.sly_data)
-        mcp_servers: list[str] = self.sly_data.get(MCP_SERVERS, [])
+        subnetwork_names: list[str] = await GetSubnetwork.get_subnetwork_names(self.sly_data)
+        mcp_servers: list[str] = await GetMcpTool.get_mcp_servers(self.sly_data)
         persistor: AgentNetworkPersistor = AgentNetworkPersistorFactory.create_persistor(
             {"reservationist": self.reservationist},
             WRITE_TO_FILE,
