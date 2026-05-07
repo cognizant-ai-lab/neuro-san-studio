@@ -41,6 +41,14 @@ class PluginLoader:  # pylint: disable=too-few-public-methods
     """Loads plugin classes from a HOCON configuration file."""
 
     @staticmethod
+    def _is_enabled(plugin_entry: Dict[str, Any]) -> bool:
+        """Determine whether a plugin entry is enabled, handling string env var substitutions."""
+        value = plugin_entry.get("enabled", True)
+        if isinstance(value, str):
+            return value.lower() in ("true", "1", "yes")
+        return bool(value)
+
+    @staticmethod
     def load_plugin_classes(plugins_file: str) -> List[Type]:
         """Load plugin classes from a HOCON configuration file.
 
@@ -71,7 +79,7 @@ class PluginLoader:  # pylint: disable=too-few-public-methods
         plugin_entry: Dict[str, Any]
         for plugin_entry in config.get("plugins", []):
             class_path: Optional[str] = plugin_entry.get("class")
-            enabled: bool = plugin_entry.get("enabled", True)
+            enabled: bool = PluginLoader._is_enabled(plugin_entry)
 
             if not enabled:
                 _logger.info("Plugin %s is disabled. Skipping.", class_path)
