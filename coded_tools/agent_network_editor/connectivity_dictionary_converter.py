@@ -22,6 +22,7 @@ from leaf_common.serialization.interface.dictionary_converter import DictionaryC
 # we are building agent networks.  This is not normally a recommended practice.
 from neuro_san.internals.chat.connectivity_reporter import ConnectivityReporter
 from neuro_san.internals.run_context.interfaces.agent_network_inspector import AgentNetworkInspector
+from neuro_san.internals.validation.network.url_network_validator import UrlNetworkValidator
 
 from coded_tools.agent_network_editor.designer_network_inspector import DesignerNetworkInspector
 
@@ -73,8 +74,8 @@ class ConnectivityDictionaryConverter(DictionaryConverter):
             value: dict[str, Any] = {}
             self.copy_keys_not_found(connectivity_entry, value)
 
-            # Don't include agent that start with "/" since those are external agents.
-            if not name.startswith("/"):
+            # Don't include agents starting with "/", "http://", or "https://" since those are external agents.
+            if not UrlNetworkValidator.is_url_or_path(name):
                 result_dict[name] = value
 
         return result_dict
