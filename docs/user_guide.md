@@ -1637,7 +1637,7 @@ Furthermore, please install the build requirements in your virtual environment v
     pytest.set_trace()
     ```
 
-3. Start the client and server via `python3 -m run`, select `music_nerd_pro` agent network, and ask a question like
+3. Start the client and server via `python -m neuro_san_studio.run`, select `music_nerd_pro` agent network, and ask a question like
 `Where was John Lennon born?`. The code execution stops at the line where you added `pytest.set_trace` statement. You
 can step through the code, view variable values, etc. by typing commands in the terminal. For all the debugger options,
 please refer to pdb [documentation](https://docs.python.org/3/library/pdb.html)
