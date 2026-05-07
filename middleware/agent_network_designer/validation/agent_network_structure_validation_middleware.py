@@ -59,8 +59,8 @@ class AgentNetworkStructureValidationMiddleware(AgentNetworkValidationMiddleware
         # Get infos from sly_data. These should have been put there by the respective tools
         # from the agent network editor.
         subnetwork_names: list[str] = await GetSubnetwork.get_subnetwork_names(self.sly_data)
-        mcp_servers: list[str] = GetMcpTool.get_mcp_servers(self.sly_data)
-        toolbox_tools: dict[str, Any] = GetToolbox.get_toolbox_info(self.sly_data)
+        mcp_servers: list[str] = await GetMcpTool.get_mcp_servers(self.sly_data)
+        toolbox_tools: dict[str, Any] = await GetToolbox.get_toolbox_info(self.sly_data)
 
         return (
             StructureNetworkValidator().validate(network_def)
