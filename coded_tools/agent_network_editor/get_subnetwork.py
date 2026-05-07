@@ -62,7 +62,7 @@ class GetSubnetwork(CodedTool):
             # Try getting from sly_data
             if SUBNETWORKS in sly_data:
                 # Exit early, including for an explicitly cached empty mapping
-                return sly_data[SUBNETWORKS]
+                return sly_data.get(SUBNETWORKS)
 
             # Check manifest file from env var
             manifest_file: str | list[str] = os.getenv("AGENT_NETWORK_DESIGNER_MANIFEST_FILE")

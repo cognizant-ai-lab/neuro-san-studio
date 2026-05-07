@@ -48,7 +48,7 @@ class GetToolbox(CodedTool):
             # Try getting from sly_data
             if TOOLBOX_INFO in sly_data:
                 # Return whatever we had cached before, including an empty dict
-                return sly_data[TOOLBOX_INFO]
+                return sly_data.get(TOOLBOX_INFO)
 
             # Check for toolbox info file in env var
             toolbox_info_file: str = os.getenv("AGENT_NETWORK_DESIGNER_TOOLBOX_INFO_FILE")
