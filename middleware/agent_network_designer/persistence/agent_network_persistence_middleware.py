@@ -194,7 +194,7 @@ class AgentNetworkPersistenceMiddleware(AgentMiddleware):
         self.logger.info("Agent Network Name: %s", the_agent_network_name)
 
         subnetwork_names: list[str] = await GetSubnetwork.get_subnetwork_names(self.sly_data)
-        mcp_servers: list[str] = GetMcpTool.get_mcp_servers(self.sly_data)
+        mcp_servers: list[str] = await GetMcpTool.get_mcp_servers(self.sly_data)
         persistor: AgentNetworkPersistor = AgentNetworkPersistorFactory.create_persistor(
             {"reservationist": self.reservationist},
             WRITE_TO_FILE,
