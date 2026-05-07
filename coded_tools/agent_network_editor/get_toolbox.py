@@ -40,7 +40,7 @@ class GetToolbox(CodedTool):
         either from a cache on sly_data or from a file.
 
         :param sly_data: sly_data possibly containing cached toolbox info
-        :return: dict of tool name to description, or an error string
+        :return: dict mapping tool names to descriptions; empty if loading fails
         """
         tools: dict[str, Any] = {}
 
