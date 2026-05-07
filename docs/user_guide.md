@@ -293,6 +293,9 @@ You can specify it at two levels:
 - **Network-level**: Applies to all agents in the file.
 - **Agent-level**: Overrides the network-level configuration for a specific agent.
 
+For a full working example of per-agent configuration using different Anthropic models, see the
+[Book Recommender with Multiple LLM Configs](examples/basic/book_recommender_multiple_llm_configs.md) example.
+
 Neuro-SAN includes several predefined LLM providers and models. To use one of these, set the `model_name` key to
 the name of the model you want. In addition, model-specific parameters (such as `temperature`, `max_tokens`, etc.)
 can be set alongside `model_name`.
