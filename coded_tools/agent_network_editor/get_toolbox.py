@@ -36,8 +36,8 @@ class GetToolbox(CodedTool):
     @staticmethod
     async def get_toolbox_info(sly_data: dict[str, Any]) -> dict[str, Any]:
         """
-        Read the toolbox info associated with this instance
-        either from a cache on sly_data or from a file.
+        Read toolbox info from a cache in sly_data
+        or load it from a file.
 
         :param sly_data: sly_data possibly containing cached toolbox info
         :return: dict mapping tool names to descriptions; empty if loading fails
