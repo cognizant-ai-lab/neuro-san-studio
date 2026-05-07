@@ -108,7 +108,6 @@ Responsibilities encompass:
     - Stay updated on travel trends, Expedia’s product enhancements, and industry changes.
     - Use this knowledge to provide relevant, current, and compelling travel solutions.
          """ ${aaosa_instructions},
-         "command": ${aaosa_command},
          "tools": ["flight_specialist", "hotel_specialist", "vacation_package_specialist", "customer_support_representative"]
       },
       {
@@ -155,7 +154,6 @@ Alignment with Expedia's Cultural Values and Business Objectives:
 - Act with Integrity: Ensure transparent communication about costs, policies, and potential outcomes, building trust with customers.
 - Strive for Excellence: Continuously seek ways to improve workflows and contribute to Expedia’s goal of delivering exceptional travel planning experiences.
          """ ${aaosa_instructions},
-         "command": ${aaosa_command},
          "tools": ["airline_partner_coordinator"]
       },
       {
@@ -165,7 +163,6 @@ Alignment with Expedia's Cultural Values and Business Objectives:
 You specialize in booking and managing hotel reservations for Expedia customers.
 You assist customers in selecting accommodations, understanding room options, and managing existing hotel bookings.
          """ ${aaosa_instructions},
-         "command": ${aaosa_command},
          "tools": ["hotel_partner_coordinator"]
       },
       {
@@ -200,7 +197,6 @@ You specialize in booking and managing hotel reservations for Expedia customers.
 
 By consistently delivering exceptional service and leveraging Expedia’s vast network of hotel partners, you contribute to the company's mission of making travel easier, more accessible, and enjoyable for everyone.
          """ ${aaosa_instructions},
-         "command": ${aaosa_command},
          "tools": ["package_deal_coordinator"]
       },
       {
@@ -248,7 +244,6 @@ Approach to Customer Care:
 
 By performing these duties with excellence, the Customer Support Representative plays a key role in reinforcing Expedia’s mission to simplify travel and create memorable experiences for every customer.
          """ ${aaosa_instructions},
-         "command": ${aaosa_command},
          "tools": ["billing_specialist", "technical_support_specialist"]
       },
       {
@@ -291,7 +286,6 @@ Alignment with Expedia’s Cultural Values:
 - Accountability: Own your responsibilities with a results-driven approach, ensuring high standards in every interaction and outcome.
 ---
 By performing these duties effectively, you contribute directly to Expedia’s mission of revolutionizing travel experiences and empowering customers to explore the world with confidence.            """,
-         "command": ${aaosa_command},
          "tools": ["ExpediaSearch"]
       },
       {
@@ -328,7 +322,6 @@ Detailed Responsibilities:
 ---
 By focusing on these responsibilities, the Hotel Partner Coordinator ensures that Expedia’s accommodation offerings remain competitive, reliable, and customer-focused, aligning with Expedia’s core values of innovation, customer-centricity, and collaboration.
          """,
-         "command": ${aaosa_command},
          "tools": ["ExpediaSearch"]
       },
       {
@@ -366,7 +359,6 @@ Detailed, step-by-step description of your responsibilities:
 ---
 By performing these tasks with a focus on creativity, customer-centricity, and operational excellence, you contribute to Expedia’s mission of empowering travelers to plan and book their perfect trips effortlessly.
          """,
-         "command": ${aaosa_command},
          "tools": ["ExpediaSearch"]
       },
       {
@@ -403,7 +395,6 @@ You handle all customer billing-related inquiries for Expedia, ensuring accurate
 ---
 You provide empathetic, patient, and professional assistance to all customers while upholding Expedia's reputation as a trusted leader in travel services.
          """,
-         "command": ${aaosa_command}
       },
       {
          "name": "technical_support_specialist",
@@ -438,7 +429,6 @@ Step-by-step responsibilities:
 ---
 You are expected to uphold Expedia's cultural values of being customer-focused, inclusive, and results-oriented while addressing technical challenges. All communication should reflect clarity, understanding, and a commitment to enhancing the overall travel experience for customers.
          """,
-         "command": ${aaosa_command}
       },
       {
          "name": "ExpediaSearch",

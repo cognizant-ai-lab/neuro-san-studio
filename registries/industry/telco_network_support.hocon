@@ -94,7 +94,6 @@ You configures and maintain network infrastructure and provide technical support
 You are responsible for onsite installation, maintenance, and troubleshooting of network equipment at customer locations.
 You Execute hands-on technical work at customer premises and coordinates with the engineer to ensure networks are functional.
             """ ${aaosa_instructions},
-            "command": ${aaosa_command}
             "tools": ["logistics_coordinator"]
         },
         {
@@ -104,7 +103,6 @@ You Execute hands-on technical work at customer premises and coordinates with th
 You monitor network health, respond to alerts, and initiate troubleshooting remotely.
 You Provide round-the-clock monitoring and first-line response to network performance issues.
             """ ${aaosa_instructions},
-            "command": ${aaosa_command}
             "tools": ["noc_manager"]
         },
         {
@@ -114,7 +112,6 @@ You Provide round-the-clock monitoring and first-line response to network perfor
 You oversee complex network installation or upgrade projects involving multiple locations, ensuring they stay on track.
 You coordinates larger, cross-location projects and manage timelines, resources, and milestones.
             """ ${aaosa_instructions},
-            "command": ${aaosa_command}
             "tools": ["senior_network_architect", "logistics_coordinator"]
         },
         {
@@ -124,7 +121,6 @@ You coordinates larger, cross-location projects and manage timelines, resources,
 You design the overall architecture for large-scale network infrastructure across multiple locations.
 You provide the strategic vision and high-level design for network services and oversee implementation for large-scale projects.
             """,
-            "command": ${aaosa_command}
         },
         {
             "name": "sales_engineer",
@@ -133,7 +129,6 @@ You provide the strategic vision and high-level design for network services and 
 You engage with customers during the pre-sales phase, explaining technical details and solutions for ethernet and optical network services.,
 You ensure customer requirements are well understood and translated into appropriate technical solutions.
             """,
-            "command": ${aaosa_command}
         },
         {
             "name": "account_manager",
@@ -142,7 +137,6 @@ You ensure customer requirements are well understood and translated into appropr
 You manages the business relationship with the customer, addressing their needs, and ensuring ongoing satisfaction.
 You act as the main point of contact for clients post-sale, ensuring that the services meet their business needs.
             """ ${aaosa_instructions},
-            "command": ${aaosa_command}
             "tools": ["sales_engineer", "project_manager", "service_delivery_coordinator"]
         },
         {
@@ -152,7 +146,6 @@ You act as the main point of contact for clients post-sale, ensuring that the se
 You oversee the NOC team to ensure network performance and availability are maintained across all locations.
 You ensure the NOC team is efficiently handling alerts, escalations, and incidents, and communicates any critical issues to senior management.
             """ ${aaosa_instructions},
-            "command": ${aaosa_command}
             "tools": ["senior_management"]
         },
         {
@@ -162,7 +155,6 @@ You ensure the NOC team is efficiently handling alerts, escalations, and inciden
 You provide strategic oversight of network operations and service delivery across the organization.,
 You set goals for network service performance, approve large projects, and ensure the organization meets its service delivery standards.
             """,
-            "command": ${aaosa_command}
         },
         {
             "name": "logistics_coordinator",
@@ -171,7 +163,6 @@ You set goals for network service performance, approve large projects, and ensur
 You manage the shipment and delivery of network equipment to various locations, ensuring timely arrival for installations.
 You coordinates the physical logistics of hardware and tools required for installation or maintenance.
             """,
-            "command": ${aaosa_command}
         }
     ]
 }

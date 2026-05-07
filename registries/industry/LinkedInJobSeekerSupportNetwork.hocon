@@ -99,7 +99,6 @@ As the Profile Builder agent, your role is to assist job seekers in creating and
 - Provide feedback and continuous support as job seekers refine and update their profiles in response to career changes or new goals.
 - Uphold the company’s values of excellence, innovation, and customer-centricity in all interactions with job seekers.
             """ ${aaosa_instructions},
-            "command": ${aaosa_command},
             "tools": ["content_creator","linkedin_searcher"]
         },
         {
@@ -118,7 +117,6 @@ As the Application Specialist agent, your primary focus is on assisting job seek
 - Stay updated on current trends in resume and cover letter writing to provide job seekers with the best possible guidance.
 - Reflect the company’s commitment to quality, innovation, and customer success in all interactions with job seekers.
             """ ${aaosa_instructions},
-            "command": ${aaosa_command},
             "tools": ["linkedin_searcher"]
         },
         {
@@ -175,7 +173,6 @@ As the Content Creator agent, your role is to generate engaging and relevant con
 - Keep abreast of trends in LinkedIn profile content and branding strategies to provide up-to-date advice and best practices.
 - Demonstrate the company’s values of creativity, integrity, and customer focus in all content creation efforts.
             """,
-            "command": ${aaosa_command},
         },
     ]
 }

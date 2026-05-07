@@ -127,7 +127,6 @@ Detailed Step-by-Step Description:
                 "lifestyle_decision_specialist",
                 "healthcare_decision_specialist"
             ]
-            "command": ${aaosa_command}
         },
         {
             "name": "retail_decision_specialist",
@@ -164,7 +163,6 @@ Detailed Responsibilities:
    - Revisit and refine the recommendations if the user provides updated criteria or preferences.  
             """ ${aaosa_instructions},
             "tools": ["product_researcher", "price_comparison_agent"]
-            "command": ${aaosa_command}
         },
         {
             "name": "product_researcher",
@@ -319,7 +317,6 @@ Detailed Role and Step-by-Step Workflow:
      - Factors influencing their specific travel goals and constraints.
             """ ${aaosa_instructions},
             "tools": ["destination_researcher", "travel_cost_analyzer"]
-            "command": ${aaosa_command}
         },
         {
             "name": "destination_researcher",
@@ -486,7 +483,6 @@ Step-by-Step Responsibilities:
       - Setting up a savings plan with a financial institution.
             """ ${aaosa_instructions},
             "tools": ["investment_researcher", "loan_evaluator"]
-            "command": ${aaosa_command}
         },
         {
             "name": "investment_researcher",
@@ -528,7 +524,6 @@ Detailed Step-by-Step Workflow:
    - Validate all data from credible sources before presenting it to the user.  
    - Ensure all insights and recommendations reflect the most current market information available.  
             """,
-            "command": ${aaosa_command}
         },
         {
             "name": "loan_evaluator",
@@ -573,7 +568,6 @@ Detailed Step-by-Step Responsibilities:
      - "How does this loan impact my long-term financial goals?"
    - Offer advice on preparing for loan applications (e.g., improving credit scores, required documentation).
             """,
-            "command": ${aaosa_command}
         },
         {
             "name": "career_decision_specialist",
@@ -620,7 +614,6 @@ Detailed Responsibilities:
      - Provide frameworks or tools (e.g., decision matrices) to assist with evaluating choices systematically.
             """ ${aaosa_instructions},
             "tools": ["job_opportunity_researcher", "skill_development_advisor"]
-            "command": ${aaosa_command}
         },
         {
             "name": "job_opportunity_researcher",
@@ -684,7 +677,6 @@ Scope of Work:
 - Time Management: Deadline tracking for high-priority job applications.
 - Presentation: Generate structured, user-friendly reports with job opportunities and employer profiles.
             """,
-            "command": ${aaosa_command}
             "tools": ["/industry/LinkedInJobSeekerSupportNetwork"]
             "allow": {
                "from_downstream": {
@@ -747,7 +739,6 @@ Detailed Responsibilities:
      - Suggestions for supplementary resources if needed.
      - Recommendations for applying newly acquired skills in practical scenarios (e.g., projects, internships, or certifications).
             """,
-            "command": ${aaosa_command}
         },
         {
             "name": "lifestyle_decision_specialist",
@@ -790,7 +781,6 @@ Step 5: Implementation Support
 Your responsibilities end at facilitating the decision and initial steps, leaving any further execution or specific research tasks to other agents down-chain.
             """ ${aaosa_instructions},
             "tools": ["hobby_explorer", "relationship_guidance_agent"]
-            "command": ${aaosa_command}
         },
         {
             "name": "hobby_explorer",
@@ -850,7 +840,6 @@ You operate with a step-by-step methodology tailored to your role in helping use
    - If requested, check back with the user after a period to see how they are enjoying their chosen hobby.  
    - Offer tips for overcoming challenges or exploring deeper into the hobby if they wish to advance.
             """,
-            "command": ${aaosa_command}
         },
         {
             "name": "relationship_guidance_agent",
@@ -894,7 +883,6 @@ Detailed Responsibilities:
    - If applicable, guide the user in evaluating the outcomes of decisions they've made, helping them refine their approach to future relationship challenges.  
    - Offer further support if the situation evolves or if new factors emerge that need reconsideration.
             """,
-            "command": ${aaosa_command}
         },
         {
             "name": "healthcare_decision_specialist",
@@ -941,7 +929,6 @@ Here's a detailed and step-by-step breakdown of your scope of responsibilities:
    - Suggest adjustments or alternative options if the initial choices didn’t meet the user’s needs.
             """ ${aaosa_instructions},
             "tools": ["doctor_researcher", "treatment_comparator"]
-            "command": ${aaosa_command}
         },
         {
             "name": "doctor_researcher",
@@ -1001,7 +988,6 @@ Scope Limitations
 - The agent does not make medical decisions or provide treatment advice.
 - It solely focuses on providing accurate, detailed information about healthcare providers based on the user’s requirements.
             """,
-            "command": ${aaosa_command}
         },
         {
             "name": "treatment_comparator",
@@ -1034,7 +1020,6 @@ Detailed Step-by-Step Description:
 ---
 This agent operates strictly within the scope of comparing and presenting treatment options and does not provide medical advice or recommendations on choosing a specific course of action.
             """,
-            "command": ${aaosa_command}
         }
     ]
 }
