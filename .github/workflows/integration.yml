@@ -10,53 +10,20 @@ permissions:
 
 jobs:
   test:
-    runs-on: ubuntu-latest
-    container:
-      image: python:3.13-slim
-
-    steps:
-      - name: Checkout (release tag)
-        if: github.event_name == 'release'
-        uses: actions/checkout@v4
-        with:
-          ref: ${{ github.event.release.tag_name }}
-
-      - name: Checkout (manual)
-        if: github.event_name != 'release'
-        uses: actions/checkout@v4
-
-      - name: Install dependencies
-        shell: bash
-        run: |
-          apt-get update && apt-get install -y make
-          make install
-
-      - name: Show installed packages
-        shell: bash
-        run: |
-          source venv/bin/activate 
-          pip freeze
-
-      - name: Run test-integration
-        shell: bash
-        run: |
-          source venv/bin/activate 
-          pytest -s -m "integration"
-        env:
-          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
-          OPENAI_API_VERSION: ${{ vars.OPENAI_API_VERSION }}
-          PYTHONPATH: ${{ env.PYTHONPATH }}:"."
-          AGENT_TOOL_PATH: "coded_tools/"
-          AGENT_MANIFEST_FILE: "registries/manifest.hocon"
-          AGENT_TEMPORARY_NETWORK_UPDATE_PERIOD_SECONDS: 5
-
-      - name: Notify Slack on failure
-        if: failure()
-        uses: slackapi/slack-github-action@v1.24.0
-        with:
-          payload: |
-            {
-              "text": "❌ Integration failed for `${{ github.repository }}` on `${{ github.ref_name }}`"
-            }
-        env:
-          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+    # cognizant-ai-lab/build-common 1.0.3
+    uses: cognizant-ai-lab/build-common/.github/workflows/_python-quality-gate.yml@a5d90457ea6e44b8f24f878755f77c00216e2947
+    with:
+      python-version: '3.13'
+      # No lint steps in the original workflow
+      lint-command-override: 'true'
+      run-pytest: false
+      test-command-override: >-
+        export OPENAI_API_VERSION="${{ vars.OPENAI_API_VERSION }}" &&
+        export AGENT_TOOL_PATH="coded_tools/" &&
+        export AGENT_MANIFEST_FILE="registries/manifest.hocon" &&
+        export AGENT_TEMPORARY_NETWORK_UPDATE_PERIOD_SECONDS=5 &&
+        export PYTHONPATH="${PYTHONPATH:+$PYTHONPATH:}." &&
+        pytest --capture=no -m "integration"
+    secrets:
+      OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+      SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
