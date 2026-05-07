@@ -94,8 +94,9 @@ class Mem0Store(TopicStore):
         """
         Persist the full memory dict, deleting topics absent from ``memory``.
 
-        Held under the agent-level list lock so the orphan sweep cannot race
-        with a concurrent ``set_topic``.
+        Held under the agent-level list lock to serialize namespace-wide
+        list/save-all work. This does not synchronize with per-topic writes
+        that use ``_lock_key(namespace, topic)``.
 
         :param namespace: ``"<network>.<agent>"`` key.
         :param memory:    Full ``{topic: content}`` dict to persist.
