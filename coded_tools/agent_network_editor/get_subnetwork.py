@@ -97,7 +97,7 @@ class GetSubnetwork(CodedTool):
             except FileNotFoundError:
                 logger.warning("Error: Failed to load agent networks info from %s.", manifest_file)
 
-            # Cache whatever we found, including an error - no need to do this more than once.
+            # Cache whatever we found, including an empty mapping on failure, to avoid reloading.
             sly_data[SUBNETWORKS] = subnetworks
 
         return subnetworks
