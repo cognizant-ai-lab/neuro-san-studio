@@ -295,7 +295,7 @@ class NeuroSanRunner:
             sys.executable,
             "-u",
             "-m",
-            "servers.neuro_san.neuro_san_server_wrapper",
+            "neuro_san_studio.runner.neuro_san_server_wrapper",
             "--http_port",
             str(self.args["server_http_port"]),
         ]
