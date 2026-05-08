@@ -132,7 +132,7 @@ class AgentNetworkPersistenceMiddleware(AgentMiddleware):
         # issues without being forced to produce a network definition — for example, when
         # AgentNetworkDefinitionMiddleware failed to load from a HOCON file or S3 reservation and
         # already reported the error (jumping to end), so no network definition will be present.
-        # A valid name is also required to avoid crashing in _normalize_network_name.
+        # A valid name is also required for file path and reservation name construction.
         if network_def and agent_network_name and isinstance(agent_network_name, str):
             error_list: list[str] = await self._validate_network(network_def)
             if error_list:
@@ -142,11 +142,9 @@ class AgentNetworkPersistenceMiddleware(AgentMiddleware):
                     "Please fix these issues to ensure the agent network can be properly assembled and executed."
                 )
 
-            the_agent_network_name: str = self._normalize_network_name(agent_network_name)
-            self.sly_data[AGENT_NETWORK_NAME] = the_agent_network_name
             sample_queries: list[str] = self.sly_data.get(AGENT_NETWORK_QUERIES, [])
 
-            await self._assemble_and_persist(network_def, the_agent_network_name, sample_queries)
+            await self._assemble_and_persist(network_def, agent_network_name, sample_queries)
             self._determine_exported_network_definition(self.sly_data)
 
             self.logger.debug(">>>>>>>>>>>>>>>>>>> DONE %s !!!>>>>>>>>>>>>>>>>>>", self.__class__.__name__)
@@ -177,28 +175,25 @@ class AgentNetworkPersistenceMiddleware(AgentMiddleware):
         instructions_errors = await AgentNetworkInstructionsValidationMiddleware(self.sly_data).validate(network_def)
         return structure_errors + instructions_errors
 
-    def _normalize_network_name(self, name: str) -> str:
-        """Prepend SUBDIRECTORY prefix if not already present."""
-        prefix: str = SUBDIRECTORY.rstrip("/") + "/"
-        if not name.startswith(prefix):
-            # Neuro-SAN only allows '/' as path separator in agent network names.
-            return prefix + name
-        return name
-
     async def _assemble_and_persist(
         self,
         network_def: dict[str, Any],
-        the_agent_network_name: str,
+        agent_network_name: str,
         sample_queries: list[str],
     ) -> None:
         """
-        Assemble the agent network and persist it, then store HOCON text in sly_data.
+        Assemble the agent network, store HOCON text in sly_data, and persist it.
 
-        If WRITE_TO_FILE is True, the network is persisted by writing a HOCON file to disk.
-        Otherwise, it is registered as a temporary network via the reservationist interface.
+        HOCON content is always assembled first and stored in sly_data for client consumption.
+        If WRITE_TO_FILE is True, that same HOCON content is persisted to disk; the subdirectory
+        prefix is added by FileSystemAgentNetworkPersistor internally.
+        Otherwise, a deployable config is assembled and registered as a temporary network via
+        the reservationist interface using the sanitized raw name.
+
+        :param agent_network_name: The raw network name without any subdirectory prefix.
         """
-        self.logger.info(">>>>>>>>>>>>>>>>>>>Create Agent Network>>>>>>>>>>>>>>>>>>")
-        self.logger.info("Agent Network Name: %s", the_agent_network_name)
+        self.logger.info(">>>>>>>>>>>>>>>>>>>Assemble and Persist Agent Network>>>>>>>>>>>>>>>>>>")
+        self.logger.info("Agent Network Name: %s", agent_network_name)
 
         subnetwork_names: list[str] = await GetSubnetwork.get_subnetwork_names(self.sly_data)
         mcp_servers: list[str] = await GetMcpTool.get_mcp_servers(self.sly_data)
@@ -210,35 +205,34 @@ class AgentNetworkPersistenceMiddleware(AgentMiddleware):
             subnetwork_names,
             mcp_servers,
         )
-        assembler: AgentNetworkAssembler = persistor.get_assembler()
         top_agent_name: str = UnreachableNodesNetworkValidator().find_all_top_agents(network_def).pop()
-        persisted_content: str = await assembler.assemble_agent_network(
-            network_def, top_agent_name, the_agent_network_name, sample_queries
-        )
-        self.logger.info("The resulting agent network: \n %s", persisted_content)
 
-        if WRITE_TO_FILE:
-            file_reference: str = the_agent_network_name
-        else:
-            # Reservations API forbids '/', ':', and ' ' — strip subdirectory prefix then sanitize
-            file_reference = the_agent_network_name.removeprefix(SUBDIRECTORY)
+        # Always assemble and store HOCON content for client consumption.
+        persisted_content: str = await HoconAgentNetworkAssembler(DEMO_MODE).assemble_agent_network(
+            network_def, top_agent_name, agent_network_name, sample_queries
+        )
+        self.logger.info("The resulting agent network content: \n %s", persisted_content)
+        self.sly_data[AGENT_NETWORK_HOCON_TEXT] = persisted_content
+
+        # Reservations API forbids '/', ':', and ' ' — sanitize the raw name for that case.
+        # FileSystemAgentNetworkPersistor handles its own subdirectory prefixing internally.
+        file_reference: str = agent_network_name
+        if not WRITE_TO_FILE:
             for char in ["/", ":", " "]:
                 file_reference = file_reference.replace(char, "")
-
+            # For reservations, assemble a deployable config instead of HOCON.
+            assembler: AgentNetworkAssembler = persistor.get_assembler()
+            # The persisted content for reservations is config.
+            persisted_content: dict[str | Any] = await assembler.assemble_agent_network(
+                network_def, top_agent_name, agent_network_name, sample_queries
+            )
+        # Persist the agent network
         persisted_reference: str | list[dict[str, Any]] = await persistor.async_persist(
             obj=persisted_content, file_reference=file_reference
         )
+        # Store information on reservations in the sly data
         if isinstance(persisted_reference, list):
             self.sly_data["agent_reservations"] = persisted_reference
-
-        if not isinstance(assembler, HoconAgentNetworkAssembler):
-            # We don't yet have client-consumable HOCON content, so we need to re-assemble
-            # to send that back as a parting gift.
-            assembler = HoconAgentNetworkAssembler(DEMO_MODE)
-            persisted_content = await assembler.assemble_agent_network(
-                network_def, top_agent_name, the_agent_network_name, sample_queries
-            )
-        self.sly_data[AGENT_NETWORK_HOCON_TEXT] = persisted_content
 
     def _determine_exported_network_definition(self, sly_data: dict[str, Any]):
         """

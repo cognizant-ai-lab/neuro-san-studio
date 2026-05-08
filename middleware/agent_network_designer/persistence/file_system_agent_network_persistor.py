@@ -14,8 +14,8 @@
 #
 # END COPYRIGHT
 
-# Import for asynchronous file operations
 import os
+from pathlib import Path
 
 import aiofiles
 from leaf_common.serialization.util.text_file_reader import TextFileReader
@@ -72,30 +72,32 @@ class FileSystemAgentNetworkPersistor(AgentNetworkPersistor):
         """
 
         the_agent_network_hocon_str: str = obj
-        # This agent network name already includes any subdirectory specified.
-        the_agent_network_name: str = file_reference
+        # Prepend subdirectory to form the full relative network path.
+        the_agent_network_name: str = f"{self.subdirectory}/{file_reference}"
 
-        # Write the agent network file
-        file_path: str = os.path.join(self.output_path, the_agent_network_name + ".hocon")
+        # Write the agent network file. Path() handles OS-specific separators: even though
+        # `the_agent_network_name` contains '/', pathlib recognizes it as an alt-separator on
+        # Windows and normalizes to '\' when the path is passed to the file system APIs.
+        file_path: Path = Path(self.output_path) / (the_agent_network_name + ".hocon")
         # Create parent directory automatically if necessary
-        os.makedirs(os.path.dirname(file_path), exist_ok=True)
+        file_path.parent.mkdir(parents=True, exist_ok=True)
         async with aiofiles.open(file_path, "w", encoding="utf-8", newline="\n") as file:
             await file.write(the_agent_network_hocon_str)
 
         # Update the manifest.hocon file
-        manifest_path: str = os.path.join(self.output_path, self.subdirectory, "manifest.hocon")
+        manifest_path: Path = Path(self.output_path) / self.subdirectory / "manifest.hocon"
 
         # Create the generated directory if it doesn't exist
-        os.makedirs(os.path.dirname(manifest_path), exist_ok=True)
+        manifest_path.parent.mkdir(parents=True, exist_ok=True)
 
         # Create the manifest file if it doesn't exist
-        if not os.path.exists(manifest_path):
+        if not manifest_path.exists():
             async with aiofiles.open(manifest_path, "w", encoding="utf-8", newline="\n") as file:
                 # Initialize with empty JSON format
                 await file.write("{\n}")
 
         # Read the current manifest content
-        manifest_content: str = await TextFileReader.async_read_text_file(manifest_path)
+        manifest_content: str = await TextFileReader.async_read_text_file(str(manifest_path))
 
         # Check if the entry already exists to avoid duplicates
         if (
@@ -133,7 +135,7 @@ class FileSystemAgentNetworkPersistor(AgentNetworkPersistor):
         if self.subdirectory != DEFAULT_SUBDIRECTORY:
             await self._async_update_main_manifest()
 
-        return file_path
+        return str(file_path)
 
     async def _async_update_main_manifest(self) -> None:
         """
