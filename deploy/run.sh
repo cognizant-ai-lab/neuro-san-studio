@@ -70,6 +70,10 @@ function run() {
         --network=$network \
         -e OPENAI_API_KEY \
         -e ANTHROPIC_API_KEY \
+        -e LANGFUSE_ENABLED \
+        -e LANGFUSE_SECRET_KEY \
+        -e LANGFUSE_PUBLIC_KEY \
+        -e LANGFUSE_HOST \
         -e AGENT_RESERVATIONS_S3_BUCKET \
         -e AGENT_EXTERNAL_RESERVATIONS_STORAGE \
         -e TOOL_REGISTRY_FILE=$1 \
