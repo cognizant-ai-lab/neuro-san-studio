@@ -4,7 +4,7 @@ Setup a virtual environment, install the dependencies, and activate the virtual 
 
 ## Validation with `--validate-keys`
 
-When you run the server with `python -m run --validate-keys`, API keys are validated
+When you run the server with `python -m neuro_san_studio.run --validate-keys`, API keys are validated
 using a three-tier system. You can specify the tier level:
 
 - `--validate-keys` or `--validate-keys 3` — Run all three tiers (default)

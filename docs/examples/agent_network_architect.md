@@ -46,7 +46,7 @@ To run this agent, ensure the following are installed and configured:
 4173 for nsflow. For example, you can run:
 
     ```bash
-    python -m run --server-http-port 8081 --nsflow-port 4174
+    python -m neuro_san_studio.run --server-http-port 8081 --nsflow-port 4174
     ```
 
 ---
