@@ -92,27 +92,6 @@ class JsonFileStore(TopicStore):
         return ("json", namespace)
 
     @override
-    async def load_all(self, namespace: str) -> TopicStore.AgentMemory:
-        """
-        Read and parse the agent's JSON file.
-
-        :param namespace: ``"<network>.<agent>"`` key.
-        :return: The agent's full ``{topic: content}`` dict.
-        """
-        return await self._load_unlocked(namespace)
-
-    @override
-    async def save_all(self, namespace: str, memory: TopicStore.AgentMemory) -> None:
-        """
-        Persist the full memory dict as one JSON file.
-
-        :param namespace: ``"<network>.<agent>"`` key.
-        :param memory:    Full ``{topic: content}`` dict to write.
-        """
-        async with await self._lock_for(self._lock_key(namespace, "")):
-            await self._write_unlocked(namespace, memory)
-
-    @override
     async def _read_topic(self, namespace: str, topic: str) -> str | None:
         """
         Return one topic's content, or ``None``.

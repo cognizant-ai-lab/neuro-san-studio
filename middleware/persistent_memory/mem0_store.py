@@ -121,61 +121,6 @@ class Mem0Store(TopicStore):
         return ("mem0-list", self._user_id(), namespace)
 
     @override
-    async def load_all(self, namespace: str) -> TopicStore.AgentMemory:
-        """
-        Return every topic for this agent as a ``{topic: content}`` dict.
-
-        :param namespace: ``"<network>.<agent>"`` key.
-        :return: The agent's full ``{topic: content}`` dict.
-        """
-        return await self._read_bucket(namespace)
-
-    @override
-    async def save_all(self, namespace: str, memory: TopicStore.AgentMemory) -> None:
-        """
-        Persist the full memory dict, deleting topics absent from ``memory``.
-
-        Held under the agent-level list lock to serialize namespace-wide
-        list/save-all work. This does not synchronize with per-topic writes
-        that use ``_lock_key(namespace, topic)``.
-
-        :param namespace: ``"<network>.<agent>"`` key.
-        :param memory:    Full ``{topic: content}`` dict to persist.
-        """
-        async with await self._lock_for(self._list_lock_key(namespace)):
-            existing: list[dict[str, Any]] = await self._fetch_for_namespace(namespace)
-            existing_by_topic: dict[str, str] = {
-                m.get("metadata", {}).get("topic", ""): m.get("id", "")
-                for m in existing
-                if m.get("metadata", {}).get("topic") and m.get("id")
-            }
-
-            client: AsyncMemoryClient = self._client()
-
-            # Remove topics that are no longer in the provided memory dict, in
-            # one batch round trip rather than one delete per orphan.
-            orphans: list[dict[str, str]] = [
-                {"memory_id": memory_id} for topic, memory_id in existing_by_topic.items() if topic not in memory
-            ]
-            if orphans:
-                try:
-                    await client.batch_delete(memories=orphans)
-                except Mem0Error:
-                    self.logger.error(
-                        "Mem0 batch_delete failed (namespace=%s, orphan_count=%d)",
-                        namespace,
-                        len(orphans),
-                        exc_info=True,
-                    )
-                    raise
-                self.logger.debug("save_all: batch-deleted %d orphan topic(s)", len(orphans))
-
-            # Upsert every topic in the provided memory dict.
-            for topic, content in memory.items():
-                existing_id: str | None = existing_by_topic.get(topic)
-                await self._upsert(namespace, topic, content, existing_id)
-
-    @override
     async def _read_topic(self, namespace: str, topic: str) -> str | None:
         """
         Return one topic's content, or ``None`` if absent.

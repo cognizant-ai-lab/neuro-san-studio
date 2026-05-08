@@ -262,24 +262,6 @@ class TopicStore(ABC):
             return await self._remove_topic(namespace, topic)
 
     @abstractmethod
-    async def load_all(self, namespace: str) -> AgentMemory:
-        """
-        Load every topic for the agent. Admin/debug only.
-
-        :param namespace: ``"<network>.<agent>"`` key.
-        :return: The agent's full ``{topic: content}`` dict.
-        """
-
-    @abstractmethod
-    async def save_all(self, namespace: str, memory: AgentMemory) -> None:
-        """
-        Persist the full agent memory. Admin/debug only.
-
-        :param namespace: ``"<network>.<agent>"`` key.
-        :param memory:    Full ``{topic: content}`` dict to persist.
-        """
-
-    @abstractmethod
     async def _read_topic(self, namespace: str, topic: str) -> str | None:
         """
         Read one topic from disk.

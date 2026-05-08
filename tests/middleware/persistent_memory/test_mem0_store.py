@@ -62,8 +62,6 @@ class Mem0StoreTests(TestCase):
         client.add = AsyncMock(return_value={})
         client.update = AsyncMock(return_value={})
         client.delete = AsyncMock(return_value={})
-        client.batch_delete = AsyncMock(return_value={})
-        client.batch_update = AsyncMock(return_value={})
         return client
 
     def test_sly_data_user_id_takes_priority(self) -> None:
@@ -261,27 +259,3 @@ class Mem0StoreTests(TestCase):
         with patch.object(store, "_client", return_value=self._mock_client(memories)):
             result = asyncio.run(store._read_bucket(self._NAMESPACE))  # pylint: disable=protected-access
         self.assertEqual(result, {"mike": "black coffee", "alice": "latte"})
-
-    def test_save_all_batch_deletes_orphans(self) -> None:
-        """save_all collapses orphan deletions into a single batch_delete call."""
-        memories = [
-            {"id": "keep-id", "memory": "keep", "metadata": {"topic": "keep"}},
-            {"id": "drop-id", "memory": "drop", "metadata": {"topic": "drop"}},
-        ]
-        store = self._make_store()
-        client = self._mock_client(memories)
-        with patch.object(store, "_client", return_value=client):
-            asyncio.run(store.save_all(self._NAMESPACE, {"keep": "keep"}))
-        client.batch_delete.assert_awaited_once_with(memories=[{"memory_id": "drop-id"}])
-        client.delete.assert_not_awaited()
-
-    def test_save_all_skips_batch_when_no_orphans(self) -> None:
-        """save_all does not call batch_delete when every existing topic is retained."""
-        memories = [
-            {"id": "keep-id", "memory": "keep", "metadata": {"topic": "keep"}},
-        ]
-        store = self._make_store()
-        client = self._mock_client(memories)
-        with patch.object(store, "_client", return_value=client):
-            asyncio.run(store.save_all(self._NAMESPACE, {"keep": "keep new"}))
-        client.batch_delete.assert_not_awaited()
