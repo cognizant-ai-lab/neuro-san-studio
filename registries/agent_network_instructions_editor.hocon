@@ -132,7 +132,7 @@ Always respond with "Instructions/description for <agent_name> have been set." a
                     "properties": {
                         "agent_name": {
                             "type": "string",
-                            "description": "the name of the agent whose instruction is being set."
+                            "description": "the name of the agent whose instructions/description is being set."
                         },
                         "agent_network_description": {
                             "type": "string",
