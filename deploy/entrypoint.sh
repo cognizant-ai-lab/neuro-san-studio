@@ -26,6 +26,11 @@ echo "Using python ${PYTHON}"
 PIP=pip3
 echo "Using pip ${PIP}"
 
+# The Log Bridge plugin aggregates logs from server and client subprocesses, and pretty-prints them.
+# But we only deploy the neuro-san server here, and it has its own logging configuration.
+# So we forcibly disable the log bridge plugin to avoid conflicts.
+export LOGBRIDGE_ENABLED=false
+
 echo "Preparing app..."
 if [ -z "${PYTHONPATH}" ]
 then
@@ -45,6 +50,6 @@ echo "DIAGNOSTIC: Dumping sys.path and PYTHONPATH before server start..."
 ${PYTHON} -c "import sys, os; print('DIAGNOSTIC sys.path:', sys.path); print('DIAGNOSTIC PYTHONPATH:', os.environ.get('PYTHONPATH'))"
 
 echo "Starting service with args '$1'..."
-${PYTHON} "${PACKAGE_INSTALL}"/neuro_san/service/main_loop/server_main_loop.py "$@"
+${PYTHON} "${APP_SOURCE}"/neuro_san_studio/runner/neuro_san_server_wrapper.py "$@"
 
 echo "Done."

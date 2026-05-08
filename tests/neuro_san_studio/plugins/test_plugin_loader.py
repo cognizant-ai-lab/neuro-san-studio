@@ -19,6 +19,8 @@
 import os
 import tempfile
 
+import pytest
+
 from neuro_san_studio.interfaces.base_plugin import BasePlugin
 from neuro_san_studio.plugins.plugin_loader import PluginLoader
 
@@ -198,3 +200,70 @@ plugins = [
             assert len(classes) == 1
         finally:
             os.unlink(tmp_path)
+
+    def test_string_false_disables_plugin(self):
+        """Test that a string 'False' (from env var substitution) disables the plugin."""
+        hocon = """
+plugins = [
+    {
+        class = "neuro_san_studio.interfaces.base_plugin.BasePlugin"
+        enabled = "False"
+    }
+]
+"""
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".hocon", delete=False) as tmp:
+            tmp.write(hocon)
+            tmp_path = tmp.name
+
+        try:
+            classes = PluginLoader.load_plugin_classes(tmp_path)
+            assert not classes
+        finally:
+            os.unlink(tmp_path)
+
+    def test_string_true_enables_plugin(self):
+        """Test that a string 'true' (from env var substitution) enables the plugin."""
+        hocon = """
+plugins = [
+    {
+        class = "neuro_san_studio.interfaces.base_plugin.BasePlugin"
+        enabled = "true"
+    }
+]
+"""
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".hocon", delete=False) as tmp:
+            tmp.write(hocon)
+            tmp_path = tmp.name
+
+        try:
+            classes = PluginLoader.load_plugin_classes(tmp_path)
+            assert len(classes) == 1
+            assert classes[0] is BasePlugin
+        finally:
+            os.unlink(tmp_path)
+
+
+class TestIsEnabled:  # pylint: disable=protected-access
+    """Tests for PluginLoader._is_enabled."""
+
+    def test_bool_true(self):
+        """Test that boolean True returns True."""
+        assert PluginLoader._is_enabled({"enabled": True}) is True
+
+    def test_bool_false(self):
+        """Test that boolean False returns False."""
+        assert PluginLoader._is_enabled({"enabled": False}) is False
+
+    def test_missing_key_defaults_to_true(self):
+        """Test that a missing 'enabled' key defaults to True."""
+        assert PluginLoader._is_enabled({}) is True
+
+    @pytest.mark.parametrize("value", ["true", "True", "TRUE", "1", "yes", "Yes"])
+    def test_string_true_variants(self, value):
+        """Test that string truthy values are recognized."""
+        assert PluginLoader._is_enabled({"enabled": value}) is True
+
+    @pytest.mark.parametrize("value", ["false", "False", "FALSE", "0", "no", ""])
+    def test_string_false_variants(self, value):
+        """Test that string falsy values are recognized."""
+        assert PluginLoader._is_enabled({"enabled": value}) is False

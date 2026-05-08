@@ -84,7 +84,7 @@ Plugins are loaded in two contexts with different lifecycle methods:
 5. `post_server_start_action()` -- after subprocesses start
 6. `cleanup()` -- on shutdown (Ctrl+C / SIGTERM)
 
-**Server process** (`neuro_san_server_wrapper.py`) -- in-process server:
+**Server process** (`neuro_san_studio/runner/neuro_san_server_wrapper.py`) -- in-process server:
 
 1. Plugin instantiated
 2. `initialize()` -- called before the server main loop
