@@ -53,7 +53,7 @@ from typing import Any
 from typing import ClassVar
 from typing import override
 
-from mem0 import AsyncMemoryClient
+from mem0 import AsyncMemoryClient  # pylint: disable=import-error
 
 from middleware.persistent_memory.topic_store import TopicStore
 
