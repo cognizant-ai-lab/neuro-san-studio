@@ -45,7 +45,6 @@ class PersistentMemoryMiddlewareTests(MemoryTestBase):
         self.assertEqual(network, "persistent_memory")
         self.assertEqual(agent, "MemoryAssistant")
 
-    # pylint: disable=not-callable
     def test_end_to_end_create_then_search(self) -> None:
         """A create via the dispatcher is searchable via the same dispatcher."""
         mw = self.make_middleware()
@@ -59,7 +58,7 @@ class PersistentMemoryMiddlewareTests(MemoryTestBase):
     def test_summarizes_when_topic_exceeds_max_size(self) -> None:
         """A topic larger than ``max_topic_size`` is replaced with its summary."""
         mw = self.make_middleware(max_topic_size=20)
-        # pylint: disable=protected-access,not-callable
+        # pylint: disable=protected-access
         mw._summarizer.summarize_topic = AsyncMock(return_value="SHORT")  # type: ignore[attr-defined]
 
         asyncio.run(mw.tools[0].coroutine(operation="create", topic="t", content="x" * 50))

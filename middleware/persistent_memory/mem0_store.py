@@ -1,0 +1,374 @@
+# Copyright © 2025-2026 Cognizant Technology Solutions Corp, www.cognizant.com.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
+# END COPYRIGHT
+
+"""
+Mem0-cloud memory store backend.
+
+Stores each topic as one Mem0 memory entry. Identity is encoded as
+first-class Mem0 fields, with ``app_id`` and ``agent_id`` kept as
+separate dimensions so server-side filters can scope by either:
+
+* ``user_id``  — resolved per call (see :py:meth:`Mem0Store._user_id`).
+* ``app_id``   — the agent network name (the "application").
+* ``agent_id`` — the agent name within that network.
+* ``metadata.topic`` — the topic name; held as metadata because the
+  cloud API does not expose a first-class topic-level identifier.
+
+The Mem0 SDK is asymmetric about how identity is passed: ``add()`` takes
+``user_id``/``agent_id``/``app_id`` at the **top level**, while
+``search`` / ``delete_all`` reject those at the top level and require
+them inside ``filters`` (using the v2 ``{"AND": [...]}`` compound form).
+Mixing the two patterns yields a 400 from ``/v3/memories/add/``.
+
+Mem0's default ``infer=True`` runs an LLM over the input and may rewrite,
+split, or dedupe the stored text. For a topic-keyed store we want the
+exact text under each topic, so every write pins ``infer=False``.
+
+**Read path: ``search`` not ``get_all``.** On Mem0 cloud, ``infer=False``
+writes land in the embedding/vector store but do **not** appear in
+``get_all`` results — that endpoint returns only LLM-extracted "facts."
+``search`` hits the vector path and surfaces ``infer=False`` entries
+when the same compound identity filter is supplied. We use it with
+``threshold=0`` and a high ``top_k`` so the call returns the whole
+filter-matched set, not the semantic top-N.
+"""
+
+from __future__ import annotations
+
+import os
+from typing import Any
+from typing import ClassVar
+from typing import override
+
+from mem0 import AsyncMemoryClient
+
+from middleware.persistent_memory.topic_store import TopicStore
+
+
+class Mem0Store(TopicStore):
+    """
+    One Mem0 memory entry per topic, scoped by user_id and agent_id.
+
+    Inherits the base class's logger and lock cache; no filesystem state
+    is needed for this cloud backend.
+    """
+
+    _DEFAULT_USER_ID: ClassVar[str] = "default_user"
+
+    # Mem0 cloud caps ``search`` at ``top_k=1000``. For a topic-keyed store
+    # this is well above any realistic count; if a namespace ever approaches
+    # this we'd see a partial read, so the fetch logs a warning at the cap.
+    _SEARCH_TOP_K: ClassVar[int] = 1000
+
+    def __init__(self, sly_data: dict[str, Any] | None = None) -> None:
+        super().__init__()
+        self._sly_data: dict[str, Any] | None = sly_data
+        self._memory_client: AsyncMemoryClient | None = None
+        self._warned_default_user: bool = False
+
+    @override
+    def _lock_key(self, namespace: str, topic: str) -> tuple[str, ...]:
+        """
+        Per-user, per-topic lock — each Mem0 entry is independent and
+        Mem0 storage is partitioned by ``user_id``, so unrelated users
+        on the same agent/topic must not block each other.
+
+        :param namespace: ``"<network>.<agent>"`` key.
+        :param topic:     Topic name.
+        :return: The lock-cache key for this topic.
+        """
+        return ("mem0", self._user_id(), namespace, topic)
+
+    @override
+    def _list_lock_key(self, namespace: str) -> tuple[str, ...]:
+        """
+        Per-user, per-namespace lock for list and search operations.
+
+        :param namespace: ``"<network>.<agent>"`` key.
+        :return: The lock-cache key for list/search ops.
+        """
+        return ("mem0-list", self._user_id(), namespace)
+
+    @override
+    async def load_all(self, namespace: str) -> TopicStore.AgentMemory:
+        """
+        Return every topic for this agent as a ``{topic: content}`` dict.
+
+        :param namespace: ``"<network>.<agent>"`` key.
+        :return: The agent's full ``{topic: content}`` dict.
+        """
+        return await self._read_bucket(namespace)
+
+    @override
+    async def save_all(self, namespace: str, memory: TopicStore.AgentMemory) -> None:
+        """
+        Persist the full memory dict, deleting topics absent from ``memory``.
+
+        Held under the agent-level list lock to serialize namespace-wide
+        list/save-all work. This does not synchronize with per-topic writes
+        that use ``_lock_key(namespace, topic)``.
+
+        :param namespace: ``"<network>.<agent>"`` key.
+        :param memory:    Full ``{topic: content}`` dict to persist.
+        """
+        async with await self._lock_for(self._list_lock_key(namespace)):
+            existing: list[dict[str, Any]] = await self._fetch_for_namespace(namespace)
+            existing_by_topic: dict[str, str] = {
+                m.get("metadata", {}).get("topic", ""): m.get("id", "")
+                for m in existing
+                if m.get("metadata", {}).get("topic") and m.get("id")
+            }
+
+            client: AsyncMemoryClient = self._client()
+
+            # Remove topics that are no longer in the provided memory dict, in
+            # one batch round trip rather than one delete per orphan.
+            orphans: list[dict[str, str]] = [
+                {"memory_id": memory_id}
+                for topic, memory_id in existing_by_topic.items()
+                if topic not in memory
+            ]
+            if orphans:
+                await client.batch_delete(memories=orphans)
+                self.logger.debug("save_all: batch-deleted %d orphan topic(s)", len(orphans))
+
+            # Upsert every topic in the provided memory dict.
+            for topic, content in memory.items():
+                existing_id: str | None = existing_by_topic.get(topic)
+                await self._upsert(namespace, topic, content, existing_id)
+
+    @override
+    async def _read_topic(self, namespace: str, topic: str) -> str | None:
+        """
+        Return one topic's content, or ``None`` if absent.
+
+        :param namespace: ``"<network>.<agent>"`` key.
+        :param topic:     Topic name.
+        :return: The topic's content, or ``None`` if no entry exists.
+        """
+        match: dict[str, Any] | None = await self._find_memory(namespace, topic)
+        if not match:
+            return None
+        return match.get("memory")
+
+    @override
+    async def _write_topic(self, namespace: str, topic: str, content: str) -> None:
+        """
+        Create or overwrite one topic in Mem0.
+
+        Existing entries are updated in place; absent entries are added.
+
+        :param namespace: ``"<network>.<agent>"`` key.
+        :param topic:     Topic name.
+        :param content:   New content for the topic.
+        """
+        existing_id: str | None = await self._find_memory_id(namespace, topic)
+        await self._upsert(namespace, topic, content, existing_id)
+
+    @override
+    async def _remove_topic(self, namespace: str, topic: str) -> bool:
+        """
+        Delete one topic entry from Mem0.
+
+        :param namespace: ``"<network>.<agent>"`` key.
+        :param topic:     Topic name.
+        :return: ``True`` if an entry existed and was deleted.
+        """
+        existing_id: str | None = await self._find_memory_id(namespace, topic)
+        if existing_id is None:
+            return False
+        await self._client().delete(memory_id=existing_id)
+        return True
+
+    @override
+    async def _read_bucket(self, namespace: str) -> dict[str, str]:
+        """
+        Return the agent's ``{topic: content}`` dict from Mem0.
+
+        :param namespace: ``"<network>.<agent>"`` key.
+        :return: The agent's full memory dict; empty if none yet.
+        """
+        memories: list[dict[str, Any]] = await self._fetch_for_namespace(namespace)
+        return {
+            m.get("metadata", {}).get("topic", ""): m.get("memory", "")
+            for m in memories
+            if m.get("metadata", {}).get("topic")
+        }
+
+    async def _upsert(
+        self,
+        namespace: str,
+        topic: str,
+        content: str,
+        existing_id: str | None,
+    ) -> None:
+        """
+        Update an existing Mem0 entry or add a new one.
+
+        New entries always pin ``infer=False`` so Mem0 stores the exact
+        text the caller supplied instead of running an LLM-driven rewrite.
+
+        :param namespace:   ``"<network>.<agent>"`` key.
+        :param topic:       Topic name, stored in metadata.
+        :param content:     Memory text to persist.
+        :param existing_id: Memory ID to update, or ``None`` to add.
+        """
+        client: AsyncMemoryClient = self._client()
+        metadata: dict[str, str] = {"topic": topic}
+        if existing_id is not None:
+            await client.update(memory_id=existing_id, text=content, metadata=metadata)
+            self.logger.debug("Updated memory %s (topic=%s)", existing_id, topic)
+        else:
+            # ``add`` takes identity fields at the top level; ``get_all`` /
+            # ``search`` / ``delete_all`` require them inside ``filters``.
+            # Mixing the two yields a 400 from /v3/memories/add/.
+            app_id, agent_id = self._split_namespace(namespace)
+            await client.add(
+                messages=content,
+                user_id=self._user_id(),
+                app_id=app_id,
+                agent_id=agent_id,
+                metadata=metadata,
+                infer=False,
+            )
+            self.logger.debug("Added new memory for topic=%s", topic)
+
+    async def _fetch_for_namespace(self, namespace: str) -> list[dict[str, Any]]:
+        """
+        Fetch all Mem0 memories for this user/app/agent via vector search.
+
+        Uses ``client.search`` rather than ``client.get_all`` because
+        Mem0 cloud's list path does not return ``infer=False`` writes —
+        only the vector/search path does. ``threshold=0`` disables the
+        semantic relevance cut, so what comes back is the full set
+        matching the v2 compound identity filter.
+
+        :param namespace: ``"<network>.<agent>"`` key.
+        :return: List of Mem0 memory dicts in this namespace.
+        """
+        client: AsyncMemoryClient = self._client()
+        # Mem0 ``search`` requires a non-empty query string. Content is irrelevant
+        # because ``threshold=0`` disables relevance gating — we just need every
+        # memory matching the identity filter, ordered however the API returns.
+        response: dict[str, Any] = await client.search(
+            query="memory content",
+            filters=self._identity_filters(namespace),
+            top_k=self._SEARCH_TOP_K,
+            threshold=0,
+        )
+        results: list[dict[str, Any]] = response.get("results", [])
+        if len(results) >= self._SEARCH_TOP_K:
+            self.logger.warning(
+                "Mem0 search returned %d results — at top_k cap; some entries may be missing.",
+                len(results),
+            )
+        return results
+
+    async def _find_memory(self, namespace: str, topic: str) -> dict[str, Any] | None:
+        """
+        Return the Mem0 memory dict for ``topic``, or ``None`` if absent.
+
+        :param namespace: ``"<network>.<agent>"`` key.
+        :param topic:     Topic name to locate.
+        :return: The memory dict, or ``None`` if no entry matches.
+        """
+        for memory in await self._fetch_for_namespace(namespace):
+            if memory.get("metadata", {}).get("topic") == topic:
+                return memory
+        return None
+
+    async def _find_memory_id(self, namespace: str, topic: str) -> str | None:
+        """
+        Return the Mem0 memory ID for ``topic``, or ``None`` if absent.
+
+        :param namespace: ``"<network>.<agent>"`` key.
+        :param topic:     Topic name to locate.
+        :return: The memory ID string, or ``None``.
+        """
+        match: dict[str, Any] | None = await self._find_memory(namespace, topic)
+        return match.get("id") if match else None
+
+    def _identity_filters(self, namespace: str) -> dict[str, Any]:
+        """
+        Build the Mem0 v2 compound ``filters`` dict for read/delete ops.
+
+        ``user_id``, ``app_id`` (network), and ``agent_id`` (agent name)
+        are kept as separate clauses so each is a real Mem0 server-side
+        filter dimension — the dashboard and ``delete_users(...)`` admin
+        ops can target either independently.
+
+        :param namespace: ``"<network>.<agent>"`` key.
+        :return: ``filters`` dict suitable for Mem0 v3 list/search/delete.
+        """
+        app_id, agent_id = self._split_namespace(namespace)
+        return {
+            "AND": [
+                {"user_id": self._user_id()},
+                {"app_id": app_id},
+                {"agent_id": agent_id},
+            ],
+        }
+
+    @property
+    def user_id(self) -> str:
+        """Public read-only accessor for the resolved Mem0 user ID."""
+        return self._user_id()
+
+    def _user_id(self) -> str:
+        """
+        Resolve the Mem0 user ID from per-request ``sly_data``, falling back to
+        the ``MEM0_DEFAULT_USER_ID`` environment variable and then ``"default_user"``.
+
+        Per-request ``sly_data`` is preferred so each caller is isolated to their
+        own Mem0 scope; the env-var fallback supports server-level defaults and
+        local testing.
+
+        :return: The active user ID string.
+        """
+        if self._sly_data:
+            user_id: str | None = self._sly_data.get("user_id")
+            if user_id:
+                return user_id
+        env_user_id: str = os.environ.get("MEM0_DEFAULT_USER_ID", "")
+        if env_user_id:
+            return env_user_id
+        if not self._warned_default_user:
+            self.logger.warning(
+                "No user_id found in sly_data or MEM0_DEFAULT_USER_ID; "
+                "falling back to '%s'. All users will share one memory scope.",
+                self._DEFAULT_USER_ID,
+            )
+            self._warned_default_user = True
+        return self._DEFAULT_USER_ID
+
+    def _client(self) -> AsyncMemoryClient:
+        """
+        Return a cached authenticated ``AsyncMemoryClient``, building one on first use.
+
+        The ``MEM0_API_KEY`` environment variable is read once on first call;
+        subsequent calls reuse the same client (and its underlying HTTP
+        session).
+
+        :raises ValueError: If ``MEM0_API_KEY`` is not set on first call.
+        :return: A ready-to-use ``AsyncMemoryClient``.
+        """
+        if self._memory_client is not None:
+            return self._memory_client
+        api_key: str | None = os.environ.get("MEM0_API_KEY")
+        if not api_key:
+            raise ValueError("MEM0_API_KEY environment variable is not set.")
+        self._memory_client = AsyncMemoryClient(api_key=api_key)
+        return self._memory_client

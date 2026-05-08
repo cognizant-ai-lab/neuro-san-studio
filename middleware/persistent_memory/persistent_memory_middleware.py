@@ -52,10 +52,10 @@ class PersistentMemoryMiddleware(AgentMiddleware):
     """
     Wraps ``PersistentMemoryTool`` and plugs it into the agent lifecycle.
 
-    Designed for **local, single-user** usage. Memory is scoped per
-    ``(network, agent)`` — not per user. All users sharing the same agent
-    share the same memory namespace. Multi-tenant / per-user isolation is
-    out of scope; server-side backends are planned separately.
+    Memory is scoped per ``(network, agent)`` by default.  File-based
+    backends (``json_file``, ``markdown_file``) are single-user; all
+    callers share the same namespace.  The ``mem0`` cloud backend adds
+    per-user isolation via ``sly_data["user_id"]``.
 
     :param origin_str:    When ``True`` (the default), asks the framework to
                           inject the runtime dotted call path at startup.
@@ -64,6 +64,8 @@ class PersistentMemoryMiddleware(AgentMiddleware):
                           ``(network, agent)`` memory namespace.
     :param memory_config: HOCON memory settings (store, summarization, and
                           enabled operations). Unknown keys are ignored.
+    :param sly_data:      Per-request data dict injected by the framework;
+                          forwarded to cloud store backends for per-user scoping.
     """
 
     MEMORY_TOOL_NAME: ClassVar[str] = "persistent_memory"
@@ -84,6 +86,7 @@ class PersistentMemoryMiddleware(AgentMiddleware):
         self,
         origin_str: bool | str = True,
         memory_config: dict[str, Any] | None = None,
+        sly_data: dict[str, Any] | None = None,
     ) -> None:
         self.logger: Logger = logging.getLogger(f"{__name__}.{self.__class__.__name__}")
 
@@ -95,9 +98,7 @@ class PersistentMemoryMiddleware(AgentMiddleware):
 
         max_topic_size, summarization_model, personalization = self._parse_summarization_config(summarization_config)
 
-        # ``JsonFileStore`` defaults + sanitizes ``file_name`` on its own;
-        # the markdown backend ignores it. See ``JsonFileStore.__init__``.
-        self._store: TopicStore = TopicStoreFactory.create(store_config)
+        self._store: TopicStore = TopicStoreFactory.create(store_config, sly_data=sly_data)
         self._summarizer: TopicSummarizer = TopicSummarizer(
             model_name=summarization_model,
             personalization=personalization,

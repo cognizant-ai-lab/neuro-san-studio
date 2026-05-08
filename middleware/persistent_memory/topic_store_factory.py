@@ -68,11 +68,17 @@ class TopicStoreFactory:  # pylint: disable=too-few-public-methods
         return str((cls._REPO_ROOT / raw).resolve())
 
     @classmethod
-    def create(cls, config: dict[str, Any] | None) -> TopicStore:
+    def create(
+        cls,
+        config: dict[str, Any] | None,
+        sly_data: dict[str, Any] | None = None,
+    ) -> TopicStore:
         """
         Build the backend named by ``config["backend"]``. Raises on unknown names.
 
-        :param config: Raw ``storage`` dict from HOCON; may be ``None``.
+        :param config:   Raw ``storage`` dict from HOCON; may be ``None``.
+        :param sly_data: Per-request sly_data dict; forwarded to cloud backends
+                         (e.g. ``Mem0Store``) that need per-user scoping.
         :return: A concrete ``TopicStore`` subclass instance.
         """
         data: dict[str, Any] = config or {}
@@ -88,4 +94,15 @@ class TopicStoreFactory:  # pylint: disable=too-few-public-methods
             return JsonFileStore(folder_name=folder_name, file_name=file_name or "")
         if backend == "markdown_file":
             return MarkdownFileStore(folder_name=folder_name)
-        raise ValueError(f"Unknown memory backend '{backend}'. Valid options: ['json_file', 'markdown_file'].")
+        if backend == "mem0":
+            try:
+                from middleware.persistent_memory.mem0_store import Mem0Store  # pylint: disable=import-outside-toplevel  # noqa: I001
+            except ImportError as exc:
+                raise ImportError(
+                    "The 'mem0' memory backend requires the optional 'mem0ai' dependency. "
+                    "Install it with 'pip install mem0ai' and refer to the Mem0 backend "
+                    "setup documentation if additional configuration is required."
+                ) from exc
+
+            return Mem0Store(sly_data=sly_data)
+        raise ValueError(f"Unknown memory backend '{backend}'. Valid options: ['json_file', 'markdown_file', 'mem0'].")
