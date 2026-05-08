@@ -1731,9 +1731,8 @@ end user must see only their own memories.
 The middleware exposes six operations (`create`, `read`, `append`, `delete`,
 `search`, `list`). Each operation is committed as soon as the LLM call
 returns; there is no end-of-turn flush, and a crash mid-turn loses at most
-the in-flight call. Oversized topics are summarized inline under the same
-lock that performed the write, so readers never observe an intermediate
-oversized state.
+the in-flight call. Topic summarization is off by default — opt in by
+adding a `summarization` block to `memory_config`.
 
 Minimal configuration — only `class` is required, and the backend defaults
 to `json_file`. To use `markdown_file` or `mem0`, set the backend explicitly.

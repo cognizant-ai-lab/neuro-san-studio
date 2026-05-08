@@ -37,13 +37,26 @@ Mem0's default ``infer=True`` runs an LLM over the input and may rewrite,
 split, or dedupe the stored text. For a topic-keyed store we want the
 exact text under each topic, so every write pins ``infer=False``.
 
-**Read path: ``search`` not ``get_all``.** On Mem0 cloud, ``infer=False``
-writes land in the embedding/vector store but do **not** appear in
-``get_all`` results — that endpoint returns only LLM-extracted "facts."
-``search`` hits the vector path and surfaces ``infer=False`` entries
-when the same compound identity filter is supplied. We use it with
-``threshold=0`` and a high ``top_k`` so the call returns the whole
-filter-matched set, not the semantic top-N.
+**Read path: ``search`` with the semantic gate disabled.** On Mem0
+cloud, ``infer=False`` writes land in the embedding/vector store but do
+**not** appear in ``get_all`` results — that endpoint returns only
+LLM-extracted "facts." ``search`` hits the vector path and surfaces
+``infer=False`` entries. By design ``search`` applies the v2 compound
+identity filter server-side **and then** a semantic-similarity cutoff
+on top of the embedding match, returning only the top-N most relevant
+hits. A topic-keyed store needs the opposite — every entry under a
+namespace, not the semantically closest ones — so we pass
+``threshold=0`` to disable the semantic gate, leaving only the identity
+filter active, paired with a high ``top_k`` so the full set comes back.
+This is a deliberate workaround: we are using ``search`` as a "list
+all" against the vector path because ``get_all`` cannot see our
+``infer=False`` writes.
+
+Errors from the Mem0 client surface as :class:`mem0.exceptions.MemoryError`
+subclasses (``AuthenticationError``, ``RateLimitError``,
+``MemoryNotFoundError``, ``NetworkError`` …); we catch the base class so
+callers see the Mem0-specific type with its ``error_code`` /
+``suggestion`` attributes intact.
 """
 
 from __future__ import annotations
@@ -54,6 +67,8 @@ from typing import ClassVar
 from typing import override
 
 from mem0 import AsyncMemoryClient  # pylint: disable=import-error
+from mem0.exceptions import ConfigurationError as Mem0ConfigurationError  # pylint: disable=import-error
+from mem0.exceptions import MemoryError as Mem0Error  # pylint: disable=import-error,redefined-builtin
 
 from middleware.persistent_memory.topic_store import TopicStore
 
@@ -143,7 +158,7 @@ class Mem0Store(TopicStore):
             if orphans:
                 try:
                     await client.batch_delete(memories=orphans)
-                except Exception:
+                except Mem0Error:
                     self.logger.error(
                         "Mem0 batch_delete failed (namespace=%s, orphan_count=%d)",
                         namespace,
@@ -200,7 +215,7 @@ class Mem0Store(TopicStore):
             return False
         try:
             await self._client().delete(memory_id=existing_id)
-        except Exception:
+        except Mem0Error:
             self.logger.error(
                 "Mem0 delete failed (namespace=%s, topic=%s, memory_id=%s)",
                 namespace,
@@ -264,7 +279,7 @@ class Mem0Store(TopicStore):
                     infer=False,
                 )
                 self.logger.debug("Added new memory for topic=%s", topic)
-        except Exception:
+        except Mem0Error:
             self.logger.error(
                 "Mem0 upsert failed (namespace=%s, topic=%s)",
                 namespace,
@@ -277,11 +292,13 @@ class Mem0Store(TopicStore):
         """
         Fetch all Mem0 memories for this user/app/agent via vector search.
 
-        Uses ``client.search`` rather than ``client.get_all`` because
-        Mem0 cloud's list path does not return ``infer=False`` writes —
-        only the vector/search path does. ``threshold=0`` disables the
-        semantic relevance cut, so what comes back is the full set
-        matching the v2 compound identity filter.
+        See the module docstring for why we use ``search`` (with the
+        semantic gate disabled via ``threshold=0``) instead of
+        ``get_all``: ``get_all`` cannot see ``infer=False`` writes, and
+        ``search`` would normally apply the identity filter **and then**
+        a semantic-similarity cutoff on top — we want every entry under
+        the namespace, not the semantically closest hits, so the cutoff
+        is disabled and ``top_k`` is set high.
 
         :param namespace: ``"<network>.<agent>"`` key.
         :return: List of Mem0 memory dicts in this namespace.
@@ -299,7 +316,7 @@ class Mem0Store(TopicStore):
                 top_k=self._SEARCH_TOP_K,
                 threshold=0,
             )
-        except Exception:
+        except Mem0Error:
             self.logger.error(
                 "Mem0 search failed (namespace=%s)",
                 namespace,
@@ -399,7 +416,8 @@ class Mem0Store(TopicStore):
         subsequent calls reuse the same client (and its underlying HTTP
         session).
 
-        :raises ValueError: If ``MEM0_API_KEY`` is not set on first call.
+        :raises mem0.exceptions.ConfigurationError: If ``MEM0_API_KEY`` is
+            not set on first call.
         :return: A ready-to-use ``AsyncMemoryClient``.
         """
         if self._memory_client is not None:
@@ -407,6 +425,10 @@ class Mem0Store(TopicStore):
         api_key: str | None = os.environ.get("MEM0_API_KEY")
         if not api_key:
             self.logger.error("MEM0_API_KEY environment variable is not set.")
-            raise ValueError("MEM0_API_KEY environment variable is not set.")
+            raise Mem0ConfigurationError(
+                message="MEM0_API_KEY environment variable is not set.",
+                error_code="CFG_001",
+                suggestion="Export MEM0_API_KEY in the environment before starting the server.",
+            )
         self._memory_client = AsyncMemoryClient(api_key=api_key)
         return self._memory_client

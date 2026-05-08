@@ -65,7 +65,7 @@ required; every other key is optional and falls back to the value below.
                     "folder_name": "memory",        # always resolved relative to the repo root
                     "file_name":   "memory"         # json_file backend only
                 },
-                "summarization": {
+                "summarization": {                       # optional block — omit to leave summarization off (the default)
                     "max_topic_size":  1000,              # 0 disables summarization
                     "model":           "gpt-5.4-mini",
                     "personalization": ""                # appended to the summarizer prompt
@@ -188,10 +188,11 @@ The three keys:
 
 ## Summarization
 
-Topics grow. Left alone, a single topic can balloon past the context
-window. The summarizer consolidates oversized topics inline, under the
-same lock that performed the write, so no concurrent reader ever observes
-the oversized intermediate state.
+Summarization is **off by default** — minimal wiring will not summarize
+anything. To turn it on, add a `summarization` block to `memory_config`.
+Once enabled, the summarizer consolidates oversized topics inline, under
+the same lock that performed the write, so no concurrent reader ever
+observes the oversized intermediate state.
 
 ```hocon
 "summarization": {

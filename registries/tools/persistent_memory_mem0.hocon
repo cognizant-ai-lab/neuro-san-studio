@@ -50,8 +50,8 @@
 # Lifecycle: write-per-call, same as the file-backed backends. Each tool
 # call resolves to a single Mem0 ``add``/``update``/``delete`` call,
 # guarded by a per-topic ``asyncio.Lock`` (different topics on the same
-# agent can write in parallel; same-topic writes serialize). Topics
-# longer than ``max_topic_size`` are summarized inline under the same lock.
+# agent can write in parallel; same-topic writes serialize). Summarization
+# is off by default; enable it by adding the ``summarization`` block below.
 
 {
     include "registries/llm_config.hocon",
@@ -110,7 +110,8 @@ confirm or share the information — do not guess.
                             "storage": {
                                 "backend": "mem0"
                             },
-                            # Summarizer configuration.
+                            # Summarizer configuration. Optional — omit the whole ``summarization`` block to
+                            # leave summarization off (the default).
                             #   ``max_topic_size``:  character threshold past which topics are summarized inline.
                             #   ``model``:           OpenAI model used by the summarizer; failures keep the original.
                             #   ``personalization``: optional sentence appended to the summarizer prompt.

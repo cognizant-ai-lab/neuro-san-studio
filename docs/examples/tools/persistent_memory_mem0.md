@@ -47,8 +47,8 @@ simpler, faster, and have no external dependency. Stay on
 2. **Get a Mem0 API key.** Sign up at <https://app.mem0.ai/> and create a
    key from the dashboard. The store reads the key from the
    `MEM0_API_KEY` environment variable on first use and raises
-   `ValueError` if it is missing; subsequent calls reuse the
-   cached client and HTTP session.
+   `mem0.exceptions.ConfigurationError` if it is missing; subsequent
+   calls reuse the cached client and HTTP session.
 
    ```bash
    export MEM0_API_KEY="m0-..."
@@ -81,7 +81,7 @@ rest mirrors the file-backed variant.
                 "storage": {
                     "backend": "mem0"                    # cloud backend; folder_name and file_name are not applicable
                 },
-                "summarization": {
+                "summarization": {                      # optional block — omit to leave summarization off (the default)
                     "max_topic_size":  1000,             # 0 disables summarization
                     "model":           "gpt-5.4-mini",
                     "personalization": ""                # appended to the summarizer prompt
@@ -113,8 +113,10 @@ Same six operations as the file-backed variant — see the
 
 ## Summarization
 
-Summarization works identically to the file-backed backends — see
-[Summarization in Local docs](persistent_memory_local.md#summarization).
+Summarization is **off by default** — minimal wiring will not summarize
+anything; you must add a `summarization` block to `memory_config` to
+turn it on. Otherwise it works identically to the file-backed backends
+— see [Summarization in Local docs](persistent_memory_local.md#summarization).
 
 ## Quick try
 
@@ -201,9 +203,10 @@ between calls, the next call lands in the new scope.
 │ Mem0Store                                                     │
 │   - Resolves user_id (sly_data → env var → default_user)      │
 │   - Builds an AsyncMemoryClient from MEM0_API_KEY             │
-│   - search with server-side compound filters                  │
-│     {user_id, app_id, agent_id} (threshold=0, top_k=1000)     │
-│   - add / update / delete one entry per topic                 │
+│   - search with server-side compound identity filters         │
+│     {user_id, app_id, agent_id}; threshold=0 disables the     │
+│     semantic gate so search acts as "list all" (top_k=1000)   │
+│   - add / update / delete one entry per topic (infer=False)   │
 └───────────────────────────────────────────────────────────────┘
                │ HTTPS
                ▼
@@ -214,9 +217,12 @@ between calls, the next call lands in the new scope.
 
 ## Debugging
 
-- **`ValueError: MEM0_API_KEY environment variable is not set.`** —
+- **`ConfigurationError: MEM0_API_KEY environment variable is not set.`** —
   the store could not authenticate. Export the key in the same shell
-  that started the server.
+  that started the server. (Other Mem0 client errors surface as
+  `mem0.exceptions.MemoryError` subclasses — `AuthenticationError` for a
+  bad key, `RateLimitError`, `NetworkError`, `MemoryNotFoundError`,
+  etc. — each carrying an `error_code` and `suggestion` you can log.)
 - **Memories disappear between sessions** — the most common cause is
   `user_id` drift. Confirm that `sly_data["user_id"]` is the same on
   both calls (or that `MEM0_DEFAULT_USER_ID` is set the same way). When the
