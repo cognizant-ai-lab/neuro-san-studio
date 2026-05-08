@@ -53,8 +53,7 @@ from typing import Any
 from typing import ClassVar
 from typing import override
 
-# pylint: disable=import-error — mem0ai is an optional dependency not present in the lint environment.
-from mem0 import AsyncMemoryClient  # pylint: disable=import-error
+from mem0 import AsyncMemoryClient
 
 from middleware.persistent_memory.topic_store import TopicStore
 
@@ -144,7 +143,7 @@ class Mem0Store(TopicStore):
             if orphans:
                 try:
                     await client.batch_delete(memories=orphans)
-                except Exception:  # pylint: disable=broad-exception-caught
+                except Exception:
                     self.logger.error(
                         "Mem0 batch_delete failed (namespace=%s, orphan_count=%d)",
                         namespace,
@@ -201,7 +200,7 @@ class Mem0Store(TopicStore):
             return False
         try:
             await self._client().delete(memory_id=existing_id)
-        except Exception:  # pylint: disable=broad-exception-caught
+        except Exception:
             self.logger.error(
                 "Mem0 delete failed (namespace=%s, topic=%s, memory_id=%s)",
                 namespace,
@@ -265,7 +264,7 @@ class Mem0Store(TopicStore):
                     infer=False,
                 )
                 self.logger.debug("Added new memory for topic=%s", topic)
-        except Exception:  # pylint: disable=broad-exception-caught
+        except Exception:
             self.logger.error(
                 "Mem0 upsert failed (namespace=%s, topic=%s)",
                 namespace,
@@ -300,7 +299,7 @@ class Mem0Store(TopicStore):
                 top_k=self._SEARCH_TOP_K,
                 threshold=0,
             )
-        except Exception:  # pylint: disable=broad-exception-caught
+        except Exception:
             self.logger.error(
                 "Mem0 search failed (namespace=%s)",
                 namespace,
