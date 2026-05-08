@@ -53,6 +53,7 @@ from typing import Any
 from typing import ClassVar
 from typing import override
 
+# pylint: disable=import-error — mem0ai is an optional dependency not present in the lint environment.
 from mem0 import AsyncMemoryClient  # pylint: disable=import-error
 
 from middleware.persistent_memory.topic_store import TopicStore
@@ -68,10 +69,10 @@ class Mem0Store(TopicStore):
 
     _DEFAULT_USER_ID: ClassVar[str] = "default_user"
 
-    # Maximum number of memories returned by a single Mem0 ``search`` call.
-    # Mem0 cloud caps ``top_k`` at 1000. For a topic-keyed store this is
-    # well above any realistic count; if a namespace ever approaches the cap
-    # we'd get a partial read, so ``_fetch_for_namespace`` logs a warning.
+    # Mem0 cloud's documented server-side cap on the ``top_k`` parameter.
+    # For a topic-keyed store this is well above any realistic count; if a
+    # namespace ever approaches the cap we'd get a partial read, so
+    # ``_fetch_for_namespace`` logs a warning.
     _SEARCH_TOP_K: ClassVar[int] = 1000
 
     def __init__(self, sly_data: dict[str, Any] | None = None) -> None:
@@ -287,9 +288,11 @@ class Mem0Store(TopicStore):
         :return: List of Mem0 memory dicts in this namespace.
         """
         client: AsyncMemoryClient = self._client()
-        # Mem0 ``search`` requires a non-empty query string. Content is irrelevant
-        # because ``threshold=0`` disables relevance gating — we just need every
-        # memory matching the identity filter, ordered however the API returns.
+        # Mem0 ``search`` requires a non-empty query string. The actual value is
+        # irrelevant because ``threshold=0`` disables relevance gating — we just
+        # need every memory matching the identity filter, ordered however the API
+        # returns. "memory content" is an arbitrary placeholder that satisfies the
+        # non-empty constraint.
         try:
             response: dict[str, Any] = await client.search(
                 query="memory content",
