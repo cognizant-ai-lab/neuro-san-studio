@@ -1,5 +1,5 @@
 .PHONY: help venv install activate venv-guard lint lint-tests format format-tests
-SOURCES := run.py apps coded_tools middleware neuro_san_studio
+SOURCES := apps coded_tools middleware neuro_san_studio
 TESTS   := tests
 .DEFAULT_GOAL := help
 
@@ -82,7 +82,7 @@ lint-check: lint-check-source lint-check-tests
 lint: format lint-check
 
 test: lint ## Run tests with coverage
-	python -m pytest tests/ -v --cov=coded_tools,run.py -m "not integration"
+	python -m pytest tests/ -v --cov=coded_tools --cov=neuro_san_studio -m "not integration"
 
 test-integration: install
 	@. venv/bin/activate && \
