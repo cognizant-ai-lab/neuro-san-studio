@@ -26,7 +26,9 @@ echo "Using python ${PYTHON}"
 PIP=pip3
 echo "Using pip ${PIP}"
 
-# Disable the log bridge plugin: we only start the neuro SAN server here.
+# The Log Bridge plugin aggregates logs from server and client subprocesses, and pretty-prints them.
+# But we only deploy the neuro-san server here, and it has its own logging configuration.
+# So we forcibly disable the log bridge plugin to avoid conflicts.
 export LOGBRIDGE_ENABLED=false
 
 echo "Preparing app..."
