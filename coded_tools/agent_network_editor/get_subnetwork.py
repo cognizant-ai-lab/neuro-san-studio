@@ -46,6 +46,7 @@ class GetSubnetwork(CodedTool):
         subnetworks = await GetSubnetwork.get_subnetworks(sly_data)
         return list(subnetworks.keys())
 
+    # pylint: disable=too-many-locals
     @staticmethod
     async def get_subnetworks(sly_data: dict[str, Any]) -> dict[str, Any]:
         """
