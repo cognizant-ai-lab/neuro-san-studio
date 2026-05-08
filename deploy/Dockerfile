@@ -264,10 +264,17 @@ ENV AGENT_TRACING_METADATA_REQUEST_KEYS=""
 # Only environment variables that are set to something other than the empty string will be forwarded.
 ENV AGENT_TRACING_METADATA_ENV_VARS="POD_NAME POD_NAMESPACE POD_IP NODE_NAME"
 
-# Langfuse observability
+# Langfuse observability plugin.
+# See https://github.com/cognizant-ai-lab/neuro-san-studio/blob/main/neuro_san_studio/plugins/langfuse/README.md
+# for more details.
+
+# "true" or "false" to turn on/off the Langfuse plugin.
 ENV LANGFUSE_ENABLED=""
+# The secrect and public keys for the Langfuse plugin.
+# These can be found in your Langfuse account settings.
 ENV LANGFUSE_SECRET_KEY=""
 ENV LANGFUSE_PUBLIC_KEY=""
+# Langfuse instance URL, e.g. "https://us.cloud.langfuse.com".
 ENV LANGFUSE_HOST=""
 
 # Size of backlog for TCP connections to http server.
