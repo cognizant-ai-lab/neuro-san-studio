@@ -70,7 +70,10 @@ class PersistentMemoryMiddleware(AgentMiddleware):
 
     MEMORY_TOOL_NAME: ClassVar[str] = "persistent_memory"
 
-    _DEFAULT_MAX_TOPIC_SIZE: ClassVar[int] = 1000
+    # 0 = summarization off. Callers opt in by adding a ``summarization``
+    # block with a positive ``max_topic_size``. Keeping the default off means
+    # a minimal HOCON does not silently bring up a ChatOpenAI dependency.
+    _DEFAULT_MAX_TOPIC_SIZE: ClassVar[int] = 0
 
     _MEMORY_CONFIG_KEYS: ClassVar[frozenset[str]] = frozenset({"storage", "summarization", "enabled_operations"})
     _SUMMARIZATION_CONFIG_KEYS: ClassVar[frozenset[str]] = frozenset({"max_topic_size", "model", "personalization"})

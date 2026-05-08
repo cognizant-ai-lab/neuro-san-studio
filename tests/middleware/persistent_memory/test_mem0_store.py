@@ -92,9 +92,10 @@ class Mem0StoreTests(TestCase):
 
     def test_empty_sly_data_falls_back(self) -> None:
         """Empty sly_data dict falls back to env var / default."""
-        os.environ.pop("MEM0_DEFAULT_USER_ID", None)
-        store = Mem0Store(sly_data={})
-        self.assertEqual(store.user_id, "default_user")
+        with patch.dict(os.environ, {}, clear=False):
+            os.environ.pop("MEM0_DEFAULT_USER_ID", None)
+            store = Mem0Store(sly_data={})
+            self.assertEqual(store.user_id, "default_user")
 
     def test_factory_creates_mem0_store(self) -> None:
         """backend='mem0' yields a Mem0Store instance."""
@@ -110,9 +111,10 @@ class Mem0StoreTests(TestCase):
 
     def test_factory_sly_data_none_by_default(self) -> None:
         """No sly_data → falls back to default_user."""
-        os.environ.pop("MEM0_DEFAULT_USER_ID", None)
-        store = TopicStoreFactory.create({"backend": "mem0"})
-        self.assertEqual(store.user_id, "default_user")
+        with patch.dict(os.environ, {}, clear=False):
+            os.environ.pop("MEM0_DEFAULT_USER_ID", None)
+            store = TopicStoreFactory.create({"backend": "mem0"})
+            self.assertEqual(store.user_id, "default_user")
 
     def test_read_topic_returns_content(self) -> None:
         """_read_topic returns the memory text for a matching topic."""

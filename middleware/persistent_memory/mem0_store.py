@@ -251,8 +251,7 @@ class Mem0Store(TopicStore):
         """
         Update an existing Mem0 entry or add a new one.
 
-        New entries always pin ``infer=False`` so Mem0 stores the exact
-        text the caller supplied instead of running an LLM-driven rewrite.
+        ``add`` pins ``infer=False`` to skip the LLM rewrite.
 
         :param namespace:   ``"<network>.<agent>"`` key.
         :param topic:       Topic name, stored in metadata.
