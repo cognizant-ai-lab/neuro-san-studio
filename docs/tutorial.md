@@ -79,7 +79,6 @@ Below is a simplified view of the reference project structure. You can adapt it 
 
 ```bash
 .
-├── README.md
 ├── coded_tools
 │   └── basic
 │     └── advanced_calculator
@@ -87,23 +86,24 @@ Below is a simplified view of the reference project structure. You can adapt it 
 ├── logs
 │   ├── client.log
 │   └── server.log
+├── neuro_san_studio
+│   └── run.py
 ├── registries
 │   ├── basic
 │   │      └── advanced_calculator.hocon
 │   └── manifest.hocon
-├── requirements.txt
-├── run.py
+├── README.md
+└── requirements.txt
 ```
 
 ### Key directories and files
 
 * `coded_tools/`: Contains custom-coded tool classes (e.g., `calculator_tool.py`).
-* `registries/`: Holds `.hocon` files that define multi-agent networks and their configurations.
 * `logs/`: Where client and server logs are written.
-* `run.py`: A starter script to run the server and the web client.
+* `neuro_san_studio/run.py`: A starter script to run the server and the web client.
+* `registries/`: Holds `.hocon` files that define multi-agent networks and their configurations.
 
-* Here are the detailed [instructions](https://github.com/cognizant-ai-lab/neuro-san-studio/blob/main/README.md) to run
-an agent network along with a web client.
+Here are the detailed [instructions](../README.md) to run an agent network along with a web client.
 
 ---
 
@@ -129,8 +129,7 @@ source venv/bin/activate && export PYTHONPATH=`pwd`
 pip install -r requirements.txt
 ```
 
-Please find the detailed [instructions](https://github.com/cognizant-ai-lab/neuro-san-studio/blob/main/README.md) to
-run an agent network along with a web client.
+Please find the detailed [instructions](../README.md) to run an agent network along with a web client.
 
 Note: You may need to adapt the filenames if versions differ.
 
@@ -229,7 +228,7 @@ you also link to or embed the coded tool).
 # Make sure your venv is active
 export AGENT_MANIFEST_FILE="./registries/manifest.hocon"
 export AGENT_TOOL_PATH="./coded_tools"
-python -m run
+python -m neuro_san_studio.run
 ```
 
 Since this agent has no further sub-agents or coded tools, it will simply respond to queries but won’t be able to do
@@ -426,7 +425,7 @@ of the LLMs.
 ```bash
 export AGENT_MANIFEST_FILE="./registries/manifest.hocon"
 export AGENT_TOOL_PATH="./coded_tools"
-python -m run
+python -m neuro_san_studio.run
 ```
 
 Now, the top-level **Math Geek** agent will parse user queries, pass them to **problem_formulator**, which in turn calls
@@ -949,7 +948,7 @@ of the user guide.
 By default, when you run:
 
 ```bash
-python -m run
+python -m neuro_san_studio.run
 ```
 
 * The server logs go to logs/server.log.
@@ -965,7 +964,7 @@ Additionally, you will see logs on your terminal. Checking these files is useful
 
 ## 10. How to Stop the servers
 
-When you are running the server in the foreground (via `python -m run`), simply press:
+When you are running the server in the foreground (via `python -m neuro_san_studio.run`), simply press:
 
 * `CTRL + C` on Windows/Mac/Linux terminals
 * This will terminate both the Flask web client server and the `neuro_san` server gracefully.
