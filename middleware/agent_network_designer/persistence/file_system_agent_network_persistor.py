@@ -25,6 +25,8 @@ from middleware.agent_network_designer.persistence.agent_network_persistor impor
 from middleware.agent_network_designer.persistence.hocon_agent_network_assembler import HoconAgentNetworkAssembler
 
 DEFAULT_SUBDIRECTORY: str = "generated"
+DEFAULT_REGISTRIES_DIR: str = "registries"
+MANIFEST_FILENAME: str = "manifest.hocon"
 
 
 class FileSystemAgentNetworkPersistor(AgentNetworkPersistor):
@@ -39,9 +41,11 @@ class FileSystemAgentNetworkPersistor(AgentNetworkPersistor):
 
         :param demo_mode: Whether to include demo mode instructions for agents
         :param subdirectory: The subdirectory under output_path where networks are saved.
+                Leading and trailing slashes are stripped so callers can pass either
+                "generated" or "generated/" interchangeably.
         """
         self.demo_mode: bool = demo_mode
-        self.subdirectory: str = subdirectory
+        self.subdirectory: str = subdirectory.strip("/")
 
         # Derive output_path from the first file listed in AGENT_MANIFEST_FILE
         agent_manifest_file: str = os.environ.get("AGENT_MANIFEST_FILE", "")
@@ -50,8 +54,8 @@ class FileSystemAgentNetworkPersistor(AgentNetworkPersistor):
             self.output_path: str = os.path.dirname(parts[0])
             self.main_manifest_path: str = parts[0]
         else:
-            self.output_path = "registries"
-            self.main_manifest_path = os.path.join("registries", "manifest.hocon")
+            self.output_path = DEFAULT_REGISTRIES_DIR
+            self.main_manifest_path = os.path.join(DEFAULT_REGISTRIES_DIR, MANIFEST_FILENAME)
 
     def get_assembler(self) -> AgentNetworkAssembler:
         """
@@ -85,7 +89,7 @@ class FileSystemAgentNetworkPersistor(AgentNetworkPersistor):
             await file.write(the_agent_network_hocon_str)
 
         # Update the manifest.hocon file
-        manifest_path: Path = Path(self.output_path) / self.subdirectory / "manifest.hocon"
+        manifest_path: Path = Path(self.output_path) / self.subdirectory / MANIFEST_FILENAME
 
         # Create the generated directory if it doesn't exist
         manifest_path.parent.mkdir(parents=True, exist_ok=True)
@@ -148,7 +152,7 @@ class FileSystemAgentNetworkPersistor(AgentNetworkPersistor):
         content: str = await TextFileReader.async_read_text_file(self.main_manifest_path)
 
         registries_name: str = os.path.basename(self.output_path)
-        include_line: str = f'include "{registries_name}/{self.subdirectory}/manifest.hocon",'
+        include_line: str = f'include "{registries_name}/{self.subdirectory}/{MANIFEST_FILENAME}",'
 
         if include_line in content:
             return None

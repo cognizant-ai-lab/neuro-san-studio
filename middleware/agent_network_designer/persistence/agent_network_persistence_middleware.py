@@ -223,7 +223,7 @@ class AgentNetworkPersistenceMiddleware(AgentMiddleware):
             # For reservations, assemble a deployable config instead of HOCON.
             assembler: AgentNetworkAssembler = persistor.get_assembler()
             # The persisted content for reservations is config.
-            persisted_content: dict[str | Any] = await assembler.assemble_agent_network(
+            persisted_content: dict[str, Any] = await assembler.assemble_agent_network(
                 network_def, top_agent_name, agent_network_name, sample_queries
             )
         # Persist the agent network
