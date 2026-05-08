@@ -27,8 +27,8 @@ from pytest import MonkeyPatch
 from neuro_san_studio.run import NeuroSanRunner
 
 
-class TestValidateYesNoInput:
-    """Tests for NeuroSanRunner._validate_yes_no_input."""
+class TestNeuroSanRunner:
+    """Tests for NeuroSanRunner"""
 
     @staticmethod
     def _make_runner() -> NeuroSanRunner:

@@ -450,10 +450,20 @@ class NeuroSanRunner:
         Returns True for yes/y, False for no/n or after max_attempts invalid
         responses. Input is stripped and lower-cased before comparison.
         """
+        if max_attempts < 1:
+            raise ValueError("max_attempts must be at least 1")
+
         valid_yes = {"yes", "y"}
         valid_no = {"no", "n"}
         for attempt in range(max_attempts):
-            raw = input(prompt).strip().lower()
+            try:
+                raw = input(prompt).strip().lower()
+            except EOFError:
+                print("No input available. Considering the answer is 'no'.")
+                return False
+            except KeyboardInterrupt:
+                print("\nInput interrupted. Considering the answer is 'no'.")
+                return False
             if raw in valid_yes:
                 return True
             if raw in valid_no:
