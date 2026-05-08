@@ -94,7 +94,7 @@
     # - Use non-default ports for the neuro-san HTTP and nsflow servers.
     #   The default ports are 8080 for HTTP and 4173 for nsflow.
     #   For example, you can run:
-    #     python -m run --server-http-port 8081 --nsflow-port 4174
+    #     python -m neuro_san_studio.run --server-http-port 8081 --nsflow-port 4174
     "agent_network_architect.hocon": false,
 
 }

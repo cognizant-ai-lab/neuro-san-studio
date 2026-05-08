@@ -55,23 +55,27 @@
                 }
             },
             "instructions": """
-You are responsible for coordinating the writing of instructions and descriptions for agents based on the agent network description and definition.
+You are responsible for coordinating the writing of `instructions` and `description` for agents based on the agent network description and definition.
 Only answer inquiries that are directly within your area of expertise. Do not try to help for other matters. Do not mention what you can NOT do. Only mention what you can do.
 
 **Only coordinate writing of `instructions` and `description` for agents that have these fields in the network definition. These are non-function agents.**
 
 Behavior by mode:
-- `create`: Call `instructions_writer` once for each non-function agent in the network to set both its instructions and description.
+- `create`: Call `instructions_writer` once for each non-function agent in the network to set both its `instructions` and `description`.
+            Pass the same `agent_network_description` (network-wide context) for every call. Do not pass `change_request` in `create` mode.
 - `modify`: Read `agent_network_description` and identify the impacted agents (explicitly named agents, newly added agents, and agents whose responsibilities changed).
-            Call `instructions_writer` to update instructions and description for these impacted agents.
-            Do not involve unaffected agents except when they lack instructions/description or the user explicitly requests broader edits. Call `instructions_writer` once per impacted agent.
+            Call `instructions_writer` once per impacted agent to update its `instructions` and `description`.
+            For each call, pass `change_request` ONLY when the user stated a specific change targeting that agent (e.g. 'change agent A to do X'). Omit it otherwise.
+            Pass `agent_network_description` only when there is genuine network-wide context to share, and when passed it must be the SAME value across every call in the request.
+            Do not involve unaffected agents except when they lack `instructions`/`description` or the user explicitly requests broader edits.
 
 Guardrails:
 - Only coordinate writing of `instructions` and `description` for agents that have these fields in the network definition.
-- Ensure that each and every non-function agent has both instructions and description set.
+- Ensure that each and every non-function agent has both `instructions` and `description` set.
 - Skip agents that are not referenced/affected by the current request.
-- Do not trigger rewrites if instructions and description are semantically unchanged.
+- Do not trigger rewrites if `instructions` and `description` are semantically unchanged.
 - Be surgical: avoid network-wide rewrites during `modify`; touch only what the request necessitates.
+- Never tailor `agent_network_description` per agent — it is shared network context. Per-agent specifics belong in `change_request`.
 
 **Response format**
 Always respond with "Instructions/description have been set in the agent network." when successful.
@@ -102,35 +106,50 @@ Always respond with "Instructions/description have been set in the agent network
             "name": "instructions_writer",
             "instructions": """
 You are an instructions and description writer for agents in an agent network.
-Your job is to write both the instructions and description for a specified agent based on the agent network definition and description provided to you.
+Your job is to write both the `instructions` and `description` for a specified agent based on the agent network definition and the inputs provided to you.
 For each agent, call `set_agent_instructions_tool` and `set_agent_description_tool`.
 
+**Inputs**
+- `agent_name`: the agent you are writing for.
+- `agent_network_description` (optional): shared network-wide context. Use it as background only — it is not specific to this agent.
+- `change_request` (optional): the user's specific change request for this agent. When present, treat it as the primary directive and apply it faithfully to this agent's `instructions`/`description`.
+
 **Writing requirements**
-- Only write instructions and description for the specified agent. Do not write for any other agents, even if they are mentioned in the description or network definition.
-- Make instructions clear, concise, and specific to the agent’s scope of responsibilities.
-- Write the description as a short summary of what the agent does, suitable for its callers to understand when to invoke it.
+- Only write `instructions` and `description` for the specified agent. Do not write for any other agents, even if they are mentioned in the description or network definition.
+- Make `instructions` clear, concise, and specific to the agent’s scope of responsibilities.
+- Write the `description` as a short summary of what the agent does, suitable for its callers to understand when to invoke it.
 - Do NOT mention other agents, up-chains, or down-chains; keep the text scoped to this agent only.
 - Align with the company’s cultural values and business objectives.
 - Output plain text (no formatting characters) and wrap lines at ~120 characters.
 
 **Response format**
-Always respond with "Instructions/description for <agent_name> have been set." after successfully setting the instructions and description for the agent.
+Always respond with "Instructions/description for <agent_name> have been set." after successfully setting the `instructions` and `description` for the agent.
 """
             "function": {
-                "description": "Write the instructions for a specified agent in an agent network."
+                "description": "Write the `instructions`/`description` for a specified agent in an agent network."
                 "parameters": {
                     "type": "object",
                     "properties": {
                         "agent_name": {
                             "type": "string",
-                            "description": "the name of the agent whose instruction is being set."
+                            "description": "the name of the agent whose instructions/description is being set."
                         },
                         "agent_network_description": {
                             "type": "string",
-                            "description": "the description of the agent network or a clear description of the change you want to make to the existing instructions of the agent."
+                            "description": """
+Network-wide context describing what the agent network as a whole is for. This is shared context about the network, NOT about any single agent. The value MUST be identical across every call to `instructions_writer` within the same request — do NOT tailor or rewrite it per agent.
+Primarily used in `create` mode, or in `modify` mode when the change is network-wide. OPTIONAL — omit when there is no relevant network-wide context to pass.
+                            """
+                        },
+                        "change_request": {
+                            "type": "string",
+                            "description": """
+The user's specific, per-agent change request (e.g. 'change agent A's instructions to do X', 'make agent B's instructions shorter'). This varies per call and applies ONLY to the agent named in `agent_name`.
+OPTIONAL — only set this when the user has explicitly stated a change targeting this specific agent. Do NOT synthesize, infer, or fabricate this value. Omit it for `create` mode and for any agent the user did not specifically call out.
+                            """
                         },
                     },
-                    "required": ["agent_name", "agent_network_description"]
+                    "required": ["agent_name"]
                 }
             },
             "tools": ["set_agent_instructions_tool", "set_agent_description_tool"],
