@@ -35,7 +35,7 @@ Mixing the two patterns yields a 400 from ``/v3/memories/add/``.
 
 Mem0's default ``infer=True`` runs an LLM over the input and may rewrite,
 split, or dedupe the stored text. For a topic-keyed store we want the
-exact text under each topic, so every write pins ``infer=False``.
+exact text under each topic, so every ``add`` pins ``infer=False``.
 
 **Read path: ``search`` with the semantic gate disabled.** On Mem0
 cloud, ``infer=False`` writes land in the embedding/vector store but do
@@ -63,6 +63,8 @@ from __future__ import annotations
 
 import os
 from typing import Any
+from typing import Awaitable
+from typing import Callable
 from typing import ClassVar
 from typing import override
 
@@ -240,6 +242,60 @@ class Mem0Store(TopicStore):
             for m in memories
             if m.get("metadata", {}).get("topic")
         }
+
+    @override
+    async def search_topics(
+        self,
+        namespace: str,
+        query: str,
+        limit: int = 5,
+        post_read_factory: Callable[[str], Callable[[str], Awaitable[str | None]] | None] | None = None,
+    ) -> list[dict[str, Any]]:
+        """
+        Vector-rank topics via Mem0's semantic search.
+
+        Overrides the base-class keyword ranker: passes the LLM-supplied
+        ``query`` straight to Mem0's vector path with the identity filter
+        active and the semantic gate at its server default. Mem0 ranks
+        by embedding similarity; we reshape hits into the standard
+        ``{topic, content, score}`` envelope the tool layer expects.
+
+        :param namespace:         ``"<network>.<agent>"`` key.
+        :param query:             LLM-supplied search query.
+        :param limit:             Max hits to return.
+        :param post_read_factory: Optional factory returning a per-topic
+                                  post-read callback, same semantics as the
+                                  base class.
+        :return: List of dicts with ``topic``, ``content``, and ``score`` keys.
+        """
+        async with await self._lock_for(self._list_lock_key(namespace)):
+            client: AsyncMemoryClient = self._client()
+            try:
+                response: dict[str, Any] = await client.search(
+                    query=query,
+                    filters=self._identity_filters(namespace),
+                    top_k=limit,
+                )
+            except Mem0Error:
+                self.logger.error(
+                    "Mem0 vector search failed (namespace=%s)",
+                    namespace,
+                    exc_info=True,
+                )
+                raise
+            memories: list[dict[str, Any]] = response.get("results", [])
+        results: list[dict[str, Any]] = [
+            {
+                "topic": m.get("metadata", {}).get("topic", ""),
+                "content": m.get("memory", ""),
+                "score": m.get("score", 0.0),
+            }
+            for m in memories
+            if m.get("metadata", {}).get("topic")
+        ]
+        if post_read_factory is None:
+            return results
+        return await self._rewrite_search_results(namespace, results, post_read_factory)
 
     async def _upsert(
         self,

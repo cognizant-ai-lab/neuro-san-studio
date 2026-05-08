@@ -162,6 +162,42 @@ class Mem0StoreTests(TestCase):
         self.assertEqual(kwargs.get("threshold"), 0)
         self.assertGreaterEqual(kwargs.get("top_k", 0), 100)
 
+    def test_search_topics_passes_real_query_to_mem0(self) -> None:
+        """search_topics sends the LLM query to Mem0 with the semantic gate at its server default."""
+        memories = [
+            {
+                "id": "mem-1",
+                "memory": "drinks black coffee, no sugar",
+                "metadata": {"topic": "mike"},
+                "score": 0.87,
+            },
+        ]
+        store = self._make_store()
+        client = self._mock_client(memories)
+        with patch.object(store, "_client", return_value=client):
+            results = asyncio.run(store.search_topics(self._NAMESPACE, "black coffee", limit=3))
+        client.search.assert_awaited_once()
+        kwargs = client.search.await_args.kwargs
+        self.assertEqual(kwargs.get("query"), "black coffee")
+        self.assertEqual(kwargs.get("top_k"), 3)
+        self.assertEqual(
+            kwargs.get("filters"),
+            {
+                "AND": [
+                    {"user_id": "test_user"},
+                    {"app_id": self._APP_ID},
+                    {"agent_id": self._AGENT_ID},
+                ],
+            },
+        )
+        # Vector ranking path: ``threshold`` must NOT be pinned to 0 (that
+        # would disable the semantic gate and turn this back into list-all).
+        self.assertNotEqual(kwargs.get("threshold", None), 0)
+        self.assertEqual(
+            results,
+            [{"topic": "mike", "content": "drinks black coffee, no sugar", "score": 0.87}],
+        )
+
     def test_write_topic_calls_add_with_infer_false(self) -> None:
         """_write_topic.add pins infer=False and passes identity at the top level."""
         store = self._make_store()
