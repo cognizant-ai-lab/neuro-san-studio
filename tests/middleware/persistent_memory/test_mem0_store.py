@@ -135,6 +135,42 @@ class Mem0StoreTests(TestCase):
             result = asyncio.run(store._read_topic(self._NAMESPACE, "mike"))  # pylint: disable=protected-access
         self.assertIsNone(result)
 
+    def test_find_memory_uses_metadata_topic_filter(self) -> None:
+        """_find_memory issues a targeted ``search`` with metadata.topic in the AND filter."""
+        memories = [
+            {"id": "mem-1", "memory": "black coffee", "metadata": {"topic": "mike"}},
+        ]
+        store = self._make_store()
+        client = self._mock_client(memories)
+        with patch.object(store, "_client", return_value=client):
+            asyncio.run(store._find_memory(self._NAMESPACE, "mike"))  # pylint: disable=protected-access
+        client.search.assert_awaited_once()
+        kwargs = client.search.await_args.kwargs
+        self.assertEqual(
+            kwargs.get("filters"),
+            {
+                "AND": [
+                    {"user_id": "test_user"},
+                    {"app_id": self._APP_ID},
+                    {"agent_id": self._AGENT_ID},
+                    {"metadata": {"topic": "mike"}},
+                ],
+            },
+        )
+        # Targeted lookup: top_k=1 is enough — server narrows to the one entry.
+        self.assertEqual(kwargs.get("top_k"), 1)
+
+    def test_find_memory_returns_none_on_topic_mismatch(self) -> None:
+        """If Mem0 ever ignores the metadata filter, a wrong-topic hit is rejected."""
+        # Server returned an entry for a different topic — defensive post-check.
+        memories = [
+            {"id": "mem-9", "memory": "something else", "metadata": {"topic": "alice"}},
+        ]
+        store = self._make_store()
+        with patch.object(store, "_client", return_value=self._mock_client(memories)):
+            result = asyncio.run(store._find_memory(self._NAMESPACE, "mike"))  # pylint: disable=protected-access
+        self.assertIsNone(result)
+
     def test_fetch_uses_search_with_compound_filter(self) -> None:
         """_fetch_for_namespace calls ``search`` with the v2 compound identity filter."""
         store = self._make_store()

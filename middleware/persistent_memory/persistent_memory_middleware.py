@@ -179,6 +179,8 @@ class PersistentMemoryMiddleware(AgentMiddleware):
             name=self.MEMORY_TOOL_NAME,
             description=(
                 "Persistent long-term memory for facts that must survive across sessions. "
+                "Only use this tool when the current conversation context does not contain "
+                "the information needed to answer the user's question. "
                 "Pass 'topic' on every call to "
                 "name the slice of memory (e.g. 'coffee_preference', 'role'). "
                 "Call with 'operation' set to one of: "
@@ -362,6 +364,9 @@ class PersistentMemoryMiddleware(AgentMiddleware):
             f"You have a '{cls.MEMORY_TOOL_NAME}' tool for facts that must survive "
             "across turns and sessions.\n\n"
             "Rules:\n"
+            "- Only call the memory tool when the current conversation context does not "
+            "contain the information needed. If the answer is already in the chat, "
+            "respond directly without using memory.\n"
             "- Topic keys and content come from the user — never invent them.\n"
             "- Report only what the tool returns; never fabricate memories.\n"
             "- When you do need memory, start by calling 'list', then 'search' with relevant "

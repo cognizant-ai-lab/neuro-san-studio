@@ -335,11 +335,35 @@ class Mem0Store(TopicStore):
         """
         Return the Mem0 memory dict for ``topic``, or ``None`` if absent.
 
+        Issues a targeted ``search`` with ``metadata.topic`` added to the
+        compound identity filter so the server returns only the matching
+        entry — avoids pulling the entire namespace for single-topic
+        lookups (the previous behavior). The post-fetch topic check is a
+        safety net: if Mem0 ever silently ignores the metadata clause and
+        hands back a different entry, we return ``None`` rather than
+        treating a wrong topic as a hit.
+
         :param namespace: ``"<network>.<agent>"`` key.
         :param topic:     Topic name to locate.
         :return: The memory dict, or ``None`` if no entry matches.
         """
-        for memory in await self._fetch_for_namespace(namespace):
+        client: AsyncMemoryClient = self._client()
+        try:
+            response: dict[str, Any] = await client.search(
+                query="memory content",
+                filters=self._identity_filters(namespace, topic=topic),
+                top_k=1,
+                threshold=0,
+            )
+        except Mem0Error:
+            self.logger.error(
+                "Mem0 lookup failed (namespace=%s, topic=%s)",
+                namespace,
+                topic,
+                exc_info=True,
+            )
+            raise
+        for memory in response.get("results", []):
             if memory.get("metadata", {}).get("topic") == topic:
                 return memory
         return None
@@ -355,26 +379,31 @@ class Mem0Store(TopicStore):
         match: dict[str, Any] | None = await self._find_memory(namespace, topic)
         return match.get("id") if match else None
 
-    def _identity_filters(self, namespace: str) -> dict[str, Any]:
+    def _identity_filters(self, namespace: str, topic: str | None = None) -> dict[str, Any]:
         """
         Build the Mem0 v2 compound ``filters`` dict for read/delete ops.
 
         ``user_id``, ``app_id`` (network), and ``agent_id`` (agent name)
         are kept as separate clauses so each is a real Mem0 server-side
         filter dimension — the dashboard and ``delete_users(...)`` admin
-        ops can target either independently.
+        ops can target either independently. When ``topic`` is given, an
+        additional ``metadata.topic`` clause is appended so single-topic
+        lookups don't pull the whole namespace.
 
         :param namespace: ``"<network>.<agent>"`` key.
+        :param topic:     Optional topic name; when present, narrows the
+                          filter to that single ``metadata.topic`` value.
         :return: ``filters`` dict suitable for Mem0 v3 list/search/delete.
         """
         app_id, agent_id = self._split_namespace(namespace)
-        return {
-            "AND": [
-                {"user_id": self._user_id()},
-                {"app_id": app_id},
-                {"agent_id": agent_id},
-            ],
-        }
+        clauses: list[dict[str, Any]] = [
+            {"user_id": self._user_id()},
+            {"app_id": app_id},
+            {"agent_id": agent_id},
+        ]
+        if topic is not None:
+            clauses.append({"metadata": {"topic": topic}})
+        return {"AND": clauses}
 
     @property
     def user_id(self) -> str:
