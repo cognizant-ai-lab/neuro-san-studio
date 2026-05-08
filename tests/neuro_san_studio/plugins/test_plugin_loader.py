@@ -19,6 +19,8 @@
 import os
 import tempfile
 
+import pytest
+
 from neuro_san_studio.interfaces.base_plugin import BasePlugin
 from neuro_san_studio.plugins.plugin_loader import PluginLoader
 
@@ -256,20 +258,12 @@ class TestIsEnabled:  # pylint: disable=protected-access
         """Test that a missing 'enabled' key defaults to True."""
         assert PluginLoader._is_enabled({}) is True
 
-    def test_string_true_variants(self):
+    @pytest.mark.parametrize("value", ["true", "True", "TRUE", "1", "yes", "Yes"])
+    def test_string_true_variants(self, value):
         """Test that string truthy values are recognized."""
-        assert PluginLoader._is_enabled({"enabled": "true"}) is True
-        assert PluginLoader._is_enabled({"enabled": "True"}) is True
-        assert PluginLoader._is_enabled({"enabled": "TRUE"}) is True
-        assert PluginLoader._is_enabled({"enabled": "1"}) is True
-        assert PluginLoader._is_enabled({"enabled": "yes"}) is True
-        assert PluginLoader._is_enabled({"enabled": "Yes"}) is True
+        assert PluginLoader._is_enabled({"enabled": value}) is True
 
-    def test_string_false_variants(self):
+    @pytest.mark.parametrize("value", ["false", "False", "FALSE", "0", "no", ""])
+    def test_string_false_variants(self, value):
         """Test that string falsy values are recognized."""
-        assert PluginLoader._is_enabled({"enabled": "false"}) is False
-        assert PluginLoader._is_enabled({"enabled": "False"}) is False
-        assert PluginLoader._is_enabled({"enabled": "FALSE"}) is False
-        assert PluginLoader._is_enabled({"enabled": "0"}) is False
-        assert PluginLoader._is_enabled({"enabled": "no"}) is False
-        assert PluginLoader._is_enabled({"enabled": ""}) is False
+        assert PluginLoader._is_enabled({"enabled": value}) is False
