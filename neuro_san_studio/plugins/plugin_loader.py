@@ -18,7 +18,7 @@
 Shared utility for loading plugins from a HOCON configuration file.
 
 Used by both the runner (run.py) and the server wrapper
-(neuro_san_server_wrapper.py) to avoid duplicating the loading logic.
+(neuro_san_studio/runner/neuro_san_server_wrapper.py) to avoid duplicating the loading logic.
 """
 
 import importlib

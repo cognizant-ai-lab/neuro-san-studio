@@ -50,6 +50,6 @@ echo "DIAGNOSTIC: Dumping sys.path and PYTHONPATH before server start..."
 ${PYTHON} -c "import sys, os; print('DIAGNOSTIC sys.path:', sys.path); print('DIAGNOSTIC PYTHONPATH:', os.environ.get('PYTHONPATH'))"
 
 echo "Starting service with args '$1'..."
-${PYTHON} "${APP_SOURCE}"/servers/neuro_san/neuro_san_server_wrapper.py "$@"
+${PYTHON} "${APP_SOURCE}"/neuro_san_studio/runner/neuro_san_server_wrapper.py "$@"
 
 echo "Done."
