@@ -53,7 +53,7 @@ from typing import Any
 from typing import ClassVar
 from typing import override
 
-from mem0 import AsyncMemoryClient
+from mem0 import AsyncMemoryClient  # pylint: disable=import-error
 
 from middleware.persistent_memory.topic_store import TopicStore
 
@@ -137,9 +137,7 @@ class Mem0Store(TopicStore):
             # Remove topics that are no longer in the provided memory dict, in
             # one batch round trip rather than one delete per orphan.
             orphans: list[dict[str, str]] = [
-                {"memory_id": memory_id}
-                for topic, memory_id in existing_by_topic.items()
-                if topic not in memory
+                {"memory_id": memory_id} for topic, memory_id in existing_by_topic.items() if topic not in memory
             ]
             if orphans:
                 await client.batch_delete(memories=orphans)
