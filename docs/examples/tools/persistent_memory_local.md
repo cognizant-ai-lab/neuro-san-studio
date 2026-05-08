@@ -222,7 +222,7 @@ All six operations are available by default. Narrow the whitelist to
 constrain the LLM:
 
 ```hocon
-"enabled_operations": ["read", "search", "list", "delete", "append", "create"]
+"enabled_operations": ["read", "search", "list"]
 ```
 
 The JSON-schema `enum` visible to the LLM is narrowed at startup — it
@@ -270,7 +270,7 @@ tools".
 
 Each agent gets its own slice of disk so memories never leak between agents
 or networks. The slice is identified by a `(network, agent)` pair — for
-example, a `MemoryAssistant` in the `memory_tutorial` network writes to
+example, a `MemoryAssistant` in the `persistent_memory_local` network writes to
 `./memory/persistent_memory_local/MemoryAssistant/`.
 
 The middleware figures out this pair automatically from the agent's

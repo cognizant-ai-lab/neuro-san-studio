@@ -68,9 +68,10 @@ class Mem0Store(TopicStore):
 
     _DEFAULT_USER_ID: ClassVar[str] = "default_user"
 
-    # Mem0 cloud caps ``search`` at ``top_k=1000``. For a topic-keyed store
-    # this is well above any realistic count; if a namespace ever approaches
-    # this we'd see a partial read, so the fetch logs a warning at the cap.
+    # Maximum number of memories returned by a single Mem0 ``search`` call.
+    # Mem0 cloud caps ``top_k`` at 1000. For a topic-keyed store this is
+    # well above any realistic count; if a namespace ever approaches the cap
+    # we'd get a partial read, so ``_fetch_for_namespace`` logs a warning.
     _SEARCH_TOP_K: ClassVar[int] = 1000
 
     def __init__(self, sly_data: dict[str, Any] | None = None) -> None:
@@ -140,7 +141,16 @@ class Mem0Store(TopicStore):
                 {"memory_id": memory_id} for topic, memory_id in existing_by_topic.items() if topic not in memory
             ]
             if orphans:
-                await client.batch_delete(memories=orphans)
+                try:
+                    await client.batch_delete(memories=orphans)
+                except Exception:  # pylint: disable=broad-exception-caught
+                    self.logger.error(
+                        "Mem0 batch_delete failed (namespace=%s, orphan_count=%d)",
+                        namespace,
+                        len(orphans),
+                        exc_info=True,
+                    )
+                    raise
                 self.logger.debug("save_all: batch-deleted %d orphan topic(s)", len(orphans))
 
             # Upsert every topic in the provided memory dict.
@@ -188,7 +198,17 @@ class Mem0Store(TopicStore):
         existing_id: str | None = await self._find_memory_id(namespace, topic)
         if existing_id is None:
             return False
-        await self._client().delete(memory_id=existing_id)
+        try:
+            await self._client().delete(memory_id=existing_id)
+        except Exception:  # pylint: disable=broad-exception-caught
+            self.logger.error(
+                "Mem0 delete failed (namespace=%s, topic=%s, memory_id=%s)",
+                namespace,
+                topic,
+                existing_id,
+                exc_info=True,
+            )
+            raise
         return True
 
     @override
@@ -226,23 +246,32 @@ class Mem0Store(TopicStore):
         """
         client: AsyncMemoryClient = self._client()
         metadata: dict[str, str] = {"topic": topic}
-        if existing_id is not None:
-            await client.update(memory_id=existing_id, text=content, metadata=metadata)
-            self.logger.debug("Updated memory %s (topic=%s)", existing_id, topic)
-        else:
-            # ``add`` takes identity fields at the top level; ``get_all`` /
-            # ``search`` / ``delete_all`` require them inside ``filters``.
-            # Mixing the two yields a 400 from /v3/memories/add/.
-            app_id, agent_id = self._split_namespace(namespace)
-            await client.add(
-                messages=content,
-                user_id=self._user_id(),
-                app_id=app_id,
-                agent_id=agent_id,
-                metadata=metadata,
-                infer=False,
+        try:
+            if existing_id is not None:
+                await client.update(memory_id=existing_id, text=content, metadata=metadata)
+                self.logger.debug("Updated memory %s (topic=%s)", existing_id, topic)
+            else:
+                # ``add`` takes identity fields at the top level; ``get_all`` /
+                # ``search`` / ``delete_all`` require them inside ``filters``.
+                # Mixing the two yields a 400 from /v3/memories/add/.
+                app_id, agent_id = self._split_namespace(namespace)
+                await client.add(
+                    messages=content,
+                    user_id=self._user_id(),
+                    app_id=app_id,
+                    agent_id=agent_id,
+                    metadata=metadata,
+                    infer=False,
+                )
+                self.logger.debug("Added new memory for topic=%s", topic)
+        except Exception:  # pylint: disable=broad-exception-caught
+            self.logger.error(
+                "Mem0 upsert failed (namespace=%s, topic=%s)",
+                namespace,
+                topic,
+                exc_info=True,
             )
-            self.logger.debug("Added new memory for topic=%s", topic)
+            raise
 
     async def _fetch_for_namespace(self, namespace: str) -> list[dict[str, Any]]:
         """
@@ -261,12 +290,20 @@ class Mem0Store(TopicStore):
         # Mem0 ``search`` requires a non-empty query string. Content is irrelevant
         # because ``threshold=0`` disables relevance gating — we just need every
         # memory matching the identity filter, ordered however the API returns.
-        response: dict[str, Any] = await client.search(
-            query="memory content",
-            filters=self._identity_filters(namespace),
-            top_k=self._SEARCH_TOP_K,
-            threshold=0,
-        )
+        try:
+            response: dict[str, Any] = await client.search(
+                query="memory content",
+                filters=self._identity_filters(namespace),
+                top_k=self._SEARCH_TOP_K,
+                threshold=0,
+            )
+        except Exception:  # pylint: disable=broad-exception-caught
+            self.logger.error(
+                "Mem0 search failed (namespace=%s)",
+                namespace,
+                exc_info=True,
+            )
+            raise
         results: list[dict[str, Any]] = response.get("results", [])
         if len(results) >= self._SEARCH_TOP_K:
             self.logger.warning(
@@ -367,6 +404,7 @@ class Mem0Store(TopicStore):
             return self._memory_client
         api_key: str | None = os.environ.get("MEM0_API_KEY")
         if not api_key:
+            self.logger.error("MEM0_API_KEY environment variable is not set.")
             raise ValueError("MEM0_API_KEY environment variable is not set.")
         self._memory_client = AsyncMemoryClient(api_key=api_key)
         return self._memory_client

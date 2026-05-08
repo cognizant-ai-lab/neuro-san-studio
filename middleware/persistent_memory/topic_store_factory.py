@@ -100,8 +100,7 @@ class TopicStoreFactory:  # pylint: disable=too-few-public-methods
             except ImportError as exc:
                 raise ImportError(
                     "The 'mem0' memory backend requires the optional 'mem0ai' dependency. "
-                    "Install it with 'pip install mem0ai' and refer to the Mem0 backend "
-                    "setup documentation if additional configuration is required."
+                    'Install it with: pip install "mem0ai>=2.0.2,<3.0"'
                 ) from exc
 
             return Mem0Store(sly_data=sly_data)
