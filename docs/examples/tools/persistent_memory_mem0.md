@@ -1,16 +1,15 @@
-# Persistent Memory (Mem0) — cloud-backed persistent memory
+# Persistent Memory (Mem0) — cloud-backed memory
 
 `PersistentMemoryMiddleware` with the `mem0` backend gives a Neuro-san-studio
 agent long-term memory that lives in the [Mem0](https://mem0.ai) cloud
 instead of on local disk. Every read and write goes through the Mem0 HTTP
 API: each topic is one Mem0 memory entry, scoped by `app_id` (the agent
-network) and `agent_id` (the agent name) as first-class Mem0 fields, with
+network) and `agent_id` (the agent name) as Mem0 fields, with
 the topic name carried in `metadata.topic`. The same `(network, agent)`
 namespace stays isolated from other agents in the same Mem0 account.
 
 The middleware wiring, the LLM-facing tool, the system-prompt preamble,
-and the six operations (`create`, `read`, `append`, `delete`, `search`,
-`list`) are identical to the file-backed variant — see
+and the available six operations are identical to the file-backed variant — see
 [Persistent Memory (Local)](persistent_memory_local.md) for the shared parts. This page focuses
 on what is specific to Mem0: per-user scoping, the API-key requirement,
 and how `user_id` is resolved at call time.
@@ -23,9 +22,7 @@ same memory namespace, which is a footgun in multi-user deployments.
 
 Mem0 changes that: memories are partitioned by `user_id`. Two users
 talking to the same agent see two different sets of memories, even though
-they hit the same `(network, agent)` namespace. The Mem0 cloud also takes
-care of durability, backups, and cross-device sync, so there is no local
-`memory/` directory to manage.
+they hit the same `(network, agent)` namespace.
 
 Pick Mem0 when you need any of:
 
@@ -41,8 +38,7 @@ simpler, faster, and have no external dependency. Stay on
 
 ## Prerequisites
 
-1. **Install the Mem0 client.** It is not included in the base
-   `requirements.txt` — install it manually:
+1. **Install the Mem0 client.**
 
    ```bash
    pip install "mem0ai>=2.0.2,<3.0"
@@ -71,8 +67,7 @@ simpler, faster, and have no external dependency. Stay on
 > injects the preamble; calling the reference network from another agent
 > will not give that agent memory.
 
-Full configuration with every key shown at its default. `class`,
-`origin_str`, and `sly_data` are the only Mem0-specific essentials; the
+Full configuration with every key shown at its default. `sly_data` is the only Mem0-specific essentials; the
 rest mirrors the file-backed variant.
 
 ```hocon
@@ -101,30 +96,20 @@ rest mirrors the file-backed variant.
 A complete reference agent using this middleware lives at
 [`registries/tools/persistent_memory_mem0.hocon`](../../../registries/tools/persistent_memory_mem0.hocon).
 
-> **Important:** If you omit `"sly_data": true` from the middleware args,
-> the framework will not inject the per-request dict, and the store falls
-> back to `MEM0_DEFAULT_USER_ID` / `"default_user"` for every call. In a
-> multi-user deployment this collapses every user's memory into a single
-> shared scope — which is the bug the file-backed backends already have.
-> Always keep `"sly_data": true` when using the Mem0 backend.
-
-> **Important:** Each agent's slice of memory is identified by the same
-> `(network, agent)` pair as the file-backed backends — for example, a
-> `MemoryAssistant` in the `persistent_memory_mem0` network writes entries
-> tagged `network=persistent_memory_mem0, agent=MemoryAssistant`. The
-> middleware figures this pair out automatically from the agent's runtime
-> call path (`origin_str`); if you forget `"origin_str": true`, the
-> namespace falls back to `unknown.unknown` and you'll see a warning in
-> the logs.
+> **Important:** Setting `"sly_data": true` is what gives each user their
+> own memory. If you omit it, every user shares the same `"default_user"`
+> scope — fine for local testing, broken for multi-user deployments.
+>
+> Setting `"origin_str": true` lets the middleware label each agent's memory
+> automatically with its network and agent name (for example,
+> `MemoryAssistant` in `persistent_memory_mem0`), so each agent gets its own
+> slice. If you forget it, the labels fall back to `unknown.unknown` and a
+> warning appears in the logs.
 
 ## Operations
 
 Same six operations as the file-backed variant — see the
 [Operations table in Local docs](persistent_memory_local.md#operations).
-
-Mem0-specific behavior: `delete` removes the entry under the active
-`user_id` only. `search` keyword-ranks across this user's topics for
-this `(network, agent)` pair.
 
 ## Summarization
 
@@ -155,7 +140,14 @@ client.add(
 
 Restart the server and open a fresh session — as long as the same
 `user_id` resolves, the agent reconstructs the facts from Mem0.
-Confirm writes on the [Mem0 dashboard](https://app.mem0.ai/).
+Confirm writes on the [Mem0 dashboard](https://app.mem0.ai/):
+
+![Mem0 dashboard listing the agent's memories](../../images/Mem0_dashboard.png)
+
+Click into an entry to see the full content, user, agent, app, and
+metadata fields:
+
+![Detail view of a single Mem0 memory entry](../../images/Mem0_memory.png)
 
 ## User scoping
 
@@ -167,12 +159,9 @@ the active `user_id` on every call, in this order:
    injects when the middleware was constructed with `"sly_data": true`.
    This is the path used in production: each user's request carries
    their own `sly_data`, so each user gets their own Mem0 scope.
-2. **`MEM0_DEFAULT_USER_ID` env var** — a plain string user ID,
-   useful as a server-wide default for local testing or single-tenant
-   deployments. Example:
-   ```bash
-   export MEM0_DEFAULT_USER_ID="alice"
-   ```
+2. **`MEM0_DEFAULT_USER_ID` env var** — a plain string user ID, useful as a
+   server-wide default for local testing or single-tenant deployments
+   (e.g. `export MEM0_DEFAULT_USER_ID="alice"`).
 3. **`"default_user"`** — fallback when neither of the above is set.
    Everything lands under a single shared scope; only useful for the
    first few minutes of poking at the system.

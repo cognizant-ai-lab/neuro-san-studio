@@ -1708,25 +1708,41 @@ ends.
 
 #### Persistent Memory
 
-**Persistent memory** is disk-backed storage that survives across sessions. The
-agent explicitly reads and writes it via the `PersistentMemoryMiddleware`. It holds
+**Persistent memory** is storage that survives across sessions. The agent
+explicitly reads and writes it via the `PersistentMemoryMiddleware`. It holds
 user-facing information — personal details, preferences, and facts the user has
 shared. It is not for internal LLM state such as LLM call results, pass/fail
-outcomes, or execution traces. This middleware is designed for local, single-user
-usage. Memory is scoped per `(network, agent)` — not per user — so all users
-sharing the same agent share the same memory namespace. Multi-tenant / per-user
-isolation is out of scope; server-side backends are planned separately.
+outcomes, or execution traces.
 
-Agents can be given long-term memory by attaching the `PersistentMemoryMiddleware`.
+Three storage backends are available. The two file-backed backends are
+intended for developers running an agent locally on their own machine; the
+`mem0` backend is intended for shared or production deployments where each
+end user must see only their own memories.
+
+- **`json_file`** (default) — stores all topics for an agent in a single
+  `memory.json` file on the developer's local disk, scoped per
+  `(network, agent)`.
+- **`markdown_file`** — stores each topic as a separate `.md` file on the
+  developer's local disk, under the same `(network, agent)` scope.
+- **`mem0`** — stores topics as memory entries in the [Mem0](https://mem0.ai)
+  cloud and partitions them by `(user_id, network, agent)`, so different end
+  users talking to the same agent see different sets of memories.
+
 The middleware exposes six operations (`create`, `read`, `append`, `delete`,
-`search`, `list`) and persists each topic to disk, scoped by
-`(agent_network_name, agent_name, topic)`. Writes land as soon as the LLM call
-returns — no bookended load/save, and a crash mid-turn loses at most the call
-that was in-flight.
+`search`, `list`). Each operation is committed as soon as the LLM call
+returns; there is no end-of-turn flush, and a crash mid-turn loses at most
+the in-flight call. Oversized topics are summarized inline under the same
+lock that performed the write, so readers never observe an intermediate
+oversized state.
 
-Minimal wiring — only `class` is required, every other key has a sensible default.
-See the [full configuration reference](./examples/tools/persistent_memory_local.md#configuration)
+Minimal configuration — only `class` is required, and the backend defaults
+to `json_file`. To use `markdown_file` or `mem0`, set the backend explicitly.
+
+See the [file-backed configuration reference](./examples/tools/persistent_memory_local.md#configuration)
+and the [Mem0 configuration reference](./examples/tools/persistent_memory_mem0.md#configuration)
 for all available options.
+
+File-backed (default — `json_file`):
 
 ```hocon
 "middleware": [
@@ -1736,13 +1752,22 @@ for all available options.
 ]
 ```
 
-The middleware includes three storage backends. The `json_file` backend (default)
-stores all topics for an agent in a single `memory.json` file. The
-`markdown_file` backend stores each topic as a separate `.md` file. The `mem0`
-backend stores topics as memory entries in the [Mem0](https://mem0.ai) cloud
-and partitions them by `user_id` for per-user scoping. Oversized topics are
-summarized inline under the same lock that performed the write, ensuring
-readers never observe an intermediate oversized state.
+Mem0 cloud backend — `sly_data: true` is required so the framework can
+forward `user_id` per request:
+
+```hocon
+"middleware": [
+    {
+        "class": "middleware.persistent_memory.persistent_memory_middleware.PersistentMemoryMiddleware",
+        "args": {
+            "sly_data": true,
+            "memory_config": {
+                "storage": { "backend": "mem0" }
+            }
+        }
+    }
+]
+```
 
 For a complete walkthrough of the file-backed backends — including HOCON
 configuration, a sample conversation, backend trade-offs, summarizer tuning,

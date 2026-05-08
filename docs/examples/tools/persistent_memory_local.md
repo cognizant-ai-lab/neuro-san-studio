@@ -1,9 +1,11 @@
-# Persistent Memory (Local) — file-backed persistent memory
+# Persistent Memory (Local) — file-backed memory
 
 `PersistentMemoryMiddleware` attaches long-term memory to any Neuro-san-studio
-agent. Drop it into an agent's `middleware` block and the framework registers
-a `persistent_memory` tool, injects a memory-aware preamble into the system
-prompt, and persists every write to disk under a `(network, agent)`
+agent. Once added to an agent's `middleware` block, the agent retains
+important topics and the facts associated with them across sessions. The
+middleware injects a preamble into the system prompt that instructs the LLM
+on when to invoke the `persistent_memory` tool and what arguments to
+provide, and persists every write to disk under a `(network, agent)`
 namespace.
 
 This page covers the **file-backed** backends (`json_file` and `markdown_file`),
