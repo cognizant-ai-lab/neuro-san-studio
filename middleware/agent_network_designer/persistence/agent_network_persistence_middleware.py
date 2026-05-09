@@ -149,6 +149,11 @@ class AgentNetworkPersistenceMiddleware(AgentMiddleware):
                         f"The agent network definition has instructions-related issues: {instructions_errors}. "
                         "Call `agent_network_instructions_editor` to fix these instructions problems."
                     )
+                if structure_errors and instructions_errors:
+                    message_parts.append(
+                        "Fix the structural issues first by calling `agent_network_editor`, "
+                        "then address the instructions issues with `agent_network_instructions_editor`."
+                    )
                 return self._error_response(" ".join(message_parts))
 
             the_agent_network_name: str = self._normalize_network_name(agent_network_name)
