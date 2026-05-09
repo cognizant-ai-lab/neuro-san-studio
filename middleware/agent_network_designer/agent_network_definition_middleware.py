@@ -46,6 +46,7 @@ from coded_tools.agent_network_editor.constants import AGENT_NETWORK_DEFINITION
 from coded_tools.agent_network_editor.constants import AGENT_NETWORK_NAME
 from coded_tools.agent_network_editor.progress_handler import ProgressHandler
 from coded_tools.agent_network_editor.sly_data_lock import SlyDataLock
+from middleware.agent_network_designer.persistence.file_system_agent_network_persistor import DEFAULT_REGISTRIES_DIR
 
 AGENT_NETWORK_HOCON_FILE: str = "agent_network_hocon_file"
 AGENT_RESERVATIONS: str = "agent_reservations"
@@ -204,7 +205,7 @@ class AgentNetworkDefinitionMiddleware(AgentMiddleware):
                 ">>>>>>>>>>>>>>>>>>>Reading & Parsing from Agent Network HOCON File '%s'>>>>>>>>>>>>>>>>>>>",
                 hocon_file,
             )
-            network_def = await self._hocon_to_definition(hocon_file, self.sly_data)
+            network_def = await self._hocon_to_definition(hocon_file)
             # When loading from hocon, use the file name (without extension) as the agent network name.
             # This is because the agent network name is only created when using the CreateNetwork tool.
             if network_def:
@@ -318,7 +319,7 @@ class AgentNetworkDefinitionMiddleware(AgentMiddleware):
             reservation_id,
             os.getenv("AGENT_RESERVATIONS_S3_BUCKET"),
         )
-        return await self._config_to_network_def(config, reservation_id, self.sly_data)
+        return await self._config_to_network_def(config, reservation_id)
 
     def _normalize_network_def(self, network_def: dict[str, Any] | list[dict[str, Any]]) -> dict[str, Any]:
         """
@@ -382,29 +383,38 @@ class AgentNetworkDefinitionMiddleware(AgentMiddleware):
         definition_str: str = json.dumps(network_def, indent=2)
         return f"## Current Agent Network Definition\n\n```json\n{definition_str}\n```"
 
-    async def _hocon_to_definition(
-        self, network_hocon_file: str | None, sly_data: dict[str, Any]
-    ) -> dict[str, Any] | None:
+    async def _hocon_to_definition(self, network_hocon_file: str | None) -> dict[str, Any] | None:
         """
         Convert hocon file path into agent network definition
         :param network_hocon_file: Agent network hocon file path
-        :param sly_data: A dictionary whose keys are defined by the agent hierarchy
 
         :return: Agent network definition
         """
         config: dict[str, Any] | None = await self._hocon_to_config(network_hocon_file)
         if config is None:
             return None
-        return await self._config_to_network_def(config, network_hocon_file, sly_data)
+        return await self._config_to_network_def(config, network_hocon_file)
 
-    async def _hocon_to_config(self, network_hocon_file: str | None) -> dict[str, Any] | None:
+    def _resolve_hocon_path(self, network_hocon_file: str | None) -> str | None:
         """
-        Read and parse a HOCON file into a raw config dictionary.
+        Validate and resolve a user-supplied HOCON file reference into a concrete path string.
 
-        :param network_hocon_file: Agent network hocon file path
-        :return: Parsed HOCON contents as a dict, or None if network_hocon_file is invalid or not found
+        Path resolution:
+          - Absolute paths are used as-is.
+          - Relative paths are resolved against the directory of the first entry in
+            ``AGENT_MANIFEST_FILE`` (a whitespace-separated list of manifest files), or
+            ``DEFAULT_REGISTRIES_DIR`` when the env var is empty or unset. This mirrors
+            ``FileSystemAgentNetworkPersistor`` so loads and saves agree on file location.
+
+        Backslashes in the input are normalized to forward slashes so Windows-style paths
+        work on POSIX (and vice versa).
+
+        On invalid input, sets ``self.error_message`` and returns None.
+
+        :param network_hocon_file: Agent network hocon file path (absolute or relative)
+        :return: The resolved file reference as a forward-slash path string, or None if invalid
         """
-        if not isinstance(network_hocon_file, str) or not network_hocon_file:
+        if not isinstance(network_hocon_file, str) or not network_hocon_file.strip():
             error_message: str = (
                 f"Error: Invalid network_hocon_file value: {type(network_hocon_file).__name__} "
                 "(expected non-empty string)."
@@ -413,25 +423,58 @@ class AgentNetworkDefinitionMiddleware(AgentMiddleware):
             self.error_message = error_message
             return None
 
+        # Normalize backslashes so Windows-style input also works on POSIX.
+        normalized: str = network_hocon_file.strip().replace("\\", "/")
+        candidate: Path = Path(normalized)
+        if candidate.is_absolute():
+            return candidate.as_posix()
+
+        # Derive the base registries directory from AGENT_MANIFEST_FILE (the dirname of the
+        # first listed manifest), falling back to the default registries directory.
+        agent_manifest_file: str = os.environ.get("AGENT_MANIFEST_FILE", "")
+        manifest_parts: list[str] = agent_manifest_file.split()
+        base_dir: str = os.path.dirname(manifest_parts[0]) if manifest_parts else DEFAULT_REGISTRIES_DIR
+        # Strip leading separators so a user-supplied "/foo.hocon" does not silently
+        # bypass base_dir. On POSIX such input would already be caught by is_absolute()
+        # above; on Windows it is "drive-rooted" rather than absolute, so without this
+        # lstrip Path() would discard base_dir when joining.
+        return (Path(base_dir) / normalized.lstrip("/")).as_posix()
+
+    async def _hocon_to_config(self, network_hocon_file: str | None) -> dict[str, Any] | None:
+        """
+        Read and parse a HOCON file into a raw config dictionary.
+
+        :param network_hocon_file: Agent network hocon file path (absolute or relative);
+                see ``_resolve_hocon_path`` for resolution rules
+        :return: Parsed HOCON contents as a dict, or None if network_hocon_file is invalid or not found
+        """
+        file_reference: str | None = self._resolve_hocon_path(network_hocon_file)
+        if file_reference is None:
+            return None
+
         # Note we don't need to cache this because we only expect to read the file once.
         try:
             hocon = AbstractAsyncConfigRestorer(file_purpose="get_agent_network_definition", must_exist=True)
-            return await hocon.async_restore(file_reference="registries/" + network_hocon_file)
+            return await hocon.async_restore(file_reference=file_reference)
         except FileNotFoundError:
-            error_message = f"Error: Agent network HOCON file not found: registries/{network_hocon_file}"
+            error_message: str = f"Error: Agent network HOCON file not found: {file_reference}"
+            self.logger.error(error_message)
+            self.error_message = error_message
+            return None
+        except OSError as os_error:
+            # Catches PermissionError, IsADirectoryError, and other OS-level read failures
+            # whose specific subclasses differ across operating systems.
+            error_message = f"Error: Failed to read agent network HOCON file '{file_reference}'. {os_error}"
             self.logger.error(error_message)
             self.error_message = error_message
             return None
 
-    async def _config_to_network_def(
-        self, config: dict[str, Any], source: str, sly_data: dict[str, Any]
-    ) -> dict[str, Any] | None:
+    async def _config_to_network_def(self, config: dict[str, Any], source: str) -> dict[str, Any] | None:
         """
         Convert a parsed HOCON config dictionary into an agent network definition.
 
         :param config: Parsed HOCON config
         :param source: Identifier for the config source (hocon file path or reservation ID), used for error messages
-        :param sly_data: A dictionary whose keys are defined by the agent hierarchy
         :return: Agent network definition, or None on failure
         """
         agents: list[dict[str, Any]] | None = config.get("tools")
@@ -444,21 +487,18 @@ class AgentNetworkDefinitionMiddleware(AgentMiddleware):
 
         network_def: dict[str, Any] = {}
         for agent in agents:
-            name, agent_def = await self._parse_agent(agent, source, sly_data)
+            name, agent_def = await self._parse_agent(agent, source)
             if name is not None:
                 network_def[name] = agent_def
 
         return network_def
 
-    async def _parse_agent(
-        self, agent: Any, source: str, sly_data: dict[str, Any]
-    ) -> tuple[str | None, dict[str, Any]]:
+    async def _parse_agent(self, agent: Any, source: str) -> tuple[str | None, dict[str, Any]]:
         """
         Parse a single agent entry from the hocon 'tools' list.
 
         :param agent: A single entry from the 'tools' list in the hocon file
         :param source: Identifier for the config source (hocon file path or reservation ID), used for warning messages
-        :param sly_data: A dictionary whose keys are defined by the agent hierarchy
 
         :return: (agent_name, agent_def) where agent_name is None if the entry should be skipped
         """
@@ -486,7 +526,7 @@ class AgentNetworkDefinitionMiddleware(AgentMiddleware):
             if instructions.strip():
                 # Extract only the unique instructions
                 # (remove aaosa instructions, instructions prefix, and demo mode)
-                agent_def["instructions"] = await self._extract_custom_instructions(instructions.strip(), sly_data)
+                agent_def["instructions"] = await self._extract_custom_instructions(instructions.strip())
 
             # Initialize description for non-function agents so the description setter
             # can distinguish them from function/toolbox agents (which have no description key).
@@ -511,11 +551,10 @@ class AgentNetworkDefinitionMiddleware(AgentMiddleware):
 
         return agent_name, agent_def
 
-    async def _extract_custom_instructions(self, instructions: str, sly_data: dict[str, Any]) -> str:
+    async def _extract_custom_instructions(self, instructions: str) -> str:
         """
         Extract the custom part of instructions, excluding aaosa instructions, instructions prefix, and demo mode.
         :param instructions: The full instructions of an agent.
-        :param sly_data: A dictionary whose keys are defined by the agent hierarchy
 
         :return: The part of instructions that is unique to the agent.
         """
@@ -532,7 +571,7 @@ class AgentNetworkDefinitionMiddleware(AgentMiddleware):
             "you are actually grounded in real data or you are operating a real application API or microservice."
         )
 
-        aaosa_instructions: str = await self._get_aaosa_instructions(sly_data)
+        aaosa_instructions: str = await self._get_aaosa_instructions()
 
         # Clean and normalize the input
         custom_part: str = instructions.strip()
@@ -552,18 +591,17 @@ class AgentNetworkDefinitionMiddleware(AgentMiddleware):
 
         return custom_part
 
-    async def _get_aaosa_instructions(self, sly_data: dict[str, Any]) -> str:
+    async def _get_aaosa_instructions(self) -> str:
         """
         Get aaosa instructions potentially from cache in sly_data
-        :param sly_data: A dictionary whose keys are defined by the agent hierarchy
 
         :return: aaosa instructions
         """
         aaosa_instructions: str = ""
 
         # Try to get aaosa_instructions from sly_data cache
-        async with await SlyDataLock.get_lock(sly_data, "aaosa_instructions_lock"):
-            aaosa_instructions = sly_data.get("aaosa_instructions")
+        async with await SlyDataLock.get_lock(self.sly_data, "aaosa_instructions_lock"):
+            aaosa_instructions = self.sly_data.get("aaosa_instructions")
             if aaosa_instructions is not None:
                 # Return early with cached value
                 return aaosa_instructions
@@ -580,7 +618,7 @@ class AgentNetworkDefinitionMiddleware(AgentMiddleware):
                 aaosa_instructions = ""
 
             # Cache the loaded value in sly_data for subsequent calls
-            sly_data["aaosa_instructions"] = aaosa_instructions
+            self.sly_data["aaosa_instructions"] = aaosa_instructions
 
         return aaosa_instructions
 
