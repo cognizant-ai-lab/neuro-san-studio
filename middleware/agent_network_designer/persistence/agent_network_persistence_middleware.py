@@ -134,13 +134,27 @@ class AgentNetworkPersistenceMiddleware(AgentMiddleware):
         # already reported the error (jumping to end), so no network definition will be present.
         # A valid name is also required for file path and reservation name construction.
         if network_def and agent_network_name and isinstance(agent_network_name, str):
-            error_list: list[str] = await self._validate_network(network_def)
-            if error_list:
-                self.logger.error("Error: %s", error_list)
-                return self._error_response(
-                    f"The current agent network definition has the following issues: {error_list}. "
-                    "Please fix these issues to ensure the agent network can be properly assembled and executed."
-                )
+            structure_errors, instructions_errors = await self._validate_network(network_def)
+            if structure_errors or instructions_errors:
+                self.logger.warning("Validation errors: %s", structure_errors + instructions_errors)
+                self.logger.warning("Invoking agent network designer to fix the issues.")
+                message_parts: list[str] = []
+                if structure_errors:
+                    message_parts.append(
+                        f"The agent network definition has structural issues: {structure_errors}. "
+                        "Call `agent_network_editor` to fix these structural problems."
+                    )
+                if instructions_errors:
+                    message_parts.append(
+                        f"The agent network definition has instructions-related issues: {instructions_errors}. "
+                        "Call `agent_network_instructions_editor` to fix these instructions problems."
+                    )
+                if structure_errors and instructions_errors:
+                    message_parts.append(
+                        "Fix the structural issues first by calling `agent_network_editor`, "
+                        "then address the instructions issues with `agent_network_instructions_editor`."
+                    )
+                return self._error_response(" ".join(message_parts))
 
             sample_queries: list[str] = self.sly_data.get(AGENT_NETWORK_QUERIES, [])
 
@@ -165,15 +179,19 @@ class AgentNetworkPersistenceMiddleware(AgentMiddleware):
             "jump_to": "model",
         }
 
-    async def _validate_network(self, network_def: dict[str, Any]) -> list[str]:
+    async def _validate_network(self, network_def: dict[str, Any]) -> tuple[list[str], list[str]]:
         """
         Run all validators against the network definition, reusing the validation middlewares.
 
-        :return: List of error strings, empty if valid.
+        :return: Tuple of (structure_errors, instructions_errors), each a list of error strings.
         """
-        structure_errors = await AgentNetworkStructureValidationMiddleware(self.sly_data).validate(network_def)
-        instructions_errors = await AgentNetworkInstructionsValidationMiddleware(self.sly_data).validate(network_def)
-        return structure_errors + instructions_errors
+        structure_errors: list[str] = await AgentNetworkStructureValidationMiddleware(self.sly_data).validate(
+            network_def
+        )
+        instructions_errors: list[str] = await AgentNetworkInstructionsValidationMiddleware(self.sly_data).validate(
+            network_def
+        )
+        return structure_errors, instructions_errors
 
     async def _assemble_and_persist(
         self,
