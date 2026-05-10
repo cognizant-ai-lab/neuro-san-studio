@@ -40,6 +40,7 @@ from langchain_core.messages import SystemMessage
 from neuro_san.interfaces.agent_progress_reporter import AgentProgressReporter
 from neuro_san.internals.persistence.abstract_async_config_restorer import AbstractAsyncConfigRestorer
 from neuro_san.service.watcher.temp_networks.s3_reservations_storage import S3ReservationsStorage
+from pyparsing.exceptions import ParseException
 
 from coded_tools.agent_network_editor.connectivity_dictionary_converter import ConnectivityDictionaryConverter
 from coded_tools.agent_network_editor.constants import AGENT_NETWORK_DEFINITION
@@ -442,11 +443,15 @@ class AgentNetworkDefinitionMiddleware(AgentMiddleware):
 
     async def _hocon_to_config(self, network_hocon_file: str | None) -> dict[str, Any] | None:
         """
-        Read and parse a HOCON file into a raw config dictionary.
+        Read and parse an agent network config file into a raw config dictionary.
 
-        :param network_hocon_file: Agent network hocon file path (absolute or relative);
+        ``AbstractAsyncConfigRestorer`` accepts both ``.hocon`` and ``.json`` files, so JSON
+        inputs work as well even though the surrounding API is named for HOCON.
+
+        :param network_hocon_file: Agent network config file path (absolute or relative);
                 see ``_resolve_hocon_path`` for resolution rules
-        :return: Parsed HOCON contents as a dict, or None if network_hocon_file is invalid or not found
+        :return: Parsed config contents as a dict, or None if the file is invalid, has an
+                unsupported extension, fails to parse, or cannot be read
         """
         file_reference: str | None = self._resolve_hocon_path(network_hocon_file)
         if file_reference is None:
@@ -457,14 +462,27 @@ class AgentNetworkDefinitionMiddleware(AgentMiddleware):
             hocon = AbstractAsyncConfigRestorer(file_purpose="get_agent_network_definition", must_exist=True)
             return await hocon.async_restore(file_reference=file_reference)
         except FileNotFoundError:
-            error_message: str = f"Error: Agent network HOCON file not found: {file_reference}"
+            error_message: str = f"Error: Agent network config file not found: {file_reference}"
             self.logger.error(error_message)
             self.error_message = error_message
             return None
         except OSError as os_error:
             # Catches PermissionError, IsADirectoryError, and other OS-level read failures
             # whose specific subclasses differ across operating systems.
-            error_message = f"Error: Failed to read agent network HOCON file '{file_reference}'. {os_error}"
+            error_message = f"Error: Failed to read agent network config file '{file_reference}'. {os_error}"
+            self.logger.error(error_message)
+            self.error_message = error_message
+            return None
+        except ValueError as value_error:
+            # Raised by AbstractAsyncConfigRestorer when the file extension is not .hocon or .json.
+            error_message = f"Error: Unsupported agent network config file '{file_reference}'. {value_error}"
+            self.logger.error(error_message)
+            self.error_message = error_message
+            return None
+        except ParseException as parse_error:
+            # AbstractAsyncConfigRestorer wraps HOCON/JSON parse failures (ParseException,
+            # ParseSyntaxException, JSONDecodeError, ConfigException) into ParseException.
+            error_message = f"Error: Failed to parse agent network config file '{file_reference}'. {parse_error}"
             self.logger.error(error_message)
             self.error_message = error_message
             return None
