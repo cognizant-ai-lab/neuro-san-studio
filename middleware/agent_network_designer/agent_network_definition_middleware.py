@@ -427,7 +427,13 @@ class AgentNetworkDefinitionMiddleware(AgentMiddleware):
         # Normalize backslashes so Windows-style input also works on POSIX.
         normalized: str = network_hocon_file.strip().replace("\\", "/")
         candidate: Path = Path(normalized)
-        if candidate.is_absolute():
+        # Treat as absolute only if pathlib agrees AND, on Windows, the path has a drive
+        # letter (e.g. "C:/...") or a UNC anchor (e.g. "//server/share/..."). On Windows
+        # a bare "/foo" is "drive-rooted": Python 3.13+ reports is_absolute() == True for
+        # it, but the path is ambiguous without a drive, so we fall through to the
+        # relative branch where the leading slash is stripped — preventing the input
+        # from bypassing base_dir.
+        if candidate.is_absolute() and (os.name != "nt" or candidate.drive):
             return candidate.as_posix()
 
         # Derive the base registries directory from AGENT_MANIFEST_FILE (the dirname of the
@@ -435,10 +441,10 @@ class AgentNetworkDefinitionMiddleware(AgentMiddleware):
         agent_manifest_file: str = os.environ.get("AGENT_MANIFEST_FILE", "")
         manifest_parts: list[str] = agent_manifest_file.split()
         base_dir: str = os.path.dirname(manifest_parts[0]) if manifest_parts else DEFAULT_REGISTRIES_DIR
-        # Strip leading separators so a user-supplied "/foo.hocon" does not silently
-        # bypass base_dir. On POSIX such input would already be caught by is_absolute()
-        # above; on Windows it is "drive-rooted" rather than absolute, so without this
-        # lstrip Path() would discard base_dir when joining.
+        # Strip leading separators so a user-supplied "/foo.hocon" cannot escape base_dir.
+        # POSIX absolute paths are handled above; this catches the Windows drive-rooted
+        # case where Path() would otherwise discard base_dir when joining with a rooted
+        # right-hand side.
         return (Path(base_dir) / normalized.lstrip("/")).as_posix()
 
     async def _hocon_to_config(self, network_hocon_file: str | None) -> dict[str, Any] | None:
