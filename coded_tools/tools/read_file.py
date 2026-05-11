@@ -21,7 +21,7 @@ from logging import getLogger
 from pathlib import Path
 from typing import Any
 
-import aiofiles
+from leaf_common.serialization.util.text_file_reader import TextFileReader
 from neuro_san.interfaces.coded_tool import CodedTool
 
 MAX_CHARS: int = 20_000
@@ -33,17 +33,17 @@ class ReadFile(CodedTool):
 
     By default the tool cannot read any file. Access must be explicitly granted
     via allow-lists in the tool arguments:
-        - allowed_paths   : specific file paths or directories that may be read
-        - allowed_extensions: file extensions (e.g. ".py", ".txt") that may be read
+        - allowed_file_paths   : specific file paths or directories that may be read
+        - allowed_file_extensions: file extensions (e.g. ".py", ".txt") that may be read
 
     Both allow-lists must permit the requested file for access to be granted; an empty
-    list (or omitted allowed_paths) denies all access for that dimension.
+    list (or omitted allowed_file_paths) denies all access for that dimension.
     Block-lists are evaluated after allow-lists; a match in a block-list always denies access.
 
     Error types (raised as ValueError with the specified message prefix):
         invalid_input    – required parameter is missing, wrong type, or invalid value.
-        path_not_allowed – the resolved path is outside every allowed_paths entry,
-                           or its extension is not in allowed_extensions.
+        path_not_allowed – the resolved path is outside every allowed_file_paths entry,
+                           or its extension is not in allowed_file_extensions.
         path_not_found   – the file does not exist.
         is_a_directory   – the path points to a directory, not a file.
         read_error       – the file could not be read (permission error, I/O failure, etc.).
@@ -57,19 +57,19 @@ class ReadFile(CodedTool):
 
                 The argument dictionary expects the following keys:
                     "path"               (str, required): Absolute or relative path to the file.
-                    "allowed_paths"      (list[str], required): One or more file paths or
+                    "allowed_file_paths"      (list[str], required): One or more file paths or
                                          directory paths the tool is permitted to read from.
                                          A file is allowed when its resolved path equals or
                                          is a descendant of at least one entry. Must be
                                          non-empty; omitting it raises invalid_input.
-                    "allowed_extensions" (list[str], optional): Whitelist of file extensions
+                    "allowed_file_extensions" (list[str], optional): Whitelist of file extensions
                                          including the leading dot (e.g. [".py", ".txt"]).
                                          When omitted, no extension filtering is applied.
                                          An empty list denies all extensions.
-                    "blocked_paths"      (list[str], optional): File paths or directories that
-                                         are always denied, even if listed in allowed_paths.
-                    "blocked_extensions" (list[str], optional): File extensions that are always
-                                         denied, even if listed in allowed_extensions.
+                    "blocked_file_paths"      (list[str], optional): File paths or directories that
+                                         are always denied, even if listed in allowed_file_paths.
+                    "blocked_file_extensions" (list[str], optional): File extensions that are always
+                                         denied, even if listed in allowed_file_extensions.
                     "start_line"         (int, optional): 1-based line number to start reading
                                          from. Defaults to 1.
                     "end_line"           (int, optional): 1-based line number to stop reading
@@ -99,35 +99,20 @@ class ReadFile(CodedTool):
         logger: Logger = getLogger(self.__class__.__name__)
 
         file_path: Path = self._validate_path(args)
-        allowed_paths: list[str] = self._validate_allowed_paths(args)
-        allowed_extensions: list[str] = self._validate_extension_list(args.get("allowed_extensions"), "allowed_extensions")
-        blocked_paths: list[str] = self._validate_path_list(args.get("blocked_paths"), "blocked_paths")
-        blocked_extensions: list[str] = self._validate_extension_list(args.get("blocked_extensions"), "blocked_extensions")
+        self._validate_and_check_access(args, file_path)
         start_line, end_line = self._validate_line_range(args)
         max_chars: int = self._validate_max_content_chars(args)
-
-        self._check_path_allowed(file_path, allowed_paths, allowed_extensions, blocked_paths, blocked_extensions)
 
         logger.info("ReadFile: reading %s", file_path)
 
         try:
-            async with aiofiles.open(file_path, encoding="utf-8", errors="replace") as f:
-                raw_text: str = await f.read()
+            raw_text: str = await TextFileReader.async_read_text_file(str(file_path))
         except PermissionError as exc:
             raise ValueError(f"read_error: Permission denied reading '{file_path}'.") from exc
         except OSError as exc:
             raise ValueError(f"read_error: Could not read '{file_path}': {exc}") from exc
 
-        lines: list[str] = raw_text.splitlines(keepends=True)
-        total_lines: int = len(lines)
-
-        actual_start: int = max(1, start_line)
-        actual_end: int = min(total_lines, end_line if end_line is not None else total_lines)
-
-        selected_lines: list[str] = lines[actual_start - 1 : actual_end]
-        content: str = "".join(selected_lines)[:max_chars]
-
-        read_at: str = datetime.now(timezone.utc).isoformat()
+        content, actual_start, actual_end, total_lines = self._slice_text(raw_text, start_line, end_line, max_chars)
 
         logger.info(
             "ReadFile: returned %d characters from %s (lines %d-%d of %d)",
@@ -144,7 +129,7 @@ class ReadFile(CodedTool):
             "start_line": actual_start,
             "end_line": actual_end,
             "total_lines": total_lines,
-            "read_at": read_at,
+            "read_at": datetime.now(timezone.utc).isoformat(),
         }
 
     # ------------------------------------------------------------------
@@ -172,9 +157,19 @@ class ReadFile(CodedTool):
 
         return resolved
 
-    def _validate_allowed_paths(self, args: dict[str, Any]) -> list[str]:
-        """Validate and return the 'allowed_paths' list. Returns empty list when missing (deny all)."""
-        return self._validate_path_list(args.get("allowed_paths"), "allowed_paths")
+    def _validate_allowed_file_paths(self, args: dict[str, Any]) -> list[str]:
+        """Validate and return the 'allowed_file_paths' list. Returns empty list when missing (deny all)."""
+        return self._validate_path_list(args.get("allowed_file_paths"), "allowed_file_paths")
+
+    def _validate_and_check_access(self, args: dict[str, Any], file_path: Path) -> None:
+        """Validate the four allow/block rule lists from args and enforce them against file_path."""
+        self._check_path_allowed(
+            file_path,
+            self._validate_allowed_file_paths(args),
+            self._validate_extension_list(args.get("allowed_file_extensions"), "allowed_file_extensions"),
+            self._validate_path_list(args.get("blocked_file_paths"), "blocked_file_paths"),
+            self._validate_extension_list(args.get("blocked_file_extensions"), "blocked_file_extensions"),
+        )
 
     def _validate_path_list(self, value: Any, param_name: str) -> list[str]:
         """Coerce and validate a path list parameter. Accepts None, list[str], or a single str."""
@@ -222,9 +217,7 @@ class ReadFile(CodedTool):
             if not isinstance(end, int) or end < 1:
                 raise ValueError(f"invalid_input: 'end_line' must be a positive integer, got {end!r}.")
             if end < start:
-                raise ValueError(
-                    f"invalid_input: 'end_line' ({end}) must be >= 'start_line' ({start})."
-                )
+                raise ValueError(f"invalid_input: 'end_line' ({end}) must be >= 'start_line' ({start}).")
 
         return start, end
 
@@ -235,68 +228,80 @@ class ReadFile(CodedTool):
             raise ValueError(f"invalid_input: 'max_content_chars' must be a positive integer, got {value!r}.")
         return value
 
+    def _slice_text(
+        self, raw_text: str, start_line: int, end_line: int | None, max_chars: int
+    ) -> tuple[str, int, int, int]:
+        """Slice raw_text to the requested line range and char cap.
+
+        Returns (content, actual_start, actual_end, total_lines). actual_start/actual_end
+        are clamped to the file's real bounds; end_line=None reads to EOF.
+        """
+        lines: list[str] = raw_text.splitlines(keepends=True)
+        total_lines: int = len(lines)
+        actual_start: int = max(1, start_line)
+        actual_end: int = min(total_lines, end_line if end_line is not None else total_lines)
+        content: str = "".join(lines[actual_start - 1 : actual_end])[:max_chars]
+        return content, actual_start, actual_end, total_lines
+
     # ------------------------------------------------------------------
     # Access-control helpers
     # ------------------------------------------------------------------
 
+    # pylint: disable=too-many-arguments
+    # pylint: disable=too-many-positional-arguments
     def _check_path_allowed(
         self,
         file_path: Path,
-        allowed_paths: list[str],
-        allowed_extensions: list[str] | None,
-        blocked_paths: list[str],
-        blocked_extensions: list[str] | None,
+        allowed_file_paths: list[str],
+        allowed_file_extensions: list[str] | None,
+        blocked_file_paths: list[str],
+        blocked_file_extensions: list[str] | None,
     ) -> None:
         """Raise ValueError(path_not_allowed) when the file fails the allow/block rules.
 
         Evaluation order:
-          1. allowed_extensions: None = omitted (skip check); [] = deny all; non-empty = whitelist.
-          2. allowed_paths:      [] = deny all; non-empty = whitelist.
-          3. blocked_extensions: None or [] = skip; non-empty = deny matching extensions.
-          4. blocked_paths:      None or [] = skip; non-empty = deny matching paths/dirs.
+          1. allowed_file_paths:      [] or omitted = deny all; non-empty = whitelist.
+          2. allowed_file_extensions: None = omitted (skip check); [] = deny all; non-empty = whitelist.
+          3. blocked_file_paths:      [] or omitted = skip; non-empty = deny matching paths/dirs.
+          4. blocked_file_extensions: [] or omitted = skip; non-empty = deny matching extensions.
         """
         # For dotfiles like ".env", pathlib returns suffix="" and stem=".env".
         # Use the full filename in that case so callers can match by e.g. ".env".
         suffix: str = file_path.suffix.lower() or file_path.name.lower()
 
-        # 1. allowed_extensions
-        if allowed_extensions is not None:
-            if not allowed_extensions:
-                raise ValueError(
-                    f"path_not_allowed: Extension '{suffix}' is not allowed (allowed_extensions is empty)."
-                )
-            normalised_allowed_exts: list[str] = self._normalise_extensions(allowed_extensions)
-            if suffix not in normalised_allowed_exts:
-                raise ValueError(
-                    f"path_not_allowed: Extension '{suffix}' is not in allowed_extensions {allowed_extensions}."
-                )
+        # 1. allowed_file_paths (empty list = deny all)
+        if not allowed_file_paths:
+            raise ValueError(f"path_not_allowed: '{file_path}' cannot be read (allowed_file_paths is empty).")
+        if not self._path_matches_any(file_path, allowed_file_paths):
+            raise ValueError(f"path_not_allowed: '{file_path}' is not within any of the allowed_file_paths entries.")
 
-        # 2. allowed_paths (empty list = deny all)
-        if not allowed_paths:
-            raise ValueError(
-                f"path_not_allowed: '{file_path}' cannot be read (allowed_paths is empty)."
-            )
-        if not self._path_matches_any(file_path, allowed_paths):
-            raise ValueError(
-                f"path_not_allowed: '{file_path}' is not within any of the allowed_paths entries."
-            )
-
-        # 3. blocked_extensions
-        if blocked_extensions:
-            normalised_blocked_exts: list[str] = self._normalise_extensions(blocked_extensions)
-            if suffix in normalised_blocked_exts:
+        # 2. allowed_file_extensions
+        if allowed_file_extensions is not None:
+            if not allowed_file_extensions:
                 raise ValueError(
-                    f"path_not_allowed: Extension '{suffix}' is in blocked_extensions {blocked_extensions}."
+                    f"path_not_allowed: Extension '{suffix}' is not allowed (allowed_file_extensions is empty)."
+                )
+            normalized_allowed_exts: list[str] = self._normalize_extensions(allowed_file_extensions)
+            if suffix not in normalized_allowed_exts:
+                raise ValueError(
+                    f"path_not_allowed: Extension '{suffix}' is not in "
+                    f"allowed_file_extensions {allowed_file_extensions}."
                 )
 
-        # 4. blocked_paths
-        if blocked_paths and self._path_matches_any(file_path, blocked_paths):
-            raise ValueError(
-                f"path_not_allowed: '{file_path}' is blocked by blocked_paths."
-            )
+        # 3. blocked_file_paths
+        if blocked_file_paths and self._path_matches_any(file_path, blocked_file_paths):
+            raise ValueError(f"path_not_allowed: '{file_path}' is blocked by blocked_file_paths.")
 
-    def _normalise_extensions(self, extensions: list[str]) -> list[str]:
-        """Return extensions normalised to lowercase with a leading dot."""
+        # 4. blocked_file_extensions
+        if blocked_file_extensions:
+            normalized_blocked_exts: list[str] = self._normalize_extensions(blocked_file_extensions)
+            if suffix in normalized_blocked_exts:
+                raise ValueError(
+                    f"path_not_allowed: Extension '{suffix}' is in blocked_file_extensions {blocked_file_extensions}."
+                )
+
+    def _normalize_extensions(self, extensions: list[str]) -> list[str]:
+        """Return extensions normalized to lowercase with a leading dot."""
         return [e.lower() if e.startswith(".") else f".{e.lower()}" for e in extensions]
 
     def _path_matches_any(self, file_path: Path, path_list: list[str]) -> bool:
