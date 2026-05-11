@@ -123,7 +123,5 @@ class TestCheckPathAllowed(TestCase):
         makefile = self.tmp_root / "Makefile"
         makefile.write_text("x", encoding="utf-8")
         with self.assertRaises(ValueError) as ctx:
-            self._check(
-                [str(self.tmp_root)], allowed_exts=None, blocked_exts=["Makefile"], path=makefile
-            )
+            self._check([str(self.tmp_root)], allowed_exts=None, blocked_exts=["Makefile"], path=makefile)
         self.assertIn("path_not_allowed", str(ctx.exception))
