@@ -400,19 +400,23 @@ class AgentNetworkDefinitionMiddleware(AgentMiddleware):
         """
         Validate and resolve a user-supplied HOCON file reference into a concrete path string.
 
-        Path resolution:
-          - Absolute paths are used as-is.
-          - Relative paths are resolved against the directory of the first entry in
-            ``AGENT_MANIFEST_FILE`` (a whitespace-separated list of manifest files), or
-            ``DEFAULT_REGISTRIES_DIR`` when the env var is empty or unset. This mirrors
-            ``FileSystemAgentNetworkPersistor`` so loads and saves agree on file location.
+        Resolution order:
+          1. Absolute paths (POSIX-rooted, or Windows with drive/UNC anchor) are used as-is.
+          2. Paths relative to cwd (typically the repo root) — if the input resolves to an
+             existing file under cwd, it is used as-is. This covers paths copied from the
+             repo tree such as "registries/generated/foo.hocon".
+          3. Otherwise, paths are resolved against ``base_dir`` — the directory of the
+             first entry in ``AGENT_MANIFEST_FILE`` (a whitespace-separated list of
+             manifest files), or ``DEFAULT_REGISTRIES_DIR`` when the env var is empty or
+             unset. This mirrors ``FileSystemAgentNetworkPersistor`` so loads and saves
+             agree on file location.
 
         Backslashes in the input are normalized to forward slashes so Windows-style paths
         work on POSIX (and vice versa).
 
         On invalid input, sets ``self.error_message`` and returns None.
 
-        :param network_hocon_file: Agent network hocon file path (absolute or relative)
+        :param network_hocon_file: Agent network hocon file path
         :return: The resolved file reference as a forward-slash path string, or None if invalid
         """
         if not isinstance(network_hocon_file, str) or not network_hocon_file.strip():
@@ -436,16 +440,25 @@ class AgentNetworkDefinitionMiddleware(AgentMiddleware):
         if candidate.is_absolute() and (os.name != "nt" or candidate.drive):
             return candidate.as_posix()
 
+        # Strip leading separators so a user-supplied "/foo.hocon" cannot escape base_dir.
+        # POSIX absolute paths are handled above; this catches the Windows drive-rooted
+        # case where Path() would otherwise discard base_dir when joining with a rooted
+        # right-hand side.
+        trimmed_input: str = normalized.lstrip("/")
+
+        # If the input resolves to an existing file relative to cwd (typically the repo
+        # root when running the server from the project directory), use it as-is. This
+        # covers any repo-root-relative path, including "registries/generated/foo.hocon"
+        # or files outside the registries folder.
+        if Path(trimmed_input).is_file():
+            return trimmed_input
+
         # Derive the base registries directory from AGENT_MANIFEST_FILE (the dirname of the
         # first listed manifest), falling back to the default registries directory.
         agent_manifest_file: str = os.environ.get("AGENT_MANIFEST_FILE", "")
         manifest_parts: list[str] = agent_manifest_file.split()
         base_dir: str = os.path.dirname(manifest_parts[0]) if manifest_parts else DEFAULT_REGISTRIES_DIR
-        # Strip leading separators so a user-supplied "/foo.hocon" cannot escape base_dir.
-        # POSIX absolute paths are handled above; this catches the Windows drive-rooted
-        # case where Path() would otherwise discard base_dir when joining with a rooted
-        # right-hand side.
-        return (Path(base_dir) / normalized.lstrip("/")).as_posix()
+        return (Path(base_dir) / trimmed_input).as_posix()
 
     async def _hocon_to_config(self, network_hocon_file: str | None) -> dict[str, Any] | None:
         """
