@@ -20,7 +20,7 @@
     #   - aaosa_instructions
     #
     # IMPORTANT:
-    # Ensure that you run `python -m run` from the top level of the repository.
+    # Ensure that you run `python -m neuro_san_studio.run` from the top level of the repository.
     # The path to this substitution file is **relative to the top-level directory**,
     # so running the script from elsewhere may result in file not found errors.
     include "registries/aaosa.hocon",

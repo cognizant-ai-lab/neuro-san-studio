@@ -12,7 +12,7 @@
 source venv/bin/activate
 mkdir -p logs
 
-nohup python -m run --server-only > logs/server.log 2>&1 &
+nohup python -m neuro_san_studio.run --server-only > logs/server.log 2>&1 &
   echo $! > server.pid
   sleep 2
 

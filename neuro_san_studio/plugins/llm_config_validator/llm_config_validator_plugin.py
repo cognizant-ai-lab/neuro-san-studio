@@ -18,7 +18,7 @@
 Plugin wrapper for LLM configuration validation.
 
 Provides a class-based interface around the check_llm_configs diagnostic
-script so it can be invoked from run.py via --check-llm-config.
+script so it can be invoked from neuro_san_studio/run.py via --check-llm-config.
 """
 
 import asyncio

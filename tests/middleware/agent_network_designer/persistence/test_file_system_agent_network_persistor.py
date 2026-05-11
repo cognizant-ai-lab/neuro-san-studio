@@ -51,7 +51,7 @@ class TestFileSystemAgentNetworkPersistor:
             with open(manifest_path, "wb") as f:
                 f.write('{\n    "café_network.hocon": true,\n}\n'.encode("utf-8"))
 
-            asyncio.run(persistor.async_persist("agent = {}", "generated/new_net"))
+            asyncio.run(persistor.async_persist("agent = {}", "new_net"))
 
             with open(manifest_path, "rb") as f:
                 raw = f.read()
@@ -70,7 +70,7 @@ class TestFileSystemAgentNetworkPersistor:
             with open(manifest_path, "wb") as f:
                 f.write(b'{\n    "caf\xe9_network.hocon": true,\n}\n')
 
-            asyncio.run(persistor.async_persist("agent = {}", "generated/new_net"))
+            asyncio.run(persistor.async_persist("agent = {}", "new_net"))
 
             with open(manifest_path, "rb") as f:
                 content = f.read().decode("utf-8")
@@ -86,7 +86,7 @@ class TestFileSystemAgentNetworkPersistor:
             with open(manifest_path, "wb") as f:
                 f.write(b'{\n    "generated/existing.hocon": true,\n    "caf\xe9.hocon": true,\n}\n')
 
-            result = asyncio.run(persistor.async_persist("agent = {}", "generated/existing"))
+            result = asyncio.run(persistor.async_persist("agent = {}", "existing"))
 
             assert result is None
             with open(manifest_path, "rb") as f:
@@ -120,7 +120,7 @@ class TestFileSystemAgentNetworkPersistor:
             persistor = self._make_persistor(tmp_dir)
 
             hocon_content = 'description = "café network"\n'
-            asyncio.run(persistor.async_persist(hocon_content, "generated/test_net"))
+            asyncio.run(persistor.async_persist(hocon_content, "test_net"))
 
             file_path = os.path.join(tmp_dir, "generated", "test_net.hocon")
             with open(file_path, "rb") as f:
@@ -134,7 +134,7 @@ class TestFileSystemAgentNetworkPersistor:
             persistor = self._make_persistor(tmp_dir)
 
             hocon_content = "line1\nline2\nline3\n"
-            asyncio.run(persistor.async_persist(hocon_content, "generated/test_net"))
+            asyncio.run(persistor.async_persist(hocon_content, "test_net"))
 
             file_path = os.path.join(tmp_dir, "generated", "test_net.hocon")
             with open(file_path, "rb") as f:

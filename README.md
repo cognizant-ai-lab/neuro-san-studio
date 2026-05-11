@@ -274,7 +274,7 @@ Neuro SAN Studio provides a user-friendly environment to interact with agent net
 1. Start the server and client with a single command, from the project root directory:
 
     ```bash
-    python -m run
+    python -m neuro_san_studio.run
     ```
 
 2. Navigate to [http://localhost:4173/](http://localhost:4173/) to access the UI.
@@ -286,7 +286,7 @@ Neuro SAN Studio provides a user-friendly environment to interact with agent net
 Use the `--help` option to see the various config options for the `run` command:
 
 ```bash
-python -m run --help
+python -m neuro_san_studio.run --help
 ```
 
 Screenshot:
