@@ -61,12 +61,12 @@ class TestAsyncInvoke(TestCase):
         self.assertIn("read_at", result)
         self.assertEqual(result["path"], str(path.resolve()))
 
-    def test_omitted_allowed_paths_denies(self):
-        """Tests that omitting allowed_file_paths denies the read."""
+    def test_omitted_allowed_paths_raises_invalid_input(self):
+        """Tests that omitting the required allowed_file_paths raises invalid_input."""
         path = self._write("a.txt", "x")
         with self.assertRaises(ValueError) as ctx:
             asyncio.run(self.tool.async_invoke({"path": str(path)}, self.sly_data))
-        self.assertIn("path_not_allowed", str(ctx.exception))
+        self.assertIn("invalid_input", str(ctx.exception))
 
     def test_path_outside_allowed_root_denied(self):
         """Tests that a file outside any allowed_file_paths entry is denied."""

@@ -36,8 +36,8 @@ class ReadFile(CodedTool):
         - allowed_file_paths   : specific file paths or directories that may be read
         - allowed_file_extensions: file extensions (e.g. ".py", ".txt") that may be read
 
-    Both allow-lists must permit the requested file for access to be granted; an empty
-    list (or omitted allowed_file_paths) denies all access for that dimension.
+    allowed_file_paths is required and must be non-empty; allowed_file_extensions is
+    optional (an empty list denies all extensions, omitting it skips extension filtering).
     Block-lists are evaluated after allow-lists; a match in a block-list always denies access.
 
     Error types (raised as ValueError with the specified message prefix):
@@ -158,8 +158,13 @@ class ReadFile(CodedTool):
         return resolved
 
     def _validate_allowed_file_paths(self, args: dict[str, Any]) -> list[str]:
-        """Validate and return the 'allowed_file_paths' list. Returns empty list when missing (deny all)."""
-        return self._validate_path_list(args.get("allowed_file_paths"), "allowed_file_paths")
+        """Validate and return the 'allowed_file_paths' list. Raises invalid_input when missing or empty."""
+        paths: list[str] = self._validate_path_list(args.get("allowed_file_paths"), "allowed_file_paths")
+        if not paths:
+            raise ValueError(
+                "invalid_input: 'allowed_file_paths' is required and must be a non-empty list of paths."
+            )
+        return paths
 
     def _validate_and_check_access(self, args: dict[str, Any], file_path: Path) -> None:
         """Validate the four allow/block rule lists from args and enforce them against file_path."""
@@ -187,13 +192,13 @@ class ReadFile(CodedTool):
                 )
         return value
 
-    def _validate_extension_list(self, value: Any, param_name: str) -> list[str]:
+    def _validate_extension_list(self, value: Any, param_name: str) -> list[str] | None:
         """Coerce and validate an extension list parameter. Accepts None, list[str], or a single str.
 
         None means the parameter was omitted (sentinel for "no filtering"); an empty list means deny all.
         """
         if value is None:
-            return None  # type: ignore[return-value]  # None = omitted, distinct from []
+            return None
         if isinstance(value, str):
             return [value]
         if not isinstance(value, list):
@@ -233,13 +238,19 @@ class ReadFile(CodedTool):
     ) -> tuple[str, int, int, int]:
         """Slice raw_text to the requested line range and char cap.
 
-        Returns (content, actual_start, actual_end, total_lines). actual_start/actual_end
-        are clamped to the file's real bounds; end_line=None reads to EOF.
+        Returns (content, actual_start, actual_end, total_lines). When start_line is past
+        EOF (or the file is empty), returns empty content with actual_start > actual_end so
+        the reported range stays internally consistent. end_line=None reads to EOF.
         """
         lines: list[str] = raw_text.splitlines(keepends=True)
         total_lines: int = len(lines)
-        actual_start: int = max(1, start_line)
-        actual_end: int = min(total_lines, end_line if end_line is not None else total_lines)
+        if start_line > total_lines:
+            # Requested range is past EOF — return empty content with consistent bounds.
+            actual_start: int = total_lines + 1 if total_lines else 1
+            actual_end: int = total_lines
+        else:
+            actual_start = max(1, start_line)
+            actual_end = min(total_lines, end_line if end_line is not None else total_lines)
         content: str = "".join(lines[actual_start - 1 : actual_end])[:max_chars]
         return content, actual_start, actual_end, total_lines
 
@@ -260,18 +271,20 @@ class ReadFile(CodedTool):
         """Raise ValueError(path_not_allowed) when the file fails the allow/block rules.
 
         Evaluation order:
-          1. allowed_file_paths:      [] or omitted = deny all; non-empty = whitelist.
+          1. allowed_file_paths:      non-empty whitelist (caller guarantees this via validation).
           2. allowed_file_extensions: None = omitted (skip check); [] = deny all; non-empty = whitelist.
           3. blocked_file_paths:      [] or omitted = skip; non-empty = deny matching paths/dirs.
           4. blocked_file_extensions: [] or omitted = skip; non-empty = deny matching extensions.
         """
-        # For dotfiles like ".env", pathlib returns suffix="" and stem=".env".
-        # Use the full filename in that case so callers can match by e.g. ".env".
-        suffix: str = file_path.suffix.lower() or file_path.name.lower()
+        # pathlib returns suffix="" for dotfiles (".gitignore") and extensionless files ("Dockerfile").
+        # Fall back to the filename, ensuring a leading dot so it normalizes to the same shape
+        # as a real extension and can be matched against allow/block lists.
+        suffix: str = file_path.suffix.lower()
+        if not suffix:
+            name: str = file_path.name.lower()
+            suffix = name if name.startswith(".") else f".{name}"
 
-        # 1. allowed_file_paths (empty list = deny all)
-        if not allowed_file_paths:
-            raise ValueError(f"path_not_allowed: '{file_path}' cannot be read (allowed_file_paths is empty).")
+        # 1. allowed_file_paths
         if not self._path_matches_any(file_path, allowed_file_paths):
             raise ValueError(f"path_not_allowed: '{file_path}' is not within any of the allowed_file_paths entries.")
 

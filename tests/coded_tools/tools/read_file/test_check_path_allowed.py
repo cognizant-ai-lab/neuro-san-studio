@@ -45,12 +45,6 @@ class TestCheckPathAllowed(TestCase):
             blocked_exts,
         )
 
-    def test_empty_allowed_paths_denies(self):
-        """Tests that an empty allowed_file_paths denies the read."""
-        with self.assertRaises(ValueError) as ctx:
-            self._check([])
-        self.assertIn("path_not_allowed", str(ctx.exception))
-
     def test_path_outside_allow_list_denied(self):
         """Tests that a file outside every allowed_file_paths entry is denied."""
         with self.assertRaises(ValueError) as ctx:
@@ -115,4 +109,21 @@ class TestCheckPathAllowed(TestCase):
         env_file.write_text("x", encoding="utf-8")
         with self.assertRaises(ValueError) as ctx:
             self._check([str(self.tmp_root)], allowed_exts=None, blocked_exts=[".env"], path=env_file)
+        self.assertIn("path_not_allowed", str(ctx.exception))
+
+    def test_extensionless_file_matched_by_name(self):
+        """Tests that an extensionless file like 'Dockerfile' can be whitelisted by name."""
+        dockerfile = self.tmp_root / "Dockerfile"
+        dockerfile.write_text("x", encoding="utf-8")
+        # Accept the bare name with or without a leading dot; normalization handles both.
+        self._check([str(self.tmp_root)], allowed_exts=["Dockerfile"], path=dockerfile)  # should not raise
+
+    def test_extensionless_file_blocked_by_name(self):
+        """Tests that an extensionless file like 'Makefile' can be blocked by name."""
+        makefile = self.tmp_root / "Makefile"
+        makefile.write_text("x", encoding="utf-8")
+        with self.assertRaises(ValueError) as ctx:
+            self._check(
+                [str(self.tmp_root)], allowed_exts=None, blocked_exts=["Makefile"], path=makefile
+            )
         self.assertIn("path_not_allowed", str(ctx.exception))

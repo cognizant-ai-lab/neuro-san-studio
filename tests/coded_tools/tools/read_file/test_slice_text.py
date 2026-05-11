@@ -69,3 +69,14 @@ class TestSliceText(TestCase):
         content, start, end, total = self._call("hello")
         self.assertEqual(content, "hello")
         self.assertEqual((start, end, total), (1, 1, 1))
+
+    def test_start_line_past_eof_returns_empty(self):
+        """Tests that start_line beyond total_lines returns empty content with consistent bounds.
+
+        Bounds satisfy actual_start > actual_end (a well-formed empty range), and we never
+        silently return content from a line the caller didn't ask for.
+        """
+        content, start, end, total = self._call("a\nb\n", start_line=999)
+        self.assertEqual(content, "")
+        self.assertEqual(total, 2)
+        self.assertGreater(start, end)
