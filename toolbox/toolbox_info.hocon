@@ -595,6 +595,80 @@ Options are `ascending` and `descending`. Default to `descending`.
         }
     },
 
+    # ---------- File Management Tools ----------
+
+    # Reads the contents of a local text file with allow/block-list access control.
+    # Requires: leaf-common (TextFileReader)
+    #
+    # Access control is deny-by-default: allowed_file_paths is required, and nothing
+    # is readable until the caller supplies it. Override the allowed_* / blocked_*
+    # params per-agent via the `args` field on the tool reference in your agent
+    # network hocon, e.g.:
+    #
+    #   {
+    #       "name": "read_file",
+    #       "toolbox": "read_file",
+    #       "args": {
+    #           "allowed_file_paths": ["/path/to/project"],
+    #           "allowed_file_extensions": [".py", ".md"],
+    #           "blocked_file_extensions": [".env"]
+    #       }
+    #   }
+    "read_file": {
+        "class": "coded_tools.tools.read_file.ReadFile",
+        "description": "Reads the contents of a local text file (with optional line range and char cap) and returns the text plus metadata. Access is restricted by caller-supplied allow/block lists for paths and extensions.",
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "path": {
+                    "type": "string",
+                    "description": "Absolute or relative path to the file to read."
+                },
+                "allowed_file_paths": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    },
+                    "description": "Required non-empty list of file paths or directory paths the tool may read from. A file is allowed when its resolved path equals or is a descendant of at least one entry."
+                },
+                "allowed_file_extensions": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    },
+                    "description": "Optional whitelist of file extensions (e.g. '.py', '.md'). Extensionless files like 'Dockerfile' may also be listed by name. Omit to skip extension filtering; an empty list denies all extensions."
+                },
+                "blocked_file_paths": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    },
+                    "description": "Optional list of file paths or directories that are always denied, even if listed in allowed_file_paths."
+                },
+                "blocked_file_extensions": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    },
+                    "description": "Optional list of file extensions that are always denied, even if listed in allowed_file_extensions."
+                },
+                "start_line": {
+                    "type": "int",
+                    "description": "1-based line number to start reading from. Defaults to 1."
+                },
+                "end_line": {
+                    "type": "int",
+                    "description": "1-based line number to stop reading at (inclusive). Defaults to end of file."
+                },
+                "max_content_chars": {
+                    "type": "int",
+                    "description": "Maximum number of characters to return. Defaults to 20000."
+                }
+            },
+            "required": ["path", "allowed_file_paths"]
+        }
+    },
+
     # ---------- Search Tools ----------
 
     # To use this search tool, obtain an API key from: https://brave.com/search/api/
