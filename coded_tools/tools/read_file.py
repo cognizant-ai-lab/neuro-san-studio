@@ -161,9 +161,7 @@ class ReadFile(CodedTool):
         """Validate and return the 'allowed_file_paths' list. Raises invalid_input when missing or empty."""
         paths: list[str] = self._validate_path_list(args.get("allowed_file_paths"), "allowed_file_paths")
         if not paths:
-            raise ValueError(
-                "invalid_input: 'allowed_file_paths' is required and must be a non-empty list of paths."
-            )
+            raise ValueError("invalid_input: 'allowed_file_paths' is required and must be a non-empty list of paths.")
         return paths
 
     def _validate_and_check_access(self, args: dict[str, Any], file_path: Path) -> None:
