@@ -14,19 +14,19 @@
 #
 # END COPYRIGHT
 
-# Import for asynchronous file operations
-import logging
 import os
+from pathlib import Path
 
 import aiofiles
+from leaf_common.serialization.util.text_file_reader import TextFileReader
 
 from middleware.agent_network_designer.persistence.agent_network_assembler import AgentNetworkAssembler
 from middleware.agent_network_designer.persistence.agent_network_persistor import AgentNetworkPersistor
 from middleware.agent_network_designer.persistence.hocon_agent_network_assembler import HoconAgentNetworkAssembler
 
-_logger = logging.getLogger(__name__)
-
 DEFAULT_SUBDIRECTORY: str = "generated"
+DEFAULT_REGISTRIES_DIR: str = "registries"
+MANIFEST_FILENAME: str = "manifest.hocon"
 
 
 class FileSystemAgentNetworkPersistor(AgentNetworkPersistor):
@@ -41,9 +41,11 @@ class FileSystemAgentNetworkPersistor(AgentNetworkPersistor):
 
         :param demo_mode: Whether to include demo mode instructions for agents
         :param subdirectory: The subdirectory under output_path where networks are saved.
+                Leading and trailing slashes are stripped so callers can pass either
+                "generated" or "generated/" interchangeably.
         """
         self.demo_mode: bool = demo_mode
-        self.subdirectory: str = subdirectory
+        self.subdirectory: str = subdirectory.strip("/")
 
         # Derive output_path from the first file listed in AGENT_MANIFEST_FILE
         agent_manifest_file: str = os.environ.get("AGENT_MANIFEST_FILE", "")
@@ -52,33 +54,14 @@ class FileSystemAgentNetworkPersistor(AgentNetworkPersistor):
             self.output_path: str = os.path.dirname(parts[0])
             self.main_manifest_path: str = parts[0]
         else:
-            self.output_path = "registries"
-            self.main_manifest_path = os.path.join("registries", "manifest.hocon")
+            self.output_path = DEFAULT_REGISTRIES_DIR
+            self.main_manifest_path = os.path.join(DEFAULT_REGISTRIES_DIR, MANIFEST_FILENAME)
 
     def get_assembler(self) -> AgentNetworkAssembler:
         """
         :return: An assembler instance associated with this persistor
         """
         return HoconAgentNetworkAssembler(self.demo_mode)
-
-    async def _async_read_text(self, path: str) -> str:
-        """
-        Reads a text file, trying UTF-8 first with a fallback to platform default encoding.
-
-        Writes always use UTF-8, so most files decode on the first attempt. The fallback
-        handles files created manually on Windows where the editor used the system locale
-        encoding (typically cp1252).
-        """
-        try:
-            async with aiofiles.open(path, "r", encoding="utf-8") as file:
-                return await file.read()
-        except UnicodeDecodeError:
-            _logger.warning(
-                "File '%s' is not valid UTF-8; retrying with platform default encoding.",
-                path,
-            )
-        async with aiofiles.open(path, "r", encoding="locale") as file:
-            return await file.read()
 
     async def async_persist(self, obj: str, file_reference: str = None) -> str:
         """
@@ -93,30 +76,32 @@ class FileSystemAgentNetworkPersistor(AgentNetworkPersistor):
         """
 
         the_agent_network_hocon_str: str = obj
-        # This agent network name already includes any subdirectory specified.
-        the_agent_network_name: str = file_reference
+        # Prepend subdirectory to form the full relative network path.
+        the_agent_network_name: str = f"{self.subdirectory}/{file_reference}"
 
-        # Write the agent network file
-        file_path: str = os.path.join(self.output_path, the_agent_network_name + ".hocon")
+        # Write the agent network file. Path() handles OS-specific separators: even though
+        # `the_agent_network_name` contains '/', pathlib recognizes it as an alt-separator on
+        # Windows and normalizes to '\' when the path is passed to the file system APIs.
+        file_path: Path = Path(self.output_path) / (the_agent_network_name + ".hocon")
         # Create parent directory automatically if necessary
-        os.makedirs(os.path.dirname(file_path), exist_ok=True)
+        file_path.parent.mkdir(parents=True, exist_ok=True)
         async with aiofiles.open(file_path, "w", encoding="utf-8", newline="\n") as file:
             await file.write(the_agent_network_hocon_str)
 
         # Update the manifest.hocon file
-        manifest_path: str = os.path.join(self.output_path, self.subdirectory, "manifest.hocon")
+        manifest_path: Path = Path(self.output_path) / self.subdirectory / MANIFEST_FILENAME
 
         # Create the generated directory if it doesn't exist
-        os.makedirs(os.path.dirname(manifest_path), exist_ok=True)
+        manifest_path.parent.mkdir(parents=True, exist_ok=True)
 
         # Create the manifest file if it doesn't exist
-        if not os.path.exists(manifest_path):
+        if not manifest_path.exists():
             async with aiofiles.open(manifest_path, "w", encoding="utf-8", newline="\n") as file:
                 # Initialize with empty JSON format
                 await file.write("{\n}")
 
         # Read the current manifest content
-        manifest_content: str = await self._async_read_text(manifest_path)
+        manifest_content: str = await TextFileReader.async_read_text_file(str(manifest_path))
 
         # Check if the entry already exists to avoid duplicates
         if (
@@ -154,7 +139,7 @@ class FileSystemAgentNetworkPersistor(AgentNetworkPersistor):
         if self.subdirectory != DEFAULT_SUBDIRECTORY:
             await self._async_update_main_manifest()
 
-        return file_path
+        return str(file_path)
 
     async def _async_update_main_manifest(self) -> None:
         """
@@ -164,10 +149,10 @@ class FileSystemAgentNetworkPersistor(AgentNetworkPersistor):
         if not os.path.exists(self.main_manifest_path):
             return None
 
-        content: str = await self._async_read_text(self.main_manifest_path)
+        content: str = await TextFileReader.async_read_text_file(self.main_manifest_path)
 
         registries_name: str = os.path.basename(self.output_path)
-        include_line: str = f'include "{registries_name}/{self.subdirectory}/manifest.hocon",'
+        include_line: str = f'include "{registries_name}/{self.subdirectory}/{MANIFEST_FILENAME}",'
 
         if include_line in content:
             return None

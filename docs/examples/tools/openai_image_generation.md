@@ -34,7 +34,7 @@ export OPENAI_API_KEY="your_openai_api_key_here"
 
 For more information on setting up OpenAI tools, see:
 
-- [OpenAI Tools Guide](https://platform.openai.com/docs/guides/tools?api-mode=responses)
+- [OpenAI Tools Guide](https://developers.openai.com/api/docs/guides/tools)
 
 - [LangChain OpenAI Responses API](https://python.langchain.com/docs/integrations/chat/openai/#responses-api)
 
@@ -83,7 +83,7 @@ which leverages OpenAI's built-in image generation capabilities.
 
 - `additional_kwargs`: Optional parameters for fine-tuning image generation behavior
   - `quality`: Image quality setting (e.g., "medium", "high")
-  - Additional parameters as documented in [OpenAI's image generation guide](https://platform.openai.com/docs/guides/tools-image-generation)
+  - Additional parameters as documented in [OpenAI's image generation guide](https://developers.openai.com/api/docs/guides/tools-image-generation)
 
 ---
 
@@ -135,16 +135,16 @@ When developing or debugging the OpenAI Image Generation Assistant, keep the fol
 
 ## Resources
 
-- [OpenAI Tools Guide](https://platform.openai.com/docs/guides/tools?api-mode=responses)  
+- [OpenAI Tools Guide](https://developers.openai.com/api/docs/guides/tools)  
   Complete guide to OpenAI's built-in tools and their capabilities.
 
-- [OpenAI Image Generation Tool Documentation](https://platform.openai.com/docs/guides/tools-image-generation)  
+- [OpenAI Image Generation Tool Documentation](https://developers.openai.com/api/docs/guides/tools-image-generation)  
   Detailed specifications and parameters for OpenAI's image generation tool.
 
 - [LangChain OpenAI Responses API](https://python.langchain.com/docs/integrations/chat/openai/#responses-api)  
   Documentation on using OpenAI's Responses API within the LangChain framework.
 
-- [OpenAI API Reference](https://platform.openai.com/docs/api-reference)  
+- [OpenAI API Reference](https://developers.openai.com/docs/api-reference)  
   Complete API reference for OpenAI's services and endpoints.
 
 - [Coded Tools Implementation Guide](https://github.com/cognizant-ai-lab/neuro-san-studio/blob/main/docs/user_guide.md#coded-tools)  

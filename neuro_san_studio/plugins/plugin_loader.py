@@ -17,8 +17,8 @@
 """
 Shared utility for loading plugins from a HOCON configuration file.
 
-Used by both the runner (run.py) and the server wrapper
-(neuro_san_server_wrapper.py) to avoid duplicating the loading logic.
+Used by both the runner (neuro_san_studio/run.py) and the server wrapper
+(neuro_san_studio/runner/neuro_san_server_wrapper.py) to avoid duplicating the loading logic.
 """
 
 import importlib
@@ -39,6 +39,14 @@ _logger = logging.getLogger("PluginLoader")
 
 class PluginLoader:  # pylint: disable=too-few-public-methods
     """Loads plugin classes from a HOCON configuration file."""
+
+    @staticmethod
+    def _is_enabled(plugin_entry: Dict[str, Any]) -> bool:
+        """Determine whether a plugin entry is enabled, handling string env var substitutions."""
+        value = plugin_entry.get("enabled", True)
+        if isinstance(value, str):
+            return value.lower() in ("true", "1", "yes")
+        return bool(value)
 
     @staticmethod
     def load_plugin_classes(plugins_file: str) -> List[Type]:
@@ -71,7 +79,7 @@ class PluginLoader:  # pylint: disable=too-few-public-methods
         plugin_entry: Dict[str, Any]
         for plugin_entry in config.get("plugins", []):
             class_path: Optional[str] = plugin_entry.get("class")
-            enabled: bool = plugin_entry.get("enabled", True)
+            enabled: bool = PluginLoader._is_enabled(plugin_entry)
 
             if not enabled:
                 _logger.info("Plugin %s is disabled. Skipping.", class_path)

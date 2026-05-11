@@ -51,7 +51,7 @@ The server will:
 nsflow is a developer-oriented web client. From the root of the repo, run the command:
 
 ```bash
-python -m run
+python -m neuro_san_studio.run
 ```
 
 and select `a2a_research_report`

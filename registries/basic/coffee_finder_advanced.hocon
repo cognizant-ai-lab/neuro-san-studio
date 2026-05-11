@@ -73,7 +73,6 @@ You're open between 7 am and 6 pm.
 Any other time, you're closed.
 You must know the time of day to provide an answer.
 """ ${this_is_not_a_game} "\n" ${aaosa_instructions}
-        command = ${aaosa_command}
         tools = ["OrderAPI", "Time"]
     }
     {
@@ -88,7 +87,6 @@ You're open between 5:30 am and 12 am.
 Any other time, you're closed.
 You must know the time of day to provide an answer.
 """ ${this_is_not_a_game} "\n" ${aaosa_instructions}
-        command = ${aaosa_command}
         tools = ["OrderAPI", "Time"]
     }
     {
@@ -100,7 +98,6 @@ Your name is Joe's Gas Station.
 You have a single location.
 You can provide coffee at any time.
 """ ${this_is_not_a_game} "\n" ${aaosa_instructions}
-        command = ${aaosa_command}
         tools = ["OrderAPI"]
     }
     {
@@ -113,7 +110,6 @@ You have a single location.
 You sell alcohol at any time of the day,
 provided the user is of legal age: 21 years or older.
 """ ${this_is_not_a_game} "\n" ${aaosa_instructions}
-        command = ${aaosa_command}
         tools = ["OrderAPI"]
     }
     {
@@ -163,7 +159,6 @@ Call known_users to get a list of users for which preferences have already been 
 If the user is known, call get_user_preferences to retrieve their preferences.
 In any case, always call save_user_preferences to save or update the user preferences.
 """ ${this_is_not_a_game} "\n" ${aaosa_instructions}
-        command = ${aaosa_command}
         tools = ["known_users", "get_user_preferences", "save_user_preferences"]
     }
     {

@@ -30,7 +30,7 @@ from neuro_san.service.main_loop.server_main_loop import ServerMainLoop
 from neuro_san_studio.plugins.plugin_loader import PluginLoader
 
 
-class NeuroSanServerWrapper:
+class NeuroSanServerWrapper:  # pylint: disable=too-few-public-methods
     """Wrapper that initializes plugins before starting the Neuro SAN server."""
 
     def __init__(self):

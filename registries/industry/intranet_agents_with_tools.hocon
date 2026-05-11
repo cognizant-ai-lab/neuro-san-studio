@@ -17,11 +17,10 @@
    # This "aaosa.hocon" file contains key-value pairs used for substitution.
     # Specifically, it provides values for the following keys:
     #   - aaosa_call
-    #   - aaosa_command
     #   - aaosa_instructions
     #
     # IMPORTANT:
-    # Ensure that you run `python -m run` from the top level of the repository.
+    # Ensure that you run `python -m neuro_san_studio.run` from the top level of the repository.
     # The path to this substitution file is **relative to the top-level directory**,
     # so running the script from elsewhere may result in file not found errors.
     include "registries/aaosa.hocon",
@@ -103,7 +102,6 @@ If your response does not include any URLs, then add an URL for the company's in
 The name of this MyIntranet app is GSD and IT related requests require GSD tickets. Return the URL to GSD for any IT related tickets the user needs to open.
 You are responsible for IT-related inquiries for company employees.
             """ ${aaosa_instructions},
-            "command": ${aaosa_command},
             "tools": ["Security", "Networking", "URLProvider"]
         },
         {
@@ -112,7 +110,6 @@ You are responsible for IT-related inquiries for company employees.
             "instructions": ${instructions_prefix} """
 Handles security-related tasks, including system protection, cybersecurity, and data security for company's employees.
             """ ${aaosa_instructions},
-            "command": ${aaosa_command},
         },
         {
             "name": "Networking",
@@ -120,7 +117,6 @@ Handles security-related tasks, including system protection, cybersecurity, and 
             "instructions": ${instructions_prefix} """
 Handles network-related tasks, including network setup, maintenance, and troubleshooting for company's employees.
             """ ${aaosa_instructions},
-            "command": ${aaosa_command},
         },
         {
             "name": "Finance",
@@ -128,7 +124,6 @@ Handles network-related tasks, including network setup, maintenance, and trouble
             "instructions": ${instructions_prefix} """
 Handles finance-related inquiries, including budgeting, accounting, and financial reporting for company's employees.
             """ ${aaosa_instructions},
-            "command": ${aaosa_command},
             "tools": ["Budgeting", "Accounting", "FinancialReporting"]
         },
         {
@@ -137,7 +132,6 @@ Handles finance-related inquiries, including budgeting, accounting, and financia
             "instructions": ${instructions_prefix} """
 Handles budgeting tasks, including budget planning, allocation, and tracking for company's employees.
             """ ${aaosa_instructions},
-            "command": ${aaosa_command},
         },
         {
             "name": "Accounting",
@@ -145,7 +139,6 @@ Handles budgeting tasks, including budget planning, allocation, and tracking for
             "instructions": ${instructions_prefix} """
 Handles accounting tasks, including bookkeeping, financial records, and audits for company's employees.
             """ ${aaosa_instructions},
-            "command": ${aaosa_command},
         },
         {
             "name": "FinancialReporting",
@@ -153,7 +146,6 @@ Handles accounting tasks, including bookkeeping, financial records, and audits f
             "instructions": ${instructions_prefix} """
 Handles financial reporting tasks, including preparing financial statements, regulatory reporting, and performance analysis for company's employees.
             """ ${aaosa_instructions},
-            "command": ${aaosa_command},
         },
         {
             "name": "Procurement",
@@ -161,7 +153,6 @@ Handles financial reporting tasks, including preparing financial statements, reg
             "instructions": ${instructions_prefix} """
 Handles procurement-related tasks for company's employees.
             """ ${aaosa_instructions},
-            "command": ${aaosa_command},
             "tools": ["Purchasing", "VendorManagement", "ContractNegotiation"]
         },
         {
@@ -170,7 +161,6 @@ Handles procurement-related tasks for company's employees.
             "instructions": ${instructions_prefix} """
 Handles purchasing-related tasks, including ordering, supply management, and procurement processes for company's employees.
             """ ${aaosa_instructions},
-            "command": ${aaosa_command},
         },
         {
             "name": "VendorManagement",
@@ -178,7 +168,6 @@ Handles purchasing-related tasks, including ordering, supply management, and pro
             "instructions": ${instructions_prefix} """
 Handles vendor management tasks, including vendor selection, performance monitoring, and relationship management for company's employees.
             """ ${aaosa_instructions},
-            "command": ${aaosa_command},
         },
         {
             "name": "ContractNegotiation",
@@ -186,7 +175,6 @@ Handles vendor management tasks, including vendor selection, performance monitor
             "instructions": ${instructions_prefix} """
 Handles contract negotiation tasks, including drafting, reviewing, and finalizing procurement contracts for company's employees.
             """ ${aaosa_instructions},
-            "command": ${aaosa_command},
         },
         {
             "name": "Legal",
@@ -194,7 +182,6 @@ Handles contract negotiation tasks, including drafting, reviewing, and finalizin
             "instructions": ${instructions_prefix} """
 Handles legal-related inquiries for company's employees.
             """ ${aaosa_instructions},
-            "command": ${aaosa_command},
             "tools": ["Contracts", "Compliance", "LegalAdvice", "Immigration"]
         },
         {
@@ -203,7 +190,6 @@ Handles legal-related inquiries for company's employees.
             "instructions": ${instructions_prefix} """
 Handles contract-related tasks, including drafting, reviewing, and enforcing legal agreements for company's employees.
             """ ${aaosa_instructions},
-            "command": ${aaosa_command},
         },
         {
             "name": "Compliance",
@@ -211,7 +197,6 @@ Handles contract-related tasks, including drafting, reviewing, and enforcing leg
             "instructions": ${instructions_prefix} """
 Handles compliance-related tasks, including ensuring adherence to laws, regulations, and internal policies for company's employees.
             """ ${aaosa_instructions},
-            "command": ${aaosa_command},
         },
         {
             "name": "LegalAdvice",
@@ -219,7 +204,6 @@ Handles compliance-related tasks, including ensuring adherence to laws, regulati
             "instructions": ${instructions_prefix} """
 Handles legal advice tasks, including providing legal counsel, risk assessment, and legal strategy for company's employees.
             """ ${aaosa_instructions},
-            "command": ${aaosa_command},
         },
         {
             "name": "HR",
@@ -229,7 +213,6 @@ You are responsible for HR-related inquiries for company's employees.
 That includes payroll, benefits, immigration questions, as well as and absence management:
 vacation, PTO, other time-off and checking leave balances.
             """ ${aaosa_instructions},
-            "command": ${aaosa_command},
             "tools": ["Benefits", "Payroll", "Immigration", "AbsenceManagement"]
         },
         {
@@ -238,7 +221,6 @@ vacation, PTO, other time-off and checking leave balances.
             "instructions": ${instructions_prefix} """
 Handles benefits-related tasks, including employee benefits, health insurance, and retirement plans, but excluding PTO and absence management for company's employees.
             """ ${aaosa_instructions},
-            "command": ${aaosa_command},
         },
         {
             "name": "Payroll",
@@ -246,7 +228,6 @@ Handles benefits-related tasks, including employee benefits, health insurance, a
             "instructions": ${instructions_prefix} """
 Handles payroll-related tasks, including salary processing, tax deductions, and pay slips for company's employees.
             """ ${aaosa_instructions},
-            "command": ${aaosa_command},
         },
         {
             "name": "Immigration",
@@ -255,7 +236,6 @@ Handles payroll-related tasks, including salary processing, tax deductions, and 
 Handles immigration-related tasks, including the legal processes and documentation for employees’ work visas,
 travel visas, residency permits, and international relocations, ensuring compliance with immigration laws for company's employees.
             """ ${aaosa_instructions},
-            "command": ${aaosa_command},
         },
         {
             "name": "AbsenceManagement",
@@ -264,7 +244,6 @@ travel visas, residency permits, and international relocations, ensuring complia
 Handles absence management-related tasks for company's employees (i.e., vacation, PTO, or other time-off).
 Always return a concrete answer from your tools, as well as a link to Absence Management site.
             """ ${aaosa_instructions},
-            "command": ${aaosa_command},
             "tools": ["ScheduleLeaveAPI", "CheckLeaveBalancesAPI", "URLProvider"]
         },
         {

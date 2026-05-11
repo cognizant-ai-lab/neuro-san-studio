@@ -20,6 +20,7 @@ import os
 from typing import Any
 from typing import Dict
 
+from leaf_common.serialization.util.text_file_reader import TextFileReader
 from neuro_san.interfaces.coded_tool import CodedTool
 
 LONG_TERM_MEMORY_FILE = True  # Store and read memory from file
@@ -71,9 +72,8 @@ class ListTopics(CodedTool):
         """
         file_path = MEMORY_FILE_PATH + MEMORY_DATA_STRUCTURE + ".json"
         if os.path.exists(file_path):
-            with open(file_path, "r", encoding="utf-8") as file:
-                content = file.read()
-                self.topic_memory = json.loads(content) if content else {}
+            content = TextFileReader.read_text_file(file_path)
+            self.topic_memory = json.loads(content) if content else {}
         else:
             self.topic_memory = {}
 

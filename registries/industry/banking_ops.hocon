@@ -17,11 +17,10 @@
     # This "aaosa.hocon" file contains key-value pairs used for substitution.
     # Specifically, it provides values for the following keys:
     #   - aaosa_call
-    #   - aaosa_command
     #   - aaosa_instructions
     #
     # IMPORTANT:
-    # Ensure that you run `python -m run` from the top level of the repository.
+    # Ensure that you run `python -m neuro_san_studio.run` from the top level of the repository.
     # The path to this substitution file is **relative to the top-level directory**,
     # so running the script from elsewhere may result in file not found errors.
 
@@ -87,7 +86,6 @@ If there are any requirements that need user input, ask them one at a time, with
     You manage ongoing customer relationships, ensuring satisfaction and handling account related needs or questions.
                 """ ${aaosa_instructions},
             "tools": ["relationship_manager", "wealth_management_advisor", "investment_specialist"],
-            "command": ${aaosa_command}
         },
         {
             "name": "fraud_prevention_specialist",
@@ -96,7 +94,6 @@ If there are any requirements that need user input, ask them one at a time, with
     You are responsible for identifying and investigating potential fraudulent activities on customer accounts.
                 """ ${aaosa_instructions},
             "tools": ["fraud_investigation_team", "security_analyst"],
-            "command": ${aaosa_command}
         },
         {
             "name": "loan_officer",
@@ -105,7 +102,6 @@ If there are any requirements that need user input, ask them one at a time, with
     You assess and approve loan applications based on customers' financial profiles and banking history.
                 """ ${aaosa_instructions},
             "tools": ["underwriter", "mortgage_specialist", "business_banking_officer"],
-            "command": ${aaosa_command}
         },
         {
             "name": "relationship_manager",
@@ -114,7 +110,6 @@ If there are any requirements that need user input, ask them one at a time, with
     You manage relationships with the bank's most important clients, ensuring personalized service and addressing high-level banking needs.
                 """ ${aaosa_instructions},
             "tools": ["wealth_management_advisor", "investment_specialist"],
-            "command": ${aaosa_command}
         },
         {
             "name": "wealth_management_advisor",
@@ -123,7 +118,6 @@ If there are any requirements that need user input, ask them one at a time, with
     You handle high-net-worth clients by advising them on investment strategies, financial planning, and asset management.
                 """ ${aaosa_instructions},
             "tools": ["investment_specialist", "portfolio_manager"],
-            "command": ${aaosa_command}
         },
         {
             "name": "investment_specialist",
@@ -132,7 +126,6 @@ If there are any requirements that need user input, ask them one at a time, with
     You recommend and manage investment products for clients, ensuring alignment with their financial goals.
                 """ ${aaosa_instructions},
             "tools": ["portfolio_manager", "trading_desk"],
-            "command": ${aaosa_command}
         },
         {
             "name": "underwriter",
@@ -140,7 +133,6 @@ If there are any requirements that need user input, ask them one at a time, with
             "instructions": ${demo_mode} """
     You review and analyze the risk factors in loan applications, ensuring they meet the bank's lending criteria.
                 """,
-            "command": ${aaosa_command}
         },
         {
             "name": "mortgage_specialist",
@@ -148,7 +140,6 @@ If there are any requirements that need user input, ask them one at a time, with
             "instructions": ${demo_mode} """
     You manage the process of mortgage applications, from initial consultation to final approval.
                 """,
-            "command": ${aaosa_command}
         },
         {
             "name": "business_banking_officer",
@@ -156,7 +147,6 @@ If there are any requirements that need user input, ask them one at a time, with
             "instructions": ${demo_mode} """
     You handle the financial needs of small to medium-sized businesses, including business loans and banking solutions.
                 """,
-            "command": ${aaosa_command}
         },
         {
             "name": "fraud_investigation_team",
@@ -165,7 +155,6 @@ If there are any requirements that need user input, ask them one at a time, with
     You investigate and manage complex or high-value fraud cases, coordinating with internal teams and external agencies as needed.
                 """ ${aaosa_instructions},
             "tools": ["security_analyst"],
-            "command": ${aaosa_command}
     },
         {
             "name": "security_analyst",
@@ -173,7 +162,6 @@ If there are any requirements that need user input, ask them one at a time, with
             "instructions": """
     You oversee the bank’s cybersecurity systems, tracking and preventing breaches or threats.
                 """,
-            "command": ${aaosa_command}
         },
         {
             "name": "portfolio_manager",
@@ -182,7 +170,6 @@ If there are any requirements that need user input, ask them one at a time, with
     You oversee the performance of investment portfolios, ensuring they meet the financial goals and risk profiles of clients.
                 """ ${aaosa_instructions},
             "tools": ["trading_desk"],
-            "command": ${aaosa_command}
         },
         {
             "name": "trading_desk",
@@ -190,7 +177,6 @@ If there are any requirements that need user input, ask them one at a time, with
             "instructions": ${demo_mode} """
     You handle the execution of financial transactions, ensuring timely and accurate trades in markets.
                 """,
-            "command": ${aaosa_command}
         }
     ]
 }

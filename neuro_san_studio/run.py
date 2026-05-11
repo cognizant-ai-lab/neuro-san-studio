@@ -42,7 +42,7 @@ class NeuroSanRunner:
         """Initialize configuration and parse CLI arguments."""
         self._logger = logging.getLogger(self.__class__.__name__)
         self.is_windows = os.name == "nt"
-        self.root_dir = os.path.dirname(os.path.abspath(__file__))
+        self.root_dir = os.getcwd()
         self.logs_dir = os.path.join(self.root_dir, "logs")
         self.thinking_file = os.path.join(self.logs_dir, "agent_thinking.txt")
         self.thinking_dir = os.path.join(self.logs_dir, "thinking_dir")
@@ -295,7 +295,7 @@ class NeuroSanRunner:
             sys.executable,
             "-u",
             "-m",
-            "servers.neuro_san.neuro_san_server_wrapper",
+            "neuro_san_studio.runner.neuro_san_server_wrapper",
             "--http_port",
             str(self.args["server_http_port"]),
         ]
@@ -444,6 +444,36 @@ class NeuroSanRunner:
             except Exception as e:  # pylint: disable=broad-exception-caught
                 print(f"  Error handling port {port}: {e}")
 
+    def _validate_yes_no_input(self, prompt: str, max_attempts: int = 3) -> bool:
+        """Prompt the user for a yes/no answer, validating against a whitelist.
+
+        Returns True for yes/y, False for no/n or after max_attempts invalid
+        responses. Input is stripped and lower-cased before comparison.
+        """
+        if max_attempts < 1:
+            raise ValueError("max_attempts must be at least 1")
+
+        valid_yes = {"yes", "y"}
+        valid_no = {"no", "n"}
+        for attempt in range(max_attempts):
+            try:
+                raw = input(prompt).strip().lower()
+            except EOFError:
+                print("No input available. Considering the answer is 'no'.")
+                return False
+            except KeyboardInterrupt:
+                print("\nInput interrupted. Considering the answer is 'no'.")
+                return False
+            if raw in valid_yes:
+                return True
+            if raw in valid_no:
+                return False
+            remaining = max_attempts - attempt - 1
+            if remaining > 0:
+                print(f"Invalid input. Please enter 'yes' or 'no'. ({remaining} attempt(s) left)")
+        print("Too many invalid responses. Considering the answer is 'no'.")
+        return False
+
     def conditional_start_servers(self):
         """
         Start neuro-san, nsflow, and flask client based on conditions while running on localhost.
@@ -475,10 +505,7 @@ class NeuroSanRunner:
                 print(msg)
             print("=" * 50)
 
-            # Ask user if they want to kill the processes
-            response = input("\nDo you want to kill the processes using these ports? (yes/no): ").strip().lower()
-
-            if response in ["yes", "y"]:
+            if self._validate_yes_no_input("\nDo you want to kill the processes using these ports? (yes/no): "):
                 self._kill_processes_on_ports(conflicting_ports)
                 print("\nProcesses killed. Continuing with startup...\n")
             else:

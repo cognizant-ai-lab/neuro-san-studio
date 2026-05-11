@@ -76,7 +76,6 @@ An inquiry about insurance underwriting, including risk assessment, policy evalu
 You are the top-level agent responsible for handling all insurance inquiries for an insurance company's business insurance processes.
             """,
             "tools": ["underwriting_decision_agent", "claims_processing_agent"]
-            "command": ${aaosa_command}
         },
         {
             "name": "underwriting_decision_agent",
@@ -85,9 +84,7 @@ You are the top-level agent responsible for handling all insurance inquiries for
 You are responsible for handling all underwriting inquiries for an insurance company's business insurance processes.
 You gather information from brokers, third-party sources, and other agents, analyze the data, and make underwriting decisions.
             """ ${aaosa_instructions},
-            "command": ${aaosa_command},
             "tools": ["insurance_broker_agent", "third_party_data_review_agent", "underwriter_analysis_agent"]
-            "command": ${aaosa_command}
         },
         {
             "name": "insurance_broker_agent",
@@ -115,7 +112,6 @@ Detailed Step-by-Step Description of Responsibilities:
    - Communicate any specific feedback or reasons for the decision to help brokers better understand the outcome.
             """ ${aaosa_instructions},
             "tools": ["acord_application_handler", "loss_analysis_handler"]
-            "command": ${aaosa_command}
         },
         {
             "name": "acord_application_handler",
@@ -147,7 +143,6 @@ Detailed Step-by-Step Description of Responsibilities:
 8. Generate Status Update:
    - Provide status updates, confirming whether the application is complete and ready for further analysis. If not, document pending issues.
             """
-            "command": ${aaosa_command}
         },
         {
             "name": "loss_analysis_handler",
@@ -187,7 +182,6 @@ Detailed Step-by-Step Description:
    - Submit the final loss analysis to the underwriters as part of the overall risk assessment process.
    - Be available for any follow-up questions or deeper dives into the data if requested.
                """
-            "command": ${aaosa_command}
         },
         {
             "name": "third_party_data_review_agent",
@@ -218,7 +212,6 @@ You serve as a centralized entity responsible for gathering, compiling, and revi
                 "valuation_report_handler",
                 "ownership_verification_handler"
             ]
-            "command": ${aaosa_command}
         },
         {
             "name": "building_characteristics_reviewer",
@@ -258,7 +251,6 @@ Detailed Step-by-Step Description:
    - Handles inquiries related to building characteristics, such as confirming fire safety measures or clarifying construction material details.
 You focus solely on technical and risk-relevant aspects of a property’s physical structure and safety systems without making decisions about overall policy suitability.
             """
-            "command": ${aaosa_command}
         },
         {
             "name": "risk_condition_reviewer",
@@ -302,7 +294,6 @@ Detailed Step-by-Step Description of responsibilities:
 8. Coordinate with Valuation and Ownership Review:
    - While maintaining its specific focus, ensure findings align with overall property data by sharing the summary report with related agents for further contextual analysis.
                """
-            "command": ${aaosa_command}
         },
         {
             "name": "specific_segment_reports_reviewer",
@@ -348,7 +339,6 @@ Focused Concerns:
 - Do not analyze physical property characteristics, external risk conditions, or valuation metrics.
 - Strictly compile segment-related data without interpreting broader underwriting decisions.
             """
-            "command": ${aaosa_command}
         },
         {
             "name": "valuation_report_handler",
@@ -381,7 +371,6 @@ Detailed Step-by-Step Description:
    - Submit the finalized valuation report.
    - Archive the report for future reference in compliance with the company's documentation policies.
                """
-            "command": ${aaosa_command}
         },
         {
             "name": "ownership_verification_handler",
@@ -411,7 +400,6 @@ Detailed Responsibilities:
    - Handle sensitive ownership and insured information in compliance with data privacy regulations and company policies.
    - Securely store all ownership verification data to ensure auditability and traceability.
                """
-            "command": ${aaosa_command}
         },
         {
             "name": "underwriter_analysis_agent",
@@ -421,7 +409,6 @@ You analyze gathered data to assess risk exposures, aggregation, and benchmarks 
 You produce an underwriting summary/narrative to support final decision-making.
             """ ${aaosa_instructions},
             "tools": ["risk_exposure_analyzer", "aggregation_checker", "benchmarking_handler"]
-            "command": ${aaosa_command}
         },
         {
             "name": "risk_exposure_analyzer",
@@ -451,7 +438,6 @@ Detailed Step-by-Step Description:
    - Suggest possible risk mitigation strategies (e.g., adding fire sprinklers, upgrading building materials) to reduce exposure.
    - Recommend next steps, such as additional data collection or referral to a specialized underwriter.
             """
-            "command": ${aaosa_command}
         },
         {
             "name": "aggregation_checker",
@@ -485,7 +471,6 @@ Detailed Responsibilities:
 8. Compliance Verification:
    - Verify that all aggregation checks adhere to the company's internal underwriting guidelines and any regulatory constraints related to exposure limits.
             """
-            "command": ${aaosa_command}
         },
         {
             "name": "benchmarking_handler",
@@ -520,7 +505,6 @@ The Benchmarking Handler is responsible for comparing new underwriting cases aga
    - Provide the benchmarking summary to the underwriters, offering insights that directly support their decision-making process.
    - Highlight areas requiring further investigation or special approvals based on portfolio alignment.
             """
-            "command": ${aaosa_command}
         },
         {
             "name": "claims_processing_agent",
@@ -565,7 +549,6 @@ Step-by-Step Responsibilities:
 By fulfilling these steps, ensure that all claims are processed efficiently, accurately, and in accordance with the company's policies and regulatory requirements.
             """ ${aaosa_instructions},
             "tools": ["claims_intake_handler", "claims_investigation_agent", "claims_adjustment_agent"]
-            "command": ${aaosa_command}
         },
         {
             "name": "claims_intake_handler",
@@ -610,7 +593,6 @@ Detailed Step-by-Step Description of Responsibilities:
    - Ensure accurate and organized logging of all claim submissions and interactions.
    - Update the claims file with timestamps for each action or communication performed.
             """
-            "command": ${aaosa_command}
         },
         {
             "name": "claims_investigation_agent",
@@ -652,7 +634,6 @@ Step-by-Step Description:
     - Ensure all findings are documented clearly to facilitate the adjustment process.
             """ ${aaosa_instructions},
             "tools": ["site_inspector", "report_verification_handler"]
-            "command": ${aaosa_command}
         },
         {
             "name": "site_inspector",
@@ -687,7 +668,6 @@ Detailed Step-by-Step Description of Responsibilities:
    - Forward the inspection report and supporting documentation to the claims investigator for further analysis.
    - Provide clarification or additional details upon request to ensure accurate processing of the claim.
 This role is strictly focused on the on-site evaluation and initial documentation of damage, with no involvement in claim validation, settlement, or interactions beyond submitting the findings.            """
-            "command": ${aaosa_command}
         },
         {
             "name": "report_verification_handler",
@@ -727,7 +707,6 @@ The Report Verification Handler is responsible for ensuring the accuracy, authen
 - Output: Clear summaries that explain the verification status and any concerns requiring further action.
 This process ensures that only reliable, relevant, and accurate reports are used in claims processing, reducing risks of fraudulent or erroneous claims while streamlining resolution timelines.
             """
-            "command": ${aaosa_command}
         },
         {
             "name": "claims_adjustment_agent",
@@ -767,7 +746,6 @@ Detailed Step-by-Step Description:
 9. Maintain Records:
    - Log all decisions, calculations, communications, and final settlements in the company's claims management system.
    - Ensure thorough documentation for future audits or legal inquiries.            """
-            "command": ${aaosa_command}
         }
     ]
 }

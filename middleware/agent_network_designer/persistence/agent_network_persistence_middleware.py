@@ -31,9 +31,10 @@ from coded_tools.agent_network_editor.connectivity_dictionary_converter import C
 from coded_tools.agent_network_editor.constants import AGENT_NETWORK_DEFINITION
 from coded_tools.agent_network_editor.constants import AGENT_NETWORK_HOCON_TEXT
 from coded_tools.agent_network_editor.constants import AGENT_NETWORK_NAME
-from coded_tools.agent_network_editor.constants import MCP_SERVERS
+from coded_tools.agent_network_editor.get_mcp_tool import GetMcpTool
 from coded_tools.agent_network_editor.get_subnetwork import GetSubnetwork
 from coded_tools.agent_network_query_generator.set_sample_queries import AGENT_NETWORK_QUERIES
+from middleware.agent_network_designer.agent_network_definition_middleware import SKIP_DESIGNER
 from middleware.agent_network_designer.persistence.agent_network_assembler import AgentNetworkAssembler
 from middleware.agent_network_designer.persistence.agent_network_persistor import AgentNetworkPersistor
 from middleware.agent_network_designer.persistence.agent_network_persistor_factory import AgentNetworkPersistorFactory
@@ -62,10 +63,14 @@ class AgentNetworkPersistenceMiddleware(AgentMiddleware):
     Middleware that validates and persists an agent network after the agent finishes
     (i.e., no more tool calls are pending).
 
-    Runs structural, toolbox, URL, and keyword validators against the current network
-    definition stored in sly_data. If validation errors are found, a human message
-    containing the errors is injected and control jumps back to the model so
-    it can self-correct.
+    If an agent network definition is present in sly_data, runs structural and instruction
+    validators against it. If validation errors are found, a human message containing the
+    errors is injected and control jumps back to the model so it can self-correct.
+
+    If no agent network definition is present, this middleware does nothing and returns None,
+    allowing the agent to respond freely. This handles cases where loading failed upstream
+    (e.g., in AgentNetworkDefinitionMiddleware) and the agent needs to report that error
+    rather than produce a network definition.
 
     Note: Validation is intentionally duplicated here even though individual subnetworks
     already perform their own validation. This is a safeguard for cases where the agent
@@ -96,7 +101,8 @@ class AgentNetworkPersistenceMiddleware(AgentMiddleware):
         self.reservationist = reservationist
         self.sly_data = sly_data
 
-    # Reenter the agent loop at the model node if validation fails or there is no agent network definition.
+    # Reenter the agent loop at the model node if validation fails.
+    # If no agent network definition is present, return None to let the agent respond freely.
     # See https://github.com/cognizant-ai-lab/neuro-san-studio/blob/main/docs/user_guide.md#middleware and
     # https://reference.langchain.com/python/langchain/agents/middleware/types/hook_config for details on
     # hook_config and jump_to.
@@ -105,10 +111,11 @@ class AgentNetworkPersistenceMiddleware(AgentMiddleware):
         """
         Validate and persist the agent network after the agent finishes.
 
-        Called when the agent has no more pending tool calls. Runs structure, toolbox,
-        URL, and keyword validators against the network definition in sly_data. If any
-        errors are found, injects a human message with the errors and jumps back to the
-        model so it can self-correct.
+        Called when the agent has no more pending tool calls. If an agent network definition
+        is present in sly_data, runs structure and instruction validators against it. If any
+        errors are found, injects a human message with the errors and jumps back to the model
+        so it can self-correct. If no definition is present, returns None so the agent can
+        respond freely (e.g., to report a loading error from AgentNetworkDefinitionMiddleware).
 
         This validation acts as a final safety net: even if the agent bypassed calling
         the necessary tools or subnetworks (and thus their built-in validators never ran),
@@ -119,73 +126,95 @@ class AgentNetworkPersistenceMiddleware(AgentMiddleware):
         :return: Dict with error message and jump directive, or None if valid
         """
         network_def: dict[str, Any] = self.sly_data.get(AGENT_NETWORK_DEFINITION)
-        if not network_def:
-            return self._error_response(
-                "No agent network found. Please create a new agent network using `/agent_network_editor` tool"
-            )
+        agent_network_name: str = self.sly_data.get(AGENT_NETWORK_NAME)
+        # Only validate and persist if there is an agent_network_definition with a valid name; otherwise let
+        # the agent respond to the user freely. This allows the agent to ask clarifying questions or report
+        # issues without being forced to produce a network definition — for example, when
+        # AgentNetworkDefinitionMiddleware failed to load from a HOCON file or S3 reservation and
+        # already reported the error (jumping to end), so no network definition will be present.
+        # A valid name is also required for file path and reservation name construction.
+        if network_def and agent_network_name and isinstance(agent_network_name, str):
+            structure_errors, instructions_errors = await self._validate_network(network_def)
+            if structure_errors or instructions_errors:
+                self.logger.warning("Validation errors: %s", structure_errors + instructions_errors)
+                self.logger.warning("Invoking agent network designer to fix the issues.")
+                message_parts: list[str] = []
+                if structure_errors:
+                    message_parts.append(
+                        f"The agent network definition has structural issues: {structure_errors}. "
+                        "Call `agent_network_editor` to fix these structural problems."
+                    )
+                if instructions_errors:
+                    message_parts.append(
+                        f"The agent network definition has instructions-related issues: {instructions_errors}. "
+                        "Call `agent_network_instructions_editor` to fix these instructions problems."
+                    )
+                if structure_errors and instructions_errors:
+                    message_parts.append(
+                        "Fix the structural issues first by calling `agent_network_editor`, "
+                        "then address the instructions issues with `agent_network_instructions_editor`."
+                    )
+                return self._error_response(" ".join(message_parts))
 
-        error_list: list[str] = await self._validate_network(network_def)
-        if error_list:
-            self.logger.error("Error: %s", error_list)
-            return self._error_response(
-                f"The current agent network definition has the following issues: {error_list}. "
-                "Please fix these issues to ensure the agent network can be properly assembled and executed."
-            )
+            sample_queries: list[str] = self.sly_data.get(AGENT_NETWORK_QUERIES, [])
 
-        the_agent_network_name: str = self._normalize_network_name(self.sly_data.get(AGENT_NETWORK_NAME))
-        self.sly_data[AGENT_NETWORK_NAME] = the_agent_network_name
-        sample_queries: list[str] = self.sly_data.get(AGENT_NETWORK_QUERIES, [])
+            await self._assemble_and_persist(network_def, agent_network_name, sample_queries)
+            self._determine_exported_network_definition(self.sly_data)
 
-        await self._assemble_and_persist(network_def, the_agent_network_name, sample_queries)
-        self._determine_exported_network_definition(self.sly_data)
-
-        self.logger.debug(">>>>>>>>>>>>>>>>>>> DONE %s !!!>>>>>>>>>>>>>>>>>>", self.__class__.__name__)
+            self.logger.debug(">>>>>>>>>>>>>>>>>>> DONE %s !!!>>>>>>>>>>>>>>>>>>", self.__class__.__name__)
 
         return None
 
     def _error_response(self, content: str) -> dict[str, Any]:
         """Return a jump-to-model response with the given error content."""
+        # Set the skip designer value to False to prevent infinite loop since jumping to model actually jump to the
+        # before model method in AgentNetworkDefinitionMiddleware, which jumps back to here if skip designer is True.
+        # This is also an indicator for client that there are issues with input agent_network_definition and that the
+        # designer has made changes to the definition.
+        if self.sly_data.get(SKIP_DESIGNER) is True:
+            self.sly_data[SKIP_DESIGNER] = False
         return {
             # Use human message to ensure that the model follows the instructions
             "messages": [HumanMessage(content)],
             "jump_to": "model",
         }
 
-    async def _validate_network(self, network_def: dict[str, Any]) -> list[str]:
+    async def _validate_network(self, network_def: dict[str, Any]) -> tuple[list[str], list[str]]:
         """
         Run all validators against the network definition, reusing the validation middlewares.
 
-        :return: List of error strings, empty if valid.
+        :return: Tuple of (structure_errors, instructions_errors), each a list of error strings.
         """
-        structure_errors = await AgentNetworkStructureValidationMiddleware(self.sly_data).validate(network_def)
-        instructions_errors = await AgentNetworkInstructionsValidationMiddleware(self.sly_data).validate(network_def)
-        return structure_errors + instructions_errors
-
-    def _normalize_network_name(self, name: str) -> str:
-        """Prepend SUBDIRECTORY prefix if not already present."""
-        prefix: str = SUBDIRECTORY.rstrip("/") + "/"
-        if not name.startswith(prefix):
-            # Neuro-SAN only allows '/' as path separator in agent network names.
-            return prefix + name
-        return name
+        structure_errors: list[str] = await AgentNetworkStructureValidationMiddleware(self.sly_data).validate(
+            network_def
+        )
+        instructions_errors: list[str] = await AgentNetworkInstructionsValidationMiddleware(self.sly_data).validate(
+            network_def
+        )
+        return structure_errors, instructions_errors
 
     async def _assemble_and_persist(
         self,
         network_def: dict[str, Any],
-        the_agent_network_name: str,
+        agent_network_name: str,
         sample_queries: list[str],
     ) -> None:
         """
-        Assemble the agent network and persist it, then store HOCON text in sly_data.
+        Assemble the agent network, store HOCON text in sly_data, and persist it.
 
-        If WRITE_TO_FILE is True, the network is persisted by writing a HOCON file to disk.
-        Otherwise, it is registered as a temporary network via the reservationist interface.
+        HOCON content is always assembled first and stored in sly_data for client consumption.
+        If WRITE_TO_FILE is True, that same HOCON content is persisted to disk; the subdirectory
+        prefix is added by FileSystemAgentNetworkPersistor internally.
+        Otherwise, a deployable config is assembled and registered as a temporary network via
+        the reservationist interface using the sanitized raw name.
+
+        :param agent_network_name: The raw network name without any subdirectory prefix.
         """
-        self.logger.info(">>>>>>>>>>>>>>>>>>>Create Agent Network>>>>>>>>>>>>>>>>>>")
-        self.logger.info("Agent Network Name: %s", the_agent_network_name)
+        self.logger.info(">>>>>>>>>>>>>>>>>>>Assemble and Persist Agent Network>>>>>>>>>>>>>>>>>>")
+        self.logger.info("Agent Network Name: %s", agent_network_name)
 
-        subnetwork_names: list[str] = GetSubnetwork.get_subnetwork_names(self.sly_data)
-        mcp_servers: list[str] = self.sly_data.get(MCP_SERVERS, [])
+        subnetwork_names: list[str] = await GetSubnetwork.get_subnetwork_names(self.sly_data)
+        mcp_servers: list[str] = await GetMcpTool.get_mcp_servers(self.sly_data)
         persistor: AgentNetworkPersistor = AgentNetworkPersistorFactory.create_persistor(
             {"reservationist": self.reservationist},
             WRITE_TO_FILE,
@@ -194,35 +223,34 @@ class AgentNetworkPersistenceMiddleware(AgentMiddleware):
             subnetwork_names,
             mcp_servers,
         )
-        assembler: AgentNetworkAssembler = persistor.get_assembler()
         top_agent_name: str = UnreachableNodesNetworkValidator().find_all_top_agents(network_def).pop()
-        persisted_content: str = await assembler.assemble_agent_network(
-            network_def, top_agent_name, the_agent_network_name, sample_queries
-        )
-        self.logger.info("The resulting agent network: \n %s", persisted_content)
 
-        if WRITE_TO_FILE:
-            file_reference: str = the_agent_network_name
-        else:
-            # Reservations API forbids '/', ':', and ' ' — strip subdirectory prefix then sanitize
-            file_reference = the_agent_network_name.removeprefix(SUBDIRECTORY)
+        # Always assemble and store HOCON content for client consumption.
+        persisted_content: str = await HoconAgentNetworkAssembler(DEMO_MODE).assemble_agent_network(
+            network_def, top_agent_name, agent_network_name, sample_queries
+        )
+        self.logger.info("The resulting agent network content: \n %s", persisted_content)
+        self.sly_data[AGENT_NETWORK_HOCON_TEXT] = persisted_content
+
+        # Reservations API forbids '/', ':', and ' ' — sanitize the raw name for that case.
+        # FileSystemAgentNetworkPersistor handles its own subdirectory prefixing internally.
+        file_reference: str = agent_network_name
+        if not WRITE_TO_FILE:
             for char in ["/", ":", " "]:
                 file_reference = file_reference.replace(char, "")
-
+            # For reservations, assemble a deployable config instead of HOCON.
+            assembler: AgentNetworkAssembler = persistor.get_assembler()
+            # The persisted content for reservations is config.
+            persisted_content: dict[str, Any] = await assembler.assemble_agent_network(
+                network_def, top_agent_name, agent_network_name, sample_queries
+            )
+        # Persist the agent network
         persisted_reference: str | list[dict[str, Any]] = await persistor.async_persist(
             obj=persisted_content, file_reference=file_reference
         )
+        # Store information on reservations in the sly data
         if isinstance(persisted_reference, list):
             self.sly_data["agent_reservations"] = persisted_reference
-
-        if not isinstance(assembler, HoconAgentNetworkAssembler):
-            # We don't yet have client-consumable HOCON content, so we need to re-assemble
-            # to send that back as a parting gift.
-            assembler = HoconAgentNetworkAssembler(DEMO_MODE)
-            persisted_content = await assembler.assemble_agent_network(
-                network_def, top_agent_name, the_agent_network_name, sample_queries
-            )
-        self.sly_data[AGENT_NETWORK_HOCON_TEXT] = persisted_content
 
     def _determine_exported_network_definition(self, sly_data: dict[str, Any]):
         """
