@@ -34,7 +34,10 @@ class TestCheckPathAllowed(TestCase):
     def tearDown(self):
         self.tmpdir.cleanup()
 
-    def _check(self, allowed_paths, allowed_exts=None, blocked_paths=None, blocked_exts=None, path=None):
+    # pylint: disable=too-many-arguments,too-many-positional-arguments
+    def _check(
+        self, allowed_paths, allowed_exts=None, blocked_paths=None, blocked_exts=None, path=None
+    ):
         """Invoke _check_path_allowed with sensible defaults; returns None or raises."""
         return self.tool._check_path_allowed(  # pylint: disable=protected-access
             path or self.file,
