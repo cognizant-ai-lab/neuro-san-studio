@@ -40,24 +40,24 @@ class TestResolvePath(TestCase):
         """Tests that an existing file path is resolved to an absolute Path."""
         path = self.tmp_root / "a.txt"
         path.write_text("x", encoding="utf-8")
-        self.assertEqual(self._call({"path": str(path)}), path.resolve())
+        self.assertEqual(self._call({"file_path": str(path)}), path.resolve())
 
     def test_resolves_nonexistent_path(self):
         """Tests that a nonexistent path still resolves without raising (no fs access)."""
         path = self.tmp_root / "nope.txt"
-        result = self._call({"path": str(path)})
+        result = self._call({"file_path": str(path)})
         self.assertEqual(result, path.resolve())
 
     def test_empty_string_raises(self):
         """Tests that an empty string path raises invalid_input."""
         with self.assertRaises(ValueError) as ctx:
-            self._call({"path": ""})
+            self._call({"file_path": ""})
         self.assertIn("invalid_input", str(ctx.exception))
 
     def test_whitespace_only_raises(self):
         """Tests that a whitespace-only path raises invalid_input after stripping."""
         with self.assertRaises(ValueError) as ctx:
-            self._call({"path": "   "})
+            self._call({"file_path": "   "})
         self.assertIn("invalid_input", str(ctx.exception))
 
     def test_missing_key_raises(self):
@@ -69,5 +69,5 @@ class TestResolvePath(TestCase):
     def test_non_string_raises(self):
         """Tests that a non-string path raises invalid_input."""
         with self.assertRaises(ValueError) as ctx:
-            self._call({"path": 123})
+            self._call({"file_path": 123})
         self.assertIn("invalid_input", str(ctx.exception))

@@ -240,7 +240,7 @@ Supports searching for images, audio files (mp3, ogg, flac, wav), and video file
     # Files larger than 10 MB are rejected with file_too_large to prevent
     # accidental OOM on huge logs / data files.
     #
-    # Access control is deny-by-default: allowed_file_paths is required, and nothing
+    # Access control is deny-by-default: allowed_paths is required, and nothing
     # is readable until the caller supplies it. Override the allowed_* / blocked_*
     # params per-agent via the `args` field on the tool reference in your agent
     # network hocon, e.g.:
@@ -249,7 +249,7 @@ Supports searching for images, audio files (mp3, ogg, flac, wav), and video file
     #       "name": "read_file",
     #       "toolbox": "read_file",
     #       "args": {
-    #           "allowed_file_paths": ["/path/to/project"],
+    #           "allowed_paths": ["/path/to/project"],
     #           "allowed_file_extensions": [".py", ".md"],
     #           "blocked_file_extensions": [".env"]
     #       }
@@ -260,11 +260,11 @@ Supports searching for images, audio files (mp3, ogg, flac, wav), and video file
         "parameters": {
             "type": "object",
             "properties": {
-                "path": {
+                "file_path": {
                     "type": "string",
                     "description": "Absolute or relative path to the file to read."
                 },
-                "allowed_file_paths": {
+                "allowed_paths": {
                     "type": "array",
                     "items": {
                         "type": "string"
@@ -278,12 +278,12 @@ Supports searching for images, audio files (mp3, ogg, flac, wav), and video file
                     },
                     "description": "Optional whitelist of file extensions (e.g. '.py', '.md'). Extensionless files like 'Dockerfile' may also be listed by name. Omit to skip extension filtering; an empty list denies all extensions."
                 },
-                "blocked_file_paths": {
+                "blocked_paths": {
                     "type": "array",
                     "items": {
                         "type": "string"
                     },
-                    "description": "Optional list of file paths or directories that are always denied, even if listed in allowed_file_paths."
+                    "description": "Optional list of file paths or directories that are always denied, even if listed in allowed_paths."
                 },
                 "blocked_file_extensions": {
                     "type": "array",
@@ -305,7 +305,7 @@ Supports searching for images, audio files (mp3, ogg, flac, wav), and video file
                     "description": "Maximum number of characters to return. Defaults to 20000."
                 }
             },
-            "required": ["path", "allowed_file_paths"]
+            "required": ["file_path", "allowed_paths"]
         }
     },
 

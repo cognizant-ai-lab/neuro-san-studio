@@ -34,16 +34,16 @@ class ReadFile(CodedTool):
 
     By default the tool cannot read any file. Access must be explicitly granted
     via allow-lists in the tool arguments:
-        - allowed_file_paths   : specific file paths or directories that may be read
+        - allowed_paths   : specific file paths or directories that may be read
         - allowed_file_extensions: file extensions (e.g. ".py", ".txt") that may be read
 
-    allowed_file_paths is required and must be non-empty; allowed_file_extensions is
+    allowed_paths is required and must be non-empty; allowed_file_extensions is
     optional (an empty list denies all extensions, omitting it skips extension filtering).
     Block-lists are evaluated after allow-lists; a match in a block-list always denies access.
 
     Error types (raised as ValueError with the specified message prefix):
         invalid_input    – required parameter is missing, wrong type, or invalid value.
-        path_not_allowed – the resolved path is outside every allowed_file_paths entry,
+        path_not_allowed – the resolved path is outside every allowed_paths entry,
                            or its extension is not in allowed_file_extensions.
         path_not_found   – the file does not exist.
         is_a_directory   – the path points to a directory, not a file.
@@ -58,8 +58,8 @@ class ReadFile(CodedTool):
                 by the calling agent.  This dictionary is to be treated as read-only.
 
                 The argument dictionary expects the following keys:
-                    "path"               (str, required): Absolute or relative path to the file.
-                    "allowed_file_paths"      (list[str], required): One or more file paths or
+                    "file_path"          (str, required): Absolute or relative path to the file.
+                    "allowed_paths"      (list[str], required): One or more file paths or
                                          directory paths the tool is permitted to read from.
                                          A file is allowed when its resolved path equals or
                                          is a descendant of at least one entry. Must be
@@ -68,8 +68,8 @@ class ReadFile(CodedTool):
                                          including the leading dot (e.g. [".py", ".txt"]).
                                          When omitted, no extension filtering is applied.
                                          An empty list denies all extensions.
-                    "blocked_file_paths"      (list[str], optional): File paths or directories that
-                                         are always denied, even if listed in allowed_file_paths.
+                    "blocked_paths"      (list[str], optional): File paths or directories that
+                                         are always denied, even if listed in allowed_paths.
                     "blocked_file_extensions" (list[str], optional): File extensions that are always
                                          denied, even if listed in allowed_file_extensions.
                     "start_line"         (int, optional): 1-based line number to start reading
@@ -143,23 +143,23 @@ class ReadFile(CodedTool):
     # ------------------------------------------------------------------
 
     def _resolve_path(self, args: dict[str, Any]) -> Path:
-        """Parse and resolve the 'path' argument without touching the filesystem.
+        """Parse and resolve the 'file_path' argument without touching the filesystem.
 
         Returns the absolute Path. Only raises invalid_input — never path_not_found or
         is_a_directory, so callers can run access checks before existence checks and
         avoid leaking filesystem layout via error type.
         """
-        value: Any = args.get("path", "")
+        value: Any = args.get("file_path", "")
         if not isinstance(value, str):
-            raise ValueError(f"invalid_input: 'path' must be a string, got {value!r}.")
+            raise ValueError(f"invalid_input: 'file_path' must be a string, got {value!r}.")
         path_str: str = value.strip()
         if not path_str:
-            raise ValueError("invalid_input: No 'path' provided.")
+            raise ValueError("invalid_input: No 'file_path' provided.")
 
         try:
             return Path(path_str).expanduser().resolve(strict=False)
         except (ValueError, OSError) as exc:
-            raise ValueError(f"invalid_input: Cannot resolve path '{path_str}': {exc}") from exc
+            raise ValueError(f"invalid_input: Cannot resolve 'file_path' '{path_str}': {exc}") from exc
 
     def _check_path_exists(self, file_path: Path) -> None:
         """Verify the resolved path exists and is a regular file (not a directory)."""
@@ -179,20 +179,20 @@ class ReadFile(CodedTool):
                 f"file_too_large: '{file_path}' is {size} bytes; exceeds the {MAX_FILE_BYTES}-byte limit."
             )
 
-    def _validate_allowed_file_paths(self, args: dict[str, Any]) -> list[str]:
-        """Validate and return the 'allowed_file_paths' list. Raises invalid_input when missing or empty."""
-        paths: list[str] = self._validate_path_list(args.get("allowed_file_paths"), "allowed_file_paths")
+    def _validate_allowed_paths(self, args: dict[str, Any]) -> list[str]:
+        """Validate and return the 'allowed_paths' list. Raises invalid_input when missing or empty."""
+        paths: list[str] = self._validate_path_list(args.get("allowed_paths"), "allowed_paths")
         if not paths:
-            raise ValueError("invalid_input: 'allowed_file_paths' is required and must be a non-empty list of paths.")
+            raise ValueError("invalid_input: 'allowed_paths' is required and must be a non-empty list of paths.")
         return paths
 
     def _validate_and_check_access(self, args: dict[str, Any], file_path: Path) -> None:
         """Validate the four allow/block rule lists from args and enforce them against file_path."""
         self._check_path_allowed(
             file_path,
-            self._validate_allowed_file_paths(args),
+            self._validate_allowed_paths(args),
             self._validate_extension_list(args.get("allowed_file_extensions"), "allowed_file_extensions"),
-            self._validate_path_list(args.get("blocked_file_paths"), "blocked_file_paths"),
+            self._validate_path_list(args.get("blocked_paths"), "blocked_paths"),
             self._validate_extension_list(args.get("blocked_file_extensions"), "blocked_file_extensions"),
         )
 
@@ -283,17 +283,17 @@ class ReadFile(CodedTool):
     def _check_path_allowed(
         self,
         file_path: Path,
-        allowed_file_paths: list[str],
+        allowed_paths: list[str],
         allowed_file_extensions: list[str] | None,
-        blocked_file_paths: list[str],
+        blocked_paths: list[str],
         blocked_file_extensions: list[str] | None,
     ) -> None:
         """Raise ValueError(path_not_allowed) when the file fails the allow/block rules.
 
         Evaluation order:
-          1. allowed_file_paths:      non-empty whitelist (caller guarantees this via validation).
+          1. allowed_paths:      non-empty whitelist (caller guarantees this via validation).
           2. allowed_file_extensions: None = omitted (skip check); [] = deny all; non-empty = whitelist.
-          3. blocked_file_paths:      [] or omitted = skip; non-empty = deny matching paths/dirs.
+          3. blocked_paths:      [] or omitted = skip; non-empty = deny matching paths/dirs.
           4. blocked_file_extensions: [] or omitted = skip; non-empty = deny matching extensions.
         """
         # pathlib returns suffix="" for dotfiles (".gitignore") and extensionless files ("Dockerfile").
@@ -304,9 +304,9 @@ class ReadFile(CodedTool):
             name: str = file_path.name.lower()
             suffix = name if name.startswith(".") else f".{name}"
 
-        # 1. allowed_file_paths
-        if not self._path_matches_any(file_path, allowed_file_paths):
-            raise ValueError(f"path_not_allowed: '{file_path}' is not within any of the allowed_file_paths entries.")
+        # 1. allowed_paths
+        if not self._path_matches_any(file_path, allowed_paths):
+            raise ValueError(f"path_not_allowed: '{file_path}' is not within any of the allowed_paths entries.")
 
         # 2. allowed_file_extensions
         if allowed_file_extensions is not None:
@@ -321,9 +321,9 @@ class ReadFile(CodedTool):
                     f"allowed_file_extensions {allowed_file_extensions}."
                 )
 
-        # 3. blocked_file_paths
-        if blocked_file_paths and self._path_matches_any(file_path, blocked_file_paths):
-            raise ValueError(f"path_not_allowed: '{file_path}' is blocked by blocked_file_paths.")
+        # 3. blocked_paths
+        if blocked_paths and self._path_matches_any(file_path, blocked_paths):
+            raise ValueError(f"path_not_allowed: '{file_path}' is blocked by blocked_paths.")
 
         # 4. blocked_file_extensions
         if blocked_file_extensions:

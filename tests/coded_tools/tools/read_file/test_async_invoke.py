@@ -47,8 +47,8 @@ class TestAsyncInvoke(TestCase):
         result = asyncio.run(
             self.tool.async_invoke(
                 {
-                    "path": str(path),
-                    "allowed_file_paths": [str(self.tmp_root)],
+                    "file_path": str(path),
+                    "allowed_paths": [str(self.tmp_root)],
                     "allowed_file_extensions": [".txt"],
                 },
                 self.sly_data,
@@ -62,18 +62,18 @@ class TestAsyncInvoke(TestCase):
         self.assertEqual(result["path"], str(path.resolve()))
 
     def test_omitted_allowed_paths_raises_invalid_input(self):
-        """Tests that omitting the required allowed_file_paths raises invalid_input."""
+        """Tests that omitting the required allowed_paths raises invalid_input."""
         path = self._write("a.txt", "x")
         with self.assertRaises(ValueError) as ctx:
-            asyncio.run(self.tool.async_invoke({"path": str(path)}, self.sly_data))
+            asyncio.run(self.tool.async_invoke({"file_path": str(path)}, self.sly_data))
         self.assertIn("invalid_input", str(ctx.exception))
 
     def test_path_outside_allowed_root_denied(self):
-        """Tests that a file outside any allowed_file_paths entry is denied."""
+        """Tests that a file outside any allowed_paths entry is denied."""
         path = self._write("a.txt", "x")
         with self.assertRaises(ValueError) as ctx:
             asyncio.run(
-                self.tool.async_invoke({"path": str(path), "allowed_file_paths": ["/some/other/root"]}, self.sly_data)
+                self.tool.async_invoke({"file_path": str(path), "allowed_paths": ["/some/other/root"]}, self.sly_data)
             )
         self.assertIn("path_not_allowed", str(ctx.exception))
 
@@ -84,8 +84,8 @@ class TestAsyncInvoke(TestCase):
             asyncio.run(
                 self.tool.async_invoke(
                     {
-                        "path": str(path),
-                        "allowed_file_paths": [str(self.tmp_root)],
+                        "file_path": str(path),
+                        "allowed_paths": [str(self.tmp_root)],
                         "allowed_file_extensions": [".txt"],
                     },
                     self.sly_data,
@@ -100,9 +100,9 @@ class TestAsyncInvoke(TestCase):
             asyncio.run(
                 self.tool.async_invoke(
                     {
-                        "path": str(path),
-                        "allowed_file_paths": [str(self.tmp_root)],
-                        "blocked_file_paths": [str(path)],
+                        "file_path": str(path),
+                        "allowed_paths": [str(self.tmp_root)],
+                        "blocked_paths": [str(path)],
                     },
                     self.sly_data,
                 )
@@ -116,8 +116,8 @@ class TestAsyncInvoke(TestCase):
             asyncio.run(
                 self.tool.async_invoke(
                     {
-                        "path": str(path),
-                        "allowed_file_paths": [str(self.tmp_root)],
+                        "file_path": str(path),
+                        "allowed_paths": [str(self.tmp_root)],
                         "allowed_file_extensions": [".txt"],
                         "blocked_file_extensions": [".txt"],
                     },
@@ -132,8 +132,8 @@ class TestAsyncInvoke(TestCase):
         result = asyncio.run(
             self.tool.async_invoke(
                 {
-                    "path": str(path),
-                    "allowed_file_paths": [str(self.tmp_root)],
+                    "file_path": str(path),
+                    "allowed_paths": [str(self.tmp_root)],
                     "allowed_file_extensions": [".txt"],
                     "start_line": 2,
                     "end_line": 3,
@@ -152,8 +152,8 @@ class TestAsyncInvoke(TestCase):
         result = asyncio.run(
             self.tool.async_invoke(
                 {
-                    "path": str(path),
-                    "allowed_file_paths": [str(self.tmp_root)],
+                    "file_path": str(path),
+                    "allowed_paths": [str(self.tmp_root)],
                     "allowed_file_extensions": [".txt"],
                     "max_content_chars": 50,
                 },
@@ -165,7 +165,7 @@ class TestAsyncInvoke(TestCase):
     def test_missing_path_raises(self):
         """Tests that an empty 'path' raises invalid_input."""
         with self.assertRaises(ValueError) as ctx:
-            asyncio.run(self.tool.async_invoke({"path": ""}, self.sly_data))
+            asyncio.run(self.tool.async_invoke({"file_path": ""}, self.sly_data))
         self.assertIn("invalid_input", str(ctx.exception))
 
     def test_nonexistent_path_raises(self):
@@ -173,7 +173,7 @@ class TestAsyncInvoke(TestCase):
         with self.assertRaises(ValueError) as ctx:
             asyncio.run(
                 self.tool.async_invoke(
-                    {"path": str(self.tmp_root / "nope.txt"), "allowed_file_paths": [str(self.tmp_root)]},
+                    {"file_path": str(self.tmp_root / "nope.txt"), "allowed_paths": [str(self.tmp_root)]},
                     self.sly_data,
                 )
             )
@@ -188,7 +188,7 @@ class TestAsyncInvoke(TestCase):
         with self.assertRaises(ValueError) as ctx:
             asyncio.run(
                 self.tool.async_invoke(
-                    {"path": "/definitely/not/here.txt", "allowed_file_paths": [str(self.tmp_root)]},
+                    {"file_path": "/definitely/not/here.txt", "allowed_paths": [str(self.tmp_root)]},
                     self.sly_data,
                 )
             )
@@ -200,7 +200,7 @@ class TestAsyncInvoke(TestCase):
         with self.assertRaises(ValueError) as ctx:
             asyncio.run(
                 self.tool.async_invoke(
-                    {"path": str(self.tmp_root), "allowed_file_paths": [str(self.tmp_root)]}, self.sly_data
+                    {"file_path": str(self.tmp_root), "allowed_paths": [str(self.tmp_root)]}, self.sly_data
                 )
             )
         self.assertIn("is_a_directory", str(ctx.exception))
@@ -211,8 +211,8 @@ class TestAsyncInvoke(TestCase):
         result = asyncio.run(
             self.tool.async_invoke(
                 {
-                    "path": str(path),
-                    "allowed_file_paths": [str(self.tmp_root)],
+                    "file_path": str(path),
+                    "allowed_paths": [str(self.tmp_root)],
                     "allowed_file_extensions": [".env"],
                 },
                 self.sly_data,

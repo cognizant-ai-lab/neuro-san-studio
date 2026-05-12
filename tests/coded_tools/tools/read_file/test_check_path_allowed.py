@@ -46,7 +46,7 @@ class TestCheckPathAllowed(TestCase):
         )
 
     def test_path_outside_allow_list_denied(self):
-        """Tests that a file outside every allowed_file_paths entry is denied."""
+        """Tests that a file outside every allowed_paths entry is denied."""
         with self.assertRaises(ValueError) as ctx:
             self._check(["/some/other/root"])
         self.assertIn("path_not_allowed", str(ctx.exception))
@@ -56,7 +56,7 @@ class TestCheckPathAllowed(TestCase):
         self._check([str(self.tmp_root)])  # should not raise
 
     def test_exact_file_match_passes(self):
-        """Tests that an exact file path in allowed_file_paths is accepted."""
+        """Tests that an exact file path in allowed_paths is accepted."""
         self._check([str(self.file)])  # should not raise
 
     def test_omitted_extensions_passes(self):
