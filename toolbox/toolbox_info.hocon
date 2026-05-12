@@ -603,10 +603,21 @@ Options are `ascending` and `descending`. Default to `descending`.
     # Files larger than 10 MB are rejected with file_too_large to prevent
     # accidental OOM on huge logs / data files.
     #
-    # Access control is deny-by-default: allowed_paths is required, and nothing
-    # is readable until the caller supplies it. Override the allowed_* / blocked_*
-    # params per-agent via the `args` field on the tool reference in your agent
-    # network hocon, e.g.:
+    # ============================================================================
+    # IMPORTANT — operator configuration is required for this tool to work.
+    # ============================================================================
+    #
+    # Access control (allowed_paths / allowed_file_extensions / blocked_paths /
+    # blocked_file_extensions) is INTENTIONALLY NOT exposed in the schema below.
+    # The LLM must never be able to set those values — that would let the model
+    # bypass the access control. The operator configures them in the agent network
+    # hocon, and neuro-san merges operator-supplied `args` over LLM-supplied args
+    # so operator values always win.
+    #
+    # Deny-by-default: without `allowed_paths`, the tool raises invalid_input on
+    # every call and refuses to read anything. To make this tool usable, you MUST
+    # supply at least `allowed_paths` via the `args` field on the tool reference
+    # in your agent network hocon, e.g.:
     #
     #   {
     #       "name": "read_file",
@@ -619,41 +630,13 @@ Options are `ascending` and `descending`. Default to `descending`.
     #   }
     "read_file": {
         "class": "coded_tools.tools.file_management.read_file.ReadFile",
-        "description": "Reads the contents of a local text file (with optional line range and char cap) and returns the text plus metadata. Access is restricted by caller-supplied allow/block lists for paths and extensions.",
+        "description": "Reads the contents of a local text file (with optional line range and char cap) and returns the text plus metadata. Access is restricted by operator-configured allow/block lists for paths and extensions; the LLM cannot influence those lists.",
         "parameters": {
             "type": "object",
             "properties": {
                 "file_path": {
                     "type": "string",
                     "description": "Absolute or relative path to the file to read."
-                },
-                "allowed_paths": {
-                    "type": "array",
-                    "items": {
-                        "type": "string"
-                    },
-                    "description": "Required non-empty list of file paths or directory paths the tool may read from. A file is allowed when its resolved path equals or is a descendant of at least one entry."
-                },
-                "allowed_file_extensions": {
-                    "type": "array",
-                    "items": {
-                        "type": "string"
-                    },
-                    "description": "Optional whitelist of file extensions (e.g. '.py', '.md'). Extensionless files like 'Dockerfile' may also be listed by name. Omit to skip extension filtering; an empty list denies all extensions."
-                },
-                "blocked_paths": {
-                    "type": "array",
-                    "items": {
-                        "type": "string"
-                    },
-                    "description": "Optional list of file paths or directories that are always denied, even if listed in allowed_paths."
-                },
-                "blocked_file_extensions": {
-                    "type": "array",
-                    "items": {
-                        "type": "string"
-                    },
-                    "description": "Optional list of file extensions that are always denied, even if listed in allowed_file_extensions."
                 },
                 "start_line": {
                     "type": "int",
@@ -668,7 +651,7 @@ Options are `ascending` and `descending`. Default to `descending`.
                     "description": "Maximum number of characters to return. Defaults to 20000."
                 }
             },
-            "required": ["file_path", "allowed_paths"]
+            "required": ["file_path"]
         }
     },
 
