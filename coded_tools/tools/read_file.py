@@ -25,6 +25,7 @@ from leaf_common.serialization.util.text_file_reader import TextFileReader
 from neuro_san.interfaces.coded_tool import CodedTool
 
 MAX_CHARS: int = 20_000
+MAX_FILE_BYTES: int = 10 * 1024 * 1024  # 10 MB hard cap on files read into memory
 
 
 class ReadFile(CodedTool):
@@ -46,6 +47,7 @@ class ReadFile(CodedTool):
                            or its extension is not in allowed_file_extensions.
         path_not_found   – the file does not exist.
         is_a_directory   – the path points to a directory, not a file.
+        file_too_large   – the file exceeds MAX_FILE_BYTES (10 MB).
         read_error       – the file could not be read (permission error, I/O failure, etc.).
     """
 
@@ -103,6 +105,7 @@ class ReadFile(CodedTool):
         # always return path_not_allowed — never leaking existence information.
         self._validate_and_check_access(args, file_path)
         self._check_path_exists(file_path)
+        self._check_file_size(file_path)
         start_line, end_line = self._validate_line_range(args)
         max_chars: int = self._validate_max_content_chars(args)
 
@@ -164,6 +167,17 @@ class ReadFile(CodedTool):
             raise ValueError(f"path_not_found: '{file_path}' does not exist.")
         if file_path.is_dir():
             raise ValueError(f"is_a_directory: '{file_path}' is a directory, not a file.")
+
+    def _check_file_size(self, file_path: Path) -> None:
+        """Reject files larger than MAX_FILE_BYTES before they are read into memory."""
+        try:
+            size: int = file_path.stat().st_size
+        except OSError as exc:
+            raise ValueError(f"read_error: Could not stat '{file_path}': {exc}") from exc
+        if size > MAX_FILE_BYTES:
+            raise ValueError(
+                f"file_too_large: '{file_path}' is {size} bytes; exceeds the {MAX_FILE_BYTES}-byte limit."
+            )
 
     def _validate_allowed_file_paths(self, args: dict[str, Any]) -> list[str]:
         """Validate and return the 'allowed_file_paths' list. Raises invalid_input when missing or empty."""

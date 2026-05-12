@@ -600,6 +600,9 @@ Options are `ascending` and `descending`. Default to `descending`.
     # Reads the contents of a local text file with allow/block-list access control.
     # Requires: leaf-common (TextFileReader)
     #
+    # Files larger than 10 MB are rejected with file_too_large to prevent
+    # accidental OOM on huge logs / data files.
+    #
     # Access control is deny-by-default: allowed_file_paths is required, and nothing
     # is readable until the caller supplies it. Override the allowed_* / blocked_*
     # params per-agent via the `args` field on the tool reference in your agent
