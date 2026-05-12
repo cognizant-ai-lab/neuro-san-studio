@@ -58,7 +58,7 @@ existing files at the target path are left alone (and reported as `skip`); pass
 | --- | --- | --- |
 | `PATH` (positional) | — | Directory to scaffold into. Created if missing. |
 | `--force` / `--no-force` | `--no-force` | Overwrite files that already exist at the target path. |
-| `--minimal` / `--with-example` | `--with-example` | Skip the `hello_world` example agent network when `--minimal` is set. |
+| `--minimal` / `--with-example` | `--with-example` | Skip the `hello_world` example when `--minimal` is set. |
 
 #### Generated layout
 
@@ -151,13 +151,17 @@ so `ns validate --help` prints the validator's argparse help (not Click's).
 
 #### Common flags
 
-| Flag | Purpose |
-| --- | --- |
-| `--verbose` | Print an agent network summary on success (agents, sub-tools, metadata). |
-| `--external-agents '/a,/b'` | Comma-separated list of valid external agent refs. Required when the network includes paths like `/agent_network_designer`, otherwise validation fails. |
-| `--mcp-servers 'url1,url2'` | Comma-separated list of valid MCP server URLs. |
-| `--registry-dir DIR` | Directory used to resolve `include "registries/..."` statements. Defaults to the parent of `AGENT_MANIFEST_FILE`'s parent, or the current working directory if unset. |
-| `--json-output` | Emit validation results as JSON. |
+- **`--verbose`** — Print an agent network summary on success (agents,
+  sub-tools, metadata).
+- **`--external-agents '/a,/b'`** — Comma-separated list of valid external
+  agent refs. Required when the network includes paths like
+  `/agent_network_designer`, otherwise validation fails.
+- **`--mcp-servers 'url1,url2'`** — Comma-separated list of valid MCP server
+  URLs.
+- **`--registry-dir DIR`** — Directory used to resolve
+  `include "registries/..."` statements. Defaults to the parent of
+  `AGENT_MANIFEST_FILE`'s parent, or the current working directory if unset.
+- **`--json-output`** — Emit validation results as JSON.
 
 For the full reference (including the temp-file copy trick used to resolve
 includes), see the upstream

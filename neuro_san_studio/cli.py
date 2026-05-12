@@ -112,22 +112,12 @@ def _render_llm_config(detected: List[dict]) -> Tuple[str, str]:
     else:
         providers = detected
         banner = ""
-        summary = "multiple providers detected: " + ", ".join(
-            f"{p['class']} ({p['env']})" for p in providers
-        )
+        summary = "multiple providers detected: " + ", ".join(f"{p['class']} ({p['env']})" for p in providers)
 
     entries = ",\n".join(
-        f'            {{ "class": "{p["class"]}", "model_name": "{p["model_name"]}" }}'
-        for p in providers
+        f'            {{ "class": "{p["class"]}", "model_name": "{p["model_name"]}" }}' for p in providers
     )
-    body = (
-        f'{banner}    "llm_config": {{\n'
-        '        "fallbacks": [\n'
-        f"{entries}\n"
-        "        ]\n"
-        "    }\n"
-        "}\n"
-    )
+    body = f'{banner}    "llm_config": {{\n        "fallbacks": [\n{entries}\n        ]\n    }}\n}}\n'
     return header + body, summary
 
 
@@ -136,7 +126,7 @@ def _render_llm_config(detected: List[dict]) -> Tuple[str, str]:
     help="Neuro SAN Studio command-line interface.",
 )
 def cli() -> None:
-    pass
+    """Top-level Click group; subcommands are registered below."""
 
 
 @cli.command(
@@ -158,6 +148,7 @@ def cli() -> None:
     help="Skip the hello_world example agent network.",
 )
 def init(path: Path, force: bool, minimal: bool) -> None:
+    """Scaffold a project tree at PATH and generate llm_config.hocon from env."""
     root = path.resolve()
     root.mkdir(parents=True, exist_ok=True)
 
@@ -206,13 +197,16 @@ def init(path: Path, force: bool, minimal: bool) -> None:
 )
 @click.argument("forwarded", nargs=-1, type=click.UNPROCESSED)
 def run(forwarded: Tuple[str, ...]) -> None:
-    from neuro_san_studio.run import main as run_main
+    """Hand off to neuro_san_studio.run:main with forwarded argv."""
+    # Lazy import so `ns --help` / `ns init` don't pay the runner's import cost.
+    from neuro_san_studio.run import main as run_main  # pylint: disable=import-outside-toplevel
 
     sys.argv = [sys.argv[0], *forwarded]
     run_main()
 
 
-def _complete_path(ctx, param, incomplete):  # noqa: ARG001
+def _complete_path(ctx, param, incomplete):  # noqa: ARG001  # pylint: disable=unused-argument
+    """Shell-completion callback for path args; ctx/param required by Click API."""
     # click.UNPROCESSED carries no type info, so the shell completer gets no
     # file/dir hints by default. Returning a CompletionItem of type "file"
     # delegates to zsh's `_path_files -f`, which descends into directories.
@@ -234,7 +228,9 @@ def _complete_path(ctx, param, incomplete):  # noqa: ARG001
 )
 @click.argument("forwarded", nargs=-1, type=click.UNPROCESSED, shell_complete=_complete_path)
 def validate(forwarded: Tuple[str, ...]) -> None:
-    from neuro_san.client.hocon_validator_cli import HoconValidatorCli
+    """Hand off to neuro-san's HoconValidatorCli with forwarded argv."""
+    # Lazy import so `ns --help` doesn't pay the validator's import cost.
+    from neuro_san.client.hocon_validator_cli import HoconValidatorCli  # pylint: disable=import-outside-toplevel
 
     sys.argv = [sys.argv[0], *forwarded]
     sys.exit(HoconValidatorCli().main())
