@@ -112,7 +112,7 @@ You are responsible for IT-related inquiries for company employees.
                 "description": "Handles security-related tasks including system protection, cybersecurity policies, data security, access controls, security incidents, and information security compliance."
             },
             "instructions": ${instructions_prefix} """
-Handles security-related tasks, including system protection, cybersecurity, and data security for company's employees.
+You handle security-related tasks, including system protection, cybersecurity, and data security for company's employees.
             """ ${aaosa_instructions},
         },
         {
@@ -121,7 +121,7 @@ Handles security-related tasks, including system protection, cybersecurity, and 
                 "description": "Handles network-related tasks including network setup, connectivity troubleshooting, VPN access, Wi-Fi configuration, network maintenance, and bandwidth issues."
             },
             "instructions": ${instructions_prefix} """
-Handles network-related tasks, including network setup, maintenance, and troubleshooting for company's employees.
+You handle network-related tasks, including network setup, maintenance, and troubleshooting for company's employees.
             """ ${aaosa_instructions},
         },
         {
@@ -130,7 +130,7 @@ Handles network-related tasks, including network setup, maintenance, and trouble
                 "description": "Handles finance-related inquiries including budgeting, accounting, financial reporting, expense management, tax implications, and financial planning."
             },
             "instructions": ${instructions_prefix} """
-Handles finance-related inquiries, including budgeting, accounting, and financial reporting for company's employees.
+You handle finance-related inquiries, including budgeting, accounting, and financial reporting for company's employees.
             """ ${aaosa_instructions},
             "tools": ["Budgeting", "Accounting", "FinancialReporting"]
         },
@@ -140,7 +140,7 @@ Handles finance-related inquiries, including budgeting, accounting, and financia
                 "description": "Handles budgeting tasks including budget planning, allocation, tracking, cost center management, and budget variance analysis."
             },
             "instructions": ${instructions_prefix} """
-Handles budgeting tasks, including budget planning, allocation, and tracking for company's employees.
+You handle budgeting tasks, including budget planning, allocation, and tracking for company's employees.
             """ ${aaosa_instructions},
         },
         {
@@ -149,7 +149,7 @@ Handles budgeting tasks, including budget planning, allocation, and tracking for
                 "description": "Handles accounting tasks including bookkeeping, financial records, audits, expense reports, accounts payable, and accounts receivable."
             },
             "instructions": ${instructions_prefix} """
-Handles accounting tasks, including bookkeeping, financial records, and audits for company's employees.
+You handle accounting tasks, including bookkeeping, financial records, and audits for company's employees.
             """ ${aaosa_instructions},
         },
         {
@@ -158,7 +158,7 @@ Handles accounting tasks, including bookkeeping, financial records, and audits f
                 "description": "Handles financial reporting tasks including preparing financial statements, regulatory reporting, performance analysis, and quarterly and annual reports."
             },
             "instructions": ${instructions_prefix} """
-Handles financial reporting tasks, including preparing financial statements, regulatory reporting, and performance analysis for company's employees.
+You handle financial reporting tasks, including preparing financial statements, regulatory reporting, and performance analysis for company's employees.
             """ ${aaosa_instructions},
         },
         {
@@ -167,7 +167,7 @@ Handles financial reporting tasks, including preparing financial statements, reg
                 "description": "Handles procurement-related tasks including purchasing, vendor management, contract negotiation, supply chain, and procurement processes."
             },
             "instructions": ${instructions_prefix} """
-Handles procurement-related tasks for company's employees.
+You handle procurement-related tasks for company's employees.
             """ ${aaosa_instructions},
             "tools": ["Purchasing", "VendorManagement", "ContractNegotiation"]
         },
@@ -177,7 +177,7 @@ Handles procurement-related tasks for company's employees.
                 "description": "Handles purchasing-related tasks including ordering supplies, purchase requisitions, supply management, and procurement workflows."
             },
             "instructions": ${instructions_prefix} """
-Handles purchasing-related tasks, including ordering, supply management, and procurement processes for company's employees.
+You handle purchasing-related tasks, including ordering, supply management, and procurement processes for company's employees.
             """ ${aaosa_instructions},
         },
         {
@@ -186,7 +186,7 @@ Handles purchasing-related tasks, including ordering, supply management, and pro
                 "description": "Handles vendor management tasks including vendor selection, performance monitoring, vendor onboarding, and relationship management."
             },
             "instructions": ${instructions_prefix} """
-Handles vendor management tasks, including vendor selection, performance monitoring, and relationship management for company's employees.
+You handle vendor management tasks, including vendor selection, performance monitoring, and relationship management for company's employees.
             """ ${aaosa_instructions},
         },
         {
@@ -195,7 +195,7 @@ Handles vendor management tasks, including vendor selection, performance monitor
                 "description": "Handles contract negotiation tasks including drafting, reviewing, and finalizing procurement contracts and service agreements."
             },
             "instructions": ${instructions_prefix} """
-Handles contract negotiation tasks, including drafting, reviewing, and finalizing procurement contracts for company's employees.
+You handle contract negotiation tasks, including drafting, reviewing, and finalizing procurement contracts for company's employees.
             """ ${aaosa_instructions},
         },
         {
@@ -204,7 +204,7 @@ Handles contract negotiation tasks, including drafting, reviewing, and finalizin
                 "description": "Handles legal-related inquiries including contracts, compliance, legal advice, immigration, intellectual property, and regulatory matters."
             },
             "instructions": ${instructions_prefix} """
-Handles legal-related inquiries for company's employees.
+You handle legal-related inquiries for company's employees.
             """ ${aaosa_instructions},
             "tools": ["Contracts", "Compliance", "LegalAdvice", "Immigration"]
         },
@@ -214,7 +214,7 @@ Handles legal-related inquiries for company's employees.
                 "description": "Handles contract-related tasks including drafting, reviewing, and enforcing legal agreements, NDAs, and employment contracts."
             },
             "instructions": ${instructions_prefix} """
-Handles contract-related tasks, including drafting, reviewing, and enforcing legal agreements for company's employees.
+You handle contract-related tasks, including drafting, reviewing, and enforcing legal agreements for company's employees.
             """ ${aaosa_instructions},
         },
         {
@@ -223,7 +223,7 @@ Handles contract-related tasks, including drafting, reviewing, and enforcing leg
                 "description": "Handles compliance-related tasks including ensuring adherence to laws, regulations, internal policies, and regulatory requirements."
             },
             "instructions": ${instructions_prefix} """
-Handles compliance-related tasks, including ensuring adherence to laws, regulations, and internal policies for company's employees.
+You handle compliance-related tasks, including ensuring adherence to laws, regulations, and internal policies for company's employees.
             """ ${aaosa_instructions},
         },
         {
@@ -232,7 +232,7 @@ Handles compliance-related tasks, including ensuring adherence to laws, regulati
                 "description": "Handles legal advice tasks including providing legal counsel, risk assessment, legal strategy, and dispute resolution guidance."
             },
             "instructions": ${instructions_prefix} """
-Handles legal advice tasks, including providing legal counsel, risk assessment, and legal strategy for company's employees.
+You handle legal advice tasks, including providing legal counsel, risk assessment, and legal strategy for company's employees.
             """ ${aaosa_instructions},
         },
         {
@@ -253,7 +253,7 @@ vacation, PTO, other time-off and checking leave balances.
                 "description": "Handles benefits-related tasks including employee benefits enrollment, health insurance, dental and vision plans, retirement plans, and life insurance, but excluding PTO and absence management."
             },
             "instructions": ${instructions_prefix} """
-Handles benefits-related tasks, including employee benefits, health insurance, and retirement plans, but excluding PTO and absence management for company's employees.
+You handle benefits-related tasks, including employee benefits, health insurance, and retirement plans, but excluding PTO and absence management for company's employees.
             """ ${aaosa_instructions},
         },
         {
@@ -262,7 +262,7 @@ Handles benefits-related tasks, including employee benefits, health insurance, a
                 "description": "Handles payroll-related tasks including salary processing, tax deductions, pay stubs, direct deposit, and W-2 forms."
             },
             "instructions": ${instructions_prefix} """
-Handles payroll-related tasks, including salary processing, tax deductions, and pay slips for company's employees.
+You handle payroll-related tasks, including salary processing, tax deductions, and pay slips for company's employees.
             """ ${aaosa_instructions},
         },
         {
@@ -271,7 +271,7 @@ Handles payroll-related tasks, including salary processing, tax deductions, and 
                 "description": "Handles immigration-related tasks including work visas, travel visas, residency permits, international relocations, and compliance with immigration laws."
             },
             "instructions": ${instructions_prefix} """
-Handles immigration-related tasks, including the legal processes and documentation for employees’ work visas,
+You handle immigration-related tasks, including the legal processes and documentation for employees’ work visas,
 travel visas, residency permits, and international relocations, ensuring compliance with immigration laws for company's employees.
             """ ${aaosa_instructions},
         },
@@ -281,7 +281,7 @@ travel visas, residency permits, and international relocations, ensuring complia
                 "description": "Handles absence management tasks including vacation requests, PTO balances, sick leave, time-off scheduling, and leave balance inquiries."
             },
             "instructions": ${instructions_prefix} """
-Handles absence management-related tasks for company's employees (i.e., vacation, PTO, or other time-off).
+You handle absence management-related tasks for company's employees (i.e., vacation, PTO, or other time-off).
 Always return a concrete answer from your tools, as well as a link to Absence Management site.
             """ ${aaosa_instructions},
             "tools": ["ScheduleLeaveAPI", "CheckLeaveBalancesAPI", "URLProvider"]
