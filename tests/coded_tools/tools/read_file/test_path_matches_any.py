@@ -69,6 +69,12 @@ class TestPathMatchesAny(TestCase):
         """Tests that the function returns True as soon as any entry matches."""
         self.assertTrue(self._call(self.file, ["/nope", str(self.tmp_root), "/also/nope"]))
 
+    def test_tilde_entry_expanded(self):
+        """Tests that an allow-list entry like '~' is expanded to the user home directory."""
+        home_file: Path = (Path.home() / "definitely-not-a-real-file.txt").resolve()
+        # A path under $HOME should match an allow-list entry of '~' or '~/'.
+        self.assertTrue(self._call(home_file, ["~"]))
+
     def test_invalid_entry_skipped(self):
         """Tests that an unresolvable entry doesn't crash the search."""
         # A null byte in a path is rejected by Path.resolve on most platforms.

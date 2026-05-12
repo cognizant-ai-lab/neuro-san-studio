@@ -338,11 +338,15 @@ class ReadFile(CodedTool):
         return [e.lower() if e.startswith(".") else f".{e.lower()}" for e in extensions]
 
     def _path_matches_any(self, file_path: Path, path_list: list[str]) -> bool:
-        """Return True if file_path equals or is a descendant of any entry in path_list."""
+        """Return True if file_path equals or is a descendant of any entry in path_list.
+
+        Each entry is run through expanduser() and resolve(strict=False) for symmetry
+        with _resolve_path, so allow/block entries like '~/project' work as expected.
+        """
         for entry in path_list:
             try:
-                candidate: Path = Path(entry).resolve()
-            except (ValueError, OSError):
+                candidate: Path = Path(entry).expanduser().resolve(strict=False)
+            except (RuntimeError, ValueError, OSError):
                 continue
             if file_path == candidate:
                 return True
