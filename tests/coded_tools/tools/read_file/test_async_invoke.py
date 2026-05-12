@@ -163,7 +163,7 @@ class TestAsyncInvoke(TestCase):
         self.assertEqual(len(result["content"]), 50)
 
     def test_missing_path_raises(self):
-        """Tests that an empty 'path' raises invalid_input."""
+        """Tests that an empty 'file_path' raises invalid_input."""
         with self.assertRaises(ValueError) as ctx:
             asyncio.run(self.tool.async_invoke({"file_path": ""}, self.sly_data))
         self.assertIn("invalid_input", str(ctx.exception))
@@ -196,7 +196,7 @@ class TestAsyncInvoke(TestCase):
         self.assertNotIn("path_not_found", str(ctx.exception))
 
     def test_directory_path_raises(self):
-        """Tests that pointing 'path' at a directory raises is_a_directory."""
+        """Tests that pointing 'file_path' at a directory raises is_a_directory."""
         with self.assertRaises(ValueError) as ctx:
             asyncio.run(
                 self.tool.async_invoke(
