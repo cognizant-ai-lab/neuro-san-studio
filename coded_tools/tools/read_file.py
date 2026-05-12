@@ -96,7 +96,7 @@ class ReadFile(CodedTool):
                 "read_at"     (str): ISO-8601 UTC timestamp when the file was read.
 
         :raises ValueError: invalid_input, path_not_allowed, path_not_found,
-                            is_a_directory, read_error.
+                            is_a_directory, file_too_large, read_error.
         """
         logger: Logger = getLogger(self.__class__.__name__)
 
