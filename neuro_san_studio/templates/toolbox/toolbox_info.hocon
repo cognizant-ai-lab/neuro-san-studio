@@ -1,0 +1,5 @@
+{
+    # Add langchain or shared coded tools here for easy access from agent networks.
+    # Reference:
+    # https://github.com/cognizant-ai-lab/neuro-san-studio/blob/main/docs/user_guide.md#toolbox
+}

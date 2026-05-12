@@ -30,6 +30,9 @@ langchain-anthropic>=1.0.0,<2.0
 # For rich logging
 rich>=14.2.0
 
+# For the neuro-san-studio-init scaffolding CLI
+click>=8.1
+
 # For the HTML agent-network graph generator
 pyvis~=0.3.2
 

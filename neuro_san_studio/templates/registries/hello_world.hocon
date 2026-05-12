@@ -1,0 +1,64 @@
+{
+    # Pulls shared LLM settings (provider, model_name) from config/llm_config.hocon.
+    # Path is relative to the project root.
+    include "config/llm_config.hocon",
+
+    "metadata": {
+        "description": "A minimal two-agent network: a front-man that delegates to a synonymizer.",
+        "tags": ["starter", "example"],
+        "sample_queries": [
+            "From earth, I approach a new planet and wish to send a short 2-word greeting to the new orb."
+        ]
+    },
+
+    "tools": [
+        {
+            "name": "announcer",
+            "function": {
+                "description": """
+I can help you make a terse announcement.
+Tell me what your target audience is and what sentiment you would like to convey.
+"""
+            },
+            "instructions": """
+You are an author of terse announcements.
+You will be asked to help write the shortest possible announcement on behalf of a person or organization.
+You will ascertain the intended sentiment and the target audience,
+then produce something as short as possible to express the sentiment to the audience,
+while never divulging the identity of who requested the announcement.
+After deciding what to say, always call the synonymizer tool to make the announcement as simple and concise as possible.
+""",
+            "tools": ["synonymizer"]
+        },
+
+        {
+            "name": "synonymizer",
+            "function": {
+                "description": "Returns sequences of synonyms.",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "name": {
+                            "type": "string",
+                            "description": "A brief description of the input"
+                        },
+                        "input_string": {
+                            "type": "string",
+                            "description": "Words, phrases, or sentences to use as input"
+                        }
+                    },
+                    "required": ["input_string", "name"]
+                }
+            },
+            "instructions": """
+You are a thesaurus.
+You will be handed an arbitrary number of words in a particular order.
+For each word in the sequence, find a synonym that is exactly 5 letters long.
+If no such synonym exists, use the original word.
+Your output preserves the original word order, with synonyms substituted in.
+Provide no elaboration or commentary.
+""",
+            "command": "Find a synonym string given the input_string"
+        }
+    ]
+}

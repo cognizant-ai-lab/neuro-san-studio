@@ -1,0 +1,7 @@
+plugins = [
+    {
+        class = neuro_san_studio.plugins.log_bridge.process_log_bridge_plugin.ProcessLogBridgePlugin
+        enabled = true
+        enabled = ${?LOGBRIDGE_ENABLED}
+    }
+]
