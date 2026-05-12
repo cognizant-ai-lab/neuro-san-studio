@@ -21,8 +21,8 @@ from unittest import TestCase
 from coded_tools.tools.read_file import ReadFile
 
 
-class TestValidatePath(TestCase):
-    """Unit tests for ReadFile._validate_path."""
+class TestResolvePath(TestCase):
+    """Unit tests for ReadFile._resolve_path."""
 
     def setUp(self):
         self.tool = ReadFile()
@@ -33,13 +33,18 @@ class TestValidatePath(TestCase):
         self.tmpdir.cleanup()
 
     def _call(self, args):
-        """Invoke _validate_path with the given args dict and return the result."""
-        return self.tool._validate_path(args)  # pylint: disable=protected-access
+        """Invoke _resolve_path with the given args dict and return the result."""
+        return self.tool._resolve_path(args)  # pylint: disable=protected-access
 
     def test_resolves_existing_file(self):
         """Tests that an existing file path is resolved to an absolute Path."""
         path = self.tmp_root / "a.txt"
         path.write_text("x", encoding="utf-8")
+        self.assertEqual(self._call({"path": str(path)}), path.resolve())
+
+    def test_resolves_nonexistent_path(self):
+        """Tests that a nonexistent path still resolves without raising (no fs access)."""
+        path = self.tmp_root / "nope.txt"
         result = self._call({"path": str(path)})
         self.assertEqual(result, path.resolve())
 
@@ -66,15 +71,3 @@ class TestValidatePath(TestCase):
         with self.assertRaises(ValueError) as ctx:
             self._call({"path": 123})
         self.assertIn("invalid_input", str(ctx.exception))
-
-    def test_nonexistent_path_raises(self):
-        """Tests that a path that doesn't exist raises path_not_found."""
-        with self.assertRaises(ValueError) as ctx:
-            self._call({"path": str(self.tmp_root / "missing.txt")})
-        self.assertIn("path_not_found", str(ctx.exception))
-
-    def test_directory_raises(self):
-        """Tests that a directory path raises is_a_directory."""
-        with self.assertRaises(ValueError) as ctx:
-            self._call({"path": str(self.tmp_root)})
-        self.assertIn("is_a_directory", str(ctx.exception))

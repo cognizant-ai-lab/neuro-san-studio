@@ -169,7 +169,7 @@ class TestAsyncInvoke(TestCase):
         self.assertIn("invalid_input", str(ctx.exception))
 
     def test_nonexistent_path_raises(self):
-        """Tests that a path that doesn't exist raises path_not_found."""
+        """Tests that a missing path inside the allowed area raises path_not_found."""
         with self.assertRaises(ValueError) as ctx:
             asyncio.run(
                 self.tool.async_invoke(
@@ -178,6 +178,22 @@ class TestAsyncInvoke(TestCase):
                 )
             )
         self.assertIn("path_not_found", str(ctx.exception))
+
+    def test_nonexistent_path_outside_allowed_returns_not_allowed(self):
+        """Tests that a missing path *outside* the allowed area surfaces path_not_allowed.
+
+        This prevents callers from probing filesystem existence outside their permitted
+        scope by distinguishing path_not_found from path_not_allowed.
+        """
+        with self.assertRaises(ValueError) as ctx:
+            asyncio.run(
+                self.tool.async_invoke(
+                    {"path": "/definitely/not/here.txt", "allowed_file_paths": [str(self.tmp_root)]},
+                    self.sly_data,
+                )
+            )
+        self.assertIn("path_not_allowed", str(ctx.exception))
+        self.assertNotIn("path_not_found", str(ctx.exception))
 
     def test_directory_path_raises(self):
         """Tests that pointing 'path' at a directory raises is_a_directory."""

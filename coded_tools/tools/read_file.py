@@ -98,8 +98,11 @@ class ReadFile(CodedTool):
         """
         logger: Logger = getLogger(self.__class__.__name__)
 
-        file_path: Path = self._validate_path(args)
+        file_path: Path = self._resolve_path(args)
+        # Run access checks before touching the filesystem so out-of-scope paths
+        # always return path_not_allowed — never leaking existence information.
         self._validate_and_check_access(args, file_path)
+        self._check_path_exists(file_path)
         start_line, end_line = self._validate_line_range(args)
         max_chars: int = self._validate_max_content_chars(args)
 
@@ -136,8 +139,13 @@ class ReadFile(CodedTool):
     # Validation helpers
     # ------------------------------------------------------------------
 
-    def _validate_path(self, args: dict[str, Any]) -> Path:
-        """Resolve and validate the 'path' argument. Returns an absolute Path."""
+    def _resolve_path(self, args: dict[str, Any]) -> Path:
+        """Parse and resolve the 'path' argument without touching the filesystem.
+
+        Returns the absolute Path. Only raises invalid_input — never path_not_found or
+        is_a_directory, so callers can run access checks before existence checks and
+        avoid leaking filesystem layout via error type.
+        """
         value: Any = args.get("path", "")
         if not isinstance(value, str):
             raise ValueError(f"invalid_input: 'path' must be a string, got {value!r}.")
@@ -146,16 +154,16 @@ class ReadFile(CodedTool):
             raise ValueError("invalid_input: No 'path' provided.")
 
         try:
-            resolved: Path = Path(path_str).resolve()
+            return Path(path_str).expanduser().resolve(strict=False)
         except (ValueError, OSError) as exc:
             raise ValueError(f"invalid_input: Cannot resolve path '{path_str}': {exc}") from exc
 
-        if not resolved.exists():
-            raise ValueError(f"path_not_found: '{resolved}' does not exist.")
-        if resolved.is_dir():
-            raise ValueError(f"is_a_directory: '{resolved}' is a directory, not a file.")
-
-        return resolved
+    def _check_path_exists(self, file_path: Path) -> None:
+        """Verify the resolved path exists and is a regular file (not a directory)."""
+        if not file_path.exists():
+            raise ValueError(f"path_not_found: '{file_path}' does not exist.")
+        if file_path.is_dir():
+            raise ValueError(f"is_a_directory: '{file_path}' is a directory, not a file.")
 
     def _validate_allowed_file_paths(self, args: dict[str, Any]) -> list[str]:
         """Validate and return the 'allowed_file_paths' list. Raises invalid_input when missing or empty."""
