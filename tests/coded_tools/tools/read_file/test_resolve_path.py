@@ -61,7 +61,7 @@ class TestResolvePath(TestCase):
         self.assertIn("invalid_input", str(ctx.exception))
 
     def test_missing_key_raises(self):
-        """Tests that an args dict missing the 'path' key raises invalid_input."""
+        """Tests that an args dict missing the 'file_path' key raises invalid_input."""
         with self.assertRaises(ValueError) as ctx:
             self._call({})
         self.assertIn("invalid_input", str(ctx.exception))
