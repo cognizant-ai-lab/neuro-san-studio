@@ -18,7 +18,7 @@ import tempfile
 from pathlib import Path
 from unittest import TestCase
 
-from coded_tools.tools.read_file import ReadFile
+from coded_tools.tools.file_management.read_file import ReadFile
 
 
 class TestResolvePath(TestCase):

@@ -618,7 +618,7 @@ Options are `ascending` and `descending`. Default to `descending`.
     #       }
     #   }
     "read_file": {
-        "class": "coded_tools.tools.read_file.ReadFile",
+        "class": "coded_tools.tools.file_management.read_file.ReadFile",
         "description": "Reads the contents of a local text file (with optional line range and char cap) and returns the text plus metadata. Access is restricted by caller-supplied allow/block lists for paths and extensions.",
         "parameters": {
             "type": "object",

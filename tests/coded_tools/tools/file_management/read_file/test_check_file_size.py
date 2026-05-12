@@ -19,8 +19,8 @@ from pathlib import Path
 from unittest import TestCase
 from unittest.mock import patch
 
-from coded_tools.tools.read_file import MAX_FILE_BYTES
-from coded_tools.tools.read_file import ReadFile
+from coded_tools.tools.file_management.read_file import MAX_FILE_BYTES
+from coded_tools.tools.file_management.read_file import ReadFile
 
 
 class TestCheckFileSize(TestCase):
