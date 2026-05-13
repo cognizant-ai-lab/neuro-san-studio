@@ -5,7 +5,6 @@
 # Note: If you are updating dependencies here, you will also want to update
 #       the same dependencies in requirements-build.txt for general builds to work.
 arize-phoenix==14.6.0
-arize-phoenix-evals==2.13.0
 arize-phoenix-otel==0.16.1
 openinference-instrumentation-anthropic==1.0.3
 openinference-instrumentation-langchain==0.1.64
