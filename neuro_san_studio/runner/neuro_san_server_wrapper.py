@@ -44,8 +44,10 @@ class NeuroSanServerWrapper:  # pylint: disable=too-few-public-methods
         plugins_file = os.path.join(self.root_dir, "config", "plugins.hocon")
         self.plugin_classes = PluginLoader.load_plugin_classes(plugins_file)
 
-        # Instantiate plugins now that args are fully built
-        self.args = {}  # Placeholder for any args you want to pass to plugins
+        # Instantiate plugins now that args are fully built. Use cwd (set by
+        # the parent run.py process) rather than self.root_dir, which points
+        # inside the installed package once pip-installed.
+        self.args = {"logs_dir": os.path.join(os.getcwd(), "logs")}
         self.plugins = [cls(self.args) for cls in self.plugin_classes]
         for plugin in self.plugins:
             self._logger.info("Loaded plugin: %s", plugin)

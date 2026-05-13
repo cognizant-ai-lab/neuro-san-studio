@@ -1,0 +1,13 @@
+# Local environment
+.env
+
+# Runtime artifacts
+logs/
+__pycache__/
+*.py[cod]
+*.egg-info/
+
+# IDE / editors
+.idea/
+.vscode/
+.DS_Store

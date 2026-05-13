@@ -582,6 +582,11 @@ class NeuroSanRunner:
             self.flask_webclient_process.wait()
 
 
-if __name__ == "__main__":
+def main():
+    """Entry point for the `neuro-san-studio` console script."""
     runner = NeuroSanRunner()
     runner.run()
+
+
+if __name__ == "__main__":
+    main()

@@ -1,0 +1,7 @@
+{
+    # List each agent network hocon file to serve as a key with a boolean value.
+    # Schema reference:
+    # https://github.com/cognizant-ai-lab/neuro-san/blob/main/docs/manifest_hocon_reference.md
+
+    "hello_world.hocon": true,
+}

@@ -1,0 +1,12 @@
+{
+    # Register MCP servers here. Format:
+    #
+    #   "https://mcp.example.com/mcp": {
+    #       "http_headers": {
+    #           "Authorization": "Bearer "${SOME_TOKEN}
+    #       },
+    #       "tools": ["tool_1", "tool_2"]
+    #   }
+    #
+    # The "tools" key is optional — omit to load all tools from the server.
+}
