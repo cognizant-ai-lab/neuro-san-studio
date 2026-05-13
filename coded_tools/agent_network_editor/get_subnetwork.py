@@ -87,7 +87,7 @@ class GetSubnetwork(CodedTool):
                 logger.warning(
                     "Manifest file not found, no external agents/subnetworks will be available "
                     "in the generated network: %s",
-                    file_error
+                    file_error,
                 )
             except ParseException as parse_error:
                 logger.warning(
@@ -150,7 +150,7 @@ class GetSubnetwork(CodedTool):
                 logger.warning(
                     "Manifest file not found, no external agents/subnetworks will be available "
                     "in the generated network: %s",
-                    file_error
+                    file_error,
                 )
 
             # Cache whatever we found, including an empty mapping on failure, to avoid reloading.
