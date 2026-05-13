@@ -29,8 +29,7 @@ readme = { file = ["README.md"], content-type = "text/markdown" }
 [tool.setuptools.packages.find]
 where = ["."]
 include = ["neuro_san_studio*"]
-exclude = ["tests*", "coded_tools*", "apps*", "middleware*", "servers*", "registries*", "config*", "toolbox*", "mcp*", "docs*", "deploy*", "build_scripts*", "skills*"]
-
+exclude = ["apps*", "build_scripts*", "coded_tools*", "config*", "deploy*", "docs*", "mcp*", "middleware*", "registries*", "servers*", "skills*", "tests*", "toolbox*"]
 [tool.setuptools_scm]
 fallback_version = "0.0.0"
 
