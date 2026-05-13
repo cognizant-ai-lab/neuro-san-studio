@@ -21,7 +21,10 @@ from typing import Any
 from neuro_san.interfaces.coded_tool import CodedTool
 from neuro_san.internals.graph.persistence.registry_manifest_restorer import RegistryManifestRestorer
 from neuro_san.internals.graph.registry.agent_network import AgentNetwork
+from neuro_san.internals.persistence.abstract_async_config_restorer import AbstractAsyncConfigRestorer
+from pyparsing.exceptions import ParseException
 
+from coded_tools.agent_network_editor.constants import SUBNETWORK_NAMES
 from coded_tools.agent_network_editor.constants import SUBNETWORKS
 from coded_tools.agent_network_editor.sly_data_lock import SlyDataLock
 
@@ -37,14 +40,66 @@ class GetSubnetwork(CodedTool):
     @staticmethod
     async def get_subnetwork_names(sly_data: dict[str, Any]) -> list[str]:
         """
-        Get the list of subnetwork names, loading from the manifest file via
-        get_subnetworks() if not already cached on sly_data.
+        Get the list of subnetwork names. Reads only the manifest HOCON file rather
+        than each individual subnetwork's HOCON, since callers only need names
+        (no descriptions). Results are cached in sly_data.
 
         :param sly_data: The sly_data dictionary from the agent hierarchy.
         :return: List of subnetwork name strings, or empty list if none / on error.
         """
-        subnetworks = await GetSubnetwork.get_subnetworks(sly_data)
-        return list(subnetworks.keys())
+        # If the full subnetwork dict was already loaded by get_subnetworks(),
+        # reuse its keys instead of re-reading the manifest.
+        if SUBNETWORKS in sly_data:
+            return list(sly_data[SUBNETWORKS].keys())
+
+        async with await SlyDataLock.get_lock(sly_data, "subnetwork_names_lock"):
+            # Re-check caches after acquiring the lock.
+            if SUBNETWORK_NAMES in sly_data:
+                return sly_data.get(SUBNETWORK_NAMES)
+
+            manifest_file: str = os.getenv("AGENT_NETWORK_DESIGNER_MANIFEST_FILE") or DEFAULT_MANIFEST_FILE
+
+            logger.info(">>>>>>>>>>>>>>>>>>>Getting Subnetwork Names from Manifest>>>>>>>>>>>>>>>>>>>")
+            logger.info("Manifest file: %s", manifest_file)
+
+            # Parse the manifest HOCON directly. pyhocon resolves `include` statements,
+            # so composed manifests (e.g. manifest_and.hocon) flatten into a single
+            # mapping of "path/to/file.hocon" -> enabled-bool entries. Only enabled
+            # entries are exposed, matching the semantics used elsewhere.
+            names: list[str] = []
+            try:
+                restorer = AbstractAsyncConfigRestorer(file_purpose="get_subnetwork_names", must_exist=True)
+                manifest: dict[str, Any] = await restorer.async_restore(file_reference=manifest_file)
+                for agent_name, enabled in manifest.items():
+                    # Manifest entries are either `path: true/false` or `path: { "serve": true, ... }`.
+                    # Both forms are documented; the dict form is the canonical one used post-filter
+                    # by RegistryManifestRestorer.
+                    if enabled is True or (isinstance(enabled, dict) and enabled.get("serve") is True):
+                        # External network names follow neuro-san's convention of "/<network_name>",
+                        # where network_name is the manifest path without its file extension
+                        # (matching AgentFileTreeMapper.filepath_to_agent_network_name).
+                        # pyhocon keeps the literal quote characters in dict keys when the original
+                        # HOCON key was quoted — and manifest keys are always quoted because they
+                        # contain "/" — so we strip those quote chars before deriving the name.
+                        clean_name: str = agent_name.replace('"', "").removesuffix(".hocon").removesuffix(".json")
+                        names.append("/" + clean_name)
+            except FileNotFoundError as file_error:
+                logger.warning(
+                    "Manifest file not found, no external agents/subnetworks will be available "
+                    "in the generated network: %s",
+                    file_error
+                )
+            except ParseException as parse_error:
+                logger.warning(
+                    "Failed to parse manifest '%s', no subnetwork names will be available: %s",
+                    manifest_file,
+                    parse_error,
+                )
+
+            # Cache whatever we found, including an empty list on failure, to avoid reloading.
+            sly_data[SUBNETWORK_NAMES] = names
+
+        return names
 
     # pylint: disable=too-many-locals
     @staticmethod
@@ -64,11 +119,8 @@ class GetSubnetwork(CodedTool):
                 # Exit early, including for an explicitly cached empty mapping
                 return sly_data.get(SUBNETWORKS)
 
-            # Check manifest file from env var
-            manifest_file: str | list[str] = os.getenv("AGENT_NETWORK_DESIGNER_MANIFEST_FILE")
-            if not manifest_file:
-                # Use a default if no value provided
-                manifest_file = DEFAULT_MANIFEST_FILE
+            # Check manifest file from env var. Use a default if no value provided.
+            manifest_file: str = os.getenv("AGENT_NETWORK_DESIGNER_MANIFEST_FILE") or DEFAULT_MANIFEST_FILE
 
             empty: dict[str, AgentNetwork] = {}
             networks: dict[str, AgentNetwork] = {}
@@ -94,8 +146,12 @@ class GetSubnetwork(CodedTool):
                     if desc is not None and len(desc) > 0:
                         subnetworks["/" + name] = desc
 
-            except FileNotFoundError:
-                logger.warning("Error: Failed to load agent networks info from %s.", manifest_file)
+            except FileNotFoundError as file_error:
+                logger.warning(
+                    "Manifest file not found, no external agents/subnetworks will be available "
+                    "in the generated network: %s",
+                    file_error
+                )
 
             # Cache whatever we found, including an empty mapping on failure, to avoid reloading.
             sly_data[SUBNETWORKS] = subnetworks
