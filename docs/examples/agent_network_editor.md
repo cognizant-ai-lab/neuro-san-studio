@@ -83,7 +83,7 @@ At the start of each session, the editor always call the following functions to 
 - `get_toolbox`
     — returns a dictionary where each key is a tool name and the value contains tool description.
     - The available toolbox can be set with environment variable `AGENT_NETWORK_DESIGNER_TOOLBOX_INFO_FILE`. If not provided,
-    [agent_network_designer_toolbox_info.hocon](../../toolbox/agent_network_designer_toolbox_info.hocon) will be used.
+    [agent_network_designer_toolbox_info.hocon](../../neuro_san_studio/toolbox/agent_network_designer_toolbox_info.hocon) will be used.
 
 - `get_subnetwork`
     — returns a dictionary of subnetworks, mapping each name to its frontman's description.

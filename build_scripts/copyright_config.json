@@ -11,6 +11,6 @@
         "servers",
         "skills",
         "tests",
-        "toolbox"
+        "neuro_san_studio/toolbox"
     ]
 }

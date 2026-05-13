@@ -75,7 +75,7 @@ class NeuroSanRunner:
             ),
             "agent_tool_path": os.getenv("AGENT_TOOL_PATH", os.path.join(self.root_dir, "coded_tools")),
             "agent_toolbox_info_file": os.getenv(
-                "AGENT_TOOLBOX_INFO_FILE", os.path.join(self.root_dir, "toolbox", "toolbox_info.hocon")
+                "AGENT_TOOLBOX_INFO_FILE", os.path.join(self.root_dir, "neuro_san_studio", "toolbox", "toolbox_info.hocon")
             ),
             "mcp_servers_info_file": os.getenv(
                 "MCP_SERVERS_INFO_FILE", os.path.join(self.root_dir, "mcp", "mcp_info.hocon")
