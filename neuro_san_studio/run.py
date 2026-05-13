@@ -583,7 +583,38 @@ class NeuroSanRunner:
 
 
 def main():
-    """Entry point for the `neuro-san-studio` console script."""
+    """Entry point for the `neuro-san-studio` console script.
+
+    Dispatches to the `run` or `init` subcommand. Invoking the script with no
+    subcommand (or with only `run`-style flags) starts the server directly (run).
+    """
+    parser = argparse.ArgumentParser(prog="neuro-san-studio", add_help=True)
+    subparsers = parser.add_subparsers(dest="command")
+    subparsers.add_parser("run", help="Start the Neuro SAN server and client (default)")
+    init_parser = subparsers.add_parser("init", help="Scaffold a starter project in the current directory")
+    init_parser.add_argument(
+        "--providers",
+        type=str,
+        default=None,
+        help="Comma-separated providers to enable (openai,anthropic,google). Skips the interactive prompt.",
+    )
+
+    # Back-compat: if the first token is not a known subcommand, treat the invocation
+    # as `run` so existing usages like `neuro-san-studio --server-http-port 8080` still work.
+    argv = sys.argv[1:]
+    known_subcommands = {"run", "init"}
+    if argv and argv[0] not in known_subcommands and argv[0] not in {"-h", "--help"}:
+        argv = ["run", *argv]
+    args, remainder = parser.parse_known_args(argv)
+
+    if args.command == "init":
+        from neuro_san_studio.init import InitCommand  # pylint: disable=import-outside-toplevel
+
+        InitCommand(providers_arg=args.providers).run()
+        return
+
+    # `run` (or bare). Restore sys.argv so NeuroSanRunner.parse_args() sees the remaining flags.
+    sys.argv = [sys.argv[0], *remainder]
     runner = NeuroSanRunner()
     runner.run()
 

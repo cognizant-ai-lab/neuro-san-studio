@@ -24,6 +24,8 @@ Homepage = "https://github.com/cognizant-ai-lab/neuro-san-studio"
 [tool.setuptools.dynamic]
 dependencies = { file = ["requirements.txt"] }
 optional-dependencies.dev = { file = ["requirements-build.txt"] }
+optional-dependencies.anthropic = { file = ["requirements-anthropic.txt"] }
+optional-dependencies.google = { file = ["requirements-google.txt"] }
 readme = { file = ["README.md"], content-type = "text/markdown" }
 
 [tool.setuptools.packages.find]

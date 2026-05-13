@@ -17,6 +17,7 @@
 """Tests for NeuroSanRunner."""
 
 import builtins
+import sys
 from collections.abc import Callable
 from collections.abc import Iterable
 
@@ -24,6 +25,7 @@ import pytest
 from pytest import CaptureFixture
 from pytest import MonkeyPatch
 
+from neuro_san_studio import init as init_module
 from neuro_san_studio import run as run_module
 from neuro_san_studio.run import NeuroSanRunner
 from neuro_san_studio.run import main
@@ -98,8 +100,9 @@ class TestNeuroSanRunner:
 class TestMainEntryPoint:
     """Tests for the `main()` console script entry point."""
 
-    def test_main_instantiates_runner_and_calls_run(self, monkeypatch: MonkeyPatch) -> None:
-        """main() should construct NeuroSanRunner and invoke run() once."""
+    @staticmethod
+    def _install_fake_runner(monkeypatch: MonkeyPatch) -> list[str]:
+        """Replace NeuroSanRunner with a recording stand-in and return the call log."""
         call_order: list[str] = []
 
         class FakeRunner:  # pylint: disable=too-few-public-methods
@@ -113,8 +116,51 @@ class TestMainEntryPoint:
                 call_order.append("run")
 
         monkeypatch.setattr(run_module, "NeuroSanRunner", FakeRunner)
+        return call_order
+
+    def test_main_with_no_args_runs_server(self, monkeypatch: MonkeyPatch) -> None:
+        """Bare `neuro-san-studio` should still start the server (back-compat)."""
+        call_order = self._install_fake_runner(monkeypatch)
+        monkeypatch.setattr(sys, "argv", ["neuro-san-studio"])
         main()
         assert call_order == ["init", "run"]
+
+    def test_main_with_run_subcommand_runs_server(self, monkeypatch: MonkeyPatch) -> None:
+        """Explicit `neuro-san-studio run` should also start the server."""
+        call_order = self._install_fake_runner(monkeypatch)
+        monkeypatch.setattr(sys, "argv", ["neuro-san-studio", "run"])
+        main()
+        assert call_order == ["init", "run"]
+
+    def test_main_with_run_flags_is_backcompat(self, monkeypatch: MonkeyPatch) -> None:
+        """`neuro-san-studio --server-http-port 8081` should be treated as `run --server-http-port 8081`."""
+        call_order = self._install_fake_runner(monkeypatch)
+        monkeypatch.setattr(sys, "argv", ["neuro-san-studio", "--server-http-port", "8081"])
+        main()
+        # Runner was invoked, and sys.argv was restored with the flag for NeuroSanRunner.parse_args().
+        assert call_order == ["init", "run"]
+        assert sys.argv == ["neuro-san-studio", "--server-http-port", "8081"]
+
+    def test_main_with_init_subcommand_invokes_init(self, monkeypatch: MonkeyPatch) -> None:
+        """`neuro-san-studio init` should invoke InitCommand and NOT NeuroSanRunner."""
+        runner_call_order = self._install_fake_runner(monkeypatch)
+        init_calls: list[tuple[str | None]] = []
+
+        class FakeInit:  # pylint: disable=too-few-public-methods
+            """Stand-in for InitCommand that records the providers_arg it received."""
+
+            def __init__(self, providers_arg: str | None = None) -> None:
+                init_calls.append((providers_arg,))
+
+            def run(self) -> None:
+                """Record that init.run() was invoked."""
+                init_calls.append(("run",))
+
+        monkeypatch.setattr(init_module, "InitCommand", FakeInit)
+        monkeypatch.setattr(sys, "argv", ["neuro-san-studio", "init", "--providers", "openai,anthropic"])
+        main()
+        assert not runner_call_order
+        assert init_calls == [("openai,anthropic",), ("run",)]
 
     def test_main_propagates_runner_exceptions(self, monkeypatch: MonkeyPatch) -> None:
         """Exceptions from NeuroSanRunner().run() should bubble up to the caller."""
@@ -127,5 +173,6 @@ class TestMainEntryPoint:
                 raise RuntimeError("boom")
 
         monkeypatch.setattr(run_module, "NeuroSanRunner", ExplodingRunner)
+        monkeypatch.setattr(sys, "argv", ["neuro-san-studio"])
         with pytest.raises(RuntimeError, match="boom"):
             main()

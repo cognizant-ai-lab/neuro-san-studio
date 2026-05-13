@@ -1,0 +1,1 @@
+langchain-google-genai>=4.2.2,<5.0

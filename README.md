@@ -183,6 +183,42 @@ You'll find comprehensive documentation, example agent networks, and tutorials t
 
 ---
 
+### Install from PyPI
+
+If you just want to build your own agent networks on top of Neuro SAN Studio, you don't need to clone this
+repository. Install the package from PyPI and scaffold a starter project with `init`:
+
+```bash
+pip install neuro-san-studio
+neuro-san-studio init
+```
+
+`init` asks which LLM provider(s) you want to enable and writes a minimal project into the current directory
+(`config/llm_config.hocon`, `registries/manifest.hocon`, `registries/basic/music_nerd.hocon`, `mcp/mcp_info.hocon`).
+Once your provider API key is set (e.g. `OPENAI_API_KEY`), start the server:
+
+```bash
+neuro-san-studio run
+```
+
+The base install ships with OpenAI support only. Anthropic and Google Gemini are provided as extras:
+
+```bash
+pip install 'neuro-san-studio[anthropic]'          # adds langchain-anthropic
+pip install 'neuro-san-studio[google]'             # adds langchain-google-genai
+pip install 'neuro-san-studio[anthropic,google]'   # both
+```
+
+You can also run `init` non-interactively:
+
+```bash
+neuro-san-studio init --providers openai,anthropic,google
+```
+
+If you pick a provider whose package isn't installed, `init` will run `pip install` for it automatically.
+
+---
+
 ### Installation
 
 Clone the repo:
