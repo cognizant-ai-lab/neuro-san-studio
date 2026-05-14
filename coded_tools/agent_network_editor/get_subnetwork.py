@@ -23,10 +23,10 @@ from neuro_san.interfaces.coded_tool import CodedTool
 from neuro_san.internals.graph.persistence.agent_filetree_mapper import AgentFileTreeMapper
 from neuro_san.internals.graph.persistence.manifest_dict_config_filter import ManifestDictConfigFilter
 from neuro_san.internals.graph.persistence.manifest_key_config_filter import ManifestKeyConfigFilter
+from neuro_san.internals.graph.persistence.raw_manifest_restorer import RawManifestRestorer
 from neuro_san.internals.graph.persistence.registry_manifest_restorer import RegistryManifestRestorer
 from neuro_san.internals.graph.persistence.served_manifest_config_filter import ServedManifestConfigFilter
 from neuro_san.internals.graph.registry.agent_network import AgentNetwork
-from neuro_san.internals.persistence.abstract_async_config_restorer import AbstractAsyncConfigRestorer
 from pyparsing.exceptions import ParseException
 
 from coded_tools.agent_network_editor.constants import SUBNETWORK_NAMES
@@ -72,18 +72,20 @@ class GetSubnetwork(CodedTool):
             logger.info(">>>>>>>>>>>>>>>>>>>Getting Subnetwork Names from Manifest>>>>>>>>>>>>>>>>>>>")
             logger.info("Manifest file: %s", manifest_file)
 
-            # Parse the manifest HOCON directly. pyhocon resolves `include` statements,
-            # so composed manifests (e.g. manifest_and.hocon) flatten into a single
-            # mapping of "path/to/file.hocon" -> enabled-bool-or-dict entries.
+            # Parse the manifest HOCON. pyhocon resolves `include` statements, so composed manifests
+            # (e.g. manifest_and.hocon) flatten into a single mapping of
+            # "path/to/file.hocon" -> enabled-bool-or-dict entries. RawManifestRestorer returns None
+            # if the file is missing — treated as an empty manifest (no subnetworks available).
             names: list[str] = []
             try:
-                # We use AbstractAsyncConfigRestorer rather than RawManifestRestorer (the neuro-san subclass
-                # used internally to read manifests) because RawManifestRestorer hardcodes must_exist=False
-                # and file_purpose="agent network manifest". With must_exist=True we get an explicit
-                # FileNotFoundError on a missing file (caught below) plus an informative error message;
-                # the custom file_purpose makes those messages reflect this caller.
-                restorer = AbstractAsyncConfigRestorer(file_purpose="get_subnetwork_names", must_exist=True)
-                raw_manifest: dict[str, Any] = await restorer.async_restore(file_reference=manifest_file)
+                raw_manifest: dict[str, Any] = await RawManifestRestorer().async_restore(file_reference=manifest_file)
+                if raw_manifest is None:
+                    logger.warning(
+                        "Manifest file '%s' not found, no external agents/subnetworks will be available "
+                        "in the generated network",
+                        manifest_file,
+                    )
+                    raw_manifest = {}
 
                 # Use neuro-san's canonical manifest filters so we don't reimplement manifest semantics:
                 #   - ManifestKeyConfigFilter:    strips quote chars from quoted HOCON keys
@@ -108,12 +110,6 @@ class GetSubnetwork(CodedTool):
                     agent_filepath: str = agent_mapper.agent_name_to_filepath(manifest_key)
                     network_name: str = agent_mapper.filepath_to_agent_network_name(agent_filepath)
                     names.append(f"/{network_name}")
-            except FileNotFoundError as file_error:
-                logger.warning(
-                    "Manifest file not found, no external agents/subnetworks will be available "
-                    "in the generated network: %s",
-                    file_error,
-                )
             except ParseException as parse_error:
                 logger.warning(
                     "Failed to parse manifest '%s', no subnetwork names will be available: %s",
