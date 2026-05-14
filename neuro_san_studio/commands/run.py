@@ -74,9 +74,7 @@ class NeuroSanRunner:
                 "AGENT_MANIFEST_FILE", os.path.join(self.root_dir, "registries", "manifest.hocon")
             ),
             "agent_tool_path": os.getenv("AGENT_TOOL_PATH", os.path.join(self.root_dir, "coded_tools")),
-            "agent_toolbox_info_file": os.getenv(
-                "AGENT_TOOLBOX_INFO_FILE", os.path.join(self.root_dir, "toolbox", "toolbox_info.hocon")
-            ),
+            "agent_toolbox_info_file": self._resolve_toolbox_info_file(),
             "mcp_servers_info_file": os.getenv(
                 "MCP_SERVERS_INFO_FILE", os.path.join(self.root_dir, "mcp", "mcp_info.hocon")
             ),
@@ -103,6 +101,36 @@ class NeuroSanRunner:
         self.server_process = None
         self.flask_webclient_process = None
         self.nsflow_process = None
+
+    def _apply_toolbox_env(self) -> None:
+        """Export AGENT_TOOLBOX_INFO_FILE only if a user-provided toolbox path is configured.
+
+        When unset, the neuro-san framework falls back to its built-in default toolbox,
+        so a user-provided file is a pure override and is optional.
+        """
+        toolbox_file = self.args["agent_toolbox_info_file"]
+        if toolbox_file:
+            os.environ["AGENT_TOOLBOX_INFO_FILE"] = toolbox_file
+            print(f"AGENT_TOOLBOX_INFO_FILE set to: {toolbox_file}")
+        else:
+            print("AGENT_TOOLBOX_INFO_FILE: (not set — using built-in default toolbox)")
+
+    def _resolve_toolbox_info_file(self) -> str:
+        """Resolve the toolbox info file path, or return "" if it should not be exported.
+
+        A user-provided toolbox is purely an override on top of the neuro-san framework's
+        built-in default toolbox. Only set AGENT_TOOLBOX_INFO_FILE when the user has
+        opted in explicitly via the env var, or when the conventional
+        `<root>/toolbox/toolbox_info.hocon` actually exists. Otherwise return "" so the
+        env var stays unset and the framework uses its built-in default only.
+        """
+        env_value = os.getenv("AGENT_TOOLBOX_INFO_FILE")
+        if env_value is not None:
+            return env_value
+        default_path = os.path.join(self.root_dir, "toolbox", "toolbox_info.hocon")
+        if os.path.isfile(default_path):
+            return default_path
+        return ""
 
     def load_env_variables(self):
         """Load .env file from project root and set variables."""
@@ -187,7 +215,7 @@ class NeuroSanRunner:
         os.environ["PYTHONPATH"] = self.root_dir
         os.environ["AGENT_MANIFEST_FILE"] = self.args["agent_manifest_file"]
         os.environ["AGENT_TOOL_PATH"] = self.args["agent_tool_path"]
-        os.environ["AGENT_TOOLBOX_INFO_FILE"] = self.args["agent_toolbox_info_file"]
+        self._apply_toolbox_env()
         os.environ["MCP_SERVERS_INFO_FILE"] = self.args["mcp_servers_info_file"]
         os.environ["NEURO_SAN_SERVER_CONNECTION"] = self.args["server_connection"]
         os.environ["AGENT_MANIFEST_UPDATE_PERIOD_SECONDS"] = str(self.args["manifest_update_period_seconds"])
@@ -195,7 +223,6 @@ class NeuroSanRunner:
         print(f"PYTHONPATH set to: {os.environ['PYTHONPATH']}")
         print(f"AGENT_MANIFEST_FILE set to: {os.environ['AGENT_MANIFEST_FILE']}")
         print(f"AGENT_TOOL_PATH set to: {os.environ['AGENT_TOOL_PATH']}")
-        print(f"AGENT_TOOLBOX_INFO_FILE set to: {os.environ['AGENT_TOOLBOX_INFO_FILE']}")
         print(f"MCP_SERVERS_INFO_FILE set to: {os.environ['MCP_SERVERS_INFO_FILE']}")
         print(f"NEURO_SAN_SERVER_CONNECTION set to: {os.environ['NEURO_SAN_SERVER_CONNECTION']}")
         print(f"AGENT_MANIFEST_UPDATE_PERIOD_SECONDS set to: {os.environ['AGENT_MANIFEST_UPDATE_PERIOD_SECONDS']}")

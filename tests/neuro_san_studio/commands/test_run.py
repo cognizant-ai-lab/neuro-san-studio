@@ -17,9 +17,11 @@
 """Tests for NeuroSanRunner."""
 
 import builtins
+import os
 import sys
 from collections.abc import Callable
 from collections.abc import Iterable
+from pathlib import Path
 
 import pytest
 from pytest import CaptureFixture
@@ -83,6 +85,86 @@ class TestNeuroSanRunner:
         """Test that max_attempts controls the number of allowed retries."""
         monkeypatch.setattr(builtins, "input", self._scripted_input(["bad", "yes"]))
         assert self._make_runner()._validate_yes_no_input("prompt: ", max_attempts=2) is True
+
+    def test_toolbox_env_var_takes_precedence(self, monkeypatch: MonkeyPatch, tmp_path: Path) -> None:
+        """Explicit AGENT_TOOLBOX_INFO_FILE should be used verbatim, ignoring the filesystem."""
+        monkeypatch.setenv("AGENT_TOOLBOX_INFO_FILE", "/custom/path/toolbox.hocon")
+        runner = self._make_runner()
+        runner.root_dir = str(tmp_path)
+        assert runner._resolve_toolbox_info_file() == "/custom/path/toolbox.hocon"
+
+    def test_toolbox_default_path_used_when_file_exists(self, monkeypatch: MonkeyPatch, tmp_path: Path) -> None:
+        """With no env var, fall back to <root>/toolbox/toolbox_info.hocon if it exists."""
+        monkeypatch.delenv("AGENT_TOOLBOX_INFO_FILE", raising=False)
+        toolbox_dir = tmp_path / "toolbox"
+        toolbox_dir.mkdir()
+        toolbox_file = toolbox_dir / "toolbox_info.hocon"
+        toolbox_file.write_text("{}\n", encoding="utf-8")
+        runner = self._make_runner()
+        runner.root_dir = str(tmp_path)
+        assert runner._resolve_toolbox_info_file() == str(toolbox_file)
+
+    def test_toolbox_unset_when_no_env_and_no_file(self, monkeypatch: MonkeyPatch, tmp_path: Path) -> None:
+        """With no env var and no file on disk, return "" so the env var stays unset."""
+        monkeypatch.delenv("AGENT_TOOLBOX_INFO_FILE", raising=False)
+        runner = self._make_runner()
+        runner.root_dir = str(tmp_path)
+        assert runner._resolve_toolbox_info_file() == ""
+
+    def test_set_environment_variables_skips_empty_toolbox(
+        self, monkeypatch: MonkeyPatch, tmp_path: Path, capsys: CaptureFixture[str]
+    ) -> None:
+        """set_environment_variables should not export AGENT_TOOLBOX_INFO_FILE when the arg is empty."""
+        monkeypatch.setattr(os, "environ", os.environ.copy())
+        monkeypatch.delenv("AGENT_TOOLBOX_INFO_FILE", raising=False)
+        runner = self._make_runner()
+        runner.root_dir = str(tmp_path)
+        runner.args = {
+            "agent_manifest_file": str(tmp_path / "manifest.hocon"),
+            "agent_tool_path": str(tmp_path / "coded_tools"),
+            "agent_toolbox_info_file": "",
+            "mcp_servers_info_file": str(tmp_path / "mcp_info.hocon"),
+            "server_connection": "http",
+            "manifest_update_period_seconds": 5,
+            "log_level": "info",
+            "server_only": True,
+            "client_only": False,
+            "server_host": "localhost",
+            "server_http_port": 8080,
+            "thinking_file": str(tmp_path / "thinking.txt"),
+            "thinking_dir": str(tmp_path / "thinking"),
+            "use_flask_web_client": False,
+        }
+        runner.set_environment_variables()
+        assert "AGENT_TOOLBOX_INFO_FILE" not in os.environ
+        assert "using built-in default toolbox" in capsys.readouterr().out
+
+    def test_set_environment_variables_exports_toolbox_when_present(
+        self, monkeypatch: MonkeyPatch, tmp_path: Path
+    ) -> None:
+        """set_environment_variables should export AGENT_TOOLBOX_INFO_FILE when the arg is set."""
+        monkeypatch.setattr(os, "environ", os.environ.copy())
+        monkeypatch.delenv("AGENT_TOOLBOX_INFO_FILE", raising=False)
+        runner = self._make_runner()
+        runner.root_dir = str(tmp_path)
+        runner.args = {
+            "agent_manifest_file": str(tmp_path / "manifest.hocon"),
+            "agent_tool_path": str(tmp_path / "coded_tools"),
+            "agent_toolbox_info_file": "/explicit/path/toolbox.hocon",
+            "mcp_servers_info_file": str(tmp_path / "mcp_info.hocon"),
+            "server_connection": "http",
+            "manifest_update_period_seconds": 5,
+            "log_level": "info",
+            "server_only": True,
+            "client_only": False,
+            "server_host": "localhost",
+            "server_http_port": 8080,
+            "thinking_file": str(tmp_path / "thinking.txt"),
+            "thinking_dir": str(tmp_path / "thinking"),
+            "use_flask_web_client": False,
+        }
+        runner.set_environment_variables()
+        assert os.environ["AGENT_TOOLBOX_INFO_FILE"] == "/explicit/path/toolbox.hocon"
 
     def test_passes_prompt_to_input(self, monkeypatch: MonkeyPatch) -> None:
         """Test that the supplied prompt string is forwarded to input()."""
