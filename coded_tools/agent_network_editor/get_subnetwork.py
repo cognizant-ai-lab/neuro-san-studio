@@ -18,8 +18,13 @@ import logging
 import os
 from typing import Any
 
+from leaf_common.config.config_filter_chain import ConfigFilterChain
 from neuro_san.interfaces.coded_tool import CodedTool
+from neuro_san.internals.graph.persistence.agent_filetree_mapper import AgentFileTreeMapper
+from neuro_san.internals.graph.persistence.manifest_dict_config_filter import ManifestDictConfigFilter
+from neuro_san.internals.graph.persistence.manifest_key_config_filter import ManifestKeyConfigFilter
 from neuro_san.internals.graph.persistence.registry_manifest_restorer import RegistryManifestRestorer
+from neuro_san.internals.graph.persistence.served_manifest_config_filter import ServedManifestConfigFilter
 from neuro_san.internals.graph.registry.agent_network import AgentNetwork
 from neuro_san.internals.persistence.abstract_async_config_restorer import AbstractAsyncConfigRestorer
 from pyparsing.exceptions import ParseException
@@ -57,6 +62,11 @@ class GetSubnetwork(CodedTool):
             if SUBNETWORK_NAMES in sly_data:
                 return sly_data.get(SUBNETWORK_NAMES)
 
+            # We use a designer-specific env var (rather than AGENT_MANIFEST_FILE) so the designer's
+            # subnetwork pool can be a narrow, curated subset of what the server hosts — e.g. only
+            # industry/ + generated/ networks, not basic/, tools/, experimental/, or the
+            # designer-family agents themselves. Default points at manifest_and.hocon which composes
+            # just those two via `include`.
             manifest_file: str = os.getenv("AGENT_NETWORK_DESIGNER_MANIFEST_FILE") or DEFAULT_MANIFEST_FILE
 
             logger.info(">>>>>>>>>>>>>>>>>>>Getting Subnetwork Names from Manifest>>>>>>>>>>>>>>>>>>>")
@@ -64,8 +74,7 @@ class GetSubnetwork(CodedTool):
 
             # Parse the manifest HOCON directly. pyhocon resolves `include` statements,
             # so composed manifests (e.g. manifest_and.hocon) flatten into a single
-            # mapping of "path/to/file.hocon" -> enabled-bool entries. Only enabled
-            # entries are exposed, matching the semantics used elsewhere.
+            # mapping of "path/to/file.hocon" -> enabled-bool-or-dict entries.
             names: list[str] = []
             try:
                 # We use AbstractAsyncConfigRestorer rather than RawManifestRestorer (the neuro-san subclass
@@ -74,20 +83,31 @@ class GetSubnetwork(CodedTool):
                 # FileNotFoundError on a missing file (caught below) plus an informative error message;
                 # the custom file_purpose makes those messages reflect this caller.
                 restorer = AbstractAsyncConfigRestorer(file_purpose="get_subnetwork_names", must_exist=True)
-                manifest: dict[str, Any] = await restorer.async_restore(file_reference=manifest_file)
-                for agent_name, enabled in manifest.items():
-                    # Manifest entries are either `path: true/false` or `path: { "serve": true, ... }`.
-                    # Both forms are documented; the dict form is the canonical one used post-filter
-                    # by RegistryManifestRestorer.
-                    if enabled is True or (isinstance(enabled, dict) and enabled.get("serve") is True):
-                        # External network names follow neuro-san's convention of "/<network_name>",
-                        # where network_name is the manifest path without its file extension
-                        # (matching AgentFileTreeMapper.filepath_to_agent_network_name).
-                        # pyhocon keeps the literal quote characters in dict keys when the original
-                        # HOCON key was quoted — and manifest keys are always quoted because they
-                        # contain "/" — so we strip those quote chars before deriving the name.
-                        clean_name: str = agent_name.replace('"', "").removesuffix(".hocon").removesuffix(".json")
-                        names.append("/" + clean_name)
+                raw_manifest: dict[str, Any] = await restorer.async_restore(file_reference=manifest_file)
+
+                # Use neuro-san's canonical manifest filters so we don't reimplement manifest semantics:
+                #   - ManifestKeyConfigFilter:    strips quote chars from quoted HOCON keys
+                #   - ManifestDictConfigFilter:   normalizes bool values to {"serve": ..., ...}
+                #   - ServedManifestConfigFilter: drops non-served entries
+                # We assemble our own chain rather than using ManifestFilterChain because the latter
+                # registers ServedManifestConfigFilter with warn_on_skip=True/entry_for_skipped=True,
+                # which would log a warning per disabled entry and keep them in the result. Here we
+                # want unserved entries silently dropped.
+                filter_chain = ConfigFilterChain()
+                filter_chain.register(ManifestKeyConfigFilter(manifest_file))
+                filter_chain.register(ManifestDictConfigFilter(manifest_file))
+                filter_chain.register(
+                    ServedManifestConfigFilter(manifest_file, warn_on_skip=False, entry_for_skipped=False)
+                )
+                one_manifest: dict[str, Any] = filter_chain.filter_config(raw_manifest)
+
+                # Derive external network names ("/<network_name>") via the canonical mapper used by
+                # neuro-san (matches RegistryManifestRestorer.find_external_network_names).
+                agent_mapper = AgentFileTreeMapper()
+                for manifest_key in one_manifest.keys():
+                    agent_filepath: str = agent_mapper.agent_name_to_filepath(manifest_key)
+                    network_name: str = agent_mapper.filepath_to_agent_network_name(agent_filepath)
+                    names.append(f"/{network_name}")
             except FileNotFoundError as file_error:
                 logger.warning(
                     "Manifest file not found, no external agents/subnetworks will be available "
@@ -124,7 +144,11 @@ class GetSubnetwork(CodedTool):
                 # Exit early, including for an explicitly cached empty mapping
                 return sly_data.get(SUBNETWORKS)
 
-            # Check manifest file from env var. Use a default if no value provided.
+            # We use a designer-specific env var (rather than AGENT_MANIFEST_FILE) so the designer's
+            # subnetwork pool can be a narrow, curated subset of what the server hosts — e.g. only
+            # industry/ + generated/ networks, not basic/, tools/, experimental/, or the
+            # designer-family agents themselves. Default points at manifest_and.hocon which composes
+            # just those two via `include`.
             manifest_file: str = os.getenv("AGENT_NETWORK_DESIGNER_MANIFEST_FILE") or DEFAULT_MANIFEST_FILE
 
             empty: dict[str, AgentNetwork] = {}
