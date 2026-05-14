@@ -24,18 +24,7 @@ from pathlib import Path
 import pytest
 from pytest import MonkeyPatch
 
-from neuro_san_studio.commands import init as init_module
 from neuro_san_studio.commands.init import InitCommand
-
-
-@pytest.fixture(name="disable_pip_install", autouse=True)
-def _disable_pip_install(monkeypatch: MonkeyPatch) -> None:
-    """Prevent tests from actually running pip install."""
-    monkeypatch.setattr(
-        init_module,
-        "subprocess",
-        type("FakeSubprocess", (), {"run": staticmethod(lambda *a, **k: None), "CalledProcessError": Exception}),
-    )
 
 
 class TestProvidersArgParsing:

@@ -16,35 +16,18 @@
 
 """Implementation of the `neuro-san-studio init` command."""
 
-import importlib
 import importlib.resources
 import os
 import shutil
-import subprocess
 import sys
 from typing import Dict
 from typing import List
 from typing import Optional
 
 PROVIDERS: Dict[str, Dict[str, str]] = {
-    "openai": {
-        "label": "OpenAI",
-        "model_name": "gpt-5.2",
-        "package": "langchain-openai",
-        "module": "langchain_openai",
-    },
-    "anthropic": {
-        "label": "Anthropic",
-        "model_name": "claude-sonnet",
-        "package": "langchain-anthropic",
-        "module": "langchain_anthropic",
-    },
-    "google": {
-        "label": "Google Gemini",
-        "model_name": "gemini-3-flash",
-        "package": "langchain-google-genai",
-        "module": "langchain_google_genai",
-    },
+    "openai": {"label": "OpenAI", "model_name": "gpt-5.2"},
+    "anthropic": {"label": "Anthropic", "model_name": "claude-sonnet"},
+    "google": {"label": "Google Gemini", "model_name": "gemini-3-flash"},
 }
 
 
@@ -87,7 +70,7 @@ class InitCommand:  # pylint: disable=too-few-public-methods
         self.root_dir = root_dir or os.getcwd()
 
     def run(self) -> None:
-        """Resolve providers, write starter files, and install any missing provider packages."""
+        """Resolve providers and write starter files."""
         providers = self._resolve_providers()
         print(f"Selected providers: {', '.join(PROVIDERS[p]['label'] for p in providers)}\n")
 
@@ -96,7 +79,6 @@ class InitCommand:  # pylint: disable=too-few-public-methods
         self._write_file(os.path.join("registries", "manifest.hocon"), MANIFEST_HOCON)
         self._write_file(os.path.join("config", "llm_config.hocon"), self._render_llm_config(providers))
 
-        self._install_missing_provider_packages(providers)
         self._print_next_steps()
 
     def _resolve_providers(self) -> List[str]:
@@ -159,8 +141,8 @@ class InitCommand:  # pylint: disable=too-few-public-methods
     def _render_llm_config(providers: List[str]) -> str:
         """Render config/llm_config.hocon for the selected providers.
 
-        Ordering: if OpenAI is selected, it goes first (matches the base install which only
-        ships langchain-openai). Otherwise providers are emitted in user-selected order.
+        Ordering: if OpenAI is selected, it is promoted to first position. Otherwise
+        providers are emitted in user-selected order.
         """
         ordered = providers[:]
         if "openai" in ordered and ordered[0] != "openai":
@@ -202,27 +184,6 @@ class InitCommand:  # pylint: disable=too-few-public-methods
         with open(dest_abs, "w", encoding="utf-8") as fh:
             fh.write(content)
         print(f"[ok]    {rel_path}")
-
-    @staticmethod
-    def _install_missing_provider_packages(providers: List[str]) -> None:
-        """Install langchain packages for selected providers that aren't importable."""
-        for key in providers:
-            info = PROVIDERS[key]
-            try:
-                importlib.import_module(info["module"])
-            except ImportError:
-                pass
-            else:
-                continue
-
-            package = info["package"]
-            print(f"\nInstalling {package} for {info['label']} ...")
-            cmd = [sys.executable, "-m", "pip", "install", package]
-            print(f"  $ {' '.join(cmd)}")
-            try:
-                subprocess.run(cmd, check=True)
-            except subprocess.CalledProcessError:
-                print(f"  Failed to install {package}. Install it manually with: pip install {package}")
 
     def _print_next_steps(self) -> None:
         """Print the final instructions shown after scaffolding completes."""
