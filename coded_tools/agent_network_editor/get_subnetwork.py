@@ -68,6 +68,11 @@ class GetSubnetwork(CodedTool):
             # entries are exposed, matching the semantics used elsewhere.
             names: list[str] = []
             try:
+                # We use AbstractAsyncConfigRestorer rather than RawManifestRestorer (the neuro-san subclass
+                # used internally to read manifests) because RawManifestRestorer hardcodes must_exist=False
+                # and file_purpose="agent network manifest". With must_exist=True we get an explicit
+                # FileNotFoundError on a missing file (caught below) plus an informative error message;
+                # the custom file_purpose makes those messages reflect this caller.
                 restorer = AbstractAsyncConfigRestorer(file_purpose="get_subnetwork_names", must_exist=True)
                 manifest: dict[str, Any] = await restorer.async_restore(file_reference=manifest_file)
                 for agent_name, enabled in manifest.items():
