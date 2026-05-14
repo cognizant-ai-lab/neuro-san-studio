@@ -24,8 +24,8 @@ from pathlib import Path
 import pytest
 from pytest import MonkeyPatch
 
-from neuro_san_studio import init as init_module
-from neuro_san_studio.init import InitCommand
+from neuro_san_studio.commands import init as init_module
+from neuro_san_studio.commands.init import InitCommand
 
 
 @pytest.fixture(name="disable_pip_install", autouse=True)
@@ -121,7 +121,7 @@ class TestRunFlow:
         monkeypatch.setattr(sys.stdin, "isatty", lambda: False)
         InitCommand(providers_arg="openai", root_dir=str(tmp_path)).run()
 
-        assert (tmp_path / "registries" / "basic" / "music_nerd.hocon").is_file()
+        assert (tmp_path / "registries" / "music_nerd.hocon").is_file()
         assert (tmp_path / "registries" / "manifest.hocon").read_text().strip().startswith("{")
         assert (tmp_path / "mcp" / "mcp_info.hocon").is_file()
         llm_config = (tmp_path / "config" / "llm_config.hocon").read_text()
@@ -176,5 +176,5 @@ class TestRunFlow:
         from importlib import resources  # pylint: disable=import-outside-toplevel
 
         upstream = (resources.files("neuro_san.registries") / "music_nerd.hocon").read_bytes()
-        local = (tmp_path / "registries" / "basic" / "music_nerd.hocon").read_bytes()
+        local = (tmp_path / "registries" / "music_nerd.hocon").read_bytes()
         assert local == upstream

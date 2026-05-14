@@ -49,7 +49,7 @@ PROVIDERS: Dict[str, Dict[str, str]] = {
 
 
 MANIFEST_HOCON = """{
-    "basic/music_nerd.hocon": true
+    "music_nerd.hocon": true
 }
 """
 
@@ -181,7 +181,7 @@ class InitCommand:  # pylint: disable=too-few-public-methods
 
     def _copy_music_nerd(self) -> None:
         """Copy music_nerd.hocon from the installed neuro_san package into the project."""
-        dest_rel = os.path.join("registries", "basic", "music_nerd.hocon")
+        dest_rel = os.path.join("registries", "music_nerd.hocon")
         dest_abs = os.path.join(self.root_dir, dest_rel)
         if os.path.exists(dest_abs):
             print(f"[skip]  {dest_rel} (already exists)")

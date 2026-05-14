@@ -608,7 +608,7 @@ def main():
     args, remainder = parser.parse_known_args(argv)
 
     if args.command == "init":
-        from neuro_san_studio.init import InitCommand  # pylint: disable=import-outside-toplevel
+        from neuro_san_studio.commands.init import InitCommand  # pylint: disable=import-outside-toplevel
 
         InitCommand(providers_arg=args.providers).run()
         return

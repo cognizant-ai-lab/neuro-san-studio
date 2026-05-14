@@ -25,10 +25,10 @@ import pytest
 from pytest import CaptureFixture
 from pytest import MonkeyPatch
 
-from neuro_san_studio import init as init_module
-from neuro_san_studio import run as run_module
-from neuro_san_studio.run import NeuroSanRunner
-from neuro_san_studio.run import main
+from neuro_san_studio.commands import init as init_module
+from neuro_san_studio.commands import run as run_module
+from neuro_san_studio.commands.run import NeuroSanRunner
+from neuro_san_studio.commands.run import main
 
 
 class TestNeuroSanRunner:

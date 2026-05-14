@@ -75,7 +75,7 @@ dependency), it is skipped with a warning rather than crashing the entire startu
 
 Plugins are loaded in two contexts with different lifecycle methods:
 
-**Runner process** (`neuro_san_studio/run.py`) -- manages subprocesses:
+**Runner process** (`neuro_san_studio/commands/run.py`) -- manages subprocesses:
 
 1. `update_args_dict()` -- inject default config values
 2. `update_parser_args()` -- register CLI arguments
@@ -117,14 +117,14 @@ The LLM Config Validator checks that every LLM configuration in a HOCON file is 
 working by creating each LLM instance and invoking it with a trivial test prompt.
 It can also check the `llm_config.hocon` for any issues.
 
-It can be invoked via the `--check-llm-config` flag on `neuro_san_studio/run.py`:
+It can be invoked via the `--check-llm-config` flag on `neuro_san_studio/commands/run.py`:
 
 ```bash
 # Check the default config/llm_config.hocon
-python -m neuro_san_studio.run --check-llm-config
+python -m neuro_san_studio run --check-llm-config
 
 # Check a specific agent network or llm_config HOCON file
-python -m neuro_san_studio.run --check-llm-config registries/basic/music_nerd.hocon
+python -m neuro_san_studio run --check-llm-config registries/basic/music_nerd.hocon
 ```
 
 Or run the script directly:
@@ -163,14 +163,14 @@ Tiers 1 and 2 run entirely offline; tier 3 requires network access to reach the 
 
 ```bash
 # Tier 1 only — placeholder detection (no format or network checks)
-python -m neuro_san_studio.run --validate-keys 1
+python -m neuro_san_studio run --validate-keys 1
 
 # Tier 2 — placeholder + format checks (no network calls)
-python -m neuro_san_studio.run --validate-keys 2
+python -m neuro_san_studio run --validate-keys 2
 
 # Tier 3 — all checks including live API calls (default when no value is given)
-python -m neuro_san_studio.run --validate-keys
-python -m neuro_san_studio.run --validate-keys 3
+python -m neuro_san_studio run --validate-keys
+python -m neuro_san_studio run --validate-keys 3
 ```
 
 The validator prints a grouped results table (VALID / WARNING / ERROR) and logs a summary count.
