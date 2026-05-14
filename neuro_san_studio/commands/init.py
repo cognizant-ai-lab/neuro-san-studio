@@ -30,29 +30,7 @@ PROVIDERS: Dict[str, Dict[str, str]] = {
     "google": {"label": "Google Gemini", "model_name": "gemini-3-flash"},
 }
 
-
-MANIFEST_HOCON = """{
-    "music_nerd.hocon": true
-}
-"""
-
-
-# Minimal starter MCP config. Users can uncomment and add servers as they need them.
-MCP_INFO_HOCON = """# This file contains the MCP server configurations in the following format:
-#     "mcp_server_url_1": {
-#         "http_headers": {
-#                "Authorization": "Bearer <token>",
-#         }, # Optional: if the server requires authentication
-#         # Optional: specific tools to load from this server. Loads all if omitted.
-#         "tools": ["tool_1", "tool_2"]
-#     },
-
-{
-    "https://mcp.deepwiki.com/mcp": {
-        "tools": ["read_wiki_structure", "ask_question"]
-    },
-}
-"""
+TEMPLATES_PACKAGE = "neuro_san_studio.templates"
 
 
 class InitCommand:  # pylint: disable=too-few-public-methods
@@ -74,9 +52,9 @@ class InitCommand:  # pylint: disable=too-few-public-methods
         providers = self._resolve_providers()
         print(f"Selected providers: {', '.join(PROVIDERS[p]['label'] for p in providers)}\n")
 
-        self._copy_music_nerd()
-        self._write_file(os.path.join("mcp", "mcp_info.hocon"), MCP_INFO_HOCON)
-        self._write_file(os.path.join("registries", "manifest.hocon"), MANIFEST_HOCON)
+        self._copy_template("music_nerd.hocon", os.path.join("registries", "music_nerd.hocon"))
+        self._copy_template("manifest.hocon", os.path.join("registries", "manifest.hocon"))
+        self._copy_template("mcp_info.hocon", os.path.join("mcp", "mcp_info.hocon"))
         self._write_file(os.path.join("config", "llm_config.hocon"), self._render_llm_config(providers))
 
         self._print_next_steps()
@@ -161,15 +139,14 @@ class InitCommand:  # pylint: disable=too-few-public-methods
         lines.extend(["        ]", "    }", "}", ""])
         return "\n".join(lines)
 
-    def _copy_music_nerd(self) -> None:
-        """Copy music_nerd.hocon from the installed neuro_san package into the project."""
-        dest_rel = os.path.join("registries", "music_nerd.hocon")
+    def _copy_template(self, template_name: str, dest_rel: str) -> None:
+        """Copy a template file from neuro_san_studio.templates into the project."""
         dest_abs = os.path.join(self.root_dir, dest_rel)
         if os.path.exists(dest_abs):
             print(f"[skip]  {dest_rel} (already exists)")
             return
         os.makedirs(os.path.dirname(dest_abs), exist_ok=True)
-        source = importlib.resources.files("neuro_san.registries") / "music_nerd.hocon"
+        source = importlib.resources.files(TEMPLATES_PACKAGE) / template_name
         with source.open("rb") as src, open(dest_abs, "wb") as dst:
             shutil.copyfileobj(src, dst)
         print(f"[ok]    {dest_rel}")

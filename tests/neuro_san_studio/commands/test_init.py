@@ -157,13 +157,51 @@ class TestRunFlow:
         llm_config = (tmp_path / "config" / "llm_config.hocon").read_text()
         assert '"model_name": "gpt-5.2"' in llm_config
 
-    def test_music_nerd_sourced_from_neuro_san_package(self, tmp_path: Path, monkeypatch: MonkeyPatch) -> None:
-        """music_nerd.hocon should be copied from the installed neuro_san.registries package."""
+    def test_music_nerd_sourced_from_templates(self, tmp_path: Path, monkeypatch: MonkeyPatch) -> None:
+        """music_nerd.hocon should be copied from neuro_san_studio.templates."""
         monkeypatch.setattr(sys.stdin, "isatty", lambda: False)
         InitCommand(providers_arg="openai", root_dir=str(tmp_path)).run()
 
         from importlib import resources  # pylint: disable=import-outside-toplevel
 
-        upstream = (resources.files("neuro_san.registries") / "music_nerd.hocon").read_bytes()
+        upstream = (resources.files("neuro_san_studio.templates") / "music_nerd.hocon").read_bytes()
         local = (tmp_path / "registries" / "music_nerd.hocon").read_bytes()
         assert local == upstream
+
+    def test_manifest_sourced_from_templates(self, tmp_path: Path, monkeypatch: MonkeyPatch) -> None:
+        """manifest.hocon should be copied from neuro_san_studio.templates."""
+        monkeypatch.setattr(sys.stdin, "isatty", lambda: False)
+        InitCommand(providers_arg="openai", root_dir=str(tmp_path)).run()
+
+        from importlib import resources  # pylint: disable=import-outside-toplevel
+
+        upstream = (resources.files("neuro_san_studio.templates") / "manifest.hocon").read_bytes()
+        local = (tmp_path / "registries" / "manifest.hocon").read_bytes()
+        assert local == upstream
+
+    def test_mcp_info_sourced_from_templates(self, tmp_path: Path, monkeypatch: MonkeyPatch) -> None:
+        """mcp_info.hocon should be copied from neuro_san_studio.templates."""
+        monkeypatch.setattr(sys.stdin, "isatty", lambda: False)
+        InitCommand(providers_arg="openai", root_dir=str(tmp_path)).run()
+
+        from importlib import resources  # pylint: disable=import-outside-toplevel
+
+        upstream = (resources.files("neuro_san_studio.templates") / "mcp_info.hocon").read_bytes()
+        local = (tmp_path / "mcp" / "mcp_info.hocon").read_bytes()
+        assert local == upstream
+
+
+class TestTemplateSync:  # pylint: disable=too-few-public-methods
+    """Ensure scaffolded templates stay in sync with their source-of-truth files in registries/."""
+
+    def test_music_nerd_template_matches_registries_basic(self) -> None:
+        """templates/music_nerd.hocon must be byte-identical to registries/basic/music_nerd.hocon."""
+        from importlib import resources  # pylint: disable=import-outside-toplevel
+
+        template = (resources.files("neuro_san_studio.templates") / "music_nerd.hocon").read_bytes()
+        repo_root = Path(__file__).resolve().parents[3]
+        source_of_truth = (repo_root / "registries" / "basic" / "music_nerd.hocon").read_bytes()
+        assert template == source_of_truth, (
+            "neuro_san_studio/templates/music_nerd.hocon has drifted from "
+            "registries/basic/music_nerd.hocon. Update both together."
+        )
