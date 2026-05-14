@@ -24,7 +24,9 @@ import pytest
 from pytest import CaptureFixture
 from pytest import MonkeyPatch
 
+from neuro_san_studio import run as run_module
 from neuro_san_studio.run import NeuroSanRunner
+from neuro_san_studio.run import main
 
 
 class TestNeuroSanRunner:
@@ -91,3 +93,39 @@ class TestNeuroSanRunner:
         monkeypatch.setattr(builtins, "input", _capturing_input)
         self._make_runner()._validate_yes_no_input("Kill processes? ")
         assert seen_prompts == ["Kill processes? "]
+
+
+class TestMainEntryPoint:
+    """Tests for the `main()` console script entry point."""
+
+    def test_main_instantiates_runner_and_calls_run(self, monkeypatch: MonkeyPatch) -> None:
+        """main() should construct NeuroSanRunner and invoke run() once."""
+        call_order: list[str] = []
+
+        class FakeRunner:  # pylint: disable=too-few-public-methods
+            """Stand-in for NeuroSanRunner that records method calls."""
+
+            def __init__(self) -> None:
+                call_order.append("init")
+
+            def run(self) -> None:
+                """Record that run() was invoked."""
+                call_order.append("run")
+
+        monkeypatch.setattr(run_module, "NeuroSanRunner", FakeRunner)
+        main()
+        assert call_order == ["init", "run"]
+
+    def test_main_propagates_runner_exceptions(self, monkeypatch: MonkeyPatch) -> None:
+        """Exceptions from NeuroSanRunner().run() should bubble up to the caller."""
+
+        class ExplodingRunner:  # pylint: disable=too-few-public-methods
+            """Runner whose run() raises, to verify main() does not swallow errors."""
+
+            def run(self) -> None:
+                """Raise to simulate a runtime failure."""
+                raise RuntimeError("boom")
+
+        monkeypatch.setattr(run_module, "NeuroSanRunner", ExplodingRunner)
+        with pytest.raises(RuntimeError, match="boom"):
+            main()
