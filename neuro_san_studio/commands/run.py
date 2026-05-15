@@ -28,10 +28,15 @@ from typing import Dict
 from typing import Tuple
 
 from dotenv import load_dotenv
+from timedinput import timedinput
 
 from neuro_san_studio.interfaces.process_logger_interface import ProcessLoggerInterface
 from neuro_san_studio.plugins.plugin_loader import PluginLoader
 from neuro_san_studio.runner.simple_process_logger import SimpleProcessLogger
+
+# Long enough to never bite a real user; finite so timedinput is happy and so a
+# detached terminal can't hang the process forever.
+INPUT_TIMEOUT_SECONDS = 300
 
 
 class NeuroSanRunner:
@@ -484,7 +489,7 @@ class NeuroSanRunner:
         valid_no = {"no", "n"}
         for attempt in range(max_attempts):
             try:
-                raw = input(prompt).strip().lower()
+                raw = timedinput(prompt, timeout=INPUT_TIMEOUT_SECONDS, default="").strip().lower()
             except EOFError:
                 print("No input available. Considering the answer is 'no'.")
                 return False

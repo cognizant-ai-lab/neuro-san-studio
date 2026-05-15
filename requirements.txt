@@ -37,3 +37,7 @@ pyvis~=0.3.2
 
 # For web search tools without needing API keys, using DuckDuckGo's search results
 ddgs>=9.4.1
+
+# For chat-based cli tools not used in deployment
+# Also used by neuro-san
+timedinput>=0.1.1
