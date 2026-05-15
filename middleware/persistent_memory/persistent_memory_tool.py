@@ -21,8 +21,6 @@ Each call goes to a handler for that operation, which talks to the store.
 If a summarizer was attached, it runs inline while the store lock is held.
 """
 
-from __future__ import annotations
-
 import functools
 import logging
 from logging import Logger
