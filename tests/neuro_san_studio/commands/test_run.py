@@ -16,12 +16,12 @@
 
 """Tests for NeuroSanRunner."""
 
-import builtins
 import os
 import sys
 from collections.abc import Callable
 from collections.abc import Iterable
 from pathlib import Path
+from typing import Any
 
 import pytest
 from pytest import CaptureFixture
@@ -42,13 +42,13 @@ class TestNeuroSanRunner:
         return NeuroSanRunner.__new__(NeuroSanRunner)
 
     @staticmethod
-    def _scripted_input(responses: Iterable[str]) -> Callable[[str], str]:
-        """Return a replacement for input() that pops successive responses."""
+    def _scripted_input(responses: Iterable[str]) -> Callable[..., str]:
+        """Return a replacement for timedinput() that pops successive responses."""
         queue: list[str] = list(responses)
 
-        def _input(_prompt: str) -> str:
+        def _input(_prompt: str = "", **_kwargs: Any) -> str:
             if not queue:
-                raise AssertionError("input() called more times than scripted responses")
+                raise AssertionError("timedinput() called more times than scripted responses")
             return queue.pop(0)
 
         return _input
@@ -58,32 +58,32 @@ class TestNeuroSanRunner:
     @pytest.mark.parametrize("response", ["yes", "y", "YES", "Y", "Yes", "  y  "])
     def test_returns_true_for_affirmative(self, monkeypatch: MonkeyPatch, response: str) -> None:
         """Test that any affirmative variant (case/whitespace) returns True."""
-        monkeypatch.setattr(builtins, "input", self._scripted_input([response]))
+        monkeypatch.setattr(run_module, "timedinput", self._scripted_input([response]))
         assert self._make_runner()._validate_yes_no_input("prompt: ") is True
 
     @pytest.mark.parametrize("response", ["no", "n", "NO", "N", "No", "  n  "])
     def test_returns_false_for_negative(self, monkeypatch: MonkeyPatch, response: str) -> None:
         """Test that any negative variant (case/whitespace) returns False."""
-        monkeypatch.setattr(builtins, "input", self._scripted_input([response]))
+        monkeypatch.setattr(run_module, "timedinput", self._scripted_input([response]))
         assert self._make_runner()._validate_yes_no_input("prompt: ") is False
 
     def test_reprompts_then_accepts_valid(self, monkeypatch: MonkeyPatch, capsys: CaptureFixture[str]) -> None:
         """Test that invalid input triggers a re-prompt before a valid one succeeds."""
-        monkeypatch.setattr(builtins, "input", self._scripted_input(["maybe", "y"]))
+        monkeypatch.setattr(run_module, "timedinput", self._scripted_input(["maybe", "y"]))
         assert self._make_runner()._validate_yes_no_input("prompt: ") is True
         captured = capsys.readouterr()
         assert "Invalid input" in captured.out
 
     def test_returns_false_after_max_attempts(self, monkeypatch: MonkeyPatch, capsys: CaptureFixture[str]) -> None:
         """Test that exhausting all attempts with invalid input returns False."""
-        monkeypatch.setattr(builtins, "input", self._scripted_input(["a", "b", "c"]))
+        monkeypatch.setattr(run_module, "timedinput", self._scripted_input(["a", "b", "c"]))
         assert self._make_runner()._validate_yes_no_input("prompt: ") is False
         captured = capsys.readouterr()
         assert "Too many invalid responses." in captured.out
 
     def test_respects_custom_max_attempts(self, monkeypatch: MonkeyPatch) -> None:
         """Test that max_attempts controls the number of allowed retries."""
-        monkeypatch.setattr(builtins, "input", self._scripted_input(["bad", "yes"]))
+        monkeypatch.setattr(run_module, "timedinput", self._scripted_input(["bad", "yes"]))
         assert self._make_runner()._validate_yes_no_input("prompt: ", max_attempts=2) is True
 
     def test_toolbox_env_var_takes_precedence(self, monkeypatch: MonkeyPatch, tmp_path: Path) -> None:
@@ -167,14 +167,14 @@ class TestNeuroSanRunner:
         assert os.environ["AGENT_TOOLBOX_INFO_FILE"] == "/explicit/path/toolbox.hocon"
 
     def test_passes_prompt_to_input(self, monkeypatch: MonkeyPatch) -> None:
-        """Test that the supplied prompt string is forwarded to input()."""
+        """Test that the supplied prompt string is forwarded to timedinput()."""
         seen_prompts: list[str] = []
 
-        def _capturing_input(prompt: str) -> str:
+        def _capturing_input(prompt: str = "", **_kwargs: Any) -> str:
             seen_prompts.append(prompt)
             return "y"
 
-        monkeypatch.setattr(builtins, "input", _capturing_input)
+        monkeypatch.setattr(run_module, "timedinput", _capturing_input)
         self._make_runner()._validate_yes_no_input("Kill processes? ")
         assert seen_prompts == ["Kill processes? "]
 

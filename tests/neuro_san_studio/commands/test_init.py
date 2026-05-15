@@ -16,7 +16,6 @@
 
 """Tests for the `neuro-san-studio init` command."""
 
-import builtins
 import os
 import sys
 from pathlib import Path
@@ -24,6 +23,7 @@ from pathlib import Path
 import pytest
 from pytest import MonkeyPatch
 
+from neuro_san_studio.commands import init as init_module
 from neuro_san_studio.commands.init import InitCommand
 
 
@@ -142,7 +142,7 @@ class TestRunFlow:
     def test_run_interactive_multi_select(self, tmp_path: Path, monkeypatch: MonkeyPatch) -> None:
         """Interactive mode should parse numbered input into the right providers."""
         monkeypatch.setattr(sys.stdin, "isatty", lambda: True)
-        monkeypatch.setattr(builtins, "input", lambda _prompt="": "1,2")
+        monkeypatch.setattr(init_module, "timedinput", lambda *_a, **_kw: "1,2")
         InitCommand(providers_arg=None, root_dir=str(tmp_path)).run()
         llm_config = (tmp_path / "config" / "llm_config.hocon").read_text()
         assert '"fallbacks"' in llm_config
@@ -152,7 +152,7 @@ class TestRunFlow:
     def test_run_interactive_empty_input_defaults_to_openai(self, tmp_path: Path, monkeypatch: MonkeyPatch) -> None:
         """Pressing enter at the prompt should accept the default (OpenAI)."""
         monkeypatch.setattr(sys.stdin, "isatty", lambda: True)
-        monkeypatch.setattr(builtins, "input", lambda _prompt="": "")
+        monkeypatch.setattr(init_module, "timedinput", lambda *_a, **_kw: "")
         InitCommand(providers_arg=None, root_dir=str(tmp_path)).run()
         llm_config = (tmp_path / "config" / "llm_config.hocon").read_text()
         assert '"model_name": "gpt-5.2"' in llm_config
