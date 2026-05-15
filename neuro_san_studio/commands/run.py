@@ -489,6 +489,8 @@ class NeuroSanRunner:
         valid_no = {"no", "n"}
         for attempt in range(max_attempts):
             try:
+                # Default to "" (empty), which is an invalid input that triggers the prompt again
+                # if there are remaining attempts or gives up otherwise with a 'no'.
                 raw = timedinput(prompt, timeout=INPUT_TIMEOUT_SECONDS, default="").strip().lower()
             except EOFError:
                 print("No input available. Considering the answer is 'no'.")
