@@ -22,8 +22,6 @@ Locks are per-topic, so different topics on the same agent can be written
 in parallel.
 """
 
-from __future__ import annotations
-
 import os
 import re
 from pathlib import Path

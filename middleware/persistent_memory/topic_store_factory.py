@@ -18,8 +18,6 @@
 Factory that builds a concrete ``TopicStore`` from a raw HOCON ``storage`` dict.
 """
 
-from __future__ import annotations
-
 import logging
 from logging import Logger
 from pathlib import Path

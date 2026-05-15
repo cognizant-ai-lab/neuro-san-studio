@@ -21,8 +21,6 @@ Every call reads and writes the backend directly, guarded by a per-key lock.
 Subclasses choose the storage layout and how fine-grained the locks are.
 """
 
-from __future__ import annotations
-
 import asyncio
 import logging
 from abc import ABC

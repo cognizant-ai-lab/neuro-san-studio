@@ -21,8 +21,6 @@ Stores all of one agent's topics in a single JSON file. All writes to that
 agent share one lock, so different agents can still write in parallel.
 """
 
-from __future__ import annotations
-
 import json
 import os
 import re

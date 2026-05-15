@@ -22,8 +22,6 @@ Builds the store and summarizer from HOCON, registers a single
 the system prompt. All disk I/O happens inside the tool, not here.
 """
 
-from __future__ import annotations
-
 import logging
 import re
 from logging import Logger
