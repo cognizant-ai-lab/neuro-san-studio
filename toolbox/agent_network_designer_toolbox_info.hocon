@@ -232,4 +232,64 @@ Supports searching for images, audio files (mp3, ogg, flac, wav), and video file
         }
     },
 
+    # ---------- File Management Tools ----------
+
+    # Reads the contents of a local text file with allow/block-list access control.
+    # Requires: leaf-common (TextFileReader)
+    #
+    # Files larger than 10 MB are rejected with file_too_large to prevent
+    # accidental OOM on huge logs / data files.
+    #
+    # ============================================================================
+    # IMPORTANT — operator configuration is required for this tool to work.
+    # ============================================================================
+    #
+    # Access control (allowed_paths / allowed_file_extensions / blocked_paths /
+    # blocked_file_extensions) is INTENTIONALLY NOT exposed in the schema below.
+    # The LLM must never be able to set those values — that would let the model
+    # bypass the access control. The operator configures them in the agent network
+    # hocon, and neuro-san merges operator-supplied `args` over LLM-supplied args
+    # so operator values always win.
+    #
+    # Deny-by-default: without `allowed_paths`, the tool raises invalid_input on
+    # every call and refuses to read anything. To make this tool usable, you MUST
+    # supply at least `allowed_paths` via the `args` field on the tool reference
+    # in your agent network hocon, e.g.:
+    #
+    #   {
+    #       "name": "read_file",
+    #       "toolbox": "read_file",
+    #       "args": {
+    #           "allowed_paths": ["/path/to/project"],
+    #           "allowed_file_extensions": [".py", ".md"],
+    #           "blocked_file_extensions": [".env"]
+    #       }
+    #   }
+    "read_file": {
+        "class": "coded_tools.tools.file_management.read_file.ReadFile",
+        "description": "Reads the contents of a local text file (with optional line range and char cap) and returns the text plus metadata. Access is restricted by operator-configured allow/block lists for paths and extensions; the LLM cannot influence those lists.",
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "file_path": {
+                    "type": "string",
+                    "description": "Absolute or relative path to the file to read."
+                },
+                "start_line": {
+                    "type": "int",
+                    "description": "1-based line number to start reading from. Defaults to 1."
+                },
+                "end_line": {
+                    "type": "int",
+                    "description": "1-based line number to stop reading at (inclusive). Defaults to end of file."
+                },
+                "max_content_chars": {
+                    "type": "int",
+                    "description": "Maximum number of characters to return. Defaults to 20000."
+                }
+            },
+            "required": ["file_path"]
+        }
+    },
+
 }
