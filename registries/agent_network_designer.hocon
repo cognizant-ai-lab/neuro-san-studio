@@ -75,7 +75,12 @@
                         },
                         "agent_network_hocon_file": {
                             "type": "string",
-                            "description": "The file name (with .hocon extension) of an agent network HOCON file located in the registries folder. This is for users who want to provide the full agent network definition in HOCON format as input."
+                            "description": """
+The path of an agent network config file. HOCON (.hocon) is preferred — hence the field name — but JSON (.json) is also accepted. Accepted in order:
+(1) an absolute path; (2) a path relative to the current working directory (typically the repo root, e.g. 'registries/generated/foo.hocon');
+(3) a path relative to the registries folder — the directory of the first file in the AGENT_MANIFEST_FILE env var, falling back to 'registries' in the repo root.
+This is for users who want to provide the full agent network definition as input.
+"""
                         },
                         "agent_network_name": {
                             "type": "string",
