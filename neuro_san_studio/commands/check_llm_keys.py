@@ -15,14 +15,13 @@
 # END COPYRIGHT
 
 """
-Environment variable validation and startup diagnostics.
+Implementation of the `neuro-san-studio check-llm-keys` command.
 
-This module provides three-tier validation for LLM API keys and other
-critical environment variables:
+Three-tier validation for LLM API keys and other critical environment variables:
 
 - Tier 1: Placeholder detection (always runs)
 - Tier 2: Format validation (always runs)
-- Tier 3: Live validation via API calls (optional, via --validate-keys flag)
+- Tier 3: Live validation via API calls (optional)
 """
 
 import os
@@ -30,8 +29,6 @@ from dataclasses import dataclass
 from enum import Enum
 from typing import Callable
 from typing import Optional
-
-from neuro_san_studio.interfaces.base_plugin import BasePlugin
 
 # Optional dependencies for live validation (Tier 3)
 try:
@@ -88,7 +85,6 @@ class ValidationResult:
 class EnvValidator:
     """Validates environment variables for LLM API keys and other critical settings."""
 
-    # Placeholder patterns that indicate unconfigured values
     PLACEHOLDER_PATTERNS = [
         "YOUR_",
         "REPLACE",
@@ -105,8 +101,6 @@ class EnvValidator:
         "...",
     ]
 
-    # Format validators for known API keys
-    # Each validator returns (is_valid, error_message)
     KEY_FORMAT_VALIDATORS: dict[str, Callable[[str], tuple[bool, str]]] = {
         "OPENAI_API_KEY": lambda v: (
             (v.startswith("sk-") and len(v) >= 20),
@@ -138,7 +132,6 @@ class EnvValidator:
         ),
     }
 
-    # Keys that should be validated (grouped by provider)
     LLM_API_KEYS = [
         "OPENAI_API_KEY",
         "ANTHROPIC_API_KEY",
@@ -170,15 +163,7 @@ class EnvValidator:
         return any(pattern in value_upper for pattern in self.PLACEHOLDER_PATTERNS)
 
     def validate_tier1(self, var_name: str) -> ValidationResult:
-        """
-        Tier 1: Check if variable is set and not a placeholder.
-
-        Args:
-            var_name: Name of the environment variable to check
-
-        Returns:
-            ValidationResult with status and message
-        """
+        """Tier 1: Check if variable is set and not a placeholder."""
         value = os.getenv(var_name)
 
         if not value:
@@ -205,23 +190,13 @@ class EnvValidator:
         )
 
     def validate_tier2(self, var_name: str) -> ValidationResult:
-        """
-        Tier 2: Validate the format of the value.
-
-        Args:
-            var_name: Name of the environment variable to check
-
-        Returns:
-            ValidationResult with status and message
-        """
-        # First run tier 1
+        """Tier 2: Validate the format of the value."""
         tier1_result = self.validate_tier1(var_name)
         if tier1_result.status != ValidationStatus.VALID:
             return tier1_result
 
         value = os.getenv(var_name, "")
 
-        # Check if we have a format validator for this key
         if var_name in self.KEY_FORMAT_VALIDATORS:
             is_valid, error_msg = self.KEY_FORMAT_VALIDATORS[var_name](value)
             if not is_valid:
@@ -257,7 +232,6 @@ class EnvValidator:
 
         try:
             client = OpenAI(api_key=value)
-            # Lightweight call - list models doesn't consume tokens
             client.models.list()
             return ValidationResult(
                 var_name=var_name,
@@ -305,14 +279,12 @@ class EnvValidator:
 
         try:
             client = Anthropic(api_key=value)
-            # Lightweight call - count tokens using the messages API
             client.messages.count_tokens(
                 model="claude-3-haiku-20240307",
                 messages=[{"role": "user", "content": "test"}],
             )
         except AnthropicBadRequestError:
-            # 400 means the key authenticated but request was malformed
-            # This still confirms the key is valid
+            # 400 means the key authenticated but the request was malformed — key is valid.
             pass
         except AnthropicAuthError:
             return ValidationResult(
@@ -361,7 +333,6 @@ class EnvValidator:
 
         try:
             client = genai.Client(api_key=value)
-            # Lightweight call - list models
             list(client.models.list())
             return ValidationResult(
                 var_name=var_name,
@@ -386,35 +357,17 @@ class EnvValidator:
             )
 
     def validate_tier3(self, var_name: str) -> ValidationResult:
-        """
-        Tier 3: Validate with a live API call.
-
-        Args:
-            var_name: Name of the environment variable to check
-
-        Returns:
-            ValidationResult with status and message
-        """
-        # Route to appropriate validator based on key type
+        """Tier 3: Validate with a live API call."""
         if var_name == "OPENAI_API_KEY":
             return self.validate_tier3_openai(var_name)
         if var_name == "ANTHROPIC_API_KEY":
             return self.validate_tier3_anthropic(var_name)
         if var_name == "GOOGLE_API_KEY":
             return self.validate_tier3_google(var_name)
-        # For keys without live validation, return tier 2 result
         return self.validate_tier2(var_name)
 
     def validate_all(self, tier: int = 2) -> list[ValidationResult]:
-        """
-        Validate all known LLM API keys.
-
-        Args:
-            tier: Validation tier level (1=placeholder, 2=format, 3=live API calls)
-
-        Returns:
-            List of ValidationResult objects
-        """
+        """Validate all known LLM API keys."""
         self.results = []
 
         for var_name in self.LLM_API_KEYS:
@@ -441,7 +394,6 @@ class EnvValidator:
         print("Environment Variable Validation Results")
         print("=" * 70)
 
-        # Group by status for cleaner output
         valid_results = [r for r in results if r.status == ValidationStatus.VALID]
         warning_results = [r for r in results if r.status in (ValidationStatus.NOT_SET, ValidationStatus.PLACEHOLDER)]
         error_results = [
@@ -474,7 +426,6 @@ class EnvValidator:
 
         print("\n" + "=" * 70)
 
-        # Summary
         total = len(results)
         valid_count = len(valid_results)
         warning_count = len(warning_results)
@@ -503,51 +454,20 @@ class EnvValidator:
         return any(r.status in warning_statuses for r in results)
 
 
-class EnvValidatorPlugin(BasePlugin):
-    """Plugin wrapper for environment variable validation."""
+class CheckLlmKeysCommand:  # pylint: disable=too-few-public-methods
+    """Run LLM API key validation and exit with 0 (warnings only) or 1 (real errors)."""
 
-    def __init__(self, args: dict = None):
-        super().__init__(plugin_name="Environment Validator", args=args)
-        self.validator = EnvValidator()
+    def __init__(self, tier: int = 3):
+        """Initialize the command.
 
-    def _validate_keys(self):
-        """Validate LLM API keys when --validate-keys is specified."""
-        tier = self.args.get("validate_keys")
-        if not tier:
-            return
+        Args:
+            tier: Validation tier level (1=placeholder, 2=format, 3=live API calls). Defaults to 3.
+        """
+        self.tier = tier
 
-        self._logger.info("Validating LLM API keys (tier %s)...", tier)
-
-        if tier >= 3:
-            self._logger.info("Live validation enabled - making API calls to verify keys...")
-
-        results = self.validator.validate_all(tier=tier)
-        self.validator.print_results(results)
-
-        # Warn but don't block startup for missing/placeholder keys
-        if self.validator.has_warnings(results):
-            self._logger.warning("Some API keys are not configured. Agents using those providers will fail.")
-            self._logger.warning("Configure them in your .env file to enable all features.")
-
-        # For actual errors (invalid format, invalid key), warn more strongly
-        if self.validator.has_errors(results):
-            self._logger.error("Some API keys have validation errors. Check the results above.")
-
-    def pre_server_start_action(self, *_args, **_kwargs):
-        """Perform the plugin's main action (no-op, validation runs on startup)."""
-        self._validate_keys()
-
-    def update_parser_args(self, parser):
-        """Add command-line arguments for environment variable validation."""
-        parser.add_argument(
-            "--validate-keys",
-            type=int,
-            nargs="?",
-            const=3,
-            default=None,
-            metavar="{1,2,3}",
-            help="Validate API keys up to the specified tier: "
-            "1=placeholder detection, 2=format validation, "
-            "3=live API calls (default when flag is passed without a value). "
-            "Omit to skip validation entirely.",
-        )
+    def run(self) -> int:
+        """Run validation and return the appropriate exit code."""
+        validator = EnvValidator()
+        results = validator.validate_all(tier=self.tier)
+        validator.print_results(results)
+        return 1 if validator.has_errors(results) else 0

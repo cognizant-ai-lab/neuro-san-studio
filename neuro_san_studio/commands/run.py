@@ -625,11 +625,21 @@ def main():
         default=None,
         help="Comma-separated providers to enable (openai,anthropic,google). Skips the interactive prompt.",
     )
+    check_llm_keys_parser = subparsers.add_parser(
+        "check-llm-keys", help="Validate LLM API keys and other critical environment variables"
+    )
+    check_llm_keys_parser.add_argument(
+        "--tier",
+        type=int,
+        choices=[1, 2, 3],
+        default=3,
+        help="Validation tier: 1=placeholder detection, 2=format validation, 3=live API calls (default: 3)",
+    )
 
     # Back-compat: if the first token is not a known subcommand, treat the invocation
     # as `run` so existing usages like `neuro-san-studio --server-http-port 8080` still work.
     argv = sys.argv[1:]
-    known_subcommands = {"run", "init"}
+    known_subcommands = {"run", "init", "check-llm-keys"}
     if argv and argv[0] not in known_subcommands and argv[0] not in {"-h", "--help"}:
         argv = ["run", *argv]
     args, remainder = parser.parse_known_args(argv)
@@ -639,6 +649,12 @@ def main():
 
         InitCommand(providers_arg=args.providers).run()
         return
+
+    if args.command == "check-llm-keys":
+        # pylint: disable-next=import-outside-toplevel
+        from neuro_san_studio.commands.check_llm_keys import CheckLlmKeysCommand
+
+        sys.exit(CheckLlmKeysCommand(tier=args.tier).run())
 
     # `run` (or bare). Restore sys.argv so NeuroSanRunner.parse_args() sees the remaining flags.
     sys.argv = [sys.argv[0], *remainder]

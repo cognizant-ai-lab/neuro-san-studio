@@ -2,14 +2,16 @@
 
 Setup a virtual environment, install the dependencies, and activate the virtual environment using [Make](./dev_guide.md#using-the-makefile)
 
-## Validation with `--validate-keys`
+## Validation with `check-llm-keys`
 
-When you run the server with `python -m neuro_san_studio run --validate-keys`, API keys are validated
-using a three-tier system. You can specify the tier level:
+Run `neuro-san-studio check-llm-keys` to validate your API keys using a three-tier system. You can
+specify the tier level with `--tier`:
 
-- `--validate-keys` or `--validate-keys 3` — Run all three tiers (default)
-- `--validate-keys 1` — Run only Tier 1
-- `--validate-keys 2` — Run Tiers 1 and 2
+- `neuro-san-studio check-llm-keys` or `neuro-san-studio check-llm-keys --tier 3` — Run all three tiers (default)
+- `neuro-san-studio check-llm-keys --tier 1` — Run only Tier 1
+- `neuro-san-studio check-llm-keys --tier 2` — Run Tiers 1 and 2
+
+See [cli.md](./cli.md#check-llm-keys) for the full command reference, including exit-code semantics.
 
 ### Tier 1: Placeholder Detection
 
@@ -48,8 +50,7 @@ Validates that API keys match expected patterns for each provider.
 ### Tier 3: Live Validation
 
 Makes actual API calls to verify keys are valid and have access.
-This tier runs when `--validate-keys` is passed without a value
-or with `--validate-keys 3`.
+This tier runs by default, or when `--tier 3` is explicitly passed.
 
 **Currently supported providers for live validation:**
 
@@ -83,7 +84,7 @@ Summary: 3/7 valid, 4 warnings, 0 errors
 ```
 
 > **Source Code:** The validation logic lives in
-> [`neuro_san_studio/plugins/env_validator/env_validator.py`](../neuro_san_studio/plugins/env_validator/env_validator.py).
+> [`neuro_san_studio/commands/check_llm_keys.py`](../neuro_san_studio/commands/check_llm_keys.py).
 > You can inspect or extend this file to add support for additional providers.
 
 ---
