@@ -16,7 +16,7 @@ classifiers = [
 ]
 
 [project.scripts]
-neuro-san-studio = "neuro_san_studio.run:main"
+neuro-san-studio = "neuro_san_studio.commands.run:main"
 
 [project.urls]
 Homepage = "https://github.com/cognizant-ai-lab/neuro-san-studio"
@@ -30,6 +30,10 @@ readme = { file = ["README.md"], content-type = "text/markdown" }
 where = ["."]
 include = ["neuro_san_studio*"]
 exclude = ["apps*", "build_scripts*", "coded_tools*", "config*", "deploy*", "docs*", "mcp*", "middleware*", "registries*", "servers*", "skills*", "tests*", "toolbox*"]
+
+[tool.setuptools.package-data]
+"neuro_san_studio.templates" = ["*.hocon"]
+
 [tool.setuptools_scm]
 fallback_version = "0.0.0"
 

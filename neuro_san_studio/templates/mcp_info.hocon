@@ -1,0 +1,14 @@
+# This file contains the MCP server configurations in the following format:
+#     "mcp_server_url_1": {
+#         "http_headers": {
+#                "Authorization": "Bearer <token>",
+#         }, # Optional: if the server requires authentication
+#         # Optional: specific tools to load from this server. Loads all if omitted.
+#         "tools": ["tool_1", "tool_2"]
+#     },
+
+{
+    "https://mcp.deepwiki.com/mcp": {
+        "tools": ["read_wiki_structure", "ask_question"]
+    },
+}

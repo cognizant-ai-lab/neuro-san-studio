@@ -25,7 +25,7 @@ class ProcessLoggerInterface(ABC):  # pylint: disable=too-few-public-methods
     """Interface for consuming subprocess stdout/stderr pipes.
 
     Any class that drains subprocess pipes should implement this interface.
-    This allows neuro_san_studio/run.py to detect whether a plugin is handling pipe consumption
+    This allows neuro_san_studio/commands/run.py to detect whether a plugin is handling pipe consumption
     and fall back to a simple logger if not.
     """
 
