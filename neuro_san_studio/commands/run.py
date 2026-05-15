@@ -216,11 +216,17 @@ class NeuroSanRunner:
         """
         Sets the PYTHONPATH environment variable to include the project root directory.
         """
-        if self.root_dir in os.environ.get("PYTHONPATH", ""):
+        existing: str = os.environ.get("PYTHONPATH", "")
+        normalized_root_dir = os.path.normcase(os.path.abspath(self.root_dir))
+        existing_paths = [path for path in existing.split(os.pathsep) if path]
+
+        if any(
+            os.path.normcase(os.path.abspath(path)) == normalized_root_dir
+            for path in existing_paths
+        ):
             return
 
         new_path: str = self.root_dir
-        existing: str = os.environ.get("PYTHONPATH", "")
         if existing:
             new_path = existing + os.pathsep + self.root_dir
         os.environ["PYTHONPATH"] = new_path
