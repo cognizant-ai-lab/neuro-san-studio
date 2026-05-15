@@ -21,8 +21,6 @@ Stores all of one agent's topics in a single JSON file. All writes to that
 agent share one lock, so different agents can still write in parallel.
 """
 
-from __future__ import annotations
-
 import json
 import os
 import re
@@ -50,12 +48,14 @@ class JsonFileStore(TopicStore):
     _UNSAFE_FILE_CHARS: ClassVar[re.Pattern[str]] = re.compile(r"[^A-Za-z0-9_-]")
 
     def __init__(self, folder_name: str, file_name: str = DEFAULT_FILE_NAME) -> None:
-        super().__init__(folder_name)
+        super().__init__()
+        self._root: Path = Path(folder_name).expanduser().resolve()
         # Accept ``"memory.json"`` / path-like values and reduce to a safe stem.
         raw: str = (file_name or self.DEFAULT_FILE_NAME).strip()
         stem: str = Path(raw).stem or self.DEFAULT_FILE_NAME
         cleaned: str = self._UNSAFE_FILE_CHARS.sub("_", stem).strip("_")
         self._file_name: str = cleaned or self.DEFAULT_FILE_NAME
+        self.logger.info("Root path: %s", self._root)
 
     def _path_for(self, namespace: str) -> Path:
         """
@@ -88,27 +88,6 @@ class JsonFileStore(TopicStore):
         :return: The lock-cache key for list/search ops.
         """
         return ("json", namespace)
-
-    @override
-    async def load_all(self, namespace: str) -> TopicStore.AgentMemory:
-        """
-        Read and parse the agent's JSON file.
-
-        :param namespace: ``"<network>.<agent>"`` key.
-        :return: The agent's full ``{topic: content}`` dict.
-        """
-        return await self._load_unlocked(namespace)
-
-    @override
-    async def save_all(self, namespace: str, memory: TopicStore.AgentMemory) -> None:
-        """
-        Persist the full memory dict as one JSON file.
-
-        :param namespace: ``"<network>.<agent>"`` key.
-        :param memory:    Full ``{topic: content}`` dict to write.
-        """
-        async with await self._lock_for(self._lock_key(namespace, "")):
-            await self._write_unlocked(namespace, memory)
 
     @override
     async def _read_topic(self, namespace: str, topic: str) -> str | None:

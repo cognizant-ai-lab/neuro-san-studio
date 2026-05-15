@@ -44,7 +44,8 @@ Here are a few examples ordered by level of complexity.
     - [ArXiv Assistant](#arxiv-assistant)
     - [ServiceNow AI Agents](#servicenow-ai-agents)
     - [Visual Question Answering](#visual-question-answering)
-    - [Persistent Memory](#persistent-memory)
+    - [Persistent Memory (Local)](#persistent-memory-local)
+    - [Persistent Memory (Mem0)](#persistent-memory-mem0)
   - [🏢 Industry-Specific Examples](#-industry-specific-examples)
     - [Intranet Agents](#intranet-agents)
     - [Intranet Agents With Tools](#intranet-agents-with-tools)
@@ -388,15 +389,25 @@ queries against images or videos. It uses Apple's ml-fastvlm library to answer t
 
 **Tags:** `tool`, `Visual Question Answering`, `VQA`, `Vision Language Models`, `VLM`, `ml-fastvlm`
 
-### Persistent Memory
+### Persistent Memory (Local)
 
-[Persistent Memory](examples/tools/persistent_memory.md) is an agent network with middleware that
+[Persistent Memory (Local)](examples/tools/persistent_memory_local.md) is an agent network with middleware that
 gives the agent long-term, file-backed memory: a CRUD and keyword-search store that survives across
 sessions. The memory is registered automatically by attaching `PersistentMemoryMiddleware` to an
 agent's middleware block. Two storage backends are available (JSON or Markdown), with an optional
 LLM summarizer for auto-compaction of long entries.
 
 **Tags:** `tool`, `middleware`, `memory`
+
+### Persistent Memory (Mem0)
+
+[Persistent Memory (Mem0)](examples/tools/persistent_memory_mem0.md) is the cloud-backed sibling of the file-backed
+example above. The same `PersistentMemoryMiddleware` is wired with the `mem0` storage backend,
+which writes each topic as a memory entry in the [Mem0](https://mem0.ai) cloud and partitions
+memories by `user_id`. Use it when you need per-user scoping or a multi-host deployment;
+requires `pip install "mem0ai>=2.0.2,<3.0"` and the `MEM0_API_KEY` environment variable.
+
+**Tags:** `tool`, `middleware`, `memory`, `mem0`, `cloud`
 
 ## 🏢 Industry-Specific Examples
 
