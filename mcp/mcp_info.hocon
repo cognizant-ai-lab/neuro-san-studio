@@ -74,4 +74,12 @@
     #     # you-research: Synthesized, citation-backed answers with configurable effort levels (lite, standard, deep, exhaustive, frontier).
     #     # See https://docs.you.com/build-with-agents/mcp-server for more details on the tools and how to get started.
     # },
+
+    # Uncomment this section to use the You.com MCP server's free tier (no credentials required).
+    # Append ?profile=free to the URL to access you-search without an API key.
+    # Only you-search is available on the free tier; you-contents and you-research are not.
+    # "https://api.you.com/mcp?profile=free": {
+    #     "tools": ["you-search"]
+    #     # See https://docs.you.com/build-with-agents/mcp-server for more details.
+    # },
 }

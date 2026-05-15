@@ -24,6 +24,8 @@ from typing import Dict
 from typing import List
 from typing import Optional
 
+from timedinput import timedinput
+
 PROVIDERS: Dict[str, Dict[str, str]] = {
     "openai": {"label": "OpenAI", "model_name": "gpt-5.2"},
     "anthropic": {"label": "Anthropic", "model_name": "claude-sonnet"},
@@ -31,6 +33,10 @@ PROVIDERS: Dict[str, Dict[str, str]] = {
 }
 
 TEMPLATES_PACKAGE = "neuro_san_studio.templates"
+
+# Long enough to never bite a real user; finite so timedinput is happy and so a
+# detached terminal can't hang the process forever.
+INPUT_TIMEOUT_SECONDS = 300
 
 
 class InitCommand:  # pylint: disable=too-few-public-methods
@@ -94,7 +100,11 @@ class InitCommand:  # pylint: disable=too-few-public-methods
             info = PROVIDERS[key]
             default_tag = "  [default]" if key == "openai" else ""
             print(f"  {idx}) {info['label']:<14} ({info['model_name']}){default_tag}")
-        raw = input("Enter numbers separated by commas (default: 1): ").strip()
+        raw = timedinput(
+            "Enter numbers separated by commas (default: 1): ",
+            timeout=INPUT_TIMEOUT_SECONDS,
+            default="1",
+        ).strip()
         if not raw:
             return ["openai"]
         selected: List[str] = []
