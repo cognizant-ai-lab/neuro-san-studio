@@ -222,10 +222,7 @@ class NeuroSanRunner:
         # This block below was suggested by Copilot.
         normalized_root_dir = os.path.normcase(os.path.abspath(self.root_dir))
         existing_paths = [path for path in existing.split(os.pathsep) if path]
-        if any(
-            os.path.normcase(os.path.abspath(path)) == normalized_root_dir
-            for path in existing_paths
-        ):
+        if any(os.path.normcase(os.path.abspath(path)) == normalized_root_dir for path in existing_paths):
             return
 
         # Add the root_dir to PYTHONPATH differently depending on existing value
