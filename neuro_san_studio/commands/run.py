@@ -212,12 +212,31 @@ class NeuroSanRunner:
 
         return vars(args)
 
+    def set_pythonpath(self):
+        """
+        Sets the PYTHONPATH environment variable to include the project root directory.
+        """
+        existing: str = os.environ.get("PYTHONPATH", "")
+
+        # Check to see if the root_dir is already in PYTHONPATH. If so, don't add it again.
+        # This block below was suggested by Copilot.
+        normalized_root_dir = os.path.normcase(os.path.abspath(self.root_dir))
+        existing_paths = [path for path in existing.split(os.pathsep) if path]
+        if any(os.path.normcase(os.path.abspath(path)) == normalized_root_dir for path in existing_paths):
+            return
+
+        # Add the root_dir to PYTHONPATH differently depending on existing value
+        new_path: str = self.root_dir
+        if existing:
+            new_path = existing + os.pathsep + self.root_dir
+        os.environ["PYTHONPATH"] = new_path
+
     def set_environment_variables(self):
         """Set required environment variables, optionally using neuro-san defaults."""
         print("\n" + "=" * 50 + "\n")
         print("Setting environment variables...\n")
         # Common env variables
-        os.environ["PYTHONPATH"] = self.root_dir
+        self.set_pythonpath()
         os.environ["AGENT_MANIFEST_FILE"] = self.args["agent_manifest_file"]
         os.environ["AGENT_TOOL_PATH"] = self.args["agent_tool_path"]
         self._apply_toolbox_env()
