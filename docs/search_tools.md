@@ -193,6 +193,12 @@ via the Model Context Protocol (MCP), exposing three tools through a single MCP 
   configurable effort levels: `lite`, `standard`, `deep`, `exhaustive`, and `frontier`. Higher effort levels use more
   sources and deeper reasoning but take longer. Pricing: starting at ~$6.50 per 1,000 calls, varying by effort level.
 
+_Free Tier (No Credentials Required):_
+
+You.com also exposes a free profile of `you-search` that requires no API key. Append `?profile=free` to the MCP
+server URL — `https://api.you.com/mcp?profile=free` — to use it without authentication. This profile is limited
+to `you-search`; `you-contents` and `you-research` are not available on the free tier.
+
 _Getting a Free API Key:_
 
 1. Go to [https://you.com/platform](https://you.com/platform)
@@ -214,6 +220,10 @@ _MCP Configuration:_
 You.com is integrated as an MCP server. To enable it, uncomment the You.com section in
 [mcp\_info.hocon](../mcp/mcp_info.hocon)
 and set the `YDC_API_KEY` environment variable.
+
+To use the no-credentials free tier instead, use `https://api.you.com/mcp?profile=free` as the MCP server URL and
+omit the `Authorization` header — see the commented "free tier" example in
+[mcp\_info.hocon](../mcp/mcp_info.hocon). Only `you-search` is available on this profile.
 
 _Example Usage in Neuro San Studio:_
 
