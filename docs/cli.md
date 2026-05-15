@@ -40,7 +40,7 @@ Both formats produced by `neuro-san-studio` are accepted:
 
 | Format | Detected by | What gets tested |
 |---|---|---|
-| Agent network | Has a `tools` list | Every agent's merged `llm_config` (top-level defaults overlaid with per-agent overrides) |
+| Agent network | Has a `tools` list | Each agent's merged `llm_config` (top-level defaults + per-agent overrides) |
 | Standalone studio `llm_config` | No `tools` list | The single top-level `llm_config` |
 
 `fallbacks` lists are expanded so every model in the list is tested

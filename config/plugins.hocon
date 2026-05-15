@@ -4,10 +4,6 @@ plugins = [
         class = neuro_san_studio.plugins.env_validator.env_validator.EnvValidatorPlugin
         enabled = false
     }
-    {
-        class = neuro_san_studio.plugins.llm_config_validator.llm_config_validator_plugin.LlmConfigValidatorPlugin
-        enabled = false
-    }
 
     # Observability plugins
     {
