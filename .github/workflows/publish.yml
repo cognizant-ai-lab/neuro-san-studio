@@ -16,6 +16,7 @@ jobs:
     environment: pypi  # Match this to your configured GitHub Environment.
     permissions:
       id-token: write  # Mandatory for PyPI Trusted Publishing
+      contents: read   # Required for actions/checkout
 
     steps:
       # v6.0.2
