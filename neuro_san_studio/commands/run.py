@@ -217,7 +217,12 @@ class NeuroSanRunner:
         print("\n" + "=" * 50 + "\n")
         print("Setting environment variables...\n")
         # Common env variables
-        os.environ["PYTHONPATH"] = self.root_dir
+        if self.root_dir not in os.environ.get("PYTHONPATH", ""):
+            if os.environ.get("PYTHONPATH", ""):
+                os.environ["PYTHONPATH"] += os.pathsep
+                os.environ["PYTHONPATH"] += self.root_dir
+            else:
+                os.environ["PYTHONPATH"] = self.root_dir
         os.environ["AGENT_MANIFEST_FILE"] = self.args["agent_manifest_file"]
         os.environ["AGENT_TOOL_PATH"] = self.args["agent_tool_path"]
         self._apply_toolbox_env()
