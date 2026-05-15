@@ -280,7 +280,7 @@ class EnvValidator:
         try:
             client = Anthropic(api_key=value)
             client.messages.count_tokens(
-                model="claude-3-haiku-20240307",
+                model="claude-sonnet-4-6",
                 messages=[{"role": "user", "content": "test"}],
             )
         except AnthropicBadRequestError:
