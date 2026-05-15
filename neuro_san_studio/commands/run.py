@@ -219,6 +219,7 @@ class NeuroSanRunner:
         existing: str = os.environ.get("PYTHONPATH", "")
 
         # Check to see if the root_dir is already in PYTHONPATH. If so, don't add it again.
+        # This block below was suggested by Copilot.
         normalized_root_dir = os.path.normcase(os.path.abspath(self.root_dir))
         existing_paths = [path for path in existing.split(os.pathsep) if path]
         if any(
@@ -227,6 +228,7 @@ class NeuroSanRunner:
         ):
             return
 
+        # Add the root_dir to PYTHONPATH differently depending on existing value
         new_path: str = self.root_dir
         if existing:
             new_path = existing + os.pathsep + self.root_dir
