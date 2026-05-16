@@ -11,7 +11,7 @@ specify the tier level with `--tier`:
 - `neuro-san-studio check-llm-keys --tier 1` — Run only Tier 1
 - `neuro-san-studio check-llm-keys --tier 2` — Run Tiers 1 and 2
 
-See [cli.md](./cli.md#check-llm-keys) for the full command reference, including exit-code semantics.
+See [cli/check_llm_keys.md](./cli/check_llm_keys.md) for the full command reference, including exit-code semantics.
 
 ### Tier 1: Placeholder Detection
 
