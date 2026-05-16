@@ -664,24 +664,14 @@ def _invoke_run(extra_args: List[str]) -> None:
 )
 def _run_command(
     ctx: typer.Context,
-    server_host: Optional[str] = typer.Option(
-        None, "--server-host", help="Host address for the Neuro SAN server."
-    ),
+    server_host: Optional[str] = typer.Option(None, "--server-host", help="Host address for the Neuro SAN server."),
     server_http_port: Optional[int] = typer.Option(
         None, "--server-http-port", help="Port number for the Neuro SAN server http endpoint."
     ),
-    nsflow_port: Optional[int] = typer.Option(
-        None, "--nsflow-port", help="Port number for the nsflow client."
-    ),
-    web_client_port: Optional[int] = typer.Option(
-        None, "--web-client-port", help="Port number for the web client."
-    ),
-    log_level: Optional[str] = typer.Option(
-        None, "--log-level", help="Log level for all processes."
-    ),
-    thinking_file: Optional[str] = typer.Option(
-        None, "--thinking-file", help="Path to the agent thinking file."
-    ),
+    nsflow_port: Optional[int] = typer.Option(None, "--nsflow-port", help="Port number for the nsflow client."),
+    web_client_port: Optional[int] = typer.Option(None, "--web-client-port", help="Port number for the web client."),
+    log_level: Optional[str] = typer.Option(None, "--log-level", help="Log level for all processes."),
+    thinking_file: Optional[str] = typer.Option(None, "--thinking-file", help="Path to the agent thinking file."),
     no_html: bool = typer.Option(False, "--no-html", help="Don't generate html for network diagrams."),
     client_only: bool = typer.Option(
         False, "--client-only", help="Run only the nsflow client without the NeuroSan server."

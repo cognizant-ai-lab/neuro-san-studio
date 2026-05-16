@@ -195,5 +195,7 @@ class InitCommand:  # pylint: disable=too-few-public-methods
         _console.print()
         _console.print("[bold cyan]Next steps:[/bold cyan]")
         _console.print("  1. Set the API keys for the providers you enabled (e.g. in a .env file).")
-        _console.print("  2. Start the server:  [bold red]neuro-san-studio run[/bold red] or [bold red]ns run[/bold red]")
+        _console.print(
+            "  2. Start the server:  [bold red]neuro-san-studio run[/bold red] or [bold red]ns run[/bold red]"
+        )
         _console.print("=" * 60, style="dim")
