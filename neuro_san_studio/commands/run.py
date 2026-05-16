@@ -652,6 +652,18 @@ def _invoke_run(extra_args: List[str]) -> None:
     NeuroSanRunner().run()
 
 
+def _build_run_forward_args(valued: List[Tuple[str, Any]], booleans: List[Tuple[str, bool]]) -> List[str]:
+    """Build the forwarded-args list from Typer-parsed valued and boolean flags."""
+    forwarded: List[str] = []
+    for flag, value in valued:
+        if value is not None:
+            forwarded.extend([flag, str(value)])
+    for flag, value in booleans:
+        if value:
+            forwarded.append(flag)
+    return forwarded
+
+
 @app.command(
     "run",
     help="Start the Neuro SAN server and client (default).",
@@ -662,8 +674,9 @@ def _invoke_run(extra_args: List[str]) -> None:
         "ignore_unknown_options": True,
     },
 )
-def _run_command(
+def _run_command(  # pylint: disable=too-many-arguments
     ctx: typer.Context,
+    *,
     server_host: Optional[str] = typer.Option(None, "--server-host", help="Host address for the Neuro SAN server."),
     server_http_port: Optional[int] = typer.Option(
         None, "--server-http-port", help="Port number for the Neuro SAN server http endpoint."
@@ -690,27 +703,22 @@ def _run_command(
     runner's env-var-driven defaults still apply. Plugin-injected flags arrive
     via `ctx.args` and are forwarded verbatim.
     """
-    forwarded: List[str] = []
-    valued_flags: List[Tuple[str, Any]] = [
-        ("--server-host", server_host),
-        ("--server-http-port", server_http_port),
-        ("--nsflow-port", nsflow_port),
-        ("--web-client-port", web_client_port),
-        ("--log-level", log_level),
-        ("--thinking-file", thinking_file),
-    ]
-    for flag, value in valued_flags:
-        if value is not None:
-            forwarded.extend([flag, str(value)])
-    boolean_flags: List[Tuple[str, bool]] = [
-        ("--no-html", no_html),
-        ("--client-only", client_only),
-        ("--server-only", server_only),
-        ("--use-flask-web-client", use_flask_web_client),
-    ]
-    for flag, value in boolean_flags:
-        if value:
-            forwarded.append(flag)
+    forwarded = _build_run_forward_args(
+        [
+            ("--server-host", server_host),
+            ("--server-http-port", server_http_port),
+            ("--nsflow-port", nsflow_port),
+            ("--web-client-port", web_client_port),
+            ("--log-level", log_level),
+            ("--thinking-file", thinking_file),
+        ],
+        [
+            ("--no-html", no_html),
+            ("--client-only", client_only),
+            ("--server-only", server_only),
+            ("--use-flask-web-client", use_flask_web_client),
+        ],
+    )
     forwarded.extend(ctx.args)
     _invoke_run(forwarded)
 

@@ -206,7 +206,7 @@ class TestMainEntryPoint:
         monkeypatch.setattr(sys, "argv", ["neuro-san-studio"])
         # Typer exits with code 0 after printing help; main() swallows that for clean exits.
         main()
-        assert call_order == []
+        assert not call_order
 
     def test_main_with_run_subcommand_runs_server(self, monkeypatch: MonkeyPatch) -> None:
         """Explicit `neuro-san-studio run` should start the server."""
