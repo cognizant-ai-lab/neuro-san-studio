@@ -651,11 +651,19 @@ def main():
         default=None,
         help="Comma-separated providers to enable (openai,anthropic,google). Skips the interactive prompt.",
     )
+    check_config_parser = subparsers.add_parser("check-config", help="Validate LLM configurations in a HOCON file")
+    check_config_parser.add_argument(
+        "hocon_path",
+        nargs="?",
+        default=None,
+        metavar="HOCON_PATH",
+        help="Path to the HOCON file to validate. Defaults to config/llm_config.hocon.",
+    )
 
     # Back-compat: if the first token is not a known subcommand, treat the invocation
     # as `run` so existing usages like `neuro-san-studio --server-http-port 8080` still work.
     argv = sys.argv[1:]
-    known_subcommands = {"run", "init"}
+    known_subcommands = {"run", "init", "check-config"}
     if argv and argv[0] not in known_subcommands and argv[0] not in {"-h", "--help"}:
         argv = ["run", *argv]
     args, remainder = parser.parse_known_args(argv)
@@ -665,6 +673,12 @@ def main():
 
         InitCommand(providers_arg=args.providers).run()
         return
+
+    if args.command == "check-config":
+        # pylint: disable-next=import-outside-toplevel
+        from neuro_san_studio.commands.check_config import CheckConfigCommand
+
+        sys.exit(CheckConfigCommand(hocon_path=args.hocon_path).run())
 
     # `run` (or bare). Restore sys.argv so NeuroSanRunner.parse_args() sees the remaining flags.
     sys.argv = [sys.argv[0], *remainder]
