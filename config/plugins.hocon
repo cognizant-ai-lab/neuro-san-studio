@@ -1,10 +1,4 @@
 plugins = [
-    # Validation plugins
-    {
-        class = neuro_san_studio.plugins.env_validator.env_validator.EnvValidatorPlugin
-        enabled = false
-    }
-
     # Observability plugins
     {
         class = neuro_san_studio.plugins.phoenix.phoenix_plugin.PhoenixPlugin

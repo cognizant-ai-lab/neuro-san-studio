@@ -13,8 +13,6 @@ Note that plugins are never required for Neuro SAN to function.
     - [Example Plugin](#example-plugin)
   - [Authorization](#authorization)
     - [Open FGA](#open-fga)
-  - [Diagnostics](#diagnostics)
-    - [Env Validator](#env-validator)
   - [Logging](#logging)
     - [Log Bridge](#log-bridge)
   - [Observability](#observability)
@@ -104,58 +102,6 @@ This is not to be confused with _authentication_, which is the process of verify
 [Open FGA](../neuro_san_studio/plugins/openfga/README.md) is a plugin that extends the authorization capabilities
 of a Neuro SAN server using a free and open source Open FGA server to do Relation-Based Access Control (ReBAC)
 authorization.
-
-## Diagnostics
-
-Diagnostic plugins help verify that your Neuro SAN Studio environment is correctly configured
-before starting the server.
-
-### Env Validator
-
-The Env Validator checks that LLM API keys and other critical environment variables are configured
-correctly before the server starts. It runs three progressively deeper tiers of validation:
-
-| Tier | Name | What it checks |
-|---|---|---|
-| 1 | Placeholder detection | Variable is set and not a placeholder (`YOUR_`, `REPLACE`, `TODO`, `<`, `>`, etc.). |
-| 2 | Format validation | Value matches the expected format for the key type (prefix, length, character set). |
-| 3 | Live validation | Makes a lightweight API call to verify the key with the provider (OpenAI, Anthropic, Google). |
-
-Each tier is cumulative — tier 2 includes tier 1, and tier 3 includes tiers 1 and 2.
-Tiers 1 and 2 run entirely offline; tier 3 requires network access to reach the provider APIs.
-
-**Keys validated:** `OPENAI_API_KEY`, `ANTHROPIC_API_KEY`, `GOOGLE_API_KEY`, `AWS_ACCESS_KEY_ID`,
-`AWS_SECRET_ACCESS_KEY`, `AZURE_OPENAI_API_KEY`, `AZURE_OPENAI_ENDPOINT`.
-
-**Usage:**
-
-```bash
-# Tier 1 only — placeholder detection (no format or network checks)
-python -m neuro_san_studio run --validate-keys 1
-
-# Tier 2 — placeholder + format checks (no network calls)
-python -m neuro_san_studio run --validate-keys 2
-
-# Tier 3 — all checks including live API calls (default when no value is given)
-python -m neuro_san_studio run --validate-keys
-python -m neuro_san_studio run --validate-keys 3
-```
-
-The validator prints a grouped results table (VALID / WARNING / ERROR) and logs a summary count.
-Missing or placeholder keys produce warnings but do not block startup — only format or
-authentication errors are flagged as errors.
-
-**Registration** (`config/plugins.hocon`):
-
-```hocon
-{
-    class = plugins.env_validator.env_validator.EnvValidatorPlugin
-    enabled = false
-}
-```
-
-The plugin is disabled by default. Enable it for a single run by passing `--validate-keys` on the
-command line, or set `enabled = true` in `plugins.hocon` to run validation on every startup.
 
 ## Logging
 
