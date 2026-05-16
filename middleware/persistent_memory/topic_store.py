@@ -17,11 +17,9 @@
 """
 Abstract base class for persistent-memory store backends.
 
-Every call reads and writes disk directly, guarded by a per-key lock.
-Subclasses choose the on-disk layout and how fine-grained the locks are.
+Every call reads and writes the backend directly, guarded by a per-key lock.
+Subclasses choose the storage layout and how fine-grained the locks are.
 """
-
-from __future__ import annotations
 
 import asyncio
 import logging
@@ -30,7 +28,6 @@ from abc import abstractmethod
 from collections import OrderedDict
 from datetime import datetime
 from logging import Logger
-from pathlib import Path
 from typing import Any
 from typing import Awaitable
 from typing import Callable
@@ -39,8 +36,9 @@ from typing import ClassVar
 
 class TopicStore(ABC):
     """
-    Shared base for the file-backed stores. Holds the root directory and
-    the per-key lock cache; subclasses implement the actual file layout.
+    Shared base for store backends. Owns the per-key lock cache and the
+    summarizer-aware read/write flow; subclasses implement the actual
+    storage layout.
     """
 
     # Per-agent memory is a flat dict: topic -> content.
@@ -48,12 +46,10 @@ class TopicStore(ABC):
 
     _MAX_LOCKS: ClassVar[int] = 256
 
-    def __init__(self, folder_name: str) -> None:
+    def __init__(self) -> None:
         self.logger: Logger = logging.getLogger(f"{__name__}.{self.__class__.__name__}")
-        self._root: Path = Path(folder_name).expanduser().resolve()
         self._locks: OrderedDict[tuple[str, ...], asyncio.Lock] = OrderedDict()
         self._locks_guard: asyncio.Lock = asyncio.Lock()
-        self.logger.info("Initialized. Root path: %s", self._root)
 
     async def get_topic(
         self,
@@ -262,24 +258,6 @@ class TopicStore(ABC):
         """
         async with await self._lock_for(self._lock_key(namespace, topic)):
             return await self._remove_topic(namespace, topic)
-
-    @abstractmethod
-    async def load_all(self, namespace: str) -> AgentMemory:
-        """
-        Load every topic for the agent. Admin/debug only.
-
-        :param namespace: ``"<network>.<agent>"`` key.
-        :return: The agent's full ``{topic: content}`` dict.
-        """
-
-    @abstractmethod
-    async def save_all(self, namespace: str, memory: AgentMemory) -> None:
-        """
-        Persist the full agent memory. Admin/debug only.
-
-        :param namespace: ``"<network>.<agent>"`` key.
-        :param memory:    Full ``{topic: content}`` dict to persist.
-        """
 
     @abstractmethod
     async def _read_topic(self, namespace: str, topic: str) -> str | None:

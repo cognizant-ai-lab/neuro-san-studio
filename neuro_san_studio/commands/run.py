@@ -28,10 +28,15 @@ from typing import Dict
 from typing import Tuple
 
 from dotenv import load_dotenv
+from timedinput import timedinput
 
 from neuro_san_studio.interfaces.process_logger_interface import ProcessLoggerInterface
 from neuro_san_studio.plugins.plugin_loader import PluginLoader
 from neuro_san_studio.runner.simple_process_logger import SimpleProcessLogger
+
+# Long enough to never bite a real user; finite so timedinput is happy and so a
+# detached terminal can't hang the process forever.
+INPUT_TIMEOUT_SECONDS = 300
 
 
 class NeuroSanRunner:
@@ -207,12 +212,31 @@ class NeuroSanRunner:
 
         return vars(args)
 
+    def set_pythonpath(self):
+        """
+        Sets the PYTHONPATH environment variable to include the project root directory.
+        """
+        existing: str = os.environ.get("PYTHONPATH", "")
+
+        # Check to see if the root_dir is already in PYTHONPATH. If so, don't add it again.
+        # This block below was suggested by Copilot.
+        normalized_root_dir = os.path.normcase(os.path.abspath(self.root_dir))
+        existing_paths = [path for path in existing.split(os.pathsep) if path]
+        if any(os.path.normcase(os.path.abspath(path)) == normalized_root_dir for path in existing_paths):
+            return
+
+        # Add the root_dir to PYTHONPATH differently depending on existing value
+        new_path: str = self.root_dir
+        if existing:
+            new_path = existing + os.pathsep + self.root_dir
+        os.environ["PYTHONPATH"] = new_path
+
     def set_environment_variables(self):
         """Set required environment variables, optionally using neuro-san defaults."""
         print("\n" + "=" * 50 + "\n")
         print("Setting environment variables...\n")
         # Common env variables
-        os.environ["PYTHONPATH"] = self.root_dir
+        self.set_pythonpath()
         os.environ["AGENT_MANIFEST_FILE"] = self.args["agent_manifest_file"]
         os.environ["AGENT_TOOL_PATH"] = self.args["agent_tool_path"]
         self._apply_toolbox_env()
@@ -484,7 +508,9 @@ class NeuroSanRunner:
         valid_no = {"no", "n"}
         for attempt in range(max_attempts):
             try:
-                raw = input(prompt).strip().lower()
+                # Default to "" (empty), which is an invalid input that triggers the prompt again
+                # if there are remaining attempts or gives up otherwise with a 'no'.
+                raw = timedinput(prompt, timeout=INPUT_TIMEOUT_SECONDS, default="").strip().lower()
             except EOFError:
                 print("No input available. Considering the answer is 'no'.")
                 return False
@@ -625,6 +651,14 @@ def main():
         default=None,
         help="Comma-separated providers to enable (openai,anthropic,google). Skips the interactive prompt.",
     )
+    check_config_parser = subparsers.add_parser("check-config", help="Validate LLM configurations in a HOCON file")
+    check_config_parser.add_argument(
+        "hocon_path",
+        nargs="?",
+        default=None,
+        metavar="HOCON_PATH",
+        help="Path to the HOCON file to validate. Defaults to config/llm_config.hocon.",
+    )
     check_llm_keys_parser = subparsers.add_parser(
         "check-llm-keys", help="Validate LLM API keys and other critical environment variables"
     )
@@ -639,7 +673,7 @@ def main():
     # Back-compat: if the first token is not a known subcommand, treat the invocation
     # as `run` so existing usages like `neuro-san-studio --server-http-port 8080` still work.
     argv = sys.argv[1:]
-    known_subcommands = {"run", "init", "check-llm-keys"}
+    known_subcommands = {"run", "init", "check-config", "check-llm-keys"}
     if argv and argv[0] not in known_subcommands and argv[0] not in {"-h", "--help"}:
         argv = ["run", *argv]
     args, remainder = parser.parse_known_args(argv)
@@ -649,6 +683,12 @@ def main():
 
         InitCommand(providers_arg=args.providers).run()
         return
+
+    if args.command == "check-config":
+        # pylint: disable-next=import-outside-toplevel
+        from neuro_san_studio.commands.check_config import CheckConfigCommand
+
+        sys.exit(CheckConfigCommand(hocon_path=args.hocon_path).run())
 
     if args.command == "check-llm-keys":
         # pylint: disable-next=import-outside-toplevel
