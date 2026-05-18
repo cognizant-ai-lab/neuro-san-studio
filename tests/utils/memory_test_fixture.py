@@ -21,14 +21,11 @@ Writes land under ``memory/test/`` when the HOCON sets
 """
 
 import json
-import logging
 from collections.abc import Mapping
 from pathlib import Path
 from typing import Any
 from typing import ClassVar
 from unittest import TestCase
-
-logger = logging.getLogger(__name__)
 
 
 class TestMemoryFixture:
@@ -170,7 +167,7 @@ class TestMemoryFixture:
         folder.rmdir()
 
     def _load_live_memory(self) -> dict[str, str]:
-        """Read the live memory file; ``{}`` if absent or unreadable."""
+        """Read the live memory file; ``{}`` if absent."""
         live: Path = self.live_file
         if not live.is_file():
             return {}
@@ -240,13 +237,18 @@ class TestMemoryFixture:
 
     @classmethod
     def _load_json(cls, path: Path) -> dict[str, Any]:
-        """Parse JSON into a dict; ``{}`` if malformed or non-object."""
-        try:
-            parsed: Any = json.loads(path.read_text(encoding="utf-8"))
-        except (OSError, UnicodeDecodeError, json.JSONDecodeError):
-            logger.warning("Failed to load JSON from %s", path, exc_info=True)
-            return {}
-        return parsed if isinstance(parsed, Mapping) else {}
+        """Parse JSON from *path* into a dict.
+
+        Raises on I/O errors, encoding problems, malformed JSON, or
+        non-object top-level values so broken sidecar files surface
+        immediately instead of silently passing tests.
+        """
+        parsed: Any = json.loads(path.read_text(encoding="utf-8"))
+        if not isinstance(parsed, Mapping):
+            raise ValueError(
+                "Expected a JSON object in %s, got %s" % (path, type(parsed).__name__)
+            )
+        return dict(parsed)
 
     @classmethod
     def _infer_repo_root(cls) -> Path:

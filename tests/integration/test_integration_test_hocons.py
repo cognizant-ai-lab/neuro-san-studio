@@ -29,7 +29,7 @@ from parameterized import parameterized
 
 from coded_tools.basic.coffee_finder_advanced.order_api import OrderAPI
 from tests.utils.fail_fast_param_mixin import FailFastParamMixin
-from tests.utils.test_memory_fixture import TestMemoryFixture
+from tests.utils.memory_test_fixture import TestMemoryFixture
 
 
 class TestIntegrationTestHocons(TestCase, FailFastParamMixin):

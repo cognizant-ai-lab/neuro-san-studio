@@ -104,10 +104,10 @@ class OrderAPI(CodedTool):
         order_id = OrderAPI.NEXT_ORDER_ID.get(shop, 0)
         OrderAPI.NEXT_ORDER_ID[shop] = order_id + 1
 
-        message = f"Order {order_id} placed successfully for {customer_name} at {shop}. Details: {order}"
-        logger.debug(message)
+        message = "Order %s placed successfully for %s at %s. Details: %s"
+        logger.debug(message, order_id, customer_name, shop, order)
         logger.debug(">>>>>>>>>>>>>>>>>>> DONE !!! >>>>>>>>>>>>>>>>>>")
-        return message
+        return message % (order_id, customer_name, shop, order)
 
     async def async_invoke(self, args: Dict[str, Any], sly_data: Dict[str, Any]) -> Union[Dict[str, Any], str]:
         """
