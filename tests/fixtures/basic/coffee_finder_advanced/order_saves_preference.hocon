@@ -1,0 +1,118 @@
+
+# Copyright © 2025-2026 Cognizant Technology Solutions Corp, www.cognizant.com.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
+# END COPYRIGHT
+
+# This file defines everything necessary for a data-driven test.
+# The schema specifications for this file are documented here:
+# https://github.com/cognizant-ai-lab/neuro-san/blob/main/docs/test_case_hocon_reference.md
+
+# The agent asks for the customer's name before placing a first order, then places it and saves the preference to memory.
+
+{
+    # Describes what agent to test against.
+    "agent": "basic/coffee_finder_advanced",
+
+    # success_ratio is useful for passing to the assessor to find out why
+    # a test is intermittently failing. Sometimes it's the agent prompt, but
+    # sometimes it's the test itself.
+    # Note: This number was increased for network failure identification and should be reverted afterward to 1/1.
+    "success_ratio": "1/1",
+
+    # Interactions are a series of dictionaries with request elements paired with
+    # descriptions of response checks.
+    # The "where can I get coffee at 1 am" branch is covered by
+    # where_open_at_1am.hocon. This file starts at the order step.
+    "interactions": [
+        {
+            "timeout_in_seconds": 180,
+
+            # Step 1 of 2: place the order
+
+            # This is to enable streaming_chat contents to thinking file for debug.
+            # "chat_filter": "MAXIMAL",
+
+            # Using the sly_data to set a hard timer.
+            "sly_data": {
+                "test_mode": true,
+                "time": "1 am"
+            },
+            
+            # This is what we send as input to streaming_chat()
+            "text": """
+Get me black coffee from Joe's
+""",
+
+            # The response block describes how we are going to test what comes back
+            "response": {
+
+                # Text block says how we are going to examine the text of the response.
+                "text": {
+
+                    # Gist says we are going to ask an LLM about how the response
+                    # matches up to our description of acceptance criteria.
+                    # Each component of the list needs to pass muster in order to pass.
+                    "gist": [
+"The response asks the user for their name before placing the order."
+                    ]
+                }
+            }
+        },
+        {
+            "timeout_in_seconds": 180,
+
+            # Step 2 of 2: provide the customer name, order is placed.
+            
+            # This is to enable streaming_chat contents to thinking file for debug.
+            # "chat_filter": "MAXIMAL",
+
+            # Using the sly_data to set a hard timer.
+            "sly_data": {
+                "test_mode": true,
+                "time": "1 am"
+            },
+            
+            # This is what we send as input to streaming_chat()
+            "text": """
+Pixel Smith
+""",
+
+            # The response block describes how we are going to test what comes back
+            "response": {
+
+                # Text block says how we are going to examine the text of the response.
+                "text": {
+
+                    # Gist says we are going to ask an LLM about how the response
+                    # matches up to our description of acceptance criteria.
+                    # Each component of the list needs to pass muster in order to pass.
+                    "gist": [
+"The response mentions order ID 301.",
+"The response identifies the customer as Pixel Smith.",
+"The response identifies the item as black coffee.",
+"The response identifies the shop as Joe's Gas Station."
+                    ],
+                    "not_gist": [
+"The response says the order was placed at Bob's Coffee Shop.",
+"The response says the order was placed at Henry's Fast Food.",
+"The response says the order was placed at Jack's Liquor Store.",
+"The response says the item ordered was a latte.",
+"The response says the item ordered was tea."
+                    ]
+                }
+            }
+        }
+    ]
+}

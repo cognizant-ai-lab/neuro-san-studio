@@ -1,0 +1,8 @@
+{
+  "topics_present": {
+    "pixel_smith": ["latte", "bob"]
+  },
+  "substrings_absent": {
+    "pixel_smith": ["latte from joe"]
+  }
+}

@@ -19,16 +19,14 @@
 # The schema specifications for this file are documented here:
 # https://github.com/cognizant-ai-lab/neuro-san/blob/main/docs/test_case_hocon_reference.md
 
+# The agent appends a new preference to the pixel_smith topic without placing an order.
+
 {
     # Describes what agent to test against.
     "agent": "basic/coffee_finder_advanced",
 
-    # Timeout for the entire test.
-    # It's also possible to have a timeout_in_seconds on a per-interaction basis.
-    "timeout_in_seconds": 180,
-
     # success_ratio is useful for passing to the assessor to find out why
-    # a test is intermitently failing. Sometimes it's the agent prompt, but
+    # a test is intermittently failing. Sometimes it's the agent prompt, but
     # sometimes it's the test itself.
     # Note: This number was increased for network failure identification and should be reverted afterward to 1/1.
     "success_ratio": "1/1",
@@ -37,22 +35,26 @@
     # descriptions of response checks.
     "interactions": [
         {
-            # Test case confirm shops open and close.
-            
+            "timeout_in_seconds": 180,
+
+            # The new preference must be appended to the existing pixel_smith
+            # topic; no order should be placed in this turn.
+
             # This is to enable streaming_chat contents to thinking file for debug.
             # "chat_filter": "MAXIMAL",
 
-            # Using the sly_data to set a hard timer.
+            # Using the sly_data to set a hard time.
             "sly_data": {
-                "time": "6 am"
+                "test_mode": true,
+                "time": "8 am"
             },
-            
+
             # This is what we send as input to streaming_chat()
             "text": """
-Get me black coffee from Bob's Coffee Shop or Henry's Fast Food or Joe’s Gas Station
+Hey, it's Pixel Smith. I'm switching to latte from Bob's Coffee Shop from now on. Please remember that.
 """,
 
-            # The response block treats how we are going to test what comes back
+            # The response block describes how we are going to test what comes back
             "response": {
 
                 # Text block says how we are going to examine the text of the response.
@@ -61,15 +63,14 @@ Get me black coffee from Bob's Coffee Shop or Henry's Fast Food or Joe’s Gas S
                     # Gist says we are going to ask an LLM about how the response
                     # matches up to our description of acceptance criteria.
                     # Each component of the list needs to pass muster in order to pass.
-                    "gist": ["""
-Got it — Bob’s Coffee Shop is closed.
-                             """],
-                    "not_gist": ["""
-Got it — Henry's Fast Food is closed.
-                             """],
-                    "not_gist": ["""
-Got it — Joe’s Gas Station is closed.
-                             """]
+                    "gist": [
+"The response acknowledges Pixel Smith's preference has been recorded, updated, or remembered.",
+"The response mentions latte.",
+"The response mentions Bob's Coffee Shop."
+                    ],
+                    "not_gist": [
+"The response includes an order ID, confirming an order was placed."
+                    ]
                 }
             }
         }

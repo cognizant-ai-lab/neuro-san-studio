@@ -19,16 +19,14 @@
 # The schema specifications for this file are documented here:
 # https://github.com/cognizant-ai-lab/neuro-san/blob/main/docs/test_case_hocon_reference.md
 
+# Two consecutive orders at Joe's Gas Station must return incrementing order IDs (301 then 302).
+
 {
     # Describes what agent to test against.
     "agent": "basic/coffee_finder_advanced",
 
-    # Timeout for the entire test.
-    # It's also possible to have a timeout_in_seconds on a per-interaction basis.
-    "timeout_in_seconds": 500,
-
     # success_ratio is useful for passing to the assessor to find out why
-    # a test is intermitently failing. Sometimes it's the agent prompt, but
+    # a test is intermittently failing. Sometimes it's the agent prompt, but
     # sometimes it's the test itself.
     # Note: This number was increased for network failure identification and should be reverted afterward to 1/1.
     "success_ratio": "1/1",
@@ -37,23 +35,25 @@
     # descriptions of response checks.
     "interactions": [
         {
-            # MUST DELETE MEMORY FILE before running this test case!!!
-            # Test case to ask where the coffee places and place the 1st order
+            "timeout_in_seconds": 180,
+
+            # Step 1 of 2: first order from Joe's -> id 301 (counter base for Joe's).
 
             # This is to enable streaming_chat contents to thinking file for debug.
             # "chat_filter": "MAXIMAL",
 
-            # Using the sly_data to set a hard timer.
+            # Using the sly_data to set a hard time.
             "sly_data": {
-                "time": "1 am"
+                "test_mode": true,
+                "time": "8 am"
             },
-            
+
             # This is what we send as input to streaming_chat()
             "text": """
-Where can I get coffee?
+Hey, it's Pixel Smith. Get me a black coffee from Joe's Gas Station please.
 """,
 
-            # The response block treats how we are going to test what comes back
+            # The response block describes how we are going to test what comes back
             "response": {
 
                 # Text block says how we are going to examine the text of the response.
@@ -62,29 +62,36 @@ Where can I get coffee?
                     # Gist says we are going to ask an LLM about how the response
                     # matches up to our description of acceptance criteria.
                     # Each component of the list needs to pass muster in order to pass.
-                    "gist": ["""
-Got it — Joe’s Gas Station can serve coffee anytime.
-                             """]
+                    "gist": [
+"The response mentions order ID 301.",
+"The response identifies the customer as Pixel Smith.",
+"The response identifies the item as black coffee.",
+"The response identifies the shop as Joe's Gas Station."
+                    ]
                 }
             }
         },
         {
-            # Step 2 of 3 as place the order
+            "timeout_in_seconds": 180,
+
+            # Step 2 of 2: explicit second order from Joe's -> counter must
+            # increment to a higher id than the previous turn produced.
 
             # This is to enable streaming_chat contents to thinking file for debug.
             # "chat_filter": "MAXIMAL",
 
-            # Using the sly_data to set a hard timer.
+            # Using the sly_data to set a hard time.
             "sly_data": {
-                "time": "1 am"
+                "test_mode": true,
+                "time": "8 am"
             },
-            
+
             # This is what we send as input to streaming_chat()
             "text": """
-Get me black coffee from Joe's
+Actually, get me one more black coffee from Joe's Gas Station — same as before.
 """,
 
-            # The response block treats how we are going to test what comes back
+            # The response block describes how we are going to test what comes back
             "response": {
 
                 # Text block says how we are going to examine the text of the response.
@@ -93,47 +100,12 @@ Get me black coffee from Joe's
                     # Gist says we are going to ask an LLM about how the response
                     # matches up to our description of acceptance criteria.
                     # Each component of the list needs to pass muster in order to pass.
-                    "gist": ["""
-Got it — to place your black coffee order from Joe’s Gas Station
-- provide your name?
-- provide name
-- need your name
-                             """]
-                }
-            }
-        },
-        {
-            # Step 3 of 3 as providing addtional order name
-            
-            # This is to enable streaming_chat contents to thinking file for debug.
-            # "chat_filter": "MAXIMAL",
-
-            # Using the sly_data to set a hard timer.
-            "sly_data": {
-                "time": "1 am"
-            },
-            
-            # This is what we send as input to streaming_chat()
-            "text": """
-Pixel Smith
-""",
-
-            # The response block treats how we are going to test what comes back
-            "response": {
-
-                # Text block says how we are going to examine the text of the response.
-                "text": {
-
-                    # Gist says we are going to ask an LLM about how the response
-                    # matches up to our description of acceptance criteria.
-                    # Each component of the list needs to pass muster in order to pass.
-                    "gist": ["""
-has been placed
-- Order ID: 301
-- Name: Pixel Smith
-- Black coffee
-- Joe's Gas Station
-                             """]
+                    "gist": [
+"The response mentions order ID 302.",
+"The response identifies the customer as Pixel Smith.",
+"The response identifies the item as black coffee.",
+"The response identifies the shop as Joe's Gas Station."
+                    ]
                 }
             }
         }

@@ -34,7 +34,20 @@ class OrderAPI(CodedTool):
     SHOP_3 = "Joe's Gas Station"
     SHOP_4 = "Jack's Liquor Store"
     SHOPS = [SHOP_1, SHOP_2, SHOP_3, SHOP_4]
-    FIRST_ORDER_ID = {SHOP_1: 100, SHOP_2: 200, SHOP_3: 300, SHOP_4: 400}
+    # First id handed out per shop on a fresh run; treated as read-only.
+    FIRST_ORDER_ID = {SHOP_1: 101, SHOP_2: 201, SHOP_3: 301, SHOP_4: 401}
+    # Per-shop running counter. Each successful order bumps the entry for the
+    # shop, so consecutive orders in the same process get distinct ids
+    # (Joe's: 301, 302, ...).
+    NEXT_ORDER_ID: Dict[str, int] = dict(FIRST_ORDER_ID)
+
+    @classmethod
+    def reset_order_ids(cls) -> None:
+        """
+        Reset the per-shop counter back to ``FIRST_ORDER_ID``. Tests that need
+        a clean order-id sequence per case should call this in ``setUp``.
+        """
+        cls.NEXT_ORDER_ID = dict(cls.FIRST_ORDER_ID)
 
     def invoke(self, args: Dict[str, Any], sly_data: Dict[str, Any]) -> Union[Dict[str, Any], str]:
         """
@@ -86,7 +99,10 @@ class OrderAPI(CodedTool):
             logger.debug(error)
             return error
 
-        order_id = OrderAPI.FIRST_ORDER_ID[shop] + 1  # Simulating an order ID generation
+        # Take the current id for this shop, then advance the class-level counter
+        # so the next call returns a fresh id within the same run.
+        order_id = OrderAPI.NEXT_ORDER_ID[shop]
+        OrderAPI.NEXT_ORDER_ID[shop] = order_id + 1
 
         message = f"Order {order_id} placed successfully for {customer_name} at {shop}. Details: {order}"
         logger.debug(message)

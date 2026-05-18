@@ -19,16 +19,14 @@
 # The schema specifications for this file are documented here:
 # https://github.com/cognizant-ai-lab/neuro-san/blob/main/docs/test_case_hocon_reference.md
 
+# The agent reports the current time from sly_data when asked.
+
 {
     # Describes what agent to test against.
     "agent": "basic/coffee_finder_advanced",
 
-    # Timeout for the entire test.
-    # It's also possible to have a timeout_in_seconds on a per-interaction basis.
-    "timeout_in_seconds": 180,
-
     # success_ratio is useful for passing to the assessor to find out why
-    # a test is intermitently failing. Sometimes it's the agent prompt, but
+    # a test is intermittently failing. Sometimes it's the agent prompt, but
     # sometimes it's the test itself.
     # Note: This number was increased for network failure identification and should be reverted afterward to 1/1.
     "success_ratio": "1/1",
@@ -37,24 +35,25 @@
     # descriptions of response checks.
     "interactions": [
         {
-            # MUST DELETE MEMORY FILE before running this test case!!!
-            # test case is a negative test as the is no existing order. 
-            # Expected TopicMemory.json file empty or no order of this list Name listed.
+            "timeout_in_seconds": 180,
 
+            # test sly_date time
+            
             # This is to enable streaming_chat contents to thinking file for debug.
             # "chat_filter": "MAXIMAL",
 
-            # Using the sly_data to set a hard time
+            # Using the sly_data to set a hard timer.
             "sly_data": {
+                "test_mode": true,
                 "time": "1 am"
             },
             
             # This is what we send as input to streaming_chat()
             "text": """
-Hey, it's Pixel. Get me the same as usual please.
+What time is it?
 """,
 
-            # The response block treats how we are going to test what comes back
+            # The response block describes how we are going to test what comes back
             "response": {
 
                 # Text block says how we are going to examine the text of the response.
@@ -63,9 +62,9 @@ Hey, it's Pixel. Get me the same as usual please.
                     # Gist says we are going to ask an LLM about how the response
                     # matches up to our description of acceptance criteria.
                     # Each component of the list needs to pass muster in order to pass.
-                    "gist": ["""
-- don't have order yet
-                            """]
+                    "gist": [
+"The response states that the current time is 1 am."
+                    ]
                 }
             }
         }

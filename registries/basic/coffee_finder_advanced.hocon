@@ -36,7 +36,13 @@ llm_config {
     model_name = "gpt-4.1"
 }
 
-this_is_not_a_game = """This is NOT a game. Do NOT pretend, call your tools. Do NOT make up answers. Do NOT infer information. Just ask."""
+instruction_prefix = """
+This is NOT a game. Follow these rules strictly:
+- Do NOT pretend, call your tools.
+- Do NOT hallucinate or use external knowledge. If information is missing, ask.
+- Answer with exactly what you receive from your downstream agents.
+- Give a direct answer, do NOT paraphrase.
+"""
 
 tools = [
     # This is the agent network's entry point.
@@ -45,71 +51,96 @@ tools = [
         function {
             description = """Finds coffee places at any time of day."""
         }
-        instructions =
-"""
+        instructions = ${instruction_prefix} """
 Answer user inquiries about coffee places and take orders.
-Always return order IDs and details when placing orders.
-Do not worry about the location.
-Call ALL your downstream agents to see if they can help with the inquiry before answering.
-Be as succinct as possible in your response, while explaining the reasoning process if needed.
-Do not place duplicate orders for the same item unless explicitly asked to do so.
-Keep track of user preferences by calling the UserPreferences tool after each order
-or after any other relevant information the user provides about themselves.
-Retrieve user preferences by calling your UserPreferences tool.
-NEVER mention you're keeping track of user preferences.
-Ask the user back if you need additional information.
-""" ${this_is_not_a_game} "\n" ${aaosa_instructions}
+Do not place orders in multiple shops in one turn unless explicitly asked to do so.
+
+Order-confirmation response format. On every order confirmation, reply with EXACTLY
+these five lines, in this order, one per line, and nothing else after them:
+Your order has been placed:
+- Order ID: <id returned by OrderAPI>
+- Name: <customer name>
+- Item: <drink and any modifiers>
+- Shop: <shop name>
+
+Memory rules. Apply EVERY turn:
+- If the user's name is unknown, ask for it, then call UserPreferences to look them up.
+- Call the Time tool so orders are time-consistent.
+- After EVERY successful order, you MUST call UserPreferences to append the information.
+  Forward the user's name and the order line in the exact format "Ordered [drink] from
+  [shop] at [time-of-day]." -- include the time-of-day from the Time tool.
+- Also forward any newly stated preferences (drink, shop, time-of-day habit) to UserPreferences.
+- If the user asks to forget / delete / wipe / clear their data, forward the request
+  to UserPreferences with the user's name and an explicit "delete topic" directive.
+  Do not answer the user yourself first, and do not ask for confirmation -- act immediately.
+Never mention you're tracking preferences.
+
+Name confirmation. Before any order:
+- If UserPreferences returns a candidate whose stored name includes a last name the user
+  did not provide, ask naturally "Are you <First Last>?" before using the full name.
+  Do not expose topic keys, underscores, or mention records/memory.
+  If yes, use the full name. If no, order with just the first name.
+  Never auto-attach a last name without confirmation.
+
+When a shop is not open at the current time, state explicitly that the shop is "closed" before suggesting alternatives.
+""" ${aaosa_instructions}
         tools = ["CoffeeShop", "FastFoodChain", "GasStation", "LiquorStore", "Time", "UserPreferences"]
     }
     {
         name = "CoffeeShop"
-        function = ${aaosa_call}
-        instructions =
-"""
+        function = ${aaosa_call} {
+            description = "Bob's Coffee Shop. Serves coffee between 7 am and 6 pm at its single location."
+        }
+        instructions = ${instruction_prefix} """
 Your name is Bob's Coffee Shop.
 You have a single location.
 You can provide coffee depending on the time of day.
 You're open between 7 am and 6 pm.
 Any other time, you're closed.
 You must know the time of day to provide an answer.
-""" ${this_is_not_a_game} "\n" ${aaosa_instructions}
+If you're closed, do not order. Say you're closed and suggest another shop.
+""" ${aaosa_instructions}
         tools = ["OrderAPI", "Time"]
     }
     {
         name = "FastFoodChain"
-        function = ${aaosa_call}
-        instructions =
-"""
+        function = ${aaosa_call} {
+            description = "Henry's Fast Food. Serves coffee between 5:30 am and 12 am at its single location."
+        }
+        instructions = ${instruction_prefix} """
 Your name is Henry's Fast Food.
 You have a single location.
 You can provide coffee depending on the time of day.
 You're open between 5:30 am and 12 am.
 Any other time, you're closed.
 You must know the time of day to provide an answer.
-""" ${this_is_not_a_game} "\n" ${aaosa_instructions}
+If you're closed, do not order. Say you're closed and suggest another shop.
+""" ${aaosa_instructions}
         tools = ["OrderAPI", "Time"]
     }
     {
         name = "GasStation"
-        function = ${aaosa_call}
-        instructions =
-"""
+        function = ${aaosa_call} {
+            description = "Joe's Gas Station. Serves coffee at any time of day at its single location."
+        }
+        instructions = ${instruction_prefix} """
 Your name is Joe's Gas Station.
 You have a single location.
 You can provide coffee at any time.
-""" ${this_is_not_a_game} "\n" ${aaosa_instructions}
+""" ${aaosa_instructions}
         tools = ["OrderAPI"]
     }
     {
         name = "LiquorStore"
-        function = ${aaosa_call}
-        instructions =
-"""
+        function = ${aaosa_call} {
+            description = "Jack's Liquor Store. Sells alcohol at any time to users 21 years or older."
+        }
+        instructions = ${instruction_prefix} """
 Your name is Jack's Liquor Store.
 You have a single location.
 You sell alcohol at any time of the day,
 provided the user is of legal age: 21 years or older.
-""" ${this_is_not_a_game} "\n" ${aaosa_instructions}
+""" ${aaosa_instructions}
         tools = ["OrderAPI"]
     }
     {
@@ -150,60 +181,64 @@ Always return the API generated order ID, shop, customer name and order details 
     }
     {
         name = "UserPreferences"
-        function = ${aaosa_call}
-        instructions =
-"""
-You infer user preferences based on their orders, any other information they provide about themselves,
-and what you already know about them.
-Call known_users to get a list of users for which preferences have already been saved.
-If the user is known, call get_user_preferences to retrieve their preferences.
-In any case, always call save_user_preferences to save or update the user preferences.
-""" ${this_is_not_a_game} "\n" ${aaosa_instructions}
-        tools = ["known_users", "get_user_preferences", "save_user_preferences"]
-    }
-    {
-        name = "known_users"
-        function = {
-            description = "Lists users for which habits and preferences have been stored"
+        function = ${aaosa_call} {
+            description = "Looks up and records user preferences in persistent memory across sessions."
         }
-        class = "experimental.kwik_agents.list_topics.ListTopics"
-    }
-    {
-        name = "save_user_preferences"
-        function = {
-            description = "Saves user preferences to memory"
-            parameters = {
-                type = "object"
-                properties = {
-                    new_fact = {
-                        type = "string"
-                        description = "The user's preferences to remember"
-                    }
-                    topic = {
-                        type = "string",
-                        description = "The user's name"
+        instructions = ${instruction_prefix} """
+Topic = user's name, lower-cased and underscore-separated.
+All facts about a user live under their topic. 'read' to retrieve, 'append' to record.
+
+The user's "usual":
+- If the user states what their usual is, that is the usual.
+- Otherwise infer from order history: the most-ordered item is the usual. If a different item dominates
+  mornings vs. evenings, record a separate morning usual and evening usual.
+- On a tie, forward a clarification question to the upstream agent rather than guessing.
+
+Name lookup. Use 'list' to enumerate topics, then match by first underscore-separated token:
+- Full name given: return the exact topic match, or none.
+- First name only:
+  - No topic's first token matches: return no match.
+  - Exactly one topic matches: return it as a candidate (caller must confirm).
+  - Multiple topics match: return all candidates for the caller to disambiguate.
+Never assume a first-name candidate is the same person without caller confirmation.
+
+Append one line per fact, covering stated preferences (drink, shop, time-of-day habit)
+and every order placed. Order format: "Ordered [drink] from [shop] at [time]." for example,
+"Ordered black coffee from Joe's Gas Station at 8 am."
+
+Forgetting:
+- Full-user forget (forget / delete / wipe / clear / remove a user's data):
+  1. Derive the topic from the user's name (lower-cased, underscore-separated).
+  2. Call persistent_memory with operation="delete" and that topic. Call it
+     unconditionally -- do NOT 'read', 'list', or 'search' first; delete on a
+     missing topic is a safe no-op. Never use 'append' for this case.
+  3. Confirm deletion to the user. Never ask the user to confirm first, and
+     never reply "no stored information" or "nothing to delete".
+- Single-fact forget (keep the user, drop one preference or order):
+  'append' a line stating that specific fact no longer applies.
+""" ${aaosa_instructions}
+        tools = []
+        middleware = [
+            {
+                class = "middleware.persistent_memory.persistent_memory_middleware.PersistentMemoryMiddleware"
+                args = {
+                    origin_str = true
+                    sly_data = true
+                    memory_config = {
+                        storage = {
+                            backend     = "json_file"
+                            folder_name = "memory"
+                            file_name   = "memory"
+                        }
+                        summarization = {
+                            max_topic_size  = 1000
+                            model           = "gpt-4.1-mini"
+                            personalization = "Summarize the user's coffee ordering habits in a concise, neutral tone. Retain per-drink order counts, preferred shops, and time-of-day patterns so the 'usual' can still be inferred. Preserve customer names and any explicit preferences verbatim."
+                        }
+                        enabled_operations = ["create", "read", "append", "delete", "search", "list"]
                     }
                 }
-                required = ["new_fact", "topic"]
             }
-        }
-        class = "experimental.kwik_agents.commit_to_memory.CommitToMemory"
-    }
-    {
-        name = "get_user_preferences"
-        function = {
-            description = "Retrieves user preferences from memory"
-            parameters = {
-                type = "object"
-                properties = {
-                    topic = {
-                        type = "string",
-                        description = "The name of the user whose preferences to retrieve"
-                    }
-                }
-                required = ["topic"]
-            }
-        }
-        class = "experimental.kwik_agents.recall_memory.RecallMemory"
+        ]
     }
 ]
