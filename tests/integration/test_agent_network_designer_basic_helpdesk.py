@@ -33,7 +33,7 @@ Two test options are provided:
         Concurrency is controlled by success_ratio in the fixture HOCON.
         In mcp mode, --local_externals_direct is NOT needed because the
         server handles tool resolution on its own.
-        Requires a running server: python -m neuro_san_studio.run --server-only
+        Requires a running server: python -m neuro_san_studio run --server-only
 
 SimpleOneShot cannot be used for AND generation because it does not expose
 the use_direct parameter. The streaming logic below replicates
@@ -52,7 +52,7 @@ How to run:
             2>&1 | tee test_output.log
 
     Option 2 - MCP mode (requires running server first):
-        python -m neuro_san_studio.run --server-only  # in a separate terminal
+        python -m neuro_san_studio run --server-only  # in a separate terminal
         pytest -s -v -k "test_and_generates_basic_helpdesk_mcp" \
             tests/integration/test_agent_network_designer_basic_helpdesk.py \
             2>&1 | tee test_output.log
@@ -166,7 +166,7 @@ class TestAgentNetworkDesignerBasicHelpdesk(TestCase):
         Step 1: AND generates the basic_helpdesk network.
         Step 2: Verify the HOCON file exists on disk.
         Step 3: Run the mcp fixture test (concurrent load testing, set in HOCON success_ratio).
-        Requires: python -m neuro_san_studio.run --server-only
+        Requires: python -m neuro_san_studio run --server-only
         """
         self._generate_basic_helpdesk()
 

@@ -1,6 +1,4 @@
-#!/usr/bin/env python
-
-# Copyright 2023-2026 Cognizant Technology Solutions Corp, www.cognizant.com.
+# Copyright © 2025-2026 Cognizant Technology Solutions Corp, www.cognizant.com.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -16,8 +14,9 @@
 #
 # END COPYRIGHT
 
-"""
-Minimal diagnostic script that:
+"""Implementation of the `neuro-san-studio check-config` command.
+
+Validates LLM configurations in a HOCON file:
   1. Reads a HOCON file (agent network OR standalone studio llm_config)
   2. Captures all llm_configs (top-level default + per-agent overrides)
   3. Creates LLM instances via the framework's DefaultLlmFactory
@@ -39,21 +38,15 @@ Supports two HOCON formats:
             "model_name": "gpt-5.2"
         }
     }
-
-Usage:
-    python check_llm_configs.py <path_to_hocon_file>
-
-Examples:
-    python check_llm_configs.py neuro_san/registries/music_nerd.hocon
-    python check_llm_configs.py /path/to/llm_config.hocon
 """
 
 import asyncio
-import sys
+import os
 import traceback
 from typing import Any
 from typing import Dict
 from typing import List
+from typing import Optional
 from typing import Tuple
 
 from langchain_core.language_models.base import BaseLanguageModel
@@ -69,6 +62,8 @@ from neuro_san.internals.interfaces.context_type_llm_factory import ContextTypeL
 from neuro_san.internals.persistence.abstract_async_config_restorer import AbstractAsyncConfigRestorer
 from neuro_san.internals.run_context.factory.master_llm_factory import MasterLlmFactory
 from neuro_san.internals.run_context.langchain.llms.langchain_llm_resources import LangChainLlmResources
+
+DEFAULT_HOCON_PATH = os.path.join("config", "llm_config.hocon")
 
 TEST_PROMPT = "Reply with exactly one word: hello"
 
@@ -122,21 +117,14 @@ def redact_llm_config(config: Dict[str, Any]) -> Dict[str, Any]:
 
 
 def parse_hocon_file(network_hocon_file: str) -> Dict[str, Any]:
-    """
-    Parse a raw HOCON file into a Python dict via
-    AbstractAsyncConfigRestorer
-    """
+    """Parse a raw HOCON file into a Python dict via AbstractAsyncConfigRestorer."""
     hocon = AbstractAsyncConfigRestorer(file_purpose="get_agent_network_definition_for_validation", must_exist=True)
     hocon_file = hocon.restore(file_reference=network_hocon_file)
-
     return hocon_file
 
 
 def is_agent_network_hocon(config: Dict[str, Any]) -> bool:
-    """
-    Detect whether the parsed HOCON is an agent network (has "tools")
-    or a standalone studio llm_config file.
-    """
+    """Detect whether the parsed HOCON is an agent network (has "tools") or a standalone studio llm_config file."""
     return "tools" in config and isinstance(config["tools"], list)
 
 
@@ -422,17 +410,25 @@ async def run_checks(hocon_path: str) -> bool:
     return not failures
 
 
-async def main():
-    """Entry point: parse args, run checks, exit non-zero on failure."""
-    if len(sys.argv) < 2:
-        print("Usage: python check_llm_configs.py <path_to_hocon_file>")
-        sys.exit(1)
+class CheckConfigCommand:  # pylint: disable=too-few-public-methods
+    """Validate LLM configurations in a HOCON file.
 
-    hocon_path: str = sys.argv[1]
-    success: bool = await run_checks(hocon_path)
-    if not success:
-        sys.exit(1)
+    Accepts both agent network files (with a 'tools' list) and standalone
+    studio llm_config files. Returns a non-zero exit code if any
+    configuration fails.
+    """
 
+    def __init__(self, hocon_path: Optional[str] = None):
+        """Initialize the command.
 
-if __name__ == "__main__":
-    asyncio.run(main())
+        Args:
+            hocon_path: Path to the HOCON file to validate. Defaults to
+                config/llm_config.hocon when not provided.
+        """
+        self.hocon_path = hocon_path or DEFAULT_HOCON_PATH
+
+    def run(self) -> int:
+        """Run validation and return an exit code (0 on success, 1 on failure)."""
+        print(f"Checking LLM configs in: {self.hocon_path}")
+        success: bool = asyncio.run(run_checks(self.hocon_path))
+        return 0 if success else 1

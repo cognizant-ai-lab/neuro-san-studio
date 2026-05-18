@@ -39,7 +39,7 @@ class PersistentMemoryToolTests(MemoryTestBase):
 
     def _bucket(self) -> dict[str, str]:
         """Return the on-disk topic bucket (or empty dict)."""
-        return asyncio.run(self.store.load_all("test_net.test_agent"))
+        return asyncio.run(self.store._read_bucket("test_net.test_agent"))  # pylint: disable=protected-access
 
     def test_create_writes_to_disk_immediately(self) -> None:
         """create persists the topic to disk before returning."""
@@ -98,7 +98,7 @@ class PersistentMemoryToolTests(MemoryTestBase):
         tool = self.make_tool(store=store, summarizer=summarizer, max_topic_size=10)
         asyncio.run(tool.async_invoke({"operation": "create", "topic": "t", "content": "x" * 50}))
         summarizer.summarize_topic.assert_awaited_once()
-        memory: dict = asyncio.run(store.load_all("test_net.test_agent"))
+        memory: dict = asyncio.run(store._read_bucket("test_net.test_agent"))  # pylint: disable=protected-access
         self.assertEqual(memory.get("t"), "SHORT")
 
     def test_summarizer_failure_keeps_original_write(self) -> None:
@@ -110,5 +110,5 @@ class PersistentMemoryToolTests(MemoryTestBase):
         original: str = "z" * 100
         asyncio.run(tool.async_invoke({"operation": "create", "topic": "t", "content": original}))
         summarizer.summarize_topic.assert_awaited_once()
-        memory: dict = asyncio.run(store.load_all("test_net.test_agent"))
+        memory: dict = asyncio.run(store._read_bucket("test_net.test_agent"))  # pylint: disable=protected-access
         self.assertEqual(memory.get("t"), original)

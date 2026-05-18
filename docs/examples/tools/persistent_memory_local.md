@@ -1,10 +1,17 @@
-# Persistent memory middleware
+# Persistent Memory (Local) — file-backed memory
 
 `PersistentMemoryMiddleware` attaches long-term memory to any Neuro-san-studio
-agent. Drop it into an agent's `middleware` block and the framework registers
-a `persistent_memory` tool, injects a memory-aware preamble into the system
-prompt, and persists every write to disk under a `(network, agent)`
+agent. Once added to an agent's `middleware` block, the agent retains
+important topics and the facts associated with them across sessions. The
+middleware injects a preamble into the system prompt that instructs the LLM
+on when to invoke the `persistent_memory` tool and what arguments to
+provide, and persists every write to disk under a `(network, agent)`
 namespace.
+
+This page covers the **file-backed** backends (`json_file` and `markdown_file`),
+which write under the project's `memory/` directory. For the cloud-hosted
+backend that scopes memories per user, see
+[Persistent Memory (Mem0)](persistent_memory_mem0.md).
 
 Writes are per-call: each tool invocation is a self-contained
 read-modify-write against disk, guarded by a per-key `asyncio.Lock`. There
@@ -38,7 +45,7 @@ concept.
 ## Configuration
 
 > **Important:** attach `PersistentMemoryMiddleware` to the `middleware` block
-> of **your own agent** — do not import the `persistent_memory` agent network
+> of **your own agent** — do not import the `persistent_memory_local` agent network
 > as a sub-network. The middleware is what registers the tool and injects the
 > preamble; calling the reference network from another agent will not give
 > that agent memory.
@@ -58,7 +65,7 @@ required; every other key is optional and falls back to the value below.
                     "folder_name": "memory",        # always resolved relative to the repo root
                     "file_name":   "memory"         # json_file backend only
                 },
-                "summarization": {
+                "summarization": {                       # optional block — omit to leave summarization off (the default)
                     "max_topic_size":  1000,              # 0 disables summarization
                     "model":           "gpt-5.4-mini",
                     "personalization": ""                # appended to the summarizer prompt
@@ -71,7 +78,7 @@ required; every other key is optional and falls back to the value below.
 ```
 
 A complete reference agent using this middleware lives at
-[`registries/tools/persistent_memory.hocon`](../../../registries/tools/persistent_memory.hocon).
+[`registries/tools/persistent_memory_local.hocon`](../../../registries/tools/persistent_memory_local.hocon).
 
 ## Quick try
 
@@ -113,7 +120,7 @@ the backend:
 **`json_file` backend** — one file per agent, all topics inside it:
 
 ```text
-./memory/memory_tutorial/MemoryAssistant/
+./memory/persistent_memory_local/MemoryAssistant/
 └── memory.json
 ```
 
@@ -127,7 +134,7 @@ the backend:
 **`markdown_file` backend** — one file per topic:
 
 ```text
-./memory/memory_tutorial/MemoryAssistant/
+./memory/persistent_memory_local/MemoryAssistant/
 ├── mike.md
 └── jason.md
 ```
@@ -181,10 +188,11 @@ The three keys:
 
 ## Summarization
 
-Topics grow. Left alone, a single topic can balloon past the context
-window. The summarizer consolidates oversized topics inline, under the
-same lock that performed the write, so no concurrent reader ever observes
-the oversized intermediate state.
+Summarization is **off by default** — minimal wiring will not summarize
+anything. To turn it on, add a `summarization` block to `memory_config`.
+Once enabled, the summarizer consolidates oversized topics inline, under
+the same lock that performed the write, so no concurrent reader ever
+observes the oversized intermediate state.
 
 ```hocon
 "summarization": {
@@ -265,8 +273,8 @@ tools".
 
 Each agent gets its own slice of disk so memories never leak between agents
 or networks. The slice is identified by a `(network, agent)` pair — for
-example, a `MemoryAssistant` in the `memory_tutorial` network writes to
-`./memory/memory_tutorial/MemoryAssistant/`.
+example, a `MemoryAssistant` in the `persistent_memory_local` network writes to
+`./memory/persistent_memory_local/MemoryAssistant/`.
 
 The middleware figures out this pair automatically from the agent's
 runtime call path, which the framework passes in as `origin_str`. Setting
@@ -319,4 +327,4 @@ agent's topics.
   `markdown_file_store.py` — backends.
 - `middleware/persistent_memory/topic_summarizer.py` — the `ChatOpenAI`
   wrapper.
-- `registries/tools/persistent_memory.hocon` — the reference network.
+- `registries/tools/persistent_memory_local.hocon` — the reference network.
