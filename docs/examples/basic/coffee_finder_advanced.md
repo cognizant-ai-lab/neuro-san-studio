@@ -6,6 +6,7 @@ It can:
 * look for coffee options at that time of the day
 * place orders on behalf of the user
 * remember user preferences like favorite shop or usual order
+* forget a user's data on request (full delete or single-fact removal)
 
 It's good for testing:
 
@@ -14,7 +15,8 @@ It's good for testing:
 * how to ask for more information when needed, like a username
 * how to call a CodedTool
 * how to use sly_data to pass information to CodedTools
-* how to learn and remember facts like user preferences
+* how to use `PersistentMemoryMiddleware` for cross-session memory
+* how to support memory deletion (forget flows)
 
 ## File
 
@@ -28,12 +30,13 @@ Here is what it looks like:
 
 ![Coffee Finder Advanced Network](../../images/coffee_finder_advanced_network.png)
 
-## Tools
+## Tools and Middleware
 
-Coffee Finder Advanced uses 2 simple tools:
-* OrderAPI, that can be called by the 4 shops
-* Time, that's only used by CoffeeShop and FastFoodChain, as well as CoffeeFinder.
-The other 2 shops are open 24/7, so they don't need to use Time.
+Coffee Finder Advanced uses 2 coded tools:
+* **OrderAPI**, that can be called by the 4 shops. Order IDs increment per shop
+within a session (e.g. 101 → 102 → 103 at Bob's).
+* **Time**, used by CoffeeShop, FastFoodChain and CoffeeFinder.
+The other 2 shops are open 24/7, so they don't need Time.
 
 Check their code in the [CodedTools](../../../coded_tools/basic/coffee_finder_advanced) folder.
 See for instance how [TimeTool](../../../coded_tools/basic/coffee_finder_advanced/time_tool.py) is implemented:
@@ -44,9 +47,11 @@ See for instance how [TimeTool](../../../coded_tools/basic/coffee_finder_advance
 Remember, `sly_data` is NOT visible in the chat, but it's passed to the CodedTools that can use it like any
 regular dictionary argument.
 
-It also uses "memory" to remember user preferences like favorite shop or usual order.
-Check the `UserPreferences` agent and the tools it's calling for more info about
-how to gather and persist facts.
+**UserPreferences** is an agent that uses
+[PersistentMemoryMiddleware](../../examples/tools/persistent_memory_local.md) (file-backed,
+`json_file` backend) instead of coded tools. The middleware gives it six operations
+(`create`, `read`, `append`, `delete`, `search`, `list`) and a topic summarizer.
+Memory is stored under `memory/coffee_finder_advanced/UserPreferences/memory.json`.
 
 ## Example conversations
 
@@ -87,12 +92,11 @@ Human:
 Mike
 
 AI:
-Your order for a black coffee under the name Mike has been placed successfully at Henry's Fast Food.
-Order details:
- * Item: Black coffee
- * Name: Mike
-* Order ID: 201
-Let me know if you need anything else!
+Your order has been placed:
+- Order ID: 201
+- Name: Mike
+- Item: Black coffee
+- Shop: Henry's Fast Food
 ```
 ### Overriding the current time in sly_data
 
@@ -114,36 +118,33 @@ message: Where can I get coffee?
 sly_data: {"time": "1 am"}
 
 AI:
-You can get coffee at Joe's Gas Station at any time.
-Other places like Bob's Coffee Shop and Henry's Fast Food are currently closed
-and can't assist with coffee now.
-Would you like to place a coffee order from Joe's Gas Station?
- If so, please specify your order.
+At 1 am, Bob's Coffee Shop and Henry's Fast Food are closed.
+Joe's Gas Station is open and can serve coffee.
+Would you like to order from Joe's Gas Station?
 ```
 
 Coffee Finder considers the time to be 1 am, and tells us some places are closed.
 
-When can check the time by asking for it:
+We can check the time by asking for it:
 ```text
 Human:
 message: What time is it?
 sly_data: {"time": "1 am"}
 
 AI:
-It is 1 am. Let me know if you need anything else!
+It is 1 am.
 ```
 Coffee Finder uses its `Time` tool and gives us the time.
 
-Let's ty to order from a place that's closed:
+Let's try to order from a place that's closed:
 ```text
 Human:
 message: Get me black coffee from Bob's Coffee Shop
 sly_data: {"time": "1 am"}
 
 AI:
-Bob's Coffee Shop is currently closed and only accepts orders between 7 am and 6 pm.
-If you want coffee right now (it’s 1 am), would you like to order from Joe's Gas Station instead?
-Let me know if you'd like to proceed with another option.
+Bob's Coffee Shop is currently closed (open 7 am – 6 pm).
+Would you like to order from Joe's Gas Station instead?
 ```
 
 Good, it doesn't place the order because Bob's Coffee Shop is closed.
@@ -165,12 +166,11 @@ message: Mike
 sly_data: {"time": "1 am"}
 
 AI:
-Your black coffee has been ordered successfully for Mike at Joe's Gas Station.
-
-Order ID: 301
-Details: Black coffee for Mike
-
-Let me know if you need anything else!
+Your order has been placed:
+- Order ID: 301
+- Name: Mike
+- Item: Black coffee
+- Shop: Joe's Gas Station
 ```
 
 ### Memorizing user preferences
@@ -184,12 +184,11 @@ message: Liz here. Get me a cappuccino from Bob's Coffee Shop
 sly_data: {"time": "8 am"}
 
 AI:
-Your order has been placed at Bob's Coffee Shop.
-
-Order ID: 101
-Details: Cappuccino for Liz
-
-Let me know if you need anything else!
+Your order has been placed:
+- Order ID: 101
+- Name: Liz
+- Item: Cappuccino
+- Shop: Bob's Coffee Shop
 ```
 
 Now let's reload or restart the server, and see if Coffee Finder remembers our preference:
@@ -200,17 +199,53 @@ message: Hey, it's Liz. Get me the same as usual please.
 sly_data: {"time": "8 am"}
 
 AI:
-Liz, your usual order has been placed: 1 cappuccino from Bob's Coffee Shop.
-Order ID: 101
-
-Let me know if you need anything else!
+Your order has been placed:
+- Order ID: 101
+- Name: Liz
+- Item: Cappuccino
+- Shop: Bob's Coffee Shop
 ```
 
-You can check what Coffee Finder has memorized in the `TopicMemory.json` file:
+You can check what Coffee Finder has memorized in `memory/coffee_finder_advanced/UserPreferences/memory.json`:
 
 ```json
 {
-  "Mike": "[2025-09-09 16:22:27] Prefers black coffee from Henry's Fast Food.\n[2025-09-09 16:23:37] Prefers black coffee from Joe's Gas Station.",
-  "Liz": "[2025-09-09 16:25:23] Liz ordered a cappuccino from Bob's Coffee Shop.\n[2025-09-09 16:28:47] Liz's usual coffee order is a cappuccino from Bob's Coffee Shop.\n[2025-09-09 16:28:56] Liz ordered a cappuccino from Bob's Coffee Shop."
+  "mike": "[2025-09-09 16:22:27] Ordered black coffee from Henry's Fast Food at 8 am.\n[2025-09-09 16:23:37] Ordered black coffee from Joe's Gas Station at 1 am.",
+  "liz": "[2025-09-09 16:25:23] Ordered cappuccino from Bob's Coffee Shop at 8 am."
 }
 ```
+
+### Forgetting user data
+
+Coffee Finder can also forget a user's data when asked:
+
+```text
+Human:
+message: Please forget everything about Liz
+sly_data: {"time": "8 am"}
+
+AI:
+All stored data for Liz has been deleted.
+```
+
+After this, the `liz` topic is removed from the memory file entirely.
+
+For more details on the persistent memory system, see the
+[Persistent Memory (Local) documentation](../../examples/tools/persistent_memory_local.md).
+
+## Testing
+
+This network has an end-to-end memory test framework. Test fixtures live under
+`tests/fixtures/basic/coffee_finder_advanced/` and each scenario is defined by up to
+three files:
+
+* `<scenario>.hocon` — the test interaction (messages, sly\_data, assertions)
+* `<scenario>.initial_memory.json` — optional seed memory loaded before the test
+* `<scenario>.expected_memory.json` — optional assertion schema checked after the test
+  (supports `topics_present`, `topics_absent`, and `substrings_absent`)
+
+When a test HOCON sets `sly_data["test_mode"] = true`, the `TopicStoreFactory`
+redirects memory writes to `memory/test/`, keeping real persisted memory untouched.
+
+Adding a new memory regression test is a no-code task: drop in a HOCON plus its
+JSON sidecars.
