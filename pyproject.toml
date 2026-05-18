@@ -33,6 +33,7 @@ exclude = ["apps*", "build_scripts*", "coded_tools*", "config*", "deploy*", "doc
 
 [tool.setuptools.package-data]
 "neuro_san_studio.templates" = ["*.hocon"]
+"neuro_san_studio.toolbox" = ["*.hocon"]
 
 [tool.setuptools_scm]
 fallback_version = "0.0.0"
