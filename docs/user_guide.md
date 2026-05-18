@@ -1785,7 +1785,7 @@ reference network at
 For test cases, pass `sly_data["test_mode"] = true` in your test HOCON to
 redirect file-backed writes to a `test/` subfolder, keeping test runs from
 touching real persisted memory.
-[Coffee Finder Advanced example](./examples/basic/coffee_finder_advanced.md) for
+See the [Coffee Finder Advanced example](./examples/basic/coffee_finder_advanced.md) for
 details.
 
 ## Connect with other agent frameworks

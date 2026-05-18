@@ -29,7 +29,7 @@ from parameterized import parameterized
 
 from coded_tools.basic.coffee_finder_advanced.order_api import OrderAPI
 from tests.utils.fail_fast_param_mixin import FailFastParamMixin
-from tests.utils.memory_test_fixture import TestMemoryFixture
+from tests.utils.memory_test_fixture import MemoryTestFixture
 
 
 class TestIntegrationTestHocons(TestCase, FailFastParamMixin):
@@ -146,7 +146,7 @@ class TestIntegrationTestHocons(TestCase, FailFastParamMixin):
         try:
             test_hocon_path: str = self.DYNAMIC.fixture_basis.get_file_in_basis(test_hocon)
             # Seeds memory from <hocon>.initial_memory.json on enter, clears it on exit.
-            fixture: TestMemoryFixture = TestMemoryFixture(
+            fixture: MemoryTestFixture = MemoryTestFixture(
                 agent_network="CoffeeFinder",
                 agent_name="UserPreferences",
                 test_hocon_path=test_hocon_path,

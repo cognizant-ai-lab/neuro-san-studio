@@ -322,7 +322,7 @@ agent's topics.
 Pass `sly_data["test_mode"] = true` in your test HOCON to redirect
 file-backed writes to a `test/` subfolder under the configured
 `folder_name`. This keeps test runs from touching real persisted memory.
-[Coffee Finder Advanced example](../basic/coffee_finder_advanced.md) for
+See the [Coffee Finder Advanced example](../basic/coffee_finder_advanced.md) for
 a working example.
 
 ### Source

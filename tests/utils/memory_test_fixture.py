@@ -28,7 +28,7 @@ from typing import ClassVar
 from unittest import TestCase
 
 
-class TestMemoryFixture:
+class MemoryTestFixture:
     """Per-test seeder / asserter / cleaner for the live memory file.
 
     Sidecars next to the test HOCON:
@@ -38,7 +38,7 @@ class TestMemoryFixture:
 
     Use as a context manager around the agent call::
 
-        with TestMemoryFixture("CoffeeFinder", "UserPreferences",
+        with MemoryTestFixture("CoffeeFinder", "UserPreferences",
                                test_hocon_path=Path(test_hocon)) as fx:
             run_the_test(...)
             fx.assert_matches_expected(self)
@@ -123,13 +123,13 @@ class TestMemoryFixture:
         if sidecar is None or not sidecar.is_file():
             return
         expected: dict[str, Any] = self._load_json(sidecar)
-        actual: dict[str, str] = self._load_live_memory()
+        actual: dict[str, Any] = self._load_live_memory()
 
         self._assert_topics_present(test_case, expected.get("topics_present") or {}, actual)
         self._assert_topics_absent(test_case, expected.get("topics_absent") or [], actual)
         self._assert_substrings_absent(test_case, expected.get("substrings_absent") or {}, actual)
 
-    def __enter__(self) -> "TestMemoryFixture":
+    def __enter__(self) -> "MemoryTestFixture":
         self.setup()
         return self
 
@@ -166,7 +166,7 @@ class TestMemoryFixture:
                 path.rmdir()
         folder.rmdir()
 
-    def _load_live_memory(self) -> dict[str, str]:
+    def _load_live_memory(self) -> dict[str, Any]:
         """Read the live memory file; ``{}`` if absent."""
         live: Path = self.live_file
         if not live.is_file():
@@ -177,7 +177,7 @@ class TestMemoryFixture:
         self,
         test_case: TestCase,
         topics_present: dict[str, list[str]],
-        actual: dict[str, str],
+        actual: dict[str, Any],
     ) -> None:
         """Each listed topic must exist with all required substrings in its body."""
         for topic, substrings in topics_present.items():
@@ -199,7 +199,7 @@ class TestMemoryFixture:
         self,
         test_case: TestCase,
         topics_absent: list[str],
-        actual: dict[str, str],
+        actual: dict[str, Any],
     ) -> None:
         """None of the listed topics may be present."""
         for topic in topics_absent:
@@ -213,7 +213,7 @@ class TestMemoryFixture:
         self,
         test_case: TestCase,
         substrings_absent: dict[str, list[str]],
-        actual: dict[str, str],
+        actual: dict[str, Any],
     ) -> None:
         """For topics that exist, none of the disallowed substrings may appear."""
         for topic, substrings in substrings_absent.items():
