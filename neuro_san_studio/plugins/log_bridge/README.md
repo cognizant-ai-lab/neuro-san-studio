@@ -75,7 +75,7 @@ Rich supports named colors (`"cyan"`, `"bright_cyan"`, `"magenta"`), hex (`"#34d
 
 ### Plugin-Based Design
 
-The Log Bridge is a self-contained plugin in `neuro_san_studio/plugins/log_bridge/`. When enabled, it intercepts subprocess stdout/stderr streams and processes each line through a parsing pipeline before emitting formatted output to the console. When disabled, `neuro_san_studio/run.py` falls back to basic threaded log streaming.
+The Log Bridge is a self-contained plugin in `neuro_san_studio/plugins/log_bridge/`. When enabled, it intercepts subprocess stdout/stderr streams and processes each line through a parsing pipeline before emitting formatted output to the console. When disabled, `neuro_san_studio/commands/run.py` falls back to basic threaded log streaming.
 
 ### Key Components
 
@@ -103,9 +103,9 @@ Each attached subprocess stream (stdout, stderr) maintains independent state for
 - **JSON reassembly buffer** — collects lines when a multi-line JSON block is detected
 - **Brace balance counter** — tracks `{`/`}` nesting to know when a JSON block is complete
 
-### Integration with neuro_san_studio/run.py
+### Integration with neuro_san_studio/commands/run.py
 
-The runner (`neuro_san_studio/run.py`) integrates the Log Bridge in two places:
+The runner (`neuro_san_studio/commands/run.py`) integrates the Log Bridge in two places:
 
 1. **Initialization** — when `LOGBRIDGE_ENABLED` is truthy, a `ProcessLogBridge` instance is created with the configured log level and a runner-wide log file path (`logs/runner.log`)
 2. **Process attachment** — each launched subprocess (server, web client, nsflow) is attached via `log_bridge.attach_process_logger(process, name, log_file)`, which spawns drain threads for both stdout and stderr
@@ -122,7 +122,7 @@ The runner (`neuro_san_studio/run.py`) integrates the Log Bridge in two places:
 The Log Bridge is **enabled by default**. When you start Neuro SAN Studio:
 
 ```bash
-python -m neuro_san_studio.run
+python -m neuro_san_studio run
 ```
 
 You will see Rich-formatted console output with:
@@ -156,7 +156,7 @@ To disable the Log Bridge and use basic log streaming:
 LOGBRIDGE_ENABLED=false
 ```
 
-When disabled, `neuro_san_studio/run.py` falls back to simple threaded output streaming without Rich formatting, JSON parsing, or per-process log files.
+When disabled, `neuro_san_studio/commands/run.py` falls back to simple threaded output streaming without Rich formatting, JSON parsing, or per-process log files.
 
 ## Troubleshooting
 

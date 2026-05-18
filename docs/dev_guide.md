@@ -248,7 +248,7 @@ After reorganization, verify the changes:
 
 ```bash
 # Check that the agent loads correctly
-python -m neuro_san_studio.run
+python -m neuro_san_studio run
 
 # Run integration tests
 pytest tests/integration/test_integration_test_hocons.py -k "agent_name"

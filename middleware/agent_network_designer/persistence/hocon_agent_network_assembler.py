@@ -30,7 +30,7 @@ HOCON_HEADER_START = (
     "#   - aaosa_call\n"
     "#   - aaosa_instructions\n"
     "# IMPORTANT:\n"
-    "# Ensure that you run `python -m neuro_san_studio.run` from the top level of the repository.\n"
+    "# Ensure that you run `python -m neuro_san_studio run` from the top level of the repository.\n"
     "# The path to this substitution file is **relative to the top-level directory**,\n"
     "# so running the script from elsewhere may result in file not found errors.\n"
     '    include "registries/aaosa.hocon"\n'

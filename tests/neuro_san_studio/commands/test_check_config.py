@@ -20,12 +20,12 @@ from unittest.mock import AsyncMock
 from unittest.mock import MagicMock
 from unittest.mock import patch
 
-from neuro_san_studio.plugins.llm_config_validator.check_llm_configs import _expand_fallbacks
-from neuro_san_studio.plugins.llm_config_validator.check_llm_configs import extract_llm_configs_from_agent_network
-from neuro_san_studio.plugins.llm_config_validator.check_llm_configs import extract_llm_configs_from_studio_config
-from neuro_san_studio.plugins.llm_config_validator.check_llm_configs import redact_llm_config
-from neuro_san_studio.plugins.llm_config_validator.check_llm_configs import run_checks
-from neuro_san_studio.plugins.llm_config_validator.llm_config_validator_plugin import LlmConfigValidatorPlugin
+from neuro_san_studio.commands.check_config import CheckConfigCommand
+from neuro_san_studio.commands.check_config import _expand_fallbacks
+from neuro_san_studio.commands.check_config import extract_llm_configs_from_agent_network
+from neuro_san_studio.commands.check_config import extract_llm_configs_from_studio_config
+from neuro_san_studio.commands.check_config import redact_llm_config
+from neuro_san_studio.commands.check_config import run_checks
 
 
 class TestExpandFallbacks(TestCase):
@@ -290,24 +290,26 @@ class TestExtractLlmConfigsFromAgentNetwork(TestCase):
         self.assertEqual(labels, ["AgentA", "AgentB", "AgentC"])
 
 
-_CHECKS_MODULE = "neuro_san_studio.plugins.llm_config_validator.check_llm_configs"
-_PLUGIN_MODULE = "neuro_san_studio.plugins.llm_config_validator.llm_config_validator_plugin"
+_CHECKS_MODULE = "neuro_san_studio.commands.check_config"
 
 
-class TestLlmConfigValidatorPlugin(TestCase):
-    """Tests for LlmConfigValidatorPlugin.check — delegates to run_checks."""
+class TestCheckConfigCommand(TestCase):
+    """Tests for CheckConfigCommand.run — delegates to run_checks."""
 
-    def test_all_pass_does_not_exit(self):
-        """When run_checks returns True, check() returns normally."""
-        with patch(f"{_PLUGIN_MODULE}.run_checks", new=AsyncMock(return_value=True)):
-            LlmConfigValidatorPlugin().check("my.hocon")  # must not raise
+    def test_all_pass_returns_zero(self):
+        """When run_checks returns True, run() returns 0."""
+        with patch(f"{_CHECKS_MODULE}.run_checks", new=AsyncMock(return_value=True)):
+            self.assertEqual(CheckConfigCommand("my.hocon").run(), 0)
 
-    def test_failures_cause_sys_exit_1(self):
-        """When run_checks returns False, check() calls sys.exit(1)."""
-        with patch(f"{_PLUGIN_MODULE}.run_checks", new=AsyncMock(return_value=False)):
-            with self.assertRaises(SystemExit) as ctx:
-                LlmConfigValidatorPlugin().check("my.hocon")
-            self.assertEqual(ctx.exception.code, 1)
+    def test_failures_return_one(self):
+        """When run_checks returns False, run() returns 1."""
+        with patch(f"{_CHECKS_MODULE}.run_checks", new=AsyncMock(return_value=False)):
+            self.assertEqual(CheckConfigCommand("my.hocon").run(), 1)
+
+    def test_default_hocon_path_used_when_none_provided(self):
+        """When no hocon_path is provided, the default config/llm_config.hocon is used."""
+        cmd = CheckConfigCommand()
+        self.assertEqual(cmd.hocon_path, "config/llm_config.hocon")
 
 
 class TestRunChecks(TestCase):

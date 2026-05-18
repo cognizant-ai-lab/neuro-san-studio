@@ -1,6 +1,6 @@
 # Neuro SAN
 leaf-common>=1.2.40
-neuro-san==0.6.49
+neuro-san==0.6.52
 nsflow==0.6.15
 
 # For config parsing
@@ -25,7 +25,9 @@ beautifulsoup4>=4.12.0
 langchain-mcp-adapters>=0.1.7,<1.0
 
 # Neuro-SAN now requires explicit installation of langchain LLM providers' libs
+langchain-openai>=1.1.9,<2.0
 langchain-anthropic>=1.0.0,<2.0
+langchain-google-genai>=4.2.2,<5.0
 
 # For rich logging
 rich>=14.2.0
@@ -35,3 +37,7 @@ pyvis~=0.3.2
 
 # For web search tools without needing API keys, using DuckDuckGo's search results
 ddgs>=9.4.1
+
+# For chat-based cli tools not used in deployment
+# Also used by neuro-san
+timedinput>=0.1.1
