@@ -32,7 +32,7 @@
     # descriptions of response checks.
     "interactions": [
         {
-            "timeout_in_seconds": 180,
+            "timeout_in_seconds": 120,
 
             # Step 1 of 2: first order from Joe's -> id 301 (counter base for Joe's).
 
@@ -69,7 +69,7 @@ Hey, it's Pixel Smith. Get me a black coffee from Joe's Gas Station please.
             }
         },
         {
-            "timeout_in_seconds": 180,
+            "timeout_in_seconds": 120,
 
             # Step 2 of 2: explicit second order from Joe's -> counter must
             # increment to a higher id than the previous turn produced.

@@ -22,6 +22,7 @@ Writes land under ``memory/test/`` when the HOCON sets
 
 import json
 import logging
+from collections.abc import Mapping
 from pathlib import Path
 from typing import Any
 from typing import ClassVar
@@ -188,12 +189,13 @@ class TestMemoryFixture:
                 actual,
                 f"expected memory to contain topic '{topic}'. Got: {sorted(actual.keys())}",
             )
-            body_lower: str = actual[topic].lower()
+            body: str = actual.get(topic, "")
+            body_lower: str = body.lower()
             for substring in substrings:
                 test_case.assertIn(
                     substring.lower(),
                     body_lower,
-                    f"memory[{topic!r}] missing substring {substring!r}. Got: {actual[topic]!r}",
+                    f"memory[{topic!r}] missing substring {substring!r}. Got: {body!r}",
                 )
 
     def _assert_topics_absent(
@@ -220,12 +222,13 @@ class TestMemoryFixture:
         for topic, substrings in substrings_absent.items():
             if topic not in actual:
                 continue
-            body_lower: str = actual[topic].lower()
+            body: str = actual.get(topic, "")
+            body_lower: str = body.lower()
             for substring in substrings:
                 test_case.assertNotIn(
                     substring.lower(),
                     body_lower,
-                    f"memory[{topic!r}] should not contain {substring!r}. Got: {actual[topic]!r}",
+                    f"memory[{topic!r}] should not contain {substring!r}. Got: {body!r}",
                 )
 
     def _resolve_store_root(self, store_root: str | Path | None) -> Path:
@@ -243,7 +246,7 @@ class TestMemoryFixture:
         except (OSError, UnicodeDecodeError, json.JSONDecodeError):
             logger.warning("Failed to load JSON from %s", path, exc_info=True)
             return {}
-        return parsed if isinstance(parsed, dict) else {}
+        return parsed if isinstance(parsed, Mapping) else {}
 
     @classmethod
     def _infer_repo_root(cls) -> Path:

@@ -32,7 +32,7 @@
     # descriptions of response checks.
     "interactions": [
         {
-            "timeout_in_seconds": 180,
+            "timeout_in_seconds": 120,
 
             # Step 1 of 2: ask the agent to forget the user; the pixel_smith
             # topic should be deleted from persistent memory immediately.
@@ -71,7 +71,7 @@ Hey, it's Pixel Smith. Please forget everything you know about me.
             }
         },
         {
-            "timeout_in_seconds": 180,
+            "timeout_in_seconds": 120,
 
             # Step 2 of 2: re-ask what the agent remembers; with the topic
             # deleted, the agent must report nothing stored about the user.

@@ -34,7 +34,7 @@
     # where_open_at_1am.hocon. This file starts at the order step.
     "interactions": [
         {
-            "timeout_in_seconds": 180,
+            "timeout_in_seconds": 120,
 
             # Step 1 of 2: place the order
 
@@ -68,7 +68,7 @@ Get me black coffee from Joe's
             }
         },
         {
-            "timeout_in_seconds": 180,
+            "timeout_in_seconds": 120,
 
             # Step 2 of 2: provide the customer name, order is placed.
             

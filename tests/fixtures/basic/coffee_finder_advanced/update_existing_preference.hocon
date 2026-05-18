@@ -32,7 +32,7 @@
     # descriptions of response checks.
     "interactions": [
         {
-            "timeout_in_seconds": 180,
+            "timeout_in_seconds": 60,
 
             # The new preference must be appended to the existing pixel_smith
             # topic; no order should be placed in this turn.

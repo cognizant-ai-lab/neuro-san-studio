@@ -101,7 +101,7 @@ class OrderAPI(CodedTool):
 
         # Take the current id for this shop, then advance the class-level counter
         # so the next call returns a fresh id within the same run.
-        order_id = OrderAPI.NEXT_ORDER_ID[shop]
+        order_id = OrderAPI.NEXT_ORDER_ID.get(shop, 0)
         OrderAPI.NEXT_ORDER_ID[shop] = order_id + 1
 
         message = f"Order {order_id} placed successfully for {customer_name} at {shop}. Details: {order}"

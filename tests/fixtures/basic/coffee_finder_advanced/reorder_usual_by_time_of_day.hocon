@@ -32,7 +32,7 @@
     # descriptions of response checks.
     "interactions": [
         {
-            "timeout_in_seconds": 180,
+            "timeout_in_seconds": 120,
 
             # Step 1 of 2: morning -> latte from Bob's Coffee Shop -> order 101.
 
@@ -75,7 +75,7 @@ Hey, it's Pixel Smith. Get me my usual please.
             }
         },
         {
-            "timeout_in_seconds": 180,
+            "timeout_in_seconds": 120,
 
             # Step 2 of 2: evening -> black coffee from Henry's Fast Food
             # (morning's Bob's is closed at 7 pm, so the morning preference
