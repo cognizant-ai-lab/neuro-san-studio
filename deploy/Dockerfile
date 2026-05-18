@@ -433,7 +433,7 @@ ENV AGENT_NETWORK_DESIGNER_SUBDIRECTORY="generated"
 # Defaults to "registries/manifest_and.hocon" if not set.
 ENV AGENT_NETWORK_DESIGNER_MANIFEST_FILE="registries/manifest_and.hocon"
 
-# Toolbox info info file providing available tools for the Agent Network Designer to choose from.
+# Toolbox info file providing available tools for the Agent Network Designer to choose from.
 # Defaults to "neuro_san_studio/toolbox/agent_network_designer_toolbox_info.hocon" if not set.
 ENV AGENT_NETWORK_DESIGNER_TOOLBOX_INFO_FILE="neuro_san_studio/toolbox/agent_network_designer_toolbox_info.hocon"
 
