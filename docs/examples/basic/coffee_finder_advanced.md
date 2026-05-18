@@ -64,13 +64,7 @@ Human:
 Where can I get coffee?
 
 AI:
-You can get coffee at the following places:
-
-Bob's Coffee Shop
-Henry's Fast Food
-Joe's Gas Station
-All of these locations are currently available to serve coffee.
-If you'd like to place an order, please specify your choice and any preferences.
+You can get coffee at Bob's Coffee Shop, Henry's Fast Food, or Joe's Gas Station. All of these locations are open right now. Would you like to place an order?
 ```
 
 Notice how Coffee Finder tells us these places are currently available, because they checked the time.
@@ -81,8 +75,7 @@ Human:
 Get me black coffee from Henry's
 
 AI:
-To place your order for a black coffee from Henry's Fast Food, I need your name.
-Could you please provide your name to proceed?
+Sure! May I have your name to place the order?
 ```
 
 Coffee Finder is following-up with a question, because it's needed to place the order.
@@ -118,9 +111,9 @@ message: Where can I get coffee?
 sly_data: {"time": "1 am"}
 
 AI:
-At 1 am, Bob's Coffee Shop and Henry's Fast Food are closed.
-Joe's Gas Station is open and can serve coffee.
-Would you like to order from Joe's Gas Station?
+Bob's Coffee Shop is closed.
+Henry's Fast Food is closed.
+You can get coffee at Joe's Gas Station, which is open now. Would you like to place an order?
 ```
 
 Coffee Finder considers the time to be 1 am, and tells us some places are closed.
@@ -139,12 +132,11 @@ Coffee Finder uses its `Time` tool and gives us the time.
 Let's try to order from a place that's closed:
 ```text
 Human:
-message: Get me black coffee from Bob's Coffee Shop
+message: Get me black coffee from Bob's Coffee Shop.
 sly_data: {"time": "1 am"}
 
 AI:
-Bob's Coffee Shop is currently closed (open 7 am – 6 pm).
-Would you like to order from Joe's Gas Station instead?
+Bob's Coffee Shop is closed. Would you like to order from another location?
 ```
 
 Good, it doesn't place the order because Bob's Coffee Shop is closed.
@@ -156,8 +148,7 @@ message: ok, order from Joe's instead
 sly_data: {"time": "1 am"}
 
 AI:
-To place a black coffee order from Joe's Gas Station, I need your name.
-Could you please provide your name so I can complete the order?
+Sure! May I have your name to place the order?
 ```
 Providing a name:
 ```text
