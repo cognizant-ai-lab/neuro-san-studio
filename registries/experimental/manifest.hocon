@@ -43,4 +43,8 @@
         "serve": true,
         "public": false
     },
+    # An agent network that designs other agent networks with configurable middleware and skills.
+    # Extends agent_network_designer by allowing each agent to be equipped with specific
+    # capabilities, tools, and processing layers tailored to its role. 
+    "experimental/agent_harness_designer.hocon": false,
 }

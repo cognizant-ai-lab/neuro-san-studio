@@ -61,7 +61,12 @@
         "serve": true,
         "public": false
     },
-
+    "middleware_manager.hocon": { 
+        # This is a support network for agent_network_designer
+        # We want it served up, but not listed as a public agent network
+        "serve": true,
+        "public": false
+    },
     #
     # Agent network test generator
     #
