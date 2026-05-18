@@ -25,10 +25,7 @@
     # Describes what agent to test against.
     "agent": "basic/coffee_finder_advanced",
 
-    # success_ratio is useful for passing to the assessor to find out why
-    # a test is intermittently failing. Sometimes it's the agent prompt, but
-    # sometimes it's the test itself.
-    # Note: This number was increased for network failure identification and should be reverted afterward to 1/1.
+    # Minimum pass ratio for intermittent-failure triage.
     "success_ratio": "1/1",
 
     # Interactions are a series of dictionaries with request elements paired with

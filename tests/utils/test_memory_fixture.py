@@ -21,10 +21,13 @@ Writes land under ``memory/test/`` when the HOCON sets
 """
 
 import json
+import logging
 from pathlib import Path
 from typing import Any
 from typing import ClassVar
 from unittest import TestCase
+
+logger = logging.getLogger(__name__)
 
 
 class TestMemoryFixture:
@@ -154,7 +157,7 @@ class TestMemoryFixture:
         return self._test_hocon_path.parent / f"{stem}{suffix}"
 
     def _remove_live_dir(self) -> None:
-        """Recursively delete ``<store_root>/<network>/<agent>/`` (no ``shutil``)."""
+        """Recursively delete ``<store_root>/<network>/<agent>/``."""
         folder: Path = self.live_file.parent
         if not folder.exists():
             return
@@ -238,6 +241,7 @@ class TestMemoryFixture:
         try:
             parsed: Any = json.loads(path.read_text(encoding="utf-8"))
         except (OSError, UnicodeDecodeError, json.JSONDecodeError):
+            logger.warning("Failed to load JSON from %s", path, exc_info=True)
             return {}
         return parsed if isinstance(parsed, dict) else {}
 

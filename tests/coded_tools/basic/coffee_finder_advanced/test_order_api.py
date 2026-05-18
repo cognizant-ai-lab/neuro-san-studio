@@ -96,7 +96,6 @@ class TestOrderAPI(TestCase):
 
     def test_invoke_order_id_increments_per_shop(self):
         """
-        Tests the invoke method of the OrderAPI CodedTool.
         Consecutive orders to the same shop within one run get distinct, incrementing ids.
         """
         order_api = OrderAPI()
