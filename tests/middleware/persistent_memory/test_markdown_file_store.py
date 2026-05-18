@@ -34,42 +34,30 @@ class MarkdownFileStoreTests(MemoryTestBase):
         return MarkdownFileStore(folder_name=self._tmp)
 
     def test_load_missing_tree_returns_empty(self) -> None:
-        """load_all without any files returns an empty dict."""
+        """Reading from an unseen agent returns an empty dict."""
         store: MarkdownFileStore = self._make_store()
-        self.assertEqual(asyncio.run(store.load_all("net.agent")), {})
+        self.assertEqual(asyncio.run(store._read_bucket("net.agent")), {})  # pylint: disable=protected-access
 
     def test_roundtrip_preserves_topics(self) -> None:
-        """Writing then loading restores the same ``{topic: content}``."""
+        """Per-topic writes accumulate and read back as one dict."""
         store: MarkdownFileStore = self._make_store()
-        memory: dict = {
-            "mike": "Works in Sales.",
-            "john": "Works in Education.",
-        }
-        asyncio.run(store.save_all("net.agent", memory))
-        loaded: dict = asyncio.run(store.load_all("net.agent"))
-        self.assertEqual(loaded, memory)
+        asyncio.run(store.set_topic("net.agent", "mike", "Works in Sales."))
+        asyncio.run(store.set_topic("net.agent", "john", "Works in Education."))
+        loaded: dict = asyncio.run(store._read_bucket("net.agent"))  # pylint: disable=protected-access
+        self.assertEqual(loaded, {"mike": "Works in Sales.", "john": "Works in Education."})
 
     def test_md_file_format(self) -> None:
         """Files start with the H1 heading and contain the content body."""
         store: MarkdownFileStore = self._make_store()
-        asyncio.run(store.save_all("net.agent", {"role": "Engineer"}))
+        asyncio.run(store.set_topic("net.agent", "role", "Engineer"))
         text: str = (Path(self._tmp) / "net" / "agent" / "role.md").read_text()
         self.assertTrue(text.startswith("# role"))
         self.assertIn("Engineer", text)
 
-    def test_orphan_topic_file_removed(self) -> None:
-        """Topics dropped from memory have their ``.md`` files deleted."""
-        store: MarkdownFileStore = self._make_store()
-        asyncio.run(store.save_all("net.agent", {"coffee": "black", "role": "E"}))
-        asyncio.run(store.save_all("net.agent", {"role": "E"}))
-        base: Path = Path(self._tmp) / "net" / "agent"
-        self.assertFalse((base / "coffee.md").exists())
-        self.assertTrue((base / "role.md").exists())
-
     def test_filename_sanitisation(self) -> None:
         """Unsafe characters collapse to underscores, and the file stem lowercases."""
         store: MarkdownFileStore = self._make_store()
-        asyncio.run(store.save_all("net.agent", {"My Fancy Topic!": "x"}))
+        asyncio.run(store.set_topic("net.agent", "My Fancy Topic!", "x"))
         base: Path = Path(self._tmp) / "net" / "agent"
         self.assertTrue((base / "my_fancy_topic.md").exists())
 

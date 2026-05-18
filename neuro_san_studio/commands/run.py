@@ -28,10 +28,15 @@ from typing import Dict
 from typing import Tuple
 
 from dotenv import load_dotenv
+from timedinput import timedinput
 
 from neuro_san_studio.interfaces.process_logger_interface import ProcessLoggerInterface
 from neuro_san_studio.plugins.plugin_loader import PluginLoader
 from neuro_san_studio.runner.simple_process_logger import SimpleProcessLogger
+
+# Long enough to never bite a real user; finite so timedinput is happy and so a
+# detached terminal can't hang the process forever.
+INPUT_TIMEOUT_SECONDS = 300
 
 
 class NeuroSanRunner:
@@ -74,10 +79,7 @@ class NeuroSanRunner:
                 "AGENT_MANIFEST_FILE", os.path.join(self.root_dir, "registries", "manifest.hocon")
             ),
             "agent_tool_path": os.getenv("AGENT_TOOL_PATH", os.path.join(self.root_dir, "coded_tools")),
-            "agent_toolbox_info_file": os.getenv(
-                "AGENT_TOOLBOX_INFO_FILE",
-                os.path.join(self.root_dir, "neuro_san_studio", "toolbox", "toolbox_info.hocon"),
-            ),
+            "agent_toolbox_info_file": self._resolve_toolbox_info_file(),
             "mcp_servers_info_file": os.getenv(
                 "MCP_SERVERS_INFO_FILE", os.path.join(self.root_dir, "mcp", "mcp_info.hocon")
             ),
@@ -104,6 +106,36 @@ class NeuroSanRunner:
         self.server_process = None
         self.flask_webclient_process = None
         self.nsflow_process = None
+
+    def _apply_toolbox_env(self) -> None:
+        """Export AGENT_TOOLBOX_INFO_FILE only if a user-provided toolbox path is configured.
+
+        When unset, the neuro-san framework falls back to its built-in default toolbox,
+        so a user-provided file is a pure override and is optional.
+        """
+        toolbox_file = self.args["agent_toolbox_info_file"]
+        if toolbox_file:
+            os.environ["AGENT_TOOLBOX_INFO_FILE"] = toolbox_file
+            print(f"AGENT_TOOLBOX_INFO_FILE set to: {toolbox_file}")
+        else:
+            print("AGENT_TOOLBOX_INFO_FILE: (not set — using built-in default toolbox)")
+
+    def _resolve_toolbox_info_file(self) -> str:
+        """Resolve the toolbox info file path, or return "" if it should not be exported.
+
+        A user-provided toolbox is purely an override on top of the neuro-san framework's
+        built-in default toolbox. Only set AGENT_TOOLBOX_INFO_FILE when the user has
+        opted in explicitly via the env var, or when the conventional
+        `<root>/neuro_san_studio/toolbox/toolbox_info.hocon` actually exists. Otherwise return "" so the
+        env var stays unset and the framework uses its built-in default only.
+        """
+        env_value = os.getenv("AGENT_TOOLBOX_INFO_FILE")
+        if env_value is not None:
+            return env_value
+        default_path = os.path.join(self.root_dir, "neuro_san_studio", "toolbox", "toolbox_info.hocon")
+        if os.path.isfile(default_path):
+            return default_path
+        return ""
 
     def load_env_variables(self):
         """Load .env file from project root and set variables."""
@@ -180,15 +212,34 @@ class NeuroSanRunner:
 
         return vars(args)
 
+    def set_pythonpath(self):
+        """
+        Sets the PYTHONPATH environment variable to include the project root directory.
+        """
+        existing: str = os.environ.get("PYTHONPATH", "")
+
+        # Check to see if the root_dir is already in PYTHONPATH. If so, don't add it again.
+        # This block below was suggested by Copilot.
+        normalized_root_dir = os.path.normcase(os.path.abspath(self.root_dir))
+        existing_paths = [path for path in existing.split(os.pathsep) if path]
+        if any(os.path.normcase(os.path.abspath(path)) == normalized_root_dir for path in existing_paths):
+            return
+
+        # Add the root_dir to PYTHONPATH differently depending on existing value
+        new_path: str = self.root_dir
+        if existing:
+            new_path = existing + os.pathsep + self.root_dir
+        os.environ["PYTHONPATH"] = new_path
+
     def set_environment_variables(self):
         """Set required environment variables, optionally using neuro-san defaults."""
         print("\n" + "=" * 50 + "\n")
         print("Setting environment variables...\n")
         # Common env variables
-        os.environ["PYTHONPATH"] = self.root_dir
+        self.set_pythonpath()
         os.environ["AGENT_MANIFEST_FILE"] = self.args["agent_manifest_file"]
         os.environ["AGENT_TOOL_PATH"] = self.args["agent_tool_path"]
-        os.environ["AGENT_TOOLBOX_INFO_FILE"] = self.args["agent_toolbox_info_file"]
+        self._apply_toolbox_env()
         os.environ["MCP_SERVERS_INFO_FILE"] = self.args["mcp_servers_info_file"]
         os.environ["NEURO_SAN_SERVER_CONNECTION"] = self.args["server_connection"]
         os.environ["AGENT_MANIFEST_UPDATE_PERIOD_SECONDS"] = str(self.args["manifest_update_period_seconds"])
@@ -196,7 +247,6 @@ class NeuroSanRunner:
         print(f"PYTHONPATH set to: {os.environ['PYTHONPATH']}")
         print(f"AGENT_MANIFEST_FILE set to: {os.environ['AGENT_MANIFEST_FILE']}")
         print(f"AGENT_TOOL_PATH set to: {os.environ['AGENT_TOOL_PATH']}")
-        print(f"AGENT_TOOLBOX_INFO_FILE set to: {os.environ['AGENT_TOOLBOX_INFO_FILE']}")
         print(f"MCP_SERVERS_INFO_FILE set to: {os.environ['MCP_SERVERS_INFO_FILE']}")
         print(f"NEURO_SAN_SERVER_CONNECTION set to: {os.environ['NEURO_SAN_SERVER_CONNECTION']}")
         print(f"AGENT_MANIFEST_UPDATE_PERIOD_SECONDS set to: {os.environ['AGENT_MANIFEST_UPDATE_PERIOD_SECONDS']}")
@@ -458,7 +508,9 @@ class NeuroSanRunner:
         valid_no = {"no", "n"}
         for attempt in range(max_attempts):
             try:
-                raw = input(prompt).strip().lower()
+                # Default to "" (empty), which is an invalid input that triggers the prompt again
+                # if there are remaining attempts or gives up otherwise with a 'no'.
+                raw = timedinput(prompt, timeout=INPUT_TIMEOUT_SECONDS, default="").strip().lower()
             except EOFError:
                 print("No input available. Considering the answer is 'no'.")
                 return False
@@ -583,6 +635,72 @@ class NeuroSanRunner:
             self.flask_webclient_process.wait()
 
 
-if __name__ == "__main__":
+def main():
+    """Entry point for the `neuro-san-studio` console script.
+
+    Dispatches to the `run` or `init` subcommand. Invoking the script with no
+    subcommand (or with only `run`-style flags) starts the server directly (run).
+    """
+    parser = argparse.ArgumentParser(prog="neuro-san-studio", add_help=True)
+    subparsers = parser.add_subparsers(dest="command")
+    subparsers.add_parser("run", help="Start the Neuro SAN server and client (default)")
+    init_parser = subparsers.add_parser("init", help="Scaffold a starter project in the current directory")
+    init_parser.add_argument(
+        "--providers",
+        type=str,
+        default=None,
+        help="Comma-separated providers to enable (openai,anthropic,google). Skips the interactive prompt.",
+    )
+    check_config_parser = subparsers.add_parser("check-config", help="Validate LLM configurations in a HOCON file")
+    check_config_parser.add_argument(
+        "hocon_path",
+        nargs="?",
+        default=None,
+        metavar="HOCON_PATH",
+        help="Path to the HOCON file to validate. Defaults to config/llm_config.hocon.",
+    )
+    check_llm_keys_parser = subparsers.add_parser(
+        "check-llm-keys", help="Validate LLM API keys and other critical environment variables"
+    )
+    check_llm_keys_parser.add_argument(
+        "--tier",
+        type=int,
+        choices=[1, 2, 3],
+        default=3,
+        help="Validation tier: 1=placeholder detection, 2=format validation, 3=live API calls (default: 3)",
+    )
+
+    # Back-compat: if the first token is not a known subcommand, treat the invocation
+    # as `run` so existing usages like `neuro-san-studio --server-http-port 8080` still work.
+    argv = sys.argv[1:]
+    known_subcommands = {"run", "init", "check-config", "check-llm-keys"}
+    if argv and argv[0] not in known_subcommands and argv[0] not in {"-h", "--help"}:
+        argv = ["run", *argv]
+    args, remainder = parser.parse_known_args(argv)
+
+    if args.command == "init":
+        from neuro_san_studio.commands.init import InitCommand  # pylint: disable=import-outside-toplevel
+
+        InitCommand(providers_arg=args.providers).run()
+        return
+
+    if args.command == "check-config":
+        # pylint: disable-next=import-outside-toplevel
+        from neuro_san_studio.commands.check_config import CheckConfigCommand
+
+        sys.exit(CheckConfigCommand(hocon_path=args.hocon_path).run())
+
+    if args.command == "check-llm-keys":
+        # pylint: disable-next=import-outside-toplevel
+        from neuro_san_studio.commands.check_llm_keys import CheckLlmKeysCommand
+
+        sys.exit(CheckLlmKeysCommand(tier=args.tier).run())
+
+    # `run` (or bare). Restore sys.argv so NeuroSanRunner.parse_args() sees the remaining flags.
+    sys.argv = [sys.argv[0], *remainder]
     runner = NeuroSanRunner()
     runner.run()
+
+
+if __name__ == "__main__":
+    main()

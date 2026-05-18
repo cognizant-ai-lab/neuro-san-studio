@@ -23,7 +23,7 @@
 # and facts the user has shared. It is not for internal LLM state such as
 # tool call results, pass/fail outcomes, or execution traces.
 #
-# Persistent Memory — example agent network (middleware path).
+# Persistent Memory (Local) — example agent network using a file-backed store.
 #
 # A single ``middleware`` block is all you need. Drop it on any agent that
 # needs long-term memory, and the ``persistent_memory`` tool is registered
@@ -31,10 +31,12 @@
 #
 # Class path: middleware.persistent_memory.persistent_memory_middleware.PersistentMemoryMiddleware
 #
-# Backend selection happens via the ``memory_config.storage`` block in the
-# middleware ``args``. Two backends ship out of the box:
-#   - ``markdown_file``: one ``.md`` file per topic.
+# This network uses one of the two file-backed backends:
 #   - ``json_file``:     one ``memory.json`` per agent (the default).
+#   - ``markdown_file``: one ``.md`` file per topic.
+#
+# For the cloud-hosted Mem0 backend (per-user scoping, no local files), see
+# ``registries/tools/persistent_memory_mem0.hocon``.
 #
 # Scope: this is the *agent's* memory, not per-user memory. All users
 # sharing the same agent share the same memory namespace. Designed for
@@ -42,10 +44,8 @@
 # scope for this middleware.
 #
 # Lifecycle: write-per-call. Every tool call is a read-modify-write against
-# disk under a per-key ``asyncio.Lock``. Any topic longer than
-# ``max_topic_size`` characters is summarized inline, under the same lock
-# that performed the write, so concurrent readers never observe the
-# oversized intermediate content.
+# disk under a per-key ``asyncio.Lock``. Summarization is off by default;
+# enable it by adding the ``summarization`` block below.
 
 {
     include "registries/llm_config.hocon",
@@ -92,7 +92,7 @@ confirm or share the information — do not guess.
                         "origin_str": true,
                         # All memory settings live under a single ``memory_config`` block with three sub-keys.
                         "memory_config": {
-                            # Backend configuration.
+                            # Backend configuration (file-backed).
                             #   ``backend``:     ``json_file`` or ``markdown_file``.
                             #   ``folder_name``: where memory files are written, always resolved relative to the repo root.
                             #   ``file_name``:   JSON-only file stem; written to
@@ -102,14 +102,15 @@ confirm or share the information — do not guess.
                                 "folder_name": "memory",
                                 "file_name":   "memory"  # ignored by markdown_file backend
                             },
-                            # Summarizer configuration.
+                            # Summarizer configuration. Optional — omit the whole ``summarization`` block to
+                            # leave summarization off (the default).
                             #   ``max_topic_size``:  character threshold past which topics are summarized inline.
                             #   ``model``:           OpenAI model used by the summarizer, failures keep the original.
                             #   ``personalization``: optional sentence appended to the prompt.
                             "summarization": {
                                 "max_topic_size":  1000,
-                                "model":           "gpt-5.4-mini"
-                                # "personalization": "Write summaries in a warm, concise tone."
+                                "model":           "gpt-5.4-mini",
+                                "personalization": ""  # optional, e.g. "Write summaries in a warm, concise tone."
                             },
                             # Which operations the LLM may use. Leave empty to allow all six.
                             # Useful restrictions:

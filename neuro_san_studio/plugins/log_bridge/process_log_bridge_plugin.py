@@ -27,7 +27,7 @@ class ProcessLogBridgePlugin(BasePlugin, ProcessLoggerInterface):
     """
     Plugin wrapper for ProcessLogBridge.
 
-    Implements ProcessLoggerInterface so that neuro_san_studio/run.py can detect pipe draining
+    Implements ProcessLoggerInterface so that neuro_san_studio/commands/run.py can detect pipe draining
     via isinstance check and fall back to a simple logger if this plugin is disabled.
     """
 

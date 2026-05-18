@@ -22,8 +22,6 @@ Locks are per-topic, so different topics on the same agent can be written
 in parallel.
 """
 
-from __future__ import annotations
-
 import os
 import re
 from pathlib import Path
@@ -43,6 +41,11 @@ class MarkdownFileStore(TopicStore):
     _EXTENSION: ClassVar[str] = "md"
     # Runs of non-word / non-hyphen chars collapse to ``_`` for filenames.
     _UNSAFE_FILENAME: ClassVar[re.Pattern[str]] = re.compile(r"[^\w\-]")
+
+    def __init__(self, folder_name: str) -> None:
+        super().__init__()
+        self._root: Path = Path(folder_name).expanduser().resolve()
+        self.logger.info("Root path: %s", self._root)
 
     @override
     def _lock_key(self, namespace: str, topic: str) -> tuple[str, ...]:
@@ -64,45 +67,6 @@ class MarkdownFileStore(TopicStore):
         :return: The lock-cache key for list/search ops.
         """
         return ("md-list", namespace)
-
-    @override
-    async def load_all(self, namespace: str) -> TopicStore.AgentMemory:
-        """
-        Load every ``*.md`` file under the agent's directory.
-
-        Held under the agent-level list lock so the caller sees a consistent
-        snapshot: either the state before a concurrent ``save_all`` or the
-        state after, never a half-applied mix.
-
-        :param namespace: ``"<network>.<agent>"`` key.
-        :return: The agent's full ``{topic: content}`` dict.
-        """
-        async with await self._lock_for(self._list_lock_key(namespace)):
-            base: Path = self._agent_dir(namespace)
-            if not base.exists():
-                return {}
-            return await self._load_agent_dir(base)
-
-    @override
-    async def save_all(self, namespace: str, memory: TopicStore.AgentMemory) -> None:
-        """
-        Write each topic as its own ``.md`` file, deleting orphans.
-
-        Held under the agent-level list lock so the orphan sweep cannot race
-        with a concurrent ``set_topic`` — without it, a topic written just
-        before we snapshot ``expected`` could be deleted as an orphan.
-
-        :param namespace: ``"<network>.<agent>"`` key.
-        :param memory:    Full ``{topic: content}`` dict to persist.
-        """
-        async with await self._lock_for(self._list_lock_key(namespace)):
-            base: Path = self._agent_dir(namespace)
-            base.mkdir(parents=True, exist_ok=True)
-
-            expected: set[str] = {self._sanitize_filename(topic) + f".{self._EXTENSION}" for topic in memory}
-            self._remove_orphans(base, expected)
-            for topic, content in memory.items():
-                await self._write_topic_file(base, topic, content)
 
     @override
     async def _read_topic(self, namespace: str, topic: str) -> str | None:

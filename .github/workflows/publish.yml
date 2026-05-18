@@ -1,0 +1,48 @@
+name: Publish to PyPI
+
+permissions:
+    contents: read
+
+on:
+  release:
+    types: [published]  # Trigger only when a GitHub Release is published.
+
+jobs:
+  publish:
+    name: Build and Publish
+    # don't run this job in sync'd clones
+    if: github.repository == 'cognizant-ai-lab/neuro-san-studio'
+    runs-on: ubuntu-latest
+    environment: pypi  # Match this to your configured GitHub Environment.
+    permissions:
+      id-token: write  # Mandatory for PyPI Trusted Publishing
+      contents: read   # Required for actions/checkout
+
+    steps:
+      # v6.0.2
+      - name: Checkout code
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
+
+      - name: Setup Python environment
+        # 1.0.4
+        uses: cognizant-ai-lab/build-common/actions/setup-python-env@f5836555ee8e04413a8f9b313a431ab36337045b
+        with:
+          python-version: '3.10'
+          requirements-file: ''
+          requirements-build-file: ''
+          install-extras: 'build'
+
+      - name: Build wheel and sdist
+        run: python -m build
+
+      # v1.14.0
+      - name: Publish to PyPI
+        uses: pypa/gh-action-pypi-publish@cef221092ed1bacb1cc03d23a2d87d1d172e277b
+
+      - name: Notify Slack
+        if: ${{ !cancelled() }}
+        # 1.0.4
+        uses: cognizant-ai-lab/build-common/actions/slack-notify@f5836555ee8e04413a8f9b313a431ab36337045b
+        with:
+          status: ${{ job.status }}
+          webhook-url: ${{ secrets.SLACK_WEBHOOK_URL }}
