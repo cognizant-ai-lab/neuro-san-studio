@@ -41,7 +41,7 @@
             # This is to enable streaming_chat contents to thinking file for debug.
             # "chat_filter": "MAXIMAL",
 
-            # Using the sly_data to set a hard time
+            # Using the sly_data to set a hard time.
             "sly_data": {
                 "test_mode": true,
                 "time": "1 am"

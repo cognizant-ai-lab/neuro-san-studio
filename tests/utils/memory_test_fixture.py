@@ -245,9 +245,7 @@ class TestMemoryFixture:
         """
         parsed: Any = json.loads(path.read_text(encoding="utf-8"))
         if not isinstance(parsed, Mapping):
-            raise ValueError(
-                "Expected a JSON object in %s, got %s" % (path, type(parsed).__name__)
-            )
+            raise ValueError("Expected a JSON object in %s, got %s" % (path, type(parsed).__name__))
         return dict(parsed)
 
     @classmethod
