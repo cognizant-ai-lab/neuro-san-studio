@@ -118,7 +118,7 @@ This can be used to invoke the newly created network later on the same server/cl
                             "properties": {
                                 "openai_api_key": {
                                     "type": "string",
-                                    "description": "The User's OpenAI API key"
+                                    "description": "The user's OpenAI API key"
                                 }
                             },
                         },
