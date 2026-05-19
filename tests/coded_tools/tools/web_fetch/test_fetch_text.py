@@ -21,6 +21,7 @@ from unittest.mock import MagicMock
 
 from aiohttp import ClientError
 from aiohttp import ClientResponseError
+
 from neuro_san_studio.coded_tools.tools.web_fetch import WebFetch
 
 from .helpers import make_get_response
