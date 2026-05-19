@@ -105,7 +105,7 @@ def redact_llm_config(config: Dict[str, Any]) -> Dict[str, Any]:
     """
     redacted: Dict[str, Any] = {}
     for key, value in config.items():
-        if _is_sensitive_key(key):
+        if _is_sensitive_key(key) and value != "sly_data":
             redacted[key] = "***REDACTED***"
         elif isinstance(value, dict):
             redacted[key] = redact_llm_config(value)
@@ -136,6 +136,24 @@ def load_agent_network(hocon_path: str) -> AgentNetwork:
     restorer = AgentNetworkRestorer()
     agent_network: AgentNetwork = restorer.restore(file_reference=hocon_path)
     return agent_network
+
+
+def _uses_sly_data_marker(config: Dict[str, Any]) -> bool:
+    """Return True when *config* has any value equal to the literal string ``"sly_data"``.
+
+    Such a value indicates the field is meant to be sourced from runtime sly_data
+    (e.g. ``"openai_api_key": "sly_data"``) and cannot be validated statically.
+    """
+    for value in config.values():
+        if isinstance(value, str) and value == "sly_data":
+            return True
+        if isinstance(value, dict) and _uses_sly_data_marker(value):
+            return True
+        if isinstance(value, list):
+            for item in value:
+                if isinstance(item, dict) and _uses_sly_data_marker(item):
+                    return True
+    return False
 
 
 def _expand_fallbacks(label: str, llm_config: Dict[str, Any]) -> List[Tuple[str, Dict[str, Any]]]:
@@ -290,6 +308,12 @@ async def test_llm_configs(
         labels_str: str = ", ".join(labels)
         model_name: str = llm_cfg.get("model_name", "<not specified>")
         print(f"  Testing model '{model_name}' (used by: {labels_str})")
+
+        # Skip configs that rely on runtime sly_data (e.g. "openai_api_key": "sly_data").
+        # Those credentials are supplied per-request and cannot be validated here.
+        if _uses_sly_data_marker(llm_cfg):
+            print("    SKIP: config sources a value from sly_data at runtime.\n")
+            continue
 
         # Create the LLM instance
         try:
