@@ -21,7 +21,6 @@ from typing import Dict
 from typing import List
 
 from neuro_san.interfaces.coded_tool import CodedTool
-
 from neuro_san_studio.coded_tools.tools.gmail_attachment import GmailAttachment
 
 

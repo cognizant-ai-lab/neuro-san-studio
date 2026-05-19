@@ -18,7 +18,6 @@ import unittest
 from unittest import TestCase
 
 from dotenv import load_dotenv
-
 from neuro_san_studio.coded_tools.tools.agentforce.agentforce_adapter import AgentforceAdapter
 
 
