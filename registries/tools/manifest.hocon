@@ -132,7 +132,7 @@
     # File system-backed long-term memory tool (per-agent): CRUD + keyword search.
     # Supports two backends: JSON or Markdown.
     # See ``docs/examples/tools/persistent_memory_local.md`` for a usage example.
-    "tools/persistent_memory_local.hocon": true,
+    "tools/persistent_memory_local.hocon": false,
 
     # Cloud-backed long-term memory tool using the Mem0 API; per-user scoping via ``sly_data["user_id"]``.
     # Requirement to use this Mem0 based agent network:
