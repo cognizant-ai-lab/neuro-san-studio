@@ -5,7 +5,7 @@ Complete integration module for ServiceNow AI agents with the Neuro SAN framewor
 ## 📁 Module Structure
 
 ```
-neuro_san_studio/coded_tools/tools/now_agents/
+coded_tools/tools/now_agents/
 ├── __init__.py                              # Module initialization and exports
 ├── nowagent_api_get_agents.py              # Agent discovery functionality  
 ├── nowagent_api_send_message.py            # Message sending to agents
@@ -150,7 +150,7 @@ neuro_san_studio/coded_tools/tools/now_agents/
 
 ### Basic Agent Discovery
 ```python
-from neuro_san_studio.coded_tools.tools.now_agents import NowAgentAPIGetAgents
+from coded_tools.tools.now_agents import NowAgentAPIGetAgents
 
 # Initialize the discovery tool
 get_agents = NowAgentAPIGetAgents()
@@ -169,7 +169,7 @@ for agent in agents:
 
 ### Complete Agent Interaction Workflow
 ```python
-from neuro_san_studio.coded_tools.tools.now_agents import (
+from coded_tools.tools.now_agents import (
     NowAgentAPIGetAgents, 
     NowAgentSendMessage, 
     NowAgentRetrieveMessage
@@ -213,7 +213,7 @@ if agents:
 
 ### Error Handling Example
 ```python
-from neuro_san_studio.coded_tools.tools.now_agents import NowAgentAPIGetAgents
+from coded_tools.tools.now_agents import NowAgentAPIGetAgents
 
 try:
     get_agents = NowAgentAPIGetAgents()
@@ -262,7 +262,7 @@ OPENAI_API_KEY="your-openai-api-key"
 ### Comprehensive Test Suite
 The module includes a complete test suite with 100% code coverage:
 
-**Location**: `../../../../tests/coded_tools/tools/now_agents/`
+**Location**: `../../../tests/coded_tools/tools/now_agents/`
 
 **Structure**:
 ```
@@ -389,7 +389,7 @@ Result: {"result": []} (from retrieve_message)
 
 - [ServiceNow Agentic AI Documentation](https://docs.servicenow.com/bundle/vancouver-ai/page/administer/agentic-ai/concept/agentic-ai.html)
 - [ServiceNow REST API Reference](https://docs.servicenow.com/bundle/vancouver-application-development/page/integrate/inbound-rest/concept/c_RESTAPI.html)  
-- [Test Suite Documentation](../../../../tests/coded_tools/tools/now_agents/README.md)
+- [Test Suite Documentation](../../../tests/coded_tools/tools/now_agents/README.md)
 
 ---
 

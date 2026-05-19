@@ -59,7 +59,7 @@ python -m pytest tests/coded_tools/tools/now_agents/unit_tests/test_unit_message
 ### Unit Test Coverage Report
 ```bash
 # Generate detailed coverage report
-python -m pytest tests/coded_tools/tools/now_agents/unit_tests/ --cov=neuro_san_studio.coded_tools.tools.now_agents --cov-report=html
+python -m pytest tests/coded_tools/tools/now_agents/unit_tests/ --cov=coded_tools.tools.now_agents --cov-report=html
 # Open htmlcov/index.html for detailed report
 ```
 
@@ -175,7 +175,7 @@ If you encounter **403 Forbidden** errors when running integration tests:
 ### Unit Test Issues
 ```bash
 # If unit tests fail, check imports and paths
-python -c "from neuro_san_studio.coded_tools.tools.now_agents.nowagent_api_get_agents import NowAgentAPIGetAgents; print('Imports OK')"
+python -c "from coded_tools.tools.now_agents.nowagent_api_get_agents import NowAgentAPIGetAgents; print('Imports OK')"
 
 # Run with verbose output for debugging
 python -m pytest tests/coded_tools/tools/now_agents/unit_tests/ -v -s
@@ -209,7 +209,7 @@ ls .env && grep -E "SERVICENOW_(INSTANCE_URL|USER|PWD)" .env
 ### Before Committing
 ```bash
 # Ensure all unit tests pass with full coverage
-python -m pytest tests/coded_tools/tools/now_agents/unit_tests/ --cov=neuro_san_studio.coded_tools.tools.now_agents --cov-fail-under=100
+python -m pytest tests/coded_tools/tools/now_agents/unit_tests/ --cov=coded_tools.tools.now_agents --cov-fail-under=100
 
 # Test integration tests if ServiceNow access available
 python -m pytest tests/coded_tools/tools/now_agents/integration_tests/ -v
@@ -219,7 +219,7 @@ python -m pytest tests/coded_tools/tools/now_agents/integration_tests/ -v
 ```yaml
 # Example GitHub Actions configuration
 - name: Run Unit Tests
-  run: python -m pytest tests/coded_tools/tools/now_agents/unit_tests/ --cov=neuro_san_studio.coded_tools.tools.now_agents --cov-fail-under=100
+  run: python -m pytest tests/coded_tools/tools/now_agents/unit_tests/ --cov=coded_tools.tools.now_agents --cov-fail-under=100
 
 - name: Run Integration Tests
   run: python -m pytest tests/coded_tools/tools/now_agents/integration_tests/ -v

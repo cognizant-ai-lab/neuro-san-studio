@@ -64,7 +64,7 @@ SERVICENOW_GET_AGENTS_QUERY="active=true"
 ### Basic Agent Discovery
 
 ```python
-from neuro_san_studio.coded_tools.tools.now_agents import NowAgentAPIGetAgents
+from coded_tools.tools.now_agents import NowAgentAPIGetAgents
 
 # Discover available ServiceNow AI agents
 get_agents = NowAgentAPIGetAgents()
@@ -78,7 +78,7 @@ for agent in result['result']:
 ### Complete Agent Interaction
 
 ```python
-from neuro_san_studio.coded_tools.tools.now_agents import (
+from coded_tools.tools.now_agents import (
     NowAgentAPIGetAgents,
     NowAgentSendMessage, 
     NowAgentRetrieveMessage
@@ -137,7 +137,7 @@ The module includes comprehensive testing with 100% code coverage:
 python -m pytest tests/coded_tools/tools/now_agents/unit_tests/ -v
 
 # Generate coverage report  
-python -m pytest tests/coded_tools/tools/now_agents/unit_tests/ --cov=neuro_san_studio.coded_tools.tools.now_agents --cov-report=html
+python -m pytest tests/coded_tools/tools/now_agents/unit_tests/ --cov=coded_tools.tools.now_agents --cov-report=html
 ```
 
 ### Integration Tests (Real ServiceNow API)
@@ -214,7 +214,7 @@ python tests/coded_tools/tools/now_agents/integration_tests/debug_servicenow_cre
 ## Files Structure
 
 ```
-neuro_san_studio/coded_tools/tools/now_agents/
+coded_tools/tools/now_agents/
 ├── __init__.py                              # Module exports
 ├── nowagent_api_get_agents.py              # Agent discovery
 ├── nowagent_api_send_message.py            # Message sending  
@@ -232,7 +232,7 @@ tests/coded_tools/tools/now_agents/
 
 ## Learn More
 
-For complete implementation details, API reference, and advanced configuration options, see the [module documentation](../../../neuro_san_studio/coded_tools/tools/now_agents/README.md).
+For complete implementation details, API reference, and advanced configuration options, see the [module documentation](../../../coded_tools/tools/now_agents/README.md).
 
 ---
 
