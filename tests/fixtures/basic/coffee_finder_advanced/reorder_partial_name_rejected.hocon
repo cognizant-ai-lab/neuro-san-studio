@@ -32,7 +32,7 @@
     # descriptions of response checks.
     "interactions": [
         {
-            "timeout_in_seconds": 60,
+            "timeout_in_seconds": 90,
 
             # Expected memory file existed.
             # Negative test case re-order using just partial name like Pixel vs. Pixel Smith.

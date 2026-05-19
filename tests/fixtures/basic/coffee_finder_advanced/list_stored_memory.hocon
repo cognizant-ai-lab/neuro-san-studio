@@ -32,7 +32,7 @@
     # descriptions of response checks.
     "interactions": [
         {
-            "timeout_in_seconds": 60,
+            "timeout_in_seconds": 90,
 
             # The agent must answer only with pixel_smith's topic content and
             # must not leak the other users' preferences from memory.

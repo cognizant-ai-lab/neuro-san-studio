@@ -239,13 +239,17 @@ class MemoryTestFixture:
         return candidate.resolve()
 
     @classmethod
-    def _load_hocon(cls, path: Path) -> dict[str, Any]:
-        """Parse a HOCON sidecar file into a plain dict.
+    def _load_json(cls, path: Path) -> dict[str, Any]:
+        """Parse a JSON file into a plain dict."""
+        with path.open("r", encoding="utf-8") as handle:
+            result: Any = json.load(handle)
+        if not isinstance(result, Mapping):
+            raise ValueError("Expected a JSON object in %s, got %s" % (path, type(result).__name__))
+        return dict(result)
 
-        Raises on I/O errors, encoding problems, or malformed content
-        so broken sidecar files surface immediately instead of silently
-        passing tests.
-        """
+    @classmethod
+    def _load_hocon(cls, path: Path) -> dict[str, Any]:
+        """Parse a HOCON sidecar file into a plain dict."""
         parsed: Any = ConfigFactory.parse_file(str(path))
         result: dict[str, Any] = parsed.as_plain_ordered_dict()
         if not isinstance(result, Mapping):

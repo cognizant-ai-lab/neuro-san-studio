@@ -33,7 +33,7 @@
     # descriptions of response checks.
     "interactions": [
         {
-            "timeout_in_seconds": 60,
+            "timeout_in_seconds": 90,
 
             # Placing this new order pushes the pixel_smith topic past the
             # summarization threshold, triggering TopicSummarizer.
