@@ -18,7 +18,7 @@ from typing import Any
 
 from neuro_san.interfaces.coded_tool import CodedTool
 
-from coded_tools.anthropic_tool import AnthropicTool
+from neuro_san_studio.coded_tools.anthropic_tool import AnthropicTool
 
 WEB_SEARCH_TOOL_TYPE = "web_search_20250305"
 

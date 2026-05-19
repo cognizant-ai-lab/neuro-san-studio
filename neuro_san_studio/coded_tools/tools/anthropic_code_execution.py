@@ -25,7 +25,7 @@ from anthropic._response import BinaryAPIResponse
 from anthropic.types.beta.file_metadata import FileMetadata
 from neuro_san.interfaces.coded_tool import CodedTool
 
-from coded_tools.anthropic_tool import AnthropicTool
+from neuro_san_studio.coded_tools.anthropic_tool import AnthropicTool
 
 CODE_EXECUTION_TOOL_TYPE = "code_execution_20250522"
 CODE_EXECUTION_BETA = "code-execution-2025-05-22"

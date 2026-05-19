@@ -23,7 +23,7 @@ from typing import Any
 
 from neuro_san.interfaces.coded_tool import CodedTool
 
-from coded_tools.openai_tool import OpenAITool
+from neuro_san_studio.coded_tools.openai_tool import OpenAITool
 
 
 class OpenAIImageGeneration(CodedTool):
