@@ -22,7 +22,7 @@ from neuro_san.internals.graph.activations.branch_activation import BranchActiva
 
 from coded_tools.experimental.mdap_decomposer.neuro_san_solver import NeuroSanSolver
 from coded_tools.experimental.mdap_decomposer.solver_parsing import SolverParsing
-from coded_tools.tools.coded_tool_agent_caller import CodedToolAgentCaller
+from neuro_san_studio.coded_tools.tools.coded_tool_agent_caller import CodedToolAgentCaller
 
 
 # pylint: disable=too-many-ancestors
