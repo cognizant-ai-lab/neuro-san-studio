@@ -27,13 +27,15 @@ from typing import Any
 from typing import ClassVar
 from unittest import TestCase
 
+from pyhocon import ConfigFactory
+
 
 class MemoryTestFixture:
     """Per-test seeder / asserter / cleaner for the live memory file.
 
     Sidecars next to the test HOCON:
-      ``<hocon>.initial_memory.json``  — flat ``{topic: content}`` seed.
-      ``<hocon>.expected_memory.json`` — assertion schema (see
+      ``<hocon>.initial_memory.hocon``  — flat ``{topic: content}`` seed.
+      ``<hocon>.expected_memory.hocon`` — assertion schema (see
       :py:meth:`assert_matches_expected`).
 
     Use as a context manager around the agent call::
@@ -48,8 +50,8 @@ class MemoryTestFixture:
     # agent's writes target the same file.
     MEMORY_ROOT_DIR: ClassVar[str] = "memory/test"
     DEFAULT_FILE_NAME: ClassVar[str] = "memory"
-    INITIAL_SIDECAR_SUFFIX: ClassVar[str] = ".initial_memory.json"
-    EXPECTED_SIDECAR_SUFFIX: ClassVar[str] = ".expected_memory.json"
+    INITIAL_SIDECAR_SUFFIX: ClassVar[str] = ".initial_memory.hocon"
+    EXPECTED_SIDECAR_SUFFIX: ClassVar[str] = ".expected_memory.hocon"
 
     def __init__(
         self,
@@ -74,12 +76,12 @@ class MemoryTestFixture:
 
     @property
     def initial_sidecar(self) -> Path | None:
-        """``<hocon>.initial_memory.json`` path, or ``None``."""
+        """``<hocon>.initial_memory.hocon`` path, or ``None``."""
         return self._sidecar(self.INITIAL_SIDECAR_SUFFIX)
 
     @property
     def expected_sidecar(self) -> Path | None:
-        """``<hocon>.expected_memory.json`` path, or ``None``."""
+        """``<hocon>.expected_memory.hocon`` path, or ``None``."""
         return self._sidecar(self.EXPECTED_SIDECAR_SUFFIX)
 
     @property
@@ -99,7 +101,8 @@ class MemoryTestFixture:
         source: Path | None = self._resolve_seed_source()
         if source is None:
             return
-        live.write_bytes(source.read_bytes())
+        seed_data: dict[str, Any] = self._load_hocon(source)
+        live.write_text(json.dumps(seed_data, ensure_ascii=False, indent=2), encoding="utf-8")
 
     def teardown(self) -> None:
         """Remove the live memory folder."""
@@ -122,7 +125,7 @@ class MemoryTestFixture:
         sidecar: Path | None = self.expected_sidecar
         if sidecar is None or not sidecar.is_file():
             return
-        expected: dict[str, Any] = self._load_json(sidecar)
+        expected: dict[str, Any] = self._load_hocon(sidecar)
         actual: dict[str, Any] = self._load_live_memory()
 
         self._assert_topics_present(test_case, expected.get("topics_present") or {}, actual)
@@ -236,17 +239,18 @@ class MemoryTestFixture:
         return candidate.resolve()
 
     @classmethod
-    def _load_json(cls, path: Path) -> dict[str, Any]:
-        """Parse JSON from *path* into a dict.
+    def _load_hocon(cls, path: Path) -> dict[str, Any]:
+        """Parse a HOCON sidecar file into a plain dict.
 
-        Raises on I/O errors, encoding problems, malformed JSON, or
-        non-object top-level values so broken sidecar files surface
-        immediately instead of silently passing tests.
+        Raises on I/O errors, encoding problems, or malformed content
+        so broken sidecar files surface immediately instead of silently
+        passing tests.
         """
-        parsed: Any = json.loads(path.read_text(encoding="utf-8"))
-        if not isinstance(parsed, Mapping):
-            raise ValueError("Expected a JSON object in %s, got %s" % (path, type(parsed).__name__))
-        return dict(parsed)
+        parsed: Any = ConfigFactory.parse_file(str(path))
+        result: dict[str, Any] = parsed.as_plain_ordered_dict()
+        if not isinstance(result, Mapping):
+            raise ValueError("Expected a HOCON object in %s, got %s" % (path, type(result).__name__))
+        return dict(result)
 
     @classmethod
     def _infer_repo_root(cls) -> Path:

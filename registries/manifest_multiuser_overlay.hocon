@@ -51,6 +51,7 @@
     "agent_network_designer.hocon": true,               # Reason #1. Needs AGENT_NETWORK_DESIGNER_USE_RESERVATIONS=true
 
     # Demos
+    "basic/coffee_finder_advanced.hocon": false,        # Reason #1
 
     "tools/now_agents.hocon": false,                    # Reason #2
     "experimental/cruse_theme_agent.hocon": {

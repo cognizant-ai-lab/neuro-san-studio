@@ -16,6 +16,11 @@
 
 """
 Factory that builds a concrete ``TopicStore`` from a raw HOCON ``storage`` dict.
+
+Note: The file-system backends (``json_file``, ``markdown_file``) store data on
+the server's local disk and are intended for single-developer / demo use only.
+They do not scale to multi-user deployments.  A distributed persistence layer
+(e.g. S3) should replace them before any shared-server rollout.
 """
 
 import logging
