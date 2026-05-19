@@ -30,7 +30,7 @@ from langchain_core.documents import Document
 from neuro_san.interfaces.coded_tool import CodedTool
 from requests.exceptions import HTTPError
 
-from neuro_san_studio.coded_tools.tools.base_rag import BaseRag
+from neuro_san_studio.coded_tools.base_rag import BaseRag
 
 INVALID_PATH_PATTERN = r"[<>:\"|?*\x00-\x1F]"
 

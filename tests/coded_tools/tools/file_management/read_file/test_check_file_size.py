@@ -19,8 +19,8 @@ from pathlib import Path
 from unittest import TestCase
 from unittest.mock import patch
 
-from neuro_san_studio.coded_tools.tools.file_management.read_file import MAX_FILE_BYTES
-from neuro_san_studio.coded_tools.tools.file_management.read_file import ReadFile
+from neuro_san_studio.coded_tools.file_management.read_file import MAX_FILE_BYTES
+from neuro_san_studio.coded_tools.file_management.read_file import ReadFile
 
 
 class TestCheckFileSize(TestCase):

@@ -20,7 +20,7 @@ from langchain_core.callbacks import CallbackManagerForRetrieverRun
 from langchain_core.documents import Document
 from langchain_core.retrievers import BaseRetriever
 
-from neuro_san_studio.coded_tools.tools.modified_arxiv_api_wrapper import ModifiedArxivAPIWrapper
+from neuro_san_studio.coded_tools.modified_arxiv_api_wrapper import ModifiedArxivAPIWrapper
 
 
 class ModifiedArxivRetriever(BaseRetriever, ModifiedArxivAPIWrapper):

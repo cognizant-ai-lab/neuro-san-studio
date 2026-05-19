@@ -14,34 +14,35 @@
 #
 # END COPYRIGHT
 
-"""Tool module for doing RAG from a pdf file"""
-
 import logging
 import os
 from typing import Any
-from typing import Dict
-from typing import List
 
-from langchain_community.document_loaders import PyMuPDFLoader
 from langchain_core.documents import Document
 from langchain_core.vectorstores import VectorStore
-from neuro_san.interfaces.coded_tool import CodedTool
 
-from neuro_san_studio.coded_tools.tools.base_rag import BaseRag
-from neuro_san_studio.coded_tools.tools.base_rag import PostgresConfig
+# pylint: disable=import-error
+from langchain_docling import DoclingLoader
+from neuro_san.interfaces.coded_tool import CodedTool
+from requests.exceptions import HTTPError
+
+from neuro_san_studio.coded_tools.base_rag import BaseRag
+from neuro_san_studio.coded_tools.base_rag import PostgresConfig
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 
-class PdfRag(CodedTool, BaseRag):
+class DoclingRag(CodedTool, BaseRag):
     """
-    CodedTool implementation which provides a way to do RAG on pdf files
+    CodedTool implementation which provides a way to do RAG on multiple file formats.
     """
 
-    async def async_invoke(self, args: Dict[str, Any], sly_data: Dict[str, Any]) -> str:
+    async def async_invoke(self, args: dict[str, Any], sly_data: dict[str, Any]) -> str:
         """
-        Load a PDF from URL, build a vector store, and run a query against it.
+        Load documents from URL using DoclingLoader, build a vector store, and run a query against it.
+        See https://python.langchain.com/docs/integrations/document_loaders/docling/ and
+        https://docling-project.github.io/docling/
 
         :param args: Dictionary containing:
           "query": search string
@@ -67,7 +68,7 @@ class PdfRag(CodedTool, BaseRag):
         """
         # Extract arguments from the input dictionary
         query: str = args.get("query", "")
-        urls: List[str] = args.get("urls", [])
+        urls: list[str] = args.get("urls", [])
 
         # Validate presence of required inputs
         if not query:
@@ -105,25 +106,26 @@ class PdfRag(CodedTool, BaseRag):
         # Run the query against the vector store
         return await self.query_vectorstore(vector_store, query)
 
-    async def load_documents(self, loader_args: Dict[str, Any]) -> List[Document]:
+    async def load_documents(self, loader_args: dict[str, Any]) -> list[Document]:
         """
-        Load PDF documents from URLs.
+        Load documents from URLs.
 
-        :param loader_args: Dictionary containing 'urls' (list of PDF file URLs)
-        :return: List of loaded PDF documents
+        :param loader_args: Dictionary containing 'urls' (list of file URLs)
+        :return: List of loaded documents
         """
-        docs: List[Document] = []
-        urls: List[str] = loader_args.get("urls", [])
+        docs: list[Document] = []
+        urls: list[str] = loader_args.get("urls", [])
 
-        for url in urls:
+        loader = DoclingLoader(file_path=urls)
+        async for doc in loader.alazy_load():
             try:
-                loader = PyMuPDFLoader(file_path=url)
-                doc: List[Document] = await loader.aload()
-                docs.extend(doc)
-                logger.info("Successfully loaded PDF file from %s", url)
-            except FileNotFoundError:
-                logger.error("File not found: %s", url)
-            except ValueError as e:
-                logger.error("Invalid file path or unsupported input: %s – %s", url, e)
+                docs.append(doc)
+                logger.info("Successfully loaded PDF file from %s", doc.metadata.get("source", "unknown source"))
+            except HTTPError as http_e:
+                logger.error("HTTP error occurred: %s", http_e)
+            except FileNotFoundError as fnf_e:
+                logger.error("File not found: %s", fnf_e)
+            except ValueError as val_e:
+                logger.error("Value error: %s", val_e)
 
         return docs

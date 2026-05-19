@@ -20,8 +20,8 @@ from typing import Dict
 
 from neuro_san.interfaces.coded_tool import CodedTool
 
-from neuro_san_studio.coded_tools.tools.base_rag import BaseRag
-from neuro_san_studio.coded_tools.tools.modified_arxiv_retriever import ModifiedArxivRetriever
+from neuro_san_studio.coded_tools.base_rag import BaseRag
+from neuro_san_studio.coded_tools.modified_arxiv_retriever import ModifiedArxivRetriever
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)

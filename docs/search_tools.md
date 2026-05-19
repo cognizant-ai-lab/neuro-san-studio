@@ -30,7 +30,7 @@ langchain-anthropic>=0.3.13 installed in your virtual environment.
 
 _Example Usage in Neuro San Studio_:
 
-- [anthropic\_web_search.hocon](../neuro_san_studio/coded_tools/tools/anthropic_web_search.py),
+- [anthropic\_web_search.hocon](../neuro_san_studio/coded_tools/anthropic_web_search.py),
 - available as a tool in [toolbox_info.hocon](../neuro_san_studio/toolbox/toolbox_info.hocon)
 
 ## Brave Search

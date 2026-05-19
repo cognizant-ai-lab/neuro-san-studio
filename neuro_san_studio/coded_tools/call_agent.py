@@ -22,7 +22,7 @@ from typing import Union
 from neuro_san.interfaces.coded_tool import CodedTool
 from neuro_san.internals.graph.activations.branch_activation import BranchActivation
 
-from neuro_san_studio.coded_tools.tools.coded_tool_agent_caller import CodedToolAgentCaller
+from neuro_san_studio.coded_tools.coded_tool_agent_caller import CodedToolAgentCaller
 
 logger = logging.getLogger(__name__)
 
