@@ -20,8 +20,8 @@ from typing import Any
 
 from neuro_san.internals.graph.activations.branch_activation import BranchActivation
 
-from neuro_san_studio.coded_tools.solver_parsing import SolverParsing
 from neuro_san_studio.coded_tools.agent_caller import AgentCaller
+from neuro_san_studio.coded_tools.solver_parsing import SolverParsing
 
 
 class CodedToolAgentCaller(AgentCaller):
