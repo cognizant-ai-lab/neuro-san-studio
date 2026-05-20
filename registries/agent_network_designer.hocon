@@ -108,7 +108,20 @@ This can be used to invoke the newly created network later on the same server/cl
                         "skip_designer": {
                             "type": "boolean",
                             "description": "Use this key when you want to persist the agent network definition without having the LLM make any modifications."
-                        }
+                        },
+
+                        # Optionally provide an OpenAI API key via sly_data, paired with
+                        # "openai_api_key": "sly_data" in `config/llm_config.hocon`.
+                        # Falls back to the OPENAI_API_KEY environment variable if omitted.
+                        "llm_config": {
+                            "type": "object",
+                            "properties": {
+                                "openai_api_key": {
+                                    "type": "string",
+                                    "description": "The user's OpenAI API key"
+                                }
+                            },
+                        },
                     }
                     # Note: Neither of these fields are strictly required in order to kick off creating a new network.
                 },

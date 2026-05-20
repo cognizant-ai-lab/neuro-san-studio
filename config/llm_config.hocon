@@ -48,8 +48,21 @@
         #   - https://github.com/cognizant-ai-lab/neuro-san/blob/main/neuro_san/internals/run_context/langchain/llms/default_llm_info.hocon
         #   - https://github.com/cognizant-ai-lab/neuro-san/blob/main/docs/agent_hocon_reference.md#llm_config
 
-        "class": "openai",
-        "model_name": "gpt-5.2",
+        "fallbacks": [
+            {   
+                "class": "openai",
+                "model_name": "gpt-5.2",
+
+                # Requires the user to supply an OpenAI API key via sly_data to operate.
+                # Without it, this fallback will be skipped.
+                "openai_api_key": "sly_data"
+            },
+            {
+                # Falls back to the OPENAI_API_KEY environment variable instead of sly_data.
+                "class": "openai",
+                "model_name": "gpt-5.2",
+            }
+        ]
 
     }
 }
