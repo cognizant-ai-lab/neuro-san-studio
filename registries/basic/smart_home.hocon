@@ -30,6 +30,16 @@
 
     include "registries/aaosa.hocon"
 
+    "metadata": {
+        "description": "Multi-agent smart home system that uses AAOSA to control household devices such as the TV, kitchen lights, living room lights, radio, and more. Each device is managed by a dedicated agent backed by coded tools.",
+        "tags": ["AAOSA", "tool"],
+        "sample_queries": [
+            "Turn on the TV",
+            "Turn off the kitchen lights",
+            "Turn on all the lights in the house",
+        ]
+    },
+
     # A key-value for substitution can also be defined inside the hocon file.
     "instructions_prefix": """
 You are part of a smart home network of assistants.
