@@ -165,8 +165,10 @@ This is a good example to:
 - Learn how agents can ask for clarification and follow up with questions.
 - Learn how to use tools to call Python code.
 - Learn how agents can ask for additional information.
+- Learn how to use `PersistentMemoryMiddleware` for cross-session memory.
+- Learn how to support memory deletion (forget flows).
 
-**Tags:** `AAOSA` `tool` `time` `sly_data` `memory`
+**Tags:** `AAOSA` `tool` `time` `sly_data` `persistent_memory`
 
 ### PII Middleware
 
