@@ -53,6 +53,7 @@ RUN if [ -f ${APP_SOURCE}/requirements.txt ]; \
 # Install plugin dependencies.
 # To install additional plugins, add more lines following this pattern:
 #   pip install --prefix=/install --no-cache-dir -r ${APP_SOURCE}/neuro_san_studio/plugins/<plugin>/requirements.txt
+# hadolint ignore=DL3059
 RUN pip install --prefix=/install --no-cache-dir \
     -r ${APP_SOURCE}/neuro_san_studio/plugins/langfuse/requirements.txt
 
@@ -437,4 +438,4 @@ ENV AGENT_NETWORK_DESIGNER_MANIFEST_FILE="registries/manifest_and.hocon"
 # Defaults to "neuro_san_studio/toolbox/agent_network_designer_toolbox_info.hocon" if not set.
 ENV AGENT_NETWORK_DESIGNER_TOOLBOX_INFO_FILE="neuro_san_studio/toolbox/agent_network_designer_toolbox_info.hocon"
 
-ENTRYPOINT "${APP_ENTRYPOINT}"
+ENTRYPOINT ["/bin/bash", "-c", "exec ${APP_ENTRYPOINT}"]
