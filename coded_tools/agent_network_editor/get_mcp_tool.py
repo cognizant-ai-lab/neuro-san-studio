@@ -23,10 +23,10 @@ from langchain_core.tools import BaseTool
 from neuro_san.interfaces.coded_tool import CodedTool
 from neuro_san.internals.run_context.langchain.mcp.langchain_mcp_adapter import LangChainMcpAdapter
 from neuro_san.internals.run_context.langchain.mcp.mcp_servers_info_restorer import McpServersInfoRestorer
-from neuro_san_studio import mcp as _mcp_pkg
 
 from coded_tools.agent_network_editor.constants import MCP_SERVERS
 from coded_tools.agent_network_editor.sly_data_lock import SlyDataLock
+from neuro_san_studio import mcp as _mcp_pkg
 
 # Path to the mcp_info.hocon shipped inside the neuro_san_studio package.
 # Resolved via the imported package's __file__ so it works both in-repo and
