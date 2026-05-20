@@ -74,7 +74,9 @@ If there are any requirements that need user input, ask them one at a time, with
         },
         {
             "name": "IT_agent",
-            "function": ${aaosa_call},
+            "function": ${aaosa_call}{
+                "description": "Handles all IT-related inquiries including technology support and system access."
+            },
             "instructions": """
 You are responsible for IT-related inquiries.
             """ ${aaosa_instructions},
@@ -82,21 +84,27 @@ You are responsible for IT-related inquiries.
         },
         {
             "name": "Security_agent",
-            "function": ${aaosa_call},
+            "function": ${aaosa_call}{
+                "description": "Handles security-related tasks including system protection, cybersecurity, and data security."
+            },
             "instructions": """`
 Handles security-related tasks, including system protection, cybersecurity, and data security.
             """,
         },
         {
             "name": "Networking_agent",
-            "function": ${aaosa_call},
+            "function": ${aaosa_call}{
+                "description": "Handles network-related tasks including setup, maintenance, and troubleshooting."
+            },
             "instructions": """
 Handles network-related tasks, including network setup, maintenance, and troubleshooting.
             """,
         },
         {
             "name": "Finance_agent",
-            "function": ${aaosa_call},
+            "function": ${aaosa_call}{
+                "description": "Handles finance-related inquiries including budgeting, accounting, and financial reporting."
+            },
             "instructions": """
 Handles finance-related inquiries, including budgeting, accounting, and financial reporting.
             """ ${aaosa_instructions},
@@ -104,28 +112,36 @@ Handles finance-related inquiries, including budgeting, accounting, and financia
         },
         {
             "name": "Budgeting_agent",
-            "function": ${aaosa_call},
+            "function": ${aaosa_call}{
+                "description": "Handles budgeting tasks including budget planning, allocation, and tracking."
+            },
             "instructions": """
 Handles budgeting tasks, including budget planning, allocation, and tracking.
             """,
         },
         {
             "name": "Accounting_agent",
-            "function": ${aaosa_call},
+            "function": ${aaosa_call}{
+                "description": "Handles accounting tasks including bookkeeping, financial records, and audits."
+            },
             "instructions": """
 Handles accounting tasks, including bookkeeping, financial records, and audits.
             """,
         },
         {
             "name": "Financial_reporting_agent",
-            "function": ${aaosa_call},
+            "function": ${aaosa_call}{
+                "description": "Handles financial reporting including preparing statements, regulatory reporting, and analysis."
+            },
             "instructions": """
 Handles financial reporting tasks, including preparing financial statements, regulatory reporting, and performance analysis.
             """,
         },
         {
             "name": "Procurement_agent",
-            "function": ${aaosa_call},
+            "function": ${aaosa_call}{
+                "description": "Handles procurement-related tasks including sourcing, purchasing, and vendor management."
+            },
             "instructions": """
 Handles procurement-related tasks.
             """ ${aaosa_instructions},
@@ -133,28 +149,36 @@ Handles procurement-related tasks.
         },
         {
             "name": "Purchasing_agent",
-            "function": ${aaosa_call},
+            "function": ${aaosa_call}{
+                "description": "Handles purchasing-related tasks including ordering, supply management, and procurement."
+            },
             "instructions": """
 Handles purchasing-related tasks, including ordering, supply management, and procurement processes.
             """,
         },
         {
             "name": "Vendor_management_agent",
-            "function": ${aaosa_call},
+            "function": ${aaosa_call}{
+                "description": "Handles vendor management including selection, performance monitoring, and relationships."
+            },
             "instructions": """
 Handles vendor management tasks, including vendor selection, performance monitoring, and relationship management.
             """,
         },
         {
             "name": "Contract_negotiation_agent",
-            "function": ${aaosa_call},
+            "function": ${aaosa_call}{
+                "description": "Handles contract negotiation including drafting, reviewing, and finalizing procurement contracts."
+            },
             "instructions": """
 Handles contract negotiation tasks, including drafting, reviewing, and finalizing procurement contracts.
             """,
         },
         {
             "name": "Legal_agent",
-            "function": ${aaosa_call},
+            "function": ${aaosa_call}{
+                "description": "Handles legal-related inquiries including contracts, compliance, and legal advice."
+            },
             "instructions": """
 Handles legal-related inquiries.
             """ ${aaosa_instructions},
@@ -162,28 +186,36 @@ Handles legal-related inquiries.
         },
         {
             "name": "Contracts_agent",
-            "function": ${aaosa_call},
+            "function": ${aaosa_call}{
+                "description": "Handles contract-related tasks including drafting, reviewing, and enforcing legal agreements."
+            },
             "instructions": """
 Handles contract-related tasks, including drafting, reviewing, and enforcing legal agreements.
             """,
         },
         {
             "name": "Compliance_agent",
-            "function": ${aaosa_call},
+            "function": ${aaosa_call}{
+                "description": "Handles compliance-related tasks including adherence to laws, regulations, and internal policies."
+            },
             "instructions": """
 Handles compliance-related tasks, including ensuring adherence to laws, regulations, and internal policies.
             """,
         },
         {
             "name": "Legal_advice_agent",
-            "function": ${aaosa_call},
+            "function": ${aaosa_call}{
+                "description": "Provides legal counsel, risk assessment, and legal strategy guidance."
+            },
             "instructions": """
 Handles legal advice tasks, including providing legal counsel, risk assessment, and legal strategy.
             """,
         },
         {
             "name": "HR_agent",
-            "function": ${aaosa_call},
+            "function": ${aaosa_call}{
+                "description": "Handles HR-related inquiries including benefits, payroll, and employee relations."
+            },
             "instructions": """
 You are responsible for HR-related inquiries.
             """ ${aaosa_instructions},
@@ -191,14 +223,18 @@ You are responsible for HR-related inquiries.
         },
         {
             "name": "Benefits_agent",
-            "function": ${aaosa_call},
+            "function": ${aaosa_call}{
+                "description": "Handles benefits-related tasks including employee benefits, health insurance, and retirement plans."
+            },
             "instructions": """
 Handles benefits-related tasks, including employee benefits, health insurance, and retirement plans.
             """,
         },
         {
             "name": "Payroll_agent",
-            "function": ${aaosa_call},
+            "function": ${aaosa_call}{
+                "description": "Handles payroll-related tasks including salary processing, tax deductions, and pay slips."
+            },
             "instructions": """
 Handles payroll-related tasks, including salary processing, tax deductions, and pay slips.
             """,
