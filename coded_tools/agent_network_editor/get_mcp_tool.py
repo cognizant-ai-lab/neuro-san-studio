@@ -27,7 +27,7 @@ from coded_tools.agent_network_editor.constants import MCP_SERVERS
 from coded_tools.agent_network_editor.sly_data_lock import SlyDataLock
 
 # Use deepwiki MCP server as default since it is free and does not require authorization.
-DEFAULT_MCP_INFO_FILE = os.path.join("mcp", "mcp_info.hocon")
+DEFAULT_MCP_INFO_FILE = os.path.join("neuro_san_studio", "mcp", "mcp_info.hocon")
 logger = logging.getLogger(__name__)
 
 

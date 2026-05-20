@@ -108,7 +108,6 @@ COPY ./toolbox ${APP_SOURCE}/toolbox
 COPY ./middleware ${APP_SOURCE}/middleware
 COPY ./deploy/entrypoint.sh ${APP_SOURCE}/deploy/entrypoint.sh
 COPY ./deploy/logging.hocon ${APP_SOURCE}/deploy/logging.hocon
-COPY ./mcp/mcp_info.hocon ${APP_SOURCE}/mcp/mcp_info.hocon
 COPY ./config ${APP_SOURCE}/config
 # To override the default LLM configuration at runtime, mount your custom
 # llm_config.hocon using a Docker volume, e.g.:
@@ -337,7 +336,7 @@ ENV AGENT_RESERVATIONS_S3_BUCKET=""
 
 # A hocon file with MCP servers information to be used by LangChainMcpAdapter
 # for connecting to external MCP servers with authentication and tool filtering.
-ENV MCP_SERVERS_INFO_FILE="mcp/mcp_info.hocon"
+ENV MCP_SERVERS_INFO_FILE="${APP_SOURCE}/neuro_san_studio/mcp/mcp_info.hocon"
 
 # When set, this parameter enables MCP service protocol for running neuro-san server.
 # Service endpoint is http://host:port/mcp
