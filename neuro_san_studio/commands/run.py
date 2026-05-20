@@ -148,13 +148,13 @@ class NeuroSanRunner:
     def _resolve_mcp_info_file(self) -> str:
         """Resolve the MCP servers info file path.
 
-        Precedence:
-          1. MCP_SERVERS_INFO_FILE env var (used verbatim).
+        Precedence (matches GetMcpTool.get_mcp_info_file):
+          1. MCP_SERVERS_INFO_FILE env var (used verbatim if non-empty).
           2. <root>/mcp/mcp_info.hocon if it exists (what `init` scaffolds into a user project).
           3. The mcp_info.hocon shipped inside the neuro_san_studio package.
         """
         env_value = os.getenv("MCP_SERVERS_INFO_FILE")
-        if env_value is not None:
+        if env_value:
             return env_value
         scaffolded_path = os.path.join(self.root_dir, "mcp", "mcp_info.hocon")
         if os.path.isfile(scaffolded_path):
