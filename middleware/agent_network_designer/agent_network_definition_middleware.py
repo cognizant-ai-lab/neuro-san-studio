@@ -39,6 +39,9 @@ from langchain_core.messages import BaseMessage
 from langchain_core.messages import SystemMessage
 from neuro_san.interfaces.agent_progress_reporter import AgentProgressReporter
 from neuro_san.internals.persistence.abstract_async_config_restorer import AbstractAsyncConfigRestorer
+from neuro_san.internals.validation.network.function_parameters_network_validator import (
+    FunctionParametersNetworkValidator,
+)
 from neuro_san.service.watcher.temp_networks.s3_reservations_storage import S3ReservationsStorage
 from pyparsing.exceptions import ParseException
 
@@ -518,6 +521,14 @@ class AgentNetworkDefinitionMiddleware(AgentMiddleware):
         if not isinstance(agents, list):
             msg: str = "No field 'tools' found" if agents is None else "The 'tools' field is not a list"
             error_message: str = f"Error: {msg} in config from {source}."
+            self.logger.error(error_message)
+            self.error_message = error_message
+            return None
+
+        validation_errors: list[str] = FunctionParametersNetworkValidator().validate(config)
+        if validation_errors:
+            formatted: str = "\n".join(f"- {msg}" for msg in validation_errors)
+            error_message = f"Error: Invalid agent network config from '{source}':\n{formatted}"
             self.logger.error(error_message)
             self.error_message = error_message
             return None
