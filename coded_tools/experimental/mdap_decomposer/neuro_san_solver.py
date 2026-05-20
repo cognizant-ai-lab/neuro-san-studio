@@ -20,7 +20,7 @@ from asyncio import gather
 from typing import Any
 
 from coded_tools.experimental.mdap_decomposer.first_to_k_voter import FirstToKVoter
-from coded_tools.experimental.mdap_decomposer.solver_parsing import SolverParsing
+from neuro_san_studio.coded_tools.solver_parsing import SolverParsing
 from coded_tools.experimental.mdap_decomposer.voter import Voter
 from neuro_san_studio.coded_tools.agent_caller import AgentCaller
 
