@@ -92,8 +92,8 @@ At the start of each session, the editor always call the following functions to 
 
 - `get_mcp_tool`
     — returns a dictionary of MCP server URLs and the capabilities of tools provided by each server.
-    - The available MCP servers can be set with environment variable `MCP_CLIENTS_INFO_FILE`. If not provided,
-    [mcp_info.hocon](../../mcp/mcp_info.hocon) will be used.
+    - The available MCP servers can be set with environment variable `MCP_SERVERS_INFO_FILE`. If not provided,
+    [mcp_info.hocon](../../neuro_san_studio/mcp/mcp_info.hocon) will be used.
 
 These sources define what can be included in the agent network.
 

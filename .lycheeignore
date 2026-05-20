@@ -31,3 +31,7 @@ file://.*%7B%7B.*%7D%7D
 
 # Shell/template variable URLs (lychee cannot resolve these)
 https://go.dev/dl/go\$
+
+# Temporary: this PR moves mcp_info.hocon under neuro_san_studio/. The URL
+# will resolve after merge to main. Safe to remove this line then.
+https://github.com/cognizant-ai-lab/neuro-san-studio/blob/main/neuro_san_studio/mcp/mcp_info.hocon

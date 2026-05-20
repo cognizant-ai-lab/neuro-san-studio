@@ -18,7 +18,6 @@
 
 from mcp.server.fastmcp import FastMCP
 
-
 mcp = FastMCP("BMI", port=8000)
 
 
