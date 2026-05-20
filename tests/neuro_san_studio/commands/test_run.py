@@ -94,10 +94,10 @@ class TestNeuroSanRunner:
         assert runner._resolve_toolbox_info_file() == "/custom/path/toolbox.hocon"
 
     def test_toolbox_default_path_used_when_file_exists(self, monkeypatch: MonkeyPatch, tmp_path: Path) -> None:
-        """With no env var, fall back to <root>/toolbox/toolbox_info.hocon if it exists."""
+        """With no env var, fall back to <root>/neuro_san_studio/toolbox/toolbox_info.hocon if it exists."""
         monkeypatch.delenv("AGENT_TOOLBOX_INFO_FILE", raising=False)
-        toolbox_dir = tmp_path / "toolbox"
-        toolbox_dir.mkdir()
+        toolbox_dir = tmp_path / "neuro_san_studio" / "toolbox"
+        toolbox_dir.mkdir(parents=True)
         toolbox_file = toolbox_dir / "toolbox_info.hocon"
         toolbox_file.write_text("{}\n", encoding="utf-8")
         runner = self._make_runner()

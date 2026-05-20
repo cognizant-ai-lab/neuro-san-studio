@@ -6,11 +6,11 @@
         "docs",
         "mcp",
         "middleware",
-        "plugins",
+        "neuro_san_studio/plugins",
         "registries",
         "servers",
         "skills",
         "tests",
-        "toolbox"
+        "neuro_san_studio/toolbox"
     ]
 }
