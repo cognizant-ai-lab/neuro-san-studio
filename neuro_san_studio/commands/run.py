@@ -142,6 +142,9 @@ class NeuroSanRunner:
             return default_path
         return ""
 
+    # TODO: This duplicates GetMcpTool.get_mcp_info_file in
+    # coded_tools/agent_network_editor/get_mcp_tool.py. Refactor to call that
+    # method instead of maintaining a second copy of the resolver.
     def _resolve_mcp_info_file(self) -> str:
         """Resolve the MCP servers info file path.
 
