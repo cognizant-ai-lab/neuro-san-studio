@@ -21,7 +21,7 @@
     # ---------- Agent Network Tools ----------
 
     "call_agent": {
-        "class": "coded_tools.tools.call_agent.CallAgent",
+        "class": "neuro_san_studio.coded_tools.call_agent.CallAgent",
         "description": "Call the agent to respond to inquiry.",
         "parameters": {
             "type": "object",
@@ -59,7 +59,7 @@
     # https://python.langchain.com/docs/integrations/chat/openai/#responses-api
 
     "openai_code_interpreter": {
-        "class": "coded_tools.tools.openai_code_interpreter.OpenAICodeInterpreter",
+        "class": "neuro_san_studio.coded_tools.openai_code_interpreter.OpenAICodeInterpreter",
         "description": "Executes Python code and performs tasks such as plotting, data analysis, or math using the OpenAI Code Interpreter tool.",
         "parameters": {
             "type": "object",
@@ -74,7 +74,7 @@
     },
 
     "openai_image_generation": {
-        "class": "coded_tools.tools.openai_image_generation.OpenAIImageGeneration",
+        "class": "neuro_san_studio.coded_tools.openai_image_generation.OpenAIImageGeneration",
         "description": "Tool that generates image using OpenAI tool",
         "parameters": {
             "type": "object",
@@ -91,7 +91,7 @@
     },
 
     "openai_video_generation": {
-        "class": "coded_tools.tools.openai_video_generation.OpenAIVideoGeneration",
+        "class": "neuro_san_studio.coded_tools.openai_video_generation.OpenAIVideoGeneration",
         "description": "Tool that generates video using OpenAI models",
         "parameters": {
             "type": "object",
@@ -121,7 +121,7 @@
 
     "webpage_rag": {
         # This is a coded tool for RAG on webpages.
-        "class": "coded_tools.tools.webpage_rag.WebpageRag",
+        "class": "neuro_san_studio.coded_tools.webpage_rag.WebpageRag",
         "description": "Retrieve information from the given webpages",
         "parameters": {
             "type": "object",
@@ -144,7 +144,7 @@
 
     # Wikimedia Media search tool for retrieving image, audio, and video URLs from Wikimedia Commons.
     "wikimedia_media_search": {
-        "class": "coded_tools.tools.wikimedia_media_search.WikimediaMediaSearch",
+        "class": "neuro_san_studio.coded_tools.wikimedia_media_search.WikimediaMediaSearch",
         "description": """
         Searches Wikimedia Commons for media files (images, audio, video) and returns direct URLs with proper file extensions.
 This tool is excellent for finding high-quality, properly licensed multimedia content from Wikimedia Commons.
@@ -181,7 +181,7 @@ Supports searching for images, audio files (mp3, ogg, flac, wav), and video file
     # This search tool requires no API key.
     # Reference: https://github.com/deedy5/ddgs
     "ddgs_search": {
-        "class": "coded_tools.tools.ddgs_search.DdgsSearch",
+        "class": "neuro_san_studio.coded_tools.ddgs_search.DdgsSearch",
         "description": "Performs a web search using DDGS Search.",
         "parameters": {
             "type": "object",
@@ -200,7 +200,7 @@ Supports searching for images, audio files (mp3, ogg, flac, wav), and video file
     # Fetches the content of a URL and returns its plain-text body.
     # Supports HTML pages and PDFs. Requires: beautifulsoup4, aiohttp, pypdf
     "web_fetch": {
-        "class": "coded_tools.tools.web_fetch.WebFetch",
+        "class": "neuro_san_studio.coded_tools.web_fetch.WebFetch",
         "description": "Fetches the content of a URL and returns its plain-text body along with metadata. Supports HTML pages and PDF documents.",
         "parameters": {
             "type": "object",
@@ -266,7 +266,7 @@ Supports searching for images, audio files (mp3, ogg, flac, wav), and video file
     #       }
     #   }
     "read_file": {
-        "class": "coded_tools.tools.file_management.read_file.ReadFile",
+        "class": "neuro_san_studio.coded_tools.file_management.read_file.ReadFile",
         "description": "Reads the contents of a local text file (with optional line range and char cap) and returns the text plus metadata. Access is restricted by operator-configured allow/block lists for paths and extensions; the LLM cannot influence those lists.",
         "parameters": {
             "type": "object",

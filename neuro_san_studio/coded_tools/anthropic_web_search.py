@@ -14,28 +14,20 @@
 #
 # END COPYRIGHT
 
-import logging
-import os
-import webbrowser
-from pathlib import Path
 from typing import Any
 
-from anthropic import Anthropic
-from anthropic._response import BinaryAPIResponse
-from anthropic.types.beta.file_metadata import FileMetadata
 from neuro_san.interfaces.coded_tool import CodedTool
 
-from coded_tools.anthropic_tool import AnthropicTool
+from neuro_san_studio.coded_tools.anthropic_tool import AnthropicTool
 
-CODE_EXECUTION_TOOL_TYPE = "code_execution_20250522"
-CODE_EXECUTION_BETA = "code-execution-2025-05-22"
+WEB_SEARCH_TOOL_TYPE = "web_search_20250305"
 
 
-class AnthropicCodeExecution(CodedTool):
+class AnthropicWebSearch(CodedTool):
     """
-    A CodedTool implementation for invoking Anthropic code execution tool using LangChain's ChatAnthopic.
+    A CodedTool implementation for invoking Anthropic web search tool using LangChain's ChatAnthopic.
 
-    See https://python.langchain.com/docs/integrations/chat/anthropic/#code-execution
+    See https://python.langchain.com/docs/integrations/chat/anthropic/#web-search
     """
 
     async def async_invoke(self, args: dict[str, Any], sly_data: dict[str, Any]) -> list[dict[str, Any]] | str:
@@ -49,7 +41,6 @@ class AnthropicCodeExecution(CodedTool):
                     - "query" (str): Request from the user prompt.
                 - from user
                     - "anthropic_model" (str): Anthropic model to call the tool. Default to claude-3-7-sonnet-20250219.
-                    - "save_file" (bool): Whether or not to save generated files.
                     - "additional_kwargs" (dict): Any additional arguments for the tool.
 
         :param sly_data: A dictionary whose keys are defined by the agent hierarchy,
@@ -83,67 +74,15 @@ class AnthropicCodeExecution(CodedTool):
         # The Anthropic model to use when calling the tool.
         anthropic_model: str = args.get("anthropic_model")
 
-        save_file: bool = args.get("save_file", False)
-
         # Additional keyword arguments to pass to the selected tool.
-        # See https://docs.anthropic.com/en/docs/agents-and-tools/tool-use/code-execution-tool
+        # See https://docs.anthropic.com/en/docs/agents-and-tools/tool-use/web-search-tool
         additional_kwargs: dict[str, Any] = args.get("additional_kwargs", {})
 
-        content: list[dict[str, Any]] = await AnthropicTool.arun(
+        return await AnthropicTool.arun(
             query=query,
-            tool_type=CODE_EXECUTION_TOOL_TYPE,
-            tool_name="code_execution",
+            tool_type=WEB_SEARCH_TOOL_TYPE,
+            tool_name="web_search",
             anthropic_model=anthropic_model,
-            betas=[CODE_EXECUTION_BETA],
+            betas=None,
             **additional_kwargs,
         )
-
-        # If there are generated files and user wants to save them
-        file_ids: list[str] = self.extract_file_ids(content)
-        if file_ids and save_file:
-            self.save_file(file_ids)
-
-        return content
-
-    def extract_file_ids(self, content: list[dict[str, Any]]) -> list[str]:
-        """
-        Extract file IDs from the response content
-
-        :param content: Content of the response that may contain the file ids.
-
-        :return: List of file ids.
-        """
-        file_ids: list[str] = []
-        for item in content:
-            if item.get("type") == "code_execution_tool_result":
-                content_item: dict[str, Any] = item.get("content")
-                content: list[dict[str, str]] = content_item.get("content")
-                if content:
-                    for file in content:
-                        file_ids.append(file.get("file_id"))
-        return file_ids
-
-    def save_file(self, file_ids: list[str]):
-        """
-        Save the file on disk.
-
-        :param file_ids: ID of the files to save.
-        """
-        # Initialize the client
-        client = Anthropic()
-
-        for file_id in file_ids:
-            # Get the file name e.g. output.png
-            file_metadata: FileMetadata = client.beta.files.retrieve_metadata(file_id)
-            filename: str = file_metadata.filename
-
-            # Download from Anthropic container and save the file on disk
-            file_content: BinaryAPIResponse = client.beta.files.download(file_id)
-            file_content.write_to_file(filename)
-            logging.info("Downloaded: %s", filename)
-
-            # Creates file:// URL and open it
-            full_path = os.path.abspath(filename)
-            file_url = Path(full_path).as_uri()
-            # Use webbrowser because it works on all platforms
-            webbrowser.open(file_url)

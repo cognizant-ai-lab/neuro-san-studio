@@ -16,8 +16,8 @@
 
 from unittest import TestCase
 
-from coded_tools.tools.file_management.read_file import MAX_CHARS
-from coded_tools.tools.file_management.read_file import ReadFile
+from neuro_san_studio.coded_tools.file_management.read_file import MAX_CHARS
+from neuro_san_studio.coded_tools.file_management.read_file import ReadFile
 
 
 class TestValidateMaxContentChars(TestCase):

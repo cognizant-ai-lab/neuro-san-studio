@@ -22,8 +22,8 @@ from unittest.mock import MagicMock
 from aiohttp import ClientError
 from aiohttp import ClientResponseError
 
-from coded_tools.tools.web_fetch import MAX_RESPONSE_BYTES
-from coded_tools.tools.web_fetch import WebFetch
+from neuro_san_studio.coded_tools.web_fetch import MAX_RESPONSE_BYTES
+from neuro_san_studio.coded_tools.web_fetch import WebFetch
 
 from .helpers import make_head_session
 from .helpers import make_response_error

@@ -23,7 +23,7 @@ from unittest.mock import patch
 from aiohttp import ClientError
 from langchain_core.documents import Document
 
-from coded_tools.tools.web_fetch import WebFetch
+from neuro_san_studio.coded_tools.web_fetch import WebFetch
 
 
 class TestFetchPdf(TestCase):
@@ -38,7 +38,7 @@ class TestFetchPdf(TestCase):
         mock_loader = MagicMock()
         mock_loader.aload = AsyncMock(return_value=docs)
 
-        with patch("coded_tools.tools.web_fetch.PyPDFLoader", return_value=mock_loader):
+        with patch("neuro_san_studio.coded_tools.web_fetch.PyPDFLoader", return_value=mock_loader):
             result = asyncio.run(self.tool._fetch_pdf("http://example.com/doc.pdf"))  # pylint: disable=protected-access
 
         self.assertEqual(result, "Page one\nPage two")
@@ -48,7 +48,7 @@ class TestFetchPdf(TestCase):
         mock_loader = MagicMock()
         mock_loader.aload = AsyncMock(side_effect=Exception("download failed"))
 
-        with patch("coded_tools.tools.web_fetch.PyPDFLoader", return_value=mock_loader):
+        with patch("neuro_san_studio.coded_tools.web_fetch.PyPDFLoader", return_value=mock_loader):
             with self.assertRaises(ClientError) as ctx:
                 asyncio.run(self.tool._fetch_pdf("http://example.com/doc.pdf"))  # pylint: disable=protected-access
 
