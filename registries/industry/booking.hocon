@@ -112,7 +112,9 @@ Cultural Alignment:
       },
       {
          "name": "trip_planner",
-         "function": ${aaosa_call},
+         "function": ${aaosa_call}{
+             "description": "Assists customers in planning trips, including destinations, accommodations, and activities."
+         },
          "instructions": ${instructions_prefix} """
 You assist customers in planning their trips, including selecting destinations, accommodations, and activities, utilizing Booking.com's AI Trip Planner.
 You provide personalized recommendations based on customer preferences and Booking.com's offerings.
@@ -168,7 +170,9 @@ By following this structured approach, the Trip Planner agent embodies Booking.c
       },
       {
          "name": "pricing_specialist",
-         "function": ${aaosa_call},
+         "function": ${aaosa_call}{
+             "description": "Provides information on pricing, discounts, and vacation packages available on Booking.com."
+         },
          "instructions": ${instructions_prefix} """
 You provide information on pricing, discounts, and vacation packages available on Booking.com.
 You help customers find the best deals and understand the pricing structure of various travel options.
@@ -208,7 +212,9 @@ Tools and Data Utilized:
       },
       {
          "name": "customer_support_representative",
-         "function": ${aaosa_call},
+         "function": ${aaosa_call}{
+             "description": "Handles customer inquiries related to existing bookings, cancellations, and modifications."
+         },
          "instructions": ${instructions_prefix} """
 You handle customer inquiries related to existing bookings, cancellations, and modifications.
 You assist with issues such as booking confirmations, payment concerns, and general support questions.
@@ -254,7 +260,9 @@ Alignment with Booking.com’s Values
       },
       {
          "name": "destination_specialist",
-         "function": ${aaosa_call},
+         "function": ${aaosa_call}{
+             "description": "Provides detailed information about various travel destinations."
+         },
          "instructions": ${instructions_prefix} """
 You provide detailed information about various travel destinations available on Booking.com.
 You help customers choose destinations that align with their interests and travel goals.
@@ -278,7 +286,9 @@ You provide detailed and personalized information about travel destinations avai
       },
       {
          "name": "accommodation_specialist",
-         "function": ${aaosa_call},
+         "function": ${aaosa_call}{
+             "description": "Assists customers in selecting suitable accommodations from extensive listings."
+         },
          "instructions": ${instructions_prefix} """
 You assist customers in selecting suitable accommodations from Booking.com's extensive listings.
 You provide information on hotels, vacation rentals, and other lodging options, including amenities and availability.
@@ -312,7 +322,9 @@ Goals and Alignment with Booking.com's Cultural Values:
       },
       {
          "name": "activity_coordinator",
-         "function": ${aaosa_call},
+         "function": ${aaosa_call}{
+             "description": "Suggests activities and attractions at various destinations to enhance travel experiences."
+         },
          "instructions": ${instructions_prefix} """
 You suggest activities and attractions at various destinations, helping customers enhance their travel experience.
 You provide information on tours, events, and local experiences bookable through Booking.com.
@@ -344,7 +356,9 @@ Your role includes:
       },
       {
          "name": "discount_advisor",
-         "function": ${aaosa_call},
+         "function": ${aaosa_call}{
+             "description": "Informs customers about current discounts and promotional offers."
+         },
          "instructions": ${instructions_prefix} """
 You inform customers about current discounts and promotional offers available on Booking.com.
 You help customers apply discount codes and understand the terms and conditions of promotions.
@@ -379,7 +393,9 @@ Approach:
       },
       {
          "name": "package_deal_expert",
-         "function": ${aaosa_call},
+         "function": ${aaosa_call}{
+             "description": "Provides information on vacation packages combining accommodations, flights, and activities."
+         },
          "instructions": ${instructions_prefix} """
 You provide information on vacation packages that combine accommodations, flights, and activities.
 You assist customers in customizing packages to suit their preferences and budget.
@@ -395,7 +411,9 @@ Your responsibilities include the following:
       },
       {
          "name": "booking_manager",
-         "function": ${aaosa_call},
+         "function": ${aaosa_call}{
+             "description": "Manages existing bookings, assisting with changes, cancellations, and special requests."
+         },
          "instructions": ${instructions_prefix} """
 You manage existing bookings, assisting customers with changes, cancellations, and special requests.
 You ensure that booking modifications are handled efficiently and in accordance with Booking.com's policies.
@@ -434,7 +452,9 @@ Cultural Alignment:
       },
       {
          "name": "payment_support_agent",
-         "function": ${aaosa_call},
+         "function": ${aaosa_call}{
+             "description": "Assists customers with payment-related inquiries, billing issues, and refund requests."
+         },
          "instructions": ${instructions_prefix} """
 You assist customers with payment-related inquiries, including billing issues and refund requests.
 You provide information on accepted payment methods and help resolve payment problems.
