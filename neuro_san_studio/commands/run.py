@@ -640,7 +640,9 @@ class NeuroSanRunner:
 
 app = typer.Typer(
     name="neuro-san-studio",
-    help="Neuro SAN Studio CLI.",
+    help="Neuro SAN Studio CLI.\n\n"
+    "NOTE: Bare invocation (e.g., 'neuro-san-studio --server-http-port 8080') no longer works. "
+    "Use subcommands explicitly: 'ns run --server-http-port 8080'",
     no_args_is_help=True,
     add_completion=False,
 )
