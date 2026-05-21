@@ -76,20 +76,13 @@ class NeuroSanStudioCli:  # pylint: disable=too-few-public-methods
             None, "--server-http-port", help="Port number for the Neuro SAN server http endpoint."
         ),
         nsflow_port: Optional[int] = typer.Option(None, "--nsflow-port", help="Port number for the nsflow client."),
-        web_client_port: Optional[int] = typer.Option(
-            None, "--web-client-port", help="Port number for the web client."
-        ),
         log_level: Optional[str] = typer.Option(None, "--log-level", help="Log level for all processes."),
         thinking_file: Optional[str] = typer.Option(None, "--thinking-file", help="Path to the agent thinking file."),
-        no_html: bool = typer.Option(False, "--no-html", help="Don't generate html for network diagrams."),
         client_only: bool = typer.Option(
             False, "--client-only", help="Run only the nsflow client without the NeuroSan server."
         ),
         server_only: bool = typer.Option(
             False, "--server-only", help="Run only the NeuroSan server without the default nsflow client."
-        ),
-        use_flask_web_client: bool = typer.Option(
-            False, "--use-flask-web-client", help="Use the flask-based neuro-san-web-client."
         ),
     ) -> None:
         """Forward declared flags + any plugin extras to NeuroSanRunner's argparse layer.
@@ -104,15 +97,12 @@ class NeuroSanStudioCli:  # pylint: disable=too-few-public-methods
                 ("--server-host", server_host),
                 ("--server-http-port", server_http_port),
                 ("--nsflow-port", nsflow_port),
-                ("--web-client-port", web_client_port),
                 ("--log-level", log_level),
                 ("--thinking-file", thinking_file),
             ],
             [
-                ("--no-html", no_html),
                 ("--client-only", client_only),
                 ("--server-only", server_only),
-                ("--use-flask-web-client", use_flask_web_client),
             ],
         )
         forwarded.extend(ctx.args)
