@@ -56,6 +56,15 @@ class AgentNetworkStructureValidationMiddleware(AgentNetworkValidationMiddleware
         :return: A list of error strings (empty if valid)
         """
 
+        # Check that "tools" field is a list of str first since if it is not,
+        # the other validators will fail and raise an error.
+        # Note that the keywords argument restricts the check to specific keywords.
+        # Available keywords are "description", "instructions", and "tools".
+        # If keywords is not provided, all keywords will be checked.
+        tool_not_list_error: list[str] = KeywordNetworkValidator(keywords=["tools"]).validate(network_def)
+        if tool_not_list_error:
+            return tool_not_list_error
+
         # Get infos from sly_data. These should have been put there by the respective tools
         # from the agent network editor.
         subnetwork_names: list[str] = await GetSubnetwork.get_subnetwork_names(self.sly_data)
@@ -66,11 +75,6 @@ class AgentNetworkStructureValidationMiddleware(AgentNetworkValidationMiddleware
             StructureNetworkValidator().validate(network_def)
             + ToolboxNetworkValidator(toolbox_tools).validate(network_def)
             + UrlNetworkValidator(subnetwork_names, mcp_servers).validate(network_def)
-            # Check that "tools" field is a list of str.
-            # Note that keywords argument is for check specific keywords.
-            # Available keywords are "description", "instructions", and "tools".
-            # If keywords is not provided, all keywords will be checked.
-            + KeywordNetworkValidator(keywords=["tools"]).validate(network_def)
         )
 
     def format_error(self, error_list: list[str]) -> str:

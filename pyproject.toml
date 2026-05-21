@@ -16,7 +16,8 @@ classifiers = [
 ]
 
 [project.scripts]
-neuro-san-studio = "neuro_san_studio.commands.run:main"
+neuro-san-studio = "neuro_san_studio.commands.cli:main"
+ns = "neuro_san_studio.commands.cli:main"
 
 [project.urls]
 Homepage = "https://github.com/cognizant-ai-lab/neuro-san-studio"
