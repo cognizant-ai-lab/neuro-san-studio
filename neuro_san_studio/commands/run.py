@@ -25,8 +25,11 @@ import sys
 import time
 from typing import Any
 from typing import Dict
+from typing import List
+from typing import Optional
 from typing import Tuple
 
+import typer
 from dotenv import load_dotenv
 from timedinput import timedinput
 
@@ -659,71 +662,146 @@ class NeuroSanRunner:
             self.flask_webclient_process.wait()
 
 
-def main():
-    """Entry point for the `neuro-san-studio` console script.
+app = typer.Typer(
+    name="neuro-san-studio",
+    help="Neuro SAN Studio CLI.\n\n"
+    "NOTE: Bare invocation (e.g., 'neuro-san-studio --server-http-port 8080') no longer works. "
+    "Use subcommands explicitly: 'ns run --server-http-port 8080'",
+    no_args_is_help=True,
+    add_completion=False,
+)
 
-    Dispatches to the `run` or `init` subcommand. Invoking the script with no
-    subcommand (or with only `run`-style flags) starts the server directly (run).
+
+def _invoke_run(extra_args: List[str]) -> None:
+    """Run the server, exposing `extra_args` to NeuroSanRunner.parse_args() via sys.argv."""
+    sys.argv = [sys.argv[0], *extra_args]
+    NeuroSanRunner().run()
+
+
+def _build_run_forward_args(valued: List[Tuple[str, Any]], booleans: List[Tuple[str, bool]]) -> List[str]:
+    """Build the forwarded-args list from Typer-parsed valued and boolean flags."""
+    forwarded: List[str] = []
+    for flag, value in valued:
+        if value is not None:
+            forwarded.extend([flag, str(value)])
+    for flag, value in booleans:
+        if value:
+            forwarded.append(flag)
+    return forwarded
+
+
+@app.command(
+    "run",
+    help="Start the Neuro SAN server and client (default).",
+    context_settings={
+        # Forward unknown options (e.g. plugin-injected flags via
+        # plugin.update_parser_args) through to NeuroSanRunner's argparse layer.
+        "allow_extra_args": True,
+        "ignore_unknown_options": True,
+    },
+)
+def _run_command(  # pylint: disable=too-many-arguments
+    ctx: typer.Context,
+    *,
+    server_host: Optional[str] = typer.Option(None, "--server-host", help="Host address for the Neuro SAN server."),
+    server_http_port: Optional[int] = typer.Option(
+        None, "--server-http-port", help="Port number for the Neuro SAN server http endpoint."
+    ),
+    nsflow_port: Optional[int] = typer.Option(None, "--nsflow-port", help="Port number for the nsflow client."),
+    web_client_port: Optional[int] = typer.Option(None, "--web-client-port", help="Port number for the web client."),
+    log_level: Optional[str] = typer.Option(None, "--log-level", help="Log level for all processes."),
+    thinking_file: Optional[str] = typer.Option(None, "--thinking-file", help="Path to the agent thinking file."),
+    no_html: bool = typer.Option(False, "--no-html", help="Don't generate html for network diagrams."),
+    client_only: bool = typer.Option(
+        False, "--client-only", help="Run only the nsflow client without the NeuroSan server."
+    ),
+    server_only: bool = typer.Option(
+        False, "--server-only", help="Run only the NeuroSan server without the default nsflow client."
+    ),
+    use_flask_web_client: bool = typer.Option(
+        False, "--use-flask-web-client", help="Use the flask-based neuro-san-web-client."
+    ),
+) -> None:
+    """Forward declared flags + any plugin extras to NeuroSanRunner's argparse layer.
+
+    Typer parses the known flags so they appear in `--help` with Typer styling.
+    Only user-supplied values are forwarded; unset options stay `None` so the
+    runner's env-var-driven defaults still apply. Plugin-injected flags arrive
+    via `ctx.args` and are forwarded verbatim.
     """
-    parser = argparse.ArgumentParser(prog="neuro-san-studio", add_help=True)
-    subparsers = parser.add_subparsers(dest="command")
-    subparsers.add_parser("run", help="Start the Neuro SAN server and client (default)")
-    init_parser = subparsers.add_parser("init", help="Scaffold a starter project in the current directory")
-    init_parser.add_argument(
+    forwarded = _build_run_forward_args(
+        [
+            ("--server-host", server_host),
+            ("--server-http-port", server_http_port),
+            ("--nsflow-port", nsflow_port),
+            ("--web-client-port", web_client_port),
+            ("--log-level", log_level),
+            ("--thinking-file", thinking_file),
+        ],
+        [
+            ("--no-html", no_html),
+            ("--client-only", client_only),
+            ("--server-only", server_only),
+            ("--use-flask-web-client", use_flask_web_client),
+        ],
+    )
+    forwarded.extend(ctx.args)
+    _invoke_run(forwarded)
+
+
+@app.command("init", help="Scaffold a starter project in the current directory.")
+def _init_command(
+    providers: Optional[str] = typer.Option(
+        None,
         "--providers",
-        type=str,
-        default=None,
         help="Comma-separated providers to enable (openai,anthropic,google). Skips the interactive prompt.",
-    )
-    check_config_parser = subparsers.add_parser("check-config", help="Validate LLM configurations in a HOCON file")
-    check_config_parser.add_argument(
-        "hocon_path",
-        nargs="?",
-        default=None,
-        metavar="HOCON_PATH",
-        help="Path to the HOCON file to validate. Defaults to config/llm_config.hocon.",
-    )
-    check_llm_keys_parser = subparsers.add_parser(
-        "check-llm-keys", help="Validate LLM API keys and other critical environment variables"
-    )
-    check_llm_keys_parser.add_argument(
+    ),
+) -> None:
+    """Scaffold a starter neuro-san-studio project."""
+    from neuro_san_studio.commands.init import InitCommand  # pylint: disable=import-outside-toplevel
+
+    InitCommand(providers_arg=providers).run()
+
+
+@app.command("check-llm-keys", help="Validate LLM API keys and other critical environment variables.")
+def _check_llm_keys_command(
+    tier: int = typer.Option(
+        3,
         "--tier",
-        type=int,
-        choices=[1, 2, 3],
-        default=3,
-        help="Validation tier: 1=placeholder detection, 2=format validation, 3=live API calls (default: 3)",
-    )
+        min=1,
+        max=3,
+        help="Validation tier: 1=placeholder check, 2=format check, 3=live API call.",
+    ),
+) -> None:
+    """Run the LLM-key validation command and propagate its exit code."""
+    from neuro_san_studio.commands.check_llm_keys import CheckLlmKeysCommand  # pylint: disable=import-outside-toplevel
 
-    # Back-compat: if the first token is not a known subcommand, treat the invocation
-    # as `run` so existing usages like `neuro-san-studio --server-http-port 8080` still work.
-    argv = sys.argv[1:]
-    known_subcommands = {"run", "init", "check-config", "check-llm-keys"}
-    if argv and argv[0] not in known_subcommands and argv[0] not in {"-h", "--help"}:
-        argv = ["run", *argv]
-    args, remainder = parser.parse_known_args(argv)
+    raise typer.Exit(code=CheckLlmKeysCommand(tier=tier).run())
 
-    if args.command == "init":
-        from neuro_san_studio.commands.init import InitCommand  # pylint: disable=import-outside-toplevel
 
-        InitCommand(providers_arg=args.providers).run()
-        return
+@app.command("check-config", help="Validate LLM configurations in a HOCON file.")
+def _check_config_command(
+    hocon_path: Optional[str] = typer.Option(
+        None,
+        "--hocon-path",
+        help="Path to the HOCON file to validate. Defaults to config/llm_config.hocon.",
+    ),
+) -> None:
+    """Run the HOCON LLM-config validation and propagate its exit code."""
+    from neuro_san_studio.commands.check_config import CheckConfigCommand  # pylint: disable=import-outside-toplevel
 
-    if args.command == "check-config":
-        # pylint: disable-next=import-outside-toplevel
-        from neuro_san_studio.commands.check_config import CheckConfigCommand
+    raise typer.Exit(code=CheckConfigCommand(hocon_path=hocon_path).run())
 
-        sys.exit(CheckConfigCommand(hocon_path=args.hocon_path).run())
 
-    if args.command == "check-llm-keys":
-        # pylint: disable-next=import-outside-toplevel
-        from neuro_san_studio.commands.check_llm_keys import CheckLlmKeysCommand
-
-        sys.exit(CheckLlmKeysCommand(tier=args.tier).run())
-
-    # `run` (or bare). Restore sys.argv so NeuroSanRunner.parse_args() sees the remaining flags.
-    sys.argv = [sys.argv[0], *remainder]
-    runner = NeuroSanRunner()
-    runner.run()
+def main() -> None:
+    """Entry point for the `neuro-san-studio` console script."""
+    # Typer/click exit with SystemExit(0) on success; let clean exits return normally
+    # so main() can be driven from tests and embedded callers.
+    try:
+        app()
+    except SystemExit as exc:
+        if exc.code not in (None, 0):
+            raise
 
 
 if __name__ == "__main__":
