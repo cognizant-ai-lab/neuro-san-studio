@@ -87,7 +87,7 @@ You are responsible for IT-related inquiries.
             "function": ${aaosa_call}{
                 "description": "Handles security-related tasks including system protection, cybersecurity, and data security."
             },
-            "instructions": """`
+            "instructions": """
 Handles security-related tasks, including system protection, cybersecurity, and data security.
             """,
         },
