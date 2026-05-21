@@ -200,28 +200,20 @@ class TestMainEntryPoint:
         monkeypatch.setattr(run_module, "NeuroSanRunner", FakeRunner)
         return call_order
 
-    def test_main_with_no_args_runs_server(self, monkeypatch: MonkeyPatch) -> None:
-        """Bare `neuro-san-studio` should still start the server (back-compat)."""
+    def test_main_with_no_args_shows_help(self, monkeypatch: MonkeyPatch) -> None:
+        """Bare `neuro-san-studio` should show help and exit cleanly without starting the server."""
         call_order = self._install_fake_runner(monkeypatch)
         monkeypatch.setattr(sys, "argv", ["neuro-san-studio"])
+        # Typer exits with code 0 after printing help; main() swallows that for clean exits.
         main()
-        assert call_order == ["init", "run"]
+        assert not call_order
 
     def test_main_with_run_subcommand_runs_server(self, monkeypatch: MonkeyPatch) -> None:
-        """Explicit `neuro-san-studio run` should also start the server."""
+        """Explicit `neuro-san-studio run` should start the server."""
         call_order = self._install_fake_runner(monkeypatch)
         monkeypatch.setattr(sys, "argv", ["neuro-san-studio", "run"])
         main()
         assert call_order == ["init", "run"]
-
-    def test_main_with_run_flags_is_backcompat(self, monkeypatch: MonkeyPatch) -> None:
-        """`neuro-san-studio --server-http-port 8081` should be treated as `run --server-http-port 8081`."""
-        call_order = self._install_fake_runner(monkeypatch)
-        monkeypatch.setattr(sys, "argv", ["neuro-san-studio", "--server-http-port", "8081"])
-        main()
-        # Runner was invoked, and sys.argv was restored with the flag for NeuroSanRunner.parse_args().
-        assert call_order == ["init", "run"]
-        assert sys.argv == ["neuro-san-studio", "--server-http-port", "8081"]
 
     def test_main_with_init_subcommand_invokes_init(self, monkeypatch: MonkeyPatch) -> None:
         """`neuro-san-studio init` should invoke InitCommand and NOT NeuroSanRunner."""
@@ -255,6 +247,6 @@ class TestMainEntryPoint:
                 raise RuntimeError("boom")
 
         monkeypatch.setattr(run_module, "NeuroSanRunner", ExplodingRunner)
-        monkeypatch.setattr(sys, "argv", ["neuro-san-studio"])
+        monkeypatch.setattr(sys, "argv", ["neuro-san-studio", "run"])
         with pytest.raises(RuntimeError, match="boom"):
             main()
