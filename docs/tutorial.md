@@ -969,7 +969,7 @@ Additionally, you will see logs on your terminal. Checking these files is useful
 When you are running the server in the foreground (via `python -m neuro_san_studio run`), simply press:
 
 * `CTRL + C` on Windows/Mac/Linux terminals
-* This will terminate both the Flask web client server and the `neuro_san` server gracefully.
+* This will terminate both the nsflow client and the `neuro_san` server gracefully.
 
 If you launched them separately, you would stop each process individually (again by `CTRL + C` or sending a kill signal).
 
