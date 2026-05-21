@@ -111,6 +111,35 @@ class TestNeuroSanRunner:
         runner.root_dir = str(tmp_path)
         assert runner._resolve_toolbox_info_file() == ""
 
+    def test_mcp_env_var_takes_precedence(self, monkeypatch: MonkeyPatch, tmp_path: Path) -> None:
+        """Explicit MCP_SERVERS_INFO_FILE should be used verbatim, ignoring the filesystem."""
+        monkeypatch.setenv("MCP_SERVERS_INFO_FILE", "/custom/path/mcp_info.hocon")
+        runner = self._make_runner()
+        runner.root_dir = str(tmp_path)
+        assert runner._resolve_mcp_info_file() == "/custom/path/mcp_info.hocon"
+
+    def test_mcp_scaffolded_path_used_when_file_exists(self, monkeypatch: MonkeyPatch, tmp_path: Path) -> None:
+        """With no env var, prefer <root>/mcp/mcp_info.hocon (what `init` scaffolds) over the bundled file."""
+        monkeypatch.delenv("MCP_SERVERS_INFO_FILE", raising=False)
+        mcp_dir = tmp_path / "mcp"
+        mcp_dir.mkdir()
+        mcp_file = mcp_dir / "mcp_info.hocon"
+        mcp_file.write_text("{}\n", encoding="utf-8")
+        runner = self._make_runner()
+        runner.root_dir = str(tmp_path)
+        assert runner._resolve_mcp_info_file() == str(mcp_file)
+
+    def test_mcp_falls_back_to_bundled_when_no_env_and_no_scaffold(
+        self, monkeypatch: MonkeyPatch, tmp_path: Path
+    ) -> None:
+        """With no env var and no scaffolded file, fall back to the mcp_info.hocon shipped in the package."""
+        monkeypatch.delenv("MCP_SERVERS_INFO_FILE", raising=False)
+        runner = self._make_runner()
+        runner.root_dir = str(tmp_path)
+        result = runner._resolve_mcp_info_file()
+        assert os.path.isfile(result)
+        assert result.endswith(os.path.join("neuro_san_studio", "mcp", "mcp_info.hocon"))
+
     def test_set_environment_variables_skips_empty_toolbox(
         self, monkeypatch: MonkeyPatch, tmp_path: Path, capsys: CaptureFixture[str]
     ) -> None:
@@ -200,28 +229,20 @@ class TestMainEntryPoint:
         monkeypatch.setattr(run_module, "NeuroSanRunner", FakeRunner)
         return call_order
 
-    def test_main_with_no_args_runs_server(self, monkeypatch: MonkeyPatch) -> None:
-        """Bare `neuro-san-studio` should still start the server (back-compat)."""
+    def test_main_with_no_args_shows_help(self, monkeypatch: MonkeyPatch) -> None:
+        """Bare `neuro-san-studio` should show help and exit cleanly without starting the server."""
         call_order = self._install_fake_runner(monkeypatch)
         monkeypatch.setattr(sys, "argv", ["neuro-san-studio"])
+        # Typer exits with code 0 after printing help; main() swallows that for clean exits.
         main()
-        assert call_order == ["init", "run"]
+        assert not call_order
 
     def test_main_with_run_subcommand_runs_server(self, monkeypatch: MonkeyPatch) -> None:
-        """Explicit `neuro-san-studio run` should also start the server."""
+        """Explicit `neuro-san-studio run` should start the server."""
         call_order = self._install_fake_runner(monkeypatch)
         monkeypatch.setattr(sys, "argv", ["neuro-san-studio", "run"])
         main()
         assert call_order == ["init", "run"]
-
-    def test_main_with_run_flags_is_backcompat(self, monkeypatch: MonkeyPatch) -> None:
-        """`neuro-san-studio --server-http-port 8081` should be treated as `run --server-http-port 8081`."""
-        call_order = self._install_fake_runner(monkeypatch)
-        monkeypatch.setattr(sys, "argv", ["neuro-san-studio", "--server-http-port", "8081"])
-        main()
-        # Runner was invoked, and sys.argv was restored with the flag for NeuroSanRunner.parse_args().
-        assert call_order == ["init", "run"]
-        assert sys.argv == ["neuro-san-studio", "--server-http-port", "8081"]
 
     def test_main_with_init_subcommand_invokes_init(self, monkeypatch: MonkeyPatch) -> None:
         """`neuro-san-studio init` should invoke InitCommand and NOT NeuroSanRunner."""
@@ -255,6 +276,6 @@ class TestMainEntryPoint:
                 raise RuntimeError("boom")
 
         monkeypatch.setattr(run_module, "NeuroSanRunner", ExplodingRunner)
-        monkeypatch.setattr(sys, "argv", ["neuro-san-studio"])
+        monkeypatch.setattr(sys, "argv", ["neuro-san-studio", "run"])
         with pytest.raises(RuntimeError, match="boom"):
             main()

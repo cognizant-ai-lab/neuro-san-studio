@@ -3,6 +3,8 @@
 The `neuro-san-studio` console script dispatches to a small set of subcommands.
 Run `neuro-san-studio --help` for the full list and shared options.
 
+`ns` is a shorter alias for `neuro-san-studio` — `ns run`, `ns init`, etc. work identically.
+
 | Subcommand | Description |
 |---|---|
 | `run` | Start the Neuro SAN server and a client (default when no subcommand is given). |
