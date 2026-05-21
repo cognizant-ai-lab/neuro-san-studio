@@ -30,8 +30,8 @@ langchain-anthropic>=0.3.13 installed in your virtual environment.
 
 _Example Usage in Neuro San Studio_:
 
-- [anthropic\_web_search.hocon](../coded_tools/tools/anthropic_web_search.py),
-- available as a tool in [toolbox_info.hocon](../toolbox/toolbox_info.hocon)
+- [anthropic\_web_search.hocon](../neuro_san_studio/coded_tools/anthropic_web_search.py),
+- available as a tool in [toolbox_info.hocon](../neuro_san_studio/toolbox/toolbox_info.hocon)
 
 ## Brave Search
 
@@ -60,7 +60,7 @@ _Example Usage in Neuro San Studio:_
 
 - [brave\_search.hocon](../registries/tools/brave_search.hocon),
 - [real\_estate.hocon](../registries/industry/real_estate.hocon),
-- available as a tool in [toolbox\_info.hocon](../toolbox/toolbox_info.hocon)
+- available as a tool in [toolbox\_info.hocon](../neuro_san_studio/toolbox/toolbox_info.hocon)
 
 ## Dux Distributed Global Search (DDGS)
 
@@ -90,7 +90,7 @@ _Example Usage in Neuro San Studio_:
 - [carmax.hocon](../registries/industry/carmax.hocon),
 - [expedia.hocon](../registries/industry/expedia.hocon),
 - [LinkedInJobSeekerSupportNetwork.hocon](../registries/industry/LinkedInJobSeekerSupportNetwork.hocon),
-- available as a tool in [toolbox\_info.hocon](../toolbox/toolbox_info.hocon)
+- available as a tool in [toolbox\_info.hocon](../neuro_san_studio/toolbox/toolbox_info.hocon)
 
 ## Google Custom Search Engine
 
@@ -121,7 +121,7 @@ To use this search tool, you must
 _Example Usage in Neuro San Studio_:
 
 - [google\_search.hocon](../registries/tools/google_search.hocon),
-- available as a tool in [toolbox\_info.hocon](../toolbox/toolbox_info.hocon)
+- available as a tool in [toolbox\_info.hocon](../neuro_san_studio/toolbox/toolbox_info.hocon)
 
 ## Google Serper
 
@@ -139,7 +139,7 @@ key, set it using the SERPER\_API\_KEY environment variable.
 
 _Example Usage in Neuro San Studio_:
 
-- Available as a tool in [toolbox\_info.hocon](../toolbox/toolbox_info.hocon)
+- Available as a tool in [toolbox\_info.hocon](../neuro_san_studio/toolbox/toolbox_info.hocon)
 
 ## OpenAI Search
 
@@ -158,7 +158,7 @@ virtual environment.
 _Example Usage in Neuro San Studio:_
 
 - [openai\_web\_search.hocon](../registries/tools/openai_web_search.hocon),
-- available as a tool in [toolbox\_info.hocon](../toolbox/toolbox_info.hocon)
+- available as a tool in [toolbox\_info.hocon](../neuro_san_studio/toolbox/toolbox_info.hocon)
 
 ## Tavily Search
 
@@ -177,7 +177,7 @@ in your virtual environment.
 
 _Example Usage in Neuro San Studio_:
 
-- Available as a tool in [toolbox\_info.hocon](../toolbox/toolbox_info.hocon)
+- Available as a tool in [toolbox\_info.hocon](../neuro_san_studio/toolbox/toolbox_info.hocon)
 
 ## You.com Search
 

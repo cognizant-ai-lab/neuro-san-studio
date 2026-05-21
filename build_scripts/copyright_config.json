@@ -5,12 +5,10 @@
         "deploy",
         "docs",
         "middleware",
-        "neuro_san_studio/mcp",
-        "plugins",
+        "neuro_san_studio",
         "registries",
         "servers",
         "skills",
-        "tests",
-        "toolbox"
+        "tests"
     ]
 }
