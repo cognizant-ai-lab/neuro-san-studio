@@ -39,7 +39,7 @@ class WebpageRag(CodedTool, BaseRag):
     async def async_invoke(self, args: dict[str, Any], sly_data: dict[str, Any]) -> str:
         """
         Load webpages from URLs using WebBaseLoader, build a vector store, and run a query against it.
-        See https://docs.langchain.com/oss/python/integrations/document_loaders/web_base.
+        See https://reference.langchain.com/python/langchain-community/document_loaders/web_base/WebBaseLoader.
 
         :param args: Dictionary containing:
           "query": search string
