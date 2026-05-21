@@ -20,7 +20,7 @@ from neuro_san.client.agent_session_factory import AgentSessionFactory
 from neuro_san.client.streaming_input_processor import StreamingInputProcessor
 from pyhocon import ConfigFactory
 
-AGENT_NETWORK_NAME = "cruse_agent"
+AGENT_NETWORK_NAME = "experimental/cruse_agent"
 
 
 def set_up_cruse_assistant(selected_agent):

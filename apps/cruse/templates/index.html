@@ -183,21 +183,25 @@ END COPYRIGHT
                     select.innerHTML = ''; // Clear any existing items
 
                     const HOCON_NAME = /^[\w.\- ]+\.hocon$/; // allowlist
+                    const sanitize = (value) => DOMPurify.sanitize(String(value), {
+                        ALLOWED_TAGS: [],
+                        ALLOWED_ATTR: [],
+                    });
+
                     systems.forEach((system, index) => {
-                        system = String(system);
-                        if (!HOCON_NAME.test(system)) {
-                          console.warn('Skipping unexpected system name:', system);
-                          return;
+                        if (typeof system !== 'string' || !HOCON_NAME.test(system)) {
+                            console.warn('Skipping unexpected system name:', system);
+                            return;
                         }
-                        const option = document.createElement('option');
-                        option.value = system;
-                        option.textContent = system.replace('.hocon', '');
+                        const safeValue = sanitize(system);
+                        const safeLabel = sanitize(system.replace('.hocon', ''));
+                        const option = new Option(safeLabel, safeValue);
                         select.appendChild(option);
 
                         // Select the first item by default
                         if (index === 0) {
                             option.selected = true;
-                            selectedSystem = system;
+                            selectedSystem = safeValue;
                         }
                     });
 
