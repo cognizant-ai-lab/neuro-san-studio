@@ -66,8 +66,7 @@ single command.
 networks of agents can use **LLMs** (Large Language Models) and **coded tools** to coordinate and solve complex tasks
 autonomously.
 
-The library comes with a **Flask Web Client** (`neuro_san_web_client`) so that users can interact with these multi-agent
-networks through a web-based UI. This entire setup is easily configurable using **HOCON** (`.hocon`) files.
+Users can interact with these multi-agent networks through web-based clients: [nsflow](https://github.com/cognizant-ai-lab/nsflow) or [MAUI](https://github.com/cognizant-ai-lab/neuro-san-ui). This entire setup is easily configurable using **HOCON** (`.hocon`) files.
 
 **Note**: This tutorial is written with the help of the agent network example [advanced_calculator.hocon](../registries/basic/advanced_calculator.hocon).
 

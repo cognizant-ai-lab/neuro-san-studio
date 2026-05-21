@@ -71,7 +71,6 @@ class NeuroSanRunner:
             "log_level": os.getenv("LOG_LEVEL", "info"),
             "vite_api_protocol": os.getenv("VITE_API_PROTOCOL", "http"),
             "vite_ws_protocol": os.getenv("VITE_WS_PROTOCOL", "ws"),
-            "neuro_san_web_client_port": int(os.getenv("NEURO_SAN_WEB_CLIENT_PORT", "5003")),
             "thinking_file": os.getenv("THINKING_FILE", self.thinking_file),
             "thinking_dir": os.getenv("THINKING_DIR", self.thinking_dir),
             # Ensure all paths are resolved relative to `self.root_dir`
@@ -104,7 +103,6 @@ class NeuroSanRunner:
 
         # Process references
         self.server_process = None
-        self.flask_webclient_process = None
         self.nsflow_process = None
 
     def _apply_toolbox_env(self) -> None:
@@ -169,12 +167,6 @@ class NeuroSanRunner:
             help="Port number for the nsflow client",
         )
         parser.add_argument(
-            "--web-client-port",
-            type=int,
-            default=self.args["neuro_san_web_client_port"],
-            help="Port number for the web client",
-        )
-        parser.add_argument(
             "--log-level", type=str, default=self.args["log_level"], help="Log level for all processes"
         )
         parser.add_argument(
@@ -186,9 +178,6 @@ class NeuroSanRunner:
         )
         parser.add_argument(
             "--server-only", action="store_true", help="Run only the NeuroSan server without the default nsflow client"
-        )
-        parser.add_argument(
-            "--use-flask-web-client", action="store_true", help="Use the flask based neuro-san-web-client"
         )
 
         # add arguments from plugins
@@ -258,24 +247,20 @@ class NeuroSanRunner:
             os.environ["THINKING_DIR"] = self.args["thinking_dir"]
             print(f"THINKING_FILE set to: {os.environ['THINKING_FILE']}")
             print(f"THINKING_DIR set to: {os.environ['THINKING_DIR']}")
-            if self.args["use_flask_web_client"]:
-                os.environ["NEURO_SAN_WEB_CLIENT_PORT"] = str(self.args["web_client_port"])
-                print(f"NEURO_SAN_WEB_CLIENT_PORT set to: {os.environ['NEURO_SAN_WEB_CLIENT_PORT']}")
-            else:
-                os.environ["NSFLOW_HOST"] = str(self.args["nsflow_host"])
-                os.environ["NSFLOW_PORT"] = str(self.args["nsflow_port"])
-                os.environ["NSFLOW_PLUGIN_CRUSE"] = str(self.args["nsflow_plugin_cruse"])
-                os.environ["VITE_API_PROTOCOL"] = str(self.args["vite_api_protocol"])
-                os.environ["VITE_WS_PROTOCOL"] = str(self.args["vite_ws_protocol"])
-                print(f"NSFLOW_HOST set to: {os.environ['NSFLOW_HOST']}")
-                print(f"NSFLOW_PORT set to: {os.environ['NSFLOW_PORT']}")
-                print(f"NSFLOW_PLUGIN_CRUSE set to: {os.environ['NSFLOW_PLUGIN_CRUSE']}")
-                print(f"VITE_API_PROTOCOL set to: {os.environ['VITE_API_PROTOCOL']}")
-                print(f"VITE_WS_PROTOCOL set to: {os.environ['VITE_WS_PROTOCOL']}")
-                # Set env variable for using nsflow in client-only mode
-                if self.args["client_only"]:
-                    os.environ["NSFLOW_CLIENT_ONLY"] = "True"
-                    print(f"NSFLOW_CLIENT_ONLY set to: {os.environ['NSFLOW_CLIENT_ONLY']}")
+            os.environ["NSFLOW_HOST"] = str(self.args["nsflow_host"])
+            os.environ["NSFLOW_PORT"] = str(self.args["nsflow_port"])
+            os.environ["NSFLOW_PLUGIN_CRUSE"] = str(self.args["nsflow_plugin_cruse"])
+            os.environ["VITE_API_PROTOCOL"] = str(self.args["vite_api_protocol"])
+            os.environ["VITE_WS_PROTOCOL"] = str(self.args["vite_ws_protocol"])
+            print(f"NSFLOW_HOST set to: {os.environ['NSFLOW_HOST']}")
+            print(f"NSFLOW_PORT set to: {os.environ['NSFLOW_PORT']}")
+            print(f"NSFLOW_PLUGIN_CRUSE set to: {os.environ['NSFLOW_PLUGIN_CRUSE']}")
+            print(f"VITE_API_PROTOCOL set to: {os.environ['VITE_API_PROTOCOL']}")
+            print(f"VITE_WS_PROTOCOL set to: {os.environ['VITE_WS_PROTOCOL']}")
+            # Set env variable for using nsflow in client-only mode
+            if self.args["client_only"]:
+                os.environ["NSFLOW_CLIENT_ONLY"] = "True"
+                print(f"NSFLOW_CLIENT_ONLY set to: {os.environ['NSFLOW_CLIENT_ONLY']}")
 
         # Server-only env variables
         if not self.args["client_only"]:
@@ -286,23 +271,6 @@ class NeuroSanRunner:
             print(f"NEURO_SAN_SERVER_HTTP_PORT set to: {os.environ['NEURO_SAN_SERVER_HTTP_PORT']}\n")
 
         print("\n" + "=" * 50 + "\n")
-
-    @staticmethod
-    def generate_html_files():
-        """Generate .html files for all registry files except manifest.hocon."""
-        for file in glob.glob("./registries/*"):
-            if os.path.basename(file) != "manifest.hocon":
-                print(f"Generating .html file for: {file}")
-                result = subprocess.run(
-                    [sys.executable, "-m", "neuro_san_web_client.agents_diagram_builder", "--input_file", file],
-                    stdout=subprocess.PIPE,
-                    stderr=subprocess.PIPE,
-                    universal_newlines=True,
-                    check=True,
-                )
-                print(result.stdout)
-                if result.stderr:
-                    print(result.stderr, file=sys.stderr)
 
     def start_process(self, command, process_name, log_file):
         """Start a subprocess and capture logs."""
@@ -372,26 +340,6 @@ class NeuroSanRunner:
         self.nsflow_process = self.start_process(command, "nsflow", "logs/nsflow.log")
         print(f"nsflow client started on {self.args['nsflow_host']}:{self.args['nsflow_port']}")
 
-    def start_flask_web_client(self):
-        """Start the Flask web client."""
-        print("Starting Flask web client...")
-        command = [
-            sys.executable,
-            "-u",
-            "-m",
-            "neuro_san_web_client.app",
-            "--server-host",
-            self.args["server_host"],
-            "--server-port",
-            str(self.args["server_http_port"]),
-            "--web-client-port",
-            str(self.args["web_client_port"]),
-            "--thinking-file",
-            self.args["thinking_file"],
-        ]
-        self.flask_webclient_process = self.start_process(command, "FlaskWebClient", "logs/webclient.log")
-        print("Flask web client started on port: ", self.args["web_client_port"])
-
     # pylint: disable=unused-argument
     def signal_handler(self, signum, frame):
         """Handle termination signals to cleanly exit."""
@@ -405,13 +353,6 @@ class NeuroSanRunner:
                 os.killpg(os.getpgid(self.server_process.pid), signal.SIGTERM)
             # Wait for the server to finish cleanup (e.g. flushing Langfuse traces)
             self.server_process.wait(timeout=10)
-
-        if self.flask_webclient_process:
-            print(f"Stopping WEB CLIENT (PID {self.flask_webclient_process.pid})...")
-            if self.is_windows:
-                self.flask_webclient_process.terminate()
-            else:
-                os.killpg(os.getpgid(self.flask_webclient_process.pid), signal.SIGKILL)
 
         if self.nsflow_process:
             print(f"Stopping NSFLOW (PID {self.nsflow_process.pid})...")
@@ -454,13 +395,6 @@ class NeuroSanRunner:
             if self.is_port_open(self.args["server_host"], self.args["server_http_port"]):
                 port_conflicts.append(f"Neuro-San server http port {self.args['server_http_port']} is already in use.")
                 conflicting_ports.append(self.args["server_http_port"])
-
-        if self.args.get("use_flask_web_client"):
-            if self.is_port_open("localhost", self.args["neuro_san_web_client_port"]):
-                port_conflicts.append(
-                    f"Flask web client port {self.args['neuro_san_web_client_port']} is already in use."
-                )
-                conflicting_ports.append(self.args["neuro_san_web_client_port"])
 
         return port_conflicts, conflicting_ports
 
@@ -534,20 +468,10 @@ class NeuroSanRunner:
         """
         client_only = self.args["client_only"]
         server_only = self.args["server_only"]
-        use_flask = self.args.get("use_flask_web_client", False)
-        no_html = self.args.get("no_html", False)
 
         if client_only and server_only:
             print("Cannot use --client-only and --server-only together.")
             sys.exit(1)
-
-        if use_flask:
-            # Check if flask web client is available
-            try:
-                import neuro_san_web_client  # pylint: disable=unused-import,import-outside-toplevel  # noqa: F401
-            except ImportError:
-                print("Flask web client is not available. Please install it with `pip install neuro-san-web-client`.")
-                sys.exit(1)
 
         port_conflicts, conflicting_ports = self._check_port_conflicts()
 
@@ -566,14 +490,8 @@ class NeuroSanRunner:
                 sys.exit(1)
 
         if not server_only:
-            if use_flask:
-                if not no_html:
-                    self.generate_html_files()
-                self.start_flask_web_client()
-                print("Flask web-client is now running.")
-            else:
-                self.start_nsflow()
-                print("nsflow client is now running.")
+            self.start_nsflow()
+            print("nsflow client is now running.")
 
         if not client_only:
             self.start_neuro_san()
@@ -615,7 +533,6 @@ class NeuroSanRunner:
             for name, proc in [
                 ("NeuroSan", self.server_process),
                 ("nsflow", self.nsflow_process),
-                ("FlaskWebClient", self.flask_webclient_process),
             ]:
                 if proc is not None:
                     log_file = os.path.join(self.logs_dir, f"{name.lower()}.log")
@@ -631,8 +548,6 @@ class NeuroSanRunner:
             self.nsflow_process.wait()
         if self.server_process:
             self.server_process.wait()
-        if self.flask_webclient_process:
-            self.flask_webclient_process.wait()
 
 
 def main():

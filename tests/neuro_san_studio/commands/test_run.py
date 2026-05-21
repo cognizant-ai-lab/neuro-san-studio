@@ -133,7 +133,6 @@ class TestNeuroSanRunner:
             "server_http_port": 8080,
             "thinking_file": str(tmp_path / "thinking.txt"),
             "thinking_dir": str(tmp_path / "thinking"),
-            "use_flask_web_client": False,
         }
         runner.set_environment_variables()
         assert "AGENT_TOOLBOX_INFO_FILE" not in os.environ
@@ -161,7 +160,6 @@ class TestNeuroSanRunner:
             "server_http_port": 8080,
             "thinking_file": str(tmp_path / "thinking.txt"),
             "thinking_dir": str(tmp_path / "thinking"),
-            "use_flask_web_client": False,
         }
         runner.set_environment_variables()
         assert os.environ["AGENT_TOOLBOX_INFO_FILE"] == "/explicit/path/toolbox.hocon"
