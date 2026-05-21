@@ -1,7 +1,7 @@
 # Neuro AI Multi-Agent Accelerator – Getting Started
 
 Welcome to the **Neuro AI Multi-Agent Accelerator** tutorial. In this guide, we will walk you through the process of
-setting up a **Data-Driven Multi-Agent Network** using the `neuro-san` library, managing it via a Flask-based web UI,
+setting up a **Data-Driven Multi-Agent Network** using the `neuro-san` library, managing it via web-based clients,
 and customizing how Large Language Model (LLM) based Agents coordinate with each other to solve tasks. We will also
 explore switching LLM providers (like Ollama and Anthropic), adding custom-coded Tools, and running everything from a
 single command.

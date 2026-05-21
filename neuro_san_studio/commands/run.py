@@ -15,7 +15,6 @@
 # END COPYRIGHT
 
 import argparse
-import glob
 import logging
 import os
 import signal
@@ -172,7 +171,6 @@ class NeuroSanRunner:
         parser.add_argument(
             "--thinking-file", type=str, default=self.args["thinking_file"], help="Path to the agent thinking file"
         )
-        parser.add_argument("--no-html", action="store_true", help="Don't generate html for network diagrams")
         parser.add_argument(
             "--client-only", action="store_true", help="Run only the nsflow client without NeuroSan server"
         )
@@ -463,7 +461,7 @@ class NeuroSanRunner:
 
     def conditional_start_servers(self):
         """
-        Start neuro-san, nsflow, and flask client based on conditions while running on localhost.
+        Start neuro-san server and nsflow client based on --client-only and --server-only flags.
         Exit if any port is in use.
         """
         client_only = self.args["client_only"]
