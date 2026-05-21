@@ -33,6 +33,7 @@ import typer
 from dotenv import load_dotenv
 from timedinput import timedinput
 
+from neuro_san_studio import mcp as _mcp_pkg
 from neuro_san_studio.interfaces.process_logger_interface import ProcessLoggerInterface
 from neuro_san_studio.plugins.plugin_loader import PluginLoader
 from neuro_san_studio.runner.simple_process_logger import SimpleProcessLogger
@@ -40,6 +41,12 @@ from neuro_san_studio.runner.simple_process_logger import SimpleProcessLogger
 # Long enough to never bite a real user; finite so timedinput is happy and so a
 # detached terminal can't hang the process forever.
 INPUT_TIMEOUT_SECONDS = 300
+
+# Path to the mcp_info.hocon that ships inside the neuro_san_studio package.
+# Resolving via the imported package's __file__ works both in-repo (where
+# neuro_san_studio/ is just a folder on sys.path) and after `pip install`
+# (where it lives in site-packages), on every supported platform.
+_BUNDLED_MCP_INFO_FILE = os.path.join(os.path.dirname(_mcp_pkg.__file__), "mcp_info.hocon")
 
 
 class NeuroSanRunner:
@@ -83,9 +90,7 @@ class NeuroSanRunner:
             ),
             "agent_tool_path": os.getenv("AGENT_TOOL_PATH", os.path.join(self.root_dir, "coded_tools")),
             "agent_toolbox_info_file": self._resolve_toolbox_info_file(),
-            "mcp_servers_info_file": os.getenv(
-                "MCP_SERVERS_INFO_FILE", os.path.join(self.root_dir, "mcp", "mcp_info.hocon")
-            ),
+            "mcp_servers_info_file": self._resolve_mcp_info_file(),
             "logs_dir": self.logs_dir,
         }
 
@@ -139,6 +144,25 @@ class NeuroSanRunner:
         if os.path.isfile(default_path):
             return default_path
         return ""
+
+    # TODO: This duplicates GetMcpTool.get_mcp_info_file in
+    # coded_tools/agent_network_editor/get_mcp_tool.py. Refactor to call that
+    # method instead of maintaining a second copy of the resolver.
+    def _resolve_mcp_info_file(self) -> str:
+        """Resolve the MCP servers info file path.
+
+        Precedence (matches GetMcpTool.get_mcp_info_file):
+          1. MCP_SERVERS_INFO_FILE env var (used verbatim if non-empty).
+          2. <root>/mcp/mcp_info.hocon if it exists (what `init` scaffolds into a user project).
+          3. The mcp_info.hocon shipped inside the neuro_san_studio package.
+        """
+        env_value = os.getenv("MCP_SERVERS_INFO_FILE")
+        if env_value:
+            return env_value
+        scaffolded_path = os.path.join(self.root_dir, "mcp", "mcp_info.hocon")
+        if os.path.isfile(scaffolded_path):
+            return scaffolded_path
+        return _BUNDLED_MCP_INFO_FILE
 
     def load_env_variables(self):
         """Load .env file from project root and set variables."""
