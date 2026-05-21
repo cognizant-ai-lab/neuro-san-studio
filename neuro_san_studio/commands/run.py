@@ -129,13 +129,13 @@ class NeuroSanRunner:
         A user-provided toolbox is purely an override on top of the neuro-san framework's
         built-in default toolbox. Only set AGENT_TOOLBOX_INFO_FILE when the user has
         opted in explicitly via the env var, or when the conventional
-        `<root>/toolbox/toolbox_info.hocon` actually exists. Otherwise return "" so the
+        `<root>/neuro_san_studio/toolbox/toolbox_info.hocon` actually exists. Otherwise return "" so the
         env var stays unset and the framework uses its built-in default only.
         """
         env_value = os.getenv("AGENT_TOOLBOX_INFO_FILE")
         if env_value is not None:
             return env_value
-        default_path = os.path.join(self.root_dir, "toolbox", "toolbox_info.hocon")
+        default_path = os.path.join(self.root_dir, "neuro_san_studio", "toolbox", "toolbox_info.hocon")
         if os.path.isfile(default_path):
             return default_path
         return ""
