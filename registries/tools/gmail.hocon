@@ -76,7 +76,7 @@
         {
             "name": "gmail_handler_no_attachment",
 
-            # "gmail_toolkit" is a tool from the toolbox located at toolbox/toolbox_info.hocon
+            # "gmail_toolkit" is a tool from the toolbox located at neuro_san_studio/toolbox/toolbox_info.hocon
             # Tools in "gmail_toolkit" cannot attach files to the email.
             # Detailed information on the gmail_toolkit can be found at https://python.langchain.com/docs/integrations/tools/gmail/.
             "toolbox": "gmail_toolkit"
@@ -85,7 +85,7 @@
         {
             "name": "gmail_handler_with_attachment",
 
-            # "send_gmail_message_with_attachment" is a coded tool from the toolbox located at toolbox/toolbox_info.hocon
+            # "send_gmail_message_with_attachment" is a coded tool from the toolbox located at neuro_san_studio/toolbox/toolbox_info.hocon
             # This tool is solely for sending an email with attachment.
             # The code of this tool can be found at coded_tools/tools/gmail_attachment.py
             "toolbox": "send_gmail_message_with_attachment"
