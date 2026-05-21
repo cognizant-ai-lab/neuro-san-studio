@@ -66,9 +66,12 @@ single command.
 networks of agents can use **LLMs** (Large Language Models) and **coded tools** to coordinate and solve complex tasks
 autonomously.
 
-Users can interact with these multi-agent networks through web-based clients: [nsflow](https://github.com/cognizant-ai-lab/nsflow) or [MAUI](https://github.com/cognizant-ai-lab/neuro-san-ui). This entire setup is easily configurable using **HOCON** (`.hocon`) files.
+Users can interact with these multi-agent networks through web-based clients:
+[nsflow](https://github.com/cognizant-ai-lab/nsflow) or [MAUI](https://github.com/cognizant-ai-lab/neuro-san-ui).
+This entire setup is easily configurable using **HOCON** (`.hocon`) files.
 
-**Note**: This tutorial is written with the help of the agent network example [advanced_calculator.hocon](../registries/basic/advanced_calculator.hocon).
+**Note**: This tutorial is written with the help of the agent network example
+[advanced_calculator.hocon](../registries/basic/advanced_calculator.hocon).
 
 ---
 
