@@ -18,7 +18,8 @@ import os
 
 from neuro_san.client.agent_session_factory import AgentSessionFactory
 from neuro_san.client.streaming_input_processor import StreamingInputProcessor
-from pyhocon import ConfigFactory
+from neuro_san.internals.graph.persistence.registry_manifest_restorer import RegistryManifestRestorer
+from neuro_san.internals.interfaces.storage_class import StorageClass
 
 AGENT_NETWORK_NAME = "experimental/cruse_agent"
 
@@ -99,20 +100,26 @@ def tear_down_cruse_assistant(cruse_session):
 
 def get_available_systems():
     """
-    Parses the HOCON manifest file specified by the AGENT_MANIFEST_FILE environment variable
-    and returns a list of enabled system keys.
+    Return the list of public agent networks from the manifest.
 
-    Systems explicitly listed in the `excluded` set will be omitted, even if enabled.
+    Uses neuro-san's RegistryManifestRestorer so HOCON `include` directives
+    (e.g. `include "registries/basic/manifest.hocon"`) are resolved -- the
+    prior implementation called `ConfigFactory.parse_file()` directly and
+    silently dropped every nested entry.
 
     Returns:
-        List[str]: A list of enabled HOCON filenames (without surrounding quotes)
-                   that are not in the excluded set.
+        List[str]: Enabled, public agent network keys with a `.hocon` suffix
+                   (e.g. `basic/coffee_finder.hocon`), excluding anything in
+                   the local `excluded` set.
     """
     excluded = {"experimental/cruse_agent.hocon"}  # Add more filenames as needed
-    config = ConfigFactory.parse_file(os.environ["AGENT_MANIFEST_FILE"])
-    return [
-        key.strip('"').strip() for key, enabled in config.items() if enabled and key.strip('"').strip() not in excluded
-    ]
+
+    manifest_file = os.environ["AGENT_MANIFEST_FILE"]
+    restorer = RegistryManifestRestorer()
+    all_networks = restorer.restore_from_files([manifest_file])
+    public_networks = all_networks.get(StorageClass.PUBLIC, {})
+
+    return [f"{name}.hocon" for name in public_networks if f"{name}.hocon" not in excluded]
 
 
 def parse_response_blocks(response: str):
