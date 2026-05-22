@@ -81,7 +81,7 @@ class TestValidateUrl(TestCase):
 
     def test_url_at_max_length_is_accepted(self):
         """Tests that a URL exactly at the maximum allowed length is accepted."""
-        prefix = "https://x.co/"
+        prefix = "https://test.co/"
         url = prefix + "a" * (MAX_URL_LENGTH - len(prefix))
         self.assertEqual(self._call({"url": url}), url)
 
