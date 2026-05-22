@@ -182,7 +182,9 @@ END COPYRIGHT
                     const select = document.getElementById('system-select');
                     select.innerHTML = ''; // Clear any existing items
 
-                    const HOCON_NAME = /^[\w.\- ]+\.hocon$/; // allowlist
+                    // Allow slashed paths like experimental/mdap_decomposer.hocon
+                    // but reject .. (path traversal) and leading / (absolute paths).
+                    const HOCON_NAME = /^(?!.*\.\.)[\w\- ]+(?:\/[\w\- ]+)*\.hocon$/;
                     const sanitize = (value) => DOMPurify.sanitize(String(value), {
                         ALLOWED_TAGS: [],
                         ALLOWED_ATTR: [],
