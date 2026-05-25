@@ -2,6 +2,9 @@
 
 Here are a few examples ordered by level of complexity.
 
+> **💡 Quick Start:** All these agent networks can be installed into your project using the [`ns add`](./cli/add.md) command. 
+> Run `ns add` for an interactive checkbox interface, or `ns add --networks <name>` to install specific networks.
+
 <!-- TOC -->
 
 - [Examples](#examples)

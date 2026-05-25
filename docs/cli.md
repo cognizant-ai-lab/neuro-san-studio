@@ -9,5 +9,6 @@ Run `neuro-san-studio --help` for the full list and shared options.
 |---|---|
 | `run` | Start the Neuro SAN server and a client (default when no subcommand is given). |
 | `init` | Scaffold a starter project in the current directory. |
+| [`add`](./cli/add.md) | Add agent networks to an existing project. |
 | [`check-config`](./cli/check_config.md) | Validate every LLM configuration in a HOCON file. |
 | [`check-llm-keys`](./cli/check_llm_keys.md) | Validate LLM API keys and other critical environment variables. |
