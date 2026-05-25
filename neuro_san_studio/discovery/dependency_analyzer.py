@@ -17,7 +17,6 @@
 """Analyze agent network HOCON files to extract all dependencies."""
 
 import os
-import re
 from dataclasses import dataclass
 from dataclasses import field
 from pathlib import Path
@@ -27,14 +26,14 @@ from typing import List
 from typing import Optional
 from typing import Set
 
-from pyhocon import ConfigFactory
+from neuro_san.internals.persistence.abstract_async_config_restorer import AbstractAsyncConfigRestorer
+from pyparsing.exceptions import ParseException
 
 
 @dataclass
 class AgentNetworkDependencies:
     """Complete dependency graph for an agent network."""
 
-    hocon_includes: List[str] = field(default_factory=list)  # Include directives
     coded_tools: List[str] = field(default_factory=list)  # class field paths
     middleware: List[str] = field(default_factory=list)  # middleware class paths
     sub_networks: List[str] = field(default_factory=list)  # /agent_name references
@@ -58,12 +57,12 @@ class DependencyAnalyzer:
         self.coded_tools_dir = coded_tools_dir
         self.middleware_dir = middleware_dir
 
-    def analyze_network(self, hocon_path: str) -> AgentNetworkDependencies:
+    async def analyze_network(self, hocon_path: str) -> AgentNetworkDependencies:
         """
         Parse HOCON file and extract all dependency references.
 
-        Uses ConfigFactory for structured parsing with fallback to partial parsing
-        when variable substitution fails.
+        Uses AbstractAsyncConfigRestorer which automatically resolves includes
+        and handles both .hocon and .json files.
 
         Args:
             hocon_path: Absolute path to HOCON file
@@ -73,32 +72,28 @@ class DependencyAnalyzer:
         """
         dependencies = AgentNetworkDependencies()
 
-        # Extract includes from raw file content (ConfigFactory resolves them)
-        dependencies.hocon_includes = self._extract_includes(hocon_path)
-
-        # Try structured parsing with ConfigFactory first
+        # Parse HOCON with AbstractAsyncConfigRestorer (auto-resolves includes)
         try:
-            config = ConfigFactory.parse_file(hocon_path)
+            restorer = AbstractAsyncConfigRestorer(
+                file_purpose="agent network dependency analysis",
+                must_exist=True
+            )
+            config = await restorer.async_restore(file_reference=hocon_path)
             self._extract_from_config(config, dependencies)
 
-        except Exception as parse_error:
-            # ConfigFactory failed (likely due to variable substitution)
-            # Fall back to partial parsing from raw config tree
-            try:
-                # Parse without substitution resolution
-                from pyhocon import ConfigFactory as CF, ConfigTree
+        except FileNotFoundError:
+            print(f"Warning: HOCON file not found: {hocon_path}")
+            return dependencies
 
-                with open(hocon_path, encoding="utf-8") as f:
-                    config_tree = CF.parse_string(f.read(), resolve=False)
+        except ParseException as parse_error:
+            print(f"Warning: Failed to parse {hocon_path}: {parse_error}")
+            return dependencies
 
-                if isinstance(config_tree, ConfigTree):
-                    self._extract_from_config_tree(config_tree, dependencies)
-
-            except Exception as fallback_error:
-                print(f"Warning: Could not parse {hocon_path}: {parse_error}")
+        except Exception as e:
+            print(f"Warning: Unexpected error parsing {hocon_path}: {e}")
+            return dependencies
 
         # Deduplicate lists
-        dependencies.hocon_includes = list(dict.fromkeys(dependencies.hocon_includes))
         dependencies.coded_tools = list(dict.fromkeys(dependencies.coded_tools))
         dependencies.middleware = list(dict.fromkeys(dependencies.middleware))
         dependencies.sub_networks = list(dict.fromkeys(dependencies.sub_networks))
@@ -112,137 +107,53 @@ class DependencyAnalyzer:
         Extract dependencies from fully resolved config.
 
         Args:
-            config: Parsed HOCON config dictionary
+            config: Parsed HOCON config dictionary (from AbstractAsyncConfigRestorer)
             dependencies: AgentNetworkDependencies to populate
         """
         llm_classes = {"openai", "anthropic", "google", "bedrock", "azure"}
         middleware_class_paths = set()
 
         # Extract from tools array
-        for tool_spec in config.get("tools", []):
+        tools = config.get("tools", [])
+        if not isinstance(tools, list):
+            return
+
+        for tool_spec in tools:
             if not isinstance(tool_spec, dict):
                 continue
 
             # Extract middleware first
-            if "middleware" in tool_spec:
-                for mw_spec in tool_spec.get("middleware", []):
+            middleware_list = tool_spec.get("middleware", [])
+            if isinstance(middleware_list, list):
+                for mw_spec in middleware_list:
                     if isinstance(mw_spec, dict) and "class" in mw_spec:
                         class_path = mw_spec["class"]
-                        middleware_class_paths.add(class_path)
-                        dependencies.middleware.append(class_path)
+                        if isinstance(class_path, str):
+                            middleware_class_paths.add(class_path)
+                            dependencies.middleware.append(class_path)
 
             # Extract coded tools (class field)
             if "class" in tool_spec:
                 class_path = tool_spec["class"]
-                if class_path.lower() not in llm_classes and class_path not in middleware_class_paths:
-                    dependencies.coded_tools.append(class_path)
-
-            # Extract toolbox
-            if "toolbox" in tool_spec:
-                dependencies.toolbox_tools.append(tool_spec["toolbox"])
-
-            # Extract sub-networks and MCP from tools list
-            for tool_name in tool_spec.get("tools", []):
-                if isinstance(tool_name, str):
-                    if tool_name.startswith("/"):
-                        dependencies.sub_networks.append(tool_name)
-                    elif tool_name.startswith("https://"):
-                        dependencies.mcp_tools.append(tool_name)
-
-    def _extract_from_config_tree(self, config_tree: Any, dependencies: AgentNetworkDependencies) -> None:
-        """
-        Extract dependencies from unresolved config tree.
-
-        This is used as fallback when variable substitution fails.
-
-        Args:
-            config_tree: Unresolved HOCON ConfigTree
-            dependencies: AgentNetworkDependencies to populate
-        """
-        llm_classes = {"openai", "anthropic", "google", "bedrock", "azure"}
-        middleware_class_paths = set()
-
-        # Try to extract tools array
-        try:
-            tools = config_tree.get("tools", [])
-            if not isinstance(tools, list):
-                return
-
-            for tool_spec in tools:
-                if not isinstance(tool_spec, dict):
-                    continue
-
-                # Extract middleware first
-                if "middleware" in tool_spec:
-                    middleware_list = tool_spec.get("middleware", [])
-                    if isinstance(middleware_list, list):
-                        for mw_spec in middleware_list:
-                            if isinstance(mw_spec, dict) and "class" in mw_spec:
-                                class_path = str(mw_spec["class"])
-                                middleware_class_paths.add(class_path)
-                                dependencies.middleware.append(class_path)
-
-                # Extract coded tools
-                if "class" in tool_spec:
-                    class_path = str(tool_spec["class"])
+                if isinstance(class_path, str):
                     if class_path.lower() not in llm_classes and class_path not in middleware_class_paths:
                         dependencies.coded_tools.append(class_path)
 
-                # Extract toolbox
-                if "toolbox" in tool_spec:
-                    dependencies.toolbox_tools.append(str(tool_spec["toolbox"]))
+            # Extract toolbox
+            if "toolbox" in tool_spec:
+                toolbox = tool_spec["toolbox"]
+                if isinstance(toolbox, str):
+                    dependencies.toolbox_tools.append(toolbox)
 
-                # Extract sub-networks and MCP from tools list
-                if "tools" in tool_spec:
-                    tools_list = tool_spec.get("tools", [])
-                    if isinstance(tools_list, list):
-                        for tool_name in tools_list:
-                            if isinstance(tool_name, str):
-                                if tool_name.startswith("/"):
-                                    dependencies.sub_networks.append(tool_name)
-                                elif tool_name.startswith("https://"):
-                                    dependencies.mcp_tools.append(tool_name)
-
-        except Exception as e:
-            print(f"Warning: Partial extraction failed: {e}")
-
-    def _extract_includes(self, hocon_path: str) -> List[str]:
-        """
-        Extract include directives from HOCON file.
-
-        Uses line-by-line parsing to find include statements, avoiding regex.
-
-        Args:
-            hocon_path: Path to HOCON file
-
-        Returns:
-            List of include paths (e.g., ["registries/aaosa_basic.hocon"])
-        """
-        includes = []
-        try:
-            with open(hocon_path, encoding="utf-8") as f:
-                for line in f:
-                    # Strip comments
-                    line = line.split('#')[0].split('//')[0].strip()
-
-                    # Check if line starts with 'include'
-                    if line.startswith('include '):
-                        # Extract the quoted path
-                        include_part = line[8:].strip()  # Skip 'include '
-
-                        # Find the quoted string
-                        for quote_char in ['"', "'"]:
-                            if quote_char in include_part:
-                                start = include_part.index(quote_char) + 1
-                                end = include_part.index(quote_char, start)
-                                include_path = include_part[start:end]
-                                includes.append(include_path)
-                                break
-
-        except Exception as e:
-            print(f"Warning: Could not extract includes from {hocon_path}: {e}")
-
-        return includes
+            # Extract sub-networks and MCP from tools list
+            tools_list = tool_spec.get("tools", [])
+            if isinstance(tools_list, list):
+                for tool_name in tools_list:
+                    if isinstance(tool_name, str):
+                        if tool_name.startswith("/"):
+                            dependencies.sub_networks.append(tool_name)
+                        elif tool_name.startswith("https://"):
+                            dependencies.mcp_tools.append(tool_name)
 
     def resolve_coded_tool_path(self, class_path: str, context_dir: Optional[str] = None) -> Optional[str]:
         """
@@ -331,7 +242,7 @@ class DependencyAnalyzer:
 
         return None
 
-    def get_transitive_dependencies(
+    async def get_transitive_dependencies(
         self, hocon_path: str, visited: Optional[Set[str]] = None, context_group: Optional[str] = None
     ) -> AgentNetworkDependencies:
         """
@@ -362,7 +273,7 @@ class DependencyAnalyzer:
             # Extract group from path like "registries/basic/coffee_finder.hocon"
             rel_path = os.path.relpath(hocon_path, self.registries_dir)
             parts = rel_path.split(os.sep)
-            if len(parts) >= 2 and parts[0] in ["basic", "industry", "experimental", "tools"]:
+            if len(parts) >= 2 and parts[0] in ["basic", "industry", "experimental", "tools", "root"]:
                 context_group = parts[0]
 
         # Infer context directory for coded tools (e.g., "basic/coffee_finder_advanced")
@@ -371,8 +282,8 @@ class DependencyAnalyzer:
             network_name = Path(hocon_path).stem  # Remove .hocon extension
             context_dir = f"{context_group}/{network_name}"
 
-        # Analyze this network
-        deps = self.analyze_network(hocon_path)
+        # Analyze this network (NOW ASYNC)
+        deps = await self.analyze_network(hocon_path)
 
         # Resolve file paths for THIS network's coded tools and middleware (before recursion)
         resolved_coded_tools = []
@@ -390,16 +301,15 @@ class DependencyAnalyzer:
         deps.coded_tools = resolved_coded_tools
         deps.middleware = resolved_middleware
 
-        # Recursively analyze sub-networks (AFTER resolving this network's dependencies)
+        # Recursively analyze sub-networks (NOW ASYNC)
         for sub_network_ref in deps.sub_networks:
             sub_network_rel = self.resolve_sub_network(sub_network_ref)
             if sub_network_rel:
                 sub_network_path = os.path.join(self.registries_dir, sub_network_rel)
                 if os.path.exists(sub_network_path):
-                    sub_deps = self.get_transitive_dependencies(sub_network_path, visited)
+                    sub_deps = await self.get_transitive_dependencies(sub_network_path, visited)
 
                     # Merge dependencies (deduplicate)
-                    deps.hocon_includes.extend([i for i in sub_deps.hocon_includes if i not in deps.hocon_includes])
                     deps.coded_tools.extend([t for t in sub_deps.coded_tools if t not in deps.coded_tools])
                     deps.middleware.extend([m for m in sub_deps.middleware if m not in deps.middleware])
                     deps.sub_networks.extend([s for s in sub_deps.sub_networks if s not in deps.sub_networks])

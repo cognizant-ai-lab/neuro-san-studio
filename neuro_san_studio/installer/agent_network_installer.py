@@ -88,11 +88,8 @@ class AgentNetworkInstaller:
         # 1. Copy main HOCON file
         self._copy_hocon(hocon_relative_path, result)
 
-        # 2. Copy included HOCON files
-        for include_path in dependencies.hocon_includes:
-            self._copy_hocon(include_path, result)
-
-        # 3. Copy sub-network HOCON files
+        # 2. Copy sub-network HOCON files
+        # Note: includes are auto-resolved by AbstractAsyncConfigRestorer, no need to copy separately
         for sub_network_ref in dependencies.sub_networks:
             # Convert "/agent_network_editor" to "agent_network_editor.hocon"
             sub_network_name = sub_network_ref.lstrip("/")

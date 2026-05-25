@@ -16,6 +16,7 @@
 
 """Add agent networks to existing projects."""
 
+import asyncio
 import os
 import sys
 from typing import List
@@ -306,10 +307,10 @@ class AddCommand:
             # Get full path
             full_hocon_path = os.path.join(registry.registries_dir, hocon_path)
 
-            # Analyze dependencies
+            # Analyze dependencies (NOW ASYNC)
             print(f"   Analyzing {hocon_path}...")
             try:
-                deps = analyzer.get_transitive_dependencies(full_hocon_path)
+                deps = asyncio.run(analyzer.get_transitive_dependencies(full_hocon_path))
             except Exception as e:
                 all_errors.append(f"Failed to analyze {hocon_path}: {e}")
                 continue
