@@ -19,7 +19,6 @@
 import os
 from dataclasses import dataclass
 from dataclasses import field
-from pathlib import Path
 from typing import Dict
 from typing import List
 from typing import Optional
@@ -187,7 +186,13 @@ class AgentNetworkRegistry:
 
         # Default metadata
         metadata = AgentNetworkMetadata(
-            name=name, group=group, hocon_path=relative_path, description="", tags=[], sample_queries=[], is_public=is_public
+            name=name,
+            group=group,
+            hocon_path=relative_path,
+            description="",
+            tags=[],
+            sample_queries=[],
+            is_public=is_public,
         )
 
         # Parse HOCON to extract metadata block

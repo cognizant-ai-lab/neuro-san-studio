@@ -22,7 +22,6 @@ from dataclasses import dataclass
 from dataclasses import field
 from pathlib import Path
 from typing import List
-from typing import Optional
 from typing import Set
 
 from neuro_san_studio.discovery.dependency_analyzer import AgentNetworkDependencies
@@ -60,9 +59,7 @@ class AgentNetworkInstaller:
         self.target_coded_tools = os.path.join(target_dir, "coded_tools")
         self.target_middleware = os.path.join(target_dir, "middleware")
 
-    def install_network(
-        self, hocon_relative_path: str, dependencies: AgentNetworkDependencies
-    ) -> InstallResult:
+    def install_network(self, hocon_relative_path: str, dependencies: AgentNetworkDependencies) -> InstallResult:
         """
         Copy agent network and all dependencies to target directory.
 

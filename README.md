@@ -196,18 +196,18 @@ neuro-san-studio init
 `init` asks which LLM provider(s) you want to enable and writes a minimal project into the current directory
 (`config/llm_config.hocon`, `registries/manifest.hocon`, `registries/music_nerd.hocon`, `mcp/mcp_info.hocon`).
 
-After initialization, you can add more agent networks from the 80+ included examples:
+After initialization, you can import more agent networks from the 80+ included in neuro-san-studio:
 
 ```bash
 # Interactive selection with checkbox UI
-neuro-san-studio add
+neuro-san-studio import
 
-# Or install specific networks non-interactively
-neuro-san-studio add basic,industry
-neuro-san-studio add agent_network_designer
+# Or import specific networks non-interactively
+neuro-san-studio import basic,industry
+neuro-san-studio import agent_network_designer
 ```
 
-See [`docs/cli/add.md`](docs/cli/add.md) for details.
+See [`docs/cli/import.md`](docs/cli/import.md) for details.
 
 Once your provider API key is set (e.g. `OPENAI_API_KEY`), start the server:
 

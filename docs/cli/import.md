@@ -1,6 +1,6 @@
-# add
+# import
 
-Adds agent networks to an existing neuro-san-studio project. This command discovers available agent networks from the neuro-san-studio installation, analyzes their dependencies (coded tools, middleware, sub-networks, HOCON includes), and installs them into your project with all required files.
+Imports agent networks into an existing neuro-san-studio project. This command discovers available agent networks from the neuro-san-studio installation, analyzes their dependencies (coded tools, middleware, sub-networks, HOCON includes), and installs them into your project with all required files.
 
 ## Usage
 
@@ -8,7 +8,7 @@ Adds agent networks to an existing neuro-san-studio project. This command discov
 
 ```bash
 # Launch interactive checkbox UI to select networks
-ns add
+ns import
 ```
 
 The interactive mode presents a checkbox interface where you can:
@@ -19,23 +19,23 @@ The interactive mode presents a checkbox interface where you can:
 ### Non-interactive mode
 
 ```bash
-# Install specific networks by name
-ns add coffee_finder_advanced
-ns add agent_network_designer
+# Import specific networks by name
+ns import coffee_finder_advanced
+ns import agent_network_designer
 
-# Install entire groups
-ns add basic
-ns add industry,experimental
+# Import entire groups
+ns import basic
+ns import industry,experimental
 
-# Install all networks from all groups
-ns add all
+# Import all networks from all groups
+ns import all
 
-# Install root-level networks (agent_network_designer, etc.)
-ns add root
+# Import root-level networks (agent_network_designer, etc.)
+ns import root
 
 # Combine groups and specific networks
-ns add basic,agent_network_designer
-ns add coffee_finder,music_nerd_pro,industry
+ns import basic,agent_network_designer
+ns import coffee_finder,music_nerd_pro,industry
 ```
 
 ## Network groups
@@ -52,7 +52,7 @@ Agent networks are organized into groups:
 
 ## Dependency resolution
 
-The `add` command automatically resolves and installs all dependencies:
+The `import` command automatically resolves and installs all dependencies:
 
 - **HOCON includes** - Configuration files referenced via `include` directives
 - **Coded tools** - Python classes referenced via `class` fields
@@ -71,7 +71,7 @@ For example, installing `agent_network_designer` will automatically install:
 The command is safe to run multiple times:
 - Files that already exist are skipped (not overwritten)
 - The manifest is updated to include newly installed networks
-- Running `ns add --networks X` twice will skip all files on the second run
+- Running `ns import --networks X` twice will skip all files on the second run
 
 ## Manifest updates
 
@@ -123,17 +123,17 @@ The command provides progress updates and a summary:
 ns init --providers openai
 
 # Add industry-specific networks
-ns add industry
+ns import industry
 
 # Add specific advanced networks
-ns add agent_network_designer,cruse_agent
+ns import agent_network_designer,cruse_agent
 ```
 
 ### Exploring available networks
 
 ```bash
 # Use interactive mode to browse all available networks
-ns add
+ns import
 # Use arrow keys and space to select, then Enter to install
 ```
 
@@ -141,7 +141,7 @@ ns add
 
 ```bash
 # Install all 82+ agent networks
-ns add all,root
+ns import all,root
 ```
 
 ## Network naming

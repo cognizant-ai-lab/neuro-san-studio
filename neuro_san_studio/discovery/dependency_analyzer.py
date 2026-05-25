@@ -74,10 +74,7 @@ class DependencyAnalyzer:
 
         # Parse HOCON with AbstractAsyncConfigRestorer (auto-resolves includes)
         try:
-            restorer = AbstractAsyncConfigRestorer(
-                file_purpose="agent network dependency analysis",
-                must_exist=True
-            )
+            restorer = AbstractAsyncConfigRestorer(file_purpose="agent network dependency analysis", must_exist=True)
             config = await restorer.async_restore(file_reference=hocon_path)
             self._extract_from_config(config, dependencies)
 

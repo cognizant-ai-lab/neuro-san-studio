@@ -14,7 +14,7 @@
 #
 # END COPYRIGHT
 
-"""Add agent networks to existing projects."""
+"""Import agent networks into existing projects."""
 
 import asyncio
 import os
@@ -24,27 +24,26 @@ from typing import Optional
 
 import questionary
 
-from neuro_san_studio.discovery.agent_network_registry import AgentNetworkMetadata
 from neuro_san_studio.discovery.agent_network_registry import AgentNetworkRegistry
 from neuro_san_studio.discovery.dependency_analyzer import DependencyAnalyzer
 from neuro_san_studio.installer.agent_network_installer import AgentNetworkInstaller
 
 
-class AddCommand:
-    """Add agent networks to existing project."""
+class ImportCommand:
+    """Import agent networks into existing project."""
 
     def __init__(self, networks_arg: Optional[str] = None):
         """
-        Initialize the add command.
+        Initialize the import command.
 
         Args:
-            networks_arg: Optional comma-separated networks to add (non-interactive mode)
+            networks_arg: Optional comma-separated networks to import (non-interactive mode)
         """
         self.networks_arg = networks_arg
         self.target_dir = os.getcwd()
 
     def run(self) -> None:
-        """Execute the add command."""
+        """Execute the import command."""
         # Step 1: Verify project is initialized
         if not self._verify_project_initialized():
             print("\n❌ Error: Project not initialized.")
@@ -121,13 +120,10 @@ class AddCommand:
             return project_root
 
         raise FileNotFoundError(
-            "Cannot find neuro-san-studio installation. "
-            "Make sure neuro-san-studio is installed via pip."
+            "Cannot find neuro-san-studio installation. Make sure neuro-san-studio is installed via pip."
         )
 
-    def _parse_networks_arg(
-        self, networks_arg: str, networks_by_group: dict
-    ) -> List[str]:
+    def _parse_networks_arg(self, networks_arg: str, networks_by_group: dict) -> List[str]:
         """
         Parse --networks argument.
 
@@ -294,7 +290,9 @@ class AddCommand:
             registry: AgentNetworkRegistry instance
         """
         # Initialize analyzer and installer
-        analyzer = DependencyAnalyzer(registry.registries_dir, registry.source_dir + "/coded_tools", registry.source_dir + "/middleware")
+        analyzer = DependencyAnalyzer(
+            registry.registries_dir, registry.source_dir + "/coded_tools", registry.source_dir + "/middleware"
+        )
         installer = AgentNetworkInstaller(registry.source_dir, self.target_dir)
 
         total_copied = 0
@@ -335,7 +333,7 @@ class AddCommand:
             installer.update_manifest(installed_paths)
 
         # Print summary
-        print(f"\n📊 Summary:")
+        print("\n📊 Summary:")
         print(f"   ✅ Copied: {total_copied} files")
         if total_skipped > 0:
             print(f"   ⏭️  Skipped: {total_skipped} files (already exist)")

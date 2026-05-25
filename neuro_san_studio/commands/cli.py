@@ -123,17 +123,20 @@ class NeuroSanStudioCli:  # pylint: disable=too-few-public-methods
         InitCommand(providers_arg=providers).run()
 
     @staticmethod
-    @app.command("add", help="Add agent networks to existing project.")
-    def _add_command(
+    @app.command("import", help="Import agent networks into existing project.")
+    def _import_command(
         networks: Optional[str] = typer.Argument(
             None,
-            help="Comma-separated networks to add (groups: basic,industry,experimental,tools or specific networks: coffee_finder,music_nerd or 'all'). Omit for interactive mode.",
+            help=(
+                "Comma-separated networks to import (groups: basic,industry,experimental,tools or "
+                "specific networks: coffee_finder,music_nerd or 'all'). Omit for interactive mode."
+            ),
         ),
     ) -> None:
-        """Add agent networks to an existing neuro-san-studio project."""
-        from neuro_san_studio.commands.add import AddCommand  # pylint: disable=import-outside-toplevel
+        """Import agent networks into an existing neuro-san-studio project."""
+        from neuro_san_studio.commands.import_networks import ImportCommand  # pylint: disable=import-outside-toplevel
 
-        AddCommand(networks_arg=networks).run()
+        ImportCommand(networks_arg=networks).run()
 
     @staticmethod
     @app.command("check-llm-keys", help="Validate LLM API keys and other critical environment variables.")
