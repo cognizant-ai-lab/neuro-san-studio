@@ -25,6 +25,11 @@ jobs:
         set -e
         VIRTUAL_ENV=system make lint-check
         curl --silent --location \
+          https://github.com/hadolint/hadolint/releases/download/v2.12.0/hadolint-Linux-x86_64 \
+          --output /tmp/hadolint
+        chmod +x /tmp/hadolint
+        /tmp/hadolint deploy/Dockerfile
+        curl --silent --location \
           https://github.com/lycheeverse/lychee/releases/download/lychee-v0.24.1/lychee-x86_64-unknown-linux-gnu.tar.gz \
           | tar --extract --gzip --directory /tmp --strip-components=1
         # To prevent flaky CI failures, accept:
