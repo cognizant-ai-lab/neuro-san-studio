@@ -103,17 +103,10 @@ class DependencyAnalyzer:
         """Map a Python class path (e.g. 'pkg.module.Class') to its source file under coded_tools/ or middleware/."""
         parts = class_path.split(".")
 
-        if parts[0] == "middleware":
-            module_rel = "/".join(parts[1:-1]) + ".py"
-            if os.path.exists(os.path.join(self.middleware_dir, *parts[1:-1]) + ".py"):
-                return "middleware/" + module_rel
-            return None
-
-        if parts[0] == "coded_tools":
-            module_rel = "/".join(parts[1:-1]) + ".py"
-            if os.path.exists(os.path.join(self.coded_tools_dir, *parts[1:-1]) + ".py"):
-                return "coded_tools/" + module_rel
-            return None
+        if parts[0] in ("middleware", "coded_tools"):
+            root = self.middleware_dir if parts[0] == "middleware" else self.coded_tools_dir
+            module_file = os.path.join(root, *parts[1:-1]) + ".py"
+            return f"{parts[0]}/" + "/".join(parts[1:-1]) + ".py" if os.path.exists(module_file) else None
 
         # Short reference like "order_api.OrderAPI" — resolve under context_dir
         if len(parts) == 2 and context_dir:
@@ -122,8 +115,7 @@ class DependencyAnalyzer:
                 return f"coded_tools/{context_dir}/{parts[0]}.py"
 
         # Long-form reference under coded_tools/
-        full_module = os.path.join(self.coded_tools_dir, *parts[:-1]) + ".py"
-        if os.path.exists(full_module):
+        if os.path.exists(os.path.join(self.coded_tools_dir, *parts[:-1]) + ".py"):
             return "coded_tools/" + "/".join(parts[:-1]) + ".py"
 
         # Package directory (__init__.py)

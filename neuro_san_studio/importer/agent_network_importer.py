@@ -39,18 +39,23 @@ class ImportResult:
     warnings: List[str] = field(default_factory=list)
 
 
+@dataclass(frozen=True)
+class _Roots:
+    """Source/target root directories for one dependency category (registries, coded_tools, middleware)."""
+
+    source: str
+    target: str
+
+
 class AgentNetworkImporter:
     """Copy agent networks (and their dependencies) from source_dir into target_dir."""
 
     def __init__(self, source_dir: str, target_dir: str):
         self.source_dir = source_dir
         self.target_dir = target_dir
-        self.source_registries = os.path.join(source_dir, "registries")
-        self.source_coded_tools = os.path.join(source_dir, "coded_tools")
-        self.source_middleware = os.path.join(source_dir, "middleware")
-        self.target_registries = os.path.join(target_dir, "registries")
-        self.target_coded_tools = os.path.join(target_dir, "coded_tools")
-        self.target_middleware = os.path.join(target_dir, "middleware")
+        self.registries = _Roots(os.path.join(source_dir, "registries"), os.path.join(target_dir, "registries"))
+        self.coded_tools = _Roots(os.path.join(source_dir, "coded_tools"), os.path.join(target_dir, "coded_tools"))
+        self.middleware = _Roots(os.path.join(source_dir, "middleware"), os.path.join(target_dir, "middleware"))
 
     # Shared registry-level HOCONs that networks pull in via `include "registries/<name>"`.
     # These aren't agent networks themselves so the dependency walker doesn't see them, but
@@ -69,39 +74,32 @@ class AgentNetworkImporter:
                 sub_name += ".hocon"
             self._copy_hocon(sub_name, result)
         for coded in dependencies.coded_tools:
-            self._copy_under(coded, "coded_tools", self.source_coded_tools, self.target_coded_tools, result)
+            self._copy_under(coded, "coded_tools", self.coded_tools, result)
         for mw in dependencies.middleware:
-            self._copy_under(mw, "middleware", self.source_middleware, self.target_middleware, result)
+            self._copy_under(mw, "middleware", self.middleware, result)
         for shared in self.SHARED_INCLUDES:
             self._copy_hocon(shared, result)
 
         return result
 
     def _copy_hocon(self, relative_path: str, result: ImportResult) -> None:
-        source = os.path.join(self.source_registries, relative_path)
-        target = os.path.join(self.target_registries, relative_path)
+        source = os.path.join(self.registries.source, relative_path)
+        target = os.path.join(self.registries.target, relative_path)
         if not os.path.exists(source):
             result.warnings.append(f"Source HOCON not found: {relative_path}")
             return
         self._copy_file_or_dir(source, target, relative_path, result)
 
-    def _copy_under(
-        self,
-        dep_path: str,
-        prefix: str,
-        source_root: str,
-        target_root: str,
-        result: ImportResult,
-    ) -> None:
+    def _copy_under(self, dep_path: str, prefix: str, roots: "_Roots", result: ImportResult) -> None:
         rel = dep_path[len(prefix) + 1 :] if dep_path.startswith(prefix + "/") else dep_path
-        source = os.path.join(source_root, rel)
-        target = os.path.join(target_root, rel)
+        source = os.path.join(roots.source, rel)
+        target = os.path.join(roots.target, rel)
         if not os.path.exists(source):
             result.warnings.append(f"Dependency not found: {dep_path}")
             return
         self._copy_file_or_dir(source, target, dep_path, result)
         if os.path.isfile(source):
-            self._copy_parent_inits(os.path.dirname(source), source_root, target_root, result)
+            self._copy_parent_inits(os.path.dirname(source), roots, result)
 
     @staticmethod
     def _copy_file_or_dir(source: str, target: str, display: str, result: ImportResult) -> None:
@@ -119,26 +117,26 @@ class AgentNetworkImporter:
             result.errors.append(f"Failed to copy {display}: {exc}")
 
     @staticmethod
-    def _copy_parent_inits(current_dir: str, source_root: str, target_root: str, result: ImportResult) -> None:
+    def _copy_parent_inits(current_dir: str, roots: "_Roots", result: ImportResult) -> None:
         """Copy __init__.py up the parent chain so the package is importable in the target."""
-        while current_dir.startswith(source_root) and current_dir != source_root:
+        while current_dir.startswith(roots.source) and current_dir != roots.source:
             init_src = os.path.join(current_dir, "__init__.py")
             if os.path.exists(init_src):
-                rel = os.path.relpath(init_src, source_root)
-                init_dst = os.path.join(target_root, rel)
+                rel = os.path.relpath(init_src, roots.source)
+                init_dst = os.path.join(roots.target, rel)
                 if not os.path.exists(init_dst):
                     try:
                         os.makedirs(os.path.dirname(init_dst), exist_ok=True)
                         shutil.copy2(init_src, init_dst)
-                        result.copied_files.append(os.path.join(os.path.basename(target_root), rel))
+                        result.copied_files.append(os.path.join(os.path.basename(roots.target), rel))
                     except OSError as exc:
                         result.errors.append(f"Failed to copy __init__.py: {exc}")
             current_dir = os.path.dirname(current_dir)
 
     def update_manifest(self, imported_networks: List[str]) -> None:
         """Merge new entries into target registries/manifest.hocon (always JSON-formatted)."""
-        manifest_path = os.path.join(self.target_registries, "manifest.hocon")
-        os.makedirs(self.target_registries, exist_ok=True)
+        manifest_path = os.path.join(self.registries.target, "manifest.hocon")
+        os.makedirs(self.registries.target, exist_ok=True)
 
         existing: dict = {}
         if os.path.exists(manifest_path):

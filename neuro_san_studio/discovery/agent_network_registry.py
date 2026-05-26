@@ -29,7 +29,7 @@ from neuro_san.internals.graph.persistence.raw_manifest_restorer import RawManif
 logging.getLogger("pyhocon.config_parser").setLevel(logging.ERROR)
 
 
-class AgentNetworkRegistry:
+class AgentNetworkRegistry:  # pylint: disable=too-few-public-methods
     """List every agent network declared by the source root manifest, grouped by directory prefix."""
 
     def __init__(self, source_dir: Optional[str] = None):

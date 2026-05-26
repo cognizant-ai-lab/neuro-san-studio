@@ -34,7 +34,7 @@ ALL = "__all__"
 BACK = "__back__"
 
 
-class ImportCommand:
+class ImportCommand:  # pylint: disable=too-few-public-methods
     """Run the `ns import` flow: discover, prompt, resolve dependencies, copy, update manifest."""
 
     def __init__(self, networks_arg: Optional[str] = None):
@@ -42,6 +42,7 @@ class ImportCommand:
         self.target_dir = os.getcwd()
 
     def run(self) -> None:
+        """Discover, prompt, and import the requested networks; print a summary."""
         if not self._verify_project_initialized():
             print("\n❌ Project not initialized. Run 'ns init' first.\n")
             sys.exit(1)
@@ -242,15 +243,31 @@ class ImportCommand:
             os.path.join(registry.source_dir, "middleware"),
         )
         importer = AgentNetworkImporter(registry.source_dir, self.target_dir)
+        results, top_errors = self._collect_results(hocon_paths, analyzer, importer, registry.registries_dir)
 
-        copied = 0
-        skipped = 0
+        imported = [r.hocon_path for r in results]
+        if imported:
+            print("\n   Updating manifest...")
+            importer.update_manifest(imported)
+
+        copied = sum(len(r.copied_files) for r in results)
+        skipped = sum(len(r.skipped_files) for r in results)
+        warnings = [w for r in results for w in r.warnings]
+        errors = top_errors + [e for r in results for e in r.errors]
+        self._print_summary(copied, skipped, warnings, errors)
+
+    @staticmethod
+    def _collect_results(
+        hocon_paths: List[str],
+        analyzer: DependencyAnalyzer,
+        importer: AgentNetworkImporter,
+        registries_dir: str,
+    ):
+        """Analyze and import each network; return successful ImportResults plus any top-level errors."""
+        results = []
         errors: List[str] = []
-        warnings: List[str] = []
-        imported: List[str] = []
-
         for hocon_path in hocon_paths:
-            full_path = os.path.join(registry.registries_dir, hocon_path)
+            full_path = os.path.join(registries_dir, hocon_path)
             print(f"   Analyzing {hocon_path}...")
             try:
                 deps = analyzer.get_transitive_dependencies(full_path)
@@ -260,36 +277,22 @@ class ImportCommand:
 
             print(f"   Importing {hocon_path}...")
             try:
-                result = importer.import_network(hocon_path, deps)
+                results.append(importer.import_network(hocon_path, deps))
             except (OSError, ValueError) as exc:
                 errors.append(f"Failed to import {hocon_path}: {exc}")
-                continue
+        return results, errors
 
-            copied += len(result.copied_files)
-            skipped += len(result.skipped_files)
-            errors.extend(result.errors)
-            warnings.extend(result.warnings)
-            imported.append(result.hocon_path)
-
-        if imported:
-            print("\n   Updating manifest...")
-            importer.update_manifest(imported)
-
+    @staticmethod
+    def _print_summary(copied: int, skipped: int, warnings: List[str], errors: List[str]) -> None:
         print("\n📊 Summary:")
         print(f"   ✅ Copied: {copied} files")
         if skipped:
             print(f"   ⏭️  Skipped: {skipped} files (already exist)")
-
-        if warnings:
-            print(f"\n⚠️  Warnings ({len(warnings)}):")
-            for w in warnings[:5]:
-                print(f"   - {w}")
-            if len(warnings) > 5:
-                print(f"   ... and {len(warnings) - 5} more")
-
-        if errors:
-            print(f"\n❌ Errors ({len(errors)}):")
-            for e in errors[:5]:
-                print(f"   - {e}")
-            if len(errors) > 5:
-                print(f"   ... and {len(errors) - 5} more")
+        for label, items in (("⚠️  Warnings", warnings), ("❌ Errors", errors)):
+            if not items:
+                continue
+            print(f"\n{label} ({len(items)}):")
+            for item in items[:5]:
+                print(f"   - {item}")
+            if len(items) > 5:
+                print(f"   ... and {len(items) - 5} more")
