@@ -127,10 +127,7 @@ class NeuroSanStudioCli:  # pylint: disable=too-few-public-methods
     def _import_command(
         networks: Optional[str] = typer.Argument(
             None,
-            help=(
-                "Comma-separated networks to import (groups: basic,industry,experimental,tools or "
-                "specific networks: coffee_finder,music_nerd or 'all'). Omit for interactive mode."
-            ),
+            help=("Comma-separated group names, network names, or 'all'. Omit for interactive mode."),
         ),
     ) -> None:
         """Import agent networks into an existing neuro-san-studio project."""
