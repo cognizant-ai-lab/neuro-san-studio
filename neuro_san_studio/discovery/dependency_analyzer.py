@@ -96,7 +96,7 @@ class DependencyAnalyzer:
                     continue
                 if tool_name.startswith("/"):
                     deps.sub_networks.append(tool_name)
-                elif tool_name.startswith("https://"):
+                elif tool_name.startswith(("http://", "https://")):
                     deps.mcp_tools.append(tool_name)
 
     def resolve_coded_tool_path(self, class_path: str, context_dir: Optional[str] = None) -> Optional[str]:
