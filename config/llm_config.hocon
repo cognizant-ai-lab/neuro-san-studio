@@ -15,6 +15,7 @@
 # END COPYRIGHT
 
 {
+
     # This file is NOT an agent network HOCON.
     # It defines a set of key-value pairs for substitution, typically used in agent network HOCON files.
     # Each key can be referenced in agent configs using the ${key} syntax.
@@ -47,7 +48,6 @@
         #   For more details, see:
         #   - https://github.com/cognizant-ai-lab/neuro-san/blob/main/neuro_san/internals/run_context/langchain/llms/default_llm_info.hocon
         #   - https://github.com/cognizant-ai-lab/neuro-san/blob/main/docs/agent_hocon_reference.md#llm_config
-
         "fallbacks": [
             {   
                 "class": "openai",
@@ -64,5 +64,23 @@
             }
         ]
 
-    }
+    },
+
+    "sly_data_schema": {
+        "type": "object",
+        "properties": {
+            "llm_config": {
+                "type": "object",
+                "properties": {
+                    "openai_api_key": {
+                        "type": "string",
+                        "description": "The user's OpenAI API key"
+                    }
+                },
+                "required": ["openai_api_key"]
+            },
+        },
+        "required": ["llm_config"]
+    },
+
 }

@@ -66,7 +66,7 @@
                 # You can optionally specify the schema needed for any sly_data as input.
                 # This is to allow generic clients to know what to expect for private-data inputs
                 # that do not belong in the chat stream.
-                "sly_data_schema": {
+                "sly_data_schema": ${?sly_data_schema} {
                     "type": "object",
                     "properties": {
                         "agent_network_definition": {
@@ -113,15 +113,15 @@ This can be used to invoke the newly created network later on the same server/cl
                         # Optionally provide an OpenAI API key via sly_data, paired with
                         # "openai_api_key": "sly_data" in `config/llm_config.hocon`.
                         # Falls back to the OPENAI_API_KEY environment variable if omitted.
-                        "llm_config": {
-                            "type": "object",
-                            "properties": {
-                                "openai_api_key": {
-                                    "type": "string",
-                                    "description": "The user's OpenAI API key"
-                                }
-                            },
-                        },
+                        // "llm_config": {
+                        //     "type": "object",
+                        //     "properties": {
+                        //         "openai_api_key": {
+                        //             "type": "string",
+                        //             "description": "The user's OpenAI API key"
+                        //         }
+                        //     },
+                        // },
                     }
                     # Note: Neither of these fields are strictly required in order to kick off creating a new network.
                 },
