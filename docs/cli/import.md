@@ -42,6 +42,7 @@ Imported alongside each network:
 - Coded tools (`class` fields)
 - Middleware (`middleware` arrays)
 - Sub-networks (`/network_name` references) — transitively
+- MCP tool URLs (`http://` / `https://`) — recorded for visibility but not copied (remote endpoints)
 
 Shared registry HOCONs (`aaosa.hocon`, `aaosa_basic.hocon`, `aaosa_basic_debug.hocon`) are scaffolded by `ns init`; the importer copies them as a safety net if missing.
 
