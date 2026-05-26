@@ -54,7 +54,7 @@
 # is off by default; enable it by adding the ``summarization`` block below.
 
 {
-    include "registries/llm_config.hocon",
+    include "config/llm_config.hocon",
 
     "metadata": {
         "description": "Cloud-backed long-term memory (Mem0). Remembers facts you share across sessions and scopes them per user.",
