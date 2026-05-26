@@ -124,7 +124,7 @@ class TestRunFlow:
         assert local == upstream
 
     def test_run_scaffolds_all_files(self, tmp_path: Path, monkeypatch: MonkeyPatch) -> None:
-        """`init --providers openai` should create all four starter files."""
+        """`init --providers openai` should create all six starter files."""
         monkeypatch.chdir(tmp_path)
         self._run_init(tmp_path, monkeypatch)
 

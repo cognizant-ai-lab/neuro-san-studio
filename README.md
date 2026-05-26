@@ -219,6 +219,8 @@ directory:
 * `config/llm_config.hocon` — provider/model wiring (defaults to OpenAI `gpt-5.2`)
 * `registries/manifest.hocon` — registry of active agent networks
 * `registries/music_nerd.hocon` — sample agent network
+* `registries/aaosa.hocon` — AAOSA substitution variables (instructions, call, command)
+* `registries/aaosa_basic.hocon` — simplified AAOSA substitution variables
 * `mcp/mcp_info.hocon` — MCP server config
 
 Skip the prompt with `--providers`:
