@@ -238,8 +238,7 @@ class TestTemplateSync:  # pylint: disable=too-few-public-methods
         repo_root = Path(__file__).resolve().parents[3]
         source_of_truth = (repo_root / "registries" / "aaosa.hocon").read_bytes()
         assert template == source_of_truth, (
-            "neuro_san_studio/templates/aaosa.hocon has drifted from "
-            "registries/aaosa.hocon. Update both together."
+            "neuro_san_studio/templates/aaosa.hocon has drifted from registries/aaosa.hocon. Update both together."
         )
 
     def test_aaosa_basic_template_matches_registries(self) -> None:
@@ -250,6 +249,5 @@ class TestTemplateSync:  # pylint: disable=too-few-public-methods
         repo_root = Path(__file__).resolve().parents[3]
         source_of_truth = (repo_root / "registries" / "aaosa_basic.hocon").read_bytes()
         assert template == source_of_truth, (
-            "neuro_san_studio/templates/aaosa_basic.hocon has drifted from "
-            "registries/aaosa_basic.hocon. Update both together."
+            "neuro_san_studio/templates/aaosa_basic.hocon has drifted from registries/aaosa_basic.hocon. Update both together."
         )
