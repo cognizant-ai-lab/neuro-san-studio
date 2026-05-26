@@ -65,13 +65,17 @@ class ImportCommand:  # pylint: disable=too-few-public-methods
             print("\n📭 No networks selected. Exiting.\n")
             return
 
+        if not self._confirm_import(selected):
+            print("\n📭 Import cancelled.\n")
+            return
+
         print(f"\n📦 Importing {len(selected)} network(s)...\n")
         self._import(selected, registry)
 
         print("\n✅ Import complete!")
         print("\n💡 Next steps:")
         print("   - Run 'ns run' to start the server")
-        print("   - The manifest will auto-reload within 5 seconds\n")
+        print("   - If neuro-san server is running, the manifest will auto-reload.\n")
 
     def _verify_project_initialized(self) -> bool:
         return os.path.exists(os.path.join(self.target_dir, "registries", "manifest.hocon"))
@@ -160,36 +164,32 @@ class ImportCommand:  # pylint: disable=too-few-public-methods
 
     @classmethod
     def _custom_flow(cls, networks_by_group: Dict[str, List[str]]) -> Optional[List[str]]:
-        """Custom = pick groups → pick networks (within those groups) → confirm.
+        """Custom = pick groups (multi-select) → pick networks within those groups.
         Left at any step backs up one screen; Left at the first step returns None
-        so the caller pops back to the top menu."""
+        so the caller pops back to the top menu. If no groups are toggled, fall
+        through to the network picker showing all groups (Enter-without-Space ≠
+        silent exit). Final confirmation is handled uniformly by the caller."""
         while True:
             groups = cls._prompt_groups(networks_by_group)
             if groups is None:
                 return None  # back to top menu
-            if not groups:
-                return []
-            while True:
-                subset = {g: networks_by_group[g] for g in groups}
-                picked = cls._prompt_networks(subset)
-                if picked is None:
-                    break  # back to group-filter
-                if not picked:
-                    return []
-                confirmed = cls._prompt_confirm(picked)
-                if confirmed is None:
-                    continue  # back to network picker
-                return confirmed
+            subset = {g: networks_by_group[g] for g in groups} if groups else networks_by_group
+            picked = cls._prompt_networks(subset)
+            if picked is None:
+                continue  # back to group-filter
+            return picked
 
     @classmethod
     def _prompt_groups(cls, networks_by_group: Dict[str, List[str]]) -> Optional[List[str]]:
+        """Multi-select picker for which groups to narrow by. Empty selection = all groups."""
         choices = [
             questionary.Choice(title=f"{group.capitalize()} ({len(paths)})", value=group)
             for group, paths in networks_by_group.items()
         ]
         question = questionary.checkbox(
-            "Pick groups to choose from (Space=toggle, Enter=continue, ←=back):",
+            "Pick groups to narrow the network list:",
             choices=choices,
+            instruction="(Space=select groups · Enter=continue · ←=back · Enter with none = all groups)",
         )
         result = cls._ask_with_back(question)
         if result == BACK:
@@ -206,25 +206,33 @@ class ImportCommand:  # pylint: disable=too-few-public-methods
                 choices.append(questionary.Choice(title=name, value=path))
 
         question = questionary.checkbox(
-            "Select networks (Space=toggle, A=toggle all, Enter=confirm, ←=back):",
+            "Toggle networks with SPACE, then press ENTER (A=toggle all, ←=back):",
             choices=choices,
+            instruction="(Space=toggle · A=toggle all · Enter=continue)",
         )
         result = cls._ask_with_back(question)
         if result == BACK:
             return None
         return result or []
 
-    @classmethod
-    def _prompt_confirm(cls, picked: List[str]) -> Optional[List[str]]:
-        confirm_choices = [questionary.Choice(title=p, value=p, checked=True) for p in picked]
-        question = questionary.checkbox(
-            "Confirm networks to import (uncheck any to remove, ←=back):",
-            choices=confirm_choices,
+    @staticmethod
+    def _confirm_import(selected: List[str]) -> bool:
+        """Show the final list + a non-overwrite note, then ask y/N. Non-TTY auto-confirms."""
+        print("\nNetworks to import:")
+        for path in selected:
+            print(f"  - {path}")
+        print(
+            "\nNote:\n"
+            "This will not overwrite any of the existing files.\n"
+            "To import the original agent-networks from studio, "
+            "remove the ones on your current project.\n"
         )
-        result = cls._ask_with_back(question)
-        if result == BACK:
-            return None
-        return result or []
+        if not sys.stdin.isatty():
+            return True
+        try:
+            return questionary.confirm("Proceed with import?", default=True).ask() is True
+        except (KeyboardInterrupt, EOFError):
+            return False
 
     @staticmethod
     def _ask_with_back(question):
