@@ -51,8 +51,12 @@ class TestMainEntryPoint:
         """Bare `neuro-san-studio` should show help and exit cleanly without starting the server."""
         call_order = self._install_fake_runner(monkeypatch)
         monkeypatch.setattr(sys, "argv", ["neuro-san-studio"])
-        # Typer exits with code 0 after printing help; main() swallows that for clean exits.
-        main()
+        # typer <0.26 exits 0 after printing help (swallowed by main()); typer >=0.26
+        # raises NoArgsIsHelpError -> SystemExit(2). Both are clean help-display outcomes.
+        try:
+            main()
+        except SystemExit as exc:
+            assert exc.code in (0, 2)
         assert not call_order
 
     def test_main_with_run_subcommand_runs_server(self, monkeypatch: MonkeyPatch) -> None:
