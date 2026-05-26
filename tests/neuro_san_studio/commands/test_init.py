@@ -111,6 +111,8 @@ class TestRunFlow:
         InitCommand(providers_arg="openai", root_dir=str(tmp_path)).run()
 
         assert (tmp_path / "registries" / "music_nerd.hocon").is_file()
+        assert (tmp_path / "registries" / "aaosa.hocon").is_file()
+        assert (tmp_path / "registries" / "aaosa_basic.hocon").is_file()
         assert (tmp_path / "registries" / "manifest.hocon").read_text().strip().startswith("{")
         assert (tmp_path / "mcp" / "mcp_info.hocon").is_file()
         llm_config = (tmp_path / "config" / "llm_config.hocon").read_text()
@@ -168,6 +170,28 @@ class TestRunFlow:
         local = (tmp_path / "registries" / "music_nerd.hocon").read_bytes()
         assert local == upstream
 
+    def test_aaosa_sourced_from_templates(self, tmp_path: Path, monkeypatch: MonkeyPatch) -> None:
+        """aaosa.hocon should be copied from neuro_san_studio.templates."""
+        monkeypatch.setattr(sys.stdin, "isatty", lambda: False)
+        InitCommand(providers_arg="openai", root_dir=str(tmp_path)).run()
+
+        from importlib import resources  # pylint: disable=import-outside-toplevel
+
+        upstream = (resources.files("neuro_san_studio.templates") / "aaosa.hocon").read_bytes()
+        local = (tmp_path / "registries" / "aaosa.hocon").read_bytes()
+        assert local == upstream
+
+    def test_aaosa_basic_sourced_from_templates(self, tmp_path: Path, monkeypatch: MonkeyPatch) -> None:
+        """aaosa_basic.hocon should be copied from neuro_san_studio.templates."""
+        monkeypatch.setattr(sys.stdin, "isatty", lambda: False)
+        InitCommand(providers_arg="openai", root_dir=str(tmp_path)).run()
+
+        from importlib import resources  # pylint: disable=import-outside-toplevel
+
+        upstream = (resources.files("neuro_san_studio.templates") / "aaosa_basic.hocon").read_bytes()
+        local = (tmp_path / "registries" / "aaosa_basic.hocon").read_bytes()
+        assert local == upstream
+
     def test_manifest_sourced_from_templates(self, tmp_path: Path, monkeypatch: MonkeyPatch) -> None:
         """manifest.hocon should be copied from neuro_san_studio.templates."""
         monkeypatch.setattr(sys.stdin, "isatty", lambda: False)
@@ -204,4 +228,28 @@ class TestTemplateSync:  # pylint: disable=too-few-public-methods
         assert template == source_of_truth, (
             "neuro_san_studio/templates/music_nerd.hocon has drifted from "
             "registries/basic/music_nerd.hocon. Update both together."
+        )
+
+    def test_aaosa_template_matches_registries(self) -> None:
+        """templates/aaosa.hocon must be byte-identical to registries/aaosa.hocon."""
+        from importlib import resources  # pylint: disable=import-outside-toplevel
+
+        template = (resources.files("neuro_san_studio.templates") / "aaosa.hocon").read_bytes()
+        repo_root = Path(__file__).resolve().parents[3]
+        source_of_truth = (repo_root / "registries" / "aaosa.hocon").read_bytes()
+        assert template == source_of_truth, (
+            "neuro_san_studio/templates/aaosa.hocon has drifted from "
+            "registries/aaosa.hocon. Update both together."
+        )
+
+    def test_aaosa_basic_template_matches_registries(self) -> None:
+        """templates/aaosa_basic.hocon must be byte-identical to registries/aaosa_basic.hocon."""
+        from importlib import resources  # pylint: disable=import-outside-toplevel
+
+        template = (resources.files("neuro_san_studio.templates") / "aaosa_basic.hocon").read_bytes()
+        repo_root = Path(__file__).resolve().parents[3]
+        source_of_truth = (repo_root / "registries" / "aaosa_basic.hocon").read_bytes()
+        assert template == source_of_truth, (
+            "neuro_san_studio/templates/aaosa_basic.hocon has drifted from "
+            "registries/aaosa_basic.hocon. Update both together."
         )
