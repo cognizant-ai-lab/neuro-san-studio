@@ -53,6 +53,7 @@ RUN if [ -f ${APP_SOURCE}/requirements.txt ]; \
 # Install plugin dependencies.
 # To install additional plugins, add more lines following this pattern:
 #   pip install --prefix=/install --no-cache-dir -r ${APP_SOURCE}/neuro_san_studio/plugins/<plugin>/requirements.txt
+# hadolint ignore=DL3059
 RUN pip install --prefix=/install --no-cache-dir \
     -r ${APP_SOURCE}/neuro_san_studio/plugins/langfuse/requirements.txt
 
@@ -96,19 +97,16 @@ COPY --from=builder /install /usr/local
 # Note: The registries directory where agent definitions live is mandatory
 #       The coded_tools directory where agent code lives is optional
 #       [s] allows for registries/coded_tools from within client repo or neuro-san repo
-#       The toolbox directory is mandatory if agent networks use tools from the standard toolbox
 #       The config directory where the LLM configuration lives is mandatory
 #       The Agent Network Designer relies on:
-#       - its own toolbox in ./toolbox
+#       - its own toolbox in ./neuro_san_studio/toolbox
 #       - ./middleware for validation of designed networks
 COPY ./neuro_san_studio ${APP_SOURCE}/neuro_san_studio
 COPY ./registries ${APP_SOURCE}/registries
 COPY ./coded_tool[s] ${APP_SOURCE}/coded_tools
-COPY ./toolbox ${APP_SOURCE}/toolbox
 COPY ./middleware ${APP_SOURCE}/middleware
 COPY ./deploy/entrypoint.sh ${APP_SOURCE}/deploy/entrypoint.sh
 COPY ./deploy/logging.hocon ${APP_SOURCE}/deploy/logging.hocon
-COPY ./mcp/mcp_info.hocon ${APP_SOURCE}/mcp/mcp_info.hocon
 COPY ./config ${APP_SOURCE}/config
 # To override the default LLM configuration at runtime, mount your custom
 # llm_config.hocon using a Docker volume, e.g.:
@@ -179,7 +177,7 @@ ENV AGENT_LLM_INFO_FILE=""
 
 # A toolbox_info hocon file with user-provided base tool and coded tool
 # descriptions that are to be used in addition to the neuro-san defaults.
-ENV AGENT_TOOLBOX_INFO_FILE="${APP_SOURCE}/toolbox/toolbox_info.hocon"
+ENV AGENT_TOOLBOX_INFO_FILE="${APP_SOURCE}/neuro_san_studio/toolbox/toolbox_info.hocon"
 
 # Where to find the classes for CodedTool class implementations
 # that are used by specific agent networks.
@@ -337,7 +335,7 @@ ENV AGENT_RESERVATIONS_S3_BUCKET=""
 
 # A hocon file with MCP servers information to be used by LangChainMcpAdapter
 # for connecting to external MCP servers with authentication and tool filtering.
-ENV MCP_SERVERS_INFO_FILE="mcp/mcp_info.hocon"
+ENV MCP_SERVERS_INFO_FILE="${APP_SOURCE}/neuro_san_studio/mcp/mcp_info.hocon"
 
 # When set, this parameter enables MCP service protocol for running neuro-san server.
 # Service endpoint is http://host:port/mcp
@@ -435,8 +433,8 @@ ENV AGENT_NETWORK_DESIGNER_SUBDIRECTORY="generated"
 # Defaults to "registries/manifest_and.hocon" if not set.
 ENV AGENT_NETWORK_DESIGNER_MANIFEST_FILE="registries/manifest_and.hocon"
 
-# Toolbox info info file providing available tools for the Agent Network Designer to choose from.
-# Defaults to "toolbox/agent_network_designer_toolbox_info.hocon" if not set.
-ENV AGENT_NETWORK_DESIGNER_TOOLBOX_INFO_FILE="toolbox/agent_network_designer_toolbox_info.hocon"
+# Toolbox info file providing available tools for the Agent Network Designer to choose from.
+# Defaults to "neuro_san_studio/toolbox/agent_network_designer_toolbox_info.hocon" if not set.
+ENV AGENT_NETWORK_DESIGNER_TOOLBOX_INFO_FILE="neuro_san_studio/toolbox/agent_network_designer_toolbox_info.hocon"
 
-ENTRYPOINT "${APP_ENTRYPOINT}"
+ENTRYPOINT ["/bin/bash", "-c", "exec ${APP_ENTRYPOINT}"]

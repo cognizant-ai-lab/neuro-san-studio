@@ -102,7 +102,7 @@
     # - neuro-san>=0.6.24
     # - GOOGLE_API_KEY
     # - Maps Grounding Lite API enabled in Google Cloud project. See https://developers.google.com/maps/ai/grounding-lite
-    # - Use MCP_SERVERS_INFO_FILE for authentication. See https://github.com/cognizant-ai-lab/neuro-san-studio/blob/main/mcp/mcp_info.hocon and https://github.com/cognizant-ai-lab/neuro-san-studio/blob/main/docs/user_guide.md#authentication
+    # - Use MCP_SERVERS_INFO_FILE for authentication. See ../../neuro_san_studio/mcp/mcp_info.hocon and ../../docs/user_guide.md#authentication
     "tools/google_maps.hocon": false,
 
     # Before turning on and running the following agent network, make sure that:
@@ -151,6 +151,6 @@
     # Wikimedia media search
     "tools/wikimedia_search.hocon": true,
 
-    # Requires YDC_API_KEY. See docs/search_tools.md and mcp/mcp_info.hocon for setup.
+    # Requires YDC_API_KEY. See docs/search_tools.md and neuro_san_studio/mcp/mcp_info.hocon for setup.
     "tools/you_search.hocon": false,
 }

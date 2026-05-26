@@ -179,14 +179,14 @@ class TestRunFlow:
         local = (tmp_path / "registries" / "manifest.hocon").read_bytes()
         assert local == upstream
 
-    def test_mcp_info_sourced_from_templates(self, tmp_path: Path, monkeypatch: MonkeyPatch) -> None:
-        """mcp_info.hocon should be copied from neuro_san_studio.templates."""
+    def test_mcp_info_sourced_from_mcp_package(self, tmp_path: Path, monkeypatch: MonkeyPatch) -> None:
+        """mcp_info.hocon should be copied from neuro_san_studio.mcp (the same file run.py uses)."""
         monkeypatch.setattr(sys.stdin, "isatty", lambda: False)
         InitCommand(providers_arg="openai", root_dir=str(tmp_path)).run()
 
         from importlib import resources  # pylint: disable=import-outside-toplevel
 
-        upstream = (resources.files("neuro_san_studio.templates") / "mcp_info.hocon").read_bytes()
+        upstream = (resources.files("neuro_san_studio.mcp") / "mcp_info.hocon").read_bytes()
         local = (tmp_path / "mcp" / "mcp_info.hocon").read_bytes()
         assert local == upstream
 
