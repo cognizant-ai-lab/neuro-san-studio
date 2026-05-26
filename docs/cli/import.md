@@ -1,169 +1,83 @@
 # import
 
-Imports agent networks into an existing neuro-san-studio project. This command discovers available agent networks from the neuro-san-studio installation, analyzes their dependencies (coded tools, middleware, sub-networks, HOCON includes), and installs them into your project with all required files.
+Imports agent networks (and their dependencies) from the installed neuro-san-studio package into the current project.
 
 ## Usage
 
-### Interactive mode (recommended)
+### Interactive
 
 ```bash
-# Launch interactive checkbox UI to select networks
 ns import
 ```
 
-The interactive mode presents a checkbox interface where you can:
-1. Select entire groups (basic, industry, experimental, tools, root)
-2. Choose "Custom Selection" to pick individual networks
-3. Choose "All" to install everything
+Top menu (single-select, Enter to pick):
 
-### Non-interactive mode
+- One per group — `Basic (N)`, `Industry (N)`, etc. — imports the whole group
+- `Custom selection` — drills into a two-step picker
+- `All (N)` — imports every network
+
+`Custom selection` flow:
+
+1. Pick groups to narrow the network list (Space=toggle, Enter=continue, ←=back)
+2. Pick networks within those groups
+3. Confirm (uncheck any to drop, ←=back)
+
+`←` at any sub-screen discards selections and backs up one level.
+
+### Non-interactive
 
 ```bash
-# Import specific networks by name
-ns import coffee_finder_advanced
-ns import agent_network_designer
-
-# Import entire groups
-ns import basic
-ns import industry,experimental
-
-# Import all networks from all groups
-ns import all
-
-# Import root-level networks (agent_network_designer, etc.)
-ns import root
-
-# Combine groups and specific networks
-ns import basic,agent_network_designer
-ns import coffee_finder,music_nerd_pro,industry
+ns import basic                       # one group
+ns import industry,experimental       # multiple groups
+ns import all                         # everything
+ns import music_nerd                  # one network (any group)
+ns import basic,agent_network_designer  # mix
 ```
-
-## Network groups
-
-Agent networks are organized into groups:
-
-| Group | Description | Count |
-|---|---|---|
-| **basic** | Simple examples and tutorials | 17 networks |
-| **industry** | Domain-specific use cases (retail, insurance, banking, etc.) | 22 networks |
-| **experimental** | Research and advanced features (CRUSE, conscious agents, etc.) | 9 networks |
-| **tools** | Tool integrations (RAG, search, code execution, etc.) | 28 networks |
-| **root** | Meta-networks (agent_network_designer, editor, etc.) | 6 networks |
 
 ## Dependency resolution
 
-The `import` command automatically resolves and installs all dependencies:
+Imported alongside each network:
 
-- **HOCON includes** - Configuration files referenced via `include` directives
-- **Coded tools** - Python classes referenced via `class` fields
-- **Middleware** - Middleware components from `middleware` arrays
-- **Sub-networks** - Other agent networks referenced via `/network_name` syntax
-- **Transitive dependencies** - Dependencies of sub-networks are also installed
+- HOCON `include` files
+- Coded tools (`class` fields)
+- Middleware (`middleware` arrays)
+- Sub-networks (`/network_name` references) — transitively
 
-For example, installing `agent_network_designer` will automatically install:
-- The main `agent_network_designer.hocon` file
-- Sub-networks: `agent_network_editor`, `agent_network_query_generator`, `agent_network_instructions_editor`
-- Middleware: `agent_network_definition_middleware`, persistence layer, validation layer
-- Coded tools: 10+ Python files for network manipulation
+Shared registry HOCONs (`aaosa.hocon`, `aaosa_basic.hocon`, `aaosa_basic_debug.hocon`) are scaffolded by `ns init`; the importer copies them as a safety net if missing.
 
-## Idempotency
+## Manifest
 
-The command is safe to run multiple times:
-- Files that already exist are skipped (not overwritten)
-- The manifest is updated to include newly installed networks
-- Running `ns import --networks X` twice will skip all files on the second run
-
-## Manifest updates
-
-The command automatically updates `registries/manifest.hocon` to register newly installed networks. The manifest follows this format:
+`registries/manifest.hocon` is updated in JSON form, sorted, with new entries merged in:
 
 ```hocon
 {
     "basic/music_nerd.hocon": true,
-    "basic/coffee_finder_advanced.hocon": true,
     "agent_network_designer.hocon": true
 }
 ```
 
-Networks are added in alphabetical order. The server will auto-reload the manifest within 5 seconds if it's already running.
+A running server auto-reloads within ~5s.
 
-## Output
+## Idempotency
 
-The command provides progress updates and a summary:
-
-```
-🔍 Discovering available agent networks...
-
-📦 Installing 3 network(s)...
-
-   Analyzing basic/coffee_finder_advanced.hocon...
-   Installing basic/coffee_finder_advanced.hocon...
-   Analyzing agent_network_designer.hocon...
-   Installing agent_network_designer.hocon...
-
-   Updating manifest...
-
-📊 Summary:
-   ✅ Copied: 42 files
-   ⏭️  Skipped: 5 files (already exist)
-
-✅ Installation complete!
-
-💡 Next steps:
-   - Run 'ns run' to start the server
-   - The manifest will auto-reload within 5 seconds
-```
-
-## Examples
-
-### Starting a new project
-
-```bash
-# Initialize project with basic setup
-ns init --providers openai
-
-# Add industry-specific networks
-ns import industry
-
-# Add specific advanced networks
-ns import agent_network_designer,cruse_agent
-```
-
-### Exploring available networks
-
-```bash
-# Use interactive mode to browse all available networks
-ns import
-# Use arrow keys and space to select, then Enter to install
-```
-
-### Installing everything
-
-```bash
-# Install all 82+ agent networks
-ns import all,root
-```
+Existing files are skipped, not overwritten. Re-running is safe.
 
 ## Network naming
 
-Networks can be specified in multiple formats:
-
-| Format | Example | Notes |
-|---|---|---|
-| Just name | `music_nerd` | Searches all groups |
-| Group/name | `basic/music_nerd` | Explicit group path |
-| With extension | `basic/music_nerd.hocon` | Also supported |
-| Root networks | `agent_network_designer` | No group prefix |
+| Format | Example |
+|---|---|
+| Bare name | `music_nerd` |
+| Group/name | `basic/music_nerd` |
+| With extension | `basic/music_nerd.hocon` |
+| Root network | `agent_network_designer` |
 
 ## Requirements
 
-- Must run from an initialized neuro-san-studio project (after `ns init`)
-- If run from uninitialized directory, will show error and suggest running `ns init` first
-- Requires neuro-san-studio to be installed (via pip or in development mode)
+Run from a project initialized with `ns init` (must contain `registries/manifest.hocon`). neuro-san-studio must be importable.
 
 ## Exit codes
 
 | Code | Meaning |
 |---|---|
-| 0 | Success - all networks installed |
-| 1 | Error - project not initialized or installation failed |
+| 0 | Success |
+| 1 | Project not initialized, or import failed |
