@@ -18,9 +18,9 @@ Top menu (single-select, Enter to pick):
 
 `Custom selection` flow:
 
-1. Pick groups to narrow the network list (Space=toggle, Enter=continue, ←=back)
-2. Pick networks within those groups
-3. Confirm (uncheck any to drop, ←=back)
+1. Pick groups to narrow the network list (Space=select, Enter=continue, ←=back; Enter with none = all groups)
+2. Pick networks within those groups (Space=toggle, A=toggle all, Enter=continue, ←=back)
+3. Confirm the listed networks (y/N)
 
 `←` at any sub-screen discards selections and backs up one level.
 
