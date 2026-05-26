@@ -14,340 +14,282 @@
 #
 # END COPYRIGHT
 
-"""Import agent networks into existing projects."""
+"""Import agent networks from the installed neuro-san-studio package into the current project."""
 
-import asyncio
 import os
 import sys
+from typing import Dict
 from typing import List
 from typing import Optional
 
 import questionary
+from prompt_toolkit.keys import Keys
 
 from neuro_san_studio.discovery.agent_network_registry import AgentNetworkRegistry
 from neuro_san_studio.discovery.dependency_analyzer import DependencyAnalyzer
-from neuro_san_studio.installer.agent_network_installer import AgentNetworkInstaller
+from neuro_san_studio.importer.agent_network_importer import AgentNetworkImporter
+
+CUSTOM = "__custom__"
+ALL = "__all__"
+BACK = "__back__"
 
 
 class ImportCommand:
-    """Import agent networks into existing project."""
+    """Run the `ns import` flow: discover, prompt, resolve dependencies, copy, update manifest."""
 
     def __init__(self, networks_arg: Optional[str] = None):
-        """
-        Initialize the import command.
-
-        Args:
-            networks_arg: Optional comma-separated networks to import (non-interactive mode)
-        """
         self.networks_arg = networks_arg
         self.target_dir = os.getcwd()
 
     def run(self) -> None:
-        """Execute the import command."""
-        # Step 1: Verify project is initialized
         if not self._verify_project_initialized():
-            print("\n❌ Error: Project not initialized.")
-            print("Please run 'ns init' first to create a new project.\n")
+            print("\n❌ Project not initialized. Run 'ns init' first.\n")
             sys.exit(1)
 
-        # Step 2: Discover available networks from neuro-san-studio installation
         print("🔍 Discovering available agent networks...\n")
         try:
-            # Find neuro-san-studio installation (not the target project's registries)
             source_dir = self._find_neuro_san_studio_installation()
             registry = AgentNetworkRegistry(source_dir=source_dir)
-            networks_by_group = registry.discover_networks()
-        except FileNotFoundError as e:
-            print(f"❌ Error: {e}\n")
+            networks_by_group = registry.discover()
+        except FileNotFoundError as exc:
+            print(f"❌ {exc}\n")
             sys.exit(1)
 
-        # Step 3: Get network selection (interactive or from args)
         if self.networks_arg:
-            selected_paths = self._parse_networks_arg(self.networks_arg, networks_by_group)
+            selected = self._parse_arg(self.networks_arg, networks_by_group)
         else:
-            selected_paths = self._prompt_for_networks(networks_by_group)
+            selected = self._prompt(networks_by_group)
 
-        if not selected_paths:
+        if not selected:
             print("\n📭 No networks selected. Exiting.\n")
             return
 
-        # Step 4: Install selected networks
-        print(f"\n📦 Installing {len(selected_paths)} network(s)...\n")
-        self._install_networks(selected_paths, registry)
+        print(f"\n📦 Importing {len(selected)} network(s)...\n")
+        self._import(selected, registry)
 
-        print("\n✅ Installation complete!")
+        print("\n✅ Import complete!")
         print("\n💡 Next steps:")
         print("   - Run 'ns run' to start the server")
         print("   - The manifest will auto-reload within 5 seconds\n")
 
     def _verify_project_initialized(self) -> bool:
-        """
-        Check if the current directory is an initialized ns project.
+        return os.path.exists(os.path.join(self.target_dir, "registries", "manifest.hocon"))
 
-        Returns:
-            True if initialized, False otherwise
-        """
-        manifest_path = os.path.join(self.target_dir, "registries", "manifest.hocon")
-        return os.path.exists(manifest_path)
-
-    def _find_neuro_san_studio_installation(self) -> str:
-        """
-        Find the neuro-san-studio installation directory.
-
-        Returns:
-            Path to neuro-san-studio installation
-
-        Raises:
-            FileNotFoundError: If installation cannot be found
-        """
-        # Try to find via import (installed package)
+    @staticmethod
+    def _find_neuro_san_studio_installation() -> str:
         try:
-            import registries
+            import registries  # pylint: disable=import-outside-toplevel
 
             if hasattr(registries, "__path__"):
-                registries_path = registries.__path__[0]
-                return os.path.dirname(registries_path)
+                return os.path.dirname(registries.__path__[0])
         except ImportError:
             pass
 
-        # Try to find based on this module's location (development mode)
-        # neuro_san_studio/commands/add.py -> neuro_san_studio/commands -> neuro_san_studio -> project_root
-        this_file = os.path.abspath(__file__)
-        project_root = os.path.dirname(os.path.dirname(os.path.dirname(this_file)))
-        registries_dir = os.path.join(project_root, "registries")
-
-        if os.path.exists(registries_dir):
+        project_root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+        if os.path.exists(os.path.join(project_root, "registries")):
             return project_root
 
         raise FileNotFoundError(
             "Cannot find neuro-san-studio installation. Make sure neuro-san-studio is installed via pip."
         )
 
-    def _parse_networks_arg(self, networks_arg: str, networks_by_group: dict) -> List[str]:
-        """
-        Parse --networks argument.
-
-        Supports:
-        - Group names: "basic", "industry"
-        - Specific paths: "basic/music_nerd", "agent_network_designer"
-        - Special: "all"
-
-        Args:
-            networks_arg: Comma-separated network specifiers
-            networks_by_group: Dict of group -> list of AgentNetworkMetadata
-
-        Returns:
-            List of HOCON paths to install
-        """
-        selected_paths = []
-        specifiers = [s.strip() for s in networks_arg.split(",")]
-
-        for spec in specifiers:
+    @staticmethod
+    def _parse_arg(arg: str, networks_by_group: Dict[str, List[str]]) -> List[str]:
+        """Parse --networks argument: 'all', a group name, or specific network names/paths."""
+        selected: List[str] = []
+        for spec in (s.strip() for s in arg.split(",")):
             if spec == "all":
-                # Add all networks from all groups
-                for group_networks in networks_by_group.values():
-                    selected_paths.extend([net.hocon_path for net in group_networks])
-
-            elif spec in networks_by_group:
-                # Add all networks from this group
-                selected_paths.extend([net.hocon_path for net in networks_by_group[spec]])
-
-            else:
-                # Try as specific network path
-                # Handle: "basic/music_nerd", "basic/music_nerd.hocon", "music_nerd", "agent_network_designer"
-                spec_clean = spec.replace(".hocon", "")  # Remove .hocon if present
-
-                # Check if it exists in any group
-                found = False
-                for group_networks in networks_by_group.values():
-                    for net in group_networks:
-                        # Match by:
-                        # 1. Exact hocon_path match: "basic/music_nerd.hocon" or "basic/music_nerd"
-                        # 2. Just network name: "music_nerd"
-                        net_path_clean = net.hocon_path.replace(".hocon", "")
-                        if net_path_clean == spec_clean or net.name == spec_clean:
-                            selected_paths.append(net.hocon_path)
-                            found = True
-                            break
-                    if found:
-                        break
-
-                if not found:
-                    print(f"⚠️  Warning: Network '{spec}' not found, skipping.")
-
-        return list(set(selected_paths))  # Deduplicate
-
-    def _prompt_for_networks(self, networks_by_group: dict) -> List[str]:
-        """
-        Interactive prompt for network selection.
-
-        Args:
-            networks_by_group: Dict of group -> list of AgentNetworkMetadata
-
-        Returns:
-            List of HOCON paths to install
-        """
-        # Step 1: Prompt for group selection
-        group_choices = []
-        for group_name in ["basic", "industry", "experimental", "tools"]:
-            if group_name in networks_by_group:
-                count = len(networks_by_group[group_name])
-                description = self._get_group_description(group_name)
-                group_choices.append(
-                    questionary.Choice(
-                        title=f"{group_name.capitalize()} ({count} networks) - {description}",
-                        value=group_name,
-                        checked=(group_name == "basic"),  # Default to basic
-                    )
-                )
-
-        group_choices.extend(
-            [
-                questionary.Separator(),
-                questionary.Choice(title="Custom Selection - Choose specific networks", value="custom"),
-                questionary.Choice(title="All - Install everything", value="all"),
-            ]
-        )
-
-        selected_groups = questionary.checkbox(
-            "Which agent network groups do you want to install?",
-            choices=group_choices,
-        ).ask()
-
-        if selected_groups is None:  # User cancelled
-            return []
-
-        # Step 2: Handle selection
-        if "all" in selected_groups:
-            # Install all networks
-            all_paths = []
-            for group_networks in networks_by_group.values():
-                all_paths.extend([net.hocon_path for net in group_networks])
-            return all_paths
-
-        if "custom" in selected_groups:
-            # Show individual network selection
-            return self._prompt_individual_networks(networks_by_group)
-
-        # Install selected groups
-        selected_paths = []
-        for group_name in selected_groups:
-            if group_name in networks_by_group:
-                selected_paths.extend([net.hocon_path for net in networks_by_group[group_name]])
-
-        return selected_paths
-
-    def _prompt_individual_networks(self, networks_by_group: dict) -> List[str]:
-        """
-        Prompt for individual network selection.
-
-        Args:
-            networks_by_group: Dict of group -> list of AgentNetworkMetadata
-
-        Returns:
-            List of HOCON paths to install
-        """
-        # Build flat list of all networks with group labels
-        choices = []
-        for group_name in ["basic", "industry", "experimental", "tools"]:
-            if group_name not in networks_by_group:
+                for paths in networks_by_group.values():
+                    selected.extend(paths)
+                continue
+            if spec in networks_by_group:
+                selected.extend(networks_by_group[spec])
                 continue
 
-            choices.append(questionary.Separator(f"─── {group_name.upper()} ───"))
-            for net in sorted(networks_by_group[group_name], key=lambda n: n.name):
-                # Format: "network_name - description"
-                title = net.name
-                if net.description:
-                    # Truncate long descriptions
-                    desc = net.description[:80] + "..." if len(net.description) > 80 else net.description
-                    title = f"{net.name} - {desc}"
+            spec_clean = spec.removesuffix(".hocon")
+            match = next(
+                (
+                    path
+                    for paths in networks_by_group.values()
+                    for path in paths
+                    if path.removesuffix(".hocon") == spec_clean
+                    or os.path.basename(path).removesuffix(".hocon") == spec_clean
+                ),
+                None,
+            )
+            if match:
+                selected.append(match)
+            else:
+                print(f"⚠️  Network '{spec}' not found, skipping.")
+        return list(dict.fromkeys(selected))
 
-                choices.append(questionary.Choice(title=title, value=net.hocon_path))
+    @classmethod
+    def _prompt(cls, networks_by_group: Dict[str, List[str]]) -> List[str]:
+        """Two-tier flow: pick a group / All / Custom; Custom drills into a network checkbox.
+        Left arrow on a sub-screen returns to the top screen, discarding selections."""
+        while True:
+            top = cls._prompt_top(networks_by_group)
+            if top is None:
+                return []
+            if top == ALL:
+                return [path for paths in networks_by_group.values() for path in paths]
+            if top == CUSTOM:
+                confirmed = cls._custom_flow(networks_by_group)
+                if confirmed is None:  # user pressed Left at the first custom step
+                    continue
+                return confirmed
+            return list(networks_by_group.get(top, []))
 
-        selected_paths = questionary.checkbox(
-            "Select agent networks to install:",
+    @staticmethod
+    def _prompt_top(networks_by_group: Dict[str, List[str]]) -> Optional[str]:
+        total = sum(len(paths) for paths in networks_by_group.values())
+        choices = [
+            questionary.Choice(title=f"{group.capitalize()} ({len(paths)})", value=group)
+            for group, paths in networks_by_group.items()
+        ]
+        choices += [
+            questionary.Separator(),
+            questionary.Choice(title="Custom selection", value=CUSTOM),
+            questionary.Choice(title=f"All ({total})", value=ALL),
+        ]
+        return questionary.select(
+            "What do you want to import?",
             choices=choices,
         ).ask()
 
-        return selected_paths if selected_paths else []
+    @classmethod
+    def _custom_flow(cls, networks_by_group: Dict[str, List[str]]) -> Optional[List[str]]:
+        """Custom = pick groups → pick networks (within those groups) → confirm.
+        Left at any step backs up one screen; Left at the first step returns None
+        so the caller pops back to the top menu."""
+        while True:
+            groups = cls._prompt_groups(networks_by_group)
+            if groups is None:
+                return None  # back to top menu
+            if not groups:
+                return []
+            while True:
+                subset = {g: networks_by_group[g] for g in groups}
+                picked = cls._prompt_networks(subset)
+                if picked is None:
+                    break  # back to group-filter
+                if not picked:
+                    return []
+                confirmed = cls._prompt_confirm(picked)
+                if confirmed is None:
+                    continue  # back to network picker
+                return confirmed
 
-    def _get_group_description(self, group_name: str) -> str:
-        """Get description for a group."""
-        descriptions = {
-            "basic": "Simple examples and tutorials",
-            "industry": "Domain-specific use cases",
-            "experimental": "Research and advanced features",
-            "tools": "Tool integrations and utilities",
-        }
-        return descriptions.get(group_name, "")
-
-    def _install_networks(self, hocon_paths: List[str], registry: AgentNetworkRegistry) -> None:
-        """
-        Install selected networks with their dependencies.
-
-        Args:
-            hocon_paths: List of HOCON paths to install
-            registry: AgentNetworkRegistry instance
-        """
-        # Initialize analyzer and installer
-        analyzer = DependencyAnalyzer(
-            registry.registries_dir, registry.source_dir + "/coded_tools", registry.source_dir + "/middleware"
+    @classmethod
+    def _prompt_groups(cls, networks_by_group: Dict[str, List[str]]) -> Optional[List[str]]:
+        choices = [
+            questionary.Choice(title=f"{group.capitalize()} ({len(paths)})", value=group)
+            for group, paths in networks_by_group.items()
+        ]
+        question = questionary.checkbox(
+            "Pick groups to choose from (Space=toggle, Enter=continue, ←=back):",
+            choices=choices,
         )
-        installer = AgentNetworkInstaller(registry.source_dir, self.target_dir)
+        result = cls._ask_with_back(question)
+        if result == BACK:
+            return None
+        return result or []
 
-        total_copied = 0
-        total_skipped = 0
-        all_errors = []
-        all_warnings = []
-        installed_paths = []
+    @classmethod
+    def _prompt_networks(cls, networks_by_group: Dict[str, List[str]]) -> Optional[List[str]]:
+        choices: List = []
+        for group, paths in networks_by_group.items():
+            choices.append(questionary.Separator(f"─── {group.upper()} ({len(paths)}) ───"))
+            for path in sorted(paths):
+                name = os.path.basename(path).removesuffix(".hocon")
+                choices.append(questionary.Choice(title=name, value=path))
+
+        question = questionary.checkbox(
+            "Select networks (Space=toggle, A=toggle all, Enter=confirm, ←=back):",
+            choices=choices,
+        )
+        result = cls._ask_with_back(question)
+        if result == BACK:
+            return None
+        return result or []
+
+    @classmethod
+    def _prompt_confirm(cls, picked: List[str]) -> Optional[List[str]]:
+        confirm_choices = [questionary.Choice(title=p, value=p, checked=True) for p in picked]
+        question = questionary.checkbox(
+            "Confirm networks to import (uncheck any to remove, ←=back):",
+            choices=confirm_choices,
+        )
+        result = cls._ask_with_back(question)
+        if result == BACK:
+            return None
+        return result or []
+
+    @staticmethod
+    def _ask_with_back(question):
+        """Run a questionary checkbox with Left=exit-with-BACK sentinel."""
+
+        @question.application.key_bindings.add(Keys.Left)
+        def _back(event):
+            event.app.exit(result=BACK)
+
+        return question.ask()
+
+    def _import(self, hocon_paths: List[str], registry: AgentNetworkRegistry) -> None:
+        analyzer = DependencyAnalyzer(
+            registry.registries_dir,
+            os.path.join(registry.source_dir, "coded_tools"),
+            os.path.join(registry.source_dir, "middleware"),
+        )
+        importer = AgentNetworkImporter(registry.source_dir, self.target_dir)
+
+        copied = 0
+        skipped = 0
+        errors: List[str] = []
+        warnings: List[str] = []
+        imported: List[str] = []
 
         for hocon_path in hocon_paths:
-            # Get full path
-            full_hocon_path = os.path.join(registry.registries_dir, hocon_path)
-
-            # Analyze dependencies (NOW ASYNC)
+            full_path = os.path.join(registry.registries_dir, hocon_path)
             print(f"   Analyzing {hocon_path}...")
             try:
-                deps = asyncio.run(analyzer.get_transitive_dependencies(full_hocon_path))
-            except Exception as e:
-                all_errors.append(f"Failed to analyze {hocon_path}: {e}")
+                deps = analyzer.get_transitive_dependencies(full_path)
+            except (OSError, ValueError) as exc:
+                errors.append(f"Failed to analyze {hocon_path}: {exc}")
                 continue
 
-            # Install network
-            print(f"   Installing {hocon_path}...")
+            print(f"   Importing {hocon_path}...")
             try:
-                result = installer.install_network(hocon_path, deps)
-                total_copied += len(result.copied_files)
-                total_skipped += len(result.skipped_files)
-                all_errors.extend(result.errors)
-                all_warnings.extend(result.warnings)
-                installed_paths.append(result.hocon_path)
-
-            except Exception as e:
-                all_errors.append(f"Failed to install {hocon_path}: {e}")
+                result = importer.import_network(hocon_path, deps)
+            except (OSError, ValueError) as exc:
+                errors.append(f"Failed to import {hocon_path}: {exc}")
                 continue
 
-        # Update manifest
-        if installed_paths:
+            copied += len(result.copied_files)
+            skipped += len(result.skipped_files)
+            errors.extend(result.errors)
+            warnings.extend(result.warnings)
+            imported.append(result.hocon_path)
+
+        if imported:
             print("\n   Updating manifest...")
-            installer.update_manifest(installed_paths)
+            importer.update_manifest(imported)
 
-        # Print summary
         print("\n📊 Summary:")
-        print(f"   ✅ Copied: {total_copied} files")
-        if total_skipped > 0:
-            print(f"   ⏭️  Skipped: {total_skipped} files (already exist)")
+        print(f"   ✅ Copied: {copied} files")
+        if skipped:
+            print(f"   ⏭️  Skipped: {skipped} files (already exist)")
 
-        if all_warnings:
-            print(f"\n⚠️  Warnings ({len(all_warnings)}):")
-            for warning in all_warnings[:5]:
-                print(f"   - {warning}")
-            if len(all_warnings) > 5:
-                print(f"   ... and {len(all_warnings) - 5} more")
+        if warnings:
+            print(f"\n⚠️  Warnings ({len(warnings)}):")
+            for w in warnings[:5]:
+                print(f"   - {w}")
+            if len(warnings) > 5:
+                print(f"   ... and {len(warnings) - 5} more")
 
-        if all_errors:
-            print(f"\n❌ Errors ({len(all_errors)}):")
-            for error in all_errors[:5]:
-                print(f"   - {error}")
-            if len(all_errors) > 5:
-                print(f"   ... and {len(all_errors) - 5} more")
+        if errors:
+            print(f"\n❌ Errors ({len(errors)}):")
+            for e in errors[:5]:
+                print(f"   - {e}")
+            if len(errors) > 5:
+                print(f"   ... and {len(errors) - 5} more")
