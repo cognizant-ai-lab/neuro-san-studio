@@ -170,12 +170,13 @@ class NeuroSanStudioCli:  # pylint: disable=too-few-public-methods
 
 def main() -> None:
     """Entry point for the `neuro-san-studio` console script."""
-    # Typer/click exit with SystemExit(0) on success; let clean exits return normally
-    # so main() can be driven from tests and embedded callers.
+    # Typer/click exit with SystemExit(0) on success and SystemExit(2) for
+    # no-args-is-help; let clean exits return normally so main() can be
+    # driven from tests and embedded callers.
     try:
         NeuroSanStudioCli.app()
     except SystemExit as exc:
-        if exc.code not in (None, 0):
+        if exc.code not in (None, 0, 2):
             raise
 
 
