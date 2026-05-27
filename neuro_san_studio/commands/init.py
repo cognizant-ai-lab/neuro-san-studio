@@ -28,6 +28,9 @@ from rich.console import Console
 from rich.table import Table
 from timedinput import timedinput
 
+from neuro_san_studio.commands._status import ok as _ok
+from neuro_san_studio.commands._status import skip as _skip
+
 PROVIDERS: Dict[str, Dict[str, str]] = {
     "openai": {"label": "OpenAI", "model_name": "gpt-5.2"},
     "anthropic": {"label": "Anthropic", "model_name": "claude-sonnet"},
@@ -185,24 +188,24 @@ class InitCommand:  # pylint: disable=too-few-public-methods
         """
         dest_abs = os.path.join(self.root_dir, dest_rel)
         if os.path.exists(dest_abs):
-            _console.print(f"[yellow]\\[skip][/yellow]  {dest_rel} (already exists)")
+            _skip(f"{dest_rel} (already exists)")
             return
         os.makedirs(os.path.dirname(dest_abs), exist_ok=True)
         source = importlib.resources.files(package) / template_name
         with source.open("rb") as src, open(dest_abs, "wb") as dst:
             shutil.copyfileobj(src, dst)
-        _console.print(f"[green]\\[ok][/green]    {dest_rel}")
+        _ok(dest_rel)
 
     def _write_file(self, rel_path: str, content: str) -> None:
         """Write content to rel_path under root_dir, skipping if the file already exists."""
         dest_abs = os.path.join(self.root_dir, rel_path)
         if os.path.exists(dest_abs):
-            _console.print(f"[yellow]\\[skip][/yellow]  {rel_path} (already exists)")
+            _skip(f"{rel_path} (already exists)")
             return
         os.makedirs(os.path.dirname(dest_abs), exist_ok=True)
         with open(dest_abs, "w", encoding="utf-8") as fh:
             fh.write(content)
-        _console.print(f"[green]\\[ok][/green]    {rel_path}")
+        _ok(rel_path)
 
     def _print_next_steps(self) -> None:
         """Print the final instructions shown after scaffolding completes."""

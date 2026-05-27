@@ -24,6 +24,10 @@ from typing import Optional
 
 import questionary
 
+from neuro_san_studio.commands._status import err as _err
+from neuro_san_studio.commands._status import info as _info
+from neuro_san_studio.commands._status import ok as _ok
+from neuro_san_studio.commands._status import warn as _warn
 from neuro_san_studio.discovery.agent_network_registry import AgentNetworkRegistry
 from neuro_san_studio.exporter.agent_network_exporter import AgentNetworkExporter
 
@@ -39,13 +43,17 @@ class ExportCommand:  # pylint: disable=too-few-public-methods
     def run(self) -> None:
         """Resolve, walk, and write; print a small summary."""
         if not self._verify_project_initialized():
-            print("\n❌ Project not initialized. Run 'ns init' first.\n")
+            print()
+            _err("Project not initialized. Run 'ns init' first.")
+            print()
             sys.exit(1)
 
         if not self.network:
             picked = self._prompt_for_network()
             if not picked:
-                print("\n📭 No network selected. Exiting.\n")
+                print()
+                _info("No network selected. Exiting.")
+                print()
                 return
             self.network = picked
 
@@ -53,18 +61,24 @@ class ExportCommand:  # pylint: disable=too-few-public-methods
         try:
             result = exporter.export(self.network, output_path=self.output)
         except FileNotFoundError as exc:
-            print(f"\n❌ {exc}\n")
+            print()
+            _err(str(exc))
+            print()
             sys.exit(1)
         except ValueError as exc:
-            print(f"\n❌ {exc}\n")
+            print()
+            _err(str(exc))
+            print()
             sys.exit(1)
 
-        print(f"\n📦 Exported '{result.network_name}' → {result.output_path}")
+        print()
+        _ok(f"Exported '{result.network_name}' -> {result.output_path}")
         self._print_dep_summary(result)
         if result.warnings:
-            print("\n⚠️  Warnings:")
+            print()
+            _warn(f"Warnings ({len(result.warnings)}):")
             for w in result.warnings:
-                print(f"   - {w}")
+                print(f"        - {w}")
         print()
 
     @staticmethod
@@ -79,27 +93,28 @@ class ExportCommand:  # pylint: disable=too-few-public-methods
             or result.bundled_mcp_urls
         ):
             return
-        print("\n📋 Included dependencies:")
+        print()
+        _info("Included dependencies:")
         if deps.sub_networks:
-            print(f"   sub-networks ({len(deps.sub_networks)}):")
+            print(f"        sub-networks ({len(deps.sub_networks)}):")
             for ref in deps.sub_networks:
-                print(f"     - {ref}")
+                print(f"          - {ref}")
         if deps.coded_tools:
-            print(f"   coded_tools ({len(deps.coded_tools)}):")
+            print(f"        coded_tools ({len(deps.coded_tools)}):")
             for path in deps.coded_tools:
-                print(f"     - {path}")
+                print(f"          - {path}")
         if deps.middleware:
-            print(f"   middleware ({len(deps.middleware)}):")
+            print(f"        middleware ({len(deps.middleware)}):")
             for path in deps.middleware:
-                print(f"     - {path}")
+                print(f"          - {path}")
         if result.shared_includes:
-            print(f"   shared includes ({len(result.shared_includes)}):")
+            print(f"        shared includes ({len(result.shared_includes)}):")
             for inc in result.shared_includes:
-                print(f"     - registries/{inc}")
+                print(f"          - registries/{inc}")
         if result.bundled_mcp_urls:
-            print(f"   mcp servers ({len(result.bundled_mcp_urls)}):")
+            print(f"        mcp servers ({len(result.bundled_mcp_urls)}):")
             for url in result.bundled_mcp_urls:
-                print(f"     - {url}")
+                print(f"          - {url}")
 
     def _verify_project_initialized(self) -> bool:
         return os.path.exists(os.path.join(self.project_dir, "registries", "manifest.hocon"))
@@ -113,11 +128,15 @@ class ExportCommand:  # pylint: disable=too-few-public-methods
             registry = AgentNetworkRegistry(source_dir=self.project_dir)
             networks_by_group = registry.discover()
         except FileNotFoundError as exc:
-            print(f"\n❌ {exc}\n")
+            print()
+            _err(str(exc))
+            print()
             return None
 
         if not networks_by_group:
-            print("\n❌ No networks declared in the project's manifest. Add some first or pass a name.\n")
+            print()
+            _err("No networks declared in the project's manifest. Add some first or pass a name.")
+            print()
             return None
 
         choices = self._build_picker_choices(networks_by_group)
