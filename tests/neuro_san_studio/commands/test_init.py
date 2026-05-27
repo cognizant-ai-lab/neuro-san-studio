@@ -133,6 +133,15 @@ class TestRunFlow:
         assert (tmp_path / "registries" / "aaosa_basic.hocon").is_file()
         assert (tmp_path / "registries" / "aaosa_basic_debug.hocon").is_file()
         assert (tmp_path / "registries" / "manifest.hocon").read_text().strip().startswith("{")
+        # registries/generated/ must exist with an empty manifest so the include in the
+        # main manifest resolves before agent_network_designer ever runs.
+        generated_manifest = tmp_path / "registries" / "generated" / "manifest.hocon"
+        assert generated_manifest.is_file()
+        assert generated_manifest.read_text().strip() in ("{}", "{\n}")
+        # Main manifest must declare the include so server-side discovery picks up
+        # designer-generated networks the moment they appear.
+        main_manifest = (tmp_path / "registries" / "manifest.hocon").read_text()
+        assert 'include "registries/generated/manifest.hocon"' in main_manifest
         assert (tmp_path / "mcp" / "mcp_info.hocon").is_file()
         llm_config = (tmp_path / "config" / "llm_config.hocon").read_text()
         assert '"model_name": "gpt-5.2"' in llm_config
