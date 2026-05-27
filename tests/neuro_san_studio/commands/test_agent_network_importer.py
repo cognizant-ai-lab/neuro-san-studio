@@ -467,11 +467,7 @@ class TestMcpInfoMerge:
             (source_dir / "registries" / shared).write_text("")
         (source_dir / "mcp").mkdir()
         (source_dir / "mcp" / "mcp_info.hocon").write_text(
-            "{\n"
-            '    "https://mcp.deepwiki.com/mcp": {\n'
-            '        "tools": ["read_wiki_structure"]\n'
-            "    }\n"
-            "}\n"
+            '{\n    "https://mcp.deepwiki.com/mcp": {\n        "tools": ["read_wiki_structure"]\n    }\n}\n'
         )
 
         importer = AgentNetworkImporter(str(source_dir), str(target_dir))
