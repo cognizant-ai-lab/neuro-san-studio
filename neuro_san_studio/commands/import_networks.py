@@ -117,10 +117,9 @@ class ImportCommand:  # pylint: disable=too-few-public-methods
             print(f"\n❌ {exc}\n")
             sys.exit(1)
 
-        manifest_entries = self._registry_entries_from_result(result)
-        if manifest_entries:
+        if result.manifest_entries:
             print("   Updating manifest...")
-            importer.update_manifest(manifest_entries)
+            importer.update_manifest(result.manifest_entries)
 
         self._print_summary(
             copied=len(result.copied_files),
@@ -179,18 +178,6 @@ class ImportCommand:  # pylint: disable=too-few-public-methods
             return questionary.confirm("Proceed with import?", default=True).ask() is True
         except (KeyboardInterrupt, EOFError):
             return False
-
-    @staticmethod
-    def _registry_entries_from_result(result) -> List[str]:
-        """Pull manifest-relative paths from the importer's copied_files for `registries/**/*.hocon`."""
-        entries: List[str] = []
-        for path in result.copied_files:
-            if path.startswith("registries/") and path.endswith(".hocon"):
-                entries.append(path[len("registries/") :])
-            elif path.endswith(".hocon") and "/" not in path:
-                # Single-HOCON path: copied_files is just the basename.
-                entries.append(path)
-        return entries
 
     @staticmethod
     def _find_neuro_san_studio_installation() -> str:
@@ -369,7 +356,10 @@ class ImportCommand:  # pylint: disable=too-few-public-methods
             hocon_paths, analyzer, importer, registry.registries_dir, force=self.force
         )
 
-        imported = [r.hocon_path for r in results]
+        # Use manifest_entries (not hocon_path) so transitively-imported sub-networks are
+        # registered too — agent_network_designer pulls in three sub-networks; without this
+        # they'd land on disk but never get served.
+        imported = [name for r in results for name in r.manifest_entries]
         if imported:
             print("\n   Updating manifest...")
             importer.update_manifest(imported)

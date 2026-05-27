@@ -16,14 +16,27 @@
 
 """Integration tests for AgentNetworkImporter against a synthetic source dir."""
 
-import json
+import os
 import zipfile
 from pathlib import Path
 
 import pytest
 
+from neuro_san.internals.graph.persistence.raw_manifest_restorer import RawManifestRestorer
+
 from neuro_san_studio.discovery.dependency_analyzer import AgentNetworkDependencies
 from neuro_san_studio.importer.agent_network_importer import AgentNetworkImporter
+
+
+def _read_manifest_keys(manifest_path: Path) -> set:
+    """Read a manifest.hocon (with possible includes) into a set of declared keys."""
+    prev_cwd = os.getcwd()
+    try:
+        os.chdir(manifest_path.parent.parent)
+        raw = RawManifestRestorer().restore(file_reference=str(manifest_path))
+    finally:
+        os.chdir(prev_cwd)
+    return {key.strip('"') for key in raw if isinstance(key, str)}
 
 
 class TestImportNetwork:
@@ -74,6 +87,33 @@ class TestImportNetwork:
         assert (target_dir / "registries" / "aaosa.hocon").is_file()
         assert not result.errors
 
+    def test_sub_networks_are_registered_in_manifest_entries(self, tmp_path: Path) -> None:
+        """import_network must record both the top-level network AND every sub-network for manifest registration.
+
+        Regression case: an import of agent_network_designer (which has sub-networks) must
+        end up registering the sub-networks in the receiver's manifest, not just the top-level.
+        """
+        source_dir = tmp_path / "source"
+        target_dir = tmp_path / "target"
+        target_dir.mkdir()
+        registries = source_dir / "registries"
+        registries.mkdir(parents=True)
+        (registries / "agent_network_designer.hocon").write_text('{ "tools": [] }\n')
+        (registries / "advanced_calculator.hocon").write_text('{ "tools": [] }\n')
+        (registries / "agentforce_adapter.hocon").write_text('{ "tools": [] }\n')
+        for shared in ("aaosa.hocon", "aaosa_basic.hocon", "aaosa_basic_debug.hocon"):
+            (registries / shared).write_text("")
+
+        importer = AgentNetworkImporter(str(source_dir), str(target_dir))
+        deps = AgentNetworkDependencies(
+            sub_networks=["/advanced_calculator", "/agentforce_adapter"],
+        )
+        result = importer.import_network("agent_network_designer.hocon", deps)
+
+        assert "agent_network_designer.hocon" in result.manifest_entries
+        assert "advanced_calculator.hocon" in result.manifest_entries
+        assert "agentforce_adapter.hocon" in result.manifest_entries
+
     def test_import_skips_existing_files(self, tmp_path: Path) -> None:
         """Pre-existing target files must not be overwritten and should be reported as skipped."""
         source_dir = tmp_path / "source"
@@ -92,24 +132,26 @@ class TestImportNetwork:
         assert "basic/music_nerd.hocon" in result.skipped_files
 
     def test_update_manifest_merges_into_existing_json(self, tmp_path: Path) -> None:
-        """update_manifest should merge new entries into a sorted JSON manifest."""
+        """update_manifest should add new entries while leaving existing ones intact."""
         target_dir = tmp_path / "target"
         registries = target_dir / "registries"
         registries.mkdir(parents=True)
         manifest_path = registries / "manifest.hocon"
-        manifest_path.write_text(json.dumps({"basic/coffee_finder.hocon": True}, indent=4) + "\n")
+        manifest_path.write_text(
+            "{\n"
+            '    "basic/coffee_finder.hocon": true\n'
+            "}\n"
+        )
 
         importer = AgentNetworkImporter(str(tmp_path / "source"), str(target_dir))
         importer.update_manifest(["basic/music_nerd.hocon", "agent_network_designer.hocon"])
 
-        merged = json.loads(manifest_path.read_text())
+        merged = _read_manifest_keys(manifest_path)
         assert merged == {
-            "agent_network_designer.hocon": True,
-            "basic/coffee_finder.hocon": True,
-            "basic/music_nerd.hocon": True,
+            "agent_network_designer.hocon",
+            "basic/coffee_finder.hocon",
+            "basic/music_nerd.hocon",
         }
-        # Sorted on disk, not just by Python dict insertion.
-        assert list(merged.keys()) == sorted(merged.keys())
 
     def test_update_manifest_creates_when_missing(self, tmp_path: Path) -> None:
         """update_manifest should write a fresh manifest when none exists yet."""
@@ -118,7 +160,72 @@ class TestImportNetwork:
         importer.update_manifest(["basic/music_nerd.hocon"])
 
         manifest_path = target_dir / "registries" / "manifest.hocon"
-        assert json.loads(manifest_path.read_text()) == {"basic/music_nerd.hocon": True}
+        assert _read_manifest_keys(manifest_path) == {"basic/music_nerd.hocon"}
+
+    def test_update_manifest_preserves_include_directive(self, tmp_path: Path) -> None:
+        """The scaffolded `include "registries/generated/manifest.hocon"` line must survive imports.
+
+        This is the regression case for the "import nukes my init scaffold" bug: an `ns init`
+        manifest contains both a comment, an include directive, and a music_nerd entry, and a
+        subsequent `ns import` must preserve all of that while adding new entries.
+        """
+        target_dir = tmp_path / "target"
+        registries = target_dir / "registries"
+        registries.mkdir(parents=True)
+        # Pre-create the included manifest so RawManifestRestorer doesn't choke on it.
+        (registries / "generated").mkdir()
+        (registries / "generated" / "manifest.hocon").write_text("{}\n")
+        manifest_path = registries / "manifest.hocon"
+        manifest_path.write_text(
+            "{\n"
+            "    # Networks created by `agent_network_designer` are written under registries/generated/.\n"
+            "    # The include keeps them visible to the server without editing this file by hand.\n"
+            '    include "registries/generated/manifest.hocon",\n'
+            "\n"
+            '    "music_nerd.hocon": true\n'
+            "}\n"
+        )
+
+        importer = AgentNetworkImporter(str(tmp_path / "source"), str(target_dir))
+        importer.update_manifest(
+            ["agent_network_designer.hocon", "advanced_calculator.hocon", "music_nerd.hocon"]
+        )
+
+        text = manifest_path.read_text()
+        # Verbatim preservation of the include + comments.
+        assert 'include "registries/generated/manifest.hocon"' in text
+        assert "# Networks created by `agent_network_designer`" in text
+        # music_nerd.hocon was already declared — never duplicated, never re-emitted.
+        assert text.count('"music_nerd.hocon"') == 1
+        # Both new entries got registered.
+        keys = _read_manifest_keys(manifest_path)
+        assert "agent_network_designer.hocon" in keys
+        assert "advanced_calculator.hocon" in keys
+        assert "music_nerd.hocon" in keys
+
+    def test_update_manifest_skips_entries_already_declared_via_include(self, tmp_path: Path) -> None:
+        """An entry that's reachable through an `include` must not be re-added at the top level."""
+        target_dir = tmp_path / "target"
+        registries = target_dir / "registries"
+        (registries / "generated").mkdir(parents=True)
+        # The included manifest declares one entry — the top-level merge must see it via the include.
+        (registries / "generated" / "manifest.hocon").write_text(
+            '{\n    "generated/foo.hocon": true\n}\n'
+        )
+        manifest_path = registries / "manifest.hocon"
+        manifest_path.write_text(
+            "{\n"
+            '    include "registries/generated/manifest.hocon"\n'
+            "}\n"
+        )
+
+        importer = AgentNetworkImporter(str(tmp_path / "source"), str(target_dir))
+        importer.update_manifest(["generated/foo.hocon", "new_network.hocon"])
+
+        text = manifest_path.read_text()
+        # generated/foo.hocon must NOT be duplicated at the top — it's reachable via the include.
+        assert text.count('"generated/foo.hocon"') == 0
+        assert '"new_network.hocon": true' in text
 
 
 class TestImportFromPath:

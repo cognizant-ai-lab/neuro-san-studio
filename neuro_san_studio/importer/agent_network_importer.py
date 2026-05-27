@@ -16,8 +16,9 @@
 
 """Copy agent networks plus their dependencies into a target project."""
 
-import json
+import logging
 import os
+import re
 import shutil
 import stat
 import zipfile
@@ -25,7 +26,10 @@ from dataclasses import dataclass
 from dataclasses import field
 from pathlib import Path
 from typing import List
+from typing import Set
 from typing import Tuple
+
+from neuro_san.internals.graph.persistence.raw_manifest_restorer import RawManifestRestorer
 
 from neuro_san_studio.discovery.dependency_analyzer import AgentNetworkDependencies
 from neuro_san_studio.mcp.mcp_info_merger import extract_mcp_blocks
@@ -54,6 +58,12 @@ class ImportResult:
     warnings: List[str] = field(default_factory=list)
     mcp_added: List[str] = field(default_factory=list)
     mcp_skipped: List[str] = field(default_factory=list)
+    # Manifest-relative HOCONs that should be registered for serving. Includes the top-level
+    # network plus every transitively-imported sub-network. Distinct from copied_files because
+    # copied_files also contains coded_tools/middleware/__init__.py paths that don't belong
+    # in the manifest, and because skipped (already-present) HOCONs still need their key
+    # ensured in the manifest if the import had to register a new entry for it.
+    manifest_entries: List[str] = field(default_factory=list)
 
 
 @dataclass(frozen=True)
@@ -95,11 +105,16 @@ class AgentNetworkImporter:
         result = ImportResult(network_name=Path(hocon_relative_path).stem, hocon_path=hocon_relative_path)
 
         self._copy_hocon(hocon_relative_path, result, force=force)
+        # Sub-networks are first-class agent networks — the receiver's manifest must declare
+        # them so they're served. Track them alongside the top-level network so the command
+        # layer can register every imported HOCON, not just the entrypoint.
+        result.manifest_entries.append(hocon_relative_path)
         for sub_ref in dependencies.sub_networks:
             sub_name = sub_ref.lstrip("/")
             if not sub_name.endswith(".hocon"):
                 sub_name += ".hocon"
             self._copy_hocon(sub_name, result, force=force)
+            result.manifest_entries.append(sub_name)
         for coded in dependencies.coded_tools:
             self._copy_under(coded, "coded_tools", self.coded_tools, result, force=force)
         for mw in dependencies.middleware:
@@ -185,6 +200,10 @@ class AgentNetworkImporter:
             result = ImportResult(network_name=Path(basename).stem, hocon_path=basename)
             target = os.path.join(self.registries.target, basename)
             self._copy_file_or_dir(source_path, target, basename, result, force=force)
+            # The file lands at registries/<basename> and should be registered, even when
+            # the target already exists (skip path) — re-running an import shouldn't drop
+            # an entry that earlier failed to make it into the manifest.
+            result.manifest_entries.append(basename)
             return result
 
         if suffix == ".zip":
@@ -219,6 +238,11 @@ class AgentNetworkImporter:
                     self._merge_mcp_text(payload, result)
                     continue
                 target = os.path.join(self.target_dir, rel)
+                # Track every bundled registry HOCON for manifest registration — including
+                # skipped (already-present) ones, so re-running with the same bundle still
+                # ensures the entry exists in the receiver's manifest.
+                if normalized.startswith("registries/") and normalized.endswith(".hocon"):
+                    result.manifest_entries.append(normalized[len("registries/") :])
                 if os.path.exists(target) and not force:
                     result.skipped_files.append(rel)
                     continue
@@ -339,24 +363,98 @@ class AgentNetworkImporter:
         return bundled if os.path.isfile(bundled) else ""
 
     def update_manifest(self, imported_networks: List[str]) -> None:
-        """Merge new entries into target registries/manifest.hocon (always JSON-formatted)."""
+        """Additively register ``imported_networks`` in ``registries/manifest.hocon``.
+
+        The manifest is HOCON, not JSON: it can contain comments and ``include "..."``
+        directives (notably ``include "registries/generated/manifest.hocon"`` from the
+        scaffold) plus any user edits. We preserve all of that by splicing new
+        ``"<path>": true`` lines before the closing ``}`` rather than re-emitting parsed
+        structure. Existing keys are never rewritten — even with ``--force`` — so a
+        previously-declared network's truthy value is left alone.
+        """
         manifest_path = os.path.join(self.registries.target, "manifest.hocon")
         os.makedirs(self.registries.target, exist_ok=True)
 
-        existing: dict = {}
-        if os.path.exists(manifest_path):
-            with open(manifest_path, encoding="utf-8") as fh:
-                content = fh.read().strip()
-            if content:
-                try:
-                    existing = json.loads(content)
-                except json.JSONDecodeError:
-                    # Source was HOCON-style or malformed; start fresh rather than corrupt it
-                    existing = {}
+        new_entries = list(dict.fromkeys(imported_networks))  # de-dupe, keep order
+        if not new_entries:
+            return
 
-        for path in imported_networks:
-            existing[path] = True
+        if not os.path.isfile(manifest_path):
+            with open(manifest_path, "w", encoding="utf-8") as fh:
+                fh.write(self._render_fresh_manifest(new_entries))
+            return
 
+        with open(manifest_path, encoding="utf-8") as fh:
+            existing_text = fh.read()
+
+        existing_keys = self._read_existing_keys(manifest_path)
+        to_add = [name for name in new_entries if name not in existing_keys]
+        if not to_add:
+            return
+
+        new_text = self._splice_manifest_entries(existing_text, to_add)
         with open(manifest_path, "w", encoding="utf-8") as fh:
-            json.dump(dict(sorted(existing.items())), fh, indent=4)
-            fh.write("\n")
+            fh.write(new_text)
+
+    @staticmethod
+    def _render_fresh_manifest(entries: List[str]) -> str:
+        """Render a brand-new manifest.hocon containing exactly ``entries`` (sorted, JSON-shaped)."""
+        body_lines = [f'    "{name}": true' for name in sorted(set(entries))]
+        return "{\n" + ",\n".join(body_lines) + "\n}\n"
+
+    @staticmethod
+    def _read_existing_keys(manifest_path: str) -> Set[str]:
+        """Return the set of HOCON keys already declared by the manifest (resolves ``include``s).
+
+        Uses ``RawManifestRestorer`` so includes are followed; falls back to a regex scan if
+        pyhocon can't parse the file (e.g. a hand-edited manifest with malformed syntax).
+        """
+        # pyhocon resolves include directives relative to CWD, so chdir into the target's
+        # registries dir while reading. Demote pyhocon's chatty error logging during the read
+        # so a parse failure here doesn't pollute the import output.
+        registries_dir = os.path.dirname(manifest_path)
+        prev_cwd = os.getcwd()
+        prev_level = logging.getLogger("pyhocon.config_parser").level
+        try:
+            os.chdir(os.path.dirname(registries_dir) or ".")
+            logging.getLogger("pyhocon.config_parser").setLevel(logging.CRITICAL)
+            raw = RawManifestRestorer().restore(file_reference=manifest_path)
+        except Exception:  # pylint: disable=broad-except
+            return AgentNetworkImporter._regex_scan_keys(manifest_path)
+        finally:
+            logging.getLogger("pyhocon.config_parser").setLevel(prev_level)
+            os.chdir(prev_cwd)
+        return {key.strip('"') for key in raw if isinstance(key, str)}
+
+    @staticmethod
+    def _regex_scan_keys(manifest_path: str) -> Set[str]:
+        """Best-effort fallback: scrape ``"key": true|false`` lines without invoking pyhocon."""
+        try:
+            with open(manifest_path, encoding="utf-8") as fh:
+                text = fh.read()
+        except OSError:
+            return set()
+        return set(re.findall(r'"([^"\n]+\.hocon)"\s*[:=]', text))
+
+    @staticmethod
+    def _splice_manifest_entries(existing_text: str, new_entries: List[str]) -> str:
+        """Insert ``"name": true`` lines before the manifest's closing ``}``.
+
+        Preserves every byte of the existing text that isn't whitespace/comma adjustment around
+        the closing brace, so includes, comments, and pre-existing entries (with whatever
+        truthy value they had — ``true``, ``"on"``, etc.) survive verbatim. A leading comma
+        is added when the previous content needs one to keep the dict well-formed.
+        """
+        last_brace = existing_text.rfind("}")
+        if last_brace == -1:
+            # No outer dict at all — wrap fresh, but keep the original text as a leading comment
+            # so the user can recover anything we might be misreading.
+            return AgentNetworkImporter._render_fresh_manifest(new_entries)
+
+        head = existing_text[:last_brace].rstrip()
+        tail = existing_text[last_brace:]
+        last_meaningful = head.rstrip().rstrip("\n").rstrip()[-1:] if head.strip() else ""
+        needs_comma = last_meaningful not in ("", ",", "{")
+        sep = ",\n" if needs_comma else "\n"
+        added_lines = ",\n".join(f'    "{name}": true' for name in new_entries)
+        return head + sep + added_lines + "\n" + tail
