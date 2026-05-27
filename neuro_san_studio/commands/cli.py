@@ -129,11 +129,24 @@ class NeuroSanStudioCli:  # pylint: disable=too-few-public-methods
             None,
             help=("Comma-separated group names, network names, or 'all'. Omit for interactive mode."),
         ),
+        from_file: Optional[str] = typer.Option(
+            None,
+            "--from-file",
+            "-f",
+            help="Path to a local .hocon file to import (self-contained network).",
+        ),
+        force: bool = typer.Option(
+            False,
+            "--force",
+            help="Overwrite existing files when importing from --from-file.",
+        ),
     ) -> None:
         """Import agent networks into an existing neuro-san-studio project."""
         from neuro_san_studio.commands.import_networks import ImportCommand  # pylint: disable=import-outside-toplevel
 
-        ImportCommand(networks_arg=networks).run()
+        if networks and from_file:
+            raise typer.BadParameter("Cannot pass both 'networks' and '--from-file'; they are mutually exclusive.")
+        ImportCommand(networks_arg=networks, from_file=from_file, force=force).run()
 
     @staticmethod
     @app.command("check-llm-keys", help="Validate LLM API keys and other critical environment variables.")

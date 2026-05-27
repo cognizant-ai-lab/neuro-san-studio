@@ -133,6 +133,25 @@ class AgentNetworkImporter:
                         result.errors.append(f"Failed to copy __init__.py: {exc}")
             current_dir = os.path.dirname(current_dir)
 
+    def import_from_path(self, source_path: str, force: bool = False) -> ImportResult:
+        """Import a single network from a local file path.
+
+        A `.hocon` file is treated as self-contained and lands at
+        `<target>/registries/<basename>`.
+        """
+        del force
+        if not os.path.isfile(source_path):
+            raise FileNotFoundError(f"File not found: {source_path}")
+        suffix = os.path.splitext(source_path)[1].lower()
+        if suffix != ".hocon":
+            raise ValueError(f"Unsupported file type: {suffix or '(none)'}. Expected .hocon")
+
+        basename = os.path.basename(source_path)
+        result = ImportResult(network_name=Path(basename).stem, hocon_path=basename)
+        target = os.path.join(self.registries.target, basename)
+        self._copy_file_or_dir(source_path, target, basename, result)
+        return result
+
     def update_manifest(self, imported_networks: List[str]) -> None:
         """Merge new entries into target registries/manifest.hocon (always JSON-formatted)."""
         manifest_path = os.path.join(self.registries.target, "manifest.hocon")

@@ -22,6 +22,7 @@ import pytest
 from pytest import MonkeyPatch
 
 from neuro_san_studio.commands import cli as cli_module
+from neuro_san_studio.commands import import_networks as import_networks_module
 from neuro_san_studio.commands import init as init_module
 from neuro_san_studio.commands.cli import main
 
@@ -86,6 +87,51 @@ class TestMainEntryPoint:
         main()
         assert not runner_call_order
         assert init_calls == [("openai,anthropic",), ("run",)]
+
+    def test_main_with_import_from_file_passes_path_and_force(self, monkeypatch: MonkeyPatch) -> None:
+        """`neuro-san-studio import -f <path> --force` forwards both options to ImportCommand."""
+        captured: list = []
+
+        class FakeImport:  # pylint: disable=too-few-public-methods
+            """Stand-in for ImportCommand that records constructor kwargs."""
+
+            def __init__(
+                self,
+                networks_arg: str | None = None,
+                from_file: str | None = None,
+                force: bool = False,
+            ) -> None:
+                captured.append({"networks_arg": networks_arg, "from_file": from_file, "force": force})
+
+            def run(self) -> None:
+                """No-op."""
+
+        monkeypatch.setattr(import_networks_module, "ImportCommand", FakeImport)
+        monkeypatch.setattr(sys, "argv", ["neuro-san-studio", "import", "-f", "/tmp/x.hocon", "--force"])
+        main()
+        assert captured == [{"networks_arg": None, "from_file": "/tmp/x.hocon", "force": True}]
+
+    def test_main_with_import_positional_and_from_file_errors(self, monkeypatch: MonkeyPatch) -> None:
+        """Passing both positional networks and --from-file is rejected before ImportCommand runs."""
+        constructed: list = []
+
+        class FakeImport:  # pylint: disable=too-few-public-methods
+            """Stand-in that records construction; should never be called when args conflict."""
+
+            def __init__(self, **kwargs: object) -> None:
+                constructed.append(kwargs)
+
+            def run(self) -> None:
+                """Unreachable when arg validation rejects the call."""
+                constructed.append("run")
+
+        monkeypatch.setattr(import_networks_module, "ImportCommand", FakeImport)
+        monkeypatch.setattr(sys, "argv", ["neuro-san-studio", "import", "basic", "-f", "/tmp/x.hocon"])
+        # Typer prints the BadParameter error and exits with code 2; main() swallows
+        # clean SystemExit codes. The contract we care about is that ImportCommand
+        # never gets constructed when the args conflict.
+        main()
+        assert constructed == []
 
     def test_main_propagates_runner_exceptions(self, monkeypatch: MonkeyPatch) -> None:
         """Exceptions from NeuroSanRunner().run() should bubble up to the caller."""

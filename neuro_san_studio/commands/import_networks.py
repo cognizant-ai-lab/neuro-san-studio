@@ -37,8 +37,17 @@ BACK = "__back__"
 class ImportCommand:  # pylint: disable=too-few-public-methods
     """Run the `ns import` flow: discover, prompt, resolve dependencies, copy, update manifest."""
 
-    def __init__(self, networks_arg: Optional[str] = None):
+    def __init__(
+        self,
+        networks_arg: Optional[str] = None,
+        from_file: Optional[str] = None,
+        force: bool = False,
+    ):
+        if networks_arg and from_file:
+            raise ValueError("Cannot pass both 'networks' and '--from-file'; they are mutually exclusive.")
         self.networks_arg = networks_arg
+        self.from_file = from_file
+        self.force = force
         self.target_dir = os.getcwd()
 
     def run(self) -> None:
@@ -46,6 +55,10 @@ class ImportCommand:  # pylint: disable=too-few-public-methods
         if not self._verify_project_initialized():
             print("\n❌ Project not initialized. Run 'ns init' first.\n")
             sys.exit(1)
+
+        if self.from_file:
+            self._run_from_file()
+            return
 
         print("🔍 Discovering available agent networks...\n")
         try:
@@ -79,6 +92,42 @@ class ImportCommand:  # pylint: disable=too-few-public-methods
 
     def _verify_project_initialized(self) -> bool:
         return os.path.exists(os.path.join(self.target_dir, "registries", "manifest.hocon"))
+
+    def _run_from_file(self) -> None:
+        """Import a single .hocon file (self-contained) into the project's registries/."""
+        source_path = os.path.abspath(os.path.expanduser(self.from_file))
+        if not os.path.isfile(source_path):
+            print(f"\n❌ File not found: {self.from_file}\n")
+            sys.exit(1)
+        suffix = os.path.splitext(source_path)[1].lower()
+        if suffix != ".hocon":
+            print(f"\n❌ Unsupported file type: {suffix or '(none)'}. Expected .hocon\n")
+            sys.exit(1)
+
+        basename = os.path.basename(source_path)
+        if not self._confirm_import([basename]):
+            print("\n📭 Import cancelled.\n")
+            return
+
+        print(f"\n📦 Importing {basename} from {source_path}...\n")
+        importer = AgentNetworkImporter(source_dir=self.target_dir, target_dir=self.target_dir)
+        try:
+            result = importer.import_from_path(source_path, force=self.force)
+        except (OSError, ValueError) as exc:
+            print(f"\n❌ {exc}\n")
+            sys.exit(1)
+
+        if result.copied_files:
+            print("   Updating manifest...")
+            importer.update_manifest([result.hocon_path])
+
+        self._print_summary(
+            copied=len(result.copied_files),
+            skipped=len(result.skipped_files),
+            warnings=result.warnings,
+            errors=result.errors,
+        )
+        print("\n✅ Import complete!\n")
 
     @staticmethod
     def _find_neuro_san_studio_installation() -> str:

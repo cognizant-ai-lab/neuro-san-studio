@@ -19,6 +19,8 @@
 import json
 from pathlib import Path
 
+import pytest
+
 from neuro_san_studio.discovery.dependency_analyzer import AgentNetworkDependencies
 from neuro_san_studio.importer.agent_network_importer import AgentNetworkImporter
 
@@ -116,3 +118,61 @@ class TestImportNetwork:
 
         manifest_path = target_dir / "registries" / "manifest.hocon"
         assert json.loads(manifest_path.read_text()) == {"basic/music_nerd.hocon": True}
+
+
+class TestImportFromPath:
+    """Tests for AgentNetworkImporter.import_from_path (single .hocon file)."""
+
+    def test_import_lands_at_registries_root(self, tmp_path: Path) -> None:
+        """A single .hocon file imports at <target>/registries/<basename>."""
+        target_dir = tmp_path / "target"
+        target_dir.mkdir()
+        source_file = tmp_path / "elsewhere" / "my_network.hocon"
+        source_file.parent.mkdir()
+        source_file.write_text('{ "tools": [] }\n')
+
+        importer = AgentNetworkImporter(str(target_dir), str(target_dir))
+        result = importer.import_from_path(str(source_file))
+
+        landed = target_dir / "registries" / "my_network.hocon"
+        assert landed.is_file()
+        assert landed.read_text() == '{ "tools": [] }\n'
+        assert result.copied_files == ["my_network.hocon"]
+        assert result.hocon_path == "my_network.hocon"
+        assert not result.errors
+
+    def test_import_skips_when_target_exists(self, tmp_path: Path) -> None:
+        """Existing target files are not overwritten and surface in skipped_files."""
+        target_dir = tmp_path / "target"
+        registries = target_dir / "registries"
+        registries.mkdir(parents=True)
+        existing = registries / "my_network.hocon"
+        existing.write_text("DO NOT OVERWRITE\n")
+        source_file = tmp_path / "my_network.hocon"
+        source_file.write_text('{ "new": true }\n')
+
+        importer = AgentNetworkImporter(str(target_dir), str(target_dir))
+        result = importer.import_from_path(str(source_file))
+
+        assert existing.read_text() == "DO NOT OVERWRITE\n"
+        assert result.skipped_files == ["my_network.hocon"]
+        assert not result.copied_files
+
+    def test_missing_source_raises(self, tmp_path: Path) -> None:
+        """A missing source path raises FileNotFoundError, not a silent skip."""
+        target_dir = tmp_path / "target"
+        target_dir.mkdir()
+        importer = AgentNetworkImporter(str(target_dir), str(target_dir))
+        with pytest.raises(FileNotFoundError):
+            importer.import_from_path(str(tmp_path / "missing.hocon"))
+
+    def test_unsupported_suffix_raises(self, tmp_path: Path) -> None:
+        """A non-.hocon source raises ValueError before any copy."""
+        target_dir = tmp_path / "target"
+        target_dir.mkdir()
+        source_file = tmp_path / "bundle.tar"
+        source_file.write_text("not a hocon")
+
+        importer = AgentNetworkImporter(str(target_dir), str(target_dir))
+        with pytest.raises(ValueError, match="Unsupported file type"):
+            importer.import_from_path(str(source_file))
