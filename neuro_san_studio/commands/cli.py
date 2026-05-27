@@ -149,6 +149,26 @@ class NeuroSanStudioCli:  # pylint: disable=too-few-public-methods
         ImportCommand(networks_arg=networks, from_file=from_file, force=force).run()
 
     @staticmethod
+    @app.command("export", help="Export an agent network from the current project into a shareable file.")
+    def _export_command(
+        network: Optional[str] = typer.Argument(
+            None,
+            help="Network name (e.g. 'music_nerd') or path under registries/ (e.g. 'basic/music_nerd').",
+        ),
+        output: Optional[str] = typer.Option(
+            None,
+            "--output",
+            "-o",
+            help="Output file path. Defaults to '<network>.hocon' (no deps) or '<network>.zip' (deps).",
+        ),
+    ) -> None:
+        """Bundle a network from the current project for sharing with another project."""
+        # pylint: disable-next=import-outside-toplevel
+        from neuro_san_studio.commands.export_networks import ExportCommand
+
+        ExportCommand(network=network, output=output).run()
+
+    @staticmethod
     @app.command("check-llm-keys", help="Validate LLM API keys and other critical environment variables.")
     def _check_llm_keys_command(
         tier: int = typer.Option(
