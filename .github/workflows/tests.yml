@@ -17,8 +17,8 @@ jobs:
       (github.event_name == 'push' && github.ref != 'refs/heads/main') ||
       (github.event_name == 'pull_request' &&
         github.event.pull_request.head.repo.full_name != github.repository)
-    # 1.0.5 + #25 (decouple hadolint from lint override)
-    uses: cognizant-ai-lab/build-common/.github/workflows/_python-quality-gate.yml@e5f749a2bc73e968dea78f6bc04ed2b63f7f3a43
+    # 1.0.6
+    uses: cognizant-ai-lab/build-common/.github/workflows/_python-quality-gate.yml@e5f749a7ba5de8bb8106cb172e89f21ca581a697
     with:
       python-version: '3.13'
       run-hadolint: true
