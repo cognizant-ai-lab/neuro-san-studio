@@ -19,12 +19,19 @@
 import json
 import os
 import shutil
+import stat
+import zipfile
 from dataclasses import dataclass
 from dataclasses import field
 from pathlib import Path
 from typing import List
+from typing import Tuple
 
 from neuro_san_studio.discovery.dependency_analyzer import AgentNetworkDependencies
+
+ALLOWED_TOP_LEVEL = ("registries/", "coded_tools/", "middleware/", "skills/")
+MAX_ARCHIVE_BYTES = 100 * 1024 * 1024  # 100 MB
+MAX_ARCHIVE_ENTRIES = 100
 
 
 @dataclass
@@ -136,21 +143,102 @@ class AgentNetworkImporter:
     def import_from_path(self, source_path: str, force: bool = False) -> ImportResult:
         """Import a single network from a local file path.
 
-        A `.hocon` file is treated as self-contained and lands at
-        `<target>/registries/<basename>`.
+        A `.hocon` is treated as self-contained and lands at `<target>/registries/<basename>`.
+        A `.zip` is treated as a closed bundle whose layout is preserved verbatim under the
+        top-level whitelist (`registries/`, `coded_tools/`, `middleware/`, `skills/`).
         """
         del force
         if not os.path.isfile(source_path):
             raise FileNotFoundError(f"File not found: {source_path}")
         suffix = os.path.splitext(source_path)[1].lower()
-        if suffix != ".hocon":
-            raise ValueError(f"Unsupported file type: {suffix or '(none)'}. Expected .hocon")
 
-        basename = os.path.basename(source_path)
-        result = ImportResult(network_name=Path(basename).stem, hocon_path=basename)
-        target = os.path.join(self.registries.target, basename)
-        self._copy_file_or_dir(source_path, target, basename, result)
+        if suffix == ".hocon":
+            basename = os.path.basename(source_path)
+            result = ImportResult(network_name=Path(basename).stem, hocon_path=basename)
+            target = os.path.join(self.registries.target, basename)
+            self._copy_file_or_dir(source_path, target, basename, result)
+            return result
+
+        if suffix == ".zip":
+            return self._import_from_zip(source_path)
+
+        raise ValueError(f"Unsupported file type: {suffix or '(none)'}. Expected .hocon or .zip")
+
+    def _import_from_zip(self, zip_path: str) -> ImportResult:
+        """Validate then extract a zip bundle into the target project.
+
+        Validation runs over every entry up front; extraction only proceeds when all
+        entries pass. This avoids leaving the project half-imported on rejection.
+        """
+        result = ImportResult(network_name=Path(zip_path).stem, hocon_path=os.path.basename(zip_path))
+        with zipfile.ZipFile(zip_path) as zf:
+            entries = [info for info in zf.infolist() if not info.is_dir()]
+            self._validate_zip_entries(entries)
+            for info in entries:
+                rel = info.filename
+                normalized, _ = self._normalize_zip_path(rel)
+                if not normalized.startswith(ALLOWED_TOP_LEVEL) or self._is_skippable_metadata(normalized):
+                    # Tolerated by validation (metadata, __pycache__) but not part of the bundle's
+                    # real content — silently drop instead of polluting the receiver's tree.
+                    continue
+                target = os.path.join(self.target_dir, rel)
+                if os.path.exists(target):
+                    result.skipped_files.append(rel)
+                    continue
+                os.makedirs(os.path.dirname(target), exist_ok=True)
+                with zf.open(info) as src, open(target, "wb") as dst:
+                    shutil.copyfileobj(src, dst)
+                result.copied_files.append(rel)
         return result
+
+    @staticmethod
+    def _validate_zip_entries(entries: List[zipfile.ZipInfo]) -> None:
+        """Run the four safety checks; raise ValueError on the first failure."""
+        if len(entries) > MAX_ARCHIVE_ENTRIES:
+            raise ValueError(
+                f"Archive has too many entries ({len(entries)} > {MAX_ARCHIVE_ENTRIES})."
+            )
+        total_size = 0
+        for info in entries:
+            total_size += info.file_size
+            if total_size > MAX_ARCHIVE_BYTES:
+                raise ValueError(
+                    f"Archive exceeds size limit ({MAX_ARCHIVE_BYTES} bytes uncompressed)."
+                )
+            mode = (info.external_attr >> 16) & 0xFFFF
+            if stat.S_ISLNK(mode):
+                raise ValueError(f"Archive contains a symlink entry: {info.filename}")
+            normalized, escapes = AgentNetworkImporter._normalize_zip_path(info.filename)
+            if escapes:
+                raise ValueError(f"Archive entry escapes target root (zip-slip): {info.filename}")
+            if normalized.startswith(ALLOWED_TOP_LEVEL) or AgentNetworkImporter._is_skippable_metadata(normalized):
+                continue
+            raise ValueError(
+                f"Archive entry not in whitelist (registries/, coded_tools/, middleware/, skills/): {info.filename}"
+            )
+
+    @staticmethod
+    def _normalize_zip_path(name: str) -> Tuple[str, bool]:
+        """Return (normalized-relative-path, escapes_root). escapes_root is True for any absolute,
+        traversal, or backslash-encoded path that resolves outside the target root."""
+        if name.startswith(("/", "\\")) or ":" in name.split("/", 1)[0]:
+            return name, True
+        normalized = os.path.normpath(name).replace("\\", "/")
+        if normalized.startswith("../") or normalized == ".." or "/../" in normalized:
+            return normalized, True
+        return normalized, False
+
+    @staticmethod
+    def _is_skippable_metadata(normalized: str) -> bool:
+        """Tolerate common archive noise so a real-world zip isn't rejected over a __MACOSX entry,
+        and so receivers don't end up with stray .DS_Store / __pycache__ files in their tree."""
+        return (
+            normalized.startswith("__MACOSX/")
+            or "/.DS_Store" in normalized
+            or normalized.endswith(".DS_Store")
+            or "/__pycache__/" in normalized
+            or normalized.endswith(".pyc")
+        )
 
     def update_manifest(self, imported_networks: List[str]) -> None:
         """Merge new entries into target registries/manifest.hocon (always JSON-formatted)."""

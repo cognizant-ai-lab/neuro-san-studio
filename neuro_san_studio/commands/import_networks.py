@@ -18,6 +18,7 @@
 
 import os
 import sys
+import zipfile
 from typing import Dict
 from typing import List
 from typing import Optional
@@ -94,22 +95,21 @@ class ImportCommand:  # pylint: disable=too-few-public-methods
         return os.path.exists(os.path.join(self.target_dir, "registries", "manifest.hocon"))
 
     def _run_from_file(self) -> None:
-        """Import a single .hocon file (self-contained) into the project's registries/."""
+        """Import a single .hocon (self-contained) or a .zip bundle (path-preserving)."""
         source_path = os.path.abspath(os.path.expanduser(self.from_file))
         if not os.path.isfile(source_path):
             print(f"\n❌ File not found: {self.from_file}\n")
             sys.exit(1)
         suffix = os.path.splitext(source_path)[1].lower()
-        if suffix != ".hocon":
-            print(f"\n❌ Unsupported file type: {suffix or '(none)'}. Expected .hocon\n")
+        if suffix not in (".hocon", ".zip"):
+            print(f"\n❌ Unsupported file type: {suffix or '(none)'}. Expected .hocon or .zip\n")
             sys.exit(1)
 
-        basename = os.path.basename(source_path)
-        if not self._confirm_import([basename]):
+        if not self._confirm_from_file(source_path, suffix):
             print("\n📭 Import cancelled.\n")
             return
 
-        print(f"\n📦 Importing {basename} from {source_path}...\n")
+        print(f"\n📦 Importing from {source_path}...\n")
         importer = AgentNetworkImporter(source_dir=self.target_dir, target_dir=self.target_dir)
         try:
             result = importer.import_from_path(source_path, force=self.force)
@@ -117,9 +117,10 @@ class ImportCommand:  # pylint: disable=too-few-public-methods
             print(f"\n❌ {exc}\n")
             sys.exit(1)
 
-        if result.copied_files:
+        manifest_entries = self._registry_entries_from_result(result)
+        if manifest_entries:
             print("   Updating manifest...")
-            importer.update_manifest([result.hocon_path])
+            importer.update_manifest(manifest_entries)
 
         self._print_summary(
             copied=len(result.copied_files),
@@ -128,6 +129,64 @@ class ImportCommand:  # pylint: disable=too-few-public-methods
             errors=result.errors,
         )
         print("\n✅ Import complete!\n")
+
+    def _confirm_from_file(self, source_path: str, suffix: str) -> bool:
+        """Show a preview tailored to the file shape, then ask y/N."""
+        if suffix == ".hocon":
+            return self._confirm_import([os.path.basename(source_path)])
+
+        try:
+            with zipfile.ZipFile(source_path) as zf:
+                names = [info.filename for info in zf.infolist() if not info.is_dir()]
+        except zipfile.BadZipFile:
+            print(f"\n❌ Not a valid zip archive: {source_path}\n")
+            sys.exit(1)
+        return self._confirm_zip_import(source_path, names)
+
+    @staticmethod
+    def _confirm_zip_import(source_path: str, names: List[str]) -> bool:
+        """List registry HOCONs explicitly; collapse coded_tools/, middleware/, skills/ to counts."""
+        # Filter out metadata so the preview matches what actually gets copied.
+        real = [n for n in names if not AgentNetworkImporter._is_skippable_metadata(n)]
+        registries = sorted(
+            n[len("registries/") :] for n in real if n.startswith("registries/") and n.endswith(".hocon")
+        )
+        bucket_counts = {
+            "coded_tools/": sum(1 for n in real if n.startswith("coded_tools/")),
+            "middleware/": sum(1 for n in real if n.startswith("middleware/")),
+            "skills/": sum(1 for n in real if n.startswith("skills/")),
+        }
+        print(f"\nFiles to import (from {os.path.basename(source_path)}):")
+        if registries:
+            print("  registries/")
+            for rel in registries:
+                print(f"    - {rel}")
+        for bucket, count in bucket_counts.items():
+            if count:
+                print(f"  {bucket:<14}({count} files)")
+        print(
+            "\nNote:\n"
+            "This will not overwrite any of the existing files.\n"
+            "To overwrite, re-run with --force.\n"
+        )
+        if not sys.stdin.isatty():
+            return True
+        try:
+            return questionary.confirm("Proceed with import?", default=True).ask() is True
+        except (KeyboardInterrupt, EOFError):
+            return False
+
+    @staticmethod
+    def _registry_entries_from_result(result) -> List[str]:
+        """Pull manifest-relative paths from the importer's copied_files for `registries/**/*.hocon`."""
+        entries: List[str] = []
+        for path in result.copied_files:
+            if path.startswith("registries/") and path.endswith(".hocon"):
+                entries.append(path[len("registries/") :])
+            elif path.endswith(".hocon") and "/" not in path:
+                # Single-HOCON path: copied_files is just the basename.
+                entries.append(path)
+        return entries
 
     @staticmethod
     def _find_neuro_san_studio_installation() -> str:

@@ -17,6 +17,7 @@
 """Integration tests for AgentNetworkImporter against a synthetic source dir."""
 
 import json
+import zipfile
 from pathlib import Path
 
 import pytest
@@ -176,3 +177,137 @@ class TestImportFromPath:
         importer = AgentNetworkImporter(str(target_dir), str(target_dir))
         with pytest.raises(ValueError, match="Unsupported file type"):
             importer.import_from_path(str(source_file))
+
+
+class TestImportFromZip:
+    """Tests for AgentNetworkImporter.import_from_path with .zip bundles."""
+
+    @staticmethod
+    def _make_zip(zip_path: Path, entries: dict, *, symlink: tuple | None = None) -> None:
+        """Build a zip from a {arcname: content_bytes} dict; optionally inject a symlink entry."""
+        with zipfile.ZipFile(zip_path, "w") as zf:
+            for arcname, content in entries.items():
+                zf.writestr(arcname, content)
+            if symlink is not None:
+                arcname, target = symlink
+                info = zipfile.ZipInfo(arcname)
+                # 0o120000 = symlink mode bits in the high half of external_attr
+                info.external_attr = (0o120777 & 0xFFFF) << 16
+                zf.writestr(info, target)
+
+    def test_zip_preserves_paths_and_lands_under_top_level_dirs(self, tmp_path: Path) -> None:
+        """A well-formed zip extracts verbatim under registries/, coded_tools/, middleware/, skills/."""
+        zip_path = tmp_path / "bundle.zip"
+        self._make_zip(
+            zip_path,
+            {
+                "registries/industry/airline_policy.hocon": b'{ "tools": [] }\n',
+                "coded_tools/airline_policy/__init__.py": b"",
+                "coded_tools/airline_policy/lookup.py": b"def lookup(): pass\n",
+                "middleware/airline_policy/logger.py": b"class L: pass\n",
+                "skills/airline_policy/skill.py": b"class S: pass\n",
+            },
+        )
+        target_dir = tmp_path / "target"
+        target_dir.mkdir()
+
+        importer = AgentNetworkImporter(str(target_dir), str(target_dir))
+        result = importer.import_from_path(str(zip_path))
+
+        # Grouped registry paths stay grouped — the archive layout is the contract.
+        assert (target_dir / "registries" / "industry" / "airline_policy.hocon").is_file()
+        assert (target_dir / "coded_tools" / "airline_policy" / "lookup.py").is_file()
+        assert (target_dir / "middleware" / "airline_policy" / "logger.py").is_file()
+        assert (target_dir / "skills" / "airline_policy" / "skill.py").is_file()
+        assert "registries/industry/airline_policy.hocon" in result.copied_files
+        assert not result.errors
+
+    def test_zip_slip_is_rejected_before_any_write(self, tmp_path: Path) -> None:
+        """An entry with `..` path components must be rejected without leaving partial output."""
+        zip_path = tmp_path / "evil.zip"
+        self._make_zip(
+            zip_path,
+            {
+                "registries/safe.hocon": b'{ "tools": [] }\n',
+                "../../../../etc/pwn.txt": b"pwned\n",
+            },
+        )
+        target_dir = tmp_path / "target"
+        target_dir.mkdir()
+
+        importer = AgentNetworkImporter(str(target_dir), str(target_dir))
+        with pytest.raises(ValueError, match="zip-slip"):
+            importer.import_from_path(str(zip_path))
+        # All-or-nothing: even the safe entry must not have been written.
+        assert not (target_dir / "registries" / "safe.hocon").exists()
+
+    def test_zip_rejects_entry_outside_whitelist(self, tmp_path: Path) -> None:
+        """A path that isn't under registries/coded_tools/middleware/skills is rejected."""
+        zip_path = tmp_path / "stray.zip"
+        self._make_zip(zip_path, {"docs/README.md": b"# stray\n"})
+        target_dir = tmp_path / "target"
+        target_dir.mkdir()
+
+        importer = AgentNetworkImporter(str(target_dir), str(target_dir))
+        with pytest.raises(ValueError, match="not in whitelist"):
+            importer.import_from_path(str(zip_path))
+
+    def test_zip_rejects_symlink_entries(self, tmp_path: Path) -> None:
+        """A zip entry whose mode bits indicate a symlink must be refused."""
+        zip_path = tmp_path / "linky.zip"
+        self._make_zip(
+            zip_path,
+            {"registries/safe.hocon": b'{ "tools": [] }\n'},
+            symlink=("registries/evil_link", "/etc/passwd"),
+        )
+        target_dir = tmp_path / "target"
+        target_dir.mkdir()
+
+        importer = AgentNetworkImporter(str(target_dir), str(target_dir))
+        with pytest.raises(ValueError, match="symlink"):
+            importer.import_from_path(str(zip_path))
+
+    def test_zip_skips_macos_metadata_and_pycache(self, tmp_path: Path) -> None:
+        """__MACOSX/, .DS_Store, and __pycache__ entries must not pollute the receiver's tree."""
+        zip_path = tmp_path / "noisy.zip"
+        self._make_zip(
+            zip_path,
+            {
+                "registries/basic/foo.hocon": b'{ "tools": [] }\n',
+                "registries/.DS_Store": b"\x00mac",
+                "__MACOSX/registries/._foo.hocon": b"\x00apple",
+                "coded_tools/foo/__init__.py": b"",
+                "coded_tools/foo/bar.py": b"def bar(): pass\n",
+                "coded_tools/foo/__pycache__/bar.cpython-314.pyc": b"\x00bytecode",
+            },
+        )
+        target_dir = tmp_path / "target"
+        target_dir.mkdir()
+
+        importer = AgentNetworkImporter(str(target_dir), str(target_dir))
+        result = importer.import_from_path(str(zip_path))
+
+        assert (target_dir / "registries" / "basic" / "foo.hocon").is_file()
+        assert (target_dir / "coded_tools" / "foo" / "bar.py").is_file()
+        # Metadata must not leak into the tree.
+        assert not (target_dir / "registries" / ".DS_Store").exists()
+        assert not (target_dir / "__MACOSX").exists()
+        assert not (target_dir / "coded_tools" / "foo" / "__pycache__").exists()
+        # And it shouldn't be reported as "copied" either — the count must reflect reality.
+        assert all(".DS_Store" not in p and "__pycache__" not in p for p in result.copied_files)
+
+    def test_zip_skips_existing_files(self, tmp_path: Path) -> None:
+        """Pre-existing target files are not overwritten and surface in skipped_files."""
+        zip_path = tmp_path / "bundle.zip"
+        self._make_zip(zip_path, {"registries/foo.hocon": b'{ "new": true }\n'})
+        target_dir = tmp_path / "target"
+        registries = target_dir / "registries"
+        registries.mkdir(parents=True)
+        (registries / "foo.hocon").write_text("DO NOT OVERWRITE\n")
+
+        importer = AgentNetworkImporter(str(target_dir), str(target_dir))
+        result = importer.import_from_path(str(zip_path))
+
+        assert (registries / "foo.hocon").read_text() == "DO NOT OVERWRITE\n"
+        assert "registries/foo.hocon" in result.skipped_files
+        assert "registries/foo.hocon" not in result.copied_files
