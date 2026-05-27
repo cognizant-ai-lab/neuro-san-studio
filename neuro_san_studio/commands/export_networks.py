@@ -53,11 +53,36 @@ class ExportCommand:  # pylint: disable=too-few-public-methods
             sys.exit(1)
 
         print(f"\n📦 Exported '{result.network_name}' → {result.output_path}")
+        self._print_dep_summary(result)
         if result.warnings:
             print("\n⚠️  Warnings:")
             for w in result.warnings:
                 print(f"   - {w}")
         print()
+
+    @staticmethod
+    def _print_dep_summary(result) -> None:
+        """List what's in the bundle so the user can verify nothing is missing."""
+        deps = result.dependencies
+        if not (deps.coded_tools or deps.middleware or deps.sub_networks or result.shared_includes):
+            return
+        print("\n📋 Included dependencies:")
+        if deps.sub_networks:
+            print(f"   sub-networks ({len(deps.sub_networks)}):")
+            for ref in deps.sub_networks:
+                print(f"     - {ref}")
+        if deps.coded_tools:
+            print(f"   coded_tools ({len(deps.coded_tools)}):")
+            for path in deps.coded_tools:
+                print(f"     - {path}")
+        if deps.middleware:
+            print(f"   middleware ({len(deps.middleware)}):")
+            for path in deps.middleware:
+                print(f"     - {path}")
+        if result.shared_includes:
+            print(f"   shared includes ({len(result.shared_includes)}):")
+            for inc in result.shared_includes:
+                print(f"     - registries/{inc}")
 
     def _verify_project_initialized(self) -> bool:
         return os.path.exists(os.path.join(self.project_dir, "registries", "manifest.hocon"))

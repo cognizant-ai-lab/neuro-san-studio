@@ -14,8 +14,9 @@
 #
 # END COPYRIGHT
 
-"""Tests for AgentNetworkExporter (Phase 4: no-deps single-HOCON export)."""
+"""Tests for AgentNetworkExporter (no-deps single-HOCON and zip output paths)."""
 
+import zipfile
 from pathlib import Path
 
 import pytest
@@ -98,23 +99,20 @@ class TestExportNoDeps:
             exporter.export("music_nerd", output_path=str(target))
 
 
-class TestExportWithDepsErrors:
-    """Phase 4 only handles the no-deps path; networks with deps must error cleanly."""
+class TestExportWithDeps:
+    """Networks with deps export as a .zip carrying network + sub-networks + coded_tools + middleware."""
 
-    def test_network_with_coded_tool_raises_until_zip_support_lands(self, tmp_path: Path) -> None:
-        """A network referencing a coded tool can't be exported as a single hocon."""
-        project_dir = tmp_path / "project"
+    @staticmethod
+    def _build_project_with_coded_tool(project_dir: Path) -> None:
+        """Lay out a project with a single network that references one coded tool."""
         registries = project_dir / "registries" / "basic"
         registries.mkdir(parents=True)
         (project_dir / "registries" / "manifest.hocon").write_text("{}\n")
-        # Network at registries/basic/music_nerd.hocon → analyzer's context_dir is
-        # 'basic/music_nerd', so a short-form class ref like 'lookup.Lookup' is
-        # resolved against coded_tools/basic/music_nerd/lookup.py.
+        # Analyzer's context_dir for registries/basic/music_nerd.hocon is "basic/music_nerd".
         coded_tools = project_dir / "coded_tools" / "basic" / "music_nerd"
         coded_tools.mkdir(parents=True)
         (coded_tools / "__init__.py").write_text("")
         (coded_tools / "lookup.py").write_text("class Lookup:\n    pass\n")
-
         (registries / "music_nerd.hocon").write_text(
             "{\n"
             '    "tools": [\n'
@@ -124,6 +122,167 @@ class TestExportWithDepsErrors:
             "}\n"
         )
 
+    def test_zip_bundles_network_and_coded_tool(self, tmp_path: Path) -> None:
+        """A network with one coded tool produces a zip carrying both files plus parent __init__.py."""
+        project_dir = tmp_path / "project"
+        self._build_project_with_coded_tool(project_dir)
+        target = tmp_path / "out" / "music_nerd.zip"
+
         exporter = AgentNetworkExporter(project_dir=str(project_dir))
-        with pytest.raises(ValueError, match="dependencies"):
-            exporter.export("music_nerd")
+        result = exporter.export("music_nerd", output_path=str(target))
+
+        assert target.is_file()
+        with zipfile.ZipFile(target) as zf:
+            names = set(zf.namelist())
+        assert "registries/basic/music_nerd.hocon" in names
+        assert "coded_tools/basic/music_nerd/lookup.py" in names
+        # Parent __init__.py rides along so the package imports cleanly in the receiver.
+        assert "coded_tools/basic/music_nerd/__init__.py" in names
+        assert result.dependencies.coded_tools == ["coded_tools/basic/music_nerd/lookup.py"]
+        assert not result.warnings
+
+    def test_default_output_is_zip_when_deps_present(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+        """Omitting -o on a deps network defaults to <name>.zip in cwd."""
+        self._build_project_with_coded_tool(tmp_path / "project")
+        out_dir = tmp_path / "out"
+        out_dir.mkdir()
+        monkeypatch.chdir(out_dir)
+
+        exporter = AgentNetworkExporter(project_dir=str(tmp_path / "project"))
+        result = exporter.export("music_nerd")
+
+        landed = out_dir / "music_nerd.zip"
+        assert landed.is_file()
+        assert result.output_path == str(landed)
+        with zipfile.ZipFile(landed) as zf:
+            assert any(n.endswith("music_nerd.hocon") for n in zf.namelist())
+
+    def test_hocon_suffix_rejected_when_deps_exist(self, tmp_path: Path) -> None:
+        """A deps network with -o foo.hocon is rejected up front, no partial output."""
+        self._build_project_with_coded_tool(tmp_path / "project")
+        target = tmp_path / "music_nerd.hocon"
+        exporter = AgentNetworkExporter(project_dir=str(tmp_path / "project"))
+        with pytest.raises(ValueError, match="cannot export to '.hocon'"):
+            exporter.export("music_nerd", output_path=str(target))
+        assert not target.exists()
+
+    def test_zip_includes_sub_networks(self, tmp_path: Path) -> None:
+        """A network referencing a sub-network bundles both hocons under registries/."""
+        project_dir = tmp_path / "project"
+        registries = project_dir / "registries"
+        registries.mkdir(parents=True)
+        (registries / "manifest.hocon").write_text("{}\n")
+        # Parent network points to a sub-network at registries/sub_helper.hocon.
+        (registries / "parent_net.hocon").write_text(
+            "{\n"
+            '    "tools": [\n'
+            '        { "name": "frontman", "class": "openai", "tools": ["/sub_helper"] }\n'
+            "    ]\n"
+            "}\n"
+        )
+        (registries / "sub_helper.hocon").write_text(
+            '{\n    "tools": [\n        { "name": "helper", "class": "openai" }\n    ]\n}\n'
+        )
+
+        exporter = AgentNetworkExporter(project_dir=str(project_dir))
+        target = tmp_path / "parent_net.zip"
+        result = exporter.export("parent_net", output_path=str(target))
+
+        with zipfile.ZipFile(target) as zf:
+            names = set(zf.namelist())
+        assert "registries/parent_net.hocon" in names
+        assert "registries/sub_helper.hocon" in names
+        assert "/sub_helper" in result.dependencies.sub_networks
+
+    def test_zip_walks_hocon_includes_for_aaosa(self, tmp_path: Path) -> None:
+        """A network with `include "registries/aaosa.hocon"` bundles the include verbatim."""
+        project_dir = tmp_path / "project"
+        registries = project_dir / "registries"
+        registries.mkdir(parents=True)
+        (registries / "manifest.hocon").write_text("{}\n")
+        (registries / "aaosa.hocon").write_text("# aaosa shared\n")
+        # Network references aaosa via include directive AND has a coded-tool dep so
+        # we end up on the zip path.
+        (project_dir / "coded_tools" / "tooled").mkdir(parents=True)
+        (project_dir / "coded_tools" / "tooled" / "lookup.py").write_text("class Lookup: pass\n")
+        (registries / "tooled.hocon").write_text(
+            'include "registries/aaosa.hocon"\n'
+            "{\n"
+            '    "tools": [\n'
+            '        { "name": "frontman", "class": "openai" },\n'
+            '        { "name": "lookup", "class": "tooled.lookup.Lookup" }\n'
+            "    ]\n"
+            "}\n"
+        )
+
+        exporter = AgentNetworkExporter(project_dir=str(project_dir))
+        target = tmp_path / "tooled.zip"
+        result = exporter.export("tooled", output_path=str(target))
+
+        with zipfile.ZipFile(target) as zf:
+            names = set(zf.namelist())
+        assert "registries/aaosa.hocon" in names
+        assert "aaosa.hocon" in result.shared_includes
+
+    def test_zip_walks_recursive_sub_networks(self, tmp_path: Path) -> None:
+        """Sub-network → sub-sub-network chains: the analyzer recurses, the exporter bundles all hops."""
+        project_dir = tmp_path / "project"
+        registries = project_dir / "registries"
+        registries.mkdir(parents=True)
+        (registries / "manifest.hocon").write_text("{}\n")
+        # parent → mid → leaf, with `leaf` carrying its own coded_tool.
+        (registries / "parent.hocon").write_text(
+            '{ "tools": [{ "name": "f", "class": "openai", "tools": ["/mid"] }] }\n'
+        )
+        (registries / "mid.hocon").write_text(
+            '{ "tools": [{ "name": "f", "class": "openai", "tools": ["/leaf"] }] }\n'
+        )
+        leaf_tools = project_dir / "coded_tools" / "leaf"
+        leaf_tools.mkdir(parents=True)
+        (leaf_tools / "lookup.py").write_text("class Lookup: pass\n")
+        (registries / "leaf.hocon").write_text(
+            "{\n"
+            '    "tools": [\n'
+            '        { "name": "f", "class": "openai" },\n'
+            '        { "name": "lookup", "class": "leaf.lookup.Lookup" }\n'
+            "    ]\n"
+            "}\n"
+        )
+
+        exporter = AgentNetworkExporter(project_dir=str(project_dir))
+        target = tmp_path / "parent.zip"
+        result = exporter.export("parent", output_path=str(target))
+
+        with zipfile.ZipFile(target) as zf:
+            names = set(zf.namelist())
+        # Every hop in the chain rides along.
+        assert "registries/parent.hocon" in names
+        assert "registries/mid.hocon" in names
+        assert "registries/leaf.hocon" in names
+        # Leaf's coded_tool comes too — proving transitive resolution worked end-to-end.
+        assert "coded_tools/leaf/lookup.py" in names
+        assert "/mid" in result.dependencies.sub_networks
+        assert "/leaf" in result.dependencies.sub_networks
+
+    def test_round_trip_via_import_from_path(self, tmp_path: Path) -> None:
+        """Exported zip imports cleanly into a fresh project and lands every file."""
+        # pylint: disable-next=import-outside-toplevel
+        from neuro_san_studio.importer.agent_network_importer import AgentNetworkImporter
+
+        project_dir = tmp_path / "src_project"
+        self._build_project_with_coded_tool(project_dir)
+        bundle = tmp_path / "music_nerd.zip"
+        AgentNetworkExporter(project_dir=str(project_dir)).export("music_nerd", output_path=str(bundle))
+
+        # Receiver project — only an empty manifest, nothing else.
+        recv = tmp_path / "recv_project"
+        (recv / "registries").mkdir(parents=True)
+        (recv / "registries" / "manifest.hocon").write_text("{}\n")
+
+        importer = AgentNetworkImporter(str(recv), str(recv))
+        result = importer.import_from_path(str(bundle))
+
+        assert (recv / "registries" / "basic" / "music_nerd.hocon").is_file()
+        assert (recv / "coded_tools" / "basic" / "music_nerd" / "lookup.py").is_file()
+        assert (recv / "coded_tools" / "basic" / "music_nerd" / "__init__.py").is_file()
+        assert "registries/basic/music_nerd.hocon" in result.copied_files

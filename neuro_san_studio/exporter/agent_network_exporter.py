@@ -17,14 +17,22 @@
 """Bundle an agent network from a project directory into the shape `ns import -f` consumes."""
 
 import os
+import re
 import shutil
+import zipfile
 from dataclasses import dataclass
 from dataclasses import field
 from typing import List
 from typing import Optional
+from typing import Set
 
 from neuro_san_studio.discovery.dependency_analyzer import AgentNetworkDependencies
 from neuro_san_studio.discovery.dependency_analyzer import DependencyAnalyzer
+
+# `include "registries/<name>"` and `include classpath("registries/<name>")` both surface
+# shared HOCON files (e.g. aaosa.hocon). The DependencyAnalyzer reads the `tools` array
+# but doesn't parse include directives — this regex bridges the gap.
+_INCLUDE_RE = re.compile(r'include\s+(?:classpath\()?"registries/([^"]+)"\)?')
 
 
 @dataclass
@@ -34,6 +42,8 @@ class ExportResult:
     network_name: str
     output_path: str
     dependencies: AgentNetworkDependencies = field(default_factory=AgentNetworkDependencies)
+    shared_includes: List[str] = field(default_factory=list)
+    bundled_files: List[str] = field(default_factory=list)
     warnings: List[str] = field(default_factory=list)
 
 
@@ -45,8 +55,9 @@ class AgentNetworkExporter:
     pointed at the project's directories, so a network exported from a project
     references only files that exist in that project.
 
-    Phase 4 handles the no-deps case (single `.hocon` output). Networks with deps
-    raise `ValueError`; zip support comes in Phase 5.
+    Auto-detection on output shape: no deps → single `.hocon`; any deps → `.zip` carrying
+    the network plus its dependencies. Users can override via `-o` but a mismatch between
+    the suffix and the deps shape is rejected up front.
     """
 
     def __init__(self, project_dir: str):
@@ -57,30 +68,139 @@ class AgentNetworkExporter:
 
     def export(self, network: str, output_path: Optional[str] = None) -> ExportResult:
         """Export `network` (a name like 'music_nerd' or relative path 'basic/music_nerd[.hocon]')
-        to `output_path`. If `output_path` is None, write `<cwd>/<basename>.hocon`."""
+        to `output_path`. If `output_path` is None, write `<cwd>/<basename>.{hocon,zip}` based
+        on whether the network has dependencies."""
         rel_hocon = self._resolve_network(network)
         full_hocon = os.path.join(self.registries_dir, rel_hocon)
 
+        # pyhocon resolves `include "registries/..."` directives relative to CWD; chdir to
+        # the project root while the analyzer parses, mirroring AgentNetworkRegistry.
         analyzer = DependencyAnalyzer(self.registries_dir, self.coded_tools_dir, self.middleware_dir)
-        deps = analyzer.get_transitive_dependencies(full_hocon)
-
-        if self._has_dependencies(deps):
-            raise ValueError(
-                f"Network '{network}' has dependencies "
-                f"(coded_tools={len(deps.coded_tools)}, middleware={len(deps.middleware)}, "
-                f"sub_networks={len(deps.sub_networks)}); "
-                f"export to a .zip instead (zip output lands in a later phase)."
-            )
-
-        target = self._resolve_output_path(rel_hocon, output_path, has_deps=False)
+        prev_cwd = os.getcwd()
+        try:
+            os.chdir(self.project_dir)
+            deps = analyzer.get_transitive_dependencies(full_hocon)
+        finally:
+            os.chdir(prev_cwd)
+        # Shared HOCON `include` directives don't surface through the structured walker —
+        # do a textual scan over the network's own file so includes count toward "has_deps".
+        own_includes = self._collect_shared_includes([full_hocon])
+        has_deps = self._has_dependencies(deps) or bool(own_includes)
+        target = self._resolve_output_path(rel_hocon, output_path, has_deps=has_deps)
         os.makedirs(os.path.dirname(target) or ".", exist_ok=True)
-        shutil.copy2(full_hocon, target)
 
-        return ExportResult(
+        result = ExportResult(
             network_name=os.path.basename(rel_hocon).removesuffix(".hocon"),
             output_path=target,
             dependencies=deps,
         )
+
+        if not has_deps:
+            shutil.copy2(full_hocon, target)
+            result.bundled_files.append(f"registries/{rel_hocon}")
+            return result
+
+        self._write_zip(target, rel_hocon, deps, result)
+        return result
+
+    def _write_zip(
+        self,
+        target: str,
+        rel_hocon: str,
+        deps: AgentNetworkDependencies,
+        result: ExportResult,
+    ) -> None:
+        """Bundle the network HOCON, sub-networks, coded tools, middleware, and shared includes."""
+        full_hocon = os.path.join(self.registries_dir, rel_hocon)
+        # Use deduplicating set to avoid double-adding when sub-networks share files.
+        added: Set[str] = set()
+
+        with zipfile.ZipFile(target, "w", zipfile.ZIP_DEFLATED) as zf:
+            self._add_file(zf, full_hocon, f"registries/{rel_hocon}", added, result)
+
+            for sub_ref in deps.sub_networks:
+                sub_rel = sub_ref.lstrip("/")
+                if not sub_rel.endswith(".hocon"):
+                    sub_rel += ".hocon"
+                sub_full = os.path.join(self.registries_dir, sub_rel)
+                if not os.path.isfile(sub_full):
+                    result.warnings.append(f"Sub-network not found: {sub_ref}")
+                    continue
+                self._add_file(zf, sub_full, f"registries/{sub_rel}", added, result)
+
+            for ct in deps.coded_tools:
+                self._add_dep(zf, ct, added, result)
+            for mw in deps.middleware:
+                self._add_dep(zf, mw, added, result)
+
+            shared = self._collect_shared_includes([full_hocon] + [
+                os.path.join(self.registries_dir, s.lstrip("/") + ("" if s.endswith(".hocon") else ".hocon"))
+                for s in deps.sub_networks
+            ])
+            for inc_rel in sorted(shared):
+                inc_full = os.path.join(self.registries_dir, inc_rel)
+                if not os.path.isfile(inc_full):
+                    result.warnings.append(f"Shared include not found: registries/{inc_rel}")
+                    continue
+                self._add_file(zf, inc_full, f"registries/{inc_rel}", added, result)
+                result.shared_includes.append(inc_rel)
+
+    def _add_file(
+        self, zf: zipfile.ZipFile, source: str, arcname: str, added: Set[str], result: ExportResult
+    ) -> None:
+        """Write one file under arcname, skipping duplicates and recording the addition."""
+        if arcname in added:
+            return
+        zf.write(source, arcname=arcname)
+        added.add(arcname)
+        result.bundled_files.append(arcname)
+
+    def _add_dep(self, zf: zipfile.ZipFile, dep_path: str, added: Set[str], result: ExportResult) -> None:
+        """Resolve a coded_tools/ or middleware/ relative path and bundle the file or directory."""
+        full = os.path.join(self.project_dir, dep_path)
+        if os.path.isfile(full):
+            self._add_file(zf, full, dep_path, added, result)
+            self._add_parent_inits(zf, full, added, result)
+            return
+        if os.path.isdir(full):
+            for root, _dirs, files in os.walk(full):
+                for name in files:
+                    if name.endswith(".pyc") or name == ".DS_Store":
+                        continue
+                    src = os.path.join(root, name)
+                    arc = os.path.relpath(src, self.project_dir)
+                    self._add_file(zf, src, arc, added, result)
+            return
+        result.warnings.append(f"Dependency not found: {dep_path}")
+
+    def _add_parent_inits(
+        self, zf: zipfile.ZipFile, file_path: str, added: Set[str], result: ExportResult
+    ) -> None:
+        """Walk parent dirs up to the project root and bundle any __init__.py we encounter,
+        so the receiver's package tree imports cleanly."""
+        current = os.path.dirname(file_path)
+        # Stop at the project root, never above.
+        while current.startswith(self.project_dir) and current != self.project_dir:
+            init_path = os.path.join(current, "__init__.py")
+            if os.path.isfile(init_path):
+                arc = os.path.relpath(init_path, self.project_dir)
+                self._add_file(zf, init_path, arc, added, result)
+            current = os.path.dirname(current)
+
+    @staticmethod
+    def _collect_shared_includes(hocon_paths: List[str]) -> Set[str]:
+        """Scan each hocon for `include "registries/<name>"` and return the unique <name>s."""
+        seen: Set[str] = set()
+        for path in hocon_paths:
+            try:
+                with open(path, encoding="utf-8") as fh:
+                    text = fh.read()
+            except OSError:
+                continue
+            for match in _INCLUDE_RE.findall(text):
+                name = match if match.endswith(".hocon") else f"{match}.hocon"
+                seen.add(name)
+        return seen
 
     def _resolve_network(self, network: str) -> str:
         """Map a user-supplied name to a registries-relative `.hocon` path; raise if missing."""
@@ -122,8 +242,7 @@ class AgentNetworkExporter:
                 "Network has dependencies; cannot export to '.hocon'. Use '.zip' or omit -o."
             )
         if not has_deps and suffix == ".zip":
-            # A zip wrapping a single hocon is a valid choice — defer to Phase 5 once
-            # zip writes are implemented; for now, steer the user toward the natural shape.
+            # A zip wrapping a single hocon adds nothing — keep the natural shape.
             raise ValueError("Network has no dependencies; export as '.hocon' rather than '.zip'.")
         if suffix not in (".hocon", ".zip"):
             raise ValueError(f"Unsupported output suffix: '{suffix or '(none)'}'. Use '.hocon' or '.zip'.")
