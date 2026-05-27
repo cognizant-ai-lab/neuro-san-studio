@@ -46,9 +46,26 @@ MAX_ARCHIVE_BYTES = 100 * 1024 * 1024  # 100 MB
 MAX_ARCHIVE_ENTRIES = 100
 
 
+def is_skippable_metadata(normalized: str) -> bool:
+    """Tolerate common archive noise so a real-world zip isn't rejected over a __MACOSX entry,
+    and so receivers don't end up with stray .DS_Store / __pycache__ files in their tree."""
+    return (
+        normalized.startswith("__MACOSX/")
+        or "/.DS_Store" in normalized
+        or normalized.endswith(".DS_Store")
+        or "/__pycache__/" in normalized
+        or normalized.endswith(".pyc")
+    )
+
+
 @dataclass
-class ImportResult:
-    """Outcome of importing one agent network into the target project."""
+class ImportResult:  # pylint: disable=too-many-instance-attributes
+    """Outcome of importing one agent network into the target project.
+
+    A value object accumulating every interesting datum from one import; the breadth
+    of fields reflects the breadth of an import (files copied/skipped, manifest entries,
+    MCP merge deltas, warnings, errors), not a missing abstraction.
+    """
 
     network_name: str
     hocon_path: str
@@ -144,8 +161,9 @@ class AgentNetworkImporter:
             return
         self._copy_file_or_dir(source, target, relative_path, result, force=force)
 
+    # pylint: disable-next=too-many-arguments
     def _copy_under(
-        self, dep_path: str, prefix: str, roots: "_Roots", result: ImportResult, force: bool = False
+        self, dep_path: str, prefix: str, roots: "_Roots", result: ImportResult, *, force: bool = False
     ) -> None:
         rel = dep_path[len(prefix) + 1 :] if dep_path.startswith(prefix + "/") else dep_path
         source = os.path.join(roots.source, rel)
@@ -233,7 +251,7 @@ class AgentNetworkImporter:
             for info in entries:
                 rel = info.filename
                 normalized, _ = self._normalize_zip_path(rel)
-                if not normalized.startswith(ALLOWED_TOP_LEVEL) or self._is_skippable_metadata(normalized):
+                if not normalized.startswith(ALLOWED_TOP_LEVEL) or is_skippable_metadata(normalized):
                     # Tolerated by validation (metadata, __pycache__) but not part of the bundle's
                     # real content — silently drop instead of polluting the receiver's tree.
                     continue
@@ -274,7 +292,7 @@ class AgentNetworkImporter:
             normalized, escapes = AgentNetworkImporter._normalize_zip_path(info.filename)
             if escapes:
                 raise ValueError(f"Archive entry escapes target root (zip-slip): {info.filename}")
-            if normalized.startswith(ALLOWED_TOP_LEVEL) or AgentNetworkImporter._is_skippable_metadata(normalized):
+            if normalized.startswith(ALLOWED_TOP_LEVEL) or is_skippable_metadata(normalized):
                 continue
             raise ValueError(
                 f"Archive entry not in whitelist (registries/, coded_tools/, middleware/, skills/): {info.filename}"
@@ -290,18 +308,6 @@ class AgentNetworkImporter:
         if normalized.startswith("../") or normalized == ".." or "/../" in normalized:
             return normalized, True
         return normalized, False
-
-    @staticmethod
-    def _is_skippable_metadata(normalized: str) -> bool:
-        """Tolerate common archive noise so a real-world zip isn't rejected over a __MACOSX entry,
-        and so receivers don't end up with stray .DS_Store / __pycache__ files in their tree."""
-        return (
-            normalized.startswith("__MACOSX/")
-            or "/.DS_Store" in normalized
-            or normalized.endswith(".DS_Store")
-            or "/__pycache__/" in normalized
-            or normalized.endswith(".pyc")
-        )
 
     def _merge_mcp_from_source(self, mcp_urls: List[str], result: ImportResult) -> None:
         """Discovery-mode merge: pull entries for ``mcp_urls`` from the source's mcp_info.hocon

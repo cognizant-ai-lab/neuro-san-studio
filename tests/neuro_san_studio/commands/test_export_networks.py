@@ -40,7 +40,7 @@ def _scaffold_project(project_dir: Path) -> None:
     )
 
 
-class _StubQuestion:
+class _StubQuestion:  # pylint: disable=too-few-public-methods
     """Stand-in for ``questionary.select(...)`` — captures the choices and returns a preset value."""
 
     def __init__(self, return_value: Optional[str], capture: dict) -> None:
@@ -48,6 +48,7 @@ class _StubQuestion:
         self._capture = capture
 
     def ask(self) -> Optional[str]:
+        """Return the preset value, mimicking questionary's blocking ask()."""
         return self._return_value
 
 
@@ -114,8 +115,11 @@ class TestInteractivePicker:
         _scaffold_project(tmp_path)
         monkeypatch.chdir(tmp_path)
 
-        class _RaisingQuestion:
+        class _RaisingQuestion:  # pylint: disable=too-few-public-methods
+            """Stub questionary object whose ask() raises KeyboardInterrupt."""
+
             def ask(self):
+                """Simulate Ctrl-C at the prompt."""
                 raise KeyboardInterrupt()
 
         monkeypatch.setattr(
@@ -146,7 +150,7 @@ class TestInteractivePicker:
         assert "No networks declared" in capsys.readouterr().out
 
 
-class TestRunCancellation:
+class TestRunCancellation:  # pylint: disable=too-few-public-methods
     """Top-level `run()` should swallow a cancelled picker and exit cleanly."""
 
     def test_run_exits_clean_when_picker_cancelled(

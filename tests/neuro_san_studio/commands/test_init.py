@@ -220,7 +220,7 @@ class TestRunFlow:
         self._assert_matches_template(tmp_path, "mcp_info.hocon", "mcp/mcp_info.hocon", "neuro_san_studio.mcp")
 
 
-class TestTemplateSync:
+class TestTemplateSync:  # pylint: disable=too-few-public-methods
     """Ensure scaffolded templates stay in sync with their source-of-truth files in registries/."""
 
     @staticmethod

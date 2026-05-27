@@ -55,7 +55,7 @@ class ExportResult:
     warnings: List[str] = field(default_factory=list)
 
 
-class AgentNetworkExporter:
+class AgentNetworkExporter:  # pylint: disable=too-few-public-methods
     """Bundle an agent network from a project into a self-contained file.
 
     Source of truth is the user's project (`project_dir`) — same layout as `ns import`
@@ -129,39 +129,50 @@ class AgentNetworkExporter:
 
         with zipfile.ZipFile(target, "w", zipfile.ZIP_DEFLATED) as zf:
             self._add_file(zf, full_hocon, f"registries/{rel_hocon}", added, result)
-
-            for sub_ref in deps.sub_networks:
-                sub_rel = sub_ref.lstrip("/")
-                if not sub_rel.endswith(".hocon"):
-                    sub_rel += ".hocon"
-                sub_full = os.path.join(self.registries_dir, sub_rel)
-                if not os.path.isfile(sub_full):
-                    result.warnings.append(f"Sub-network not found: {sub_ref}")
-                    continue
-                self._add_file(zf, sub_full, f"registries/{sub_rel}", added, result)
-
+            self._add_sub_networks(zf, deps.sub_networks, added, result)
             for ct in deps.coded_tools:
                 self._add_dep(zf, ct, added, result)
             for mw in deps.middleware:
                 self._add_dep(zf, mw, added, result)
-
-            shared = self._collect_shared_includes(
-                [full_hocon]
-                + [
-                    os.path.join(self.registries_dir, s.lstrip("/") + ("" if s.endswith(".hocon") else ".hocon"))
-                    for s in deps.sub_networks
-                ]
-            )
-            for inc_rel in sorted(shared):
-                inc_full = os.path.join(self.registries_dir, inc_rel)
-                if not os.path.isfile(inc_full):
-                    result.warnings.append(f"Shared include not found: registries/{inc_rel}")
-                    continue
-                self._add_file(zf, inc_full, f"registries/{inc_rel}", added, result)
-                result.shared_includes.append(inc_rel)
-
+            self._add_shared_includes(zf, full_hocon, deps.sub_networks, added, result)
             self._add_filtered_mcp_info(zf, deps.mcp_tools, added, result)
 
+    def _add_sub_networks(
+        self, zf: zipfile.ZipFile, sub_refs: List[str], added: Set[str], result: ExportResult
+    ) -> None:
+        for sub_ref in sub_refs:
+            sub_rel = sub_ref.lstrip("/")
+            if not sub_rel.endswith(".hocon"):
+                sub_rel += ".hocon"
+            sub_full = os.path.join(self.registries_dir, sub_rel)
+            if not os.path.isfile(sub_full):
+                result.warnings.append(f"Sub-network not found: {sub_ref}")
+                continue
+            self._add_file(zf, sub_full, f"registries/{sub_rel}", added, result)
+
+    # pylint: disable-next=too-many-arguments,too-many-positional-arguments
+    def _add_shared_includes(
+        self,
+        zf: zipfile.ZipFile,
+        full_hocon: str,
+        sub_refs: List[str],
+        added: Set[str],
+        result: ExportResult,
+    ) -> None:
+        sub_paths = [
+            os.path.join(self.registries_dir, s.lstrip("/") + ("" if s.endswith(".hocon") else ".hocon"))
+            for s in sub_refs
+        ]
+        shared = self._collect_shared_includes([full_hocon] + sub_paths)
+        for inc_rel in sorted(shared):
+            inc_full = os.path.join(self.registries_dir, inc_rel)
+            if not os.path.isfile(inc_full):
+                result.warnings.append(f"Shared include not found: registries/{inc_rel}")
+                continue
+            self._add_file(zf, inc_full, f"registries/{inc_rel}", added, result)
+            result.shared_includes.append(inc_rel)
+
+    # pylint: disable-next=too-many-arguments,too-many-positional-arguments
     def _add_file(self, zf: zipfile.ZipFile, source: str, arcname: str, added: Set[str], result: ExportResult) -> None:
         """Write one file under arcname, skipping duplicates and recording the addition."""
         if arcname in added:

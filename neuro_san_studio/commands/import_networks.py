@@ -34,6 +34,7 @@ from neuro_san_studio.commands._status import warn as _warn
 from neuro_san_studio.discovery.agent_network_registry import AgentNetworkRegistry
 from neuro_san_studio.discovery.dependency_analyzer import DependencyAnalyzer
 from neuro_san_studio.importer.agent_network_importer import AgentNetworkImporter
+from neuro_san_studio.importer.agent_network_importer import is_skippable_metadata
 
 CUSTOM = "__custom__"
 ALL = "__all__"
@@ -179,7 +180,7 @@ class ImportCommand:  # pylint: disable=too-few-public-methods
     def _confirm_zip_import(source_path: str, names: List[str], force: bool = False) -> bool:
         """List registry HOCONs explicitly; collapse coded_tools/, middleware/, skills/ to counts."""
         # Filter out metadata so the preview matches what actually gets copied.
-        real = [n for n in names if not AgentNetworkImporter._is_skippable_metadata(n)]
+        real = [n for n in names if not is_skippable_metadata(n)]
         registries = sorted(
             n[len("registries/") :] for n in real if n.startswith("registries/") and n.endswith(".hocon")
         )

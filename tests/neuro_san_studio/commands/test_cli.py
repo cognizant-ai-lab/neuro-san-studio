@@ -131,7 +131,7 @@ class TestMainEntryPoint:
         # clean SystemExit codes. The contract we care about is that ImportCommand
         # never gets constructed when the args conflict.
         main()
-        assert constructed == []
+        assert not constructed
 
     def test_main_propagates_runner_exceptions(self, monkeypatch: MonkeyPatch) -> None:
         """Exceptions from NeuroSanRunner().run() should bubble up to the caller."""
