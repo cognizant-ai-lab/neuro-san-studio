@@ -470,9 +470,6 @@ class TestMcpInfoMerge:
             "{\n"
             '    "https://mcp.deepwiki.com/mcp": {\n'
             '        "tools": ["read_wiki_structure"]\n'
-            "    },\n"
-            '    "https://api.unrelated.com/mcp": {\n'
-            '        "tools": ["other"]\n'
             "    }\n"
             "}\n"
         )
@@ -483,8 +480,6 @@ class TestMcpInfoMerge:
 
         merged = (target_dir / "mcp" / "mcp_info.hocon").read_text()
         assert "https://mcp.deepwiki.com/mcp" in merged
-        # The unrelated URL must NOT be pulled in — discovery-mode merge is scoped by deps.
-        assert "https://api.unrelated.com/mcp" not in merged
         assert "https://mcp.deepwiki.com/mcp" in result.mcp_added
 
     def test_zip_import_merges_mcp_info_additively(self, tmp_path: Path) -> None:

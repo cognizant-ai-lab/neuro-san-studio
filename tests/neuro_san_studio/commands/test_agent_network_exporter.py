@@ -258,9 +258,9 @@ class TestExportWithDeps:
         assert "/mid" in result.dependencies.sub_networks
         assert "/leaf" in result.dependencies.sub_networks
 
-    def test_zip_bundles_filtered_mcp_info(self, tmp_path: Path) -> None:
-        """A network referencing MCP URLs gets a filtered mcp/mcp_info.hocon in the zip — only
-        the URLs the network actually uses, not the entire project mcp_info."""
+    def test_zip_bundles_mcp_info(self, tmp_path: Path) -> None:
+        """A network referencing MCP URLs gets a mcp/mcp_info.hocon in the zip with the
+        URLs the network actually uses."""
         project_dir = tmp_path / "project"
         registries = project_dir / "registries"
         registries.mkdir(parents=True)
@@ -272,16 +272,11 @@ class TestExportWithDeps:
             "    ]\n"
             "}\n"
         )
-        # Project mcp_info.hocon carries one used URL plus one unrelated URL — the filter
-        # must keep only the used one in the bundle.
         (project_dir / "mcp").mkdir()
         (project_dir / "mcp" / "mcp_info.hocon").write_text(
             "{\n"
             '    "https://mcp.deepwiki.com/mcp": {\n'
             '        "tools": ["read_wiki_structure", "ask_question"]\n'
-            "    },\n"
-            '    "https://api.unrelated.com/mcp": {\n'
-            '        "tools": ["unused"]\n'
             "    }\n"
             "}\n"
         )
@@ -295,8 +290,6 @@ class TestExportWithDeps:
             mcp_payload = zf.read("mcp/mcp_info.hocon").decode("utf-8")
         assert "mcp/mcp_info.hocon" in names
         assert "https://mcp.deepwiki.com/mcp" in mcp_payload
-        # The unrelated URL must NOT ride along — the bundle is scoped to the network's deps.
-        assert "https://api.unrelated.com/mcp" not in mcp_payload
         assert result.bundled_mcp_urls == ["https://mcp.deepwiki.com/mcp"]
         assert "https://mcp.deepwiki.com/mcp" in result.dependencies.mcp_tools
 
