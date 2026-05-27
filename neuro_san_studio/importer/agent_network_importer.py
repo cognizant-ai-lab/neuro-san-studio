@@ -95,6 +95,16 @@ class AgentNetworkImporter:
     # alongside any imported network. (llm_config is generated fresh by `ns init`, not copied.)
     SHARED_INCLUDES = ("aaosa.hocon", "aaosa_basic.hocon", "aaosa_basic_debug.hocon")
 
+    def _register_manifest_entry(self, result: ImportResult, registries_relative: str) -> None:
+        """Append ``registries_relative`` to ``result.manifest_entries`` unless it's a shared
+        include (substitution fragment, not a network). Registering one as a network would
+        crash neuro-san at startup — its validator iterates the file expecting agent specs
+        and a string value (e.g. ``aaosa_instructions = "..."``) blows up ``agent.get(...)``.
+        """
+        if os.path.basename(registries_relative) in self.SHARED_INCLUDES:
+            return
+        result.manifest_entries.append(registries_relative)
+
     def import_network(
         self,
         hocon_relative_path: str,
@@ -108,13 +118,13 @@ class AgentNetworkImporter:
         # Sub-networks are first-class agent networks — the receiver's manifest must declare
         # them so they're served. Track them alongside the top-level network so the command
         # layer can register every imported HOCON, not just the entrypoint.
-        result.manifest_entries.append(hocon_relative_path)
+        self._register_manifest_entry(result, hocon_relative_path)
         for sub_ref in dependencies.sub_networks:
             sub_name = sub_ref.lstrip("/")
             if not sub_name.endswith(".hocon"):
                 sub_name += ".hocon"
             self._copy_hocon(sub_name, result, force=force)
-            result.manifest_entries.append(sub_name)
+            self._register_manifest_entry(result, sub_name)
         for coded in dependencies.coded_tools:
             self._copy_under(coded, "coded_tools", self.coded_tools, result, force=force)
         for mw in dependencies.middleware:
@@ -199,7 +209,7 @@ class AgentNetworkImporter:
             # The file lands at registries/<basename> and should be registered, even when
             # the target already exists (skip path) — re-running an import shouldn't drop
             # an entry that earlier failed to make it into the manifest.
-            result.manifest_entries.append(basename)
+            self._register_manifest_entry(result, basename)
             return result
 
         if suffix == ".zip":
@@ -238,7 +248,7 @@ class AgentNetworkImporter:
                 # skipped (already-present) ones, so re-running with the same bundle still
                 # ensures the entry exists in the receiver's manifest.
                 if normalized.startswith("registries/") and normalized.endswith(".hocon"):
-                    result.manifest_entries.append(normalized[len("registries/") :])
+                    self._register_manifest_entry(result, normalized[len("registries/") :])
                 if os.path.exists(target) and not force:
                     result.skipped_files.append(rel)
                     continue

@@ -112,6 +112,10 @@ class TestImportNetwork:
         assert "agent_network_designer.hocon" in result.manifest_entries
         assert "advanced_calculator.hocon" in result.manifest_entries
         assert "agentforce_adapter.hocon" in result.manifest_entries
+        # Shared includes ride along on disk (line 86) but must NOT be registered as networks.
+        assert "aaosa.hocon" not in result.manifest_entries
+        assert "aaosa_basic.hocon" not in result.manifest_entries
+        assert "aaosa_basic_debug.hocon" not in result.manifest_entries
 
     def test_import_skips_existing_files(self, tmp_path: Path) -> None:
         """Pre-existing target files must not be overwritten and should be reported as skipped."""
@@ -315,6 +319,48 @@ class TestImportFromZip:
         assert (target_dir / "skills" / "airline_policy" / "skill.py").is_file()
         assert "registries/industry/airline_policy.hocon" in result.copied_files
         assert not result.errors
+
+    def test_zip_does_not_register_shared_includes_in_manifest_entries(self, tmp_path: Path) -> None:
+        """Shared registry fragments (aaosa.hocon, etc.) are substitution files, not networks.
+
+        Regression case: a zip that ships aaosa.hocon alongside a real network must register
+        only the network. Registering aaosa.hocon as an agent network would crash neuro-san at
+        startup because the validator iterates the file expecting agent specs and finds a string.
+        """
+        zip_path = tmp_path / "bundle.zip"
+        self._make_zip(
+            zip_path,
+            {
+                "registries/generated/indie_bookshop_ops.hocon": b'{ "tools": [] }\n',
+                "registries/aaosa.hocon": b'{ "aaosa_instructions": "..." }\n',
+                "registries/aaosa_basic.hocon": b'{ "aaosa_call": {} }\n',
+            },
+        )
+        target_dir = tmp_path / "target"
+        target_dir.mkdir()
+
+        importer = AgentNetworkImporter(str(target_dir), str(target_dir))
+        result = importer.import_from_path(str(zip_path))
+
+        assert "generated/indie_bookshop_ops.hocon" in result.manifest_entries
+        assert "aaosa.hocon" not in result.manifest_entries
+        assert "aaosa_basic.hocon" not in result.manifest_entries
+        # Files still land on disk — they're needed for the include directives to resolve.
+        assert (target_dir / "registries" / "aaosa.hocon").is_file()
+        assert (target_dir / "registries" / "aaosa_basic.hocon").is_file()
+
+    def test_single_hocon_shared_include_does_not_register_in_manifest(self, tmp_path: Path) -> None:
+        """`ns import -f aaosa.hocon` should land the file but not pollute the manifest."""
+        source = tmp_path / "aaosa.hocon"
+        source.write_text('{ "aaosa_instructions": "..." }\n')
+        target_dir = tmp_path / "target"
+        target_dir.mkdir()
+
+        importer = AgentNetworkImporter(str(target_dir), str(target_dir))
+        result = importer.import_from_path(str(source))
+
+        assert (target_dir / "registries" / "aaosa.hocon").is_file()
+        assert "aaosa.hocon" not in result.manifest_entries
 
     def test_zip_slip_is_rejected_before_any_write(self, tmp_path: Path) -> None:
         """An entry with `..` path components must be rejected without leaving partial output."""
