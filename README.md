@@ -185,37 +185,105 @@ You'll find comprehensive documentation, example agent networks, and tutorials t
 
 ### Install from PyPI
 
-If you just want to build your own agent networks on top of Neuro SAN Studio, you don't need to clone this
-repository. Install the package from PyPI and scaffold a starter project with `init`:
+If you just want to build agent networks on top of Neuro SAN Studio, you don't need to clone this
+repository — install from PyPI and scaffold a project in any directory. Requires Python 3.10+.
+
+The quickstart flow is:
+
+1. Install the package
+2. Scaffold a starter project (`ns init`)
+3. Set your API key
+4. Start the server (`ns run`)
+5. Open the UI
+
+The `ns` console script is registered as a shortcut for `neuro-san-studio` — both work interchangeably.
+
+#### 1. Install
 
 ```bash
 pip install neuro-san-studio
-neuro-san-studio init
 ```
 
-`init` asks which LLM provider(s) you want to enable and writes a minimal project into the current directory
-(`config/llm_config.hocon`, `registries/manifest.hocon`, `registries/basic/music_nerd.hocon`, `mcp/mcp_info.hocon`).
-Once your provider API key is set (e.g. `OPENAI_API_KEY`), start the server:
+The OpenAI, Anthropic, and Google Gemini provider libraries (`langchain-openai`, `langchain-anthropic`,
+`langchain-google-genai`) ship with the base install. No extras to add.
+
+#### 2. Scaffold a starter project
 
 ```bash
-neuro-san-studio run
+ns init
 ```
 
-The base install ships with OpenAI support only. Anthropic and Google Gemini are provided as extras:
+`init` prompts for the LLM provider(s) you want enabled and writes a minimal project into the current
+directory:
+
+* `config/llm_config.hocon` — provider/model wiring (defaults to OpenAI `gpt-5.2`)
+* `registries/manifest.hocon` — registry of active agent networks
+* `registries/music_nerd.hocon` — sample agent network
+* `registries/aaosa.hocon` — AAOSA substitution variables (instructions, call, command)
+* `registries/aaosa_basic.hocon` — simplified AAOSA substitution variables
+* `mcp/mcp_info.hocon` — MCP server config
+
+Skip the prompt with `--providers`:
 
 ```bash
-pip install 'neuro-san-studio[anthropic]'          # adds langchain-anthropic
-pip install 'neuro-san-studio[google]'             # adds langchain-google-genai
-pip install 'neuro-san-studio[anthropic,google]'   # both
+ns init --providers openai,anthropic,google
 ```
 
-You can also run `init` non-interactively:
+#### 3. Set your API key
+
+Set your provider key, e.g. `OPENAI_API_KEY` (or create a `.env` file in the current directory).
+See [docs/api_key.md](docs/api_key.md) for details and other providers.
+
+#### 4. Run the server
 
 ```bash
-neuro-san-studio init --providers openai,anthropic,google
+ns run
 ```
 
-If you pick a provider whose package isn't installed, `init` will run `pip install` for it automatically.
+The Neuro SAN server listens on `localhost:8080`; the nsflow UI is served at
+[http://localhost:4173/](http://localhost:4173/). Logs land under `logs/` (`server.log`, `nsflow.log`,
+`thinking_dir/`).
+
+#### Import more agent networks
+
+Beyond the `music_nerd` sample scaffolded by `ns init`, you can import more agent networks from the 80+
+included in neuro-san-studio:
+
+```bash
+ns import                              # interactive
+ns import basic,industry               # by group(s)
+ns import agent_network_designer       # specific network
+```
+
+See [`docs/cli/import.md`](docs/cli/import.md) for details.
+
+To share a network across projects, bundle it from the current project and drop
+the resulting file into another:
+
+```bash
+ns export music_nerd                  # → music_nerd.hocon (no deps)
+ns export agent_network_designer      # → agent_network_designer.zip (with deps)
+ns import -f music_nerd.hocon         # install in another project
+```
+
+See [`docs/cli/export.md`](docs/cli/export.md) for details.
+
+#### Command reference
+
+<!-- pyml disable line-length -->
+
+| Command             | Purpose                                          | Key flags                                                                                              |
+|---------------------|--------------------------------------------------|--------------------------------------------------------------------------------------------------------|
+| `ns init`           | Scaffold a starter project in the current dir.   | `--providers openai,anthropic,google`                                                                  |
+| `ns run`            | Start the Neuro SAN server and nsflow UI.        | `--server-host`, `--server-http-port`, `--nsflow-port`, `--log-level`, `--client-only`, `--server-only` |
+| `ns import`         | Import agent networks into the current project.  | Positional: group name, network name, comma-separated list, or `all`. `-f` / `--from-file` to install a local `.hocon` or `.zip`. `--force` to overwrite. Omit args for interactive mode. |
+| `ns export`         | Bundle a network from the current project into a shareable file. | Positional: network name (e.g. `music_nerd` or `basic/music_nerd`). `-o` / `--output` to set the output path. Omit args for interactive picker. |
+| `ns check-llm-keys` | Validate LLM API keys / env vars.                | `--tier 1` (placeholder), `--tier 2` (format), `--tier 3` (live API call, default)                     |
+| `ns check-config`   | Validate the LLM configurations in a HOCON file. | `--hocon-path` (defaults to `config/llm_config.hocon`)                                                 |
+
+<!-- pyml enable line-length -->
+
+Use `ns <command> --help` for the full flag list of any subcommand.
 
 ---
 

@@ -16,7 +16,8 @@ classifiers = [
 ]
 
 [project.scripts]
-neuro-san-studio = "neuro_san_studio.commands.run:main"
+neuro-san-studio = "neuro_san_studio.commands.cli:main"
+ns = "neuro_san_studio.commands.cli:main"
 
 [project.urls]
 Homepage = "https://github.com/cognizant-ai-lab/neuro-san-studio"
@@ -28,12 +29,18 @@ readme = { file = ["README.md"], content-type = "text/markdown" }
 
 [tool.setuptools.packages.find]
 where = ["."]
-include = ["neuro_san_studio*"]
-exclude = ["apps*", "build_scripts*", "coded_tools*", "config*", "deploy*", "docs*", "mcp*", "middleware*", "registries*", "servers*", "skills*", "tests*"]
+include = ["neuro_san_studio*", "registries*", "coded_tools*", "middleware*", "skills*"]
+exclude = ["apps*", "build_scripts*", "config*", "deploy*", "docs*", "servers*", "tests*"]
 
 [tool.setuptools.package-data]
 "neuro_san_studio.templates" = ["*.hocon"]
+"neuro_san_studio.mcp" = ["*.hocon"]
 "neuro_san_studio.toolbox" = ["*.hocon"]
+# Include registries, coded_tools, middleware, and skills directories
+"registries" = ["**/*.hocon"]
+"coded_tools" = ["**/*.py"]
+"middleware" = ["**/*.py"]
+"skills" = ["**/*.md", "**/*.py"]
 
 [tool.setuptools_scm]
 fallback_version = "0.0.0"
