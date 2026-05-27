@@ -2,6 +2,10 @@
 
 Here are a few examples ordered by level of complexity.
 
+> **💡 Quick Start:** All these agent networks can be imported into your project using the
+> [`ns import`](./cli/import.md) command. Run `ns import` for an interactive checkbox interface,
+> or `ns import <name>` to import specific networks from neuro-san-studio.
+
 <!-- TOC -->
 
 - [Examples](#examples)

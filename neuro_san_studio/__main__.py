@@ -16,7 +16,7 @@
 
 """Allow `python -m neuro_san_studio` to dispatch to the same CLI as `neuro-san-studio`."""
 
-from neuro_san_studio.commands.run import main
+from neuro_san_studio.commands.cli import main
 
 if __name__ == "__main__":
     main()

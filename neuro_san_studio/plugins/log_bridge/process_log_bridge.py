@@ -479,18 +479,6 @@ class ProcessLogBridge(ProcessLoggerInterface):
 
     # ---------- json helpers ----------
     @staticmethod
-    def _pretty_json(obj: Any) -> str:
-        """
-        Pretty-print a JSON object.
-        :param obj (Any): Any JSON-serializable object.
-        :return str: Indented JSON, or `str(obj)` on failure.
-        """
-        try:
-            return json.dumps(obj, indent=2, ensure_ascii=False)
-        except Exception:  # pylint: disable=broad-except
-            return str(obj)
-
-    @staticmethod
     def _try_parse_json_fragment(text: str) -> Optional[Dict[str, Any]]:
         """
         Try to parse a JSON dictionary from a text line.
@@ -635,13 +623,10 @@ class ProcessLogBridge(ProcessLoggerInterface):
 
     def _emit_json_block(self, state: Dict[str, Any], record: Dict[str, Any]) -> None:
         """
-        Emit a fully parsed JSON record to the logger.
-        Steps:
-            1. Infer log level from `message_type`.
-            2. Build header including process name and optional source.
-            3. Parse nested JSON inside the `"message"` field (if present).
-            4. Pretty-print JSON.
-            5. If the message looks like traceback text, print a Rich-formatted traceback.
+        Emit a parsed JSON record as a single-line `header: message` log entry.
+        Other metadata fields (user_id, Timestamp, request_id, ...) are dropped
+        from the display because they are noise for routine logs; the full
+        record is still mirrored to the per-process raw log file via tee.
         :param state (dict): Per-stream logging state.
         :param record (dict): Parsed JSON dictionary representing the log event.
         """
@@ -649,19 +634,20 @@ class ProcessLogBridge(ProcessLoggerInterface):
         src = str(record.get("source") or "").strip() or None
         header = self._src_header(state["logger"].name, src)
 
-        # Display copy
-        display_rec = dict(record)
-        inner = self._lenient_inner_json_parse(display_rec.get("message"))
-        if inner is not None:
-            display_rec["message"] = inner
+        display_msg: Any = record.get("message", "")
+        if isinstance(display_msg, str):
+            inner = self._lenient_inner_json_parse(display_msg)
+            if inner is not None:
+                display_msg = json.dumps(inner, ensure_ascii=False)
+        elif isinstance(display_msg, (dict, list)):
+            display_msg = json.dumps(display_msg, ensure_ascii=False)
 
-        body = self._pretty_json(display_rec)
-        self._log(state, level, header + "\n" + body)
+        self._log(state, level, header + ": " + str(display_msg))
 
-        # If message was traceback-like text, pretty print after
-        msg = record.get("message")
-        if isinstance(msg, str):
-            tb_text = self._normalize_traceback_str(msg)
+        # Re-read the raw message; display_msg above may have been JSON-serialized.
+        raw_msg = record.get("message")
+        if isinstance(raw_msg, str):
+            tb_text = self._normalize_traceback_str(raw_msg)
             if self._looks_like_traceback(tb_text):
                 self._log(state, level, header + " (traceback)")
                 self.console.print(Syntax(tb_text, "pytb", word_wrap=False))

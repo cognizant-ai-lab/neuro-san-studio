@@ -48,7 +48,7 @@
 # enable it by adding the ``summarization`` block below.
 
 {
-    include "registries/llm_config.hocon",
+    include "config/llm_config.hocon",
 
     "metadata": {
         "description": "Remembers facts you share (preferences, role, personal details) and recalls them in later conversations.",
