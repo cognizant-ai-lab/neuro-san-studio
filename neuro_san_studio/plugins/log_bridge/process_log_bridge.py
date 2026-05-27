@@ -479,18 +479,6 @@ class ProcessLogBridge(ProcessLoggerInterface):
 
     # ---------- json helpers ----------
     @staticmethod
-    def _pretty_json(obj: Any) -> str:
-        """
-        Pretty-print a JSON object.
-        :param obj (Any): Any JSON-serializable object.
-        :return str: Indented JSON, or `str(obj)` on failure.
-        """
-        try:
-            return json.dumps(obj, indent=2, ensure_ascii=False)
-        except Exception:  # pylint: disable=broad-except
-            return str(obj)
-
-    @staticmethod
     def _try_parse_json_fragment(text: str) -> Optional[Dict[str, Any]]:
         """
         Try to parse a JSON dictionary from a text line.
@@ -639,25 +627,27 @@ class ProcessLogBridge(ProcessLoggerInterface):
         Other metadata fields (user_id, Timestamp, request_id, ...) are dropped
         from the display because they are noise for routine logs; the full
         record is still mirrored to the per-process raw log file via tee.
+        :param state (dict): Per-stream logging state.
+        :param record (dict): Parsed JSON dictionary representing the log event.
         """
         level = self._infer_level_from_message_type(record)
         src = str(record.get("source") or "").strip() or None
         header = self._src_header(state["logger"].name, src)
 
-        msg: Any = record.get("message", "")
-        if isinstance(msg, str):
-            inner = self._lenient_inner_json_parse(msg)
+        display_msg: Any = record.get("message", "")
+        if isinstance(display_msg, str):
+            inner = self._lenient_inner_json_parse(display_msg)
             if inner is not None:
-                msg = json.dumps(inner, ensure_ascii=False)
-        elif isinstance(msg, (dict, list)):
-            msg = json.dumps(msg, ensure_ascii=False)
+                display_msg = json.dumps(inner, ensure_ascii=False)
+        elif isinstance(display_msg, (dict, list)):
+            display_msg = json.dumps(display_msg, ensure_ascii=False)
 
-        self._log(state, level, f"{header}: {msg}")
+        self._log(state, level, header + ": " + str(display_msg))
 
-        # If message was traceback-like text, pretty print after
-        original = record.get("message")
-        if isinstance(original, str):
-            tb_text = self._normalize_traceback_str(original)
+        # Re-read the raw message; display_msg above may have been JSON-serialized.
+        raw_msg = record.get("message")
+        if isinstance(raw_msg, str):
+            tb_text = self._normalize_traceback_str(raw_msg)
             if self._looks_like_traceback(tb_text):
                 self._log(state, level, header + " (traceback)")
                 self.console.print(Syntax(tb_text, "pytb", word_wrap=False))
