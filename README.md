@@ -244,6 +244,30 @@ The Neuro SAN server listens on `localhost:8080`; the nsflow UI is served at
 [http://localhost:4173/](http://localhost:4173/). Logs land under `logs/` (`server.log`, `nsflow.log`,
 `thinking_dir/`).
 
+#### Import more agent networks
+
+Beyond the `music_nerd` sample scaffolded by `ns init`, you can import more agent networks from the 80+
+included in neuro-san-studio:
+
+```bash
+ns import                              # interactive
+ns import basic,industry               # by group(s)
+ns import agent_network_designer       # specific network
+```
+
+See [`docs/cli/import.md`](docs/cli/import.md) for details.
+
+To share a network across projects, bundle it from the current project and drop
+the resulting file into another:
+
+```bash
+ns export music_nerd                  # → music_nerd.hocon (no deps)
+ns export agent_network_designer      # → agent_network_designer.zip (with deps)
+ns import -f music_nerd.hocon         # install in another project
+```
+
+See [`docs/cli/export.md`](docs/cli/export.md) for details.
+
 #### Command reference
 
 <!-- pyml disable line-length -->
@@ -252,6 +276,8 @@ The Neuro SAN server listens on `localhost:8080`; the nsflow UI is served at
 |---------------------|--------------------------------------------------|--------------------------------------------------------------------------------------------------------|
 | `ns init`           | Scaffold a starter project in the current dir.   | `--providers openai,anthropic,google`                                                                  |
 | `ns run`            | Start the Neuro SAN server and nsflow UI.        | `--server-host`, `--server-http-port`, `--nsflow-port`, `--log-level`, `--client-only`, `--server-only` |
+| `ns import`         | Import agent networks into the current project.  | Positional: group name, network name, comma-separated list, or `all`. `-f` / `--from-file` to install a local `.hocon` or `.zip`. `--force` to overwrite. Omit args for interactive mode. |
+| `ns export`         | Bundle a network from the current project into a shareable file. | Positional: network name (e.g. `music_nerd` or `basic/music_nerd`). `-o` / `--output` to set the output path. Omit args for interactive picker. |
 | `ns check-llm-keys` | Validate LLM API keys / env vars.                | `--tier 1` (placeholder), `--tier 2` (format), `--tier 3` (live API call, default)                     |
 | `ns check-config`   | Validate the LLM configurations in a HOCON file. | `--hocon-path` (defaults to `config/llm_config.hocon`)                                                 |
 
