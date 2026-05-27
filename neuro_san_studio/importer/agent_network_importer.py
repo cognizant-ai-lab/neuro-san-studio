@@ -148,9 +148,7 @@ class AgentNetworkImporter:
             self._copy_parent_inits(os.path.dirname(source), roots, result, force=force)
 
     @staticmethod
-    def _copy_file_or_dir(
-        source: str, target: str, display: str, result: ImportResult, force: bool = False
-    ) -> None:
+    def _copy_file_or_dir(source: str, target: str, display: str, result: ImportResult, force: bool = False) -> None:
         if os.path.exists(target) and not force:
             result.skipped_files.append(display)
             return
@@ -166,9 +164,7 @@ class AgentNetworkImporter:
             result.errors.append(f"Failed to copy {display}: {exc}")
 
     @staticmethod
-    def _copy_parent_inits(
-        current_dir: str, roots: "_Roots", result: ImportResult, force: bool = False
-    ) -> None:
+    def _copy_parent_inits(current_dir: str, roots: "_Roots", result: ImportResult, force: bool = False) -> None:
         """Copy __init__.py up the parent chain so the package is importable in the target."""
         while current_dir.startswith(roots.source) and current_dir != roots.source:
             init_src = os.path.join(current_dir, "__init__.py")
@@ -256,16 +252,12 @@ class AgentNetworkImporter:
     def _validate_zip_entries(entries: List[zipfile.ZipInfo]) -> None:
         """Run the four safety checks; raise ValueError on the first failure."""
         if len(entries) > MAX_ARCHIVE_ENTRIES:
-            raise ValueError(
-                f"Archive has too many entries ({len(entries)} > {MAX_ARCHIVE_ENTRIES})."
-            )
+            raise ValueError(f"Archive has too many entries ({len(entries)} > {MAX_ARCHIVE_ENTRIES}).")
         total_size = 0
         for info in entries:
             total_size += info.file_size
             if total_size > MAX_ARCHIVE_BYTES:
-                raise ValueError(
-                    f"Archive exceeds size limit ({MAX_ARCHIVE_BYTES} bytes uncompressed)."
-                )
+                raise ValueError(f"Archive exceeds size limit ({MAX_ARCHIVE_BYTES} bytes uncompressed).")
             mode = (info.external_attr >> 16) & 0xFFFF
             if stat.S_ISLNK(mode):
                 raise ValueError(f"Archive contains a symlink entry: {info.filename}")
@@ -310,18 +302,14 @@ class AgentNetworkImporter:
         """
         source_path = self._resolve_mcp_source_path()
         if not source_path:
-            result.warnings.append(
-                f"MCP refs found ({', '.join(mcp_urls)}) but no source mcp_info.hocon located."
-            )
+            result.warnings.append(f"MCP refs found ({', '.join(mcp_urls)}) but no source mcp_info.hocon located.")
             return
         with open(source_path, encoding="utf-8") as fh:
             source_text = fh.read()
         blocks = filter_mcp_info(source_text, mcp_urls)
         missing = [url for url in mcp_urls if url not in blocks]
         if missing:
-            result.warnings.append(
-                f"MCP server(s) not found in {source_path}: {', '.join(missing)}"
-            )
+            result.warnings.append(f"MCP server(s) not found in {source_path}: {', '.join(missing)}")
         if not blocks:
             return
         self._splice_mcp_blocks(blocks, result)

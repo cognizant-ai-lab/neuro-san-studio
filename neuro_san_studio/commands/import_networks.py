@@ -199,11 +199,7 @@ class ImportCommand:  # pylint: disable=too-few-public-methods
         if force:
             print("\nNote:\n--force is set: existing files in the target will be OVERWRITTEN.\n")
         else:
-            print(
-                "\nNote:\n"
-                "This will not overwrite any of the existing files.\n"
-                "To overwrite, re-run with --force.\n"
-            )
+            print("\nNote:\nThis will not overwrite any of the existing files.\nTo overwrite, re-run with --force.\n")
         if not sys.stdin.isatty():
             return True
         try:
@@ -355,11 +351,7 @@ class ImportCommand:  # pylint: disable=too-few-public-methods
         if force:
             print("\nNote:\n--force is set: existing files in the target will be OVERWRITTEN.\n")
         else:
-            print(
-                "\nNote:\n"
-                "This will not overwrite any of the existing files.\n"
-                "To overwrite, re-run with --force.\n"
-            )
+            print("\nNote:\nThis will not overwrite any of the existing files.\nTo overwrite, re-run with --force.\n")
         if not sys.stdin.isatty():
             return True
         try:

@@ -71,9 +71,7 @@ class InitCommand:  # pylint: disable=too-few-public-methods
         # Pre-create registries/generated/ so the include in the main manifest resolves the
         # first time the server reads it, even before agent_network_designer has produced
         # any files. Empty `{}` is a valid manifest — neuro-san just sees no extra networks.
-        self._copy_template(
-            "generated_manifest.hocon", os.path.join("registries", "generated", "manifest.hocon")
-        )
+        self._copy_template("generated_manifest.hocon", os.path.join("registries", "generated", "manifest.hocon"))
         # Shared registry-level HOCONs that AAOSA-style networks include. Most networks in
         # the basic/industry/experimental groups depend on at least one of these, so
         # scaffolding them up front means `ns import <group>` works without surprises.

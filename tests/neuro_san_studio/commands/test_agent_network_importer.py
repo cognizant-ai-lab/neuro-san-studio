@@ -21,7 +21,6 @@ import zipfile
 from pathlib import Path
 
 import pytest
-
 from neuro_san.internals.graph.persistence.raw_manifest_restorer import RawManifestRestorer
 
 from neuro_san_studio.discovery.dependency_analyzer import AgentNetworkDependencies
@@ -137,11 +136,7 @@ class TestImportNetwork:
         registries = target_dir / "registries"
         registries.mkdir(parents=True)
         manifest_path = registries / "manifest.hocon"
-        manifest_path.write_text(
-            "{\n"
-            '    "basic/coffee_finder.hocon": true\n'
-            "}\n"
-        )
+        manifest_path.write_text('{\n    "basic/coffee_finder.hocon": true\n}\n')
 
         importer = AgentNetworkImporter(str(tmp_path / "source"), str(target_dir))
         importer.update_manifest(["basic/music_nerd.hocon", "agent_network_designer.hocon"])
@@ -187,9 +182,7 @@ class TestImportNetwork:
         )
 
         importer = AgentNetworkImporter(str(tmp_path / "source"), str(target_dir))
-        importer.update_manifest(
-            ["agent_network_designer.hocon", "advanced_calculator.hocon", "music_nerd.hocon"]
-        )
+        importer.update_manifest(["agent_network_designer.hocon", "advanced_calculator.hocon", "music_nerd.hocon"])
 
         text = manifest_path.read_text()
         # Verbatim preservation of the include + comments.
@@ -209,15 +202,9 @@ class TestImportNetwork:
         registries = target_dir / "registries"
         (registries / "generated").mkdir(parents=True)
         # The included manifest declares one entry — the top-level merge must see it via the include.
-        (registries / "generated" / "manifest.hocon").write_text(
-            '{\n    "generated/foo.hocon": true\n}\n'
-        )
+        (registries / "generated" / "manifest.hocon").write_text('{\n    "generated/foo.hocon": true\n}\n')
         manifest_path = registries / "manifest.hocon"
-        manifest_path.write_text(
-            "{\n"
-            '    include "registries/generated/manifest.hocon"\n'
-            "}\n"
-        )
+        manifest_path.write_text('{\n    include "registries/generated/manifest.hocon"\n}\n')
 
         importer = AgentNetworkImporter(str(tmp_path / "source"), str(target_dir))
         importer.update_manifest(["generated/foo.hocon", "new_network.hocon"])
@@ -461,9 +448,7 @@ class TestMcpInfoMerge:
             zf.writestr("registries/foo.hocon", '{ "tools": [] }\n')
             zf.writestr(
                 "mcp/mcp_info.hocon",
-                "{\n"
-                '    "https://new.example.com/mcp": { "tools": ["t"] }\n'
-                "}\n",
+                '{\n    "https://new.example.com/mcp": { "tools": ["t"] }\n}\n',
             )
         target_dir = tmp_path / "target"
         (target_dir / "mcp").mkdir(parents=True)

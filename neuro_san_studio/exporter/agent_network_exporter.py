@@ -145,10 +145,13 @@ class AgentNetworkExporter:
             for mw in deps.middleware:
                 self._add_dep(zf, mw, added, result)
 
-            shared = self._collect_shared_includes([full_hocon] + [
-                os.path.join(self.registries_dir, s.lstrip("/") + ("" if s.endswith(".hocon") else ".hocon"))
-                for s in deps.sub_networks
-            ])
+            shared = self._collect_shared_includes(
+                [full_hocon]
+                + [
+                    os.path.join(self.registries_dir, s.lstrip("/") + ("" if s.endswith(".hocon") else ".hocon"))
+                    for s in deps.sub_networks
+                ]
+            )
             for inc_rel in sorted(shared):
                 inc_full = os.path.join(self.registries_dir, inc_rel)
                 if not os.path.isfile(inc_full):
@@ -159,9 +162,7 @@ class AgentNetworkExporter:
 
             self._add_filtered_mcp_info(zf, deps.mcp_tools, added, result)
 
-    def _add_file(
-        self, zf: zipfile.ZipFile, source: str, arcname: str, added: Set[str], result: ExportResult
-    ) -> None:
+    def _add_file(self, zf: zipfile.ZipFile, source: str, arcname: str, added: Set[str], result: ExportResult) -> None:
         """Write one file under arcname, skipping duplicates and recording the addition."""
         if arcname in added:
             return
@@ -187,9 +188,7 @@ class AgentNetworkExporter:
             return
         result.warnings.append(f"Dependency not found: {dep_path}")
 
-    def _add_parent_inits(
-        self, zf: zipfile.ZipFile, file_path: str, added: Set[str], result: ExportResult
-    ) -> None:
+    def _add_parent_inits(self, zf: zipfile.ZipFile, file_path: str, added: Set[str], result: ExportResult) -> None:
         """Walk parent dirs up to the project root and bundle any __init__.py we encounter,
         so the receiver's package tree imports cleanly."""
         current = os.path.dirname(file_path)
@@ -219,18 +218,14 @@ class AgentNetworkExporter:
             return
         source_path = self._resolve_mcp_info_source()
         if not source_path:
-            result.warnings.append(
-                f"MCP refs found ({', '.join(mcp_urls)}) but no mcp_info.hocon located."
-            )
+            result.warnings.append(f"MCP refs found ({', '.join(mcp_urls)}) but no mcp_info.hocon located.")
             return
         with open(source_path, encoding="utf-8") as fh:
             source_text = fh.read()
         blocks = filter_mcp_info(source_text, mcp_urls)
         missing = [url for url in mcp_urls if url not in blocks]
         if missing:
-            result.warnings.append(
-                f"MCP server(s) not found in {source_path}: {', '.join(missing)}"
-            )
+            result.warnings.append(f"MCP server(s) not found in {source_path}: {', '.join(missing)}")
         if not blocks:
             return
         rendered = format_mcp_info_file(blocks)
@@ -303,9 +298,7 @@ class AgentNetworkExporter:
 
         suffix = os.path.splitext(output_path)[1].lower()
         if has_deps and suffix == ".hocon":
-            raise ValueError(
-                "Network has dependencies; cannot export to '.hocon'. Use '.zip' or omit -o."
-            )
+            raise ValueError("Network has dependencies; cannot export to '.hocon'. Use '.zip' or omit -o.")
         if not has_deps and suffix == ".zip":
             # A zip wrapping a single hocon adds nothing — keep the natural shape.
             raise ValueError("Network has no dependencies; export as '.hocon' rather than '.zip'.")

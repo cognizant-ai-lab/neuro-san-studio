@@ -74,9 +74,7 @@ class TestInteractivePicker:
         assert result == "basic/music_nerd.hocon"
         assert "network" in captured["prompt"].lower()
 
-    def test_picker_groups_networks_with_separators(
-        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-    ) -> None:
+    def test_picker_groups_networks_with_separators(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
         """Each group becomes a separator row followed by Choices for its networks."""
         _scaffold_project(tmp_path)
         monkeypatch.chdir(tmp_path)
@@ -99,9 +97,7 @@ class TestInteractivePicker:
         assert "basic/music_nerd.hocon" in values
         assert "industry/airline_policy.hocon" in values
 
-    def test_picker_returns_none_when_user_aborts(
-        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-    ) -> None:
+    def test_picker_returns_none_when_user_aborts(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
         """Ctrl-C / Esc → questionary returns None → we return None (caller treats as cancelled)."""
         _scaffold_project(tmp_path)
         monkeypatch.chdir(tmp_path)
@@ -113,9 +109,7 @@ class TestInteractivePicker:
         # pylint: disable-next=protected-access
         assert ExportCommand()._prompt_for_network() is None
 
-    def test_picker_handles_keyboard_interrupt(
-        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-    ) -> None:
+    def test_picker_handles_keyboard_interrupt(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
         """A raised KeyboardInterrupt at .ask() is caught and surfaces as None, not a stack trace."""
         _scaffold_project(tmp_path)
         monkeypatch.chdir(tmp_path)
@@ -173,9 +167,7 @@ class TestRunCancellation:
             called["export"] += 1
             raise AssertionError("exporter must not run when picker is cancelled")
 
-        monkeypatch.setattr(
-            "neuro_san_studio.commands.export_networks.AgentNetworkExporter.export", boom
-        )
+        monkeypatch.setattr("neuro_san_studio.commands.export_networks.AgentNetworkExporter.export", boom)
 
         ExportCommand().run()
         assert called["export"] == 0

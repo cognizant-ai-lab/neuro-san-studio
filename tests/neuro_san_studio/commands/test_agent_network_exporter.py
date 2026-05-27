@@ -37,13 +37,7 @@ class TestExportNoDeps:
         # An LLM-only `tools` entry — `openai` is in LLM_CLASSES so the analyzer treats
         # it as a model reference rather than a coded-tool dependency.
         hocon = registries / group / f"{name}.hocon"
-        hocon.write_text(
-            "{\n"
-            '    "tools": [\n'
-            '        { "name": "frontman", "class": "openai" }\n'
-            "    ]\n"
-            "}\n"
-        )
+        hocon.write_text('{\n    "tools": [\n        { "name": "frontman", "class": "openai" }\n    ]\n}\n')
         return hocon
 
     def test_export_writes_hocon_to_default_cwd_path(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:

@@ -31,18 +31,17 @@ from typing import List
 from typing import Optional
 from typing import Tuple
 
-
 _HEADER = (
     "# Copyright © 2025-2026 Cognizant Technology Solutions Corp, www.cognizant.com.\n"
     "#\n"
-    "# Licensed under the Apache License, Version 2.0 (the \"License\");\n"
+    '# Licensed under the Apache License, Version 2.0 (the "License");\n'
     "# you may not use this file except in compliance with the License.\n"
     "# You may obtain a copy of the License at\n"
     "#\n"
     "#     http://www.apache.org/licenses/LICENSE-2.0\n"
     "#\n"
     "# Unless required by applicable law or agreed to in writing, software\n"
-    "# distributed under the License is distributed on an \"AS IS\" BASIS,\n"
+    '# distributed under the License is distributed on an "AS IS" BASIS,\n'
     "# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.\n"
     "# See the License for the specific language governing permissions and\n"
     "# limitations under the License.\n"
@@ -72,7 +71,7 @@ def extract_mcp_blocks(text: str) -> "OrderedDict[str, str]":
                 break
             token = text[i + 1 : url_end]
             if token.startswith(("http://", "https://")) and not _line_is_commented(text, i):
-                block_end = _try_parse_block(text, i, url_end)
+                block_end = _try_parse_block(text, url_end)
                 if block_end is not None:
                     blocks[token] = text[i:block_end].rstrip(" \t")
                     i = _consume_trailing_comma(text, block_end)
@@ -97,9 +96,7 @@ def format_mcp_info_file(blocks: Dict[str, str]) -> str:
     return _HEADER + "\n{\n" + rendered_blocks + "\n}\n"
 
 
-def merge_into_mcp_info(
-    receiver_text: str, additions: Dict[str, str]
-) -> Tuple[str, List[str], List[str]]:
+def merge_into_mcp_info(receiver_text: str, additions: Dict[str, str]) -> Tuple[str, List[str], List[str]]:
     """Add any URL blocks from ``additions`` that aren't already present in ``receiver_text``.
 
     Returns ``(new_text, added_urls, skipped_urls)``. Existing URLs are never overwritten —
@@ -162,8 +159,8 @@ def _line_is_commented(text: str, pos: int) -> bool:
     return "#" in text[line_start:pos]
 
 
-def _try_parse_block(text: str, key_start: int, key_end: int) -> Optional[int]:
-    """If ``"<key>"`` at ``[key_start..key_end]`` is followed by ``[: or =] {...}``, return the index
+def _try_parse_block(text: str, key_end: int) -> Optional[int]:
+    """If the quoted key ending at ``key_end`` is followed by ``[: or =] {...}``, return the index
     just past the closing ``}``. Otherwise return None — the quoted token wasn't an entry header."""
     n = len(text)
     j = key_end + 1
