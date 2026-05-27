@@ -28,8 +28,16 @@ from typing import List
 from typing import Tuple
 
 from neuro_san_studio.discovery.dependency_analyzer import AgentNetworkDependencies
+from neuro_san_studio.mcp.mcp_info_merger import extract_mcp_blocks
+from neuro_san_studio.mcp.mcp_info_merger import filter_mcp_info
+from neuro_san_studio.mcp.mcp_info_merger import format_mcp_info_file
+from neuro_san_studio.mcp.mcp_info_merger import merge_into_mcp_info
 
-ALLOWED_TOP_LEVEL = ("registries/", "coded_tools/", "middleware/", "skills/")
+# `mcp/` is whitelisted so an export-side bundle can carry the filtered mcp_info.hocon. The
+# importer extracts it into memory and merges into the receiver's file additively rather than
+# dropping it on disk verbatim — receivers may have already-configured URLs we must not
+# overwrite (e.g. with their own `${ENV}` headers).
+ALLOWED_TOP_LEVEL = ("registries/", "coded_tools/", "middleware/", "skills/", "mcp/")
 MAX_ARCHIVE_BYTES = 100 * 1024 * 1024  # 100 MB
 MAX_ARCHIVE_ENTRIES = 100
 
@@ -44,6 +52,8 @@ class ImportResult:
     skipped_files: List[str] = field(default_factory=list)
     errors: List[str] = field(default_factory=list)
     warnings: List[str] = field(default_factory=list)
+    mcp_added: List[str] = field(default_factory=list)
+    mcp_skipped: List[str] = field(default_factory=list)
 
 
 @dataclass(frozen=True)
@@ -63,6 +73,11 @@ class AgentNetworkImporter:
         self.registries = _Roots(os.path.join(source_dir, "registries"), os.path.join(target_dir, "registries"))
         self.coded_tools = _Roots(os.path.join(source_dir, "coded_tools"), os.path.join(target_dir, "coded_tools"))
         self.middleware = _Roots(os.path.join(source_dir, "middleware"), os.path.join(target_dir, "middleware"))
+        # mcp_info.hocon lives under <project>/mcp/. Discovery imports read the source's copy
+        # (or the studio fallback) and extract only the URLs the imported network references.
+        # File-mode imports get a pre-filtered mcp_info.hocon already inside the zip.
+        self.mcp_source = os.path.join(source_dir, "mcp", "mcp_info.hocon")
+        self.mcp_target = os.path.join(target_dir, "mcp", "mcp_info.hocon")
 
     # Shared registry-level HOCONs that networks pull in via `include "registries/<name>"`.
     # These aren't agent networks themselves so the dependency walker doesn't see them, but
@@ -91,6 +106,8 @@ class AgentNetworkImporter:
             self._copy_under(mw, "middleware", self.middleware, result, force=force)
         for shared in self.SHARED_INCLUDES:
             self._copy_hocon(shared, result, force=force)
+        if dependencies.mcp_tools:
+            self._merge_mcp_from_source(dependencies.mcp_tools, result)
 
         return result
 
@@ -180,6 +197,9 @@ class AgentNetworkImporter:
 
         Validation runs over every entry up front; extraction only proceeds when all
         entries pass. This avoids leaving the project half-imported on rejection.
+        ``mcp/mcp_info.hocon`` is special-cased: instead of dropping the file verbatim
+        we additively merge its URL blocks into the receiver's mcp_info, so the receiver's
+        already-configured servers are never silently overwritten regardless of ``force``.
         """
         result = ImportResult(network_name=Path(zip_path).stem, hocon_path=os.path.basename(zip_path))
         with zipfile.ZipFile(zip_path) as zf:
@@ -191,6 +211,12 @@ class AgentNetworkImporter:
                 if not normalized.startswith(ALLOWED_TOP_LEVEL) or self._is_skippable_metadata(normalized):
                     # Tolerated by validation (metadata, __pycache__) but not part of the bundle's
                     # real content — silently drop instead of polluting the receiver's tree.
+                    continue
+                if normalized == "mcp/mcp_info.hocon":
+                    # Always merge — never overwrite the receiver's mcp_info, even with --force.
+                    # The receiver's configured `${ENV}` references must not be clobbered.
+                    payload = zf.read(info).decode("utf-8")
+                    self._merge_mcp_text(payload, result)
                     continue
                 target = os.path.join(self.target_dir, rel)
                 if os.path.exists(target) and not force:
@@ -250,6 +276,67 @@ class AgentNetworkImporter:
             or "/__pycache__/" in normalized
             or normalized.endswith(".pyc")
         )
+
+    def _merge_mcp_from_source(self, mcp_urls: List[str], result: ImportResult) -> None:
+        """Discovery-mode merge: pull entries for ``mcp_urls`` from the source's mcp_info.hocon
+        and additively merge them into the target's mcp_info.hocon.
+
+        Falls back to the studio package's bundled mcp_info if the source project hasn't
+        scaffolded one — same precedence as ``ns run`` uses to find the active config.
+        """
+        source_path = self._resolve_mcp_source_path()
+        if not source_path:
+            result.warnings.append(
+                f"MCP refs found ({', '.join(mcp_urls)}) but no source mcp_info.hocon located."
+            )
+            return
+        with open(source_path, encoding="utf-8") as fh:
+            source_text = fh.read()
+        blocks = filter_mcp_info(source_text, mcp_urls)
+        missing = [url for url in mcp_urls if url not in blocks]
+        if missing:
+            result.warnings.append(
+                f"MCP server(s) not found in {source_path}: {', '.join(missing)}"
+            )
+        if not blocks:
+            return
+        self._splice_mcp_blocks(blocks, result)
+
+    def _merge_mcp_text(self, payload: str, result: ImportResult) -> None:
+        """File-mode merge: parse blocks out of the bundled mcp_info text and splice them in."""
+        blocks = extract_mcp_blocks(payload)
+        if not blocks:
+            return
+        self._splice_mcp_blocks(blocks, result)
+
+    def _splice_mcp_blocks(self, blocks: dict, result: ImportResult) -> None:
+        """Read the receiver's mcp_info, additively merge ``blocks``, and write the result.
+
+        If the receiver has no mcp_info.hocon yet, we render a fresh file containing only
+        the new blocks. Existing URLs are never overwritten — that's the additive contract.
+        """
+        os.makedirs(os.path.dirname(self.mcp_target), exist_ok=True)
+        if os.path.isfile(self.mcp_target):
+            with open(self.mcp_target, encoding="utf-8") as fh:
+                receiver_text = fh.read()
+            new_text, added, skipped = merge_into_mcp_info(receiver_text, blocks)
+        else:
+            new_text = format_mcp_info_file(blocks)
+            added, skipped = list(blocks.keys()), []
+        with open(self.mcp_target, "w", encoding="utf-8") as fh:
+            fh.write(new_text)
+        result.mcp_added.extend(added)
+        result.mcp_skipped.extend(skipped)
+
+    def _resolve_mcp_source_path(self) -> str:
+        """Source project's mcp_info.hocon if present, otherwise the bundled studio fallback."""
+        if os.path.isfile(self.mcp_source):
+            return self.mcp_source
+        # pylint: disable-next=import-outside-toplevel
+        from neuro_san_studio import mcp as _mcp_pkg
+
+        bundled = os.path.join(os.path.dirname(_mcp_pkg.__file__), "mcp_info.hocon")
+        return bundled if os.path.isfile(bundled) else ""
 
     def update_manifest(self, imported_networks: List[str]) -> None:
         """Merge new entries into target registries/manifest.hocon (always JSON-formatted)."""

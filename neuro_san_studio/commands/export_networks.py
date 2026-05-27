@@ -64,7 +64,13 @@ class ExportCommand:  # pylint: disable=too-few-public-methods
     def _print_dep_summary(result) -> None:
         """List what's in the bundle so the user can verify nothing is missing."""
         deps = result.dependencies
-        if not (deps.coded_tools or deps.middleware or deps.sub_networks or result.shared_includes):
+        if not (
+            deps.coded_tools
+            or deps.middleware
+            or deps.sub_networks
+            or result.shared_includes
+            or result.bundled_mcp_urls
+        ):
             return
         print("\n📋 Included dependencies:")
         if deps.sub_networks:
@@ -83,6 +89,10 @@ class ExportCommand:  # pylint: disable=too-few-public-methods
             print(f"   shared includes ({len(result.shared_includes)}):")
             for inc in result.shared_includes:
                 print(f"     - registries/{inc}")
+        if result.bundled_mcp_urls:
+            print(f"   mcp servers ({len(result.bundled_mcp_urls)}):")
+            for url in result.bundled_mcp_urls:
+                print(f"     - {url}")
 
     def _verify_project_initialized(self) -> bool:
         return os.path.exists(os.path.join(self.project_dir, "registries", "manifest.hocon"))

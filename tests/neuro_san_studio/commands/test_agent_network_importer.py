@@ -313,6 +313,97 @@ class TestImportFromZip:
         assert "registries/foo.hocon" not in result.copied_files
 
 
+class TestMcpInfoMerge:
+    """MCP info merging on import — both discovery-driven (import_network) and zip (import_from_path)."""
+
+    def test_discovery_import_pulls_mcp_blocks_from_source(self, tmp_path: Path) -> None:
+        """import_network with mcp_tools deps copies only those URL blocks from the source mcp_info."""
+        source_dir = tmp_path / "source"
+        target_dir = tmp_path / "target"
+        target_dir.mkdir()
+        (source_dir / "registries" / "basic").mkdir(parents=True)
+        (source_dir / "registries" / "basic" / "mcp_user.hocon").write_text('{ "tools": [] }\n')
+        for shared in ("aaosa.hocon", "aaosa_basic.hocon", "aaosa_basic_debug.hocon"):
+            (source_dir / "registries" / shared).write_text("")
+        (source_dir / "mcp").mkdir()
+        (source_dir / "mcp" / "mcp_info.hocon").write_text(
+            "{\n"
+            '    "https://mcp.deepwiki.com/mcp": {\n'
+            '        "tools": ["read_wiki_structure"]\n'
+            "    },\n"
+            '    "https://api.unrelated.com/mcp": {\n'
+            '        "tools": ["other"]\n'
+            "    }\n"
+            "}\n"
+        )
+
+        importer = AgentNetworkImporter(str(source_dir), str(target_dir))
+        deps = AgentNetworkDependencies(mcp_tools=["https://mcp.deepwiki.com/mcp"])
+        result = importer.import_network("basic/mcp_user.hocon", deps)
+
+        merged = (target_dir / "mcp" / "mcp_info.hocon").read_text()
+        assert "https://mcp.deepwiki.com/mcp" in merged
+        # The unrelated URL must NOT be pulled in — discovery-mode merge is scoped by deps.
+        assert "https://api.unrelated.com/mcp" not in merged
+        assert "https://mcp.deepwiki.com/mcp" in result.mcp_added
+
+    def test_zip_import_merges_mcp_info_additively(self, tmp_path: Path) -> None:
+        """A zip-bundled mcp_info.hocon is merged into the receiver — never replacing existing URLs."""
+        zip_path = tmp_path / "bundle.zip"
+        with zipfile.ZipFile(zip_path, "w") as zf:
+            zf.writestr("registries/foo.hocon", '{ "tools": [] }\n')
+            zf.writestr(
+                "mcp/mcp_info.hocon",
+                "{\n"
+                '    "https://new.example.com/mcp": { "tools": ["t"] }\n'
+                "}\n",
+            )
+        target_dir = tmp_path / "target"
+        (target_dir / "mcp").mkdir(parents=True)
+        # Receiver already has one URL configured with an env-var header — must survive verbatim.
+        existing = (
+            "{\n"
+            '    "https://existing.example.com/mcp": {\n'
+            '        "http_headers": { "Authorization": "Bearer "${MY_TOKEN} }\n'
+            "    }\n"
+            "}\n"
+        )
+        (target_dir / "mcp" / "mcp_info.hocon").write_text(existing)
+
+        importer = AgentNetworkImporter(str(target_dir), str(target_dir))
+        result = importer.import_from_path(str(zip_path))
+
+        merged = (target_dir / "mcp" / "mcp_info.hocon").read_text()
+        assert "https://existing.example.com/mcp" in merged
+        assert "${MY_TOKEN}" in merged  # env-var ref preserved verbatim
+        assert "https://new.example.com/mcp" in merged
+        assert "https://new.example.com/mcp" in result.mcp_added
+
+    def test_zip_import_skips_already_present_mcp_url(self, tmp_path: Path) -> None:
+        """A bundled mcp_info entry whose URL is already configured is skipped (no overwrite, ever)."""
+        zip_path = tmp_path / "bundle.zip"
+        with zipfile.ZipFile(zip_path, "w") as zf:
+            zf.writestr("registries/foo.hocon", '{ "tools": [] }\n')
+            zf.writestr(
+                "mcp/mcp_info.hocon",
+                '{\n    "https://shared.example.com/mcp": { "tools": ["replacement"] }\n}\n',
+            )
+        target_dir = tmp_path / "target"
+        (target_dir / "mcp").mkdir(parents=True)
+        original = '{\n    "https://shared.example.com/mcp": { "tools": ["original"] }\n}\n'
+        (target_dir / "mcp" / "mcp_info.hocon").write_text(original)
+
+        importer = AgentNetworkImporter(str(target_dir), str(target_dir))
+        # Force=True must NOT override the additive contract for mcp_info — the receiver's
+        # existing URL config wins, even on force.
+        result = importer.import_from_path(str(zip_path), force=True)
+
+        merged = (target_dir / "mcp" / "mcp_info.hocon").read_text()
+        assert '"original"' in merged
+        assert '"replacement"' not in merged
+        assert "https://shared.example.com/mcp" in result.mcp_skipped
+
+
 class TestForceOverwrite:
     """Tests for the --force flag, which makes import_network and import_from_path overwrite existing files."""
 

@@ -128,6 +128,7 @@ class ImportCommand:  # pylint: disable=too-few-public-methods
             warnings=result.warnings,
             errors=result.errors,
         )
+        self._print_mcp_summary([result])
         print("\n✅ Import complete!\n")
 
     def _confirm_from_file(self, source_path: str, suffix: str) -> bool:
@@ -378,6 +379,7 @@ class ImportCommand:  # pylint: disable=too-few-public-methods
         warnings = [w for r in results for w in r.warnings]
         errors = top_errors + [e for r in results for e in r.errors]
         self._print_summary(copied, skipped, warnings, errors)
+        self._print_mcp_summary(results)
 
     @staticmethod
     def _collect_results(
@@ -405,6 +407,22 @@ class ImportCommand:  # pylint: disable=too-few-public-methods
             except (OSError, ValueError) as exc:
                 errors.append(f"Failed to import {hocon_path}: {exc}")
         return results, errors
+
+    @staticmethod
+    def _print_mcp_summary(results) -> None:
+        """List MCP servers merged into <project>/mcp/mcp_info.hocon, plus any skipped (already-present) URLs."""
+        added = [u for r in results for u in r.mcp_added]
+        skipped = [u for r in results for u in r.mcp_skipped]
+        if not (added or skipped):
+            return
+        if added:
+            print(f"\n   🔌 MCP servers added to mcp/mcp_info.hocon ({len(added)}):")
+            for url in added:
+                print(f"      - {url}")
+        if skipped:
+            print(f"\n   🔌 MCP servers already configured, left untouched ({len(skipped)}):")
+            for url in skipped:
+                print(f"      - {url}")
 
     @staticmethod
     def _print_summary(copied: int, skipped: int, warnings: List[str], errors: List[str]) -> None:

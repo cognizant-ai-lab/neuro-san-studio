@@ -264,6 +264,75 @@ class TestExportWithDeps:
         assert "/mid" in result.dependencies.sub_networks
         assert "/leaf" in result.dependencies.sub_networks
 
+    def test_zip_bundles_filtered_mcp_info(self, tmp_path: Path) -> None:
+        """A network referencing MCP URLs gets a filtered mcp/mcp_info.hocon in the zip — only
+        the URLs the network actually uses, not the entire project mcp_info."""
+        project_dir = tmp_path / "project"
+        registries = project_dir / "registries"
+        registries.mkdir(parents=True)
+        (registries / "manifest.hocon").write_text("{}\n")
+        (registries / "mcp_user.hocon").write_text(
+            "{\n"
+            '    "tools": [\n'
+            '        { "name": "frontman", "class": "openai", "tools": ["https://mcp.deepwiki.com/mcp"] }\n'
+            "    ]\n"
+            "}\n"
+        )
+        # Project mcp_info.hocon carries one used URL plus one unrelated URL — the filter
+        # must keep only the used one in the bundle.
+        (project_dir / "mcp").mkdir()
+        (project_dir / "mcp" / "mcp_info.hocon").write_text(
+            "{\n"
+            '    "https://mcp.deepwiki.com/mcp": {\n'
+            '        "tools": ["read_wiki_structure", "ask_question"]\n'
+            "    },\n"
+            '    "https://api.unrelated.com/mcp": {\n'
+            '        "tools": ["unused"]\n'
+            "    }\n"
+            "}\n"
+        )
+
+        exporter = AgentNetworkExporter(project_dir=str(project_dir))
+        target = tmp_path / "mcp_user.zip"
+        result = exporter.export("mcp_user", output_path=str(target))
+
+        with zipfile.ZipFile(target) as zf:
+            names = set(zf.namelist())
+            mcp_payload = zf.read("mcp/mcp_info.hocon").decode("utf-8")
+        assert "mcp/mcp_info.hocon" in names
+        assert "https://mcp.deepwiki.com/mcp" in mcp_payload
+        # The unrelated URL must NOT ride along — the bundle is scoped to the network's deps.
+        assert "https://api.unrelated.com/mcp" not in mcp_payload
+        assert result.bundled_mcp_urls == ["https://mcp.deepwiki.com/mcp"]
+        assert "https://mcp.deepwiki.com/mcp" in result.dependencies.mcp_tools
+
+    def test_export_with_only_mcp_dep_produces_zip(self, tmp_path: Path) -> None:
+        """An MCP-only network still exports as .zip so we can ship the filtered mcp_info."""
+        project_dir = tmp_path / "project"
+        registries = project_dir / "registries"
+        registries.mkdir(parents=True)
+        (registries / "manifest.hocon").write_text("{}\n")
+        (registries / "mcp_only.hocon").write_text(
+            "{\n"
+            '    "tools": [\n'
+            '        { "name": "frontman", "class": "openai", "tools": ["https://mcp.deepwiki.com/mcp"] }\n'
+            "    ]\n"
+            "}\n"
+        )
+        (project_dir / "mcp").mkdir()
+        (project_dir / "mcp" / "mcp_info.hocon").write_text(
+            '{\n    "https://mcp.deepwiki.com/mcp": { "tools": ["x"] }\n}\n'
+        )
+
+        exporter = AgentNetworkExporter(project_dir=str(project_dir))
+        out_dir = tmp_path / "out"
+        out_dir.mkdir()
+        result = exporter.export("mcp_only", output_path=str(out_dir / "mcp_only.zip"))
+
+        landed = out_dir / "mcp_only.zip"
+        assert landed.is_file()
+        assert result.output_path == str(landed)
+
     def test_round_trip_via_import_from_path(self, tmp_path: Path) -> None:
         """Exported zip imports cleanly into a fresh project and lands every file."""
         # pylint: disable-next=import-outside-toplevel

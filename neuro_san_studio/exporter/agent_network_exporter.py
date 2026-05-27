@@ -28,11 +28,18 @@ from typing import Set
 
 from neuro_san_studio.discovery.dependency_analyzer import AgentNetworkDependencies
 from neuro_san_studio.discovery.dependency_analyzer import DependencyAnalyzer
+from neuro_san_studio.mcp.mcp_info_merger import filter_mcp_info
+from neuro_san_studio.mcp.mcp_info_merger import format_mcp_info_file
 
 # `include "registries/<name>"` and `include classpath("registries/<name>")` both surface
 # shared HOCON files (e.g. aaosa.hocon). The DependencyAnalyzer reads the `tools` array
 # but doesn't parse include directives — this regex bridges the gap.
 _INCLUDE_RE = re.compile(r'include\s+(?:classpath\()?"registries/([^"]+)"\)?')
+
+# `ns init` scaffolds <project>/mcp/mcp_info.hocon. We export from the project's copy when
+# present, falling back to the studio package's bundled mcp_info.hocon — same precedence
+# as the runtime resolver in NeuroSanRunner.
+_PROJECT_MCP_INFO_RELPATH = os.path.join("mcp", "mcp_info.hocon")
 
 
 @dataclass
@@ -44,6 +51,7 @@ class ExportResult:
     dependencies: AgentNetworkDependencies = field(default_factory=AgentNetworkDependencies)
     shared_includes: List[str] = field(default_factory=list)
     bundled_files: List[str] = field(default_factory=list)
+    bundled_mcp_urls: List[str] = field(default_factory=list)
     warnings: List[str] = field(default_factory=list)
 
 
@@ -65,6 +73,7 @@ class AgentNetworkExporter:
         self.registries_dir = os.path.join(project_dir, "registries")
         self.coded_tools_dir = os.path.join(project_dir, "coded_tools")
         self.middleware_dir = os.path.join(project_dir, "middleware")
+        self.mcp_info_path = os.path.join(project_dir, _PROJECT_MCP_INFO_RELPATH)
 
     def export(self, network: str, output_path: Optional[str] = None) -> ExportResult:
         """Export `network` (a name like 'music_nerd' or relative path 'basic/music_nerd[.hocon]')
@@ -85,7 +94,10 @@ class AgentNetworkExporter:
         # Shared HOCON `include` directives don't surface through the structured walker —
         # do a textual scan over the network's own file so includes count toward "has_deps".
         own_includes = self._collect_shared_includes([full_hocon])
-        has_deps = self._has_dependencies(deps) or bool(own_includes)
+        # MCP refs are URL strings in the `tools` array; deps.mcp_tools already collects them
+        # (including transitively through sub-networks). Even an MCP-only network must export
+        # as a zip so we can ship the filtered mcp_info.hocon alongside the network.
+        has_deps = self._has_dependencies(deps) or bool(own_includes) or bool(deps.mcp_tools)
         target = self._resolve_output_path(rel_hocon, output_path, has_deps=has_deps)
         os.makedirs(os.path.dirname(target) or ".", exist_ok=True)
 
@@ -145,6 +157,8 @@ class AgentNetworkExporter:
                 self._add_file(zf, inc_full, f"registries/{inc_rel}", added, result)
                 result.shared_includes.append(inc_rel)
 
+            self._add_filtered_mcp_info(zf, deps.mcp_tools, added, result)
+
     def _add_file(
         self, zf: zipfile.ZipFile, source: str, arcname: str, added: Set[str], result: ExportResult
     ) -> None:
@@ -187,6 +201,57 @@ class AgentNetworkExporter:
                 self._add_file(zf, init_path, arc, added, result)
             current = os.path.dirname(current)
 
+    def _add_filtered_mcp_info(
+        self,
+        zf: zipfile.ZipFile,
+        mcp_urls: List[str],
+        added: Set[str],
+        result: ExportResult,
+    ) -> None:
+        """Filter the project's mcp_info.hocon to the URLs the network references and bundle it.
+
+        Falls back to the bundled studio mcp_info.hocon if the project hasn't scaffolded one
+        yet (matches NeuroSanRunner._resolve_mcp_info_file precedence). If no source file is
+        found, or the URLs aren't present in any source, we surface a warning rather than
+        silently shipping an empty file — receivers need every URL configured.
+        """
+        if not mcp_urls:
+            return
+        source_path = self._resolve_mcp_info_source()
+        if not source_path:
+            result.warnings.append(
+                f"MCP refs found ({', '.join(mcp_urls)}) but no mcp_info.hocon located."
+            )
+            return
+        with open(source_path, encoding="utf-8") as fh:
+            source_text = fh.read()
+        blocks = filter_mcp_info(source_text, mcp_urls)
+        missing = [url for url in mcp_urls if url not in blocks]
+        if missing:
+            result.warnings.append(
+                f"MCP server(s) not found in {source_path}: {', '.join(missing)}"
+            )
+        if not blocks:
+            return
+        rendered = format_mcp_info_file(blocks)
+        arcname = "mcp/mcp_info.hocon"
+        if arcname in added:
+            return
+        zf.writestr(arcname, rendered)
+        added.add(arcname)
+        result.bundled_files.append(arcname)
+        result.bundled_mcp_urls.extend(blocks.keys())
+
+    def _resolve_mcp_info_source(self) -> str:
+        """Project's <project>/mcp/mcp_info.hocon if it exists, otherwise the studio fallback."""
+        if os.path.isfile(self.mcp_info_path):
+            return self.mcp_info_path
+        # pylint: disable-next=import-outside-toplevel
+        from neuro_san_studio import mcp as _mcp_pkg
+
+        bundled = os.path.join(os.path.dirname(_mcp_pkg.__file__), "mcp_info.hocon")
+        return bundled if os.path.isfile(bundled) else ""
+
     @staticmethod
     def _collect_shared_includes(hocon_paths: List[str]) -> Set[str]:
         """Scan each hocon for `include "registries/<name>"` and return the unique <name>s."""
@@ -224,8 +289,8 @@ class AgentNetworkExporter:
 
     @staticmethod
     def _has_dependencies(deps: AgentNetworkDependencies) -> bool:
-        """True iff the network references any coded tool, middleware, or sub-network."""
-        return bool(deps.coded_tools or deps.middleware or deps.sub_networks)
+        """True iff the network references any coded tool, middleware, sub-network, or MCP server."""
+        return bool(deps.coded_tools or deps.middleware or deps.sub_networks or deps.mcp_tools)
 
     @staticmethod
     def _resolve_output_path(rel_hocon: str, output_path: Optional[str], *, has_deps: bool) -> str:
