@@ -70,53 +70,63 @@ class AgentNetworkImporter:
     # alongside any imported network. (llm_config is generated fresh by `ns init`, not copied.)
     SHARED_INCLUDES = ("aaosa.hocon", "aaosa_basic.hocon", "aaosa_basic_debug.hocon")
 
-    def import_network(self, hocon_relative_path: str, dependencies: AgentNetworkDependencies) -> ImportResult:
+    def import_network(
+        self,
+        hocon_relative_path: str,
+        dependencies: AgentNetworkDependencies,
+        force: bool = False,
+    ) -> ImportResult:
         """Copy the network's HOCON, sub-networks, coded tools, and middleware into the target project."""
         result = ImportResult(network_name=Path(hocon_relative_path).stem, hocon_path=hocon_relative_path)
 
-        self._copy_hocon(hocon_relative_path, result)
+        self._copy_hocon(hocon_relative_path, result, force=force)
         for sub_ref in dependencies.sub_networks:
             sub_name = sub_ref.lstrip("/")
             if not sub_name.endswith(".hocon"):
                 sub_name += ".hocon"
-            self._copy_hocon(sub_name, result)
+            self._copy_hocon(sub_name, result, force=force)
         for coded in dependencies.coded_tools:
-            self._copy_under(coded, "coded_tools", self.coded_tools, result)
+            self._copy_under(coded, "coded_tools", self.coded_tools, result, force=force)
         for mw in dependencies.middleware:
-            self._copy_under(mw, "middleware", self.middleware, result)
+            self._copy_under(mw, "middleware", self.middleware, result, force=force)
         for shared in self.SHARED_INCLUDES:
-            self._copy_hocon(shared, result)
+            self._copy_hocon(shared, result, force=force)
 
         return result
 
-    def _copy_hocon(self, relative_path: str, result: ImportResult) -> None:
+    def _copy_hocon(self, relative_path: str, result: ImportResult, force: bool = False) -> None:
         source = os.path.join(self.registries.source, relative_path)
         target = os.path.join(self.registries.target, relative_path)
         if not os.path.exists(source):
             result.warnings.append(f"Source HOCON not found: {relative_path}")
             return
-        self._copy_file_or_dir(source, target, relative_path, result)
+        self._copy_file_or_dir(source, target, relative_path, result, force=force)
 
-    def _copy_under(self, dep_path: str, prefix: str, roots: "_Roots", result: ImportResult) -> None:
+    def _copy_under(
+        self, dep_path: str, prefix: str, roots: "_Roots", result: ImportResult, force: bool = False
+    ) -> None:
         rel = dep_path[len(prefix) + 1 :] if dep_path.startswith(prefix + "/") else dep_path
         source = os.path.join(roots.source, rel)
         target = os.path.join(roots.target, rel)
         if not os.path.exists(source):
             result.warnings.append(f"Dependency not found: {dep_path}")
             return
-        self._copy_file_or_dir(source, target, dep_path, result)
+        self._copy_file_or_dir(source, target, dep_path, result, force=force)
         if os.path.isfile(source):
-            self._copy_parent_inits(os.path.dirname(source), roots, result)
+            self._copy_parent_inits(os.path.dirname(source), roots, result, force=force)
 
     @staticmethod
-    def _copy_file_or_dir(source: str, target: str, display: str, result: ImportResult) -> None:
-        if os.path.exists(target):
+    def _copy_file_or_dir(
+        source: str, target: str, display: str, result: ImportResult, force: bool = False
+    ) -> None:
+        if os.path.exists(target) and not force:
             result.skipped_files.append(display)
             return
         try:
             os.makedirs(os.path.dirname(target), exist_ok=True)
             if os.path.isdir(source):
-                shutil.copytree(source, target)
+                # dirs_exist_ok lets force overwrite existing trees file-by-file.
+                shutil.copytree(source, target, dirs_exist_ok=force)
             else:
                 shutil.copy2(source, target)
             result.copied_files.append(display)
@@ -124,14 +134,16 @@ class AgentNetworkImporter:
             result.errors.append(f"Failed to copy {display}: {exc}")
 
     @staticmethod
-    def _copy_parent_inits(current_dir: str, roots: "_Roots", result: ImportResult) -> None:
+    def _copy_parent_inits(
+        current_dir: str, roots: "_Roots", result: ImportResult, force: bool = False
+    ) -> None:
         """Copy __init__.py up the parent chain so the package is importable in the target."""
         while current_dir.startswith(roots.source) and current_dir != roots.source:
             init_src = os.path.join(current_dir, "__init__.py")
             if os.path.exists(init_src):
                 rel = os.path.relpath(init_src, roots.source)
                 init_dst = os.path.join(roots.target, rel)
-                if not os.path.exists(init_dst):
+                if force or not os.path.exists(init_dst):
                     try:
                         os.makedirs(os.path.dirname(init_dst), exist_ok=True)
                         shutil.copy2(init_src, init_dst)
@@ -147,7 +159,6 @@ class AgentNetworkImporter:
         A `.zip` is treated as a closed bundle whose layout is preserved verbatim under the
         top-level whitelist (`registries/`, `coded_tools/`, `middleware/`, `skills/`).
         """
-        del force
         if not os.path.isfile(source_path):
             raise FileNotFoundError(f"File not found: {source_path}")
         suffix = os.path.splitext(source_path)[1].lower()
@@ -156,15 +167,15 @@ class AgentNetworkImporter:
             basename = os.path.basename(source_path)
             result = ImportResult(network_name=Path(basename).stem, hocon_path=basename)
             target = os.path.join(self.registries.target, basename)
-            self._copy_file_or_dir(source_path, target, basename, result)
+            self._copy_file_or_dir(source_path, target, basename, result, force=force)
             return result
 
         if suffix == ".zip":
-            return self._import_from_zip(source_path)
+            return self._import_from_zip(source_path, force=force)
 
         raise ValueError(f"Unsupported file type: {suffix or '(none)'}. Expected .hocon or .zip")
 
-    def _import_from_zip(self, zip_path: str) -> ImportResult:
+    def _import_from_zip(self, zip_path: str, force: bool = False) -> ImportResult:
         """Validate then extract a zip bundle into the target project.
 
         Validation runs over every entry up front; extraction only proceeds when all
@@ -182,7 +193,7 @@ class AgentNetworkImporter:
                     # real content — silently drop instead of polluting the receiver's tree.
                     continue
                 target = os.path.join(self.target_dir, rel)
-                if os.path.exists(target):
+                if os.path.exists(target) and not force:
                     result.skipped_files.append(rel)
                     continue
                 os.makedirs(os.path.dirname(target), exist_ok=True)

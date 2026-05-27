@@ -138,7 +138,7 @@ class NeuroSanStudioCli:  # pylint: disable=too-few-public-methods
         force: bool = typer.Option(
             False,
             "--force",
-            help="Overwrite existing files when importing from --from-file.",
+            help="Overwrite existing files in the target project.",
         ),
     ) -> None:
         """Import agent networks into an existing neuro-san-studio project."""

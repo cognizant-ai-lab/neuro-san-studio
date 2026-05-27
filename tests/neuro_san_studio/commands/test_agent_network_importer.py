@@ -311,3 +311,68 @@ class TestImportFromZip:
         assert (registries / "foo.hocon").read_text() == "DO NOT OVERWRITE\n"
         assert "registries/foo.hocon" in result.skipped_files
         assert "registries/foo.hocon" not in result.copied_files
+
+
+class TestForceOverwrite:
+    """Tests for the --force flag, which makes import_network and import_from_path overwrite existing files."""
+
+    @staticmethod
+    def _make_zip(zip_path: Path, entries: dict) -> None:
+        """Build a zip from a {arcname: content_bytes} dict."""
+        with zipfile.ZipFile(zip_path, "w") as zf:
+            for arcname, content in entries.items():
+                zf.writestr(arcname, content)
+
+    def test_force_overwrites_existing_single_hocon(self, tmp_path: Path) -> None:
+        """import_from_path with force=True replaces existing single-hocon files."""
+        target_dir = tmp_path / "target"
+        registries = target_dir / "registries"
+        registries.mkdir(parents=True)
+        (registries / "my_network.hocon").write_text("OLD\n")
+        source_file = tmp_path / "my_network.hocon"
+        source_file.write_text("NEW\n")
+
+        importer = AgentNetworkImporter(str(target_dir), str(target_dir))
+        result = importer.import_from_path(str(source_file), force=True)
+
+        assert (registries / "my_network.hocon").read_text() == "NEW\n"
+        assert "my_network.hocon" in result.copied_files
+        assert not result.skipped_files
+
+    def test_force_overwrites_existing_zip_entries(self, tmp_path: Path) -> None:
+        """import_from_path on a zip with force=True overwrites pre-existing target files."""
+        zip_path = tmp_path / "bundle.zip"
+        self._make_zip(zip_path, {"registries/foo.hocon": b"NEW\n"})
+        target_dir = tmp_path / "target"
+        registries = target_dir / "registries"
+        registries.mkdir(parents=True)
+        (registries / "foo.hocon").write_text("OLD\n")
+
+        importer = AgentNetworkImporter(str(target_dir), str(target_dir))
+        result = importer.import_from_path(str(zip_path), force=True)
+
+        assert (registries / "foo.hocon").read_text() == "NEW\n"
+        assert "registries/foo.hocon" in result.copied_files
+        assert "registries/foo.hocon" not in result.skipped_files
+
+    def test_force_overwrites_in_discovery_driven_import(self, tmp_path: Path) -> None:
+        """import_network with force=True replaces an existing HOCON in the registry-driven flow."""
+        source_dir = tmp_path / "source"
+        registries = source_dir / "registries" / "basic"
+        registries.mkdir(parents=True)
+        (registries / "music_nerd.hocon").write_text("NEW\n")
+        # SHARED_INCLUDES are always copied; create empty stand-ins so import_network doesn't warn.
+        for shared in ("aaosa.hocon", "aaosa_basic.hocon", "aaosa_basic_debug.hocon"):
+            (source_dir / "registries" / shared).write_text("")
+
+        target_dir = tmp_path / "target"
+        target_basic = target_dir / "registries" / "basic"
+        target_basic.mkdir(parents=True)
+        (target_basic / "music_nerd.hocon").write_text("OLD\n")
+
+        importer = AgentNetworkImporter(str(source_dir), str(target_dir))
+        result = importer.import_network("basic/music_nerd.hocon", AgentNetworkDependencies(), force=True)
+
+        assert (target_basic / "music_nerd.hocon").read_text() == "NEW\n"
+        assert "basic/music_nerd.hocon" in result.copied_files
+        assert "basic/music_nerd.hocon" not in result.skipped_files

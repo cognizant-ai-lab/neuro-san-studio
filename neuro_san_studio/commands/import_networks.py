@@ -79,7 +79,7 @@ class ImportCommand:  # pylint: disable=too-few-public-methods
             print("\n📭 No networks selected. Exiting.\n")
             return
 
-        if not self._confirm_import(selected):
+        if not self._confirm_import(selected, force=self.force):
             print("\n📭 Import cancelled.\n")
             return
 
@@ -133,7 +133,7 @@ class ImportCommand:  # pylint: disable=too-few-public-methods
     def _confirm_from_file(self, source_path: str, suffix: str) -> bool:
         """Show a preview tailored to the file shape, then ask y/N."""
         if suffix == ".hocon":
-            return self._confirm_import([os.path.basename(source_path)])
+            return self._confirm_import([os.path.basename(source_path)], force=self.force)
 
         try:
             with zipfile.ZipFile(source_path) as zf:
@@ -141,10 +141,10 @@ class ImportCommand:  # pylint: disable=too-few-public-methods
         except zipfile.BadZipFile:
             print(f"\n❌ Not a valid zip archive: {source_path}\n")
             sys.exit(1)
-        return self._confirm_zip_import(source_path, names)
+        return self._confirm_zip_import(source_path, names, force=self.force)
 
     @staticmethod
-    def _confirm_zip_import(source_path: str, names: List[str]) -> bool:
+    def _confirm_zip_import(source_path: str, names: List[str], force: bool = False) -> bool:
         """List registry HOCONs explicitly; collapse coded_tools/, middleware/, skills/ to counts."""
         # Filter out metadata so the preview matches what actually gets copied.
         real = [n for n in names if not AgentNetworkImporter._is_skippable_metadata(n)]
@@ -164,11 +164,14 @@ class ImportCommand:  # pylint: disable=too-few-public-methods
         for bucket, count in bucket_counts.items():
             if count:
                 print(f"  {bucket:<14}({count} files)")
-        print(
-            "\nNote:\n"
-            "This will not overwrite any of the existing files.\n"
-            "To overwrite, re-run with --force.\n"
-        )
+        if force:
+            print("\nNote:\n--force is set: existing files in the target will be OVERWRITTEN.\n")
+        else:
+            print(
+                "\nNote:\n"
+                "This will not overwrite any of the existing files.\n"
+                "To overwrite, re-run with --force.\n"
+            )
         if not sys.stdin.isatty():
             return True
         try:
@@ -324,17 +327,19 @@ class ImportCommand:  # pylint: disable=too-few-public-methods
         return result or []
 
     @staticmethod
-    def _confirm_import(selected: List[str]) -> bool:
+    def _confirm_import(selected: List[str], force: bool = False) -> bool:
         """Show the final list + a non-overwrite note, then ask y/N. Non-TTY auto-confirms."""
         print("\nNetworks to import:")
         for path in selected:
             print(f"  - {path}")
-        print(
-            "\nNote:\n"
-            "This will not overwrite any of the existing files.\n"
-            "To import the original agent-networks from studio, "
-            "remove the ones on your current project.\n"
-        )
+        if force:
+            print("\nNote:\n--force is set: existing files in the target will be OVERWRITTEN.\n")
+        else:
+            print(
+                "\nNote:\n"
+                "This will not overwrite any of the existing files.\n"
+                "To overwrite, re-run with --force.\n"
+            )
         if not sys.stdin.isatty():
             return True
         try:
@@ -359,7 +364,9 @@ class ImportCommand:  # pylint: disable=too-few-public-methods
             os.path.join(registry.source_dir, "middleware"),
         )
         importer = AgentNetworkImporter(registry.source_dir, self.target_dir)
-        results, top_errors = self._collect_results(hocon_paths, analyzer, importer, registry.registries_dir)
+        results, top_errors = self._collect_results(
+            hocon_paths, analyzer, importer, registry.registries_dir, force=self.force
+        )
 
         imported = [r.hocon_path for r in results]
         if imported:
@@ -378,6 +385,7 @@ class ImportCommand:  # pylint: disable=too-few-public-methods
         analyzer: DependencyAnalyzer,
         importer: AgentNetworkImporter,
         registries_dir: str,
+        force: bool = False,
     ):
         """Analyze and import each network; return successful ImportResults plus any top-level errors."""
         results = []
@@ -393,7 +401,7 @@ class ImportCommand:  # pylint: disable=too-few-public-methods
 
             print(f"   Importing {hocon_path}...")
             try:
-                results.append(importer.import_network(hocon_path, deps))
+                results.append(importer.import_network(hocon_path, deps, force=force))
             except (OSError, ValueError) as exc:
                 errors.append(f"Failed to import {hocon_path}: {exc}")
         return results, errors
