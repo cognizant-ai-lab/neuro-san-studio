@@ -131,6 +131,7 @@ class TestRunFlow:
         assert (tmp_path / "registries" / "music_nerd.hocon").is_file()
         assert (tmp_path / "registries" / "aaosa.hocon").is_file()
         assert (tmp_path / "registries" / "aaosa_basic.hocon").is_file()
+        assert (tmp_path / "registries" / "aaosa_basic_debug.hocon").is_file()
         assert (tmp_path / "registries" / "manifest.hocon").read_text().strip().startswith("{")
         assert (tmp_path / "mcp" / "mcp_info.hocon").is_file()
         llm_config = (tmp_path / "config" / "llm_config.hocon").read_text()
@@ -182,15 +183,22 @@ class TestRunFlow:
         self._run_init(tmp_path, monkeypatch)
         self._assert_matches_template(tmp_path, "music_nerd.hocon", "registries/music_nerd.hocon")
 
-    def test_aaosa_sourced_from_templates(self, tmp_path: Path, monkeypatch: MonkeyPatch) -> None:
-        """aaosa.hocon should be copied from neuro_san_studio.templates."""
+    def test_aaosa_sourced_from_registries(self, tmp_path: Path, monkeypatch: MonkeyPatch) -> None:
+        """aaosa.hocon should be copied from the registries package via the safety-net loop."""
         self._run_init(tmp_path, monkeypatch)
-        self._assert_matches_template(tmp_path, "aaosa.hocon", "registries/aaosa.hocon")
+        self._assert_matches_template(tmp_path, "aaosa.hocon", "registries/aaosa.hocon", "registries")
 
-    def test_aaosa_basic_sourced_from_templates(self, tmp_path: Path, monkeypatch: MonkeyPatch) -> None:
-        """aaosa_basic.hocon should be copied from neuro_san_studio.templates."""
+    def test_aaosa_basic_sourced_from_registries(self, tmp_path: Path, monkeypatch: MonkeyPatch) -> None:
+        """aaosa_basic.hocon should be copied from the registries package via the safety-net loop."""
         self._run_init(tmp_path, monkeypatch)
-        self._assert_matches_template(tmp_path, "aaosa_basic.hocon", "registries/aaosa_basic.hocon")
+        self._assert_matches_template(tmp_path, "aaosa_basic.hocon", "registries/aaosa_basic.hocon", "registries")
+
+    def test_aaosa_basic_debug_sourced_from_registries(self, tmp_path: Path, monkeypatch: MonkeyPatch) -> None:
+        """aaosa_basic_debug.hocon should be copied from the registries package via the safety-net loop."""
+        self._run_init(tmp_path, monkeypatch)
+        self._assert_matches_template(
+            tmp_path, "aaosa_basic_debug.hocon", "registries/aaosa_basic_debug.hocon", "registries"
+        )
 
     def test_manifest_sourced_from_templates(self, tmp_path: Path, monkeypatch: MonkeyPatch) -> None:
         """manifest.hocon should be copied from neuro_san_studio.templates."""
@@ -221,11 +229,3 @@ class TestTemplateSync:
     def test_music_nerd_template_matches_registries_basic(self) -> None:
         """templates/music_nerd.hocon must be byte-identical to registries/basic/music_nerd.hocon."""
         self._assert_template_matches_source("music_nerd.hocon", "registries/basic/music_nerd.hocon")
-
-    def test_aaosa_template_matches_registries(self) -> None:
-        """templates/aaosa.hocon must be byte-identical to registries/aaosa.hocon."""
-        self._assert_template_matches_source("aaosa.hocon", "registries/aaosa.hocon")
-
-    def test_aaosa_basic_template_matches_registries(self) -> None:
-        """templates/aaosa_basic.hocon must be byte-identical to registries/aaosa_basic.hocon."""
-        self._assert_template_matches_source("aaosa_basic.hocon", "registries/aaosa_basic.hocon")

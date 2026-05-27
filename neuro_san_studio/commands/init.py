@@ -64,8 +64,6 @@ class InitCommand:  # pylint: disable=too-few-public-methods
         _console.print(f"[bold]Selected providers:[/bold] {provider_labels}\n")
 
         self._copy_template("music_nerd.hocon", os.path.join("registries", "music_nerd.hocon"))
-        self._copy_template("aaosa.hocon", os.path.join("registries", "aaosa.hocon"))
-        self._copy_template("aaosa_basic.hocon", os.path.join("registries", "aaosa_basic.hocon"))
         self._copy_template("manifest.hocon", os.path.join("registries", "manifest.hocon"))
         # Shared registry-level HOCONs that AAOSA-style networks include. Most networks in
         # the basic/industry/experimental groups depend on at least one of these, so
