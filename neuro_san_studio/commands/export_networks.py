@@ -18,8 +18,13 @@
 
 import os
 import sys
+from typing import Dict
+from typing import List
 from typing import Optional
 
+import questionary
+
+from neuro_san_studio.discovery.agent_network_registry import AgentNetworkRegistry
 from neuro_san_studio.exporter.agent_network_exporter import AgentNetworkExporter
 
 
@@ -38,9 +43,11 @@ class ExportCommand:  # pylint: disable=too-few-public-methods
             sys.exit(1)
 
         if not self.network:
-            # Phase 6 will add the interactive picker.
-            print("\n❌ Interactive export is not implemented yet. Pass a network name explicitly.\n")
-            sys.exit(2)
+            picked = self._prompt_for_network()
+            if not picked:
+                print("\n📭 No network selected. Exiting.\n")
+                return
+            self.network = picked
 
         exporter = AgentNetworkExporter(project_dir=self.project_dir)
         try:
@@ -96,3 +103,39 @@ class ExportCommand:  # pylint: disable=too-few-public-methods
 
     def _verify_project_initialized(self) -> bool:
         return os.path.exists(os.path.join(self.project_dir, "registries", "manifest.hocon"))
+
+    def _prompt_for_network(self) -> Optional[str]:
+        """Single-select picker over the project's manifest. Networks are grouped by
+        directory prefix, separators delimit each group. Returns the chosen
+        registries-relative path (e.g. ``basic/music_nerd.hocon``), or ``None`` if
+        the user aborts (Ctrl-C / Esc) or the project has no networks."""
+        try:
+            registry = AgentNetworkRegistry(source_dir=self.project_dir)
+            networks_by_group = registry.discover()
+        except FileNotFoundError as exc:
+            print(f"\n❌ {exc}\n")
+            return None
+
+        if not networks_by_group:
+            print("\n❌ No networks declared in the project's manifest. Add some first or pass a name.\n")
+            return None
+
+        choices = self._build_picker_choices(networks_by_group)
+        try:
+            return questionary.select(
+                "Pick a network to export:",
+                choices=choices,
+            ).ask()
+        except (KeyboardInterrupt, EOFError):
+            return None
+
+    @staticmethod
+    def _build_picker_choices(networks_by_group: Dict[str, List[str]]) -> List:
+        """Render group separators followed by each group's networks as Choice rows."""
+        choices: List = []
+        for group, paths in networks_by_group.items():
+            choices.append(questionary.Separator(f"─── {group.upper()} ({len(paths)}) ───"))
+            for path in sorted(paths):
+                name = os.path.basename(path).removesuffix(".hocon")
+                choices.append(questionary.Choice(title=name, value=path))
+        return choices
