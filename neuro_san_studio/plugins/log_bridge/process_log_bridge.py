@@ -635,33 +635,29 @@ class ProcessLogBridge(ProcessLoggerInterface):
 
     def _emit_json_block(self, state: Dict[str, Any], record: Dict[str, Any]) -> None:
         """
-        Emit a fully parsed JSON record to the logger.
-        Steps:
-            1. Infer log level from `message_type`.
-            2. Build header including process name and optional source.
-            3. Parse nested JSON inside the `"message"` field (if present).
-            4. Pretty-print JSON.
-            5. If the message looks like traceback text, print a Rich-formatted traceback.
-        :param state (dict): Per-stream logging state.
-        :param record (dict): Parsed JSON dictionary representing the log event.
+        Emit a parsed JSON record as a single-line `header: message` log entry.
+        Other metadata fields (user_id, Timestamp, request_id, ...) are dropped
+        from the display because they are noise for routine logs; the full
+        record is still mirrored to the per-process raw log file via tee.
         """
         level = self._infer_level_from_message_type(record)
         src = str(record.get("source") or "").strip() or None
         header = self._src_header(state["logger"].name, src)
 
-        # Display copy
-        display_rec = dict(record)
-        inner = self._lenient_inner_json_parse(display_rec.get("message"))
-        if inner is not None:
-            display_rec["message"] = inner
+        msg: Any = record.get("message", "")
+        if isinstance(msg, str):
+            inner = self._lenient_inner_json_parse(msg)
+            if inner is not None:
+                msg = json.dumps(inner, ensure_ascii=False)
+        elif isinstance(msg, (dict, list)):
+            msg = json.dumps(msg, ensure_ascii=False)
 
-        body = self._pretty_json(display_rec)
-        self._log(state, level, header + "\n" + body)
+        self._log(state, level, f"{header}: {msg}")
 
         # If message was traceback-like text, pretty print after
-        msg = record.get("message")
-        if isinstance(msg, str):
-            tb_text = self._normalize_traceback_str(msg)
+        original = record.get("message")
+        if isinstance(original, str):
+            tb_text = self._normalize_traceback_str(original)
             if self._looks_like_traceback(tb_text):
                 self._log(state, level, header + " (traceback)")
                 self.console.print(Syntax(tb_text, "pytb", word_wrap=False))
