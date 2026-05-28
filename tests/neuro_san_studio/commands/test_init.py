@@ -124,7 +124,7 @@ class TestRunFlow:
         assert local == upstream
 
     def test_run_scaffolds_all_files(self, tmp_path: Path, monkeypatch: MonkeyPatch) -> None:
-        """`init --providers openai` should create all six starter files."""
+        """`init --providers openai` should create all starter files."""
         monkeypatch.chdir(tmp_path)
         self._run_init(tmp_path, monkeypatch)
 
@@ -143,6 +143,7 @@ class TestRunFlow:
         main_manifest = (tmp_path / "registries" / "manifest.hocon").read_text()
         assert 'include "registries/generated/manifest.hocon"' in main_manifest
         assert (tmp_path / "mcp" / "mcp_info.hocon").is_file()
+        assert (tmp_path / "config" / "plugins.hocon").is_file()
         llm_config = (tmp_path / "config" / "llm_config.hocon").read_text()
         assert '"model_name": "gpt-5.2"' in llm_config
         assert '"class"' not in llm_config
@@ -219,9 +220,14 @@ class TestRunFlow:
         self._run_init(tmp_path, monkeypatch)
         self._assert_matches_template(tmp_path, "mcp_info.hocon", "mcp/mcp_info.hocon", "neuro_san_studio.mcp")
 
+    def test_plugins_sourced_from_templates(self, tmp_path: Path, monkeypatch: MonkeyPatch) -> None:
+        """plugins.hocon should be copied from neuro_san_studio.templates."""
+        self._run_init(tmp_path, monkeypatch)
+        self._assert_matches_template(tmp_path, "plugins.hocon", "config/plugins.hocon")
 
-class TestTemplateSync:  # pylint: disable=too-few-public-methods
-    """Ensure scaffolded templates stay in sync with their source-of-truth files in registries/."""
+
+class TestTemplateSync:
+    """Ensure scaffolded templates stay in sync with their source-of-truth files in registries/ and config/."""
 
     @staticmethod
     def _assert_template_matches_source(template_name: str, source_rel: str) -> None:
@@ -238,3 +244,7 @@ class TestTemplateSync:  # pylint: disable=too-few-public-methods
     def test_music_nerd_template_matches_registries_basic(self) -> None:
         """templates/music_nerd.hocon must be byte-identical to registries/basic/music_nerd.hocon."""
         self._assert_template_matches_source("music_nerd.hocon", "registries/basic/music_nerd.hocon")
+
+    def test_plugins_template_matches_config(self) -> None:
+        """templates/plugins.hocon must be byte-identical to config/plugins.hocon."""
+        self._assert_template_matches_source("plugins.hocon", "config/plugins.hocon")
