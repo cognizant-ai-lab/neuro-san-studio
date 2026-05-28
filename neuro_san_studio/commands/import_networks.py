@@ -26,15 +26,16 @@ from typing import Optional
 import questionary
 from prompt_toolkit.keys import Keys
 
-from neuro_san_studio.commands._status import err as _err
-from neuro_san_studio.commands._status import info as _info
-from neuro_san_studio.commands._status import ok as _ok
-from neuro_san_studio.commands._status import skip as _skip
-from neuro_san_studio.commands._status import warn as _warn
 from neuro_san_studio.discovery.agent_network_registry import AgentNetworkRegistry
 from neuro_san_studio.discovery.dependency_analyzer import DependencyAnalyzer
 from neuro_san_studio.importer.agent_network_importer import AgentNetworkImporter
 from neuro_san_studio.importer.agent_network_importer import is_skippable_metadata
+from neuro_san_studio.utils.cli_status import err as _err
+from neuro_san_studio.utils.cli_status import info as _info
+from neuro_san_studio.utils.cli_status import ok as _ok
+from neuro_san_studio.utils.cli_status import skip as _skip
+from neuro_san_studio.utils.cli_status import warn as _warn
+from neuro_san_studio.utils.package_paths import installed_library_root
 
 CUSTOM = "__custom__"
 ALL = "__all__"
@@ -72,7 +73,7 @@ class ImportCommand:  # pylint: disable=too-few-public-methods
         _info("Discovering available agent networks...")
         print()
         try:
-            source_dir = self._find_neuro_san_studio_installation()
+            source_dir = installed_library_root()
             registry = AgentNetworkRegistry(source_dir=source_dir)
             networks_by_group = registry.discover()
         except FileNotFoundError as exc:
@@ -207,24 +208,6 @@ class ImportCommand:  # pylint: disable=too-few-public-methods
             return questionary.confirm("Proceed with import?", default=True).ask() is True
         except (KeyboardInterrupt, EOFError):
             return False
-
-    @staticmethod
-    def _find_neuro_san_studio_installation() -> str:
-        try:
-            import registries  # pylint: disable=import-outside-toplevel
-
-            if hasattr(registries, "__path__"):
-                return os.path.dirname(registries.__path__[0])
-        except ImportError:
-            pass
-
-        project_root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-        if os.path.exists(os.path.join(project_root, "registries")):
-            return project_root
-
-        raise FileNotFoundError(
-            "Cannot find neuro-san-studio installation. Make sure neuro-san-studio is installed via pip."
-        )
 
     @staticmethod
     def _parse_arg(arg: str, networks_by_group: Dict[str, List[str]]) -> List[str]:

@@ -28,8 +28,8 @@ from rich.console import Console
 from rich.table import Table
 from timedinput import timedinput
 
-from neuro_san_studio.commands._status import ok as _ok
-from neuro_san_studio.commands._status import skip as _skip
+from neuro_san_studio.utils.cli_status import ok as _ok
+from neuro_san_studio.utils.cli_status import skip as _skip
 
 PROVIDERS: Dict[str, Dict[str, str]] = {
     "openai": {"label": "OpenAI", "model_name": "gpt-5.2"},

@@ -24,12 +24,12 @@ from typing import Optional
 
 import questionary
 
-from neuro_san_studio.commands._status import err as _err
-from neuro_san_studio.commands._status import info as _info
-from neuro_san_studio.commands._status import ok as _ok
-from neuro_san_studio.commands._status import warn as _warn
 from neuro_san_studio.discovery.agent_network_registry import AgentNetworkRegistry
 from neuro_san_studio.exporter.agent_network_exporter import AgentNetworkExporter
+from neuro_san_studio.utils.cli_status import err as _err
+from neuro_san_studio.utils.cli_status import info as _info
+from neuro_san_studio.utils.cli_status import ok as _ok
+from neuro_san_studio.utils.cli_status import warn as _warn
 
 
 class ExportCommand:  # pylint: disable=too-few-public-methods

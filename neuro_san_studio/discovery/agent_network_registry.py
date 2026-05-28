@@ -24,6 +24,8 @@ from typing import Optional
 
 from neuro_san.internals.graph.persistence.raw_manifest_restorer import RawManifestRestorer
 
+from neuro_san_studio.utils.package_paths import installed_library_root
+
 # pyhocon resolves `include "..."` directives relative to CWD; we chdir to the
 # source dir while reading so they resolve. Demote any residual log noise.
 logging.getLogger("pyhocon.config_parser").setLevel(logging.ERROR)
@@ -33,25 +35,8 @@ class AgentNetworkRegistry:  # pylint: disable=too-few-public-methods
     """List every agent network declared by the source root manifest, grouped by directory prefix."""
 
     def __init__(self, source_dir: Optional[str] = None):
-        self.source_dir = source_dir or self._discover_source_dir()
+        self.source_dir = source_dir or installed_library_root()
         self.registries_dir = os.path.join(self.source_dir, "registries")
-
-    @staticmethod
-    def _discover_source_dir() -> str:
-        if os.path.exists("registries"):
-            return os.getcwd()
-        try:
-            import registries  # pylint: disable=import-outside-toplevel
-
-            if hasattr(registries, "__path__"):
-                return os.path.dirname(registries.__path__[0])
-        except ImportError:
-            pass
-        raise FileNotFoundError(
-            "Cannot find registries directory. "
-            "Make sure you're running from the neuro-san-studio directory "
-            "or have neuro-san-studio installed."
-        )
 
     def discover(self) -> Dict[str, List[str]]:
         """Return {group: [hocon_relative_path, ...]}.
