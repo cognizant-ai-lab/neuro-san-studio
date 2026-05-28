@@ -24,7 +24,7 @@ from typing import Optional
 
 from neuro_san.internals.graph.persistence.raw_manifest_restorer import RawManifestRestorer
 
-from neuro_san_studio.utils.package_paths import installed_library_root
+from neuro_san_studio.utils.package_paths import PackagePaths
 
 # pyhocon resolves `include "..."` directives relative to CWD; we chdir to the
 # source dir while reading so they resolve. Demote any residual log noise.
@@ -35,7 +35,7 @@ class AgentNetworkRegistry:  # pylint: disable=too-few-public-methods
     """List every agent network declared by the source root manifest, grouped by directory prefix."""
 
     def __init__(self, source_dir: Optional[str] = None):
-        self.source_dir = source_dir or installed_library_root()
+        self.source_dir = source_dir or PackagePaths.installed_library_root()
         self.registries_dir = os.path.join(self.source_dir, "registries")
 
     def discover(self) -> Dict[str, List[str]]:

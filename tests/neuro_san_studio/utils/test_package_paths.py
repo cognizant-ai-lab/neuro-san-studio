@@ -14,13 +14,13 @@
 #
 # END COPYRIGHT
 
-"""Tests for installed_library_root."""
+"""Tests for PackagePaths.installed_library_root."""
 
 import os
 
 import pytest
 
-from neuro_san_studio.utils.package_paths import installed_library_root
+from neuro_san_studio.utils.package_paths import PackagePaths
 
 
 class TestInstalledLibraryRoot:  # pylint: disable=too-few-public-methods
@@ -41,7 +41,7 @@ class TestInstalledLibraryRoot:  # pylint: disable=too-few-public-methods
         (shadow_registries / "manifest.hocon").write_text("{ fake_local_only.hocon = true }\n")
         monkeypatch.chdir(tmp_path)
 
-        resolved = installed_library_root()
+        resolved = PackagePaths.installed_library_root()
 
         assert resolved != str(tmp_path)
         manifest = os.path.join(resolved, "registries", "manifest.hocon")

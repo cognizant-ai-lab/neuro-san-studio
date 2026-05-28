@@ -28,31 +28,35 @@ in each format string.
 
 from rich.console import Console
 
-# Module-level Console — Rich is happy to share one across writers, and the helpers
-# stay cheap to import from any command module.
-_console = Console()
 
+class CliStatus:
+    """Shared status-line printers for ``ns`` CLI commands."""
 
-def ok(msg: str) -> None:
-    """Successful step (file copied, action completed)."""
-    _console.print(f"[green]\\[ok][/green]    {msg}")
+    # Class-level Console — Rich is happy to share one across writers, and the
+    # printers stay cheap to call from any command module.
+    _console = Console()
 
+    @classmethod
+    def ok(cls, msg: str) -> None:
+        """Successful step (file copied, action completed)."""
+        cls._console.print(f"[green]\\[ok][/green]    {msg}")
 
-def skip(msg: str) -> None:
-    """Step intentionally skipped (idempotent re-run, already-present target)."""
-    _console.print(f"[yellow]\\[skip][/yellow]  {msg}")
+    @classmethod
+    def skip(cls, msg: str) -> None:
+        """Step intentionally skipped (idempotent re-run, already-present target)."""
+        cls._console.print(f"[yellow]\\[skip][/yellow]  {msg}")
 
+    @classmethod
+    def warn(cls, msg: str) -> None:
+        """Recoverable issue worth surfacing (missing dep, unknown spec) but not fatal."""
+        cls._console.print(f"[yellow]\\[warn][/yellow]  {msg}")
 
-def warn(msg: str) -> None:
-    """Recoverable issue worth surfacing (missing dep, unknown spec) but not fatal."""
-    _console.print(f"[yellow]\\[warn][/yellow]  {msg}")
+    @classmethod
+    def err(cls, msg: str) -> None:
+        """Failure that aborts the action — typically followed by ``sys.exit(1)``."""
+        cls._console.print(f"[red]\\[err][/red]   {msg}")
 
-
-def err(msg: str) -> None:
-    """Failure that aborts the action — typically followed by ``sys.exit(1)``."""
-    _console.print(f"[red]\\[err][/red]   {msg}")
-
-
-def info(msg: str) -> None:
-    """Neutral progress line (analyzing, importing, summarizing)."""
-    _console.print(f"[cyan]\\[info][/cyan]  {msg}")
+    @classmethod
+    def info(cls, msg: str) -> None:
+        """Neutral progress line (analyzing, importing, summarizing)."""
+        cls._console.print(f"[cyan]\\[info][/cyan]  {msg}")
