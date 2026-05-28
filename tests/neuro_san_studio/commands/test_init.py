@@ -227,7 +227,7 @@ class TestRunFlow:
 
 
 class TestTemplateSync:
-    """Ensure scaffolded templates stay in sync with their source-of-truth files in registries/."""
+    """Ensure scaffolded templates stay in sync with their source-of-truth files in registries/ and config/."""
 
     @staticmethod
     def _assert_template_matches_source(template_name: str, source_rel: str) -> None:
