@@ -27,6 +27,7 @@ from typing import Optional
 from typing import Set
 
 from neuro_san.internals.persistence.abstract_async_config_restorer import AbstractAsyncConfigRestorer
+from neuro_san.internals.run_context.utils.external_agent_parsing import ExternalAgentParsing
 from pyparsing.exceptions import ParseException
 
 LLM_CLASSES = {"openai", "anthropic", "google", "bedrock", "azure"}
@@ -92,12 +93,22 @@ class DependencyAnalyzer:
                 deps.toolbox_tools.append(toolbox)
 
             for tool_name in tool_spec.get("tools", []) or []:
+                # Dict-form (e.g. {"url": "https://mcp.../mcp", "tools": [...]}) is treated as MCP
+                # by neuro-san; pull the URL out so export/import can handle it the same way.
+                if isinstance(tool_name, dict):
+                    if ExternalAgentParsing.is_mcp_tool(tool_name):
+                        url = tool_name.get("url")
+                        if isinstance(url, str):
+                            deps.mcp_tools.append(url)
+                    continue
                 if not isinstance(tool_name, str):
                     continue
                 if tool_name.startswith("/"):
                     deps.sub_networks.append(tool_name)
-                elif tool_name.startswith(("http://", "https://")):
+                elif ExternalAgentParsing.is_mcp_tool(tool_name):
                     deps.mcp_tools.append(tool_name)
+                # else: external HTTP agent URL (e.g. http://localhost:8080/math_guy) — these are
+                # called at runtime, not bundled, so they don't enter the dependency set.
 
     def resolve_coded_tool_path(self, class_path: str, context_dir: Optional[str] = None) -> Optional[str]:
         """Map a Python class path (e.g. 'pkg.module.Class') to its source file under coded_tools/ or middleware/."""

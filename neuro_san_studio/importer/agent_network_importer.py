@@ -32,10 +32,7 @@ from typing import Tuple
 from neuro_san.internals.graph.persistence.raw_manifest_restorer import RawManifestRestorer
 
 from neuro_san_studio.discovery.dependency_analyzer import AgentNetworkDependencies
-from neuro_san_studio.mcp.mcp_info_merger import extract_mcp_blocks
-from neuro_san_studio.mcp.mcp_info_merger import filter_mcp_info
-from neuro_san_studio.mcp.mcp_info_merger import format_mcp_info_file
-from neuro_san_studio.mcp.mcp_info_merger import merge_into_mcp_info
+from neuro_san_studio.mcp.mcp_info_merger import McpInfoMerger
 
 # `mcp/` is whitelisted so an export-side bundle can carry the filtered mcp_info.hocon. The
 # importer extracts it into memory and merges into the receiver's file additively rather than
@@ -322,7 +319,7 @@ class AgentNetworkImporter:
             return
         with open(source_path, encoding="utf-8") as fh:
             source_text = fh.read()
-        blocks = filter_mcp_info(source_text, mcp_urls)
+        blocks = McpInfoMerger().filter_blocks(source_text, mcp_urls)
         missing = [url for url in mcp_urls if url not in blocks]
         if missing:
             result.warnings.append(f"MCP server(s) not found in {source_path}: {', '.join(missing)}")
@@ -332,7 +329,7 @@ class AgentNetworkImporter:
 
     def _merge_mcp_text(self, payload: str, result: ImportResult) -> None:
         """File-mode merge: parse blocks out of the bundled mcp_info text and splice them in."""
-        blocks = extract_mcp_blocks(payload)
+        blocks = McpInfoMerger().extract_blocks(payload)
         if not blocks:
             return
         self._splice_mcp_blocks(blocks, result)
@@ -344,12 +341,13 @@ class AgentNetworkImporter:
         the new blocks. Existing URLs are never overwritten — that's the additive contract.
         """
         os.makedirs(os.path.dirname(self.mcp_target), exist_ok=True)
+        merger = McpInfoMerger()
         if os.path.isfile(self.mcp_target):
             with open(self.mcp_target, encoding="utf-8") as fh:
                 receiver_text = fh.read()
-            new_text, added, skipped = merge_into_mcp_info(receiver_text, blocks)
+            new_text, added, skipped = merger.merge(receiver_text, blocks)
         else:
-            new_text = format_mcp_info_file(blocks)
+            new_text = merger.render_file(blocks)
             added, skipped = list(blocks.keys()), []
         with open(self.mcp_target, "w", encoding="utf-8") as fh:
             fh.write(new_text)
