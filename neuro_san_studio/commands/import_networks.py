@@ -24,12 +24,12 @@ from typing import List
 from typing import Optional
 
 import questionary
-from prompt_toolkit.keys import Keys
 
 from neuro_san_studio.discovery.agent_network_registry import AgentNetworkRegistry
 from neuro_san_studio.discovery.dependency_analyzer import DependencyAnalyzer
 from neuro_san_studio.importer.agent_network_importer import AgentNetworkImporter
 from neuro_san_studio.importer.agent_network_importer import is_skippable_metadata
+from neuro_san_studio.utils.cli_prompt import CliPrompt
 from neuro_san_studio.utils.cli_status import CliStatus
 from neuro_san_studio.utils.package_paths import PackagePaths
 
@@ -201,9 +201,11 @@ class ImportCommand:  # pylint: disable=too-few-public-methods
         if not sys.stdin.isatty():
             return True
         try:
-            return questionary.confirm("Proceed with import?", default=True).ask() is True
+            question = questionary.confirm("Proceed with import?", default=True)
+            answer = CliPrompt.bind_exit_on_esc(question).ask()
         except (KeyboardInterrupt, EOFError):
             return False
+        return answer is True
 
     @staticmethod
     def _parse_arg(arg: str, networks_by_group: Dict[str, List[str]]) -> List[str]:
@@ -241,13 +243,13 @@ class ImportCommand:  # pylint: disable=too-few-public-methods
         Left arrow on a sub-screen returns to the top screen, discarding selections."""
         while True:
             top = cls._prompt_top(networks_by_group)
-            if top is None:
+            if top is None or top == CliPrompt.EXIT:
                 return []
             if top == ALL:
                 return [path for paths in networks_by_group.values() for path in paths]
             if top == CUSTOM:
                 confirmed = cls._custom_flow(networks_by_group)
-                if confirmed is None:  # user pressed Left at the first custom step
+                if confirmed is None:  # user pressed ←/Esc at the first custom step
                     continue
                 return confirmed
             return list(networks_by_group.get(top, []))
@@ -264,10 +266,11 @@ class ImportCommand:  # pylint: disable=too-few-public-methods
             questionary.Choice(title="Custom selection", value=CUSTOM),
             questionary.Choice(title=f"All ({total})", value=ALL),
         ]
-        return questionary.select(
+        question = questionary.select(
             "What do you want to import?",
             choices=choices,
-        ).ask()
+        )
+        return CliPrompt.bind_exit_on_esc(question).ask()
 
     @classmethod
     def _custom_flow(cls, networks_by_group: Dict[str, List[str]]) -> Optional[List[str]]:
@@ -335,19 +338,16 @@ class ImportCommand:  # pylint: disable=too-few-public-methods
         if not sys.stdin.isatty():
             return True
         try:
-            return questionary.confirm("Proceed with import?", default=True).ask() is True
+            question = questionary.confirm("Proceed with import?", default=True)
+            answer = CliPrompt.bind_exit_on_esc(question).ask()
         except (KeyboardInterrupt, EOFError):
             return False
+        return answer is True
 
     @staticmethod
     def _ask_with_back(question):
-        """Run a questionary checkbox with Left=exit-with-BACK sentinel."""
-
-        @question.application.key_bindings.add(Keys.Left)
-        def _back(event):
-            event.app.exit(result=BACK)
-
-        return question.ask()
+        """Run a questionary checkbox with ← / Esc → BACK sentinel (intuitive return-to-prev-screen)."""
+        return CliPrompt.bind_back_keys(question, BACK).ask()
 
     def _import(self, hocon_paths: List[str], registry: AgentNetworkRegistry) -> None:
         analyzer = DependencyAnalyzer(
