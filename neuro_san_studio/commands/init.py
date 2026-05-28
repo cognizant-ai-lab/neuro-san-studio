@@ -156,22 +156,19 @@ class InitCommand:  # pylint: disable=too-few-public-methods
     def _render_llm_config(providers: List[str]) -> str:
         """Render config/llm_config.hocon for the selected providers.
 
-        Ordering: if OpenAI is selected, it is promoted to first position. Otherwise
-        providers are emitted in user-selected order.
+        Providers are emitted in user-selected order: the first provider becomes
+        the primary model, and any subsequent providers become its fallbacks in
+        the order the user listed them. With a single provider, a flat
+        ``model_name`` block is rendered instead of a ``fallbacks`` list.
         """
-        ordered = providers[:]
-        if "openai" in ordered and ordered[0] != "openai":
-            ordered.remove("openai")
-            ordered.insert(0, "openai")
-
-        if len(ordered) == 1:
-            model = PROVIDERS[ordered[0]]["model_name"]
+        if len(providers) == 1:
+            model = PROVIDERS[providers[0]]["model_name"]
             return '{\n    "llm_config": {\n        "model_name": "' + model + '"\n    }\n}\n'
 
         lines = ["{", '    "llm_config": {', '        "fallbacks": [']
-        for i, key in enumerate(ordered):
+        for i, key in enumerate(providers):
             model = PROVIDERS[key]["model_name"]
-            comma = "," if i < len(ordered) - 1 else ""
+            comma = "," if i < len(providers) - 1 else ""
             lines.append(f'            {{ "model_name": "{model}" }}{comma}')
         lines.extend(["        ]", "    }", "}", ""])
         return "\n".join(lines)

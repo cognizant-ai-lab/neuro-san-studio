@@ -87,11 +87,25 @@ class TestLlmConfigRendering:
         assert openai_pos < anthropic_pos < google_pos
         assert '"class"' not in rendered
 
-    def test_openai_promoted_to_front_of_fallbacks(self) -> None:
-        """Even if OpenAI is selected last, it should lead the fallback list."""
+    def test_user_order_preserved_when_openai_not_first(self) -> None:
+        """Regression test for #1076: user-selected order must be honored.
+
+        Earlier behavior auto-promoted OpenAI to position 0 even when the user
+        explicitly listed it last; this asserts the fix that respects the
+        user's order.
+        """
         # pylint: disable=protected-access
         rendered = InitCommand._render_llm_config(["anthropic", "openai"])
-        assert rendered.index("gpt-5.2") < rendered.index("claude-sonnet")
+        assert rendered.index("claude-sonnet") < rendered.index("gpt-5.2")
+
+    def test_three_provider_order_preserved_with_openai_last(self) -> None:
+        """Regression test for #1076: arbitrary three-provider order is preserved."""
+        # pylint: disable=protected-access
+        rendered = InitCommand._render_llm_config(["google", "anthropic", "openai"])
+        google_pos = rendered.index("gemini-3-flash")
+        anthropic_pos = rendered.index("claude-sonnet")
+        openai_pos = rendered.index("gpt-5.2")
+        assert google_pos < anthropic_pos < openai_pos
 
     def test_non_openai_order_preserved(self) -> None:
         """Without OpenAI, the user's order should be preserved."""
@@ -179,6 +193,25 @@ class TestRunFlow:
         assert '"fallbacks"' in llm_config
         assert "gpt-5.2" in llm_config
         assert "claude-sonnet" in llm_config
+
+    def test_run_providers_arg_preserves_anthropic_first(self, tmp_path: Path) -> None:
+        """Regression test for #1076: ``--providers anthropic,openai`` yields Anthropic-first config."""
+        InitCommand(providers_arg="anthropic,openai", root_dir=str(tmp_path)).run()
+        llm_config = (tmp_path / "config" / "llm_config.hocon").read_text()
+        assert llm_config.index("claude-sonnet") < llm_config.index("gpt-5.2")
+
+    def test_run_interactive_anthropic_first_preserves_order(self, tmp_path: Path, monkeypatch: MonkeyPatch) -> None:
+        """Regression test for #1076: interactive selection ``2,1`` yields Anthropic-first config.
+
+        Mirrors the exact reproduction steps in the issue: pick Anthropic (2)
+        then OpenAI (1) at the prompt, and confirm the generated fallback file
+        lists Anthropic before OpenAI.
+        """
+        monkeypatch.setattr(sys.stdin, "isatty", lambda: True)
+        monkeypatch.setattr(init_module, "timedinput", lambda *_a, **_kw: "2,1")
+        InitCommand(providers_arg=None, root_dir=str(tmp_path)).run()
+        llm_config = (tmp_path / "config" / "llm_config.hocon").read_text()
+        assert llm_config.index("claude-sonnet") < llm_config.index("gpt-5.2")
 
     def test_run_interactive_empty_input_defaults_to_openai(self, tmp_path: Path, monkeypatch: MonkeyPatch) -> None:
         """Pressing enter at the prompt should accept the default (OpenAI)."""
