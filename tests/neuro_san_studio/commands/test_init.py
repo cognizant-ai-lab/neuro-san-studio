@@ -124,15 +124,26 @@ class TestRunFlow:
         assert local == upstream
 
     def test_run_scaffolds_all_files(self, tmp_path: Path, monkeypatch: MonkeyPatch) -> None:
-        """`init --providers openai` should create all six starter files."""
+        """`init --providers openai` should create all starter files."""
         monkeypatch.chdir(tmp_path)
         self._run_init(tmp_path, monkeypatch)
 
         assert (tmp_path / "registries" / "music_nerd.hocon").is_file()
         assert (tmp_path / "registries" / "aaosa.hocon").is_file()
         assert (tmp_path / "registries" / "aaosa_basic.hocon").is_file()
+        assert (tmp_path / "registries" / "aaosa_basic_debug.hocon").is_file()
         assert (tmp_path / "registries" / "manifest.hocon").read_text().strip().startswith("{")
+        # registries/generated/ must exist with an empty manifest so the include in the
+        # main manifest resolves before agent_network_designer ever runs.
+        generated_manifest = tmp_path / "registries" / "generated" / "manifest.hocon"
+        assert generated_manifest.is_file()
+        assert generated_manifest.read_text().strip() in ("{}", "{\n}")
+        # Main manifest must declare the include so server-side discovery picks up
+        # designer-generated networks the moment they appear.
+        main_manifest = (tmp_path / "registries" / "manifest.hocon").read_text()
+        assert 'include "registries/generated/manifest.hocon"' in main_manifest
         assert (tmp_path / "mcp" / "mcp_info.hocon").is_file()
+        assert (tmp_path / "config" / "plugins.hocon").is_file()
         llm_config = (tmp_path / "config" / "llm_config.hocon").read_text()
         assert '"model_name": "gpt-5.2"' in llm_config
         assert '"class"' not in llm_config
@@ -182,15 +193,22 @@ class TestRunFlow:
         self._run_init(tmp_path, monkeypatch)
         self._assert_matches_template(tmp_path, "music_nerd.hocon", "registries/music_nerd.hocon")
 
-    def test_aaosa_sourced_from_templates(self, tmp_path: Path, monkeypatch: MonkeyPatch) -> None:
-        """aaosa.hocon should be copied from neuro_san_studio.templates."""
+    def test_aaosa_sourced_from_registries(self, tmp_path: Path, monkeypatch: MonkeyPatch) -> None:
+        """aaosa.hocon should be copied from the registries package via the safety-net loop."""
         self._run_init(tmp_path, monkeypatch)
-        self._assert_matches_template(tmp_path, "aaosa.hocon", "registries/aaosa.hocon")
+        self._assert_matches_template(tmp_path, "aaosa.hocon", "registries/aaosa.hocon", "registries")
 
-    def test_aaosa_basic_sourced_from_templates(self, tmp_path: Path, monkeypatch: MonkeyPatch) -> None:
-        """aaosa_basic.hocon should be copied from neuro_san_studio.templates."""
+    def test_aaosa_basic_sourced_from_registries(self, tmp_path: Path, monkeypatch: MonkeyPatch) -> None:
+        """aaosa_basic.hocon should be copied from the registries package via the safety-net loop."""
         self._run_init(tmp_path, monkeypatch)
-        self._assert_matches_template(tmp_path, "aaosa_basic.hocon", "registries/aaosa_basic.hocon")
+        self._assert_matches_template(tmp_path, "aaosa_basic.hocon", "registries/aaosa_basic.hocon", "registries")
+
+    def test_aaosa_basic_debug_sourced_from_registries(self, tmp_path: Path, monkeypatch: MonkeyPatch) -> None:
+        """aaosa_basic_debug.hocon should be copied from the registries package via the safety-net loop."""
+        self._run_init(tmp_path, monkeypatch)
+        self._assert_matches_template(
+            tmp_path, "aaosa_basic_debug.hocon", "registries/aaosa_basic_debug.hocon", "registries"
+        )
 
     def test_manifest_sourced_from_templates(self, tmp_path: Path, monkeypatch: MonkeyPatch) -> None:
         """manifest.hocon should be copied from neuro_san_studio.templates."""
@@ -202,9 +220,14 @@ class TestRunFlow:
         self._run_init(tmp_path, monkeypatch)
         self._assert_matches_template(tmp_path, "mcp_info.hocon", "mcp/mcp_info.hocon", "neuro_san_studio.mcp")
 
+    def test_plugins_sourced_from_templates(self, tmp_path: Path, monkeypatch: MonkeyPatch) -> None:
+        """plugins.hocon should be copied from neuro_san_studio.templates."""
+        self._run_init(tmp_path, monkeypatch)
+        self._assert_matches_template(tmp_path, "plugins.hocon", "config/plugins.hocon")
+
 
 class TestTemplateSync:
-    """Ensure scaffolded templates stay in sync with their source-of-truth files in registries/."""
+    """Ensure scaffolded templates stay in sync with their source-of-truth files in registries/ and config/."""
 
     @staticmethod
     def _assert_template_matches_source(template_name: str, source_rel: str) -> None:
@@ -222,10 +245,6 @@ class TestTemplateSync:
         """templates/music_nerd.hocon must be byte-identical to registries/basic/music_nerd.hocon."""
         self._assert_template_matches_source("music_nerd.hocon", "registries/basic/music_nerd.hocon")
 
-    def test_aaosa_template_matches_registries(self) -> None:
-        """templates/aaosa.hocon must be byte-identical to registries/aaosa.hocon."""
-        self._assert_template_matches_source("aaosa.hocon", "registries/aaosa.hocon")
-
-    def test_aaosa_basic_template_matches_registries(self) -> None:
-        """templates/aaosa_basic.hocon must be byte-identical to registries/aaosa_basic.hocon."""
-        self._assert_template_matches_source("aaosa_basic.hocon", "registries/aaosa_basic.hocon")
+    def test_plugins_template_matches_config(self) -> None:
+        """templates/plugins.hocon must be byte-identical to config/plugins.hocon."""
+        self._assert_template_matches_source("plugins.hocon", "config/plugins.hocon")

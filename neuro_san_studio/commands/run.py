@@ -61,7 +61,7 @@ class NeuroSanRunner:
         # Load environment variables from .env file
         self.load_env_variables()
 
-        plugins_file = os.path.join(self.root_dir, "config", "plugins.hocon")
+        plugins_file = PluginLoader.resolve_plugins_file(self.root_dir)
         self.plugin_classes = PluginLoader.load_plugin_classes(plugins_file)
 
         # Default Configuration

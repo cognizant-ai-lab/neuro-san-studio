@@ -41,7 +41,7 @@ class NeuroSanServerWrapper:  # pylint: disable=too-few-public-methods
         if self.root_dir not in sys.path:
             sys.path.insert(0, self.root_dir)
 
-        plugins_file = os.path.join(self.root_dir, "config", "plugins.hocon")
+        plugins_file = PluginLoader.resolve_plugins_file(self.root_dir)
         self.plugin_classes = PluginLoader.load_plugin_classes(plugins_file)
 
         # Instantiate plugins now that args are fully built
