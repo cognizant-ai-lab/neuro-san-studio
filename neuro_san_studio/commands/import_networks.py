@@ -35,6 +35,7 @@ from neuro_san_studio.utils.package_paths import PackagePaths
 
 CUSTOM = "__custom__"
 ALL = "__all__"
+FROM_FILE = "__from_file__"
 BACK = "__back__"
 
 
@@ -63,7 +64,7 @@ class ImportCommand:  # pylint: disable=too-few-public-methods
             sys.exit(1)
 
         if self.from_file:
-            self._run_from_file()
+            self._run_from_file(self.from_file)
             return
 
         CliStatus.info("Discovering available agent networks...")
@@ -81,6 +82,12 @@ class ImportCommand:  # pylint: disable=too-few-public-methods
             selected = self._parse_arg(self.networks_arg, networks_by_group)
         else:
             selected = self._prompt(networks_by_group)
+
+        # "From File" picked interactively — first slot is the FROM_FILE marker, second
+        # is the user-typed path. Same end behavior as `ns import -f <path>`.
+        if selected and selected[0] == FROM_FILE:
+            self._run_from_file(selected[1])
+            return
 
         if not selected:
             print()
@@ -110,12 +117,12 @@ class ImportCommand:  # pylint: disable=too-few-public-methods
     def _verify_project_initialized(self) -> bool:
         return os.path.exists(os.path.join(self.target_dir, "registries", "manifest.hocon"))
 
-    def _run_from_file(self) -> None:
+    def _run_from_file(self, file_path: str) -> None:
         """Import a single .hocon (self-contained) or a .zip bundle (path-preserving)."""
-        source_path = os.path.abspath(os.path.expanduser(self.from_file))
+        source_path = os.path.abspath(os.path.expanduser(file_path))
         if not os.path.isfile(source_path):
             print()
-            CliStatus.err(f"File not found: {self.from_file}")
+            CliStatus.err(f"File not found: {file_path}")
             print()
             sys.exit(1)
         suffix = os.path.splitext(source_path)[1].lower()
@@ -239,14 +246,21 @@ class ImportCommand:  # pylint: disable=too-few-public-methods
 
     @classmethod
     def _prompt(cls, networks_by_group: Dict[str, List[str]]) -> List[str]:
-        """Two-tier flow: pick a group / All / Custom; Custom drills into a network checkbox.
-        Left arrow on a sub-screen returns to the top screen, discarding selections."""
+        """Two-tier flow: pick a group / All / Custom / From File; Custom drills into a
+        network checkbox. Left/Esc on a sub-screen returns to the top screen, discarding
+        selections. From File is signalled by returning :data:`FROM_FILE`; the caller
+        diverts to the file-import path instead of resolving names against the registry."""
         while True:
             top = cls._prompt_top(networks_by_group)
             if top is None or top == CliPrompt.EXIT:
                 return []
             if top == ALL:
                 return [path for paths in networks_by_group.values() for path in paths]
+            if top == FROM_FILE:
+                picked = cls._prompt_for_file_path()
+                if picked is None:  # ←/Esc on path prompt → back to top menu
+                    continue
+                return [FROM_FILE, picked]
             if top == CUSTOM:
                 confirmed = cls._custom_flow(networks_by_group)
                 if confirmed is None:  # user pressed ←/Esc at the first custom step
@@ -256,21 +270,41 @@ class ImportCommand:  # pylint: disable=too-few-public-methods
 
     @staticmethod
     def _prompt_top(networks_by_group: Dict[str, List[str]]) -> Optional[str]:
+        """Top-menu picker. Group rows first (data), then a separator, then action rows
+        (All / Custom selection / From File) — actions are styled distinctly so they
+        read as commands rather than just another bucket."""
         total = sum(len(paths) for paths in networks_by_group.values())
-        choices = [
+        choices: List = [
             questionary.Choice(title=f"{group.capitalize()} ({len(paths)})", value=group)
             for group, paths in networks_by_group.items()
         ]
         choices += [
             questionary.Separator(),
-            questionary.Choice(title="Custom selection", value=CUSTOM),
-            questionary.Choice(title=f"All ({total})", value=ALL),
+            questionary.Choice(title=[("class:action", f"All ({total})")], value=ALL),
+            questionary.Choice(title=[("class:action", "Custom selection")], value=CUSTOM),
+            questionary.Choice(title=[("class:action", "From File")], value=FROM_FILE),
         ]
         question = questionary.select(
             "What do you want to import?",
             choices=choices,
+            style=questionary.Style([("action", "fg:#5fafd7 italic")]),
         )
         return CliPrompt.bind_exit_on_esc(question).ask()
+
+    @staticmethod
+    def _prompt_for_file_path() -> Optional[str]:
+        """Ask for a .hocon or .zip path; ←/Esc returns None so the caller pops back to
+        the top menu (same back-semantics as the other sub-screens). Validation is left
+        to ``_run_from_file`` so messages stay consistent with the ``-f`` flag path."""
+        try:
+            question = questionary.path("Path to .hocon or .zip:", only_directories=False)
+            answer = CliPrompt.bind_back_keys(question, BACK).ask()
+        except (KeyboardInterrupt, EOFError):
+            return None
+        if answer is None or answer == BACK:
+            return None
+        answer = answer.strip()
+        return answer or None
 
     @classmethod
     def _custom_flow(cls, networks_by_group: Dict[str, List[str]]) -> Optional[List[str]]:
