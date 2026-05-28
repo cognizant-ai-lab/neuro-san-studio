@@ -21,6 +21,7 @@ import sys
 from pathlib import Path
 
 import pytest
+from pyhocon import ConfigFactory
 from pytest import MonkeyPatch
 
 from neuro_san_studio.commands import init as init_module
@@ -212,6 +213,33 @@ class TestRunFlow:
         InitCommand(providers_arg=None, root_dir=str(tmp_path)).run()
         llm_config = (tmp_path / "config" / "llm_config.hocon").read_text()
         assert llm_config.index("claude-sonnet") < llm_config.index("gpt-5.2")
+
+    def test_parsed_fallbacks_first_entry_is_user_primary(self, tmp_path: Path) -> None:
+        """Behavioral regression for #1076: parse the generated config the same
+        way the agent chain does and assert ``fallbacks[0]`` is the user's
+        first-selected provider.
+
+        The runtime path is ``langchain_run_context.create_agent_with_fallbacks``,
+        which extracts ``fallbacks`` from the parsed ``llm_config`` and iterates
+        it; the first entry is treated as primary. Asserting that here gives a
+        higher-fidelity check than substring ordering in the rendered text.
+        """
+        InitCommand(providers_arg="anthropic,openai", root_dir=str(tmp_path)).run()
+        raw = (tmp_path / "config" / "llm_config.hocon").read_text()
+        parsed_llm_config = ConfigFactory.parse_string(raw)["llm_config"]
+        fallbacks = [dict(fb) for fb in parsed_llm_config["fallbacks"]]
+        assert fallbacks[0]["model_name"] == "claude-sonnet"
+        assert fallbacks[1]["model_name"] == "gpt-5.2"
+
+    def test_parsed_fallbacks_three_provider_order_preserved(self, tmp_path: Path) -> None:
+        """Behavioral regression for #1076: a three-provider selection preserves
+        order through HOCON parsing into the runtime ``fallbacks`` list.
+        """
+        InitCommand(providers_arg="google,anthropic,openai", root_dir=str(tmp_path)).run()
+        raw = (tmp_path / "config" / "llm_config.hocon").read_text()
+        parsed_llm_config = ConfigFactory.parse_string(raw)["llm_config"]
+        fallbacks = [dict(fb) for fb in parsed_llm_config["fallbacks"]]
+        assert [fb["model_name"] for fb in fallbacks] == ["gemini-3-flash", "claude-sonnet", "gpt-5.2"]
 
     def test_run_interactive_empty_input_defaults_to_openai(self, tmp_path: Path, monkeypatch: MonkeyPatch) -> None:
         """Pressing enter at the prompt should accept the default (OpenAI)."""

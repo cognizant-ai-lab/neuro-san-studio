@@ -160,6 +160,13 @@ class InitCommand:  # pylint: disable=too-few-public-methods
         the primary model, and any subsequent providers become its fallbacks in
         the order the user listed them. With a single provider, a flat
         ``model_name`` block is rendered instead of a ``fallbacks`` list.
+
+        Runtime semantics: this matches the shape of
+        ``registries/basic/music_nerd_llm_fallbacks.hocon``. The neuro-san agent
+        chain reads it via ``langchain_run_context.create_agent_with_fallbacks``,
+        which extracts the ``fallbacks`` list and iterates it in order. The first
+        entry resolves as the primary model; subsequent entries are tried in
+        order on failure. See ``docs/examples/basic/music_nerd_llm_fallbacks.md``.
         """
         if len(providers) == 1:
             model = PROVIDERS[providers[0]]["model_name"]
