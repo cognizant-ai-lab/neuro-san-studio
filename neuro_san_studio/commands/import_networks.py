@@ -193,7 +193,8 @@ class ImportCommand:  # pylint: disable=too-few-public-methods
             "middleware/": sum(1 for n in real if n.startswith("middleware/")),
             "skills/": sum(1 for n in real if n.startswith("skills/")),
         }
-        print(f"\nFiles to import (from {os.path.basename(source_path)}):")
+        print()
+        CliStatus.info(f"Files to import (from {os.path.basename(source_path)}):")
         if registries:
             print("  registries/")
             for rel in registries:
@@ -201,10 +202,12 @@ class ImportCommand:  # pylint: disable=too-few-public-methods
         for bucket, count in bucket_counts.items():
             if count:
                 print(f"  {bucket:<14}({count} files)")
+        print()
         if force:
-            print("\nNote:\n--force is set: existing files in the target will be OVERWRITTEN.\n")
+            CliStatus.warn("--force is set: existing files in the target will be OVERWRITTEN.")
         else:
-            print("\nNote:\nThis will not overwrite any of the existing files.\nTo overwrite, re-run with --force.\n")
+            CliStatus.info("This will not overwrite any of the existing files. To overwrite, re-run with --force.")
+        print()
         if not sys.stdin.isatty():
             return True
         try:
@@ -282,12 +285,13 @@ class ImportCommand:  # pylint: disable=too-few-public-methods
             questionary.Separator(),
             questionary.Choice(title=[("class:action", f"All ({total})")], value=ALL),
             questionary.Choice(title=[("class:action", "Custom selection")], value=CUSTOM),
-            questionary.Choice(title=[("class:action", "From File")], value=FROM_FILE),
+            questionary.Separator(),
+            questionary.Choice(title=[("class:from-file", "From File")], value=FROM_FILE),
         ]
         question = questionary.select(
             "What do you want to import?",
             choices=choices,
-            style=questionary.Style([("action", "fg:#5fafd7 italic")]),
+            style=questionary.Style([("action", "fg:#5fafd7"), ("from-file", "fg:#d7875f")]),
         )
         return CliPrompt.bind_exit_on_esc(question).ask()
 
@@ -362,13 +366,16 @@ class ImportCommand:  # pylint: disable=too-few-public-methods
     @staticmethod
     def _confirm_import(selected: List[str], force: bool = False) -> bool:
         """Show the final list + a non-overwrite note, then ask y/N. Non-TTY auto-confirms."""
-        print("\nNetworks to import:")
+        print()
+        CliStatus.info("Networks to import:")
         for path in selected:
             print(f"  - {path}")
+        print()
         if force:
-            print("\nNote:\n--force is set: existing files in the target will be OVERWRITTEN.\n")
+            CliStatus.warn("--force is set: existing files in the target will be OVERWRITTEN.")
         else:
-            print("\nNote:\nThis will not overwrite any of the existing files.\nTo overwrite, re-run with --force.\n")
+            CliStatus.info("This will not overwrite any of the existing files. To overwrite, re-run with --force.")
+        print()
         if not sys.stdin.isatty():
             return True
         try:
