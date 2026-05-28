@@ -124,8 +124,9 @@ class ProcessLogBridge(ProcessLoggerInterface):
                 rich handler settings, and file handler settings.
 
         Notes:
-            - Creates a Rich console.
-            - Reconfigures the root logger with rich + optional file handlers.
+            - Creates a Rich console with soft_wrap enabled.
+            - Prepares rich + optional file handlers (root logger is
+              configured lazily on the first `attach_process_logger` call).
             - Initializes per-stream state storage for subprocess drains.
         """
         self.level_name = level.upper()
@@ -188,6 +189,19 @@ class ProcessLogBridge(ProcessLoggerInterface):
         self._streams: Dict[Tuple[str, str], Dict[str, Any]] = {}
 
     # ---------- public API ----------
+    def _ensure_root_configured(self) -> None:
+        """Configure the root logger with rich + file handlers (idempotent)."""
+        if self._root_configured:
+            return
+        root = logging.getLogger()
+        root.setLevel(logging.DEBUG)
+        root.handlers.clear()
+        root.addHandler(self.rich_handler)
+        if self.file_handler:
+            root.addHandler(self.file_handler)
+        self._logger.info("Runner logging initialized (rich console enabled)")
+        self._root_configured = True
+
     def attach_process_logger(self, process, process_name: str, log_file: str) -> None:
         """
         Drain stdout/stderr in background threads, pretty-print to terminal, mirror raw to file.
@@ -203,15 +217,7 @@ class ProcessLogBridge(ProcessLoggerInterface):
             - Two threads are spawned: one for stdout, one for stderr.
             - Per-stream state (buffer, JSON reassembly, tee handle) is created.
         """
-        if not self._root_configured:
-            root = logging.getLogger()
-            root.setLevel(logging.DEBUG)
-            root.handlers.clear()
-            root.addHandler(self.rich_handler)
-            if self.file_handler:
-                root.addHandler(self.file_handler)
-            self._logger.info("Runner logging initialized (rich console enabled)")
-            self._root_configured = True
+        self._ensure_root_configured()
 
         Path(log_file).parent.mkdir(parents=True, exist_ok=True)
         tee_out = open(log_file, "a", encoding="utf-8")  # pylint: disable=consider-using-with
