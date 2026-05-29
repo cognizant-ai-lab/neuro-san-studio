@@ -28,8 +28,7 @@ from typing import Set
 
 from neuro_san_studio.discovery.dependency_analyzer import AgentNetworkDependencies
 from neuro_san_studio.discovery.dependency_analyzer import DependencyAnalyzer
-from neuro_san_studio.mcp.mcp_info_merger import filter_mcp_info
-from neuro_san_studio.mcp.mcp_info_merger import format_mcp_info_file
+from neuro_san_studio.mcp.mcp_info_merger import McpInfoMerger
 
 # `include "registries/<name>"` and `include classpath("registries/<name>")` both surface
 # shared HOCON files (e.g. aaosa.hocon). The DependencyAnalyzer reads the `tools` array
@@ -233,13 +232,14 @@ class AgentNetworkExporter:  # pylint: disable=too-few-public-methods
             return
         with open(source_path, encoding="utf-8") as fh:
             source_text = fh.read()
-        blocks = filter_mcp_info(source_text, mcp_urls)
+        merger = McpInfoMerger()
+        blocks = merger.filter_blocks(source_text, mcp_urls)
         missing = [url for url in mcp_urls if url not in blocks]
         if missing:
             result.warnings.append(f"MCP server(s) not found in {source_path}: {', '.join(missing)}")
         if not blocks:
             return
-        rendered = format_mcp_info_file(blocks)
+        rendered = merger.render_file(blocks)
         arcname = "mcp/mcp_info.hocon"
         if arcname in added:
             return
