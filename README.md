@@ -217,6 +217,7 @@ ns init
 directory:
 
 * `config/llm_config.hocon` — provider/model wiring (defaults to OpenAI `gpt-5.2`)
+* `config/plugins.hocon` — observability and logging plugin wiring (the rich-formatted log bridge is enabled by default)
 * `registries/manifest.hocon` — registry of active agent networks
 * `registries/music_nerd.hocon` — sample agent network
 * `registries/aaosa.hocon` — AAOSA substitution variables (instructions, call, command)
@@ -228,6 +229,9 @@ Skip the prompt with `--providers`:
 ```bash
 ns init --providers openai,anthropic,google
 ```
+
+Providers are written in the order you select them. The first becomes the primary model and the rest
+become ordered fallbacks; OpenAI is used only as the default when no selection is made.
 
 #### 3. Set your API key
 

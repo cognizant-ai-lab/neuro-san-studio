@@ -28,8 +28,7 @@ from rich.console import Console
 from rich.table import Table
 from timedinput import timedinput
 
-from neuro_san_studio.commands._status import ok as _ok
-from neuro_san_studio.commands._status import skip as _skip
+from neuro_san_studio.utils.cli_status import CliStatus
 
 PROVIDERS: Dict[str, Dict[str, str]] = {
     "openai": {"label": "OpenAI", "model_name": "gpt-5.2"},
@@ -78,6 +77,7 @@ class InitCommand:  # pylint: disable=too-few-public-methods
         for shared in ("aaosa.hocon", "aaosa_basic.hocon", "aaosa_basic_debug.hocon"):
             self._copy_template(shared, os.path.join("registries", shared), package="registries")
         self._copy_template("mcp_info.hocon", os.path.join("mcp", "mcp_info.hocon"), package="neuro_san_studio.mcp")
+        self._copy_template("plugins.hocon", os.path.join("config", "plugins.hocon"))
         self._write_file(os.path.join("config", "llm_config.hocon"), self._render_llm_config(providers))
 
         self._print_next_steps()
@@ -156,22 +156,36 @@ class InitCommand:  # pylint: disable=too-few-public-methods
     def _render_llm_config(providers: List[str]) -> str:
         """Render config/llm_config.hocon for the selected providers.
 
-        Ordering: if OpenAI is selected, it is promoted to first position. Otherwise
-        providers are emitted in user-selected order.
-        """
-        ordered = providers[:]
-        if "openai" in ordered and ordered[0] != "openai":
-            ordered.remove("openai")
-            ordered.insert(0, "openai")
+        Providers are emitted in user-selected order: the first provider becomes
+        the primary model, and any subsequent providers become its fallbacks in
+        the order the user listed them. With a single provider, a flat
+        ``model_name`` block is rendered instead of a ``fallbacks`` list.
 
-        if len(ordered) == 1:
-            model = PROVIDERS[ordered[0]]["model_name"]
+        Runtime semantics: this matches the shape of
+        ``registries/basic/music_nerd_llm_fallbacks.hocon``. The neuro-san agent
+        chain reads it via ``langchain_run_context.create_agent_with_fallbacks``,
+        which extracts the ``fallbacks`` list and iterates it in order. The first
+        entry resolves as the primary model; subsequent entries are tried in
+        order on failure. See ``docs/examples/basic/music_nerd_llm_fallbacks.md``.
+
+        Raises:
+            ValueError: If ``providers`` is empty. An empty list would render an
+                empty ``fallbacks`` array, which the runtime rejects with "No
+                fully-specified LLM found". Every caller path already guarantees
+                at least one provider; this guard makes the contract explicit so
+                a future caller cannot scaffold an unbootable project.
+        """
+        if not providers:
+            raise ValueError("_render_llm_config requires at least one provider.")
+
+        if len(providers) == 1:
+            model = PROVIDERS[providers[0]]["model_name"]
             return '{\n    "llm_config": {\n        "model_name": "' + model + '"\n    }\n}\n'
 
         lines = ["{", '    "llm_config": {', '        "fallbacks": [']
-        for i, key in enumerate(ordered):
+        for i, key in enumerate(providers):
             model = PROVIDERS[key]["model_name"]
-            comma = "," if i < len(ordered) - 1 else ""
+            comma = "," if i < len(providers) - 1 else ""
             lines.append(f'            {{ "model_name": "{model}" }}{comma}')
         lines.extend(["        ]", "    }", "}", ""])
         return "\n".join(lines)
@@ -186,24 +200,24 @@ class InitCommand:  # pylint: disable=too-few-public-methods
         """
         dest_abs = os.path.join(self.root_dir, dest_rel)
         if os.path.exists(dest_abs):
-            _skip(f"{dest_rel} (already exists)")
+            CliStatus.skip(f"{dest_rel} (already exists)")
             return
         os.makedirs(os.path.dirname(dest_abs), exist_ok=True)
         source = importlib.resources.files(package) / template_name
         with source.open("rb") as src, open(dest_abs, "wb") as dst:
             shutil.copyfileobj(src, dst)
-        _ok(dest_rel)
+        CliStatus.ok(dest_rel)
 
     def _write_file(self, rel_path: str, content: str) -> None:
         """Write content to rel_path under root_dir, skipping if the file already exists."""
         dest_abs = os.path.join(self.root_dir, rel_path)
         if os.path.exists(dest_abs):
-            _skip(f"{rel_path} (already exists)")
+            CliStatus.skip(f"{rel_path} (already exists)")
             return
         os.makedirs(os.path.dirname(dest_abs), exist_ok=True)
         with open(dest_abs, "w", encoding="utf-8") as fh:
             fh.write(content)
-        _ok(rel_path)
+        CliStatus.ok(rel_path)
 
     def _print_next_steps(self) -> None:
         """Print the final instructions shown after scaffolding completes."""

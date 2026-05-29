@@ -124,8 +124,9 @@ class ProcessLogBridge(ProcessLoggerInterface):
                 rich handler settings, and file handler settings.
 
         Notes:
-            - Creates a Rich console.
-            - Reconfigures the root logger with rich + optional file handlers.
+            - Creates a Rich console with soft_wrap enabled.
+            - Prepares rich + optional file handlers (root logger is
+              configured lazily on the first `attach_process_logger` call).
             - Initializes per-stream state storage for subprocess drains.
         """
         self.level_name = level.upper()
@@ -145,7 +146,7 @@ class ProcessLogBridge(ProcessLoggerInterface):
 
         # rich console / handler
         theme = Theme(theme_styles)
-        self.console: Console = Console(theme=theme)
+        self.console: Console = Console(theme=theme, soft_wrap=True)
 
         # Base kwargs with safe defaults, then let config["rich"] override.
         rh_kwargs = {
@@ -180,22 +181,27 @@ class ProcessLogBridge(ProcessLoggerInterface):
             # keep tz-aware timestamps for file logs
             self.file_handler.setFormatter(self._TZFormatter(fmt=fmt))
 
-        # root logger config
-        root = logging.getLogger()
-        root.setLevel(logging.DEBUG)
-        root.handlers.clear()
-        root.addHandler(self.rich_handler)
-        if self.file_handler:
-            root.addHandler(self.file_handler)
-
         self._logger = logging.getLogger(self.__class__.__name__)
-        self._logger.info("Runner logging initialized (rich console enabled)")
+        self._root_configured = False
 
         # Per-stream state: (process_name, stream_tag) -> state
         # state keys: tee(TextIO), buffer(list[str]), balance(int), collecting(bool), logger(logging.Logger)
         self._streams: Dict[Tuple[str, str], Dict[str, Any]] = {}
 
     # ---------- public API ----------
+    def _ensure_root_configured(self) -> None:
+        """Configure the root logger with rich + file handlers (idempotent)."""
+        if self._root_configured:
+            return
+        root = logging.getLogger()
+        root.setLevel(logging.DEBUG)
+        root.handlers.clear()
+        root.addHandler(self.rich_handler)
+        if self.file_handler:
+            root.addHandler(self.file_handler)
+        self._logger.info("Runner logging initialized (rich console enabled)")
+        self._root_configured = True
+
     def attach_process_logger(self, process, process_name: str, log_file: str) -> None:
         """
         Drain stdout/stderr in background threads, pretty-print to terminal, mirror raw to file.
@@ -211,6 +217,8 @@ class ProcessLogBridge(ProcessLoggerInterface):
             - Two threads are spawned: one for stdout, one for stderr.
             - Per-stream state (buffer, JSON reassembly, tee handle) is created.
         """
+        self._ensure_root_configured()
+
         Path(log_file).parent.mkdir(parents=True, exist_ok=True)
         tee_out = open(log_file, "a", encoding="utf-8")  # pylint: disable=consider-using-with
         tee_err = open(log_file, "a", encoding="utf-8")  # pylint: disable=consider-using-with
@@ -642,6 +650,9 @@ class ProcessLogBridge(ProcessLoggerInterface):
         elif isinstance(display_msg, (dict, list)):
             display_msg = json.dumps(display_msg, ensure_ascii=False)
 
+        if not str(display_msg).strip():
+            return
+
         self._log(state, level, header + ": " + str(display_msg))
 
         # Re-read the raw message; display_msg above may have been JSON-serialized.
@@ -659,6 +670,8 @@ class ProcessLogBridge(ProcessLoggerInterface):
         :param line (str): Raw log line.
         Notes: Severity is inferred automatically via `_infer_level_from_text()`.
         """
+        if not line.strip():
+            return
         level = self._infer_level_from_text(line, logging.INFO)
         header = self._src_header(state["logger"].name, None)
         self._log(state, level, header + " - " + line)
