@@ -26,6 +26,7 @@ import questionary
 
 from neuro_san_studio.discovery.agent_network_registry import AgentNetworkRegistry
 from neuro_san_studio.exporter.agent_network_exporter import AgentNetworkExporter
+from neuro_san_studio.utils.cli_prompt import CliPrompt
 from neuro_san_studio.utils.cli_status import CliStatus
 
 
@@ -138,12 +139,16 @@ class ExportCommand:  # pylint: disable=too-few-public-methods
 
         choices = self._build_picker_choices(networks_by_group)
         try:
-            return questionary.select(
+            question = questionary.select(
                 "Pick a network to export:",
                 choices=choices,
-            ).ask()
+            )
+            answer = CliPrompt.bind_exit_on_esc(question).ask()
         except (KeyboardInterrupt, EOFError):
             return None
+        if answer is None or answer == CliPrompt.EXIT:
+            return None
+        return answer
 
     @staticmethod
     def _build_picker_choices(networks_by_group: Dict[str, List[str]]) -> List:

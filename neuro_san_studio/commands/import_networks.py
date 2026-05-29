@@ -24,17 +24,18 @@ from typing import List
 from typing import Optional
 
 import questionary
-from prompt_toolkit.keys import Keys
 
 from neuro_san_studio.discovery.agent_network_registry import AgentNetworkRegistry
 from neuro_san_studio.discovery.dependency_analyzer import DependencyAnalyzer
 from neuro_san_studio.importer.agent_network_importer import AgentNetworkImporter
 from neuro_san_studio.importer.agent_network_importer import is_skippable_metadata
+from neuro_san_studio.utils.cli_prompt import CliPrompt
 from neuro_san_studio.utils.cli_status import CliStatus
 from neuro_san_studio.utils.package_paths import PackagePaths
 
 CUSTOM = "__custom__"
 ALL = "__all__"
+FROM_FILE = "__from_file__"
 BACK = "__back__"
 
 
@@ -63,7 +64,7 @@ class ImportCommand:  # pylint: disable=too-few-public-methods
             sys.exit(1)
 
         if self.from_file:
-            self._run_from_file()
+            self._run_from_file(self.from_file)
             return
 
         CliStatus.info("Discovering available agent networks...")
@@ -81,6 +82,12 @@ class ImportCommand:  # pylint: disable=too-few-public-methods
             selected = self._parse_arg(self.networks_arg, networks_by_group)
         else:
             selected = self._prompt(networks_by_group)
+
+        # "From File" picked interactively — first slot is the FROM_FILE marker, second
+        # is the user-typed path. Same end behavior as `ns import -f <path>`.
+        if selected and selected[0] == FROM_FILE:
+            self._run_from_file(selected[1])
+            return
 
         if not selected:
             print()
@@ -110,12 +117,12 @@ class ImportCommand:  # pylint: disable=too-few-public-methods
     def _verify_project_initialized(self) -> bool:
         return os.path.exists(os.path.join(self.target_dir, "registries", "manifest.hocon"))
 
-    def _run_from_file(self) -> None:
+    def _run_from_file(self, file_path: str) -> None:
         """Import a single .hocon (self-contained) or a .zip bundle (path-preserving)."""
-        source_path = os.path.abspath(os.path.expanduser(self.from_file))
+        source_path = os.path.abspath(os.path.expanduser(file_path))
         if not os.path.isfile(source_path):
             print()
-            CliStatus.err(f"File not found: {self.from_file}")
+            CliStatus.err(f"File not found: {file_path}")
             print()
             sys.exit(1)
         suffix = os.path.splitext(source_path)[1].lower()
@@ -186,7 +193,8 @@ class ImportCommand:  # pylint: disable=too-few-public-methods
             "middleware/": sum(1 for n in real if n.startswith("middleware/")),
             "skills/": sum(1 for n in real if n.startswith("skills/")),
         }
-        print(f"\nFiles to import (from {os.path.basename(source_path)}):")
+        print()
+        CliStatus.info(f"Files to import (from {os.path.basename(source_path)}):")
         if registries:
             print("  registries/")
             for rel in registries:
@@ -194,16 +202,20 @@ class ImportCommand:  # pylint: disable=too-few-public-methods
         for bucket, count in bucket_counts.items():
             if count:
                 print(f"  {bucket:<14}({count} files)")
+        print()
         if force:
-            print("\nNote:\n--force is set: existing files in the target will be OVERWRITTEN.\n")
+            CliStatus.warn("--force is set: existing files in the target will be OVERWRITTEN.")
         else:
-            print("\nNote:\nThis will not overwrite any of the existing files.\nTo overwrite, re-run with --force.\n")
+            CliStatus.info("This will not overwrite any of the existing files. To overwrite, re-run with --force.")
+        print()
         if not sys.stdin.isatty():
             return True
         try:
-            return questionary.confirm("Proceed with import?", default=True).ask() is True
+            question = questionary.confirm("Proceed with import?", default=True)
+            answer = CliPrompt.bind_exit_on_esc(question).ask()
         except (KeyboardInterrupt, EOFError):
             return False
+        return answer is True
 
     @staticmethod
     def _parse_arg(arg: str, networks_by_group: Dict[str, List[str]]) -> List[str]:
@@ -237,37 +249,66 @@ class ImportCommand:  # pylint: disable=too-few-public-methods
 
     @classmethod
     def _prompt(cls, networks_by_group: Dict[str, List[str]]) -> List[str]:
-        """Two-tier flow: pick a group / All / Custom; Custom drills into a network checkbox.
-        Left arrow on a sub-screen returns to the top screen, discarding selections."""
+        """Two-tier flow: pick a group / All / Custom / From File; Custom drills into a
+        network checkbox. Left/Esc on a sub-screen returns to the top screen, discarding
+        selections. From File is signalled by returning :data:`FROM_FILE`; the caller
+        diverts to the file-import path instead of resolving names against the registry."""
         while True:
             top = cls._prompt_top(networks_by_group)
-            if top is None:
+            if top is None or top == CliPrompt.EXIT:
                 return []
             if top == ALL:
                 return [path for paths in networks_by_group.values() for path in paths]
+            if top == FROM_FILE:
+                picked = cls._prompt_for_file_path()
+                if picked is None:  # ←/Esc on path prompt → back to top menu
+                    continue
+                return [FROM_FILE, picked]
             if top == CUSTOM:
                 confirmed = cls._custom_flow(networks_by_group)
-                if confirmed is None:  # user pressed Left at the first custom step
+                if confirmed is None:  # user pressed ←/Esc at the first custom step
                     continue
                 return confirmed
             return list(networks_by_group.get(top, []))
 
     @staticmethod
     def _prompt_top(networks_by_group: Dict[str, List[str]]) -> Optional[str]:
+        """Top-menu picker. Group rows first (data), then a separator, then action rows
+        (All / Custom selection / From File) — actions are styled distinctly so they
+        read as commands rather than just another bucket."""
         total = sum(len(paths) for paths in networks_by_group.values())
-        choices = [
+        choices: List = [
             questionary.Choice(title=f"{group.capitalize()} ({len(paths)})", value=group)
             for group, paths in networks_by_group.items()
         ]
         choices += [
             questionary.Separator(),
-            questionary.Choice(title="Custom selection", value=CUSTOM),
-            questionary.Choice(title=f"All ({total})", value=ALL),
+            questionary.Choice(title=[("class:action", f"All ({total})")], value=ALL),
+            questionary.Choice(title=[("class:action", "Custom selection")], value=CUSTOM),
+            questionary.Separator(),
+            questionary.Choice(title=[("class:from-file", "From File")], value=FROM_FILE),
         ]
-        return questionary.select(
+        question = questionary.select(
             "What do you want to import?",
             choices=choices,
-        ).ask()
+            style=questionary.Style([("action", "fg:#5fafd7"), ("from-file", "fg:#d7875f")]),
+        )
+        return CliPrompt.bind_exit_on_esc(question).ask()
+
+    @staticmethod
+    def _prompt_for_file_path() -> Optional[str]:
+        """Ask for a .hocon or .zip path; ←/Esc returns None so the caller pops back to
+        the top menu (same back-semantics as the other sub-screens). Validation is left
+        to ``_run_from_file`` so messages stay consistent with the ``-f`` flag path."""
+        try:
+            question = questionary.path("Path to .hocon or .zip:", only_directories=False)
+            answer = CliPrompt.bind_back_keys(question, BACK).ask()
+        except (KeyboardInterrupt, EOFError):
+            return None
+        if answer is None or answer == BACK:
+            return None
+        answer = answer.strip()
+        return answer or None
 
     @classmethod
     def _custom_flow(cls, networks_by_group: Dict[str, List[str]]) -> Optional[List[str]]:
@@ -325,29 +366,29 @@ class ImportCommand:  # pylint: disable=too-few-public-methods
     @staticmethod
     def _confirm_import(selected: List[str], force: bool = False) -> bool:
         """Show the final list + a non-overwrite note, then ask y/N. Non-TTY auto-confirms."""
-        print("\nNetworks to import:")
+        print()
+        CliStatus.info("Networks to import:")
         for path in selected:
             print(f"  - {path}")
+        print()
         if force:
-            print("\nNote:\n--force is set: existing files in the target will be OVERWRITTEN.\n")
+            CliStatus.warn("--force is set: existing files in the target will be OVERWRITTEN.")
         else:
-            print("\nNote:\nThis will not overwrite any of the existing files.\nTo overwrite, re-run with --force.\n")
+            CliStatus.info("This will not overwrite any of the existing files. To overwrite, re-run with --force.")
+        print()
         if not sys.stdin.isatty():
             return True
         try:
-            return questionary.confirm("Proceed with import?", default=True).ask() is True
+            question = questionary.confirm("Proceed with import?", default=True)
+            answer = CliPrompt.bind_exit_on_esc(question).ask()
         except (KeyboardInterrupt, EOFError):
             return False
+        return answer is True
 
     @staticmethod
     def _ask_with_back(question):
-        """Run a questionary checkbox with Left=exit-with-BACK sentinel."""
-
-        @question.application.key_bindings.add(Keys.Left)
-        def _back(event):
-            event.app.exit(result=BACK)
-
-        return question.ask()
+        """Run a questionary checkbox with ← / Esc → BACK sentinel (intuitive return-to-prev-screen)."""
+        return CliPrompt.bind_back_keys(question, BACK).ask()
 
     def _import(self, hocon_paths: List[str], registry: AgentNetworkRegistry) -> None:
         analyzer = DependencyAnalyzer(
