@@ -25,8 +25,11 @@ from typing import Any
 from leaf_common.serialization.util.text_file_reader import TextFileReader
 from neuro_san.interfaces.coded_tool import CodedTool
 
+from coded_tools.agent_network_editor.sly_data_lock import SlyDataLock
+
 MAX_CHARS: int = 20_000
 MAX_FILE_BYTES: int = 10 * 1024 * 1024  # 10 MB hard cap on files read into memory
+READ_FILE_HISTORY_KEY: str = "read_file_history"  # sly_data key for the list of read file paths
 
 
 class ReadFile(CodedTool):
@@ -99,36 +102,11 @@ class ReadFile(CodedTool):
         :raises ValueError: invalid_input, path_not_allowed, path_not_found,
                             is_a_directory, file_too_large, read_error.
         """
-        logger: Logger = getLogger(self.__class__.__name__)
-
-        file_path: Path = await self._async_resolve_path(args)
-        # Run access checks before touching the filesystem so out-of-scope paths
-        # always return path_not_allowed — never leaking existence information.
-        await self._async_validate_and_check_access(args, file_path)
-        await self._async_check_path_exists(file_path)
-        await self._async_check_file_size(file_path)
-        start_line, end_line = self._validate_line_range(args)
-        max_chars: int = self._validate_max_content_chars(args)
-
-        logger.info("ReadFile: reading %s", file_path)
-
-        try:
-            raw_text: str = await TextFileReader.async_read_text_file(str(file_path))
-        except PermissionError as exc:
-            raise ValueError(f"read_error: Permission denied reading '{file_path}'.") from exc
-        except OSError as exc:
-            raise ValueError(f"read_error: Could not read '{file_path}': {exc}") from exc
-
-        content, actual_start, actual_end, total_lines = self._slice_text(raw_text, start_line, end_line, max_chars)
-
-        logger.info(
-            "ReadFile: returned %d characters from %s (lines %d-%d of %d)",
-            len(content),
-            file_path,
-            actual_start,
-            actual_end,
-            total_lines,
+        file_path, start_line, end_line, max_chars = await self._async_precheck(args)
+        content, actual_start, actual_end, total_lines = await self._async_read_file(
+            file_path, start_line, end_line, max_chars
         )
+        await self._async_cache_read(sly_data, file_path)
 
         return {
             "path": str(file_path),
@@ -138,6 +116,76 @@ class ReadFile(CodedTool):
             "total_lines": total_lines,
             "read_at": datetime.now(timezone.utc).isoformat(),
         }
+
+    # ------------------------------------------------------------------
+    # Async phases — async_invoke is just orchestration over these three.
+    # ------------------------------------------------------------------
+
+    async def _async_precheck(self, args: dict[str, Any]) -> tuple[Path, int, int | None, int]:
+        """Run all pre-read validation and access checks. Returns (file_path, start_line, end_line, max_chars).
+
+        Order matters: resolve → access → existence → size. Access checks run before
+        the filesystem is touched so out-of-scope paths never surface path_not_found
+        (which would leak filesystem layout).
+        """
+        file_path: Path = await self._async_resolve_path(args)
+        await self._async_validate_and_check_access(args, file_path)
+        await self._async_check_path_exists(file_path)
+        await self._async_check_file_size(file_path)
+        start_line, end_line = self._validate_line_range(args)
+        max_chars: int = self._validate_max_content_chars(args)
+        return file_path, start_line, end_line, max_chars
+
+    async def _async_read_file(
+        self, file_path: Path, start_line: int, end_line: int | None, max_chars: int
+    ) -> tuple[str, int, int, int]:
+        """Read the file's contents and slice to the requested line range / char cap.
+
+        Returns (content, actual_start, actual_end, total_lines). Raises read_error
+        on permission / I/O failures.
+        """
+        logger: Logger = getLogger(self.__class__.__name__)
+        logger.info("ReadFile: reading %s", file_path)
+        try:
+            raw_text: str = await TextFileReader.async_read_text_file(str(file_path))
+        except PermissionError as exc:
+            raise ValueError(f"read_error: Permission denied reading '{file_path}'.") from exc
+        except OSError as exc:
+            raise ValueError(f"read_error: Could not read '{file_path}': {exc}") from exc
+
+        content, actual_start, actual_end, total_lines = self._slice_text(raw_text, start_line, end_line, max_chars)
+        logger.info(
+            "ReadFile: returned %d characters from %s (lines %d-%d of %d)",
+            len(content),
+            file_path,
+            actual_start,
+            actual_end,
+            total_lines,
+        )
+        return content, actual_start, actual_end, total_lines
+
+    async def _async_cache_read(self, sly_data: dict[str, Any], file_path: Path) -> None:
+        """Append the resolved file path to the session-scoped read history in sly_data.
+
+        Only the resolved path is recorded (deduped, insertion-ordered). Contents are
+        intentionally NOT cached:
+          - Staleness risk: the same file could be edited (now or once a write_file tool
+            exists) between reads, so a content cache could silently return outdated bytes.
+          - Memory: with MAX_FILE_BYTES = 10 MB, caching contents would let a single
+            conversation accumulate hundreds of megabytes in sly_data.
+          - Cache-key complexity: each call can specify different start_line / end_line /
+            max_content_chars, so the cache key would need to encode all of those — or
+            cache the full file and re-slice — neither buys much over reading from disk.
+          - Limited reuse: most agent file reads are one-shot; the content already lives
+            in the chat context after the first read.
+
+        Lock-guarded so concurrent reads don't race on the dedupe/append.
+        """
+        async with await SlyDataLock.get_lock(sly_data, "read_file_history_lock"):
+            history: list[str] = sly_data.setdefault(READ_FILE_HISTORY_KEY, [])
+            resolved_str: str = str(file_path)
+            if resolved_str not in history:
+                history.append(resolved_str)
 
     # ------------------------------------------------------------------
     # Async wrappers for pre-read checks
