@@ -230,6 +230,9 @@ Skip the prompt with `--providers`:
 ns init --providers openai,anthropic,google
 ```
 
+Providers are written in the order you select them. The first becomes the primary model and the rest
+become ordered fallbacks; OpenAI is used only as the default when no selection is made.
+
 #### 3. Set your API key
 
 Set your provider key, e.g. `OPENAI_API_KEY` (or create a `.env` file in the current directory).
