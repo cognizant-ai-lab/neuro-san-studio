@@ -27,6 +27,7 @@ from typing import Optional
 from typing import Set
 
 from neuro_san.internals.persistence.abstract_async_config_restorer import AbstractAsyncConfigRestorer
+from neuro_san.internals.run_context.utils.external_agent_parsing import ExternalAgentParsing
 from pyparsing.exceptions import ParseException
 
 LLM_CLASSES = {"openai", "anthropic", "google", "bedrock", "azure"}
@@ -91,13 +92,29 @@ class DependencyAnalyzer:
             if isinstance(toolbox, str):
                 deps.toolbox_tools.append(toolbox)
 
-            for tool_name in tool_spec.get("tools", []) or []:
-                if not isinstance(tool_name, str):
-                    continue
-                if tool_name.startswith("/"):
-                    deps.sub_networks.append(tool_name)
-                elif tool_name.startswith(("http://", "https://")):
-                    deps.mcp_tools.append(tool_name)
+            for tool_ref in tool_spec.get("tools", []) or []:
+                DependencyAnalyzer._classify_tool_ref(tool_ref, deps)
+
+    @staticmethod
+    def _classify_tool_ref(tool_ref: Any, deps: AgentNetworkDependencies) -> None:
+        """Route a single entry from a tool's `tools:` list into the right deps bucket.
+
+        Sub-network refs (`/name`) and MCP URLs are bundled; external HTTP-agent URLs
+        (e.g. `http://localhost:8080/math_guy`) are called at runtime and intentionally
+        dropped. Dict-form refs (`{"url": ..., "tools": [...]}`) are MCP per neuro-san.
+        """
+        if isinstance(tool_ref, dict):
+            if ExternalAgentParsing.is_mcp_tool(tool_ref):
+                url = tool_ref.get("url")
+                if isinstance(url, str):
+                    deps.mcp_tools.append(url)
+            return
+        if not isinstance(tool_ref, str):
+            return
+        if tool_ref.startswith("/"):
+            deps.sub_networks.append(tool_ref)
+        elif ExternalAgentParsing.is_mcp_tool(tool_ref):
+            deps.mcp_tools.append(tool_ref)
 
     def resolve_coded_tool_path(self, class_path: str, context_dir: Optional[str] = None) -> Optional[str]:
         """Map a Python class path (e.g. 'pkg.module.Class') to its source file under coded_tools/ or middleware/."""
