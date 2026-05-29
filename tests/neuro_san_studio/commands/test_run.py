@@ -16,27 +16,37 @@
 
 """Tests for NeuroSanRunner."""
 
+import logging
 import os
 from collections.abc import Callable
 from collections.abc import Iterable
 from pathlib import Path
+from types import SimpleNamespace
 from typing import Any
 
 import pytest
-from pytest import CaptureFixture
+from pytest import LogCaptureFixture
 from pytest import MonkeyPatch
 
 from neuro_san_studio.commands import run as run_module
 from neuro_san_studio.commands.run import NeuroSanRunner
 
 
-class TestNeuroSanRunner:
+class TestNeuroSanRunner:  # pylint: disable=too-many-public-methods
     """Tests for NeuroSanRunner"""
 
     @staticmethod
     def _make_runner() -> NeuroSanRunner:
-        """Construct a NeuroSanRunner without invoking its heavy __init__."""
-        return NeuroSanRunner.__new__(NeuroSanRunner)
+        """Construct a NeuroSanRunner without invoking its heavy __init__.
+
+        ``__new__`` skips ``__init__``, so the logger that the real constructor
+        sets up is attached here too: every method now emits through
+        ``self._logger`` rather than ``print``, and would raise AttributeError
+        without it.
+        """
+        runner = NeuroSanRunner.__new__(NeuroSanRunner)
+        runner._logger = logging.getLogger(NeuroSanRunner.__name__)  # pylint: disable=protected-access
+        return runner
 
     @staticmethod
     def _scripted_input(responses: Iterable[str]) -> Callable[..., str]:
@@ -64,19 +74,23 @@ class TestNeuroSanRunner:
         monkeypatch.setattr(run_module, "timedinput", self._scripted_input([response]))
         assert self._make_runner()._validate_yes_no_input("prompt: ") is False
 
-    def test_reprompts_then_accepts_valid(self, monkeypatch: MonkeyPatch, capsys: CaptureFixture[str]) -> None:
-        """Test that invalid input triggers a re-prompt before a valid one succeeds."""
-        monkeypatch.setattr(run_module, "timedinput", self._scripted_input(["maybe", "y"]))
-        assert self._make_runner()._validate_yes_no_input("prompt: ") is True
-        captured = capsys.readouterr()
-        assert "Invalid input" in captured.out
+    def test_reprompts_then_accepts_valid(self, monkeypatch: MonkeyPatch, caplog: LogCaptureFixture) -> None:
+        """Test that invalid input triggers a re-prompt before a valid one succeeds.
 
-    def test_returns_false_after_max_attempts(self, monkeypatch: MonkeyPatch, capsys: CaptureFixture[str]) -> None:
+        The re-prompt feedback is now logged at WARNING level (it used to print
+        to stdout), so assert against the captured log instead of capsys.
+        """
+        monkeypatch.setattr(run_module, "timedinput", self._scripted_input(["maybe", "y"]))
+        with caplog.at_level(logging.WARNING, logger="NeuroSanRunner"):
+            assert self._make_runner()._validate_yes_no_input("prompt: ") is True
+        assert "Invalid input" in caplog.text
+
+    def test_returns_false_after_max_attempts(self, monkeypatch: MonkeyPatch, caplog: LogCaptureFixture) -> None:
         """Test that exhausting all attempts with invalid input returns False."""
         monkeypatch.setattr(run_module, "timedinput", self._scripted_input(["a", "b", "c"]))
-        assert self._make_runner()._validate_yes_no_input("prompt: ") is False
-        captured = capsys.readouterr()
-        assert "Too many invalid responses." in captured.out
+        with caplog.at_level(logging.WARNING, logger="NeuroSanRunner"):
+            assert self._make_runner()._validate_yes_no_input("prompt: ") is False
+        assert "Too many invalid responses." in caplog.text
 
     def test_respects_custom_max_attempts(self, monkeypatch: MonkeyPatch) -> None:
         """Test that max_attempts controls the number of allowed retries."""
@@ -138,7 +152,7 @@ class TestNeuroSanRunner:
         assert result.endswith(os.path.join("neuro_san_studio", "mcp", "mcp_info.hocon"))
 
     def test_set_environment_variables_skips_empty_toolbox(
-        self, monkeypatch: MonkeyPatch, tmp_path: Path, capsys: CaptureFixture[str]
+        self, monkeypatch: MonkeyPatch, tmp_path: Path, caplog: LogCaptureFixture
     ) -> None:
         """set_environment_variables should not export AGENT_TOOLBOX_INFO_FILE when the arg is empty."""
         monkeypatch.setattr(os, "environ", os.environ.copy())
@@ -160,9 +174,10 @@ class TestNeuroSanRunner:
             "thinking_file": str(tmp_path / "thinking.txt"),
             "thinking_dir": str(tmp_path / "thinking"),
         }
-        runner.set_environment_variables()
+        with caplog.at_level(logging.INFO, logger="NeuroSanRunner"):
+            runner.set_environment_variables()
         assert "AGENT_TOOLBOX_INFO_FILE" not in os.environ
-        assert "using built-in default toolbox" in capsys.readouterr().out
+        assert "using built-in default toolbox" in caplog.text
 
     def test_set_environment_variables_exports_toolbox_when_present(
         self, monkeypatch: MonkeyPatch, tmp_path: Path
@@ -201,3 +216,107 @@ class TestNeuroSanRunner:
         monkeypatch.setattr(run_module, "timedinput", _capturing_input)
         self._make_runner()._validate_yes_no_input("Kill processes? ")
         assert seen_prompts == ["Kill processes? "]
+
+    # ---- #994: output is routed through the logger, not print ----
+
+    @staticmethod
+    def _full_args(tmp_path: Path) -> dict[str, Any]:
+        """Return a complete args dict suitable for set_environment_variables()."""
+        return {
+            "agent_manifest_file": str(tmp_path / "manifest.hocon"),
+            "agent_tool_path": str(tmp_path / "coded_tools"),
+            "agent_toolbox_info_file": "",
+            "mcp_servers_info_file": str(tmp_path / "mcp_info.hocon"),
+            "server_connection": "http",
+            "manifest_update_period_seconds": 5,
+            "log_level": "info",
+            "server_only": True,
+            "client_only": False,
+            "server_host": "localhost",
+            "server_http_port": 8080,
+            "thinking_file": str(tmp_path / "thinking.txt"),
+            "thinking_dir": str(tmp_path / "thinking"),
+        }
+
+    def test_no_bare_print_calls_in_source(self) -> None:
+        """Regression guard for #994: run.py must route output through the logger.
+
+        A bare ``print(`` reintroduces the stdout bypass this issue removed.
+        Asserting against the source keeps the guard robust even for code paths
+        that are hard to exercise (server startup, signal handling).
+        """
+        source = Path(run_module.__file__).read_text(encoding="utf-8")
+        assert "print(" not in source
+
+    def test_configure_logging_installs_root_handler(self) -> None:
+        """_configure_logging must leave the root logger with at least one handler."""
+        NeuroSanRunner._configure_logging()  # pylint: disable=protected-access
+        assert logging.getLogger().handlers
+
+    def test_load_env_variables_logs_when_missing(self, tmp_path: Path, caplog: LogCaptureFixture) -> None:
+        """With no .env present, the 'using defaults' notice is logged at INFO."""
+        runner = self._make_runner()
+        runner.root_dir = str(tmp_path)
+        with caplog.at_level(logging.INFO, logger="NeuroSanRunner"):
+            runner.load_env_variables()
+        assert "No .env file found" in caplog.text
+
+    def test_load_env_variables_logs_when_found(
+        self, monkeypatch: MonkeyPatch, tmp_path: Path, caplog: LogCaptureFixture
+    ) -> None:
+        """With a .env present, the runner logs that it loaded variables at INFO."""
+        runner = self._make_runner()
+        runner.root_dir = str(tmp_path)
+        (tmp_path / ".env").write_text("FOO=bar\n", encoding="utf-8")
+        monkeypatch.setattr(run_module, "load_dotenv", lambda *_a, **_k: True)
+        with caplog.at_level(logging.INFO, logger="NeuroSanRunner"):
+            runner.load_env_variables()
+        assert "Loaded environment variables from:" in caplog.text
+
+    def test_set_environment_variables_logs_each_setting(
+        self, monkeypatch: MonkeyPatch, tmp_path: Path, caplog: LogCaptureFixture
+    ) -> None:
+        """Exported env vars are announced through the logger at INFO."""
+        monkeypatch.setattr(os, "environ", os.environ.copy())
+        runner = self._make_runner()
+        runner.root_dir = str(tmp_path)
+        runner.args = self._full_args(tmp_path)
+        with caplog.at_level(logging.INFO, logger="NeuroSanRunner"):
+            runner.set_environment_variables()
+        assert "AGENT_MANIFEST_FILE set to:" in caplog.text
+        assert "LOG_LEVEL set to:" in caplog.text
+
+    def test_signal_handler_logs_and_exits(self, caplog: LogCaptureFixture) -> None:
+        """signal_handler logs the shutdown at INFO and exits with status 0."""
+        runner = self._make_runner()
+        runner.is_windows = False
+        runner.server_process = None
+        runner.nsflow_process = None
+        runner.plugins = []
+        with caplog.at_level(logging.INFO, logger="NeuroSanRunner"):
+            with pytest.raises(SystemExit) as exc_info:
+                runner.signal_handler(2, None)
+        assert exc_info.value.code == 0
+        assert "Termination signal received" in caplog.text
+
+    def test_kill_processes_on_ports_logs(self, monkeypatch: MonkeyPatch, caplog: LogCaptureFixture) -> None:
+        """_kill_processes_on_ports announces each port through the logger.
+
+        ``subprocess.run`` is stubbed to report no listening process, so no real
+        signal is sent; we only assert the logging behavior.
+        """
+        runner = self._make_runner()
+        runner.is_windows = False
+        monkeypatch.setattr(run_module.subprocess, "run", lambda *_a, **_k: SimpleNamespace(stdout=""))
+        with caplog.at_level(logging.INFO, logger="NeuroSanRunner"):
+            runner._kill_processes_on_ports([4173])
+        assert "Attempting to kill process on port 4173" in caplog.text
+        assert "No process found on port 4173" in caplog.text
+
+    def test_invalid_input_logged_at_warning_level(self, monkeypatch: MonkeyPatch, caplog: LogCaptureFixture) -> None:
+        """Invalid interactive input is logged at WARNING, not INFO."""
+        monkeypatch.setattr(run_module, "timedinput", self._scripted_input(["bad", "yes"]))
+        with caplog.at_level(logging.WARNING, logger="NeuroSanRunner"):
+            assert self._make_runner()._validate_yes_no_input("prompt: ") is True
+        warning_messages = [r.getMessage() for r in caplog.records if r.levelno == logging.WARNING]
+        assert any("Invalid input" in message for message in warning_messages)
