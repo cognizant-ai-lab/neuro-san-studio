@@ -21,6 +21,7 @@ import sys
 from pathlib import Path
 
 import pytest
+from pyhocon import ConfigFactory
 from pytest import MonkeyPatch
 
 from neuro_san_studio.commands import init as init_module
@@ -87,17 +88,54 @@ class TestLlmConfigRendering:
         assert openai_pos < anthropic_pos < google_pos
         assert '"class"' not in rendered
 
-    def test_openai_promoted_to_front_of_fallbacks(self) -> None:
-        """Even if OpenAI is selected last, it should lead the fallback list."""
+    def test_user_order_preserved_when_openai_not_first(self) -> None:
+        """Regression test for #1076: user-selected order must be honored.
+
+        Earlier behavior auto-promoted OpenAI to position 0 even when the user
+        explicitly listed it last; this asserts the fix that respects the
+        user's order.
+        """
         # pylint: disable=protected-access
         rendered = InitCommand._render_llm_config(["anthropic", "openai"])
-        assert rendered.index("gpt-5.2") < rendered.index("claude-sonnet")
+        assert rendered.index("claude-sonnet") < rendered.index("gpt-5.2")
+
+    def test_three_provider_order_preserved_with_openai_last(self) -> None:
+        """Regression test for #1076: arbitrary three-provider order is preserved."""
+        # pylint: disable=protected-access
+        rendered = InitCommand._render_llm_config(["google", "anthropic", "openai"])
+        google_pos = rendered.index("gemini-3-flash")
+        anthropic_pos = rendered.index("claude-sonnet")
+        openai_pos = rendered.index("gpt-5.2")
+        assert google_pos < anthropic_pos < openai_pos
 
     def test_non_openai_order_preserved(self) -> None:
         """Without OpenAI, the user's order should be preserved."""
         # pylint: disable=protected-access
         rendered = InitCommand._render_llm_config(["google", "anthropic"])
         assert rendered.index("gemini-3-flash") < rendered.index("claude-sonnet")
+
+    def test_two_provider_openai_already_first_unchanged(self) -> None:
+        """Boundary for #1076: when OpenAI is already first, order is unchanged.
+
+        The removed promotion only fired when OpenAI was selected but not first
+        (``ordered[0] != "openai"``); this pins the symmetric case where the
+        promotion was always a no-op, so a future reintroduction is caught.
+        """
+        # pylint: disable=protected-access
+        rendered = InitCommand._render_llm_config(["openai", "google"])
+        fallbacks = [dict(fb) for fb in ConfigFactory.parse_string(rendered)["llm_config"]["fallbacks"]]
+        assert [fb["model_name"] for fb in fallbacks] == ["gpt-5.2", "gemini-3-flash"]
+
+    def test_empty_providers_raises(self) -> None:
+        """An empty provider list must raise rather than render an empty fallbacks array.
+
+        An empty ``fallbacks`` list is syntactically valid HOCON but the neuro-san
+        runtime rejects it with "No fully-specified LLM found"; the guard turns a
+        silent unbootable-project footgun into an explicit error.
+        """
+        # pylint: disable=protected-access
+        with pytest.raises(ValueError, match="at least one provider"):
+            InitCommand._render_llm_config([])
 
 
 class TestRunFlow:
@@ -179,6 +217,97 @@ class TestRunFlow:
         assert '"fallbacks"' in llm_config
         assert "gpt-5.2" in llm_config
         assert "claude-sonnet" in llm_config
+
+    def test_run_providers_arg_preserves_anthropic_first(self, tmp_path: Path) -> None:
+        """Regression test for #1076: ``--providers anthropic,openai`` yields Anthropic-first config."""
+        InitCommand(providers_arg="anthropic,openai", root_dir=str(tmp_path)).run()
+        llm_config = (tmp_path / "config" / "llm_config.hocon").read_text()
+        assert llm_config.index("claude-sonnet") < llm_config.index("gpt-5.2")
+
+    def test_run_interactive_anthropic_first_preserves_order(self, tmp_path: Path, monkeypatch: MonkeyPatch) -> None:
+        """Regression test for #1076: interactive selection ``2,1`` yields Anthropic-first config.
+
+        Mirrors the exact reproduction steps in the issue: pick Anthropic (2)
+        then OpenAI (1) at the prompt, and confirm the generated fallback file
+        lists Anthropic before OpenAI.
+        """
+        monkeypatch.setattr(sys.stdin, "isatty", lambda: True)
+        monkeypatch.setattr(init_module, "timedinput", lambda *_a, **_kw: "2,1")
+        InitCommand(providers_arg=None, root_dir=str(tmp_path)).run()
+        llm_config = (tmp_path / "config" / "llm_config.hocon").read_text()
+        assert llm_config.index("claude-sonnet") < llm_config.index("gpt-5.2")
+
+    def test_parsed_fallbacks_first_entry_is_user_primary(self, tmp_path: Path) -> None:
+        """Behavioral regression for #1076: parse the generated config the same
+        way the agent chain does and assert ``fallbacks[0]`` is the user's
+        first-selected provider.
+
+        The runtime path is ``langchain_run_context.create_agent_with_fallbacks``,
+        which extracts ``fallbacks`` from the parsed ``llm_config`` and iterates
+        it; the first entry is treated as primary. Asserting that here gives a
+        higher-fidelity check than substring ordering in the rendered text.
+        """
+        InitCommand(providers_arg="anthropic,openai", root_dir=str(tmp_path)).run()
+        raw = (tmp_path / "config" / "llm_config.hocon").read_text()
+        parsed_llm_config = ConfigFactory.parse_string(raw)["llm_config"]
+        fallbacks = [dict(fb) for fb in parsed_llm_config["fallbacks"]]
+        assert fallbacks[0]["model_name"] == "claude-sonnet"
+        assert fallbacks[1]["model_name"] == "gpt-5.2"
+
+    def test_parsed_fallbacks_three_provider_order_preserved(self, tmp_path: Path) -> None:
+        """Behavioral regression for #1076: a three-provider selection preserves
+        order through HOCON parsing into the runtime ``fallbacks`` list.
+        """
+        InitCommand(providers_arg="google,anthropic,openai", root_dir=str(tmp_path)).run()
+        raw = (tmp_path / "config" / "llm_config.hocon").read_text()
+        parsed_llm_config = ConfigFactory.parse_string(raw)["llm_config"]
+        fallbacks = [dict(fb) for fb in parsed_llm_config["fallbacks"]]
+        assert [fb["model_name"] for fb in fallbacks] == ["gemini-3-flash", "claude-sonnet", "gpt-5.2"]
+
+    def test_issue_1076_interactive_2_1_parsed_anthropic_first(self, tmp_path: Path, monkeypatch: MonkeyPatch) -> None:
+        """Behavioral regression for #1076 at the parsed layer: the exact ``2,1``
+        keystrokes from the issue must yield ``fallbacks == [anthropic, openai]``
+        once the generated HOCON is parsed the way the agent chain parses it.
+
+        This raises the issue's literal reproduction from substring ordering
+        (``test_run_interactive_anthropic_first_preserves_order``) to the
+        structural layer the runtime actually reads.
+        """
+        monkeypatch.setattr(sys.stdin, "isatty", lambda: True)
+        monkeypatch.setattr(init_module, "timedinput", lambda *_a, **_kw: "2,1")
+        InitCommand(providers_arg=None, root_dir=str(tmp_path)).run()
+        raw = (tmp_path / "config" / "llm_config.hocon").read_text()
+        parsed_llm_config = ConfigFactory.parse_string(raw)["llm_config"]
+        models = [dict(fb)["model_name"] for fb in parsed_llm_config["fallbacks"]]
+        assert models == ["claude-sonnet", "gpt-5.2"]
+
+    def test_single_provider_parsed_is_flat_no_fallbacks(self, tmp_path: Path) -> None:
+        """Regression guard for the untouched single-provider branch.
+
+        The runtime wraps a flat ``llm_config`` as a one-entry fallback list via
+        ``llm_config.get("fallbacks", [llm_config])``; an accidental ``fallbacks``
+        wrap or a stray ``class`` key here would change resolution. Asserts the
+        parsed shape rather than substrings.
+        """
+        InitCommand(providers_arg="openai", root_dir=str(tmp_path)).run()
+        raw = (tmp_path / "config" / "llm_config.hocon").read_text()
+        parsed_llm_config = ConfigFactory.parse_string(raw)["llm_config"]
+        assert parsed_llm_config["model_name"] == "gpt-5.2"
+        assert "fallbacks" not in parsed_llm_config
+        assert "class" not in parsed_llm_config
+
+    def test_multi_provider_has_no_top_level_model_name(self, tmp_path: Path) -> None:
+        """Multi-provider config must rely solely on the ``fallbacks`` list.
+
+        A stray top-level ``model_name`` would be read as a default by any
+        consumer that does not enter the fallback loop (the exact misread that
+        made the original review believe the fix was cosmetic).
+        """
+        InitCommand(providers_arg="anthropic,openai", root_dir=str(tmp_path)).run()
+        raw = (tmp_path / "config" / "llm_config.hocon").read_text()
+        parsed_llm_config = ConfigFactory.parse_string(raw)["llm_config"]
+        assert "model_name" not in parsed_llm_config
+        assert "fallbacks" in parsed_llm_config
 
     def test_run_interactive_empty_input_defaults_to_openai(self, tmp_path: Path, monkeypatch: MonkeyPatch) -> None:
         """Pressing enter at the prompt should accept the default (OpenAI)."""
