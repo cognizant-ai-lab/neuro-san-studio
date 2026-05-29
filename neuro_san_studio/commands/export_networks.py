@@ -24,12 +24,10 @@ from typing import Optional
 
 import questionary
 
-from neuro_san_studio.commands._status import err as _err
-from neuro_san_studio.commands._status import info as _info
-from neuro_san_studio.commands._status import ok as _ok
-from neuro_san_studio.commands._status import warn as _warn
 from neuro_san_studio.discovery.agent_network_registry import AgentNetworkRegistry
 from neuro_san_studio.exporter.agent_network_exporter import AgentNetworkExporter
+from neuro_san_studio.utils.cli_prompt import CliPrompt
+from neuro_san_studio.utils.cli_status import CliStatus
 
 
 class ExportCommand:  # pylint: disable=too-few-public-methods
@@ -44,7 +42,7 @@ class ExportCommand:  # pylint: disable=too-few-public-methods
         """Resolve, walk, and write; print a small summary."""
         if not self._verify_project_initialized():
             print()
-            _err("Project not initialized. Run 'ns init' first.")
+            CliStatus.err("Project not initialized. Run 'ns init' first.")
             print()
             sys.exit(1)
 
@@ -52,7 +50,7 @@ class ExportCommand:  # pylint: disable=too-few-public-methods
             picked = self._prompt_for_network()
             if not picked:
                 print()
-                _info("No network selected. Exiting.")
+                CliStatus.info("No network selected. Exiting.")
                 print()
                 return
             self.network = picked
@@ -62,21 +60,21 @@ class ExportCommand:  # pylint: disable=too-few-public-methods
             result = exporter.export(self.network, output_path=self.output)
         except FileNotFoundError as exc:
             print()
-            _err(str(exc))
+            CliStatus.err(str(exc))
             print()
             sys.exit(1)
         except ValueError as exc:
             print()
-            _err(str(exc))
+            CliStatus.err(str(exc))
             print()
             sys.exit(1)
 
         print()
-        _ok(f"Exported '{result.network_name}' -> {result.output_path}")
+        CliStatus.ok(f"Exported '{result.network_name}' -> {result.output_path}")
         self._print_dep_summary(result)
         if result.warnings:
             print()
-            _warn(f"Warnings ({len(result.warnings)}):")
+            CliStatus.warn(f"Warnings ({len(result.warnings)}):")
             for w in result.warnings:
                 print(f"        - {w}")
         print()
@@ -94,7 +92,7 @@ class ExportCommand:  # pylint: disable=too-few-public-methods
         ):
             return
         print()
-        _info("Included dependencies:")
+        CliStatus.info("Included dependencies:")
         if deps.sub_networks:
             print(f"        sub-networks ({len(deps.sub_networks)}):")
             for ref in deps.sub_networks:
@@ -129,24 +127,28 @@ class ExportCommand:  # pylint: disable=too-few-public-methods
             networks_by_group = registry.discover()
         except FileNotFoundError as exc:
             print()
-            _err(str(exc))
+            CliStatus.err(str(exc))
             print()
             return None
 
         if not networks_by_group:
             print()
-            _err("No networks declared in the project's manifest. Add some first or pass a name.")
+            CliStatus.err("No networks declared in the project's manifest. Add some first or pass a name.")
             print()
             return None
 
         choices = self._build_picker_choices(networks_by_group)
         try:
-            return questionary.select(
+            question = questionary.select(
                 "Pick a network to export:",
                 choices=choices,
-            ).ask()
+            )
+            answer = CliPrompt.bind_exit_on_esc(question).ask()
         except (KeyboardInterrupt, EOFError):
             return None
+        if answer is None or answer == CliPrompt.EXIT:
+            return None
+        return answer
 
     @staticmethod
     def _build_picker_choices(networks_by_group: Dict[str, List[str]]) -> List:

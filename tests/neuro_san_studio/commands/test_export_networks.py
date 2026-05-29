@@ -40,12 +40,23 @@ def _scaffold_project(project_dir: Path) -> None:
     )
 
 
+class _StubApplication:  # pylint: disable=too-few-public-methods
+    """Just enough of questionary's application surface for the Esc-binding helper to attach."""
+
+    def __init__(self) -> None:
+        # pylint: disable-next=import-outside-toplevel
+        from prompt_toolkit.key_binding import KeyBindings
+
+        self.key_bindings = KeyBindings()
+
+
 class _StubQuestion:  # pylint: disable=too-few-public-methods
     """Stand-in for ``questionary.select(...)`` — captures the choices and returns a preset value."""
 
     def __init__(self, return_value: Optional[str], capture: dict) -> None:
         self._return_value = return_value
         self._capture = capture
+        self.application = _StubApplication()
 
     def ask(self) -> Optional[str]:
         """Return the preset value, mimicking questionary's blocking ask()."""
@@ -117,6 +128,9 @@ class TestInteractivePicker:
 
         class _RaisingQuestion:  # pylint: disable=too-few-public-methods
             """Stub questionary object whose ask() raises KeyboardInterrupt."""
+
+            def __init__(self) -> None:
+                self.application = _StubApplication()
 
             def ask(self):
                 """Simulate Ctrl-C at the prompt."""
