@@ -189,6 +189,19 @@ class ProcessLogBridge(ProcessLoggerInterface):
         self._streams: Dict[Tuple[str, str], Dict[str, Any]] = {}
 
     # ---------- public API ----------
+    def set_console_level(self, level_name: str) -> None:
+        """Update the console (rich) handler level after construction.
+
+        The runner constructs this bridge before argparse runs, so a
+        ``--log-level`` override is not known at construction time. The runner
+        calls this once the level is resolved, so console verbosity honors the
+        requested level even after ``_ensure_root_configured`` installs the rich
+        handler on first process attach. The file handler stays at DEBUG so the
+        runner log keeps full detail regardless of console verbosity.
+        """
+        self.level_name = level_name.upper()
+        self.rich_handler.setLevel(getattr(logging, self.level_name, logging.INFO))
+
     def _ensure_root_configured(self) -> None:
         """Configure the root logger with rich + file handlers (idempotent)."""
         if self._root_configured:

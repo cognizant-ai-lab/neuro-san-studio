@@ -176,13 +176,20 @@ class NeuroSanRunner:
         root.setLevel(level)
 
     def _apply_log_level(self, level_name: str) -> None:
-        """Re-apply the resolved log level to the root logger after argparse.
+        """Re-apply the resolved log level after argparse.
 
-        The early bootstrap resolves the level from argv/env, but a value set via
-        a plugin-contributed flag or normalized during parsing is only known after
-        ``parse_args``; this keeps the root logger in sync with the final value.
+        The early bootstrap resolves the level from argv/env, but the final value
+        is only known after ``parse_args``; this keeps the root logger in sync.
+        It also propagates the level to any process-logger plugin (e.g. the
+        ProcessLogBridge) whose console handler was frozen at construction time,
+        before ``--log-level`` was parsed, so console verbosity honors the override
+        even after the plugin reconfigures the root logger on process attach.
         """
         logging.getLogger().setLevel(self._resolve_log_level(level_name))
+        for plugin in getattr(self, "plugins", []):
+            set_console_level = getattr(plugin, "set_console_level", None)
+            if callable(set_console_level):
+                set_console_level(level_name)
 
     def _apply_toolbox_env(self) -> None:
         """Export AGENT_TOOLBOX_INFO_FILE only if a user-provided toolbox path is configured.

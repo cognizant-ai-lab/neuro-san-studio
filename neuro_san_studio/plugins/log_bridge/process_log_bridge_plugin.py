@@ -44,6 +44,17 @@ class ProcessLogBridgePlugin(BasePlugin, ProcessLoggerInterface):
             runner_log_file=self.log_file,
         )
 
+    def set_console_level(self, level_name: str) -> None:
+        """Propagate a resolved log level to the internal ProcessLogBridge.
+
+        Lets the runner honor a ``--log-level`` override that was parsed after
+        this plugin (and its bridge) were constructed.
+
+        Args:
+            level_name: Log-level name (e.g. "warning") for the console handler.
+        """
+        self.log_bridge.set_console_level(level_name)
+
     def attach_process_logger(self, process, process_name: str, log_file: str) -> None:
         """Delegate to the internal ProcessLogBridge instance.
 

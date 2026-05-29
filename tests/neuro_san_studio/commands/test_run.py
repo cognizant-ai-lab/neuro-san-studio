@@ -343,6 +343,45 @@ class TestNeuroSanRunner:  # pylint: disable=too-many-public-methods
         self._make_runner()._apply_log_level("warning")
         assert logging.getLogger().level == logging.WARNING
 
+    def test_apply_log_level_propagates_to_process_logger_plugin(self) -> None:
+        """_apply_log_level forwards the resolved level to a plugin that supports it.
+
+        Covers the default run path where a process-logger plugin (the
+        ProcessLogBridge) is constructed before --log-level is parsed, so its
+        console level must be updated afterwards or the override is lost.
+        """
+        recorded: list[str] = []
+        runner = self._make_runner()
+        runner.plugins = [SimpleNamespace(set_console_level=recorded.append)]
+        runner._apply_log_level("warning")
+        assert recorded == ["warning"]
+        assert logging.getLogger().level == logging.WARNING
+
+    def test_apply_log_level_skips_plugin_without_setter(self) -> None:
+        """Plugins lacking set_console_level are skipped without error."""
+        runner = self._make_runner()
+        runner.plugins = [SimpleNamespace(name="no-logging-hook")]
+        runner._apply_log_level("warning")  # must not raise
+        assert logging.getLogger().level == logging.WARNING
+
+    def test_process_log_bridge_plugin_honors_late_log_level(self, monkeypatch: MonkeyPatch, tmp_path: Path) -> None:
+        """End-to-end handoff: a real ProcessLogBridgePlugin adopts a level resolved after construction.
+
+        Reproduces the reported failure path: the bridge is built with the
+        pre-parse level ("info"), then the runner applies the resolved "warning"
+        after argparse, and the bridge's console handler must follow.
+        """
+        # pylint: disable=import-outside-toplevel
+        from neuro_san_studio.plugins.log_bridge.process_log_bridge_plugin import ProcessLogBridgePlugin
+
+        monkeypatch.chdir(tmp_path)
+        plugin = ProcessLogBridgePlugin(args={"logs_dir": str(tmp_path / "logs"), "log_level": "info"})
+        assert plugin.log_bridge.rich_handler.level == logging.INFO
+        runner = self._make_runner()
+        runner.plugins = [plugin]
+        runner._apply_log_level("warning")
+        assert plugin.log_bridge.rich_handler.level == logging.WARNING
+
     def test_load_env_variables_logs_when_missing(self, tmp_path: Path, caplog: LogCaptureFixture) -> None:
         """With no .env present, the 'using defaults' notice is logged at INFO."""
         runner = self._make_runner()
