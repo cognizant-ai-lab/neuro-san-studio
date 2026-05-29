@@ -18,6 +18,7 @@
 
 import logging
 import os
+import sys
 from collections.abc import Callable
 from collections.abc import Iterable
 from pathlib import Path
@@ -34,6 +35,25 @@ from neuro_san_studio.commands.run import NeuroSanRunner
 
 class TestNeuroSanRunner:  # pylint: disable=too-many-public-methods
     """Tests for NeuroSanRunner"""
+
+    @pytest.fixture(autouse=True)
+    def _restore_root_logger(self):
+        """Snapshot and restore the root logger around each test.
+
+        ``_configure_logging`` mutates the global root logger (handlers + level)
+        and opens a ``runner.log`` file handler, so restore the prior state and
+        close any file handlers added during the test to avoid leaking config or
+        descriptors into other tests.
+        """
+        root = logging.getLogger()
+        saved_handlers = root.handlers[:]
+        saved_level = root.level
+        yield
+        for handler in root.handlers[:]:
+            if handler not in saved_handlers and isinstance(handler, logging.FileHandler):
+                handler.close()
+        root.handlers[:] = saved_handlers
+        root.setLevel(saved_level)
 
     @staticmethod
     def _make_runner() -> NeuroSanRunner:
@@ -248,10 +268,80 @@ class TestNeuroSanRunner:  # pylint: disable=too-many-public-methods
         source = Path(run_module.__file__).read_text(encoding="utf-8")
         assert "print(" not in source
 
-    def test_configure_logging_installs_root_handler(self) -> None:
-        """_configure_logging must leave the root logger with at least one handler."""
-        NeuroSanRunner._configure_logging()  # pylint: disable=protected-access
-        assert logging.getLogger().handlers
+    def test_resolve_log_level_maps_names(self) -> None:
+        """_resolve_log_level maps names case-insensitively and defaults to INFO."""
+        assert NeuroSanRunner._resolve_log_level("warning") == logging.WARNING
+        assert NeuroSanRunner._resolve_log_level("DEBUG") == logging.DEBUG
+        assert NeuroSanRunner._resolve_log_level("bogus") == logging.INFO
+
+    def test_early_log_level_prefers_cli_flag(self, monkeypatch: MonkeyPatch) -> None:
+        """--log-level on argv wins over the LOG_LEVEL env var."""
+        monkeypatch.setenv("LOG_LEVEL", "error")
+        monkeypatch.setattr(sys, "argv", ["ns", "run", "--log-level", "warning"])
+        assert NeuroSanRunner._early_log_level() == "warning"
+
+    def test_early_log_level_accepts_equals_form(self, monkeypatch: MonkeyPatch) -> None:
+        """The --log-level=value form is parsed as well as the space-separated form."""
+        monkeypatch.delenv("LOG_LEVEL", raising=False)
+        monkeypatch.setattr(sys, "argv", ["ns", "run", "--log-level=debug"])
+        assert NeuroSanRunner._early_log_level() == "debug"
+
+    def test_early_log_level_falls_back_to_env(self, monkeypatch: MonkeyPatch) -> None:
+        """Without a CLI flag, the LOG_LEVEL env var is used."""
+        monkeypatch.setenv("LOG_LEVEL", "warning")
+        monkeypatch.setattr(sys, "argv", ["ns", "run"])
+        assert NeuroSanRunner._early_log_level() == "warning"
+
+    def test_configure_logging_honors_log_level(self, monkeypatch: MonkeyPatch, tmp_path: Path) -> None:
+        """Regression for #994: LOG_LEVEL=warning suppresses INFO startup chatter.
+
+        The earlier bootstrap hard-coded INFO; this asserts the root level follows
+        the requested level so info-level runner messages are dropped.
+        """
+        monkeypatch.chdir(tmp_path)
+        monkeypatch.setenv("LOG_LEVEL", "warning")
+        monkeypatch.setattr(sys, "argv", ["ns", "run"])
+        logging.getLogger().handlers.clear()
+        self._make_runner()._configure_logging()
+        assert logging.getLogger().level == logging.WARNING
+
+    def test_configure_logging_writes_runner_log(self, monkeypatch: MonkeyPatch, tmp_path: Path) -> None:
+        """Regression for #994: early runner output is captured in logs/runner.log.
+
+        Messages logged before the ProcessLogBridge attaches (which happens only
+        on first process start) must still reach the runner log, not just the
+        console.
+        """
+        monkeypatch.chdir(tmp_path)
+        monkeypatch.setenv("LOG_LEVEL", "info")
+        monkeypatch.setattr(sys, "argv", ["ns", "run"])
+        logging.getLogger().handlers.clear()
+        runner = self._make_runner()
+        runner._configure_logging()
+        runner._logger.info("startup probe line")
+        for handler in logging.getLogger().handlers:
+            handler.flush()
+        runner_log = tmp_path / "logs" / "runner.log"
+        assert runner_log.is_file()
+        assert "startup probe line" in runner_log.read_text(encoding="utf-8")
+
+    def test_configure_logging_does_not_stack_handlers(self, monkeypatch: MonkeyPatch, tmp_path: Path) -> None:
+        """When the root logger already has handlers, only the level is applied."""
+        monkeypatch.chdir(tmp_path)
+        monkeypatch.setenv("LOG_LEVEL", "warning")
+        monkeypatch.setattr(sys, "argv", ["ns", "run"])
+        root = logging.getLogger()
+        root.handlers.clear()
+        sentinel = logging.NullHandler()
+        root.addHandler(sentinel)
+        self._make_runner()._configure_logging()
+        assert root.handlers == [sentinel]
+        assert root.level == logging.WARNING
+
+    def test_apply_log_level_overrides_after_parse(self) -> None:
+        """_apply_log_level updates the root logger to the resolved level (CLI override)."""
+        self._make_runner()._apply_log_level("warning")
+        assert logging.getLogger().level == logging.WARNING
 
     def test_load_env_variables_logs_when_missing(self, tmp_path: Path, caplog: LogCaptureFixture) -> None:
         """With no .env present, the 'using defaults' notice is logged at INFO."""

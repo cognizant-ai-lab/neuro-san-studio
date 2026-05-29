@@ -105,26 +105,84 @@ class NeuroSanRunner:
 
         # Parse command-line arguments
         self.args.update(self.parse_args())
+        # Re-apply the resolved log level now that --log-level has been parsed, so a
+        # CLI override that was not visible during the early bootstrap takes effect.
+        self._apply_log_level(self.args["log_level"])
 
         # Process references
         self.server_process = None
         self.nsflow_process = None
 
     @staticmethod
-    def _configure_logging() -> None:
-        """Install a basic root console handler so runner output is visible.
+    def _resolve_log_level(level_name: str) -> int:
+        """Map a log-level name (e.g. "warning") to its logging level int, defaulting to INFO."""
+        return getattr(logging, str(level_name).upper(), logging.INFO)
 
-        Runner messages are emitted through ``self._logger`` so they honor the
-        logging configuration (level, formatter, and the ProcessLogBridge rich
-        handler) instead of going straight to stdout. Without this bootstrap the
-        earliest messages, logged before the plugin layer configures the root
-        logger, would be dropped because the root logger defaults to WARNING with
-        no handler. ``basicConfig`` is idempotent: it only adds a handler when the
-        root logger has none, and the ProcessLogBridge later calls
-        ``root.handlers.clear()`` before installing its rich handler, so this
-        hands off cleanly without duplicate output.
+    @staticmethod
+    def _early_log_level() -> str:
+        """Resolve the requested log level before argparse runs.
+
+        Scans sys.argv for --log-level so even the earliest startup messages
+        honor a CLI override, falling back to the LOG_LEVEL env var and finally
+        "info". The full argparse pass later re-applies the resolved level.
         """
-        logging.basicConfig(level=logging.INFO, format="%(message)s")
+        argv = sys.argv[1:]
+        for index, arg in enumerate(argv):
+            if arg == "--log-level" and index + 1 < len(argv):
+                return argv[index + 1]
+            if arg.startswith("--log-level="):
+                return arg.split("=", 1)[1]
+        return os.getenv("LOG_LEVEL", "info")
+
+    def _configure_logging(self) -> None:
+        """Configure root logging so runner output is visible and honors the log level.
+
+        Runner messages are emitted through ``self._logger`` so they are governed
+        by the logging configuration rather than going straight to stdout. This
+        bootstrap runs before argparse, so it resolves the level from
+        ``--log-level`` (scanned from argv) or ``LOG_LEVEL``, and attaches a
+        console handler plus a ``logs/runner.log`` file handler so even the
+        earliest startup messages are captured both on the console and in the
+        runner log. The ProcessLogBridge later calls ``root.handlers.clear()``
+        before installing its rich + rotating-file handlers, so this hands off
+        cleanly without duplicate output. When the root logger is already
+        configured (e.g. by an imported module's ``basicConfig``), only the level
+        is applied so handlers are never stacked.
+        """
+        level = self._resolve_log_level(self._early_log_level())
+        root = logging.getLogger()
+        if root.handlers:
+            root.setLevel(level)
+            return
+
+        console_handler = logging.StreamHandler()
+        console_handler.setFormatter(logging.Formatter("%(message)s"))
+        root.addHandler(console_handler)
+
+        # Mirror early runner output to logs/runner.log so it is captured before
+        # the ProcessLogBridge installs its own rotating file handler. logs_dir is
+        # derived the same way __init__ derives it, since __init__ has not set the
+        # attribute yet when this runs.
+        logs_dir = os.path.join(os.getcwd(), "logs")
+        try:
+            os.makedirs(logs_dir, exist_ok=True)
+            file_handler = logging.FileHandler(os.path.join(logs_dir, "runner.log"), encoding="utf-8")
+            file_handler.setFormatter(logging.Formatter("%(asctime)s | %(levelname)-8s | %(name)s - %(message)s"))
+            root.addHandler(file_handler)
+        except OSError:
+            # If the logs directory cannot be created, fall back to console only.
+            pass
+
+        root.setLevel(level)
+
+    def _apply_log_level(self, level_name: str) -> None:
+        """Re-apply the resolved log level to the root logger after argparse.
+
+        The early bootstrap resolves the level from argv/env, but a value set via
+        a plugin-contributed flag or normalized during parsing is only known after
+        ``parse_args``; this keeps the root logger in sync with the final value.
+        """
+        logging.getLogger().setLevel(self._resolve_log_level(level_name))
 
     def _apply_toolbox_env(self) -> None:
         """Export AGENT_TOOLBOX_INFO_FILE only if a user-provided toolbox path is configured.
