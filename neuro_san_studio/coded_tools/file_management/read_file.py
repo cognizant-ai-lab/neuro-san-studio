@@ -14,6 +14,7 @@
 #
 # END COPYRIGHT
 
+import asyncio
 from datetime import datetime
 from datetime import timezone
 from logging import Logger
@@ -100,12 +101,12 @@ class ReadFile(CodedTool):
         """
         logger: Logger = getLogger(self.__class__.__name__)
 
-        file_path: Path = self._resolve_path(args)
+        file_path: Path = await self._async_resolve_path(args)
         # Run access checks before touching the filesystem so out-of-scope paths
         # always return path_not_allowed — never leaking existence information.
-        self._validate_and_check_access(args, file_path)
-        self._check_path_exists(file_path)
-        self._check_file_size(file_path)
+        await self._async_validate_and_check_access(args, file_path)
+        await self._async_check_path_exists(file_path)
+        await self._async_check_file_size(file_path)
         start_line, end_line = self._validate_line_range(args)
         max_chars: int = self._validate_max_content_chars(args)
 
@@ -137,6 +138,30 @@ class ReadFile(CodedTool):
             "total_lines": total_lines,
             "read_at": datetime.now(timezone.utc).isoformat(),
         }
+
+    # ------------------------------------------------------------------
+    # Async wrappers for pre-read checks
+    #
+    # Each wrapper offloads its sync counterpart to a worker thread so the
+    # event loop is never blocked by Path resolution, stat(), or symlink-
+    # following syscalls. The sync helpers stay independently testable.
+    # ------------------------------------------------------------------
+
+    async def _async_resolve_path(self, args: dict[str, Any]) -> Path:
+        """Async wrapper around _resolve_path."""
+        return await asyncio.to_thread(self._resolve_path, args)
+
+    async def _async_validate_and_check_access(self, args: dict[str, Any], file_path: Path) -> None:
+        """Async wrapper around _validate_and_check_access."""
+        await asyncio.to_thread(self._validate_and_check_access, args, file_path)
+
+    async def _async_check_path_exists(self, file_path: Path) -> None:
+        """Async wrapper around _check_path_exists."""
+        await asyncio.to_thread(self._check_path_exists, file_path)
+
+    async def _async_check_file_size(self, file_path: Path) -> None:
+        """Async wrapper around _check_file_size."""
+        await asyncio.to_thread(self._check_file_size, file_path)
 
     # ------------------------------------------------------------------
     # Validation helpers
