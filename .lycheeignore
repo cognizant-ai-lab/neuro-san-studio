@@ -21,9 +21,7 @@ https://www.united.com/
 https://mcp/
 
 # URLs whose base path is not browsable (returns 400 or 404)
-https://raw.githubusercontent.com/anthropics/skills/main/skills/brand-guidelines/
-https://raw.githubusercontent.com/anthropics/skills/main/skills/doc-coauthoring/
-https://raw.githubusercontent.com/anthropics/skills/main/skills/internal-comms/
+https://raw.githubusercontent.com/anthropics/skills/main/skills/
 https://api.anthropic.com/
 https://api.smith.langchain.com/
 https://api.salesforce.com
