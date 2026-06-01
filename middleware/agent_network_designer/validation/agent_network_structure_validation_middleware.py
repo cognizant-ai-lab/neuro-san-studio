@@ -62,9 +62,9 @@ class AgentNetworkStructureValidationMiddleware(AgentNetworkValidationMiddleware
         toolbox_tools: dict[str, Any] = await GetToolbox.get_toolbox_info(self.sly_data)
 
         return (
-            # The structure validator checks for the followingstructural issues:
-            # - tools shape: tools field must be a list of strings or dictionaries
-            # - cycle networks: the network must not contain cycles
+            # The structure validator checks for the following structural issues:
+            # - tools shape: the tools field must be a list of strings or dictionaries
+            # - cyclic networks: the network must not contain cycles
             # - missing agents: all agents referred to in "tools" must be defined in the network
             # - unreachable nodes: all agents must be reachable
             StructureNetworkValidator().validate(network_def)
