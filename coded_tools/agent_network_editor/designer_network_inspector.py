@@ -55,11 +55,17 @@ class DesignerNetworkInspector(AgentNetworkInspector):
         """
         return agent_spec.get("name")
 
-    def find_front_man(self) -> str:
+    def find_front_man(self) -> str | None:
         """
         :return: A single tool name to use as the root of the chat agent.
-                 This guy will be user facing.  If there are none or > 1,
-                 an exception will be raised.
+                 This guy will be user facing.
+                 Returns None when no front-man exists yet (e.g., during interactive
+                 build before an entry agent has been added) — cardinality errors
+                 (zero or multiple front-men) are surfaced by the validation
+                 middleware rather than raised here, so the designer agent can
+                 iteratively fix the network.
+                 When multiple front-men exist, an arbitrary one is returned;
+                 callers are expected to have already validated the network.
         """
         # The validator stuff uses the same internal network dictionary format
         validator = UnreachableNodesNetworkValidator()
