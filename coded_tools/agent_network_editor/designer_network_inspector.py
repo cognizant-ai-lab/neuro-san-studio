@@ -63,7 +63,7 @@ class DesignerNetworkInspector(AgentNetworkInspector):
         """
         # The validator stuff uses the same internal network dictionary format
         validator = UnreachableNodesNetworkValidator()
-        front_men: set[str] = validator.find_all_top_agents(self.network_def)
+        front_men: set[str] = validator.find_all_front_man_agents(self.network_def)
         if len(front_men) == 0:
             return None
 
