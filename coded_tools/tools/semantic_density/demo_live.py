@@ -143,7 +143,8 @@ class DemoRunner:
             "The challenge was: this was a great algorithm, trapped in a single-page demo. "
             "It couldn't be reused by any other system. "
             "Our goal was to productionize it into a Coded Tool "
-            "that any neuro-san agent network can call.")
+            "that any neuro-san agent network can call, "
+            "provided it has access to a GPU for the inference.")
         self._wait_for_speech(12)
 
         self._speak(
@@ -164,16 +165,16 @@ class DemoRunner:
 
         self._speak(
             "Step three: we defined the agent network in HOCON. "
-            "A QA Manager orchestrates two sub-agents: "
+            "A Soothsayer agent orchestrates two sub-agents: "
             "an Answerer that generates responses, "
             "and a Confidence Checker that calls our new Coded Tool. "
-            "The Manager then adapts its response based on the confidence score.")
+            "The Soothsayer then adapts its response based on the confidence score.")
         self._wait_for_speech(12)
 
         self._speak(
             "Before calling this done, we ran the code through our Code Fink playbook. "
             "That's a Devin playbook we built that reviews code through Dan Fink's eyes, "
-            "our most thorough reviewer. "
+            "one of our most thorough reviewers. "
             "It flagged a few things: the singleton was a standalone function, not on the class. "
             "The demo had bare functions instead of a proper class. "
             "And the exception handler was a catch-all except Exception. "
@@ -198,9 +199,9 @@ class DemoRunner:
         self._speak(f"Question {index}: {question}. This is a {category_label} question.")
         self._wait_for_speech(5)
 
-        # Step 1: QA Manager receives the question
-        self._print_agent("qa_manager", MAGENTA, f"Received question: \"{question}\"")
-        self._print_agent("qa_manager", MAGENTA, "Delegating to answerer and confidence_checker...")
+        # Step 1: Soothsayer receives the question
+        self._print_agent("soothsayer", MAGENTA, f"Received question: \"{question}\"")
+        self._print_agent("soothsayer", MAGENTA, "Delegating to answerer and confidence_checker...")
         print(f"{DIM}  │{RESET}")
 
         # Step 2: Get the answer
@@ -240,37 +241,37 @@ class DemoRunner:
                 print(f"{DIM}  │    {j+1}. [{dc}d={d:.3f}{RESET}{DIM}] {snippet}{RESET}")
         print(f"{DIM}  │{RESET}")
 
-        # Step 4: QA Manager adapts behavior based on confidence
+        # Step 4: Soothsayer adapts behavior based on confidence
         if score >= self.THRESHOLD_HIGH:
             self._print_agent(
-                "qa_manager", MAGENTA,
+                "soothsayer", MAGENTA,
                 f"{GREEN}{BOLD}✓ HIGH CONFIDENCE{RESET} — presenting answer directly:",
             )
             print(f"  {BOLD}  → {best_answer}{RESET}")
             self._speak(
                 f"Confidence is {score:.2f}, which is high. "
-                f"The manager presents the answer directly: {best_answer}")
+                f"The Soothsayer presents the answer directly: {best_answer}")
         elif score >= self.THRESHOLD_MODERATE:
             self._print_agent(
-                "qa_manager", MAGENTA,
+                "soothsayer", MAGENTA,
                 f"{YELLOW}{BOLD}⚠ MODERATE CONFIDENCE{RESET} — adding caveat:",
             )
             print(f"  {BOLD}  → {best_answer}{RESET}")
             print(f"  {YELLOW}  ⚠ Note: Confidence is moderate ({score:.2f}). Consider verifying.{RESET}")
             self._speak(
                 f"Confidence is {score:.2f}, which is moderate. "
-                f"The manager adds a caveat: the answer is {best_answer}, "
+                f"The Soothsayer adds a caveat: the answer is {best_answer}, "
                 "but you may want to verify this from another source.")
         else:
             self._print_agent(
-                "qa_manager", MAGENTA,
+                "soothsayer", MAGENTA,
                 f"{RED}{BOLD}✗ LOW CONFIDENCE{RESET} — flagging as unreliable:",
             )
             print(f"  {RED}  → ⚠ This answer may be unreliable: {best_answer}{RESET}")
             print(f"  {RED}  → Please verify from authoritative sources.{RESET}")
             self._speak(
                 f"Confidence is only {score:.2f}, which is low. "
-                "The manager flags the answer as potentially unreliable "
+                "The Soothsayer flags the answer as potentially unreliable "
                 "and advises the user to check authoritative sources.")
 
         if elapsed:
@@ -288,7 +289,7 @@ class DemoRunner:
         print(f"  {BOLD}What we built:{RESET}")
         print(f"    • SemanticDensityEngine — core algorithm as a Python class")
         print(f"    • SemanticDensityTool — async CodedTool wrapper for neuro-san")
-        print(f"    • HOCON agent network — qa_manager + answerer + confidence_checker")
+        print(f"    • HOCON agent network — soothsayer + answerer + confidence_checker")
         print(f"    • 9 unit tests, all passing")
         print(f"    • Demo scripts with TTS narration and t-SNE visualization\n")
 
@@ -300,7 +301,7 @@ class DemoRunner:
             "To summarize: we took a research prototype, refactored the algorithm "
             "into a clean engine class, wrapped it as a CodedTool with proper async support, "
             "and wired it into an agent network via HOCON. "
-            "Any neuro-san network can now self-assess confidence. "
+            "Any neuro-san network with GPU access can now self-assess confidence. "
             "High confidence? Give the answer. Low confidence? Flag it. "
             "No external calibration needed. Thanks for watching!")
         self._wait_for_speech(14)
@@ -312,15 +313,15 @@ class DemoRunner:
         self._load_engine_or_cache()
         self._run_intro()
 
-        print(f"{BOLD}{WHITE}  Agent Network: qa_manager → answerer + confidence_checker{RESET}")
-        print(f"{DIM}  The QA Manager asks for an answer, checks confidence,{RESET}")
+        print(f"{BOLD}{WHITE}  Agent Network: soothsayer → answerer + confidence_checker{RESET}")
+        print(f"{DIM}  The Soothsayer asks for an answer, checks confidence,{RESET}")
         print(f"{DIM}  then adapts its response based on the score.{RESET}\n")
         print(f"{DIM}{'─' * 70}{RESET}\n")
 
         self._speak(
             "Let's see it in action. We have a simple agent network: "
-            "a QA Manager that delegates to an Answerer agent and a Confidence Checker. "
-            "Watch how the manager changes its behavior based on the confidence score.")
+            "a Soothsayer that delegates to an Answerer agent and a Confidence Checker. "
+            "Watch how the Soothsayer changes its behavior based on the confidence score.")
         self._wait_for_speech(10)
 
         for i, q_info in enumerate(self.DEMO_QUESTIONS, 1):

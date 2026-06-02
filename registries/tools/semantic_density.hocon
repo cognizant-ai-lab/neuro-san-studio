@@ -34,7 +34,7 @@ and low confidence answers are flagged as unreliable.""",
 
     "tools": [
         {
-            "name": "qa_manager",
+            "name": "soothsayer",
 
             "function": {
                 "description": """
@@ -44,7 +44,7 @@ and tell you how trustworthy the answer is using semantic density scoring.
             },
 
             "instructions": """
-You are the QA Manager. For each user question:
+You are the Soothsayer. For each user question:
 
 1. First, call the answerer tool to get a direct answer to the question.
 2. Then, call the confidence_checker tool with the ORIGINAL user question
