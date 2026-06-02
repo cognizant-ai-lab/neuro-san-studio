@@ -738,8 +738,36 @@
   </ul>
 </div>
 
-<!-- Slide 6: Q1 - Capital of France -->
+<!-- Slide 6: Code Francon Review -->
 <div class="slide" id="slide-6">
+  <h2>Code Review: Code Francon Playbook</h2>
+  <h3>Reviewed through Olivier Francon's eyes — documentation and HOCON patterns</h3>
+  <ul class="checklist">
+    <li id="co-1">
+      <div class="check-icon">✓</div>
+      <div><strong>Example documentation</strong> — created <span class="code-inline">docs/examples/tools/semantic_density.md</span> following repo pattern</div>
+    </li>
+    <li id="co-2">
+      <div class="check-icon">✓</div>
+      <div><strong>Stale references</strong> — fixed <span class="code-inline">qa_manager</span> → <span class="code-inline">soothsayer</span> in docs and demo</div>
+    </li>
+    <li id="co-3">
+      <div class="check-icon">✓</div>
+      <div><strong>HOCON description voice</strong> — rewrote function.description from first-person to third-person</div>
+    </li>
+    <li id="co-4">
+      <div class="check-icon">✓</div>
+      <div><strong>Logging hygiene</strong> — lazy <span class="code-inline">%s</span> formatting, no <span class="code-inline">sly_data</span> leaks, no env mutation</div>
+    </li>
+    <li id="co-5">
+      <div class="check-icon">✓</div>
+      <div><strong>Import & config patterns</strong> — absolute imports only, standard <span class="code-inline">llm_config.hocon</span> include</div>
+    </li>
+  </ul>
+</div>
+
+<!-- Slide 7: Q1 - Capital of France -->
+<div class="slide" id="slide-7">
   <div class="question-card">
     <div class="question-text">Q1: "What is the capital of France?"</div>
     <div class="question-category">Factual — single correct answer</div>
@@ -764,8 +792,8 @@
   </div>
 </div>
 
-<!-- Slide 7: Q2 - Best Programming Language -->
-<div class="slide" id="slide-7">
+<!-- Slide 8: Q2 - Best Programming Language -->
+<div class="slide" id="slide-8">
   <div class="question-card">
     <div class="question-text">Q2: "What is the best programming language?"</div>
     <div class="question-category">Subjective — no single right answer</div>
@@ -791,8 +819,8 @@
   </div>
 </div>
 
-<!-- Slide 8: Q3 - Multiplication -->
-<div class="slide" id="slide-8">
+<!-- Slide 9: Q3 - Multiplication -->
+<div class="slide" id="slide-9">
   <div class="question-card">
     <div class="question-text">Q3: "What is 19,879 × 4,390?"</div>
     <div class="question-category">Arithmetic — exact answer, but LLMs struggle</div>
@@ -819,8 +847,8 @@
   </div>
 </div>
 
-<!-- Slide 9: Summary -->
-<div class="slide" id="slide-9">
+<!-- Slide 10: Summary -->
+<div class="slide" id="slide-10">
   <h2>Results</h2>
   <div class="summary-grid">
     <div class="summary-card high-card" id="sc-1">
@@ -857,7 +885,7 @@
 <!-- Audio clips loaded from external JSON file -->
 <script id="audio-data" type="application/json" src=""></script>
 <script>
-const TOTAL_SLIDES = 10;
+const TOTAL_SLIDES = 11;
 let currentSlide = 0;
 let isTransitioning = false;
 let currentAudio = null;
@@ -982,18 +1010,24 @@ function animateSlide(index) {
       break;
 
     case 6:
-      animateQuestion(1, 'high', 0.999);
+      ['co-1','co-2','co-3','co-4','co-5'].forEach((id, i) => {
+        setTimeout(() => document.getElementById(id).classList.add('visible'), 400 + i * 500);
+      });
       break;
 
     case 7:
-      animateQuestion(2, 'moderate', 0.895);
+      animateQuestion(1, 'high', 0.999);
       break;
 
     case 8:
-      animateQuestion(3, 'low', 0.226);
+      animateQuestion(2, 'moderate', 0.895);
       break;
 
     case 9:
+      animateQuestion(3, 'low', 0.226);
+      break;
+
+    case 10:
       ['sc-1','sc-2','sc-3'].forEach((id, i) => {
         setTimeout(() => document.getElementById(id).classList.add('visible'), 400 + i * 500);
       });
