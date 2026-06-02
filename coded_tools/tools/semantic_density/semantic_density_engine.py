@@ -34,10 +34,6 @@ from transformers import AutoTokenizer
 
 logger = logging.getLogger(__name__)
 
-# Module-level singleton lock
-_ENGINE_LOCK = threading.Lock()
-_ENGINE_INSTANCE = None
-
 # Default configuration
 DEFAULT_GENERATION_MODEL = "Qwen/Qwen2.5-7B-Instruct"
 DEFAULT_NLI_MODEL = "microsoft/deberta-large-mnli"
@@ -49,16 +45,6 @@ DEFAULT_TEMPERATURE = 1.0
 SYSTEM_PROMPT = "Answer the following question concisely in one or two sentences."
 
 
-def get_engine(**kwargs: Any) -> "SemanticDensityEngine":
-    """Return the module-level singleton engine, creating it on first call."""
-    global _ENGINE_INSTANCE  # pylint: disable=global-statement
-    if _ENGINE_INSTANCE is None:
-        with _ENGINE_LOCK:
-            if _ENGINE_INSTANCE is None:
-                _ENGINE_INSTANCE = SemanticDensityEngine(**kwargs)
-    return _ENGINE_INSTANCE
-
-
 class SemanticDensityEngine:
     """
     Encapsulates the four core semantic density algorithm steps:
@@ -68,6 +54,20 @@ class SemanticDensityEngine:
     3. NLI semantic distance — pairwise contradiction/neutral scoring
     4. Semantic density — weighted density combining distance and probability
     """
+
+    # Singleton state — class-level to avoid module globals.
+    # Double-checked locking ensures thread-safe lazy initialization.
+    _instance_lock = threading.Lock()
+    _instance = None
+
+    @classmethod
+    def get_instance(cls, **kwargs: Any) -> "SemanticDensityEngine":
+        """Return the singleton engine, creating it on first call."""
+        if cls._instance is None:
+            with cls._instance_lock:
+                if cls._instance is None:
+                    cls._instance = cls(**kwargs)
+        return cls._instance
 
     def __init__(
         self,
@@ -203,7 +203,13 @@ class SemanticDensityEngine:
         answer: str,
         temperature: float,
     ) -> float:
-        """Compute geometric mean of token probabilities for a single answer."""
+        """Compute geometric mean of token probabilities for a single answer.
+
+        Re-encodes [prompt + answer], extracts logits for the answer-only
+        tokens, applies temperature scaling, then returns the geometric
+        mean of selected token probabilities.  This is our own helper —
+        not an override.
+        """
         full_text = prompt_text + answer
         inputs = self._gen_tokenizer(full_text, return_tensors="pt").to(self._device)
         input_ids = inputs["input_ids"]
@@ -254,7 +260,11 @@ class SemanticDensityEngine:
         return distance_matrix
 
     def _nli_distance_pair(self, premise: str, hypothesis: str) -> float:
-        """Compute NLI distance for a single (premise, hypothesis) pair."""
+        """Compute NLI distance for a single (premise, hypothesis) pair.
+
+        distance = P(contradiction) + 0.5 * P(neutral) from DeBERTa-large-MNLI.
+        This is our own helper — not an override.
+        """
         inputs = self._nli_tokenizer(premise, hypothesis, return_tensors="pt", truncation=True, max_length=512).to(
             self._device
         )

@@ -27,11 +27,15 @@ Usage:
 
 import argparse
 import json
+import logging
 import os
 import sys
 import time
-import urllib.request
+import urllib.error
 import urllib.parse
+import urllib.request
+
+logger = logging.getLogger(__name__)
 
 # ANSI color codes
 GREEN = "\033[92m"
@@ -45,226 +49,284 @@ WHITE = "\033[97m"
 MAGENTA = "\033[95m"
 BLUE = "\033[94m"
 
-# Confidence thresholds for agent behavior
-THRESHOLD_HIGH = 0.9
-THRESHOLD_MODERATE = 0.75
 
-DEMO_QUESTIONS = [
-    {
-        "question": "What is the capital of France?",
-        "category": "Factual — single correct answer",
-    },
-    {
-        "question": "What is the best programming language?",
-        "category": "Subjective — no single right answer",
-    },
-    {
-        "question": "What will the stock market do tomorrow?",
-        "category": "Unpredictable — genuinely uncertain",
-    },
-]
+class DemoRunner:
+    """Orchestrates the FedEx Day semantic density demo.
 
+    Simulates an agent network (qa_manager -> answerer + confidence_checker)
+    with colored terminal output and optional TTS narration.
+    """
 
-def speak(audio_url, text, voice="nova"):
-    """Send TTS narration if audio URL is configured."""
-    if not audio_url:
-        return
-    try:
-        encoded = urllib.parse.urlencode({"text": text, "voice": voice})
-        url = f"{audio_url}/speak?{encoded}"
-        req = urllib.request.Request(url, method="POST")
-        with urllib.request.urlopen(req, timeout=30) as resp:
-            resp.read()
-    except Exception:
-        pass
+    THRESHOLD_HIGH = 0.9
+    THRESHOLD_MODERATE = 0.75
 
+    DEMO_QUESTIONS = [
+        {
+            "question": "What is the capital of France?",
+            "category": "Factual — single correct answer",
+        },
+        {
+            "question": "What is the best programming language?",
+            "category": "Subjective — no single right answer",
+        },
+        {
+            "question": "What will the stock market do tomorrow?",
+            "category": "Unpredictable — genuinely uncertain",
+        },
+    ]
 
-def wait_for_speech(seconds):
-    """Pause to let TTS finish playing."""
-    time.sleep(seconds)
+    def __init__(self, audio_url=None, precomputed_path=None):
+        self._audio_url = audio_url
+        self._precomputed_path = precomputed_path
+        self._cached = None
+        self._engine = None
 
+    def _speak(self, text, voice="nova"):
+        """Send TTS narration if audio URL is configured."""
+        if not self._audio_url:
+            return
+        try:
+            encoded = urllib.parse.urlencode({"text": text, "voice": voice})
+            url = f"{self._audio_url}/speak?{encoded}"
+            req = urllib.request.Request(url, method="POST")
+            with urllib.request.urlopen(req, timeout=30) as resp:
+                resp.read()
+        except (urllib.error.URLError, OSError, TimeoutError) as exc:
+            logger.warning("TTS request failed: %s", exc)
 
-def color_for_score(score):
-    if score >= THRESHOLD_HIGH:
-        return GREEN
-    if score >= THRESHOLD_MODERATE:
-        return YELLOW
-    return RED
+    def _wait_for_speech(self, seconds):
+        """Pause to let TTS finish playing."""
+        time.sleep(seconds)
 
+    def _color_for_score(self, score):
+        """Return ANSI color code based on confidence threshold."""
+        if score >= self.THRESHOLD_HIGH:
+            return GREEN
+        if score >= self.THRESHOLD_MODERATE:
+            return YELLOW
+        return RED
 
-def print_agent(name, color, message):
-    """Print a message as if from an agent."""
-    print(f"  {color}{BOLD}[{name}]{RESET} {message}")
+    def _print_agent(self, name, color, message):
+        """Print a message as if from an agent."""
+        print(f"  {color}{BOLD}[{name}]{RESET} {message}")
 
+    def _load_engine_or_cache(self):
+        """Load precomputed results or initialize the live engine."""
+        if self._precomputed_path:
+            with open(self._precomputed_path, encoding="utf-8") as f:
+                self._cached = json.load(f)
+        else:
+            sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+            from semantic_density_engine import SemanticDensityEngine
+            self._engine = SemanticDensityEngine(
+                generation_model="Qwen/Qwen2.5-7B-Instruct",
+                nli_model="microsoft/deberta-large-mnli",
+                device="cuda:0",
+            )
 
-def run_demo(audio_url=None, precomputed_path=None):
-    """Run the full 5-minute FedEx Day demo."""
+    def _run_intro(self):
+        """Intro section (~45s): what semantic density does + productionization story."""
+        print(f"\n{BOLD}{CYAN}{'═' * 70}{RESET}")
+        print(f"{BOLD}{CYAN}  ╔══════════════════════════════════════════════════════════╗{RESET}")
+        print(f"{BOLD}{CYAN}  ║   Semantic Density — Confidence for Agent Networks      ║{RESET}")
+        print(f"{BOLD}{CYAN}  ║   FedEx Day 2026                                        ║{RESET}")
+        print(f"{BOLD}{CYAN}  ╚══════════════════════════════════════════════════════════╝{RESET}")
+        print(f"{BOLD}{CYAN}{'═' * 70}{RESET}\n")
 
-    # ── INTRO (30s) ──────────────────────────────────────────────────
-    print(f"\n{BOLD}{CYAN}{'═' * 70}{RESET}")
-    print(f"{BOLD}{CYAN}  ╔══════════════════════════════════════════════════════════╗{RESET}")
-    print(f"{BOLD}{CYAN}  ║   Semantic Density — Confidence for Agent Networks      ║{RESET}")
-    print(f"{BOLD}{CYAN}  ║   FedEx Day 2026                                        ║{RESET}")
-    print(f"{BOLD}{CYAN}  ╚══════════════════════════════════════════════════════════╝{RESET}")
-    print(f"{BOLD}{CYAN}{'═' * 70}{RESET}\n")
+        self._speak(
+            "Welcome to our FedEx Day project: Semantic Density for Agent Networks. "
+            "We started with Xin's research demo, a standalone web app that measures "
+            "how confident an LLM really is in its own answers.")
+        self._wait_for_speech(10)
 
-    speak(audio_url,
-          "Welcome to our FedEx Day project: Semantic Density for Agent Networks. "
-          "We took Xin's research demo, a standalone web app that measures LLM confidence, "
-          "and productionized it into a reusable Coded Tool for neuro-san. "
-          "Now any agent network can know when to trust its own answers.")
-    wait_for_speech(14)
+        self._speak(
+            "The challenge was: this was a great algorithm, trapped in a single-page demo. "
+            "It couldn't be reused by any other system. "
+            "Our goal was to productionize it into a Coded Tool "
+            "that any neuro-san agent network can call.")
+        self._wait_for_speech(12)
 
-    speak(audio_url,
-          "The algorithm works in four steps. First, diverse beam search generates "
-          "five different answers. Then we extract token probabilities. "
-          "Next, an NLI model scores how semantically different each pair of answers is. "
-          "Finally, we combine these into a single zero-to-one confidence score.")
-    wait_for_speech(14)
+        self._speak(
+            "Here's what the refactor looked like. "
+            "Step one: we extracted the algorithm into a SemanticDensityEngine class "
+            "with four clean methods, one for each step of the pipeline. "
+            "Diverse beam search, token probability extraction, NLI distance scoring, "
+            "and the final density calculation.")
+        self._wait_for_speech(14)
 
-    # ── AGENT NETWORK DEMO (3.5 min) ────────────────────────────────
-    print(f"{BOLD}{WHITE}  Agent Network: qa_manager → answerer + confidence_checker{RESET}")
-    print(f"{DIM}  The QA Manager asks for an answer, checks confidence,{RESET}")
-    print(f"{DIM}  then adapts its response based on the score.{RESET}\n")
-    print(f"{DIM}{'─' * 70}{RESET}\n")
+        self._speak(
+            "Step two: we wrapped that engine in a SemanticDensityTool, "
+            "a CodedTool subclass with an async invoke method. "
+            "Since GPU inference blocks the thread, we use asyncio to-thread "
+            "to keep the event loop responsive for the rest of the agent network. "
+            "A classmethod singleton ensures we only load the models once.")
+        self._wait_for_speech(14)
 
-    speak(audio_url,
-          "Let's see it in action. We have a simple agent network: "
-          "a QA Manager that delegates to an Answerer agent and a Confidence Checker. "
-          "Watch how the manager changes its behavior based on the confidence score.")
-    wait_for_speech(10)
+        self._speak(
+            "Step three: we defined the agent network in HOCON. "
+            "A QA Manager orchestrates two sub-agents: "
+            "an Answerer that generates responses, "
+            "and a Confidence Checker that calls our new Coded Tool. "
+            "The Manager then adapts its response based on the confidence score.")
+        self._wait_for_speech(12)
 
-    # Load engine or precomputed results
-    if precomputed_path:
-        with open(precomputed_path, encoding="utf-8") as f:
-            cached = json.load(f)
-        engine = None
-    else:
-        sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-        from semantic_density_engine import SemanticDensityEngine
-        engine = SemanticDensityEngine(
-            generation_model="Qwen/Qwen2.5-7B-Instruct",
-            nli_model="microsoft/deberta-large-mnli",
-            device="cuda:0",
-        )
-        cached = None
+    def _run_question(self, index, question_info):
+        """Run a single question through the simulated agent network."""
+        question = question_info.get("question", "")
+        category = question_info.get("category", "")
 
-    for i, q_info in enumerate(DEMO_QUESTIONS, 1):
-        question = q_info["question"]
-        category = q_info["category"]
-
-        print(f"{BOLD}{WHITE}  ┌─ Question {i}: {question}{RESET}")
+        print(f"{BOLD}{WHITE}  ┌─ Question {index}: {question}{RESET}")
         print(f"{DIM}  │  Category: {category}{RESET}")
         print(f"{DIM}  │{RESET}")
 
-        speak(audio_url, f"Question {i}: {question}. This is a {category.split(' — ')[0].lower()} question.")
-        wait_for_speech(5)
+        category_label = category.split(" — ")[0].lower() if " — " in category else "unknown"
+        self._speak(f"Question {index}: {question}. This is a {category_label} question.")
+        self._wait_for_speech(5)
 
         # Step 1: QA Manager receives the question
-        print_agent("qa_manager", MAGENTA, f"Received question: \"{question}\"")
-        print_agent("qa_manager", MAGENTA, "Delegating to answerer and confidence_checker...")
+        self._print_agent("qa_manager", MAGENTA, f"Received question: \"{question}\"")
+        self._print_agent("qa_manager", MAGENTA, "Delegating to answerer and confidence_checker...")
         print(f"{DIM}  │{RESET}")
 
-        # Step 2: Get the answer (simulated answerer agent)
-        if cached and question in cached:
-            result = cached[question]
-            best_answer = result["best_answer"]
-            score = result["confidence_score"]
-            interp = result["interpretation"]
+        # Step 2: Get the answer
+        if self._cached and question in self._cached:
+            result = self._cached[question]
+            best_answer = result.get("best_answer", "")
+            score = result.get("confidence_score", 0.0)
             elapsed = result.get("elapsed", 0)
         else:
             start = time.time()
-            result = engine.evaluate(question)
+            result = self._engine.evaluate(question)
             elapsed = time.time() - start
-            best_answer = result["best_answer"]
-            score = result["confidence_score"]
-            interp = result["interpretation"]
+            best_answer = result.get("best_answer", "")
+            score = result.get("confidence_score", 0.0)
 
-        print_agent("answerer", BLUE, f"\"{best_answer}\"")
+        self._print_agent("answerer", BLUE, f"\"{best_answer}\"")
         print(f"{DIM}  │{RESET}")
 
         # Step 3: Confidence check
-        color = color_for_score(score)
+        color = self._color_for_score(score)
         bar_length = 30
         filled = int(score * bar_length)
         bar = "█" * filled + "░" * (bar_length - filled)
 
-        print_agent("confidence_checker", CYAN,
-                    f"Score: {color}{BOLD}{score:.4f}{RESET} [{color}{bar}{RESET}]")
+        self._print_agent(
+            "confidence_checker", CYAN,
+            f"Score: {color}{BOLD}{score:.4f}{RESET} [{color}{bar}{RESET}]",
+        )
 
-        # Show individual beam answers
-        if "answers_with_scores" in result:
+        answers_with_scores = result.get("answers_with_scores", [])
+        if answers_with_scores:
             print(f"{DIM}  │  Beam search answers:{RESET}")
-            for j, entry in enumerate(result["answers_with_scores"]):
-                d = entry["density"]
-                dc = color_for_score(d)
-                snippet = entry["answer"][:75]
+            for j, entry in enumerate(answers_with_scores):
+                d = entry.get("density", 0.0)
+                dc = self._color_for_score(d)
+                snippet = entry.get("answer", "")[:75]
                 print(f"{DIM}  │    {j+1}. [{dc}d={d:.3f}{RESET}{DIM}] {snippet}{RESET}")
         print(f"{DIM}  │{RESET}")
 
         # Step 4: QA Manager adapts behavior based on confidence
-        if score >= THRESHOLD_HIGH:
-            print_agent("qa_manager", MAGENTA,
-                        f"{GREEN}{BOLD}✓ HIGH CONFIDENCE{RESET} — presenting answer directly:")
+        if score >= self.THRESHOLD_HIGH:
+            self._print_agent(
+                "qa_manager", MAGENTA,
+                f"{GREEN}{BOLD}✓ HIGH CONFIDENCE{RESET} — presenting answer directly:",
+            )
             print(f"  {BOLD}  → {best_answer}{RESET}")
-            speak(audio_url,
-                  f"Confidence is {score:.2f}, which is high. "
-                  f"The manager presents the answer directly: {best_answer}")
-        elif score >= THRESHOLD_MODERATE:
-            print_agent("qa_manager", MAGENTA,
-                        f"{YELLOW}{BOLD}⚠ MODERATE CONFIDENCE{RESET} — adding caveat:")
+            self._speak(
+                f"Confidence is {score:.2f}, which is high. "
+                f"The manager presents the answer directly: {best_answer}")
+        elif score >= self.THRESHOLD_MODERATE:
+            self._print_agent(
+                "qa_manager", MAGENTA,
+                f"{YELLOW}{BOLD}⚠ MODERATE CONFIDENCE{RESET} — adding caveat:",
+            )
             print(f"  {BOLD}  → {best_answer}{RESET}")
             print(f"  {YELLOW}  ⚠ Note: Confidence is moderate ({score:.2f}). Consider verifying.{RESET}")
-            speak(audio_url,
-                  f"Confidence is {score:.2f}, which is moderate. "
-                  f"The manager adds a caveat: the answer is {best_answer}, "
-                  "but you may want to verify this from another source.")
+            self._speak(
+                f"Confidence is {score:.2f}, which is moderate. "
+                f"The manager adds a caveat: the answer is {best_answer}, "
+                "but you may want to verify this from another source.")
         else:
-            print_agent("qa_manager", MAGENTA,
-                        f"{RED}{BOLD}✗ LOW CONFIDENCE{RESET} — flagging as unreliable:")
+            self._print_agent(
+                "qa_manager", MAGENTA,
+                f"{RED}{BOLD}✗ LOW CONFIDENCE{RESET} — flagging as unreliable:",
+            )
             print(f"  {RED}  → ⚠ This answer may be unreliable: {best_answer}{RESET}")
             print(f"  {RED}  → Please verify from authoritative sources.{RESET}")
-            speak(audio_url,
-                  f"Confidence is only {score:.2f}, which is low. "
-                  "The manager flags the answer as potentially unreliable "
-                  "and advises the user to check authoritative sources.")
+            self._speak(
+                f"Confidence is only {score:.2f}, which is low. "
+                "The manager flags the answer as potentially unreliable "
+                "and advises the user to check authoritative sources.")
 
         if elapsed:
             print(f"{DIM}  │  Time: {elapsed:.1f}s{RESET}")
         print(f"{DIM}  └{'─' * 69}{RESET}\n")
 
-        wait_for_speech(8)
+        self._wait_for_speech(8)
 
-    # ── WRAP-UP (30s) ────────────────────────────────────────────────
-    print(f"{BOLD}{CYAN}{'═' * 70}{RESET}")
-    print(f"{BOLD}{CYAN}  Summary{RESET}")
-    print(f"{BOLD}{CYAN}{'═' * 70}{RESET}\n")
+    def _run_wrapup(self):
+        """Wrap-up section (~30s)."""
+        print(f"{BOLD}{CYAN}{'═' * 70}{RESET}")
+        print(f"{BOLD}{CYAN}  Summary{RESET}")
+        print(f"{BOLD}{CYAN}{'═' * 70}{RESET}\n")
 
-    print(f"  {BOLD}What we built:{RESET}")
-    print(f"    • SemanticDensityEngine — core algorithm as a Python class")
-    print(f"    • SemanticDensityTool — async CodedTool wrapper for neuro-san")
-    print(f"    • HOCON agent network — qa_manager + answerer + confidence_checker")
-    print(f"    • 9 unit tests, all passing")
-    print(f"    • Demo scripts with TTS narration and t-SNE visualization\n")
+        print(f"  {BOLD}What we built:{RESET}")
+        print(f"    • SemanticDensityEngine — core algorithm as a Python class")
+        print(f"    • SemanticDensityTool — async CodedTool wrapper for neuro-san")
+        print(f"    • HOCON agent network — qa_manager + answerer + confidence_checker")
+        print(f"    • 9 unit tests, all passing")
+        print(f"    • Demo scripts with TTS narration and t-SNE visualization\n")
 
-    print(f"  {BOLD}Key insight:{RESET}")
-    print(f"    Agents can now {GREEN}self-assess{RESET} their confidence and")
-    print(f"    {GREEN}adapt their behavior{RESET} — no external calibration needed.\n")
+        print(f"  {BOLD}Key insight:{RESET}")
+        print(f"    Agents can now {GREEN}self-assess{RESET} their confidence and")
+        print(f"    {GREEN}adapt their behavior{RESET} — no external calibration needed.\n")
 
-    speak(audio_url,
-          "To summarize: we turned a research prototype into a production "
-          "Coded Tool. Any neuro-san agent network can now self-assess confidence "
-          "and adapt its behavior. High confidence? Give the answer. "
-          "Low confidence? Flag it. No external calibration needed. "
-          "Thanks for watching!")
-    wait_for_speech(12)
+        self._speak(
+            "To summarize: we took a research prototype, refactored the algorithm "
+            "into a clean engine class, wrapped it as a CodedTool with proper async support, "
+            "and wired it into an agent network via HOCON. "
+            "Any neuro-san network can now self-assess confidence. "
+            "High confidence? Give the answer. Low confidence? Flag it. "
+            "No external calibration needed. Thanks for watching!")
+        self._wait_for_speech(14)
 
-    print(f"{BOLD}{CYAN}{'═' * 70}{RESET}\n")
+        print(f"{BOLD}{CYAN}{'═' * 70}{RESET}\n")
+
+    def run(self):
+        """Run the full 5-minute FedEx Day demo."""
+        self._load_engine_or_cache()
+        self._run_intro()
+
+        print(f"{BOLD}{WHITE}  Agent Network: qa_manager → answerer + confidence_checker{RESET}")
+        print(f"{DIM}  The QA Manager asks for an answer, checks confidence,{RESET}")
+        print(f"{DIM}  then adapts its response based on the score.{RESET}\n")
+        print(f"{DIM}{'─' * 70}{RESET}\n")
+
+        self._speak(
+            "Let's see it in action. We have a simple agent network: "
+            "a QA Manager that delegates to an Answerer agent and a Confidence Checker. "
+            "Watch how the manager changes its behavior based on the confidence score.")
+        self._wait_for_speech(10)
+
+        for i, q_info in enumerate(self.DEMO_QUESTIONS, 1):
+            self._run_question(i, q_info)
+
+        self._run_wrapup()
+
+    @staticmethod
+    def main():
+        """CLI entrypoint."""
+        parser = argparse.ArgumentParser(description="FedEx Day 5-minute demo")
+        parser.add_argument("--audio-url", default=None, help="Audio server URL for TTS")
+        parser.add_argument("--precomputed", default=None, help="Path to pre-computed results JSON")
+        cli_args = parser.parse_args()
+
+        demo = DemoRunner(
+            audio_url=cli_args.audio_url,
+            precomputed_path=cli_args.precomputed,
+        )
+        demo.run()
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="FedEx Day 5-minute demo")
-    parser.add_argument("--audio-url", default=None, help="Audio server URL for TTS")
-    parser.add_argument("--precomputed", default=None, help="Path to pre-computed results JSON")
-    args = parser.parse_args()
-    run_demo(audio_url=args.audio_url, precomputed_path=args.precomputed)
+    DemoRunner.main()

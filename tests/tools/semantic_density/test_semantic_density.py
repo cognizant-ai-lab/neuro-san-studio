@@ -202,7 +202,7 @@ class TestSemanticDensityTool:
         }
 
         tool = SemanticDensityTool()
-        with patch("coded_tools.tools.semantic_density.semantic_density_engine.get_engine") as mock_get:
+        with patch.object(SemanticDensityEngine, "get_instance") as mock_get:
             mock_engine = MagicMock()
             mock_engine.evaluate.return_value = mock_result
             mock_get.return_value = mock_engine

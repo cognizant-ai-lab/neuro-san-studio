@@ -56,11 +56,12 @@ class SemanticDensityTool(CodedTool):
             return json.dumps({"error": "No question provided."})
 
         # Import here to avoid loading heavy deps at module import time
-        from coded_tools.tools.semantic_density.semantic_density_engine import get_engine
+        from coded_tools.tools.semantic_density.semantic_density_engine import SemanticDensityEngine
 
-        engine = get_engine()
+        engine = SemanticDensityEngine.get_instance()
 
-        # Wrap blocking GPU operations in a thread to avoid stalling the event loop
+        # GPU inference truly blocks — must run in a thread to keep the
+        # async event loop responsive for other agents in the network.
         result = await asyncio.to_thread(engine.evaluate, question)
 
         return json.dumps(result)
