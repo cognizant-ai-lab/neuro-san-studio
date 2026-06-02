@@ -38,8 +38,9 @@ and low confidence answers are flagged as unreliable.""",
 
             "function": {
                 "description": """
-I help answer questions with confidence assessment. I will answer your question
-and tell you how trustworthy the answer is using semantic density scoring.
+Answers questions and assesses answer trustworthiness using semantic density
+scoring. Returns the answer along with a 0-1 confidence score indicating how
+consistently the underlying model responds.
 """
             },
 

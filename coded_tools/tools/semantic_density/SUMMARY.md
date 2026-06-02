@@ -26,14 +26,14 @@ questions score lower, enabling agents to hedge or flag unreliable answers.
 ### Agent Network (`registries/tools/semantic_density.hocon`)
 
 ```
-User Question → qa_manager → [answerer + confidence_checker]
+User Question → soothsayer → [answerer + confidence_checker]
                                           ↓
                                semantic_density (CodedTool)
                                           ↓
                                0-1 confidence score
 ```
 
-- **qa_manager**: Front Man — orchestrates answerer and confidence_checker
+- **soothsayer**: Front Man — orchestrates answerer and confidence_checker
 - **answerer**: Provides a direct answer to the question
 - **confidence_checker**: Calls the semantic_density CodedTool, reports score
 - Score mapping: >= 0.7 high, 0.4-0.7 moderate, < 0.4 low

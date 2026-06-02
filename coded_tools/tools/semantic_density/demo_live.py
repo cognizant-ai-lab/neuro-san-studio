@@ -18,7 +18,7 @@
 """
 FedEx Day 5-minute demo: live agent network simulation with TTS narration.
 
-Simulates the qa_manager -> answerer + confidence_checker agent flow,
+Simulates the soothsayer -> answerer + confidence_checker agent flow,
 showing how agents change behavior based on semantic density confidence.
 
 Usage:
@@ -53,7 +53,7 @@ BLUE = "\033[94m"
 class DemoRunner:
     """Orchestrates the FedEx Day semantic density demo.
 
-    Simulates an agent network (qa_manager -> answerer + confidence_checker)
+    Simulates an agent network (soothsayer -> answerer + confidence_checker)
     with colored terminal output and optional TTS narration.
     """
 
