@@ -28,7 +28,7 @@ and low confidence answers are flagged as unreliable.""",
         "sample_queries": [
             "What is the capital of France?",
             "What is the best programming language?",
-            "What year did humans land on Mars?",
+            "What is 19879 times 4390?",
         ]
     },
 

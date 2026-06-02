@@ -70,8 +70,8 @@ class DemoRunner:
             "category": "Subjective — no single right answer",
         },
         {
-            "question": "What will the stock market do tomorrow?",
-            "category": "Unpredictable — genuinely uncertain",
+            "question": "What is 19879 times 4390?",
+            "category": "Arithmetic — exact answer but LLMs struggle",
         },
     ]
 
