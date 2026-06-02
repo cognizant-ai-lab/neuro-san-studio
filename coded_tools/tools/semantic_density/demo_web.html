@@ -885,8 +885,36 @@
       <div class="verdict">✗ Flag unreliable</div>
     </div>
   </div>
+</div>
+
+<!-- Slide 12: Wrap-Up -->
+<div class="slide" id="slide-12">
+  <h2>What We Built</h2>
+  <ol class="steps">
+    <li id="wu-1">
+      <div class="step-num" style="color: var(--purple);">01</div>
+      <div class="step-content">
+        <div class="step-title">Research Prototype → CodedTool</div>
+        <div class="step-desc">Extracted algorithm into <span class="code-inline">ConfidenceAssessmentEngine</span>, wrapped as async <span class="code-inline">CodedTool</span></div>
+      </div>
+    </li>
+    <li id="wu-2">
+      <div class="step-num" style="color: var(--purple);">02</div>
+      <div class="step-content">
+        <div class="step-title">Validated via Two Code Review Playbooks</div>
+        <div class="step-desc">Code Fink (OO, exceptions, async) + Code Francon (docs, HOCON patterns, naming)</div>
+      </div>
+    </li>
+    <li id="wu-3">
+      <div class="step-num" style="color: var(--purple);">03</div>
+      <div class="step-content">
+        <div class="step-title">Wired into Agent Network</div>
+        <div class="step-desc">Soothsayer → Answerer + Confidence Checker, running on GPU via neuro-san</div>
+      </div>
+    </li>
+  </ol>
   <div style="margin-top: 30px; text-align: center; max-width: 700px;">
-    <p style="font-size: 1.2rem; line-height: 1.7;">
+    <p id="wu-closing" style="font-size: 1.2rem; line-height: 1.7; opacity: 0; transition: opacity 0.5s ease;">
       Any neuro-san network with GPU access can now <span style="color:var(--green); font-weight: 600;">self-assess confidence</span>
       and <span style="color:var(--green); font-weight: 600;">adapt behavior</span> — no external calibration needed.
     </p>
@@ -902,7 +930,7 @@
 
 <!-- Audio clips loaded from external JSON file (2D: slides × sub-clips) -->
 <script>
-const TOTAL_SLIDES = 12;
+const TOTAL_SLIDES = 13;
 let currentSlide = 0;
 let isTransitioning = false;
 let currentAudio = null;
@@ -1070,9 +1098,14 @@ const SUB_ANIMATIONS = {
     },
     () => show('ar-3'),
   ],
-  11: [ // Summary
+  11: [ // Results
     () => { show('sc-1'); show('sc-2'); show('sc-3'); },
-    () => { clearHighlights(); },
+  ],
+  12: [ // Wrap-Up
+    () => { show('wu-1'); highlight('wu-1'); },
+    () => { clearHighlights(); show('wu-2'); highlight('wu-2'); },
+    () => { clearHighlights(); show('wu-3'); highlight('wu-3'); },
+    () => { clearHighlights(); document.getElementById('wu-closing').style.opacity = '1'; },
   ],
 };
 
