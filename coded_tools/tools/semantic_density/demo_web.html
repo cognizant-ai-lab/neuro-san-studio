@@ -773,9 +773,9 @@
   </ul>
 </div>
 
-<!-- Slide 7: Transition to Live Demo -->
+<!-- Slide 7: Transition to Confidence Demo -->
 <div class="slide" id="slide-7">
-  <h2>Live Demo</h2>
+  <h2>Confidence Demo</h2>
   <h3>Let's see confidence levels for a few different questions</h3>
   <div style="margin-top: 20px; display: flex; gap: 30px;">
     <div class="tag tag-green" id="td-1" style="opacity:0; transform:translateY(10px); transition:all 0.4s ease; font-size: 1.1rem; padding: 12px 24px;">HIGH — present directly</div>
@@ -896,7 +896,7 @@
 <div class="progress-bar" id="progress"></div>
 <div class="slide-counter" id="counter"></div>
 <div style="position:fixed;bottom:15px;left:25px;font-family:'JetBrains Mono',monospace;font-size:0.8rem;z-index:100;display:flex;gap:15px;">
-  <span id="audio-status" style="color:var(--text-dim);">Press 'a' to start · arrows for manual</span>
+  <span id="audio-status" style="color:var(--text-dim);">Press 'a' to start · 'm' to pause · arrows for manual</span>
   <span id="mode-indicator" style="color:var(--text-dim);">MANUAL</span>
 </div>
 
@@ -1026,7 +1026,7 @@ const SUB_ANIMATIONS = {
     () => { clearHighlights(); show('co-4'); highlight('co-4'); },
     () => { clearHighlights(); show('co-5'); highlight('co-5'); },
   ],
-  7: [ // Transition to Live Demo
+  7: [ // Transition to Confidence Demo
     () => {
       const ids = ['td-1','td-2','td-3'];
       ids.forEach((id, i) => {
@@ -1111,9 +1111,33 @@ function showSlide(index) {
 
 // ─── Auto mode (sub-clip-synced) ───
 let autoMode = false;
+let paused = false;
+let pauseResolve = null;
 
 function sleep(ms) {
   return new Promise(r => setTimeout(r, ms));
+}
+
+function waitIfPaused() {
+  if (!paused) return Promise.resolve();
+  return new Promise(resolve => { pauseResolve = resolve; });
+}
+
+function togglePause() {
+  if (!autoMode) return;
+  paused = !paused;
+  if (paused) {
+    // Pause: stop current audio
+    if (currentAudio) { currentAudio.pause(); }
+    document.getElementById('mode-indicator').textContent = 'PAUSED';
+    document.getElementById('mode-indicator').style.color = 'var(--yellow)';
+  } else {
+    // Resume: resume audio and unblock the loop
+    if (currentAudio) { currentAudio.play(); }
+    document.getElementById('mode-indicator').textContent = 'AUTO';
+    document.getElementById('mode-indicator').style.color = 'var(--green)';
+    if (pauseResolve) { pauseResolve(); pauseResolve = null; }
+  }
 }
 
 async function runAutoMode() {
@@ -1130,6 +1154,9 @@ async function runAutoMode() {
     const clipCount = audioClips[si] ? audioClips[si].length : 0;
 
     for (let ci = 0; ci < Math.max(anims.length, clipCount) && autoMode; ci++) {
+      await waitIfPaused();
+      if (!autoMode) break;
+
       // Trigger visual event
       if (anims[ci]) anims[ci]();
 
@@ -1139,6 +1166,9 @@ async function runAutoMode() {
 
       // Play the sub-clip and wait for it to finish
       await playSubClip(si, ci);
+      if (!autoMode) break;
+
+      await waitIfPaused();
       if (!autoMode) break;
 
       // Brief pause between sub-clips
@@ -1158,6 +1188,8 @@ async function runAutoMode() {
 
 function stopAutoMode() {
   autoMode = false;
+  paused = false;
+  if (pauseResolve) { pauseResolve(); pauseResolve = null; }
   stopCurrentAudio();
   document.getElementById('mode-indicator').textContent = 'MANUAL';
   document.getElementById('mode-indicator').style.color = 'var(--text-dim)';
@@ -1181,6 +1213,8 @@ document.addEventListener('keydown', (e) => {
     }
   } else if (e.key === 's') {
     stopAutoMode();
+  } else if (e.key === 'm') {
+    togglePause();
   }
 });
 
