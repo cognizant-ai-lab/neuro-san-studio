@@ -1,0 +1,132 @@
+# Copyright © 2025-2026 Cognizant Technology Solutions Corp, www.cognizant.com.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
+# END COPYRIGHT
+{
+    # Load the shared LLM configuration from a single source of truth.
+    include "config/llm_config.hocon",
+
+    # Optional metadata describing this agent network
+    "metadata": {
+        "description": """Confident Q&A agent network that answers questions and evaluates
+answer trustworthiness using semantic density scoring. Combines diverse beam search,
+token probability extraction, and NLI-based semantic distance to produce a 0-1 confidence
+score. High confidence answers are presented directly, moderate ones with caveats,
+and low confidence answers are flagged as unreliable.""",
+        "tags": ["confidence", "semantic-density", "nli", "tool"],
+        "sample_queries": [
+            "What is the capital of France?",
+            "What is the best programming language?",
+            "What year did humans land on Mars?",
+        ]
+    },
+
+    "tools": [
+        {
+            "name": "qa_manager",
+
+            "function": {
+                "description": """
+I help answer questions with confidence assessment. I will answer your question
+and tell you how trustworthy the answer is using semantic density scoring.
+"""
+            },
+
+            "instructions": """
+You are the QA Manager. For each user question:
+
+1. First, call the answerer tool to get a direct answer to the question.
+2. Then, call the confidence_checker tool with the ORIGINAL user question
+   to evaluate how confident we should be in the answer.
+3. Based on the confidence score returned:
+   - If confidence >= 0.7 (high): Present the answer directly with high confidence.
+   - If confidence 0.4-0.7 (moderate): Present the answer with a caveat that
+     confidence is moderate and the user may want to verify.
+   - If confidence < 0.4 (low): Flag the answer as potentially unreliable and
+     advise the user to verify from authoritative sources.
+
+Always include the numeric confidence score in your response.
+""",
+            "tools": ["answerer", "confidence_checker"]
+        },
+        {
+            "name": "answerer",
+
+            "function": {
+                "description": "Answer a user's question directly and concisely.",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "question": {
+                            "type": "string",
+                            "description": "The question to answer."
+                        }
+                    },
+                    "required": ["question"]
+                }
+            },
+
+            "instructions": """
+You are a knowledgeable assistant. Answer the question directly and concisely.
+Provide a clear, factual response in one or two sentences.
+"""
+        },
+        {
+            "name": "confidence_checker",
+
+            "function": {
+                "description": """Evaluate the trustworthiness of an answer using
+semantic density analysis. Returns a confidence score from 0 to 1.""",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "question": {
+                            "type": "string",
+                            "description": "The original question to evaluate confidence for."
+                        }
+                    },
+                    "required": ["question"]
+                }
+            },
+
+            "instructions": """
+You are a confidence evaluation agent. When called with a question, use the
+semantic_density tool to compute a confidence score. Report back the score,
+interpretation, and the best answer found during evaluation.
+""",
+            "tools": ["semantic_density"]
+        },
+        {
+            "name": "semantic_density",
+
+            "function": {
+                "description": """Run semantic density analysis on a question to compute
+a confidence score. Uses diverse beam search and NLI to evaluate how consistent
+and trustworthy the generated answers are.""",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "question": {
+                            "type": "string",
+                            "description": "The question to evaluate."
+                        }
+                    },
+                    "required": ["question"]
+                }
+            },
+
+            "class": "semantic_density_tool.SemanticDensityTool"
+        }
+    ]
+}
