@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Semantic Density — FedEx Day 2026</title>
+<title>Confidence Assessment — FedEx Day 2026</title>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
 
@@ -600,8 +600,8 @@
 
 <!-- Slide 0: Title -->
 <div class="slide" id="slide-0">
-  <h1>Semantic Density</h1>
-  <div class="subtitle">Confidence Scoring for Agent Networks</div>
+  <h1>Confidence Assessment</h1>
+  <div class="subtitle">A Coded Tool for Agent Networks</div>
   <div style="margin-top: 10px;">
     <span class="tag tag-blue">FedEx Day 2026</span>
     <span class="tag tag-green">neuro-san</span>
@@ -637,7 +637,7 @@
 <!-- Slide 2: Algorithm Pipeline -->
 <div class="slide" id="slide-2">
   <h2>The Algorithm: 4-Step Pipeline</h2>
-  <h3>Extracted into <span class="code-inline">SemanticDensityEngine</span></h3>
+  <h3>Extracted into <span class="code-inline">ConfidenceAssessmentEngine</span></h3>
   <div class="pipeline">
     <div class="pipeline-step" id="p1">1. Diverse Beam Search</div>
     <div class="pipeline-arrow" id="pa1">→</div>
@@ -645,7 +645,7 @@
     <div class="pipeline-arrow" id="pa2">→</div>
     <div class="pipeline-step" id="p3">3. NLI Distance</div>
     <div class="pipeline-arrow" id="pa3">→</div>
-    <div class="pipeline-step" id="p4">4. Semantic Density</div>
+    <div class="pipeline-step" id="p4">4. Confidence Score</div>
   </div>
   <div style="margin-top: 30px; max-width: 700px; text-align: center;">
     <p style="color: var(--text-dim); line-height: 1.7;">
@@ -658,7 +658,7 @@
 <!-- Slide 3: CodedTool Wrapper -->
 <div class="slide" id="slide-3">
   <h2>Wrapping as a CodedTool</h2>
-  <h3><span class="code-inline">SemanticDensityTool</span> — async invoke for agent networks</h3>
+  <h3><span class="code-inline">ConfidenceAssessmentTool</span> — async invoke for agent networks</h3>
   <ol class="steps">
     <li id="s3-1">
       <div class="step-num">01</div>
@@ -678,7 +678,7 @@
       <div class="step-num">03</div>
       <div class="step-content">
         <div class="step-title">Classmethod Singleton</div>
-        <div class="step-desc"><span class="code-inline">SemanticDensityEngine.get_instance()</span> — load 7B + NLI models once, reuse across all requests</div>
+        <div class="step-desc"><span class="code-inline">ConfidenceAssessmentEngine.get_instance()</span> — load 7B + NLI models once, reuse across all requests</div>
       </div>
     </li>
   </ol>
@@ -704,7 +704,7 @@
       <div class="agent-node checker" id="n-check">
         <div style="font-size: 1.5rem; margin-bottom: 6px;">📊</div>
         confidence_checker
-        <div style="font-size: 0.8rem; color: var(--text-dim); margin-top: 4px;">calls SemanticDensityTool</div>
+        <div style="font-size: 0.8rem; color: var(--text-dim); margin-top: 4px;">calls ConfidenceAssessmentTool</div>
       </div>
     </div>
   </div>
@@ -849,111 +849,110 @@
 
 <div class="progress-bar" id="progress"></div>
 <div class="slide-counter" id="counter"></div>
+<div style="position:fixed;bottom:15px;left:25px;font-family:'JetBrains Mono',monospace;font-size:0.8rem;z-index:100;display:flex;gap:15px;">
+  <span id="audio-status" style="color:var(--text-dim);">Press 'a' to start · arrows for manual</span>
+  <span id="mode-indicator" style="color:var(--text-dim);">MANUAL</span>
+</div>
 
+<!-- Audio clips loaded from external JSON file -->
+<script id="audio-data" type="application/json" src=""></script>
 <script>
-const AUDIO_URL = 'http://localhost:8765';
 const TOTAL_SLIDES = 10;
 let currentSlide = 0;
 let isTransitioning = false;
+let currentAudio = null;
 
-// Narration for each slide
-const NARRATION = [
-  {
-    text: "Welcome to our FedEx Day project: Semantic Density for Agent Networks. We started with Xin's research demo, a standalone web app that measures how confident an LLM really is in its own answers.",
-    duration: 10000,
-  },
-  {
-    text: "The challenge was: this was a great algorithm, trapped in a single-page demo. It couldn't be reused by any other system. Our goal was to productionize it into a Coded Tool that any neuro-san agent network can call, provided it has access to a GPU for the inference.",
-    duration: 14000,
-  },
-  {
-    text: "Here's what the refactor looked like. Step one: we extracted the algorithm into a SemanticDensityEngine class with four clean methods, one for each step of the pipeline. Diverse beam search, token probability extraction, NLI distance scoring, and the final density calculation.",
-    duration: 14000,
-  },
-  {
-    text: "Step two: we wrapped that engine in a SemanticDensityTool, a CodedTool subclass with an async invoke method. Since GPU inference blocks the thread, we use asyncio to-thread to keep the event loop responsive for the rest of the agent network. A classmethod singleton ensures we only load the models once.",
-    duration: 15000,
-  },
-  {
-    text: "Step three: we defined the agent network in HOCON. A Soothsayer agent orchestrates two sub-agents: an Answerer that generates responses, and a Confidence Checker that calls our new Coded Tool. The Soothsayer then adapts its response based on the confidence score.",
-    duration: 13000,
-  },
-  {
-    text: "Before calling this done, we ran the code through our Code Fink playbook. That's a Devin playbook we built that reviews code through Dan Fink's eyes, one of our most thorough reviewers. It flagged a few things and we cleaned all of them up. The singleton is now a classmethod. The demo is wrapped in a proper class. Exception handling uses specific types. That should keep Dan happy when he reviews the PR.",
-    duration: 22000,
-  },
-  {
-    text: "Let's see it in action. Question one: What is the capital of France? This is a factual question with one correct answer. All five beams return the exact same answer: Paris. Confidence is point nine nine nine. The Soothsayer presents the answer directly.",
-    duration: 14000,
-  },
-  {
-    text: "Question two: What is the best programming language? This is subjective. The beams agree on the theme, that there is no single best, but the phrasing varies. Confidence is point eight nine five, moderate. The Soothsayer adds a caveat: consider verifying from another source.",
-    duration: 15000,
-  },
-  {
-    text: "Question three: What is 19,879 times 4,390? This has an exact answer, but LLMs struggle with large arithmetic. Look at those beams: five completely different wrong answers. The NLI model sees maximum contradiction between them. Confidence drops to point two two six. The Soothsayer flags this as unreliable. The real answer is 87,268,810. The algorithm caught that the LLM doesn't actually know.",
-    duration: 22000,
-  },
-  {
-    text: "To summarize: we took a research prototype, refactored the algorithm into a clean engine class, wrapped it as a CodedTool with proper async support, and wired it into an agent network via HOCON. Any neuro-san network with GPU access can now self-assess confidence. High confidence? Give the answer. Low confidence? Flag it. No external calibration needed. Thanks for watching!",
-    duration: 16000,
-  },
-];
+// ─── Pre-loaded audio clips (loaded from audio_clips.json) ───
+let audioClips = []; // Array of Audio elements, one per slide
 
-function speak(text) {
-  const encoded = encodeURIComponent(text);
-  fetch(`${AUDIO_URL}/speak?text=${encoded}&voice=nova`, { method: 'POST' })
-    .catch(err => console.warn('TTS failed:', err));
+async function loadAudioClips() {
+  document.getElementById('audio-status').textContent = 'Loading audio...';
+  try {
+    const resp = await fetch('/audio_clips.json');
+    const b64Array = await resp.json();
+    audioClips = b64Array.map((b64, i) => {
+      const audio = new Audio(`data:audio/mp3;base64,${b64}`);
+      audio.preload = 'auto';
+      return audio;
+    });
+    document.getElementById('audio-status').textContent =
+      `${audioClips.length} clips loaded · Press 'a' to start`;
+    document.getElementById('audio-status').style.color = 'var(--green)';
+    return true;
+  } catch (err) {
+    console.error('Failed to load audio clips:', err);
+    document.getElementById('audio-status').textContent = 'Audio load failed';
+    document.getElementById('audio-status').style.color = 'var(--red)';
+    return false;
+  }
 }
+
+function playClip(index) {
+  // Returns a Promise that resolves when the clip finishes playing
+  return new Promise((resolve) => {
+    if (index >= audioClips.length || !audioClips[index]) {
+      resolve();
+      return;
+    }
+    const audio = audioClips[index];
+    audio.currentTime = 0;
+    currentAudio = audio;
+    audio.onended = () => {
+      currentAudio = null;
+      resolve();
+    };
+    audio.onerror = () => {
+      currentAudio = null;
+      resolve();
+    };
+    audio.play().catch(() => resolve());
+  });
+}
+
+function stopCurrentAudio() {
+  if (currentAudio) {
+    currentAudio.pause();
+    currentAudio.currentTime = 0;
+    currentAudio = null;
+  }
+}
+
+// ─── Slide management ───
 
 function showSlide(index) {
   if (isTransitioning || index < 0 || index >= TOTAL_SLIDES) return;
   isTransitioning = true;
 
-  // Fade out current
   const current = document.getElementById(`slide-${currentSlide}`);
-  if (current) {
-    current.classList.add('fade-out');
-  }
+  if (current) current.classList.add('fade-out');
 
   setTimeout(() => {
-    // Hide all
     document.querySelectorAll('.slide').forEach(s => {
       s.classList.remove('active', 'fade-out');
     });
 
-    // Show new
     currentSlide = index;
     const next = document.getElementById(`slide-${currentSlide}`);
     next.classList.add('active');
 
-    // Update progress
     document.getElementById('progress').style.width =
       `${((currentSlide + 1) / TOTAL_SLIDES) * 100}%`;
     document.getElementById('counter').textContent =
       `${currentSlide + 1} / ${TOTAL_SLIDES}`;
 
-    // Animate elements
     animateSlide(currentSlide);
-
-    // Speak narration
-    const narr = NARRATION[currentSlide];
-    if (narr) {
-      speak(narr.text);
-    }
-
     isTransitioning = false;
   }, 500);
 }
 
 function animateSlide(index) {
   switch (index) {
-    case 1: // Problem slide
+    case 1:
       setTimeout(() => document.getElementById('s1-before').classList.add('visible'), 300);
       setTimeout(() => document.getElementById('s1-after').classList.add('visible'), 800);
       break;
 
-    case 2: // Pipeline
+    case 2:
       ['p1','pa1','p2','pa2','p3','pa3','p4'].forEach((id, i) => {
         setTimeout(() => {
           const el = document.getElementById(id);
@@ -963,38 +962,38 @@ function animateSlide(index) {
       });
       break;
 
-    case 3: // CodedTool steps
+    case 3:
       ['s3-1','s3-2','s3-3'].forEach((id, i) => {
         setTimeout(() => document.getElementById(id).classList.add('visible'), 400 + i * 600);
       });
       break;
 
-    case 4: // Agent network
+    case 4:
       setTimeout(() => document.getElementById('n-sooth').classList.add('visible'), 400);
       setTimeout(() => document.getElementById('a1').classList.add('visible'), 900);
       setTimeout(() => document.getElementById('n-answer').classList.add('visible'), 1300);
       setTimeout(() => document.getElementById('n-check').classList.add('visible'), 1700);
       break;
 
-    case 5: // Code Fink
+    case 5:
       ['cf-1','cf-2','cf-3','cf-4','cf-5'].forEach((id, i) => {
         setTimeout(() => document.getElementById(id).classList.add('visible'), 400 + i * 500);
       });
       break;
 
-    case 6: // Q1
+    case 6:
       animateQuestion(1, 'high', 0.999);
       break;
 
-    case 7: // Q2
+    case 7:
       animateQuestion(2, 'moderate', 0.895);
       break;
 
-    case 8: // Q3
+    case 8:
       animateQuestion(3, 'low', 0.226);
       break;
 
-    case 9: // Summary
+    case 9:
       ['sc-1','sc-2','sc-3'].forEach((id, i) => {
         setTimeout(() => document.getElementById(id).classList.add('visible'), 400 + i * 500);
       });
@@ -1003,60 +1002,64 @@ function animateSlide(index) {
 }
 
 function animateQuestion(qNum, level, score) {
-  // Show beams one by one
   for (let i = 1; i <= 5; i++) {
     setTimeout(() => {
       document.getElementById(`b${qNum}-${i}`).classList.add('visible');
     }, 500 + i * 350);
   }
-
-  // Show confidence bar
   setTimeout(() => {
     document.getElementById(`cl-${qNum}`).classList.add('visible');
     document.getElementById(`cb-${qNum}`).style.width = `${score * 100}%`;
   }, 2700);
-
-  // Show score
   setTimeout(() => {
     document.getElementById(`cs-${qNum}`).classList.add('visible');
   }, 3500);
-
-  // Show agent response
   setTimeout(() => {
     document.getElementById(`ar-${qNum}`).classList.add('visible');
   }, 4500);
 }
 
-// Auto-advance mode
+// ─── Auto mode (audio-synced via onended) ───
 let autoMode = false;
-let autoTimeout = null;
 
-function startAutoMode() {
-  autoMode = true;
-  showSlide(0);
-  scheduleNext();
+function sleep(ms) {
+  return new Promise(r => setTimeout(r, ms));
 }
 
-function scheduleNext() {
-  if (!autoMode) return;
-  const narr = NARRATION[currentSlide];
-  const delay = narr ? narr.duration + 2000 : 5000;
-  autoTimeout = setTimeout(() => {
-    if (currentSlide < TOTAL_SLIDES - 1) {
-      showSlide(currentSlide + 1);
-      scheduleNext();
-    } else {
-      autoMode = false;
-    }
-  }, delay);
+async function runAutoMode() {
+  autoMode = true;
+  document.getElementById('mode-indicator').textContent = 'AUTO';
+  document.getElementById('mode-indicator').style.color = 'var(--green)';
+
+  for (let i = 0; i < TOTAL_SLIDES && autoMode; i++) {
+    // Show the slide (animations start)
+    showSlide(i);
+
+    // Wait for transition to complete
+    await sleep(600);
+    if (!autoMode) break;
+
+    // Play the pre-loaded audio clip and WAIT for it to finish
+    await playClip(i);
+    if (!autoMode) break;
+
+    // Brief pause after narration before advancing
+    await sleep(1200);
+  }
+
+  autoMode = false;
+  document.getElementById('mode-indicator').textContent = 'DONE';
+  document.getElementById('mode-indicator').style.color = 'var(--text-dim)';
 }
 
 function stopAutoMode() {
   autoMode = false;
-  if (autoTimeout) clearTimeout(autoTimeout);
+  stopCurrentAudio();
+  document.getElementById('mode-indicator').textContent = 'MANUAL';
+  document.getElementById('mode-indicator').style.color = 'var(--text-dim)';
 }
 
-// Keyboard navigation
+// ─── Keyboard navigation ───
 document.addEventListener('keydown', (e) => {
   if (e.key === 'ArrowRight' || e.key === ' ') {
     e.preventDefault();
@@ -1067,10 +1070,13 @@ document.addEventListener('keydown', (e) => {
     stopAutoMode();
     showSlide(currentSlide - 1);
   } else if (e.key === 'a') {
-    // 'a' to start auto mode
-    startAutoMode();
+    // Start auto mode (loads audio if needed)
+    if (audioClips.length === 0) {
+      loadAudioClips().then(ok => { if (ok) runAutoMode(); });
+    } else {
+      runAutoMode();
+    }
   } else if (e.key === 's') {
-    // 's' to stop auto mode
     stopAutoMode();
   }
 });
