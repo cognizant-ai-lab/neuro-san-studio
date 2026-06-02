@@ -105,6 +105,13 @@ COPY ./neuro_san_studio ${APP_SOURCE}/neuro_san_studio
 COPY ./registries ${APP_SOURCE}/registries
 COPY ./coded_tool[s] ${APP_SOURCE}/coded_tools
 COPY ./middleware ${APP_SOURCE}/middleware
+# The skills directory holds local skill packages (each containing a SKILL.md
+# and any supporting resources) that are loaded at runtime by the
+# AgentSkillsMiddleware via the "skill_sources" config. This is required by
+# registries/basic/job_guessing_skill.hocon and by any future agent network
+# that references local skills under skills/. The [s] makes the COPY tolerant
+# of the directory being absent in client repos that do not ship local skills.
+COPY ./skill[s] ${APP_SOURCE}/skills
 COPY ./deploy/entrypoint.sh ${APP_SOURCE}/deploy/entrypoint.sh
 COPY ./deploy/logging.hocon ${APP_SOURCE}/deploy/logging.hocon
 COPY ./config ${APP_SOURCE}/config
