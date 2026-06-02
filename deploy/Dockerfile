@@ -109,9 +109,8 @@ COPY ./middleware ${APP_SOURCE}/middleware
 # and any supporting resources) that are loaded at runtime by the
 # AgentSkillsMiddleware via the "skill_sources" config. This is required by
 # registries/basic/job_guessing_skill.hocon and by any future agent network
-# that references local skills under skills/. The [s] makes the COPY tolerant
-# of the directory being absent in client repos that do not ship local skills.
-COPY ./skill[s] ${APP_SOURCE}/skills
+# that references local skills under skills/.
+COPY ./skills ${APP_SOURCE}/skills
 COPY ./deploy/entrypoint.sh ${APP_SOURCE}/deploy/entrypoint.sh
 COPY ./deploy/logging.hocon ${APP_SOURCE}/deploy/logging.hocon
 COPY ./config ${APP_SOURCE}/config
