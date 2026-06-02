@@ -588,6 +588,13 @@
 
   .pipeline-arrow.visible { opacity: 1; }
 
+  /* Highlight glow for active narration target */
+  .highlight {
+    box-shadow: 0 0 20px rgba(88,166,255,0.4), 0 0 40px rgba(88,166,255,0.15) !important;
+    border-color: var(--accent) !important;
+    transition: all 0.3s ease !important;
+  }
+
   .left-aligned {
     align-items: flex-start;
     text-align: left;
@@ -882,29 +889,32 @@
   <span id="mode-indicator" style="color:var(--text-dim);">MANUAL</span>
 </div>
 
-<!-- Audio clips loaded from external JSON file -->
-<script id="audio-data" type="application/json" src=""></script>
+<!-- Audio clips loaded from external JSON file (2D: slides × sub-clips) -->
 <script>
 const TOTAL_SLIDES = 11;
 let currentSlide = 0;
 let isTransitioning = false;
 let currentAudio = null;
 
-// ─── Pre-loaded audio clips (loaded from audio_clips.json) ───
-let audioClips = []; // Array of Audio elements, one per slide
+// ─── Pre-loaded audio: 2D array audioClips[slide][subClip] ───
+let audioClips = [];
 
 async function loadAudioClips() {
   document.getElementById('audio-status').textContent = 'Loading audio...';
   try {
     const resp = await fetch('/audio_clips.json');
-    const b64Array = await resp.json();
-    audioClips = b64Array.map((b64, i) => {
-      const audio = new Audio(`data:audio/mp3;base64,${b64}`);
-      audio.preload = 'auto';
-      return audio;
+    const data = await resp.json();
+    let total = 0;
+    audioClips = data.map(slideArr => {
+      return slideArr.map(b64 => {
+        total++;
+        const a = new Audio(`data:audio/mp3;base64,${b64}`);
+        a.preload = 'auto';
+        return a;
+      });
     });
     document.getElementById('audio-status').textContent =
-      `${audioClips.length} clips loaded · Press 'a' to start`;
+      `${total} clips loaded · Press 'a' to start`;
     document.getElementById('audio-status').style.color = 'var(--green)';
     return true;
   } catch (err) {
@@ -915,24 +925,17 @@ async function loadAudioClips() {
   }
 }
 
-function playClip(index) {
-  // Returns a Promise that resolves when the clip finishes playing
+function playSubClip(slideIdx, subIdx) {
   return new Promise((resolve) => {
-    if (index >= audioClips.length || !audioClips[index]) {
+    if (!audioClips[slideIdx] || !audioClips[slideIdx][subIdx]) {
       resolve();
       return;
     }
-    const audio = audioClips[index];
+    const audio = audioClips[slideIdx][subIdx];
     audio.currentTime = 0;
     currentAudio = audio;
-    audio.onended = () => {
-      currentAudio = null;
-      resolve();
-    };
-    audio.onerror = () => {
-      currentAudio = null;
-      resolve();
-    };
+    audio.onended = () => { currentAudio = null; resolve(); };
+    audio.onerror = () => { currentAudio = null; resolve(); };
     audio.play().catch(() => resolve());
   });
 }
@@ -944,6 +947,112 @@ function stopCurrentAudio() {
     currentAudio = null;
   }
 }
+
+// ─── Animation helpers ───
+function show(id) {
+  const el = document.getElementById(id);
+  if (el) el.classList.add('visible');
+}
+function showActive(id) {
+  const el = document.getElementById(id);
+  if (el) { el.classList.add('visible'); el.classList.add('active'); }
+}
+function highlight(id) {
+  const el = document.getElementById(id);
+  if (el) el.classList.add('highlight');
+}
+function unhighlight(id) {
+  const el = document.getElementById(id);
+  if (el) el.classList.remove('highlight');
+}
+
+// ─── Sub-clip animation map ───
+// Each slide has an array of functions, one per sub-clip.
+// The function triggers the visual event for that sub-clip.
+// clearHighlights removes glow from all elements on the current slide
+function clearHighlights() {
+  document.querySelectorAll('.highlight').forEach(el => el.classList.remove('highlight'));
+}
+
+const SUB_ANIMATIONS = {
+  0: [ // Title
+    () => {},
+  ],
+  1: [ // Starting Point
+    () => { show('s1-before'); highlight('s1-before'); },
+    () => { clearHighlights(); show('s1-after'); highlight('s1-after'); },
+  ],
+  2: [ // Pipeline
+    () => {},
+    () => { clearHighlights(); show('p1'); showActive('p1'); show('pa1'); highlight('p1'); },
+    () => { clearHighlights(); show('p2'); showActive('p2'); show('pa2'); highlight('p2'); },
+    () => { clearHighlights(); show('p3'); showActive('p3'); show('pa3'); highlight('p3'); },
+    () => { clearHighlights(); show('p4'); showActive('p4'); highlight('p4'); },
+  ],
+  3: [ // CodedTool
+    () => { show('s3-1'); highlight('s3-1'); },
+    () => { clearHighlights(); show('s3-2'); highlight('s3-2'); },
+    () => { clearHighlights(); show('s3-3'); highlight('s3-3'); },
+  ],
+  4: [ // Agent Network
+    () => { show('n-sooth'); highlight('n-sooth'); },
+    () => { clearHighlights(); show('a1'); show('n-answer'); highlight('n-answer'); },
+    () => { clearHighlights(); show('n-check'); highlight('n-check'); },
+  ],
+  5: [ // Code Fink
+    () => {},
+    () => { show('cf-1'); highlight('cf-1'); },
+    () => { clearHighlights(); show('cf-2'); highlight('cf-2'); },
+    () => { clearHighlights(); show('cf-3'); highlight('cf-3'); },
+    () => { clearHighlights(); show('cf-4'); highlight('cf-4'); },
+    () => { clearHighlights(); show('cf-5'); highlight('cf-5'); },
+  ],
+  6: [ // Code Francon
+    () => {},
+    () => { show('co-1'); highlight('co-1'); },
+    () => { clearHighlights(); show('co-2'); highlight('co-2'); },
+    () => { clearHighlights(); show('co-3'); highlight('co-3'); },
+    () => { clearHighlights(); show('co-4'); highlight('co-4'); },
+    () => { clearHighlights(); show('co-5'); highlight('co-5'); },
+  ],
+  7: [ // Q1: France
+    () => {
+      show('b1-1'); show('b1-2'); show('b1-3'); show('b1-4'); show('b1-5');
+    },
+    () => {
+      show('cl-1');
+      document.getElementById('cb-1').style.width = '99.9%';
+      setTimeout(() => show('cs-1'), 400);
+    },
+    () => show('ar-1'),
+  ],
+  8: [ // Q2: Programming
+    () => {
+      show('b2-1'); show('b2-2'); show('b2-3'); show('b2-4'); show('b2-5');
+    },
+    () => {
+      show('cl-2');
+      document.getElementById('cb-2').style.width = '89.5%';
+      setTimeout(() => show('cs-2'), 400);
+    },
+    () => show('ar-2'),
+  ],
+  9: [ // Q3: Multiplication
+    () => {
+      show('b3-1'); show('b3-2'); show('b3-3'); show('b3-4'); show('b3-5');
+    },
+    () => {
+      show('cl-3');
+      document.getElementById('cb-3').style.width = '22.6%';
+      setTimeout(() => show('cs-3'), 400);
+    },
+    () => show('ar-3'),
+  ],
+  10: [ // Summary
+    () => { show('sc-1'); show('sc-2'); show('sc-3'); },
+    () => { clearHighlights(); },
+  ],
+};
 
 // ─── Slide management ───
 
@@ -968,92 +1077,17 @@ function showSlide(index) {
     document.getElementById('counter').textContent =
       `${currentSlide + 1} / ${TOTAL_SLIDES}`;
 
-    animateSlide(currentSlide);
+    // In manual mode, show all elements at once
+    if (!autoMode) {
+      const anims = SUB_ANIMATIONS[currentSlide] || [];
+      anims.forEach(fn => fn());
+    }
+
     isTransitioning = false;
   }, 500);
 }
 
-function animateSlide(index) {
-  switch (index) {
-    case 1:
-      setTimeout(() => document.getElementById('s1-before').classList.add('visible'), 300);
-      setTimeout(() => document.getElementById('s1-after').classList.add('visible'), 800);
-      break;
-
-    case 2:
-      ['p1','pa1','p2','pa2','p3','pa3','p4'].forEach((id, i) => {
-        setTimeout(() => {
-          const el = document.getElementById(id);
-          el.classList.add('visible');
-          if (!id.startsWith('pa')) el.classList.add('active');
-        }, 400 + i * 400);
-      });
-      break;
-
-    case 3:
-      ['s3-1','s3-2','s3-3'].forEach((id, i) => {
-        setTimeout(() => document.getElementById(id).classList.add('visible'), 400 + i * 600);
-      });
-      break;
-
-    case 4:
-      setTimeout(() => document.getElementById('n-sooth').classList.add('visible'), 400);
-      setTimeout(() => document.getElementById('a1').classList.add('visible'), 900);
-      setTimeout(() => document.getElementById('n-answer').classList.add('visible'), 1300);
-      setTimeout(() => document.getElementById('n-check').classList.add('visible'), 1700);
-      break;
-
-    case 5:
-      ['cf-1','cf-2','cf-3','cf-4','cf-5'].forEach((id, i) => {
-        setTimeout(() => document.getElementById(id).classList.add('visible'), 400 + i * 500);
-      });
-      break;
-
-    case 6:
-      ['co-1','co-2','co-3','co-4','co-5'].forEach((id, i) => {
-        setTimeout(() => document.getElementById(id).classList.add('visible'), 400 + i * 500);
-      });
-      break;
-
-    case 7:
-      animateQuestion(1, 'high', 0.999);
-      break;
-
-    case 8:
-      animateQuestion(2, 'moderate', 0.895);
-      break;
-
-    case 9:
-      animateQuestion(3, 'low', 0.226);
-      break;
-
-    case 10:
-      ['sc-1','sc-2','sc-3'].forEach((id, i) => {
-        setTimeout(() => document.getElementById(id).classList.add('visible'), 400 + i * 500);
-      });
-      break;
-  }
-}
-
-function animateQuestion(qNum, level, score) {
-  for (let i = 1; i <= 5; i++) {
-    setTimeout(() => {
-      document.getElementById(`b${qNum}-${i}`).classList.add('visible');
-    }, 500 + i * 350);
-  }
-  setTimeout(() => {
-    document.getElementById(`cl-${qNum}`).classList.add('visible');
-    document.getElementById(`cb-${qNum}`).style.width = `${score * 100}%`;
-  }, 2700);
-  setTimeout(() => {
-    document.getElementById(`cs-${qNum}`).classList.add('visible');
-  }, 3500);
-  setTimeout(() => {
-    document.getElementById(`ar-${qNum}`).classList.add('visible');
-  }, 4500);
-}
-
-// ─── Auto mode (audio-synced via onended) ───
+// ─── Auto mode (sub-clip-synced) ───
 let autoMode = false;
 
 function sleep(ms) {
@@ -1065,20 +1099,34 @@ async function runAutoMode() {
   document.getElementById('mode-indicator').textContent = 'AUTO';
   document.getElementById('mode-indicator').style.color = 'var(--green)';
 
-  for (let i = 0; i < TOTAL_SLIDES && autoMode; i++) {
-    // Show the slide (animations start)
-    showSlide(i);
-
-    // Wait for transition to complete
-    await sleep(600);
+  for (let si = 0; si < TOTAL_SLIDES && autoMode; si++) {
+    showSlide(si);
+    await sleep(700);
     if (!autoMode) break;
 
-    // Play the pre-loaded audio clip and WAIT for it to finish
-    await playClip(i);
+    const anims = SUB_ANIMATIONS[si] || [() => {}];
+    const clipCount = audioClips[si] ? audioClips[si].length : 0;
+
+    for (let ci = 0; ci < Math.max(anims.length, clipCount) && autoMode; ci++) {
+      // Trigger visual event
+      if (anims[ci]) anims[ci]();
+
+      // Small delay for element to render before audio starts
+      await sleep(300);
+      if (!autoMode) break;
+
+      // Play the sub-clip and wait for it to finish
+      await playSubClip(si, ci);
+      if (!autoMode) break;
+
+      // Brief pause between sub-clips
+      await sleep(400);
+    }
+
     if (!autoMode) break;
 
-    // Brief pause after narration before advancing
-    await sleep(1200);
+    // Pause before advancing to next slide
+    await sleep(800);
   }
 
   autoMode = false;
@@ -1104,7 +1152,6 @@ document.addEventListener('keydown', (e) => {
     stopAutoMode();
     showSlide(currentSlide - 1);
   } else if (e.key === 'a') {
-    // Start auto mode (loads audio if needed)
     if (audioClips.length === 0) {
       loadAudioClips().then(ok => { if (ok) runAutoMode(); });
     } else {
