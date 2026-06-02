@@ -329,9 +329,9 @@ class TopicStore(ABC):
         :return: ``(network, agent)`` tuple.
         """
         if not namespace:
-            return ("unknown", "unknown")
+            return "unknown", "unknown"
         network, _, agent = namespace.partition(".")
-        return (network or "unknown", agent or "unknown")
+        return network or "unknown", agent or "unknown"
 
     async def _lock_for(self, key: tuple[str, ...]) -> asyncio.Lock:
         """

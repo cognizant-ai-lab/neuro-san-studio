@@ -240,7 +240,7 @@ class WebFetch(CodedTool):
             )
 
     async def _get_content_type(self, url: str, session: ClientSession) -> tuple[str, str | None]:
-        """Probe the URL with a HEAD request and return (Content-Type, prefetched_body).
+        """Probe the URL with a HEAD request and return Content-Type, prefetched_body.
 
         Falls back to a GET request if the server returns 405 (Method Not Allowed).
         In the 405 case the response body is read and returned as the second element so

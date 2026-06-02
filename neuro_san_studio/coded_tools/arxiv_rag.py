@@ -38,7 +38,7 @@ class ArxivRag(CodedTool):
 
         :param args: Dictionary containing:
             "query": search string
-            "top_k_results": number of top results to return (default is 3)
+            "top_k_results": number of top results to return default is 3
             "get_full_documents": whether to pull full paper text or only abstracts/summaries (default is True)
             "doc_content_chars_max": maximum number of characters to keep in each document (default is 4000)
             "load_all_available_meta": whether to load all available metadata (default is False)

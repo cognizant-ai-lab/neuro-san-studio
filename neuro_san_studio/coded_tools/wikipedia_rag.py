@@ -39,7 +39,7 @@ class WikipediaRag(CodedTool):
         :param args: Dictionary containing:
             "query": search string
             "lang": language code for Wikipedia articles (default is "en")
-            "top_k_results": number of top results to return (default is 3)
+            "top_k_results": number of top results to return default is 3
             "doc_content_chars_max": maximum number of characters to keep in each document (default is 4000)
 
         :param sly_data: A dictionary whose keys are defined by the agent

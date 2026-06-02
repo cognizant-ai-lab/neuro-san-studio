@@ -40,7 +40,7 @@ class GoogleSerper(CodedTool):
         Available parameters:
         - query (required): The search term or question to look up online
         - type (optional): Search type - 'search' (default, general web), 'news', 'images', or 'places'
-        - k (optional): Number of results to return (default: 10)
+        - k (optional): Number of results to return default: 10
         - gl (optional): Country code for geographic localization (default: 'us', e.g., 'uk', 'de', 'fr')
         - hl (optional): Language code for search interface (default: 'en', e.g., 'es', 'fr', 'de')
         - tbs (optional): Time-based search filter (e.g., 'qdr:d' for past day, 'qdr:w' for past week, or

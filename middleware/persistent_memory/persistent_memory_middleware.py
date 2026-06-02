@@ -250,7 +250,7 @@ class PersistentMemoryMiddleware(AgentMiddleware):
         enabled_operations: list[str] | None = (
             list(enabled_operations_raw) if enabled_operations_raw is not None else None
         )
-        return (store_config, summarization_config, enabled_operations)
+        return store_config, summarization_config, enabled_operations
 
     def _clean_enabled_operations(
         self,
@@ -308,7 +308,7 @@ class PersistentMemoryMiddleware(AgentMiddleware):
         max_topic_size: int = int(config.get("max_topic_size", self._DEFAULT_MAX_TOPIC_SIZE))
         model: str = str(config.get("model", TopicSummarizer.DEFAULT_MODEL))
         personalization: str = str(config.get("personalization", ""))
-        return (max_topic_size, model, personalization)
+        return max_topic_size, model, personalization
 
     @classmethod
     def _parse_origin_str(cls, origin_str: bool | str) -> tuple[str, str]:
@@ -330,7 +330,7 @@ class PersistentMemoryMiddleware(AgentMiddleware):
                 "Empty, unexpanded, or malformed origin_str %r; falling back to 'unknown.unknown' namespace.",
                 origin_str,
             )
-            return ("unknown", "unknown")
+            return "unknown", "unknown"
         network: str = cls._INDEX_SUFFIX_RE.sub("", parts[0])
         agent: str = cls._INDEX_SUFFIX_RE.sub("", parts[-2])
         return (cls._safe_path_segment(network), cls._safe_path_segment(agent))
@@ -358,7 +358,7 @@ class PersistentMemoryMiddleware(AgentMiddleware):
 
         :return: The preamble text describing available memory operations.
         """
-        return (
+        return 
             f"You have a '{cls.MEMORY_TOOL_NAME}' tool for facts that must survive "
             "across turns and sessions.\n\n"
             "Rules:\n"
@@ -375,4 +375,4 @@ class PersistentMemoryMiddleware(AgentMiddleware):
             "- The store summarizer consolidates long topics on its own — do not prune manually.\n"
             "- Only use 'delete' + 'create' when a topic must be replaced wholesale because "
             "the old content is factually wrong."
-        )
+        

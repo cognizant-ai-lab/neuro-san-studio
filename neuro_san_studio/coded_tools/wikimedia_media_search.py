@@ -49,7 +49,7 @@ class WikimediaMediaSearch(CodedTool):
         :param args: a dictionary with the following keys:
             - query: the search query for finding media
             - media_type: type of media to search for ("image", "audio", "video", or "all", default: "image")
-            - limit: optional - maximum number of results to return (default: 1, max: 10)
+            - limit: optional - maximum number of results to return default: 1, max: 10
             - offset: optional - result offset for pagination (default: 0, use 10, 20, etc. for different results)
 
         :param sly_data: a dictionary for shared context (not used in this tool)

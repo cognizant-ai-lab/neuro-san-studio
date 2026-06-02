@@ -77,7 +77,7 @@ class JsonFileStore(TopicStore):
         :return: The lock-cache key for this agent.
         """
         del topic
-        return ("json", namespace)
+        return "json", namespace
 
     @override
     def _list_lock_key(self, namespace: str) -> tuple[str, ...]:
@@ -87,7 +87,7 @@ class JsonFileStore(TopicStore):
         :param namespace: ``"<network>.<agent>"`` key.
         :return: The lock-cache key for list/search ops.
         """
-        return ("json", namespace)
+        return "json", namespace
 
     @override
     async def _read_topic(self, namespace: str, topic: str) -> str | None:

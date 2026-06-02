@@ -66,7 +66,7 @@ class MarkdownFileStore(TopicStore):
         :param namespace: ``"<network>.<agent>"`` key.
         :return: The lock-cache key for list/search ops.
         """
-        return ("md-list", namespace)
+        return "md-list", namespace
 
     @override
     async def _read_topic(self, namespace: str, topic: str) -> str | None:

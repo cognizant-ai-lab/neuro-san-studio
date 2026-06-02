@@ -156,10 +156,10 @@ Try doing this in your environment:
 
         if args.get("call_text") is None:
             # Don't call the agent we just created as a tool
-            return (
+            return 
                 f"The temporary agent name is {reservation_id}."
                 + f"Hurry, it's only available for {lifetime_in_seconds} seconds."
-            )
+            
 
         # Call the agent we just created for our reservation
         res_args: Dict[str, Any] = {"input": args.get("call_text")}
