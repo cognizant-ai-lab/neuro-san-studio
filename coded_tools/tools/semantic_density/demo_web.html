@@ -773,8 +773,19 @@
   </ul>
 </div>
 
-<!-- Slide 7: Q1 - Capital of France -->
+<!-- Slide 7: Transition to Live Demo -->
 <div class="slide" id="slide-7">
+  <h2>Live Demo</h2>
+  <h3>Let's see confidence levels for a few different questions</h3>
+  <div style="margin-top: 20px; display: flex; gap: 30px;">
+    <div class="tag tag-green" id="td-1" style="opacity:0; transform:translateY(10px); transition:all 0.4s ease; font-size: 1.1rem; padding: 12px 24px;">HIGH — present directly</div>
+    <div class="tag tag-purple" id="td-2" style="opacity:0; transform:translateY(10px); transition:all 0.4s ease; font-size: 1.1rem; padding: 12px 24px; background: rgba(210,153,34,0.15); color: var(--yellow); border-color: rgba(210,153,34,0.3);">MODERATE — add caveat</div>
+    <div class="tag" id="td-3" style="opacity:0; transform:translateY(10px); transition:all 0.4s ease; font-size: 1.1rem; padding: 12px 24px; background: rgba(248,81,73,0.15); color: var(--red); border: 1px solid rgba(248,81,73,0.3);">LOW — flag unreliable</div>
+  </div>
+</div>
+
+<!-- Slide 8: Q1 - Capital of France -->
+<div class="slide" id="slide-8">
   <div class="question-card">
     <div class="question-text">Q1: "What is the capital of France?"</div>
     <div class="question-category">Factual — single correct answer</div>
@@ -799,8 +810,8 @@
   </div>
 </div>
 
-<!-- Slide 8: Q2 - Best Programming Language -->
-<div class="slide" id="slide-8">
+<!-- Slide 9: Q2 - Best Programming Language -->
+<div class="slide" id="slide-9">
   <div class="question-card">
     <div class="question-text">Q2: "What is the best programming language?"</div>
     <div class="question-category">Subjective — no single right answer</div>
@@ -826,8 +837,8 @@
   </div>
 </div>
 
-<!-- Slide 9: Q3 - Multiplication -->
-<div class="slide" id="slide-9">
+<!-- Slide 10: Q3 - Multiplication -->
+<div class="slide" id="slide-10">
   <div class="question-card">
     <div class="question-text">Q3: "What is 19,879 × 4,390?"</div>
     <div class="question-category">Arithmetic — exact answer, but LLMs struggle</div>
@@ -854,8 +865,8 @@
   </div>
 </div>
 
-<!-- Slide 10: Summary -->
-<div class="slide" id="slide-10">
+<!-- Slide 11: Summary -->
+<div class="slide" id="slide-11">
   <h2>Results</h2>
   <div class="summary-grid">
     <div class="summary-card high-card" id="sc-1">
@@ -891,7 +902,7 @@
 
 <!-- Audio clips loaded from external JSON file (2D: slides × sub-clips) -->
 <script>
-const TOTAL_SLIDES = 11;
+const TOTAL_SLIDES = 12;
 let currentSlide = 0;
 let isTransitioning = false;
 let currentAudio = null;
@@ -1015,7 +1026,18 @@ const SUB_ANIMATIONS = {
     () => { clearHighlights(); show('co-4'); highlight('co-4'); },
     () => { clearHighlights(); show('co-5'); highlight('co-5'); },
   ],
-  7: [ // Q1: France
+  7: [ // Transition to Live Demo
+    () => {
+      const ids = ['td-1','td-2','td-3'];
+      ids.forEach((id, i) => {
+        setTimeout(() => {
+          const el = document.getElementById(id);
+          if (el) { el.style.opacity = '1'; el.style.transform = 'translateY(0)'; }
+        }, 400 + i * 500);
+      });
+    },
+  ],
+  8: [ // Q1: France
     () => {
       show('b1-1'); show('b1-2'); show('b1-3'); show('b1-4'); show('b1-5');
     },
@@ -1026,7 +1048,7 @@ const SUB_ANIMATIONS = {
     },
     () => show('ar-1'),
   ],
-  8: [ // Q2: Programming
+  9: [ // Q2: Programming
     () => {
       show('b2-1'); show('b2-2'); show('b2-3'); show('b2-4'); show('b2-5');
     },
@@ -1037,7 +1059,7 @@ const SUB_ANIMATIONS = {
     },
     () => show('ar-2'),
   ],
-  9: [ // Q3: Multiplication
+  10: [ // Q3: Multiplication
     () => {
       show('b3-1'); show('b3-2'); show('b3-3'); show('b3-4'); show('b3-5');
     },
@@ -1048,7 +1070,7 @@ const SUB_ANIMATIONS = {
     },
     () => show('ar-3'),
   ],
-  10: [ // Summary
+  11: [ // Summary
     () => { show('sc-1'); show('sc-2'); show('sc-3'); },
     () => { clearHighlights(); },
   ],
