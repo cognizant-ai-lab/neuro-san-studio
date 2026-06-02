@@ -152,6 +152,7 @@ class SemanticDensityEngine:
                 num_return_sequences=num_beams,
                 output_scores=True,
                 return_dict_in_generate=True,
+                do_sample=False,
             )
 
         answers = []
