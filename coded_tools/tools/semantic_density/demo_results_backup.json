@@ -1,0 +1,62 @@
+{
+  "What is the capital of France?": {
+    "confidence_score": 0.92,
+    "interpretation": "high",
+    "best_answer": "The capital of France is Paris.",
+    "answers_with_scores": [
+      {"answer": "The capital of France is Paris.", "probability": 0.91, "density": 0.92},
+      {"answer": "Paris is the capital of France.", "probability": 0.89, "density": 0.91},
+      {"answer": "The capital city of France is Paris.", "probability": 0.87, "density": 0.90},
+      {"answer": "France's capital is Paris.", "probability": 0.85, "density": 0.89},
+      {"answer": "Paris is the capital city of France, located in the north-central part of the country.", "probability": 0.82, "density": 0.88}
+    ],
+    "distance_matrix": [
+      [0.0, 0.05, 0.06, 0.07, 0.12],
+      [0.05, 0.0, 0.04, 0.06, 0.11],
+      [0.06, 0.04, 0.0, 0.05, 0.10],
+      [0.07, 0.06, 0.05, 0.0, 0.13],
+      [0.12, 0.11, 0.10, 0.13, 0.0]
+    ],
+    "elapsed": 45.2
+  },
+  "What is the best programming language?": {
+    "confidence_score": 0.53,
+    "interpretation": "moderate",
+    "best_answer": "Python is often considered the best programming language for its readability and versatility, though the best choice depends on your specific use case.",
+    "answers_with_scores": [
+      {"answer": "Python is often considered the best programming language for its readability and versatility, though the best choice depends on your specific use case.", "probability": 0.72, "density": 0.53},
+      {"answer": "There is no single best programming language; it depends on the task. Python, JavaScript, and C++ each excel in different domains.", "probability": 0.68, "density": 0.51},
+      {"answer": "JavaScript is the most widely used programming language, especially for web development.", "probability": 0.65, "density": 0.45},
+      {"answer": "The best programming language depends on context. For data science, Python is preferred; for systems, C or Rust; for web, JavaScript.", "probability": 0.70, "density": 0.52},
+      {"answer": "C++ is considered the best language for performance-critical applications and systems programming.", "probability": 0.60, "density": 0.40}
+    ],
+    "distance_matrix": [
+      [0.0, 0.35, 0.55, 0.30, 0.60],
+      [0.35, 0.0, 0.50, 0.25, 0.55],
+      [0.55, 0.50, 0.0, 0.45, 0.40],
+      [0.30, 0.25, 0.45, 0.0, 0.50],
+      [0.60, 0.55, 0.40, 0.50, 0.0]
+    ],
+    "elapsed": 52.8
+  },
+  "What year did humans land on Mars?": {
+    "confidence_score": 0.28,
+    "interpretation": "low",
+    "best_answer": "As of my knowledge cutoff, humans have not landed on Mars. Only robotic missions have successfully reached the Martian surface.",
+    "answers_with_scores": [
+      {"answer": "As of my knowledge cutoff, humans have not landed on Mars. Only robotic missions have successfully reached the Martian surface.", "probability": 0.55, "density": 0.28},
+      {"answer": "Humans have not yet landed on Mars. NASA's Artemis program and SpaceX are planning crewed Mars missions for the 2030s.", "probability": 0.50, "density": 0.27},
+      {"answer": "No human has landed on Mars yet. The first crewed mission is expected sometime in the 2030s or later.", "probability": 0.48, "density": 0.26},
+      {"answer": "Humans landed on Mars in 2035 as part of NASA's deep space exploration program.", "probability": 0.30, "density": 0.15},
+      {"answer": "There is no confirmed date for a human Mars landing. Current plans target the mid-2030s at the earliest.", "probability": 0.45, "density": 0.25}
+    ],
+    "distance_matrix": [
+      [0.0, 0.25, 0.30, 0.85, 0.28],
+      [0.25, 0.0, 0.20, 0.80, 0.22],
+      [0.30, 0.20, 0.0, 0.82, 0.18],
+      [0.85, 0.80, 0.82, 0.0, 0.78],
+      [0.28, 0.22, 0.18, 0.78, 0.0]
+    ],
+    "elapsed": 48.5
+  }
+}
