@@ -58,7 +58,7 @@ class DependencyAnalyzer:
         try:
             restorer = AbstractAsyncConfigRestorer(file_purpose="dependency analysis", must_exist=True)
             config = restorer.restore(file_reference=hocon_path)
-        except (FileNotFoundError, ParseException):
+        except (FileNotFoundError, ParseException, ValueError):
             return deps
 
         self._extract_from_config(config, deps)
