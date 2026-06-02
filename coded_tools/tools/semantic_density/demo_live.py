@@ -170,6 +170,21 @@ class DemoRunner:
             "The Manager then adapts its response based on the confidence score.")
         self._wait_for_speech(12)
 
+        self._speak(
+            "Before calling this done, we ran the code through our Code Fink playbook. "
+            "That's a Devin playbook we built that reviews code through Dan Fink's eyes, "
+            "our most thorough reviewer. "
+            "It flagged a few things: the singleton was a standalone function, not on the class. "
+            "The demo had bare functions instead of a proper class. "
+            "And the exception handler was a catch-all except Exception. "
+            "We cleaned all of that up. "
+            "The singleton is now a classmethod. "
+            "The demo is wrapped in a DemoRunner class. "
+            "Exception handling uses specific types. "
+            "And the async to-thread pattern has a comment justifying why it's needed. "
+            "That should keep Dan happy when he reviews the PR.")
+        self._wait_for_speech(22)
+
     def _run_question(self, index, question_info):
         """Run a single question through the simulated agent network."""
         question = question_info.get("question", "")
