@@ -83,6 +83,33 @@ class ProcessLogBridge(ProcessLoggerInterface):
 
     # ---------- constants ----------
     _LEVEL_WORD = re.compile(r"\b(DEBUG|INFO|WARNING|ERROR|CRITICAL|FATAL)\b", re.IGNORECASE)
+    # Error phrasings for bare-text lines that carry no level token or "message_type".
+    # Matched only in the non-JSON prefix (see _infer_level_from_text) to keep the #915 guard.
+    _ERROR_CUE = re.compile(
+        r"validation errors?"
+        r"|parse error"
+        r"|\bfailed\b|\bfailure\b|fail(?:ed)? to|FAIL \("
+        r"|cannot (?:find|parse|open|load|create|connect|start)"
+        r"|\bcould not\b|\bunable to\b"
+        r"|internal server error"
+        r"|api key error"
+        r"|\bunrecognized\b"
+        r"|\bmalformed\b"
+        r"|not found in\b"
+        r"|\bis not set\b|\bnot installed\b"
+        r"|\[x\]",
+        re.IGNORECASE,
+    )
+    # Strict framework/exception markers, safe to match inside message content too. The
+    # exception name is case-sensitive so "ImportError:" matches but a prose "error:" doesn't.
+    _ERROR_SIGNATURE = re.compile(
+        r"Traceback \(most recent call last\)"
+        r"|[A-Z][A-Za-z]*Error:"
+        r"|No fully-specified LLM found"
+        r"|errors occurred while constructing"
+    )
+    # Cap on how many lines a sticky error block may escalate, so it can't run away.
+    _STICKY_MAX_LINES = 30
     _MESSAGE_TYPE_TO_LEVEL: Dict[str, int] = {
         "trace": logging.DEBUG,
         "debug": logging.DEBUG,
@@ -262,6 +289,11 @@ class ProcessLogBridge(ProcessLoggerInterface):
                     - "balance": brace balance counter.
                     - "collecting": whether multi-line JSON parsing is active.
                     - "logger": Python logger for this process's output.
+                    - "sticky_level": level inherited by continuation lines of a multi-line
+                      error block (None when not inside one).
+                    - "sticky_balance": open-bracket depth tracking that error block.
+                    - "sticky_lines": lines escalated so far (bounded by _STICKY_MAX_LINES).
+                    - "raw_line": the most recent raw input line (for sticky bracket counting).
         """
         return {
             "tee": tee,
@@ -269,6 +301,10 @@ class ProcessLogBridge(ProcessLoggerInterface):
             "balance": 0,
             "collecting": False,
             "logger": logging.getLogger(process_name),
+            "sticky_level": None,
+            "sticky_balance": 0,
+            "sticky_lines": 0,
+            "raw_line": "",
         }
 
     @staticmethod
@@ -336,11 +372,19 @@ class ProcessLogBridge(ProcessLoggerInterface):
         :param line (str): The raw line to process.
         """
         if line == "":
+            # A blank line ends a multi-line block: stop inheriting any sticky error level.
+            state["sticky_level"] = None
+            state["sticky_balance"] = 0
+            state["sticky_lines"] = 0
             self._write_tee(state, line)
             return
 
         # Mirror raw first
         self._write_tee(state, line)
+
+        # Remember the raw line so sticky-level tracking counts brackets on the original
+        # (still-quoted) text, not the rendered message.
+        state["raw_line"] = line
 
         # Single-line JSON?
         obj = self._try_parse_json_fragment(line)
@@ -367,11 +411,14 @@ class ProcessLogBridge(ProcessLoggerInterface):
 
     # ---------- reassembler (stateful, no extra classes) ----------
     @staticmethod
-    def _count_braces_outside_quotes(s: str) -> int:
+    def _count_delims_outside_quotes(s: str, open_ch: str = "{", close_ch: str = "}") -> int:
         """
-        Count net brace balance `{` minus `}` ignoring quoted strings.
+        Count net delimiter balance `open_ch` minus `close_ch`, ignoring quoted strings.
+        Defaults to curly braces; pass ``"["`` / ``"]"`` to balance a bracketed list.
         :param s (str): A text line.
-        :return int: Net count (`+1` for `{`, `-1` for `}`), ignoring content inside double quotes.
+        :param open_ch (str): The opening delimiter to count as `+1`.
+        :param close_ch (str): The closing delimiter to count as `-1`.
+        :return int: Net count, ignoring content inside double quotes.
         """
         depth = 0
         in_str = False
@@ -388,9 +435,9 @@ class ProcessLogBridge(ProcessLoggerInterface):
                 continue
             if in_str:
                 continue
-            if ch == "{":
+            if ch == open_ch:
                 depth += 1
-            elif ch == "}":
+            elif ch == close_ch:
                 depth -= 1
         return depth
 
@@ -403,7 +450,7 @@ class ProcessLogBridge(ProcessLoggerInterface):
         """
         if "{" in line:
             state["buffer"] = [line]
-            state["balance"] = self._count_braces_outside_quotes(line)
+            state["balance"] = self._count_delims_outside_quotes(line)
             state["collecting"] = True
             return True
         return False
@@ -415,7 +462,7 @@ class ProcessLogBridge(ProcessLoggerInterface):
         :param line (str): The next line in the JSON block.
         """
         state["buffer"].append(line)
-        state["balance"] += self._count_braces_outside_quotes(line)
+        state["balance"] += self._count_delims_outside_quotes(line)
 
     @staticmethod
     def _reasm_should_flush(state: Dict[str, Any], line: str) -> bool:
@@ -466,6 +513,11 @@ class ProcessLogBridge(ProcessLoggerInterface):
               JSON message payloads do not cause false positives.
             - If the prefix contains a severity word (INFO, WARNING, ERROR,
               etc.) that level is returned.
+            - Otherwise, if the payload carries an explicit "message_type"
+              field (e.g. "Error", "Debug"), its mapped level is returned.
+              This recovers severity from JSON-ish records that failed strict
+              parsing and fell back to text, keeping behaviour consistent with
+              the parsed-JSON path.
             - If the full line looks like a traceback, ERROR is returned.
             - Otherwise, the provided default is used.
         :param line (str): The raw text line.
@@ -478,12 +530,23 @@ class ProcessLogBridge(ProcessLoggerInterface):
         brace_pos = line.find("{")
         prefix = line[:brace_pos] if brace_pos >= 0 else line
         m = self._LEVEL_WORD.search(prefix)
-        if not m:
-            if "traceback" in line.lower():
-                return logging.ERROR
-            return default
-        word = m.group(1).upper()
-        return logging.CRITICAL if word == "FATAL" else getattr(logging, word, default)
+        if m:
+            word = m.group(1).upper()
+            return logging.CRITICAL if word == "FATAL" else getattr(logging, word, default)
+        # No level word: honor an explicit "message_type" token if present (same authority
+        # as the parsed-JSON path; unambiguous, so no #915 false positives).
+        mt = self._META_REGEXES["message_type"].search(line)
+        if mt:
+            level = self._MESSAGE_TYPE_TO_LEVEL.get(mt.group("val").strip().lower())
+            if level is not None:
+                return level
+        # Else fall back to error cues (prefix only, to keep the #915 guard) then to strict
+        # framework signatures (safe to match anywhere on the line).
+        if self._ERROR_CUE.search(prefix):
+            return logging.ERROR
+        if self._ERROR_SIGNATURE.search(line):
+            return logging.ERROR
+        return default
 
     # ---------- json helpers ----------
     @staticmethod
@@ -653,6 +716,11 @@ class ProcessLogBridge(ProcessLoggerInterface):
         if not str(display_msg).strip():
             return
 
+        # Escalate to ERROR if the content carries a strict framework signature (e.g. an
+        # LLM-construction failure relayed via an agent's "AI" chat text).
+        if level < logging.ERROR and self._ERROR_SIGNATURE.search(str(display_msg)):
+            level = logging.ERROR
+
         self._log(state, level, header + ": " + str(display_msg))
 
         # Re-read the raw message; display_msg above may have been JSON-serialized.
@@ -700,15 +768,47 @@ class ProcessLogBridge(ProcessLoggerInterface):
         self._emit_text_line(state, flat)
 
     # ---------- logging wrapper ----------
-    @staticmethod
-    def _log(state: Dict[str, Any], level: int, msg: str) -> None:
+    def _apply_sticky_level(self, state: Dict[str, Any], level: int) -> int:
+        """
+        Apply an ERROR floor to the continuation lines of a multi-line error block.
+
+        When an ERROR line opens a bracketed list (raw text ends with "["), the level is
+        held for following lines until the matching "]" closes it. Brackets are counted on
+        the raw line outside quotes; the block is bounded by _STICKY_MAX_LINES and a blank
+        line (see _handle_line) so a stray bracket can't run away.
+
+        :param state (dict): Per-stream state holding the "sticky_*" / "raw_line" keys.
+        :param level (int): The level already inferred for this line.
+        :return int: The (possibly escalated) level to log this line at.
+        """
+        raw = state.get("raw_line", "")
+        if state.get("sticky_level") is not None:
+            level = max(level, state["sticky_level"])
+            state["sticky_balance"] += self._count_delims_outside_quotes(raw, "[", "]")
+            state["sticky_lines"] += 1
+            if state["sticky_balance"] <= 0 or state["sticky_lines"] >= self._STICKY_MAX_LINES:
+                state["sticky_level"] = None
+                state["sticky_balance"] = 0
+                state["sticky_lines"] = 0
+        elif level >= logging.ERROR and raw.rstrip().endswith("["):
+            balance = self._count_delims_outside_quotes(raw, "[", "]")
+            if balance > 0:
+                state["sticky_level"] = level
+                state["sticky_balance"] = balance
+                state["sticky_lines"] = 0
+        return level
+
+    def _log(self, state: Dict[str, Any], level: int, msg: str) -> None:
         """
         Log a message using the appropriate logger method.
         :param state (dict): Per-stream state containing a logger.
         :param level (int): Logging level constant.
         :param msg (str): Message to emit.
         Notes: Calls the appropriate severity method (debug/info/warning/error/...).
+            The level may be escalated for continuation lines of a multi-line error
+            block via _apply_sticky_level.
         """
+        level = self._apply_sticky_level(state, level)
         lg = state["logger"]
         if level >= logging.CRITICAL:
             lg.critical(msg)
