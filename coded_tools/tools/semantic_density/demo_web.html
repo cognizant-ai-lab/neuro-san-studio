@@ -717,64 +717,32 @@
   </div>
 </div>
 
-<!-- Slide 5: Code Fink Review -->
+<!-- Slide 5: Code Reviews (consolidated) -->
 <div class="slide" id="slide-5">
-  <h2>Code Review: Code Fink Playbook</h2>
-  <h3>Reviewed through Dan Fink's eyes — one of our most thorough reviewers</h3>
-  <ul class="checklist">
-    <li id="cf-1">
-      <div class="check-icon">✓</div>
-      <div><strong>Singleton pattern</strong> — moved from standalone function to <span class="code-inline">@classmethod get_instance()</span></div>
-    </li>
-    <li id="cf-2">
-      <div class="check-icon">✓</div>
-      <div><strong>OO structure</strong> — wrapped demo functions into <span class="code-inline">DemoRunner</span> class</div>
-    </li>
-    <li id="cf-3">
-      <div class="check-icon">✓</div>
-      <div><strong>Exception handling</strong> — specific types instead of catch-all <span class="code-inline">except Exception</span></div>
-    </li>
-    <li id="cf-4">
-      <div class="check-icon">✓</div>
-      <div><strong>Async justification</strong> — comment explaining why <span class="code-inline">asyncio.to_thread()</span> is needed for GPU</div>
-    </li>
-    <li id="cf-5">
-      <div class="check-icon">✓</div>
-      <div><strong>Breadcrumb comments</strong> — private methods marked as "our own helper — not an override"</div>
-    </li>
-  </ul>
+  <h2>Code Reviews</h2>
+  <h3>Two playbooks, two reviewers, zero surprises at PR time</h3>
+  <div style="display: flex; gap: 40px; margin-top: 20px; max-width: 900px;">
+    <div id="cr-fink" style="flex:1; opacity:0; transform:translateY(10px); transition:all 0.4s ease;">
+      <h4 style="color: var(--accent); margin-bottom: 12px;">Code Fink</h4>
+      <p style="color: var(--text-dim); font-size: 0.95rem;">Dan's focus: OO structure, exception handling, async patterns</p>
+      <ul class="checklist" style="margin-top: 10px;">
+        <li id="cr-1"><div class="check-icon">✓</div><div>Singleton → classmethod, DemoRunner class</div></li>
+        <li id="cr-2"><div class="check-icon">✓</div><div>Specific exceptions, async justification</div></li>
+      </ul>
+    </div>
+    <div id="cr-francon" style="flex:1; opacity:0; transform:translateY(10px); transition:all 0.4s ease;">
+      <h4 style="color: var(--purple); margin-bottom: 12px;">Code Francon</h4>
+      <p style="color: var(--text-dim); font-size: 0.95rem;">Olivier's focus: documentation, HOCON patterns, naming</p>
+      <ul class="checklist" style="margin-top: 10px;">
+        <li id="cr-3"><div class="check-icon">✓</div><div>Example docs, stale refs fixed</div></li>
+        <li id="cr-4"><div class="check-icon">✓</div><div>HOCON voice, logging hygiene</div></li>
+      </ul>
+    </div>
+  </div>
 </div>
 
-<!-- Slide 6: Code Francon Review -->
+<!-- Slide 6: Transition to Confidence Demo -->
 <div class="slide" id="slide-6">
-  <h2>Code Review: Code Francon Playbook</h2>
-  <h3>Reviewed through Olivier Francon's eyes — documentation and HOCON patterns</h3>
-  <ul class="checklist">
-    <li id="co-1">
-      <div class="check-icon">✓</div>
-      <div><strong>Example documentation</strong> — created <span class="code-inline">docs/examples/tools/semantic_density.md</span> following repo pattern</div>
-    </li>
-    <li id="co-2">
-      <div class="check-icon">✓</div>
-      <div><strong>Stale references</strong> — fixed <span class="code-inline">qa_manager</span> → <span class="code-inline">soothsayer</span> in docs and demo</div>
-    </li>
-    <li id="co-3">
-      <div class="check-icon">✓</div>
-      <div><strong>HOCON description voice</strong> — rewrote function.description from first-person to third-person</div>
-    </li>
-    <li id="co-4">
-      <div class="check-icon">✓</div>
-      <div><strong>Logging hygiene</strong> — lazy <span class="code-inline">%s</span> formatting, no <span class="code-inline">sly_data</span> leaks, no env mutation</div>
-    </li>
-    <li id="co-5">
-      <div class="check-icon">✓</div>
-      <div><strong>Import & config patterns</strong> — absolute imports only, standard <span class="code-inline">llm_config.hocon</span> include</div>
-    </li>
-  </ul>
-</div>
-
-<!-- Slide 7: Transition to Confidence Demo -->
-<div class="slide" id="slide-7">
   <h2>Confidence Demo</h2>
   <h3>Let's see confidence levels for a few different questions</h3>
   <div style="margin-top: 20px; display: flex; gap: 30px;">
@@ -784,8 +752,8 @@
   </div>
 </div>
 
-<!-- Slide 8: Q1 - Capital of France -->
-<div class="slide" id="slide-8">
+<!-- Slide 7: Q1 - Capital of France -->
+<div class="slide" id="slide-7">
   <div class="question-card">
     <div class="question-text">Q1: "What is the capital of France?"</div>
     <div class="question-category">Factual — single correct answer</div>
@@ -810,8 +778,8 @@
   </div>
 </div>
 
-<!-- Slide 9: Q2 - Best Programming Language -->
-<div class="slide" id="slide-9">
+<!-- Slide 8: Q2 - Best Programming Language -->
+<div class="slide" id="slide-8">
   <div class="question-card">
     <div class="question-text">Q2: "What is the best programming language?"</div>
     <div class="question-category">Subjective — no single right answer</div>
@@ -837,8 +805,8 @@
   </div>
 </div>
 
-<!-- Slide 10: Q3 - Multiplication -->
-<div class="slide" id="slide-10">
+<!-- Slide 9: Q3 - Multiplication -->
+<div class="slide" id="slide-9">
   <div class="question-card">
     <div class="question-text">Q3: "What is 19,879 × 4,390?"</div>
     <div class="question-category">Arithmetic — exact answer, but LLMs struggle</div>
@@ -865,8 +833,8 @@
   </div>
 </div>
 
-<!-- Slide 11: Summary -->
-<div class="slide" id="slide-11">
+<!-- Slide 10: Summary -->
+<div class="slide" id="slide-10">
   <h2>Results</h2>
   <div class="summary-grid">
     <div class="summary-card high-card" id="sc-1">
@@ -883,6 +851,41 @@
       <div class="q-label">19,879 × 4,390</div>
       <div class="score">0.226</div>
       <div class="verdict">✗ Flag unreliable</div>
+    </div>
+  </div>
+</div>
+
+<!-- Slide 11: MCP — Extra Credit -->
+<div class="slide" id="slide-11">
+  <h2>Extra Credit: MCP Server</h2>
+  <h3>40 lines to make it available to any agent network</h3>
+  <div style="display: flex; gap: 40px; margin-top: 20px; align-items: center; max-width: 900px;">
+    <div id="mcp-code" style="flex: 1; opacity:0; transform:translateY(10px); transition:all 0.4s ease;">
+      <div style="background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 20px; font-family: 'JetBrains Mono', monospace; font-size: 0.8rem; line-height: 1.6;">
+        <div style="color: var(--text-dim);">servers/mcp/confidence_server.py</div>
+        <pre style="margin-top: 10px; color: var(--text);"><span style="color:var(--purple)">mcp</span> = FastMCP(<span style="color:var(--green)">"ConfidenceAssessment"</span>)
+
+<span style="color:var(--accent)">@mcp.tool()</span>
+<span style="color:var(--purple)">def</span> assess_confidence(question: <span style="color:var(--cyan)">str</span>) -> <span style="color:var(--cyan)">dict</span>:
+    engine = SemanticDensityEngine.get_instance()
+    <span style="color:var(--purple)">return</span> engine.evaluate(question)
+
+mcp.run(transport=<span style="color:var(--green)">"streamable-http"</span>)</pre>
+      </div>
+    </div>
+    <div id="mcp-diagram" style="flex: 1; opacity:0; transform:translateY(10px); transition:all 0.4s ease;">
+      <div style="text-align: center;">
+        <div style="background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 15px 25px; display: inline-block; margin-bottom: 15px;">
+          <div style="font-size: 0.85rem; color: var(--text-dim);">Any Machine</div>
+          <div style="font-weight: 600; color: var(--accent);">Agent Network</div>
+        </div>
+        <div style="font-size: 1.5rem; color: var(--text-dim); margin: 5px 0;">↓ <span style="font-size: 0.8rem;">MCP (HTTP)</span></div>
+        <div style="background: var(--surface); border: 1px solid var(--green); border-radius: 12px; padding: 15px 25px; display: inline-block; margin-top: 5px;">
+          <div style="font-size: 0.85rem; color: var(--text-dim);">GPU Server</div>
+          <div style="font-weight: 600; color: var(--green);">assess_confidence</div>
+          <div style="font-size: 0.8rem; color: var(--text-dim); margin-top: 4px;">Qwen 7B + DeBERTa NLI</div>
+        </div>
+      </div>
     </div>
   </div>
 </div>
@@ -910,6 +913,13 @@
       <div class="step-content">
         <div class="step-title">Wired into Agent Network</div>
         <div class="step-desc">Soothsayer → Answerer + Confidence Checker, running on GPU via neuro-san</div>
+      </div>
+    </li>
+    <li id="wu-4">
+      <div class="step-num" style="color: var(--purple);">04</div>
+      <div class="step-content">
+        <div class="step-title">Exposed via MCP</div>
+        <div class="step-desc">40-line server — any agent network, anywhere, can assess confidence over HTTP</div>
       </div>
     </li>
   </ol>
@@ -1038,23 +1048,19 @@ const SUB_ANIMATIONS = {
     () => { clearHighlights(); show('a1'); show('n-answer'); highlight('n-answer'); },
     () => { clearHighlights(); show('n-check'); highlight('n-check'); },
   ],
-  5: [ // Code Fink
-    () => {},
-    () => { show('cf-1'); highlight('cf-1'); },
-    () => { clearHighlights(); show('cf-2'); highlight('cf-2'); },
-    () => { clearHighlights(); show('cf-3'); highlight('cf-3'); },
-    () => { clearHighlights(); show('cf-4'); highlight('cf-4'); },
-    () => { clearHighlights(); show('cf-5'); highlight('cf-5'); },
+  5: [ // Code Reviews (consolidated)
+    () => {
+      const fink = document.getElementById('cr-fink');
+      if (fink) { fink.style.opacity = '1'; fink.style.transform = 'translateY(0)'; }
+      show('cr-1'); show('cr-2');
+    },
+    () => {
+      const francon = document.getElementById('cr-francon');
+      if (francon) { francon.style.opacity = '1'; francon.style.transform = 'translateY(0)'; }
+      show('cr-3'); show('cr-4');
+    },
   ],
-  6: [ // Code Francon
-    () => {},
-    () => { show('co-1'); highlight('co-1'); },
-    () => { clearHighlights(); show('co-2'); highlight('co-2'); },
-    () => { clearHighlights(); show('co-3'); highlight('co-3'); },
-    () => { clearHighlights(); show('co-4'); highlight('co-4'); },
-    () => { clearHighlights(); show('co-5'); highlight('co-5'); },
-  ],
-  7: [ // Transition to Confidence Demo
+  6: [ // Transition to Confidence Demo
     () => {
       const ids = ['td-1','td-2','td-3'];
       ids.forEach((id, i) => {
@@ -1065,7 +1071,7 @@ const SUB_ANIMATIONS = {
       });
     },
   ],
-  8: [ // Q1: France
+  7: [ // Q1: France
     () => {
       show('b1-1'); show('b1-2'); show('b1-3'); show('b1-4'); show('b1-5');
     },
@@ -1076,7 +1082,7 @@ const SUB_ANIMATIONS = {
     },
     () => show('ar-1'),
   ],
-  9: [ // Q2: Programming
+  8: [ // Q2: Programming
     () => {
       show('b2-1'); show('b2-2'); show('b2-3'); show('b2-4'); show('b2-5');
     },
@@ -1087,7 +1093,7 @@ const SUB_ANIMATIONS = {
     },
     () => show('ar-2'),
   ],
-  10: [ // Q3: Multiplication
+  9: [ // Q3: Multiplication
     () => {
       show('b3-1'); show('b3-2'); show('b3-3'); show('b3-4'); show('b3-5');
     },
@@ -1098,13 +1104,24 @@ const SUB_ANIMATIONS = {
     },
     () => show('ar-3'),
   ],
-  11: [ // Results
+  10: [ // Results
     () => { show('sc-1'); show('sc-2'); show('sc-3'); },
+  ],
+  11: [ // MCP Server
+    () => {
+      const code = document.getElementById('mcp-code');
+      if (code) { code.style.opacity = '1'; code.style.transform = 'translateY(0)'; }
+    },
+    () => {
+      const diag = document.getElementById('mcp-diagram');
+      if (diag) { diag.style.opacity = '1'; diag.style.transform = 'translateY(0)'; }
+    },
   ],
   12: [ // Wrap-Up
     () => { show('wu-1'); highlight('wu-1'); },
     () => { clearHighlights(); show('wu-2'); highlight('wu-2'); },
     () => { clearHighlights(); show('wu-3'); highlight('wu-3'); },
+    () => { clearHighlights(); show('wu-4'); highlight('wu-4'); },
     () => { clearHighlights(); document.getElementById('wu-closing').style.opacity = '1'; },
   ],
 };
