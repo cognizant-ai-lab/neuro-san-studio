@@ -108,8 +108,6 @@ class ProcessLogBridge(ProcessLoggerInterface):
         r"|No fully-specified LLM found"
         r"|errors occurred while constructing"
     )
-    # Cap on how many lines a sticky error block may escalate, so it can't run away.
-    _STICKY_MAX_LINES = 30
     _MESSAGE_TYPE_TO_LEVEL: Dict[str, int] = {
         "trace": logging.DEBUG,
         "debug": logging.DEBUG,
@@ -292,7 +290,7 @@ class ProcessLogBridge(ProcessLoggerInterface):
                     - "sticky_level": level inherited by continuation lines of a multi-line
                       error block (None when not inside one).
                     - "sticky_balance": open-bracket depth tracking that error block.
-                    - "sticky_lines": lines escalated so far (bounded by _STICKY_MAX_LINES).
+                    - "sticky_lines": lines escalated so far.
                     - "raw_line": the most recent raw input line (for sticky bracket counting).
         """
         return {
@@ -774,8 +772,8 @@ class ProcessLogBridge(ProcessLoggerInterface):
 
         When an ERROR line opens a bracketed list (raw text ends with "["), the level is
         held for following lines until the matching "]" closes it. Brackets are counted on
-        the raw line outside quotes; the block is bounded by _STICKY_MAX_LINES and a blank
-        line (see _handle_line) so a stray bracket can't run away.
+        the raw line outside quotes; the block is bounded by a blank line (see _handle_line)
+        so a stray bracket can't run away.
 
         :param state (dict): Per-stream state holding the "sticky_*" / "raw_line" keys.
         :param level (int): The level already inferred for this line.
@@ -786,7 +784,7 @@ class ProcessLogBridge(ProcessLoggerInterface):
             level = max(level, state["sticky_level"])
             state["sticky_balance"] += self._count_delims_outside_quotes(raw, "[", "]")
             state["sticky_lines"] += 1
-            if state["sticky_balance"] <= 0 or state["sticky_lines"] >= self._STICKY_MAX_LINES:
+            if state["sticky_balance"] <= 0:
                 state["sticky_level"] = None
                 state["sticky_balance"] = 0
                 state["sticky_lines"] = 0
