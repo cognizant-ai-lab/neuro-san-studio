@@ -14,7 +14,7 @@
 #
 # END COPYRIGHT
 
-"""Tests for ImportCommand._parse_arg."""
+"""Tests for ImportCommand argument handling: _parse_arg and file inference."""
 
 import pytest
 
@@ -66,11 +66,6 @@ class TestParseArg:
         # pylint: disable=protected-access
         assert ImportCommand._parse_arg("music_nerd", networks_by_group) == ["basic/music_nerd.hocon"]
 
-    def test_single_network_with_hocon_extension(self, networks_by_group: dict) -> None:
-        """Trailing .hocon should be stripped before matching."""
-        # pylint: disable=protected-access
-        assert ImportCommand._parse_arg("music_nerd.hocon", networks_by_group) == ["basic/music_nerd.hocon"]
-
     def test_single_network_with_group_prefix(self, networks_by_group: dict) -> None:
         """A group/name path should match the exact network."""
         # pylint: disable=protected-access
@@ -104,3 +99,36 @@ class TestParseArg:
             "basic/coffee_finder.hocon",
             "industry/airline_policy.hocon",
         ]
+
+
+class TestLooksLikeAgentNetworkFile:
+    """Tests for ImportCommand._looks_like_agent_network_file (file-vs-registry inference)."""
+
+    @pytest.mark.parametrize(
+        "arg",
+        [
+            "music_nerd.hocon",
+            "bundle.zip",
+            "path/to/network.hocon",
+            "MyNetwork.HOCON",
+            "archive.ZIP",
+        ],
+    )
+    def test_file_extensions_route_to_file_flow(self, arg: str) -> None:
+        """A .hocon/.zip arg (any case, with or without a path) is treated as a file."""
+        # pylint: disable=protected-access
+        assert ImportCommand._looks_like_agent_network_file(arg) is True
+
+    @pytest.mark.parametrize(
+        "arg",
+        [
+            "music_nerd",
+            "basic",
+            "industry/airline_policy",
+            "all",
+        ],
+    )
+    def test_extensionless_args_stay_registry_lookups(self, arg: str) -> None:
+        """A bare name/group/path with no file extension is a registry lookup, not a file."""
+        # pylint: disable=protected-access
+        assert ImportCommand._looks_like_agent_network_file(arg) is False
