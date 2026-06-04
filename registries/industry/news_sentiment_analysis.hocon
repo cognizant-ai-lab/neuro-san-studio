@@ -99,7 +99,9 @@ A topic or subject for which media sentiment analysis is requested, covering sen
         },
         {
             "name": "data_analyst",
-            "function": ${aaosa_call},
+            "function": ${aaosa_call}{
+                "description": "Analyzes sentiment-tagged datasets and generates comprehensive sentiment analysis reports."
+            },
             "instructions": ${instructions_prefix} """
             Produce a comprehensive sentiment analysis report that is detailed, quantitative, and based on clear inferences. 
             The average compound sentiment scores for each source and overall sentiment in this format: "<source_name>": "avg_compound": <..>,
