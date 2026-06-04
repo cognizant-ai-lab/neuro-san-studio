@@ -108,7 +108,7 @@ class ImportCommand:  # pylint: disable=too-few-public-methods
         self._import(selected, registry)
 
         print()
-        CliStatus.ok(f"Imported {len(selected)} agent network(s) from studio registry.")
+        CliStatus.ok(f"Done with importing {len(selected)} agent network(s) from studio registry.")
         print()
         CliStatus.info("Next steps:")
         print("        - Run 'ns run' to start the server")
@@ -168,7 +168,7 @@ class ImportCommand:  # pylint: disable=too-few-public-methods
         )
         self._print_mcp_summary(results)
         print()
-        CliStatus.ok(f"Imported {len(results)} agent network(s) from local storage.")
+        CliStatus.ok(f"Done with importing {len(results)} agent network(s) from local storage.")
         print()
 
     def _import_one_file(self, file_path: str, importer: AgentNetworkImporter):
