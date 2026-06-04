@@ -82,6 +82,7 @@ class ProcessLogBridge(ProcessLoggerInterface):
             return f"{dt.strftime('%Y-%m-%d %H:%M:%S')} {dt.tzname()}"
 
     # ---------- constants ----------
+    _STICKY_MAX_LINES = 10
     _LEVEL_WORD = re.compile(r"\b(DEBUG|INFO|WARNING|ERROR|CRITICAL|FATAL)\b", re.IGNORECASE)
     # Error phrasings for bare-text lines that carry no level token or "message_type".
     # Matched only in the non-JSON prefix (see _infer_level_from_text) to keep the #915 guard.
@@ -784,7 +785,7 @@ class ProcessLogBridge(ProcessLoggerInterface):
             level = max(level, state["sticky_level"])
             state["sticky_balance"] += self._count_delims_outside_quotes(raw, "[", "]")
             state["sticky_lines"] += 1
-            if state["sticky_balance"] <= 0:
+            if state["sticky_balance"] <= 0 or state["sticky_lines"] >= self._STICKY_MAX_LINES:
                 state["sticky_level"] = None
                 state["sticky_balance"] = 0
                 state["sticky_lines"] = 0
