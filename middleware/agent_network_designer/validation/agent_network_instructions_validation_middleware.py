@@ -58,6 +58,9 @@ class AgentNetworkInstructionsValidationMiddleware(AgentNetworkValidationMiddlew
                 description: str = agent_copy.pop("description")
                 agent_copy["function"] = {"description": description}
             use_network_def[agent_name] = agent_copy
+        # The keyword validator only checks that "instructions" and "description" fields are present and non-empty.
+        # We do not check if "tools" field is a list of str here since that is related to structure validation and
+        # this agent network has no tools to fix this issue.
         return KeywordNetworkValidator().validate(use_network_def)
 
     def format_error(self, error_list: list[str]) -> str:

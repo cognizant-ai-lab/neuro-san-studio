@@ -53,6 +53,7 @@ RUN if [ -f ${APP_SOURCE}/requirements.txt ]; \
 # Install plugin dependencies.
 # To install additional plugins, add more lines following this pattern:
 #   pip install --prefix=/install --no-cache-dir -r ${APP_SOURCE}/neuro_san_studio/plugins/<plugin>/requirements.txt
+# hadolint ignore=DL3059
 RUN pip install --prefix=/install --no-cache-dir \
     -r ${APP_SOURCE}/neuro_san_studio/plugins/langfuse/requirements.txt
 
@@ -104,9 +105,14 @@ COPY ./neuro_san_studio ${APP_SOURCE}/neuro_san_studio
 COPY ./registries ${APP_SOURCE}/registries
 COPY ./coded_tool[s] ${APP_SOURCE}/coded_tools
 COPY ./middleware ${APP_SOURCE}/middleware
+# The skills directory holds local skill packages (each containing a SKILL.md
+# and any supporting resources) that are loaded at runtime by the
+# AgentSkillsMiddleware via the "skill_sources" config. This is required by
+# registries/basic/job_guessing_skill.hocon and by any future agent network
+# that references local skills under skills/.
+COPY ./skills ${APP_SOURCE}/skills
 COPY ./deploy/entrypoint.sh ${APP_SOURCE}/deploy/entrypoint.sh
 COPY ./deploy/logging.hocon ${APP_SOURCE}/deploy/logging.hocon
-COPY ./mcp/mcp_info.hocon ${APP_SOURCE}/mcp/mcp_info.hocon
 COPY ./config ${APP_SOURCE}/config
 # To override the default LLM configuration at runtime, mount your custom
 # llm_config.hocon using a Docker volume, e.g.:
@@ -255,7 +261,7 @@ ENV AGENT_USAGE_LOGGER_METADATA=""
 # A space-delimited list of http metadata request keys to forward to tracing/Observability
 # infrastructure. When not set, this defaults to the value provided by
 # AGENT_USAGE_LOGGER_METADATA or AGENT_FORWARDED_REQUEST_METADATA.
-ENV AGENT_TRACING_METADATA_REQUEST_KEYS=""
+ENV AGENT_TRACING_METADATA_REQUEST_KEYS="request_id user_id"
 
 # A space-delimited list of environment variables to be forwarded to observability tracing metadata.
 # The defaults given here are standard Kubernetes environment variables for any given deployment pod.
@@ -335,7 +341,7 @@ ENV AGENT_RESERVATIONS_S3_BUCKET=""
 
 # A hocon file with MCP servers information to be used by LangChainMcpAdapter
 # for connecting to external MCP servers with authentication and tool filtering.
-ENV MCP_SERVERS_INFO_FILE="mcp/mcp_info.hocon"
+ENV MCP_SERVERS_INFO_FILE="${APP_SOURCE}/neuro_san_studio/mcp/mcp_info.hocon"
 
 # When set, this parameter enables MCP service protocol for running neuro-san server.
 # Service endpoint is http://host:port/mcp
@@ -437,4 +443,4 @@ ENV AGENT_NETWORK_DESIGNER_MANIFEST_FILE="registries/manifest_and.hocon"
 # Defaults to "neuro_san_studio/toolbox/agent_network_designer_toolbox_info.hocon" if not set.
 ENV AGENT_NETWORK_DESIGNER_TOOLBOX_INFO_FILE="neuro_san_studio/toolbox/agent_network_designer_toolbox_info.hocon"
 
-ENTRYPOINT "${APP_ENTRYPOINT}"
+ENTRYPOINT ["/bin/bash", "-c", "exec ${APP_ENTRYPOINT}"]
