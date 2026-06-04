@@ -1,4 +1,4 @@
-# Semantic Density — FedEx Day Summary
+# Semantic Density — Summary
 
 ## What It Does
 
@@ -38,14 +38,18 @@ User Question → soothsayer → [answerer + confidence_checker]
 - **confidence_checker**: Calls the semantic_density CodedTool, reports score
 - Score mapping: >= 0.7 high, 0.4-0.7 moderate, < 0.4 low
 
-### Demo Scripts
+### MCP Server (`servers/mcp/confidence_server.py`)
+
+A thin MCP wrapper (~40 lines) that exposes `SemanticDensityEngine` as a
+remote tool via streamable HTTP. Any agent network on any machine can call
+`assess_confidence(question)` over MCP — no local GPU required.
+
+### MCP Consumer (`coded_tools/tools/mcp_confidence/`)
 
 | File | Purpose |
 |------|---------|
-| `demo_runner.py` | Colored terminal output (green/yellow/red confidence bars) |
-| `demo_visualize.py` | t-SNE heatmap PNG showing answer clustering |
-| `demo_audio_server.py` | FastAPI WebSocket server with OpenAI TTS narration |
-| `demo_results_backup.json` | Pre-computed results for 3 curated questions |
+| `confidence_checker.py` | Coded tool that connects to the MCP server via `langchain-mcp-adapters` |
+| `mcp_confidence.hocon` | Agent network using the MCP-based confidence checker |
 
 ### Tests (`tests/tools/semantic_density/`)
 
@@ -55,7 +59,7 @@ User Question → soothsayer → [answerer + confidence_checker]
 - Evaluate result structure
 - CodedTool wrapper (missing input, mocked invocation)
 
-## Curated Demo Questions
+## Example Questions
 
 | Question | Expected Confidence |
 |----------|-------------------|
@@ -72,22 +76,12 @@ User Question → soothsayer → [answerer + confidence_checker]
 ## Running
 
 ```bash
-# Terminal demo (live)
+# Via agent_cli
 export PYTHONPATH=$(pwd)
 export AGENT_TOOL_PATH=coded_tools/
-python coded_tools/tools/semantic_density/demo_runner.py
-
-# Terminal demo (pre-computed fallback)
-python coded_tools/tools/semantic_density/demo_runner.py \
-    coded_tools/tools/semantic_density/demo_results_backup.json
-
-# Via agent_cli
 python -m neuro_san.client.agent_cli --agent semantic_density
 
-# Visualization
-python coded_tools/tools/semantic_density/demo_visualize.py \
-    demo_results_backup.json
-
-# Audio server
-python coded_tools/tools/semantic_density/demo_audio_server.py
+# Via MCP (start server, then use mcp_confidence network)
+CUDA_VISIBLE_DEVICES=7 python servers/mcp/confidence_server.py
+python -m neuro_san.client.agent_cli --agent mcp_confidence
 ```
