@@ -82,6 +82,8 @@ class ProcessLogBridge(ProcessLoggerInterface):
             return f"{dt.strftime('%Y-%m-%d %H:%M:%S')} {dt.tzname()}"
 
     # ---------- constants ----------
+    # Cap sticky-level propagation: a stray unclosed bracket in a malformed
+    # log stream must not escalate every subsequent line to ERROR indefinitely.
     _STICKY_MAX_LINES = 10
     _LEVEL_WORD = re.compile(r"\b(DEBUG|INFO|WARNING|ERROR|CRITICAL|FATAL)\b", re.IGNORECASE)
     # Error phrasings for bare-text lines that carry no level token or "message_type".
@@ -98,7 +100,7 @@ class ProcessLogBridge(ProcessLoggerInterface):
         r"|\bmalformed\b"
         r"|not found in\b"
         r"|\bis not set\b|\bnot installed\b"
-        r"|\[x\]",
+        r"|\[x\]",  # nsflow UI failure checkbox marker
         re.IGNORECASE,
     )
     # Strict framework/exception markers, safe to match inside message content too. The
@@ -290,7 +292,7 @@ class ProcessLogBridge(ProcessLoggerInterface):
                     - "logger": Python logger for this process's output.
                     - "sticky_level": level inherited by continuation lines of a multi-line
                       error block (None when not inside one).
-                    - "sticky_balance": open-bracket depth tracking that error block.
+                    - "sticky_balance": open-bracket depth tracking for that error block.
                     - "sticky_lines": lines escalated so far.
                     - "raw_line": the most recent raw input line (for sticky bracket counting).
         """
@@ -720,6 +722,7 @@ class ProcessLogBridge(ProcessLoggerInterface):
         if level < logging.ERROR and self._ERROR_SIGNATURE.search(str(display_msg)):
             level = logging.ERROR
 
+        level = self._apply_sticky_level(state, level)
         self._log(state, level, header + ": " + str(display_msg))
 
         # Re-read the raw message; display_msg above may have been JSON-serialized.
@@ -740,6 +743,7 @@ class ProcessLogBridge(ProcessLoggerInterface):
         if not line.strip():
             return
         level = self._infer_level_from_text(line, logging.INFO)
+        level = self._apply_sticky_level(state, level)
         header = self._src_header(state["logger"].name, None)
         self._log(state, level, header + " - " + line)
 
@@ -781,11 +785,14 @@ class ProcessLogBridge(ProcessLoggerInterface):
         :return int: The (possibly escalated) level to log this line at.
         """
         raw = state.get("raw_line", "")
-        if state.get("sticky_level") is not None:
-            level = max(level, state["sticky_level"])
-            state["sticky_balance"] += self._count_delims_outside_quotes(raw, "[", "]")
-            state["sticky_lines"] += 1
-            if state["sticky_balance"] <= 0 or state["sticky_lines"] >= self._STICKY_MAX_LINES:
+        sticky = state.get("sticky_level")
+        if sticky is not None:
+            level = max(level, sticky)
+            new_balance = state.get("sticky_balance", 0) + self._count_delims_outside_quotes(raw, "[", "]")
+            new_lines = state.get("sticky_lines", 0) + 1
+            state["sticky_balance"] = new_balance
+            state["sticky_lines"] = new_lines
+            if new_balance <= 0 or new_lines >= self._STICKY_MAX_LINES:
                 state["sticky_level"] = None
                 state["sticky_balance"] = 0
                 state["sticky_lines"] = 0
@@ -797,18 +804,16 @@ class ProcessLogBridge(ProcessLoggerInterface):
                 state["sticky_lines"] = 0
         return level
 
-    def _log(self, state: Dict[str, Any], level: int, msg: str) -> None:
+    @staticmethod
+    def _log(state: Dict[str, Any], level: int, msg: str) -> None:
         """
         Log a message using the appropriate logger method.
         :param state (dict): Per-stream state containing a logger.
         :param level (int): Logging level constant.
         :param msg (str): Message to emit.
         Notes: Calls the appropriate severity method (debug/info/warning/error/...).
-            The level may be escalated for continuation lines of a multi-line error
-            block via _apply_sticky_level.
         """
-        level = self._apply_sticky_level(state, level)
-        lg = state["logger"]
+        lg = state.get("logger")
         if level >= logging.CRITICAL:
             lg.critical(msg)
         elif level >= logging.ERROR:

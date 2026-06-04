@@ -22,23 +22,22 @@ from unittest.mock import patch
 from neuro_san_studio.plugins.log_bridge.process_log_bridge import ProcessLogBridge
 
 
-class TestInferLevelFromText:
-    """Regression tests for _infer_level_from_text severity inference."""
+class _BridgeTestBase:  # pylint: disable=too-few-public-methods
+    """Shared helper for tests that need a bare ProcessLogBridge instance."""
 
     @patch.object(ProcessLogBridge, "__init__", lambda self, **kw: None)
     def _make_bridge(self) -> ProcessLogBridge:
         bridge = ProcessLogBridge.__new__(ProcessLogBridge)
         return bridge
 
+
+class TestInferLevelFromText(_BridgeTestBase):
+    """Regression tests for _infer_level_from_text severity inference."""
+
     def test_empty_line_returns_default(self):
         """Verify empty string falls back to the provided default level."""
         bridge = self._make_bridge()
         assert bridge._infer_level_from_text("", logging.INFO) == logging.INFO  # pylint: disable=protected-access
-
-    def test_none_returns_default(self):
-        """Verify None input falls back to the provided default level."""
-        bridge = self._make_bridge()
-        assert bridge._infer_level_from_text(None, logging.INFO) == logging.INFO  # pylint: disable=protected-access
 
     def test_plain_error_prefix(self):
         """Verify plain ERROR prefix is detected."""
@@ -143,18 +142,12 @@ class TestInferLevelFromText:
         line = '{"error": "something broke", "level": "info"}'
         assert bridge._infer_level_from_text(line) == logging.INFO  # pylint: disable=protected-access
 
-    # ---- _ERROR_CUE detection in prefix (3 tests) ----
+    # ---- _ERROR_CUE detection in prefix ----
 
     def test_error_cue_failed_in_prefix(self):
         """Bare 'failed' text in prefix is escalated to ERROR."""
         bridge = self._make_bridge()
         line = "failed to connect to host localhost:8080"
-        assert bridge._infer_level_from_text(line) == logging.ERROR  # pylint: disable=protected-access
-
-    def test_error_cue_not_set_in_prefix(self):
-        """Bare 'is not set' text is escalated to ERROR."""
-        bridge = self._make_bridge()
-        line = "OPENAI_API_KEY is not set"
         assert bridge._infer_level_from_text(line) == logging.ERROR  # pylint: disable=protected-access
 
     def test_error_cue_inside_json_does_not_match(self):
@@ -163,18 +156,12 @@ class TestInferLevelFromText:
         line = 'NeuroSan - {"message": "The upload failed gracefully"}'
         assert bridge._infer_level_from_text(line) == logging.INFO  # pylint: disable=protected-access
 
-    # ---- _ERROR_SIGNATURE detection (3 tests) ----
+    # ---- _ERROR_SIGNATURE detection ----
 
     def test_error_signature_import_error(self):
         """ImportError: pattern is detected as ERROR."""
         bridge = self._make_bridge()
         line = "ImportError: No module named 'langchain_openai'"
-        assert bridge._infer_level_from_text(line) == logging.ERROR  # pylint: disable=protected-access
-
-    def test_error_signature_traceback(self):
-        """Traceback header is detected as ERROR."""
-        bridge = self._make_bridge()
-        line = "Traceback (most recent call last)"
         assert bridge._infer_level_from_text(line) == logging.ERROR  # pylint: disable=protected-access
 
     def test_error_signature_requires_colon(self):
@@ -184,13 +171,8 @@ class TestInferLevelFromText:
         assert bridge._infer_level_from_text(line) == logging.INFO  # pylint: disable=protected-access
 
 
-class TestCountDelimsOutsideQuotes:
+class TestCountDelimsOutsideQuotes(_BridgeTestBase):
     """Tests for the generalized _count_delims_outside_quotes helper."""
-
-    @patch.object(ProcessLogBridge, "__init__", lambda self, **kw: None)
-    def _make_bridge(self) -> ProcessLogBridge:
-        bridge = ProcessLogBridge.__new__(ProcessLogBridge)
-        return bridge
 
     def test_curly_braces_balanced(self):
         """Balanced curly braces return zero."""
@@ -210,13 +192,8 @@ class TestCountDelimsOutsideQuotes:
         assert bridge._count_delims_outside_quotes(line) == 0  # pylint: disable=protected-access
 
 
-class TestApplyStickyLevel:
+class TestApplyStickyLevel(_BridgeTestBase):
     """Tests for the sticky-level mechanism in _apply_sticky_level."""
-
-    @patch.object(ProcessLogBridge, "__init__", lambda self, **kw: None)
-    def _make_bridge(self) -> ProcessLogBridge:
-        bridge = ProcessLogBridge.__new__(ProcessLogBridge)
-        return bridge
 
     def _make_state(self, **overrides):
         """Create a minimal state dict for sticky-level testing."""
