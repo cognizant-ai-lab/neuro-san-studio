@@ -82,7 +82,7 @@ class ImportCommand:  # pylint: disable=too-few-public-methods
             selected = self._prompt(networks_by_group)
 
         # "From File" picked interactively — first slot is the FROM_FILE marker, second
-        # is the user-typed path. Same end behavior as `ns import -f <path>`.
+        # is the user-typed path. Same end behavior as `ns import <path>`.
         if selected and selected[0] == FROM_FILE:
             self._run_from_file(selected[1])
             return
@@ -305,7 +305,7 @@ class ImportCommand:  # pylint: disable=too-few-public-methods
     def _prompt_for_file_path() -> Optional[str]:
         """Ask for a .hocon or .zip path; ←/Esc returns None so the caller pops back to
         the top menu (same back-semantics as the other sub-screens). Validation is left
-        to ``_run_from_file`` so messages stay consistent with the ``-f`` flag path."""
+        to ``_run_from_file`` so messages match the positional file-path flow."""
         try:
             question = questionary.path("Path to .hocon or .zip:", only_directories=False)
             answer = CliPrompt.bind_back_keys(question, BACK).ask()
