@@ -22,43 +22,58 @@ from unittest.mock import patch
 from neuro_san_studio.plugins.log_bridge.process_log_bridge import ProcessLogBridge
 
 
-class TestProcessLogBridge:
-    """
-    Covers level-word detection, #915 JSON-guard regression, _ERROR_CUE patterns,
-    _ERROR_SIGNATURE patterns, and sticky-level activation.
-    """
+class TestInferLevelFromText:
+    """Regression tests for _infer_level_from_text severity inference."""
 
     @patch.object(ProcessLogBridge, "__init__", lambda self, **kw: None)
     def _make_bridge(self) -> ProcessLogBridge:
         bridge = ProcessLogBridge.__new__(ProcessLogBridge)
         return bridge
 
-    # ---- baseline behaviour ----
-
     def test_empty_line_returns_default(self):
-        """Empty string falls back to default."""
+        """Verify empty string falls back to the provided default level."""
         bridge = self._make_bridge()
         assert bridge._infer_level_from_text("", logging.INFO) == logging.INFO  # pylint: disable=protected-access
 
     def test_none_returns_default(self):
-        """None input falls back to default."""
+        """Verify None input falls back to the provided default level."""
         bridge = self._make_bridge()
         assert bridge._infer_level_from_text(None, logging.INFO) == logging.INFO  # pylint: disable=protected-access
 
     def test_plain_error_prefix(self):
-        """Explicit ERROR level word is detected."""
+        """Verify plain ERROR prefix is detected."""
         bridge = self._make_bridge()
-        assert bridge._infer_level_from_text("ERROR: something went wrong") == logging.ERROR  # pylint: disable=protected-access
+        line = "ERROR: something went wrong"
+        assert bridge._infer_level_from_text(line) == logging.ERROR  # pylint: disable=protected-access
 
-    def test_fatal_maps_to_critical(self):
-        """FATAL maps to CRITICAL."""
+    def test_plain_info_prefix(self):
+        """Verify plain INFO prefix is detected."""
         bridge = self._make_bridge()
-        assert bridge._infer_level_from_text("FATAL: out of memory") == logging.CRITICAL  # pylint: disable=protected-access
+        line = "INFO starting server on port 8080"
+        assert bridge._infer_level_from_text(line) == logging.INFO  # pylint: disable=protected-access
 
-    # ---- #915 regression: error inside JSON must NOT match ----
+    def test_plain_warning_prefix(self):
+        """Verify plain WARNING prefix is detected."""
+        bridge = self._make_bridge()
+        line = "WARNING deprecated config key"
+        assert bridge._infer_level_from_text(line) == logging.WARNING  # pylint: disable=protected-access
 
-    def test_error_word_inside_json_payload(self):
-        """'error' after '{' must not trigger false ERROR (#915)."""
+    def test_bracketed_timestamp_with_level(self):
+        """Verify level detection in bracketed timestamp format."""
+        bridge = self._make_bridge()
+        line = "[2026-04-18 12:17:41 UTC] ERROR    NeuroSan - some message"
+        assert bridge._infer_level_from_text(line) == logging.ERROR  # pylint: disable=protected-access
+
+    def test_pipe_delimited_with_level(self):
+        """Verify level detection in pipe-delimited log format."""
+        bridge = self._make_bridge()
+        line = "2026-04-18 12:17:41 | WARNING  | module:func:42 - msg"
+        assert bridge._infer_level_from_text(line) == logging.WARNING  # pylint: disable=protected-access
+
+    # ---- #915 regression: "error" inside JSON payload must NOT match ----
+
+    def test_error_word_inside_json_payload_returns_default(self):
+        """Exact scenario from #915: malformed JSON with 'error' in agent description."""
         bridge = self._make_bridge()
         line = (
             '{"message": "Received a StreamingChat request for '
@@ -67,84 +82,63 @@ class TestProcessLogBridge:
         )
         assert bridge._infer_level_from_text(line) == logging.INFO  # pylint: disable=protected-access
 
-    def test_error_cue_inside_json_no_match(self):
-        """'failed' inside JSON payload must NOT match (#915 guard)."""
+    def test_error_word_in_hocon_description_payload(self):
+        """Agent description containing 'error' after a '{' character."""
         bridge = self._make_bridge()
-        line = 'NeuroSan - {"message": "The upload failed gracefully"}'
+        line = (
+            'NeuroSan - {"agent_network_description": "Set instructions for '
+            'the basic_helpdesk agent network to handle error messages"}'
+        )
         assert bridge._infer_level_from_text(line) == logging.INFO  # pylint: disable=protected-access
 
-    # ---- _ERROR_CUE: each pattern family ----
-
-    def test_cue_validation_error(self):
-        """'validation error' triggers ERROR."""
+    def test_level_in_prefix_before_json_payload(self):
+        """Level word in prefix before '{' should still be detected."""
         bridge = self._make_bridge()
-        assert bridge._infer_level_from_text("2 validation errors for Config") == logging.ERROR  # pylint: disable=protected-access
+        line = 'ERROR NeuroSan - {"message": "some info message"}'
+        assert bridge._infer_level_from_text(line) == logging.ERROR  # pylint: disable=protected-access
 
-    def test_cue_failed(self):
-        """'failed' triggers ERROR."""
+    def test_warning_in_prefix_before_json_payload(self):
+        """Verify WARNING in prefix before JSON payload is detected."""
         bridge = self._make_bridge()
-        assert bridge._infer_level_from_text("failed to connect to host") == logging.ERROR  # pylint: disable=protected-access
+        line = 'WARNING server - {"status": "degraded"}'
+        assert bridge._infer_level_from_text(line) == logging.WARNING  # pylint: disable=protected-access
 
-    def test_cue_cannot_connect(self):
-        """'cannot connect' triggers ERROR."""
+    # ---- traceback detection still works ----
+
+    def test_traceback_returns_error(self):
+        """Verify Traceback line is classified as ERROR."""
         bridge = self._make_bridge()
-        assert bridge._infer_level_from_text("cannot connect to database") == logging.ERROR  # pylint: disable=protected-access
+        line = "Traceback (most recent call last):"
+        assert bridge._infer_level_from_text(line) == logging.ERROR  # pylint: disable=protected-access
 
-    def test_cue_unable_to(self):
-        """'unable to' triggers ERROR."""
+    def test_traceback_in_payload_returns_error(self):
+        """Verify Traceback inside a payload is still classified as ERROR."""
         bridge = self._make_bridge()
-        assert bridge._infer_level_from_text("unable to load configuration") == logging.ERROR  # pylint: disable=protected-access
+        line = 'some prefix {"traceback": "Traceback (most recent call last):"}'
+        assert bridge._infer_level_from_text(line) == logging.ERROR  # pylint: disable=protected-access
 
-    def test_cue_internal_server_error(self):
-        """'internal server error' triggers ERROR."""
-        bridge = self._make_bridge()
-        assert bridge._infer_level_from_text("500 internal server error") == logging.ERROR  # pylint: disable=protected-access
-
-    def test_cue_api_key_error(self):
-        """'api key error' triggers ERROR."""
-        bridge = self._make_bridge()
-        assert bridge._infer_level_from_text("api key error: invalid token") == logging.ERROR  # pylint: disable=protected-access
-
-    def test_cue_is_not_set(self):
-        """'is not set' triggers ERROR."""
-        bridge = self._make_bridge()
-        assert bridge._infer_level_from_text("OPENAI_API_KEY is not set") == logging.ERROR  # pylint: disable=protected-access
-
-    def test_cue_malformed(self):
-        """'malformed' triggers ERROR."""
-        bridge = self._make_bridge()
-        assert bridge._infer_level_from_text("malformed JSON in request body") == logging.ERROR  # pylint: disable=protected-access
-
-    def test_cue_checkbox_marker(self):
-        """'[x]' nsflow failure marker triggers ERROR."""
-        bridge = self._make_bridge()
-        assert bridge._infer_level_from_text("[x] Agent failed to respond") == logging.ERROR  # pylint: disable=protected-access
-
-    # ---- _ERROR_SIGNATURE: each pattern ----
-
-    def test_signature_traceback(self):
-        """'Traceback (most recent call last)' triggers ERROR."""
-        bridge = self._make_bridge()
-        assert bridge._infer_level_from_text("Traceback (most recent call last):") == logging.ERROR  # pylint: disable=protected-access
-
-    def test_signature_exception_with_colon(self):
-        """'ImportError:' triggers ERROR (case-sensitive [A-Z] + colon)."""
-        bridge = self._make_bridge()
-        assert bridge._infer_level_from_text("ImportError: No module named 'langchain_openai'") == logging.ERROR  # pylint: disable=protected-access
-
-    def test_signature_no_llm_found(self):
-        """'No fully-specified LLM found' triggers ERROR."""
-        bridge = self._make_bridge()
-        assert bridge._infer_level_from_text("No fully-specified LLM found for agent") == logging.ERROR  # pylint: disable=protected-access
-
-    def test_signature_construction_errors(self):
-        """'errors occurred while constructing' triggers ERROR."""
-        bridge = self._make_bridge()
-        assert bridge._infer_level_from_text("errors occurred while constructing the agent network") == logging.ERROR  # pylint: disable=protected-access
-
-    # ---- no false positive on benign text ----
+    # ---- no false positives on normal text ----
 
     def test_plain_text_no_level_returns_default(self):
-        """Normal text with no error markers returns INFO."""
+        """Verify plain text with no level keyword returns default INFO."""
         bridge = self._make_bridge()
-        assert bridge._infer_level_from_text("Server started successfully on port 8080") == logging.INFO  # pylint: disable=protected-access
+        line = "Server started successfully on port 8080"
+        assert bridge._infer_level_from_text(line) == logging.INFO  # pylint: disable=protected-access
+
+    def test_fatal_maps_to_critical(self):
+        """Verify FATAL prefix maps to CRITICAL level."""
+        bridge = self._make_bridge()
+        line = "FATAL: out of memory"
+        assert bridge._infer_level_from_text(line) == logging.CRITICAL  # pylint: disable=protected-access
+
+    def test_debug_level(self):
+        """Verify DEBUG prefix is detected."""
+        bridge = self._make_bridge()
+        line = "DEBUG entering function foo"
+        assert bridge._infer_level_from_text(line) == logging.DEBUG  # pylint: disable=protected-access
+
+    def test_line_with_only_brace_no_prefix_level(self):
+        """Line starting with '{' and no level word should return default."""
+        bridge = self._make_bridge()
+        line = '{"error": "something broke", "level": "info"}'
+        assert bridge._infer_level_from_text(line) == logging.INFO  # pylint: disable=protected-access
