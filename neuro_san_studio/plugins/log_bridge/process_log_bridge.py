@@ -99,8 +99,7 @@ class ProcessLogBridge(ProcessLoggerInterface):
         r"|\bunrecognized\b"
         r"|\bmalformed\b"
         r"|not found in\b"
-        r"|\bis not set\b|\bnot installed\b"
-        r"|\[x\]",  # nsflow UI failure checkbox marker
+        r"|\bis not set\b|\bnot installed\b",
         re.IGNORECASE,
     )
     # Strict framework/exception markers, safe to match inside message content too. The
