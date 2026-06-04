@@ -45,13 +45,9 @@ class ImportCommand:  # pylint: disable=too-few-public-methods
     def __init__(
         self,
         networks_arg: Optional[str] = None,
-        from_file: Optional[str] = None,
         force: bool = False,
     ):
-        if networks_arg and from_file:
-            raise ValueError("Cannot pass both 'networks' and '--from-file'; they are mutually exclusive.")
         self.networks_arg = networks_arg
-        self.from_file = from_file
         self.force = force
         self.target_dir = os.getcwd()
 
@@ -63,8 +59,10 @@ class ImportCommand:  # pylint: disable=too-few-public-methods
             print()
             sys.exit(1)
 
-        if self.from_file:
-            self._run_from_file(self.from_file)
+        # A positional arg ending in .hocon/.zip is a local file path, not a
+        # registry network/group name — import it directly (no flag needed).
+        if self.networks_arg and self._looks_like_agent_network_file(self.networks_arg):
+            self._run_from_file(self.networks_arg)
             return
 
         CliStatus.info("Discovering available agent networks...")
@@ -116,6 +114,14 @@ class ImportCommand:  # pylint: disable=too-few-public-methods
 
     def _verify_project_initialized(self) -> bool:
         return os.path.exists(os.path.join(self.target_dir, "registries", "manifest.hocon"))
+
+    @staticmethod
+    def _looks_like_agent_network_file(arg: str) -> bool:
+        """A positional arg ending in .hocon/.zip is a local file path to import,
+        not a registry network/group name. Path is resolved by ``_run_from_file``
+        relative to the current directory, so a bare ``music_nerd.hocon`` resolves
+        to the project root."""
+        return arg.lower().endswith((".hocon", ".zip"))
 
     def _run_from_file(self, file_path: str) -> None:
         """Import a single .hocon (self-contained) or a .zip bundle (path-preserving)."""
