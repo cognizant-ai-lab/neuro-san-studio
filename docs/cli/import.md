@@ -142,7 +142,8 @@ is exempt and always merged additively.
 ## Network naming
 
 Registry lookups use extensionless names (an argument ending in `.hocon`/`.zip`
-is treated as a local file instead — see [From a local file](#from-a-local-file)).
+is treated as a local file instead — see the [From a local file](#from-a-local-file)
+section).
 
 | Format | Example |
 |---|---|
