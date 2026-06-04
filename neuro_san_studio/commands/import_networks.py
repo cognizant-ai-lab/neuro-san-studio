@@ -59,11 +59,14 @@ class ImportCommand:  # pylint: disable=too-few-public-methods
             print()
             sys.exit(1)
 
-        # A positional arg ending in .hocon/.zip is a local file path, not a
-        # registry network/group name — import it directly (no flag needed).
-        if self.networks_arg and self._looks_like_agent_network_file(self.networks_arg):
-            self._run_from_file(self.networks_arg)
-            return
+        # A positional arg of .hocon/.zip paths is a local-file import (one or more,
+        # comma-separated). Registry names never carry those extensions. A mix of files
+        # and registry names in one call is rejected — they take different import paths.
+        if self.networks_arg:
+            file_paths = self._split_file_args(self.networks_arg)
+            if file_paths is not None:
+                self._run_from_files(file_paths)
+                return
 
         CliStatus.info("Discovering available agent networks...")
         print()
@@ -84,7 +87,7 @@ class ImportCommand:  # pylint: disable=too-few-public-methods
         # "From File" picked interactively — first slot is the FROM_FILE marker, second
         # is the user-typed path. Same end behavior as `ns import <path>`.
         if selected and selected[0] == FROM_FILE:
-            self._run_from_file(selected[1])
+            self._run_from_files([selected[1]])
             return
 
         if not selected:
@@ -105,7 +108,7 @@ class ImportCommand:  # pylint: disable=too-few-public-methods
         self._import(selected, registry)
 
         print()
-        CliStatus.ok("Import complete.")
+        CliStatus.ok(f"Imported {len(selected)} agent network(s) from studio registry.")
         print()
         CliStatus.info("Next steps:")
         print("        - Run 'ns run' to start the server")
@@ -116,15 +119,61 @@ class ImportCommand:  # pylint: disable=too-few-public-methods
         return os.path.exists(os.path.join(self.target_dir, "registries", "manifest.hocon"))
 
     @staticmethod
-    def _looks_like_agent_network_file(arg: str) -> bool:
-        """A positional arg ending in .hocon/.zip is a local file path to import,
-        not a registry network/group name. Path is resolved by ``_run_from_file``
-        relative to the current directory, so a bare ``music_nerd.hocon`` resolves
-        to the project root."""
-        return arg.lower().endswith((".hocon", ".zip"))
+    def _looks_like_agent_network_file(token: str) -> bool:
+        """A token ending in .hocon/.zip is a local file path, not a registry name."""
+        return token.lower().endswith((".hocon", ".zip"))
 
-    def _run_from_file(self, file_path: str) -> None:
-        """Import a single .hocon (self-contained) or a .zip bundle (path-preserving)."""
+    @classmethod
+    def _split_file_args(cls, arg: str) -> Optional[List[str]]:
+        """Classify the positional arg as a local-file import or a registry import.
+
+        Returns the list of file paths when every comma-separated token is a .hocon/.zip
+        path (resolved relative to the current directory). Returns ``None`` when no token
+        is a file path, so the caller falls through to registry resolution. Exits with an
+        error on a mix of files and registry names — the two use different import paths.
+        """
+        tokens = [t.strip() for t in arg.split(",") if t.strip()]
+        files = [t for t in tokens if cls._looks_like_agent_network_file(t)]
+        if not files:
+            return None
+        if len(files) != len(tokens):
+            names = [t for t in tokens if not cls._looks_like_agent_network_file(t)]
+            print()
+            CliStatus.err(
+                "Cannot mix file paths and registry names in one import: "
+                f"files={files}, names={names}. Run them as separate imports."
+            )
+            print()
+            sys.exit(1)
+        return files
+
+    def _run_from_files(self, file_paths: List[str]) -> None:
+        """Import one or more local .hocon/.zip files, then print a combined summary."""
+        importer = AgentNetworkImporter(source_dir=self.target_dir, target_dir=self.target_dir)
+        results = [r for r in (self._import_one_file(fp, importer) for fp in file_paths) if r is not None]
+        if not results:
+            return
+
+        manifest_entries = [name for r in results for name in r.manifest_entries]
+        if manifest_entries:
+            print()
+            CliStatus.info("Updating manifest...")
+            importer.update_manifest(manifest_entries)
+
+        self._print_summary(
+            copied=sum(len(r.copied_files) for r in results),
+            skipped=sum(len(r.skipped_files) for r in results),
+            warnings=[w for r in results for w in r.warnings],
+            errors=[e for r in results for e in r.errors],
+        )
+        self._print_mcp_summary(results)
+        print()
+        CliStatus.ok(f"Imported {len(results)} agent network(s) from local storage.")
+        print()
+
+    def _import_one_file(self, file_path: str, importer: AgentNetworkImporter):
+        """Validate, confirm, and import a single local file. Returns the ImportResult,
+        or ``None`` if the user declined the confirmation for this file."""
         source_path = os.path.abspath(os.path.expanduser(file_path))
         if not os.path.isfile(source_path):
             print()
@@ -140,36 +189,20 @@ class ImportCommand:  # pylint: disable=too-few-public-methods
 
         if not self._confirm_from_file(source_path, suffix):
             print()
-            CliStatus.info("Import cancelled.")
+            CliStatus.info(f"Skipped {os.path.basename(source_path)} (not confirmed).")
             print()
-            return
+            return None
 
         print()
         CliStatus.info(f"Importing from {source_path}...")
         print()
-        importer = AgentNetworkImporter(source_dir=self.target_dir, target_dir=self.target_dir)
         try:
-            result = importer.import_from_path(source_path, force=self.force)
+            return importer.import_from_path(source_path, force=self.force)
         except (OSError, ValueError) as exc:
             print()
             CliStatus.err(str(exc))
             print()
             sys.exit(1)
-
-        if result.manifest_entries:
-            CliStatus.info("Updating manifest...")
-            importer.update_manifest(result.manifest_entries)
-
-        self._print_summary(
-            copied=len(result.copied_files),
-            skipped=len(result.skipped_files),
-            warnings=result.warnings,
-            errors=result.errors,
-        )
-        self._print_mcp_summary([result])
-        print()
-        CliStatus.ok("Import complete.")
-        print()
 
     def _confirm_from_file(self, source_path: str, suffix: str) -> bool:
         """Show a preview tailored to the file shape, then ask y/N."""

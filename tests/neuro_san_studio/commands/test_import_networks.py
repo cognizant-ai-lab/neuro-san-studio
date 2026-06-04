@@ -132,3 +132,31 @@ class TestLooksLikeAgentNetworkFile:
         """A bare name/group/path with no file extension is a registry lookup, not a file."""
         # pylint: disable=protected-access
         assert ImportCommand._looks_like_agent_network_file(arg) is False
+
+
+class TestSplitFileArgs:
+    """Tests for ImportCommand._split_file_args (comma-list file-vs-registry routing)."""
+
+    def test_single_file_returns_one_path(self) -> None:
+        """A lone .hocon/.zip arg yields a one-element file list."""
+        # pylint: disable=protected-access
+        assert ImportCommand._split_file_args("music_nerd.hocon") == ["music_nerd.hocon"]
+
+    def test_comma_list_of_files_returns_all_paths(self) -> None:
+        """An all-file comma list yields every path, whitespace trimmed."""
+        # pylint: disable=protected-access
+        assert ImportCommand._split_file_args("a.hocon, b.zip ,c.hocon") == ["a.hocon", "b.zip", "c.hocon"]
+
+    @pytest.mark.parametrize("arg", ["basic", "music_nerd", "basic,music_nerd", "industry/airline_policy"])
+    def test_registry_args_return_none(self, arg: str) -> None:
+        """No file extensions → None, so the caller falls through to registry resolution."""
+        # pylint: disable=protected-access
+        assert ImportCommand._split_file_args(arg) is None
+
+    def test_mixed_files_and_names_exits(self, capsys: pytest.CaptureFixture[str]) -> None:
+        """Mixing a file path with a registry name aborts with a clear error, not a silent miss."""
+        with pytest.raises(SystemExit) as exc:
+            # pylint: disable=protected-access
+            ImportCommand._split_file_args("basic,music_nerd.hocon")
+        assert exc.value.code == 1
+        assert "Cannot mix" in capsys.readouterr().out
