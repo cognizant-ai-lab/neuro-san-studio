@@ -129,7 +129,8 @@ class NeuroSanStudioCli:  # pylint: disable=too-few-public-methods
             None,
             help=(
                 "Comma-separated group names, network names, or 'all'. "
-                "A path ending in .hocon or .zip is imported as a local file. "
+                "Paths ending in .hocon or .zip are imported as local files "
+                "(one or more, comma-separated); don't mix files with registry names. "
                 "Omit for interactive mode."
             ),
         ),

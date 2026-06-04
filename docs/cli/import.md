@@ -42,19 +42,21 @@ registry (groups, network names, or `all`).
 
 ### From a local file
 
-A positional argument ending in `.hocon` or `.zip` is imported as a local file —
-no flag required:
+A positional argument ending in `.hocon` or `.zip` is imported as a local file,
+no flag required. Pass one or more, comma-separated, to import them in one call:
 
 ```bash
 ns import path/to/network.hocon            # self-contained single HOCON
 ns import music_nerd.hocon                 # bare name → resolved in the current directory
 ns import path/to/bundle.zip               # network + dependencies
+ns import a.hocon,path/to/b.zip            # multiple files in one call
 ns import path/to/bundle.zip --force       # overwrite existing files
 ```
 
 The `.hocon` / `.zip` extension is what selects file mode; an extensionless
-argument is always a registry lookup. Pair with [`ns export`](./export.md) to
-ship a network between projects.
+argument is always a registry lookup. Every comma-separated token must be the
+same kind; mixing file paths with registry names in one call is rejected. Pair
+with [`ns export`](./export.md) to ship a network between projects.
 
 #### Source shapes
 
@@ -142,7 +144,7 @@ is exempt and always merged additively.
 ## Network naming
 
 Registry lookups use extensionless names (an argument ending in `.hocon`/`.zip`
-is treated as a local file instead — see the [From a local file](#from-a-local-file)
+is treated as a local file instead; see the [From a local file](#from-a-local-file)
 section).
 
 | Format | Example |
