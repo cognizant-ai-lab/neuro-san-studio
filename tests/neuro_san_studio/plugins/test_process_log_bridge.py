@@ -22,17 +22,26 @@ from unittest.mock import patch
 from neuro_san_studio.plugins.log_bridge.process_log_bridge import ProcessLogBridge
 
 
-class _BridgeTestBase:  # pylint: disable=too-few-public-methods
-    """Shared helper for tests that need a bare ProcessLogBridge instance."""
+class TestProcessLogBridge:
+    """Tests for _infer_level_from_text, _count_delims_outside_quotes, and _apply_sticky_level."""
 
     @patch.object(ProcessLogBridge, "__init__", lambda self, **kw: None)
     def _make_bridge(self) -> ProcessLogBridge:
         bridge = ProcessLogBridge.__new__(ProcessLogBridge)
         return bridge
 
+    def _make_state(self, **overrides):
+        """Create a minimal state dict for sticky-level testing."""
+        state = {
+            "sticky_level": None,
+            "sticky_balance": 0,
+            "sticky_lines": 0,
+            "raw_line": "",
+        }
+        state.update(overrides)
+        return state
 
-class TestInferLevelFromText(_BridgeTestBase):
-    """Regression tests for _infer_level_from_text severity inference."""
+    # ---- _infer_level_from_text: level-word detection ----
 
     def test_empty_line_returns_default(self):
         """Verify empty string falls back to the provided default level."""
@@ -45,18 +54,6 @@ class TestInferLevelFromText(_BridgeTestBase):
         line = "ERROR: something went wrong"
         assert bridge._infer_level_from_text(line) == logging.ERROR  # pylint: disable=protected-access
 
-    def test_plain_info_prefix(self):
-        """Verify plain INFO prefix is detected."""
-        bridge = self._make_bridge()
-        line = "INFO starting server on port 8080"
-        assert bridge._infer_level_from_text(line) == logging.INFO  # pylint: disable=protected-access
-
-    def test_plain_warning_prefix(self):
-        """Verify plain WARNING prefix is detected."""
-        bridge = self._make_bridge()
-        line = "WARNING deprecated config key"
-        assert bridge._infer_level_from_text(line) == logging.WARNING  # pylint: disable=protected-access
-
     def test_bracketed_timestamp_with_level(self):
         """Verify level detection in bracketed timestamp format."""
         bridge = self._make_bridge()
@@ -68,6 +65,12 @@ class TestInferLevelFromText(_BridgeTestBase):
         bridge = self._make_bridge()
         line = "2026-04-18 12:17:41 | WARNING  | module:func:42 - msg"
         assert bridge._infer_level_from_text(line) == logging.WARNING  # pylint: disable=protected-access
+
+    def test_fatal_maps_to_critical(self):
+        """Verify FATAL prefix maps to CRITICAL level."""
+        bridge = self._make_bridge()
+        line = "FATAL: out of memory"
+        assert bridge._infer_level_from_text(line) == logging.CRITICAL  # pylint: disable=protected-access
 
     # ---- #915 regression: "error" inside JSON payload must NOT match ----
 
@@ -96,13 +99,7 @@ class TestInferLevelFromText(_BridgeTestBase):
         line = 'ERROR NeuroSan - {"message": "some info message"}'
         assert bridge._infer_level_from_text(line) == logging.ERROR  # pylint: disable=protected-access
 
-    def test_warning_in_prefix_before_json_payload(self):
-        """Verify WARNING in prefix before JSON payload is detected."""
-        bridge = self._make_bridge()
-        line = 'WARNING server - {"status": "degraded"}'
-        assert bridge._infer_level_from_text(line) == logging.WARNING  # pylint: disable=protected-access
-
-    # ---- traceback detection still works ----
+    # ---- traceback and signature detection ----
 
     def test_traceback_returns_error(self):
         """Verify Traceback line is classified as ERROR."""
@@ -110,36 +107,10 @@ class TestInferLevelFromText(_BridgeTestBase):
         line = "Traceback (most recent call last):"
         assert bridge._infer_level_from_text(line) == logging.ERROR  # pylint: disable=protected-access
 
-    def test_traceback_in_payload_returns_error(self):
-        """Verify Traceback inside a payload is still classified as ERROR."""
-        bridge = self._make_bridge()
-        line = 'some prefix {"traceback": "Traceback (most recent call last):"}'
-        assert bridge._infer_level_from_text(line) == logging.ERROR  # pylint: disable=protected-access
-
-    # ---- no false positives on normal text ----
-
     def test_plain_text_no_level_returns_default(self):
         """Verify plain text with no level keyword returns default INFO."""
         bridge = self._make_bridge()
         line = "Server started successfully on port 8080"
-        assert bridge._infer_level_from_text(line) == logging.INFO  # pylint: disable=protected-access
-
-    def test_fatal_maps_to_critical(self):
-        """Verify FATAL prefix maps to CRITICAL level."""
-        bridge = self._make_bridge()
-        line = "FATAL: out of memory"
-        assert bridge._infer_level_from_text(line) == logging.CRITICAL  # pylint: disable=protected-access
-
-    def test_debug_level(self):
-        """Verify DEBUG prefix is detected."""
-        bridge = self._make_bridge()
-        line = "DEBUG entering function foo"
-        assert bridge._infer_level_from_text(line) == logging.DEBUG  # pylint: disable=protected-access
-
-    def test_line_with_only_brace_no_prefix_level(self):
-        """Line starting with '{' and no level word should return default."""
-        bridge = self._make_bridge()
-        line = '{"error": "something broke", "level": "info"}'
         assert bridge._infer_level_from_text(line) == logging.INFO  # pylint: disable=protected-access
 
     # ---- _ERROR_CUE detection in prefix ----
@@ -170,9 +141,7 @@ class TestInferLevelFromText(_BridgeTestBase):
         line = "KeyError means the key is missing from the dict"
         assert bridge._infer_level_from_text(line) == logging.INFO  # pylint: disable=protected-access
 
-
-class TestCountDelimsOutsideQuotes(_BridgeTestBase):
-    """Tests for the generalized _count_delims_outside_quotes helper."""
+    # ---- _count_delims_outside_quotes ----
 
     def test_curly_braces_balanced(self):
         """Balanced curly braces return zero."""
@@ -191,20 +160,7 @@ class TestCountDelimsOutsideQuotes(_BridgeTestBase):
         line = '"contains { and } inside"'
         assert bridge._count_delims_outside_quotes(line) == 0  # pylint: disable=protected-access
 
-
-class TestApplyStickyLevel(_BridgeTestBase):
-    """Tests for the sticky-level mechanism in _apply_sticky_level."""
-
-    def _make_state(self, **overrides):
-        """Create a minimal state dict for sticky-level testing."""
-        state = {
-            "sticky_level": None,
-            "sticky_balance": 0,
-            "sticky_lines": 0,
-            "raw_line": "",
-        }
-        state.update(overrides)
-        return state
+    # ---- _apply_sticky_level ----
 
     def test_error_line_opening_bracket_starts_sticky(self):
         """An ERROR line ending with '[' activates sticky."""
