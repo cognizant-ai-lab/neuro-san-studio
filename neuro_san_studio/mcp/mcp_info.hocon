@@ -28,6 +28,14 @@
         "tools": ["read_wiki_structure", "ask_question"]
     },
 
+    # You.com MCP — free tier (anonymous, no API key required).
+    # Exposes only the `you-search` tool. The full toolset (you-search, you-contents,
+    # you-research) requires the authenticated/paid tier — see the commented section below.
+    # Docs: https://docs.you.com/build-with-agents/mcp-server
+    "https://api.you.com/mcp?profile=free": {
+        "tools": ["you-search"]
+    },
+
     # Uncomment this section to use GitHub Copilot MCP server.
     # Make sure to set the environment variable GITHUB_TOKEN with a valid token.
     # "https://api.githubcopilot.com/mcp": {
@@ -58,9 +66,10 @@
     #     # See https://developers.google.com/maps/ai/grounding-lite for more details on the tools and how to get started.
     # },
 
-    # Uncomment this section to use You.com MCP server for web search, content extraction, and AI research.
-    # Get a free API key with $100 in credits (no credit card required) at https://you.com/platform
-    # Make sure to set the environment variable YDC_API_KEY with a valid API key.
+    # You.com MCP — paid tier (authenticated, requires API key).
+    # Adds you-contents and you-research on top of you-search (the free tier above only exposes you-search).
+    # Get an API key with $100 in free credits (no credit card required) at https://you.com/platform
+    # Set the YDC_API_KEY environment variable, then uncomment this section to enable.
     # "https://api.you.com/mcp": {
     #     "http_headers": {
     #        # YDC_API_KEY is an environment variable that should contain a valid You.com API key.
@@ -68,18 +77,11 @@
     #         "Authorization": "Bearer "${YDC_API_KEY}
     #     },
     #     "tools": ["you-search", "you-contents", "you-research"]
-    #     # This MCP server provides three tools:
+    #     # Tools provided:
     #     # you-search: Comprehensive web and news search with advanced filtering (site, file type, language, date ranges).
     #     # you-contents: Extracts full page content from URLs in Markdown or HTML format.
     #     # you-research: Synthesized, citation-backed answers with configurable effort levels (lite, standard, deep, exhaustive, frontier).
     #     # See https://docs.you.com/build-with-agents/mcp-server for more details on the tools and how to get started.
     # },
 
-    # Uncomment this section to use the You.com MCP server's free tier (no credentials required).
-    # Append ?profile=free to the URL to access you-search without an API key.
-    # Only you-search is available on the free tier; you-contents and you-research are not.
-    # "https://api.you.com/mcp?profile=free": {
-    #     "tools": ["you-search"]
-    #     # See https://docs.you.com/build-with-agents/mcp-server for more details.
-    # },
 }

@@ -38,7 +38,7 @@ class ProcessLogBridgePlugin(BasePlugin, ProcessLoggerInterface):
         :param args (dict | None): Optional configuration for the logging bridge.
         """
         super().__init__("ProcessLogBridgePlugin", args)
-        self.log_file = os.path.join(self.args.get("logs_dir", "."), "runner.log")
+        self.log_file = os.path.join(self.args.get("logs_dir", "logs"), "runner.log")
         self.log_bridge = ProcessLogBridge(
             level=self.args.get("log_level", "info"),
             runner_log_file=self.log_file,

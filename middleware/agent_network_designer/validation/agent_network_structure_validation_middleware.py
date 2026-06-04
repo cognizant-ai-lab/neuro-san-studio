@@ -16,7 +16,6 @@
 
 from typing import Any
 
-from neuro_san.internals.validation.network.keyword_network_validator import KeywordNetworkValidator
 from neuro_san.internals.validation.network.structure_network_validator import StructureNetworkValidator
 from neuro_san.internals.validation.network.toolbox_network_validator import ToolboxNetworkValidator
 from neuro_san.internals.validation.network.url_network_validator import UrlNetworkValidator
@@ -56,15 +55,6 @@ class AgentNetworkStructureValidationMiddleware(AgentNetworkValidationMiddleware
         :return: A list of error strings (empty if valid)
         """
 
-        # Check that "tools" field is a list of str first since if it is not,
-        # the other validators will fail and raise an error.
-        # Note that the keywords argument restricts the check to specific keywords.
-        # Available keywords are "description", "instructions", and "tools".
-        # If keywords is not provided, all keywords will be checked.
-        tool_not_list_error: list[str] = KeywordNetworkValidator(keywords=["tools"]).validate(network_def)
-        if tool_not_list_error:
-            return tool_not_list_error
-
         # Get infos from sly_data. These should have been put there by the respective tools
         # from the agent network editor.
         subnetwork_names: list[str] = await GetSubnetwork.get_subnetwork_names(self.sly_data)
@@ -72,6 +62,11 @@ class AgentNetworkStructureValidationMiddleware(AgentNetworkValidationMiddleware
         toolbox_tools: dict[str, Any] = await GetToolbox.get_toolbox_info(self.sly_data)
 
         return (
+            # The structure validator checks for the following structural issues:
+            # - tools shape: the tools field must be a list of strings or dictionaries
+            # - cyclic networks: the network must not contain cycles
+            # - missing agents: all agents referred to in "tools" must be defined in the network
+            # - unreachable nodes: all agents must be reachable
             StructureNetworkValidator().validate(network_def)
             + ToolboxNetworkValidator(toolbox_tools).validate(network_def)
             + UrlNetworkValidator(subnetwork_names, mcp_servers).validate(network_def)
