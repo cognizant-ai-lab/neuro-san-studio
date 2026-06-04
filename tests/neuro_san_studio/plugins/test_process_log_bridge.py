@@ -143,36 +143,120 @@ class TestInferLevelFromText:
         line = '{"error": "something broke", "level": "info"}'
         assert bridge._infer_level_from_text(line) == logging.INFO  # pylint: disable=protected-access
 
-    # ---- _ERROR_CUE: prefix match + #915 guard ----
+    # ---- _ERROR_CUE detection in prefix (3 tests) ----
 
-    def test_error_cue_failed_in_prefix_not_in_json(self):
-        """'failed' in prefix → ERROR; same word inside JSON payload → INFO."""
+    def test_error_cue_failed_in_prefix(self):
+        """Bare 'failed' text in prefix is escalated to ERROR."""
         bridge = self._make_bridge()
-        # pylint: disable=protected-access
-        assert bridge._infer_level_from_text("failed to connect to host") == logging.ERROR
-        json_line = 'NeuroSan - {"message": "The upload failed gracefully"}'
-        assert bridge._infer_level_from_text(json_line) == logging.INFO
+        line = "failed to connect to host localhost:8080"
+        assert bridge._infer_level_from_text(line) == logging.ERROR  # pylint: disable=protected-access
 
-    # ---- _ERROR_SIGNATURE: exception pattern ----
-
-    def test_error_signature_exception_with_colon(self):
-        """'ImportError:' matches; exception name without colon does not."""
+    def test_error_cue_not_set_in_prefix(self):
+        """Bare 'is not set' text is escalated to ERROR."""
         bridge = self._make_bridge()
-        # pylint: disable=protected-access
-        assert bridge._infer_level_from_text("ImportError: No module named 'foo'") == logging.ERROR
-        assert bridge._infer_level_from_text("KeyError means the key is missing") == logging.INFO
+        line = "OPENAI_API_KEY is not set"
+        assert bridge._infer_level_from_text(line) == logging.ERROR  # pylint: disable=protected-access
 
-    # ---- sticky level max-lines cap ----
+    def test_error_cue_inside_json_does_not_match(self):
+        """'failed' inside JSON payload (after '{') must NOT match (#915 guard)."""
+        bridge = self._make_bridge()
+        line = 'NeuroSan - {"message": "The upload failed gracefully"}'
+        assert bridge._infer_level_from_text(line) == logging.INFO  # pylint: disable=protected-access
+
+    # ---- _ERROR_SIGNATURE detection (3 tests) ----
+
+    def test_error_signature_import_error(self):
+        """ImportError: pattern is detected as ERROR."""
+        bridge = self._make_bridge()
+        line = "ImportError: No module named 'langchain_openai'"
+        assert bridge._infer_level_from_text(line) == logging.ERROR  # pylint: disable=protected-access
+
+    def test_error_signature_traceback(self):
+        """Traceback header is detected as ERROR."""
+        bridge = self._make_bridge()
+        line = "Traceback (most recent call last)"
+        assert bridge._infer_level_from_text(line) == logging.ERROR  # pylint: disable=protected-access
+
+    def test_error_signature_requires_colon(self):
+        """Exception name without colon does NOT match _ERROR_SIGNATURE."""
+        bridge = self._make_bridge()
+        line = "KeyError means the key is missing from the dict"
+        assert bridge._infer_level_from_text(line) == logging.INFO  # pylint: disable=protected-access
+
+
+class TestCountDelimsOutsideQuotes:
+    """Tests for the generalized _count_delims_outside_quotes helper."""
+
+    @patch.object(ProcessLogBridge, "__init__", lambda self, **kw: None)
+    def _make_bridge(self) -> ProcessLogBridge:
+        bridge = ProcessLogBridge.__new__(ProcessLogBridge)
+        return bridge
+
+    def test_curly_braces_balanced(self):
+        """Balanced curly braces return zero."""
+        bridge = self._make_bridge()
+        assert bridge._count_delims_outside_quotes('{"a": {"b": 1}}') == 0  # pylint: disable=protected-access
+
+    def test_square_brackets_open(self):
+        """Unclosed bracket returns positive balance."""
+        bridge = self._make_bridge()
+        line = '  ["item1", "item2"'
+        assert bridge._count_delims_outside_quotes(line, "[", "]") == 1  # pylint: disable=protected-access
+
+    def test_delims_inside_quotes_ignored(self):
+        """Delimiters inside double-quoted strings are not counted."""
+        bridge = self._make_bridge()
+        line = '"contains { and } inside"'
+        assert bridge._count_delims_outside_quotes(line) == 0  # pylint: disable=protected-access
+
+
+class TestApplyStickyLevel:
+    """Tests for the sticky-level mechanism in _apply_sticky_level."""
+
+    @patch.object(ProcessLogBridge, "__init__", lambda self, **kw: None)
+    def _make_bridge(self) -> ProcessLogBridge:
+        bridge = ProcessLogBridge.__new__(ProcessLogBridge)
+        return bridge
+
+    def _make_state(self, **overrides):
+        """Create a minimal state dict for sticky-level testing."""
+        state = {
+            "sticky_level": None,
+            "sticky_balance": 0,
+            "sticky_lines": 0,
+            "raw_line": "",
+        }
+        state.update(overrides)
+        return state
+
+    def test_error_line_opening_bracket_starts_sticky(self):
+        """An ERROR line ending with '[' activates sticky."""
+        bridge = self._make_bridge()
+        state = self._make_state(raw_line="2 validation errors for Config [")
+        result = bridge._apply_sticky_level(state, logging.ERROR)  # pylint: disable=protected-access
+        assert result == logging.ERROR
+        assert state["sticky_level"] == logging.ERROR
+
+    def test_sticky_escalates_subsequent_lines(self):
+        """Once sticky is active, INFO lines are escalated to the sticky level."""
+        bridge = self._make_bridge()
+        state = self._make_state(
+            sticky_level=logging.ERROR,
+            sticky_balance=1,
+            raw_line='  {"loc": ["field1"], "msg": "required"},',
+        )
+        result = bridge._apply_sticky_level(state, logging.INFO)  # pylint: disable=protected-access
+        assert result == logging.ERROR
 
     def test_sticky_caps_at_max_lines(self):
         """Sticky terminates after _STICKY_MAX_LINES even without bracket close."""
         bridge = self._make_bridge()
-        state = {
-            "sticky_level": logging.ERROR,
-            "sticky_balance": 1,
-            "sticky_lines": 9,
-            "raw_line": "still no closing bracket",
-        }
+        state = self._make_state(
+            sticky_level=logging.ERROR,
+            sticky_balance=1,
+            sticky_lines=9,
+            raw_line="still no closing bracket",
+        )
         result = bridge._apply_sticky_level(state, logging.INFO)  # pylint: disable=protected-access
         assert result == logging.ERROR
         assert state["sticky_level"] is None
