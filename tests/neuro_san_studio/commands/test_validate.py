@@ -64,7 +64,7 @@ class TestValidateCommandRun(TestCase):
                 "agent.hocon",
                 verbose=True,
                 external_agents="/a,/b",
-                mcp_servers="http://server",
+                mcp_servers="https://mcp.example.com",
                 registry_dir="/reg",
             ).run()
 
@@ -74,7 +74,7 @@ class TestValidateCommandRun(TestCase):
         self.assertIn("--external-agents", argv)
         self.assertIn("/a,/b", argv)
         self.assertIn("--mcp-servers", argv)
-        self.assertIn("http://server", argv)
+        self.assertIn("https://mcp.example.com", argv)
         self.assertIn("--registry-dir", argv)
         self.assertIn("/reg", argv)
 
