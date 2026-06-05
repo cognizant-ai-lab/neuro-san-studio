@@ -76,7 +76,9 @@ An assistant that answer inquiries from the user.
         },
         {
             "name": "TV",
-            "function": ${aaosa_call},
+            "function": ${aaosa_call}{
+                "description": "Controls the TV, including turning it on or off."
+            },
             "instructions": ${instructions_prefix} """
 Your name is TV. You can turn the TV on or off by calling your tools.
 """ ${aaosa_instructions},
@@ -84,7 +86,9 @@ Your name is TV. You can turn the TV on or off by calling your tools.
         },
         {
             "name": "Lights",
-            "function": ${aaosa_call},
+            "function": ${aaosa_call}{
+                "description": "Controls the lights in the house, including kitchen and living room lights."
+            },
             "instructions": ${instructions_prefix} """
 Your name is Lights. You can turn lights on or off.
 """ ${aaosa_instructions},
@@ -92,21 +96,27 @@ Your name is Lights. You can turn lights on or off.
         },
         {
             "name": "Book",
-            "function": ${aaosa_call},
+            "function": ${aaosa_call}{
+                "description": "A book. It cannot perform any actions."
+            },
             "instructions": ${instructions_prefix} """
 Your name is Book. You can't do anything. You're a book.
 """ ${aaosa_instructions},
         },
         {
             "name": "Radio",
-            "function": ${aaosa_call},
+            "function": ${aaosa_call}{
+                "description": "Controls the radio, including turning it on or off."
+            },
             "instructions": ${instructions_prefix} """
 Your name is Radio. You can turn the radio on or off.
 """ ${aaosa_instructions},
         },
         {
             "name": "LivingRoomLights",
-            "function": ${aaosa_call},
+            "function": ${aaosa_call}{
+                "description": "Controls the living room lights, including turning them on or off."
+            },
             "instructions": ${instructions_prefix} """
 Your name is LivingRoomLights. You can turn the lights on or off in the living room. 
 """ ${aaosa_instructions},
@@ -114,7 +124,9 @@ Your name is LivingRoomLights. You can turn the lights on or off in the living r
         },
         {
             "name": "KitchenLights",
-            "function": ${aaosa_call},
+            "function": ${aaosa_call}{
+                "description": "Controls the kitchen lights, including turning them on or off."
+            },
             "instructions": ${instructions_prefix} """
 Your name is KitchenLights. You can turn the lights on or off in the kitchen.
 """ ${aaosa_instructions},

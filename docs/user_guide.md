@@ -1282,6 +1282,7 @@ Examples of URLs that are recognized as MCP servers:
 - `https://mcp.example.com`
 - `https://mcp.example.com:8443`
 - `https://example.com/mcp/free`
+- `https://mcp.example.com/mcp?profile=free`
 - `https://example.com/v1/mcp/server`
 - `http://localhost:8000/mcp/`
 
