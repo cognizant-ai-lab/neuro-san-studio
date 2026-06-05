@@ -77,6 +77,31 @@ class TestExportNoDeps:
         assert (tmp_path / "music_nerd.hocon").is_file()
         assert result.network_name == "music_nerd"
 
+    def test_export_strips_registries_prefix(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+        """A repo-root-style 'registries/basic/music_nerd.hocon' resolves like 'basic/music_nerd'."""
+        self._build_no_deps_project(tmp_path / "project")
+        monkeypatch.chdir(tmp_path)
+
+        exporter = AgentNetworkExporter(project_dir=str(tmp_path / "project"))
+        result = exporter.export("registries/basic/music_nerd.hocon")
+
+        assert (tmp_path / "music_nerd.hocon").is_file()
+        assert result.network_name == "music_nerd"
+        # The stripped path stays registries-relative — the bundled-files key must not
+        # double up the prefix (would be 'registries/registries/...' if stripping leaked).
+        assert result.bundled_files == ["registries/basic/music_nerd.hocon"]
+
+    def test_export_strips_dot_slash_registries_prefix(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+        """A './registries/...' spelling normalizes to the same registries-relative path."""
+        self._build_no_deps_project(tmp_path / "project")
+        monkeypatch.chdir(tmp_path)
+
+        exporter = AgentNetworkExporter(project_dir=str(tmp_path / "project"))
+        result = exporter.export("./registries/basic/music_nerd.hocon")
+
+        assert (tmp_path / "music_nerd.hocon").is_file()
+        assert result.network_name == "music_nerd"
+
     def test_missing_network_raises_filenotfound(self, tmp_path: Path) -> None:
         """An unknown network name surfaces FileNotFoundError, not a silent empty export."""
         self._build_no_deps_project(tmp_path / "project")
