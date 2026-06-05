@@ -130,7 +130,9 @@ Detailed Step-by-Step Description:
         },
         {
             "name": "retail_decision_specialist",
-            "function": ${aaosa_call},
+            "function": ${aaosa_call}{
+                "description": "Assists users in researching and comparing options for retail purchases."
+            },
             "instructions": ${instructions_prefix} """
 You assist users in researching and comparing options for retail purchases, including electronics, home goods, and clothing.
 You conduct research and present the best options based on the user's criteria, including price, quality, and reviews.
@@ -166,7 +168,9 @@ Detailed Responsibilities:
         },
         {
             "name": "product_researcher",
-            "function": ${aaosa_call},
+            "function": ${aaosa_call}{
+                "description": "Finds detailed product information including specifications, reviews, and expert opinions."
+            },
             "instructions": ${instructions_prefix} """
 You find detailed information about specific products, including specifications, user reviews, and expert opinions.
 You conduct thorough research across trusted sources and provide summaries tailored to the user's needs.
@@ -216,7 +220,9 @@ Detailed Step-by-Step Responsibilities:
         },
         {
             "name": "price_comparison_agent",
-            "function": ${aaosa_call},
+            "function": ${aaosa_call}{
+                "description": "Compares prices across retailers, considering shipping costs and discounts."
+            },
             "instructions": ${instructions_prefix} """
 You compare prices for specific products across different retailers, considering factors like shipping costs and discounts.
 You ensure users have access to the most cost-effective options available online and in physical stores.
@@ -271,7 +277,9 @@ Limitations:
         },
         {
             "name": "travel_decision_specialist",
-            "function": ${aaosa_call},
+            "function": ${aaosa_call}{
+                "description": "Helps users plan and compare travel options including destinations and accommodations."
+            },
             "instructions": ${instructions_prefix} """
 You help users plan and compare travel options, including destinations, accommodations, and transportation.
 You assist with researching and presenting the best options for the user's preferences and budget.
@@ -320,7 +328,9 @@ Detailed Role and Step-by-Step Workflow:
         },
         {
             "name": "destination_researcher",
-            "function": ${aaosa_call},
+            "function": ${aaosa_call}{
+                "description": "Researches potential travel destinations considering attractions, climate, and preferences."
+            },
             "instructions": ${instructions_prefix} """
 You research potential travel destinations, considering factors like attractions, climate, and user preferences.
 You provide detailed insights to help users make an informed decision about where to travel.
@@ -369,7 +379,9 @@ Here’s a step-by-step breakdown of your responsibilities:
         },
         {
             "name": "travel_cost_analyzer",
-            "function": ${aaosa_call},
+            "function": ${aaosa_call}{
+                "description": "Analyzes travel costs including flights, accommodations, and local transportation."
+            },
             "instructions": ${instructions_prefix} """
 You analyze the cost of travel options, including flights, accommodations, and local transportation.
 You compile detailed comparisons to identify the best value for the user's budget.
@@ -432,7 +444,9 @@ Step-by-Step Responsibilities:
         },
         {
             "name": "financial_decision_specialist",
-            "function": ${aaosa_call},
+            "function": ${aaosa_call}{
+                "description": "Assists users in making financial decisions including investments, loans, and savings."
+            },
             "instructions": ${instructions_prefix} """
 You assist users in making financial decisions, including investments, loans, and savings plans.
 You guide users by researching financial products and evaluating their suitability based on the user's goals.
@@ -486,7 +500,9 @@ Step-by-Step Responsibilities:
         },
         {
             "name": "investment_researcher",
-            "function": ${aaosa_call},
+            "function": ${aaosa_call}{
+                "description": "Conducts research on investment opportunities including stocks, bonds, and real estate."
+            },
             "instructions": ${instructions_prefix} """
 You conduct detailed research on potential investment opportunities, including stocks, bonds, and real estate.
 You provide an analysis of risks, returns, and market trends to support informed decision-making.
@@ -527,7 +543,9 @@ Detailed Step-by-Step Workflow:
         },
         {
             "name": "loan_evaluator",
-            "function": ${aaosa_call},
+            "function": ${aaosa_call}{
+                "description": "Compares loan options based on interest rates, repayment terms, and eligibility."
+            },
             "instructions": ${instructions_prefix} """
 You compare loan options based on interest rates, repayment terms, and eligibility requirements.
 You ensure users understand the financial implications of each choice.
@@ -571,7 +589,9 @@ Detailed Step-by-Step Responsibilities:
         },
         {
             "name": "career_decision_specialist",
-            "function": ${aaosa_call},
+            "function": ${aaosa_call}{
+                "description": "Helps users navigate career decisions including job changes and skill development."
+            },
             "instructions": ${instructions_prefix} """
 You help users navigate career decisions, including job changes, skill development, and long-term planning.
 You provide guidance by researching job opportunities, industry trends, and training options.
@@ -617,7 +637,9 @@ Detailed Responsibilities:
         },
         {
             "name": "job_opportunity_researcher",
-            "function": ${aaosa_call},
+            "function": ${aaosa_call}{
+                "description": "Researches job openings and opportunities based on qualifications and preferences."
+            },
             "instructions": ${instructions_prefix} """
 You research job openings and opportunities in specific fields or locations, based on the user's qualifications and preferences.
 You compile insights about potential employers, roles, and salary ranges.
@@ -694,7 +716,9 @@ Scope of Work:
         },
         {
             "name": "skill_development_advisor",
-            "function": ${aaosa_call},
+            "function": ${aaosa_call}{
+                "description": "Identifies training programs and certifications for career growth."
+            },
             "instructions": ${instructions_prefix} """
 You identify training programs, certifications, and resources to help users enhance their skills for career growth.
 You recommend paths for users to achieve their professional goals.
@@ -742,7 +766,9 @@ Detailed Responsibilities:
         },
         {
             "name": "lifestyle_decision_specialist",
-            "function": ${aaosa_call},
+            "function": ${aaosa_call}{
+                "description": "Guides users through lifestyle decisions including hobbies and personal development."
+            },
             "instructions": ${instructions_prefix} """
 You guide users through decisions related to lifestyle choices, including hobbies, personal development, and relationships.
 You support the user by offering insights and options aligned with their preferences and values.
@@ -784,7 +810,9 @@ Your responsibilities end at facilitating the decision and initial steps, leavin
         },
         {
             "name": "hobby_explorer",
-            "function": ${aaosa_call},
+            "function": ${aaosa_call}{
+                "description": "Explores potential hobbies and interests based on preferences and available resources."
+            },
             "instructions": ${instructions_prefix} """
 You explore potential hobbies and interests for the user, based on their preferences, available resources, and time commitment.
 You provide detailed suggestions to help users pick up new activities.
@@ -843,7 +871,9 @@ You operate with a step-by-step methodology tailored to your role in helping use
         },
         {
             "name": "relationship_guidance_agent",
-            "function": ${aaosa_call},
+            "function": ${aaosa_call}{
+                "description": "Assists with decision-making in relationships, offering advice and insights."
+            },
             "instructions": ${instructions_prefix} """
 You assist with decision-making in relationships, offering advice and insights tailored to the user's situation.
 You provide a neutral perspective, helping users evaluate their options thoughtfully.
@@ -886,7 +916,9 @@ Detailed Responsibilities:
         },
         {
             "name": "healthcare_decision_specialist",
-            "function": ${aaosa_call},
+            "function": ${aaosa_call}{
+                "description": "Helps users make healthcare decisions including selecting doctors and treatments."
+            },
             "instructions": ${instructions_prefix} """
 You help users make decisions related to healthcare, including selecting doctors, treatments, and wellness plans.
 You provide support by researching and comparing options based on the user's health needs and preferences.
@@ -932,7 +964,9 @@ Here's a detailed and step-by-step breakdown of your scope of responsibilities:
         },
         {
             "name": "doctor_researcher",
-            "function": ${aaosa_call},
+            "function": ${aaosa_call}{
+                "description": "Researches and recommends healthcare providers based on specialization, location, and reviews."
+            },
             "instructions": ${instructions_prefix} """
 You research and recommend healthcare providers based on user preferences, including specialization, location, and reviews.
 You ensure users have access to detailed and accurate information to select the right provider.
@@ -991,7 +1025,9 @@ Scope Limitations
         },
         {
             "name": "treatment_comparator",
-            "function": ${aaosa_call},
+            "function": ${aaosa_call}{
+                "description": "Compares treatment options for medical conditions considering efficacy and costs."
+            },
             "instructions": ${instructions_prefix} """
 You compare treatment options for specific medical conditions, considering efficacy, costs, and user preferences.
 You help users make informed choices by presenting clear and concise comparisons.

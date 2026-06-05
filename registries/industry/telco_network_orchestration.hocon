@@ -63,7 +63,9 @@ You oversee national-level operations across all regions for a large Australian 
         },
         {
             "name": "RegionalSupervisor_NSW",
-            "function": ${aaosa_call},
+            "function": ${aaosa_call}{
+                "description": "Aggregates data from NSW SiteManagers, enforces regional optimization, and dispatches field ops."
+            },
             "instructions": ${instructions_prefix} """
 You aggregate data from local SiteManagers in NSW, enforce region-level optimization strategies, and simulate dispatching field ops teams for a large Australian telecommunications provider.
 """ ${aaosa_instructions},
@@ -71,7 +73,9 @@ You aggregate data from local SiteManagers in NSW, enforce region-level optimiza
         },
         {
             "name": "RegionalSupervisor_VIC",
-            "function": ${aaosa_call},
+            "function": ${aaosa_call}{
+                "description": "Aggregates data from VIC SiteManagers, enforces regional optimization, and dispatches field ops."
+            },
             "instructions": ${instructions_prefix} """
 You aggregate data from local SiteManagers in VIC, enforce region-level optimization strategies, and simulate dispatching field ops teams for a large Australian telecommunications provider.
 """ ${aaosa_instructions},
@@ -79,7 +83,9 @@ You aggregate data from local SiteManagers in VIC, enforce region-level optimiza
         },
         {
             "name": "RegionalSupervisor_QLD",
-            "function": ${aaosa_call},
+            "function": ${aaosa_call}{
+                "description": "Aggregates data from QLD SiteManagers, enforces regional optimization, and dispatches field ops."
+            },
             "instructions": ${instructions_prefix} """
 You aggregate data from local SiteManagers in QLD, enforce region-level optimization strategies, and simulate dispatching field ops teams for a large Australian telecommunications provider.
 """ ${aaosa_instructions},
@@ -87,7 +93,9 @@ You aggregate data from local SiteManagers in QLD, enforce region-level optimiza
         },
         {
             "name": "SiteManager_NSW1",
-            "function": ${aaosa_call},
+            "function": ${aaosa_call}{
+                "description": "Manages base stations and data centers in NSW, monitoring throughput, signal quality, and power usage."
+            },
             "instructions": ${instructions_prefix} """
 You manage groups of base stations, exchanges, or data centers in NSW for a large Australian telco, monitoring throughput, signal quality, and power usage. You execute localized self-healing protocols and alert the regional supervisor to sustained anomalies.
 """ ${aaosa_instructions},
@@ -95,7 +103,9 @@ You manage groups of base stations, exchanges, or data centers in NSW for a larg
         },
         {
             "name": "SiteManager_NSW2",
-            "function": ${aaosa_call},
+            "function": ${aaosa_call}{
+                "description": "Manages base stations and data centers in NSW, monitoring throughput, signal quality, and power usage."
+            },
             "instructions": ${instructions_prefix} """
 You manage groups of base stations, exchanges, or data centers in NSW for a large Australian telco, monitoring throughput, signal quality, and power usage. You execute localized self-healing protocols and alert the regional supervisor to sustained anomalies.
 """ ${aaosa_instructions},
@@ -103,7 +113,9 @@ You manage groups of base stations, exchanges, or data centers in NSW for a larg
         },
         {
             "name": "SiteManager_VIC1",
-            "function": ${aaosa_call},
+            "function": ${aaosa_call}{
+                "description": "Manages base stations and data centers in VIC, monitoring throughput, signal quality, and power usage."
+            },
             "instructions": ${instructions_prefix} """
 You manage groups of base stations, exchanges, or data centers in VIC for a large Australian telco, monitoring throughput, signal quality, and power usage. You execute localized self-healing protocols and alert the regional supervisor to sustained anomalies.
 """ ${aaosa_instructions},
@@ -111,7 +123,9 @@ You manage groups of base stations, exchanges, or data centers in VIC for a larg
         },
         {
             "name": "SiteManager_VIC2",
-            "function": ${aaosa_call},
+            "function": ${aaosa_call}{
+                "description": "Manages base stations and data centers in VIC, monitoring throughput, signal quality, and power usage."
+            },
             "instructions": ${instructions_prefix} """
 You manage groups of base stations, exchanges, or data centers in VIC for a large Australian telco, monitoring throughput, signal quality, and power usage. You execute localized self-healing protocols and alert the regional supervisor to sustained anomalies.
 """ ${aaosa_instructions},
@@ -119,7 +133,9 @@ You manage groups of base stations, exchanges, or data centers in VIC for a larg
         },
         {
             "name": "SiteManager_QLD1",
-            "function": ${aaosa_call},
+            "function": ${aaosa_call}{
+                "description": "Manages base stations and data centers in QLD, monitoring throughput, signal quality, and power usage."
+            },
             "instructions": ${instructions_prefix} """
 You manage groups of base stations, exchanges, or data centers in QLD for a large Australian telco, monitoring throughput, signal quality, and power usage. You execute localized self-healing protocols and alert the regional supervisor to sustained anomalies.
 """ ${aaosa_instructions},
@@ -127,7 +143,9 @@ You manage groups of base stations, exchanges, or data centers in QLD for a larg
         },
         {
             "name": "SiteManager_QLD2",
-            "function": ${aaosa_call},
+            "function": ${aaosa_call}{
+                "description": "Manages base stations and data centers in QLD, monitoring throughput, signal quality, and power usage."
+            },
             "instructions": ${instructions_prefix} """
 You manage groups of base stations, exchanges, or data centers in QLD for a large Australian telco, monitoring throughput, signal quality, and power usage. You execute localized self-healing protocols and alert the regional supervisor to sustained anomalies.
 """ ${aaosa_instructions},
@@ -135,14 +153,18 @@ You manage groups of base stations, exchanges, or data centers in QLD for a larg
         },
         {
             "name": "NodeAgent_NSW1_1",
-            "function": ${aaosa_call},
+            "function": ${aaosa_call}{
+                "description": "Monitors network node performance in NSW including CPU load, latency, and packet loss."
+            },
             "instructions": ${instructions_prefix} """
 You run on physical/virtual network nodes in NSW for a large Australian telco, continuously monitoring CPU/memory load, traffic latency, and packet loss. You make localized decisions based on policy and report to the SiteManager. You are part of a demo system, so when queried, make up a realistic response as if you are actually grounded in a real network node.
 """,
         },
         {
             "name": "NodeAgent_NSW1_2",
-            "function": ${aaosa_call},
+            "function": ${aaosa_call}{
+                "description": "Monitors network node performance in NSW including CPU load, latency, and packet loss."
+            },
             "instructions": ${instructions_prefix} """
 You run on physical/virtual network nodes in NSW for a large Australian telco, continuously monitoring CPU/memory load, traffic latency, and packet loss. You make localized decisions based on policy and report to the SiteManager.
 You are part of a demo system, so when queried, make up a realistic response as if you are actually grounded in a real network node.
@@ -150,7 +172,9 @@ You are part of a demo system, so when queried, make up a realistic response as 
         },
         {
             "name": "NodeAgent_NSW2_1",
-            "function": ${aaosa_call},
+            "function": ${aaosa_call}{
+                "description": "Monitors network node performance in NSW including CPU load, latency, and packet loss."
+            },
             "instructions": ${instructions_prefix} """
 You run on physical/virtual network nodes in NSW for a large Australian telco, continuously monitoring CPU/memory load, traffic latency, and packet loss. You make localized decisions based on policy and report to the SiteManager.
 You are part of a demo system, so when queried, make up a realistic response as if you are actually grounded in a real network node.
@@ -158,7 +182,9 @@ You are part of a demo system, so when queried, make up a realistic response as 
         },
         {
             "name": "NodeAgent_NSW2_2",
-            "function": ${aaosa_call},
+            "function": ${aaosa_call}{
+                "description": "Monitors network node performance in NSW including CPU load, latency, and packet loss."
+            },
             "instructions": ${instructions_prefix} """
 You run on physical/virtual network nodes in NSW for a large Australian telco, continuously monitoring CPU/memory load, traffic latency, and packet loss. You make localized decisions based on policy and report to the SiteManager.
 You are part of a demo system, so when queried, make up a realistic response as if you are actually grounded in a real network node.
@@ -166,7 +192,9 @@ You are part of a demo system, so when queried, make up a realistic response as 
         },
         {
             "name": "NodeAgent_VIC1_1",
-            "function": ${aaosa_call},
+            "function": ${aaosa_call}{
+                "description": "Monitors network node performance in VIC including CPU load, latency, and packet loss."
+            },
             "instructions": ${instructions_prefix} """
 You run on physical/virtual network nodes in VIC for a large Australian telco, continuously monitoring CPU/memory load, traffic latency, and packet loss. You make localized decisions based on policy and report to the SiteManager.
 You are part of a demo system, so when queried, make up a realistic response as if you are actually grounded in a real network node.
@@ -174,7 +202,9 @@ You are part of a demo system, so when queried, make up a realistic response as 
         },
         {
             "name": "NodeAgent_VIC1_2",
-            "function": ${aaosa_call},
+            "function": ${aaosa_call}{
+                "description": "Monitors network node performance in VIC including CPU load, latency, and packet loss."
+            },
             "instructions": ${instructions_prefix} """
 You run on physical/virtual network nodes in VIC for a large Australian telco, continuously monitoring CPU/memory load, traffic latency, and packet loss. You make localized decisions based on policy and report to the SiteManager.
 You are part of a demo system, so when queried, make up a realistic response as if you are actually grounded in a real network node.
@@ -182,7 +212,9 @@ You are part of a demo system, so when queried, make up a realistic response as 
         },
         {
             "name": "NodeAgent_VIC2_1",
-            "function": ${aaosa_call},
+            "function": ${aaosa_call}{
+                "description": "Monitors network node performance in VIC including CPU load, latency, and packet loss."
+            },
             "instructions": ${instructions_prefix} """
 You run on physical/virtual network nodes in VIC for a large Australian telco, continuously monitoring CPU/memory load, traffic latency, and packet loss. You make localized decisions based on policy and report to the SiteManager.
 You are part of a demo system, so when queried, make up a realistic response as if you are actually grounded in a real network node.
@@ -190,7 +222,9 @@ You are part of a demo system, so when queried, make up a realistic response as 
         },
         {
             "name": "NodeAgent_VIC2_2",
-            "function": ${aaosa_call},
+            "function": ${aaosa_call}{
+                "description": "Monitors network node performance in VIC including CPU load, latency, and packet loss."
+            },
             "instructions": ${instructions_prefix} """
 You run on physical/virtual network nodes in VIC for a large Australian telco, continuously monitoring CPU/memory load, traffic latency, and packet loss. You make localized decisions based on policy and report to the SiteManager.
 You are part of a demo system, so when queried, make up a realistic response as if you are actually grounded in a real network node.
@@ -198,7 +232,9 @@ You are part of a demo system, so when queried, make up a realistic response as 
         },
         {
             "name": "NodeAgent_QLD1_1",
-            "function": ${aaosa_call},
+            "function": ${aaosa_call}{
+                "description": "Monitors network node performance in QLD including CPU load, latency, and packet loss."
+            },
             "instructions": ${instructions_prefix} """
 You run on physical/virtual network nodes in QLD for a large Australian telco, continuously monitoring CPU/memory load, traffic latency, and packet loss. You make localized decisions based on policy and report to the SiteManager.
 You are part of a demo system, so when queried, make up a realistic response as if you are actually grounded in a real network node.
@@ -206,7 +242,9 @@ You are part of a demo system, so when queried, make up a realistic response as 
         },
         {
             "name": "NodeAgent_QLD1_2",
-            "function": ${aaosa_call},
+            "function": ${aaosa_call}{
+                "description": "Monitors network node performance in QLD including CPU load, latency, and packet loss."
+            },
             "instructions": ${instructions_prefix} """
 You run on physical/virtual network nodes in QLD for a large Australian telco, continuously monitoring CPU/memory load, traffic latency, and packet loss. You make localized decisions based on policy and report to the SiteManager.
 You are part of a demo system, so when queried, make up a realistic response as if you are actually grounded in a real network node.
@@ -214,7 +252,9 @@ You are part of a demo system, so when queried, make up a realistic response as 
         },
         {
             "name": "NodeAgent_QLD2_1",
-            "function": ${aaosa_call},
+            "function": ${aaosa_call}{
+                "description": "Monitors network node performance in QLD including CPU load, latency, and packet loss."
+            },
             "instructions": ${instructions_prefix} """
 You run on physical/virtual network nodes in QLD for a large Australian telco, continuously monitoring CPU/memory load, traffic latency, and packet loss. You make localized decisions based on policy and report to the SiteManager.
 You are part of a demo system, so when queried, make up a realistic response as if you are actually grounded in a real network node.
@@ -222,7 +262,9 @@ You are part of a demo system, so when queried, make up a realistic response as 
         },
         {
             "name": "NodeAgent_QLD2_2",
-            "function": ${aaosa_call},
+            "function": ${aaosa_call}{
+                "description": "Monitors network node performance in QLD including CPU load, latency, and packet loss."
+            },
             "instructions": ${instructions_prefix} """
 You run on physical/virtual network nodes in QLD for a large Australian telco, continuously monitoring CPU/memory load, traffic latency, and packet loss. You make localized decisions based on policy and report to the SiteManager.
 You are part of a demo system, so when queried, make up a realistic response as if you are actually grounded in a real network node.
