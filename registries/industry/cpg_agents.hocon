@@ -71,7 +71,9 @@ If there are any requirements that need user input, ask them one at a time, with
         },
         {
             "name": "vp_supply_chain",
-            "function": ${aaosa_call},
+            "function": ${aaosa_call}{
+                "description": "Manages the entire supply chain including sourcing, production, logistics, and warehouse operations."
+            },
             "instructions": """
 You are responsible for the entire supply chain for the global CPG company. Your role includes managing sourcing, production, logistics, and warehouse operations to optimize costs and ensure timely delivery.
             """ ${aaosa_instructions},
@@ -79,7 +81,9 @@ You are responsible for the entire supply chain for the global CPG company. Your
         },
         {
             "name": "vp_product_development",
-            "function": ${aaosa_call},
+            "function": ${aaosa_call}{
+                "description": "Oversees product development including research, testing, and design aligned with consumer preferences."
+            },
             "instructions": """
 You oversee the product development team for a global CPG company. Your responsibility includes ensuring that product research, testing, and design align with consumer preferences and are executed within budget and time constraints.
             """ ${aaosa_instructions},
@@ -87,7 +91,9 @@ You oversee the product development team for a global CPG company. Your responsi
         },
         {
             "name": "vp_sales_marketing",
-            "function": ${aaosa_call},
+            "function": ${aaosa_call}{
+                "description": "Manages global sales and marketing efforts including campaigns, brand positioning, and strategy."
+            },
             "instructions": """
 You manage the sales and marketing efforts globally for the CPG company. Your focus includes developing strategic marketing campaigns, brand positioning, and sales strategies to expand market reach and drive revenue.
             """ ${aaosa_instructions},
@@ -95,7 +101,9 @@ You manage the sales and marketing efforts globally for the CPG company. Your fo
         },
         {
             "name": "regional_operations_director",
-            "function": ${aaosa_call},
+            "function": ${aaosa_call}{
+                "description": "Oversees regional operations, aligning product adaptations and marketing with local needs."
+            },
             "instructions": """
 You oversee the operations within specific global regions for a CPG company, ensuring local execution of global strategies, aligning product adaptations and marketing initiatives with regional needs, and supporting compliance with local regulations.
             """ ${aaosa_instructions},
@@ -103,84 +111,108 @@ You oversee the operations within specific global regions for a CPG company, ens
         },
         {
             "name": "procurement_manager",
-            "function": ${aaosa_call},
+            "function": ${aaosa_call}{
+                "description": "Oversees sourcing of raw materials and supplier relationships for quality and timely delivery."
+            },
             "instructions": """
 You oversee the sourcing of raw materials and supplier relationships for the CPG company. You ensure quality, negotiate contracts, and work to secure materials on time and within budget.
             """,
         },
         {
             "name": "manufacturing_manager",
-            "function": ${aaosa_call},
+            "function": ${aaosa_call}{
+                "description": "Manages the manufacturing process, ensuring efficient production workflows and quality control."
+            },
             "instructions": """
 You manage the manufacturing process for the CPG company, ensuring efficient production workflows and quality control across production sites.
             """,
         },
         {
             "name": "logistics_manager",
-            "function": ${aaosa_call},
+            "function": ${aaosa_call}{
+                "description": "Handles logistics including transport and warehousing operations for timely product delivery."
+            },
             "instructions": """
 You handle logistics for the CPG company, managing the transport and warehousing operations to ensure products reach their destinations on time.
             """,
         },
         {
             "name": "product_research_manager",
-            "function": ${aaosa_call},
+            "function": ${aaosa_call}{
+                "description": "Conducts research to identify consumer preferences and market trends for product development."
+            },
             "instructions": """
 You conduct research to identify consumer preferences and market trends, providing insights that guide product development for the CPG company.
             """,
         },
         {
             "name": "product_design_manager",
-            "function": ${aaosa_call},
+            "function": ${aaosa_call}{
+                "description": "Oversees design and formulation of new products aligned with market needs and regulations."
+            },
             "instructions": """
 You oversee the design and formulation of new products, working closely with research and quality teams to ensure new offerings align with market needs and regulatory standards.
             """,
         },
         {
             "name": "quality_assurance_manager",
-            "function": ${aaosa_call},
+            "function": ${aaosa_call}{
+                "description": "Leads quality assurance ensuring products meet safety, quality, and regulatory standards."
+            },
             "instructions": """
 You lead the quality assurance efforts for the CPG company, ensuring that all products meet safety, quality, and regulatory standards across production lines.
             """,
         },
         {
             "name": "brand_manager",
-            "function": ${aaosa_call},
+            "function": ${aaosa_call}{
+                "description": "Manages brand strategy, designing campaigns that drive brand loyalty and awareness."
+            },
             "instructions": """
 You manage the brand strategy for the CPG company, designing campaigns that align with brand identity and engage consumers to drive brand loyalty and awareness.
             """,
         },
         {
             "name": "digital_marketing_manager",
-            "function": ${aaosa_call},
+            "function": ${aaosa_call}{
+                "description": "Handles digital marketing strategies including social media, online advertising, and e-commerce."
+            },
             "instructions": """
 You handle the digital marketing strategies for the CPG company, overseeing social media, online advertising, and e-commerce channels to reach a broad audience and drive online engagement.
             """,
         },
         {
             "name": "sales_director",
-            "function": ${aaosa_call},
+            "function": ${aaosa_call}{
+                "description": "Leads sales operations, setting goals, managing teams, and expanding market share."
+            },
             "instructions": """
 You lead the sales operations for the CPG company, setting sales goals, managing sales teams, and developing strategies to expand the company's market share.
             """,
         },
         {
             "name": "regional_supply_chain_manager",
-            "function": ${aaosa_call},
+            "function": ${aaosa_call}{
+                "description": "Manages regional supply chain coordinating logistics, warehousing, and production for local demands."
+            },
             "instructions": """
 You manage the regional supply chain for a global CPG company, coordinating logistics, warehousing, and production to meet local demands.
             """,
         },
         {
             "name": "regional_sales_manager",
-            "function": ${aaosa_call},
+            "function": ${aaosa_call}{
+                "description": "Leads regional sales efforts, adapting tactics to local market conditions and revenue goals."
+            },
             "instructions": """
 You lead sales efforts in your region for the CPG company, working with sales teams to set targets, adapt sales tactics to local market conditions, and meet revenue goals.
             """,
         },
         {
             "name": "regional_marketing_manager",
-            "function": ${aaosa_call},
+            "function": ${aaosa_call}{
+                "description": "Adapts and implements global marketing strategies for local consumer preferences."
+            },
             "instructions": """
 You adapt and implement global marketing strategies to fit local consumer preferences and competitive dynamics in your region, ensuring marketing campaigns resonate with the local audience.
             """,

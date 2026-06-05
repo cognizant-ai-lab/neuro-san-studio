@@ -96,7 +96,9 @@ always striving to provide a resolution that aligns with CarMax’s customer-fir
         },
         {
             "name": "sales_consultant",
-            "function": ${aaosa_call},
+            "function": ${aaosa_call}{
+                "description": "Assists customers in selecting and purchasing vehicles from CarMax inventory."
+            },
             "instructions": ${instructions_prefix} """
 You assist customers in selecting and purchasing vehicles from CarMax's inventory.
 Provide detailed information about available vehicles, facilitate test drives, and guide customers through the purchasing
@@ -126,7 +128,9 @@ that aligns with CarMax’s hassle-free and customer-first philosophy.
         },
         {
             "name": "inventory_specialist",
-            "function": ${aaosa_call},
+            "function": ${aaosa_call}{
+                "description": "Manages vehicle inventory and assists customers in locating specific vehicles."
+            },
             "instructions": ${instructions_prefix} """
 You manage vehicle inventory at CarMax, ensuring accurate availability information and assisting customers in locating specific vehicles.
 Use your search tool to look up inventory and notify customers about available vehicles.
@@ -135,7 +139,9 @@ Use your search tool to look up inventory and notify customers about available v
         },
         {
             "name": "test_drive_coordinator",
-            "function": ${aaosa_call},
+            "function": ${aaosa_call}{
+                "description": "Schedules and organizes test drives, ensuring vehicle availability and preparation."
+            },
             "instructions": ${instructions_prefix} """
 You schedule and organize test drives for customers, ensuring vehicle availability and proper sanitization before each test.
 Your role is to ensure a seamless and customer-friendly test-driving experience. Your responsibilities start when a customer
@@ -160,7 +166,9 @@ customer satisfaction align with CarMax’s mission of delivering an exceptional
         },
         {
             "name": "service_advisor",
-            "function": ${aaosa_call},
+            "function": ${aaosa_call}{
+                "description": "Coordinates vehicle service appointments and provides maintenance and repair information."
+            },
             "instructions": ${instructions_prefix} """
 You coordinate vehicle service appointments and provide information on maintenance and repair services.
 Assist customers in scheduling service visits and inform them about the status of their vehicles during service.
@@ -190,7 +198,9 @@ service experience that enhances their confidence in CarMax’s service operatio
         },
         {
             "name": "technician",
-            "function": ${aaosa_call},
+            "function": ${aaosa_call}{
+                "description": "Performs maintenance and repairs on customer vehicles at CarMax service centers."
+            },
             "instructions": ${instructions_prefix} """
 You perform maintenance and repairs on customer vehicles at CarMax service centers.
 Diagnose issues, perform repairs, and ensure quality control before vehicles are returned to customers.
@@ -213,7 +223,9 @@ they purchase and service with CarMax.
         },
         {
             "name": "parts_specialist",
-            "function": ${aaosa_call},
+            "function": ${aaosa_call}{
+                "description": "Manages vehicle parts inventory for repairs and maintenance."
+            },
             "instructions": ${instructions_prefix} """
 You manage vehicle parts inventory, ensuring the availability of necessary components for repairs and maintenance.
 Coordinate with technicians to order and supply required parts efficiently.
@@ -236,7 +248,9 @@ focused approach.
         },
         {
             "name": "finance_specialist",
-            "function": ${aaosa_call},
+            "function": ${aaosa_call}{
+                "description": "Provides information and assistance regarding financing options through CarMax Auto Finance."
+            },
             "instructions": ${instructions_prefix} """
 You provide information and assistance regarding financing options through CarMax Auto Finance.
 Help customers understand loan terms, assist with the application process, and address any financing-related inquiries.
@@ -259,7 +273,9 @@ not just about facilitating loans but also about creating a positive and stress-
         },
         {
             "name": "loan_underwriter",
-            "function": ${aaosa_call},
+            "function": ${aaosa_call}{
+                "description": "Assesses and approves auto loan applications, evaluating creditworthiness and compliance."
+            },
             "instructions": ${instructions_prefix} """
 You assess and approve auto loan applications, evaluating customer creditworthiness and ensuring compliance with CarMax
 Auto Finance policies.
@@ -291,7 +307,9 @@ car buying easy and stress-free.
         },
         {
             "name": "credit_analyst",
-            "function": ${aaosa_call},
+            "function": ${aaosa_call}{
+                "description": "Analyzes customer credit profiles and provides credit assessments for auto financing."
+            },
             "instructions": ${instructions_prefix} """
 You analyze customer credit reports and financial history to determine loan eligibility and interest rates.
 Provide recommendations to loan underwriters for loan approvals or modifications.
