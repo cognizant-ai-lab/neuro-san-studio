@@ -71,7 +71,9 @@ If there are any requirements that need user input, ask them one at a time, with
         },
         {
             "name": "service_delivery_coordinator",
-            "function": ${aaosa_call},
+            "function": ${aaosa_call}{
+                "description": "Manages and tracks the process of fulfilling orders and resolving network service issues."
+            },
             "instructions": """
 You manage and track the overall process of fulfilling orders and resolving issues related to network services.,
 You will ensure that the customer's request is assigned to the right department and follow up on order progress.
@@ -79,7 +81,9 @@ You will ensure that the customer's request is assigned to the right department 
         },
         {
             "name": "network_engineer",
-            "function": ${aaosa_call},
+            "function": ${aaosa_call}{
+                "description": "Handles technical configuration and troubleshooting of ethernet and optical networks."
+            },
             "instructions": """
 You handle technical aspects of configuring and troubleshooting ethernet and optical networks at different locations.
 You configures and maintain network infrastructure and provide technical support when issues arise.
@@ -89,7 +93,9 @@ You configures and maintain network infrastructure and provide technical support
         },
         {
             "name": "field_technician",
-            "function": ${aaosa_call},
+            "function": ${aaosa_call}{
+                "description": "Performs onsite installation, maintenance, and troubleshooting of network equipment at customer locations."
+            },
             "instructions": """
 You are responsible for onsite installation, maintenance, and troubleshooting of network equipment at customer locations.
 You Execute hands-on technical work at customer premises and coordinates with the engineer to ensure networks are functional.
@@ -98,7 +104,9 @@ You Execute hands-on technical work at customer premises and coordinates with th
         },
         {
             "name": "network_ops_center_specialist",
-            "function": ${aaosa_call},
+            "function": ${aaosa_call}{
+                "description": "Monitors network health, responds to alerts, and initiates remote troubleshooting."
+            },
             "instructions": """
 You monitor network health, respond to alerts, and initiate troubleshooting remotely.
 You Provide round-the-clock monitoring and first-line response to network performance issues.
@@ -107,7 +115,9 @@ You Provide round-the-clock monitoring and first-line response to network perfor
         },
         {
             "name": "project_manager",
-            "function": ${aaosa_call},
+            "function": ${aaosa_call}{
+                "description": "Oversees complex network installation or upgrade projects across multiple locations."
+            },
             "instructions": """
 You oversee complex network installation or upgrade projects involving multiple locations, ensuring they stay on track.
 You coordinates larger, cross-location projects and manage timelines, resources, and milestones.
@@ -116,7 +126,9 @@ You coordinates larger, cross-location projects and manage timelines, resources,
         },
         {
             "name": "senior_network_architect",
-            "function": ${aaosa_call},
+            "function": ${aaosa_call}{
+                "description": "Designs overall architecture for large-scale network infrastructure."
+            },
             "instructions": """
 You design the overall architecture for large-scale network infrastructure across multiple locations.
 You provide the strategic vision and high-level design for network services and oversee implementation for large-scale projects.
@@ -124,7 +136,9 @@ You provide the strategic vision and high-level design for network services and 
         },
         {
             "name": "sales_engineer",
-            "function": ${aaosa_call},
+            "function": ${aaosa_call}{
+                "description": "Explains technical details and solutions for network services during pre-sales."
+            },
             "instructions": """
 You engage with customers during the pre-sales phase, explaining technical details and solutions for ethernet and optical network services.,
 You ensure customer requirements are well understood and translated into appropriate technical solutions.
@@ -132,7 +146,9 @@ You ensure customer requirements are well understood and translated into appropr
         },
         {
             "name": "account_manager",
-            "function": ${aaosa_call},
+            "function": ${aaosa_call}{
+                "description": "Manages business relationships with customers and ensures ongoing service satisfaction."
+            },
             "instructions": """
 You manages the business relationship with the customer, addressing their needs, and ensuring ongoing satisfaction.
 You act as the main point of contact for clients post-sale, ensuring that the services meet their business needs.
@@ -141,7 +157,9 @@ You act as the main point of contact for clients post-sale, ensuring that the se
         },
         {
             "name": "noc_manager",
-            "function": ${aaosa_call},
+            "function": ${aaosa_call}{
+                "description": "Oversees the NOC team to ensure network performance and availability."
+            },
             "instructions": """
 You oversee the NOC team to ensure network performance and availability are maintained across all locations.
 You ensure the NOC team is efficiently handling alerts, escalations, and incidents, and communicates any critical issues to senior management.
@@ -150,7 +168,9 @@ You ensure the NOC team is efficiently handling alerts, escalations, and inciden
         },
         {
             "name": "senior_management",
-            "function": ${aaosa_call},
+            "function": ${aaosa_call}{
+                "description": "Provides strategic oversight of network operations and service delivery."
+            },
             "instructions": """
 You provide strategic oversight of network operations and service delivery across the organization.,
 You set goals for network service performance, approve large projects, and ensure the organization meets its service delivery standards.
@@ -158,7 +178,9 @@ You set goals for network service performance, approve large projects, and ensur
         },
         {
             "name": "logistics_coordinator",
-            "function": ${aaosa_call},
+            "function": ${aaosa_call}{
+                "description": "Manages shipment and delivery of network equipment for installations and maintenance."
+            },
             "instructions": """
 You manage the shipment and delivery of network equipment to various locations, ensuring timely arrival for installations.
 You coordinates the physical logistics of hardware and tools required for installation or maintenance.
