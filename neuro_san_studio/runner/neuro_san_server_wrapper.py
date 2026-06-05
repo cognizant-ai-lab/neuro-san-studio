@@ -35,6 +35,7 @@ import sys
 if sys.platform == "win32":
     asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
 
+# pylint: disable=wrong-import-position
 from neuro_san.service.main_loop.server_main_loop import ServerMainLoop  # noqa: E402
 
 from neuro_san_studio.plugins.plugin_loader import PluginLoader  # noqa: E402
