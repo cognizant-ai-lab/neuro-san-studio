@@ -1,0 +1,14 @@
+{
+  "short_description": "Subject: [URGENT] Production DB cluster unreachable \u2014 auth failing + network drops",
+  "description": "Subject: [URGENT] Production DB cluster unreachable \u2014 auth failing + network drops\n\n---------- Forwarded message ---------\n\nHey Alice,\n\nBob here.  We've been getting alerts since about 11 PM last night.\nOur prod Postgres cluster (10.12.5.200) started throwing connection timeouts.\nCall me at [REDACTED] if this is urgent, or reach me on my cell: [REDACTED].\n\nHere's what we tried:\n  - Restarted the replica nodes.\n  - Confirmed the app creds:   password=[REDACTED]  db_user=prod_rw_user\n  - Double-checked our DB token=[REDACTED]\n  - api_key=[REDACTED]  (this is the monitoring key \u2014 rotated already)\n  - Ran EXPLAIN ANALYZE on the slow queries \u2014 replication lag is at 47 seconds.\n\nThe network team says there were two BGP flaps on the core routers at 11:02 PM\nand again at 01:15 AM.  Packet loss is 12 % on the uplink to the DB subnet.\nAbout 80 users on the East Coast trading desk are completely locked out.\n\nAlice, please escalate immediately.  The head of trading called my mobile \n[REDACTED] three times already.  This is a P1.\n\nBest,\nBob Martinez\nSenior SRE \u2014 ACME Corp\nDirect: [REDACTED]  |  Emergency: (800) 555\u20110199\n--------- End Forwarded Message ----------\n\nHi IT Support,\n\nForwarding Bob's note.  We need a proper incident ticket RIGHT NOW.\nThe issue touches both the Database layer (Postgres replication lag, auth) \nAND the Network layer (BGP flaps, 12 % packet loss).  Both need to be logged.\n\nPrimary concern: Database \u2014 production trading DB cluster is down.\n~80 East Coast users impacted \u2192 P1/Critical severity.\n\nPlease classify and route this immediately.\n\nThanks,\nAlice Wong\nVP Engineering | ACME Corp\n[REDACTED] | [REDACTED]",
+  "category": "Database",
+  "subcategory": "Performance",
+  "urgency": "1",
+  "impact": "1",
+  "priority": "1",
+  "state": "1",
+  "caller_id": "alice.wong",
+  "assignment_group": "NOC-L2-AutoClassify",
+  "comments": "Auto-ingested via Antigravity AI Pipeline.\nClassifier priority=HIGH, category=Database.",
+  "work_notes": "Classifier justification: Production Postgres cluster is fully unreachable. Replication lag is at 47 seconds, BGP flaps caused 12% packet loss on the DB subnet, and approximately 80 East Coast trading-desk users are locked out. Root cause spans both database connectivity and upstream network instability.\nPII scrubbed by TicketParserTool before ingestion."
+}

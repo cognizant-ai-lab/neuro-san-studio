@@ -1,0 +1,310 @@
+# =============================================================================
+# pipeline_network.hocon
+# =============================================================================
+# Antigravity Multi-Agent Network Blueprint
+# Application  : IT Service Desk Auto-Classifier
+# Organization : Cognizant AI Lab
+# Spec version : antigravity.network/v2
+#
+# HOCON Reference:
+#   https://github.com/lightbend/config/blob/main/HOCON.md
+#
+# This file is loaded by Antigravity's NetworkLoader at startup.
+# It is processed by the pyhocon library (pip install pyhocon) and must
+# validate against the antigravity.schema.NetworkBlueprint spec.
+# =============================================================================
+
+network {
+
+  name        = "service_desk_classifier_network"
+  version     = "2.1.0"
+  description = "End-to-end IT ticket ingestion, PII scrubbing, and ServiceNow classification"
+  environment = ${?ANTIGRAVITY_ENV}          # overridden by env var if set
+  environment = "production"                 # default fallback
+
+  # ---------------------------------------------------------------------------
+  # Global runtime policies
+  # ---------------------------------------------------------------------------
+
+  runtime_policies {
+
+    # --- Retry / back-off policy (applied to every LLM call unless overridden) ---
+    retry {
+      strategy          = "exponential_backoff"
+      initial_delay_ms  = 500
+      max_delay_ms      = 30000
+      multiplier        = 2.0
+      jitter            = true          # adds ±10 % random jitter to each delay
+      max_attempts      = 5
+
+      # Errors that are retriable (matched as substring of the exception class name
+      # or the HTTP status string returned by the provider SDK)
+      retriable_errors  = [
+        "rate_limit",
+        "status_429",
+        "api_timeout",
+        "connection_reset",
+        "service_unavailable",
+        "status_503"
+      ]
+    }
+
+    # --- Circuit breaker (trips after N consecutive failures in a rolling window) ---
+    circuit_breaker {
+      enabled            = true
+      failure_threshold  = 3            # trip after 3 consecutive retriable failures
+      recovery_timeout_s = 60           # half-open probe after 60 s
+      success_threshold  = 2            # close circuit after 2 successes in half-open
+    }
+
+    # --- Timeout budgets ---
+    timeouts {
+      llm_call_s          = 45
+      tool_execution_s    = 20
+      full_pipeline_s     = 180
+    }
+
+    # --- Observability ---
+    telemetry {
+      enabled          = true
+      provider         = "opentelemetry"
+      endpoint         = ${?OTEL_EXPORTER_OTLP_ENDPOINT}
+      endpoint         = "http://localhost:4317"
+      service_name     = "antigravity-service-desk"
+      log_llm_payloads = false          # PII-safety: never log raw LLM I/O
+    }
+
+  } # end runtime_policies
+
+  # ---------------------------------------------------------------------------
+  # Provider fallback chains
+  #
+  # Each entry declares a primary engine and an ORDERED list of fallback
+  # providers.  Antigravity's ProviderRouter evaluates `trigger_on` conditions
+  # in order; the first match causes an immediate switch to `provider`.
+  # ---------------------------------------------------------------------------
+
+  fallback_chain = [
+
+    {
+      id      = "openai_primary_chain"
+      primary = "openai/gpt-4o"
+
+      fallbacks = [
+        {
+          provider   = "anthropic/claude-3-5-sonnet-20241022"
+          trigger_on = ["rate_limit", "status_429", "api_timeout"]
+          priority   = 1
+          comment    = "Switch to Claude Sonnet on any OpenAI throttle or timeout"
+        },
+        {
+          provider   = "anthropic/claude-3-haiku-20240307"
+          trigger_on = ["rate_limit", "status_429"]
+          priority   = 2
+          comment    = "Cheaper Claude tier if Sonnet is also throttled"
+        },
+        {
+          provider   = "google/gemini-1.5-pro"
+          trigger_on = ["status_429", "api_timeout", "service_unavailable"]
+          priority   = 3
+          comment    = "Google Vertex fallback for sustained outages"
+        },
+        {
+          provider   = "ollama/local-llama"                 # fully local, zero egress cost
+          trigger_on = ["rate_limit", "status_429", "api_timeout",
+                        "service_unavailable", "status_503"]
+          priority   = 4
+          comment    = "Last-resort local Llama — always available, lower accuracy"
+          model_path = ${?OLLAMA_MODEL_PATH}
+          model_path = "llama3.1:8b"
+        }
+      ]
+
+      # Provider-specific retry overrides (merged with global policy)
+      retry_override {
+        max_attempts     = 3            # faster give-up per provider before chain advance
+        initial_delay_ms = 250
+      }
+    },
+
+    {
+      id      = "anthropic_primary_chain"
+      primary = "anthropic/claude-3-5-sonnet-20241022"
+
+      fallbacks = [
+        {
+          provider   = "openai/gpt-4o-mini"
+          trigger_on = ["rate_limit", "status_429", "api_timeout"]
+          priority   = 1
+          comment    = "GPT-4o-mini as cost-effective OpenAI fallback"
+        },
+        {
+          provider   = "ollama/local-llama"
+          trigger_on = ["rate_limit", "status_429", "api_timeout", "status_503"]
+          priority   = 2
+          comment    = "Local Llama emergency fallback"
+          model_path = "llama3.1:8b"
+        }
+      ]
+    }
+
+  ] # end fallback_chain
+
+  # ---------------------------------------------------------------------------
+  # Agent definitions
+  # ---------------------------------------------------------------------------
+
+  agents = [
+
+    # =========================================================================
+    # Agent 1 — Ingestion Agent
+    # Responsibility: receive raw email / webhook text, run PII scrubber,
+    # and forward sanitised content to the classifier agent.
+    # =========================================================================
+    {
+      id          = "ingestion_agent"
+      class       = "antigravity.agents.FunctionAgent"
+      description = "Receives raw IT communications, applies PII redaction, and hands off clean text"
+
+      # This agent is purely deterministic (regex-based); no LLM call needed.
+      # Set llm to null to skip provider routing for this agent.
+      llm = null
+
+      tools = [
+        {
+          id     = "ticket_parser"
+          module = "antigravity_apps.service_desk.tools.ticket_parser"
+          class  = "TicketParserTool"
+          config {
+            redact_token = "[REDACTED]"
+          }
+        }
+      ]
+
+      input_schema {
+        raw_text = "string"            # mandatory — the raw email / alert body
+      }
+
+      output_schema {
+        clean_text        = "string"
+        redaction_report  = "object"
+      }
+
+      # Routing: on success, pass output to structured_classifier_agent
+      on_success = "structured_classifier_agent"
+      on_failure = "dead_letter_queue"
+
+      metadata {
+        owner            = "platform-engineering"
+        sla_response_ms  = 2000
+        pii_clearance    = "L2-Sensitive"
+      }
+    },
+
+    # =========================================================================
+    # Agent 2 — Structured Classifier Agent
+    # Responsibility: analyse clean text, output strict ServiceNow JSON,
+    # validate output through Pydantic guardrail, retry on schema violation.
+    # =========================================================================
+    {
+      id          = "structured_classifier_agent"
+      class       = "antigravity.agents.LLMAgent"
+      description = "Classifies sanitised IT incidents into ServiceNow categories with validated JSON output"
+
+      llm {
+        # Which fallback_chain entry to use for provider routing
+        fallback_chain_id = "openai_primary_chain"
+
+        # Model parameters
+        temperature       = 0.1        # low temperature → deterministic classification
+        max_tokens        = 512
+        response_format   = "json"     # force JSON mode where supported
+      }
+
+      system_prompt = """
+You are an enterprise IT service desk classifier integrated with ServiceNow.
+Your ONLY task is to analyse the provided sanitised incident text and return
+a valid JSON object. Do NOT include any explanatory prose — output ONLY JSON.
+
+Required JSON schema (all fields mandatory, no extra keys allowed):
+{
+  "category":      "<Network|Database|Hardware|IAM>",
+  "priority":      "<HIGH|MEDIUM|LOW>",
+  "justification": "<10-1000 character plain-text rationale>"
+}
+
+Classification rules:
+- Network  → connectivity, DNS, VPN, firewall, bandwidth, packet loss
+- Database → query performance, replication lag, deadlock, backup failure
+- Hardware → disk failure, memory error, power, physical device fault
+- IAM      → login failure, MFA, LDAP/AD, permission denied, certificate
+
+Priority rules:
+- HIGH   → production outage, data loss, security breach, >50 users affected
+- MEDIUM → degraded service, partial outage, <50 users affected
+- LOW    → cosmetic, informational, no user impact
+"""
+
+      guardrail {
+        module        = "antigravity_apps.service_desk.tools.guardrails"
+        class         = "TicketGuardrail"
+        enabled       = true
+
+        # Retry this agent if guardrail returns VALIDATION_FAIL or PARSE_ERROR
+        retry_on_fail {
+          enabled      = true
+          max_retries  = 2
+          # On retry, append a correction hint to the user message
+          correction_prompt = """
+Your previous response did not match the required schema.
+Return ONLY a valid JSON object with keys: category, priority, justification.
+No markdown. No prose. No extra keys.
+"""
+        }
+      }
+
+      tools = [
+        {
+          id     = "servicenow_payload_builder"
+          module = "antigravity_apps.service_desk.tools.ticket_parser"
+          class  = "TicketParserTool"
+          # map_to_servicenow_payload is called post-validation by app.py
+        }
+      ]
+
+      input_schema {
+        clean_text = "string"          # receives output from ingestion_agent
+      }
+
+      output_schema {
+        servicenow_payload = "object"  # final validated ServiceNow incident dict
+        guardrail_status   = "string"
+      }
+
+      on_success = "output_router"
+      on_failure = "dead_letter_queue"
+
+      metadata {
+        owner            = "ai-platforms"
+        sla_response_ms  = 10000
+        model_audit_log  = true        # log model versions used per invocation
+      }
+    }
+
+  ] # end agents
+
+  # ---------------------------------------------------------------------------
+  # Dead-letter queue — receives failed agent outputs for human review
+  # ---------------------------------------------------------------------------
+
+  dead_letter_queue {
+    enabled     = true
+    destination = "servicenow_event_queue"
+    topic       = "antigravity.dlq.service_desk"
+    alert {
+      channel  = "pagerduty"
+      severity = "P2"
+    }
+  }
+
+} # end network
