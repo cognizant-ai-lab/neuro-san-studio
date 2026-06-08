@@ -12,8 +12,8 @@ jobs:
   agent-network-designer-test:
     # don't run this job in sync'd clones
     if: github.repository == 'cognizant-ai-lab/neuro-san-studio'
-    # cognizant-ai-lab/build-common 1.0.3
-    uses: cognizant-ai-lab/build-common/.github/workflows/_python-quality-gate.yml@a5d90457ea6e44b8f24f878755f77c00216e2947
+    # cognizant-ai-lab/build-common 1.0.5
+    uses: cognizant-ai-lab/build-common/.github/workflows/_python-quality-gate.yml@550f3d7338e598c813b9580a238141328f7baaaa
     with:
       python-version: '3.13'
       # Required by build_scripts/server_start.sh:

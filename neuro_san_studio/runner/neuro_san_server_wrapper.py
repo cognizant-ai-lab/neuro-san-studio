@@ -20,14 +20,25 @@ This module ensures that plugins are initialized in the same Python process as t
 allowing, for instance, proper tracing and observability.
 """
 
+import asyncio
 import logging
 import os
 import signal
 import sys
 
-from neuro_san.service.main_loop.server_main_loop import ServerMainLoop
+# Force the selector event loop on Windows. The default ProactorEventLoop on
+# Python 3.8+/Windows can silently stall the in-process sub-network streaming
+# used when agent_network_designer invokes /agent_network_editor via
+# AsyncDirectAgentSession - the producer task hands chat messages to a
+# consumer via an asyncio queue, and that handoff never connects under
+# Proactor, so the editor never returns its first tool call.
+if sys.platform == "win32":
+    asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
 
-from neuro_san_studio.plugins.plugin_loader import PluginLoader
+# pylint: disable=wrong-import-position
+from neuro_san.service.main_loop.server_main_loop import ServerMainLoop  # noqa: E402
+
+from neuro_san_studio.plugins.plugin_loader import PluginLoader  # noqa: E402
 
 
 class NeuroSanServerWrapper:  # pylint: disable=too-few-public-methods
@@ -41,7 +52,7 @@ class NeuroSanServerWrapper:  # pylint: disable=too-few-public-methods
         if self.root_dir not in sys.path:
             sys.path.insert(0, self.root_dir)
 
-        plugins_file = os.path.join(self.root_dir, "config", "plugins.hocon")
+        plugins_file = PluginLoader.resolve_plugins_file(self.root_dir)
         self.plugin_classes = PluginLoader.load_plugin_classes(plugins_file)
 
         # Instantiate plugins now that args are fully built

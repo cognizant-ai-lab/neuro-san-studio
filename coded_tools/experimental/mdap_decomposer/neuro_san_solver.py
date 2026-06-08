@@ -20,9 +20,9 @@ from asyncio import gather
 from typing import Any
 
 from coded_tools.experimental.mdap_decomposer.first_to_k_voter import FirstToKVoter
-from coded_tools.experimental.mdap_decomposer.solver_parsing import SolverParsing
 from coded_tools.experimental.mdap_decomposer.voter import Voter
-from coded_tools.tools.agent_caller import AgentCaller
+from neuro_san_studio.coded_tools.agent_caller import AgentCaller
+from neuro_san_studio.coded_tools.solver_parsing import SolverParsing
 
 
 # pylint: disable=too-many-instance-attributes

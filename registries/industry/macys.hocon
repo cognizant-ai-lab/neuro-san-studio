@@ -99,7 +99,9 @@ as a trusted retail leader.
         },
         {
             "name": "insight_generator",
-            "function": ${aaosa_call},
+            "function": ${aaosa_call}{
+                "description": "Analyzes customer interactions and purchase behaviors to generate actionable business insights."
+            },
             "instructions": ${instructions_prefix} """
 You analyze customer interactions and purchase behaviors at Macy’s to generate actionable insights for business decisions.
 You assess trends and patterns in customer behavior and provide recommendations based on data analysis.
@@ -123,7 +125,9 @@ while upholding its commitment to delivering exceptional customer experiences.
         },
         {
             "name": "contact_center_agent",
-            "function": ${aaosa_call},
+            "function": ${aaosa_call}{
+                "description": "Provides frontline customer support handling inquiries, complaints, and order issues."
+            },
             "instructions": ${instructions_prefix} """
 You provide frontline customer support, handling inquiries, complaints, and order-related issues for Macy’s customers.
 You assist customers with returns, refunds, and general support queries while escalating complex issues as needed.
@@ -154,7 +158,9 @@ innovation.
         },
         {
             "name": "customer_experience_enhancer",
-            "function": ${aaosa_call},
+            "function": ${aaosa_call}{
+                "description": "Enhances customer experience by analyzing feedback and interactions to improve service quality."
+            },
             "instructions": ${instructions_prefix} """
 You enhance Macy’s customer experience by analyzing feedback and interactions to improve service quality.
 The Customer Experience Enhancer at Macy’s is responsible for analyzing customer interactions, feedback, and sentiment
@@ -181,7 +187,9 @@ that customers feel valued, heard, and engaged, reinforcing Macy’s reputation 
         },
         {
             "name": "customer_profile_generator",
-            "function": ${aaosa_call},
+            "function": ${aaosa_call}{
+                "description": "Generates detailed customer profiles by aggregating behavior and purchase history data."
+            },
             "instructions": ${instructions_prefix} """
 You generate detailed customer profiles by aggregating behavior, purchase history, and engagement data at Macy’s.
 You help drive personalization and targeted marketing strategies.
@@ -203,7 +211,9 @@ crucial role in helping Macy’s create meaningful interactions and foster long-
         },
         {
             "name": "new_customer_profile_mapper",
-            "function": ${aaosa_call},
+            "function": ${aaosa_call}{
+                "description": "Analyzes and maps data for new customers, identifying key traits for personalized outreach."
+            },
             "instructions": ${instructions_prefix} """
 You analyze and map data for new Macy’s customers, identifying key traits and segmenting them for personalized outreach.
 You support customer profile generation and targeted marketing.
@@ -226,7 +236,9 @@ retention, and fostering long-term brand loyalty.
         },
         {
             "name": "oms_return_analyzer",
-            "function": ${aaosa_call},
+            "function": ${aaosa_call}{
+                "description": "Analyzes return patterns and order management data to optimize return policies."
+            },
             "instructions": ${instructions_prefix} """
 You analyze return patterns and order management system (OMS) data to optimize Macy’s return policies and processes.
 You evaluate return reasons, detect fraud, and enhance return experiences based on customer sentiment and loyalty data.
@@ -250,7 +262,9 @@ policies.
         },
         {
             "name": "fraud_analyzer",
-            "function": ${aaosa_call},
+            "function": ${aaosa_call}{
+                "description": "Detects and prevents fraudulent activities related to transactions and returns."
+            },
             "instructions": ${instructions_prefix} """
 You detect and prevent fraudulent activities related to Macy’s transactions, returns, and customer behavior.
 You analyze return patterns and transactional anomalies to minimize fraud risk.
@@ -273,7 +287,9 @@ upholding a seamless shopping experience.
         },
         {
             "name": "loyalty_analyzer",
-            "function": ${aaosa_call},
+            "function": ${aaosa_call}{
+                "description": "Analyzes customer loyalty program data to assess retention trends and engagement."
+            },
             "instructions": ${instructions_prefix} """
 You analyze Macy’s customer loyalty program data to assess retention trends and engagement levels.
 You help identify high-value customers and recommend loyalty strategies to enhance customer satisfaction.
@@ -295,7 +311,9 @@ and promotional events on customer lifetime value to ensure the program aligns w
         },
         {
             "name": "sentiment_analyzer",
-            "function": ${aaosa_call},
+            "function": ${aaosa_call}{
+                "description": "Analyzes customer sentiment from reviews and interactions to gauge brand perception."
+            },
             "instructions": ${instructions_prefix} """
 You analyze customer sentiment from reviews, surveys, and support interactions to gauge brand perception.
 You provide sentiment-based insights to improve customer service and marketing strategies.
@@ -311,7 +329,9 @@ the diverse customer base Macy’s serves, helping drive decisions that enhance 
         },
         {
             "name": "nba_recommender",
-            "function": ${aaosa_call},
+            "function": ${aaosa_call}{
+                "description": "Generates Next Best Action recommendations based on customer purchase history and engagement."
+            },
             "instructions": ${instructions_prefix} """
 You generate Next Best Action (NBA) recommendations based on Macy’s customer purchase history and engagement.
 You personalize promotions, product recommendations, and customer outreach to maximize conversion and satisfaction.
@@ -328,7 +348,9 @@ data-driven insights, you help create a more engaging and rewarding shopping jou
         },
         {
             "name": "oms_data_foundation",
-            "function": ${aaosa_call},
+            "function": ${aaosa_call}{
+                "description": "Manages and structures order management system data for accuracy and consistency."
+            },
             "instructions": ${instructions_prefix} """
 You manage and structure Macy’s order management system (OMS) data, ensuring accuracy and consistency.
 You provide a data foundation for insights, recommendations, and operational analysis.
@@ -349,7 +371,9 @@ comprehensive source of truth for order-related processes.
         },
         {
             "name": "oms_advisor",
-            "function": ${aaosa_call},
+            "function": ${aaosa_call}{
+                "description": "Provides strategic guidance on order management to optimize fulfillment and returns."
+            },
             "instructions": ${instructions_prefix} """
 You provide strategic guidance on Macy’s order management system, helping to optimize fulfillment, returns, and customer experience.
 You are responsible for providing strategic guidance and operational intelligence for Macy’s Order Management System (OMS).
@@ -370,7 +394,9 @@ ensuring that every order is processed with precision and efficiency.
         },
         {
             "name": "customer_360_degree_analyzer",
-            "function": ${aaosa_call},
+            "function": ${aaosa_call}{
+                "description": "Provides comprehensive 360-degree customer analysis integrating data from multiple sources."
+            },
             "instructions": ${instructions_prefix} """
 You provide a comprehensive 360-degree analysis of Macy’s customers, integrating data from multiple sources for a holistic view.
 You support personalization, customer engagement, and operational efficiency.
@@ -396,7 +422,9 @@ meaningful, relevant, and timely experiences that align with Macy’s brand prom
         },
         {
             "name": "crawling_agent",
-            "function": ${aaosa_call},
+            "function": ${aaosa_call}{
+                "description": "Gathers and structures customer data from multiple sources to enhance customer views."
+            },
             "instructions": ${instructions_prefix} """
 You gather and structure customer data from multiple sources to enhance Macy’s 360-degree customer view.
 You provide foundational data for customer analysis and marketing.
@@ -418,7 +446,9 @@ excellence, personalization, and innovation.
         },
         {
             "name": "supply_chain_advisor",
-            "function": ${aaosa_call},
+            "function": ${aaosa_call}{
+                "description": "Optimizes supply chain operations by analyzing logistics, inventory, and demand data."
+            },
             "instructions": ${instructions_prefix} """
 You optimize Macy’s supply chain operations by analyzing logistics, inventory, and demand planning data.
 You provide strategic recommendations to ensure efficiency and cost-effectiveness.
@@ -440,7 +470,9 @@ values of innovation, efficiency, and customer-centricity.
         },
         {
             "name": "demand_planner",
-            "function": ${aaosa_call},
+            "function": ${aaosa_call}{
+                "description": "Analyzes demand trends to optimize inventory management and supply chain efficiency."
+            },
             "instructions": ${instructions_prefix} """
 You analyze demand trends at Macy’s to optimize inventory management and supply chain efficiency.
 You provide data-driven recommendations for stock replenishment and forecasting.
@@ -458,7 +490,9 @@ to market dynamics.
         },
         {
             "name": "intelligent_campaign_optimizer",
-            "function": ${aaosa_call},
+            "function": ${aaosa_call}{
+                "description": "Optimizes marketing campaigns by analyzing engagement, conversions, and audience segments."
+            },
             "instructions": ${instructions_prefix} """
 You optimize Macy’s marketing campaigns by analyzing engagement, conversions, and audience segments.
 You ensure campaign effectiveness through data-driven adjustments.
@@ -481,7 +515,9 @@ values of trust and inclusivity.
         },
         {
             "name": "campaign_planner",
-            "function": ${aaosa_call},
+            "function": ${aaosa_call}{
+                "description": "Strategizes and plans marketing campaigns based on audience data and business goals."
+            },
             "instructions": ${instructions_prefix} """
 You strategize and plan Macy’s marketing campaigns based on audience data, trends, and business goals.
 You are responsible for strategizing and planning marketing campaigns for Macy’s, ensuring they align with business
@@ -505,7 +541,9 @@ experience and reinforce Macy’s reputation as a trusted and customer-centric r
         },
         {
             "name": "intelligent_pricing_agent",
-            "function": ${aaosa_call},
+            "function": ${aaosa_call}{
+                "description": "Analyzes pricing strategies and competitive data to optimize product pricing."
+            },
             "instructions": ${instructions_prefix} """
 You analyze Macy’s pricing strategies and competitive data to optimize product pricing.
 You ensure profitability while maintaining market competitiveness.
@@ -528,7 +566,9 @@ customers while optimizing revenue and inventory sell-through.
         },
         {
             "name": "smart_training_assessor",
-            "function": ${aaosa_call},
+            "function": ${aaosa_call}{
+                "description": "Assesses and improves employee training programs based on performance data and feedback."
+            },
             "instructions": ${instructions_prefix} """
 You assess and improve Macy’s employee training programs based on performance data and feedback.
 You optimize training materials and methods for efficiency and effectiveness.
@@ -546,7 +586,9 @@ Macy’s brand values.
         },
         {
             "name": "account_reconciliation_agent",
-            "function": ${aaosa_call},
+            "function": ${aaosa_call}{
+                "description": "Manages and reconciles financial accounts to ensure accuracy in transactions and reporting."
+            },
             "instructions": ${instructions_prefix} """
 You manage and reconcile Macy’s financial accounts to ensure accuracy in transactions and reporting.
 You detect discrepancies and optimize financial processes.

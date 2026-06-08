@@ -124,8 +124,9 @@ class ProcessLogBridge(ProcessLoggerInterface):
                 rich handler settings, and file handler settings.
 
         Notes:
-            - Creates a Rich console.
-            - Reconfigures the root logger with rich + optional file handlers.
+            - Creates a Rich console with soft_wrap enabled.
+            - Prepares rich + optional file handlers (root logger is
+              configured lazily on the first `attach_process_logger` call).
             - Initializes per-stream state storage for subprocess drains.
         """
         self.level_name = level.upper()
@@ -145,7 +146,7 @@ class ProcessLogBridge(ProcessLoggerInterface):
 
         # rich console / handler
         theme = Theme(theme_styles)
-        self.console: Console = Console(theme=theme)
+        self.console: Console = Console(theme=theme, soft_wrap=True)
 
         # Base kwargs with safe defaults, then let config["rich"] override.
         rh_kwargs = {
@@ -180,22 +181,27 @@ class ProcessLogBridge(ProcessLoggerInterface):
             # keep tz-aware timestamps for file logs
             self.file_handler.setFormatter(self._TZFormatter(fmt=fmt))
 
-        # root logger config
-        root = logging.getLogger()
-        root.setLevel(logging.DEBUG)
-        root.handlers.clear()
-        root.addHandler(self.rich_handler)
-        if self.file_handler:
-            root.addHandler(self.file_handler)
-
         self._logger = logging.getLogger(self.__class__.__name__)
-        self._logger.info("Runner logging initialized (rich console enabled)")
+        self._root_configured = False
 
         # Per-stream state: (process_name, stream_tag) -> state
         # state keys: tee(TextIO), buffer(list[str]), balance(int), collecting(bool), logger(logging.Logger)
         self._streams: Dict[Tuple[str, str], Dict[str, Any]] = {}
 
     # ---------- public API ----------
+    def _ensure_root_configured(self) -> None:
+        """Configure the root logger with rich + file handlers (idempotent)."""
+        if self._root_configured:
+            return
+        root = logging.getLogger()
+        root.setLevel(logging.DEBUG)
+        root.handlers.clear()
+        root.addHandler(self.rich_handler)
+        if self.file_handler:
+            root.addHandler(self.file_handler)
+        self._logger.info("Runner logging initialized (rich console enabled)")
+        self._root_configured = True
+
     def attach_process_logger(self, process, process_name: str, log_file: str) -> None:
         """
         Drain stdout/stderr in background threads, pretty-print to terminal, mirror raw to file.
@@ -211,6 +217,8 @@ class ProcessLogBridge(ProcessLoggerInterface):
             - Two threads are spawned: one for stdout, one for stderr.
             - Per-stream state (buffer, JSON reassembly, tee handle) is created.
         """
+        self._ensure_root_configured()
+
         Path(log_file).parent.mkdir(parents=True, exist_ok=True)
         tee_out = open(log_file, "a", encoding="utf-8")  # pylint: disable=consider-using-with
         tee_err = open(log_file, "a", encoding="utf-8")  # pylint: disable=consider-using-with
@@ -479,18 +487,6 @@ class ProcessLogBridge(ProcessLoggerInterface):
 
     # ---------- json helpers ----------
     @staticmethod
-    def _pretty_json(obj: Any) -> str:
-        """
-        Pretty-print a JSON object.
-        :param obj (Any): Any JSON-serializable object.
-        :return str: Indented JSON, or `str(obj)` on failure.
-        """
-        try:
-            return json.dumps(obj, indent=2, ensure_ascii=False)
-        except Exception:  # pylint: disable=broad-except
-            return str(obj)
-
-    @staticmethod
     def _try_parse_json_fragment(text: str) -> Optional[Dict[str, Any]]:
         """
         Try to parse a JSON dictionary from a text line.
@@ -635,13 +631,10 @@ class ProcessLogBridge(ProcessLoggerInterface):
 
     def _emit_json_block(self, state: Dict[str, Any], record: Dict[str, Any]) -> None:
         """
-        Emit a fully parsed JSON record to the logger.
-        Steps:
-            1. Infer log level from `message_type`.
-            2. Build header including process name and optional source.
-            3. Parse nested JSON inside the `"message"` field (if present).
-            4. Pretty-print JSON.
-            5. If the message looks like traceback text, print a Rich-formatted traceback.
+        Emit a parsed JSON record as a single-line `header: message` log entry.
+        Other metadata fields (user_id, Timestamp, request_id, ...) are dropped
+        from the display because they are noise for routine logs; the full
+        record is still mirrored to the per-process raw log file via tee.
         :param state (dict): Per-stream logging state.
         :param record (dict): Parsed JSON dictionary representing the log event.
         """
@@ -649,19 +642,23 @@ class ProcessLogBridge(ProcessLoggerInterface):
         src = str(record.get("source") or "").strip() or None
         header = self._src_header(state["logger"].name, src)
 
-        # Display copy
-        display_rec = dict(record)
-        inner = self._lenient_inner_json_parse(display_rec.get("message"))
-        if inner is not None:
-            display_rec["message"] = inner
+        display_msg: Any = record.get("message", "")
+        if isinstance(display_msg, str):
+            inner = self._lenient_inner_json_parse(display_msg)
+            if inner is not None:
+                display_msg = json.dumps(inner, ensure_ascii=False)
+        elif isinstance(display_msg, (dict, list)):
+            display_msg = json.dumps(display_msg, ensure_ascii=False)
 
-        body = self._pretty_json(display_rec)
-        self._log(state, level, header + "\n" + body)
+        if not str(display_msg).strip():
+            return
 
-        # If message was traceback-like text, pretty print after
-        msg = record.get("message")
-        if isinstance(msg, str):
-            tb_text = self._normalize_traceback_str(msg)
+        self._log(state, level, header + ": " + str(display_msg))
+
+        # Re-read the raw message; display_msg above may have been JSON-serialized.
+        raw_msg = record.get("message")
+        if isinstance(raw_msg, str):
+            tb_text = self._normalize_traceback_str(raw_msg)
             if self._looks_like_traceback(tb_text):
                 self._log(state, level, header + " (traceback)")
                 self.console.print(Syntax(tb_text, "pytb", word_wrap=False))
@@ -673,6 +670,8 @@ class ProcessLogBridge(ProcessLoggerInterface):
         :param line (str): Raw log line.
         Notes: Severity is inferred automatically via `_infer_level_from_text()`.
         """
+        if not line.strip():
+            return
         level = self._infer_level_from_text(line, logging.INFO)
         header = self._src_header(state["logger"].name, None)
         self._log(state, level, header + " - " + line)

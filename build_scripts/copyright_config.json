@@ -4,13 +4,11 @@
         "coded_tools",
         "deploy",
         "docs",
-        "mcp",
         "middleware",
-        "plugins",
+        "neuro_san_studio",
         "registries",
         "servers",
         "skills",
-        "tests",
-        "toolbox"
+        "tests"
     ]
 }
