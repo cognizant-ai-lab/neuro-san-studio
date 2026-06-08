@@ -26,11 +26,11 @@ import threading
 from typing import Any
 
 import numpy as np
-import torch
-from scipy.spatial.distance import squareform
-from transformers import AutoModelForCausalLM
-from transformers import AutoModelForSequenceClassification
-from transformers import AutoTokenizer
+import torch  # pylint: disable=import-error
+from scipy.spatial.distance import squareform  # pylint: disable=import-error
+from transformers import AutoModelForCausalLM  # pylint: disable=import-error
+from transformers import AutoModelForSequenceClassification  # pylint: disable=import-error
+from transformers import AutoTokenizer  # pylint: disable=import-error
 
 logger = logging.getLogger(__name__)
 

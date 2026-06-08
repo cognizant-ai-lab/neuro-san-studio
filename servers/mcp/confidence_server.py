@@ -46,8 +46,7 @@ def assess_confidence(question: str) -> dict:
         Dictionary with confidence_score, interpretation, best_answer,
         and answers_with_scores.
     """
-    # Lazy import keeps startup fast and avoids loading heavy deps
-    # until the first call.
+    # pylint: disable=import-outside-toplevel
     from coded_tools.tools.semantic_density.semantic_density_engine import SemanticDensityEngine
 
     engine = SemanticDensityEngine.get_instance()

@@ -29,6 +29,8 @@ from typing import Dict
 
 from neuro_san.interfaces.coded_tool import CodedTool
 
+from coded_tools.tools.semantic_density.semantic_density_engine import SemanticDensityEngine
+
 logger = logging.getLogger(__name__)
 
 
@@ -54,9 +56,6 @@ class SemanticDensityTool(CodedTool):
         question = args.get("question")
         if not question:
             return json.dumps({"error": "No question provided."})
-
-        # Import here to avoid loading heavy deps at module import time
-        from coded_tools.tools.semantic_density.semantic_density_engine import SemanticDensityEngine
 
         engine = SemanticDensityEngine.get_instance()
 
