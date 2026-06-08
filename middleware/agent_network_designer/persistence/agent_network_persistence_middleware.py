@@ -223,7 +223,7 @@ class AgentNetworkPersistenceMiddleware(AgentMiddleware):
             subnetwork_names,
             mcp_servers,
         )
-        top_agent_name: str = UnreachableNodesNetworkValidator().find_all_top_agents(network_def).pop()
+        top_agent_name: str = UnreachableNodesNetworkValidator().find_all_front_man_agents(network_def).pop()
 
         # Always assemble and store HOCON content for client consumption.
         persisted_content: str = await HoconAgentNetworkAssembler(DEMO_MODE).assemble_agent_network(

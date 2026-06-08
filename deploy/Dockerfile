@@ -105,6 +105,12 @@ COPY ./neuro_san_studio ${APP_SOURCE}/neuro_san_studio
 COPY ./registries ${APP_SOURCE}/registries
 COPY ./coded_tool[s] ${APP_SOURCE}/coded_tools
 COPY ./middleware ${APP_SOURCE}/middleware
+# The skills directory holds local skill packages (each containing a SKILL.md
+# and any supporting resources) that are loaded at runtime by the
+# AgentSkillsMiddleware via the "skill_sources" config. This is required by
+# registries/basic/job_guessing_skill.hocon and by any future agent network
+# that references local skills under skills/.
+COPY ./skills ${APP_SOURCE}/skills
 COPY ./deploy/entrypoint.sh ${APP_SOURCE}/deploy/entrypoint.sh
 COPY ./deploy/logging.hocon ${APP_SOURCE}/deploy/logging.hocon
 COPY ./config ${APP_SOURCE}/config
@@ -255,7 +261,7 @@ ENV AGENT_USAGE_LOGGER_METADATA=""
 # A space-delimited list of http metadata request keys to forward to tracing/Observability
 # infrastructure. When not set, this defaults to the value provided by
 # AGENT_USAGE_LOGGER_METADATA or AGENT_FORWARDED_REQUEST_METADATA.
-ENV AGENT_TRACING_METADATA_REQUEST_KEYS=""
+ENV AGENT_TRACING_METADATA_REQUEST_KEYS="request_id user_id"
 
 # A space-delimited list of environment variables to be forwarded to observability tracing metadata.
 # The defaults given here are standard Kubernetes environment variables for any given deployment pod.

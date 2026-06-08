@@ -28,6 +28,8 @@ from rich.console import Console
 from rich.table import Table
 from timedinput import timedinput
 
+from neuro_san_studio.utils.cli_status import CliStatus
+
 PROVIDERS: Dict[str, Dict[str, str]] = {
     "openai": {"label": "OpenAI", "model_name": "gpt-5.2"},
     "anthropic": {"label": "Anthropic", "model_name": "claude-sonnet"},
@@ -65,7 +67,17 @@ class InitCommand:  # pylint: disable=too-few-public-methods
 
         self._copy_template("music_nerd.hocon", os.path.join("registries", "music_nerd.hocon"))
         self._copy_template("manifest.hocon", os.path.join("registries", "manifest.hocon"))
+        # Pre-create registries/generated/ so the include in the main manifest resolves the
+        # first time the server reads it, even before agent_network_designer has produced
+        # any files. Empty `{}` is a valid manifest — neuro-san just sees no extra networks.
+        self._copy_template("generated_manifest.hocon", os.path.join("registries", "generated", "manifest.hocon"))
+        # Shared registry-level HOCONs that AAOSA-style networks include. Most networks in
+        # the basic/industry/experimental groups depend on at least one of these, so
+        # scaffolding them up front means `ns import <group>` works without surprises.
+        for shared in ("aaosa.hocon", "aaosa_basic.hocon", "aaosa_basic_debug.hocon"):
+            self._copy_template(shared, os.path.join("registries", shared), package="registries")
         self._copy_template("mcp_info.hocon", os.path.join("mcp", "mcp_info.hocon"), package="neuro_san_studio.mcp")
+        self._copy_template("plugins.hocon", os.path.join("config", "plugins.hocon"))
         self._write_file(os.path.join("config", "llm_config.hocon"), self._render_llm_config(providers))
 
         self._print_next_steps()
@@ -144,22 +156,36 @@ class InitCommand:  # pylint: disable=too-few-public-methods
     def _render_llm_config(providers: List[str]) -> str:
         """Render config/llm_config.hocon for the selected providers.
 
-        Ordering: if OpenAI is selected, it is promoted to first position. Otherwise
-        providers are emitted in user-selected order.
-        """
-        ordered = providers[:]
-        if "openai" in ordered and ordered[0] != "openai":
-            ordered.remove("openai")
-            ordered.insert(0, "openai")
+        Providers are emitted in user-selected order: the first provider becomes
+        the primary model, and any subsequent providers become its fallbacks in
+        the order the user listed them. With a single provider, a flat
+        ``model_name`` block is rendered instead of a ``fallbacks`` list.
 
-        if len(ordered) == 1:
-            model = PROVIDERS[ordered[0]]["model_name"]
+        Runtime semantics: this matches the shape of
+        ``registries/basic/music_nerd_llm_fallbacks.hocon``. The neuro-san agent
+        chain reads it via ``langchain_run_context.create_agent_with_fallbacks``,
+        which extracts the ``fallbacks`` list and iterates it in order. The first
+        entry resolves as the primary model; subsequent entries are tried in
+        order on failure. See ``docs/examples/basic/music_nerd_llm_fallbacks.md``.
+
+        Raises:
+            ValueError: If ``providers`` is empty. An empty list would render an
+                empty ``fallbacks`` array, which the runtime rejects with "No
+                fully-specified LLM found". Every caller path already guarantees
+                at least one provider; this guard makes the contract explicit so
+                a future caller cannot scaffold an unbootable project.
+        """
+        if not providers:
+            raise ValueError("_render_llm_config requires at least one provider.")
+
+        if len(providers) == 1:
+            model = PROVIDERS[providers[0]]["model_name"]
             return '{\n    "llm_config": {\n        "model_name": "' + model + '"\n    }\n}\n'
 
         lines = ["{", '    "llm_config": {', '        "fallbacks": [']
-        for i, key in enumerate(ordered):
+        for i, key in enumerate(providers):
             model = PROVIDERS[key]["model_name"]
-            comma = "," if i < len(ordered) - 1 else ""
+            comma = "," if i < len(providers) - 1 else ""
             lines.append(f'            {{ "model_name": "{model}" }}{comma}')
         lines.extend(["        ]", "    }", "}", ""])
         return "\n".join(lines)
@@ -174,24 +200,24 @@ class InitCommand:  # pylint: disable=too-few-public-methods
         """
         dest_abs = os.path.join(self.root_dir, dest_rel)
         if os.path.exists(dest_abs):
-            _console.print(f"[yellow]\\[skip][/yellow]  {dest_rel} (already exists)")
+            CliStatus.skip(f"{dest_rel} (already exists)")
             return
         os.makedirs(os.path.dirname(dest_abs), exist_ok=True)
         source = importlib.resources.files(package) / template_name
         with source.open("rb") as src, open(dest_abs, "wb") as dst:
             shutil.copyfileobj(src, dst)
-        _console.print(f"[green]\\[ok][/green]    {dest_rel}")
+        CliStatus.ok(dest_rel)
 
     def _write_file(self, rel_path: str, content: str) -> None:
         """Write content to rel_path under root_dir, skipping if the file already exists."""
         dest_abs = os.path.join(self.root_dir, rel_path)
         if os.path.exists(dest_abs):
-            _console.print(f"[yellow]\\[skip][/yellow]  {rel_path} (already exists)")
+            CliStatus.skip(f"{rel_path} (already exists)")
             return
         os.makedirs(os.path.dirname(dest_abs), exist_ok=True)
         with open(dest_abs, "w", encoding="utf-8") as fh:
             fh.write(content)
-        _console.print(f"[green]\\[ok][/green]    {rel_path}")
+        CliStatus.ok(rel_path)
 
     def _print_next_steps(self) -> None:
         """Print the final instructions shown after scaffolding completes."""
