@@ -58,6 +58,7 @@ sys.modules["transformers"].AutoTokenizer = MagicMock()
 
 # pylint: disable=wrong-import-position
 from coded_tools.tools.semantic_density.semantic_density_engine import SemanticDensityEngine  # noqa: E402
+from coded_tools.tools.semantic_density.semantic_density_tool import SemanticDensityTool  # noqa: E402
 
 
 def _make_engine():
@@ -75,6 +76,8 @@ def _make_engine():
 
 class TestSemanticDensityComputation:
     """Test the pure-math semantic density computation."""
+
+    engine = None
 
     def setup_method(self):
         """Create an engine without loading models."""
@@ -175,8 +178,6 @@ class TestSemanticDensityTool:
     @pytest.mark.asyncio
     async def test_missing_question_returns_error(self):
         """Calling with no question should return an error JSON."""
-        from coded_tools.tools.semantic_density.semantic_density_tool import SemanticDensityTool  # noqa: I001
-
         tool = SemanticDensityTool()
         result = await tool.async_invoke({}, {})
         parsed = json.loads(result)
@@ -185,7 +186,6 @@ class TestSemanticDensityTool:
     @pytest.mark.asyncio
     async def test_invoke_returns_json(self):
         """Calling with a question returns valid JSON with expected keys."""
-        from coded_tools.tools.semantic_density.semantic_density_tool import SemanticDensityTool  # noqa: I001
 
         mock_result = {
             "confidence_score": 0.85,
