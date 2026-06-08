@@ -88,8 +88,8 @@ class TestMainEntryPoint:
         assert not runner_call_order
         assert init_calls == [("openai,anthropic",), ("run",)]
 
-    def test_main_with_import_file_positional_passes_path_and_force(self, monkeypatch: MonkeyPatch) -> None:
-        """`neuro-san-studio import <file.hocon> --force` forwards the path as networks_arg + force."""
+    def test_main_with_import_positional_passes_tokens_and_force(self, monkeypatch: MonkeyPatch) -> None:
+        """`neuro-san-studio import a.hocon b.zip --force` forwards space-separated tokens + force."""
         captured: list = []
 
         class FakeImport:  # pylint: disable=too-few-public-methods
@@ -97,7 +97,7 @@ class TestMainEntryPoint:
 
             def __init__(
                 self,
-                networks_arg: str | None = None,
+                networks_arg: list | None = None,
                 force: bool = False,
             ) -> None:
                 captured.append({"networks_arg": networks_arg, "force": force})
@@ -106,9 +106,9 @@ class TestMainEntryPoint:
                 """No-op."""
 
         monkeypatch.setattr(import_networks_module, "ImportCommand", FakeImport)
-        monkeypatch.setattr(sys, "argv", ["neuro-san-studio", "import", "music_nerd.hocon", "--force"])
+        monkeypatch.setattr(sys, "argv", ["neuro-san-studio", "import", "a.hocon", "b.zip", "--force"])
         main()
-        assert captured == [{"networks_arg": "music_nerd.hocon", "force": True}]
+        assert captured == [{"networks_arg": ["a.hocon", "b.zip"], "force": True}]
 
     def test_main_propagates_runner_exceptions(self, monkeypatch: MonkeyPatch) -> None:
         """Exceptions from NeuroSanRunner().run() should bubble up to the caller."""

@@ -37,7 +37,7 @@ class TestParseArg:
     def test_all_expands_to_every_network(self, networks_by_group: dict) -> None:
         """'all' should expand to the union of every group's paths."""
         # pylint: disable=protected-access
-        assert ImportCommand._parse_arg("all", networks_by_group) == [
+        assert ImportCommand._parse_arg(["all"], networks_by_group) == [
             "basic/music_nerd.hocon",
             "basic/coffee_finder.hocon",
             "industry/airline_policy.hocon",
@@ -47,15 +47,15 @@ class TestParseArg:
     def test_single_group(self, networks_by_group: dict) -> None:
         """A bare group name should expand to all its networks."""
         # pylint: disable=protected-access
-        assert ImportCommand._parse_arg("basic", networks_by_group) == [
+        assert ImportCommand._parse_arg(["basic"], networks_by_group) == [
             "basic/music_nerd.hocon",
             "basic/coffee_finder.hocon",
         ]
 
-    def test_multiple_groups_comma_separated(self, networks_by_group: dict) -> None:
+    def test_multiple_groups_space_separated(self, networks_by_group: dict) -> None:
         """Multiple groups should be concatenated in argument order."""
         # pylint: disable=protected-access
-        assert ImportCommand._parse_arg("industry,basic", networks_by_group) == [
+        assert ImportCommand._parse_arg(["industry", "basic"], networks_by_group) == [
             "industry/airline_policy.hocon",
             "basic/music_nerd.hocon",
             "basic/coffee_finder.hocon",
@@ -64,37 +64,37 @@ class TestParseArg:
     def test_single_network_bare_name(self, networks_by_group: dict) -> None:
         """A bare network name should match by basename across any group."""
         # pylint: disable=protected-access
-        assert ImportCommand._parse_arg("music_nerd", networks_by_group) == ["basic/music_nerd.hocon"]
+        assert ImportCommand._parse_arg(["music_nerd"], networks_by_group) == ["basic/music_nerd.hocon"]
 
     def test_single_network_with_group_prefix(self, networks_by_group: dict) -> None:
         """A group/name path should match the exact network."""
         # pylint: disable=protected-access
-        assert ImportCommand._parse_arg("basic/music_nerd", networks_by_group) == ["basic/music_nerd.hocon"]
+        assert ImportCommand._parse_arg(["basic/music_nerd"], networks_by_group) == ["basic/music_nerd.hocon"]
 
     def test_root_network_bare_name(self, networks_by_group: dict) -> None:
         """Root-level networks should be reachable by bare name too."""
         # pylint: disable=protected-access
-        assert ImportCommand._parse_arg("agent_network_designer", networks_by_group) == [
+        assert ImportCommand._parse_arg(["agent_network_designer"], networks_by_group) == [
             "agent_network_designer.hocon",
         ]
 
     def test_unknown_spec_warns_and_skips(self, networks_by_group: dict, capsys: pytest.CaptureFixture[str]) -> None:
         """Unknown specs should print a warning and be dropped from the result."""
         # pylint: disable=protected-access
-        result = ImportCommand._parse_arg("music_nerd,bogus", networks_by_group)
+        result = ImportCommand._parse_arg(["music_nerd", "bogus"], networks_by_group)
         assert result == ["basic/music_nerd.hocon"]
         assert "Network 'bogus' not found" in capsys.readouterr().out
 
     def test_dedupe_preserves_first_occurrence(self, networks_by_group: dict) -> None:
         """A spec mix that yields duplicates should be deduplicated, first occurrence wins."""
         # pylint: disable=protected-access
-        result = ImportCommand._parse_arg("basic,music_nerd", networks_by_group)
+        result = ImportCommand._parse_arg(["basic", "music_nerd"], networks_by_group)
         assert result == ["basic/music_nerd.hocon", "basic/coffee_finder.hocon"]
 
     def test_whitespace_stripped(self, networks_by_group: dict) -> None:
-        """Whitespace around comma-separated specs should be tolerated."""
+        """Whitespace around individual specs should be tolerated."""
         # pylint: disable=protected-access
-        assert ImportCommand._parse_arg(" basic , industry ", networks_by_group) == [
+        assert ImportCommand._parse_arg([" basic ", " industry "], networks_by_group) == [
             "basic/music_nerd.hocon",
             "basic/coffee_finder.hocon",
             "industry/airline_policy.hocon",
@@ -135,28 +135,31 @@ class TestLooksLikeAgentNetworkFile:
 
 
 class TestSplitFileArgs:
-    """Tests for ImportCommand._split_file_args (comma-list file-vs-registry routing)."""
+    """Tests for ImportCommand._split_file_args (space-separated file-vs-registry routing)."""
 
     def test_single_file_returns_one_path(self) -> None:
-        """A lone .hocon/.zip arg yields a one-element file list."""
+        """A lone .hocon/.zip token yields a one-element file list."""
         # pylint: disable=protected-access
-        assert ImportCommand._split_file_args("music_nerd.hocon") == ["music_nerd.hocon"]
+        assert ImportCommand._split_file_args(["music_nerd.hocon"]) == ["music_nerd.hocon"]
 
-    def test_comma_list_of_files_returns_all_paths(self) -> None:
-        """An all-file comma list yields every path, whitespace trimmed."""
+    def test_list_of_files_returns_all_paths(self) -> None:
+        """An all-file token list yields every path, whitespace trimmed."""
         # pylint: disable=protected-access
-        assert ImportCommand._split_file_args("a.hocon, b.zip ,c.hocon") == ["a.hocon", "b.zip", "c.hocon"]
+        assert ImportCommand._split_file_args(["a.hocon", " b.zip ", "c.hocon"]) == ["a.hocon", "b.zip", "c.hocon"]
 
-    @pytest.mark.parametrize("arg", ["basic", "music_nerd", "basic,music_nerd", "industry/airline_policy"])
-    def test_registry_args_return_none(self, arg: str) -> None:
+    @pytest.mark.parametrize(
+        "tokens",
+        [["basic"], ["music_nerd"], ["basic", "music_nerd"], ["industry/airline_policy"]],
+    )
+    def test_registry_args_return_none(self, tokens: list) -> None:
         """No file extensions → None, so the caller falls through to registry resolution."""
         # pylint: disable=protected-access
-        assert ImportCommand._split_file_args(arg) is None
+        assert ImportCommand._split_file_args(tokens) is None
 
     def test_mixed_files_and_names_exits(self, capsys: pytest.CaptureFixture[str]) -> None:
         """Mixing a file path with a registry name aborts with a clear error, not a silent miss."""
         with pytest.raises(SystemExit) as exc:
             # pylint: disable=protected-access
-            ImportCommand._split_file_args("basic,music_nerd.hocon")
+            ImportCommand._split_file_args(["basic", "music_nerd.hocon"])
         assert exc.value.code == 1
         assert "Cannot mix" in capsys.readouterr().out

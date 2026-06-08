@@ -44,10 +44,11 @@ class ImportCommand:  # pylint: disable=too-few-public-methods
 
     def __init__(
         self,
-        networks_arg: Optional[str] = None,
+        networks_arg: Optional[List[str]] = None,
         force: bool = False,
     ):
-        self.networks_arg = networks_arg
+        # Typer hands us a list of space-separated tokens (or None when omitted).
+        self.networks_arg = networks_arg or []
         self.force = force
         self.target_dir = os.getcwd()
 
@@ -60,8 +61,8 @@ class ImportCommand:  # pylint: disable=too-few-public-methods
             sys.exit(1)
 
         # A positional arg of .hocon/.zip paths is a local-file import (one or more,
-        # comma-separated). Registry names never carry those extensions. A mix of files
-        # and registry names in one call is rejected — they take different import paths.
+        # space-separated). Registry names never carry those extensions. A mix of files
+        # and registry names in one call is rejected; they take different import paths.
         if self.networks_arg:
             file_paths = self._split_file_args(self.networks_arg)
             if file_paths is not None:
@@ -124,15 +125,15 @@ class ImportCommand:  # pylint: disable=too-few-public-methods
         return token.lower().endswith((".hocon", ".zip"))
 
     @classmethod
-    def _split_file_args(cls, arg: str) -> Optional[List[str]]:
-        """Classify the positional arg as a local-file import or a registry import.
+    def _split_file_args(cls, tokens: List[str]) -> Optional[List[str]]:
+        """Classify the space-separated tokens as a local-file import or a registry import.
 
-        Returns the list of file paths when every comma-separated token is a .hocon/.zip
-        path (resolved relative to the current directory). Returns ``None`` when no token
-        is a file path, so the caller falls through to registry resolution. Exits with an
-        error on a mix of files and registry names — the two use different import paths.
+        Returns the list of file paths when every token is a .hocon/.zip path (resolved
+        relative to the current directory). Returns ``None`` when no token is a file path,
+        so the caller falls through to registry resolution. Exits with an error on a mix
+        of files and registry names; the two use different import paths.
         """
-        tokens = [t.strip() for t in arg.split(",") if t.strip()]
+        tokens = [t.strip() for t in tokens if t.strip()]
         files = [t for t in tokens if cls._looks_like_agent_network_file(t)]
         if not files:
             return None
@@ -257,10 +258,12 @@ class ImportCommand:  # pylint: disable=too-few-public-methods
         return answer is True
 
     @staticmethod
-    def _parse_arg(arg: str, networks_by_group: Dict[str, List[str]]) -> List[str]:
-        """Parse --networks argument: 'all', a group name, or specific network names/paths."""
+    def _parse_arg(tokens: List[str], networks_by_group: Dict[str, List[str]]) -> List[str]:
+        """Parse the positional tokens: 'all', group names, or specific network names/paths."""
         selected: List[str] = []
-        for spec in (s.strip() for s in arg.split(",")):
+        for spec in (s.strip() for s in tokens):
+            if not spec:
+                continue
             if spec == "all":
                 for paths in networks_by_group.values():
                     selected.extend(paths)

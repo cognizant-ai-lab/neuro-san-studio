@@ -30,11 +30,11 @@ Top menu (single-select, Enter to pick):
 ### Non-interactive
 
 ```bash
-ns import basic                       # one group
-ns import industry,experimental       # multiple groups
-ns import all                         # everything
-ns import music_nerd                  # one network (any group)
-ns import basic,agent_network_designer  # mix
+ns import basic                          # one group
+ns import industry experimental          # multiple groups
+ns import all                            # everything
+ns import music_nerd                     # one network (any group)
+ns import basic agent_network_designer   # mix
 ```
 
 Arguments without a file extension are resolved against the installed package's
@@ -43,20 +43,20 @@ registry (groups, network names, or `all`).
 ### From a local file
 
 A positional argument ending in `.hocon` or `.zip` is imported as a local file,
-no flag required. Pass one or more, comma-separated, to import them in one call:
+no flag required. Pass one or more, space-separated, to import them in one call:
 
 ```bash
 ns import path/to/network.hocon            # self-contained single HOCON
-ns import music_nerd.hocon                 # bare name → resolved in the current directory
+ns import music_nerd.hocon                 # bare name resolved in the current directory
 ns import path/to/bundle.zip               # network + dependencies
-ns import a.hocon,path/to/b.zip            # multiple files in one call
+ns import a.hocon path/to/b.zip            # multiple files in one call
 ns import path/to/bundle.zip --force       # overwrite existing files
 ```
 
 The `.hocon` / `.zip` extension is what selects file mode; an extensionless
-argument is always a registry lookup. Every comma-separated token must be the
-same kind; mixing file paths with registry names in one call is rejected. Pair
-with [`ns export`](./export.md) to ship a network between projects.
+argument is always a registry lookup. Every token must be the same kind; mixing
+file paths with registry names in one call is rejected. Pair with
+[`ns export`](./export.md) to ship a network between projects.
 
 #### Source shapes
 

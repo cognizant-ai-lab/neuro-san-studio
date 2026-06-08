@@ -125,12 +125,12 @@ class NeuroSanStudioCli:  # pylint: disable=too-few-public-methods
     @staticmethod
     @app.command("import", help="Import agent networks into existing project.")
     def _import_command(
-        networks: Optional[str] = typer.Argument(
+        networks: Optional[List[str]] = typer.Argument(
             None,
             help=(
-                "Comma-separated group names, network names, or 'all'. "
+                "Space-separated group names, network names, or 'all'. "
                 "Paths ending in .hocon or .zip are imported as local files "
-                "(one or more, comma-separated); don't mix files with registry names. "
+                "(one or more); don't mix files with registry names. "
                 "Omit for interactive mode."
             ),
         ),
