@@ -197,6 +197,48 @@ class NeuroSanStudioCli:  # pylint: disable=too-few-public-methods
 
         raise typer.Exit(code=CheckConfigCommand(hocon_path=hocon_path).run())
 
+    @staticmethod
+    @app.command("validate", help="Validate the structure of an agent network HOCON file.")
+    def _validate_command(
+        hocon_path: str = typer.Argument(
+            ...,
+            help="Path to the agent network HOCON file to validate.",
+        ),
+        verbose: bool = typer.Option(
+            False,
+            "--verbose",
+            help="Print an agent network summary when validation passes.",
+        ),
+        external_agents: Optional[str] = typer.Option(
+            None,
+            "--external-agents",
+            help="Comma-separated external agent references to treat as valid (e.g. '/agent1,/agent2').",
+        ),
+        mcp_servers: Optional[str] = typer.Option(
+            None,
+            "--mcp-servers",
+            help="Comma-separated MCP server URLs to treat as valid.",
+        ),
+        registry_dir: Optional[str] = typer.Option(
+            None,
+            "--registry-dir",
+            help="Base directory for resolving HOCON includes. Defaults to the current directory.",
+        ),
+    ) -> None:
+        """Run the agent network HOCON validation and propagate its exit code."""
+        # pylint: disable-next=import-outside-toplevel
+        from neuro_san_studio.commands.validate import ValidateCommand
+
+        raise typer.Exit(
+            code=ValidateCommand(
+                hocon_path=hocon_path,
+                verbose=verbose,
+                external_agents=external_agents,
+                mcp_servers=mcp_servers,
+                registry_dir=registry_dir,
+            ).run()
+        )
+
 
 def main() -> None:
     """Entry point for the `neuro-san-studio` console script."""
