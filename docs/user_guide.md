@@ -1268,9 +1268,26 @@ For more information on toolbox, please see [Toolbox Info HOCON File Reference](
 ## MCP Servers
 
 Agents can invoke tools exposed by remote **Model Context Protocol (MCP)** servers.
-URLs must either:
-- start with `https://mcp`, **or**
-- end with `/mcp`.
+
+MCP server URLs are recognized when they conform to the
+[MCP canonical server URI specification](https://modelcontextprotocol.io/specification/2025-11-25/basic/authorization#canonical-server-uri):
+they must use the `http` or `https` scheme, must include a host, and must not contain a fragment.
+To distinguish MCP server URLs from other external agent URLs, the literal `mcp` must appear either
+as a label in the hostname (e.g. `mcp.example.com`) or as any segment of the URL path
+(e.g. `/mcp`, `/mcp/free`, `/server/mcp`, `/v1/mcp/server`).
+
+Examples of URLs that are recognized as MCP servers:
+
+- `https://mcp.example.com/mcp`
+- `https://mcp.example.com`
+- `https://mcp.example.com:8443`
+- `https://example.com/mcp/free`
+- `https://mcp.example.com/mcp?profile=free`
+- `https://example.com/v1/mcp/server`
+- `http://localhost:8000/mcp/`
+
+If a URL you want to use does not satisfy these rules, fall back to the dictionary form below,
+which is always treated as an MCP reference regardless of URL shape.
 
 ### MCP Server Configuration
 
@@ -1290,7 +1307,8 @@ MCP servers can be configured in one of two formats under the `tools` field.
 
 2. Dictionary Reference
 
-    Use this format when you want to explicitly control which tools are exposed from a given MCP server.
+    Use this format when you want to explicitly control which tools are exposed from a given MCP server,
+    or when your URL does not satisfy the recognition rules above.
 
     ```json
     "tools": [
@@ -1301,8 +1319,8 @@ MCP servers can be configured in one of two formats under the `tools` field.
     ]
     ```
 
-   - The tools key specifies a whitelist of tools made available to the agent.
-   - If the tools key is omitted, all tools from the MCP server will be accessible.
+   - The `tools` key specifies a whitelist of tools made available to the agent.
+   - If the `tools` key is omitted, all tools from the MCP server will be accessible.
 
 ### Authentication
 

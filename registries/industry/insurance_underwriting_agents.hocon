@@ -79,7 +79,9 @@ You are the top-level agent responsible for handling all insurance inquiries for
         },
         {
             "name": "underwriting_decision_agent",
-            "function": ${aaosa_call},
+            "function": ${aaosa_call}{
+                "description": "Handles all underwriting inquiries, gathering data and making underwriting decisions."
+            },
             "instructions": ${instructions_prefix} ${demo_mode} """
 You are responsible for handling all underwriting inquiries for an insurance company's business insurance processes.
 You gather information from brokers, third-party sources, and other agents, analyze the data, and make underwriting decisions.
@@ -88,7 +90,9 @@ You gather information from brokers, third-party sources, and other agents, anal
         },
         {
             "name": "insurance_broker_agent",
-            "function": ${aaosa_call},
+            "function": ${aaosa_call}{
+                "description": "Gathers and provides broker information to facilitate underwriting decisions."
+            },
             "instructions": ${instructions_prefix} ${demo_mode} """
 You gather and provide information from insurance brokers to facilitate underwriting decisions.
 You ensure that the ACORD application and loss analysis documents are correctly obtained and relayed to the underwriters.
@@ -115,7 +119,9 @@ Detailed Step-by-Step Description of Responsibilities:
         },
         {
             "name": "acord_application_handler",
-            "function": ${aaosa_call},
+            "function": ${aaosa_call}{
+                "description": "Processes and validates ACORD application forms submitted by brokers."
+            },
             "instructions": ${instructions_prefix} ${demo_mode} """
 You process and validate the ACORD application form submitted by the broker.
 You ensure all required fields are complete and check for inconsistencies or missing information.
@@ -146,7 +152,9 @@ Detailed Step-by-Step Description of Responsibilities:
         },
         {
             "name": "loss_analysis_handler",
-            "function": ${aaosa_call},
+            "function": ${aaosa_call}{
+                "description": "Analyzes prior loss history data to assist underwriters in assessing risk."
+            },
             "instructions": ${instructions_prefix} ${demo_mode} """
 You analyze prior loss history data provided by the broker.
 You identify patterns or concerns in claims history to assist underwriters in assessing risk.
@@ -185,7 +193,9 @@ Detailed Step-by-Step Description:
         },
         {
             "name": "third_party_data_review_agent",
-            "function": ${aaosa_call},
+            "function": ${aaosa_call}{
+                "description": "Gathers and reviews external data sources to assist in risk assessment."
+            },
             "instructions": ${instructions_prefix} ${demo_mode} """
 You serve as a centralized entity responsible for gathering, compiling, and reviewing data from external sources to assist underwriters in assessing the risk and suitability of properties for insurance coverage. Below is a detailed step-by-step breakdown of your functions:
 1. Receive Data Request
@@ -215,7 +225,9 @@ You serve as a centralized entity responsible for gathering, compiling, and revi
         },
         {
             "name": "building_characteristics_reviewer",
-            "function": ${aaosa_call},
+            "function": ${aaosa_call}{
+                "description": "Evaluates property details such as construction type, fire protection, and building systems."
+            },
             "instructions": ${instructions_prefix} ${demo_mode} """
 You evaluate property-specific details, such as year built, construction type, fire protection measures, and electrical system attributes.
 Detailed Step-by-Step Description:
@@ -254,7 +266,9 @@ You focus solely on technical and risk-relevant aspects of a property’s physic
         },
         {
             "name": "risk_condition_reviewer",
-            "function": ${aaosa_call},
+            "function": ${aaosa_call}{
+                "description": "Assesses property risk conditions using visual data and external indicators."
+            },
             "instructions": ${instructions_prefix} ${demo_mode} """
 You assess property risk conditions using visual data like Google Street View, images, and satellite views.
 You note details such as sidewalk conditions, graffiti, and other external property risk indicators.
@@ -297,7 +311,9 @@ Detailed Step-by-Step Description of responsibilities:
         },
         {
             "name": "specific_segment_reports_reviewer",
-            "function": ${aaosa_call},
+            "function": ${aaosa_call}{
+                "description": "Compiles and reviews segment-specific reports including OSHA violations and tax liens."
+            },
             "instructions": ${instructions_prefix} ${demo_mode} """
 You compile and review segment-specific reports, including OSHA violations, bankruptcy records, tax liens, and other citations.
 Step-by-Step Workflow:
@@ -342,7 +358,9 @@ Focused Concerns:
         },
         {
             "name": "valuation_report_handler",
-            "function": ${aaosa_call},
+            "function": ${aaosa_call}{
+                "description": "Generates valuation reports detailing property size, value, and total valuation."
+            },
             "instructions": ${instructions_prefix} ${demo_mode} """
 You generate a valuation report, detailing property size, value per square foot, and total valuation.
 Detailed Step-by-Step Description:
@@ -374,7 +392,9 @@ Detailed Step-by-Step Description:
         },
         {
             "name": "ownership_verification_handler",
-            "function": ${aaosa_call},
+            "function": ${aaosa_call}{
+                "description": "Verifies ownership details of property and named insured information."
+            },
             "instructions": ${instructions_prefix} ${demo_mode} """
 You verify the ownership details of the property and named insured information to ensure correctness.
 Detailed Responsibilities:
@@ -403,7 +423,9 @@ Detailed Responsibilities:
         },
         {
             "name": "underwriter_analysis_agent",
-            "function": ${aaosa_call},
+            "function": ${aaosa_call}{
+                "description": "Analyzes gathered data to assess risk exposures and produce underwriting summaries."
+            },
             "instructions": ${instructions_prefix} ${demo_mode} """
 You analyze gathered data to assess risk exposures, aggregation, and benchmarks against the company's existing portfolio.
 You produce an underwriting summary/narrative to support final decision-making.
@@ -412,7 +434,9 @@ You produce an underwriting summary/narrative to support final decision-making.
         },
         {
             "name": "risk_exposure_analyzer",
-            "function": ${aaosa_call},
+            "function": ${aaosa_call}{
+                "description": "Identifies and assesses specific risk exposures based on collected data."
+            },
             "instructions": ${instructions_prefix} ${demo_mode} """
 You identify and assess specific risk exposures based on the data collected.
 Detailed Step-by-Step Description:
@@ -441,7 +465,9 @@ Detailed Step-by-Step Description:
         },
         {
             "name": "aggregation_checker",
-            "function": ${aaosa_call},
+            "function": ${aaosa_call}{
+                "description": "Evaluates whether new risk fits within the existing book of accounts."
+            },
             "instructions": ${instructions_prefix} ${demo_mode} """
 You evaluate whether the new risk fits within the company's existing book of accounts, avoiding overexposure in certain categories.
 Detailed Responsibilities:
@@ -474,7 +500,9 @@ Detailed Responsibilities:
         },
         {
             "name": "benchmarking_handler",
-            "function": ${aaosa_call},
+            "function": ${aaosa_call}{
+                "description": "Compares prospective policies against the existing portfolio for deviations or alignments."
+            },
             "instructions": ${instructions_prefix} ${demo_mode} """
 You compare the prospective policy against the company's existing portfolio to identify deviations or alignments.
 Detailed Description of Responsibilities:
@@ -508,7 +536,9 @@ The Benchmarking Handler is responsible for comparing new underwriting cases aga
         },
         {
             "name": "claims_processing_agent",
-            "function": ${aaosa_call},
+            "function": ${aaosa_call}{
+                "description": "Manages all claims-related workflows from initial intake to resolution."
+            },
             "instructions": ${instructions_prefix} ${demo_mode} """
 You manage all claims-related workflows, from initial intake to resolution.
 You coordinate with adjusters, investigators, and analysts to process claims efficiently.
@@ -552,7 +582,9 @@ By fulfilling these steps, ensure that all claims are processed efficiently, acc
         },
         {
             "name": "claims_intake_handler",
-            "function": ${aaosa_call},
+            "function": ${aaosa_call}{
+                "description": "Manages initial intake of claims, ensuring required information is collected and logged."
+            },
             "instructions": ${instructions_prefix} ${demo_mode} """
 You manage the initial intake of claims, ensuring all required information is collected and logged.
 You verify that claims are filed correctly and meet eligibility criteria.
@@ -596,7 +628,9 @@ Detailed Step-by-Step Description of Responsibilities:
         },
         {
             "name": "claims_investigation_agent",
-            "function": ${aaosa_call},
+            "function": ${aaosa_call}{
+                "description": "Investigates claims to confirm validity using reports, inspections, and interviews."
+            },
             "instructions": ${instructions_prefix} ${demo_mode} """
 You investigate claims to confirm their validity, using third-party reports, inspections, and interviews as needed.
 You coordinate with underwriters if questions about policy coverage arise.
@@ -637,7 +671,9 @@ Step-by-Step Description:
         },
         {
             "name": "site_inspector",
-            "function": ${aaosa_call},
+            "function": ${aaosa_call}{
+                "description": "Conducts on-site inspections to verify claim validity and assess damage."
+            },
             "instructions": ${instructions_prefix} ${demo_mode} """
 You conduct on-site inspections to verify the validity of claims and assess damage.
 Detailed Step-by-Step Description of Responsibilities:
@@ -671,7 +707,9 @@ This role is strictly focused on the on-site evaluation and initial documentatio
         },
         {
             "name": "report_verification_handler",
-            "function": ${aaosa_call},
+            "function": ${aaosa_call}{
+                "description": "Verifies third-party reports and additional documentation related to claims."
+            },
             "instructions": ${instructions_prefix} ${demo_mode} """
 You verify third-party reports and additional documentation related to the claim.
 Detailed Description of Responsibilities:
@@ -710,7 +748,9 @@ This process ensures that only reliable, relevant, and accurate reports are used
         },
         {
             "name": "claims_adjustment_agent",
-            "function": ${aaosa_call},
+            "function": ${aaosa_call}{
+                "description": "Determines settlement amounts and coordinates claim payments per company policies."
+            },
             "instructions": ${instructions_prefix} ${demo_mode} """
 You determine settlement amounts and coordinate claim payments, ensuring alignment with the company's policies.
 Detailed Step-by-Step Description:
