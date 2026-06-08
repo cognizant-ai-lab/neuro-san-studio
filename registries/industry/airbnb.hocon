@@ -141,7 +141,9 @@ point of contact for the user.
         },
         {
             "name": "accommodation_specialist",
-            "function": ${aaosa_call},
+            "function": ${aaosa_call}{
+                "description": "Assists users in finding and selecting suitable Airbnb accommodations based on their preferences."
+            },
             "instructions": ${instructions_prefix} """
 You assist users in finding and selecting suitable accommodations on Airbnb, based on their preferences and needs.
 You provide personalized recommendations for Airbnb listings, considering factors like location, amenities, and budget.
@@ -202,7 +204,9 @@ Cultural Alignment with Airbnb’s Objectives:
         },
         {
             "name": "host_communication_facilitator",
-            "function": ${aaosa_call},
+            "function": ${aaosa_call}{
+                "description": "Facilitates communication between guests and hosts regarding accommodation questions or requests."
+            },
             "instructions": ${instructions_prefix} """
 You facilitate communication between guests and hosts to address specific questions or requests regarding accommodations.
 You ensure that guests can easily contact hosts to inquire about property details, availability, or special arrangements.
@@ -210,7 +214,9 @@ You ensure that guests can easily contact hosts to inquire about property detail
         },
         {
             "name": "pricing_and_discounts_advisor",
-            "function": ${aaosa_call},
+            "function": ${aaosa_call}{
+                "description": "Provides information on pricing, discounts, and special offers for Airbnb accommodations."
+            },
             "instructions": ${instructions_prefix} """
 You provide information on pricing, available discounts, and special offers for Airbnb accommodations and services.
 You help users understand the cost breakdown of their bookings and inform them about any promotions or deals.
@@ -258,7 +264,9 @@ Cultural Alignment and Objectives
         },
         {
             "name": "vacation_packages_consultant",
-            "function": ${aaosa_call},
+            "function": ${aaosa_call}{
+                "description": "Assists users in planning vacation packages including accommodations, experiences, and travel services."
+            },
             "instructions": ${instructions_prefix} """
 You assist users in planning comprehensive vacation packages that may include accommodations, experiences, and other travel services through Airbnb.
 You help users create tailored travel itineraries by combining various Airbnb offerings to suit their preferences.
@@ -293,7 +301,9 @@ Alignment with Airbnb’s Cultural Values
         },
         {
             "name": "experience_booking_agent",
-            "function": ${aaosa_call},
+            "function": ${aaosa_call}{
+                "description": "Helps users discover and book unique Airbnb experiences such as tours, classes, and activities."
+            },
             "instructions": ${instructions_prefix} """
 You help users discover and book unique experiences offered through Airbnb, such as tours, classes, and activities.
 You provide recommendations for local experiences that enhance the user's travel itinerary.
@@ -338,7 +348,9 @@ Alignment with Airbnb’s Values:
         },
         {
             "name": "travel_support_agent",
-            "function": ${aaosa_call},
+            "function": ${aaosa_call}{
+                "description": "Handles general travel inquiries and support for booking modifications, cancellations, and policies."
+            },
             "instructions": ${instructions_prefix} """
 You handle general travel-related inquiries and provide support for issues such as booking modifications, cancellations, and policy clarifications.
 You assist users with any questions or concerns that arise before, during, or after their travel with Airbnb.

@@ -22,6 +22,7 @@ import shutil
 import zipfile
 from dataclasses import dataclass
 from dataclasses import field
+from pathlib import PurePosixPath
 from typing import List
 from typing import Optional
 from typing import Set
@@ -275,6 +276,9 @@ class AgentNetworkExporter:  # pylint: disable=too-few-public-methods
 
     def _resolve_network(self, network: str) -> str:
         """Map a user-supplied name to a registries-relative `.hocon` path; raise if missing."""
+        # Tolerate a repo-root-style `registries/...` prefix: `ns export
+        # registries/basic/hello_world.hocon` should behave like `basic/hello_world.hocon`.
+        network = self._strip_registries_prefix(network)
         candidate = network if network.endswith(".hocon") else f"{network}.hocon"
 
         # Direct relative path under registries/ (e.g., 'basic/music_nerd.hocon').
@@ -292,6 +296,17 @@ class AgentNetworkExporter:  # pylint: disable=too-few-public-methods
             f"Network '{network}' not found under {self.registries_dir}. "
             f"Pass a name like 'music_nerd' or a relative path like 'basic/music_nerd'."
         )
+
+    @staticmethod
+    def _strip_registries_prefix(network: str) -> str:
+        """Drop a leading `registries/` segment so a repo-root-style path resolves like
+        the registries-relative form. `PurePosixPath.parts` collapses `./` and interior
+        `.` so equivalent spellings are handled by one rule, and keeps the result `/`-
+        separated (it feeds zip arcnames, which must stay POSIX on every OS)."""
+        parts = PurePosixPath(network).parts
+        if parts and parts[0] == "registries":
+            return str(PurePosixPath(*parts[1:])) if len(parts) > 1 else ""
+        return network
 
     @staticmethod
     def _has_dependencies(deps: AgentNetworkDependencies) -> bool:
