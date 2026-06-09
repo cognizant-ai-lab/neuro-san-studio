@@ -37,8 +37,7 @@ class NeuroSanStudioCli:  # pylint: disable=too-few-public-methods
         add_completion=False,
     )
 
-    @staticmethod
-    def _version_callback(value: bool) -> None:
+    def _version_callback(value: bool) -> bool:  # pylint: disable=no-self-argument
         """Print the installed neuro-san-studio version and exit (for `--version`)."""
         if value:
             # pylint: disable-next=import-outside-toplevel
@@ -46,6 +45,7 @@ class NeuroSanStudioCli:  # pylint: disable=too-few-public-methods
 
             typer.echo(f"neuro-san-studio {studio_version()}")
             raise typer.Exit()
+        return value
 
     @staticmethod
     @app.callback()
