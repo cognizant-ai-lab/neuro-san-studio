@@ -447,7 +447,8 @@ run Neuro SAN agents continuously or on triggers through a separate service, wit
 analyzes a LinkedIn profile and delivers a personalized summary of Cognizant's 2024 Annual Report,
 surfacing content most relevant to the user's industry and seniority level.
 * [Enterprise IT Service Desk Auto-Classifier Pipeline](https://github.com/Sivakumarraj/antigravity-service-desk):
-- A resilient multi-agent service automation system built using the `uv` toolchain, featuring declarative HOCON vendor-fallback logic chains, strict Pydantic v2 data self-healing guardrails, and real-time FinOps token cost tracking analytics.
+- A resilient multi-agent service automation system built using the `uv` toolchain, featuring declarative HOCON vendor-fallback logic chains, strict Pydantic v2 validation, and real-time FinOps token cost-latency tracking analytics.
+
 
 
 ### Utilities
