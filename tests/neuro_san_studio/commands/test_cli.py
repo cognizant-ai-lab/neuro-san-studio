@@ -124,3 +124,19 @@ class TestMainEntryPoint:
         monkeypatch.setattr(sys, "argv", ["neuro-san-studio", "run"])
         with pytest.raises(RuntimeError, match="boom"):
             main()
+
+    @pytest.mark.parametrize("flag", ["--version", "-V"])
+    def test_version_flag_prints_version_and_exits(
+        self, flag: str, monkeypatch: MonkeyPatch, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        """`ns --version` / `-V` prints the resolved version and exits without starting the server."""
+        call_order = self._install_fake_runner(monkeypatch)
+        monkeypatch.setattr(
+            "neuro_san_studio.utils.version.studio_version",
+            lambda: "1.2.3",
+        )
+        monkeypatch.setattr(sys, "argv", ["neuro-san-studio", flag])
+        # The eager callback raises typer.Exit(0); main() swallows clean exits.
+        main()
+        assert "neuro-san-studio 1.2.3" in capsys.readouterr().out
+        assert not call_order
