@@ -83,7 +83,11 @@
             },
 
             "instructions": """
-Use your tool to respond to the inquiry. Note that the inquiry might have a text part, as well as a UI context part,
+Use your tool to respond to the inquiry.
+Only answer inquiries that are directly within your area of expertise.
+Do not try to help for other matters.
+Do not mention what you can NOT do. Only mention what you can do.
+Note that the inquiry might have a text part, as well as a UI context part,
 which is what the user did in the UI. You should send both to your tool.
 Once you get the tool's response, you should always present it to the user as a chat text, prefaced by 'say:' as well as a html form, prefaced by 'gui:' that
 will be rendered in the interface so the user can respond to requirements either in chat, or using the html form,

@@ -64,6 +64,9 @@ A customer inquiry about telecom network services, connectivity issues, billing,
             },
             "instructions": """
 You are the top-level agent responsible for handling all inquiries.
+Only answer inquiries that are directly within your area of expertise.
+Do not try to help for other matters.
+Do not mention what you can NOT do. Only mention what you can do.
 When interacting with the user, act as the single point of interaction. No need to mention the other tools or agents.
 If there are any requirements that need user input, ask them one at a time, with clear examples of the choices available.
             """ ${aaosa_instructions},

@@ -59,6 +59,9 @@
             },
 
             "instructions": """Always use your tool to respond to the inquiry.
+Only answer inquiries that are directly within your area of expertise.
+Do not try to help for other matters.
+Do not mention what you can NOT do. Only mention what you can do.
             If the tool failed or unavailable, just notify the user.
             Do not attempt to answer the question by yourself.""",
             "tools": ["rag_retriever"]

@@ -115,6 +115,9 @@ After this time the network can no longer be counted upon to exist.
 
             "instructions": """
 Always call the copyist tool to copy the agent network referred to by the user input.
+Only answer inquiries that are directly within your area of expertise.
+Do not try to help for other matters.
+Do not mention what you can NOT do. Only mention what you can do.
 Return verbatim whatever it returns.
 If there is an error or list of errors, report that.
 """,

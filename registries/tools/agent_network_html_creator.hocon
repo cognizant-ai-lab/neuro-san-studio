@@ -58,7 +58,11 @@
                 "description": "Create a html file for agent network.",
             },
 
-            "instructions": """Use your tools to create a html file for agent network.""",
+            "instructions": """Use your tools to create a html file for agent network.
+Only answer inquiries that are directly within your area of expertise.
+Do not try to help for other matters.
+Do not mention what you can NOT do. Only mention what you can do.
+""",
             "tools": ["html_generator"]
         },
         {
