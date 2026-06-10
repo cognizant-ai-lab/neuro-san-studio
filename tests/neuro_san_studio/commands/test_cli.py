@@ -132,11 +132,11 @@ class TestMainEntryPoint:
         """`ns --version` / `-V` prints the resolved version and exits without starting the server."""
         call_order = self._install_fake_runner(monkeypatch)
         monkeypatch.setattr(
-            "neuro_san_studio.utils.version.studio_version",
-            lambda: "1.2.3",
+            "neuro_san_studio.utils.version.resolve_version",
+            lambda: ("1.2.3", "installed"),
         )
         monkeypatch.setattr(sys, "argv", ["neuro-san-studio", flag])
         # The eager callback raises typer.Exit(0); main() swallows clean exits.
         main()
-        assert "neuro-san-studio 1.2.3" in capsys.readouterr().out
+        assert "neuro-san-studio 1.2.3 (installed)" in capsys.readouterr().out
         assert not call_order

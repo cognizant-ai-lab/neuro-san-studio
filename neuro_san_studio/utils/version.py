@@ -14,21 +14,52 @@
 #
 # END COPYRIGHT
 
+import logging
 from importlib.metadata import PackageNotFoundError
 from importlib.metadata import version as library_version
+from pathlib import Path
+from typing import Tuple
+
+logger = logging.getLogger(__name__)
 
 # The distribution name as published / installed (see pyproject `[project].name`).
 DISTRIBUTION_NAME = "neuro-san-studio"
 
+# Repo root (…/neuro_san_studio/utils/version.py -> two parents up), for the
+# source-checkout fallback when the package isn't installed.
+_REPO_ROOT = Path(__file__).resolve().parents[2]
+
+# Where the version was resolved from.
+SOURCE_INSTALLED = "installed"
+SOURCE_SCM = "source"
+SOURCE_UNKNOWN = "unknown"
+
 
 def studio_version() -> str:
-    """Resolve the installed neuro-san-studio version.
+    """Bare version string, for callers that don't care where it came from."""
+    return resolve_version()[0]
 
-    Reads the installed distribution metadata (populated by setuptools-scm at build
-    time). Returns 'unknown' if it can't be found, so callers always get a string
-    and never raise.
-    """
+
+def resolve_version() -> Tuple[str, str]:
+    """Resolve ``(version, source)``, never raising: installed metadata, then scm, then unknown."""
     try:
-        return str(library_version(DISTRIBUTION_NAME))
+        return str(library_version(DISTRIBUTION_NAME)), SOURCE_INSTALLED
     except PackageNotFoundError:
-        return "unknown"
+        logger.warning(
+            "%s is not installed as a distribution; falling back to setuptools-scm.",
+            DISTRIBUTION_NAME,
+        )
+    scm = _scm_version()
+    if scm:
+        return scm, SOURCE_SCM
+    return "unknown", SOURCE_UNKNOWN
+
+
+def _scm_version() -> str:
+    """Version from setuptools-scm reading the repo, or '' if it isn't importable."""
+    try:
+        from setuptools_scm import get_version  # pylint: disable=import-outside-toplevel
+
+        return str(get_version(root=str(_REPO_ROOT)))
+    except (ImportError, LookupError, OSError):
+        return ""

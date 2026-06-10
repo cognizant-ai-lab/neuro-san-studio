@@ -19,16 +19,26 @@ from importlib.metadata import PackageNotFoundError
 import pytest
 
 from neuro_san_studio.utils import version as version_module
+from neuro_san_studio.utils.version import resolve_version
 from neuro_san_studio.utils.version import studio_version
 
 
-class TestStudioVersion:
-    """Resolving the installed neuro-san-studio version."""
+class TestResolveVersion:
+    """Resolving (version, source) for neuro-san-studio."""
 
-    def test_returns_installed_distribution_version(self, monkeypatch: pytest.MonkeyPatch) -> None:
-        """The resolved string is whatever the distribution metadata reports."""
+    @staticmethod
+    def _uninstalled(monkeypatch: pytest.MonkeyPatch) -> None:
+        """Make the distribution-metadata lookup behave as not-installed."""
+
+        def boom(_name: str) -> str:
+            raise PackageNotFoundError("neuro-san-studio")
+
+        monkeypatch.setattr(version_module, "library_version", boom)
+
+    def test_installed_distribution_reports_installed_source(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        """Distribution metadata gives the version tagged as 'installed'."""
         monkeypatch.setattr(version_module, "library_version", lambda _name: "1.2.3")
-        assert studio_version() == "1.2.3"
+        assert resolve_version() == ("1.2.3", "installed")
 
     def test_resolves_the_studio_distribution_name(self, monkeypatch: pytest.MonkeyPatch) -> None:
         """The resolver looks up the published distribution name, not the import package."""
@@ -39,14 +49,32 @@ class TestStudioVersion:
             return "9.9.9"
 
         monkeypatch.setattr(version_module, "library_version", fake_version)
-        studio_version()
+        resolve_version()
         assert seen["name"] == "neuro-san-studio"
 
-    def test_falls_back_to_unknown_when_not_installed(self, monkeypatch: pytest.MonkeyPatch) -> None:
-        """A missing distribution surfaces 'unknown' rather than raising."""
+    def test_scm_fallback_reports_source(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        """An uninstalled checkout resolves via setuptools-scm, tagged 'source'."""
+        self._uninstalled(monkeypatch)
+        monkeypatch.setattr(version_module, "_scm_version", lambda: "0.0.0.dev1+gabc1234")
+        assert resolve_version() == ("0.0.0.dev1+gabc1234", "source")
 
-        def boom(_name: str) -> str:
-            raise PackageNotFoundError("neuro-san-studio")
+    def test_unknown_when_not_installed_and_no_scm(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        """No distribution and no setuptools-scm surfaces ('unknown', 'unknown')."""
+        self._uninstalled(monkeypatch)
+        monkeypatch.setattr(version_module, "_scm_version", lambda: "")
+        assert resolve_version() == ("unknown", "unknown")
 
-        monkeypatch.setattr(version_module, "library_version", boom)
-        assert studio_version() == "unknown"
+    def test_warns_when_not_installed(
+        self, monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture
+    ) -> None:
+        """The not-installed fallback logs a warning rather than failing silently."""
+        self._uninstalled(monkeypatch)
+        monkeypatch.setattr(version_module, "_scm_version", lambda: "")
+        with caplog.at_level("WARNING"):
+            resolve_version()
+        assert "not installed" in caplog.text
+
+    def test_studio_version_returns_bare_string(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        """studio_version() drops the source tag, returning just the version string."""
+        monkeypatch.setattr(version_module, "library_version", lambda _name: "1.2.3")
+        assert studio_version() == "1.2.3"
