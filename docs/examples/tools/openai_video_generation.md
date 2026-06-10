@@ -178,7 +178,7 @@ videos.
 
 ### Common Issues
 
-- **Import Errors**: Ensure opencv-python and aiohttp are installed
+- **Import Errors**: Ensure langchain-openai, opencv-python and aiohttp are installed
 - **Authentication Failures**: Verify API key is set and valid
 - **Video Generation Access**: Check that your account has video generation permissions
 - **Model Errors**: Confirm the specified model is accessible and supports video generation
