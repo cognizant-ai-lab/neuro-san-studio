@@ -88,6 +88,8 @@ Always respond with "Instructions/description have been set in the agent network
                 }
             },
             "tools": ["instructions_writer"],
+            # Parse any JSON in responses into the structure field of the ChatMessage.
+            "structure_formats": "json",
             "middleware": [
                 {
                     "class": "middleware.agent_network_designer.agent_network_definition_middleware.AgentNetworkDefinitionMiddleware",
