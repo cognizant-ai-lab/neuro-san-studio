@@ -22,9 +22,8 @@ This agent network requires the following setup:
 
 ### Python Dependencies
 
-```bash
-pip install langchain-openai>=0.3.26
-```
+This agent network requires langchain-openai for OpenAI's Responses API integration.
+This is already a prerequisite for the neuro-san library, so no need to install anything new.
 
 ### Environment Variables
 
@@ -99,7 +98,7 @@ When developing or debugging the OpenAI Image Generation Assistant, keep the fol
 
 - **Tool Registration**: Ensure the `openai_image_generation` toolbox is correctly registered and mapped to the OpenAIImageGeneration coded tool.
 
-- **LangChain Version**: Verify langchain-openai>=0.3.26 is installed for Responses API support.
+- **LangChain Version**: Verify langchain-openai is available (included as a neuro-san dependency).
 
 - **Query Formatting**: Check that user inquiries are properly formatted and passed to the image generation tool.
 
@@ -115,7 +114,7 @@ When developing or debugging the OpenAI Image Generation Assistant, keep the fol
 
 ### Common Issues
 
-- **Import Errors**: Ensure langchain-openai>=0.3.26 is installed
+- **Import Errors**: Ensure langchain-openai is available (included as a neuro-san dependency)
 
 - **Authentication Failures**: Verify API key is set and valid
 
