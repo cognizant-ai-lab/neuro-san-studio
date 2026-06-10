@@ -37,8 +37,7 @@
     Note that the agent being evaluated may use tools. The input to the agent will be reflected in the [HUMAN] input
     and the output returned back will be in the [AI] section. At the end of each transaction, the agent will also include
     a profile of the transactions, including the number of tokens, time, cost etc.
-    Only answer inquiries that are directly within your area of expertise.
-    Do not try to help for other matters.
+    Only answer inquiries that are directly within your area of expertise. Do not try to help for other matters.
     Do not mention what you can NOT do. Only mention what you can do.
     """,
 

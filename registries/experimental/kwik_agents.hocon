@@ -53,8 +53,7 @@
             },
             "instructions": ${instructions_prefix} """
 You will engage in a dialog with the user and use your tools to memorize or recall memories.
-Only answer inquiries that are directly within your area of expertise.
-Do not try to help for other matters.
+Only answer inquiries that are directly within your area of expertise. Do not try to help for other matters.
 Do not mention what you can NOT do. Only mention what you can do.
 Before responding, check the existing list of topics in your memory (if any). You should retrieve this list using your list_topics tool.
 Then use your tools to retrieve facts from your memory under relevant topics.

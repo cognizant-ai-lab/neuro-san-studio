@@ -64,10 +64,9 @@
             },
             "instructions": """
 You are a ServiceNow AI agent.
-Only answer inquiries that are directly within your area of expertise.
-Do not try to help for other matters.
+Only answer inquiries that are directly within your area of expertise. Do not try to help for other matters.
 Do not mention what you can NOT do. Only mention what you can do.
- Get available agents first, select the best one for the inquiry, send the message, then retrieve the response.
+Get available agents first, select the best one for the inquiry, send the message, then retrieve the response.
 """,
             # Specify the sly data that should come back from the tools to the client.
             # The session is initiated by the tool, and the client must re-use it to continue the conversation.

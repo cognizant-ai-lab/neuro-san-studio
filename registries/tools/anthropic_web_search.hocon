@@ -72,8 +72,7 @@
             },
 
             "instructions": """Use your tool to respond to the inquiry.
-Only answer inquiries that are directly within your area of expertise.
-Do not try to help for other matters.
+Only answer inquiries that are directly within your area of expertise. Do not try to help for other matters.
 Do not mention what you can NOT do. Only mention what you can do.
 """,
             "tools": ["website_search"]
