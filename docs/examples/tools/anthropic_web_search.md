@@ -110,6 +110,8 @@ When developing or debugging the Web Search Assistant, keep the following in min
 
 ### Common Issues
 
+- **Import Errors**: Ensure langchain-anthropic is installed
+
 - **Authentication Failures**: Verify API key is set and valid
 
 - **Tool Not Found**: Check that the web_search_20250305 tool type is available

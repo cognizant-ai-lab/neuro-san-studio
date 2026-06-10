@@ -130,6 +130,8 @@ When developing or debugging the OpenAI Code Interpreter Assistant, keep the fol
 
 ### Common Issues
 
+- **Import Errors**: Ensure langchain-openai is installed
+
 - **Authentication Failures**: Verify API key is set and valid
 
 - **Code Interpreter Access**: Check that your account has code interpreter permissions

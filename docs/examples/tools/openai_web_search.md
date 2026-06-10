@@ -112,6 +112,8 @@ When developing or debugging the OpenAI Web Search Assistant, keep the following
 
 ### Common Issues
 
+- **Import Errors**: Ensure langchain-openai is installed
+
 - **Authentication Failures**: Verify API key is set and valid
 
 - **Preview Tool Access**: Check that your account has preview tool permissions

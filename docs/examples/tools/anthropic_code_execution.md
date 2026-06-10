@@ -132,6 +132,8 @@ When developing or debugging the Code Execution Assistant, keep the following in
 
 ### Common Issues
 
+- **Import Errors**: Ensure langchain-anthropic is installed
+
 - **Authentication Failures**: Verify API key is set and has beta access
 
 - **Tool Not Found**: Check that the code_execution_20250522 tool type is available

@@ -112,6 +112,8 @@ When developing or debugging the OpenAI Image Generation Assistant, keep the fol
 
 ### Common Issues
 
+- **Import Errors**: Ensure langchain-openai is installed
+
 - **Authentication Failures**: Verify API key is set and valid
 
 - **Preview Tool Access**: Check that your account has image generation tool permissions
