@@ -58,21 +58,32 @@ class TestResolveVersion:
         monkeypatch.setattr(version_module, "_scm_version", lambda: "0.0.0.dev1+gabc1234")
         assert resolve_version() == ("0.0.0.dev1+gabc1234", "source")
 
-    def test_unknown_when_not_installed_and_no_scm(self, monkeypatch: pytest.MonkeyPatch) -> None:
-        """No distribution and no setuptools-scm surfaces ('unknown', 'unknown')."""
+    def test_git_fallback_reports_git_source(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        """With no distribution and no scm, the short git sha is used, tagged 'git'."""
         self._uninstalled(monkeypatch)
         monkeypatch.setattr(version_module, "_scm_version", lambda: "")
+        monkeypatch.setattr(version_module, "_git_sha", lambda: "abc1234")
+        assert resolve_version() == ("abc1234", "git")
+
+    def test_unknown_when_nothing_resolves(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        """No distribution, no scm, and no git sha surfaces ('unknown', 'unknown')."""
+        self._uninstalled(monkeypatch)
+        monkeypatch.setattr(version_module, "_scm_version", lambda: "")
+        monkeypatch.setattr(version_module, "_git_sha", lambda: "")
         assert resolve_version() == ("unknown", "unknown")
 
-    def test_warns_when_not_installed(
+    def test_warns_through_each_fallback(
         self, monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture
     ) -> None:
-        """The not-installed fallback logs a warning rather than failing silently."""
+        """Each degradation step logs a warning rather than failing silently."""
         self._uninstalled(monkeypatch)
         monkeypatch.setattr(version_module, "_scm_version", lambda: "")
+        monkeypatch.setattr(version_module, "_git_sha", lambda: "")
         with caplog.at_level("WARNING"):
             resolve_version()
         assert "not installed" in caplog.text
+        assert "setuptools-scm unavailable" in caplog.text
+        assert "git sha" in caplog.text
 
     def test_studio_version_returns_bare_string(self, monkeypatch: pytest.MonkeyPatch) -> None:
         """studio_version() drops the source tag, returning just the version string."""
