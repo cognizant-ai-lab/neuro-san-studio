@@ -166,7 +166,6 @@ When developing or debugging the OpenAI Video Generation Assistant, keep the fol
 - **Video Generation Access**: Confirm your account has access to the video generation tool.
 - **Tool Registration**: Ensure the `openai_video_generation` toolbox is correctly registered and mapped to the
 OpenAIVideoGeneration coded tool.
-- **LangChain Version**: Verify langchain-openai is available (included as a neuro-san dependency).
 - **Query Formatting**: Check that user inquiries are properly formatted and passed to the video generation tool.
 - **Browser Access**: Ensure the system can open a web browser to display generated videos.
 - **File Permissions**: If `save_video_file` is enabled, verify write permissions in the target directory.
@@ -179,7 +178,7 @@ videos.
 
 ### Common Issues
 
-- **Import Errors**: Ensure all dependencies (langchain-openai, opencv-python, aiohttp) are available
+- **Import Errors**: Ensure opencv-python and aiohttp are installed
 - **Authentication Failures**: Verify API key is set and valid
 - **Video Generation Access**: Check that your account has video generation permissions
 - **Model Errors**: Confirm the specified model is accessible and supports video generation

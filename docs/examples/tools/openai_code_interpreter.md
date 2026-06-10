@@ -126,13 +126,9 @@ When developing or debugging the OpenAI Code Interpreter Assistant, keep the fol
 
 - **Tool Registration**: Ensure the `openai_code_interpreter` toolbox is correctly registered and mapped to the OpenAICodeInterpreter coded tool.
 
-- **LangChain Version**: Verify langchain-openai is available (included as a neuro-san dependency).
-
 - **Quota Management**: Monitor API usage and code interpreter quota limits.
 
 ### Common Issues
-
-- **Import Errors**: Ensure langchain-openai is available (included as a neuro-san dependency)
 
 - **Authentication Failures**: Verify API key is set and valid
 

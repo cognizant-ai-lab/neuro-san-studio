@@ -104,8 +104,6 @@ When developing or debugging the OpenAI Web Search Assistant, keep the following
 
 - **Tool Registration**: Ensure the `openai_search` toolbox is correctly registered and mapped to the OpenAIWebSearch coded tool.
 
-- **LangChain Version**: Verify langchain-openai is available (included as a neuro-san dependency).
-
 - **Query Formatting**: Check that user inquiries are properly formatted and passed to the search tool.
 
 - **Error Handling**: Monitor for OpenAI API errors and ensure graceful error handling.
@@ -113,8 +111,6 @@ When developing or debugging the OpenAI Web Search Assistant, keep the following
 - **Rate Limits**: Be aware of API rate limits that may affect search frequency.
 
 ### Common Issues
-
-- **Import Errors**: Ensure langchain-openai is available (included as a neuro-san dependency)
 
 - **Authentication Failures**: Verify API key is set and valid
 

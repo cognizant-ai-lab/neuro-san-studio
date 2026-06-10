@@ -98,8 +98,6 @@ When developing or debugging the OpenAI Image Generation Assistant, keep the fol
 
 - **Tool Registration**: Ensure the `openai_image_generation` toolbox is correctly registered and mapped to the OpenAIImageGeneration coded tool.
 
-- **LangChain Version**: Verify langchain-openai is available (included as a neuro-san dependency).
-
 - **Query Formatting**: Check that user inquiries are properly formatted and passed to the image generation tool.
 
 - **Browser Access**: Ensure the system can open a web browser to display generated images.
@@ -113,8 +111,6 @@ When developing or debugging the OpenAI Image Generation Assistant, keep the fol
 - **Rate Limits**: Be aware of API rate limits that may affect image generation frequency.
 
 ### Common Issues
-
-- **Import Errors**: Ensure langchain-openai is available (included as a neuro-san dependency)
 
 - **Authentication Failures**: Verify API key is set and valid
 
