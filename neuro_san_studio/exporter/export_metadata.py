@@ -50,9 +50,11 @@ class ExportMetadataStamper:
 
     def build(self) -> Dict[str, str]:
         """Assemble the export-provenance keys written into the network's metadata at export time."""
+        now = datetime.now().astimezone()
+        tz = now.strftime("%Z") or now.strftime("%z") or "local"
         return {
             "export_user": self._current_user(),
-            "export_time": datetime.now().astimezone().strftime("%Y%m%d-%H%M%S-%Z"),
+            "export_time": now.strftime("%Y%m%d-%H%M%S-") + tz,
             "export_neuro_san_studio_version": studio_version(),
         }
 
