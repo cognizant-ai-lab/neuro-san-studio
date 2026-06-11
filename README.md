@@ -446,6 +446,8 @@ run Neuro SAN agents continuously or on triggers through a separate service, wit
 * [Annual Report Reader](https://github.com/shrushtiimehta/neuro-san-annual-report-reader):
 analyzes a LinkedIn profile and delivers a personalized summary of Cognizant's 2024 Annual Report,
 surfacing content most relevant to the user's industry and seniority level.
+* [Enterprise IT Service Desk Auto-Classifier](https://github.com/Sivakumarraj/antigravity-service-desk) :
+A native 4-agent Neuro SAN pipeline that automatically classifies IT support requests into structured ServiceNow incident payloads using 5-pass PII redaction and `gemini-2.5-flash`.
 
 ### Utilities
 
