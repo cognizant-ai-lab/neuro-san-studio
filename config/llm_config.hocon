@@ -48,8 +48,28 @@
         #   - https://github.com/cognizant-ai-lab/neuro-san/blob/main/neuro_san/internals/run_context/langchain/llms/default_llm_info.hocon
         #   - https://github.com/cognizant-ai-lab/neuro-san/blob/main/docs/agent_hocon_reference.md#llm_config
 
-        "class": "openai",
-        "model_name": "gpt-5.2",
-
+        # This is the fallback setup for the default developer config.
+        # The idea here is that if any of API keys for the providers are available,
+        # use them.  Providers whose libraries and/or API keys are not available are
+        # culled from # usage by the underlying neuro-san system. Unless of course no API keys
+        # are available at all, in which case the system will generate an error
+        # asking you to set at least one API key.
+        "fallbacks": [
+            {
+                # Try OpenAI first
+                "class": "openai",
+                "model_name": "gpt-5.2",
+            },
+            {
+                # Fall back to Anthropic Claude if OpenAI is unavailable.
+                "class": "anthropic",
+                "model_name": "claude-sonnet",
+            },
+            {
+                # Fall back to Google Gemini if both OpenAI and Anthropic are unavailable.
+                "class": "gemini",
+                "model_name": "gemini-3-flash",
+            }
+        ]
     }
 }
