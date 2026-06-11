@@ -91,6 +91,21 @@ class TestStamp:
         config = ConfigFactory.parse_string(stamped)
         assert _EXPORT_KEYS.issubset(set(config["metadata"]))
 
+    def test_key_indent_follows_the_metadata_line(self) -> None:
+        """Injected keys sit one level in from the ``metadata`` line, whatever its own indent."""
+        # `metadata` at column 0 (unquoted, `=`-style): keys should land at one level (4 spaces).
+        col0 = 'metadata {\n    tags = ["a"]\n}\ntools = []\n'
+        stamped = ExportMetadataStamper().stamp(col0)
+        assert '\n    "export_user":' in stamped
+        assert '\n        "export_user":' not in stamped
+        ConfigFactory.parse_string(stamped)
+
+        # Nested `"metadata"` at one level: keys should land at two levels (8 spaces).
+        nested = '{\n    "metadata": {\n        "tags": ["a"]\n    }\n}\n'
+        stamped = ExportMetadataStamper().stamp(nested)
+        assert '\n        "export_user":' in stamped
+        ConfigFactory.parse_string(stamped)
+
     def test_nested_sub_dicts_and_tricky_values_are_handled(self) -> None:
         """Sub-dicts and braces/'#' inside string values must not break block detection."""
         text = (
