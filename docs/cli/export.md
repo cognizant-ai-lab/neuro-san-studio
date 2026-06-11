@@ -71,8 +71,7 @@ keys are preserved and everything stays in one `metadata` block:
 
 These let a receiver trace which studio version a bundle was saved with. Only
 the primary network file is stamped; sub-networks and shared includes are
-bundled verbatim. The keys are plain metadata, so `ns import` ignores them and
-import behavior is unchanged.
+bundled verbatim.
 
 ## MCP server filtering
 
