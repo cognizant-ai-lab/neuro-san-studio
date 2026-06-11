@@ -32,6 +32,8 @@ from typing import List
 from typing import Optional
 from typing import Tuple
 
+from neuro_san_studio.utils.hocon_text import HoconText
+
 
 class McpInfoMerger:
     """Parse, filter, render, and merge ``mcp_info.hocon`` text at the URL-block level.
@@ -55,10 +57,10 @@ class McpInfoMerger:
         i = 0
         while i < n:
             if text[i] == "#":
-                i = self._skip_line(text, i)
+                i = HoconText.skip_line(text, i)
                 continue
             if text[i] == '"':
-                url_end = self._find_string_end(text, i)
+                url_end = HoconText.find_string_end(text, i)
                 if url_end == -1:
                     break
                 token = text[i + 1 : url_end]
@@ -130,34 +132,13 @@ class McpInfoMerger:
         return text if text.endswith("\n") else text + "\n"
 
     @staticmethod
-    def _skip_line(text: str, i: int) -> int:
-        """Advance past the rest of the current line (used to skip ``# ...`` comments)."""
-        n = len(text)
-        while i < n and text[i] != "\n":
-            i += 1
-        return i + 1 if i < n else i
-
-    @staticmethod
-    def _find_string_end(text: str, start: int) -> int:
-        """Given ``text[start] == '"'``, return the index of the closing quote (or -1 if unterminated)."""
-        n = len(text)
-        j = start + 1
-        while j < n:
-            if text[j] == "\\" and j + 1 < n:
-                j += 2
-                continue
-            if text[j] == '"':
-                return j
-            j += 1
-        return -1
-
-    @staticmethod
     def _line_is_commented(text: str, pos: int) -> bool:
         """True iff a ``#`` precedes ``pos`` on the same line (i.e. this token is inside a comment)."""
         line_start = text.rfind("\n", 0, pos) + 1
         return "#" in text[line_start:pos]
 
-    def _try_parse_block(self, text: str, key_end: int) -> Optional[int]:
+    @staticmethod
+    def _try_parse_block(text: str, key_end: int) -> Optional[int]:
         """If the quoted key ending at ``key_end`` is followed by ``[: or =] {...}``, return the index
         just past the closing ``}``. Otherwise return None — the quoted token wasn't an entry header."""
         n = len(text)
@@ -171,35 +152,7 @@ class McpInfoMerger:
             j += 1
         if j >= n or text[j] != "{":
             return None
-        return self._match_closing_brace(text, j)
-
-    def _match_closing_brace(self, text: str, open_index: int) -> Optional[int]:
-        """Given ``text[open_index] == '{'``, return the index just past its matching ``}``.
-
-        Tracks string literals and ``#`` comments so braces inside those don't throw off the count.
-        """
-        n = len(text)
-        depth = 1
-        k = open_index + 1
-        while k < n and depth > 0:
-            ch = text[k]
-            if ch == '"':
-                end = self._find_string_end(text, k)
-                if end == -1:
-                    return None
-                k = end + 1
-                continue
-            if ch == "#":
-                k = self._skip_line(text, k)
-                continue
-            if ch == "{":
-                depth += 1
-            elif ch == "}":
-                depth -= 1
-                if depth == 0:
-                    return k + 1
-            k += 1
-        return None
+        return HoconText.match_closing_brace(text, j)
 
     @staticmethod
     def _consume_trailing_comma(text: str, pos: int) -> int:
