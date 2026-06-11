@@ -20,6 +20,7 @@
     # Each key can be referenced in agent configs using the ${key} syntax.
     # Do not define agents or tools directly here—this file only provides reusable values.
 
+    # Define a deployment environment, the default for which will be for local development.
     deployment_environment = "default"
     deployment_environment = ${AGENT_LLM_CONFIG_DEPLOYMENT_ENVIRONMENT}  # Use "default" or override with env var if set
 
@@ -75,6 +76,55 @@
         ]
     }
 
+
+    # Similar to the default developer config above, except that when we encounter rate limiting from
+    # one of the providers, we will immediately use the next one in the list without retrying in an
+    # attempt to get better response times.
+    "cluster_llm_config": {
+        "fallbacks": [
+            {
+                # Try OpenAI first
+                "class": "openai",
+                "model_name": "gpt-5.2",
+            },
+            {
+                # Fall back to Anthropic Claude if OpenAI is unavailable.
+                "class": "anthropic",
+                "model_name": "claude-sonnet",
+            },
+            {
+                # Fall back to Google Gemini if both OpenAI and Anthropic are unavailable.
+                "class": "gemini",
+                "model_name": "gemini-3-flash",
+            }
+        ]
+    }
+
+    # A Bring-Your-Own-Key (BYOK) config.
+    # Similar to the default developer config above, except that any api keys must be provided by the
+    # client in sly_data.
+    "byok_llm_config": {
+        "fallbacks": [
+            {
+                # Try OpenAI first
+                "class": "openai",
+                "model_name": "gpt-5.2",
+                "openai_api_key": "sly_data",
+            },
+            {
+                # Fall back to Anthropic Claude if OpenAI is unavailable.
+                "class": "anthropic",
+                "model_name": "claude-sonnet",
+                "anthropic_api_key": "sly_data",
+            },
+            {
+                # Fall back to Google Gemini if both OpenAI and Anthropic are unavailable.
+                "class": "gemini",
+                "model_name": "gemini-3-flash",
+                "google_api_key": "sly_data",
+            }
+        ]
+    }
 
     # Assign the llm_config that will be used throughout the system via a double-substitution.
     "llm_config" = ${${deployment_environment}}_llm_config}
