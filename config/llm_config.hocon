@@ -21,11 +21,12 @@
     # Do not define agents or tools directly here—this file only provides reusable values.
 
     # Define a deployment environment, the default for which will be for local development.
-    deployment_environment = "default"
+    # Use dashes instead of snake_case to distinguish local variables from ENV_VARS or regular_keys.
+    deployment-environment = "default"
 
     # Use "default" or override with env var if set
     # Other values we expect from the env var include "cluster" or "byok" (see definitions below).
-    deployment_environment = ${AGENT_LLM_CONFIG_DEPLOYMENT_ENVIRONMENT}
+    deployment-environment = ${AGENT_LLM_CONFIG_DEPLOYMENT_ENVIRONMENT}
 
     # This llm_config is the baseline for the default developer config.
     # The idea here is that if any of API keys for the providers are available,
@@ -151,5 +152,49 @@
     }
 
     # Assign the llm_config that will be used throughout the system via a double-substitution.
-    "llm_config" = ${${deployment_environment}}_llm_config}
+    "llm_config" = ${${deployment-environment}}_llm_config}
+
+
+    #
+    # This next section defines pieces for definining sly_data_schema in BYOK-vs-not enviroments.
+    #
+
+    "default-llm-config-property" = ""
+    "default-sly-data-schema": ""
+
+    "cluster-llm-config-property" = ${default-llm-config-property}
+    "cluster-sly-data-schema" = ${default-sly-data-schema}
+
+    "byok-llm-config-property": {
+        "llm_config": {
+            "type": "object",
+            "properties": {
+                "openai_api_key": {
+                    "type": "string",
+                    "description": "The user's OpenAI API key",
+                },
+                "anthropic_api_key": {
+                    "type": "string",
+                    "description": "The user's Anthropic API key",
+                },
+                "google_api_key": {
+                    "type": "string",
+                    "description": "The user's Google Gemini API key",
+                },
+            },
+            # Note that individually none of these are absolutely required, but nothing
+            # will work if none are specified.  Therefore, what we require is that the
+            # llm_config dictionary itself be present.
+            "required": []
+        }
+    }
+
+    # A simple definition of sly_data_schema when BYOK keys are all that is required.
+    "byok-sly-data-schema": {
+        "type": "object",
+        "properties": {
+            ${byok-llm-config-property}
+            "required": ["llm_config"]
+        }
+    }
 }
