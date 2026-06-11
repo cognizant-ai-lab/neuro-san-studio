@@ -20,10 +20,13 @@
     # Each key can be referenced in agent configs using the ${key} syntax.
     # Do not define agents or tools directly here—this file only provides reusable values.
 
+    deployment_environment = "default"
+    deployment_environment = ${AGENT_LLM_CONFIG_DEPLOYMENT_ENVIRONMENT}  # Use "default" or override with env var if set
+
     # This llm_config is the baseline for the default developer config.
     # The idea here is that if any of API keys for the providers are available,
-    # use them.  Providers whose libraries and/or API keys are not available are   
-    # culled from usage by the underlying neuro-san system. Unless of course no API keys 
+    # use them.  Providers whose libraries and/or API keys are not available are
+    # culled from usage by the underlying neuro-san system. Unless of course no API keys
     # are available at all, in which case the system will generate an error.
     "default_llm_config": {
 
@@ -73,6 +76,6 @@
     }
 
 
-    # Assign the llm_config that will be used throughout the system.
-    "llm_config" = ${default_llm_config}
+    # Assign the llm_config that will be used throughout the system via a double-substitution.
+    "llm_config" = ${${deployment_environment}}_llm_config}
 }
