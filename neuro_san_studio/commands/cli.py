@@ -125,15 +125,14 @@ class NeuroSanStudioCli:  # pylint: disable=too-few-public-methods
     @staticmethod
     @app.command("import", help="Import agent networks into existing project.")
     def _import_command(
-        networks: Optional[str] = typer.Argument(
+        networks: Optional[List[str]] = typer.Argument(
             None,
-            help=("Comma-separated group names, network names, or 'all'. Omit for interactive mode."),
-        ),
-        from_file: Optional[str] = typer.Option(
-            None,
-            "--from-file",
-            "-f",
-            help="Path to a local .hocon file to import (self-contained network).",
+            help=(
+                "Space-separated group names, network names, or 'all'. "
+                "Paths ending in .hocon or .zip are imported as local files "
+                "(one or more); don't mix files with registry names. "
+                "Omit for interactive mode."
+            ),
         ),
         force: bool = typer.Option(
             False,
@@ -144,9 +143,7 @@ class NeuroSanStudioCli:  # pylint: disable=too-few-public-methods
         """Import agent networks into an existing neuro-san-studio project."""
         from neuro_san_studio.commands.import_networks import ImportCommand  # pylint: disable=import-outside-toplevel
 
-        if networks and from_file:
-            raise typer.BadParameter("Cannot pass both 'networks' and '--from-file'; they are mutually exclusive.")
-        ImportCommand(networks_arg=networks, from_file=from_file, force=force).run()
+        ImportCommand(networks_arg=networks, force=force).run()
 
     @staticmethod
     @app.command("export", help="Export an agent network from the current project into a shareable file.")
@@ -199,6 +196,48 @@ class NeuroSanStudioCli:  # pylint: disable=too-few-public-methods
         from neuro_san_studio.commands.check_config import CheckConfigCommand
 
         raise typer.Exit(code=CheckConfigCommand(hocon_path=hocon_path).run())
+
+    @staticmethod
+    @app.command("validate", help="Validate the structure of an agent network HOCON file.")
+    def _validate_command(
+        hocon_path: str = typer.Argument(
+            ...,
+            help="Path to the agent network HOCON file to validate.",
+        ),
+        verbose: bool = typer.Option(
+            False,
+            "--verbose",
+            help="Print an agent network summary when validation passes.",
+        ),
+        external_agents: Optional[str] = typer.Option(
+            None,
+            "--external-agents",
+            help="Comma-separated external agent references to treat as valid (e.g. '/agent1,/agent2').",
+        ),
+        mcp_servers: Optional[str] = typer.Option(
+            None,
+            "--mcp-servers",
+            help="Comma-separated MCP server URLs to treat as valid.",
+        ),
+        registry_dir: Optional[str] = typer.Option(
+            None,
+            "--registry-dir",
+            help="Base directory for resolving HOCON includes. Defaults to the current directory.",
+        ),
+    ) -> None:
+        """Run the agent network HOCON validation and propagate its exit code."""
+        # pylint: disable-next=import-outside-toplevel
+        from neuro_san_studio.commands.validate import ValidateCommand
+
+        raise typer.Exit(
+            code=ValidateCommand(
+                hocon_path=hocon_path,
+                verbose=verbose,
+                external_agents=external_agents,
+                mcp_servers=mcp_servers,
+                registry_dir=registry_dir,
+            ).run()
+        )
 
 
 def main() -> None:

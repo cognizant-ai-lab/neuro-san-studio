@@ -112,7 +112,9 @@ Responsibilities encompass:
       },
       {
          "name": "flight_specialist",
-         "function": ${aaosa_call},
+         "function": ${aaosa_call}{
+             "description": "Specializes in booking and managing flight reservations."
+         },
          "instructions": ${instructions_prefix} """
 You specialize in booking and managing flight reservations for Expedia customers.
 You assist customers in selecting flights, understanding fare options, and managing existing flight bookings.
@@ -158,7 +160,9 @@ Alignment with Expedia's Cultural Values and Business Objectives:
       },
       {
          "name": "hotel_specialist",
-         "function": ${aaosa_call},
+         "function": ${aaosa_call}{
+             "description": "Specializes in booking and managing hotel reservations."
+         },
          "instructions": ${instructions_prefix} """
 You specialize in booking and managing hotel reservations for Expedia customers.
 You assist customers in selecting accommodations, understanding room options, and managing existing hotel bookings.
@@ -167,7 +171,9 @@ You assist customers in selecting accommodations, understanding room options, an
       },
       {
          "name": "vacation_package_specialist",
-         "function": ${aaosa_call},
+         "function": ${aaosa_call}{
+             "description": "Creates and manages vacation packages combining flights, hotels, and other services."
+         },
          "instructions": ${instructions_prefix} """
 You specialize in creating and managing vacation packages that combine flights, hotels, and other services for Expedia customers.
 You assist customers in customizing vacation packages to suit their preferences and budgets.
@@ -201,7 +207,9 @@ By consistently delivering exceptional service and leveraging Expedia’s vast n
       },
       {
          "name": "customer_support_representative",
-         "function": ${aaosa_call},
+         "function": ${aaosa_call}{
+             "description": "Handles general customer inquiries, cancellations, refunds, and account management."
+         },
          "instructions": ${instructions_prefix} """
 You handle general customer inquiries, provide support for existing bookings, and assist with issues such as cancellations, refunds, and account management for Expedia customers.
 You ensure customer satisfaction by resolving issues promptly and effectively.
@@ -248,7 +256,9 @@ By performing these duties with excellence, the Customer Support Representative 
       },
       {
          "name": "airline_partner_coordinator",
-         "function": ${aaosa_call},
+         "function": ${aaosa_call}{
+             "description": "Liaises with airline partners to secure availability, negotiate fares, and resolve booking issues."
+         },
          "instructions": ${instructions_prefix} """
 You liaise with airline partners to secure flight availability, negotiate fares, and resolve booking issues for Expedia customers.
 You ensure that flight options provided to customers are accurate and up-to-date.
@@ -290,7 +300,9 @@ By performing these duties effectively, you contribute directly to Expedia’s m
       },
       {
          "name": "hotel_partner_coordinator",
-         "function": ${aaosa_call},
+         "function": ${aaosa_call}{
+             "description": "Liaises with hotel partners to secure room availability, negotiate rates, and resolve issues."
+         },
          "instructions": ${instructions_prefix} """
 You liaise with hotel partners to secure room availability, negotiate rates, and resolve booking issues for Expedia customers.
 You ensure that accommodation options provided to customers are accurate and up-to-date.
@@ -326,7 +338,9 @@ By focusing on these responsibilities, the Hotel Partner Coordinator ensures tha
       },
       {
          "name": "package_deal_coordinator",
-         "function": ${aaosa_call},
+         "function": ${aaosa_call}{
+             "description": "Collaborates with service providers to create attractive vacation packages."
+         },
          "instructions": ${instructions_prefix} """
 You collaborate with various service providers to create attractive vacation packages, combining flights, hotels, and other services for Expedia customers.
 You ensure that package deals are competitive and meet customer expectations.
@@ -363,7 +377,9 @@ By performing these tasks with a focus on creativity, customer-centricity, and o
       },
       {
          "name": "billing_specialist",
-         "function": ${aaosa_call},
+         "function": ${aaosa_call}{
+             "description": "Manages billing inquiries, processes payments, and handles refund requests."
+         },
          "instructions": ${instructions_prefix} """
 You manage billing inquiries, process payments, and handle refund requests for Expedia customers.
 You ensure that all financial transactions are accurate and processed in a timely manner.
@@ -398,7 +414,9 @@ You provide empathetic, patient, and professional assistance to all customers wh
       },
       {
          "name": "technical_support_specialist",
-         "function": ${aaosa_call},
+         "function": ${aaosa_call}{
+             "description": "Provides assistance with technical issues related to the platform, account access, and troubleshooting."
+         },
          "instructions": ${instructions_prefix} """
 You provide assistance with technical issues related to the Expedia platform, such as website navigation, account access, and troubleshooting errors for customers.
 You ensure that customers have a seamless experience using Expedia's online services.

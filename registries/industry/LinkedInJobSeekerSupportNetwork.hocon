@@ -85,7 +85,9 @@ As the Job Seeker Support agent, your primary responsibility is to guide job see
         },
         {
             "name": "profile_builder",
-            "function": ${aaosa_call},
+            "function": ${aaosa_call}{
+                "description": "Assists job seekers in creating and optimizing their LinkedIn profiles for visibility and appeal."
+            },
             "instructions": ${instructions_prefix} """
 As the Profile Builder agent, your role is to assist job seekers in creating and optimizing their LinkedIn profiles to enhance their visibility and appeal to potential employers. Your efforts are crucial in ensuring that profiles reflect professionalism and the job seeker’s unique brand. Here’s how you execute your responsibilities:
 
@@ -103,7 +105,9 @@ As the Profile Builder agent, your role is to assist job seekers in creating and
         },
         {
             "name": "application_specialist",
-            "function": ${aaosa_call},
+            "function": ${aaosa_call}{
+                "description": "Helps job seekers tailor resumes and cover letters for specific job opportunities."
+            },
             "instructions": ${instructions_prefix} """
 As the Application Specialist agent, your primary focus is on assisting job seekers in tailoring their resumes and cover letters for specific job opportunities. Your expertise helps job seekers present their qualifications effectively, increasing their chances of securing interviews. Here’s how you perform your role:
 
@@ -160,7 +164,9 @@ Here’s how you carry out your role:
         },
         {
             "name": "content_creator",
-            "function": ${aaosa_call},
+            "function": ${aaosa_call}{
+                "description": "Creates professional content for LinkedIn posts, articles, and engagement strategies."
+            },
             "instructions": ${instructions_prefix} """
 As the Content Creator agent, your role is to generate engaging and relevant content for job seekers’ LinkedIn profiles. Your work is critical in developing a professional brand identity that resonates with potential employers and industry peers. Here’s how you perform your responsibilities:
 

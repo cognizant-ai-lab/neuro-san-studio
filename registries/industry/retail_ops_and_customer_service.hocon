@@ -77,7 +77,9 @@ Escalate issues that require further intervention to the relevant departments.
         },
         {
             "name": "returns_manager",
-            "function": ${aaosa_call},
+            "function": ${aaosa_call}{
+                "description": "Oversees product returns and ensures proper inventory adjustments."
+            },
             "instructions": ${demo_mode} """ 
 You oversee the process of handling product returns and ensure proper inventory adjustments.
 You ensure returned products are processed accurately and timely.
@@ -85,7 +87,9 @@ You ensure returned products are processed accurately and timely.
         },
         {
             "name": "product_specialist",
-            "function": ${aaosa_call},
+            "function": ${aaosa_call}{
+                "description": "Provides in-depth product knowledge and helps customers understand features and availability."
+            },
             "instructions": ${demo_mode} """
 You have in-depth knowledge of specific product categories and help customers understand product features and availability.
 You work closely with merchandising and customer service to provide accurate product information.
@@ -94,7 +98,9 @@ You work closely with merchandising and customer service to provide accurate pro
         },
         {
             "name": "order_fulfillment_coordinator",
-            "function": ${aaosa_call},
+            "function": ${aaosa_call}{
+                "description": "Manages picking, packing, and shipping of customer orders for timely delivery."
+            },
             "instructions": ${demo_mode} """
 You manage the picking, packing, and shipping of customer orders to ensure timely and accurate delivery.
 You communicate with customer service for updates or issues regarding customer orders.
@@ -103,7 +109,9 @@ You communicate with customer service for updates or issues regarding customer o
         },
         {
             "name": "warehouse_manager",
-            "function": ${aaosa_call},
+            "function": ${aaosa_call}{
+                "description": "Manages day-to-day warehouse operations, ensuring accurate stock levels and efficient fulfillment."
+            },
             "instructions": ${demo_mode} """
 You manage the day-to-day operations of the warehouse, ensuring accurate stock levels and efficient order fulfillment.
 You ensure products are stored, picked, and shipped correctly.
@@ -112,7 +120,9 @@ You ensure products are stored, picked, and shipped correctly.
         },
         {
             "name": "inventory_manager",
-            "function": ${aaosa_call},
+            "function": ${aaosa_call}{
+                "description": "Manages stock levels to ensure the right amount of inventory is available at the right time."
+            },
             "instructions": ${demo_mode} """
 You manage stock levels, ensuring the retailer has the right amount of inventory available at the right time.
 You optimize stock levels.
@@ -120,7 +130,9 @@ You optimize stock levels.
         },
         {
             "name": "logistics_coordinator",
-            "function": ${aaosa_call},
+            "function": ${aaosa_call}{
+                "description": "Arranges and tracks transportation of goods from warehouse to customers or distribution centers."
+            },
             "instructions": ${demo_mode} """
 You are responsible for arranging and tracking the transportation of goods from the warehouse to customers or between distribution centers.
 You ensure deliveries meet service-level agreements and resolve any logistical issues.
@@ -128,7 +140,9 @@ You ensure deliveries meet service-level agreements and resolve any logistical i
         },
         {
             "name": "merchandising_manager",
-            "function": ${aaosa_call},
+            "function": ${aaosa_call}{
+                "description": "Oversees product selection and inventory levels aligned with market trends and customer demand."
+            },
             "instructions": ${demo_mode} """
 You oversee product selection and inventory levels to align with market trends and customer demand.
 You ensure the right product mix in stores and online.
@@ -137,7 +151,9 @@ You ensure the right product mix in stores and online.
        },
         {
             "name": "ecommerce_manager",
-            "function": ${aaosa_call},
+            "function": ${aaosa_call}{
+                "description": "Oversees the online retail platform, managing user experience and online sales performance."
+            },
             "instructions": ${demo_mode} """
 You oversee the online retail platform, managing the user experience, product listings, and online sales performance.
 You ensure seamless online operations.
@@ -145,7 +161,9 @@ You ensure seamless online operations.
         },
         {
             "name": "marketing_manager",
-            "function": ${aaosa_call},
+            "function": ${aaosa_call}{
+                "description": "Develops and executes marketing strategies to promote products and drive traffic."
+            },
             "instructions": ${demo_mode} """
 You develop and execute marketing strategies to promote products and drive traffic both online and in stores.
 You ensure promotions are effectively communicated to customers.

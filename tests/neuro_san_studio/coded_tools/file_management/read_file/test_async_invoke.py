@@ -219,3 +219,35 @@ class TestAsyncInvoke(TestCase):
             )
         )
         self.assertEqual(result["content"], "SECRET=1")
+
+    def test_sly_data_history_records_read_paths(self):
+        """Tests that each successful read appends the resolved path to sly_data, deduped."""
+        path_a = self._write("a.txt", "alpha")
+        path_b = self._write("b.txt", "beta")
+        args = {"allowed_paths": [str(self.tmp_root)], "allowed_file_extensions": [".txt"]}
+
+        # First read of A.
+        asyncio.run(self.tool.async_invoke({"file_path": str(path_a), **args}, self.sly_data))
+        # Second read of A — should NOT duplicate the entry.
+        asyncio.run(self.tool.async_invoke({"file_path": str(path_a), **args}, self.sly_data))
+        # Read B — should append a new entry.
+        asyncio.run(self.tool.async_invoke({"file_path": str(path_b), **args}, self.sly_data))
+
+        history = self.sly_data.get("read_file_history")
+        self.assertEqual(history, [str(path_a.resolve()), str(path_b.resolve())])
+
+    def test_sly_data_history_not_written_on_failure(self):
+        """Tests that a failed read does not pollute the history list."""
+        path = self._write("a.hocon", "x")
+        with self.assertRaises(ValueError):
+            asyncio.run(
+                self.tool.async_invoke(
+                    {
+                        "file_path": str(path),
+                        "allowed_paths": [str(self.tmp_root)],
+                        "allowed_file_extensions": [".txt"],
+                    },
+                    self.sly_data,
+                )
+            )
+        self.assertNotIn("read_file_history", self.sly_data)
