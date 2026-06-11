@@ -66,12 +66,36 @@ class HoconText:
             j += 1
         return -1
 
+    @staticmethod
+    def find_triple_string_end(text: str, start: int) -> int:
+        """Given ``text[start:start+3] == '\"\"\"'``, return the index of the last quote of the
+        closing ``\"\"\"`` (-1 if unterminated). HOCON triple-quoted strings have no escaping."""
+        close = text.find('"""', start + 3)
+        if close == -1:
+            return -1
+        # A run of >3 quotes closes at the last one (e.g. ``\"\"\"x\"\"\"\"`` ends the string at the
+        # 4th quote), matching HOCON/JSON-superset behavior.
+        end = close + 2
+        while end + 1 < len(text) and text[end + 1] == '"':
+            end += 1
+        return end
+
+    @classmethod
+    def skip_string(cls, text: str, start: int) -> int:
+        """Given ``text[start] == '"'``, return the index just past the string (triple- or
+        single-quoted). Returns -1 if the string is unterminated."""
+        if text.startswith('"""', start):
+            end = cls.find_triple_string_end(text, start)
+        else:
+            end = cls.find_string_end(text, start)
+        return -1 if end == -1 else end + 1
+
     @classmethod
     def match_closing_brace(cls, text: str, open_index: int) -> Optional[int]:
         """Given ``text[open_index] == '{'``, return the index just past its matching ``}``.
 
-        Tracks string literals and ``#`` comments so braces inside those don't throw off the
-        count. Returns ``None`` if the brace is never closed.
+        Tracks single- and triple-quoted strings and ``#`` comments so braces inside those
+        don't throw off the count. Returns ``None`` if the brace is never closed.
         """
         n = len(text)
         depth = 1
@@ -79,10 +103,10 @@ class HoconText:
         while k < n and depth > 0:
             char = text[k]
             if char == '"':
-                end = cls.find_string_end(text, k)
-                if end == -1:
+                after = cls.skip_string(text, k)
+                if after == -1:
                     return None
-                k = end + 1
+                k = after
                 continue
             if char == "#":
                 k = cls.skip_line(text, k)
