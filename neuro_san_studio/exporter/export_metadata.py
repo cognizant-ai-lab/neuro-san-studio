@@ -112,13 +112,25 @@ class ExportMetadataStamper:
         return head + "\n" + note + keys + brace_indent + region[close:]
 
     def _create_block(self, text: str, kv: Dict[str, str]) -> str:
-        """Insert a fresh metadata block (note + keys) just after the document's root brace."""
-        meta_indent = self._LEVEL
-        key_indent = meta_indent + self._LEVEL
+        """Insert a fresh metadata block for a network that has none.
+
+        If the document has a root ``{ ... }``, the block goes just inside it. For a brace-less
+        document (top-level ``key = ...`` statements), the block is prepended as a sibling
+        top-level key, after any leading comments/includes.
+        """
+        start = HoconText.first_significant_index(text)
+        if start < len(text) and text[start] == "{":
+            meta_indent = self._LEVEL
+            key_indent = meta_indent + self._LEVEL
+            keys = "".join(f'{key_indent}"{key}": "{self._escape(value)}",\n' for key, value in kv.items())
+            block = f'\n{meta_indent}"metadata": {{\n' + self._render_note(key_indent) + keys + f"{meta_indent}}},"
+            return text[: start + 1] + block + text[start + 1 :]
+
+        # Brace-less root: prepend metadata as its own top-level key (indented one level).
+        key_indent = self._LEVEL
         keys = "".join(f'{key_indent}"{key}": "{self._escape(value)}",\n' for key, value in kv.items())
-        block = f'\n{meta_indent}"metadata": {{\n' + self._render_note(key_indent) + keys + f"{meta_indent}}},"
-        root = text.index("{")
-        return text[: root + 1] + block + text[root + 1 :]
+        block = '"metadata": {\n' + self._render_note(key_indent) + keys + "}\n"
+        return text[:start] + block + text[start:]
 
     @staticmethod
     def _line_indent(text: str, pos: int) -> str:

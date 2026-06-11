@@ -78,6 +78,29 @@ class TestStamp:
         config = ConfigFactory.parse_string(stamped)
         assert _EXPORT_KEYS.issubset(set(config["metadata"]))
 
+    def test_brace_less_network_without_metadata_prepends_top_level_block(self) -> None:
+        """A brace-less network (top-level ``key = ...``) gets metadata as a sibling key,
+        not injected inside the first tool object."""
+        text = 'tools = [\n    { "name": "frontman", "class": "openai" }\n]\n'
+        stamped = ExportMetadataStamper().stamp(text)
+
+        config = ConfigFactory.parse_string(stamped)
+        assert _EXPORT_KEYS.issubset(set(config["metadata"]))
+        # The block lands at the network root, leaving the tool object untouched.
+        assert len(list(config["tools"])) == 1
+        assert config["tools"][0]["name"] == "frontman"
+        assert "export_user" not in config["tools"][0]
+
+    def test_brace_less_network_with_metadata_updates_in_place(self) -> None:
+        """A brace-less network that already has a metadata block is updated in place."""
+        text = 'metadata {\n    tags = ["a"]\n}\ntools = [\n    { "name": "f", "class": "openai" }\n]\n'
+        stamped = ExportMetadataStamper().stamp(text)
+
+        assert stamped.count("metadata {") == 1
+        config = ConfigFactory.parse_string(stamped)
+        assert list(config["metadata"]["tags"]) == ["a"]
+        assert _EXPORT_KEYS.issubset(set(config["metadata"]))
+
     def test_injects_explanatory_comment_above_keys(self) -> None:
         """A HOCON comment describing the keys is injected and does not break parsing."""
         text = '{\n    "tools": []\n}\n'

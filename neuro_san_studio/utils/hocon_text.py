@@ -32,6 +32,26 @@ class HoconText:
             i += 1
         return i + 1 if i < n else i
 
+    @classmethod
+    def first_significant_index(cls, text: str) -> int:
+        """Index of the first char that isn't whitespace, a ``#``/``//`` comment, or an
+        ``include`` directive line. Returns ``len(text)`` if there's nothing significant."""
+        n = len(text)
+        i = 0
+        while i < n:
+            char = text[i]
+            if char in " \t\r\n":
+                i += 1
+                continue
+            if char == "#" or text.startswith("//", i):
+                i = cls.skip_line(text, i)
+                continue
+            if text.startswith("include", i):
+                i = cls.skip_line(text, i)
+                continue
+            return i
+        return n
+
     @staticmethod
     def find_string_end(text: str, start: int) -> int:
         """Given ``text[start] == '"'``, return the index of the closing quote (-1 if unterminated)."""
