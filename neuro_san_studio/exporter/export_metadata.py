@@ -44,9 +44,9 @@ class ExportMetadataStamper:
         "export_neuro_san_studio_version: studio version at export time",
     )
 
-    # Indentation for keys/comment lines inside the metadata block, and for its closing brace.
-    _INDENT = "        "
-    _CLOSE_INDENT = "    "
+    # One indentation level (HOCON convention). Keys sit one level deeper than the
+    # ``metadata`` line; the closing brace lines up with it.
+    _LEVEL = "    "
 
     def build(self) -> Dict[str, str]:
         """Assemble the export-provenance keys written into the network's metadata at export time."""
@@ -73,9 +73,13 @@ class ExportMetadataStamper:
         if end is None:
             raise ValueError("Unbalanced braces: no closing brace for metadata block.")
 
+        # Keys sit one level in from the ``metadata`` line itself, so the indent adapts whether
+        # ``metadata`` is at column 0 or nested. Detected from the line, not from the brace.
+        key_indent = self._line_indent(text, match.start()) + self._LEVEL
+
         region = text[open_brace:end]  # the metadata block, '{' ... '}' inclusive
         region, missing = self._update_existing(region, kv)
-        region = self._append_missing(region, missing)
+        region = self._append_missing(region, missing, key_indent)
         return text[:open_brace] + region + text[end:]
 
     def _update_existing(self, region: str, kv: Dict[str, str]) -> Tuple[str, Dict[str, str]]:
@@ -92,28 +96,37 @@ class ExportMetadataStamper:
                 missing[key] = value
         return region, missing
 
-    def _append_missing(self, region: str, missing: Dict[str, str]) -> str:
-        """Append ``missing`` keys before the block's closing brace, adding the comment once."""
+    def _append_missing(self, region: str, missing: Dict[str, str], key_indent: str) -> str:
+        """Insert ``missing`` keys (and the comment, once) before the block's closing brace."""
         if not missing:
             return region
-        note = "" if self._note_marker() in region else self._render_note()
-        keys = "".join(f'{self._INDENT}"{key}": "{self._escape(value)}",\n' for key, value in missing.items())
+        note = "" if self._note_marker() in region else self._render_note(key_indent)
+        keys = "".join(f'{key_indent}"{key}": "{self._escape(value)}",\n' for key, value in missing.items())
         close = region.rfind("}")
-        # rstrip the head so we don't leave a whitespace-only line between the last existing
-        # key and our injected block.
+        # Drop trailing whitespace before the brace so we don't leave a blank line; the closing
+        # brace line (region[close:]) is preserved verbatim.
         head = region[:close].rstrip()
-        return head + "\n" + note + keys.rstrip("\n") + "\n" + self._CLOSE_INDENT + region[close:]
+        brace_indent = region[region.rfind("\n", 0, close) + 1 : close]
+        return head + "\n" + note + keys + brace_indent + region[close:]
 
     def _create_block(self, text: str, kv: Dict[str, str]) -> str:
         """Insert a fresh metadata block (note + keys) just after the document's root brace."""
-        keys = "".join(f'{self._INDENT}"{key}": "{self._escape(value)}",\n' for key, value in kv.items())
-        block = '\n    "metadata": {\n' + self._render_note() + keys + "    },"
+        meta_indent = self._LEVEL
+        key_indent = meta_indent + self._LEVEL
+        keys = "".join(f'{key_indent}"{key}": "{self._escape(value)}",\n' for key, value in kv.items())
+        block = f'\n{meta_indent}"metadata": {{\n' + self._render_note(key_indent) + keys + f"{meta_indent}}},"
         root = text.index("{")
         return text[: root + 1] + block + text[root + 1 :]
 
-    def _render_note(self) -> str:
-        """The comment block (one ``#`` line per note line) at the block's indentation."""
-        return "".join(f"{self._INDENT}# {line}\n" for line in self._NOTE_LINES)
+    @staticmethod
+    def _line_indent(text: str, pos: int) -> str:
+        """Leading whitespace of the line containing ``pos`` (used to indent relative to it)."""
+        line_start = text.rfind("\n", 0, pos) + 1
+        return text[line_start : pos - len(text[line_start:pos].lstrip())]
+
+    def _render_note(self, indent: str) -> str:
+        """The comment block (one ``#`` line per note line) at ``indent``."""
+        return "".join(f"{indent}# {line}\n" for line in self._NOTE_LINES)
 
     def _note_marker(self) -> str:
         """First note line as it appears in text; its presence means the comment is already there."""
