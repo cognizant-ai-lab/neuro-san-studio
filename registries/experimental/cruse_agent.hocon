@@ -107,7 +107,9 @@ Always use your tool to respond. Never respond without calling your tool first. 
         },
         {
             "name": "domain_expert",
-            "function": ${aaosa_call},
+            "function": ${aaosa_call}{
+                "description": "Connects to an external agent network to handle domain-specific inquiries."
+            },
             "class": "call_agent.CallAgent",
         },
     ]

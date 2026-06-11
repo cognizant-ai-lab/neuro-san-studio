@@ -350,7 +350,7 @@ class TestImportFromZip:
         assert (target_dir / "registries" / "aaosa_basic.hocon").is_file()
 
     def test_single_hocon_shared_include_does_not_register_in_manifest(self, tmp_path: Path) -> None:
-        """`ns import -f aaosa.hocon` should land the file but not pollute the manifest."""
+        """`ns import aaosa.hocon` should land the file but not pollute the manifest."""
         source = tmp_path / "aaosa.hocon"
         source.write_text('{ "aaosa_instructions": "..." }\n')
         target_dir = tmp_path / "target"

@@ -88,8 +88,8 @@ class TestMainEntryPoint:
         assert not runner_call_order
         assert init_calls == [("openai,anthropic",), ("run",)]
 
-    def test_main_with_import_from_file_passes_path_and_force(self, monkeypatch: MonkeyPatch) -> None:
-        """`neuro-san-studio import -f <path> --force` forwards both options to ImportCommand."""
+    def test_main_with_import_positional_passes_tokens_and_force(self, monkeypatch: MonkeyPatch) -> None:
+        """`neuro-san-studio import a.hocon b.zip --force` forwards space-separated tokens + force."""
         captured: list = []
 
         class FakeImport:  # pylint: disable=too-few-public-methods
@@ -97,41 +97,18 @@ class TestMainEntryPoint:
 
             def __init__(
                 self,
-                networks_arg: str | None = None,
-                from_file: str | None = None,
+                networks_arg: list | None = None,
                 force: bool = False,
             ) -> None:
-                captured.append({"networks_arg": networks_arg, "from_file": from_file, "force": force})
+                captured.append({"networks_arg": networks_arg, "force": force})
 
             def run(self) -> None:
                 """No-op."""
 
         monkeypatch.setattr(import_networks_module, "ImportCommand", FakeImport)
-        monkeypatch.setattr(sys, "argv", ["neuro-san-studio", "import", "-f", "/tmp/x.hocon", "--force"])
+        monkeypatch.setattr(sys, "argv", ["neuro-san-studio", "import", "a.hocon", "b.zip", "--force"])
         main()
-        assert captured == [{"networks_arg": None, "from_file": "/tmp/x.hocon", "force": True}]
-
-    def test_main_with_import_positional_and_from_file_errors(self, monkeypatch: MonkeyPatch) -> None:
-        """Passing both positional networks and --from-file is rejected before ImportCommand runs."""
-        constructed: list = []
-
-        class FakeImport:  # pylint: disable=too-few-public-methods
-            """Stand-in that records construction; should never be called when args conflict."""
-
-            def __init__(self, **kwargs: object) -> None:
-                constructed.append(kwargs)
-
-            def run(self) -> None:
-                """Unreachable when arg validation rejects the call."""
-                constructed.append("run")
-
-        monkeypatch.setattr(import_networks_module, "ImportCommand", FakeImport)
-        monkeypatch.setattr(sys, "argv", ["neuro-san-studio", "import", "basic", "-f", "/tmp/x.hocon"])
-        # Typer prints the BadParameter error and exits with code 2; main() swallows
-        # clean SystemExit codes. The contract we care about is that ImportCommand
-        # never gets constructed when the args conflict.
-        main()
-        assert not constructed
+        assert captured == [{"networks_arg": ["a.hocon", "b.zip"], "force": True}]
 
     def test_main_propagates_runner_exceptions(self, monkeypatch: MonkeyPatch) -> None:
         """Exceptions from NeuroSanRunner().run() should bubble up to the caller."""
@@ -147,3 +124,19 @@ class TestMainEntryPoint:
         monkeypatch.setattr(sys, "argv", ["neuro-san-studio", "run"])
         with pytest.raises(RuntimeError, match="boom"):
             main()
+
+    @pytest.mark.parametrize("flag", ["--version", "-V"])
+    def test_version_flag_prints_version_and_exits(
+        self, flag: str, monkeypatch: MonkeyPatch, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        """`ns --version` / `-V` prints the resolved version and exits without starting the server."""
+        call_order = self._install_fake_runner(monkeypatch)
+        monkeypatch.setattr(
+            "neuro_san_studio.utils.version.resolve_version",
+            lambda: ("1.2.3", "installed"),
+        )
+        monkeypatch.setattr(sys, "argv", ["neuro-san-studio", flag])
+        # The eager callback raises typer.Exit(0); main() swallows clean exits.
+        main()
+        assert "neuro-san-studio 1.2.3 (installed)" in capsys.readouterr().out
+        assert not call_order
