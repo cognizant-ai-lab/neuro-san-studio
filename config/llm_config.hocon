@@ -22,7 +22,10 @@
 
     # Define a deployment environment, the default for which will be for local development.
     deployment_environment = "default"
-    deployment_environment = ${AGENT_LLM_CONFIG_DEPLOYMENT_ENVIRONMENT}  # Use "default" or override with env var if set
+
+    # Use "default" or override with env var if set
+    # Other values we expect from the env var include "cluster" or "byok" (see definitions below).
+    deployment_environment = ${AGENT_LLM_CONFIG_DEPLOYMENT_ENVIRONMENT}
 
     # This llm_config is the baseline for the default developer config.
     # The idea here is that if any of API keys for the providers are available,
