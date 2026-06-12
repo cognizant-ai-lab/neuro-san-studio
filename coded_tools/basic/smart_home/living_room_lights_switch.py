@@ -14,7 +14,7 @@
 #
 # END COPYRIGHT
 
-from coded_tools.smart_home.lights_switch import LightsSwitch
+from coded_tools.basic.smart_home.lights_switch import LightsSwitch
 
 
 class LivingRoomLightsSwitch(LightsSwitch):
