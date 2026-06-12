@@ -489,11 +489,11 @@ To find which models are available in your region, refer to the official AWS doc
 
 To use Gemini models:
 
-1. The `langchain-google-genai` package is already included as a prerequisite for the neuro-san library,
-so no need to install anything new.
+1. The `langchain-google-genai` package is already included with neuro-san-studio,
+   so no need to install anything new.
 
 2. Set the `GOOGLE_API_KEY` environment variable to your Google Gemini API key
-and specify which model to use in the `model_name` field of the `llm_config` section of an agent network hocon file:
+   and specify which model to use in the `model_name` field of the `llm_config` section of an agent network hocon file:
 
 ```hocon
     "llm_config": {

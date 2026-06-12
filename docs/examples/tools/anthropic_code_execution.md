@@ -23,7 +23,7 @@ This agent network requires the following setup:
 ### Python Dependencies
 
 This agent network requires langchain-anthropic for Anthropic's built-in tool integration.
-This is already a prerequisite for the neuro-san library, so no need to install anything new.
+This is already included with neuro-san-studio, so no need to install anything new.
 
 ### Environment Variables
 

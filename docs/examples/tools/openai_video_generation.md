@@ -32,7 +32,7 @@ This agent network requires the following setup:
 ### Python Dependencies
 
 This agent network requires langchain-openai for OpenAI's Responses API integration.
-This is already a prerequisite for the neuro-san library, so no need to install it separately.
+This is already included with neuro-san-studio, so no need to install it separately.
 
 Additional dependencies for video processing:
 

@@ -33,7 +33,7 @@ This agent network requires the following setup:
 ### Python Dependencies
 
 This agent network requires google-genai for Gemini's image generation capabilities.
-This is already included via langchain-google-genai, which is a prerequisite for the neuro-san library,
+This is already included via langchain-google-genai, which is included with neuro-san-studio,
 so no need to install anything new.
 
 ### Environment Variables
