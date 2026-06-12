@@ -33,7 +33,7 @@ class ResolvedHoconDump:
         """
         Constructor
         """
-        self. args = None
+        self.args = None
 
     def main(self):
         """
