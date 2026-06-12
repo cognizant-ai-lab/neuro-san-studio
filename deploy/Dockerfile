@@ -129,9 +129,10 @@ ENV APP_ENTRYPOINT="${APP_SOURCE}/deploy/entrypoint.sh"
 
 #
 # Set up llm_config.hocon for the deployed container.
-# By default we use the same LLM configuration as for developers downloading neuro-san-studio.
-# Other shipped config files are available in ./config like cluster_llm_config.hocon and byok_llm_config.hocon
-ENV AGENT_LLM_CONFIG="developer_llm_config.hocon"
+# NOTE: This is a container build-time variable. Switching this value at run-time will have no effect.
+# By default we use the cluster LLM configuration as for developers downloading neuro-san-studio.
+# Other shipped config files are available in ./config like developer_llm_config.hocon and byok_llm_config.hocon
+ENV AGENT_LLM_CONFIG="cluster_llm_config.hocon"
 COPY ${APP_SOURCE}/config/${AGENT_LLM_CONFIG} ${APP_SOURCE}/config/llm_config.hocon
 
 #
