@@ -20,9 +20,11 @@
     # Each key can be referenced in agent configs using the ${key} syntax.
     # Do not define agents or tools directly here—this file only provides reusable values.
 
-    # A Bring-Your-Own-Key (BYOK) config.
+    # A Bring-Your-Own-Key (BYOK) llm_config.
     # Similar to the default developer config above, except that any api keys must be provided by the
     # client in sly_data.
+    #
+    # To most easily use this config, copy it over this directory's llm_config.hocon file. 
     "llm_config": {
         "fallbacks": [
             {

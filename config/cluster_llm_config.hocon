@@ -24,6 +24,8 @@
     # one of the providers, we will immediately use the next one in the list without retrying in an
     # attempt to get better response times.  The idea is to spread the load across providers
     # during busy times.
+    #
+    # To most easily use this config, copy it over this directory's llm_config.hocon file. 
     "llm_config": {
         "fallbacks": [
             {

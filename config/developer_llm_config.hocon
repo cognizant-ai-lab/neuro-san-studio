@@ -25,6 +25,8 @@
     # use them.  Providers whose libraries and/or API keys are not available are
     # culled from usage by the underlying neuro-san system. Unless of course no API keys
     # are available at all, in which case the system will generate an error.
+    #
+    # To most easily use this config, copy it over this directory's llm_config.hocon file. 
     "llm_config" {
 
         # Set the `class` key to one of the values listed below, then specify the model
