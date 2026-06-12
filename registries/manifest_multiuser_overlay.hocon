@@ -34,6 +34,7 @@
     #   4. Requires use of external services not readily deployed by the average bear
     #      (like databases)
     #   5. Have-a or is-a dependency on a particular agent network that has one of the above issues.
+    #   6. Developer-facing example of specific HOCON features/patterns (not an end-user demo).
     #
     # To use this file, we simply add a reference to it at the end of our existing
     # AGENT_MANIFEST_FILE specification # like this:
@@ -41,6 +42,19 @@
     #    export AGENT_MANIFEST_FILE="registries/manifest.hocon registries/manifest_multiuser_overlay.hocon"
     #
     # Basically the data for later manifest files gets overlayed on top of earlier ones.
+
+    # Technical demos
+    "basic/book_recommender_multiple_llm_configs.hocon": false, # Reason #2
+    "basic/coding_assistant.hocon": false,                      # Reason #5
+    "basic/internal_communication_skill.hocon": false,           # Reason #6
+    "basic/job_guessing_skill.hocon": false,                     # Reason #6
+    "basic/music_nerd.hocon": false,                             # Reason #6
+    "basic/music_nerd_llm_fallbacks.hocon": false,               # Reason #2
+    "basic/music_nerd_local.hocon": false,                       # Reason #4
+    "basic/music_nerd_pro_local.hocon": false,                   # Reason #4
+    "basic/music_nerd_pro_sly.hocon": false,                     # Reason #6
+    "basic/music_nerd_pro_sly_local.hocon": false,               # Reason #4
+    "basic/pii_middleware.hocon": false,                         # Reason #6
 
     # Tools
     "tools/agent_network_html_creator.hocon": false,    # Reason #3
@@ -65,19 +79,4 @@
 
     # Agent network test generator
     "agent_network_test_generator.hocon": false,        # Reason #1
-
-    # Technical demos: developer-facing examples showcasing specific HOCON
-    # features/patterns.  Useful as local references but not appropriate for
-    # end-users in a multi-user deployment.
-    "basic/book_recommender_multiple_llm_configs.hocon": false,
-    "basic/coding_assistant.hocon": false,
-    "basic/internal_communication_skill.hocon": false,
-    "basic/job_guessing_skill.hocon": false,
-    "basic/music_nerd.hocon": false,
-    "basic/music_nerd_llm_fallbacks.hocon": false,
-    "basic/music_nerd_local.hocon": false,
-    "basic/music_nerd_pro_local.hocon": false,
-    "basic/music_nerd_pro_sly.hocon": false,
-    "basic/music_nerd_pro_sly_local.hocon": false,
-    "basic/pii_middleware.hocon": false,
 }
