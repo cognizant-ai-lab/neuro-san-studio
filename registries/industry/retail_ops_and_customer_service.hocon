@@ -14,7 +14,8 @@
 #
 # END COPYRIGHT
 {
-    include "registries/aaosa.hocon",
+    include "registries/aaosa.hocon"
+    include "registries/expertise_scoping_instructions.hocon",
     
     "metadata": {
         "description": "Modular multi-agent system for automating customer support in retail. Simulates a helpdesk with agents managing orders, returns, refunds, product information, and escalations. Uses domain-specific delegation to provide personalized support while adhering to company policies. Currently runs in demo mode and is designed for easy connection to live systems.",
@@ -67,8 +68,7 @@ A customer or associate inquiry about orders, returns, refunds, products, or oth
             },
             "instructions": """You are the top-level agent responsible for customer support. You are the single point of contact for the user.
 Handle all issues related to orders, returns, refunds, and product inquiries. Respond with clear, final answers.
-Only answer inquiries that are directly within your area of expertise. Do not try to help for other matters.
-Do not mention what you can NOT do. Only mention what you can do.
+""" ${expertise_scoping_instructions} """
 Do not describe your process, actions, or mention other teams, agents, or tools. Simply provide the resolution to the user's issue.
 If user input is needed, ask for it as a clear bullet-point list, with examples where helpful.
 If an error was made, apologize and take responsibility on behalf of the company.

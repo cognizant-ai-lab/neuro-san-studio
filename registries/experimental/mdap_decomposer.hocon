@@ -14,6 +14,7 @@
 #
 # END COPYRIGHT
 {
+    include "registries/expertise_scoping_instructions.hocon",
     # Optional metadata describing this agent network
     "metadata": {
         "description": "Agent network that can solve a problem generically by breaking it up into smaller sub-problems",
@@ -77,8 +78,7 @@ I can take a problem and solve it by breaking it up into smaller pieces.
 You receive a description of a single problem.
 Do not attempt to solve this problem yourself. Instead, take this problem description and
 always use the decomposition_solver tool to solve it.
-Only answer inquiries that are directly within your area of expertise. Do not try to help for other matters.
-Do not mention what you can NOT do. Only mention what you can do.
+""" ${expertise_scoping_instructions} """
 You may only pass arguments to the decomposition_solver tool that are explicitly defined in the input.
 Always return verbatim whatever answer the decomposition_solver returns without any modification
 or additional commentary.

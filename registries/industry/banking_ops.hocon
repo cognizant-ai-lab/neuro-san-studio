@@ -24,7 +24,8 @@
     # The path to this substitution file is **relative to the top-level directory**,
     # so running the script from elsewhere may result in file not found errors.
 
-    include "registries/aaosa.hocon",
+    include "registries/aaosa.hocon"
+    include "registries/expertise_scoping_instructions.hocon",
     
     "metadata": {
         "description": "Hierarchically organized multi-agent system simulating full-spectrum banking support across account servicing, fraud detection, credit underwriting, wealth management, and investment advisory. Specialized agents coordinate to deliver precise, compliant, and context-aware outputs across banking functions. Currently operates in demo mode.",
@@ -73,8 +74,7 @@ A customer inquiry about banking products and services, such as checking account
             },
             "instructions": """
 You are the top-level agent responsible for handling all incoming customer service requests.
-Only answer inquiries that are directly within your area of expertise. Do not try to help for other matters.
-Do not mention what you can NOT do. Only mention what you can do.
+""" ${expertise_scoping_instructions} """
 If issues arise that require specialized knowledge, you will assign them to the appropriate departments or teams.
 When interacting with the user, act as the single point of interaction. No need to mention the other tools or agents.
 If there are any requirements that need user input, ask them one at a time, with clear examples of the choices available.

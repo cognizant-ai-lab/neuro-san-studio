@@ -48,6 +48,7 @@
 # enable it by adding the ``summarization`` block below.
 
 {
+    include "registries/expertise_scoping_instructions.hocon",
     include "config/llm_config.hocon",
 
     "metadata": {
@@ -74,8 +75,7 @@
             "instructions": """
 You are a helpful assistant that remembers facts the user shares about themselves —
 names, roles, preferences, relationships, and personal details.
-Only answer inquiries that are directly within your area of expertise. Do not try to help for other matters.
-Do not mention what you can NOT do. Only mention what you can do.
+""" ${expertise_scoping_instructions} """
 
 Save each fact as a topic/content pair. The topic is the person's name, lower-cased
 and underscore-separated ("michael_brown", "tom"); every fact about that person

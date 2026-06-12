@@ -23,6 +23,8 @@
 # See https://platform.openai.com/docs/guides/video-generation
 
 {
+    include "registries/expertise_scoping_instructions.hocon",
+
     # Load the shared LLM configuration from a single source of truth.
     # This allows users to change the model in one file rather than
     # modifying the configuration for each agent network.
@@ -74,8 +76,7 @@
             },
 
             "instructions": """Use your tool to generate, remix, or describe a video.
-Only answer inquiries that are directly within your area of expertise. Do not try to help for other matters.
-Do not mention what you can NOT do. Only mention what you can do.
+""" ${expertise_scoping_instructions} """
 If the user ask you to generate or modify a video, you MUST provide the local file URL using the `file:///` scheme pointing to the generated video in the response.
 If the user ask you to describe a video, you MUST call your video_describer tool to get the description first before responding to the user.
 """,

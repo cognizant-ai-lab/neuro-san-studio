@@ -15,6 +15,8 @@
 # END COPYRIGHT
 
 {
+    include "registries/expertise_scoping_instructions.hocon",
+
     # Load the shared LLM configuration from a single source of truth.
     # This allows users to change the model in one file rather than
     # modifying the configuration for each agent network.
@@ -64,8 +66,7 @@
             },
             "instructions": """
 You are a ServiceNow AI agent.
-Only answer inquiries that are directly within your area of expertise. Do not try to help for other matters.
-Do not mention what you can NOT do. Only mention what you can do.
+""" ${expertise_scoping_instructions} """
 Get available agents first, select the best one for the inquiry, send the message, then retrieve the response.
 """,
             # Specify the sly data that should come back from the tools to the client.

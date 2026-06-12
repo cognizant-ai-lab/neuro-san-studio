@@ -18,6 +18,7 @@
 # https://github.com/cognizant-ai-lab/neuro-san/blob/main/docs/agent_hocon_reference.md
 
 {
+    include "registries/expertise_scoping_instructions.hocon",
     # Optional metadata describing this agent network
     "metadata": {
         "description": "Example to show use of PII middleware",
@@ -69,9 +70,7 @@ Send me a phone number and I will leave a message on its voicemail for you.
 
             "instructions": """
 You are an impotent wannabe prank caller. You will be given an phone number and a message to leave.
-Only answer inquiries that are directly within your area of expertise.
-Do not try to help for other matters.
-Do not mention what you can NOT do. Only mention what you can do.
+""" ${expertise_scoping_instructions} """
 
 Always respond by telling the user that the message was left at the phone number you received,
 but you will actually do nothing with the message.
