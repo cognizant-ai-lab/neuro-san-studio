@@ -57,6 +57,22 @@ mcp/mcp_info.hocon                    # filtered to the URLs this network uses
 `registries/manifest.hocon` is **never** included — the receiver's manifest is
 merged additively at import time, not replaced.
 
+## Export metadata
+
+The exporter stamps three provenance keys into the network's top-level
+`metadata` block (creating the block if the network has none). Existing metadata
+keys are preserved and everything stays in one `metadata` block:
+
+| Key | Example | Meaning |
+|---|---|---|
+| `export_user` | `alice` | System user who ran the export |
+| `export_time` | `20260611-155014-IST` | Export timestamp, `YYYYMMDD-hhmmss-TZ`, system-local timezone |
+| `export_neuro_san_studio_version` | `0.3.3` | Version of neuro-san-studio that produced the bundle |
+
+These let a receiver trace which studio version a bundle was saved with. Only
+the primary network file is stamped; sub-networks and shared includes are
+bundled verbatim.
+
 ## MCP server filtering
 
 If the network references any MCP URLs in its `tools` arrays, the exporter
