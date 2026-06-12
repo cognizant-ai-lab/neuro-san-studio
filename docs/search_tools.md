@@ -25,8 +25,8 @@ partnership and availability).
 _Environment Variables:_
 
 Get an API key by visiting [https://console.anthropic.com/settings/keys](https://console.anthropic.com/settings/keys).
-Once you have the API key, set it using the `ANTHROPIC_API_KEY` environment variable.
-langchain-anthropic is already included with neuro-san-studio.
+Once you have the API key, set it using the `ANTHROPIC_API_KEY` environment variable. The required
+langchain-anthropic package is already included with neuro-san-studio.
 
 _Example Usage in Neuro San Studio_:
 
@@ -152,8 +152,8 @@ _Environment Variables:_
 
 To use this search tool, obtain an API key from:
 [https://platform.openai.com/api-keys](https://platform.openai.com/api-keys). Once you have the API key, set it using
-the `OPENAI_API_KEY` environment variable.
-langchain-openai is already included with neuro-san-studio.
+the `OPENAI_API_KEY` environment variable. The required
+langchain-openai package is already included with neuro-san-studio.
 
 _Example Usage in Neuro San Studio:_
 
