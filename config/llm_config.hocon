@@ -25,6 +25,8 @@
     # use them.  Providers whose libraries and/or API keys are not available are
     # culled from usage by the underlying neuro-san system. Unless of course no API keys
     # are available at all, in which case the system will generate an error.
+    #
+    # To most easily use this config, copy it over this directory's llm_config.hocon file. 
     "llm_config" {
 
         # Set the `class` key to one of the values listed below, then specify the model
@@ -71,4 +73,17 @@
             }
         ]
     }
+
+    #
+    # sly_data_schema definitions for to communicate the needs of optional BYOK to a generic client.
+    # In this configuration, however, we do not use BYOK, but we do need to define the stubs.
+    #
+
+    # A BYOK llm_config_property to be inserted in an already existing sly_data_schema.
+    # Note that with hocon we can only define values to be used later in substitution.
+    "llm_config_property": null
+
+    # When there are no entries in the sly_data_schema, we can use this complete definition.
+    # to fill out what is necessary for BYOK
+    "sly_data_schema": null
 }
