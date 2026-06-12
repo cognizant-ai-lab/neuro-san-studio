@@ -65,4 +65,19 @@
 
     # Agent network test generator
     "agent_network_test_generator.hocon": false,        # Reason #1
+
+    # Technical demos: developer-facing examples showcasing specific HOCON
+    # features/patterns.  Useful as local references but not appropriate for
+    # end-users in a multi-user deployment.
+    "basic/book_recommender_multiple_llm_configs.hocon": false,
+    "basic/coding_assistant.hocon": false,
+    "basic/internal_communication_skill.hocon": false,
+    "basic/job_guessing_skill.hocon": false,
+    "basic/music_nerd.hocon": false,
+    "basic/music_nerd_llm_fallbacks.hocon": false,
+    "basic/music_nerd_local.hocon": false,
+    "basic/music_nerd_pro_local.hocon": false,
+    "basic/music_nerd_pro_sly.hocon": false,
+    "basic/music_nerd_pro_sly_local.hocon": false,
+    "basic/pii_middleware.hocon": false,
 }
