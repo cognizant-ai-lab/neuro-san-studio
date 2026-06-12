@@ -59,7 +59,8 @@
                 # The description acts as an initial prompt.
                 "description": """
 I can help with music-related inquiries.
-"""
+""",
+                "sly_data_schema": ${?sly_data_schema}
             },
 
             "instructions": """
