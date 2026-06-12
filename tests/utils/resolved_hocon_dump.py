@@ -14,10 +14,9 @@
 #
 # END COPYRIGHT
 
-from typing import Any
-
 import argparse
 import json
+from typing import Any
 
 from neuro_san.internals.persistence.abstract_async_config_restorer import AbstractAsyncConfigRestorer
 
