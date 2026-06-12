@@ -46,6 +46,8 @@ ${PIP} freeze
 PACKAGE_INSTALL=${PACKAGE_INSTALL:-.}
 echo "PACKAGE_INSTALL is ${PACKAGE_INSTALL}"
 
+echo "AGENT_SESSION_REQUIRE_HTTPS = ${AGENT_SESSION_REQUIRE_HTTPS}"
+
 echo "DIAGNOSTIC: Dumping sys.path and PYTHONPATH before server start..."
 ${PYTHON} -c "import sys, os; print('DIAGNOSTIC sys.path:', sys.path); print('DIAGNOSTIC PYTHONPATH:', os.environ.get('PYTHONPATH'))"
 
