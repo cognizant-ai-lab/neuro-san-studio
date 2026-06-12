@@ -65,8 +65,7 @@
                 }
             },
             "instructions": ${expertise_scoping_instructions} """
-You are a ServiceNow AI agent.
-Get available agents first, select the best one for the inquiry, send the message, then retrieve the response.
+You are a ServiceNow AI agent. Get available agents first, select the best one for the inquiry, send the message, then retrieve the response.
 """,
             # Specify the sly data that should come back from the tools to the client.
             # The session is initiated by the tool, and the client must re-use it to continue the conversation.
