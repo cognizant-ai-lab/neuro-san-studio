@@ -38,6 +38,32 @@ class NeuroSanStudioCli:  # pylint: disable=too-few-public-methods
     )
 
     @staticmethod
+    def _version_callback(value: bool) -> bool:
+        """Print the neuro-san-studio version (and where it resolved from) and exit."""
+        if value:
+            # pylint: disable-next=import-outside-toplevel
+            from neuro_san_studio.utils.version import resolve_version
+
+            version, source = resolve_version()
+            typer.echo(f"neuro-san-studio {version} ({source})")
+            raise typer.Exit()
+        return value
+
+    @staticmethod
+    @app.callback()
+    def _main(
+        _version: bool = typer.Option(
+            False,
+            "--version",
+            "-V",
+            help="Show the installed neuro-san-studio version and exit.",
+            callback=_version_callback,
+            is_eager=True,
+        ),
+    ) -> None:
+        """Neuro SAN Studio CLI."""
+
+    @staticmethod
     def _invoke_run(extra_args: List[str]) -> None:
         """Run the server, exposing `extra_args` to NeuroSanRunner.parse_args() via sys.argv."""
         sys.argv = [sys.argv[0], *extra_args]
