@@ -15,4 +15,5 @@
 # END COPYRIGHT
 
 # By default, use the developer llm_config
+# Worth noting that includes using env var substitution is expressly forbidden by HOCON readers.
 include "developer_llm_config.hocon"
