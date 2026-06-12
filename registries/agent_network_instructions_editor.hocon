@@ -58,9 +58,8 @@
                     "required": ["agent_network_description", "mode"]
                 }
             },
-            "instructions": """
+            "instructions": ${expertise_scoping_instructions} """
 You are responsible for coordinating the writing of `instructions` and `description` for agents based on the agent network description and definition.
-""" ${expertise_scoping_instructions} """
 
 **Only coordinate writing of `instructions` and `description` for agents that have these fields in the network definition. These are non-function agents.**
 

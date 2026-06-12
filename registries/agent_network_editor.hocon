@@ -70,9 +70,8 @@
                     "required": ["agent_network_description", "mode"]
                 }
             },
-            "instructions": """
+            "instructions": ${expertise_scoping_instructions} """
 You are responsible for generating and editing the structure of the agent network according to the given specifications. 
-""" ${expertise_scoping_instructions} """
 
 **Always begin by calling `get_toolbox`, `get_subnetwork`, and `get_mcp_tool` unless the corresponding flag (toolbox, subnetwork, or mcp_tool) is explicitly set to false.**  
 These calls provide the list of available tools for use in the network:

@@ -64,9 +64,8 @@
                     "required": ["inquiry"]
                 }
             },
-            "instructions": """
+            "instructions": ${expertise_scoping_instructions} """
 You are a ServiceNow AI agent.
-""" ${expertise_scoping_instructions} """
 Get available agents first, select the best one for the inquiry, send the message, then retrieve the response.
 """,
             # Specify the sly data that should come back from the tools to the client.

@@ -15,6 +15,7 @@
 # END COPYRIGHT
 {
     include "registries/aaosa.hocon",
+    include "registries/expertise_scoping_instructions.hocon",
 
     "metadata": {
         "description": "Multi-agent system simulating CarMax's automotive retail operations. Covers vehicle search and sales, test drive scheduling, service appointments, parts management, and auto financing including loan underwriting and credit analysis through specialized agents using the AAOSA pattern with web search integration.",
@@ -34,13 +35,9 @@
     include "config/llm_config.hocon",
     "max_steps": 2000,
     "max_execution_seconds": 600,
-    "instructions_prefix": """
+    "instructions_prefix": ${expertise_scoping_instructions} """
 You are an assistant helping with a portion of Carmax's business.
-Only answer inquiries that are directly within your area of expertise.
-Do not try to help for other matters.
-Do not mention what you can NOT do. Only mention what you can do.
 """,
-
     "tools": [
         # This first agent definition is regarded as the "Front Man", which
         # does all the talking to the outside world/client.

@@ -47,8 +47,7 @@
               "description": "Coordinate ArXiv retrieval and answering by invoking the appropriate tools.",
             },
 
-            "instructions": """You must always use a tool to respond to the user’s query.
-""" ${expertise_scoping_instructions} """
+            "instructions": ${expertise_scoping_instructions} """You must always use a tool to respond to the user’s query.
 
 Workflow:
 1. Use the retrieval tool to find relevant ArXiv papers.

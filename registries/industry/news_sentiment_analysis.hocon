@@ -19,6 +19,7 @@
 
 {
     include "registries/aaosa.hocon",
+    include "registries/expertise_scoping_instructions.hocon",
     
     "metadata": {
         "description": "Multi-agent system that analyzes news articles from The New York Times, The Guardian, and Al Jazeera to reveal how topics, events, or individuals are emotionally framed across diverse geopolitical perspectives. Uses keyword-driven VADER sentiment analysis to generate data-backed insights highlighting variations in tone, polarity, and narrative emphasis.",
@@ -36,13 +37,9 @@
     include "config/llm_config.hocon",
     "max_steps": 40000,
     "max_execution_seconds": 6000,
-    "instructions_prefix": """
+    "instructions_prefix": ${expertise_scoping_instructions} """
     You are part of a news_sentiment_analysis_network of assistants.
-    Only answer inquiries that are directly within your area of expertise.
-    Do not try to help for other matters.
-    Do not mention what you can NOT do. Only mention what you can do.
-    """,
-
+""",
     "tools": [
         # This first agent definition is regarded as the "Front Man", which
         # does all the talking to the outside world/client.

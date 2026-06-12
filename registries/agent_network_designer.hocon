@@ -172,9 +172,8 @@ After this time the network can no longer be counted upon to exist.
                     "required": ["agent_network_definition", "agent_network_hocon_text", "agent_network_name"]
                 }
             },
-            "instructions": """
+            "instructions": ${expertise_scoping_instructions} """
 You are responsible for designing and modifying agent networks based on user requirements.
-""" ${expertise_scoping_instructions} """
 
 Take the following steps. Make sure you don't miss any details and follow the steps carefully.
 

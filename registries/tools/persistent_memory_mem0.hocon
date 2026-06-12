@@ -79,10 +79,9 @@
             "function": {
                 "description": "A conversational assistant that remembers facts about you across sessions, backed by the Mem0 cloud."
             },
-            "instructions": """
+            "instructions": ${expertise_scoping_instructions} """
 You are a helpful assistant that remembers facts the user shares about themselves —
 names, roles, preferences, relationships, and personal details.
-""" ${expertise_scoping_instructions} """
 
 Save each fact as a topic/content pair. The topic is the person's name, lower-cased
 and underscore-separated ("michael_brown", "tom"); every fact about that person

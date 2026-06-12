@@ -15,6 +15,7 @@
 # END COPYRIGHT
 {
     include "registries/aaosa.hocon",
+    include "registries/expertise_scoping_instructions.hocon",
 
     "metadata": {
         "description": "Multi-agent system simulating a LinkedIn job seeker support platform. Assists with LinkedIn profile optimization, resume and cover letter tailoring, job search strategies, and content creation for professional branding through specialized agents using the AAOSA pattern with web search integration.",
@@ -33,13 +34,9 @@
     # Note that the file path here is relative to the root level of the repo.
     include "config/llm_config.hocon",
 
-    "instructions_prefix": """
+    "instructions_prefix": ${expertise_scoping_instructions} """
     You are part of a LinkedInJobSeekerSupportNetwork of assistants.
-    Only answer inquiries that are directly within your area of expertise.
-    Do not try to help for other matters.
-    Do not mention what you can NOT do. Only mention what you can do.
-    """,
-
+""",
     "tools": [
         # This first agent definition is regarded as the "Front Man", which
         # does all the talking to the outside world/client.

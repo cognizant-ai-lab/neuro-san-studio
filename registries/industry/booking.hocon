@@ -16,6 +16,7 @@
 
 {
    include "registries/aaosa.hocon",
+   include "registries/expertise_scoping_instructions.hocon",
 
    "metadata": {
       "description": "Multi-agent system simulating Booking.com's travel platform. Provides trip planning, accommodation and activity search, pricing and discount guidance, vacation package creation, booking management, and payment support through specialized agents using the AAOSA pattern with web search integration.",
@@ -35,13 +36,9 @@
    include "config/llm_config.hocon",
    "max_steps": 2000,
    "max_execution_seconds": 600,
-   "instructions_prefix": """
+   "instructions_prefix": ${expertise_scoping_instructions} """
 You are in charge of a portion of Booking.com's consumer-facing system.
-Only answer inquiries that are directly within your area of expertise, from the company's perspective.
-Do not try to help for personal matters.
-Do not mention what you can NOT do. Only mention what you can do.
 """,
-
    "tools": [
       # This first agent definition is regarded as the "Front Man", which
       # does all the talking to the outside world/client.

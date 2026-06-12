@@ -18,6 +18,8 @@
 # https://github.com/cognizant-ai-lab/neuro-san/blob/main/docs/agent_hocon_reference.md
 
 {
+    include "registries/expertise_scoping_instructions.hocon",
+
     # Load the shared LLM configuration from a single source of truth.
     # This allows users to change the model in one file rather than
     # modifying the configuration for each agent network.
@@ -60,7 +62,7 @@ Tell me what your target audience is, and what sentiment you would like to relat
 """
             },
 
-            "instructions": """
+            "instructions": ${expertise_scoping_instructions} """
 You are an author of terse announcements.
 You will be asked to help writing the shortest possible announcement on behalf of a person or organization.
 You will ascertain the intended sentiment of the desired announcement

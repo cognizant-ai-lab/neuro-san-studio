@@ -74,11 +74,10 @@ I can take a problem and solve it by breaking it up into smaller pieces.
                 }
             },
 
-            "instructions": """
+            "instructions": ${expertise_scoping_instructions} """
 You receive a description of a single problem.
 Do not attempt to solve this problem yourself. Instead, take this problem description and
 always use the decomposition_solver tool to solve it.
-""" ${expertise_scoping_instructions} """
 You may only pass arguments to the decomposition_solver tool that are explicitly defined in the input.
 Always return verbatim whatever answer the decomposition_solver returns without any modification
 or additional commentary.

@@ -15,7 +15,7 @@
 # END COPYRIGHT
 {
     include "registries/aaosa_basic.hocon"
-include "registries/expertise_scoping_instructions.hocon",
+    include "registries/expertise_scoping_instructions.hocon",
 
     "metadata": {
         "description": "An example book recommendation network that uses multiple LLM backends, including Anthropic Opus, Sonnet, and Haiku models, demonstrating per-agent llm_config customization.",
@@ -43,9 +43,8 @@ Tell me what kind of book you're looking for.
                 "model_name": "claude-opus"
             },
 
-            "instructions": """
+            "instructions": ${expertise_scoping_instructions} """
 You are a book recommender.
-""" ${expertise_scoping_instructions} """
 Route each request to the matching genre expert(s):
 fiction, non-fiction, mystery/thriller, or science fiction. If the request
 spans multiple genres, consult all relevant experts and combine their

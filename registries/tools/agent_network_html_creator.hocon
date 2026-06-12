@@ -60,8 +60,8 @@
                 "description": "Create a html file for agent network.",
             },
 
-            "instructions": """Use your tools to create a html file for agent network.
-""" ${expertise_scoping_instructions},
+            "instructions": ${expertise_scoping_instructions} """Use your tools to create a html file for agent network.
+""",
             "tools": ["html_generator"]
         },
         {

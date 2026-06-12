@@ -60,9 +60,8 @@
             "function": {
                 description = "An assistant that helps the user manage their Gmail inbox, including reading, searching, drafting, and sending emails."
             },
-            "instructions": """
+            "instructions": ${expertise_scoping_instructions} """
             You can use the Gmail Tools to interact with the user's Gmail account.
-""" ${expertise_scoping_instructions} """
             
             Available actions include:
 

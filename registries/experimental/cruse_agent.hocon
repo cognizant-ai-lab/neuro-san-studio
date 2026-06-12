@@ -83,9 +83,8 @@
                 }
             },
 
-            "instructions": """
+            "instructions": ${expertise_scoping_instructions} """
 Use your tool to respond to the inquiry.
-""" ${expertise_scoping_instructions} """
 Note that the inquiry might have a text part, as well as a UI context part,
 which is what the user did in the UI. You should send both to your tool.
 Once you get the tool's response, you should always present it to the user as a chat text, prefaced by 'say:' as well as a html form, prefaced by 'gui:' that

@@ -52,9 +52,9 @@
                 }
             },
 
-            "instructions": """
+            "instructions": ${expertise_scoping_instructions} """
 Use your tool to respond to the inquiry.
-""" ${expertise_scoping_instructions},
+""",
             "tools": ["website_search"]
         },
         {

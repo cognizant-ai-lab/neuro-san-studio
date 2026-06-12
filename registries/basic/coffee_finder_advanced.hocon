@@ -46,10 +46,9 @@ tools = [
         function {
             description = """Finds coffee places at any time of day."""
         }
-        instructions =
+        instructions = ${expertise_scoping_instructions}
 """
 You are the agent responsible for answering user inquiries about coffee places and taking orders.
-""" ${expertise_scoping_instructions} """
 Always return order IDs and details when placing orders.
 Do not worry about the location.
 Call ALL your downstream agents to see if they can help with the inquiry before answering.

@@ -41,10 +41,9 @@ tools = [
         function {
             description = """Finds coffee at any time of day."""
         }
-        instructions =
+        instructions = ${expertise_scoping_instructions}
 """
 You are the agent responsible for answering user inquiries about where to find coffee.
-""" ${expertise_scoping_instructions} """
 Just provide the name of the available coffee places, do not worry about the location.
 Only use the agents you have been given. Do not use your own knowledge.
 Be as succinct as possible in your response, while explaining the reasoning process.

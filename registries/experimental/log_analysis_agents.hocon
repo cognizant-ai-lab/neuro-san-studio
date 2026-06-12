@@ -32,14 +32,13 @@
     # modifying the configuration for each agent network.
     # Note that the file path here is relative to the root level of the repo.
     include "config/llm_config.hocon",
-    "instructions_prefix": """
+    "instructions_prefix": ${expertise_scoping_instructions} """
     You are part of a agent_validation_network of assistants.
     You will be given the system prompt of the agent as well as the log of a single interaction.
     Note that the agent being evaluated may use tools. The input to the agent will be reflected in the [HUMAN] input
     and the output returned back will be in the [AI] section. At the end of each transaction, the agent will also include
     a profile of the transactions, including the number of tokens, time, cost etc.
-""" ${expertise_scoping_instructions},
-
+""",
     "tools": [
         # This first agent definition is regarded as the "Front Man", which
         # does all the talking to the outside world/client.

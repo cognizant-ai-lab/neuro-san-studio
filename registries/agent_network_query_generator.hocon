@@ -53,9 +53,8 @@
                     },
                 }
             },
-            "instructions": """
+            "instructions": ${expertise_scoping_instructions} """
 You generate example queries that the created agent network can handle.
-""" ${expertise_scoping_instructions} """
 
 Ensure the queries align with the agents' capabilities.
 Provide a diverse range of queries to illustrate the network's functions.

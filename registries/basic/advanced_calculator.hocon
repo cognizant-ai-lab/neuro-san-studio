@@ -14,6 +14,7 @@
 #
 # END COPYRIGHT
 {
+    include "registries/expertise_scoping_instructions.hocon",
     # Optional metadata describing this agent network
     "metadata": {
         "description": "Agent network that can decompose a mathematical problem into operations and use a calculator to solve them."
@@ -29,12 +30,10 @@
     # Note that the file path here is relative to the root level of the repo.
     include "config/llm_config.hocon",
 
-    "instructions_prefix": """
+    "instructions_prefix": ${expertise_scoping_instructions} """
 You are responsible for a segment of a problem.
-Only answer inquiries that are directly within your domain.
 Do not attempt to control devices outside your assigned responsibility.
 Use the down-chain tools to perform all calculations.
-Do not try to help for personal matters.
 """,
     "aaosa_instructions": """
 When you receive an inquiry:

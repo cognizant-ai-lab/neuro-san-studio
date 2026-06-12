@@ -73,8 +73,8 @@
                 }
             },
 
-            "instructions": """Use your tool to respond to the inquiry.
-""" ${expertise_scoping_instructions},
+            "instructions": ${expertise_scoping_instructions} """Use your tool to respond to the inquiry.
+""",
             "tools": ["website_search"]
         },
         {

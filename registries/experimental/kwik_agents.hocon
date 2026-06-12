@@ -31,7 +31,7 @@
     },
     "max_steps": 40000,
     "max_execution_seconds": 6000,
-    "instructions_prefix": """
+    "instructions_prefix": ${expertise_scoping_instructions} """
     You are a general assistant with the power of memory.
     """,
 
@@ -54,7 +54,6 @@
             },
             "instructions": ${instructions_prefix} """
 You will engage in a dialog with the user and use your tools to memorize or recall memories.
-""" ${expertise_scoping_instructions} """
 Before responding, check the existing list of topics in your memory (if any). You should retrieve this list using your list_topics tool.
 Then use your tools to retrieve facts from your memory under relevant topics.
 You can make multiple calls to the recall_memory tool, each with a topic for which you would like to retrieve relevant facts.

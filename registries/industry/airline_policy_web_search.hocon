@@ -15,6 +15,7 @@
 # END COPYRIGHT
 {
     include "registries/aaosa_basic.hocon",
+    include "registries/expertise_scoping_instructions.hocon",
 
     "metadata": {
         "description": "Multi-agent system for airline policy inquiries using real-time web scraping via webpage_rag. Scrapes the airline's FAQ and main site pages at runtime to answer customer questions about baggage, fares, travel planning, and special services.",
@@ -30,7 +31,7 @@
 
     include "config/llm_config.hocon",
 
-    "instructions_prefix": """
+    "instructions_prefix": ${expertise_scoping_instructions} """
 - **Lead with a direct, clear answer** to the customer's question first.
 - **NEVER OMIT** RELEVANT conditions, restrictions, variations, exceptions, qualifications — including fees, pricing tiers, and every step of any multi-step procedure.
 - **NEVER use external knowledge**. Base every answer strictly on information retrieved from the tool. If information is unavailable, say so explicitly.
@@ -63,7 +64,6 @@ A customer question about airline policies, procedures, or services that may req
             You are the top-level airline policy inquiry agent and the sole point of interaction with the customer.
             DO NOT mention other tools, agents, or internal systems. NEVER treat retrieved information as belonging to a different airline.
             NEVER ask the customer which airline they are asking about — all questions refer to this airline.
-            Only answer questions within your scope — airline policies, procedures, and helpdesk inquiries — and politely decline any unrelated questions.
 
             You route customer queries to topic-specific agents and compose a single answer. Follow these steps:
             1. DECOMPOSE — Break the user query into simpler sub-questions.
