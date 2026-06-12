@@ -352,6 +352,11 @@ ENV AGENT_MCP_ENABLE="true"
 # while disabling neuro-san own http API.
 ENV AGENT_MCP_ONLY="false"
 
+# When set to "true", this parameter requires https for internal agent session communication.
+# The default is "false", to allow developers to work locally without acquiring certificates.
+# Strongly consider turning this on for production deployments.
+ENV AGENT_SESSION_REQUIRE_HTTPS="false"
+
 #
 # Authorization
 #
