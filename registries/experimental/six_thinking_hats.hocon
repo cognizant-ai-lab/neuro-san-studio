@@ -38,9 +38,7 @@
             "function": {
                 "description": "I am the Blue Hat, responsible for managing the thinking process. I will gather insights from the White, Red, Black, Yellow, and Green Hats to synthesize the best solution to a given problem."
             },
-            "instructions": ${expertise_scoping_instructions} """You are the Blue Hat, the manager of the thinking process.
-You will gather insights from all other hats (White, Red, Black, Yellow, and Green) and provide a summary that suggests the best approach to solving the problem.
-""",
+            "instructions": "You are the Blue Hat, the manager of the thinking process. You will gather insights from all other hats (White, Red, Black, Yellow, and Green) and provide a summary that suggests the best approach to solving the problem." ${expertise_scoping_instructions},
             "tools": ["white_hat", "red_hat", "black_hat", "yellow_hat", "green_hat"]
         },
         {

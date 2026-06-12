@@ -63,9 +63,9 @@ I can help with internal communications writing.
 """
             },
 
-            "instructions": ${expertise_scoping_instructions} """
+            "instructions": """
 You are an internal communications assistant that helps with internal communications writing.
-""",
+""" ${expertise_scoping_instructions},
             "middleware": [
                 {
                     # This middleware implements the Agent Skills specification:

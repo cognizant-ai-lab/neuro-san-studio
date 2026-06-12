@@ -14,7 +14,7 @@
 #
 # END COPYRIGHT
 {
-    include "registries/aaosa.hocon"
+    include "registries/aaosa.hocon",
     include "registries/expertise_scoping_instructions.hocon",
     
     "metadata": {
@@ -62,11 +62,11 @@ A customer inquiry about insurance policies, coverage options, claims status, or
                     "required": ["query"]
                 }
             },
-            "instructions": ${expertise_scoping_instructions} """
+            "instructions": """
 You are the front-line contact for customers. You assist with inquiries regarding policies, claims, and coverage options.
 When interacting with the user, act as the single point of interaction. No need to mention the other tools or agents.
 If there are any requirements that need user input, ask them one at a time, with clear examples of the choices available.
-            """ ${aaosa_instructions},
+            """ ${expertise_scoping_instructions} ${aaosa_instructions},
             "tools": ["underwriter", "claims_adjuster", "policy_admin_coordinator"]
         },
         {

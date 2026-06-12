@@ -37,9 +37,9 @@
     include "config/llm_config.hocon",
     "max_steps": 40000,
     "max_execution_seconds": 6000,
-    "instructions_prefix": ${expertise_scoping_instructions} """
+    "instructions_prefix": """
     You are part of a news_sentiment_analysis_network of assistants.
-""",
+""" ${expertise_scoping_instructions},
     "tools": [
         # This first agent definition is regarded as the "Front Man", which
         # does all the talking to the outside world/client.

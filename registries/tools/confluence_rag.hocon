@@ -63,9 +63,9 @@
                 "description": "Answer caller's query with answers from tools.",
             },
 
-            "instructions": ${expertise_scoping_instructions} """Always use your tool to respond to the inquiry.
+            "instructions": """Always use your tool to respond to the inquiry.
             If the tool failed or unavailable, just notify the user.
-            Do not attempt to answer the question by yourself.""",
+            Do not attempt to answer the question by yourself.""" ${expertise_scoping_instructions},
             "tools": ["rag_retriever"]
         },
         # RAG tool that loads data from confluence URL into an in-memory vectorstore and answers queries.

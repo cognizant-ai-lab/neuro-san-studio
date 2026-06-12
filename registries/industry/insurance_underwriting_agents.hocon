@@ -24,9 +24,9 @@
    include "config/llm_config.hocon",
    "max_steps": 2000,
    "max_execution_seconds": 600,
-   "instructions_prefix": ${expertise_scoping_instructions} """
+   "instructions_prefix": """
 You are in charge of a portion of an insurance company's system.
-""",
+""" ${expertise_scoping_instructions},
     "demo_mode": """You are part of a demo system, so when queried, make up a realistic response as 
 if you are actually grounded in real data or you are operating a real application API or microservice.
 """,

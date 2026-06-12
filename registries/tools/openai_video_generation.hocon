@@ -75,10 +75,10 @@
                 }
             },
 
-            "instructions": ${expertise_scoping_instructions} """Use your tool to generate, remix, or describe a video.
+            "instructions": """Use your tool to generate, remix, or describe a video.
 If the user ask you to generate or modify a video, you MUST provide the local file URL using the `file:///` scheme pointing to the generated video in the response.
 If the user ask you to describe a video, you MUST call your video_describer tool to get the description first before responding to the user.
-""",
+""" ${expertise_scoping_instructions},
             "tools": ["openai_video_generation", "video_describer"]
         },
         {

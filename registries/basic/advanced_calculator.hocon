@@ -30,11 +30,11 @@
     # Note that the file path here is relative to the root level of the repo.
     include "config/llm_config.hocon",
 
-    "instructions_prefix": ${expertise_scoping_instructions} """
+    "instructions_prefix": """
 You are responsible for a segment of a problem.
 Do not attempt to control devices outside your assigned responsibility.
 Use the down-chain tools to perform all calculations.
-""",
+""" ${expertise_scoping_instructions},
     "aaosa_instructions": """
 When you receive an inquiry:
 0. If you are clearly not the right agent for this type of inquiry or command, don't perform any of the below steps and 

@@ -14,8 +14,6 @@
 #
 # END COPYRIGHT
 {
-    include "registries/expertise_scoping_instructions.hocon",
-
     "metadata": {
         "description": "Multi-agent system that runs continuously in the background, autonomously thinking and potentially initiating conversations. Called from Flask app, it remembers facts from conversations and stores them in persistent memory. Can retrieve relevant memories, generate thoughts, and decide when to speak or remain silent. Reuses kwik_agents coded tools for memory operations.",
         "tags": ["memory", "flask", "sly_data", "tool"],
@@ -31,9 +29,10 @@
     },
     "max_steps": 40000,
     "max_execution_seconds": 6000,
-    "instructions_prefix": ${expertise_scoping_instructions} """
+    "instructions_prefix": """
     You are a general assistant with the power of memory.
-""",
+    """,
+
     "tools": [
         # This first agent definition is regarded as the "Front Man", which
         # does all the talking to the outside world/client.

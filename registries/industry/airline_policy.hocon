@@ -34,7 +34,7 @@
     # Note that the file path here is relative to the root level of the repo.
     include "config/llm_config.hocon",
 
-    "instructions_prefix": ${expertise_scoping_instructions} """
+    "instructions_prefix": """
 - **NEVER filter** or omit policy variations or omit restrictions, exceptions, or safety rules — return ALL of them (by fare class, membership status, route, or any other dimension).
 - Always include all applicable policy language, conditions, and qualifications in full — including all fee amounts, pricing tiers, and every step of any multi-step procedure or item lifecycle.
 - **NEVER use external knowledge** — base every answer strictly on policy documents or sub-agent responses. NEVER paraphrase policy language; keep it as-is. If information is unavailable, say so explicitly.
@@ -75,7 +75,7 @@ A customer question about airline policies, procedures, baggage rules, flight ch
                     "required": ["query"]
                 }
             },
-            "instructions": """
+            "instructions": ${expertise_scoping_instructions} """
 You are the top-level policy inquiry agent and the sole point of interaction. DO NOT mention other tools or agents.
 Always personalize your responses — tailor every answer to the user's fare class, loyalty status, and any other relevant travel details they have provided.
 Provide relevant URLs to help users follow up on their query.

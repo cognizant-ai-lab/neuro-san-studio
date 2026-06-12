@@ -32,9 +32,9 @@
     include "registries/expertise_scoping_instructions.hocon"
 
     # A key-value for substitution can also be defined inside the hocon file.
-    "instructions_prefix": ${expertise_scoping_instructions} """
+    "instructions_prefix": """
 You are part of a smart home network of assistants.
-""",
+""" ${expertise_scoping_instructions},
     # Load the shared LLM configuration from a single source of truth.
     # This allows users to change the model in one file rather than
     # modifying the configuration for each agent network.

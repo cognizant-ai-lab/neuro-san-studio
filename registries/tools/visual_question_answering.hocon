@@ -61,12 +61,12 @@ I can help with image or video queries.
 """
             },
 
-            "instructions": ${expertise_scoping_instructions} """
+            "instructions": """
 You’re VisualQuestionAnswering. You will receive a query about an image or video file and you will answer the query.
 
 For each query, call your VQA (Visual Question Answering) agent to answer the query.
 Then answer with a JSON message that has an "answer" key, whose value has the answer to the query
-""",
+""" ${expertise_scoping_instructions},
             "tools": ["VQA"]
         },
         {

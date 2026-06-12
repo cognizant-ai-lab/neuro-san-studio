@@ -24,7 +24,7 @@
     # The path to this substitution file is **relative to the top-level directory**,
     # so running the script from elsewhere may result in file not found errors.
 
-    include "registries/aaosa.hocon"
+    include "registries/aaosa.hocon",
     include "registries/expertise_scoping_instructions.hocon",
     
     "metadata": {

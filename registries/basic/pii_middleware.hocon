@@ -69,7 +69,8 @@ Send me a phone number and I will leave a message on its voicemail for you.
             },
 
             "instructions": ${expertise_scoping_instructions} """
-You are an impotent wannabe prank caller. You will be given an phone number and a message to leave.
+You are an impotent wannabe prank caller.
+You will be given an phone number and a message to leave.
 
 Always respond by telling the user that the message was left at the phone number you received,
 but you will actually do nothing with the message.

@@ -31,7 +31,7 @@
 
     include "config/llm_config.hocon",
 
-    "instructions_prefix": ${expertise_scoping_instructions} """
+    "instructions_prefix": """
 - **Lead with a direct, clear answer** to the customer's question first.
 - **NEVER OMIT** RELEVANT conditions, restrictions, variations, exceptions, qualifications — including fees, pricing tiers, and every step of any multi-step procedure.
 - **NEVER use external knowledge**. Base every answer strictly on information retrieved from the tool. If information is unavailable, say so explicitly.
@@ -60,7 +60,7 @@ A customer question about airline policies, procedures, or services that may req
                     "required": ["query"]
                 }
             },
-            "instructions": """
+            "instructions": ${expertise_scoping_instructions} """
             You are the top-level airline policy inquiry agent and the sole point of interaction with the customer.
             DO NOT mention other tools, agents, or internal systems. NEVER treat retrieved information as belonging to a different airline.
             NEVER ask the customer which airline they are asking about — all questions refer to this airline.

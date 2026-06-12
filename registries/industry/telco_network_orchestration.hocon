@@ -30,9 +30,9 @@
     include "registries/aaosa.hocon"
     include "registries/expertise_scoping_instructions.hocon"
 
-    "instructions_prefix": ${expertise_scoping_instructions} """
+    "instructions_prefix": """
 You are part of a large Australian telecommunications company's set of assistants.
-""",
+""" ${expertise_scoping_instructions},
 "tools": [
         {
             "name": "NetworkOrchestrator",

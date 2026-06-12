@@ -14,7 +14,7 @@
 #
 # END COPYRIGHT
 {
-    include "registries/aaosa.hocon"
+    include "registries/aaosa.hocon",
     include "registries/expertise_scoping_instructions.hocon",
     
     "metadata": {

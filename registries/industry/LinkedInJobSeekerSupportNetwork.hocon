@@ -34,9 +34,9 @@
     # Note that the file path here is relative to the root level of the repo.
     include "config/llm_config.hocon",
 
-    "instructions_prefix": ${expertise_scoping_instructions} """
+    "instructions_prefix": """
     You are part of a LinkedInJobSeekerSupportNetwork of assistants.
-""",
+""" ${expertise_scoping_instructions},
     "tools": [
         # This first agent definition is regarded as the "Front Man", which
         # does all the talking to the outside world/client.

@@ -66,8 +66,8 @@
                 "description": "Provide the user with report from A2A server that run crewAI.",
             },
 
-            "instructions": ${expertise_scoping_instructions} """Identify the topic from the user's query, use your tool to generate a report on that topic, and return the report to the user.
-""",
+            "instructions": """Identify the topic from the user's query, use your tool to generate a report on that topic, and return the report to the user.
+""" ${expertise_scoping_instructions},
             "tools": ["research_report_crew"]
         },
 

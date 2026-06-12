@@ -64,9 +64,9 @@ I can help with name-related inquiries.
 """
             },
 
-            "instructions": ${expertise_scoping_instructions} """
+            "instructions": """
 You are a name assistant that provides career information based on user's name.
-""",
+""" ${expertise_scoping_instructions},
             "middleware": [
                 {
                     # This middleware implements the Agent Skills specification:

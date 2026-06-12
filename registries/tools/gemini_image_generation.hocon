@@ -73,8 +73,8 @@
                 }
             },
 
-            "instructions": ${expertise_scoping_instructions} """Use your tool to generate image.
-""",
+            "instructions": """Use your tool to generate image.
+""" ${expertise_scoping_instructions},
             "tools": ["gemini_image_generation"]
         },
         {
