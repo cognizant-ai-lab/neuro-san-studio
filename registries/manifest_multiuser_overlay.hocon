@@ -43,13 +43,12 @@
     #
     # Basically the data for later manifest files gets overlayed on top of earlier ones.
 
-    # Technical demos
-    "basic/book_recommender_multiple_llm_configs.hocon": false, # Reason #2
-    "basic/coding_assistant.hocon": false,                      # Reason #5
+    # Basic examples
+    "basic/book_recommender_multiple_llm_configs.hocon": false, # Reason #6
     "basic/internal_communication_skill.hocon": false,           # Reason #6
     "basic/job_guessing_skill.hocon": false,                     # Reason #6
     "basic/music_nerd.hocon": false,                             # Reason #6
-    "basic/music_nerd_llm_fallbacks.hocon": false,               # Reason #2
+    "basic/music_nerd_llm_fallbacks.hocon": false,               # Reason #6
     "basic/music_nerd_local.hocon": false,                       # Reason #4
     "basic/music_nerd_pro_local.hocon": false,                   # Reason #4
     "basic/music_nerd_pro_sly.hocon": false,                     # Reason #6
