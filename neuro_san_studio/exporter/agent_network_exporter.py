@@ -18,10 +18,10 @@
 
 import os
 import re
-import shutil
 import zipfile
 from dataclasses import dataclass
 from dataclasses import field
+from pathlib import Path
 from pathlib import PurePosixPath
 from typing import List
 from typing import Optional
@@ -29,6 +29,7 @@ from typing import Set
 
 from neuro_san_studio.discovery.dependency_analyzer import AgentNetworkDependencies
 from neuro_san_studio.discovery.dependency_analyzer import DependencyAnalyzer
+from neuro_san_studio.exporter.export_metadata import ExportMetadataStamper
 from neuro_san_studio.mcp.mcp_info_merger import McpInfoMerger
 
 # `include "registries/<name>"` and `include classpath("registries/<name>")` both surface
@@ -108,12 +109,18 @@ class AgentNetworkExporter:  # pylint: disable=too-few-public-methods
         )
 
         if not has_deps:
-            shutil.copy2(full_hocon, target)
+            Path(target).write_text(self._stamped_network_hocon(full_hocon), encoding="utf-8")
             result.bundled_files.append(f"registries/{rel_hocon}")
             return result
 
         self._write_zip(target, rel_hocon, deps, result)
         return result
+
+    @staticmethod
+    def _stamped_network_hocon(full_hocon: str) -> str:
+        """Read the network HOCON and return its text with export-provenance metadata stamped in."""
+        text = Path(full_hocon).read_text(encoding="utf-8")
+        return ExportMetadataStamper().stamp(text)
 
     def _write_zip(
         self,
@@ -128,7 +135,12 @@ class AgentNetworkExporter:  # pylint: disable=too-few-public-methods
         added: Set[str] = set()
 
         with zipfile.ZipFile(target, "w", zipfile.ZIP_DEFLATED) as zf:
-            self._add_file(zf, full_hocon, f"registries/{rel_hocon}", added, result)
+            # The primary network file is the one that carries the export-provenance metadata;
+            # write its stamped text rather than the verbatim file.
+            arcname = f"registries/{rel_hocon}"
+            zf.writestr(arcname, self._stamped_network_hocon(full_hocon))
+            added.add(arcname)
+            result.bundled_files.append(arcname)
             self._add_sub_networks(zf, deps.sub_networks, added, result)
             for ct in deps.coded_tools:
                 self._add_dep(zf, ct, added, result)
