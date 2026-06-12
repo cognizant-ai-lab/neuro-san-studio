@@ -125,11 +125,18 @@ class DependencyAnalyzer:
             module_file = os.path.join(root, *parts[1:-1]) + ".py"
             return f"{parts[0]}/" + "/".join(parts[1:-1]) + ".py" if os.path.exists(module_file) else None
 
-        # Short reference like "order_api.OrderAPI" — resolve under context_dir
+        # Short reference like "order_api.OrderAPI" — resolve up the context hierarchy, the way
+        # neuro-san does (abstract_class_activation._attempt_resolve): try the per-network dir
+        # first, then strip one trailing level at a time down to coded_tools/ root. So a tool at
+        # the group level (coded_tools/basic/accountant.py) is found even when the network's
+        # context_dir is basic/music_nerd_pro (issue #1147).
         if len(parts) == 2 and context_dir:
-            candidate = os.path.join(self.coded_tools_dir, context_dir, parts[0] + ".py")
-            if os.path.exists(candidate):
-                return f"coded_tools/{context_dir}/{parts[0]}.py"
+            context_parts = context_dir.split("/")
+            module = parts[0]
+            for depth in range(len(context_parts), -1, -1):
+                rel = "/".join([*context_parts[:depth], f"{module}.py"])
+                if os.path.exists(os.path.join(self.coded_tools_dir, rel)):
+                    return f"coded_tools/{rel}"
 
         # Long-form reference under coded_tools/
         if os.path.exists(os.path.join(self.coded_tools_dir, *parts[:-1]) + ".py"):
