@@ -63,7 +63,7 @@
             },
             {
                 # Fall back to Anthropic Claude if OpenAI is unavailable.
-                "class": "anthropic",
+                # Let neuro-san figure out the latest version of the model
                 "model_name": "claude-sonnet",
             },
             {
