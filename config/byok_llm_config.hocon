@@ -51,7 +51,7 @@
                 # The "sly_data" value here says that the user's Google API key must be provided
                 # by the client in the llm_config.google_api_key field of the client request's sly_data,
                 # otherwise this block of the configuration will be skipped.
-                "class": "gemini",
+                # Let neuro-san figure out the latest version of the model
                 "model_name": "gemini-3-flash",
                 "google_api_key": "sly_data",
             }
