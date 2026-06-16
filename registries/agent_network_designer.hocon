@@ -218,9 +218,9 @@ Operational notes:
                     "messages": ["/agent_network_editor", "/agent_network_query_generator", "/agent_network_instructions_editor"]
                 },
                 "to_downstream": {
-                    "sly_data": ["agent_network_definition", "agent_network_name", "agent_network_queries"]
                     # Optionally propagate any BYOK keys to downstream tools.
-                    "sly_data" += ${?llm_config_key}
+                    "sly_data": ["agent_network_definition", "agent_network_name", "agent_network_queries",
+                                 ${?llm_config_key}]
                 }
             },
             "tools": ["/agent_network_editor", "/agent_network_query_generator", "/agent_network_instructions_editor", "web_search"],
