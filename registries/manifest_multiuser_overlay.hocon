@@ -34,6 +34,7 @@
     #   4. Requires use of external services not readily deployed by the average bear
     #      (like databases)
     #   5. Have-a or is-a dependency on a particular agent network that has one of the above issues.
+    #   6. Requires per-user authentication credentials (e.g. OAuth bearer token or API key)
     #
     # To use this file, we simply add a reference to it at the end of our existing
     # AGENT_MANIFEST_FILE specification # like this:
@@ -47,6 +48,7 @@
     "tools/agentforce.hocon": false,                    # Reason #2
     "tools/openai_image_generation.hocon": false,       # Reason #1
     "tools/persistent_memory_local.hocon": false,       # Reason #1
+    "tools/you_search.hocon": false,                    # Reason #6
 
     # Experimental and research
     "agent_network_designer.hocon": true,               # Reason #1. Needs AGENT_NETWORK_DESIGNER_USE_RESERVATIONS=true
