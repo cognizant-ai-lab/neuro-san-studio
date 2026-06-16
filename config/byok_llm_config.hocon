@@ -63,6 +63,8 @@
     # By convention, we send keys over in the "llm_config" key's dictionary value of the sly_data in
     # the client request.
 
+    # A key to use when referencing the BYOK llm_config in a given agent network node's front man sly_data_schema
+    # or allow block.
     "llm_config_key": "llm_config"
 
     # This global definition gets merged with any existing sly_data_schema definitions
