@@ -15,6 +15,7 @@
 # END COPYRIGHT
 
 include "registries/aaosa_basic.hocon"
+include "registries/expertise_scoping_instructions.hocon"
 
 # Optional metadata describing this agent network
 metadata {
@@ -40,9 +41,9 @@ tools = [
         function {
             description = """Finds coffee at any time of day."""
         }
-        instructions =
+        instructions = ${expertise_scoping_instructions}
 """
-Answer users inquiries about where to find coffee.
+You are the agent responsible for answering user inquiries about where to find coffee.
 Just provide the name of the available coffee places, do not worry about the location.
 Only use the agents you have been given. Do not use your own knowledge.
 Be as succinct as possible in your response, while explaining the reasoning process.

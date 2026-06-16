@@ -32,6 +32,7 @@
         ]
     },
 
+    include "registries/expertise_scoping_instructions.hocon",
     include "config/llm_config.hocon",
 
     "tools": [
@@ -65,7 +66,7 @@
 
             "instructions": """
 Use your tools to respond to the inquiry.
-""",
+""" ${expertise_scoping_instructions},
             "tools": ["https://mapstools.googleapis.com/mcp"]
         },
     ]
