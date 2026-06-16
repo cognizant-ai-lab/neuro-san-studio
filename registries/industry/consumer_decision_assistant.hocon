@@ -217,7 +217,7 @@ Detailed Step-by-Step Responsibilities:
             """,
             "command": "Respond to inquiry using the tools.",
             # Optionally allow any BYOK keys to propagate to local downstream agents
-            ${?allow_llm_config_downstream}
+            "allow": ${?allow_llm_config_downstream}
             "tools": ["/industry/macys", "/industry/carmax"]
         },
         {
@@ -276,7 +276,7 @@ Limitations:
             """,
             "command": "Respond to inquiry using the tools.",
             # Optionally allow any BYOK keys to propagate to local downstream agents
-            ${?allow_llm_config_downstream}
+            "allow": ${?allow_llm_config_downstream}
             "tools": ["/industry/macys", "/industry/carmax"]
         },
         {
@@ -380,7 +380,7 @@ Here’s a step-by-step breakdown of your responsibilities:
             """,
             "command": "Respond to inquiry using the tools.",
             # Optionally allow any BYOK keys to propagate to local downstream agents
-            ${?allow_llm_config_downstream}
+            "allow": ${?allow_llm_config_downstream}
             "tools": ["/industry/airbnb", "/industry/expedia", "/industry/booking"]
         },
         {
@@ -447,7 +447,7 @@ Step-by-Step Responsibilities:
             """,
             "command": "Respond to inquiry using the tools.",
             # Optionally allow any BYOK keys to propagate to local downstream agents
-            ${?allow_llm_config_downstream}
+            "allow": ${?allow_llm_config_downstream}
             "tools": ["/industry/airbnb", "/industry/expedia", "/industry/booking"]
         },
         {
@@ -722,7 +722,7 @@ Scope of Work:
                }
             }
             # Optionally allow any BYOK keys to propagate to local downstream agents
-            ${?allow_llm_config_downstream}
+            "allow": ${?allow_llm_config_downstream}
         },
         {
             "name": "skill_development_advisor",

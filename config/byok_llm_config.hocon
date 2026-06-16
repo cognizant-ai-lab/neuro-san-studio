@@ -98,10 +98,8 @@
 
     # A full definition for sending BYOK llm_config to downstream agents.
     "allow_llm_config_downstream": {
-        "allow": {
-            "to_downstream": {
-                "sly_data": [${llm_config_key}]
-            }
+        "to_downstream": {
+            "sly_data": [${llm_config_key}]
         }
     }
 }
