@@ -89,8 +89,7 @@
                             "properties": {
                                 "https://api.you.com/mcp": {
                                     "type": "object",
-                                    "description": "URL for GitHub MCP server.",
-                                    "properties": {
+                                    "description": "URL for You.com MCP server.",
                                         "Authorization": {
                                             "type": "string",
                                             "description": "Authorization header for you.com API access, e.g., 'Bearer <token_value>'."
