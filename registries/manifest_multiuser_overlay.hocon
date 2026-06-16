@@ -47,19 +47,15 @@
     "basic/book_recommender_multiple_llm_configs.hocon": false,  # Reason #6
     "basic/internal_communication_skill.hocon": false,           # Reason #6
     "basic/job_guessing_skill.hocon": false,                     # Reason #6
-    "basic/music_nerd.hocon": false,                             # Reason #6
     "basic/music_nerd_llm_fallbacks.hocon": false,               # Reason #6
     "basic/music_nerd_local.hocon": false,                       # Reason #4
     "basic/music_nerd_pro_local.hocon": false,                   # Reason #4
     "basic/music_nerd_pro_sly.hocon": false,                     # Reason #6
     "basic/music_nerd_pro_sly_local.hocon": false,               # Reason #4
-    "basic/pii_middleware.hocon": false,                         # Reason #6
 
     # Tools
     "tools/agent_network_html_creator.hocon": false,    # Reason #3
     "tools/agentforce.hocon": false,                    # Reason #2
-    "tools/anthropic_web_search.hocon": false,          # Reason #2
-    "tools/anthropic_code_execution.hocon": false,      # Reason #2
     "tools/openai_image_generation.hocon": false,       # Reason #1
     "tools/persistent_memory_local.hocon": false,       # Reason #1
 
