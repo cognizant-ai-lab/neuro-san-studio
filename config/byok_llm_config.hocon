@@ -59,7 +59,7 @@
     }
 
     #
-    # sly_data_schema definitions for to communicate the needs of BYOK to a generic client.
+    # sly_data_schema definitions to communicate the needs of BYOK to a generic client.
     # By convention, we send keys over in the "llm_config" key's dictionary value of the sly_data in
     # the client request.
 
