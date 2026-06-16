@@ -87,7 +87,7 @@
                     },
                     "google_api_key": {
                         "type": "string",
-                        "description": "The user's Google API key for use withGemini models"
+                        "description": "The user's Google API key for use with Gemini models"
                     },
                 },
                 # Note that none of these properties are strictly required, as all are individually optional.
