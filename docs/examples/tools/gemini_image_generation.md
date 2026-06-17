@@ -32,11 +32,9 @@ This agent network requires the following setup:
 
 ### Python Dependencies
 
-```bash
-pip install google-genai
-```
-
-Note: If langchain-google-genai is already installed in your environment, this package is already included.
+This agent network requires google-genai for Gemini's image generation capabilities.
+This is already included via langchain-google-genai, which is included with neuro-san-studio,
+so no need to install anything new.
 
 ### Environment Variables
 
