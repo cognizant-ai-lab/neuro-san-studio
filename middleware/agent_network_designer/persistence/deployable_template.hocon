@@ -67,7 +67,9 @@ call all the relevant tools and make sure the command is fully serviced and expr
 
 {aaosa_instructions}
 """,
-            "tools": "tools"
+            "tools": "tools",
+            # Optionally allow any BYOK keys to propagate to local downstream agents
+            "allow": ${?allow_llm_config_downstream}
         },
 
         # Regular agent template
@@ -81,7 +83,9 @@ call all the relevant tools and make sure the command is fully serviced and expr
 
 {aaosa_instructions}
 """,
-            "tools": "tools"
+            "tools": "tools",
+            # Optionally allow any BYOK keys to propagate to local downstream agents
+            "allow": ${?allow_llm_config_downstream}
         },
 
         # Leaf agent template
