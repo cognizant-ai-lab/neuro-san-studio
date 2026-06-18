@@ -55,13 +55,13 @@
             },
             {
                 # Fall back to Anthropic Claude if OpenAI is unavailable.
-                "class": "anthropic",
+                # Let neuro-san figure out the latest version of the model
                 "model_name": "claude-sonnet",
                 "max_retries": 1,
             },
             {
                 # Fall back to Google Gemini if both OpenAI and Anthropic are unavailable.
-                "class": "gemini",
+                # Let neuro-san figure out the latest version of the model
                 "model_name": "gemini-3-flash",
                 "max_retries": 1,
             }
