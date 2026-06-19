@@ -31,6 +31,8 @@
     # which include it correctly from CWD.
     include "../../../config/llm_config.hocon",
 
+    "max_execution_seconds": 6000,
+
     # These are common commondefs for every agent_network_designer-created network
     # In the final deployable network, {strings} and "values" will be replaced
     # and this section will disappear.
