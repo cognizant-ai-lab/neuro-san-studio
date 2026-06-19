@@ -43,6 +43,8 @@
                 #   AZURE_OPENAI_REGION
                 #   AZURE_OPENAI_RESOURCE_GROUP
                 #   AZURE_OPENAI_MODEL_VERSION
+
+                # Any env var mentioned above has been known to be emitted from TerraForm output (for instance).
             },
 
             # ... More for different llm + cloud provider combinations as they come
