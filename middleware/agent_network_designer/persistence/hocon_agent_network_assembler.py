@@ -20,7 +20,7 @@ from typing import Any
 
 from middleware.agent_network_designer.persistence.agent_network_assembler import AgentNetworkAssembler
 
-DEFAULT_MAX_EXECUTION_SECONDS = 6000
+DEFAULT_MAX_EXECUTION_SECONDS = 600
 
 HOCON_HEADER_START = (
     "{\n"
