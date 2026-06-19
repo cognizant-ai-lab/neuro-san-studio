@@ -1,0 +1,53 @@
+# Copyright © 2025-2026 Cognizant Technology Solutions Corp, www.cognizant.com.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
+# END COPYRIGHT
+
+{
+    # This file is NOT an agent network HOCON.
+    # It defines a set of key-value pairs for substitution, typically used in agent network HOCON files.
+    # Each key can be referenced in agent configs using the ${key} syntax.
+    # Do not define agents or tools directly here—this file only provides reusable values.
+
+    # Similar to the default developer config, except that when we encounter rate limiting from
+    # one of the providers, we will immediately use the next one in the list without retrying in an
+    # attempt to get better response times.  The idea is to spread the load across providers
+    # during busy times.
+    #
+    # To most easily use this config, copy it over this directory's llm_config.hocon file.
+    "llm_config": {
+        "fallbacks": [
+            {
+                # Try OpenAI first
+                "class": "azure-openai",
+                # "model_name": "gpt-5.2",  # For Azure OpenAI, the model_name is really the deployment_name below.
+
+                                                                            # Values below can also come from env vars:
+                "deployment_name": "gpt-5-2",                               # AZURE_OPENAI_DEPLOYMENT_NAME
+
+                # You *will* need to also set these env vars for Azure OpenAI such as:
+                #   AZURE_OPENAI_API_KEY
+                #   AZURE_OPENAI_ENDPOINT
+                #   OPENAI_API_VERSION
+
+                # You *might also* want to set these optional env vars for your Azure OpenAI such as:
+                #   AZURE_OPENAI_REGION
+                #   AZURE_OPENAI_RESOURCE_GROUP
+                #   AZURE_OPENAI_MODEL_VERSION
+            },
+
+            # ... More for different llm + cloud provider combinations as they come
+        ]
+    }
+}
