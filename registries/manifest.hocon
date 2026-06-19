@@ -18,78 +18,7 @@
     # that is used as configuration for neuro-san servers
     # https://github.com/cognizant-ai-lab/neuro-san/blob/main/docs/manifest_hocon_reference.md
 
-    # For all the grouped registries such as basic, tools, industry, we include the respective manifest file.
-
-    # Basic examples
-    include "registries/basic/manifest.hocon",
-
-    # Tool integration examples
-    include "registries/tools/manifest.hocon",
-    
-    # Industry use cases
-    include "registries/industry/manifest.hocon",
-
-    # Experimental and research
-    include "registries/experimental/manifest.hocon",
-
     # Generated agent networks
-    include "registries/generated/manifest.hocon",
-
-    # Currently we list each hocon file we want to serve as a key with a boolean value.
-    # Eventually we might have a dictionary value with server specifications for each.
-
-
-    #
-    # Agent network designer family of agents
-    #
-    "agent_network_designer.hocon": true,
-    "agent_network_editor.hocon": {
-        # This is a support network for agent_network_designer
-        # We want it served up, but not listed as a public agent network
-        "serve": true,
-        "public": false
-    },
-    "agent_network_instructions_editor.hocon": {
-        # This is a support network for agent_network_designer
-        # We want it served up, but not listed as a public agent network
-        "serve": true,
-        "public": false
-    },
-    "agent_network_query_generator.hocon": { 
-        # This is a support network for agent_network_designer
-        # We want it served up, but not listed as a public agent network
-        "serve": true,
-        "public": false
-    },
-
-    #
-    # Agent network test generator
-    #
-    "agent_network_test_generator.hocon": true,
-
-    # This agent network performs the following actions:
-    # 1. Calls "agent_network_designer" as an external agent to generate a .hocon configuration file.
-    # 2. Uses the "agent_network_html_generator" tool (from the toolbox) to create an HTML visualization of the network.
-    # 3. Demonstrates how the generated network works by calling the coded tool "NsflowSelenium".
-    # 4. Sends an email with the .hocon and HTML files attached using the "gmail_with_attachment" tool (also from the toolbox).
-    #
-    # Requirements:
-    # - neuro-san>=0.5.38
-    # - Install Gmail support:
-    #     pip install -U langchain-google-community\[gmail\]
-    # - Set up Gmail API credentials:
-    #     Follow the instructions at
-    #     https://developers.google.com/workspace/gmail/api/quickstart/python#authorize_credentials_for_a_desktop_application
-    #     Then download the `credentials.json` file and place it at the top level of this repo.
-    # - Install Selenium and WebDriver Manager:
-    #     pip install selenium webdriver-manager
-    #
-    # Additional setup for running the "NsflowSelenium" coded tool:
-    # - Start the nsflow service in a separate terminal.
-    # - Use non-default ports for the neuro-san HTTP and nsflow servers.
-    #   The default ports are 8080 for HTTP and 4173 for nsflow.
-    #   For example, you can run:
-    #     python -m neuro_san_studio run --server-http-port 8081 --nsflow-port 4174
-    "agent_network_architect.hocon": false,
+    include "registries/generated/manifest.hocon"
 
 }
