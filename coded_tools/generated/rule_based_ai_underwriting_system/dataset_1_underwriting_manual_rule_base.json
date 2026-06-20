@@ -1,0 +1,460 @@
+{
+  "underwriting_manual": [
+    {
+      "rule_id": "R-MH-001",
+      "rule_name": "Acute Episode High Risk Exclusion",
+      "condition": "mental health",
+      "criteria": "condition = mental health AND condition_severity = High AND treatment_status = None",
+      "decision": "Exclusion",
+      "load_percentage": null,
+      "exclusion_terms": [
+        "No cover for self-harm related events in first 24 months"
+      ],
+      "description": "High severity untreated mental health presentation is excluded due to immediate volatility risk."
+    },
+    {
+      "rule_id": "R-MH-002",
+      "rule_name": "Stabilized High Severity Referral",
+      "condition": "mental health",
+      "criteria": "condition = mental health AND condition_severity = High AND treatment_status = Ongoing AND medication = Yes",
+      "decision": "Refer",
+      "load_percentage": null,
+      "exclusion_terms": null,
+      "description": "High severity with active management requires specialist review instead of automatic decline."
+    },
+    {
+      "rule_id": "R-MH-003",
+      "rule_name": "Medium Severity With Claims Load",
+      "condition": "mental health",
+      "criteria": "condition = mental health AND condition_severity = Medium AND prior_claims = Yes",
+      "decision": "Load",
+      "load_percentage": 35,
+      "exclusion_terms": null,
+      "description": "Prior claims and medium severity increase expected utilization; loading applied."
+    },
+    {
+      "rule_id": "R-MH-004",
+      "rule_name": "Medium Severity Stable Accept",
+      "condition": "mental health",
+      "criteria": "condition = mental health AND condition_severity = Medium AND treatment_status = Completed AND diagnosis_duration >= 24",
+      "decision": "Accept",
+      "load_percentage": null,
+      "exclusion_terms": null,
+      "description": "Sustained stability after completed treatment can be accepted under standard terms."
+    },
+    {
+      "rule_id": "R-MH-005",
+      "rule_name": "Low Severity No Treatment Refer",
+      "condition": "mental health",
+      "criteria": "condition = mental health AND condition_severity = Low AND treatment_status = None",
+      "decision": "Refer",
+      "load_percentage": null,
+      "exclusion_terms": null,
+      "description": "Low severity without treatment evidence requires clinical clarification."
+    },
+    {
+      "rule_id": "R-MH-006",
+      "rule_name": "Young High Severity Escalation",
+      "condition": "mental health",
+      "criteria": "condition = mental health AND condition_severity = High AND applicant_age < 25",
+      "decision": "Refer",
+      "load_percentage": null,
+      "exclusion_terms": null,
+      "description": "Early-onset high severity cases are escalated to assess progression risk."
+    },
+    {
+      "rule_id": "R-MH-007",
+      "rule_name": "High Severity With Alcohol Exclusion",
+      "condition": "mental health",
+      "criteria": "condition = mental health AND condition_severity = High AND alcohol_usage = High",
+      "decision": "Exclusion",
+      "load_percentage": null,
+      "exclusion_terms": [
+        "No coverage for substance-induced relapse events"
+      ],
+      "description": "Comorbid high alcohol usage amplifies relapse and morbidity risk."
+    },
+    {
+      "rule_id": "R-MH-008",
+      "rule_name": "Low Severity Managed Load",
+      "condition": "mental health",
+      "criteria": "condition = mental health AND condition_severity = Low AND treatment_status = Ongoing",
+      "decision": "Load",
+      "load_percentage": 15,
+      "exclusion_terms": null,
+      "description": "Low severity with active treatment may attract minor loading pending trend data."
+    },
+    {
+      "rule_id": "R-MH-009",
+      "rule_name": "Medium Severity High Risk Occupation Refer",
+      "condition": "mental health",
+      "criteria": "condition = mental health AND condition_severity = Medium AND occupation_risk_level = High",
+      "decision": "Refer",
+      "load_percentage": null,
+      "exclusion_terms": null,
+      "description": "Operational safety exposure requires specialist underwriting review."
+    },
+    {
+      "rule_id": "R-MH-010",
+      "rule_name": "Medium Severity Medication Non-Adherence Proxy",
+      "condition": "mental health",
+      "criteria": "condition = mental health AND condition_severity = Medium AND medication = No AND treatment_status = Ongoing",
+      "decision": "Load",
+      "load_percentage": 30,
+      "exclusion_terms": null,
+      "description": "Ongoing care without medication may indicate unstable management pattern."
+    },
+    {
+      "rule_id": "R-MH-011",
+      "rule_name": "Chronic Stable Medium Accept",
+      "condition": "mental health",
+      "criteria": "condition = mental health AND condition_severity = Medium AND diagnosis_duration >= 60 AND prior_claims = No",
+      "decision": "Accept",
+      "load_percentage": null,
+      "exclusion_terms": null,
+      "description": "Long-duration stable profile with clean claims may be accepted."
+    },
+    {
+      "rule_id": "R-MH-012",
+      "rule_name": "Conflicting Legacy Medium Exclusion",
+      "condition": "mental health",
+      "criteria": "condition = mental health AND condition_severity = Medium AND smoking_status = Yes AND bmi > 33",
+      "decision": "Exclusion",
+      "load_percentage": null,
+      "exclusion_terms": [
+        "Mental-health-related inpatient episodes excluded"
+      ],
+      "description": "Legacy strict rule creates deliberate conflict with modern referral guidance."
+    },
+    {
+      "rule_id": "R-MH-013",
+      "rule_name": "Completed Treatment Fast-Track Accept",
+      "condition": "mental health",
+      "criteria": "condition = mental health AND treatment_status = Completed AND diagnosis_duration >= 12",
+      "decision": "Accept",
+      "load_percentage": null,
+      "exclusion_terms": null,
+      "description": "Simplified fast-track acceptance, intentionally broad and potentially over-lenient."
+    },
+    {
+      "rule_id": "R-MH-014",
+      "rule_name": "High Severity Prior Claims Exclusion",
+      "condition": "mental health",
+      "criteria": "condition = mental health AND condition_severity = High AND prior_claims = Yes",
+      "decision": "Exclusion",
+      "load_percentage": null,
+      "exclusion_terms": [
+        "No benefit for recurrent psychiatric admissions"
+      ],
+      "description": "Claims history plus high severity exceeds appetite."
+    },
+    {
+      "rule_id": "R-MH-015",
+      "rule_name": "Low Severity High Income Load",
+      "condition": "mental health",
+      "criteria": "condition = mental health AND condition_severity = Low AND income_band = High",
+      "decision": "Load",
+      "load_percentage": 10,
+      "exclusion_terms": null,
+      "description": "Commercially conservative rule for higher sum-assured cohorts."
+    },
+    {
+      "rule_id": "R-MH-016",
+      "rule_name": "Ambiguous Medium Duration Refer",
+      "condition": "mental health",
+      "criteria": "condition = mental health AND condition_severity = Medium AND diagnosis_duration BETWEEN 6 AND 12",
+      "decision": "Refer",
+      "load_percentage": null,
+      "exclusion_terms": null,
+      "description": "Intermediate duration band lacks clear stability evidence."
+    },
+    {
+      "rule_id": "R-HD-001",
+      "rule_name": "Migraine High Severity Load",
+      "condition": "headache",
+      "criteria": "condition = headache AND condition_severity = High",
+      "decision": "Load",
+      "load_percentage": 30,
+      "exclusion_terms": null,
+      "description": "High severity headache generally loaded unless additional red flags apply."
+    },
+    {
+      "rule_id": "R-HD-002",
+      "rule_name": "Headache High Risk Occupation Refer",
+      "condition": "headache",
+      "criteria": "condition = headache AND condition_severity = Medium AND occupation_risk_level = High",
+      "decision": "Refer",
+      "load_percentage": null,
+      "exclusion_terms": null,
+      "description": "Safety critical occupations need specialist review for headache triggers."
+    },
+    {
+      "rule_id": "R-HD-003",
+      "rule_name": "Low Severity Standard Accept",
+      "condition": "headache",
+      "criteria": "condition = headache AND condition_severity = Low AND prior_claims = No",
+      "decision": "Accept",
+      "load_percentage": null,
+      "exclusion_terms": null,
+      "description": "Low severity with clean claims history accepted."
+    },
+    {
+      "rule_id": "R-HD-004",
+      "rule_name": "Legacy Strict Exclusion",
+      "condition": "headache",
+      "criteria": "condition = headache AND condition_severity = High AND smoking_status = Yes",
+      "decision": "Exclusion",
+      "load_percentage": null,
+      "exclusion_terms": [
+        "No cover for neurological events tied to chronic migraine"
+      ],
+      "description": "Legacy strict rule intentionally conflicts with newer loading logic."
+    },
+    {
+      "rule_id": "R-HD-005",
+      "rule_name": "Medium Severity Completed Treatment Accept",
+      "condition": "headache",
+      "criteria": "condition = headache AND condition_severity = Medium AND treatment_status = Completed",
+      "decision": "Accept",
+      "load_percentage": null,
+      "exclusion_terms": null,
+      "description": "Completed treatment with medium severity may be accepted."
+    },
+    {
+      "rule_id": "R-HD-006",
+      "rule_name": "Medium Severity Ongoing Treatment Load",
+      "condition": "headache",
+      "criteria": "condition = headache AND condition_severity = Medium AND treatment_status = Ongoing",
+      "decision": "Load",
+      "load_percentage": 20,
+      "exclusion_terms": null,
+      "description": "Active treatment indicates persistent risk, moderate load applied."
+    },
+    {
+      "rule_id": "R-HD-007",
+      "rule_name": "High Severity + High Alcohol Refer",
+      "condition": "headache",
+      "criteria": "condition = headache AND condition_severity = High AND alcohol_usage = High",
+      "decision": "Refer",
+      "load_percentage": null,
+      "exclusion_terms": null,
+      "description": "Potential trigger amplification requires referral."
+    },
+    {
+      "rule_id": "R-HD-008",
+      "rule_name": "Broad Low Severity Accept",
+      "condition": "headache",
+      "criteria": "condition = headache AND condition_severity = Low",
+      "decision": "Accept",
+      "load_percentage": null,
+      "exclusion_terms": null,
+      "description": "Overly broad acceptance rule retained for speed, misses occupation effects."
+    },
+    {
+      "rule_id": "R-DB-001",
+      "rule_name": "Diabetes High Severity Exclusion",
+      "condition": "diabetes",
+      "criteria": "condition = diabetes AND condition_severity = High AND bmi > 34",
+      "decision": "Exclusion",
+      "load_percentage": null,
+      "exclusion_terms": [
+        "No diabetic complication coverage first 36 months"
+      ],
+      "description": "High severity diabetes with obesity has elevated complication risk."
+    },
+    {
+      "rule_id": "R-DB-002",
+      "rule_name": "Diabetes Medium Load",
+      "condition": "diabetes",
+      "criteria": "condition = diabetes AND condition_severity = Medium",
+      "decision": "Load",
+      "load_percentage": 30,
+      "exclusion_terms": null,
+      "description": "Medium severity diabetes gets standard loading."
+    },
+    {
+      "rule_id": "R-DB-003",
+      "rule_name": "Diabetes Low Controlled Accept",
+      "condition": "diabetes",
+      "criteria": "condition = diabetes AND condition_severity = Low AND treatment_status = Ongoing AND medication = Yes",
+      "decision": "Accept",
+      "load_percentage": null,
+      "exclusion_terms": null,
+      "description": "Controlled low severity diabetic profile accepted."
+    },
+    {
+      "rule_id": "R-DB-004",
+      "rule_name": "Diabetes Prior Claims Refer",
+      "condition": "diabetes",
+      "criteria": "condition = diabetes AND prior_claims = Yes",
+      "decision": "Refer",
+      "load_percentage": null,
+      "exclusion_terms": null,
+      "description": "Claims history triggers referral for complications screening."
+    },
+    {
+      "rule_id": "R-DB-005",
+      "rule_name": "Diabetes + Smoking High Load",
+      "condition": "diabetes",
+      "criteria": "condition = diabetes AND smoking_status = Yes AND condition_severity IN (Medium, High)",
+      "decision": "Load",
+      "load_percentage": 45,
+      "exclusion_terms": null,
+      "description": "Smoking interaction leads to high loading."
+    },
+    {
+      "rule_id": "R-DB-006",
+      "rule_name": "Legacy Lenient Low Severity Accept",
+      "condition": "diabetes",
+      "criteria": "condition = diabetes AND condition_severity = Low",
+      "decision": "Accept",
+      "load_percentage": null,
+      "exclusion_terms": null,
+      "description": "Legacy broad accept rule may understate occupation/lifestyle risk."
+    },
+    {
+      "rule_id": "R-DB-007",
+      "rule_name": "No Treatment Refer",
+      "condition": "diabetes",
+      "criteria": "condition = diabetes AND treatment_status = None",
+      "decision": "Refer",
+      "load_percentage": null,
+      "exclusion_terms": null,
+      "description": "Untreated diabetes requires clinical evidence."
+    },
+    {
+      "rule_id": "R-DB-008",
+      "rule_name": "Long Duration Medium Exclusion",
+      "condition": "diabetes",
+      "criteria": "condition = diabetes AND condition_severity = Medium AND diagnosis_duration >= 120",
+      "decision": "Exclusion",
+      "load_percentage": null,
+      "exclusion_terms": [
+        "No cover for advanced diabetic sequelae"
+      ],
+      "description": "Deliberately strict long-duration rule to create conflict realism."
+    },
+    {
+      "rule_id": "R-HT-001",
+      "rule_name": "Hypertension High Severity Refer",
+      "condition": "hypertension",
+      "criteria": "condition = hypertension AND condition_severity = High",
+      "decision": "Refer",
+      "load_percentage": null,
+      "exclusion_terms": null,
+      "description": "High severity hypertension usually referred for cardiac workup."
+    },
+    {
+      "rule_id": "R-HT-002",
+      "rule_name": "Hypertension Medium Load",
+      "condition": "hypertension",
+      "criteria": "condition = hypertension AND condition_severity = Medium",
+      "decision": "Load",
+      "load_percentage": 20,
+      "exclusion_terms": null,
+      "description": "Medium severity hypertension loaded by default."
+    },
+    {
+      "rule_id": "R-HT-003",
+      "rule_name": "Hypertension Low Accept",
+      "condition": "hypertension",
+      "criteria": "condition = hypertension AND condition_severity = Low AND prior_claims = No",
+      "decision": "Accept",
+      "load_percentage": null,
+      "exclusion_terms": null,
+      "description": "Low severity no-claims hypertension accepted."
+    },
+    {
+      "rule_id": "R-HT-004",
+      "rule_name": "Hypertension + High BMI Refer",
+      "condition": "hypertension",
+      "criteria": "condition = hypertension AND bmi > 33",
+      "decision": "Refer",
+      "load_percentage": null,
+      "exclusion_terms": null,
+      "description": "Obesity interaction requires referral review."
+    },
+    {
+      "rule_id": "R-HT-005",
+      "rule_name": "Legacy Broad Load",
+      "condition": "hypertension",
+      "criteria": "condition = hypertension",
+      "decision": "Load",
+      "load_percentage": 15,
+      "exclusion_terms": null,
+      "description": "Simplistic fallback load for all hypertension cases."
+    },
+    {
+      "rule_id": "R-HT-006",
+      "rule_name": "Completed Long-Term Accept",
+      "condition": "hypertension",
+      "criteria": "condition = hypertension AND treatment_status = Completed AND diagnosis_duration >= 36",
+      "decision": "Accept",
+      "load_percentage": null,
+      "exclusion_terms": null,
+      "description": "Long-term completed treatment profile can be accepted."
+    },
+    {
+      "rule_id": "R-X-001",
+      "rule_name": "High Risk Occupation Escalation",
+      "condition": "all",
+      "criteria": "occupation_risk_level = High AND condition_severity != Low",
+      "decision": "Refer",
+      "load_percentage": null,
+      "exclusion_terms": null,
+      "description": "Cross-condition escalation for operational hazard occupations."
+    },
+    {
+      "rule_id": "R-X-002",
+      "rule_name": "Young Low Severity Fast Track",
+      "condition": "all",
+      "criteria": "applicant_age < 25 AND condition_severity = Low AND prior_claims = No",
+      "decision": "Accept",
+      "load_percentage": null,
+      "exclusion_terms": null,
+      "description": "Fast-track rule, intentionally simplistic."
+    },
+    {
+      "rule_id": "R-X-003",
+      "rule_name": "Multiple Lifestyle Risk Load",
+      "condition": "all",
+      "criteria": "smoking_status = Yes AND alcohol_usage = High",
+      "decision": "Load",
+      "load_percentage": 25,
+      "exclusion_terms": null,
+      "description": "Combined lifestyle factors attract loading irrespective of condition."
+    },
+    {
+      "rule_id": "R-X-004",
+      "rule_name": "Unstable Income + Claims Refer",
+      "condition": "all",
+      "criteria": "income_band = Low AND prior_claims = Yes",
+      "decision": "Refer",
+      "load_percentage": null,
+      "exclusion_terms": null,
+      "description": "Financial stress and claims history escalated for review."
+    },
+    {
+      "rule_id": "R-X-005",
+      "rule_name": "Edge-Case Catcher",
+      "condition": "all",
+      "criteria": "condition_severity = High AND treatment_status = Completed AND diagnosis_duration < 6",
+      "decision": "Refer",
+      "load_percentage": null,
+      "exclusion_terms": null,
+      "description": "Potential data inconsistency path for manual adjudication."
+    },
+    {
+      "rule_id": "R-X-006",
+      "rule_name": "Legacy Strict Broad Exclusion",
+      "condition": "all",
+      "criteria": "condition_severity = High AND prior_claims = Yes AND smoking_status = Yes",
+      "decision": "Exclusion",
+      "load_percentage": null,
+      "exclusion_terms": [
+        "No cover for pre-existing progression events"
+      ],
+      "description": "Overly strict legacy rule to mimic historical policy bias."
+    }
+  ]
+}

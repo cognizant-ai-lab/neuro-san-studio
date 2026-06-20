@@ -1,0 +1,1788 @@
+{
+  "historical_decisions": [
+    {
+      "case_id": "CASE-0001",
+      "underwriting_decision_human": "Accept",
+      "decision_reason_human": "Human review considered rule signals R-HD-005 with additional underwriting context: severity=Medium, treatment=Completed, prior_claims=Yes, occupation_risk=Low. Final decision set to Accept.",
+      "applied_rule_ids": [
+        "R-HD-005"
+      ]
+    },
+    {
+      "case_id": "CASE-0002",
+      "underwriting_decision_human": "Load",
+      "decision_reason_human": "Human review considered rule signals R-MH-013 with additional underwriting context: severity=Low, treatment=Completed, prior_claims=No, occupation_risk=Low. Final decision set to Load.",
+      "applied_rule_ids": [
+        "R-MH-013"
+      ]
+    },
+    {
+      "case_id": "CASE-0003",
+      "underwriting_decision_human": "Load",
+      "decision_reason_human": "Human review considered rule signals R-MH-003, R-MH-010, R-X-003 with additional underwriting context: severity=Medium, treatment=Ongoing, prior_claims=Yes, occupation_risk=Low. Final decision set to Load.",
+      "applied_rule_ids": [
+        "R-MH-003",
+        "R-MH-010",
+        "R-X-003"
+      ]
+    },
+    {
+      "case_id": "CASE-0004",
+      "underwriting_decision_human": "Accept",
+      "decision_reason_human": "Human review considered rule signals R-HD-001 with additional underwriting context: severity=High, treatment=Ongoing, prior_claims=No, occupation_risk=Low. Final decision set to Accept.",
+      "applied_rule_ids": [
+        "R-HD-001"
+      ]
+    },
+    {
+      "case_id": "CASE-0005",
+      "underwriting_decision_human": "Refer",
+      "decision_reason_human": "Human review considered rule signals R-X-001, R-HD-001 with additional underwriting context: severity=High, treatment=Completed, prior_claims=No, occupation_risk=High. Final decision set to Refer.",
+      "applied_rule_ids": [
+        "R-X-001",
+        "R-HD-001"
+      ]
+    },
+    {
+      "case_id": "CASE-0006",
+      "underwriting_decision_human": "Refer",
+      "decision_reason_human": "Human review considered rule signals R-MH-009, R-X-001, R-MH-011 with additional underwriting context: severity=Medium, treatment=Ongoing, prior_claims=No, occupation_risk=High. Final decision set to Refer.",
+      "applied_rule_ids": [
+        "R-MH-009",
+        "R-X-001",
+        "R-MH-011"
+      ]
+    },
+    {
+      "case_id": "CASE-0007",
+      "underwriting_decision_human": "Exclusion",
+      "decision_reason_human": "Human review considered rule signals R-X-001, R-DB-002 with additional underwriting context: severity=Medium, treatment=Completed, prior_claims=No, occupation_risk=High. Final decision set to Exclusion.",
+      "applied_rule_ids": [
+        "R-X-001",
+        "R-DB-002"
+      ]
+    },
+    {
+      "case_id": "CASE-0008",
+      "underwriting_decision_human": "Load",
+      "decision_reason_human": "Human review considered rule signals R-HT-002, R-HT-005 with additional underwriting context: severity=Medium, treatment=Ongoing, prior_claims=No, occupation_risk=Low. Final decision set to Load.",
+      "applied_rule_ids": [
+        "R-HT-002",
+        "R-HT-005"
+      ]
+    },
+    {
+      "case_id": "CASE-0009",
+      "underwriting_decision_human": "Load",
+      "decision_reason_human": "Human review considered rule signals R-MH-008 with additional underwriting context: severity=Low, treatment=Ongoing, prior_claims=No, occupation_risk=High. Final decision set to Load.",
+      "applied_rule_ids": [
+        "R-MH-008"
+      ]
+    },
+    {
+      "case_id": "CASE-0010",
+      "underwriting_decision_human": "Refer",
+      "decision_reason_human": "Human review considered rule signals R-MH-005 with additional underwriting context: severity=Low, treatment=None, prior_claims=No, occupation_risk=Low. Final decision set to Refer.",
+      "applied_rule_ids": [
+        "R-MH-005"
+      ]
+    },
+    {
+      "case_id": "CASE-0011",
+      "underwriting_decision_human": "Accept",
+      "decision_reason_human": "Human review considered rule signals R-X-002 with additional underwriting context: severity=Medium, treatment=Ongoing, prior_claims=No, occupation_risk=Medium. Final decision set to Accept.",
+      "applied_rule_ids": [
+        "R-X-002"
+      ]
+    },
+    {
+      "case_id": "CASE-0012",
+      "underwriting_decision_human": "Refer",
+      "decision_reason_human": "Human review considered rule signals R-HT-002, R-HT-005 with additional underwriting context: severity=Medium, treatment=Ongoing, prior_claims=No, occupation_risk=Medium. Final decision set to Refer.",
+      "applied_rule_ids": [
+        "R-HT-002",
+        "R-HT-005"
+      ]
+    },
+    {
+      "case_id": "CASE-0013",
+      "underwriting_decision_human": "Accept",
+      "decision_reason_human": "Human review considered rule signals R-HD-008 with additional underwriting context: severity=Low, treatment=Ongoing, prior_claims=Yes, occupation_risk=Low. Final decision set to Accept.",
+      "applied_rule_ids": [
+        "R-HD-008"
+      ]
+    },
+    {
+      "case_id": "CASE-0014",
+      "underwriting_decision_human": "Refer",
+      "decision_reason_human": "Human review considered rule signals R-DB-004, R-X-004, R-DB-002 with additional underwriting context: severity=Medium, treatment=Ongoing, prior_claims=Yes, occupation_risk=Medium. Final decision set to Refer.",
+      "applied_rule_ids": [
+        "R-DB-004",
+        "R-X-004",
+        "R-DB-002"
+      ]
+    },
+    {
+      "case_id": "CASE-0015",
+      "underwriting_decision_human": "Refer",
+      "decision_reason_human": "Human review considered rule signals R-MH-009, R-X-001, R-MH-010 with additional underwriting context: severity=Medium, treatment=Ongoing, prior_claims=No, occupation_risk=High. Final decision set to Refer.",
+      "applied_rule_ids": [
+        "R-MH-009",
+        "R-X-001",
+        "R-MH-010"
+      ]
+    },
+    {
+      "case_id": "CASE-0016",
+      "underwriting_decision_human": "Refer",
+      "decision_reason_human": "Human review considered rule signals R-MH-005 with additional underwriting context: severity=Low, treatment=None, prior_claims=Yes, occupation_risk=Medium. Final decision set to Refer.",
+      "applied_rule_ids": [
+        "R-MH-005"
+      ]
+    },
+    {
+      "case_id": "CASE-0017",
+      "underwriting_decision_human": "Refer",
+      "decision_reason_human": "Human review considered rule signals R-DB-004, R-X-001, R-X-004 with additional underwriting context: severity=Medium, treatment=Ongoing, prior_claims=Yes, occupation_risk=High. Final decision set to Refer.",
+      "applied_rule_ids": [
+        "R-DB-004",
+        "R-X-001",
+        "R-X-004"
+      ]
+    },
+    {
+      "case_id": "CASE-0018",
+      "underwriting_decision_human": "Accept",
+      "decision_reason_human": "Human review considered rule signals R-DB-006 with additional underwriting context: severity=Low, treatment=Ongoing, prior_claims=No, occupation_risk=Medium. Final decision set to Accept.",
+      "applied_rule_ids": [
+        "R-DB-006"
+      ]
+    },
+    {
+      "case_id": "CASE-0019",
+      "underwriting_decision_human": "Refer",
+      "decision_reason_human": "Human review considered rule signals R-X-001, R-HT-002, R-HT-005 with additional underwriting context: severity=Medium, treatment=Completed, prior_claims=No, occupation_risk=High. Final decision set to Refer.",
+      "applied_rule_ids": [
+        "R-X-001",
+        "R-HT-002",
+        "R-HT-005"
+      ]
+    },
+    {
+      "case_id": "CASE-0020",
+      "underwriting_decision_human": "Load",
+      "decision_reason_human": "Human review considered rule signals R-MH-008, R-X-002 with additional underwriting context: severity=Low, treatment=Ongoing, prior_claims=No, occupation_risk=High. Final decision set to Load.",
+      "applied_rule_ids": [
+        "R-MH-008",
+        "R-X-002"
+      ]
+    },
+    {
+      "case_id": "CASE-0021",
+      "underwriting_decision_human": "Refer",
+      "decision_reason_human": "Human review considered rule signals R-DB-004, R-DB-003, R-DB-006 with additional underwriting context: severity=Low, treatment=Ongoing, prior_claims=Yes, occupation_risk=High. Final decision set to Refer.",
+      "applied_rule_ids": [
+        "R-DB-004",
+        "R-DB-003",
+        "R-DB-006"
+      ]
+    },
+    {
+      "case_id": "CASE-0022",
+      "underwriting_decision_human": "Load",
+      "decision_reason_human": "Human review considered rule signals R-HD-001 with additional underwriting context: severity=High, treatment=Ongoing, prior_claims=No, occupation_risk=Low. Final decision set to Load.",
+      "applied_rule_ids": [
+        "R-HD-001"
+      ]
+    },
+    {
+      "case_id": "CASE-0023",
+      "underwriting_decision_human": "Refer",
+      "decision_reason_human": "Human review considered rule signals R-DB-004, R-DB-007, R-X-003 with additional underwriting context: severity=Low, treatment=None, prior_claims=Yes, occupation_risk=High. Final decision set to Refer.",
+      "applied_rule_ids": [
+        "R-DB-004",
+        "R-DB-007",
+        "R-X-003"
+      ]
+    },
+    {
+      "case_id": "CASE-0024",
+      "underwriting_decision_human": "Exclusion",
+      "decision_reason_human": "Human review considered rule signals R-MH-002, R-MH-006, R-X-001 with additional underwriting context: severity=High, treatment=Ongoing, prior_claims=No, occupation_risk=High. Final decision set to Exclusion.",
+      "applied_rule_ids": [
+        "R-MH-002",
+        "R-MH-006",
+        "R-X-001"
+      ]
+    },
+    {
+      "case_id": "CASE-0025",
+      "underwriting_decision_human": "Accept",
+      "decision_reason_human": "Human review considered rule signals R-MH-011 with additional underwriting context: severity=Medium, treatment=Ongoing, prior_claims=No, occupation_risk=Low. Final decision set to Accept.",
+      "applied_rule_ids": [
+        "R-MH-011"
+      ]
+    },
+    {
+      "case_id": "CASE-0026",
+      "underwriting_decision_human": "Load",
+      "decision_reason_human": "Human review considered rule signals R-HD-006 with additional underwriting context: severity=Medium, treatment=Ongoing, prior_claims=Yes, occupation_risk=Low. Final decision set to Load.",
+      "applied_rule_ids": [
+        "R-HD-006"
+      ]
+    },
+    {
+      "case_id": "CASE-0027",
+      "underwriting_decision_human": "Load",
+      "decision_reason_human": "Human review considered rule signals R-MH-008, R-X-002 with additional underwriting context: severity=Low, treatment=Ongoing, prior_claims=No, occupation_risk=High. Final decision set to Load.",
+      "applied_rule_ids": [
+        "R-MH-008",
+        "R-X-002"
+      ]
+    },
+    {
+      "case_id": "CASE-0028",
+      "underwriting_decision_human": "Refer",
+      "decision_reason_human": "Human review considered rule signals R-X-004, R-HD-008 with additional underwriting context: severity=Low, treatment=Ongoing, prior_claims=Yes, occupation_risk=High. Final decision set to Refer.",
+      "applied_rule_ids": [
+        "R-X-004",
+        "R-HD-008"
+      ]
+    },
+    {
+      "case_id": "CASE-0029",
+      "underwriting_decision_human": "Load",
+      "decision_reason_human": "Human review considered rule signals R-MH-013 with additional underwriting context: severity=Low, treatment=Completed, prior_claims=No, occupation_risk=High. Final decision set to Load.",
+      "applied_rule_ids": [
+        "R-MH-013"
+      ]
+    },
+    {
+      "case_id": "CASE-0030",
+      "underwriting_decision_human": "Accept",
+      "decision_reason_human": "Human review considered rule signals R-DB-003, R-DB-006 with additional underwriting context: severity=Low, treatment=Ongoing, prior_claims=No, occupation_risk=Low. Final decision set to Accept.",
+      "applied_rule_ids": [
+        "R-DB-003",
+        "R-DB-006"
+      ]
+    },
+    {
+      "case_id": "CASE-0031",
+      "underwriting_decision_human": "Refer",
+      "decision_reason_human": "Human review considered rule signals R-MH-002 with additional underwriting context: severity=High, treatment=Ongoing, prior_claims=No, occupation_risk=Low. Final decision set to Refer.",
+      "applied_rule_ids": [
+        "R-MH-002"
+      ]
+    },
+    {
+      "case_id": "CASE-0032",
+      "underwriting_decision_human": "Load",
+      "decision_reason_human": "Human review considered rule signals R-MH-015, R-MH-013 with additional underwriting context: severity=Low, treatment=Completed, prior_claims=No, occupation_risk=High. Final decision set to Load.",
+      "applied_rule_ids": [
+        "R-MH-015",
+        "R-MH-013"
+      ]
+    },
+    {
+      "case_id": "CASE-0033",
+      "underwriting_decision_human": "Refer",
+      "decision_reason_human": "Human review considered rule signals R-MH-006 with additional underwriting context: severity=High, treatment=Ongoing, prior_claims=No, occupation_risk=Medium. Final decision set to Refer.",
+      "applied_rule_ids": [
+        "R-MH-006"
+      ]
+    },
+    {
+      "case_id": "CASE-0034",
+      "underwriting_decision_human": "Refer",
+      "decision_reason_human": "Human review considered rule signals R-HD-002, R-X-001, R-HD-005 with additional underwriting context: severity=Medium, treatment=Completed, prior_claims=No, occupation_risk=High. Final decision set to Refer.",
+      "applied_rule_ids": [
+        "R-HD-002",
+        "R-X-001",
+        "R-HD-005"
+      ]
+    },
+    {
+      "case_id": "CASE-0035",
+      "underwriting_decision_human": "Accept",
+      "decision_reason_human": "Human review considered rule signals R-DB-003, R-DB-006 with additional underwriting context: severity=Low, treatment=Ongoing, prior_claims=No, occupation_risk=High. Final decision set to Accept.",
+      "applied_rule_ids": [
+        "R-DB-003",
+        "R-DB-006"
+      ]
+    },
+    {
+      "case_id": "CASE-0036",
+      "underwriting_decision_human": "Exclusion",
+      "decision_reason_human": "Human review considered rule signals R-HD-004, R-X-006, R-HD-001 with additional underwriting context: severity=High, treatment=Completed, prior_claims=Yes, occupation_risk=Low. Final decision set to Exclusion.",
+      "applied_rule_ids": [
+        "R-HD-004",
+        "R-X-006",
+        "R-HD-001"
+      ]
+    },
+    {
+      "case_id": "CASE-0037",
+      "underwriting_decision_human": "Load",
+      "decision_reason_human": "Human review considered rule signals R-MH-015, R-X-003 with additional underwriting context: severity=Low, treatment=Completed, prior_claims=No, occupation_risk=Low. Final decision set to Load.",
+      "applied_rule_ids": [
+        "R-MH-015",
+        "R-X-003"
+      ]
+    },
+    {
+      "case_id": "CASE-0038",
+      "underwriting_decision_human": "Load",
+      "decision_reason_human": "Human review considered rule signals R-HT-005, R-HT-003 with additional underwriting context: severity=Low, treatment=Ongoing, prior_claims=No, occupation_risk=High. Final decision set to Load.",
+      "applied_rule_ids": [
+        "R-HT-005",
+        "R-HT-003"
+      ]
+    },
+    {
+      "case_id": "CASE-0039",
+      "underwriting_decision_human": "Exclusion",
+      "decision_reason_human": "Human review considered rule signals R-MH-014 with additional underwriting context: severity=High, treatment=Ongoing, prior_claims=Yes, occupation_risk=Medium. Final decision set to Exclusion.",
+      "applied_rule_ids": [
+        "R-MH-014"
+      ]
+    },
+    {
+      "case_id": "CASE-0040",
+      "underwriting_decision_human": "Refer",
+      "decision_reason_human": "Human review considered rule signals R-MH-005, R-MH-015 with additional underwriting context: severity=Low, treatment=None, prior_claims=Yes, occupation_risk=Low. Final decision set to Refer.",
+      "applied_rule_ids": [
+        "R-MH-005",
+        "R-MH-015"
+      ]
+    },
+    {
+      "case_id": "CASE-0041",
+      "underwriting_decision_human": "Load",
+      "decision_reason_human": "Human review considered rule signals R-HT-002, R-HT-005 with additional underwriting context: severity=Medium, treatment=Ongoing, prior_claims=No, occupation_risk=Medium. Final decision set to Load.",
+      "applied_rule_ids": [
+        "R-HT-002",
+        "R-HT-005"
+      ]
+    },
+    {
+      "case_id": "CASE-0042",
+      "underwriting_decision_human": "Load",
+      "decision_reason_human": "Human review considered rule signals R-HD-006 with additional underwriting context: severity=Medium, treatment=Ongoing, prior_claims=No, occupation_risk=Low. Final decision set to Load.",
+      "applied_rule_ids": [
+        "R-HD-006"
+      ]
+    },
+    {
+      "case_id": "CASE-0043",
+      "underwriting_decision_human": "Refer",
+      "decision_reason_human": "Human review considered rule signals R-MH-009, R-X-001, R-MH-004 with additional underwriting context: severity=Medium, treatment=Completed, prior_claims=No, occupation_risk=High. Final decision set to Refer.",
+      "applied_rule_ids": [
+        "R-MH-009",
+        "R-X-001",
+        "R-MH-004"
+      ]
+    },
+    {
+      "case_id": "CASE-0044",
+      "underwriting_decision_human": "Load",
+      "decision_reason_human": "Human review considered rule signals R-HD-003, R-HD-008, R-X-002 with additional underwriting context: severity=Low, treatment=Ongoing, prior_claims=No, occupation_risk=High. Final decision set to Load.",
+      "applied_rule_ids": [
+        "R-HD-003",
+        "R-HD-008",
+        "R-X-002"
+      ]
+    },
+    {
+      "case_id": "CASE-0045",
+      "underwriting_decision_human": "Load",
+      "decision_reason_human": "Human review considered rule signals R-MH-015, R-MH-013 with additional underwriting context: severity=Low, treatment=Completed, prior_claims=No, occupation_risk=High. Final decision set to Load.",
+      "applied_rule_ids": [
+        "R-MH-015",
+        "R-MH-013"
+      ]
+    },
+    {
+      "case_id": "CASE-0046",
+      "underwriting_decision_human": "Accept",
+      "decision_reason_human": "Human review considered rule signals R-MH-008 with additional underwriting context: severity=Low, treatment=Ongoing, prior_claims=No, occupation_risk=High. Final decision set to Accept.",
+      "applied_rule_ids": [
+        "R-MH-008"
+      ]
+    },
+    {
+      "case_id": "CASE-0047",
+      "underwriting_decision_human": "Accept",
+      "decision_reason_human": "Human review considered rule signals R-DB-003, R-DB-006, R-X-002 with additional underwriting context: severity=Low, treatment=Ongoing, prior_claims=No, occupation_risk=Medium. Final decision set to Accept.",
+      "applied_rule_ids": [
+        "R-DB-003",
+        "R-DB-006",
+        "R-X-002"
+      ]
+    },
+    {
+      "case_id": "CASE-0048",
+      "underwriting_decision_human": "Load",
+      "decision_reason_human": "Human review considered rule signals R-HT-002, R-HT-005 with additional underwriting context: severity=Medium, treatment=Ongoing, prior_claims=No, occupation_risk=Low. Final decision set to Load.",
+      "applied_rule_ids": [
+        "R-HT-002",
+        "R-HT-005"
+      ]
+    },
+    {
+      "case_id": "CASE-0049",
+      "underwriting_decision_human": "Load",
+      "decision_reason_human": "Human review considered rule signals R-MH-009, R-X-001, R-MH-004 with additional underwriting context: severity=Medium, treatment=Completed, prior_claims=No, occupation_risk=High. Final decision set to Load.",
+      "applied_rule_ids": [
+        "R-MH-009",
+        "R-X-001",
+        "R-MH-004"
+      ]
+    },
+    {
+      "case_id": "CASE-0050",
+      "underwriting_decision_human": "Accept",
+      "decision_reason_human": "Human review considered rule signals R-MH-008 with additional underwriting context: severity=Low, treatment=Ongoing, prior_claims=No, occupation_risk=Low. Final decision set to Accept.",
+      "applied_rule_ids": [
+        "R-MH-008"
+      ]
+    },
+    {
+      "case_id": "CASE-0051",
+      "underwriting_decision_human": "Load",
+      "decision_reason_human": "Human review considered rule signals R-MH-009, R-X-001, R-MH-003 with additional underwriting context: severity=Medium, treatment=None, prior_claims=Yes, occupation_risk=High. Final decision set to Load.",
+      "applied_rule_ids": [
+        "R-MH-009",
+        "R-X-001",
+        "R-MH-003"
+      ]
+    },
+    {
+      "case_id": "CASE-0052",
+      "underwriting_decision_human": "Accept",
+      "decision_reason_human": "Human review considered rule signals R-DB-003, R-DB-006 with additional underwriting context: severity=Low, treatment=Ongoing, prior_claims=No, occupation_risk=Low. Final decision set to Accept.",
+      "applied_rule_ids": [
+        "R-DB-003",
+        "R-DB-006"
+      ]
+    },
+    {
+      "case_id": "CASE-0053",
+      "underwriting_decision_human": "Refer",
+      "decision_reason_human": "Human review considered rule signals R-X-001, R-HT-002, R-HT-005 with additional underwriting context: severity=Medium, treatment=None, prior_claims=No, occupation_risk=High. Final decision set to Refer.",
+      "applied_rule_ids": [
+        "R-X-001",
+        "R-HT-002",
+        "R-HT-005"
+      ]
+    },
+    {
+      "case_id": "CASE-0054",
+      "underwriting_decision_human": "Load",
+      "decision_reason_human": "Human review considered rule signals R-HD-004, R-X-001, R-HD-001 with additional underwriting context: severity=High, treatment=Completed, prior_claims=No, occupation_risk=High. Final decision set to Load.",
+      "applied_rule_ids": [
+        "R-HD-004",
+        "R-X-001",
+        "R-HD-001"
+      ]
+    },
+    {
+      "case_id": "CASE-0055",
+      "underwriting_decision_human": "Accept",
+      "decision_reason_human": "Human review considered rule signals R-HD-008 with additional underwriting context: severity=Low, treatment=Ongoing, prior_claims=Yes, occupation_risk=High. Final decision set to Accept.",
+      "applied_rule_ids": [
+        "R-HD-008"
+      ]
+    },
+    {
+      "case_id": "CASE-0056",
+      "underwriting_decision_human": "Exclusion",
+      "decision_reason_human": "Human review considered rule signals R-MH-014, R-X-004, R-MH-013 with additional underwriting context: severity=High, treatment=Completed, prior_claims=Yes, occupation_risk=Low. Final decision set to Exclusion.",
+      "applied_rule_ids": [
+        "R-MH-014",
+        "R-X-004",
+        "R-MH-013"
+      ]
+    },
+    {
+      "case_id": "CASE-0057",
+      "underwriting_decision_human": "Load",
+      "decision_reason_human": "Human review considered rule signals R-MH-008 with additional underwriting context: severity=Low, treatment=Ongoing, prior_claims=No, occupation_risk=High. Final decision set to Load.",
+      "applied_rule_ids": [
+        "R-MH-008"
+      ]
+    },
+    {
+      "case_id": "CASE-0058",
+      "underwriting_decision_human": "Load",
+      "decision_reason_human": "Human review considered rule signals R-MH-008 with additional underwriting context: severity=Low, treatment=Ongoing, prior_claims=No, occupation_risk=High. Final decision set to Load.",
+      "applied_rule_ids": [
+        "R-MH-008"
+      ]
+    },
+    {
+      "case_id": "CASE-0059",
+      "underwriting_decision_human": "Accept",
+      "decision_reason_human": "Human review considered rule signals R-HT-005, R-HT-003 with additional underwriting context: severity=Low, treatment=Ongoing, prior_claims=No, occupation_risk=Medium. Final decision set to Accept.",
+      "applied_rule_ids": [
+        "R-HT-005",
+        "R-HT-003"
+      ]
+    },
+    {
+      "case_id": "CASE-0060",
+      "underwriting_decision_human": "Refer",
+      "decision_reason_human": "Human review considered rule signals R-HT-001, R-HT-005 with additional underwriting context: severity=High, treatment=None, prior_claims=No, occupation_risk=Low. Final decision set to Refer.",
+      "applied_rule_ids": [
+        "R-HT-001",
+        "R-HT-005"
+      ]
+    },
+    {
+      "case_id": "CASE-0061",
+      "underwriting_decision_human": "Refer",
+      "decision_reason_human": "Human review considered rule signals R-X-004, R-MH-003, R-MH-004 with additional underwriting context: severity=Medium, treatment=Completed, prior_claims=Yes, occupation_risk=Low. Final decision set to Refer.",
+      "applied_rule_ids": [
+        "R-X-004",
+        "R-MH-003",
+        "R-MH-004"
+      ]
+    },
+    {
+      "case_id": "CASE-0062",
+      "underwriting_decision_human": "Accept",
+      "decision_reason_human": "Human review considered rule signals R-X-004, R-MH-013 with additional underwriting context: severity=Low, treatment=Completed, prior_claims=Yes, occupation_risk=High. Final decision set to Accept.",
+      "applied_rule_ids": [
+        "R-X-004",
+        "R-MH-013"
+      ]
+    },
+    {
+      "case_id": "CASE-0063",
+      "underwriting_decision_human": "Refer",
+      "decision_reason_human": "Human review considered rule signals R-X-001, R-MH-013 with additional underwriting context: severity=High, treatment=Completed, prior_claims=No, occupation_risk=High. Final decision set to Refer.",
+      "applied_rule_ids": [
+        "R-X-001",
+        "R-MH-013"
+      ]
+    },
+    {
+      "case_id": "CASE-0064",
+      "underwriting_decision_human": "Load",
+      "decision_reason_human": "Human review considered rule signals R-HD-001 with additional underwriting context: severity=High, treatment=None, prior_claims=No, occupation_risk=Low. Final decision set to Load.",
+      "applied_rule_ids": [
+        "R-HD-001"
+      ]
+    },
+    {
+      "case_id": "CASE-0065",
+      "underwriting_decision_human": "Exclusion",
+      "decision_reason_human": "Human review considered rule signals R-DB-008, R-X-001, R-DB-002 with additional underwriting context: severity=Medium, treatment=Completed, prior_claims=No, occupation_risk=High. Final decision set to Exclusion.",
+      "applied_rule_ids": [
+        "R-DB-008",
+        "R-X-001",
+        "R-DB-002"
+      ]
+    },
+    {
+      "case_id": "CASE-0066",
+      "underwriting_decision_human": "Accept",
+      "decision_reason_human": "Human review considered rule signals R-DB-007 with additional underwriting context: severity=High, treatment=None, prior_claims=No, occupation_risk=Medium. Final decision set to Accept.",
+      "applied_rule_ids": [
+        "R-DB-007"
+      ]
+    },
+    {
+      "case_id": "CASE-0067",
+      "underwriting_decision_human": "Refer",
+      "decision_reason_human": "Human review considered rule signals R-DB-007, R-DB-006 with additional underwriting context: severity=Low, treatment=None, prior_claims=No, occupation_risk=Low. Final decision set to Refer.",
+      "applied_rule_ids": [
+        "R-DB-007",
+        "R-DB-006"
+      ]
+    },
+    {
+      "case_id": "CASE-0068",
+      "underwriting_decision_human": "Refer",
+      "decision_reason_human": "Human review considered rule signals R-X-002 with additional underwriting context: severity=Medium, treatment=None, prior_claims=No, occupation_risk=Low. Final decision set to Refer.",
+      "applied_rule_ids": [
+        "R-X-002"
+      ]
+    },
+    {
+      "case_id": "CASE-0069",
+      "underwriting_decision_human": "Refer",
+      "decision_reason_human": "Human review considered rule signals R-X-004, R-MH-008 with additional underwriting context: severity=Low, treatment=Ongoing, prior_claims=Yes, occupation_risk=High. Final decision set to Refer.",
+      "applied_rule_ids": [
+        "R-X-004",
+        "R-MH-008"
+      ]
+    },
+    {
+      "case_id": "CASE-0070",
+      "underwriting_decision_human": "Refer",
+      "decision_reason_human": "Human review considered rule signals R-MH-011 with additional underwriting context: severity=Medium, treatment=Ongoing, prior_claims=No, occupation_risk=Low. Final decision set to Refer.",
+      "applied_rule_ids": [
+        "R-MH-011"
+      ]
+    },
+    {
+      "case_id": "CASE-0071",
+      "underwriting_decision_human": "Load",
+      "decision_reason_human": "Human review considered rule signals R-DB-002 with additional underwriting context: severity=Medium, treatment=Ongoing, prior_claims=No, occupation_risk=Low. Final decision set to Load.",
+      "applied_rule_ids": [
+        "R-DB-002"
+      ]
+    },
+    {
+      "case_id": "CASE-0072",
+      "underwriting_decision_human": "Accept",
+      "decision_reason_human": "Human review considered rule signals R-HT-004, R-HT-005, R-HT-003 with additional underwriting context: severity=Low, treatment=Ongoing, prior_claims=No, occupation_risk=High. Final decision set to Accept.",
+      "applied_rule_ids": [
+        "R-HT-004",
+        "R-HT-005",
+        "R-HT-003"
+      ]
+    },
+    {
+      "case_id": "CASE-0073",
+      "underwriting_decision_human": "Load",
+      "decision_reason_human": "Human review considered rule signals R-DB-004, R-DB-002 with additional underwriting context: severity=Medium, treatment=Ongoing, prior_claims=Yes, occupation_risk=Low. Final decision set to Load.",
+      "applied_rule_ids": [
+        "R-DB-004",
+        "R-DB-002"
+      ]
+    },
+    {
+      "case_id": "CASE-0074",
+      "underwriting_decision_human": "Refer",
+      "decision_reason_human": "Human review considered rule signals R-X-004, R-MH-008 with additional underwriting context: severity=Low, treatment=Ongoing, prior_claims=Yes, occupation_risk=High. Final decision set to Refer.",
+      "applied_rule_ids": [
+        "R-X-004",
+        "R-MH-008"
+      ]
+    },
+    {
+      "case_id": "CASE-0075",
+      "underwriting_decision_human": "Accept",
+      "decision_reason_human": "Human review considered rule signals R-HD-008 with additional underwriting context: severity=Low, treatment=Completed, prior_claims=Yes, occupation_risk=Low. Final decision set to Accept.",
+      "applied_rule_ids": [
+        "R-HD-008"
+      ]
+    },
+    {
+      "case_id": "CASE-0076",
+      "underwriting_decision_human": "Accept",
+      "decision_reason_human": "Human review considered rule signals R-HD-003, R-HD-008 with additional underwriting context: severity=Low, treatment=Completed, prior_claims=No, occupation_risk=High. Final decision set to Accept.",
+      "applied_rule_ids": [
+        "R-HD-003",
+        "R-HD-008"
+      ]
+    },
+    {
+      "case_id": "CASE-0077",
+      "underwriting_decision_human": "Load",
+      "decision_reason_human": "Human review considered rule signals R-HD-006 with additional underwriting context: severity=Medium, treatment=Ongoing, prior_claims=No, occupation_risk=Low. Final decision set to Load.",
+      "applied_rule_ids": [
+        "R-HD-006"
+      ]
+    },
+    {
+      "case_id": "CASE-0078",
+      "underwriting_decision_human": "Refer",
+      "decision_reason_human": "Human review considered rule signals R-MH-008 with additional underwriting context: severity=Low, treatment=Ongoing, prior_claims=Yes, occupation_risk=High. Final decision set to Refer.",
+      "applied_rule_ids": [
+        "R-MH-008"
+      ]
+    },
+    {
+      "case_id": "CASE-0079",
+      "underwriting_decision_human": "Load",
+      "decision_reason_human": "Human review considered rule signals R-DB-002 with additional underwriting context: severity=Medium, treatment=Completed, prior_claims=No, occupation_risk=Low. Final decision set to Load.",
+      "applied_rule_ids": [
+        "R-DB-002"
+      ]
+    },
+    {
+      "case_id": "CASE-0080",
+      "underwriting_decision_human": "Load",
+      "decision_reason_human": "Human review considered rule signals R-MH-008 with additional underwriting context: severity=Low, treatment=Ongoing, prior_claims=No, occupation_risk=Low. Final decision set to Load.",
+      "applied_rule_ids": [
+        "R-MH-008"
+      ]
+    },
+    {
+      "case_id": "CASE-0081",
+      "underwriting_decision_human": "Exclusion",
+      "decision_reason_human": "Human review considered rule signals R-X-001, R-HD-001 with additional underwriting context: severity=High, treatment=Ongoing, prior_claims=No, occupation_risk=High. Final decision set to Exclusion.",
+      "applied_rule_ids": [
+        "R-X-001",
+        "R-HD-001"
+      ]
+    },
+    {
+      "case_id": "CASE-0082",
+      "underwriting_decision_human": "Load",
+      "decision_reason_human": "Human review considered rule signals R-HD-003, R-HD-008 with additional underwriting context: severity=Low, treatment=Ongoing, prior_claims=No, occupation_risk=High. Final decision set to Load.",
+      "applied_rule_ids": [
+        "R-HD-003",
+        "R-HD-008"
+      ]
+    },
+    {
+      "case_id": "CASE-0083",
+      "underwriting_decision_human": "Refer",
+      "decision_reason_human": "Human review considered rule signals R-DB-004, R-DB-002 with additional underwriting context: severity=Medium, treatment=Completed, prior_claims=Yes, occupation_risk=Medium. Final decision set to Refer.",
+      "applied_rule_ids": [
+        "R-DB-004",
+        "R-DB-002"
+      ]
+    },
+    {
+      "case_id": "CASE-0084",
+      "underwriting_decision_human": "Accept",
+      "decision_reason_human": "Human review considered rule signals R-HT-005, R-X-003, R-HT-003 with additional underwriting context: severity=Low, treatment=Ongoing, prior_claims=No, occupation_risk=Low. Final decision set to Accept.",
+      "applied_rule_ids": [
+        "R-HT-005",
+        "R-X-003",
+        "R-HT-003"
+      ]
+    },
+    {
+      "case_id": "CASE-0085",
+      "underwriting_decision_human": "Exclusion",
+      "decision_reason_human": "Human review considered rule signals R-MH-014, R-X-001, R-MH-013 with additional underwriting context: severity=High, treatment=Completed, prior_claims=Yes, occupation_risk=High. Final decision set to Exclusion.",
+      "applied_rule_ids": [
+        "R-MH-014",
+        "R-X-001",
+        "R-MH-013"
+      ]
+    },
+    {
+      "case_id": "CASE-0086",
+      "underwriting_decision_human": "Exclusion",
+      "decision_reason_human": "Human review considered rule signals R-MH-001 with additional underwriting context: severity=High, treatment=None, prior_claims=No, occupation_risk=Low. Final decision set to Exclusion.",
+      "applied_rule_ids": [
+        "R-MH-001"
+      ]
+    },
+    {
+      "case_id": "CASE-0087",
+      "underwriting_decision_human": "Load",
+      "decision_reason_human": "Human review considered rule signals R-X-003, R-HD-003, R-HD-008 with additional underwriting context: severity=Low, treatment=Ongoing, prior_claims=No, occupation_risk=High. Final decision set to Load.",
+      "applied_rule_ids": [
+        "R-X-003",
+        "R-HD-003",
+        "R-HD-008"
+      ]
+    },
+    {
+      "case_id": "CASE-0088",
+      "underwriting_decision_human": "Load",
+      "decision_reason_human": "Human review considered rule signals R-MH-008 with additional underwriting context: severity=Low, treatment=Ongoing, prior_claims=No, occupation_risk=High. Final decision set to Load.",
+      "applied_rule_ids": [
+        "R-MH-008"
+      ]
+    },
+    {
+      "case_id": "CASE-0089",
+      "underwriting_decision_human": "Accept",
+      "decision_reason_human": "Human review considered rule signals R-DB-007, R-DB-006 with additional underwriting context: severity=Low, treatment=None, prior_claims=No, occupation_risk=Low. Final decision set to Accept.",
+      "applied_rule_ids": [
+        "R-DB-007",
+        "R-DB-006"
+      ]
+    },
+    {
+      "case_id": "CASE-0090",
+      "underwriting_decision_human": "Accept",
+      "decision_reason_human": "Human review considered rule signals R-MH-004, R-MH-011, R-MH-013 with additional underwriting context: severity=Medium, treatment=Completed, prior_claims=No, occupation_risk=Low. Final decision set to Accept.",
+      "applied_rule_ids": [
+        "R-MH-004",
+        "R-MH-011",
+        "R-MH-013"
+      ]
+    },
+    {
+      "case_id": "CASE-0091",
+      "underwriting_decision_human": "Load",
+      "decision_reason_human": "Human review considered rule signals R-HD-001 with additional underwriting context: severity=High, treatment=Completed, prior_claims=No, occupation_risk=Low. Final decision set to Load.",
+      "applied_rule_ids": [
+        "R-HD-001"
+      ]
+    },
+    {
+      "case_id": "CASE-0092",
+      "underwriting_decision_human": "Accept",
+      "decision_reason_human": "Human review considered rule signals R-DB-003, R-DB-006 with additional underwriting context: severity=Low, treatment=Ongoing, prior_claims=No, occupation_risk=High. Final decision set to Accept.",
+      "applied_rule_ids": [
+        "R-DB-003",
+        "R-DB-006"
+      ]
+    },
+    {
+      "case_id": "CASE-0093",
+      "underwriting_decision_human": "Accept",
+      "decision_reason_human": "Human review considered rule signals R-DB-007, R-X-001 with additional underwriting context: severity=High, treatment=None, prior_claims=No, occupation_risk=High. Final decision set to Accept.",
+      "applied_rule_ids": [
+        "R-DB-007",
+        "R-X-001"
+      ]
+    },
+    {
+      "case_id": "CASE-0094",
+      "underwriting_decision_human": "Load",
+      "decision_reason_human": "Human review considered rule signals R-MH-008 with additional underwriting context: severity=Low, treatment=Ongoing, prior_claims=No, occupation_risk=Low. Final decision set to Load.",
+      "applied_rule_ids": [
+        "R-MH-008"
+      ]
+    },
+    {
+      "case_id": "CASE-0095",
+      "underwriting_decision_human": "Refer",
+      "decision_reason_human": "Human review considered rule signals R-X-001 with additional underwriting context: severity=High, treatment=Ongoing, prior_claims=No, occupation_risk=High. Final decision set to Refer.",
+      "applied_rule_ids": [
+        "R-X-001"
+      ]
+    },
+    {
+      "case_id": "CASE-0096",
+      "underwriting_decision_human": "Exclusion",
+      "decision_reason_human": "Human review considered rule signals R-DB-008, R-DB-002 with additional underwriting context: severity=Medium, treatment=Ongoing, prior_claims=No, occupation_risk=Low. Final decision set to Exclusion.",
+      "applied_rule_ids": [
+        "R-DB-008",
+        "R-DB-002"
+      ]
+    },
+    {
+      "case_id": "CASE-0097",
+      "underwriting_decision_human": "Accept",
+      "decision_reason_human": "Human review considered rule signals R-DB-006 with additional underwriting context: severity=Low, treatment=Ongoing, prior_claims=No, occupation_risk=High. Final decision set to Accept.",
+      "applied_rule_ids": [
+        "R-DB-006"
+      ]
+    },
+    {
+      "case_id": "CASE-0098",
+      "underwriting_decision_human": "Load",
+      "decision_reason_human": "Human review considered rule signals R-HT-002, R-HT-005, R-X-003 with additional underwriting context: severity=Medium, treatment=Ongoing, prior_claims=No, occupation_risk=Low. Final decision set to Load.",
+      "applied_rule_ids": [
+        "R-HT-002",
+        "R-HT-005",
+        "R-X-003"
+      ]
+    },
+    {
+      "case_id": "CASE-0099",
+      "underwriting_decision_human": "Exclusion",
+      "decision_reason_human": "Human review considered rule signals R-DB-004, R-X-001, R-X-004 with additional underwriting context: severity=High, treatment=Completed, prior_claims=Yes, occupation_risk=High. Final decision set to Exclusion.",
+      "applied_rule_ids": [
+        "R-DB-004",
+        "R-X-001",
+        "R-X-004"
+      ]
+    },
+    {
+      "case_id": "CASE-0100",
+      "underwriting_decision_human": "Accept",
+      "decision_reason_human": "Human review considered rule signals R-DB-006 with additional underwriting context: severity=Low, treatment=Completed, prior_claims=No, occupation_risk=High. Final decision set to Accept.",
+      "applied_rule_ids": [
+        "R-DB-006"
+      ]
+    },
+    {
+      "case_id": "CASE-0101",
+      "underwriting_decision_human": "Accept",
+      "decision_reason_human": "Human review considered rule signals R-HD-003, R-HD-008 with additional underwriting context: severity=Low, treatment=Completed, prior_claims=No, occupation_risk=Low. Final decision set to Accept.",
+      "applied_rule_ids": [
+        "R-HD-003",
+        "R-HD-008"
+      ]
+    },
+    {
+      "case_id": "CASE-0102",
+      "underwriting_decision_human": "Load",
+      "decision_reason_human": "Human review considered rule signals R-MH-015, R-MH-013, R-X-002 with additional underwriting context: severity=Low, treatment=Completed, prior_claims=No, occupation_risk=Low. Final decision set to Load.",
+      "applied_rule_ids": [
+        "R-MH-015",
+        "R-MH-013",
+        "R-X-002"
+      ]
+    },
+    {
+      "case_id": "CASE-0103",
+      "underwriting_decision_human": "Accept",
+      "decision_reason_human": "Human review considered rule signals R-MH-013 with additional underwriting context: severity=Low, treatment=Completed, prior_claims=Yes, occupation_risk=Medium. Final decision set to Accept.",
+      "applied_rule_ids": [
+        "R-MH-013"
+      ]
+    },
+    {
+      "case_id": "CASE-0104",
+      "underwriting_decision_human": "Load",
+      "decision_reason_human": "Human review considered rule signals R-MH-008, R-X-002 with additional underwriting context: severity=Low, treatment=Ongoing, prior_claims=No, occupation_risk=Low. Final decision set to Load.",
+      "applied_rule_ids": [
+        "R-MH-008",
+        "R-X-002"
+      ]
+    },
+    {
+      "case_id": "CASE-0105",
+      "underwriting_decision_human": "Load",
+      "decision_reason_human": "Human review considered rule signals R-MH-008 with additional underwriting context: severity=Low, treatment=Ongoing, prior_claims=No, occupation_risk=High. Final decision set to Load.",
+      "applied_rule_ids": [
+        "R-MH-008"
+      ]
+    },
+    {
+      "case_id": "CASE-0106",
+      "underwriting_decision_human": "Load",
+      "decision_reason_human": "Human review considered rule signals R-DB-002, R-DB-005 with additional underwriting context: severity=Medium, treatment=Ongoing, prior_claims=No, occupation_risk=Medium. Final decision set to Load.",
+      "applied_rule_ids": [
+        "R-DB-002",
+        "R-DB-005"
+      ]
+    },
+    {
+      "case_id": "CASE-0107",
+      "underwriting_decision_human": "Refer",
+      "decision_reason_human": "Human review considered rule signals R-MH-009, R-X-001, R-MH-004 with additional underwriting context: severity=Medium, treatment=Completed, prior_claims=No, occupation_risk=High. Final decision set to Refer.",
+      "applied_rule_ids": [
+        "R-MH-009",
+        "R-X-001",
+        "R-MH-004"
+      ]
+    },
+    {
+      "case_id": "CASE-0108",
+      "underwriting_decision_human": "Load",
+      "decision_reason_human": "Human review considered rule signals R-HT-005, R-HT-003, R-X-002 with additional underwriting context: severity=Low, treatment=Ongoing, prior_claims=No, occupation_risk=High. Final decision set to Load.",
+      "applied_rule_ids": [
+        "R-HT-005",
+        "R-HT-003",
+        "R-X-002"
+      ]
+    },
+    {
+      "case_id": "CASE-0109",
+      "underwriting_decision_human": "Accept",
+      "decision_reason_human": "Human review considered rule signals R-HD-008 with additional underwriting context: severity=Low, treatment=None, prior_claims=Yes, occupation_risk=Low. Final decision set to Accept.",
+      "applied_rule_ids": [
+        "R-HD-008"
+      ]
+    },
+    {
+      "case_id": "CASE-0110",
+      "underwriting_decision_human": "Accept",
+      "decision_reason_human": "Human review considered rule signals R-X-002 with additional underwriting context: severity=Medium, treatment=None, prior_claims=No, occupation_risk=Low. Final decision set to Accept.",
+      "applied_rule_ids": [
+        "R-X-002"
+      ]
+    },
+    {
+      "case_id": "CASE-0111",
+      "underwriting_decision_human": "Refer",
+      "decision_reason_human": "Human review considered rule signals R-X-004, R-MH-008 with additional underwriting context: severity=Low, treatment=Ongoing, prior_claims=Yes, occupation_risk=High. Final decision set to Refer.",
+      "applied_rule_ids": [
+        "R-X-004",
+        "R-MH-008"
+      ]
+    },
+    {
+      "case_id": "CASE-0112",
+      "underwriting_decision_human": "Accept",
+      "decision_reason_human": "Human review considered rule signals R-MH-013, R-X-002 with additional underwriting context: severity=Low, treatment=Completed, prior_claims=No, occupation_risk=Low. Final decision set to Accept.",
+      "applied_rule_ids": [
+        "R-MH-013",
+        "R-X-002"
+      ]
+    },
+    {
+      "case_id": "CASE-0113",
+      "underwriting_decision_human": "Refer",
+      "decision_reason_human": "Human review considered rule signals R-HD-002, R-X-001, R-HD-005 with additional underwriting context: severity=Medium, treatment=Completed, prior_claims=No, occupation_risk=High. Final decision set to Refer.",
+      "applied_rule_ids": [
+        "R-HD-002",
+        "R-X-001",
+        "R-HD-005"
+      ]
+    },
+    {
+      "case_id": "CASE-0114",
+      "underwriting_decision_human": "Accept",
+      "decision_reason_human": "Human review considered rule signals R-HD-008 with additional underwriting context: severity=Low, treatment=Ongoing, prior_claims=Yes, occupation_risk=High. Final decision set to Accept.",
+      "applied_rule_ids": [
+        "R-HD-008"
+      ]
+    },
+    {
+      "case_id": "CASE-0115",
+      "underwriting_decision_human": "Load",
+      "decision_reason_human": "Human review considered rule signals R-X-002 with additional underwriting context: severity=Medium, treatment=None, prior_claims=No, occupation_risk=Low. Final decision set to Load.",
+      "applied_rule_ids": [
+        "R-X-002"
+      ]
+    },
+    {
+      "case_id": "CASE-0116",
+      "underwriting_decision_human": "Refer",
+      "decision_reason_human": "Human review considered rule signals R-DB-004, R-DB-007 with additional underwriting context: severity=High, treatment=None, prior_claims=Yes, occupation_risk=Low. Final decision set to Refer.",
+      "applied_rule_ids": [
+        "R-DB-004",
+        "R-DB-007"
+      ]
+    },
+    {
+      "case_id": "CASE-0117",
+      "underwriting_decision_human": "Exclusion",
+      "decision_reason_human": "Human review considered rule signals R-MH-005, R-MH-015 with additional underwriting context: severity=Low, treatment=None, prior_claims=No, occupation_risk=Low. Final decision set to Exclusion.",
+      "applied_rule_ids": [
+        "R-MH-005",
+        "R-MH-015"
+      ]
+    },
+    {
+      "case_id": "CASE-0118",
+      "underwriting_decision_human": "Refer",
+      "decision_reason_human": "Human review considered rule signals R-HD-006 with additional underwriting context: severity=Medium, treatment=Ongoing, prior_claims=No, occupation_risk=Medium. Final decision set to Refer.",
+      "applied_rule_ids": [
+        "R-HD-006"
+      ]
+    },
+    {
+      "case_id": "CASE-0119",
+      "underwriting_decision_human": "Refer",
+      "decision_reason_human": "Human review considered rule signals R-X-004, R-MH-008 with additional underwriting context: severity=Low, treatment=Ongoing, prior_claims=Yes, occupation_risk=High. Final decision set to Refer.",
+      "applied_rule_ids": [
+        "R-X-004",
+        "R-MH-008"
+      ]
+    },
+    {
+      "case_id": "CASE-0120",
+      "underwriting_decision_human": "Refer",
+      "decision_reason_human": "Human review considered rule signals R-X-004 with additional underwriting context: severity=Medium, treatment=None, prior_claims=Yes, occupation_risk=Low. Final decision set to Refer.",
+      "applied_rule_ids": [
+        "R-X-004"
+      ]
+    },
+    {
+      "case_id": "CASE-0121",
+      "underwriting_decision_human": "Accept",
+      "decision_reason_human": "Human review considered rule signals R-MH-008 with additional underwriting context: severity=Low, treatment=Ongoing, prior_claims=No, occupation_risk=High. Final decision set to Accept.",
+      "applied_rule_ids": [
+        "R-MH-008"
+      ]
+    },
+    {
+      "case_id": "CASE-0122",
+      "underwriting_decision_human": "Refer",
+      "decision_reason_human": "Human review considered rule signals R-X-001, R-MH-013 with additional underwriting context: severity=High, treatment=Completed, prior_claims=No, occupation_risk=High. Final decision set to Refer.",
+      "applied_rule_ids": [
+        "R-X-001",
+        "R-MH-013"
+      ]
+    },
+    {
+      "case_id": "CASE-0123",
+      "underwriting_decision_human": "Refer",
+      "decision_reason_human": "Human review considered rule signals R-MH-009, R-X-001, R-MH-010 with additional underwriting context: severity=Medium, treatment=Ongoing, prior_claims=No, occupation_risk=High. Final decision set to Refer.",
+      "applied_rule_ids": [
+        "R-MH-009",
+        "R-X-001",
+        "R-MH-010"
+      ]
+    },
+    {
+      "case_id": "CASE-0124",
+      "underwriting_decision_human": "Load",
+      "decision_reason_human": "Human review considered rule signals R-MH-013 with additional underwriting context: severity=Low, treatment=Completed, prior_claims=No, occupation_risk=High. Final decision set to Load.",
+      "applied_rule_ids": [
+        "R-MH-013"
+      ]
+    },
+    {
+      "case_id": "CASE-0125",
+      "underwriting_decision_human": "Refer",
+      "decision_reason_human": "Human review considered rule signals R-X-002 with additional underwriting context: severity=High, treatment=Ongoing, prior_claims=No, occupation_risk=Low. Final decision set to Refer.",
+      "applied_rule_ids": [
+        "R-X-002"
+      ]
+    },
+    {
+      "case_id": "CASE-0126",
+      "underwriting_decision_human": "Load",
+      "decision_reason_human": "Human review considered rule signals R-HD-006 with additional underwriting context: severity=Medium, treatment=Ongoing, prior_claims=Yes, occupation_risk=Medium. Final decision set to Load.",
+      "applied_rule_ids": [
+        "R-HD-006"
+      ]
+    },
+    {
+      "case_id": "CASE-0127",
+      "underwriting_decision_human": "Refer",
+      "decision_reason_human": "Human review considered rule signals R-MH-005 with additional underwriting context: severity=Low, treatment=None, prior_claims=No, occupation_risk=High. Final decision set to Refer.",
+      "applied_rule_ids": [
+        "R-MH-005"
+      ]
+    },
+    {
+      "case_id": "CASE-0128",
+      "underwriting_decision_human": "Accept",
+      "decision_reason_human": "Human review considered rule signals R-X-002 with additional underwriting context: severity=High, treatment=Completed, prior_claims=No, occupation_risk=Low. Final decision set to Accept.",
+      "applied_rule_ids": [
+        "R-X-002"
+      ]
+    },
+    {
+      "case_id": "CASE-0129",
+      "underwriting_decision_human": "Exclusion",
+      "decision_reason_human": "Human review considered rule signals R-MH-009, R-X-001, R-X-004 with additional underwriting context: severity=Medium, treatment=Completed, prior_claims=Yes, occupation_risk=High. Final decision set to Exclusion.",
+      "applied_rule_ids": [
+        "R-MH-009",
+        "R-X-001",
+        "R-X-004"
+      ]
+    },
+    {
+      "case_id": "CASE-0130",
+      "underwriting_decision_human": "Accept",
+      "decision_reason_human": "Human review considered rule signals R-X-003, R-HD-003, R-HD-008 with additional underwriting context: severity=Low, treatment=Completed, prior_claims=No, occupation_risk=Low. Final decision set to Accept.",
+      "applied_rule_ids": [
+        "R-X-003",
+        "R-HD-003",
+        "R-HD-008"
+      ]
+    },
+    {
+      "case_id": "CASE-0131",
+      "underwriting_decision_human": "Refer",
+      "decision_reason_human": "Human review considered rule signals R-HT-004, R-HT-005, R-HT-003 with additional underwriting context: severity=Low, treatment=Ongoing, prior_claims=No, occupation_risk=High. Final decision set to Refer.",
+      "applied_rule_ids": [
+        "R-HT-004",
+        "R-HT-005",
+        "R-HT-003"
+      ]
+    },
+    {
+      "case_id": "CASE-0132",
+      "underwriting_decision_human": "Refer",
+      "decision_reason_human": "Human review considered rule signals R-MH-002 with additional underwriting context: severity=High, treatment=Ongoing, prior_claims=No, occupation_risk=Medium. Final decision set to Refer.",
+      "applied_rule_ids": [
+        "R-MH-002"
+      ]
+    },
+    {
+      "case_id": "CASE-0133",
+      "underwriting_decision_human": "Exclusion",
+      "decision_reason_human": "Human review considered rule signals R-MH-001, R-MH-007, R-MH-014 with additional underwriting context: severity=High, treatment=None, prior_claims=Yes, occupation_risk=High. Final decision set to Exclusion.",
+      "applied_rule_ids": [
+        "R-MH-001",
+        "R-MH-007",
+        "R-MH-014"
+      ]
+    },
+    {
+      "case_id": "CASE-0134",
+      "underwriting_decision_human": "Refer",
+      "decision_reason_human": "Human review considered rule signals R-MH-009, R-X-001, R-MH-003 with additional underwriting context: severity=Medium, treatment=Completed, prior_claims=Yes, occupation_risk=High. Final decision set to Refer.",
+      "applied_rule_ids": [
+        "R-MH-009",
+        "R-X-001",
+        "R-MH-003"
+      ]
+    },
+    {
+      "case_id": "CASE-0135",
+      "underwriting_decision_human": "Load",
+      "decision_reason_human": "Human review considered rule signals R-MH-008, R-MH-015 with additional underwriting context: severity=Low, treatment=Ongoing, prior_claims=No, occupation_risk=Low. Final decision set to Load.",
+      "applied_rule_ids": [
+        "R-MH-008",
+        "R-MH-015"
+      ]
+    },
+    {
+      "case_id": "CASE-0136",
+      "underwriting_decision_human": "Load",
+      "decision_reason_human": "Human review considered rule signals R-MH-009, R-X-001, R-MH-011 with additional underwriting context: severity=Medium, treatment=Ongoing, prior_claims=No, occupation_risk=High. Final decision set to Load.",
+      "applied_rule_ids": [
+        "R-MH-009",
+        "R-X-001",
+        "R-MH-011"
+      ]
+    },
+    {
+      "case_id": "CASE-0137",
+      "underwriting_decision_human": "Refer",
+      "decision_reason_human": "Human review considered rule signals R-HT-001, R-HT-005 with additional underwriting context: severity=High, treatment=Ongoing, prior_claims=No, occupation_risk=Low. Final decision set to Refer.",
+      "applied_rule_ids": [
+        "R-HT-001",
+        "R-HT-005"
+      ]
+    },
+    {
+      "case_id": "CASE-0138",
+      "underwriting_decision_human": "Accept",
+      "decision_reason_human": "Human review considered rule signals R-HD-003, R-HD-008 with additional underwriting context: severity=Low, treatment=Completed, prior_claims=No, occupation_risk=High. Final decision set to Accept.",
+      "applied_rule_ids": [
+        "R-HD-003",
+        "R-HD-008"
+      ]
+    },
+    {
+      "case_id": "CASE-0139",
+      "underwriting_decision_human": "Refer",
+      "decision_reason_human": "Human review considered rule signals R-X-001 with additional underwriting context: severity=High, treatment=Ongoing, prior_claims=No, occupation_risk=High. Final decision set to Refer.",
+      "applied_rule_ids": [
+        "R-X-001"
+      ]
+    },
+    {
+      "case_id": "CASE-0140",
+      "underwriting_decision_human": "Load",
+      "decision_reason_human": "Human review considered rule signals R-HT-002, R-HT-005 with additional underwriting context: severity=Medium, treatment=Ongoing, prior_claims=No, occupation_risk=Low. Final decision set to Load.",
+      "applied_rule_ids": [
+        "R-HT-002",
+        "R-HT-005"
+      ]
+    },
+    {
+      "case_id": "CASE-0141",
+      "underwriting_decision_human": "Exclusion",
+      "decision_reason_human": "Human review considered rule signals R-MH-001, R-MH-007 with additional underwriting context: severity=High, treatment=None, prior_claims=No, occupation_risk=Low. Final decision set to Exclusion.",
+      "applied_rule_ids": [
+        "R-MH-001",
+        "R-MH-007"
+      ]
+    },
+    {
+      "case_id": "CASE-0142",
+      "underwriting_decision_human": "Refer",
+      "decision_reason_human": "Human review considered rule signals R-HT-001, R-X-001, R-HT-005 with additional underwriting context: severity=High, treatment=Completed, prior_claims=No, occupation_risk=High. Final decision set to Refer.",
+      "applied_rule_ids": [
+        "R-HT-001",
+        "R-X-001",
+        "R-HT-005"
+      ]
+    },
+    {
+      "case_id": "CASE-0143",
+      "underwriting_decision_human": "Load",
+      "decision_reason_human": "Human review considered rule signals R-MH-008 with additional underwriting context: severity=Low, treatment=Ongoing, prior_claims=No, occupation_risk=High. Final decision set to Load.",
+      "applied_rule_ids": [
+        "R-MH-008"
+      ]
+    },
+    {
+      "case_id": "CASE-0144",
+      "underwriting_decision_human": "Load",
+      "decision_reason_human": "Human review considered rule signals R-DB-005 with additional underwriting context: severity=High, treatment=Completed, prior_claims=No, occupation_risk=Medium. Final decision set to Load.",
+      "applied_rule_ids": [
+        "R-DB-005"
+      ]
+    },
+    {
+      "case_id": "CASE-0145",
+      "underwriting_decision_human": "Accept",
+      "decision_reason_human": "Human review considered rule signals R-HT-005, R-HT-003 with additional underwriting context: severity=Low, treatment=Ongoing, prior_claims=No, occupation_risk=High. Final decision set to Accept.",
+      "applied_rule_ids": [
+        "R-HT-005",
+        "R-HT-003"
+      ]
+    },
+    {
+      "case_id": "CASE-0146",
+      "underwriting_decision_human": "Refer",
+      "decision_reason_human": "Human review considered rule signals R-DB-007, R-X-001 with additional underwriting context: severity=High, treatment=None, prior_claims=No, occupation_risk=High. Final decision set to Refer.",
+      "applied_rule_ids": [
+        "R-DB-007",
+        "R-X-001"
+      ]
+    },
+    {
+      "case_id": "CASE-0147",
+      "underwriting_decision_human": "Accept",
+      "decision_reason_human": "Human review considered rule signals R-MH-004, R-MH-011, R-MH-013 with additional underwriting context: severity=Medium, treatment=Completed, prior_claims=No, occupation_risk=Low. Final decision set to Accept.",
+      "applied_rule_ids": [
+        "R-MH-004",
+        "R-MH-011",
+        "R-MH-013"
+      ]
+    },
+    {
+      "case_id": "CASE-0148",
+      "underwriting_decision_human": "Load",
+      "decision_reason_human": "Human review considered rule signals R-DB-008, R-DB-004, R-X-001 with additional underwriting context: severity=Medium, treatment=Ongoing, prior_claims=Yes, occupation_risk=High. Final decision set to Load.",
+      "applied_rule_ids": [
+        "R-DB-008",
+        "R-DB-004",
+        "R-X-001"
+      ]
+    },
+    {
+      "case_id": "CASE-0149",
+      "underwriting_decision_human": "Refer",
+      "decision_reason_human": "Human review considered rule signals R-X-004, R-HD-008 with additional underwriting context: severity=Low, treatment=None, prior_claims=Yes, occupation_risk=Low. Final decision set to Refer.",
+      "applied_rule_ids": [
+        "R-X-004",
+        "R-HD-008"
+      ]
+    },
+    {
+      "case_id": "CASE-0150",
+      "underwriting_decision_human": "Accept",
+      "decision_reason_human": "Human review considered rule signals R-HD-003, R-HD-008 with additional underwriting context: severity=Low, treatment=Completed, prior_claims=No, occupation_risk=High. Final decision set to Accept.",
+      "applied_rule_ids": [
+        "R-HD-003",
+        "R-HD-008"
+      ]
+    },
+    {
+      "case_id": "CASE-0151",
+      "underwriting_decision_human": "Accept",
+      "decision_reason_human": "Human review considered rule signals R-HD-003, R-HD-008 with additional underwriting context: severity=Low, treatment=Ongoing, prior_claims=No, occupation_risk=Low. Final decision set to Accept.",
+      "applied_rule_ids": [
+        "R-HD-003",
+        "R-HD-008"
+      ]
+    },
+    {
+      "case_id": "CASE-0152",
+      "underwriting_decision_human": "Load",
+      "decision_reason_human": "Human review considered rule signals R-MH-008 with additional underwriting context: severity=Low, treatment=Ongoing, prior_claims=No, occupation_risk=High. Final decision set to Load.",
+      "applied_rule_ids": [
+        "R-MH-008"
+      ]
+    },
+    {
+      "case_id": "CASE-0153",
+      "underwriting_decision_human": "Load",
+      "decision_reason_human": "Human review considered rule signals R-HT-002, R-HT-005 with additional underwriting context: severity=Medium, treatment=Ongoing, prior_claims=No, occupation_risk=Low. Final decision set to Load.",
+      "applied_rule_ids": [
+        "R-HT-002",
+        "R-HT-005"
+      ]
+    },
+    {
+      "case_id": "CASE-0154",
+      "underwriting_decision_human": "Exclusion",
+      "decision_reason_human": "Human review considered rule signals R-MH-007, R-X-001, R-MH-013 with additional underwriting context: severity=High, treatment=Completed, prior_claims=No, occupation_risk=High. Final decision set to Exclusion.",
+      "applied_rule_ids": [
+        "R-MH-007",
+        "R-X-001",
+        "R-MH-013"
+      ]
+    },
+    {
+      "case_id": "CASE-0155",
+      "underwriting_decision_human": "Exclusion",
+      "decision_reason_human": "Human review considered rule signals R-X-001, R-HD-001 with additional underwriting context: severity=High, treatment=Ongoing, prior_claims=Yes, occupation_risk=High. Final decision set to Exclusion.",
+      "applied_rule_ids": [
+        "R-X-001",
+        "R-HD-001"
+      ]
+    },
+    {
+      "case_id": "CASE-0156",
+      "underwriting_decision_human": "Accept",
+      "decision_reason_human": "Human review considered rule signals R-X-001 with additional underwriting context: severity=High, treatment=Ongoing, prior_claims=No, occupation_risk=High. Final decision set to Accept.",
+      "applied_rule_ids": [
+        "R-X-001"
+      ]
+    },
+    {
+      "case_id": "CASE-0157",
+      "underwriting_decision_human": "Refer",
+      "decision_reason_human": "Human review considered rule signals R-MH-005 with additional underwriting context: severity=Low, treatment=None, prior_claims=No, occupation_risk=High. Final decision set to Refer.",
+      "applied_rule_ids": [
+        "R-MH-005"
+      ]
+    },
+    {
+      "case_id": "CASE-0158",
+      "underwriting_decision_human": "Exclusion",
+      "decision_reason_human": "Human review considered rule signals R-HT-001, R-HT-005 with additional underwriting context: severity=High, treatment=None, prior_claims=No, occupation_risk=Low. Final decision set to Exclusion.",
+      "applied_rule_ids": [
+        "R-HT-001",
+        "R-HT-005"
+      ]
+    },
+    {
+      "case_id": "CASE-0159",
+      "underwriting_decision_human": "Load",
+      "decision_reason_human": "Human review considered rule signals R-DB-002 with additional underwriting context: severity=Medium, treatment=Completed, prior_claims=No, occupation_risk=Low. Final decision set to Load.",
+      "applied_rule_ids": [
+        "R-DB-002"
+      ]
+    },
+    {
+      "case_id": "CASE-0160",
+      "underwriting_decision_human": "Exclusion",
+      "decision_reason_human": "Human review considered rule signals R-MH-001, R-X-001 with additional underwriting context: severity=High, treatment=None, prior_claims=No, occupation_risk=High. Final decision set to Exclusion.",
+      "applied_rule_ids": [
+        "R-MH-001",
+        "R-X-001"
+      ]
+    },
+    {
+      "case_id": "CASE-0161",
+      "underwriting_decision_human": "Load",
+      "decision_reason_human": "Human review considered rule signals R-MH-005, R-MH-015 with additional underwriting context: severity=Low, treatment=None, prior_claims=No, occupation_risk=High. Final decision set to Load.",
+      "applied_rule_ids": [
+        "R-MH-005",
+        "R-MH-015"
+      ]
+    },
+    {
+      "case_id": "CASE-0162",
+      "underwriting_decision_human": "Load",
+      "decision_reason_human": "Human review considered rule signals R-MH-008 with additional underwriting context: severity=Low, treatment=Ongoing, prior_claims=No, occupation_risk=High. Final decision set to Load.",
+      "applied_rule_ids": [
+        "R-MH-008"
+      ]
+    },
+    {
+      "case_id": "CASE-0163",
+      "underwriting_decision_human": "Exclusion",
+      "decision_reason_human": "Human review considered rule signals R-DB-001 with additional underwriting context: severity=High, treatment=Completed, prior_claims=No, occupation_risk=Medium. Final decision set to Exclusion.",
+      "applied_rule_ids": [
+        "R-DB-001"
+      ]
+    },
+    {
+      "case_id": "CASE-0164",
+      "underwriting_decision_human": "Load",
+      "decision_reason_human": "Human review considered rule signals R-MH-009, R-X-001, R-MH-010 with additional underwriting context: severity=Medium, treatment=Ongoing, prior_claims=No, occupation_risk=High. Final decision set to Load.",
+      "applied_rule_ids": [
+        "R-MH-009",
+        "R-X-001",
+        "R-MH-010"
+      ]
+    },
+    {
+      "case_id": "CASE-0165",
+      "underwriting_decision_human": "Refer",
+      "decision_reason_human": "Human review considered rule signals R-MH-009, R-X-001, R-MH-003 with additional underwriting context: severity=Medium, treatment=Ongoing, prior_claims=Yes, occupation_risk=High. Final decision set to Refer.",
+      "applied_rule_ids": [
+        "R-MH-009",
+        "R-X-001",
+        "R-MH-003"
+      ]
+    },
+    {
+      "case_id": "CASE-0166",
+      "underwriting_decision_human": "Refer",
+      "decision_reason_human": "Human review considered rule signals R-DB-004, R-X-001, R-X-004 with additional underwriting context: severity=Medium, treatment=Completed, prior_claims=Yes, occupation_risk=High. Final decision set to Refer.",
+      "applied_rule_ids": [
+        "R-DB-004",
+        "R-X-001",
+        "R-X-004"
+      ]
+    },
+    {
+      "case_id": "CASE-0167",
+      "underwriting_decision_human": "Exclusion",
+      "decision_reason_human": "Human review considered rule signals R-MH-001, R-X-001 with additional underwriting context: severity=High, treatment=None, prior_claims=No, occupation_risk=High. Final decision set to Exclusion.",
+      "applied_rule_ids": [
+        "R-MH-001",
+        "R-X-001"
+      ]
+    },
+    {
+      "case_id": "CASE-0168",
+      "underwriting_decision_human": "Accept",
+      "decision_reason_human": "Human review considered rule signals R-MH-003, R-X-003 with additional underwriting context: severity=Medium, treatment=Ongoing, prior_claims=Yes, occupation_risk=Low. Final decision set to Accept.",
+      "applied_rule_ids": [
+        "R-MH-003",
+        "R-X-003"
+      ]
+    },
+    {
+      "case_id": "CASE-0169",
+      "underwriting_decision_human": "Refer",
+      "decision_reason_human": "Human review considered rule signals R-MH-010 with additional underwriting context: severity=Medium, treatment=Ongoing, prior_claims=No, occupation_risk=Medium. Final decision set to Refer.",
+      "applied_rule_ids": [
+        "R-MH-010"
+      ]
+    },
+    {
+      "case_id": "CASE-0170",
+      "underwriting_decision_human": "Accept",
+      "decision_reason_human": "Human review considered rule signals R-MH-013 with additional underwriting context: severity=Low, treatment=Completed, prior_claims=No, occupation_risk=Low. Final decision set to Accept.",
+      "applied_rule_ids": [
+        "R-MH-013"
+      ]
+    },
+    {
+      "case_id": "CASE-0171",
+      "underwriting_decision_human": "Accept",
+      "decision_reason_human": "Human review considered rule signals R-DB-003, R-DB-006 with additional underwriting context: severity=Low, treatment=Ongoing, prior_claims=No, occupation_risk=High. Final decision set to Accept.",
+      "applied_rule_ids": [
+        "R-DB-003",
+        "R-DB-006"
+      ]
+    },
+    {
+      "case_id": "CASE-0172",
+      "underwriting_decision_human": "Exclusion",
+      "decision_reason_human": "Human review considered rule signals R-DB-004, R-DB-006 with additional underwriting context: severity=Low, treatment=Ongoing, prior_claims=Yes, occupation_risk=High. Final decision set to Exclusion.",
+      "applied_rule_ids": [
+        "R-DB-004",
+        "R-DB-006"
+      ]
+    },
+    {
+      "case_id": "CASE-0173",
+      "underwriting_decision_human": "Refer",
+      "decision_reason_human": "Human review considered rule signals R-X-004, R-MH-008 with additional underwriting context: severity=Low, treatment=Ongoing, prior_claims=Yes, occupation_risk=High. Final decision set to Refer.",
+      "applied_rule_ids": [
+        "R-X-004",
+        "R-MH-008"
+      ]
+    },
+    {
+      "case_id": "CASE-0174",
+      "underwriting_decision_human": "Accept",
+      "decision_reason_human": "Human review considered rule signals R-DB-006 with additional underwriting context: severity=Low, treatment=Completed, prior_claims=No, occupation_risk=Low. Final decision set to Accept.",
+      "applied_rule_ids": [
+        "R-DB-006"
+      ]
+    },
+    {
+      "case_id": "CASE-0175",
+      "underwriting_decision_human": "Refer",
+      "decision_reason_human": "Human review considered rule signals R-HD-003, R-HD-008 with additional underwriting context: severity=Low, treatment=Ongoing, prior_claims=No, occupation_risk=Low. Final decision set to Refer.",
+      "applied_rule_ids": [
+        "R-HD-003",
+        "R-HD-008"
+      ]
+    },
+    {
+      "case_id": "CASE-0176",
+      "underwriting_decision_human": "Refer",
+      "decision_reason_human": "Human review considered rule signals R-HT-004, R-HT-005, R-HT-003 with additional underwriting context: severity=Low, treatment=Ongoing, prior_claims=No, occupation_risk=High. Final decision set to Refer.",
+      "applied_rule_ids": [
+        "R-HT-004",
+        "R-HT-005",
+        "R-HT-003"
+      ]
+    },
+    {
+      "case_id": "CASE-0177",
+      "underwriting_decision_human": "Refer",
+      "decision_reason_human": "Human review considered rule signals R-DB-003, R-DB-006 with additional underwriting context: severity=Low, treatment=Ongoing, prior_claims=No, occupation_risk=Low. Final decision set to Refer.",
+      "applied_rule_ids": [
+        "R-DB-003",
+        "R-DB-006"
+      ]
+    },
+    {
+      "case_id": "CASE-0178",
+      "underwriting_decision_human": "Refer",
+      "decision_reason_human": "Human review considered rule signals R-MH-009, R-X-001, R-MH-003 with additional underwriting context: severity=Medium, treatment=None, prior_claims=Yes, occupation_risk=High. Final decision set to Refer.",
+      "applied_rule_ids": [
+        "R-MH-009",
+        "R-X-001",
+        "R-MH-003"
+      ]
+    },
+    {
+      "case_id": "CASE-0179",
+      "underwriting_decision_human": "Accept",
+      "decision_reason_human": "Human review considered rule signals R-X-002 with additional underwriting context: severity=Medium, treatment=Ongoing, prior_claims=No, occupation_risk=Low. Final decision set to Accept.",
+      "applied_rule_ids": [
+        "R-X-002"
+      ]
+    },
+    {
+      "case_id": "CASE-0180",
+      "underwriting_decision_human": "Accept",
+      "decision_reason_human": "Human review considered rule signals R-DB-006 with additional underwriting context: severity=Low, treatment=Completed, prior_claims=No, occupation_risk=Medium. Final decision set to Accept.",
+      "applied_rule_ids": [
+        "R-DB-006"
+      ]
+    },
+    {
+      "case_id": "CASE-0181",
+      "underwriting_decision_human": "Load",
+      "decision_reason_human": "Human review considered rule signals R-MH-008 with additional underwriting context: severity=Low, treatment=Ongoing, prior_claims=No, occupation_risk=High. Final decision set to Load.",
+      "applied_rule_ids": [
+        "R-MH-008"
+      ]
+    },
+    {
+      "case_id": "CASE-0182",
+      "underwriting_decision_human": "Refer",
+      "decision_reason_human": "Human review considered rule signals R-MH-002 with additional underwriting context: severity=High, treatment=Ongoing, prior_claims=No, occupation_risk=Low. Final decision set to Refer.",
+      "applied_rule_ids": [
+        "R-MH-002"
+      ]
+    },
+    {
+      "case_id": "CASE-0183",
+      "underwriting_decision_human": "Accept",
+      "decision_reason_human": "Human review considered rule signals R-DB-003, R-DB-006 with additional underwriting context: severity=Low, treatment=Ongoing, prior_claims=No, occupation_risk=High. Final decision set to Accept.",
+      "applied_rule_ids": [
+        "R-DB-003",
+        "R-DB-006"
+      ]
+    },
+    {
+      "case_id": "CASE-0184",
+      "underwriting_decision_human": "Refer",
+      "decision_reason_human": "Human review considered rule signals R-X-001, R-HT-002, R-HT-005 with additional underwriting context: severity=Medium, treatment=Completed, prior_claims=No, occupation_risk=High. Final decision set to Refer.",
+      "applied_rule_ids": [
+        "R-X-001",
+        "R-HT-002",
+        "R-HT-005"
+      ]
+    },
+    {
+      "case_id": "CASE-0185",
+      "underwriting_decision_human": "Refer",
+      "decision_reason_human": "Human review considered rule signals R-MH-004, R-MH-011, R-MH-013 with additional underwriting context: severity=Medium, treatment=Completed, prior_claims=No, occupation_risk=Low. Final decision set to Refer.",
+      "applied_rule_ids": [
+        "R-MH-004",
+        "R-MH-011",
+        "R-MH-013"
+      ]
+    },
+    {
+      "case_id": "CASE-0186",
+      "underwriting_decision_human": "Exclusion",
+      "decision_reason_human": "Human review considered rule signals R-MH-009, R-X-001, R-MH-004 with additional underwriting context: severity=Medium, treatment=Completed, prior_claims=No, occupation_risk=High. Final decision set to Exclusion.",
+      "applied_rule_ids": [
+        "R-MH-009",
+        "R-X-001",
+        "R-MH-004"
+      ]
+    },
+    {
+      "case_id": "CASE-0187",
+      "underwriting_decision_human": "Load",
+      "decision_reason_human": "Human review considered rule signals R-HT-002, R-HT-005, R-HT-006 with additional underwriting context: severity=Medium, treatment=Completed, prior_claims=No, occupation_risk=Medium. Final decision set to Load.",
+      "applied_rule_ids": [
+        "R-HT-002",
+        "R-HT-005",
+        "R-HT-006"
+      ]
+    },
+    {
+      "case_id": "CASE-0188",
+      "underwriting_decision_human": "Refer",
+      "decision_reason_human": "Human review considered rule signals R-HD-004, R-HD-001 with additional underwriting context: severity=High, treatment=Ongoing, prior_claims=No, occupation_risk=Low. Final decision set to Refer.",
+      "applied_rule_ids": [
+        "R-HD-004",
+        "R-HD-001"
+      ]
+    },
+    {
+      "case_id": "CASE-0189",
+      "underwriting_decision_human": "Exclusion",
+      "decision_reason_human": "Human review considered rule signals R-MH-014, R-X-001 with additional underwriting context: severity=High, treatment=Ongoing, prior_claims=Yes, occupation_risk=High. Final decision set to Exclusion.",
+      "applied_rule_ids": [
+        "R-MH-014",
+        "R-X-001"
+      ]
+    },
+    {
+      "case_id": "CASE-0190",
+      "underwriting_decision_human": "Refer",
+      "decision_reason_human": "Human review considered rule signals R-HD-002, R-X-001, R-HD-005 with additional underwriting context: severity=Medium, treatment=Completed, prior_claims=No, occupation_risk=High. Final decision set to Refer.",
+      "applied_rule_ids": [
+        "R-HD-002",
+        "R-X-001",
+        "R-HD-005"
+      ]
+    },
+    {
+      "case_id": "CASE-0191",
+      "underwriting_decision_human": "Load",
+      "decision_reason_human": "Human review considered rule signals R-MH-008, R-MH-015 with additional underwriting context: severity=Low, treatment=Ongoing, prior_claims=Yes, occupation_risk=Low. Final decision set to Load.",
+      "applied_rule_ids": [
+        "R-MH-008",
+        "R-MH-015"
+      ]
+    },
+    {
+      "case_id": "CASE-0192",
+      "underwriting_decision_human": "Load",
+      "decision_reason_human": "Human review considered rule signals R-MH-010, R-MH-011 with additional underwriting context: severity=Medium, treatment=Ongoing, prior_claims=No, occupation_risk=Medium. Final decision set to Load.",
+      "applied_rule_ids": [
+        "R-MH-010",
+        "R-MH-011"
+      ]
+    },
+    {
+      "case_id": "CASE-0193",
+      "underwriting_decision_human": "Accept",
+      "decision_reason_human": "Human review considered rule signals R-MH-011 with additional underwriting context: severity=Medium, treatment=Ongoing, prior_claims=No, occupation_risk=Low. Final decision set to Accept.",
+      "applied_rule_ids": [
+        "R-MH-011"
+      ]
+    },
+    {
+      "case_id": "CASE-0194",
+      "underwriting_decision_human": "Accept",
+      "decision_reason_human": "Human review considered rule signals R-MH-004, R-MH-011, R-MH-013 with additional underwriting context: severity=Medium, treatment=Completed, prior_claims=No, occupation_risk=Medium. Final decision set to Accept.",
+      "applied_rule_ids": [
+        "R-MH-004",
+        "R-MH-011",
+        "R-MH-013"
+      ]
+    },
+    {
+      "case_id": "CASE-0195",
+      "underwriting_decision_human": "Exclusion",
+      "decision_reason_human": "Human review considered rule signals R-X-006, R-DB-004, R-DB-005 with additional underwriting context: severity=High, treatment=Completed, prior_claims=Yes, occupation_risk=Low. Final decision set to Exclusion.",
+      "applied_rule_ids": [
+        "R-X-006",
+        "R-DB-004",
+        "R-DB-005"
+      ]
+    },
+    {
+      "case_id": "CASE-0196",
+      "underwriting_decision_human": "Load",
+      "decision_reason_human": "Human review considered rule signals R-MH-008, R-X-002 with additional underwriting context: severity=Low, treatment=Ongoing, prior_claims=No, occupation_risk=High. Final decision set to Load.",
+      "applied_rule_ids": [
+        "R-MH-008",
+        "R-X-002"
+      ]
+    },
+    {
+      "case_id": "CASE-0197",
+      "underwriting_decision_human": "Refer",
+      "decision_reason_human": "Human review considered rule signals R-MH-005 with additional underwriting context: severity=Low, treatment=None, prior_claims=No, occupation_risk=High. Final decision set to Refer.",
+      "applied_rule_ids": [
+        "R-MH-005"
+      ]
+    },
+    {
+      "case_id": "CASE-0198",
+      "underwriting_decision_human": "Load",
+      "decision_reason_human": "Human review considered rule signals R-MH-008, R-MH-015 with additional underwriting context: severity=Low, treatment=Ongoing, prior_claims=No, occupation_risk=High. Final decision set to Load.",
+      "applied_rule_ids": [
+        "R-MH-008",
+        "R-MH-015"
+      ]
+    },
+    {
+      "case_id": "CASE-0199",
+      "underwriting_decision_human": "Refer",
+      "decision_reason_human": "Human review considered rule signals R-DB-004, R-X-001, R-DB-002 with additional underwriting context: severity=Medium, treatment=Completed, prior_claims=Yes, occupation_risk=High. Final decision set to Refer.",
+      "applied_rule_ids": [
+        "R-DB-004",
+        "R-X-001",
+        "R-DB-002"
+      ]
+    },
+    {
+      "case_id": "CASE-0200",
+      "underwriting_decision_human": "Refer",
+      "decision_reason_human": "Human review considered rule signals R-DB-004, R-X-001 with additional underwriting context: severity=High, treatment=Ongoing, prior_claims=Yes, occupation_risk=High. Final decision set to Refer.",
+      "applied_rule_ids": [
+        "R-DB-004",
+        "R-X-001"
+      ]
+    }
+  ]
+}

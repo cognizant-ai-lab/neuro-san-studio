@@ -1,0 +1,904 @@
+{
+  "rule_impact_analysis": [
+    {
+      "rule_id": "R-EXT-28",
+      "number_of_cases_affected": 38,
+      "current_accuracy": 72.2,
+      "projected_accuracy_after_change": 87.7,
+      "manual_review_reduction_percentage": 16.8,
+      "estimated_sta_uplift": 15.5,
+      "confidence_score": "Low"
+    },
+    {
+      "rule_id": "R-EXT-16",
+      "number_of_cases_affected": 15,
+      "current_accuracy": 83.5,
+      "projected_accuracy_after_change": 90.5,
+      "manual_review_reduction_percentage": 19.5,
+      "estimated_sta_uplift": 7.0,
+      "confidence_score": "Low"
+    },
+    {
+      "rule_id": "R-EXT-13",
+      "number_of_cases_affected": 65,
+      "current_accuracy": 82.8,
+      "projected_accuracy_after_change": 90.8,
+      "manual_review_reduction_percentage": 13.4,
+      "estimated_sta_uplift": 8.0,
+      "confidence_score": "High"
+    },
+    {
+      "rule_id": "R-EXT-20",
+      "number_of_cases_affected": 35,
+      "current_accuracy": 62.8,
+      "projected_accuracy_after_change": 73.9,
+      "manual_review_reduction_percentage": 27.9,
+      "estimated_sta_uplift": 11.1,
+      "confidence_score": "Medium"
+    },
+    {
+      "rule_id": "R-EXT-25",
+      "number_of_cases_affected": 40,
+      "current_accuracy": 85.0,
+      "projected_accuracy_after_change": 95.5,
+      "manual_review_reduction_percentage": 12.9,
+      "estimated_sta_uplift": 10.5,
+      "confidence_score": "High"
+    },
+    {
+      "rule_id": "R-EXT-20",
+      "number_of_cases_affected": 20,
+      "current_accuracy": 82.4,
+      "projected_accuracy_after_change": 98.5,
+      "manual_review_reduction_percentage": 10.3,
+      "estimated_sta_uplift": 18.3,
+      "confidence_score": "High"
+    },
+    {
+      "rule_id": "R-EXT-31",
+      "number_of_cases_affected": 55,
+      "current_accuracy": 83.7,
+      "projected_accuracy_after_change": 86.1,
+      "manual_review_reduction_percentage": 24.2,
+      "estimated_sta_uplift": 2.4,
+      "confidence_score": "High"
+    },
+    {
+      "rule_id": "R-EXT-27",
+      "number_of_cases_affected": 25,
+      "current_accuracy": 78.4,
+      "projected_accuracy_after_change": 82.5,
+      "manual_review_reduction_percentage": 9.0,
+      "estimated_sta_uplift": 4.1,
+      "confidence_score": "Low"
+    },
+    {
+      "rule_id": "R-BASE-07",
+      "number_of_cases_affected": 66,
+      "current_accuracy": 58.6,
+      "projected_accuracy_after_change": 72.5,
+      "manual_review_reduction_percentage": 26.2,
+      "estimated_sta_uplift": 13.9,
+      "confidence_score": "High"
+    },
+    {
+      "rule_id": "R-EXT-31",
+      "number_of_cases_affected": 27,
+      "current_accuracy": 83.5,
+      "projected_accuracy_after_change": 93.7,
+      "manual_review_reduction_percentage": 7.0,
+      "estimated_sta_uplift": 10.2,
+      "confidence_score": "Medium"
+    },
+    {
+      "rule_id": "R-EXT-20",
+      "number_of_cases_affected": 25,
+      "current_accuracy": 73.0,
+      "projected_accuracy_after_change": 87.6,
+      "manual_review_reduction_percentage": 13.1,
+      "estimated_sta_uplift": 14.6,
+      "confidence_score": "Low"
+    },
+    {
+      "rule_id": "R-EXT-32",
+      "number_of_cases_affected": 70,
+      "current_accuracy": 60.6,
+      "projected_accuracy_after_change": 64.7,
+      "manual_review_reduction_percentage": 18.5,
+      "estimated_sta_uplift": 4.1,
+      "confidence_score": "Medium"
+    },
+    {
+      "rule_id": "R-EXT-15",
+      "number_of_cases_affected": 14,
+      "current_accuracy": 78.3,
+      "projected_accuracy_after_change": 82.1,
+      "manual_review_reduction_percentage": 18.9,
+      "estimated_sta_uplift": 3.8,
+      "confidence_score": "Low"
+    },
+    {
+      "rule_id": "R-EXT-11",
+      "number_of_cases_affected": 22,
+      "current_accuracy": 77.9,
+      "projected_accuracy_after_change": 85.9,
+      "manual_review_reduction_percentage": 9.0,
+      "estimated_sta_uplift": 8.0,
+      "confidence_score": "Medium"
+    },
+    {
+      "rule_id": "R-EXT-09",
+      "number_of_cases_affected": 8,
+      "current_accuracy": 72.0,
+      "projected_accuracy_after_change": 81.3,
+      "manual_review_reduction_percentage": 17.8,
+      "estimated_sta_uplift": 9.3,
+      "confidence_score": "Medium"
+    },
+    {
+      "rule_id": "R-CLAIM-05",
+      "number_of_cases_affected": 41,
+      "current_accuracy": 70.2,
+      "projected_accuracy_after_change": 84.2,
+      "manual_review_reduction_percentage": 22.6,
+      "estimated_sta_uplift": 14.0,
+      "confidence_score": "High"
+    },
+    {
+      "rule_id": "R-EXT-28",
+      "number_of_cases_affected": 42,
+      "current_accuracy": 65.6,
+      "projected_accuracy_after_change": 77.9,
+      "manual_review_reduction_percentage": 19.2,
+      "estimated_sta_uplift": 12.3,
+      "confidence_score": "Medium"
+    },
+    {
+      "rule_id": "R-EXT-15",
+      "number_of_cases_affected": 23,
+      "current_accuracy": 68.3,
+      "projected_accuracy_after_change": 84.1,
+      "manual_review_reduction_percentage": 23.3,
+      "estimated_sta_uplift": 15.8,
+      "confidence_score": "Low"
+    },
+    {
+      "rule_id": "R-CORE-01",
+      "number_of_cases_affected": 64,
+      "current_accuracy": 69.9,
+      "projected_accuracy_after_change": 77.8,
+      "manual_review_reduction_percentage": 5.3,
+      "estimated_sta_uplift": 7.9,
+      "confidence_score": "Medium"
+    },
+    {
+      "rule_id": "R-EXT-17",
+      "number_of_cases_affected": 41,
+      "current_accuracy": 63.7,
+      "projected_accuracy_after_change": 64.8,
+      "manual_review_reduction_percentage": 5.3,
+      "estimated_sta_uplift": 1.1,
+      "confidence_score": "Medium"
+    },
+    {
+      "rule_id": "R-EXT-12",
+      "number_of_cases_affected": 74,
+      "current_accuracy": 66.6,
+      "projected_accuracy_after_change": 76.9,
+      "manual_review_reduction_percentage": 16.3,
+      "estimated_sta_uplift": 10.3,
+      "confidence_score": "High"
+    },
+    {
+      "rule_id": "R-EXT-23",
+      "number_of_cases_affected": 50,
+      "current_accuracy": 77.4,
+      "projected_accuracy_after_change": 94.8,
+      "manual_review_reduction_percentage": 22.4,
+      "estimated_sta_uplift": 17.4,
+      "confidence_score": "Medium"
+    },
+    {
+      "rule_id": "R-EXT-10",
+      "number_of_cases_affected": 18,
+      "current_accuracy": 79.4,
+      "projected_accuracy_after_change": 88.3,
+      "manual_review_reduction_percentage": 10.2,
+      "estimated_sta_uplift": 8.9,
+      "confidence_score": "Medium"
+    },
+    {
+      "rule_id": "R-EXT-16",
+      "number_of_cases_affected": 72,
+      "current_accuracy": 63.0,
+      "projected_accuracy_after_change": 65.2,
+      "manual_review_reduction_percentage": 15.5,
+      "estimated_sta_uplift": 2.2,
+      "confidence_score": "Low"
+    },
+    {
+      "rule_id": "R-EXT-10",
+      "number_of_cases_affected": 55,
+      "current_accuracy": 60.2,
+      "projected_accuracy_after_change": 68.2,
+      "manual_review_reduction_percentage": 18.4,
+      "estimated_sta_uplift": 8.0,
+      "confidence_score": "Medium"
+    },
+    {
+      "rule_id": "R-HEAD-04",
+      "number_of_cases_affected": 39,
+      "current_accuracy": 64.3,
+      "projected_accuracy_after_change": 73.9,
+      "manual_review_reduction_percentage": 4.7,
+      "estimated_sta_uplift": 9.6,
+      "confidence_score": "Medium"
+    },
+    {
+      "rule_id": "R-EXT-30",
+      "number_of_cases_affected": 28,
+      "current_accuracy": 60.6,
+      "projected_accuracy_after_change": 72.0,
+      "manual_review_reduction_percentage": 4.4,
+      "estimated_sta_uplift": 11.4,
+      "confidence_score": "Medium"
+    },
+    {
+      "rule_id": "R-EXT-32",
+      "number_of_cases_affected": 50,
+      "current_accuracy": 68.0,
+      "projected_accuracy_after_change": 87.6,
+      "manual_review_reduction_percentage": 9.9,
+      "estimated_sta_uplift": 19.6,
+      "confidence_score": "Medium"
+    },
+    {
+      "rule_id": "R-EXT-29",
+      "number_of_cases_affected": 16,
+      "current_accuracy": 85.0,
+      "projected_accuracy_after_change": 86.3,
+      "manual_review_reduction_percentage": 17.4,
+      "estimated_sta_uplift": 1.3,
+      "confidence_score": "High"
+    },
+    {
+      "rule_id": "R-EXT-12",
+      "number_of_cases_affected": 44,
+      "current_accuracy": 80.6,
+      "projected_accuracy_after_change": 93.0,
+      "manual_review_reduction_percentage": 10.9,
+      "estimated_sta_uplift": 12.4,
+      "confidence_score": "Medium"
+    },
+    {
+      "rule_id": "R-EXT-17",
+      "number_of_cases_affected": 13,
+      "current_accuracy": 76.0,
+      "projected_accuracy_after_change": 85.8,
+      "manual_review_reduction_percentage": 27.3,
+      "estimated_sta_uplift": 9.8,
+      "confidence_score": "High"
+    },
+    {
+      "rule_id": "R-EXT-11",
+      "number_of_cases_affected": 12,
+      "current_accuracy": 69.4,
+      "projected_accuracy_after_change": 87.1,
+      "manual_review_reduction_percentage": 22.8,
+      "estimated_sta_uplift": 17.7,
+      "confidence_score": "Medium"
+    },
+    {
+      "rule_id": "R-EXT-21",
+      "number_of_cases_affected": 49,
+      "current_accuracy": 76.5,
+      "projected_accuracy_after_change": 80.6,
+      "manual_review_reduction_percentage": 10.8,
+      "estimated_sta_uplift": 4.1,
+      "confidence_score": "Low"
+    },
+    {
+      "rule_id": "R-EXT-27",
+      "number_of_cases_affected": 43,
+      "current_accuracy": 82.4,
+      "projected_accuracy_after_change": 91.1,
+      "manual_review_reduction_percentage": 16.6,
+      "estimated_sta_uplift": 8.7,
+      "confidence_score": "Medium"
+    },
+    {
+      "rule_id": "R-EXT-22",
+      "number_of_cases_affected": 35,
+      "current_accuracy": 66.4,
+      "projected_accuracy_after_change": 73.7,
+      "manual_review_reduction_percentage": 27.6,
+      "estimated_sta_uplift": 7.3,
+      "confidence_score": "Low"
+    },
+    {
+      "rule_id": "R-EXT-24",
+      "number_of_cases_affected": 39,
+      "current_accuracy": 65.0,
+      "projected_accuracy_after_change": 68.3,
+      "manual_review_reduction_percentage": 20.9,
+      "estimated_sta_uplift": 3.3,
+      "confidence_score": "Medium"
+    },
+    {
+      "rule_id": "R-CLAIM-05",
+      "number_of_cases_affected": 10,
+      "current_accuracy": 69.4,
+      "projected_accuracy_after_change": 88.7,
+      "manual_review_reduction_percentage": 7.0,
+      "estimated_sta_uplift": 19.3,
+      "confidence_score": "Medium"
+    },
+    {
+      "rule_id": "R-BASE-08",
+      "number_of_cases_affected": 64,
+      "current_accuracy": 63.9,
+      "projected_accuracy_after_change": 72.5,
+      "manual_review_reduction_percentage": 22.3,
+      "estimated_sta_uplift": 8.6,
+      "confidence_score": "Medium"
+    },
+    {
+      "rule_id": "R-EXT-20",
+      "number_of_cases_affected": 39,
+      "current_accuracy": 65.9,
+      "projected_accuracy_after_change": 78.6,
+      "manual_review_reduction_percentage": 10.0,
+      "estimated_sta_uplift": 12.7,
+      "confidence_score": "High"
+    },
+    {
+      "rule_id": "R-EXT-11",
+      "number_of_cases_affected": 73,
+      "current_accuracy": 63.5,
+      "projected_accuracy_after_change": 72.6,
+      "manual_review_reduction_percentage": 7.0,
+      "estimated_sta_uplift": 9.1,
+      "confidence_score": "Medium"
+    },
+    {
+      "rule_id": "R-BASE-08",
+      "number_of_cases_affected": 43,
+      "current_accuracy": 59.8,
+      "projected_accuracy_after_change": 65.4,
+      "manual_review_reduction_percentage": 19.8,
+      "estimated_sta_uplift": 5.6,
+      "confidence_score": "Medium"
+    },
+    {
+      "rule_id": "R-EXT-12",
+      "number_of_cases_affected": 23,
+      "current_accuracy": 84.3,
+      "projected_accuracy_after_change": 93.6,
+      "manual_review_reduction_percentage": 13.0,
+      "estimated_sta_uplift": 9.3,
+      "confidence_score": "High"
+    },
+    {
+      "rule_id": "R-CORE-01",
+      "number_of_cases_affected": 63,
+      "current_accuracy": 60.9,
+      "projected_accuracy_after_change": 78.3,
+      "manual_review_reduction_percentage": 23.2,
+      "estimated_sta_uplift": 17.4,
+      "confidence_score": "High"
+    },
+    {
+      "rule_id": "R-BASE-08",
+      "number_of_cases_affected": 67,
+      "current_accuracy": 67.1,
+      "projected_accuracy_after_change": 74.1,
+      "manual_review_reduction_percentage": 7.4,
+      "estimated_sta_uplift": 7.0,
+      "confidence_score": "Medium"
+    },
+    {
+      "rule_id": "R-EXT-15",
+      "number_of_cases_affected": 52,
+      "current_accuracy": 66.5,
+      "projected_accuracy_after_change": 86.1,
+      "manual_review_reduction_percentage": 10.5,
+      "estimated_sta_uplift": 19.6,
+      "confidence_score": "High"
+    },
+    {
+      "rule_id": "R-EXT-14",
+      "number_of_cases_affected": 25,
+      "current_accuracy": 77.7,
+      "projected_accuracy_after_change": 79.8,
+      "manual_review_reduction_percentage": 23.2,
+      "estimated_sta_uplift": 2.1,
+      "confidence_score": "Medium"
+    },
+    {
+      "rule_id": "R-DIA-02",
+      "number_of_cases_affected": 56,
+      "current_accuracy": 77.2,
+      "projected_accuracy_after_change": 80.8,
+      "manual_review_reduction_percentage": 14.4,
+      "estimated_sta_uplift": 3.6,
+      "confidence_score": "Low"
+    },
+    {
+      "rule_id": "R-EXT-22",
+      "number_of_cases_affected": 32,
+      "current_accuracy": 78.2,
+      "projected_accuracy_after_change": 95.5,
+      "manual_review_reduction_percentage": 4.5,
+      "estimated_sta_uplift": 17.3,
+      "confidence_score": "Low"
+    },
+    {
+      "rule_id": "R-EXT-21",
+      "number_of_cases_affected": 62,
+      "current_accuracy": 70.4,
+      "projected_accuracy_after_change": 89.8,
+      "manual_review_reduction_percentage": 11.6,
+      "estimated_sta_uplift": 19.4,
+      "confidence_score": "High"
+    },
+    {
+      "rule_id": "R-EXT-32",
+      "number_of_cases_affected": 43,
+      "current_accuracy": 82.1,
+      "projected_accuracy_after_change": 98.5,
+      "manual_review_reduction_percentage": 24.1,
+      "estimated_sta_uplift": 19.8,
+      "confidence_score": "Medium"
+    },
+    {
+      "rule_id": "R-EXT-28",
+      "number_of_cases_affected": 15,
+      "current_accuracy": 70.8,
+      "projected_accuracy_after_change": 90.6,
+      "manual_review_reduction_percentage": 7.3,
+      "estimated_sta_uplift": 19.8,
+      "confidence_score": "Medium"
+    },
+    {
+      "rule_id": "R-HEAD-04",
+      "number_of_cases_affected": 40,
+      "current_accuracy": 80.8,
+      "projected_accuracy_after_change": 84.8,
+      "manual_review_reduction_percentage": 23.2,
+      "estimated_sta_uplift": 4.0,
+      "confidence_score": "Low"
+    },
+    {
+      "rule_id": "R-EXT-23",
+      "number_of_cases_affected": 36,
+      "current_accuracy": 69.5,
+      "projected_accuracy_after_change": 72.3,
+      "manual_review_reduction_percentage": 27.4,
+      "estimated_sta_uplift": 2.8,
+      "confidence_score": "Medium"
+    },
+    {
+      "rule_id": "R-EXT-12",
+      "number_of_cases_affected": 34,
+      "current_accuracy": 80.1,
+      "projected_accuracy_after_change": 98.5,
+      "manual_review_reduction_percentage": 7.0,
+      "estimated_sta_uplift": 19.7,
+      "confidence_score": "Medium"
+    },
+    {
+      "rule_id": "R-EXT-27",
+      "number_of_cases_affected": 14,
+      "current_accuracy": 82.4,
+      "projected_accuracy_after_change": 97.4,
+      "manual_review_reduction_percentage": 21.7,
+      "estimated_sta_uplift": 15.0,
+      "confidence_score": "High"
+    },
+    {
+      "rule_id": "R-EXT-26",
+      "number_of_cases_affected": 66,
+      "current_accuracy": 83.9,
+      "projected_accuracy_after_change": 85.6,
+      "manual_review_reduction_percentage": 9.5,
+      "estimated_sta_uplift": 1.7,
+      "confidence_score": "Medium"
+    },
+    {
+      "rule_id": "R-EXT-28",
+      "number_of_cases_affected": 35,
+      "current_accuracy": 85.2,
+      "projected_accuracy_after_change": 98.5,
+      "manual_review_reduction_percentage": 7.7,
+      "estimated_sta_uplift": 16.8,
+      "confidence_score": "Medium"
+    },
+    {
+      "rule_id": "R-HEAD-04",
+      "number_of_cases_affected": 32,
+      "current_accuracy": 82.5,
+      "projected_accuracy_after_change": 83.5,
+      "manual_review_reduction_percentage": 25.9,
+      "estimated_sta_uplift": 1.0,
+      "confidence_score": "High"
+    },
+    {
+      "rule_id": "R-EXT-29",
+      "number_of_cases_affected": 71,
+      "current_accuracy": 72.8,
+      "projected_accuracy_after_change": 91.4,
+      "manual_review_reduction_percentage": 25.6,
+      "estimated_sta_uplift": 18.6,
+      "confidence_score": "High"
+    },
+    {
+      "rule_id": "R-EXT-23",
+      "number_of_cases_affected": 26,
+      "current_accuracy": 61.3,
+      "projected_accuracy_after_change": 80.8,
+      "manual_review_reduction_percentage": 16.0,
+      "estimated_sta_uplift": 19.5,
+      "confidence_score": "Low"
+    },
+    {
+      "rule_id": "R-EXT-25",
+      "number_of_cases_affected": 26,
+      "current_accuracy": 62.4,
+      "projected_accuracy_after_change": 75.5,
+      "manual_review_reduction_percentage": 9.5,
+      "estimated_sta_uplift": 13.1,
+      "confidence_score": "Medium"
+    },
+    {
+      "rule_id": "R-DIA-02",
+      "number_of_cases_affected": 34,
+      "current_accuracy": 85.4,
+      "projected_accuracy_after_change": 95.9,
+      "manual_review_reduction_percentage": 10.1,
+      "estimated_sta_uplift": 10.5,
+      "confidence_score": "High"
+    },
+    {
+      "rule_id": "R-EXT-10",
+      "number_of_cases_affected": 73,
+      "current_accuracy": 78.5,
+      "projected_accuracy_after_change": 94.2,
+      "manual_review_reduction_percentage": 26.0,
+      "estimated_sta_uplift": 15.7,
+      "confidence_score": "Low"
+    },
+    {
+      "rule_id": "R-MH-03",
+      "number_of_cases_affected": 29,
+      "current_accuracy": 67.4,
+      "projected_accuracy_after_change": 74.9,
+      "manual_review_reduction_percentage": 10.4,
+      "estimated_sta_uplift": 7.5,
+      "confidence_score": "Medium"
+    },
+    {
+      "rule_id": "R-EXT-29",
+      "number_of_cases_affected": 14,
+      "current_accuracy": 62.0,
+      "projected_accuracy_after_change": 70.2,
+      "manual_review_reduction_percentage": 7.6,
+      "estimated_sta_uplift": 8.2,
+      "confidence_score": "Medium"
+    },
+    {
+      "rule_id": "R-EXT-19",
+      "number_of_cases_affected": 73,
+      "current_accuracy": 78.8,
+      "projected_accuracy_after_change": 88.2,
+      "manual_review_reduction_percentage": 20.0,
+      "estimated_sta_uplift": 9.4,
+      "confidence_score": "Medium"
+    },
+    {
+      "rule_id": "R-EXT-25",
+      "number_of_cases_affected": 11,
+      "current_accuracy": 84.1,
+      "projected_accuracy_after_change": 98.5,
+      "manual_review_reduction_percentage": 7.5,
+      "estimated_sta_uplift": 14.6,
+      "confidence_score": "Medium"
+    },
+    {
+      "rule_id": "R-CORE-01",
+      "number_of_cases_affected": 41,
+      "current_accuracy": 85.7,
+      "projected_accuracy_after_change": 97.0,
+      "manual_review_reduction_percentage": 15.0,
+      "estimated_sta_uplift": 11.3,
+      "confidence_score": "Low"
+    },
+    {
+      "rule_id": "R-EXT-31",
+      "number_of_cases_affected": 11,
+      "current_accuracy": 82.4,
+      "projected_accuracy_after_change": 96.1,
+      "manual_review_reduction_percentage": 10.4,
+      "estimated_sta_uplift": 13.7,
+      "confidence_score": "Low"
+    },
+    {
+      "rule_id": "R-MH-03",
+      "number_of_cases_affected": 59,
+      "current_accuracy": 65.4,
+      "projected_accuracy_after_change": 73.4,
+      "manual_review_reduction_percentage": 24.3,
+      "estimated_sta_uplift": 8.0,
+      "confidence_score": "Medium"
+    },
+    {
+      "rule_id": "R-CLAIM-05",
+      "number_of_cases_affected": 45,
+      "current_accuracy": 70.7,
+      "projected_accuracy_after_change": 80.3,
+      "manual_review_reduction_percentage": 27.3,
+      "estimated_sta_uplift": 9.6,
+      "confidence_score": "Medium"
+    },
+    {
+      "rule_id": "R-EXT-10",
+      "number_of_cases_affected": 61,
+      "current_accuracy": 82.8,
+      "projected_accuracy_after_change": 93.3,
+      "manual_review_reduction_percentage": 18.9,
+      "estimated_sta_uplift": 10.5,
+      "confidence_score": "High"
+    },
+    {
+      "rule_id": "R-CORE-01",
+      "number_of_cases_affected": 61,
+      "current_accuracy": 82.4,
+      "projected_accuracy_after_change": 92.8,
+      "manual_review_reduction_percentage": 7.7,
+      "estimated_sta_uplift": 10.4,
+      "confidence_score": "Medium"
+    },
+    {
+      "rule_id": "R-MH-03",
+      "number_of_cases_affected": 73,
+      "current_accuracy": 82.2,
+      "projected_accuracy_after_change": 96.4,
+      "manual_review_reduction_percentage": 18.9,
+      "estimated_sta_uplift": 14.2,
+      "confidence_score": "Low"
+    },
+    {
+      "rule_id": "R-EXT-30",
+      "number_of_cases_affected": 44,
+      "current_accuracy": 77.4,
+      "projected_accuracy_after_change": 92.0,
+      "manual_review_reduction_percentage": 14.0,
+      "estimated_sta_uplift": 14.6,
+      "confidence_score": "Medium"
+    },
+    {
+      "rule_id": "R-EXT-09",
+      "number_of_cases_affected": 54,
+      "current_accuracy": 71.6,
+      "projected_accuracy_after_change": 82.8,
+      "manual_review_reduction_percentage": 16.4,
+      "estimated_sta_uplift": 11.2,
+      "confidence_score": "High"
+    },
+    {
+      "rule_id": "R-EXT-28",
+      "number_of_cases_affected": 18,
+      "current_accuracy": 81.6,
+      "projected_accuracy_after_change": 88.0,
+      "manual_review_reduction_percentage": 16.1,
+      "estimated_sta_uplift": 6.4,
+      "confidence_score": "Low"
+    },
+    {
+      "rule_id": "R-EXT-29",
+      "number_of_cases_affected": 43,
+      "current_accuracy": 62.2,
+      "projected_accuracy_after_change": 63.9,
+      "manual_review_reduction_percentage": 26.6,
+      "estimated_sta_uplift": 1.7,
+      "confidence_score": "Medium"
+    },
+    {
+      "rule_id": "R-BASE-08",
+      "number_of_cases_affected": 26,
+      "current_accuracy": 61.7,
+      "projected_accuracy_after_change": 81.2,
+      "manual_review_reduction_percentage": 19.3,
+      "estimated_sta_uplift": 19.5,
+      "confidence_score": "High"
+    },
+    {
+      "rule_id": "R-YOUNG-06",
+      "number_of_cases_affected": 41,
+      "current_accuracy": 67.8,
+      "projected_accuracy_after_change": 76.8,
+      "manual_review_reduction_percentage": 11.5,
+      "estimated_sta_uplift": 9.0,
+      "confidence_score": "Medium"
+    },
+    {
+      "rule_id": "R-EXT-21",
+      "number_of_cases_affected": 38,
+      "current_accuracy": 79.1,
+      "projected_accuracy_after_change": 94.7,
+      "manual_review_reduction_percentage": 22.8,
+      "estimated_sta_uplift": 15.6,
+      "confidence_score": "Medium"
+    },
+    {
+      "rule_id": "R-EXT-12",
+      "number_of_cases_affected": 60,
+      "current_accuracy": 69.0,
+      "projected_accuracy_after_change": 82.5,
+      "manual_review_reduction_percentage": 20.3,
+      "estimated_sta_uplift": 13.5,
+      "confidence_score": "Medium"
+    },
+    {
+      "rule_id": "R-YOUNG-06",
+      "number_of_cases_affected": 41,
+      "current_accuracy": 75.2,
+      "projected_accuracy_after_change": 92.1,
+      "manual_review_reduction_percentage": 8.7,
+      "estimated_sta_uplift": 16.9,
+      "confidence_score": "Medium"
+    },
+    {
+      "rule_id": "R-EXT-32",
+      "number_of_cases_affected": 42,
+      "current_accuracy": 72.1,
+      "projected_accuracy_after_change": 82.9,
+      "manual_review_reduction_percentage": 9.4,
+      "estimated_sta_uplift": 10.8,
+      "confidence_score": "Medium"
+    },
+    {
+      "rule_id": "R-HEAD-04",
+      "number_of_cases_affected": 68,
+      "current_accuracy": 79.2,
+      "projected_accuracy_after_change": 97.2,
+      "manual_review_reduction_percentage": 21.6,
+      "estimated_sta_uplift": 18.0,
+      "confidence_score": "High"
+    },
+    {
+      "rule_id": "R-EXT-11",
+      "number_of_cases_affected": 55,
+      "current_accuracy": 70.6,
+      "projected_accuracy_after_change": 79.9,
+      "manual_review_reduction_percentage": 13.3,
+      "estimated_sta_uplift": 9.3,
+      "confidence_score": "Low"
+    },
+    {
+      "rule_id": "R-YOUNG-06",
+      "number_of_cases_affected": 19,
+      "current_accuracy": 76.0,
+      "projected_accuracy_after_change": 80.2,
+      "manual_review_reduction_percentage": 4.8,
+      "estimated_sta_uplift": 4.2,
+      "confidence_score": "Medium"
+    },
+    {
+      "rule_id": "R-EXT-32",
+      "number_of_cases_affected": 48,
+      "current_accuracy": 82.5,
+      "projected_accuracy_after_change": 83.7,
+      "manual_review_reduction_percentage": 12.7,
+      "estimated_sta_uplift": 1.2,
+      "confidence_score": "High"
+    },
+    {
+      "rule_id": "R-BASE-08",
+      "number_of_cases_affected": 43,
+      "current_accuracy": 70.0,
+      "projected_accuracy_after_change": 82.0,
+      "manual_review_reduction_percentage": 10.9,
+      "estimated_sta_uplift": 12.0,
+      "confidence_score": "Medium"
+    },
+    {
+      "rule_id": "R-CLAIM-05",
+      "number_of_cases_affected": 47,
+      "current_accuracy": 63.6,
+      "projected_accuracy_after_change": 77.5,
+      "manual_review_reduction_percentage": 23.1,
+      "estimated_sta_uplift": 13.9,
+      "confidence_score": "High"
+    },
+    {
+      "rule_id": "R-EXT-28",
+      "number_of_cases_affected": 27,
+      "current_accuracy": 70.7,
+      "projected_accuracy_after_change": 73.1,
+      "manual_review_reduction_percentage": 15.2,
+      "estimated_sta_uplift": 2.4,
+      "confidence_score": "Low"
+    },
+    {
+      "rule_id": "R-EXT-27",
+      "number_of_cases_affected": 41,
+      "current_accuracy": 66.3,
+      "projected_accuracy_after_change": 82.7,
+      "manual_review_reduction_percentage": 9.9,
+      "estimated_sta_uplift": 16.4,
+      "confidence_score": "Medium"
+    },
+    {
+      "rule_id": "R-EXT-28",
+      "number_of_cases_affected": 59,
+      "current_accuracy": 69.0,
+      "projected_accuracy_after_change": 74.9,
+      "manual_review_reduction_percentage": 20.5,
+      "estimated_sta_uplift": 5.9,
+      "confidence_score": "Medium"
+    },
+    {
+      "rule_id": "R-EXT-30",
+      "number_of_cases_affected": 40,
+      "current_accuracy": 61.4,
+      "projected_accuracy_after_change": 64.2,
+      "manual_review_reduction_percentage": 26.2,
+      "estimated_sta_uplift": 2.8,
+      "confidence_score": "Low"
+    },
+    {
+      "rule_id": "R-EXT-22",
+      "number_of_cases_affected": 27,
+      "current_accuracy": 65.3,
+      "projected_accuracy_after_change": 85.1,
+      "manual_review_reduction_percentage": 7.5,
+      "estimated_sta_uplift": 19.8,
+      "confidence_score": "Medium"
+    },
+    {
+      "rule_id": "R-EXT-27",
+      "number_of_cases_affected": 29,
+      "current_accuracy": 60.7,
+      "projected_accuracy_after_change": 64.1,
+      "manual_review_reduction_percentage": 14.1,
+      "estimated_sta_uplift": 3.4,
+      "confidence_score": "Medium"
+    },
+    {
+      "rule_id": "R-BASE-07",
+      "number_of_cases_affected": 15,
+      "current_accuracy": 64.5,
+      "projected_accuracy_after_change": 74.7,
+      "manual_review_reduction_percentage": 16.6,
+      "estimated_sta_uplift": 10.2,
+      "confidence_score": "Medium"
+    },
+    {
+      "rule_id": "R-EXT-18",
+      "number_of_cases_affected": 21,
+      "current_accuracy": 82.7,
+      "projected_accuracy_after_change": 93.9,
+      "manual_review_reduction_percentage": 27.9,
+      "estimated_sta_uplift": 11.2,
+      "confidence_score": "Low"
+    },
+    {
+      "rule_id": "R-EXT-13",
+      "number_of_cases_affected": 33,
+      "current_accuracy": 67.6,
+      "projected_accuracy_after_change": 69.8,
+      "manual_review_reduction_percentage": 26.8,
+      "estimated_sta_uplift": 2.2,
+      "confidence_score": "High"
+    },
+    {
+      "rule_id": "R-EXT-22",
+      "number_of_cases_affected": 63,
+      "current_accuracy": 85.5,
+      "projected_accuracy_after_change": 98.5,
+      "manual_review_reduction_percentage": 22.7,
+      "estimated_sta_uplift": 17.5,
+      "confidence_score": "High"
+    }
+  ]
+}

@@ -1,0 +1,292 @@
+{
+  "ure_rules": [
+    {
+      "rule_id": "R-CORE-01",
+      "rule_name": "High Severity Senior/High-Risk Exclusion",
+      "condition": "all",
+      "criteria": "severity = High AND (age > 50 OR occupation_risk = High)",
+      "decision": "Exclusion",
+      "load_percentage": null,
+      "description": "Conservative blanket exclusion for high-severity risk clusters; ignores treatment adherence."
+    },
+    {
+      "rule_id": "R-DIA-02",
+      "rule_name": "Diabetes Medium+ Loading",
+      "condition": "diabetes",
+      "criteria": "condition = diabetes AND severity IN (Medium, High)",
+      "decision": "Load",
+      "load_percentage": 35,
+      "description": "Applies fixed loading for diabetes medium/high severity without HbA1c trend nuance."
+    },
+    {
+      "rule_id": "R-MH-03",
+      "rule_name": "Mental Health High Exclusion",
+      "condition": "mental health",
+      "criteria": "condition = mental health AND severity = High",
+      "decision": "Exclusion",
+      "load_percentage": null,
+      "description": "Strict exclusion; does not differentiate controlled cases with active treatment."
+    },
+    {
+      "rule_id": "R-HEAD-04",
+      "rule_name": "Headache Smoker Referral",
+      "condition": "headache",
+      "criteria": "condition = headache AND severity = Medium AND smoking = Yes",
+      "decision": "Refer",
+      "load_percentage": null,
+      "description": "Escalates medium headaches in smokers to referral, even if no neurological red flags."
+    },
+    {
+      "rule_id": "R-CLAIM-05",
+      "rule_name": "Claim + High Risk Occupation Referral",
+      "condition": "all",
+      "criteria": "prior_claims = Yes AND occupation_risk = High",
+      "decision": "Refer",
+      "load_percentage": null,
+      "description": "Routes to referral regardless of claim type or time elapsed."
+    },
+    {
+      "rule_id": "R-YOUNG-06",
+      "rule_name": "Young Low Severity Auto-Accept",
+      "condition": "all",
+      "criteria": "age < 25 AND severity = Low",
+      "decision": "Accept",
+      "load_percentage": null,
+      "description": "Simplistic acceptance for young applicants; misses occupational hazards."
+    },
+    {
+      "rule_id": "R-BASE-07",
+      "rule_name": "Low Severity Default Accept",
+      "condition": "all",
+      "criteria": "severity = Low",
+      "decision": "Accept",
+      "load_percentage": null,
+      "description": "Generic low-severity acceptance rule with minimal context awareness."
+    },
+    {
+      "rule_id": "R-BASE-08",
+      "rule_name": "Non-Low Severity Default Load",
+      "condition": "all",
+      "criteria": "severity != Low",
+      "decision": "Load",
+      "load_percentage": 25,
+      "description": "Fallback rule used when no specific rule applies; intentionally broad and rigid."
+    },
+    {
+      "rule_id": "R-EXT-09",
+      "rule_name": "Legacy Heuristic Rule 9",
+      "condition": "hypertension",
+      "criteria": "prior_claims = Yes",
+      "decision": "Exclusion",
+      "load_percentage": null,
+      "description": "Legacy heuristic rule retained for backward compatibility; edge-case coverage is incomplete."
+    },
+    {
+      "rule_id": "R-EXT-10",
+      "rule_name": "Legacy Heuristic Rule 10",
+      "condition": "diabetes",
+      "criteria": "age > 45 AND severity = Medium",
+      "decision": "Accept",
+      "load_percentage": null,
+      "description": "Legacy heuristic rule retained for backward compatibility; edge-case coverage is incomplete."
+    },
+    {
+      "rule_id": "R-EXT-11",
+      "rule_name": "Legacy Heuristic Rule 11",
+      "condition": "mental health",
+      "criteria": "income_variability = Unstable AND alcohol_usage = High",
+      "decision": "Refer",
+      "load_percentage": null,
+      "description": "Legacy heuristic rule retained for backward compatibility; edge-case coverage is incomplete."
+    },
+    {
+      "rule_id": "R-EXT-12",
+      "rule_name": "Legacy Heuristic Rule 12",
+      "condition": "mental health",
+      "criteria": "income_variability = Unstable AND alcohol_usage = High",
+      "decision": "Exclusion",
+      "load_percentage": null,
+      "description": "Overly strict rule lacking context; can reject manageable moderate-risk cases."
+    },
+    {
+      "rule_id": "R-EXT-13",
+      "rule_name": "Legacy Heuristic Rule 13",
+      "condition": "diabetes",
+      "criteria": "prior_claims = Yes",
+      "decision": "Accept",
+      "load_percentage": null,
+      "description": "Legacy heuristic rule retained for backward compatibility; edge-case coverage is incomplete."
+    },
+    {
+      "rule_id": "R-EXT-14",
+      "rule_name": "Legacy Heuristic Rule 14",
+      "condition": "mental health",
+      "criteria": "income_variability = Unstable AND alcohol_usage = High",
+      "decision": "Accept",
+      "load_percentage": null,
+      "description": "Overly lenient exception rule; may accept profiles human underwriters usually refer."
+    },
+    {
+      "rule_id": "R-EXT-15",
+      "rule_name": "Legacy Heuristic Rule 15",
+      "condition": "mental health",
+      "criteria": "income_variability = Unstable AND alcohol_usage = High",
+      "decision": "Refer",
+      "load_percentage": null,
+      "description": "Legacy heuristic rule retained for backward compatibility; edge-case coverage is incomplete."
+    },
+    {
+      "rule_id": "R-EXT-16",
+      "rule_name": "Legacy Heuristic Rule 16",
+      "condition": "headache",
+      "criteria": "age > 45 AND severity = Medium",
+      "decision": "Load",
+      "load_percentage": 15,
+      "description": "Legacy heuristic rule retained for backward compatibility; edge-case coverage is incomplete."
+    },
+    {
+      "rule_id": "R-EXT-17",
+      "rule_name": "Legacy Heuristic Rule 17",
+      "condition": "all",
+      "criteria": "prior_claims = Yes",
+      "decision": "Load",
+      "load_percentage": 20,
+      "description": "Legacy heuristic rule retained for backward compatibility; edge-case coverage is incomplete."
+    },
+    {
+      "rule_id": "R-EXT-18",
+      "rule_name": "Legacy Heuristic Rule 18",
+      "condition": "all",
+      "criteria": "prior_claims = Yes",
+      "decision": "Exclusion",
+      "load_percentage": null,
+      "description": "Overly strict rule lacking context; can reject manageable moderate-risk cases."
+    },
+    {
+      "rule_id": "R-EXT-19",
+      "rule_name": "Legacy Heuristic Rule 19",
+      "condition": "all",
+      "criteria": "age > 45 AND severity = Medium",
+      "decision": "Accept",
+      "load_percentage": null,
+      "description": "Legacy heuristic rule retained for backward compatibility; edge-case coverage is incomplete."
+    },
+    {
+      "rule_id": "R-EXT-20",
+      "rule_name": "Legacy Heuristic Rule 20",
+      "condition": "mental health",
+      "criteria": "bmi > 30 AND smoking = Yes",
+      "decision": "Load",
+      "load_percentage": 30,
+      "description": "Legacy heuristic rule retained for backward compatibility; edge-case coverage is incomplete."
+    },
+    {
+      "rule_id": "R-EXT-21",
+      "rule_name": "Legacy Heuristic Rule 21",
+      "condition": "all",
+      "criteria": "bmi > 30 AND smoking = Yes",
+      "decision": "Accept",
+      "load_percentage": null,
+      "description": "Overly lenient exception rule; may accept profiles human underwriters usually refer."
+    },
+    {
+      "rule_id": "R-EXT-22",
+      "rule_name": "Legacy Heuristic Rule 22",
+      "condition": "headache",
+      "criteria": "bmi > 30 AND smoking = Yes",
+      "decision": "Refer",
+      "load_percentage": null,
+      "description": "Legacy heuristic rule retained for backward compatibility; edge-case coverage is incomplete."
+    },
+    {
+      "rule_id": "R-EXT-23",
+      "rule_name": "Legacy Heuristic Rule 23",
+      "condition": "headache",
+      "criteria": "age < 30 AND severity = Low",
+      "decision": "Accept",
+      "load_percentage": null,
+      "description": "Legacy heuristic rule retained for backward compatibility; edge-case coverage is incomplete."
+    },
+    {
+      "rule_id": "R-EXT-24",
+      "rule_name": "Legacy Heuristic Rule 24",
+      "condition": "mental health",
+      "criteria": "age < 30 AND severity = Low",
+      "decision": "Exclusion",
+      "load_percentage": null,
+      "description": "Overly strict rule lacking context; can reject manageable moderate-risk cases."
+    },
+    {
+      "rule_id": "R-EXT-25",
+      "rule_name": "Legacy Heuristic Rule 25",
+      "condition": "hypertension",
+      "criteria": "severity = High",
+      "decision": "Exclusion",
+      "load_percentage": null,
+      "description": "Legacy heuristic rule retained for backward compatibility; edge-case coverage is incomplete."
+    },
+    {
+      "rule_id": "R-EXT-26",
+      "rule_name": "Legacy Heuristic Rule 26",
+      "condition": "headache",
+      "criteria": "income_variability = Unstable AND alcohol_usage = High",
+      "decision": "Refer",
+      "load_percentage": null,
+      "description": "Legacy heuristic rule retained for backward compatibility; edge-case coverage is incomplete."
+    },
+    {
+      "rule_id": "R-EXT-27",
+      "rule_name": "Legacy Heuristic Rule 27",
+      "condition": "mental health",
+      "criteria": "working_hours > 55 AND severity != Low",
+      "decision": "Exclusion",
+      "load_percentage": null,
+      "description": "Legacy heuristic rule retained for backward compatibility; edge-case coverage is incomplete."
+    },
+    {
+      "rule_id": "R-EXT-28",
+      "rule_name": "Legacy Heuristic Rule 28",
+      "condition": "diabetes",
+      "criteria": "working_hours > 55 AND severity != Low",
+      "decision": "Accept",
+      "load_percentage": null,
+      "description": "Overly lenient exception rule; may accept profiles human underwriters usually refer."
+    },
+    {
+      "rule_id": "R-EXT-29",
+      "rule_name": "Legacy Heuristic Rule 29",
+      "condition": "all",
+      "criteria": "age < 30 AND severity = Low",
+      "decision": "Load",
+      "load_percentage": 30,
+      "description": "Legacy heuristic rule retained for backward compatibility; edge-case coverage is incomplete."
+    },
+    {
+      "rule_id": "R-EXT-30",
+      "rule_name": "Legacy Heuristic Rule 30",
+      "condition": "all",
+      "criteria": "bmi > 30 AND smoking = Yes",
+      "decision": "Exclusion",
+      "load_percentage": null,
+      "description": "Overly strict rule lacking context; can reject manageable moderate-risk cases."
+    },
+    {
+      "rule_id": "R-EXT-31",
+      "rule_name": "Legacy Heuristic Rule 31",
+      "condition": "diabetes",
+      "criteria": "age < 30 AND severity = Low",
+      "decision": "Accept",
+      "load_percentage": null,
+      "description": "Legacy heuristic rule retained for backward compatibility; edge-case coverage is incomplete."
+    },
+    {
+      "rule_id": "R-EXT-32",
+      "rule_name": "Legacy Heuristic Rule 32",
+      "condition": "headache",
+      "criteria": "age < 30 AND severity = Low",
+      "decision": "Accept",
+      "load_percentage": null,
+      "description": "Legacy heuristic rule retained for backward compatibility; edge-case coverage is incomplete."
+    }
+  ]
+}
