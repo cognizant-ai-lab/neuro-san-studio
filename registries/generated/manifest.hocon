@@ -1,0 +1,18 @@
+# Generated Agent Networks Manifest
+# This manifest registers all generated agent networks for serving.
+
+{
+    # Underwriting Analytics URE System Network
+    "generated/underwriting_analytics_ure_system.hocon": {
+        serve: true,
+        public: true,
+        description: "Underwriting Analytics URE System - Routes underwriting analytics work to specialized agents"
+    },
+
+    # Rule-Based AI Underwriting System Network
+    "generated/rule_based_ai_underwriting_system.hocon": {
+        serve: true,
+        public: true,
+        description: "Rule-Based AI Underwriting System - End-to-end underwriting decision pipeline"
+    }
+}
