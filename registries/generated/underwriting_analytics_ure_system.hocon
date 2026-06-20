@@ -1,0 +1,147 @@
+{
+    include "config/llm_config.hocon"
+
+    "metadata": {
+        "description": "Grounded underwriting analytics network for URE KPI analysis, rule diagnostics, experimentation, monitoring, and governance.",
+        "tags": ["generated", "underwriting", "analytics", "ure", "grounded"],
+        "sample_queries": [
+            "Use the bundled underwriting analytics datasets to summarize approval, decline, referral, and latency patterns.",
+            "Read the local rule impact datasets and identify the biggest URE optimization opportunities.",
+            "Design an experiment and monitoring plan grounded in the packaged analytics artifacts."
+        ]
+    },
+
+    "instructions_prefix": """
+You are part of the underwriting_analytics_ure_system network.
+Use the packaged local artifacts before making claims about this system.
+If local artifacts do not contain the requested evidence, say exactly what is missing.
+When using the grounding reader, always pass the full repo-relative file path under
+`coded_tools/generated/underwriting_analytics_ure_system/`. Never use `./`, bare
+filenames such as `README.md`, or invented names like `rule_definitions.json`.
+""",
+
+    "tools": [
+        {
+            "name": "underwriting_analytics_orchestrator",
+            "function": {
+                "description": "Routes underwriting analytics work, grounds answers in packaged artifacts, and synthesizes agent outputs."
+            },
+            "instructions": ${instructions_prefix} """
+Role: Orchestrator for the underwriting analytics URE system.
+
+Workflow:
+1) Read local grounding artifacts when the user asks for analysis, examples, packaged datasets, or system details.
+2) Route to the right specialist.
+3) Synthesize only grounded findings from tool outputs.
+4) Use exact repo-relative file paths when invoking tools.
+
+Preferred local files:
+- `coded_tools/generated/underwriting_analytics_ure_system/README.md`
+- `coded_tools/generated/underwriting_analytics_ure_system/GROUNDING_SUMMARY.txt`
+- `coded_tools/generated/underwriting_analytics_ure_system/underwriting_ure_uplift_dataset.json`
+- `coded_tools/generated/underwriting_analytics_ure_system/dataset_1_underwriting_decision_logs.json`
+- `coded_tools/generated/underwriting_analytics_ure_system/dataset_2_ure_rule_definitions.json`
+- `coded_tools/generated/underwriting_analytics_ure_system/dataset_3_case_attributes.json`
+- `coded_tools/generated/underwriting_analytics_ure_system/dataset_4_divergence_scenarios.json`
+- `coded_tools/generated/underwriting_analytics_ure_system/dataset_5_rule_impact_feedback_data.json`
+
+Do not claim to have queried external systems. Treat the packaged files as the source of truth for this generated network.
+""",
+            "tools": [
+                "underwriting_analytics_grounding_reader",
+                "ingestion_agent",
+                "kpi_analytics_agent",
+                "rules_diagnostics_agent",
+                "experiment_design_agent",
+                "monitoring_agent",
+                "governance_agent"
+            ]
+        },
+        {
+            "name": "underwriting_analytics_grounding_reader",
+            "toolbox": "read_file",
+            "args": {
+                "allowed_paths": [
+                    "coded_tools/generated/underwriting_analytics_ure_system"
+                ],
+                "allowed_file_extensions": [".json", ".md", ".txt", ".py"],
+                "blocked_file_extensions": [".env"]
+            }
+        },
+        {
+            "name": "ingestion_agent",
+            "function": {
+                "description": "Reads packaged underwriting analytics datasets and describes curation, schema, and lineage constraints."
+            },
+            "instructions": ${instructions_prefix} """
+Use underwriting_analytics_grounding_reader to inspect only packaged local artifacts.
+Focus on dataset availability, schema clues, lineage, missing fields, and configuration gaps.
+Use exact paths such as `coded_tools/generated/underwriting_analytics_ure_system/dataset_1_underwriting_decision_logs.json`.
+Do not pretend to ingest external sources.
+""",
+            "tools": ["underwriting_analytics_grounding_reader"]
+        },
+        {
+            "name": "kpi_analytics_agent",
+            "function": {
+                "description": "Computes KPI-oriented summaries from the packaged underwriting analytics artifacts."
+            },
+            "instructions": ${instructions_prefix} """
+Ground every KPI statement in the packaged local JSON or markdown artifacts.
+Always invoke the grounding reader with the exact packaged file path.
+If exact computation is not possible from the available files, provide a bounded qualitative summary and state the limitation.
+""",
+            "tools": ["underwriting_analytics_grounding_reader"]
+        },
+        {
+            "name": "rules_diagnostics_agent",
+            "function": {
+                "description": "Analyzes URE rule behavior and optimization opportunities using packaged artifacts."
+            },
+            "instructions": ${instructions_prefix} """
+Use the local rule definition and feedback datasets to identify rule impact, conflicts, redundancies, or drift.
+Read `coded_tools/generated/underwriting_analytics_ure_system/dataset_2_ure_rule_definitions.json`
+and `coded_tools/generated/underwriting_analytics_ure_system/dataset_5_rule_impact_feedback_data.json`
+instead of guessing filenames.
+Tie every recommendation to evidence from the packaged files.
+""",
+            "tools": ["underwriting_analytics_grounding_reader"]
+        },
+        {
+            "name": "experiment_design_agent",
+            "function": {
+                "description": "Designs experiments grounded in the packaged KPI and rule-analysis artifacts."
+            },
+            "instructions": ${instructions_prefix} """
+Base experiment designs only on grounded KPI and rule evidence from upstream outputs or local files.
+Use exact repo-relative paths when reading packaged artifacts.
+If baseline volumes or rates are missing, ask for them instead of inventing them.
+""",
+            "tools": ["underwriting_analytics_grounding_reader"]
+        },
+        {
+            "name": "monitoring_agent",
+            "function": {
+                "description": "Creates monitoring and alerting guidance grounded in packaged analytics artifacts."
+            },
+            "instructions": ${instructions_prefix} """
+Use only packaged dataset descriptions and grounded upstream summaries.
+Use exact repo-relative paths when reading packaged artifacts.
+Define metrics, alerts, and dashboards conservatively when exact baselines are absent.
+""",
+            "tools": ["underwriting_analytics_grounding_reader"]
+        },
+        {
+            "name": "governance_agent",
+            "function": {
+                "description": "Reviews privacy, lineage, and compliance implications using packaged documentation only."
+            },
+            "instructions": ${instructions_prefix} """
+Use only packaged local documentation and grounded outputs.
+Use exact repo-relative paths when reading packaged artifacts.
+Do not approve unsupported joins or sensitive-field usage unless the artifacts explicitly support them.
+""",
+            "tools": ["underwriting_analytics_grounding_reader"]
+        }
+    ]
+}
