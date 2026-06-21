@@ -142,3 +142,25 @@ class TestInferLevelFromText:
         bridge = self._make_bridge()
         line = '{"error": "something broke", "level": "info"}'
         assert bridge._infer_level_from_text(line) == logging.INFO  # pylint: disable=protected-access
+
+
+class TestSetConsoleLevel:
+    """Tests for ProcessLogBridge.set_console_level."""
+
+    def test_updates_rich_handler_level_and_name(self) -> None:
+        """set_console_level updates the rich (console) handler level and stored name.
+
+        Lets the runner honor a --log-level override parsed after the bridge was
+        constructed, without disturbing the file handler's full-detail capture.
+        """
+        bridge = ProcessLogBridge(level="info", runner_log_file=None)
+        assert bridge.rich_handler.level == logging.INFO
+        bridge.set_console_level("warning")
+        assert bridge.rich_handler.level == logging.WARNING
+        assert bridge.level_name == "WARNING"
+
+    def test_unknown_level_falls_back_to_info(self) -> None:
+        """An unrecognized level name falls back to INFO rather than raising."""
+        bridge = ProcessLogBridge(level="info", runner_log_file=None)
+        bridge.set_console_level("bogus")
+        assert bridge.rich_handler.level == logging.INFO
