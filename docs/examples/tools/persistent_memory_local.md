@@ -317,12 +317,22 @@ agent's topics.
   malformed. In almost every deployment this means `"origin_str": true`
   is missing from the middleware `args`.
 
+### Testing
+
+Pass `sly_data["test_mode"] = true` in your test HOCON to redirect
+file-backed writes to a `test/` subfolder under the configured
+`folder_name`. This keeps test runs from touching real persisted memory.
+See the [Coffee Finder Advanced example](../basic/coffee_finder_advanced.md) for
+a working example.
+
 ### Source
 
 - `middleware/persistent_memory/persistent_memory_middleware.py` — the middleware itself.
 - `middleware/persistent_memory/persistent_memory_tool.py` — the
   `persistent_memory` tool the LLM calls.
 - `middleware/persistent_memory/topic_store.py` — abstract store base.
+- `middleware/persistent_memory/topic_store_factory.py` — picks the
+  backend and handles `test_mode` redirection.
 - `middleware/persistent_memory/json_file_store.py`,
   `markdown_file_store.py` — backends.
 - `middleware/persistent_memory/topic_summarizer.py` — the `ChatOpenAI`

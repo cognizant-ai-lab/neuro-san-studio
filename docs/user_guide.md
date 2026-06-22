@@ -1791,6 +1791,12 @@ For the cloud-hosted variant with per-user scoping, see the
 reference network at
 [persistent_memory_mem0.hocon](../registries/tools/persistent_memory_mem0.hocon).
 
+For test cases, pass `sly_data["test_mode"] = true` in your test HOCON to
+redirect file-backed writes to a `test/` subfolder, keeping test runs from
+touching real persisted memory.
+See the [Coffee Finder Advanced example](./examples/basic/coffee_finder_advanced.md) for
+details.
+
 ## Connect with other agent frameworks
 
 - MCP: [MCP BMI SSE](./examples/tools/mcp_bmi_streamable_http.md) is an example of an agent network that uses [MCP](https://www.anthropic.com/news/model-context-protocol)
