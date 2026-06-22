@@ -85,6 +85,8 @@ class WriteAllInstructions(BranchActivation, CodedTool):
             name = entry.get("agent_name") or "<unknown>"
             if isinstance(result, BaseException):
                 errs.append(f"{name}: {result!r}")
+            elif isinstance(result, str) and result.lstrip().startswith("Error:"):
+                errs.append(f"{name}: {result.strip()}")
             else:
                 ok.append(name)
 
