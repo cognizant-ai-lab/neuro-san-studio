@@ -136,7 +136,7 @@ Shared network-wide context describing what the agent network as a whole is for.
                                     },
                                     "change_request": {
                                         "type": "string",
-                                        "description": "Per-agent change directive from the user (e.g. 'make this agent's instructions shorter'). Set ONLY when the user explicitly targeted this specific agent; omit in `create` mode and for agents the user did not call out."
+                                        "description": "Per-agent change directive from the user (e.g. 'make this agent's instructions shorter', \"use 'foo bar' as this agent's instructions\"). Set ONLY when the user explicitly targeted this specific agent. Applies in both `create` and `modify` modes. Omit it for any agent the user did not specifically call out."
                                     }
                                 },
                                 "required": ["agent_name"]
