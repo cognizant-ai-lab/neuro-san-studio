@@ -151,6 +151,17 @@
     # Wikimedia media search
     "tools/wikimedia_search.hocon": true,
 
+    # Semantic density confidence scoring. Requires a GPU with ~32GB VRAM,
+    # plus torch, transformers, scipy, scikit-learn, and numpy.
+    # Uses Qwen2.5-7B-Instruct for generation and DeBERTa-large-MNLI for NLI.
+    "tools/semantic_density.hocon": false,
+
     # Requires YDC_API_KEY. See docs/search_tools.md and neuro_san_studio/mcp/mcp_info.hocon for setup.
     "tools/you_search.hocon": false,
+
+    # Confidence assessment via MCP. Connects to the Confidence Assessment
+    # MCP server (servers/mcp/confidence_server.py) for GPU-based semantic
+    # density scoring. Start the MCP server first:
+    #     CUDA_VISIBLE_DEVICES=7 python servers/mcp/confidence_server.py
+    "tools/mcp_confidence.hocon": false,
 }

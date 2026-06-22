@@ -1,0 +1,131 @@
+# Copyright © 2025-2026 Cognizant Technology Solutions Corp, www.cognizant.com.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
+# END COPYRIGHT
+{
+    # Load the shared LLM configuration from a single source of truth.
+    include "config/llm_config.hocon",
+
+    # Optional metadata describing this agent network
+    "metadata": {
+        "description": """Agent network that assesses answer confidence via MCP.
+Connects to a remote Confidence Assessment MCP server for GPU-based semantic
+density scoring. No local GPU or model dependencies required — only the MCP
+server needs GPU access.""",
+        "tags": ["mcp", "confidence", "semantic-density", "tool"],
+        "sample_queries": [
+            "What is the capital of France?",
+            "What is the best programming language?",
+            "What is 19879 times 4390?",
+        ]
+    },
+
+    "tools": [
+        {
+            "name": "soothsayer",
+
+            "function": {
+                "description": """Answers questions and assesses answer trustworthiness
+by calling a remote Confidence Assessment MCP server. Returns the answer along
+with a 0-1 confidence score indicating how consistently the underlying model
+responds."""
+            },
+
+            "instructions": """
+You are the Soothsayer. For each user question:
+
+1. First, call the answerer tool to get a direct answer to the question.
+2. Then, call the confidence_checker tool with the ORIGINAL user question
+   to evaluate how confident we should be in the answer.
+3. Based on the confidence score returned:
+   - If confidence >= 0.7 (high): Present the answer directly with high confidence.
+   - If confidence 0.4-0.7 (moderate): Present the answer with a caveat that
+     confidence is moderate and the user may want to verify.
+   - If confidence < 0.4 (low): Flag the answer as potentially unreliable and
+     advise the user to verify from authoritative sources.
+
+Always include the numeric confidence score in your response.
+""",
+            "tools": ["answerer", "confidence_checker"]
+        },
+        {
+            "name": "answerer",
+
+            "function": {
+                "description": "Answer a user's question directly and concisely.",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "question": {
+                            "type": "string",
+                            "description": "The question to answer."
+                        }
+                    },
+                    "required": ["question"]
+                }
+            },
+
+            "instructions": """
+You are a knowledgeable assistant. Answer the question directly and concisely.
+Provide a clear, factual response in one or two sentences.
+"""
+        },
+        {
+            "name": "confidence_checker",
+
+            "function": {
+                "description": """Evaluate the trustworthiness of an answer by calling the
+Confidence Assessment MCP server. Returns a confidence score from 0 to 1.""",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "question": {
+                            "type": "string",
+                            "description": "The original question to evaluate confidence for."
+                        }
+                    },
+                    "required": ["question"]
+                }
+            },
+
+            "instructions": """
+You are a confidence evaluation agent. When called with a question, use the
+confidence_assessment tool to compute a confidence score via the MCP server.
+Report back the score, interpretation, and the best answer found during evaluation.
+""",
+            "tools": ["confidence_assessment"]
+        },
+        {
+            "name": "confidence_assessment",
+
+            "function": {
+                "description": """Call the remote Confidence Assessment MCP server to run
+semantic density analysis. Uses diverse beam search and NLI to evaluate answer
+consistency and trustworthiness.""",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "question": {
+                            "type": "string",
+                            "description": "The question to evaluate."
+                        }
+                    },
+                    "required": ["question"]
+                }
+            },
+
+            "class": "confidence_checker.ConfidenceChecker"
+        },
+    ]
+}
