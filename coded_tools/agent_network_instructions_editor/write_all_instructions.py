@@ -89,5 +89,5 @@ class WriteAllInstructions(BranchActivation, CodedTool):
                 ok.append(name)
 
         if errs:
-            return f"Instructions/description set for {len(ok)} agents; {len(errs)} failed: " + "; ".join(errs)
+            return f"Error: Instructions/description set for {len(ok)} agents; {len(errs)} failed: " + "; ".join(errs)
         return f"Instructions/description have been set for all {len(ok)} agents."
