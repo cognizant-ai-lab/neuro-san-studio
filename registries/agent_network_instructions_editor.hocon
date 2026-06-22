@@ -21,6 +21,8 @@
     include "config/llm_config.hocon",
     "max_steps": 40000,
     "max_execution_seconds": 6000,
+    "error_formatter": "json",
+    "error_fragments": ["Error:", "Exception:", "Traceback (most recent call last)"],
 
     "tools": [
         # This first agent definition is regarded as the "Front Man", which
@@ -88,6 +90,8 @@ Always respond with "Instructions/description have been set in the agent network
                 }
             },
             "tools": ["write_all_instructions"],
+            # Parse any JSON in responses into the structure field of the ChatMessage.
+            "structure_formats": "json",
             "middleware": [
                 {
                     "class": "middleware.agent_network_designer.agent_network_definition_middleware.AgentNetworkDefinitionMiddleware",

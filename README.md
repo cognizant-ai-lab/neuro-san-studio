@@ -230,6 +230,9 @@ Skip the prompt with `--providers`:
 ns init --providers openai,anthropic,google
 ```
 
+Providers are written in the order you select them. The first becomes the primary model and the rest
+become ordered fallbacks; OpenAI is used only as the default when no selection is made.
+
 #### 3. Set your API key
 
 Set your provider key, e.g. `OPENAI_API_KEY` (or create a `.env` file in the current directory).
@@ -252,8 +255,9 @@ included in neuro-san-studio:
 
 ```bash
 ns import                              # interactive
-ns import basic,industry               # by group(s)
+ns import basic industry               # by group(s)
 ns import agent_network_designer       # specific network
+ns import path/to/network.hocon        # from a local file
 ```
 
 See [`docs/cli/import.md`](docs/cli/import.md) for details.
@@ -277,7 +281,7 @@ See [`docs/cli/export.md`](docs/cli/export.md) for details.
 |---------------------|--------------------------------------------------|--------------------------------------------------------------------------------------------------------|
 | `ns init`           | Scaffold a starter project in the current dir.   | `--providers openai,anthropic,google`                                                                  |
 | `ns run`            | Start the Neuro SAN server and nsflow UI.        | `--server-host`, `--server-http-port`, `--nsflow-port`, `--log-level`, `--client-only`, `--server-only` |
-| `ns import`         | Import agent networks into the current project.  | Positional: group name, network name, comma-separated list, or `all`. `-f` / `--from-file` to install a local `.hocon` or `.zip`. `--force` to overwrite. Omit args for interactive mode. |
+| `ns import`         | Import agent networks into the current project.  | Positional: space-separated group names, network names, or `all`; or local `.hocon` / `.zip` paths (don't mix the two). `--force` to overwrite. Omit args for interactive mode. |
 | `ns export`         | Bundle a network from the current project into a shareable file. | Positional: network name (e.g. `music_nerd` or `basic/music_nerd`). `-o` / `--output` to set the output path. Omit args for interactive picker. |
 | `ns check-llm-keys` | Validate LLM API keys / env vars.                | `--tier 1` (placeholder), `--tier 2` (format), `--tier 3` (live API call, default)                     |
 | `ns check-config`   | Validate the LLM configurations in a HOCON file. | `--hocon-path` (defaults to `config/llm_config.hocon`)                                                 |

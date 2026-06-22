@@ -27,6 +27,7 @@ from typing import Optional
 from typing import Set
 
 from neuro_san.internals.persistence.abstract_async_config_restorer import AbstractAsyncConfigRestorer
+from neuro_san.internals.run_context.utils.external_agent_parsing import ExternalAgentParsing
 from pyparsing.exceptions import ParseException
 
 LLM_CLASSES = {"openai", "anthropic", "google", "bedrock", "azure"}
@@ -57,7 +58,7 @@ class DependencyAnalyzer:
         try:
             restorer = AbstractAsyncConfigRestorer(file_purpose="dependency analysis", must_exist=True)
             config = restorer.restore(file_reference=hocon_path)
-        except (FileNotFoundError, ParseException):
+        except (FileNotFoundError, ParseException, ValueError):
             return deps
 
         self._extract_from_config(config, deps)
@@ -91,13 +92,29 @@ class DependencyAnalyzer:
             if isinstance(toolbox, str):
                 deps.toolbox_tools.append(toolbox)
 
-            for tool_name in tool_spec.get("tools", []) or []:
-                if not isinstance(tool_name, str):
-                    continue
-                if tool_name.startswith("/"):
-                    deps.sub_networks.append(tool_name)
-                elif tool_name.startswith(("http://", "https://")):
-                    deps.mcp_tools.append(tool_name)
+            for tool_ref in tool_spec.get("tools", []) or []:
+                DependencyAnalyzer._classify_tool_ref(tool_ref, deps)
+
+    @staticmethod
+    def _classify_tool_ref(tool_ref: Any, deps: AgentNetworkDependencies) -> None:
+        """Route a single entry from a tool's `tools:` list into the right deps bucket.
+
+        Sub-network refs (`/name`) and MCP URLs are bundled; external HTTP-agent URLs
+        (e.g. `http://localhost:8080/math_guy`) are called at runtime and intentionally
+        dropped. Dict-form refs (`{"url": ..., "tools": [...]}`) are MCP per neuro-san.
+        """
+        if isinstance(tool_ref, dict):
+            if ExternalAgentParsing.is_mcp_tool(tool_ref):
+                url = tool_ref.get("url")
+                if isinstance(url, str):
+                    deps.mcp_tools.append(url)
+            return
+        if not isinstance(tool_ref, str):
+            return
+        if tool_ref.startswith("/"):
+            deps.sub_networks.append(tool_ref)
+        elif ExternalAgentParsing.is_mcp_tool(tool_ref):
+            deps.mcp_tools.append(tool_ref)
 
     def resolve_coded_tool_path(self, class_path: str, context_dir: Optional[str] = None) -> Optional[str]:
         """Map a Python class path (e.g. 'pkg.module.Class') to its source file under coded_tools/ or middleware/."""
@@ -108,11 +125,18 @@ class DependencyAnalyzer:
             module_file = os.path.join(root, *parts[1:-1]) + ".py"
             return f"{parts[0]}/" + "/".join(parts[1:-1]) + ".py" if os.path.exists(module_file) else None
 
-        # Short reference like "order_api.OrderAPI" — resolve under context_dir
+        # Short reference like "order_api.OrderAPI" — resolve up the context hierarchy, the way
+        # neuro-san does (abstract_class_activation._attempt_resolve): try the per-network dir
+        # first, then strip one trailing level at a time down to coded_tools/ root. So a tool at
+        # the group level (coded_tools/basic/accountant.py) is found even when the network's
+        # context_dir is basic/music_nerd_pro (issue #1147).
         if len(parts) == 2 and context_dir:
-            candidate = os.path.join(self.coded_tools_dir, context_dir, parts[0] + ".py")
-            if os.path.exists(candidate):
-                return f"coded_tools/{context_dir}/{parts[0]}.py"
+            context_parts = context_dir.split("/")
+            module = parts[0]
+            for depth in range(len(context_parts), -1, -1):
+                rel = "/".join([*context_parts[:depth], f"{module}.py"])
+                if os.path.exists(os.path.join(self.coded_tools_dir, rel)):
+                    return f"coded_tools/{rel}"
 
         # Long-form reference under coded_tools/
         if os.path.exists(os.path.join(self.coded_tools_dir, *parts[:-1]) + ".py"):

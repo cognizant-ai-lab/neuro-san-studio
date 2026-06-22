@@ -15,6 +15,8 @@
 # END COPYRIGHT
 
 import asyncio
+import os
+import tempfile
 from unittest import TestCase
 from unittest.mock import AsyncMock
 from unittest.mock import MagicMock
@@ -24,6 +26,7 @@ from neuro_san_studio.commands.check_config import CheckConfigCommand
 from neuro_san_studio.commands.check_config import _expand_fallbacks
 from neuro_san_studio.commands.check_config import extract_llm_configs_from_agent_network
 from neuro_san_studio.commands.check_config import extract_llm_configs_from_studio_config
+from neuro_san_studio.commands.check_config import parse_hocon_file
 from neuro_san_studio.commands.check_config import redact_llm_config
 from neuro_san_studio.commands.check_config import run_checks
 
@@ -288,6 +291,47 @@ class TestExtractLlmConfigsFromAgentNetwork(TestCase):
         result = extract_llm_configs_from_agent_network(self._make_network(config))
         labels = [label for label, _ in result]
         self.assertEqual(labels, ["AgentA", "AgentB", "AgentC"])
+
+
+class TestParseHoconFileResolvesRelativeInclude(TestCase):
+    """parse_hocon_file must resolve file-relative includes regardless of CWD."""
+
+    def test_file_relative_include_resolves(self):
+        """A file-relative `include` is resolved relative to the included file's directory.
+
+        This reproduces config/llm_config.hocon's `include "developer_llm_config.hocon"`:
+        the included file sits next to the main file, not in the current working directory.
+        Without the chdir fix, pyhocon resolves the include against CWD, silently drops it,
+        and the llm_config never appears.
+        """
+        with tempfile.TemporaryDirectory() as config_dir:
+            with open(os.path.join(config_dir, "developer.hocon"), "w", encoding="utf-8") as developer_file:
+                developer_file.write('{ "llm_config": { "model_name": "gpt-5-mini" } }')
+            main_path = os.path.join(config_dir, "main.hocon")
+            with open(main_path, "w", encoding="utf-8") as main_file:
+                main_file.write('include "developer.hocon"')
+
+            # Run from a DIFFERENT working directory to prove resolution is file-relative,
+            # not CWD-relative.
+            with tempfile.TemporaryDirectory() as other_cwd:
+                prev_cwd = os.getcwd()
+                os.chdir(other_cwd)
+                try:
+                    # Capture CWD as the OS reports it (macOS resolves /var -> /private/var).
+                    cwd_before = os.getcwd()
+                    result = parse_hocon_file(main_path)
+                    self.assertEqual(result["llm_config"]["model_name"], "gpt-5-mini")
+                    # CWD is restored after the call.
+                    self.assertEqual(os.getcwd(), cwd_before)
+                finally:
+                    os.chdir(prev_cwd)
+
+    def test_cwd_restored_when_parse_raises(self):
+        """CWD is restored even when restore() raises (e.g. a must-exist file is missing)."""
+        prev_cwd = os.getcwd()
+        with self.assertRaises(Exception):
+            parse_hocon_file(os.path.join(prev_cwd, "does_not_exist_anywhere.hocon"))
+        self.assertEqual(os.getcwd(), prev_cwd)
 
 
 _CHECKS_MODULE = "neuro_san_studio.commands.check_config"

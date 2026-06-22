@@ -18,18 +18,19 @@
 
 import os
 import re
-import shutil
 import zipfile
 from dataclasses import dataclass
 from dataclasses import field
+from pathlib import Path
+from pathlib import PurePosixPath
 from typing import List
 from typing import Optional
 from typing import Set
 
 from neuro_san_studio.discovery.dependency_analyzer import AgentNetworkDependencies
 from neuro_san_studio.discovery.dependency_analyzer import DependencyAnalyzer
-from neuro_san_studio.mcp.mcp_info_merger import filter_mcp_info
-from neuro_san_studio.mcp.mcp_info_merger import format_mcp_info_file
+from neuro_san_studio.exporter.export_metadata import ExportMetadataStamper
+from neuro_san_studio.mcp.mcp_info_merger import McpInfoMerger
 
 # `include "registries/<name>"` and `include classpath("registries/<name>")` both surface
 # shared HOCON files (e.g. aaosa.hocon). The DependencyAnalyzer reads the `tools` array
@@ -108,12 +109,18 @@ class AgentNetworkExporter:  # pylint: disable=too-few-public-methods
         )
 
         if not has_deps:
-            shutil.copy2(full_hocon, target)
+            Path(target).write_text(self._stamped_network_hocon(full_hocon), encoding="utf-8")
             result.bundled_files.append(f"registries/{rel_hocon}")
             return result
 
         self._write_zip(target, rel_hocon, deps, result)
         return result
+
+    @staticmethod
+    def _stamped_network_hocon(full_hocon: str) -> str:
+        """Read the network HOCON and return its text with export-provenance metadata stamped in."""
+        text = Path(full_hocon).read_text(encoding="utf-8")
+        return ExportMetadataStamper().stamp(text)
 
     def _write_zip(
         self,
@@ -128,7 +135,12 @@ class AgentNetworkExporter:  # pylint: disable=too-few-public-methods
         added: Set[str] = set()
 
         with zipfile.ZipFile(target, "w", zipfile.ZIP_DEFLATED) as zf:
-            self._add_file(zf, full_hocon, f"registries/{rel_hocon}", added, result)
+            # The primary network file is the one that carries the export-provenance metadata;
+            # write its stamped text rather than the verbatim file.
+            arcname = f"registries/{rel_hocon}"
+            zf.writestr(arcname, self._stamped_network_hocon(full_hocon))
+            added.add(arcname)
+            result.bundled_files.append(arcname)
             self._add_sub_networks(zf, deps.sub_networks, added, result)
             for ct in deps.coded_tools:
                 self._add_dep(zf, ct, added, result)
@@ -233,13 +245,14 @@ class AgentNetworkExporter:  # pylint: disable=too-few-public-methods
             return
         with open(source_path, encoding="utf-8") as fh:
             source_text = fh.read()
-        blocks = filter_mcp_info(source_text, mcp_urls)
+        merger = McpInfoMerger()
+        blocks = merger.filter_blocks(source_text, mcp_urls)
         missing = [url for url in mcp_urls if url not in blocks]
         if missing:
             result.warnings.append(f"MCP server(s) not found in {source_path}: {', '.join(missing)}")
         if not blocks:
             return
-        rendered = format_mcp_info_file(blocks)
+        rendered = merger.render_file(blocks)
         arcname = "mcp/mcp_info.hocon"
         if arcname in added:
             return
@@ -275,6 +288,9 @@ class AgentNetworkExporter:  # pylint: disable=too-few-public-methods
 
     def _resolve_network(self, network: str) -> str:
         """Map a user-supplied name to a registries-relative `.hocon` path; raise if missing."""
+        # Tolerate a repo-root-style `registries/...` prefix: `ns export
+        # registries/basic/hello_world.hocon` should behave like `basic/hello_world.hocon`.
+        network = self._strip_registries_prefix(network)
         candidate = network if network.endswith(".hocon") else f"{network}.hocon"
 
         # Direct relative path under registries/ (e.g., 'basic/music_nerd.hocon').
@@ -292,6 +308,17 @@ class AgentNetworkExporter:  # pylint: disable=too-few-public-methods
             f"Network '{network}' not found under {self.registries_dir}. "
             f"Pass a name like 'music_nerd' or a relative path like 'basic/music_nerd'."
         )
+
+    @staticmethod
+    def _strip_registries_prefix(network: str) -> str:
+        """Drop a leading `registries/` segment so a repo-root-style path resolves like
+        the registries-relative form. `PurePosixPath.parts` collapses `./` and interior
+        `.` so equivalent spellings are handled by one rule, and keeps the result `/`-
+        separated (it feeds zip arcnames, which must stay POSIX on every OS)."""
+        parts = PurePosixPath(network).parts
+        if parts and parts[0] == "registries":
+            return str(PurePosixPath(*parts[1:])) if len(parts) > 1 else ""
+        return network
 
     @staticmethod
     def _has_dependencies(deps: AgentNetworkDependencies) -> bool:
