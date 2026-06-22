@@ -63,9 +63,11 @@ Only answer inquiries that are directly within your area of expertise. Do not tr
 **Only coordinate writing of `instructions` and `description` for agents that have these fields in the network definition. These are non-function agents.**
 
 Behavior by mode:
-- `create`: Call `write_all_instructions` ONCE. Pass `agent_network_description` (the shared network-wide context) once,
-            and `agents` = a list of objects `{"agent_name": "<name>"}` covering EVERY non-function agent in the network.
-            Do not pass `change_request` entries in `create` mode.
+- `create`: Call `write_all_instructions` ONCE with `agents` covering EVERY non-function agent in the network.
+            Pass `agent_network_description` once for shared network-wide context.
+            For each entry, set `change_request` ONLY when the user explicitly stated a directive
+            targeting that specific agent (e.g. 'agent A should handle refunds'). Omit it otherwise.
+            Per-agent directives belong in `change_request`, not in `agent_network_description`.
 - `modify`: Read `agent_network_description` and identify the impacted agents (explicitly named agents, newly added agents, and agents whose responsibilities changed).
             Call `write_all_instructions` ONCE with `agents` = a list of objects, one per impacted agent.
             For each entry, set `change_request` ONLY when the user stated a specific change targeting that agent (e.g. 'change agent A to do X'). Omit it otherwise.
@@ -165,10 +167,12 @@ For each agent, call `set_agent_instructions_tool` and `set_agent_description_to
 - `agent_name`: the agent you are writing for.
 - `agent_network_description` (optional): shared network-wide context. Use it as background only — it is not specific to this agent.
 - `change_request` (optional): the user's specific change request for this agent. When present, treat it as the primary directive and apply it faithfully to this agent's `instructions`/`description`.
+  - If the `change_request` is scoped to a single field (only `instructions` or only `description`), leave the other field unchanged: call its setter with the current value from the agent network definition rather than regenerating it.
 
 **Writing requirements**
 - Only write `instructions` and `description` for the specified agent. Do not write for any other agents, even if they are mentioned in the description or network definition.
 - Make `instructions` clear, concise, and specific to the agent’s scope of responsibilities.
+- If `agent_network_description` already states a network-wide policy (safety, privacy, escalation, compliance), do NOT restate it per-agent. Only include policy details that are specific to this agent's scope.
 - Write the `description` as a short summary of what the agent does, suitable for its callers to understand when to invoke it.
 - Do NOT mention other agents, up-chains, or down-chains; keep the text scoped to this agent only.
 - Align with the company’s cultural values and business objectives.
@@ -196,8 +200,8 @@ Primarily used in `create` mode, or in `modify` mode when the change is network-
                         "change_request": {
                             "type": "string",
                             "description": """
-The user's specific, per-agent change request (e.g. 'change agent A's instructions to do X', 'make agent B's instructions shorter'). This varies per call and applies ONLY to the agent named in `agent_name`.
-OPTIONAL — only set this when the user has explicitly stated a change targeting this specific agent. Do NOT synthesize, infer, or fabricate this value. Omit it for `create` mode and for any agent the user did not specifically call out.
+The user's specific, per-agent change request (e.g. 'change agent A's instructions to do X', 'make agent B's instructions shorter', "use 'foo bar' as agent C's instructions"). This varies per call and applies ONLY to the agent named in `agent_name`.
+OPTIONAL — only set this when the user has explicitly stated a directive targeting this specific agent. Applies in both `create` and `modify` modes. Do NOT synthesize, infer, or fabricate this value. Omit it for any agent the user did not specifically call out.
                             """
                         },
                     },
