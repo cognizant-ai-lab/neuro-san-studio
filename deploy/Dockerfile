@@ -299,15 +299,15 @@ ENV AGENT_HTTP_SERVER_INSTANCES="1"
 # Logging period is specified in seconds.
 ENV AGENT_HTTP_RESOURCES_MONITOR_INTERVAL="0"
 
-# Interval in seconds between HTTP heartbeat writes sent to streaming clients
+# Interval in seconds between HTTP keep-alive messages sent to streaming clients
 # to keep the connection alive during long quiet periods. This is important
 # when intermediaries (nginx, load balancers, AWS ALB) or clients would otherwise
 # drop an idle HTTP connection (commonly after ~60s) before the agent produces
-# its next streamed message. The heartbeat only fires when the stream has been
-# quiet for the full interval; real message traffic suppresses it.
-# A value of 0 (the default) disables the heartbeat entirely.
+# its next streamed message. The keep-alive message only fires when the stream has been
+# quiet for approximately the full interval; real message traffic suppresses it.
+# A value of 0 (the default) disables the keep-alive messages entirely.
 # Typical production value is 25-30 (under the 60s defaults of common proxies).
-ENV AGENT_HTTP_SERVER_HEARTBEAT_INTERVAL=0
+ENV AGENT_STREAM_KEEP_ALIVE_WITH_PROGRESS_INTERVAL_SECONDS=0
 
 # Optional URL describing how the server is to be referenced by the outside world.
 # This is useful when a server is behind a load-balancer as part of a larger cluster.
