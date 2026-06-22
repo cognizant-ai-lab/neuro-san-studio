@@ -82,7 +82,7 @@ class WriteAllInstructions(BranchActivation, CodedTool):
         ok: list[str] = []
         errs: list[str] = []
         for entry, result in zip(agents, results):
-            name = entry.get("agent_name", "<unknown>")
+            name = entry.get("agent_name") or "<unknown>"
             if isinstance(result, BaseException):
                 errs.append(f"{name}: {result!r}")
             else:
