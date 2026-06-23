@@ -42,7 +42,7 @@
 
                 # You *will* need to also set these env vars for Azure OpenAI such as:
                 #   AZURE_OPENAI_API_KEY
-                #   AZURE_OPENAI_ENDPOINT
+                #   AZURE_OPENAI_ENDPOINT   (you could also set as "azure_endpoint" key in this config)
                 # ... these will be provided by the dev-ops team that set up your Azure OpenAI instance.
 
                 # You *might also* want to set these optional env vars for your Azure OpenAI such as:
