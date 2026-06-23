@@ -74,9 +74,7 @@ class WriteAllInstructions(BranchActivation, CodedTool):
 
         tasks = []
         for entry in agents:
-            tasks.append(
-                self.call_writer(writer_name, entry, agent_network_description, sly_data)
-            )
+            tasks.append(self.call_writer(writer_name, entry, agent_network_description, sly_data))
         results = await asyncio.gather(*tasks, return_exceptions=True)
 
         ok: list[str] = []
