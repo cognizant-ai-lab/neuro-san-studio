@@ -40,44 +40,44 @@ class WriteAllInstructions(BranchActivation, CodedTool):
 
     Note that we doubly-inherit from BranchActivation to access the framework hook
     `use_tool()` that lets a CodedTool call other agents (in the same network or not).
-    The actual call is wrapped via CodedToolAgentCaller, matching the convention used
-    elsewhere in this repo (see decomposition_solver.py).
+    The actual call is wrapped via CodedToolAgentCaller.
     """
 
     async def async_invoke(self, args: dict[str, Any], sly_data: dict[str, Any]) -> str:
+        """
+        Fan out one `instructions_writer` invocation per entry in `args["agents"]`,
+        running them concurrently via asyncio.gather().
+
+        :param args: Tool arguments. Expected keys:
+            - "agents": list of {"agent_name": str, "change_request": str (optional)}.
+            - "agent_network_description": shared network-wide context, sent once and
+              applied to every entry.
+            - "tools": optional mapping with "instructions_writer" -> agent name to
+              dispatch to (defaults to "instructions_writer").
+        :param sly_data: Shared private data dictionary forwarded unchanged to each
+            writer call (carries the `agent_network_definition`).
+        :return: A success summary string if all writers succeeded, or an "Error: ..."
+            string listing per-agent failures otherwise.
+        """
         agents: list[dict[str, Any]] = args.get("agents") or []
         if not agents:
             return "Error: No agents provided."
 
         agent_network_description: str = args.get("agent_network_description") or ""
 
-        # Resolve the writer agent name via args.tools so hocon controls connectivity
-        # (mirrors the decomposition_solver pattern).
+        # Resolve the writer agent name via args.tools so hocon controls connectivity.
         tools_map: dict[str, str] = args.get("tools") or {}
         writer_name: str = tools_map.get("instructions_writer", "instructions_writer")
 
         logger = logging.getLogger(self.__class__.__name__)
         logger.info("Dispatching %d parallel '%s' calls", len(agents), writer_name)
 
-        async def call_writer(entry: dict[str, Any]) -> str:
-            agent_name: str = entry.get("agent_name")
-            if not agent_name:
-                raise ValueError("Missing 'agent_name' in agents entry.")
-
-            tool_args: dict[str, Any] = {"agent_name": agent_name}
-            if agent_network_description:
-                tool_args["agent_network_description"] = agent_network_description
-            change_request = entry.get("change_request")
-            if change_request:
-                tool_args["change_request"] = change_request
-
-            caller = CodedToolAgentCaller(self, parsing=None, name=writer_name)
-            return await caller.call_agent(tool_args=tool_args, sly_data=sly_data)
-
-        results = await asyncio.gather(
-            *[call_writer(entry) for entry in agents],
-            return_exceptions=True,
-        )
+        tasks = []
+        for entry in agents:
+            tasks.append(
+                self.call_writer(writer_name, entry, agent_network_description, sly_data)
+            )
+        results = await asyncio.gather(*tasks, return_exceptions=True)
 
         ok: list[str] = []
         errs: list[str] = []
@@ -93,3 +93,38 @@ class WriteAllInstructions(BranchActivation, CodedTool):
         if errs:
             return f"Error: Instructions/description set for {len(ok)} agents; {len(errs)} failed: " + "; ".join(errs)
         return f"Instructions/description have been set for all {len(ok)} agents."
+
+    async def call_writer(
+        self,
+        writer_name: str,
+        entry: dict[str, Any],
+        agent_network_description: str,
+        sly_data: dict[str, Any],
+    ) -> str:
+        """
+        Invoke `instructions_writer` once for a single agent entry.
+
+        :param writer_name: The downstream agent name to dispatch to (typically
+            "instructions_writer", resolved from `args.tools`).
+        :param entry: One element of the `agents` list, e.g.
+            {"agent_name": "...", "change_request": "..."}. `change_request` is
+            optional and forwarded only when present.
+        :param agent_network_description: Shared network-wide context, forwarded
+            only when non-empty.
+        :param sly_data: Shared private data forwarded to the writer call.
+        :return: The writer's response string. A `ValueError` is raised if `entry`
+            has no `agent_name`.
+        """
+        agent_name: str = entry.get("agent_name")
+        if not agent_name:
+            raise ValueError("Missing 'agent_name' in agents entry.")
+
+        tool_args: dict[str, Any] = {"agent_name": agent_name}
+        if agent_network_description:
+            tool_args["agent_network_description"] = agent_network_description
+        change_request = entry.get("change_request")
+        if change_request:
+            tool_args["change_request"] = change_request
+
+        caller = CodedToolAgentCaller(self, parsing=None, name=writer_name)
+        return await caller.call_agent(tool_args=tool_args, sly_data=sly_data)
