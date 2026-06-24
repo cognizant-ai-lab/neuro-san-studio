@@ -57,6 +57,12 @@ DEMO_MODE: bool = environ.get("AGENT_NETWORK_DESIGNER_DEMO_MODE", "true").lower(
 # Subdirectory under registries directory where networks are saved when using file persistence.
 SUBDIRECTORY: str = environ.get("AGENT_NETWORK_DESIGNER_SUBDIRECTORY", DEFAULT_SUBDIRECTORY)
 
+# Maximum number of validation retry rounds. After this many consecutive validation failures,
+# the middleware stops looping the agent back to the model and lets the session end without
+# persisting. Prevents runaway sessions when a tool the agent needs is unavailable (e.g.,
+# `agent_network_instructions_editor` dropped from the tools array under load).
+MAX_VALIDATION_ATTEMPTS: int = int(environ.get("AGENT_NETWORK_DESIGNER_MAX_VALIDATION_ATTEMPTS", "3"))
+
 
 class AgentNetworkPersistenceMiddleware(AgentMiddleware):
     """
@@ -100,6 +106,8 @@ class AgentNetworkPersistenceMiddleware(AgentMiddleware):
         self.logger: Logger = getLogger(self.__class__.__name__)
         self.reservationist = reservationist
         self.sly_data = sly_data
+        # Counts validation rounds that failed in this session, used to cap retries.
+        self._validation_attempts: int = 0
 
     # Reenter the agent loop at the model node if validation fails.
     # If no agent network definition is present, return None to let the agent respond freely.
@@ -137,7 +145,22 @@ class AgentNetworkPersistenceMiddleware(AgentMiddleware):
             structure_errors, instructions_errors = await self._validate_network(network_def)
             if structure_errors or instructions_errors:
                 self.logger.warning("Validation errors: %s", structure_errors + instructions_errors)
-                self.logger.warning("Invoking agent network designer to fix the issues.")
+                # Bail out if we've already retried MAX_VALIDATION_ATTEMPTS times. Returning None
+                # ends the session without persisting; the agent's last message reaches the user.
+                # Prevents runaway loops when the model can't fix the errors (e.g., the required
+                # tool was silently dropped from the tools array under load).
+                if self._validation_attempts >= MAX_VALIDATION_ATTEMPTS:
+                    self.logger.warning(
+                        "Reached max validation attempts (%d); ending without persisting.",
+                        MAX_VALIDATION_ATTEMPTS,
+                    )
+                    return None
+                self._validation_attempts += 1
+                self.logger.warning(
+                    "Invoking agent network designer to fix the issues (attempt %d/%d).",
+                    self._validation_attempts,
+                    MAX_VALIDATION_ATTEMPTS,
+                )
                 message_parts: list[str] = []
                 if structure_errors:
                     message_parts.append(
