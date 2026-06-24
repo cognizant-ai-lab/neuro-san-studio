@@ -14,19 +14,19 @@
 #
 # END COPYRIGHT
 
+import asyncio
 import logging
 import os
 from typing import Any
 
 from leaf_common.config.config_filter_chain import ConfigFilterChain
 from neuro_san.interfaces.coded_tool import CodedTool
+from neuro_san.internals.graph.activations.branch_activation import BranchActivation
 from neuro_san.internals.graph.persistence.agent_filetree_mapper import AgentFileTreeMapper
 from neuro_san.internals.graph.persistence.manifest_dict_config_filter import ManifestDictConfigFilter
 from neuro_san.internals.graph.persistence.manifest_key_config_filter import ManifestKeyConfigFilter
 from neuro_san.internals.graph.persistence.raw_manifest_restorer import RawManifestRestorer
-from neuro_san.internals.graph.persistence.registry_manifest_restorer import RegistryManifestRestorer
 from neuro_san.internals.graph.persistence.served_manifest_config_filter import ServedManifestConfigFilter
-from neuro_san.internals.graph.registry.agent_network import AgentNetwork
 from pyparsing.exceptions import ParseException
 
 from coded_tools.agent_network_editor.constants import SUBNETWORK_NAMES
@@ -37,30 +37,50 @@ DEFAULT_MANIFEST_FILE = os.path.join("registries", "manifest_and.hocon")
 logger = logging.getLogger(__name__)
 
 
-class GetSubnetwork(CodedTool):
+# pylint: disable=too-many-ancestors
+class GetSubnetwork(BranchActivation, CodedTool):
     """
-    CodedTool implementation which provides a way to get subnetwork names and descriptions from the manifest file
+    CodedTool which exposes the subnetworks available to the designer LLM.
+
+    Inherits from BranchActivation (in addition to CodedTool) so the framework injects
+    `run_context` into the instance. From there we reach the InvocationContext's
+    `AsyncAgentSessionFactory` and use it to make a `session.function({})` call per
+    subnetwork — the same routing mechanism `CallAgent` uses to invoke other agents.
+    The framework picks direct (in-process) or http (loopback) under the hood, so this
+    works uniformly in both deployment modes without needing to reach the server's
+    internal `AgentNetworkStorage` directly.
+
+    The static helper `get_subnetwork_names()` is preserved for callers that do not
+    have access to a run_context (e.g. middleware classes).
     """
 
     @staticmethod
     async def get_subnetwork_names(sly_data: dict[str, Any]) -> list[str]:
         """
-        Get the list of subnetwork names. Reads only the manifest HOCON file rather
-        than each individual subnetwork's HOCON, since callers only need names
-        (no descriptions). Results are cached in sly_data.
+        Get the list of subnetwork names from the **designer manifest** only.
 
-        :param sly_data: The sly_data dictionary from the agent hierarchy.
-        :return: List of subnetwork name strings, or empty list if none / on error.
+        Used by callers (e.g. middleware) that need to validate subnetwork references
+        but do not have access to a run_context. Reads only the manifest HOCON, not
+        each subnetwork's HOCON.
+
+        :param sly_data: The sly_data dictionary from the agent hierarchy. Acts as a
+                per-session cache via the `SUBNETWORK_NAMES` and `SUBNETWORKS` keys.
+                A `SlyDataLock` named "subnetwork_names_lock" is acquired here so
+                concurrent intra-session callers don't both parse the manifest.
+        :return: List of subnetwork name strings (in "/<network_name>" form), or an
+                empty list if the manifest is missing or fails to parse. Empty results
+                are cached too so we don't keep retrying.
         """
-        # If the full subnetwork dict was already loaded by get_subnetworks(),
-        # reuse its keys instead of re-reading the manifest.
-        if SUBNETWORKS in sly_data:
-            return list(sly_data[SUBNETWORKS].keys())
-
+        # Lock per-sly_data so two concurrent intra-session callers don't both parse
+        # the manifest. Lock name is distinct from get_subnetworks() so the two methods
+        # don't block each other.
         async with await SlyDataLock.get_lock(sly_data, "subnetwork_names_lock"):
-            # Re-check caches after acquiring the lock.
+            # Per-session cache hit: if the full subnetwork dict was already loaded by
+            # get_subnetworks(), reuse its keys instead of re-reading the manifest.
+            if SUBNETWORKS in sly_data:
+                return list(sly_data[SUBNETWORKS].keys())
             if SUBNETWORK_NAMES in sly_data:
-                return sly_data.get(SUBNETWORK_NAMES)
+                return sly_data[SUBNETWORK_NAMES]
 
             # We use a designer-specific env var (rather than AGENT_MANIFEST_FILE) so the designer's
             # subnetwork pool can be a narrow, curated subset of what the server hosts — e.g. only
@@ -117,70 +137,158 @@ class GetSubnetwork(CodedTool):
                     parse_error,
                 )
 
-            # Cache whatever we found, including an empty list on failure, to avoid reloading.
             sly_data[SUBNETWORK_NAMES] = names
-
         return names
 
-    @staticmethod
-    async def get_subnetworks(sly_data: dict[str, Any]) -> dict[str, Any]:
+    async def get_subnetworks(self, sly_data: dict[str, Any]) -> dict[str, Any]:
         """
-        Read the subnetwork name -> description mapping
-        either from a cache on sly_data or from the manifest file.
+        Return the {/<name>: front-man-description} mapping shown to the designer LLM.
 
-        :param sly_data: sly_data possibly containing cached subnetworks info
-        :return: dict of subnetwork name to description
+        For each name from the designer manifest, we open an `AsyncAgentSession` to that
+        agent and call its `function({})` endpoint to get the front-man's function spec
+        (the same JSON-schema-ish structure the LLM sees when wiring tools). The session
+        is created via `invocation_context.get_async_session_factory().create_session()`
+        — the same hook `CallAgent` uses, and the framework decides whether to dispatch
+        in-process (direct mode) or via loopback HTTP (server mode) based on the factory's
+        `use_direct` setting.
+
+        :param sly_data: sly_data dict; result is cached at `sly_data[SUBNETWORKS]` and a
+                `SlyDataLock` named "subnetworks_lock" is held during the load.
+        :return: dict mapping "/<network_name>" -> front-man's function.description.
+                Networks that fail to respond, return no front man, or have an empty
+                description are silently skipped (the LLM has no use for them anyway).
+                May be an empty dict if no names or no run_context.
         """
-        subnetworks: dict[str, str] = {}
-
+        # Lock per-sly_data so two concurrent intra-session callers don't both do the work
+        # (e.g. when a parent tool fans out via asyncio.gather and several writers each
+        # transitively reach get_subnetwork).
         async with await SlyDataLock.get_lock(sly_data, "subnetworks_lock"):
-            # Try getting from sly_data
+            # Per-session cache hit (including an explicitly cached empty mapping).
             if SUBNETWORKS in sly_data:
-                # Exit early, including for an explicitly cached empty mapping
-                return sly_data.get(SUBNETWORKS)
+                return sly_data[SUBNETWORKS]
 
-            # We use a designer-specific env var (rather than AGENT_MANIFEST_FILE) so the designer's
-            # subnetwork pool can be a narrow, curated subset of what the server hosts — e.g. only
-            # industry/ + generated/ networks, not basic/, tools/, experimental/, or the
-            # designer-family agents themselves. Default points at manifest_and.hocon which composes
-            # just those two via `include`.
-            manifest_file: str = os.getenv("AGENT_NETWORK_DESIGNER_MANIFEST_FILE") or DEFAULT_MANIFEST_FILE
+            # Get the curated subset of names from the designer manifest. Cheap and cached.
+            names: list[str] = await self.get_subnetwork_names(sly_data)
+            if not names:
+                sly_data[SUBNETWORKS] = {}
+                return {}
 
-            empty: dict[str, AgentNetwork] = {}
-            networks: dict[str, AgentNetwork] = {}
-            logger.info(">>>>>>>>>>>>>>>>>>>Getting Subnetwork Descriptions from Manifest>>>>>>>>>>>>>>>>>>>")
-            logger.info("Manifest file: %s", str(manifest_file))
-
-            # What is returned is mapping from storage type -> (name -> AgentNetwork mapping)
-            restorer = RegistryManifestRestorer(manifest_file)
+            # Reach the framework's session factory through run_context.
+            # `run_context` is injected by BranchActivation.__init__; if this CodedTool is
+            # ever instantiated outside that flow (e.g. tests bypassing __init__), the chain
+            # raises AttributeError and we return an empty dict rather than crashing.
             try:
-                # Note that any hocon includes will be done synchronously
-                networks_by_storage: dict[str, dict[str, AgentNetwork]] = await restorer.async_restore()
-                logger.info("Successfully loaded agent networks info from %s", str(manifest_file))
-
-                # Put all name -> AgentNetwork mappings into a single dictionary,
-                # as is expected by the rest of this tool.
-                for storage_type in ["public", "protected"]:
-                    one_storage_dict: dict[str, AgentNetwork] = networks_by_storage.get(storage_type, empty)
-                    networks.update(one_storage_dict)
-
-                for name, network in networks.items():
-                    front_man: str = network.find_front_man()
-                    desc: str = network.get_agent_tool_spec(front_man).get("function", {}).get("description")
-                    if desc is not None and len(desc) > 0:
-                        subnetworks["/" + name] = desc
-
-            except FileNotFoundError as file_error:
+                invocation_context = self.run_context.get_invocation_context()
+                factory = invocation_context.get_async_session_factory()
+            except AttributeError:
                 logger.warning(
-                    "Manifest file not found, no external agents/subnetworks will be available "
-                    "in the generated network: %s",
-                    file_error,
+                    "No invocation context / session factory available; "
+                    "returning empty subnetworks."
                 )
+                sly_data[SUBNETWORKS] = {}
+                return {}
 
-            # Cache whatever we found, including an empty mapping on failure, to avoid reloading.
+            subnetworks: dict[str, str] = await self._collect_via_sessions(
+                names, factory, invocation_context
+            )
             sly_data[SUBNETWORKS] = subnetworks
+            return subnetworks
 
+    @staticmethod
+    async def _collect_via_sessions(
+        names: list[str],
+        factory: Any,
+        invocation_context: Any,
+    ) -> dict[str, str]:
+        """Query each network's `function` endpoint to get its front-man description.
+
+        Dispatches one `session.function({})` call per name concurrently via
+        `asyncio.gather`. Each call routes through `factory.create_session()` — the
+        same mechanism `CallAgent` uses — which transparently picks in-process direct
+        or loopback HTTP. Per-call cost is dominated by:
+          - direct mode: a single dict lookup on the live AgentNetwork.
+          - http mode: a loopback HTTP round-trip to this same server's
+            `/api/v1/<name>/function` endpoint.
+
+        :param names: Curated list of "/<network_name>" strings from the designer manifest.
+        :param factory: The `AsyncAgentSessionFactory` from the invocation context.
+                Typed as Any to avoid hard-coupling to the concrete factory class.
+        :param invocation_context: The current `InvocationContext`; passed through to the
+                session so it can carry metadata/port/etc.
+        :return: Dict mapping "/<network_name>" -> non-empty description. Networks whose
+                session creation fails, whose `function({})` raises, or whose response
+                lacks a usable description are skipped silently with a warning logged.
+        """
+        # Build the task list explicitly (no generator expression) so additional
+        # per-task setup or instrumentation is easy to add later without restructuring.
+        tasks: list[Any] = []
+        for name in names:
+            tasks.append(GetSubnetwork._fetch_description(name, factory, invocation_context))
+
+        # gather() fires all calls in parallel. In http mode the server processes them
+        # on a single event loop so they effectively serialise behind it, but the work
+        # per call is small (~ms each) and gather amortises the await overhead.
+        # return_exceptions=False is safe here because _fetch_description swallows its own errors.
+        results: list[tuple[str, str]] = await asyncio.gather(*tasks)
+
+        # Drop entries with no description — the LLM can't pick a tool it can't describe.
+        # We cache the whole resulting dict at the call site (including this empty-
+        # filtering), so missing entries persist for the rest of the session.
+        subnetworks: dict[str, str] = {}
+        for name, desc in results:
+            if desc:
+                subnetworks[name] = desc
         return subnetworks
+
+    @staticmethod
+    async def _fetch_description(
+        name: str,
+        factory: Any,
+        invocation_context: Any,
+    ) -> tuple[str, str]:
+        """Fetch one subnetwork's front-man description via the framework session factory.
+
+        `session.function({})` returns the front-man's tool spec; the format is
+        ``{"function": {"description": "...", "parameters": {...}, ...}}``. In direct
+        mode this is built straight from the loaded AgentNetwork (see
+        AsyncDirectAgentSession.function). In http mode it's a loopback call to the
+        server's own /function endpoint, which does the same work server-side. Either
+        way the response shape is identical, which is what lets this helper stay
+        mode-agnostic.
+
+        :param name: The subnetwork name in "/<network_name>" form. Passed straight to
+                `factory.create_session()` as the agent URL.
+        :param factory: The `AsyncAgentSessionFactory` that decides direct vs http routing.
+        :param invocation_context: The current `InvocationContext`, threaded into the
+                session for metadata / port / etc.
+        :return: (name, description) tuple. `description` is the empty string when the
+                session can't be created, the call raises, or the response doesn't carry
+                a usable description. Errors are logged at warning level. We always
+                return a tuple (never raise) so a single broken subnetwork doesn't take
+                out the rest of the gathered batch.
+        """
+        # We don't want one slow/broken subnetwork to take out the whole list, so we
+        # catch broadly here. Could be a parse error in that network's hocon, a network
+        # timeout in http mode, or a transient server issue. Log and skip.
+        try:
+            session = factory.create_session(name, invocation_context)
+            if session is None:
+                # Factory couldn't resolve the URL — most likely a malformed name or a
+                # host the parser doesn't recognise. Skip rather than fail loudly.
+                return name, ""
+            result = await session.function({})
+        except Exception as exc:  # pylint: disable=broad-exception-caught
+            logger.warning("Failed to fetch function spec for %s: %s", name, exc)
+            return name, ""
+
+        # Defensive shape checks: the wire format should always be a dict, but malformed
+        # responses (e.g. an old server version, a transport error returning a string)
+        # would otherwise crash the whole gather batch.
+        if not isinstance(result, dict):
+            return name, ""
+        function_spec = result.get("function") or {}
+        desc: str = function_spec.get("description") or ""
+        return name, desc
 
     async def async_invoke(self, args: dict[str, Any], sly_data: dict[str, Any]) -> dict[str, Any]:
         """
