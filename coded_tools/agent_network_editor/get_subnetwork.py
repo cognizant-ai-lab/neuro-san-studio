@@ -156,8 +156,9 @@ class GetSubnetwork(BranchActivation, CodedTool):
                 `SlyDataLock` named "subnetworks_lock" is held during the load.
         :return: dict mapping "/<network_name>" -> front-man's function.description.
                 Networks that fail to respond, return no front man, or have an empty
-                description are silently skipped (the LLM has no use for them anyway).
-                May be an empty dict if no names or no run_context.
+                description are still included with an empty-string value so the LLM
+                at least sees the name. May be an empty dict if no names or no
+                run_context.
         """
         # Lock per-sly_data so two concurrent intra-session callers don't both do the work
         # (e.g. when a parent tool fans out via asyncio.gather and several writers each
@@ -210,9 +211,10 @@ class GetSubnetwork(BranchActivation, CodedTool):
                 Typed as Any to avoid hard-coupling to the concrete factory class.
         :param invocation_context: The current `InvocationContext`; passed through to the
                 session so it can carry metadata/port/etc.
-        :return: Dict mapping "/<network_name>" -> non-empty description. Networks whose
+        :return: Dict mapping "/<network_name>" -> description string. Networks whose
                 session creation fails, whose `function({})` raises, or whose response
-                lacks a usable description are skipped silently with a warning logged.
+                lacks a usable description are kept with an empty-string value
+                (errors are logged at warning level inside `_fetch_description`).
         """
         # Build the task list explicitly (no generator expression) so additional
         # per-task setup or instrumentation is easy to add later without restructuring.
@@ -226,13 +228,13 @@ class GetSubnetwork(BranchActivation, CodedTool):
         # return_exceptions=False is safe here because _fetch_description swallows its own errors.
         results: list[tuple[str, str]] = await asyncio.gather(*tasks)
 
-        # Drop entries with no description — the LLM can't pick a tool it can't describe.
-        # We cache the whole resulting dict at the call site (including this empty-
-        # filtering), so missing entries persist for the rest of the session.
+        # Keep every name in the result, even when the description came back empty —
+        # the LLM at least gets visibility into the available subnetwork names and can
+        # still wire them if it knows what they do. Empty-description entries are
+        # cached too, so we don't keep retrying within the session.
         subnetworks: dict[str, str] = {}
         for name, desc in results:
-            if desc:
-                subnetworks[name] = desc
+            subnetworks[name] = desc
         return subnetworks
 
     @staticmethod
