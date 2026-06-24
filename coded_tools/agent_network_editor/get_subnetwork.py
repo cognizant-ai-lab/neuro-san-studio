@@ -282,8 +282,10 @@ class GetSubnetwork(BranchActivation, CodedTool):
         if not isinstance(result, dict):
             return name, ""
         function_spec = result.get("function") or {}
-        desc: str = function_spec.get("description") or ""
-        return name, desc
+        if not isinstance(function_spec, dict):
+            return name, ""
+        desc_val = function_spec.get("description") or ""
+        return name, desc_val if isinstance(desc_val, str) else ""
 
     async def async_invoke(self, args: dict[str, Any], sly_data: dict[str, Any]) -> dict[str, Any]:
         """
