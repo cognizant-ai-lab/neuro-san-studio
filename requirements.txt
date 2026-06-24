@@ -1,6 +1,6 @@
 # Neuro SAN
 leaf-common>=1.2.44
-neuro-san==0.6.65
+neuro-san @ file:vendor/neuro_san-0.6.66.dev17+g2c71c6fd-py3-none-any.whl
 nsflow==0.6.16
 
 # For config parsing
