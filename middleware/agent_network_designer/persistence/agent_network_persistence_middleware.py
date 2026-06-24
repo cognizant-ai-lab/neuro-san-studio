@@ -105,7 +105,9 @@ class AgentNetworkPersistenceMiddleware(AgentMiddleware):
         self.sly_data = sly_data
         # Maximum number of validation retry rounds before bailing without persisting.
         # Parsed per-instance so a bad env var degrades this one session, not the whole server.
-        raw_max: str = environ.get("AGENT_NETWORK_DESIGNER_MAX_VALIDATION_ATTEMPTS", str(DEFAULT_MAX_VALIDATION_ATTEMPTS))
+        raw_max: str = environ.get(
+            "AGENT_NETWORK_DESIGNER_MAX_VALIDATION_ATTEMPTS", str(DEFAULT_MAX_VALIDATION_ATTEMPTS)
+        )
         try:
             self.max_validation_attempts: int = max(0, int(raw_max))
         except ValueError:
