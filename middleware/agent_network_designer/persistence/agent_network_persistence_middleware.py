@@ -187,6 +187,10 @@ class AgentNetworkPersistenceMiddleware(AgentMiddleware):
                     )
                 return self._error_response(" ".join(message_parts))
 
+            # Validation succeeded. Reset the counter so a later turn in the same session
+            # (e.g., a follow-up modification) gets its own full retry budget.
+            self._validation_attempts = 0
+
             sample_queries: list[str] = self.sly_data.get(AGENT_NETWORK_QUERIES, [])
 
             await self._assemble_and_persist(network_def, agent_network_name, sample_queries)
