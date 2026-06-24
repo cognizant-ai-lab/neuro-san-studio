@@ -61,7 +61,15 @@ SUBDIRECTORY: str = environ.get("AGENT_NETWORK_DESIGNER_SUBDIRECTORY", DEFAULT_S
 # the middleware stops looping the agent back to the model and lets the session end without
 # persisting. Prevents runaway sessions when a tool the agent needs is unavailable (e.g.,
 # `agent_network_instructions_editor` dropped from the tools array under load).
-MAX_VALIDATION_ATTEMPTS: int = int(environ.get("AGENT_NETWORK_DESIGNER_MAX_VALIDATION_ATTEMPTS", "3"))
+_raw_max_validation_attempts: str = environ.get("AGENT_NETWORK_DESIGNER_MAX_VALIDATION_ATTEMPTS", "3")
+try:
+    MAX_VALIDATION_ATTEMPTS: int = max(0, int(_raw_max_validation_attempts))
+except ValueError:
+    getLogger(__name__).warning(
+        "Invalid AGENT_NETWORK_DESIGNER_MAX_VALIDATION_ATTEMPTS=%r; falling back to 3.",
+        _raw_max_validation_attempts,
+    )
+    MAX_VALIDATION_ATTEMPTS = 3
 
 
 class AgentNetworkPersistenceMiddleware(AgentMiddleware):
