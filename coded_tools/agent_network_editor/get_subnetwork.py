@@ -181,16 +181,11 @@ class GetSubnetwork(BranchActivation, CodedTool):
                 invocation_context = self.run_context.get_invocation_context()
                 factory = invocation_context.get_async_session_factory()
             except AttributeError:
-                logger.warning(
-                    "No invocation context / session factory available; "
-                    "returning empty subnetworks."
-                )
+                logger.warning("No invocation context / session factory available; returning empty subnetworks.")
                 sly_data[SUBNETWORKS] = {}
                 return {}
 
-            subnetworks: dict[str, str] = await self._collect_via_sessions(
-                names, factory, invocation_context
-            )
+            subnetworks: dict[str, str] = await self._collect_via_sessions(names, factory, invocation_context)
             sly_data[SUBNETWORKS] = subnetworks
             return subnetworks
 
