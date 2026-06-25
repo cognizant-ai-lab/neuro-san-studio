@@ -224,6 +224,64 @@ class NeuroSanStudioCli:  # pylint: disable=too-few-public-methods
         raise typer.Exit(code=CheckConfigCommand(hocon_path=hocon_path).run())
 
     @staticmethod
+    @app.command(
+        "chat",
+        help="Chat with an agent network directly (without starting nsflow).",
+        context_settings={
+            "allow_extra_args": True,
+            "ignore_unknown_options": True,
+        },
+    )
+    def _chat_command(  # pylint: disable=too-many-arguments
+        ctx: typer.Context,
+        agent: str = typer.Argument(
+            "esp_decision_assistant",
+            help="Name of the agent network to chat with.",
+        ),
+        *,
+        connection: str = typer.Option(
+            "direct",
+            "--connection",
+            help="Connection type: 'direct' (library call, default), 'http', or 'https'.",
+        ),
+        host: Optional[str] = typer.Option(
+            None,
+            "--host",
+            help="Hostname of the neuro-san server (for http/https connections).",
+        ),
+        port: Optional[int] = typer.Option(
+            None,
+            "--port",
+            help="Port of the neuro-san server.",
+        ),
+        one_shot: bool = typer.Option(
+            False,
+            "--one-shot",
+            help="Send one prompt and exit (non-interactive mode).",
+        ),
+        list_agents: bool = typer.Option(
+            False,
+            "--list",
+            help="List all available agents and exit.",
+        ),
+    ) -> None:
+        """Chat with an agent network, forwarding extra options to AgentCli."""
+        # pylint: disable-next=import-outside-toplevel
+        from neuro_san_studio.commands.chat import ChatCommand
+
+        raise typer.Exit(
+            code=ChatCommand(
+                agent=agent,
+                connection=connection,
+                host=host,
+                port=port,
+                one_shot=one_shot,
+                list_agents=list_agents,
+                extra_args=ctx.args,
+            ).run()
+        )
+
+    @staticmethod
     @app.command("validate", help="Validate the structure of an agent network HOCON file.")
     def _validate_command(
         hocon_path: str = typer.Argument(
