@@ -38,6 +38,8 @@
     "industry/telco_network_orchestration.hocon": true,
     "industry/therapy_vignette_supervisors.hocon": true,
     
+    "industry/cognizant_delivery_intelligence.hocon": true,
+
     # The following agent networks are used as sub-networks by consumer_decision_assistant.hocon
     "industry/airbnb.hocon": true,
     "industry/booking.hocon": true,
