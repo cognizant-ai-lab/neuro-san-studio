@@ -2,22 +2,29 @@
     include "config/llm_config.hocon"
 
     "metadata": {
-        "description": "Grounded underwriting analytics network for URE KPI analysis, rule diagnostics, experimentation, monitoring, and governance.",
-        "tags": ["generated", "underwriting", "analytics", "ure", "grounded"],
+        "description": "Grounded URE Uplift Agents network (Experiment 1): mines human-vs-URE divergence across the 500 real cases, ranks rule-gap hypotheses by STA impact, and emits rule-change opportunity cards.",
+        "tags": ["generated", "underwriting", "analytics", "ure", "grounded", "experiment1", "uplift"],
         "sample_queries": [
-            "Use the bundled underwriting analytics datasets to summarize approval, decline, referral, and latency patterns.",
-            "Read the local rule impact datasets and identify the biggest URE optimization opportunities.",
-            "Design an experiment and monitoring plan grounded in the packaged analytics artifacts."
+            "Mine human-vs-URE divergence across the 500 cases and rank rule-uplift opportunities by STA impact.",
+            "Show the flowchart-match coverage and how many cases are indeterminate so I can judge data quality.",
+            "Produce the Experiment 1 opportunity cards and the four success metrics (STA uplift, actionable recommendations, manual-review-effort reduction, URE tuning cycle-time)."
         ]
     },
 
     "instructions_prefix": """
-You are part of the underwriting_analytics_ure_system network.
-Use the packaged local artifacts before making claims about this system.
-If local artifacts do not contain the requested evidence, say exactly what is missing.
-When using the grounding reader, always pass the full repo-relative file path under
-`coded_tools/generated/underwriting_analytics_ure_system/`. Never use `./`, bare
-filenames such as `README.md`, or invented names like `rule_definitions.json`.
+You are part of the underwriting_analytics_ure_system network running
+Experiment 1 - URE Uplift Agents.
+Ground every claim in the THREE real local source files before answering.
+The ONLY valid data inputs are these files under
+`coded_tools/generated/underwriting_analytics_ure_system/`:
+  - all_flowcharts.json     (URE rule logic as directed graphs)
+  - desicion_question.json  (500 underwriting cases; note the misspelled name)
+  - question_wording.json   (human-readable question wording dictionary)
+These are real, valid inputs - not invented names. If they do not contain the
+requested evidence, say exactly what is missing instead of inventing it.
+Always pass full repo-relative paths under that folder. Never use `./`, bare
+filenames, or any path outside the allowed folder. Do not claim to have queried
+external systems; these three files are the source of truth.
 """,
 
     "tools": [
@@ -27,28 +34,38 @@ filenames such as `README.md`, or invented names like `rule_definitions.json`.
                 "description": "Routes underwriting analytics work, grounds answers in packaged artifacts, and synthesizes agent outputs."
             },
             "instructions": ${instructions_prefix} """
-Role: Orchestrator for the underwriting analytics URE system.
+Role: Orchestrator for the URE Uplift Agents network (Experiment 1).
+
+Experiment 1 pipeline (drive it in this order):
+  Ingestion -> Divergence Miner -> Pattern Analyser -> Rule Recommender
+            -> URE Feedback Loop -> KPI metrics
 
 Workflow:
-1) Read local grounding artifacts when the user asks for analysis, examples, packaged datasets, or system details.
-2) Route to the right specialist.
-3) Synthesize only grounded findings from tool outputs.
-4) Use exact repo-relative file paths when invoking tools.
+1) Run ingestion_agent first to load the three real files and report
+   flowchart-match coverage and indeterminate counts (data quality).
+2) Use ure_divergence_miner to find where human decisions diverge from URE
+   rule logic; ure_pattern_analyser to aggregate by flow / rule line;
+   ure_rule_recommender to rank rule-gap hypotheses and emit opportunity cards.
+3) Use kpi_analytics_agent (ure_kpi_metrics) for the four success metrics.
+4) Synthesize only grounded findings from tool outputs. Label STA-uplift
+   figures as INDICATIVE.
 
-Preferred local files:
-- `coded_tools/generated/underwriting_analytics_ure_system/README.md`
-- `coded_tools/generated/underwriting_analytics_ure_system/GROUNDING_SUMMARY.txt`
-- `coded_tools/generated/underwriting_analytics_ure_system/underwriting_ure_uplift_dataset.json`
-- `coded_tools/generated/underwriting_analytics_ure_system/dataset_1_underwriting_decision_logs.json`
-- `coded_tools/generated/underwriting_analytics_ure_system/dataset_2_ure_rule_definitions.json`
-- `coded_tools/generated/underwriting_analytics_ure_system/dataset_3_case_attributes.json`
-- `coded_tools/generated/underwriting_analytics_ure_system/dataset_4_divergence_scenarios.json`
-- `coded_tools/generated/underwriting_analytics_ure_system/dataset_5_rule_impact_feedback_data.json`
+The three (and only) real source files:
+- `coded_tools/generated/underwriting_analytics_ure_system/all_flowcharts.json`
+- `coded_tools/generated/underwriting_analytics_ure_system/desicion_question.json`
+- `coded_tools/generated/underwriting_analytics_ure_system/question_wording.json`
 
-Do not claim to have queried external systems. Treat the packaged files as the source of truth for this generated network.
+Do not claim to have queried external systems. Treat these three files as the
+source of truth for this generated network.
 """,
             "tools": [
                 "underwriting_analytics_grounding_reader",
+                "ure_data_access",
+                "ure_rule_engine",
+                "ure_divergence_miner",
+                "ure_pattern_analyser",
+                "ure_rule_recommender",
+                "ure_kpi_metrics",
                 "ingestion_agent",
                 "kpi_analytics_agent",
                 "rules_diagnostics_agent",
@@ -69,64 +86,185 @@ Do not claim to have queried external systems. Treat the packaged files as the s
             }
         },
         {
+            "name": "ure_data_access",
+            "function": {
+                "description": "Ingestion: loads all_flowcharts.json, desicion_question.json, and question_wording.json, then returns load counts and a flowchart-match coverage report (matched cases, unmatched cases, cases per flow).",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "data_dir": {
+                            "type": "string",
+                            "description": "Optional override for the folder holding the three source JSON files. Leave blank to use the default coded_tools/generated/underwriting_analytics_ure_system folder."
+                        }
+                    }
+                }
+            },
+            "class": "generated.underwriting_analytics_ure_system.data_access.DataAccessTool"
+        },
+        {
+            "name": "ure_rule_engine",
+            "function": {
+                "description": "Simulates a single case's answers through its URE flowchart graph and returns the predicted terminal (STANDARD vs REFER vs indeterminate) plus the path taken.",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "enquiry_id": {
+                            "type": "string",
+                            "description": "Optional enquiry_id of the case to simulate."
+                        },
+                        "flow": {
+                            "type": "string",
+                            "description": "Optional explicit flowchart flow name."
+                        }
+                    }
+                }
+            },
+            "class": "generated.underwriting_analytics_ure_system.rule_engine.RuleEngineTool"
+        },
+        {
+            "name": "ure_divergence_miner",
+            "function": {
+                "description": "Divergence Miner stage: maps each case to a flowchart, simulates URE rule logic, compares to the actual human outcome, and returns per-case divergence records plus a data-quality summary (decided, diverged, indeterminate, unmapped).",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "max_records_returned": {
+                            "type": "int",
+                            "description": "Max diverged example records to return (default 25)."
+                        }
+                    }
+                }
+            },
+            "class": "generated.underwriting_analytics_ure_system.divergence_miner.DivergenceMinerTool"
+        },
+        {
+            "name": "ure_pattern_analyser",
+            "function": {
+                "description": "Pattern Analyser stage: aggregates divergence by occupation flow, rule line, and directionality, annotating each implicated rule line with human-readable wording from question_wording.json.",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "top_rule_lines": {
+                            "type": "int",
+                            "description": "Optional max number of implicated rule lines to highlight (default returns all)."
+                        }
+                    }
+                }
+            },
+            "class": "generated.underwriting_analytics_ure_system.pattern_analyser.PatternAnalyserTool"
+        },
+        {
+            "name": "ure_rule_recommender",
+            "function": {
+                "description": "Rule Recommender + URE Feedback Loop stage: ranks rule gaps by STA-uplift potential and emits opportunity cards {rule_line, readable_question, divergence_rate, cases_affected, hypothesis, recommended_change, est_STA_uplift_pp, feasibility}.",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "top": {
+                            "type": "int",
+                            "description": "Number of top opportunity cards to return (default 10)."
+                        }
+                    }
+                }
+            },
+            "class": "generated.underwriting_analytics_ure_system.rule_recommender.RuleRecommenderTool"
+        },
+        {
+            "name": "ure_kpi_metrics",
+            "function": {
+                "description": "Computes the four Experiment 1 success metrics from the divergence records and opportunity cards: indicative % STA uplift, # actionable recommendations, manual-review-effort reduction %, and a qualitative URE tuning cycle-time note. STA uplift is explicitly INDICATIVE.",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "top_n": {
+                            "type": "int",
+                            "description": "Top-N recommended rules used for the review-reduction proxy (default 5)."
+                        }
+                    }
+                }
+            },
+            "class": "generated.underwriting_analytics_ure_system.kpi_metrics.KpiMetricsTool"
+        },
+
+        {
             "name": "ingestion_agent",
             "function": {
-                "description": "Reads packaged underwriting analytics datasets and describes curation, schema, and lineage constraints."
+                "description": "Ingestion stage: loads the three real source files and reports flowchart-match coverage, indeterminate counts, and divergence findings."
             },
             "instructions": ${instructions_prefix} """
-Use underwriting_analytics_grounding_reader to inspect only packaged local artifacts.
-Focus on dataset availability, schema clues, lineage, missing fields, and configuration gaps.
-Use exact paths such as `coded_tools/generated/underwriting_analytics_ure_system/dataset_1_underwriting_decision_logs.json`.
+Ingestion stage of Experiment 1.
+Use ure_data_access to load the three real files and report flowchart-match
+coverage (how many of the 500 cases mapped to a flowchart) and how many cases
+are indeterminate, so data quality is transparent. Then use ure_divergence_miner
+to surface where human decisions diverge from URE rule logic.
+You may use underwriting_analytics_grounding_reader to read raw file contents
+(e.g. `coded_tools/generated/underwriting_analytics_ure_system/all_flowcharts.json`).
 Do not pretend to ingest external sources.
 """,
-            "tools": ["underwriting_analytics_grounding_reader"]
+            "tools": [
+                "underwriting_analytics_grounding_reader",
+                "ure_data_access",
+                "ure_divergence_miner"
+            ]
         },
         {
             "name": "kpi_analytics_agent",
             "function": {
-                "description": "Computes KPI-oriented summaries from the packaged underwriting analytics artifacts."
+                "description": "Computes the Experiment 1 success metrics (indicative STA uplift, actionable recommendations, manual-review-effort reduction, URE tuning cycle-time) from the real cases."
             },
             "instructions": ${instructions_prefix} """
-Ground every KPI statement in the packaged local JSON or markdown artifacts.
-Always invoke the grounding reader with the exact packaged file path.
-If exact computation is not possible from the available files, provide a bounded qualitative summary and state the limitation.
+Use ure_kpi_metrics to compute the four Experiment 1 success metrics grounded
+in the 500 real cases. Always state that STA uplift is an INDICATIVE estimate.
+If a metric cannot be computed from the available files, state the limitation
+instead of inventing a number.
 """,
-            "tools": ["underwriting_analytics_grounding_reader"]
+            "tools": [
+                "underwriting_analytics_grounding_reader",
+                "ure_kpi_metrics"
+            ]
         },
         {
             "name": "rules_diagnostics_agent",
             "function": {
-                "description": "Analyzes URE rule behavior and optimization opportunities using packaged artifacts."
+                "description": "Analyzes URE rule behavior: aggregates divergence patterns and produces ranked rule-gap hypotheses and opportunity cards."
             },
             "instructions": ${instructions_prefix} """
-Use the local rule definition and feedback datasets to identify rule impact, conflicts, redundancies, or drift.
-Read `coded_tools/generated/underwriting_analytics_ure_system/dataset_2_ure_rule_definitions.json`
-and `coded_tools/generated/underwriting_analytics_ure_system/dataset_5_rule_impact_feedback_data.json`
-instead of guessing filenames.
-Tie every recommendation to evidence from the packaged files.
+Pattern Analyser + Rule Recommender stages of Experiment 1.
+Use ure_pattern_analyser to aggregate divergence by occupation flow and rule
+line (annotated with wording from question_wording.json), and ure_rule_recommender
+to rank rule-gap hypotheses by STA-uplift potential and emit opportunity cards.
+Tie every recommendation to the divergence evidence from the three real files.
 """,
-            "tools": ["underwriting_analytics_grounding_reader"]
+            "tools": [
+                "underwriting_analytics_grounding_reader",
+                "ure_pattern_analyser",
+                "ure_rule_recommender"
+            ]
         },
         {
             "name": "experiment_design_agent",
             "function": {
-                "description": "Designs experiments grounded in the packaged KPI and rule-analysis artifacts."
+                "description": "Designs follow-up experiments grounded in the divergence findings and ranked rule recommendations."
             },
             "instructions": ${instructions_prefix} """
-Base experiment designs only on grounded KPI and rule evidence from upstream outputs or local files.
-Use exact repo-relative paths when reading packaged artifacts.
+Base experiment designs only on grounded divergence and recommendation evidence
+from ure_rule_recommender or the three real files.
+Use exact repo-relative paths when reading the source files.
 If baseline volumes or rates are missing, ask for them instead of inventing them.
 """,
-            "tools": ["underwriting_analytics_grounding_reader"]
+            "tools": [
+                "underwriting_analytics_grounding_reader",
+                "ure_rule_recommender"
+            ]
         },
         {
             "name": "monitoring_agent",
             "function": {
-                "description": "Creates monitoring and alerting guidance grounded in packaged analytics artifacts."
+                "description": "Creates monitoring and alerting guidance grounded in the divergence findings and the three real source files."
             },
             "instructions": ${instructions_prefix} """
-Use only packaged dataset descriptions and grounded upstream summaries.
-Use exact repo-relative paths when reading packaged artifacts.
+Use only grounded upstream summaries and the three real source files.
+Use exact repo-relative paths when reading the source files.
 Define metrics, alerts, and dashboards conservatively when exact baselines are absent.
 """,
             "tools": ["underwriting_analytics_grounding_reader"]
@@ -134,12 +272,12 @@ Define metrics, alerts, and dashboards conservatively when exact baselines are a
         {
             "name": "governance_agent",
             "function": {
-                "description": "Reviews privacy, lineage, and compliance implications using packaged documentation only."
+                "description": "Reviews privacy, lineage, and compliance implications using only the three real source files and grounded outputs."
             },
             "instructions": ${instructions_prefix} """
-Use only packaged local documentation and grounded outputs.
-Use exact repo-relative paths when reading packaged artifacts.
-Do not approve unsupported joins or sensitive-field usage unless the artifacts explicitly support them.
+Use only the three real source files and grounded outputs.
+Use exact repo-relative paths when reading the source files.
+Do not approve unsupported joins or sensitive-field usage unless the files explicitly support them.
 """,
             "tools": ["underwriting_analytics_grounding_reader"]
         }
