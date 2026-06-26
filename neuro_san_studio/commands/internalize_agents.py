@@ -34,12 +34,11 @@ style (quoted keys + commas), with HOCON triple-quoted blocks for multi-line str
 
 import json
 import sys
-from io import BytesIO
 from pathlib import Path
 from typing import Any
 from typing import Iterable
 
-from leaf_common.serialization.format.hocon_serialization_format import HoconSerializationFormat
+from neuro_san.internals.persistence.abstract_async_config_restorer import AbstractAsyncConfigRestorer
 
 # Exit codes. neuro-san-studio's main() treats code 2 as a clean "help" exit,
 # so we normalize to a binary contract: 0 = ok, 1 = problem.
@@ -60,21 +59,11 @@ OUTPUT_LINE_BUDGET: int = 120
 
 
 def parse_hocon(path: Path) -> dict[str, Any]:
-    """Parse a HOCON file via neuro-san's HoconSerializationFormat so includes and substitutions
-    resolve identically to the server. The script must run from a cwd where the includes resolve
-    (typically the repo root).
+    """Parse a HOCON (or JSON) file via neuro-san's AbstractAsyncConfigRestorer so that
+    includes and substitutions resolve identically to the server. The script must run from a
+    cwd where the includes resolve (typically the repo root).
     """
-    file_contents: bytes = path.read_bytes()
-    return HoconSerializationFormat().to_object(BytesIO(file_contents))
-
-
-def to_plain(node: Any) -> Any:
-    """Convert pyhocon ConfigTree nodes to plain dict/list for safe mutation and output."""
-    if isinstance(node, dict):
-        return {key: to_plain(value) for key, value in node.items()}
-    if isinstance(node, list):
-        return [to_plain(item) for item in node]
-    return node
+    return AbstractAsyncConfigRestorer(file_purpose="agent network hocon").restore(file_reference=str(path))
 
 
 def find_external_hocon(name: str, search_paths: Iterable[Path]) -> Path:
@@ -217,7 +206,7 @@ def internalize_externals(
     visited.add(resolved)
     try:
         # Top-level `tools` is the list of agents in a neuro-san network.
-        agents: list[dict[str, Any]] = [to_plain(agent) for agent in parse_hocon(hocon_path).get("tools", [])]
+        agents: list[dict[str, Any]] = list(parse_hocon(hocon_path).get("tools", []))
         # By convention the first agent in `tools` is the front_man (the externally-callable one).
         own_front_man: str | None = agents[0].get("name") if agents and isinstance(agents[0], dict) else None
         own_names: set[str] = {a.get("name") for a in agents if isinstance(a, dict) and a.get("name")}
@@ -248,7 +237,7 @@ def build_combined_config(input_path: Path, search_paths: list[Path]) -> dict[st
     every transitively-loaded external) have already been resolved by the parser, so the
     returned dict is self-contained.
     """
-    combined: dict[str, Any] = to_plain(parse_hocon(input_path))
+    combined: dict[str, Any] = parse_hocon(input_path)
     ref_to_frontman: dict[str, str] = {}
     agents, _ = internalize_externals(input_path, search_paths, visited=set(), ref_to_frontman=ref_to_frontman)
     # Apply the full mapping once to every agent (parent + all transitively-inlined externals).
