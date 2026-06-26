@@ -28,8 +28,8 @@ the agents live in the same HOCON and need no loopback.
 
 The output is fully resolved: all `include` statements and `${...}`
 substitutions in the input (and every transitively-loaded external) are
-applied by the parser, and the result is written as JSON (a strict subset
-of HOCON).
+applied by the parser, and the result is written as HOCON using a JSON-like
+style (quoted keys + commas), with HOCON triple-quoted blocks for multi-line strings.
 """
 
 import json
