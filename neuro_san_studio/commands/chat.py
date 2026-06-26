@@ -16,7 +16,7 @@
 
 """Implementation of the `neuro-san-studio chat` command.
 
-Runs an interactive (or one-shot) chat with an agent network by delegating to
+Runs an interactive or one-shot chat with an agent network by delegating to
 neuro-san's ``AgentCli`` (the tool also exposed as
 ``python -m neuro_san.client.agent_cli``). Studio stays a thin wrapper: it
 marshals the command options into the arguments that ``AgentCli`` expects,
@@ -46,7 +46,7 @@ class ChatCommand:  # pylint: disable=too-few-public-methods
 
     def __init__(  # pylint: disable=too-many-arguments
         self,
-        agent: str,
+        agent: Optional[str],
         *,
         connection: str = "direct",
         host: Optional[str] = None,
@@ -58,7 +58,7 @@ class ChatCommand:  # pylint: disable=too-few-public-methods
         """Initialize the command.
 
         Args:
-            agent: Name of the agent network to chat with.
+            agent: Name of the agent network to chat with (None when listing).
             connection: Connection type (direct, http, or https).
             host: Hostname of the neuro-san server (for http/https).
             port: Port of the neuro-san server (for http/https).
@@ -80,7 +80,7 @@ class ChatCommand:  # pylint: disable=too-few-public-methods
 
         if self.list_agents:
             argv.append("--list")
-        else:
+        elif self.agent is not None:
             argv.extend(["--agent", self.agent])
 
         argv.extend(["--connection", self.connection])

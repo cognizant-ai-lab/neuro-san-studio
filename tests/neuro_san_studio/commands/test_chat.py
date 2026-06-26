@@ -82,11 +82,27 @@ class TestChatCommandRun(TestCase):
 
         with patch(f"{_MODULE}.AgentCli") as mock_cli:
             mock_cli.return_value.main.side_effect = fake_main
-            ChatCommand("music_nerd", list_agents=True).run()
+            ChatCommand(None, list_agents=True).run()
 
         argv = captured["argv"]
         assert "--list" in argv
         assert "--agent" not in argv
+
+    def test_none_agent_without_list_skips_agent_flag(self):
+        """When agent is None and list is False, --agent is not emitted."""
+        captured = {}
+
+        def fake_main():
+            captured["argv"] = list(sys.argv)
+
+        with patch(f"{_MODULE}.AgentCli") as mock_cli:
+            mock_cli.return_value.main.side_effect = fake_main
+            ChatCommand(None, extra_args=["--tag", "demo"]).run()
+
+        argv = captured["argv"]
+        assert "--agent" not in argv
+        assert "--tag" in argv
+        assert "demo" in argv
 
     def test_extra_args_forwarded(self):
         """Extra arguments from the Typer context are appended to argv."""

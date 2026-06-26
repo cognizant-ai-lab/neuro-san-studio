@@ -1,10 +1,10 @@
 # chat
 
-Chat with an agent network directly from the command line, without starting the full nsflow server.
+Chat with an agent network directly from the command line, without starting neuro-san and nsflow servers.
 This command delegates to neuro-san's `AgentCli` (also available as `python -m neuro_san.client.agent_cli`).
 
 By default it uses a **direct** (in-process library) connection, meaning no server needs to be running. For remote
-agents, specify `--connection http` with `--host` and `--port`.
+agents, specify `--connection https` with `--host` and `--port`.
 
 Under the hood this command delegates to neuro-san's `AgentCli`, so it stays in sync with the library's capabilities.
 
@@ -12,22 +12,22 @@ Under the hood this command delegates to neuro-san's `AgentCli`, so it stays in 
 
 ```bash
 # Interactive chat with an agent (direct/library connection, no server needed)
-ns chat music_nerd
+ns chat basic/music_nerd
 
 # One-shot mode: send a prompt from a file and exit
-ns chat music_nerd --one-shot --first_prompt_file prompt.txt
+ns chat basic/music_nerd --one-shot --first_prompt_file prompt.txt
 
 # Connect to a running neuro-san server
-ns chat music_nerd --connection http --host localhost --port 8080
+ns chat basic/music_nerd --connection http --host localhost --port 8080
 
 # List all available agents
 ns chat --list
 
 # List agents filtered by tag
-ns chat --tag demo
+ns chat --tag tool
 
 # Test connectivity of an agent network
-ns chat music_nerd --connectivity
+ns chat basic/music_nerd --connectivity
 ```
 
 The command exits with code `0` on normal completion (including user-initiated Ctrl+C) and `1` on error.
@@ -69,7 +69,7 @@ Use `python -m neuro_san.client.agent_cli --help` for the full reference.
 ### Direct connection (no server needed)
 
 ```bash
-ns chat music_nerd
+ns chat basic/music_nerd
 ```
 
 This starts an interactive chat loop. The agent's description is printed first, then you
@@ -78,12 +78,12 @@ are prompted for input. Type `quit` to exit, or press Ctrl+C.
 ### Scripted one-shot usage
 
 ```bash
-echo "What are the best jazz albums?" > /tmp/prompt.txt
+echo "Who wrote Little Black Submarines?" > /tmp/prompt.txt
 ns chat music_nerd --one-shot --first_prompt_file /tmp/prompt.txt
 ```
 
 ### Remote server connection
 
 ```bash
-ns chat music_nerd --connection http --host my-server.example.com --port 8080
+ns chat basic/music_nerd --connection https --host my-server.example.com --port 443
 ```

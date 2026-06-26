@@ -234,10 +234,6 @@ class NeuroSanStudioCli:  # pylint: disable=too-few-public-methods
     )
     def _chat_command(  # pylint: disable=too-many-arguments
         ctx: typer.Context,
-        agent: str = typer.Argument(
-            "esp_decision_assistant",
-            help="Name of the agent network to chat with.",
-        ),
         *,
         connection: str = typer.Option(
             "direct",
@@ -269,6 +265,11 @@ class NeuroSanStudioCli:  # pylint: disable=too-few-public-methods
         # pylint: disable-next=import-outside-toplevel
         from neuro_san_studio.commands.chat import ChatCommand
 
+        extra = list(ctx.args)
+        agent = None
+        if extra and not extra[0].startswith("--"):
+            agent = extra.pop(0)
+
         raise typer.Exit(
             code=ChatCommand(
                 agent=agent,
@@ -277,7 +278,7 @@ class NeuroSanStudioCli:  # pylint: disable=too-few-public-methods
                 port=port,
                 one_shot=one_shot,
                 list_agents=list_agents,
-                extra_args=ctx.args,
+                extra_args=extra,
             ).run()
         )
 
