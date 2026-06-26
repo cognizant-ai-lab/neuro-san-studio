@@ -78,7 +78,17 @@ def to_plain(node: Any) -> Any:
 
 
 def find_external_hocon(name: str, search_paths: Iterable[Path]) -> Path:
-    """Locate <name>.hocon on one of the search paths."""
+    """Locate <name>.hocon on one of the search paths.
+
+    Validates that `name` cannot escape the search base. Without this guard, a ref like
+    `/etc/passwd` (absolute) or `../../secrets` (parent traversal) would be joined into a
+    path that reads files outside the intended scope -- and since internalize-agents embeds
+    the loaded file's contents into the output, the leak would propagate to whoever reads
+    the generated hocon.
+    """
+    ref = Path(name)
+    if ref.is_absolute() or ref.drive or ".." in ref.parts:
+        raise ValueError(f"Invalid external agent reference: {name!r}")
     tried: list[Path] = []
     for base in search_paths:
         candidate = base / f"{name}.hocon"
