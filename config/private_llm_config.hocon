@@ -57,6 +57,35 @@
                 # AZURE_OPENAI_API_KEY env var, which is not recommended due to security concerns.
                 # You would also need to set  "openai_api_base" in this config to use the
                 # AZURE_OPENAI_ENDPOINT env var + "openai/vi/".
+
+                # Try this one first, but move on to the next at any hint of a problem.
+                "max_retries": 0
+            },
+            {
+                # A 2nd private LLM instance to handle overflow load.
+                "class": "azure-openai",
+
+                # Your dev-ops set up for Azure OpenAI might vary w/rt
+                # the deployment_name. Consult your dev-ops team as to how
+                # they set up the deployment_name for the model of your choice.
+                "deployment_name": "gpt-5-2-instance-2",                    # AZURE_OPENAI_DEPLOYMENT_NAME
+                "openai_api_version": "2024-10-21",                         # OPENAI_API_VERSION
+
+                # Try this one next, but move on to the next at any hint of a problem.
+                "max_retries": 0
+            },
+            {
+                # A 3rd private LLM instance to handle overflow load.
+                "class": "azure-openai",
+
+                # Your dev-ops set up for Azure OpenAI might vary w/rt
+                # the deployment_name. Consult your dev-ops team as to how
+                # they set up the deployment_name for the model of your choice.
+                "deployment_name": "gpt-5-2-instance-3",                    # AZURE_OPENAI_DEPLOYMENT_NAME
+                "openai_api_version": "2024-10-21",                         # OPENAI_API_VERSION
+
+                # No max_retries here.
+                # If this one fails, there's nowhere else to go and you need more LLM instances.
             },
 
             # ... More for different llm + cloud provider combinations as they come
