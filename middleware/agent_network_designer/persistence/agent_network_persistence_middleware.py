@@ -47,8 +47,7 @@ from middleware.agent_network_designer.validation.agent_network_structure_valida
     AgentNetworkStructureValidationMiddleware,
 )
 
-# To use reservations, turn this environment variable to true and also
-# export AGENT_TEMPORARY_NETWORK_UPDATE_PERIOD_SECONDS=5
+# To use reservations, turn this environment variable to true
 WRITE_TO_FILE: bool = environ.get("AGENT_NETWORK_DESIGNER_USE_RESERVATIONS", "false").lower() != "true"
 
 # Set this to False if the agents are grounded and don't need demo mode instructions
