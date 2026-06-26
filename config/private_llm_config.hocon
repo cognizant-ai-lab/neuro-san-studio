@@ -63,6 +63,8 @@
             },
             {
                 # A 2nd private LLM instance to handle overflow load.
+                # If you don't need this for your projected load, or don't have another LLM to fall back on,
+                # you can remove this entire block.
                 "class": "azure-openai",
 
                 # Your dev-ops set up for Azure OpenAI might vary w/rt
@@ -76,6 +78,8 @@
             },
             {
                 # A 3rd private LLM instance to handle overflow load.
+                # If you don't need this for your projected load, or don't have another LLM to fall back on,
+                # you can remove this entire block.
                 "class": "azure-openai",
 
                 # Your dev-ops set up for Azure OpenAI might vary w/rt
