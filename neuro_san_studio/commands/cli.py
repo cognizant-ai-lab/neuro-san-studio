@@ -281,8 +281,8 @@ class NeuroSanStudioCli:  # pylint: disable=too-few-public-methods
             "-o",
             help=(
                 "Path to write the self-contained HOCON output. The output is fully resolved "
-                "(no includes, no /-prefixed external refs) and JSON-formatted; JSON is a "
-                "strict subset of HOCON so the server parses it the same way."
+                "(no includes, no /-prefixed external refs) and formatted as HOCON (JSON-like with "
+                "quoted keys/commas; multi-line strings use HOCON triple quotes)."
             ),
         ),
         search_paths: Optional[str] = typer.Option(
