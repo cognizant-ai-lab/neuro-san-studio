@@ -24,7 +24,7 @@ jobs:
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
 
       - name: Setup Python environment
-        # 1.0.7
+        # 1.0.8
         uses: cognizant-ai-lab/build-common/actions/setup-python-env@30321843331e00848309b34e08b839e1f6490ba2
         with:
           python-version: '3.10'
@@ -41,7 +41,7 @@ jobs:
 
       - name: Notify Slack
         if: ${{ !cancelled() }}
-        # 1.0.7
+        # 1.0.8
         uses: cognizant-ai-lab/build-common/actions/slack-notify@30321843331e00848309b34e08b839e1f6490ba2
         with:
           status: ${{ job.status }}
