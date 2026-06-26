@@ -122,7 +122,7 @@ allowing developers to monitor and analyze their networks in real-time.
 ### Arize Phoenix
 
 The [Arize Phoenix plugin](../neuro_san_studio/plugins/phoenix/README.md) integrates
-[Arize Phoenix](https://phoenix.arize.com/) for AI observability in Neuro SAN Studio,
+[Arize Phoenix](https://arize.com/phoenix/) for AI observability in Neuro SAN Studio,
 providing comprehensive monitoring and analysis of LLM interactions.
 
 ### Langfuse
