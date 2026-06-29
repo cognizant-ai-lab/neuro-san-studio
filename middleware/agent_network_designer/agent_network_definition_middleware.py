@@ -548,7 +548,10 @@ class AgentNetworkDefinitionMiddleware(AgentMiddleware):
             self.logger.warning("WARNING: Skipping agent with missing/invalid 'name' in '%s': %r", source, agent)
             return None, {}
 
-        # Only extract agents info and only "instructions" and "tools" parts
+        # Extract the agent fields the designer pipeline cares about: instructions,
+        # description, tools, and middleware. Anything else in the source agent spec
+        # (function schema, allow rules, structure_formats, etc.) is intentionally
+        # dropped — those are reconstructed by the assembler on save.
         agent_def: dict[str, Any] = {}
 
         instructions: str | None = agent.get("instructions")
@@ -585,6 +588,21 @@ class AgentNetworkDefinitionMiddleware(AgentMiddleware):
         tools: list[str] | None = agent.get("tools")
         if tools:
             agent_def["tools"] = tools
+
+        # Preserve middleware attached to LLM agents. The assembler writes this back out
+        # via HoconAgentNetworkAssembler._render_middleware on save, so without preserving
+        # it on load a round-trip would silently strip every previously-attached middleware.
+        middleware: Any = agent.get("middleware")
+        if middleware:
+            if not isinstance(middleware, list) or not all(isinstance(entry, dict) for entry in middleware):
+                self.logger.warning(
+                    "WARNING: Ignoring 'middleware' on agent %s in '%s' — expected list[dict], got %r",
+                    agent_name,
+                    source,
+                    middleware,
+                )
+            else:
+                agent_def["middleware"] = middleware
 
         return agent_name, agent_def
 

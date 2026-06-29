@@ -465,4 +465,13 @@ ENV AGENT_NETWORK_DESIGNER_TOOLBOX_INFO_FILE="neuro_san_studio/toolbox/agent_net
 # Defaults to "3" if not set.
 ENV AGENT_NETWORK_DESIGNER_MAX_VALIDATION_ATTEMPTS="3"
 
+# Toggles the /middleware_manager external agent for the Agent Network Designer. When set
+# to a truthy value ("1", "true", "yes", "on" — case-insensitive), the designer is told
+# about the middleware step in its workflow and the /middleware_manager tool is kept in
+# ModelRequest.tools so it can be invoked. When unset or set to any other value (including
+# "false"), the workflow step is omitted from the system prompt AND the tool is stripped
+# from ModelRequest.tools, so the designer literally cannot reach /middleware_manager.
+# Defaults to "false" if not set.
+ENV AGENT_NETWORK_DESIGNER_USE_MIDDLEWARE="false"
+
 ENTRYPOINT ["/bin/bash", "-c", "exec ${APP_ENTRYPOINT}"]

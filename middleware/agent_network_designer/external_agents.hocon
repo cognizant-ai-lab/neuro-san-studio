@@ -1,0 +1,61 @@
+# Copyright © 2025-2026 Cognizant Technology Solutions Corp, www.cognizant.com.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
+# END COPYRIGHT
+
+# Catalog of toggleable external agents that the agent_network_designer can call after step 1.
+#
+# Each entry is gated by an environment variable. When the env var is set to a truthy value
+# ("1", "true", "yes", "on" — case-insensitive), ExternalAgentsMiddleware (a) appends the
+# entry's `instructions` text to the designer's system prompt and (b) keeps the entry's `tool`
+# in the model request's tools list. When the env var is unset/falsy, the middleware strips
+# the tool from `ModelRequest.tools` before the model call so the LLM literally can't invoke
+# it — the static declaration in the designer HOCON is only the upper bound; this catalog is
+# the gate.
+#
+# Fields:
+#   enabled_env_var: name of the env var that toggles this module on/off.
+#   tool:            tool reference (e.g. "/middleware_manager"). Must match the tool name as
+#                    it appears in the designer's `tools` list. Used to filter ModelRequest.tools.
+#   instructions:    workflow-step text appended to the designer's system prompt when enabled.
+
+{
+    "middleware_manager": {
+        "enabled_env_var": "AGENT_NETWORK_DESIGNER_USE_MIDDLEWARE",
+        "tool": "/middleware_manager",
+        "instructions": """
+- `/middleware_manager`: Delegate attaching or removing agent-level middleware to the
+  middleware_manager subnetwork.
+
+  About middleware
+  A middleware is a reusable behavior layer attached per LLM agent (function / coded-tool
+  agents have no model call to intercept). It runs on every model call to that agent and can
+  redact PII in inputs/outputs, inject a checklist or skill catalog into the system prompt,
+  enforce guardrails, log decisions for audit, etc. The catalog of available middleware
+  classes lives inside the middleware_manager — you don't need to pick the class
+  yourself; describe the network's compliance / behavior needs and let it choose. Attached
+  middleware is stored on each agent's `middleware` array and persisted with the network.
+
+  When to invoke
+  - The user explicitly asks for middleware, or for a behavior layer on any agent.
+  - The network includes LLM agents whose responsibilities suggest a behavior layer would
+    add value. Defer to the middleware_manager — it sees the current catalog and
+    will decide whether an applicable middleware exists.
+
+  When NOT to invoke
+  - No behavior-layer concern applies and the user did not ask for middleware.
+  - Every agent in the network is a function / coded-tool agent (no model call to wrap).
+"""
+    },
+}
