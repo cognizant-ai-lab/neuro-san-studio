@@ -84,9 +84,7 @@ class ExternalAgentsMiddleware(AgentMiddleware):
                 hocon = AbstractAsyncConfigRestorer(file_purpose="get_external_agents", must_exist=True)
                 catalog = await hocon.async_restore(file_reference=catalog_file)
             except FileNotFoundError:
-                self.logger.warning(
-                    "WARNING: External agents catalog file not found: %s. Skipping.", catalog_file
-                )
+                self.logger.warning("WARNING: External agents catalog file not found: %s. Skipping.", catalog_file)
                 return await handler(request)
 
             self.sly_data[EXTERNAL_AGENTS_CATALOG] = catalog
@@ -94,7 +92,9 @@ class ExternalAgentsMiddleware(AgentMiddleware):
         enabled_blocks, disabled_tools = self._classify(catalog or {})
 
         new_tools = self._filter_tools(request.tools, disabled_tools) if disabled_tools else None
-        new_system_message = self._extend_system_message(request.system_message, enabled_blocks) if enabled_blocks else None
+        new_system_message = (
+            self._extend_system_message(request.system_message, enabled_blocks) if enabled_blocks else None
+        )
 
         if new_tools is None and new_system_message is None:
             return await handler(request)
@@ -142,9 +142,7 @@ class ExternalAgentsMiddleware(AgentMiddleware):
 
         return enabled_blocks, disabled_tools
 
-    def _filter_tools(
-        self, tools: list[Any], disabled_tools: set[str]
-    ) -> list[Any]:
+    def _filter_tools(self, tools: list[Any], disabled_tools: set[str]) -> list[Any]:
         """
         Return a new tools list with every entry whose name matches a disabled tool removed.
 
@@ -185,9 +183,7 @@ class ExternalAgentsMiddleware(AgentMiddleware):
                     return nested
         return None
 
-    def _extend_system_message(
-        self, system_message: BaseMessage | None, enabled_blocks: list[str]
-    ) -> SystemMessage:
+    def _extend_system_message(self, system_message: BaseMessage | None, enabled_blocks: list[str]) -> SystemMessage:
         """
         Build a new SystemMessage with the enabled modules' instruction blocks appended.
         """

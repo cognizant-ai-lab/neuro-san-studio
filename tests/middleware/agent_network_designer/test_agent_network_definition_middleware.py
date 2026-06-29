@@ -40,6 +40,9 @@ from middleware.agent_network_designer.agent_network_definition_middleware impor
 from middleware.agent_network_designer.agent_network_definition_middleware import AgentNetworkDefinitionMiddleware
 
 
+# Tests legitimately exercise private helpers (the load/parse pipeline is internal to the
+# middleware class) and the suite covers many behaviors in a single class for cohesion.
+# pylint: disable=protected-access,too-many-public-methods
 class TestAgentNetworkDefinitionMiddleware:
     """Tests for AgentNetworkDefinitionMiddleware (non-S3 paths)."""
 
@@ -57,33 +60,39 @@ class TestAgentNetworkDefinitionMiddleware:
     # ------------------------------------------------------------------
 
     def test_parse_agent_returns_none_for_non_dict_entry(self):
+        """Non-dict entries in the `tools` list are skipped."""
         mw = self._make_mw()
         name, agent_def = asyncio.run(mw._parse_agent("not a dict", "src"))
         assert name is None
         assert agent_def == {}
 
     def test_parse_agent_returns_none_for_missing_name(self):
+        """An agent without `name` is skipped."""
         mw = self._make_mw()
         name, agent_def = asyncio.run(mw._parse_agent({"instructions": "hi"}, "src"))
         assert name is None
         assert agent_def == {}
 
     def test_parse_agent_returns_none_for_empty_name(self):
+        """An empty string name is treated as missing."""
         mw = self._make_mw()
         name, _ = asyncio.run(mw._parse_agent({"name": ""}, "src"))
         assert name is None
 
     def test_parse_agent_returns_none_for_non_string_instructions(self):
+        """Non-string `instructions` invalidates the whole agent."""
         mw = self._make_mw()
         name, _ = asyncio.run(mw._parse_agent({"name": "a", "instructions": 123}, "src"))
         assert name is None
 
     def test_parse_agent_returns_none_for_non_string_description(self):
+        """Non-string `function.description` invalidates the whole agent."""
         mw = self._make_mw()
         name, _ = asyncio.run(mw._parse_agent({"name": "a", "function": {"description": 42}}, "src"))
         assert name is None
 
     def test_parse_agent_extracts_tools(self):
+        """`tools` is copied through; absent middleware does not add a `middleware` key."""
         mw = self._make_mw()
         name, agent_def = asyncio.run(mw._parse_agent({"name": "a", "tools": ["b", "c"]}, "src"))
         assert name == "a"
@@ -91,6 +100,7 @@ class TestAgentNetworkDefinitionMiddleware:
         assert "middleware" not in agent_def
 
     def test_parse_agent_extracts_description_from_function(self):
+        """`function.description` is trimmed and stored as `description` on the agent."""
         mw = self._make_mw()
         _, agent_def = asyncio.run(
             mw._parse_agent({"name": "a", "instructions": "hi.", "function": {"description": "  An agent.  "}}, "src")
@@ -129,11 +139,13 @@ class TestAgentNetworkDefinitionMiddleware:
         assert agent_def["instructions"] == "hi."
 
     def test_parse_agent_drops_middleware_when_entries_are_not_dicts(self):
+        """Middleware that is a list but contains non-dict entries is dropped."""
         mw = self._make_mw()
         _, agent_def = asyncio.run(mw._parse_agent({"name": "a", "middleware": ["not a dict"]}, "src"))
         assert "middleware" not in agent_def
 
     def test_parse_agent_omits_middleware_key_when_empty(self):
+        """An empty middleware list adds no `middleware` key to the agent definition."""
         mw = self._make_mw()
         _, agent_def = asyncio.run(mw._parse_agent({"name": "a", "middleware": []}, "src"))
         assert "middleware" not in agent_def
@@ -143,18 +155,21 @@ class TestAgentNetworkDefinitionMiddleware:
     # ------------------------------------------------------------------
 
     def test_config_to_network_def_returns_none_when_tools_missing(self):
+        """A config without the `tools` field reports an actionable error and returns None."""
         mw = self._make_mw()
         result = asyncio.run(mw._config_to_network_def({}, "src"))
         assert result is None
         assert "No field 'tools' found" in mw.error_message
 
     def test_config_to_network_def_returns_none_when_tools_not_a_list(self):
+        """`tools` of the wrong type reports an actionable error and returns None."""
         mw = self._make_mw()
         result = asyncio.run(mw._config_to_network_def({"tools": "not a list"}, "src"))
         assert result is None
         assert "not a list" in mw.error_message
 
     def test_config_to_network_def_skips_unparseable_agents(self):
+        """A single bad entry does not invalidate sibling entries in the same network."""
         mw = self._make_mw()
         config = {
             "tools": [
@@ -171,6 +186,7 @@ class TestAgentNetworkDefinitionMiddleware:
     # ------------------------------------------------------------------
 
     def test_normalize_dict_input_passes_through_and_caches(self):
+        """A dict input is returned as-is and stored under AGENT_NETWORK_DEFINITION in sly_data."""
         sly = {"aaosa_instructions": ""}
         mw = self._make_mw(sly_data=sly)
         net = {"a": {"instructions": "hi."}}
@@ -179,6 +195,7 @@ class TestAgentNetworkDefinitionMiddleware:
         assert sly[AGENT_NETWORK_DEFINITION] is net
 
     def test_normalize_connectivity_list_is_converted_to_dict(self):
+        """A connectivity-format list is converted to the internal dict format and cached."""
         sly = {"aaosa_instructions": ""}
         mw = self._make_mw(sly_data=sly)
         net_list = [
@@ -195,6 +212,7 @@ class TestAgentNetworkDefinitionMiddleware:
     # ------------------------------------------------------------------
 
     def test_format_definition_prompt_emits_round_trippable_json(self):
+        """The injected system-prompt section is a markdown-fenced JSON block we can re-parse."""
         mw = self._make_mw()
         prompt = mw.format_definition_prompt({"a": {"instructions": "hi."}})
         assert prompt.startswith("## Current Agent Network Definition")
@@ -206,26 +224,31 @@ class TestAgentNetworkDefinitionMiddleware:
     # ------------------------------------------------------------------
 
     def test_resolve_hocon_path_returns_none_for_non_string(self):
+        """None input is rejected with an `expected non-empty string` error."""
         mw = self._make_mw()
         assert mw._resolve_hocon_path(None) is None
         assert "expected non-empty string" in mw.error_message
 
     def test_resolve_hocon_path_returns_none_for_whitespace_only(self):
+        """Whitespace-only input is rejected with an `expected non-empty string` error."""
         mw = self._make_mw()
         assert mw._resolve_hocon_path("   ") is None
         assert "expected non-empty string" in mw.error_message
 
     def test_resolve_hocon_path_passes_through_absolute(self):
+        """A POSIX-absolute input is returned unchanged."""
         mw = self._make_mw()
         assert mw._resolve_hocon_path("/abs/path/to/file.hocon") == "/abs/path/to/file.hocon"
 
     def test_resolve_hocon_path_keeps_existing_cwd_relative_path_as_is(self):
+        """A relative path that resolves to an existing file under cwd is used as-is."""
         mw = self._make_mw()
         with patch.object(Path, "is_file", return_value=True):
             result = mw._resolve_hocon_path("registries/generated/foo.hocon")
         assert result == "registries/generated/foo.hocon"
 
     def test_resolve_hocon_path_falls_through_to_manifest_base_dir(self):
+        """Non-existent relative input is joined to AGENT_MANIFEST_FILE's directory."""
         mw = self._make_mw()
         with patch.dict(os.environ, {"AGENT_MANIFEST_FILE": "registries/manifest.hocon"}):
             result = mw._resolve_hocon_path("foo.hocon")
@@ -236,6 +259,7 @@ class TestAgentNetworkDefinitionMiddleware:
     # ------------------------------------------------------------------
 
     def test_hocon_to_config_reads_valid_file(self):
+        """A valid HOCON file is parsed into a dict and no error_message is set."""
         mw = self._make_mw()
         with tempfile.NamedTemporaryFile("w", suffix=".hocon", delete=False) as f:
             f.write('{ "tools": [{"name": "a"}] }')
@@ -248,6 +272,7 @@ class TestAgentNetworkDefinitionMiddleware:
             os.unlink(path)
 
     def test_hocon_to_config_sets_error_for_missing_file(self):
+        """A missing file path is reported via error_message and the return is None."""
         mw = self._make_mw()
         result = asyncio.run(mw._hocon_to_config("/definitely/not/a/file.hocon"))
         assert result is None
@@ -258,6 +283,7 @@ class TestAgentNetworkDefinitionMiddleware:
     # ------------------------------------------------------------------
 
     def test_hocon_to_definition_round_trip_preserves_middleware(self):
+        """End-to-end HOCON → network_def keeps every agent's middleware array intact."""
         mw = self._make_mw()
         hocon = (
             "{"
@@ -287,6 +313,7 @@ class TestAgentNetworkDefinitionMiddleware:
     # ------------------------------------------------------------------
 
     def test_resolve_prefers_sly_data_definition_over_hocon_file(self):
+        """A definition already in sly_data wins over the configured hocon_file."""
         existing = {"top": {"instructions": "hi."}}
         sly = {
             "aaosa_instructions": "",
@@ -297,6 +324,7 @@ class TestAgentNetworkDefinitionMiddleware:
         assert asyncio.run(mw._resolve_network_def()) is existing
 
     def test_resolve_loads_from_hocon_when_no_definition_in_sly_data(self):
+        """When sly_data has no definition, the hocon file is read and the name is auto-set."""
         sly = {"aaosa_instructions": ""}
         mw = self._make_mw(sly_data=sly)
         with tempfile.NamedTemporaryFile("w", suffix=".hocon", delete=False) as f:
@@ -312,6 +340,7 @@ class TestAgentNetworkDefinitionMiddleware:
             os.unlink(path)
 
     def test_resolve_returns_none_when_no_source(self):
+        """When sly_data has no definition and no hocon_file, the resolver returns None."""
         mw = self._make_mw()
         assert asyncio.run(mw._resolve_network_def()) is None
 
@@ -320,12 +349,14 @@ class TestAgentNetworkDefinitionMiddleware:
     # ------------------------------------------------------------------
 
     def test_abefore_model_returns_none_when_no_definition_anywhere(self):
+        """No definition source means the agent is free to respond without injection."""
         mw = self._make_mw()
         result = asyncio.run(mw.abefore_model(state={}, runtime=None))
         assert result is None
         assert mw.network_def is None
 
     def test_abefore_model_jumps_to_end_when_resolve_errors(self):
+        """A missing hocon file surfaces as an AIMessage and a jump_to=end."""
         sly = {"aaosa_instructions": "", AGENT_NETWORK_HOCON_FILE: "/does/not/exist.hocon"}
         mw = self._make_mw(sly_data=sly)
         result = asyncio.run(mw.abefore_model(state={}, runtime=None))
@@ -342,6 +373,7 @@ class TestAgentNetworkDefinitionMiddleware:
         assert AGENT_NETWORK_NAME in result["messages"][0].content
 
     def test_abefore_model_skip_designer_jumps_to_end_with_acknowledgement(self):
+        """`skip_designer=True` short-circuits the LLM and acknowledges the user-supplied network."""
         sly = {
             "aaosa_instructions": "",
             AGENT_NETWORK_DEFINITION: {"a": {"instructions": "hi."}},
@@ -354,6 +386,7 @@ class TestAgentNetworkDefinitionMiddleware:
         assert "my_net" in result["messages"][0].content
 
     def test_abefore_model_normal_path_returns_none_and_caches_definition(self):
+        """Happy path: a valid sly_data definition + name resolves, caches, and lets the agent proceed."""
         net = {"a": {"instructions": "hi."}}
         sly = {"aaosa_instructions": "", AGENT_NETWORK_DEFINITION: net, AGENT_NETWORK_NAME: "my_net"}
         mw = self._make_mw(sly_data=sly)
@@ -366,6 +399,7 @@ class TestAgentNetworkDefinitionMiddleware:
     # ------------------------------------------------------------------
 
     def test_awrap_passes_through_when_no_definition(self):
+        """With no network_def, the handler is invoked with the original request unmodified."""
         mw = self._make_mw()
         mw.network_def = None
 
@@ -377,6 +411,7 @@ class TestAgentNetworkDefinitionMiddleware:
         request.override.assert_not_called()
 
     def test_awrap_appends_to_existing_system_message(self):
+        """An existing SystemMessage is preserved and the definition block is appended to it."""
         mw = self._make_mw()
         mw.network_def = {"a": {"instructions": "hi."}}
 
@@ -397,6 +432,7 @@ class TestAgentNetworkDefinitionMiddleware:
         handler.assert_awaited_once_with(new_request)
 
     def test_awrap_creates_system_message_when_none_present(self):
+        """When the request has no SystemMessage, a fresh one is created with just the definition."""
         mw = self._make_mw()
         mw.network_def = {"a": {"instructions": "hi."}}
 
@@ -416,6 +452,7 @@ class TestAgentNetworkDefinitionMiddleware:
     # ------------------------------------------------------------------
 
     def test_extract_custom_instructions_strips_prefix(self):
+        """The standard `You are part of a <noun> of assistants...` prefix is removed."""
         mw = self._make_mw(sly_data={"aaosa_instructions": ""})
         full = (
             "You are part of a team of assistants. "
@@ -428,6 +465,7 @@ class TestAgentNetworkDefinitionMiddleware:
         assert result == "Custom body here."
 
     def test_extract_custom_instructions_strips_demo_mode(self):
+        """The demo_mode boilerplate sentence is removed."""
         mw = self._make_mw(sly_data={"aaosa_instructions": ""})
         demo = (
             "You are part of a demo system, so when queried, make up a realistic response as if "
@@ -437,6 +475,7 @@ class TestAgentNetworkDefinitionMiddleware:
         assert result == "Real body."
 
     def test_extract_custom_instructions_strips_aaosa_when_cached(self):
+        """The aaosa instructions stored in sly_data are stripped from the agent's instructions."""
         mw = self._make_mw(sly_data={"aaosa_instructions": "AAOSA TEXT"})
         result = asyncio.run(mw._extract_custom_instructions("Body. AAOSA TEXT"))
         assert result == "Body."
