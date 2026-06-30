@@ -54,6 +54,7 @@ Do not mention what you can NOT do. Only mention what you can do.
             """,
             "function": {
                 "description": "Assist the user with answers from Wolfram."
+            },
             # Only support streamable HTTP(S) protocol
             # For other modes of transport, use coded tool implementation
             # The URL must be a canonical MCP server URI (see
