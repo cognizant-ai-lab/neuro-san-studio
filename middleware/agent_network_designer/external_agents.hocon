@@ -24,10 +24,18 @@
 # it — the static declaration in the designer HOCON is only the upper bound; this catalog is
 # the gate.
 #
+# This catalog is parsed by ExternalAgentsMiddleware
+# (middleware/agent_network_designer/external_agents_middleware.py). That class is also
+# where the entries below are evaluated against env vars and turned into prompt + tool-list
+# overrides — see ExternalAgentsMiddleware._classify for the field semantics in code.
+#
 # Fields:
 #   enabled_env_var: name of the env var that toggles this module on/off.
-#   tool:            tool reference (e.g. "/middleware_manager"). Must match the tool name as
-#                    it appears in the designer's `tools` list. Used to filter ModelRequest.tools.
+#   tool:            external-agent reference (e.g. "/middleware_manager"), same form a user
+#                    writes in a designer's `tools` array. Note that ModelRequest.tools holds
+#                    a different name (the safe name, e.g. "__middleware_manager"); the
+#                    middleware translates this for you via ExternalAgentParsing, so always
+#                    write the human-readable external-agent reference here.
 #   instructions:    workflow-step text appended to the designer's system prompt when enabled.
 
 {

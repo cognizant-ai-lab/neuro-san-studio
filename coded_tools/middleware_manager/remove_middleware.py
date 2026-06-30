@@ -39,7 +39,9 @@ class RemoveMiddleware(CodedTool):
 
                 The argument dictionary expects the following keys:
                     "agent_name": the name of the agent from which middleware will be removed.
-                    "class": the fully qualified class name of the middleware to remove.
+                    "middleware_class": the fully qualified class name of the middleware to remove.
+                        Named this way instead of `class` because `class` is a Python reserved word
+                        and breaks pydantic tool-arg validation upstream of this method.
 
         :param sly_data: A dictionary whose keys are defined by the agent hierarchy,
                 but whose values are meant to be kept out of the chat stream.
@@ -63,9 +65,9 @@ class RemoveMiddleware(CodedTool):
         if agent_name not in network_def:
             raise ValueError(f"Agent '{agent_name}' not found in the agent network definition.")
 
-        middleware_class: str = args.get("class", "")
+        middleware_class: str = args.get("middleware_class", "")
         if not middleware_class:
-            raise ValueError("No middleware class provided.")
+            raise ValueError("No middleware_class provided.")
 
         logger = logging.getLogger(self.__class__.__name__)
         logger.info(">>>>>>>>>>>>>>>>>>>Remove Middleware>>>>>>>>>>>>>>>>>>")

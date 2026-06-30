@@ -32,7 +32,7 @@ from langchain_core.messages import SystemMessage
 from neuro_san.internals.persistence.abstract_async_config_restorer import AbstractAsyncConfigRestorer
 
 MIDDLEWARE_INFO: str = "middleware_info"
-DEFAULT_MIDDLEWARE_INFO_FILE: str = os.path.join("middleware", "middleware_info.hocon")
+DEFAULT_MIDDLEWARE_INFO_FILE: str = os.path.join("middleware", "agent_network_designer", "middleware_info.hocon")
 
 
 class MiddlewareInfoMiddleware(AgentMiddleware):

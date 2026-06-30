@@ -39,7 +39,9 @@ class AddMiddleware(CodedTool):
 
                 The argument dictionary expects the following keys:
                     "agent_name": the name of the agent to which middleware will be added.
-                    "class": the fully qualified class name of the middleware.
+                    "middleware_class": the fully qualified class name of the middleware. Named this
+                        way instead of `class` because `class` is a Python reserved word and breaks
+                        pydantic tool-arg validation upstream of this method.
                     "args" (optional): key-value arguments to pass to the middleware constructor.
 
         :param sly_data: A dictionary whose keys are defined by the agent hierarchy,
@@ -74,9 +76,9 @@ class AddMiddleware(CodedTool):
                 f"Agent '{agent_name}' is a function/toolbox node (no `instructions`) and cannot have middleware."
             )
 
-        middleware_class: str = args.get("class", "")
+        middleware_class: str = args.get("middleware_class", "")
         if not middleware_class:
-            raise ValueError("No middleware class provided.")
+            raise ValueError("No middleware_class provided.")
 
         middleware_args: dict[str, Any] | None = args.get("args")
 

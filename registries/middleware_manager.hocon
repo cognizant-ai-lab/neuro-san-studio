@@ -79,9 +79,11 @@ is a dict with zero or more of these fields:
 2. Read **Available Middleware** to understand what can be added and which `class` string to use.
 3. Based on the `agent_network_description`, decide which agents need middleware added or removed
    and which middleware class applies.
-4. Call `add_middleware` or `remove_middleware` for each change.
+4. Call `add_middleware` or `remove_middleware` for each change. Pass the catalog's `class` string
+   as the `middleware_class` argument (the parameter is renamed to avoid colliding with Python's
+   reserved word).
    - You may make multiple calls if the request affects several agents or middlewares.
-   - Always use the exact `class` string from **Available Middleware**.
+   - Always use the exact `class` string from **Available Middleware** as `middleware_class`.
    - Only pass `args` to `add_middleware` if `required` field of the middleware is not empty; omit `args` otherwise.
 5. Briefly confirm to the user which middleware were added or removed and on which agents.
 
@@ -131,11 +133,14 @@ is a dict with zero or more of these fields:
                             "type": "string",
                             "description": "The name of the agent to which the middleware will be added."
                         },
-                        "class": {
+                        "middleware_class": {
                             "type": "string",
                             "description": """
                             The fully qualified class name of the middleware
                             (e.g. 'middleware.agent_checklist_middleware.AgentChecklistMiddleware').
+                            Pass the catalog's `class` value here — the parameter is named
+                            `middleware_class` because `class` is a Python reserved word and breaks
+                            pydantic tool-arg validation downstream.
                             """
                         },
                         "args": {
@@ -146,7 +151,7 @@ is a dict with zero or more of these fields:
                             """,
                         }
                     },
-                    "required": ["agent_name", "class"]
+                    "required": ["agent_name", "middleware_class"]
                 }
             }
         },
@@ -163,15 +168,18 @@ is a dict with zero or more of these fields:
                             "type": "string",
                             "description": "The name of the agent from which the middleware will be removed."
                         },
-                        "class": {
+                        "middleware_class": {
                             "type": "string",
                             "description": """
                             The fully qualified class name of the middleware
                             (e.g. 'middleware.agent_checklist_middleware.AgentChecklistMiddleware').
+                            Pass the catalog's `class` value here — the parameter is named
+                            `middleware_class` because `class` is a Python reserved word and breaks
+                            pydantic tool-arg validation downstream.
                             """
                         },
                     },
-                    "required": ["agent_name", "class"]
+                    "required": ["agent_name", "middleware_class"]
                 }
             }
         },

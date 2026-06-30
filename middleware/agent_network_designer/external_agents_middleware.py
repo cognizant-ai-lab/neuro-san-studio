@@ -29,6 +29,7 @@ from langchain.agents.middleware.types import ResponseT
 from langchain_core.messages import BaseMessage
 from langchain_core.messages import SystemMessage
 from neuro_san.internals.persistence.abstract_async_config_restorer import AbstractAsyncConfigRestorer
+from neuro_san.internals.run_context.utils.external_agent_parsing import ExternalAgentParsing
 
 EXTERNAL_AGENTS_CATALOG: str = "external_agents_catalog"
 DEFAULT_EXTERNAL_AGENTS_FILE: str = os.path.join("middleware", "agent_network_designer", "external_agents.hocon")
@@ -117,8 +118,15 @@ class ExternalAgentsMiddleware(AgentMiddleware):
         Walk the catalog and split modules into enabled (whose instructions to inject) and
         disabled (whose tool refs to strip from the request).
 
+        The catalog's `tool` field is the human-readable external-agent reference (e.g.
+        "/middleware_manager") — the same form a user writes in a designer's `tools` array.
+        Inside `ModelRequest.tools`, neuro-san exposes that same agent under its safe name
+        (e.g. "__middleware_manager"), per ExternalAgentParsing.get_safe_agent_name and
+        LangChainOpenAIFunctionTool.from_function_json. We translate here so the disabled
+        set matches what the LLM actually sees on `BaseTool.name`.
+
         :param catalog: The loaded external-agents catalog
-        :return: (list of instruction blocks to append, set of tool refs to drop)
+        :return: (list of instruction blocks to append, set of safe tool names to drop)
         """
         enabled_blocks: list[str] = []
         disabled_tools: set[str] = set()
@@ -138,7 +146,7 @@ class ExternalAgentsMiddleware(AgentMiddleware):
                 if instructions:
                     enabled_blocks.append(instructions)
             else:
-                disabled_tools.add(tool)
+                disabled_tools.add(ExternalAgentParsing.get_safe_agent_name(tool))
 
         return enabled_blocks, disabled_tools
 

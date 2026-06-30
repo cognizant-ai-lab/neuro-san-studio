@@ -453,17 +453,24 @@ ENV AGENT_NETWORK_DESIGNER_SUBDIRECTORY="generated"
 
 # Manifest file(s) providing available external agents for the Agent Network Designer to choose from.
 # Defaults to "registries/manifest_and.hocon" if not set.
-ENV AGENT_NETWORK_DESIGNER_MANIFEST_FILE="registries/manifest_and.hocon"
+ENV AGENT_NETWORK_DESIGNER_MANIFEST_FILE="${APP_SOURCE}/registries/manifest_and.hocon"
 
 # Toolbox info file providing available tools for the Agent Network Designer to choose from.
 # Defaults to "neuro_san_studio/toolbox/agent_network_designer_toolbox_info.hocon" if not set.
-ENV AGENT_NETWORK_DESIGNER_TOOLBOX_INFO_FILE="neuro_san_studio/toolbox/agent_network_designer_toolbox_info.hocon"
+ENV AGENT_NETWORK_DESIGNER_TOOLBOX_INFO_FILE="${APP_SOURCE}/neuro_san_studio/toolbox/agent_network_designer_toolbox_info.hocon"
 
 # Maximum number of validation retry rounds before the persistence middleware gives up and
 # ends the session without persisting. Prevents runaway loops when the model cannot fix
 # validation errors (e.g., a required tool was unavailable during session setup).
 # Defaults to "3" if not set.
 ENV AGENT_NETWORK_DESIGNER_MAX_VALIDATION_ATTEMPTS="3"
+
+# Path to the HOCON catalog of toggleable external agents the Agent Network Designer can
+# call after step 1 of its workflow (e.g. /middleware_manager). Each entry pairs an
+# external-agent tool ref with the env var that toggles it and the workflow-step text to
+# inject when enabled. Read by ExternalAgentsMiddleware. Override only when serving a
+# custom set of toggleable external agents.
+ENV EXTERNAL_AGENTS_FILE="${APP_SOURCE}/middleware/agent_network_designer/external_agents.hocon"
 
 # Toggles the /middleware_manager external agent for the Agent Network Designer. When set
 # to a truthy value ("1", "true", "yes", "on" — case-insensitive), the designer is told
@@ -473,5 +480,11 @@ ENV AGENT_NETWORK_DESIGNER_MAX_VALIDATION_ATTEMPTS="3"
 # from ModelRequest.tools, so the designer literally cannot reach /middleware_manager.
 # Defaults to "false" if not set.
 ENV AGENT_NETWORK_DESIGNER_USE_MIDDLEWARE="false"
+
+# Path to the HOCON catalog of middleware classes that the middleware_manager subnetwork
+# is allowed to attach to agents. Each entry pairs a friendly key with the fully qualified
+# class name and an arg schema. Read by MiddlewareInfoMiddleware. Override only when
+# serving a custom middleware allow-list.
+ENV MIDDLEWARE_INFO_FILE="${APP_SOURCE}/middleware/agent_network_designer/middleware_info.hocon"
 
 ENTRYPOINT ["/bin/bash", "-c", "exec ${APP_ENTRYPOINT}"]
