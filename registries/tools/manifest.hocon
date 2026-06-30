@@ -151,6 +151,8 @@
     # Wikimedia media search
     "tools/wikimedia_search.hocon": true,
 
-    # Requires YDC_API_KEY. See docs/search_tools.md and neuro_san_studio/mcp/mcp_info.hocon for setup.
-    "tools/you_search.hocon": false,
+    # Requires YDC_API_KEY or OAuth Authentication. See docs/search_tools.md and neuro_san_studio/mcp/mcp_info.hocon for setup.
+    "tools/you_search.hocon": true,
+    # Free version of you_search that does not require API key but has limited capabilities via the you.com MCP server.
+    "tools/you_search_free.hocon": true,
 }
