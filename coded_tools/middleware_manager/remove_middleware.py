@@ -39,7 +39,7 @@ class RemoveMiddleware(CodedTool):
 
                 The argument dictionary expects the following keys:
                     "agent_name": the name of the agent from which middleware will be removed.
-                    "middleware_class": the fully qualified class name of the middleware to remove.
+                    "class": the fully qualified class name of the middleware to remove.
 
         :param sly_data: A dictionary whose keys are defined by the agent hierarchy,
                 but whose values are meant to be kept out of the chat stream.
@@ -47,26 +47,25 @@ class RemoveMiddleware(CodedTool):
                 Keys expected for this implementation are:
                     "agent_network_definition": an outline of an agent network
 
-        :return:
-            In case of successful execution:
-                a text string confirming the middleware was removed.
-            otherwise:
-                a text string of an error message in the format:
-                "Error: <error message>"
+        :raises ValueError: when the input is malformed, the target agent doesn't exist, or
+                the requested middleware is not present on the agent. The framework's
+                `error_formatter` / `error_fragments` config catches this and surfaces it
+                back to the calling LLM as an actionable error message.
+        :return: On success, a text string confirming the middleware was removed.
         """
         network_def: dict[str, Any] = sly_data.get(AGENT_NETWORK_DEFINITION)
         if not network_def:
-            return "Error: No agent network definition found in sly data."
+            raise ValueError("No agent network definition found in sly data.")
 
         agent_name: str = args.get("agent_name", "")
         if not agent_name:
-            return "Error: No agent_name provided."
+            raise ValueError("No agent_name provided.")
         if agent_name not in network_def:
-            return f"Error: Agent '{agent_name}' not found in the agent network definition."
+            raise ValueError(f"Agent '{agent_name}' not found in the agent network definition.")
 
-        middleware_class: str = args.get("middleware_class", "")
+        middleware_class: str = args.get("class", "")
         if not middleware_class:
-            return "Error: No middleware class provided."
+            raise ValueError("No middleware class provided.")
 
         logger = logging.getLogger(self.__class__.__name__)
         logger.info(">>>>>>>>>>>>>>>>>>>Remove Middleware>>>>>>>>>>>>>>>>>>")
@@ -79,7 +78,7 @@ class RemoveMiddleware(CodedTool):
         updated_middleware = [entry for entry in existing_middleware if entry.get("class") != middleware_class]
 
         if len(updated_middleware) == len(existing_middleware):
-            return f"Error: Middleware '{middleware_class}' is not present on agent '{agent_name}'."
+            raise ValueError(f"Middleware '{middleware_class}' is not present on agent '{agent_name}'.")
 
         agent_def[MIDDLEWARE_KEY] = updated_middleware
         network_def[agent_name] = agent_def

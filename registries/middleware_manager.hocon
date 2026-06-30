@@ -65,11 +65,11 @@ is a dict with zero or more of these fields:
 - `instructions`: present when the agent is an LLM agent (not a function/coded tool).
 - `tools`: list of down-chain agent or tool names.
 - `middleware`: list of middleware objects currently attached to this agent, each with:
-  - `middleware_class`: fully qualified class name of the middleware.
+  - `class`: fully qualified class name of the middleware.
   - `args` (optional): constructor arguments passed to the middleware.
 
 **Available Middleware** — a JSON object where each key is a middleware identifier and each value contains:
-- `middleware_class`: the fully qualified class name used when attaching the middleware.
+- `class`: the fully qualified class name used when attaching the middleware.
 - `description`: what the middleware does and when it is appropriate to use.
 - `args`: the schema of optional constructor arguments accepted by the middleware.
 
@@ -131,7 +131,7 @@ is a dict with zero or more of these fields:
                             "type": "string",
                             "description": "The name of the agent to which the middleware will be added."
                         },
-                        "middleware_class": {
+                        "class": {
                             "type": "string",
                             "description": """
                             The fully qualified class name of the middleware
@@ -146,7 +146,7 @@ is a dict with zero or more of these fields:
                             """,
                         }
                     },
-                    "required": ["agent_name", "middleware_class"]
+                    "required": ["agent_name", "class"]
                 }
             }
         },
@@ -163,7 +163,7 @@ is a dict with zero or more of these fields:
                             "type": "string",
                             "description": "The name of the agent from which the middleware will be removed."
                         },
-                        "middleware_class": {
+                        "class": {
                             "type": "string",
                             "description": """
                             The fully qualified class name of the middleware
@@ -171,7 +171,7 @@ is a dict with zero or more of these fields:
                             """
                         },
                     },
-                    "required": ["agent_name", "middleware_class"]
+                    "required": ["agent_name", "class"]
                 }
             }
         },

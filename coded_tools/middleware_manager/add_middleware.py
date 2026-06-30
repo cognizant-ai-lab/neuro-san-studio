@@ -39,7 +39,7 @@ class AddMiddleware(CodedTool):
 
                 The argument dictionary expects the following keys:
                     "agent_name": the name of the agent to which middleware will be added.
-                    "middleware_class": the fully qualified class name of the middleware.
+                    "class": the fully qualified class name of the middleware.
                     "args" (optional): key-value arguments to pass to the middleware constructor.
 
         :param sly_data: A dictionary whose keys are defined by the agent hierarchy,
@@ -48,26 +48,35 @@ class AddMiddleware(CodedTool):
                 Keys expected for this implementation are:
                     "agent_network_definition": an outline of an agent network
 
-        :return:
-            In case of successful execution:
-                a text string confirming the middleware was added.
-            otherwise:
-                a text string of an error message in the format:
-                "Error: <error message>"
+        :raises ValueError: when the input is malformed, the target agent doesn't exist or
+                is a function/toolbox node, or the requested middleware is already present.
+                The framework's `error_formatter` / `error_fragments` config catches this and
+                surfaces it back to the calling LLM as an actionable error message.
+        :return: On success, a text string confirming the middleware was added.
         """
         network_def: dict[str, Any] = sly_data.get(AGENT_NETWORK_DEFINITION)
         if not network_def:
-            return "Error: No agent network definition found in sly data."
+            raise ValueError("No agent network definition found in sly data.")
 
         agent_name: str = args.get("agent_name", "")
         if not agent_name:
-            return "Error: No agent_name provided."
+            raise ValueError("No agent_name provided.")
         if agent_name not in network_def:
-            return f"Error: Agent '{agent_name}' not found in the agent network definition."
+            raise ValueError(f"Agent '{agent_name}' not found in the agent network definition.")
 
-        middleware_class: str = args.get("middleware_class", "")
+        # Middleware wraps the agent's model call, so it only makes sense on LLM agents
+        # (those with an `instructions` field). Function / toolbox nodes have no model call
+        # to wrap and the HOCON assembler's toolbox template has no slot for a middleware
+        # array — attaching middleware to them would silently disappear on persist.
+        agent_def: dict[str, Any] = network_def[agent_name]
+        if "instructions" not in agent_def:
+            raise ValueError(
+                f"Agent '{agent_name}' is a function/toolbox node (no `instructions`) and cannot have middleware."
+            )
+
+        middleware_class: str = args.get("class", "")
         if not middleware_class:
-            return "Error: No middleware class provided."
+            raise ValueError("No middleware class provided.")
 
         middleware_args: dict[str, Any] | None = args.get("args")
 
@@ -76,13 +85,12 @@ class AddMiddleware(CodedTool):
         logger.info("Agent Name: %s", agent_name)
         logger.info("Middleware Class: %s", middleware_class)
 
-        agent_def: dict[str, Any] = network_def[agent_name]
         existing_middleware: list[dict[str, Any]] = agent_def.get(MIDDLEWARE_KEY, [])
 
         # Check for duplicate
         for entry in existing_middleware:
             if entry.get("class") == middleware_class:
-                return f"Error: Middleware '{middleware_class}' is already present on agent '{agent_name}'."
+                raise ValueError(f"Middleware '{middleware_class}' is already present on agent '{agent_name}'.")
 
         new_entry: dict[str, Any] = {"class": middleware_class}
         if middleware_args:

@@ -15,6 +15,7 @@
 # END COPYRIGHT
 
 import datetime
+import json
 from copy import copy as shallow_copy
 from typing import Any
 
@@ -280,14 +281,11 @@ class HoconAgentNetworkAssembler(AgentNetworkAssembler):
             lines.append(f'                    "class": "{entry["class"]}",')
             args = entry.get("args")
             if args:
-                args_lines = []
-                for k, v in args.items():
-                    if isinstance(v, bool):
-                        args_lines.append(f'                        "{k}": {"true" if v else "false"}')
-                    elif isinstance(v, str):
-                        args_lines.append(f'                        "{k}": "{v}"')
-                    else:
-                        args_lines.append(f'                        "{k}": {v}')
+                # HOCON is a superset of JSON, so json.dumps emits valid HOCON for every value
+                # type (str/int/float/bool/None/list/dict). Don't try to format these by hand —
+                # Python's str() produces Python repr (single quotes, `None`, etc.) which would
+                # break round-trip for middleware whose args contain lists or dicts.
+                args_lines: list[str] = [f'                        "{k}": {json.dumps(v)}' for k, v in args.items()]
                 lines.append('                    "args": {')
                 lines.append(",\n".join(args_lines))
                 lines.append("                    }")

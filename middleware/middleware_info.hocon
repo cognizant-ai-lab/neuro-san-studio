@@ -19,7 +19,7 @@
 
 {
     "pii_middleware": {
-        "middleware_class": "langchain.agents.middleware.PIIMiddleware",
+        "class": "langchain.agents.middleware.PIIMiddleware",
         "description": """
     Detect and handle Personally Identifiable Information (PII) in conversations using configurable strategies.
         """,
@@ -68,7 +68,7 @@
     },
 
     "agent_checklist_middleware": {
-        "middleware_class": "middleware.agent_checklist_middleware.AgentChecklistMiddleware",
+        "class": "middleware.agent_checklist_middleware.AgentChecklistMiddleware",
         "description": """
     Middleware for managing an in-memory checklist during agent execution.
     The checklist is stored as an instance variable so it persists across all model
@@ -89,7 +89,7 @@
     },
 
     "agent_skills_middleware": {
-        "middleware_class": "middleware.agent_skills_middleware.AgentSkillsMiddleware",
+        "class": "middleware.agent_skills_middleware.AgentSkillsMiddleware",
         "description": """
     Middleware for loading and managing agent skills per the Agent Skills specification
     (https://agentskills.io/specification). Uses a progressive disclosure pattern: skill
