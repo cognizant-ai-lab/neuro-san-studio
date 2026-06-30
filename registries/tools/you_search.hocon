@@ -94,15 +94,14 @@
                                             "type": "string",
                                             "description": "Authorization header for you.com API access, e.g., 'Bearer <token_value>'."
                                         }
-                                    },
+                                },
                                     "required": ["Authorization"]
-                                }
-                            },
+                            }
+                        },
                             "required": ["https://api.you.com/mcp"]
-                        }
-                    },
+                    }
+                },
                     "required": ["http_headers"]
-                }
             },
 
             "instructions": """
