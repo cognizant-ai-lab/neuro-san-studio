@@ -90,9 +90,15 @@
                         "description": "The user's Google API key for use with Gemini models"
                     },
                 },
-                # Note that none of these properties are strictly required, as all are individually optional.
-                # However in a BYOK situation, we do expect the llm_config property itself to be required
-                # with one of these values present.
+                # Note that none of these properties are strictly required, as all are individually optional,
+                # but at least one of these properties must be present, hence the "anyOf" below.
+                # However, in a BYOK situation, we do always expect the llm_config property itself to be required
+                # with at least one of these values present.
+                "anyOf": [
+                    { "required": ["openai_api_key"] },
+                    { "required": ["anthropic_api_key"] },
+                    { "required": ["google_api_key"] }
+                ]
             }
         },
         "required": [${llm_config_key}]
