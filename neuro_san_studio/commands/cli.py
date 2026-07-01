@@ -226,7 +226,10 @@ class NeuroSanStudioCli:  # pylint: disable=too-few-public-methods
     @staticmethod
     @app.command(
         "chat",
-        help="Chat with an agent network directly (without starting nsflow).\n\nUsage: ns chat AGENT [OPTIONS]",
+        help=(
+            "Chat with an agent network directly (without starting nsflow).\n\n"
+            "Pass the agent name as AGENT, e.g. ns chat music_nerd"
+        ),
         no_args_is_help=True,
         context_settings={
             "allow_extra_args": True,
