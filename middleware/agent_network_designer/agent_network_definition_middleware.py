@@ -14,9 +14,11 @@
 #
 # END COPYRIGHT
 
+import asyncio
 import json
 import os
 import re
+from json import JSONDecodeError
 from logging import Logger
 from logging import getLogger
 from pathlib import Path
@@ -26,7 +28,9 @@ from typing import Awaitable
 from typing import Callable
 from typing import override
 
+from boto3 import client as boto3_client
 from botocore.exceptions import ClientError
+from botocore.exceptions import NoCredentialsError
 from langchain.agents.middleware.types import AgentMiddleware
 from langchain.agents.middleware.types import AgentState
 from langchain.agents.middleware.types import ContextT
@@ -39,7 +43,6 @@ from langchain_core.messages import BaseMessage
 from langchain_core.messages import SystemMessage
 from neuro_san.interfaces.agent_progress_reporter import AgentProgressReporter
 from neuro_san.internals.persistence.abstract_async_config_restorer import AbstractAsyncConfigRestorer
-from neuro_san.service.watcher.temp_networks.s3_reservations_storage import S3ReservationsStorage
 from pyparsing.exceptions import ParseException
 
 from coded_tools.agent_network_editor.connectivity_dictionary_converter import ConnectivityDictionaryConverter
@@ -274,38 +277,37 @@ class AgentNetworkDefinitionMiddleware(AgentMiddleware):
             self.error_message = error_message
             return None
 
+        # AWS credentials are picked up from the standard boto3 credential chain
+        # (env vars, ~/.aws/credentials, IAM role on EC2/ECS/Lambda, etc.).
+        # AGENT_RESERVATIONS_S3_BUCKET must point at the bucket holding the reservations.
+        bucket: str = os.getenv("AGENT_RESERVATIONS_S3_BUCKET", "")
+        if not bucket:
+            error_message = (
+                f"Error: AGENT_RESERVATIONS_S3_BUCKET is not set; cannot load reservation '{reservation_id}'."
+            )
+            self.logger.error(error_message)
+            self.error_message = error_message
+            return None
+
         config: dict[str, Any] | None = None
         try:
-            # Setting up AWS credentials in environment variables is required for S3ReservationsStorage to work.
-            # AWS_ACCESS_KEY_ID="your-access-key"
-            # AWS_SECRET_ACCESS_KEY="your-secret-key"
-            # AWS_DEFAULT_REGION="us-east-1" or your region
-            # (Optional if your credentials file has the region specified)
-            # Other options include:
-            # AWS profile: AWS_PROFILE="your-profile" (reads from ~/.aws/credentials)
-            # Session token (temporary creds): add AWS_SESSION_TOKEN="your-token"
-            # IAM role: no env vars needed if running on EC2/ECS/Lambda with an attached role
-            #
-            # This env var must be set to the S3 Bucket that the network reservations is stored.
-            # AGENT_RESERVATIONS_S3_BUCKET
-            s3_storage = S3ReservationsStorage()
-            s3_storage.start()
-            try:
-                _, agent_network = s3_storage.get_one_reservation(reservation_id)
-                config = agent_network.get_config()
-            except AttributeError as attribute_error:
-                error_message = (
-                    f"Error: Reservation '{reservation_id}' does not contain an agent network or config. "
-                    f"{attribute_error}"
-                )
-                self.logger.error(error_message)
-            except ClientError as client_error:
+            config = await asyncio.to_thread(self.fetch_reservation_from_s3, bucket, reservation_id)
+        except NoCredentialsError as creds_error:
+            error_message = (
+                f"Error: AWS credentials not found while loading reservation '{reservation_id}'. {creds_error}"
+            )
+            self.logger.error(error_message)
+        except ClientError as client_error:
+            error_code: str = client_error.response.get("Error", {}).get("Code", "")
+            if error_code in ("NoSuchKey", "404"):
+                error_message = f"Error: Reservation '{reservation_id}' not found in S3 bucket '{bucket}'."
+            else:
                 error_message = f"Error: Failed to retrieve reservation '{reservation_id}' from S3. {client_error}"
-                self.logger.error(error_message)
-            finally:
-                s3_storage.stop()
-        except ValueError as value_error:
-            error_message = f"Error: Failed to initialize S3 storage for reservation '{reservation_id}'. {value_error}"
+            self.logger.error(error_message)
+        except JSONDecodeError as json_error:
+            error_message = (
+                f"Error: Reservation '{reservation_id}' in S3 contains invalid JSON. {json_error}"
+            )
             self.logger.error(error_message)
 
         if not config:
@@ -321,6 +323,28 @@ class AgentNetworkDefinitionMiddleware(AgentMiddleware):
             os.getenv("AGENT_RESERVATIONS_S3_BUCKET"),
         )
         return await self._config_to_network_def(config, reservation_id)
+
+    @staticmethod
+    def fetch_reservation_from_s3(bucket: str, reservation_id: str) -> dict[str, Any]:
+        """
+        Read a reservation JSON object from S3 and return the parsed config dict.
+
+        Runs synchronously; call via ``asyncio.to_thread`` from async code so the boto3
+        network I/O does not block the event loop. Mirrors the storage layout used by
+        the neuro-san server (``reservations/<reservation_id>.json``) so the middleware
+        can read what the server writes without depending on the server's internal
+        storage classes.
+
+        :param bucket: Target S3 bucket name
+        :param reservation_id: Reservation ID whose JSON object should be fetched
+        :return: Parsed JSON content as a dict (matches what ``AgentNetwork.get_config()``
+                would return for the same reservation)
+        """
+        s3 = boto3_client("s3")
+        key: str = f"reservations/{reservation_id}.json"
+        response: dict[str, Any] = s3.get_object(Bucket=bucket, Key=key)
+        body: str = response["Body"].read().decode("utf-8")
+        return json.loads(body)
 
     def _normalize_network_def(self, network_def: dict[str, Any] | list[dict[str, Any]]) -> dict[str, Any]:
         """
