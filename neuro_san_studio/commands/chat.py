@@ -27,11 +27,14 @@ uses a direct (in-process library) connection, so no server needs to be running.
 It can also connect to an already-running neuro-san server via HTTP or HTTPS.
 """
 
+import os
 import sys
 from typing import List
 from typing import Optional
 
 from neuro_san.client.agent_cli import AgentCli
+
+from neuro_san_studio.commands.project_environment import ProjectEnvironment
 
 EXIT_OK = 0
 EXIT_ERROR = 1
@@ -97,6 +100,11 @@ class ChatCommand:  # pylint: disable=too-few-public-methods
 
     def run(self) -> int:
         """Delegate to AgentCli and return a normalized exit code (0 ok, 1 problem)."""
+        # Point neuro-san at this project's agents/coded tools before chatting. A direct
+        # session runs in-process, so without this it falls back to neuro-san's bundled
+        # library manifest and can't find the project's own networks.
+        ProjectEnvironment(os.getcwd()).apply()
+
         saved_argv: List[str] = sys.argv
         try:
             sys.argv = self._build_argv()
