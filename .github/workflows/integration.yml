@@ -21,7 +21,6 @@ jobs:
         export OPENAI_API_VERSION="${{ vars.OPENAI_API_VERSION }}" &&
         export AGENT_TOOL_PATH="coded_tools/" &&
         export AGENT_MANIFEST_FILE="registries/manifest.hocon" &&
-        export AGENT_TEMPORARY_NETWORK_UPDATE_PERIOD_SECONDS=5 &&
         export PYTHONPATH="${PYTHONPATH:+$PYTHONPATH:}." &&
         pytest --capture=no -m "integration"
     secrets:
