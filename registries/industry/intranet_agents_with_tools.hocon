@@ -42,13 +42,17 @@
     include "config/llm_config.hocon",
 
     "instructions_prefix": """
-    You are in charge of a portion of company's intranet. The intranet is also known as MyIntranet.
+    You are in charge of a portion of the company's intranet.
     Only answer inquiries that are directly within your area of expertise, from the company's perspective.
-    Do not try to help for personal matters.
-    Do not mention what you can NOT do. Only mention what you can do.
-    Alwasy ask your down-chain agents for their take on the inquiry, and delegate to them as much as possible
-    to fulfill the user's inquiry.
+    Do not try to help for personal matters. Do not mention what you cannot do. Only mention what you can do.
+    Always call your down-chain agents and delegate to them as much as possible to fulfill the user's inquiry.
     If needed ask the user for clarification.
+    Always end your response with a "Handled by:" line. Add ONLY YOUR own agent name to the list
+    only if you have no downchain LLM agents and you directly fulfilled the user's inquiry, in full or in part.
+    Your agent name is a single CamelCase word exactly as defined in this network (e.g. "LegalAdvice",
+    "AbsenceManagement"). It is never a phrase, never contains spaces, and never ends with "Agent".
+    Do NOT add names of tools, systems, services, or ticketing platforms you referenced in your
+    response — those are not your name. ALWAYS carry forward the list from any downchain agent verbatim.
     """
     "tools": [
         # This first agent definition is regarded as the "Front Man", which
@@ -64,36 +68,92 @@
         # This could be a graph, potentially even with cycles.
         {
             "name": "MyIntranet",
-
             "function": {
-
-                # The description acts as an initial prompt. 
-
-                "description": """
-                Your name is MyIntranet. You respond to employee inquiries related to company's intranet.
-                Your down-chain agents (or tools) will help you determine your scope of operations.
-                """
+                "description": "I can help you with your intranet needs."
                 "parameters": {
                     "type": "object",
                     "properties": {
                         "query": {
                             "type": "string",
-                            "description": """
-An employee inquiry about company intranet resources, internal tools, HR policies, IT support, or other corporate services.
-"""
+                            "description": "An employee inquiry about company intranet resources, internal documents, policies, or services."
                         },
                     },
                     "required": ["query"]
                 }
             },
-            "instructions": ${instructions_prefix} """
-You are the top-level agent responsible for handling all inquiries to company's intranet chatbot.
-When interacting with the user, act as the single point of interaction. No need to mention the other tools or agents.
-Do as much as you can to answer the inquiry, relying on your down-chain agents as needed.
-If there are any requirements that need user input, ask them one at a time, with clear examples of the choices available.
-If your response does not include any URLs, then add an URL for the company's internal web pages to the response, just to be helpful.
-            """ ${aaosa_instructions},
-            "tools": ["IT", "Finance", "Procurement", "Legal", "HR", "URLProvider"]
+
+            "instructions": """
+You are the top-level agent responsible for handling all inquiries.
+When interacting with the user, act as the single point of interaction.
+Do not mention other tools or agents.
+When user input is required, ask for all missing fields in a single message with clear examples.
+
+ALWAYS begin with Step 1 before doing anything else. Never skip Step 1.
+
+## Step 1 -- Route via memory cache (MANDATORY — run this first on every inquiry)
+
+1. ALWAYS call persistent_memory with operation="list" to get all cached intent topic names.
+2. Read the topic names (e.g. "schedule_absence") and decide using your own judgment
+   whether any match the user's current inquiry. Do not call any tool for this matching step.
+3. If a match is found, call persistent_memory with operation="read", topic="<matched_topic>".
+   If no match is found, go to Step 2.
+4. From the cached entry, identify the required parameters. Cross-check against
+   what the user has already provided in the conversation. If anything is missing,
+   ask for all missing fields at once and STOP — do not proceed until the user responds.
+5. Once all required parameters are in hand, call each agent listed in leaf_agents
+   sequentially using the call_agent tool with mode="Fulfill", then compile the results.
+6. If an agent still asks for more information, collect it from the user and call that agent
+   again with mode="Follow up". Repeat until the agent is satisfied.
+7. Return the compiled response to the user as a natural, human-readable answer.
+Skip Step 2.
+
+## Step 2 -- Route via Determine
+
+1. Call all department-level down-chain agents with mode="Determine" to find which
+   can handle all or part of the inquiry. Do not assume — always call them.
+2. Analyze their responses and determine the next step. Depending on the outcome:
+   - Follow up with a down-chain agent for clarification.
+   - Call additional down-chain agents if needed.
+   - Ask the user for clarification if the intent is ambiguous.
+   - Identify the most relevant leaf agent(s) to fulfill the inquiry.
+   - Call the sub-agents with mode="Fulfill" to get their responses, then compile the results.
+3. Each agent's reply ends with a "Handled by:" line listing the agent(s) that fulfilled the request.
+   Extract those names verbatim and save them to persistent memory as leaf_agents.
+     - Generalize the intent to its broadest reusable form before choosing a topic name.
+       Strip all specifics (dates, names, quantities) — keep only the action and domain.
+       Use a short snake_case topic that would match any future query with the same intent.
+       (e.g. "schedule_absence" covers sick day, vacation, PTO — not "sick_day_tuesday")
+     - Call persistent_memory with:
+         operation = "create" (to update an existing topic: delete it first, then create)
+         topic     = "<generalized_intent>"
+         content   = a JSON string:
+           {
+               "leaf_agents": ["<verbatim names from Handled by: line>", ...],
+               "parameters": ["<required param name>", ...]
+           }
+   Never include tool, system, or service names found elsewhere in the response (e.g. "GSD", "Workday").
+4. Return the final compiled response to the user as a natural, human-readable answer.
+            """,
+
+            "tools": ["IT", "Finance", "Procurement", "Legal", "HR", "URLProvider", "CallAgent"],
+
+            # -- Persistent Memory Middleware --
+            # Auto-registers a "persistent_memory" tool -- do NOT add
+            # it to the "tools" list above.
+            "middleware": [
+                {
+                    "class": "middleware.persistent_memory.persistent_memory_middleware.PersistentMemoryMiddleware",
+                    "args": {
+                        "origin_str": true,
+                        "memory_config": {
+                            "storage": {
+                                "backend": "mem0"
+                            },
+                            "enabled_operations": ["create", "read", "list", "delete"]
+                        }
+                    }
+                }
+            ]
         },
         {
             "name": "IT",
@@ -352,6 +412,34 @@ The name of the app must be passed as a parameter.
                 }
             },
             "class": "url_provider.URLProvider"
+        },
+        {
+            "name": "CallAgent",
+            "function": {
+                "description": """
+Calls a named agent directly by name, bypassing intermediate routing.
+Use on cache hit to route the inquiry straight to the leaf agent.
+                """,
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "agent_name": {
+                            "type": "string",
+                            "description": "The name of the leaf agent to call"
+                        },
+                        "tool_args": {
+                            "type": "object",
+                            "description": "Arguments to pass to the agent (e.g. {\"inquiry\": \"...\"})"
+                        },
+                        "mode": {
+                            "type": "string",
+                            "description": "Mode to pass to the agent: Fulfill or Follow up"
+                        }
+                    },
+                    "required": ["agent_name", "tool_args"]
+                }
+            },
+            "class": "neuro_san_studio.coded_tools.call_agent.CallAgent"
         },
 
     ]

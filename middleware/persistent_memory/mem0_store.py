@@ -183,9 +183,9 @@ class Mem0Store(TopicStore):
         """
         memories: list[dict[str, Any]] = await self._fetch_for_namespace(namespace)
         return {
-            m.get("metadata", {}).get("topic", ""): m.get("memory", "")
+            m.get("metadata", {}).get("intent", ""): m.get("memory", "")
             for m in memories
-            if m.get("metadata", {}).get("topic")
+            if m.get("metadata", {}).get("intent")
         }
 
     @override
@@ -231,12 +231,12 @@ class Mem0Store(TopicStore):
             memories: list[dict[str, Any]] = response.get("results", [])
         results: list[dict[str, Any]] = [
             {
-                "topic": m.get("metadata", {}).get("topic", ""),
+                "topic": m.get("metadata", {}).get("intent", ""),
                 "content": m.get("memory", ""),
                 "score": m.get("score", 0.0),
             }
             for m in memories
-            if m.get("metadata", {}).get("topic")
+            if m.get("metadata", {}).get("intent")
         ]
         if post_read_factory is None:
             return results
@@ -260,7 +260,7 @@ class Mem0Store(TopicStore):
         :param existing_id: Memory ID to update, or ``None`` to add.
         """
         client: AsyncMemoryClient = self._client()
-        metadata: dict[str, str] = {"topic": topic}
+        metadata: dict[str, str] = {"intent": topic}
         try:
             if existing_id is not None:
                 await client.update(memory_id=existing_id, text=content, metadata=metadata)
@@ -364,7 +364,7 @@ class Mem0Store(TopicStore):
             )
             raise
         for memory in response.get("results", []):
-            if memory.get("metadata", {}).get("topic") == topic:
+            if memory.get("metadata", {}).get("intent") == topic:
                 return memory
         return None
 
@@ -402,7 +402,7 @@ class Mem0Store(TopicStore):
             {"agent_id": agent_id},
         ]
         if topic is not None:
-            clauses.append({"metadata": {"topic": topic}})
+            clauses.append({"metadata": {"intent": topic}})
         return {"AND": clauses}
 
     @property
