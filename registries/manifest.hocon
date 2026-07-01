@@ -55,9 +55,16 @@
         "serve": true,
         "public": false
     },
-    "agent_network_query_generator.hocon": { 
+    "agent_network_query_generator.hocon": {
         # This is a support network for agent_network_designer
         # We want it served up, but not listed as a public agent network
+        "serve": true,
+        "public": false
+    },
+    "middleware_manager.hocon": {
+        # This is a toggleable support network for agent_network_designer.
+        # Always served so it is available when AGENT_NETWORK_DESIGNER_USE_MIDDLEWARE
+        # is enabled. Not listed as a public agent network.
         "serve": true,
         "public": false
     },
