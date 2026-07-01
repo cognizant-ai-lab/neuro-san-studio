@@ -24,6 +24,7 @@ from pytest import MonkeyPatch
 from neuro_san_studio.commands import cli as cli_module
 from neuro_san_studio.commands import import_networks as import_networks_module
 from neuro_san_studio.commands import init as init_module
+from neuro_san_studio.commands import internalize_agents as internalize_agents_module
 from neuro_san_studio.commands.cli import main
 
 
@@ -109,6 +110,77 @@ class TestMainEntryPoint:
         monkeypatch.setattr(sys, "argv", ["neuro-san-studio", "import", "a.hocon", "b.zip", "--force"])
         main()
         assert captured == [{"networks_arg": ["a.hocon", "b.zip"], "force": True}]
+
+    def test_main_with_internalize_agents_passes_args_through(self, monkeypatch: MonkeyPatch) -> None:
+        """`internalize-agents <in> -o <out> --search-paths <p>` forwards all three kwargs."""
+        captured: list[dict] = []
+
+        class FakeInternalize:  # pylint: disable=too-few-public-methods
+            """Stand-in for InternalizeAgentsCommand that records constructor kwargs."""
+
+            def __init__(
+                self,
+                input_path: str,
+                output_path: str,
+                search_paths: str | None = None,
+            ) -> None:
+                captured.append(
+                    {
+                        "input_path": input_path,
+                        "output_path": output_path,
+                        "search_paths": search_paths,
+                    }
+                )
+
+            def run(self) -> int:
+                """Return success so main() does not raise."""
+                return 0
+
+        monkeypatch.setattr(internalize_agents_module, "InternalizeAgentsCommand", FakeInternalize)
+        monkeypatch.setattr(
+            sys,
+            "argv",
+            [
+                "neuro-san-studio",
+                "internalize-agents",
+                "in.hocon",
+                "--output",
+                "out.hocon",
+                "--search-paths",
+                "registries:other",
+            ],
+        )
+        main()
+        assert captured == [
+            {
+                "input_path": "in.hocon",
+                "output_path": "out.hocon",
+                "search_paths": "registries:other",
+            }
+        ]
+
+    def test_main_with_internalize_agents_propagates_exit_code(self, monkeypatch: MonkeyPatch) -> None:
+        """A non-zero return from InternalizeAgentsCommand.run() should reach SystemExit."""
+
+        class FakeInternalize:  # pylint: disable=too-few-public-methods
+            """Stand-in whose run() returns a failure exit code."""
+
+            def __init__(self, **_kwargs) -> None:
+                """Accept any kwargs; we only care about the exit code."""
+
+            def run(self) -> int:
+                """Return a non-zero exit code to verify it propagates through main()."""
+                return 1
+
+        monkeypatch.setattr(internalize_agents_module, "InternalizeAgentsCommand", FakeInternalize)
+        monkeypatch.setattr(
+            sys,
+            "argv",
+            ["neuro-san-studio", "internalize-agents", "in.hocon", "-o", "out.hocon"],
+        )
+        with pytest.raises(SystemExit) as exc_info:
+            main()
+        assert exc_info.value.code == 1
 
     def test_main_propagates_runner_exceptions(self, monkeypatch: MonkeyPatch) -> None:
         """Exceptions from NeuroSanRunner().run() should bubble up to the caller."""

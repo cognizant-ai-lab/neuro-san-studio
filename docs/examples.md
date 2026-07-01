@@ -18,6 +18,7 @@ Here are a few examples ordered by level of complexity.
     - [Music Nerd Pro Sly](#music-nerd-pro-sly)
     - [Music Nerd Pro Sly Local](#music-nerd-pro-sly-local)
     - [Music Nerd LLM Fallbacks](#music-nerd-llm-fallbacks)
+    - [Wolfram MCP](#wolfram-mcp)
     - [Book Recommender with Multiple LLM Configs](#book-recommender-with-multiple-llm-configs)
     - [Coffee Finder](#coffee-finder)
     - [Coffee Finder Advanced](#coffee-finder-advanced)
@@ -142,6 +143,16 @@ a **tool-calling** LLM that runs locally with Ollama.
 its `llm_config` to automatically try another LLM config if the first one fails.
 
 **Tags:** `llm_config` `llm_fallbacks`
+
+### Wolfram MCP
+
+[Wolfram MCP](examples/basic/wolfram_mcp.md) is a single-agent network that connects to the
+Wolfram Cloud MCP server, giving the agent access to Wolfram|Alpha's computational knowledge
+engine and the Wolfram Language for symbolic math, scientific computation, unit conversions,
+and curated factual data. It is the simplest example of wiring an agent to a remote MCP
+server via streamable HTTP.
+
+**Tags:** `basic` `example` `MCP` `Wolfram`
 
 ### Book Recommender with Multiple LLM Configs
 

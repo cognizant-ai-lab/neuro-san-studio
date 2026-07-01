@@ -324,6 +324,49 @@ class NeuroSanStudioCli:  # pylint: disable=too-few-public-methods
             ).run()
         )
 
+    @staticmethod
+    @app.command(
+        "internalize-agents",
+        help="Inline external-agent references in a HOCON file into one self-contained file.",
+    )
+    def _internalize_agents_command(
+        input_path: str = typer.Argument(
+            ...,
+            help="Path to the parent HOCON file containing /-prefixed external-agent references.",
+        ),
+        output_path: str = typer.Option(
+            ...,
+            "--output",
+            "-o",
+            help=(
+                "Path to write the self-contained HOCON output. The output is fully resolved "
+                "(no includes, no /-prefixed external refs) and formatted as HOCON (JSON-like with "
+                "quoted keys/commas; multi-line strings use HOCON triple quotes)."
+            ),
+        ),
+        search_paths: Optional[str] = typer.Option(
+            None,
+            "--search-paths",
+            help=(
+                "Colon-separated directories to look up external HOCON files. Each `/<ref>` "
+                "is joined as `<search_path>/<ref>.hocon`, so refs containing `/` (e.g. "
+                "`/industry/banking_ops`) reach subdirectories naturally without listing "
+                "them here. Defaults to 'registries'."
+            ),
+        ),
+    ) -> None:
+        """Run the internalize-agents command and propagate its exit code."""
+        # pylint: disable-next=import-outside-toplevel
+        from neuro_san_studio.commands.internalize_agents import InternalizeAgentsCommand
+
+        raise typer.Exit(
+            code=InternalizeAgentsCommand(
+                input_path=input_path,
+                output_path=output_path,
+                search_paths=search_paths,
+            ).run()
+        )
+
 
 def main() -> None:
     """Entry point for the `neuro-san-studio` console script."""

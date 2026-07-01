@@ -24,6 +24,18 @@
 #     },
 
 {
+    # Wolfram Cloud MCP — connects to Wolfram's computational engine and Wolfram|Alpha
+    # knowledgebase for accurate symbolic math, scientific computation, and curated factual
+    # data (no hallucinated results). Free tier; no API key required.
+    # Docs: https://www.wolfram.com/artificial-intelligence/mcp/cloud/
+    "https://agenttools.wolfram.com/mcp": {
+        "tools": ["WolframContext", "WolframLanguageEvaluator", "WolframAlpha"]
+    },
+
+    # DeepWiki MCP — AI-powered Q&A and documentation access for public GitHub repositories.
+    # Useful for exploring open-source projects without cloning or reading source by hand.
+    # Free, no authentication required. Private repos require Devin's paid tier.
+    # Docs: https://docs.devin.ai/work-with-devin/deepwiki-mcp
     "https://mcp.deepwiki.com/mcp": {
         "tools": ["read_wiki_structure", "ask_question"]
     },
