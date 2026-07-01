@@ -149,3 +149,14 @@ class TestChatCommandRun(TestCase):
             mock_cli.return_value.main.side_effect = RuntimeError("boom")
             ChatCommand("music_nerd").run()
         assert sys.argv == before
+
+    def test_applies_project_environment_before_chat(self):
+        """run() sets up the project env (manifest, tool path, etc.) before delegating.
+
+        A direct chat is in-process, so without this neuro-san falls back to its bundled
+        library manifest and cannot find the project's own agents.
+        """
+        with patch(f"{_MODULE}.AgentCli") as mock_cli, patch(f"{_MODULE}.ProjectEnvironment") as mock_env:
+            mock_cli.return_value.main.return_value = None
+            ChatCommand("music_nerd").run()
+        mock_env.return_value.apply.assert_called_once()
