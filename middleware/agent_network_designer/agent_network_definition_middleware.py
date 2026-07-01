@@ -305,9 +305,7 @@ class AgentNetworkDefinitionMiddleware(AgentMiddleware):
                 error_message = f"Error: Failed to retrieve reservation '{reservation_id}' from S3. {client_error}"
             self.logger.error(error_message)
         except JSONDecodeError as json_error:
-            error_message = (
-                f"Error: Reservation '{reservation_id}' in S3 contains invalid JSON. {json_error}"
-            )
+            error_message = f"Error: Reservation '{reservation_id}' in S3 contains invalid JSON. {json_error}"
             self.logger.error(error_message)
 
         if not config:
