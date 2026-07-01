@@ -307,6 +307,9 @@ class AgentNetworkDefinitionMiddleware(AgentMiddleware):
         except JSONDecodeError as json_error:
             error_message = f"Error: Reservation '{reservation_id}' in S3 contains invalid JSON. {json_error}"
             self.logger.error(error_message)
+        except ValueError as value_error:
+            error_message = f"Error: Reservation '{reservation_id}' in S3 has unexpected shape. {value_error}"
+            self.logger.error(error_message)
 
         if not config:
             self.error_message = error_message
@@ -341,8 +344,15 @@ class AgentNetworkDefinitionMiddleware(AgentMiddleware):
         s3 = boto3_client("s3")
         key: str = f"reservations/{reservation_id}.json"
         response: dict[str, Any] = s3.get_object(Bucket=bucket, Key=key)
-        body: str = response["Body"].read().decode("utf-8")
-        return json.loads(body)
+        stream = response["Body"]
+        try:
+            body: bytes = stream.read()
+        finally:
+            stream.close()
+        parsed: Any = json.loads(body)
+        if not isinstance(parsed, dict):
+            raise ValueError(f"Reservation JSON must decode to an object, got {type(parsed).__name__}")
+        return parsed
 
     def _normalize_network_def(self, network_def: dict[str, Any] | list[dict[str, Any]]) -> dict[str, Any]:
         """
