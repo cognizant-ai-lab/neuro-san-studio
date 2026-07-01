@@ -147,7 +147,7 @@ class TestToolboxApply:
         assert os.environ["AGENT_TOOLBOX_INFO_FILE"] == str(toolbox / "toolbox_info.hocon")
 
 
-class TestEnvFile:
+class TestEnvFile:  # pylint: disable=too-few-public-methods
     """apply() loads a project-root .env so API keys are available."""
 
     def test_loads_dotenv(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
