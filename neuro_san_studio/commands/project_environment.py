@@ -21,8 +21,10 @@ from dotenv import load_dotenv
 
 from neuro_san_studio import mcp as _mcp_pkg
 
-# The mcp_info.hocon shipped inside the neuro_san_studio package. Resolving via the
-# imported package keeps it correct both in-repo and after `pip install`.
+# Path to the mcp_info.hocon that ships inside the neuro_san_studio package.
+# Resolving via the imported package's __file__ works both in-repo (where
+# neuro_san_studio/ is just a folder on sys.path) and after `pip install`
+# (where it lives in site-packages), on every supported platform.
 _BUNDLED_MCP_INFO_FILE = Path(_mcp_pkg.__file__).parent / "mcp_info.hocon"
 
 
