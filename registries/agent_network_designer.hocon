@@ -252,6 +252,39 @@ Operational notes:
                         "reservationist": true,
                         "sly_data": true,
                     }
+                },
+                {
+                    # See https://docs.langchain.com/oss/python/langchain/middleware/built-in#pii-detection
+                    # for details on the specific PII implementation.
+                    # Redacts common API key formats so secrets never reach the LLM, the client,
+                    # or downstream tools. Applied to inputs, outputs, and tool results — the model
+                    # itself should not see a leaked key either (otherwise it could echo, log, or
+                    # summarize it back later).
+                    #
+                    # The `detector` regex is an alternation of provider-specific patterns.
+                    # Prefix-anchored patterns use `+` (no length floor) — the prefix itself is
+                    # a strong signal and we'd rather redact a suspiciously-short match than
+                    # miss a real leak (e.g. `sk-ant-ajdslkfj` should still be caught).
+                    #   sk-ant-[A-Za-z0-9_-]+              Anthropic API keys        (e.g. sk-ant-api03-...)
+                    #   sk-proj-[A-Za-z0-9_-]+             OpenAI project keys       (e.g. sk-proj-...)
+                    #   sk-[A-Za-z0-9_-]+                  OpenAI classic keys       (e.g. sk-...)
+                    #   AKIA[0-9A-Z]{16}                   AWS access key IDs        (fixed length; e.g. AKIAIOSFODNN7EXAMPLE)
+                    #   AIza[0-9A-Za-z_-]{35}              Google API keys           (fixed length; e.g. AIzaSy...)
+                    #   gh[pousr]_[A-Za-z0-9]+             GitHub tokens             (ghp_, gho_, ghu_, ghs_, ghr_)
+                    #   xox[baprs]-[A-Za-z0-9-]+           Slack tokens              (xoxb-, xoxa-, xoxp-, xoxr-, xoxs-)
+                    #   glpat-[A-Za-z0-9_-]+               GitLab personal access tokens
+                    #   sk_(?:live|test)_[A-Za-z0-9]+      Stripe secret keys        (sk_live_..., sk_test_...)
+                    #   Bearer\\s+[A-Za-z0-9._~+/=-]{20,}  Bearer tokens in Authorization-style headers.
+                    #                                      Kept at 20+ chars because 'Bearer x' is common in prose.
+                    "class": "langchain.agents.middleware.PIIMiddleware",
+                    "args": {
+                        "pii_type": "api_key",
+                        "detector": "sk-ant-[A-Za-z0-9_-]+|sk-proj-[A-Za-z0-9_-]+|sk-[A-Za-z0-9_-]+|AKIA[0-9A-Z]{16}|AIza[0-9A-Za-z_-]{35}|gh[pousr]_[A-Za-z0-9]+|xox[baprs]-[A-Za-z0-9-]+|glpat-[A-Za-z0-9_-]+|sk_(?:live|test)_[A-Za-z0-9]+|Bearer\\s+[A-Za-z0-9._~+/=-]{20,}",
+                        "strategy": "redact",
+                        "apply_to_input": true,
+                        "apply_to_output": true,
+                        "apply_to_tool_results": true
+                    }
                 }
             ]
         },
