@@ -15,6 +15,10 @@ http://otherdomain.com/
 file:///path/to/
 http://arxiv.org/abs/$
 https://test
+http://other-server
+https://other.com
+http://host:
+\.example\.com
 
 # Sites with network-level blocks (not resolvable via --accept)
 https://www.united.com/
