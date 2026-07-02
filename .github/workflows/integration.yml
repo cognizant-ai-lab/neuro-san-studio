@@ -10,8 +10,8 @@ permissions:
 
 jobs:
   test:
-    # cognizant-ai-lab/build-common 1.0.7
-    uses: cognizant-ai-lab/build-common/.github/workflows/_python-quality-gate.yml@3ead7f681f92044709ffc3a533f41c3f48230cfd
+    # cognizant-ai-lab/build-common 1.0.8
+    uses: cognizant-ai-lab/build-common/.github/workflows/_python-quality-gate.yml@30321843331e00848309b34e08b839e1f6490ba2
     with:
       python-version: '3.13'
       # No lint steps in the original workflow
