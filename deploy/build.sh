@@ -65,6 +65,7 @@ function build_main() {
         -t neuro-san/${SERVICE_TAG}:${SERVICE_VERSION} \
         --platform ${TARGET_PLATFORM} \
         --build-arg="NEURO_SAN_VERSION=${USER}-$(date +'%Y-%m-%d-%H-%M')" \
+        --build-arg="SERVICE_VERSION=${SERVICE_VERSION}" \
         -f "${DOCKERFILE}" \
         ${CACHE_OR_NO_CACHE} \
         .
