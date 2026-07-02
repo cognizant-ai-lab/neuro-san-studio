@@ -19,6 +19,7 @@ from typing import Any
 
 from neuro_san.interfaces.coded_tool import CodedTool
 
+from coded_tools.agent_network_editor.agent_name_guard import AgentNameGuard
 from coded_tools.agent_network_editor.constants import AGENT_NETWORK_DEFINITION
 from coded_tools.agent_network_editor.progress_handler import ProgressHandler
 
@@ -35,6 +36,7 @@ class UpdateAgent(CodedTool):
     - a list of down-chain agents (agents reporting to it)
     """
 
+    # pylint: disable=too-many-return-statements
     async def async_invoke(self, args: dict[str, Any], sly_data: dict[str, Any]) -> dict[str, Any] | str:
         """
          :param args: An argument dictionary whose keys are the parameters
@@ -72,6 +74,13 @@ class UpdateAgent(CodedTool):
         the_agent_name: str = args.get("agent_name")
         if not the_agent_name:
             return "Error: No agent_name provided."
+        # Guard the target node key only. An external reference (e.g. a malformed input
+        # network that already contains a "/subnetwork" node) must not receive tools.
+        # new_down_chains is intentionally NOT guarded: external references are valid
+        # there, since that is how a subnetwork is referenced.
+        name_error: str | None = AgentNameGuard.agent_name_error(the_agent_name)
+        if name_error:
+            return name_error
         if the_agent_name not in network_def:
             return "Error: agent_name not in the agent network"
 
