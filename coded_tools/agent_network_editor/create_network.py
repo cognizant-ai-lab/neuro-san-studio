@@ -73,12 +73,22 @@ class CreateNetwork(CodedTool):
         agent_network_name: str = args.get("agent_network_name")
         if not agent_network_name:
             return "Error: No agent_network_name provided."
+        # Type-check before len()/iteration: a non-list (str/dict) or wrong element types
+        # would otherwise be iterated per-character/per-key and build a bogus network.
         agent_names: list[str] = args.get("agent_names")
-        if not agent_names:
-            return "Error: No agent_names provided."
+        if (
+            not agent_names
+            or not isinstance(agent_names, list)
+            or not all(isinstance(name, str) for name in agent_names)
+        ):
+            return "Error: agent_names must be a non-empty list of strings."
         is_tool_list: list[bool] = args.get("is_tool_list")
-        if not is_tool_list:
-            return "Error: No is_tool_list provided."
+        if (
+            not is_tool_list
+            or not isinstance(is_tool_list, list)
+            or not all(isinstance(flag, bool) for flag in is_tool_list)
+        ):
+            return "Error: is_tool_list must be a non-empty list of booleans."
         if len(agent_names) != len(is_tool_list):
             return "Error: The length of agent_names and is_tool_list must be the same."
         # Validate all node names before mutating sly_data, so an invalid name doesn't
@@ -88,7 +98,7 @@ class CreateNetwork(CodedTool):
         # valid tool names.
         name_errors: list[str] = []
         for agent_name in agent_names:
-            name_error: str = AgentNameGuard.agent_name_error(agent_name)
+            name_error: str | None = AgentNameGuard.agent_name_error(agent_name)
             if name_error:
                 name_errors.append(name_error)
         if name_errors:

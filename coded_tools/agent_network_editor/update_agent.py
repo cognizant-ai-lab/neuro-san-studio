@@ -78,7 +78,7 @@ class UpdateAgent(CodedTool):
         # network that already contains a "/subnetwork" node) must not receive tools.
         # new_down_chains is intentionally NOT guarded: external references are valid
         # there, since that is how a subnetwork is referenced.
-        name_error: str = AgentNameGuard.agent_name_error(the_agent_name)
+        name_error: str | None = AgentNameGuard.agent_name_error(the_agent_name)
         if name_error:
             return name_error
         if the_agent_name not in network_def:

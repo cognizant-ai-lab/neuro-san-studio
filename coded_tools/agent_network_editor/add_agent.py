@@ -74,7 +74,7 @@ class AddAgent(CodedTool):
             return "Error: No agent_name provided."
         # External references must live inside a tools list, not as a node, and local
         # names must be valid tool names (letters/digits/underscore/hyphen only).
-        name_error: str = AgentNameGuard.agent_name_error(the_agent_name)
+        name_error: str | None = AgentNameGuard.agent_name_error(the_agent_name)
         if name_error:
             return name_error
         is_tool: bool = args.get("is_tool")
