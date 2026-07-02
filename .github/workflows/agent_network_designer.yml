@@ -40,7 +40,6 @@ jobs:
         source venv/bin/activate
         export AGENT_TOOL_PATH="coded_tools/"
         export AGENT_MANIFEST_FILE="registries/manifest.hocon"
-        export AGENT_TEMPORARY_NETWORK_UPDATE_PERIOD_SECONDS=5
         export PYTHONPATH=".:${PYTHONPATH:-}"
         build_scripts/server_start.sh
         if ! pytest --capture=no --verbose \
