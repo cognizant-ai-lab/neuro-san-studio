@@ -39,6 +39,7 @@ if sys.platform == "win32":
 from neuro_san.service.main_loop.server_main_loop import ServerMainLoop  # noqa: E402
 
 from neuro_san_studio.plugins.plugin_loader import PluginLoader  # noqa: E402
+from neuro_san_studio.utils.version import studio_version  # noqa: E402
 
 
 class NeuroSanServerWrapper:  # pylint: disable=too-few-public-methods
@@ -62,7 +63,6 @@ class NeuroSanServerWrapper:  # pylint: disable=too-few-public-methods
             self._logger.info("Loaded plugin: %s", plugin)
 
         # Expose the studio version via AGENT_VERSION_LIBS env var so the health endpoint reports it
-        from neuro_san_studio.utils.version import studio_version
         version = studio_version()
         existing_libs = os.environ.get("AGENT_VERSION_LIBS", "")
         libs_list = []
