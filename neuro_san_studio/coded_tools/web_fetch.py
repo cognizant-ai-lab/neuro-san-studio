@@ -17,7 +17,6 @@
 from asyncio import AbstractEventLoop
 from asyncio import TimeoutError as AsyncTimeoutError
 from asyncio import get_running_loop
-
 from datetime import datetime
 from datetime import timezone
 from http import HTTPStatus
@@ -26,8 +25,8 @@ from ipaddress import IPv6Address
 from ipaddress import ip_address
 from logging import Logger
 from logging import getLogger
-from socket import gaierror
 from socket import SOCK_STREAM
+from socket import gaierror
 from typing import Any
 from urllib.parse import ParseResult
 from urllib.parse import urlparse
