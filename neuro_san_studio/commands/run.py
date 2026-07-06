@@ -303,7 +303,9 @@ class NeuroSanRunner:
             if self.is_windows:
                 self.server_process.terminate()
             else:
-                os.killpg(os.getpgid(self.server_process.pid), signal.SIGTERM)
+                killpg = getattr(os, "killpg")
+                getpgid = getattr(os, "getpgid")
+                killpg(getpgid(self.server_process.pid), signal.SIGTERM)
             # Wait for the server to finish cleanup (e.g. flushing Langfuse traces)
             self.server_process.wait(timeout=10)
 
@@ -312,7 +314,10 @@ class NeuroSanRunner:
             if self.is_windows:
                 self.nsflow_process.terminate()
             else:
-                os.killpg(os.getpgid(self.nsflow_process.pid), signal.SIGKILL)
+                killpg = getattr(os, "killpg")
+                getpgid = getattr(os, "getpgid")
+                sigkill = getattr(signal, "SIGKILL", signal.SIGTERM)
+                killpg(getpgid(self.nsflow_process.pid), sigkill)
 
         for plugin in self.plugins:
             self._logger.info("Running cleanup for plugin: %s", plugin)
@@ -468,10 +473,7 @@ class NeuroSanRunner:
         # Set up signal handling for termination
         signal.signal(signal.SIGINT, self.signal_handler)  # Handle Ctrl+C
         if self.is_windows:
-            signal.signal(
-                signal.SIGBREAK,  # pylint: disable=no-member
-                self.signal_handler,
-            )  # Handle Ctrl+Break on Windows
+            signal.signal(signal.SIGBREAK, self.signal_handler)  # Handle Ctrl+Break on Windows
         else:
             signal.signal(signal.SIGTERM, self.signal_handler)  # Handle kill command (not available on Windows)
 

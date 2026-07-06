@@ -15,6 +15,7 @@
 # END COPYRIGHT
 
 import logging
+import os
 import subprocess
 from importlib.metadata import PackageNotFoundError
 from importlib.metadata import version as library_version
@@ -47,8 +48,6 @@ def resolve_version() -> Tuple[str, str]:
     """Resolve ``(version, source)``, never raising: env var, installed metadata, then scm, then git sha,
     then unknown.
     """
-    import os
-
     env_version = os.environ.get("NEURO_SAN_STUDIO_VERSION")
     if env_version and env_version != "unknown":
         return env_version, SOURCE_ENV
