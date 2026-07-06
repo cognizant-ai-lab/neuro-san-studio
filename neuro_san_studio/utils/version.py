@@ -44,7 +44,9 @@ def studio_version() -> str:
 
 
 def resolve_version() -> Tuple[str, str]:
-    """Resolve ``(version, source)``, never raising: env var, installed metadata, then scm, then git sha, then unknown."""
+    """Resolve ``(version, source)``, never raising: env var, installed metadata, then scm, then git sha,
+    then unknown.
+    """
     import os
 
     env_version = os.environ.get("NEURO_SAN_STUDIO_VERSION")
