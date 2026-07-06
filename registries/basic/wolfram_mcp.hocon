@@ -30,9 +30,7 @@
             "What is the population and GDP of Japan compared to Germany?",
         ]
     },
-    "llm_config": {
-        "model_name": "gpt-5.2"
-    },
+    include "config/llm_config.hocon",
     "tools": [
         # These tool definitions do not have to be in any particular order
         # How they are linked and call each other is defined within their
