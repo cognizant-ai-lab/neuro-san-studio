@@ -216,20 +216,23 @@ class WebFetch(CodedTool):
 
             ip_ok: bool = False
             for info in addr_infos:
+                # Loop through all IP addresses resolved for the hostname
                 ip_string: str = info[4][0]
                 try:
                     addr = ip_address(ip_string)
                 except ValueError:
+                    # If we can't get an IP address from the string, try the next
                     continue
 
                 if addr is None or not addr.is_global:
+                    # We only want globally routable IP addresses (not local)
                     continue
 
                 ip_ok = True
                 break
 
             if not ip_ok:
-                raise ValueError(f"url_not_allowed: Host '{hostname}' does not resolve to an IP address.")
+                raise ValueError(f"url_not_allowed: Host '{hostname}' does not resolve to a valid IP address.")
             return
 
         if not addr.is_global:
