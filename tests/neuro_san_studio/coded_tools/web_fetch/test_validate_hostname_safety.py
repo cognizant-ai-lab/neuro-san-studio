@@ -14,8 +14,9 @@
 #
 # END COPYRIGHT
 
-import pytest
 from unittest import TestCase
+
+import pytest
 
 from neuro_san_studio.coded_tools.web_fetch import WebFetch
 
