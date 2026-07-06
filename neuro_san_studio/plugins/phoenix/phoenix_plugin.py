@@ -396,10 +396,7 @@ class PhoenixPlugin(BasePlugin):
             if self.is_windows:
                 self.phoenix_process.terminate()
             else:
-                killpg = getattr(os, "killpg")
-                getpgid = getattr(os, "getpgid")
-                sigkill = getattr(signal, "SIGKILL", signal.SIGTERM)
-                killpg(getpgid(self.phoenix_process.pid), sigkill)
+                os.killpg(os.getpgid(self.phoenix_process.pid), signal.SIGKILL)
 
     def pre_server_start_action(self):
         """Start Phoenix server if enabled."""
