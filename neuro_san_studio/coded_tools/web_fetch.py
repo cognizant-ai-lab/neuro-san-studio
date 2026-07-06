@@ -14,7 +14,10 @@
 #
 # END COPYRIGHT
 
-import asyncio
+from asyncio import AbstractEventLoop
+from asyncio import TimeoutError as AsyncTimeoutError
+from asyncio import get_running_loop
+
 from datetime import datetime
 from datetime import timezone
 from http import HTTPStatus
@@ -23,6 +26,8 @@ from ipaddress import IPv6Address
 from ipaddress import ip_address
 from logging import Logger
 from logging import getLogger
+from socket import gaierror
+from socket import SOCK_STREAM
 from typing import Any
 from urllib.parse import ParseResult
 from urllib.parse import urlparse
@@ -104,7 +109,7 @@ class WebFetch(CodedTool):
         :raises aiohttp.ClientResponseError: url_not_accessible / too_many_requests (non-2xx response).
         :raises aiohttp.ClientError: url_not_accessible when PDF or text fetch fails.
         """
-        url: str = self._validate_url(args)
+        url: str = await self._validate_url(args)
         max_chars: int = self._validate_max_content_chars(args)
 
         logger: Logger = getLogger(self.__class__.__name__)
@@ -141,7 +146,7 @@ class WebFetch(CodedTool):
             "retrieved_at": retrieved_at,
         }
 
-    def _validate_url(self, args: dict[str, Any]) -> str:
+    async def _validate_url(self, args: dict[str, Any]) -> str:
         """Validate URL format, length, and domain rules. Returns the cleaned URL."""
         url_value: Any = args.get("url", "")
         if not isinstance(url_value, str):
@@ -167,7 +172,7 @@ class WebFetch(CodedTool):
         # but not "badexample.com".
         hostname: str = raw_hostname.lower()
 
-        self._validate_hostname_safety(hostname)
+        await self._validate_hostname_safety(hostname)
 
         allowed_domains: list[str] = self._validate_domain_list(args.get("allowed_domains"), "allowed_domains")
         if allowed_domains and not any(
@@ -183,7 +188,7 @@ class WebFetch(CodedTool):
 
         return url
 
-    def _validate_hostname_safety(self, hostname: str) -> None:
+    async def _validate_hostname_safety(self, hostname: str) -> None:
         """Reject IP literals in private/loopback/link-local/multicast/reserved ranges and localhost.
 
         Note: non-IP hostnames are not DNS-resolved here; use allowed_domains for stricter control.
@@ -191,10 +196,41 @@ class WebFetch(CodedTool):
         if hostname == "localhost" or hostname.endswith(".localhost"):
             raise ValueError(f"url_not_allowed: Host '{hostname}' targets a loopback address.")
 
+        addr: IPv4Address | IPv6Address = None
         try:
-            addr: IPv4Address | IPv6Address = ip_address(hostname)
+            addr = ip_address(hostname)
         except ValueError:
-            # Not an IP literal; DNS-based checks are out of scope
+            # Not an IP literal;
+            # Try to resolve the hostname to an IP address
+            loop: AbstractEventLoop = get_running_loop()
+
+            # loop.getaddrinfo works like socket.getaddrinfo but is non-blocking
+            # SOCK_STREAM specifies TCP stream configuration
+            addr_infos: list[tuple[str, int, int, str, tuple[str, int]]] = []
+            try:
+                addr_infos = await loop.getaddrinfo(hostname, None, type=SOCK_STREAM)
+            except gaierror as exc:
+                raise ValueError(f"url_not_allowed: Host '{hostname}' could not be resolved.") from exc
+
+            if not addr_infos:
+                raise ValueError(f"url_not_allowed: Host '{hostname}' does not resolve to an IP address.")
+
+            ip_ok: bool = False
+            for info in addr_infos:
+                ip_string: str = info[4][0]
+                try:
+                    addr = ip_address(ip_string)
+                except ValueError:
+                    continue
+
+                if addr is None or not addr.is_global:
+                    continue
+
+                ip_ok = True
+                break
+
+            if not ip_ok:
+                raise ValueError(f"url_not_allowed: Host '{hostname}' does not resolve to an IP address.")
             return
 
         if not addr.is_global:
@@ -276,7 +312,7 @@ class WebFetch(CodedTool):
                 message=f"{prefix}: HTTP {exc.status} for '{url}'.",
                 headers=exc.headers,
             ) from exc
-        except (ClientError, asyncio.TimeoutError) as exc:
+        except (ClientError, AsyncTimeoutError) as exc:
             raise ClientError(f"url_not_accessible: Could not reach '{url}': {exc}") from exc
 
     def _check_content_length(self, content_length_header: str | None, url: str) -> None:
@@ -325,7 +361,7 @@ class WebFetch(CodedTool):
                 message=f"{prefix}: HTTP {exc.status} for '{url}'.",
                 headers=exc.headers,
             ) from exc
-        except (ClientError, asyncio.TimeoutError) as exc:
+        except (ClientError, AsyncTimeoutError) as exc:
             raise ClientError(f"url_not_accessible: Failed to fetch '{url}': {exc}") from exc
 
         return self._parse_raw_text(raw_content)
