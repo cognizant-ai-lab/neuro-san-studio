@@ -172,13 +172,14 @@ ENV PYTHONPATH="${APP_SOURCE}"
 
 # Where to find the tool registry manifest file which lists all the agent hocon
 # files to serve up from this server instance.  To specify multiple manifest files,
-# simply use a space-separated list of manifest files.  Manifest dictionaries will
-# effectively be merged, where content coming from manifests later in the list
-# have precedence.
-# This particular Dockerfile is put together to support a server that hosts multiple users
+# simply use a delimited list of manifest files approriate to the OS
+# (delimiter is ':' on linux, ';' on Windows).  Manifest dictionaries will then effectively
+# be merged, where content coming from manifests later in the list have precedence.
+#
+# This particular Dockerfile is put together to support a linux server that hosts multiple users
 # and so we use the multiple manifest file aspect of the neuro-san server to turn off some networks
 # that are not appropriate for such a deployment. See manifest_multiuser_overlay.hocon for more info.
-ENV AGENT_MANIFEST_FILE="${APP_SOURCE}/registries/manifest.hocon ${APP_SOURCE}/registries/manifest_multiuser_overlay.hocon"
+ENV AGENT_MANIFEST_FILE="${APP_SOURCE}/registries/manifest.hocon:${APP_SOURCE}/registries/manifest_multiuser_overlay.hocon"
 
 # An llm_info hocon file with user-provided llm descriptions that are to be used
 # in addition to the neuro-san defaults.
