@@ -213,7 +213,9 @@ class WebFetch(CodedTool):
                 raise ValueError(f"url_not_allowed: Host '{hostname}' could not be resolved.") from exc
 
             if not addr_infos:
-                raise ValueError(f"url_not_allowed: Host '{hostname}' doesn't resolve to an IP address.") from value_exc
+                raise ValueError(
+                    f"url_not_allowed: Host '{hostname}' doesn't resolve to an IP address."
+                ) from value_exc
 
             ip_ok: bool = False
             ip_string: str = None
@@ -234,7 +236,9 @@ class WebFetch(CodedTool):
                 break
 
             if not ip_ok or not ip_string:
-                raise ValueError(f"url_not_allowed: Host '{hostname}' doesn't resolve to a valid IP.") from value_exc
+                raise ValueError(
+                    f"url_not_allowed: Host '{hostname}' doesn't resolve to a valid IP address."
+                ) from value_exc
 
             return ip_string
 
