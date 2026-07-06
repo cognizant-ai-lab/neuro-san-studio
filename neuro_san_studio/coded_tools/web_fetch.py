@@ -171,7 +171,7 @@ class WebFetch(CodedTool):
         # but not "badexample.com".
         hostname: str = raw_hostname.lower()
 
-        await self._validate_hostname_safety(hostname)
+        hostname = await self._validate_hostname_safety(hostname)
 
         allowed_domains: list[str] = self._validate_domain_list(args.get("allowed_domains"), "allowed_domains")
         if allowed_domains and not any(
@@ -187,10 +187,11 @@ class WebFetch(CodedTool):
 
         return url
 
-    async def _validate_hostname_safety(self, hostname: str) -> None:
+    async def _validate_hostname_safety(self, hostname: str) -> str:
         """Reject IP literals in private/loopback/link-local/multicast/reserved ranges and localhost.
 
         Note: non-IP hostnames are not DNS-resolved here; use allowed_domains for stricter control.
+        :return: A safe hostname to use or an exception if the hostname is unsafe.
         """
         if hostname == "localhost" or hostname.endswith(".localhost"):
             raise ValueError(f"url_not_allowed: Host '{hostname}' targets a loopback address.")
@@ -215,9 +216,10 @@ class WebFetch(CodedTool):
                 raise ValueError(f"url_not_allowed: Host '{hostname}' does not resolve to an IP address.")
 
             ip_ok: bool = False
+            ip_string: str = None
             for info in addr_infos:
                 # Loop through all IP addresses resolved for the hostname
-                ip_string: str = info[4][0]
+                ip_string = info[4][0]
                 try:
                     addr = ip_address(ip_string)
                 except ValueError:
@@ -231,12 +233,15 @@ class WebFetch(CodedTool):
                 ip_ok = True
                 break
 
-            if not ip_ok:
+            if not ip_ok or not ip_string:
                 raise ValueError(f"url_not_allowed: Host '{hostname}' does not resolve to a valid IP address.")
-            return
+
+            return ip_string
 
         if not addr.is_global:
             raise ValueError(f"url_not_allowed: IP address '{hostname}' is not a globally routable address.")
+
+        return hostname
 
     def _validate_domain_list(self, value: Any, param_name: str) -> list[str]:
         """Coerce and validate a domain list parameter. Accepts None, list[str], or a single str."""
