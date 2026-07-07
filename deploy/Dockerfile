@@ -292,9 +292,11 @@ ENV AGENT_HTTP_IDLE_CONNECTIONS_TIMEOUT="3600"
 # Allows utilization of multiple CPU cores.
 # Improves concurrency without blocking a single IOLoop.
 # Typical Usage:
-# start(0) → Automatically spawns one process per CPU core.
-# start(N) → Manually specifies number of worker processes.
-ENV AGENT_HTTP_SERVER_INSTANCES="1"
+#   Value of 0 → Automatically spawns one process per CPU core.
+#   Positive integer (N) → Manually specifies number of worker processes.
+# The developer-oriented default is 1, but we set to 0 here to allow pod CPU configuration
+# to dictate the number of server instance processes.
+ENV AGENT_HTTP_SERVER_INSTANCES="0"
 
 # If set to a value>0, will start periodic logging of currently used
 # run-time server resources:
