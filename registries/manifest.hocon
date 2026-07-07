@@ -35,6 +35,9 @@
     # Generated agent networks
     include "registries/generated/manifest.hocon",
 
+    # nagarjunvk — personal/custom agent networks
+    include "registries/nagarjunvk/manifest.hocon",
+
     # Currently we list each hocon file we want to serve as a key with a boolean value.
     # Eventually we might have a dictionary value with server specifications for each.
 
