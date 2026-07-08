@@ -78,7 +78,7 @@ class PersistentMemoryMiddlewareTests(MemoryTestBase):
         """
         captured: dict[str, Any] = {}
 
-        class _StubRequest:
+        class _StubRequest:  # pylint: disable=too-few-public-methods
             """Minimal ``ModelRequest`` stand-in capturing the overridden system message."""
 
             system_message = None
