@@ -70,6 +70,8 @@ class CallAgent(BranchActivation, CodedTool):
         tool_args: Dict[str, Any] = args.get("tool_args")
         if not tool_args:
             raise ValueError("Error: No tool_args provided.")
+        if not isinstance(tool_args, dict):
+            raise ValueError("Error: 'tool_args' must be a dictionary.")
         agent_name = args.get("agent_name") or sly_data.get("selected_agent")
         if not agent_name:
             raise ValueError("Error: No 'agent_name' in args or 'selected_agent' in sly_data.")

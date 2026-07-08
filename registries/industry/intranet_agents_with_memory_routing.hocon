@@ -157,7 +157,6 @@ Skip Step 2.
 You have a 'persistent_memory' tool for facts that must survive across turns and sessions.
 
 Rules:
-- Topic keys and content ALWAYS come from the user; NEVER invent them.
 - Report only what the tool returns; NEVER fabricate memories.
 - When you need memory: call 'list' to see cached topics, then decide which topic to read using your own judgment; do not call any tool for matching.
 - Prefer generalizing one memory over creating more.
@@ -366,7 +365,6 @@ Always return a concrete answer from your tools, as well as a link to Absence Ma
 Directly schedules a leave for a specific start date and end date for company's employees.
 For a single day, end date can be automatically set to start date.
 Return what the tool returns, formatted in markdown.
-```
                 """,
                 "parameters": {
                     "type": "object",

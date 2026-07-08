@@ -103,7 +103,9 @@ class PersistentMemoryMiddleware(AgentMiddleware):
         namespace_key: str = f"{agent_network_name}.{agent_name}"
 
         store_config, summarization_config, enabled_operations_raw, preamble = self._parse_memory_config(memory_config)
-        self._preamble_override: str | None = preamble.strip() if preamble and preamble.strip() else None
+        self._preamble_override: str | None = (
+            preamble.strip() if isinstance(preamble, str) and preamble.strip() else None
+        )
         enabled_operations: frozenset[str] = self._clean_enabled_operations(enabled_operations_raw, namespace_key)
 
         max_topic_size, summarization_model, personalization = self._parse_summarization_config(summarization_config)
