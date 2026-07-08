@@ -383,7 +383,7 @@ Return what the tool returns, formatted in markdown.
                     "required": ["start_date", "end_date"]
                 }
             },
-            "class": "schedule_leave_tool.ScheduleLeaveTool"
+            "class": "coded_tools.industry.intranet_agents_with_tools.schedule_leave_tool.ScheduleLeaveTool"
         },
         {
             "name": "CheckLeaveBalancesAPI",
@@ -404,7 +404,7 @@ If no date is provided, assumes today's date.
                     "required": ["start_date"]
                 }
             },
-            "class": "check_leave_balances_tool.CheckLeaveBalancesTool"
+            "class": "coded_tools.industry.intranet_agents_with_tools.check_leave_balances_tool.CheckLeaveBalancesTool"
         },
         {
             "name": "URLProvider",
@@ -424,7 +424,7 @@ The name of the app must be passed as a parameter.
                     "required": ["app_name"]
                 }
             },
-            "class": "url_provider.URLProvider"
+            "class": "coded_tools.industry.intranet_agents_with_tools.url_provider.URLProvider"
         },
         {
             "name": "CallAgent",

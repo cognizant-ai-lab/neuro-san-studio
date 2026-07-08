@@ -66,9 +66,8 @@ class PersistentMemoryMiddleware(AgentMiddleware):
                           ``enabled_operations`` (whitelist of memory ops), and
                           ``preamble`` (the memory middleware tool-usage
                           instructions prepended to the system prompt that tell
-                          the LLM when to use the tool; defaults to
-                          ``build_preamble``, override for non-default memory
-                          behavior). Unknown keys warn and are ignored.
+                          the LLM when to use the tool; override for non-default
+                          memory behavior). Unknown keys warn and are ignored.
     :param sly_data:      Per-request data dict injected by the framework;
                           forwarded to cloud store backends for per-user scoping.
     """
