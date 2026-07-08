@@ -4,14 +4,25 @@ The **Intranet Agents With Memory Routing** network is the [Intranet Agents With
 network with one extra capability: the top-level "front-man" agent **learns which agents to route queries to** and
 remembers it.
 
-The first time it sees an inquiry of a given kind, it uses AAOSA to discover which down-chain agents can fulfill it. It
-then caches that route, along with the information required to answer the question, so that before sending the query to
-the relevant agent it can gather all the information up front and route to the relevant agent directly, saving a lot of
-tokens. This is saved in the persistent memory tool as a generalized topic that can be reused for further similar
-queries. None of the user's information is ever saved here.
+Normally, every inquiry walks the full AAOSA tree: the front-man asks its down-chain agents who can help, follows up
+through the tree, and only then fulfills the request. That discovery costs several LLM round-trips on every inquiry,
+even for a kind of question it has already answered before.
 
-The next time a similar inquiry comes in, it reads the cached route and calls those leaf agents directly, skipping the
-discovery round-trips.
+This network avoids repeating that work. The **first** time it sees an inquiry of a given kind, it still runs the full
+AAOSA discovery, but it then records the result as a reusable **route** in persistent memory: which leaf agents
+fulfilled the request and which parameters they needed. It stores this under a generalized topic, so the route is
+decoupled from the one specific request that produced it.
+
+The **next** time a similar inquiry comes in, the front-man looks up that topic, collects the required parameters from
+the user up front, and calls the recorded leaf agents directly, skipping the AAOSA discovery round-trips (and the
+tokens they cost). Only the route is stored, the leaf-agent names and the parameter names; the user's own values are
+never saved.
+
+For example, the first time a user asks to book time off, the front-man discovers through AAOSA that
+`AbsenceManagement` handles it and needs a start date and an end date. It saves a topic such as `schedule_absence`
+with `leaf_agents: ["AbsenceManagement"]` and `parameters: ["start_date", "end_date"]`. When any user later asks to
+take a sick day or a vacation, it matches `schedule_absence`, asks the user for the dates, and calls
+`AbsenceManagement` directly, with no rediscovery.
 
 ## File
 
@@ -25,7 +36,7 @@ The department and leaf agents are unchanged; only the routing has changed. Ever
 agent, `MyIntranet`:
 
 - **Persistent memory middleware.** The
-  [`PersistentMemoryMiddleware`](../tools/persistent_memory_local.md) is attached to `MyIntranet` and auto-registers a
+  [`PersistentMemoryMiddleware`](../tools/persistent_memory_mem0.md) is attached to `MyIntranet` and auto-registers a
   `persistent_memory` tool (backed by the `mem0` store) with the `create`, `read`, `list`, and `delete` operations
   enabled. It is a tool the agent uses for routing state, not a personal-fact store.
 - **A `CallAgent` tool.** On a cache hit, the front-man uses
