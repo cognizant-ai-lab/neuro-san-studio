@@ -260,7 +260,7 @@ instead of editing the shared default:
 You have a 'persistent_memory' tool for facts that must survive across turns and sessions.
 
 Rules:
-- Topic keys and content ALWAYS come from the user; NEVER invent them.
+- Store only generalized routing data (topic, leaf agents, parameter names); NEVER save the user's own values.
 - Report only what the tool returns; NEVER fabricate memories.
 - Prefer generalizing one memory over creating more.
 """

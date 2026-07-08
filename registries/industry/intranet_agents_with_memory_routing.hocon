@@ -101,7 +101,7 @@ ALWAYS begin with Step 1 before doing anything else. Never skip Step 1.
    what the user has already provided in the conversation. If anything is missing,
    ask for all missing fields at once and STOP; do not proceed until the user responds.
 5. Once all required parameters are in hand, call each agent listed in leaf_agents
-   sequentially using the call_agent tool with mode="Fulfill", then compile the results.
+   sequentially using the CallAgent tool with mode="Fulfill", then compile the results.
 6. If an agent still asks for more information, collect it from the user and call that agent
    again with mode="Follow up". Repeat until the agent is satisfied.
 7. Return the compiled response to the user as a natural, human-readable answer.
