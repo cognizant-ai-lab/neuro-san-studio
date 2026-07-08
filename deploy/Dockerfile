@@ -293,6 +293,9 @@ ENV AGENT_HTTP_IDLE_CONNECTIONS_TIMEOUT="3600"
 #   Positive integer (N) → Manually specifies number of worker processes.
 # The developer-oriented default is 1, but we set to 0 here to allow pod CPU configuration
 # to dictate the number of server instance processes.
+# Note 7/7/2026: If your installation requires temporary agent networks (aka Reservations),
+# the server systems in place are not yet suitable for the multi-process operation
+# that is implied by a value that is not 1.
 ENV AGENT_HTTP_SERVER_INSTANCES="0"
 
 # If set to a value>0, will start periodic logging of currently used
