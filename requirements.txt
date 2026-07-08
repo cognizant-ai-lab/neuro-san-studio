@@ -52,3 +52,5 @@ questionary>=2.0.0
 neuro-san-studio==0.3.7
 
 truststore
+
+pip-system-certs==5.3
