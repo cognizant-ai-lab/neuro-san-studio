@@ -149,13 +149,11 @@ Skip Step 2.
                             "storage": {
                                 "backend": "mem0"
                             },
-                            "enabled_operations": ["create", "read", "list", "delete"]
-                        },
-                        # This network uses memory as a routing cache rather than a
-                        # personal-fact store, so its rules differ from the default.
-                        # Override the middleware's default preamble here instead of
-                        # editing the shared default in the middleware class.
-                        "preamble": """
+                            "enabled_operations": ["create", "read", "list", "delete"],
+                            # Memory middleware tool-usage instructions prepended to the
+                            # system prompt. This network uses memory as a routing cache,
+                            # so its rules differ from the default preamble -- override here.
+                            "preamble": """
 You have a 'persistent_memory' tool for facts that must survive across turns and sessions.
 
 Rules:
@@ -164,7 +162,8 @@ Rules:
 - When you need memory: call 'list' to see cached topics, then decide which topic to read using your own judgment — do not call any tool for matching.
 - Prefer generalizing one memory over creating more.
 - To update a topic: 'delete' it first, then 'create' it fresh.
-                        """
+                            """
+                        }
                     }
                 }
             ]

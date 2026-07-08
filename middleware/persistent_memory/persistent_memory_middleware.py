@@ -60,16 +60,17 @@ class PersistentMemoryMiddleware(AgentMiddleware):
                           When a string, it is used directly as the origin.
                           In both cases the value is parsed to derive the
                           ``(network, agent)`` memory namespace.
-    :param memory_config: HOCON memory settings (store, summarization, and
-                          enabled operations). Unknown keys are ignored.
+    :param memory_config: HOCON memory settings. Recognized sub-keys:
+                          ``storage`` (backend + its options),
+                          ``summarization`` (topic summarizer settings),
+                          ``enabled_operations`` (whitelist of memory ops), and
+                          ``preamble`` (the memory middleware tool-usage
+                          instructions prepended to the system prompt that tell
+                          the LLM when to use the tool; defaults to
+                          ``build_preamble``, override for non-default memory
+                          behavior). Unknown keys warn and are ignored.
     :param sly_data:      Per-request data dict injected by the framework;
                           forwarded to cloud store backends for per-user scoping.
-    :param preamble:      Optional HOCON-supplied text that replaces the default
-                          memory preamble added to the system prompt. When
-                          ``None`` (the default), ``build_preamble`` is used.
-                          Networks whose memory usage differs from the default
-                          (e.g. routing caches) can override it here rather than
-                          editing the shared default.
     """
 
     MEMORY_TOOL_NAME: ClassVar[str] = "persistent_memory"
@@ -79,7 +80,9 @@ class PersistentMemoryMiddleware(AgentMiddleware):
     # a minimal HOCON does not silently bring up a ChatOpenAI dependency.
     _DEFAULT_MAX_TOPIC_SIZE: ClassVar[int] = 0
 
-    _MEMORY_CONFIG_KEYS: ClassVar[frozenset[str]] = frozenset({"storage", "summarization", "enabled_operations"})
+    _MEMORY_CONFIG_KEYS: ClassVar[frozenset[str]] = frozenset(
+        {"storage", "summarization", "enabled_operations", "preamble"}
+    )
     _SUMMARIZATION_CONFIG_KEYS: ClassVar[frozenset[str]] = frozenset({"max_topic_size", "model", "personalization"})
     _DISPATCH_ARG_KEYS: ClassVar[tuple[str, ...]] = ("topic", "content", "query", "limit")
     _INDEX_SUFFIX_RE: ClassVar[re.Pattern[str]] = re.compile(r"-\d+$")
@@ -94,16 +97,14 @@ class PersistentMemoryMiddleware(AgentMiddleware):
         origin_str: bool | str = True,
         memory_config: dict[str, Any] | None = None,
         sly_data: dict[str, Any] | None = None,
-        preamble: str | None = None,
     ) -> None:
         self.logger: Logger = logging.getLogger(f"{__name__}.{self.__class__.__name__}")
-
-        self._preamble_override: str | None = preamble.strip() if preamble and preamble.strip() else None
 
         agent_network_name, agent_name = self._parse_origin_str(origin_str)
         namespace_key: str = f"{agent_network_name}.{agent_name}"
 
-        store_config, summarization_config, enabled_operations_raw = self._parse_memory_config(memory_config)
+        store_config, summarization_config, enabled_operations_raw, preamble = self._parse_memory_config(memory_config)
+        self._preamble_override: str | None = preamble.strip() if preamble and preamble.strip() else None
         enabled_operations: frozenset[str] = self._clean_enabled_operations(enabled_operations_raw, namespace_key)
 
         max_topic_size, summarization_model, personalization = self._parse_summarization_config(summarization_config)
@@ -238,12 +239,12 @@ class PersistentMemoryMiddleware(AgentMiddleware):
     def _parse_memory_config(
         self,
         memory_config: dict[str, Any] | None,
-    ) -> tuple[dict[str, Any], dict[str, Any], list[str] | None]:
+    ) -> tuple[dict[str, Any], dict[str, Any], list[str] | None, str | None]:
         """
-        Split the HOCON memory_config into its three sub-configs. Warns on unknown keys.
+        Split the HOCON memory_config into its sub-configs. Warns on unknown keys.
 
         :param memory_config: Raw HOCON ``memory_config`` dict; may be ``None``.
-        :return: ``(store_config, summarization_config, enabled_operations)`` tuple.
+        :return: ``(store_config, summarization_config, enabled_operations, preamble)`` tuple.
         """
         config: dict[str, Any] = dict(memory_config or {})
         unknown: set[str] = set(config) - self._MEMORY_CONFIG_KEYS
@@ -259,7 +260,8 @@ class PersistentMemoryMiddleware(AgentMiddleware):
         enabled_operations: list[str] | None = (
             list(enabled_operations_raw) if enabled_operations_raw is not None else None
         )
-        return (store_config, summarization_config, enabled_operations)
+        preamble: str | None = config.get("preamble")
+        return (store_config, summarization_config, enabled_operations, preamble)
 
     def _clean_enabled_operations(
         self,
