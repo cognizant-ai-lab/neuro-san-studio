@@ -30,6 +30,7 @@
     "industry/insurance_underwriting_agents.hocon": true,
     "industry/intranet_agents.hocon": false,  # This is a deprecated version of intranet_agents_with_tools.hocon
     "industry/intranet_agents_with_tools.hocon": true,
+    "industry/intranet_agents_with_memory_routing.hocon": false,  # Needs Mem0 cloud setup; see its doc
     "industry/keybank.hocon": false,
     "industry/news_sentiment_analysis.hocon": false,
     "industry/real_estate.hocon": false,

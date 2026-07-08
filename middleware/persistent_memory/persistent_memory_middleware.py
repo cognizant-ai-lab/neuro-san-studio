@@ -64,6 +64,12 @@ class PersistentMemoryMiddleware(AgentMiddleware):
                           enabled operations). Unknown keys are ignored.
     :param sly_data:      Per-request data dict injected by the framework;
                           forwarded to cloud store backends for per-user scoping.
+    :param preamble:      Optional HOCON-supplied text that replaces the default
+                          memory preamble added to the system prompt. When
+                          ``None`` (the default), ``build_preamble`` is used.
+                          Networks whose memory usage differs from the default
+                          (e.g. routing caches) can override it here rather than
+                          editing the shared default.
     """
 
     MEMORY_TOOL_NAME: ClassVar[str] = "persistent_memory"
@@ -88,8 +94,11 @@ class PersistentMemoryMiddleware(AgentMiddleware):
         origin_str: bool | str = True,
         memory_config: dict[str, Any] | None = None,
         sly_data: dict[str, Any] | None = None,
+        preamble: str | None = None,
     ) -> None:
         self.logger: Logger = logging.getLogger(f"{__name__}.{self.__class__.__name__}")
+
+        self._preamble_override: str | None = preamble.strip() if preamble and preamble.strip() else None
 
         agent_network_name, agent_name = self._parse_origin_str(origin_str)
         namespace_key: str = f"{agent_network_name}.{agent_name}"
@@ -143,7 +152,7 @@ class PersistentMemoryMiddleware(AgentMiddleware):
         :param handler: Downstream handler that runs the model.
         :return: The handler's response, with the preamble applied upstream.
         """
-        preamble: str = self.build_preamble()
+        preamble: str = self._preamble_override if self._preamble_override else self.build_preamble()
         existing: str = request.system_message.content if request.system_message is not None else ""
         new_system: SystemMessage = SystemMessage(content=f"{existing}\n\n{preamble}".strip())
         return await handler(request.override(system_message=new_system))

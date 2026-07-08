@@ -42,6 +42,10 @@ class CallAgent(BranchActivation, CodedTool):
                 The argument dictionary expects the following keys:
                     "tool_args" the arguments for the called agent.
                     "agent_name" the agent that answer the query.
+                    "mode" optional mode string passed through to the called agent.
+                        An LLM (AAOSA) agent must be called with a mode (e.g. "Fulfill"
+                        or "Follow up") to return a structured, parseable response;
+                        without a mode it replies with user-facing natural-language text.
 
         :param sly_data: A dictionary whose keys are defined by the agent hierarchy,
                 but whose values are meant to be kept out of the chat stream.
@@ -69,6 +73,10 @@ class CallAgent(BranchActivation, CodedTool):
         agent_name = args.get("agent_name") or sly_data.get("selected_agent")
         if not agent_name:
             raise ValueError("Error: No 'agent_name' in args or 'selected_agent' in sly_data.")
+
+        mode = args.get("mode")
+        if mode:
+            tool_args = {**tool_args, "mode": mode}
 
         logger.debug("tool_args: %s", tool_args)
         logger.debug("agent_name: %s", agent_name)
