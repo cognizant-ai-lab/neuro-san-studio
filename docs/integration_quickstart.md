@@ -27,6 +27,11 @@ Before starting, ensure you have:
 - API keys for your chosen LLM provider (such as OpenAI for GPT-4o)
 - An empty folder to work in
 
+> **Tip:** If you just want to chat with an agent network without writing any Python, the `ns chat`
+> command (see [docs/cli/chat.md](cli/chat.md)) gives you a direct, in-process session with zero
+> boilerplate. This tutorial is for when you want to embed that same "direct" session inside your
+> own Python application.
+
 ## Setup
 
 First, import the necessary libraries:
@@ -130,7 +135,7 @@ Now for the exciting part! Let's create a session and talk to our agent!
 ### 3.1: Create a Session
 
 ```py
-from neuro_san.client.agent_session_factory import DirectAgentSessionFactory
+from neuro_san.client.direct_agent_session_factory import DirectAgentSessionFactory
 
 # Create a factory for building agent sessions
 factory = DirectAgentSessionFactory()
@@ -170,14 +175,8 @@ The agent returns a streaming response. Let's collect all the messages:
 # Get the streaming response (returns a generator)
 stream = session.streaming_chat(request_payload)
 
-# Collect all messages from the stream
-msg = []
-for chat_msg in stream:
-    msg.append(chat_msg)
-    if chat_msg.get("done") is True:
-        break
-
-# msg = list(stream) # or you could do this too
+# Collect all messages from the stream (the generator ends once the agent is done responding)
+msg = list(stream)
 
 # Print the agent's response
 print(f"Agent Response: {msg[-1]['response']['text']}")
@@ -244,7 +243,7 @@ The response includes rich metadata about the conversation, including:
 Instead of repeating all that code every time, let's wrap it in a convenient function:
 
 ```py
-from neuro_san.client.agent_session_factory import DirectAgentSessionFactory
+from neuro_san.client.direct_agent_session_factory import DirectAgentSessionFactory
 
 
 def invoke_agent(agent_name: str, user_text: str, sly_data=None):
@@ -275,14 +274,10 @@ def invoke_agent(agent_name: str, user_text: str, sly_data=None):
         "sly_data": sly_data,
     }
 
-    # Stream the response and collect messages
+    # Stream the response and collect messages (the generator ends once the agent is done responding)
     stream = session.streaming_chat(request_payload)
-    msg = []
-    for chat_msg in stream:
-        msg.append(chat_msg)
-        if chat_msg.get("done") is True:
-            break
-    
+    msg = list(stream)
+
     # Return the last message (which contains the complete response)
     return msg[-1]
 ```
@@ -315,10 +310,12 @@ via HTTP requests instead of direct invocation.
 First, start the neuro-san server in a terminal:
 
 ```bash
-python -m neuro_san.service.main_loop.server_main_loop
+ns run
 ```
 
-The server will start on `http://localhost:8080` by default.
+This starts the neuro-san HTTP API on `http://localhost:8080` by default (and also launches the
+nsflow UI on `http://localhost:4173/`). See the [README](../README.md#4-run-the-server) and
+[docs/cli.md](cli.md) for details, or use `ns run --server-only` to skip the UI.
 
 ### 5.2: Make HTTP Requests
 
