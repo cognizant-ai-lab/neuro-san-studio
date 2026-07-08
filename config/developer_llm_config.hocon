@@ -58,6 +58,11 @@
         "fallbacks": [
             {
                 # Try OpenAI first
+                "class": "langchain_mistralai.chat_models.ChatMistralAI",
+                "model_name": "mistral-medium-latest",
+            },
+            {
+                # Try OpenAI first
                 "class": "openai",
                 "model_name": "gpt-5.2",
             },

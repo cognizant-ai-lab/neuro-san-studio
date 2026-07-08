@@ -4,7 +4,7 @@ neuro-san==0.6.71
 nsflow==0.6.16
 
 # For config parsing
-pyhocon>=0.3.60
+pyhocon==0.3.61
 
 # For the airline_policy demo, to extract text from documents
 pypdf>=6.1.3
@@ -28,6 +28,7 @@ langchain-mcp-adapters>=0.1.7,<1.0
 langchain-openai>=1.1.9,<2.0
 langchain-anthropic>=1.4.3,<2.0
 langchain-google-genai>=4.2.2,<5.0
+langchain-mistralai==1.1.2
 
 # For rich logging
 rich>=14.2.0
@@ -47,3 +48,5 @@ timedinput>=0.1.1
 
 # For checkbox-based selection in CLI
 questionary>=2.0.0
+
+neuro-san-studio==0.3.7
