@@ -1,15 +1,17 @@
 # Intranet Agents With Memory Routing
 
-**Intranet Agents With Memory Routing** is the [Intranet Agents With Tools](intranet_agents_with_tools.md) network with
-one added capability: the top-level "front-man" agent **learns which agents to route a query to, and remembers it**.
+The **Intranet Agents With Memory Routing** network is the [Intranet Agents With Tools](intranet_agents_with_tools.md)
+network with one extra capability: the top-level "front-man" agent **learns which agents to route queries to** and
+remembers it.
 
 The first time it sees an inquiry of a given kind, it uses AAOSA to discover which down-chain agents can fulfill it. It
-then caches that route (the fulfilling leaf agents and the parameters they need) in persistent memory under a
-generalized topic. On later inquiries of the same kind, it gathers the required parameters up front and calls those
-leaf agents directly, skipping the AAOSA discovery round-trips. This saves a significant number of tokens on repeat
-inquiries.
+then caches that route, along with the information required to answer the question, so that before sending the query to
+the relevant agent it can gather all the information up front and route to the relevant agent directly, saving a lot of
+tokens. This is saved in the persistent memory tool as a generalized topic that can be reused for further similar
+queries. None of the user's information is ever saved here.
 
-Only the route is cached: a reusable, generalized topic. No user-specific information is ever stored in memory.
+The next time a similar inquiry comes in, it reads the cached route and calls those leaf agents directly, skipping the
+discovery round-trips.
 
 ## File
 
@@ -19,41 +21,42 @@ Only the route is cached: a reusable, generalized topic. No user-specific inform
 
 ## What is different from Intranet Agents With Tools
 
-The department and leaf agents (IT, Finance, Procurement, Legal, HR, and their sub-agents and coded tools) are
-unchanged; only the routing changes. Everything new lives on the front-man agent, `MyIntranet`:
+The department and leaf agents are unchanged; only the routing has changed. Everything new lives on the front-man
+agent, `MyIntranet`:
 
-- **Persistent memory middleware.** `PersistentMemoryMiddleware` is attached to `MyIntranet` and auto-registers a
+- **Persistent memory middleware.** The
+  [`PersistentMemoryMiddleware`](../tools/persistent_memory_local.md) is attached to `MyIntranet` and auto-registers a
   `persistent_memory` tool (backed by the `mem0` store) with the `create`, `read`, `list`, and `delete` operations
-  enabled. The agent uses it to store routing state, not personal facts.
-- **A `CallAgent` tool.** On a cache hit, the front-man uses `CallAgent` to call the cached leaf agents directly by
+  enabled. It is a tool the agent uses for routing state, not a personal-fact store.
+- **A `CallAgent` tool.** On a cache hit, the front-man uses
+  [`CallAgent`](../../../neuro_san_studio/coded_tools/call_agent.py) to call the cached leaf agents directly by
   name instead of walking the AAOSA tree again.
-- **A two-step routing policy** in the front-man's instructions (see below).
-- **A custom memory preamble** supplied from HOCON (see [Overriding the memory preamble](#overriding-the-memory-preamble)).
+- **A two-step routing policy** in the front-man's instructions (see [How routing works](#how-routing-works)).
+- **A custom memory middleware tool preamble** supplied from HOCON (see [Overriding the memory preamble](#overriding-the-memory-preamble)).
 
 ---
 
 ## How routing works
 
-The front-man runs **Step 1 first on every inquiry**, and only falls back to Step 2 when the cache has no matching
-route.
+On **every** inquiry the front-man runs Step 1 first:
 
-### Step 1: Route via the memory cache
+### Step 1: Route via memory cache
 
 1. Call `persistent_memory` with `operation="list"` to get all cached topic names.
-2. Using its own judgment, decide whether any cached topic (e.g. `schedule_absence`) matches the current inquiry.
-3. On a match, `read` that topic to recover its `leaf_agents` and required `parameters`. On no match, go to Step 2.
+2. Judge whether any cached topic (e.g. `schedule_absence`) matches the current inquiry.
+3. On a match, `read` that topic to recover its `leaf_agents` and required `parameters`.
 4. Cross-check the required parameters against what the user has already provided. If any are missing, ask for all of
    them in a single message and wait for the user's reply.
 5. Once all parameters are in hand, call each cached leaf agent with `CallAgent` using `mode="Fulfill"`.
-6. If a leaf agent reports that more information is needed, collect it from the user and call that agent again with
-   `mode="Follow up"`, repeating until it is satisfied.
-7. Compile the leaf agents' answers into a single natural-language response for the user.
+6. If a leaf agent needs more information, collect it from the user and call that agent again with `mode="Follow up"`,
+   repeating until it is satisfied.
+7. Compile the leaf agents' answers into a single response for the user.
 
-### Step 2: Route via Determine (only on a cache miss)
+### Step 2: Route via Determine (only if there is no relevant cache present)
 
-1. Call the department-level down-chain agents with `mode="Determine"` to find which can handle the inquiry.
-2. Follow up and fulfill through the tree (calling leaf agents with `mode="Fulfill"`) until the inquiry is answered.
-3. Read the `Handled by:` line from the responses, generalize the inquiry into a short `snake_case` topic
+1. Call the department-level down-chain agents with `mode="Determine"` to find who can handle the inquiry.
+2. Determine / Follow up / Fulfill through the tree until the inquiry is answered.
+3. Read the `Handled by:` line from the leaf agents, generalize the inquiry into a short `snake_case` topic
    (e.g. `schedule_absence` covers sick day, vacation, and PTO, not `sick_day_tuesday`), and `create` a memory entry:
 
    ```json
@@ -69,10 +72,9 @@ The next inquiry of the same kind is then served straight from Step 1.
 
 ## Overriding the memory preamble
 
-`PersistentMemoryMiddleware` prepends a short "you have a memory tool" preamble to the system prompt that tells the LLM
-when and how to use the `persistent_memory` tool. Its built-in default is aimed at a personal-fact store. This network
-uses memory as a routing cache instead, so it supplies its own preamble via the `preamble` key inside `memory_config`,
-rather than editing the shared default:
+`PersistentMemoryMiddleware` adds a default short "you have a memory tool" preamble to the system prompt to inform the
+LLM on when and how to use the persistent memory tool. This network uses memory as a routing cache instead, so it
+supplies its own preamble via the `preamble` key inside `memory_config`, rather than editing the shared default:
 
 ```hocon
 "middleware": [
@@ -97,27 +99,5 @@ When `preamble` is omitted, the middleware falls back to its built-in default.
 
 ---
 
-## Example conversation
-
-### Human
-
-```text
-How many days of vacation do I have left?
-```
-
-### AI (intranet_agents_with_memory_routing)
-
-```text
-You can find out how many days of vacation you have left by accessing the Absence Management tool on the company's intranet.
-It will provide you with the most accurate and up-to-date information regarding your vacation balance.
-
-For more details, please visit company's intranet.
-```
-
-The first time this is asked, the front-man discovers the route through AAOSA and caches it under a topic such as
-`check_leave_balance`. Subsequent leave-balance questions are routed directly to the cached leaf agent.
-
----
-
-**Note:** the agent coordination mechanism is assumed to be AAOSA. For full details on the department and leaf agents,
-refer to [Intranet Agents With Tools](intranet_agents_with_tools.md).
+For more details on the functionality of the intranet agent network, please refer to
+[Intranet Agents With Tools](intranet_agents_with_tools.md).
