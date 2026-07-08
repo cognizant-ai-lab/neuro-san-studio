@@ -71,7 +71,7 @@ required; every other key is optional and falls back to the value below.
                     "personalization": ""                # appended to the summarizer prompt
                 },
                 "enabled_operations": ["create", "read", "append", "delete", "search", "list"],
-                "preamble": ""                           # optional — override the default memory preamble (see below)
+                "preamble": ""                           # optional; override the default memory preamble (see below)
             }
         }
     }
@@ -244,30 +244,26 @@ tools".
 
 The preamble is the block of memory instructions the middleware prepends
 to the agent's system prompt. It tells the LLM that a `persistent_memory`
-tool exists and states the rules for using it — what to store, when to
+tool exists and states the rules for using it: what to store, when to
 read vs. write, and conventions like "prefer append over create" or
 "never fabricate memories". These rules are what actually drive the model
 to call the tool, so they matter as much as the tool itself.
 
 A sensible default ships with the middleware, so you get working behavior
 with no configuration. When a network uses memory differently from the
-default — for example as a **routing cache** rather than a personal-fact
-store — supply your own text via the `preamble` key in `memory_config`
+default (for example as a **routing cache** rather than a personal-fact
+store), supply your own text via the `preamble` key in `memory_config`
 instead of editing the shared default:
 
 ```hocon
-"memory_config": {
-    "storage": { "backend": "json_file" },
-    "enabled_operations": ["create", "read", "list", "delete"],
-    "preamble": """
+"preamble": """
 You have a 'persistent_memory' tool for facts that must survive across turns and sessions.
 
 Rules:
-- Topic keys and content ALWAYS come from the user — NEVER invent them.
-- Report only what the tool returns — NEVER fabricate memories.
+- Topic keys and content ALWAYS come from the user; NEVER invent them.
+- Report only what the tool returns; NEVER fabricate memories.
 - Prefer generalizing one memory over creating more.
 """
-}
 ```
 
 Omit the key (or leave it empty) to keep the built-in default. A blank or

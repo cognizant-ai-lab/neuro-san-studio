@@ -43,7 +43,7 @@ class CallAgent(BranchActivation, CodedTool):
                     "tool_args" the arguments for the called agent.
                     "agent_name" the agent that answer the query.
                     "mode" optional mode string passed through to the called agent.
-                        An LLM (AAOSA) agent must be called with a mode (e.g. "Fulfill"
+                        An LLM agent following AAOSA must be called with a mode (e.g. "Fulfill"
                         or "Follow up") to return a structured, parseable response;
                         without a mode it replies with user-facing natural-language text.
 

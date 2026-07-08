@@ -448,8 +448,9 @@ Finance, Legal, HR, etc. Some of the down-chain agents call coded tools.
 
 [Intranet Agents With Memory Routing](examples/industry/intranet_agents_with_memory_routing.md) is the
 Intranet Agents With Tools network whose top-level agent also learns how to route. On the first inquiry of a
-kind it discovers the fulfilling leaf agents via AAOSA, then caches that route in persistent memory under a
-generalized topic; repeat inquiries of the same kind read the cached route and call the leaf agents directly.
+kind it discovers the fulfilling leaf agents via AAOSA, then caches that route, along with the parameters those
+agents require, in persistent memory under a generalized topic. Caching the parameters lets it collect them up
+front on repeat inquiries and call the leaf agents directly, avoiding follow-up round-trips.
 Disabled by default: it uses the Mem0 cloud backend, so it requires `pip install "mem0ai>=2.0.2,<3.0"` and the
 `MEM0_API_KEY` environment variable.
 
