@@ -14,14 +14,15 @@
 #
 # END COPYRIGHT
 
-from unittest import TestCase
-
-import pytest
+from socket import gaierror
+from unittest import IsolatedAsyncioTestCase
 
 from neuro_san_studio.coded_tools.web_fetch import WebFetch
 
+from .helpers import make_dns_patch
 
-class TestValidateHostnameSafety(TestCase):
+
+class TestValidateHostnameSafety(IsolatedAsyncioTestCase):
     """Unit tests for WebFetch._validate_hostname_safety."""
 
     def setUp(self):
@@ -31,77 +32,95 @@ class TestValidateHostnameSafety(TestCase):
         """Invoke _validate_hostname_safety with the given hostname."""
         await self.tool._validate_hostname_safety(hostname)  # pylint: disable=protected-access
 
-    @pytest.mark.asyncio
     async def test_public_hostname_allowed(self):
-        """Tests that a public hostname does not raise an error."""
-        self._call("example.com")  # should not raise
+        """Tests that a hostname resolving to a public IP does not raise an error."""
+        with make_dns_patch(["93.184.216.34"]):
+            await self._call("example.com")  # should not raise
 
-    @pytest.mark.asyncio
     async def test_public_ip_allowed(self):
         """Tests that a publicly routable IP address does not raise an error."""
-        self._call("8.8.8.8")  # should not raise
+        await self._call("8.8.8.8")  # should not raise
 
-    @pytest.mark.asyncio
     async def test_localhost_blocked(self):
         """Tests that 'localhost' is blocked with url_not_allowed."""
         with self.assertRaises(ValueError) as ctx:
-            self._call("localhost")
+            await self._call("localhost")
         self.assertIn("url_not_allowed", str(ctx.exception))
 
-    @pytest.mark.asyncio
     async def test_localhost_subdomain_blocked(self):
         """Tests that a subdomain of localhost is blocked with url_not_allowed."""
         with self.assertRaises(ValueError) as ctx:
-            self._call("app.localhost")
+            await self._call("app.localhost")
         self.assertIn("url_not_allowed", str(ctx.exception))
 
-    @pytest.mark.asyncio
     async def test_loopback_ipv4_blocked(self):
         """Tests that the IPv4 loopback address 127.0.0.1 is blocked with url_not_allowed."""
         with self.assertRaises(ValueError) as ctx:
-            self._call("127.0.0.1")
+            await self._call("127.0.0.1")
         self.assertIn("url_not_allowed", str(ctx.exception))
 
-    @pytest.mark.asyncio
     async def test_private_ipv4_blocked(self):
         """Tests that private IPv4 addresses are blocked with url_not_allowed."""
         for ip in ("10.0.0.1", "192.168.1.1", "172.16.0.1"):
             with self.subTest(ip=ip):
                 with self.assertRaises(ValueError) as ctx:
-                    self._call(ip)
+                    await self._call(ip)
                 self.assertIn("url_not_allowed", str(ctx.exception))
 
-    @pytest.mark.asyncio
     async def test_link_local_blocked(self):
         """Tests that a link-local IP address such as the AWS metadata endpoint is blocked."""
         with self.assertRaises(ValueError) as ctx:
-            self._call("169.254.169.254")  # AWS metadata endpoint
+            await self._call("169.254.169.254")  # AWS metadata endpoint
         self.assertIn("url_not_allowed", str(ctx.exception))
 
-    @pytest.mark.asyncio
     async def test_ipv6_loopback_blocked(self):
         """Tests that the IPv6 loopback address ::1 is blocked with url_not_allowed."""
         with self.assertRaises(ValueError) as ctx:
-            self._call("::1")
+            await self._call("::1")
         self.assertIn("url_not_allowed", str(ctx.exception))
 
-    @pytest.mark.asyncio
     async def test_unspecified_ipv4_blocked(self):
         """Tests that the unspecified IPv4 address 0.0.0.0 is blocked with url_not_allowed."""
         with self.assertRaises(ValueError) as ctx:
-            self._call("0.0.0.0")
+            await self._call("0.0.0.0")
         self.assertIn("url_not_allowed", str(ctx.exception))
 
-    @pytest.mark.asyncio
     async def test_unspecified_ipv6_blocked(self):
         """Tests that the unspecified IPv6 address :: is blocked with url_not_allowed."""
         with self.assertRaises(ValueError) as ctx:
-            self._call("::")
+            await self._call("::")
         self.assertIn("url_not_allowed", str(ctx.exception))
 
-    @pytest.mark.asyncio
     async def test_cgnat_blocked(self):
         """Tests that a CGNAT address (100.64.0.0/10) is blocked with url_not_allowed."""
         with self.assertRaises(ValueError) as ctx:
-            self._call("100.64.0.1")
+            await self._call("100.64.0.1")
+        self.assertIn("url_not_allowed", str(ctx.exception))
+
+    async def test_hostname_resolving_to_private_ip_blocked(self):
+        """Tests that a hostname whose DNS record points at a private IP is blocked."""
+        with make_dns_patch(["10.0.0.5"]):
+            with self.assertRaises(ValueError) as ctx:
+                await self._call("internal.example.com")
+        self.assertIn("url_not_allowed", str(ctx.exception))
+
+    async def test_hostname_with_any_non_global_record_blocked(self):
+        """Tests that one non-global record among public ones blocks the host (all records must be global)."""
+        with make_dns_patch(["93.184.216.34", "169.254.169.254"]):
+            with self.assertRaises(ValueError) as ctx:
+                await self._call("mixed.example.com")
+        self.assertIn("url_not_allowed", str(ctx.exception))
+
+    async def test_unresolvable_hostname_blocked(self):
+        """Tests that a hostname that fails DNS resolution is blocked with url_not_allowed."""
+        with make_dns_patch(gaierror("NXDOMAIN")):
+            with self.assertRaises(ValueError) as ctx:
+                await self._call("nonexistent.example.com")
+        self.assertIn("url_not_allowed", str(ctx.exception))
+
+    async def test_hostname_with_no_records_blocked(self):
+        """Tests that a hostname resolving to zero addresses is blocked with url_not_allowed."""
+        with make_dns_patch([]):
+            with self.assertRaises(ValueError) as ctx:
+                await self._call("empty.example.com")
         self.assertIn("url_not_allowed", str(ctx.exception))

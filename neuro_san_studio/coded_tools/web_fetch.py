@@ -60,8 +60,10 @@ class WebFetch(CodedTool):
     Uses aiohttp for HTTP requests and BeautifulSoup to strip HTML markup from
     the response. PDF URLs are handled via PyPDFLoader.
 
-    Note: IP-literal SSRF protection blocks private/loopback/reserved ranges and localhost, but
-    non-IP hostnames are not DNS-resolved. Use allowed_domains for stricter control.
+    Note: SSRF protection blocks private/loopback/reserved ranges and localhost. Non-IP
+    hostnames are DNS-resolved and every resolved address must be globally routable.
+    DNS rebinding is not mitigated (see _validate_hostname_safety); use allowed_domains
+    for stricter control.
     Redirects are not followed; a 3xx response raises url_not_allowed.
     The byte cap (MAX_RESPONSE_BYTES) is enforced via the Content-Length header only (checked
     before download). A server that lies about or omits Content-Length can still deliver an
@@ -171,8 +173,6 @@ class WebFetch(CodedTool):
         # but not "badexample.com".
         hostname: str = raw_hostname.lower()
 
-        hostname = await self._validate_hostname_safety(hostname)
-
         allowed_domains: list[str] = self._validate_domain_list(args.get("allowed_domains"), "allowed_domains")
         if allowed_domains and not any(
             hostname == domain.lower() or hostname.endswith("." + domain.lower()) for domain in allowed_domains
@@ -185,67 +185,55 @@ class WebFetch(CodedTool):
         ):
             raise ValueError(f"url_not_allowed: Domain '{hostname}' is blocked.")
 
+        # Domain rules run first so rejected URLs never trigger a DNS lookup.
+        await self._validate_hostname_safety(hostname)
+
         return url
 
-    async def _validate_hostname_safety(self, hostname: str) -> str:
-        """Reject IP literals in private/loopback/link-local/multicast/reserved ranges and localhost.
+    async def _validate_hostname_safety(self, hostname: str) -> None:
+        """Reject hosts that are, or resolve to, non-globally-routable IP addresses.
 
-        Note: non-IP hostnames are not DNS-resolved here; use allowed_domains for stricter control.
-        :return: A safe hostname to use or an exception if the hostname is unsafe.
+        IP literals are checked directly. Other hostnames are DNS-resolved, and every
+        resolved address must be globally routable (rejects private/loopback/link-local/
+        multicast/reserved ranges and localhost).
+
+        Warning: this does not prevent DNS rebinding. The HTTP client re-resolves the
+        hostname at connection time, so an attacker-controlled DNS server can return a
+        safe address here and an internal one for the actual fetch. Closing that gap
+        requires pinning the validated addresses into the connection (e.g. a custom
+        resolver on the aiohttp TCPConnector).
         """
         if hostname == "localhost" or hostname.endswith(".localhost"):
             raise ValueError(f"url_not_allowed: Host '{hostname}' targets a loopback address.")
 
-        addr: IPv4Address | IPv6Address = None
+        addresses: list[IPv4Address | IPv6Address]
         try:
-            addr = ip_address(hostname)
-        except ValueError as value_exc:
-            # Not an IP literal;
-            # Try to resolve the hostname to an IP address
+            addresses = [ip_address(hostname)]
+        except ValueError as literal_exc:
+            # Not an IP literal; resolve the hostname and validate every DNS record.
             loop: AbstractEventLoop = get_running_loop()
-
-            # loop.getaddrinfo works like socket.getaddrinfo but is non-blocking
-            # SOCK_STREAM specifies TCP stream configuration
-            addr_infos: list[tuple[str, int, int, str, tuple[str, int]]] = []
             try:
+                # loop.getaddrinfo works like socket.getaddrinfo but is non-blocking
                 addr_infos = await loop.getaddrinfo(hostname, None, type=SOCK_STREAM)
-            except gaierror as exc:
-                raise ValueError(f"url_not_allowed: Host '{hostname}' could not be resolved.") from exc
+            except gaierror as dns_exc:
+                raise ValueError(f"url_not_allowed: Host '{hostname}' could not be resolved.") from dns_exc
 
-            if not addr_infos:
+            addresses = []
+            for info in addr_infos:
+                addresses.append(ip_address(info[4][0]))
+            if not addresses:
                 raise ValueError(
                     f"url_not_allowed: Host '{hostname}' doesn't resolve to an IP address."
-                ) from value_exc
+                ) from literal_exc
 
-            ip_ok: bool = False
-            ip_string: str = None
-            for info in addr_infos:
-                # Loop through all IP addresses resolved for the hostname
-                ip_string = info[4][0]
-                try:
-                    addr = ip_address(ip_string)
-                except ValueError:
-                    # If we can't get an IP address from the string, try the next
-                    continue
-
-                if addr is None or not addr.is_global:
-                    # We only want globally routable IP addresses (not local)
-                    continue
-
-                ip_ok = True
-                break
-
-            if not ip_ok or not ip_string:
+        # Every address must be global: with multiple DNS records the OS may connect
+        # to any of them, so a single non-global record makes the host unsafe.
+        for addr in addresses:
+            if not addr.is_global:
                 raise ValueError(
-                    f"url_not_allowed: Host '{hostname}' doesn't resolve to a valid IP address."
-                ) from value_exc
-
-            return ip_string
-
-        if not addr.is_global:
-            raise ValueError(f"url_not_allowed: IP address '{hostname}' is not a globally routable address.")
-
-        return hostname
+                    f"url_not_allowed: Host '{hostname}' uses IP address '{addr}', "
+                    "which is not a globally routable address."
+                )
 
     def _validate_domain_list(self, value: Any, param_name: str) -> list[str]:
         """Coerce and validate a domain list parameter. Accepts None, list[str], or a single str."""
