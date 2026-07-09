@@ -255,8 +255,9 @@ included in neuro-san-studio:
 
 ```bash
 ns import                              # interactive
-ns import basic,industry               # by group(s)
+ns import basic industry               # by group(s)
 ns import agent_network_designer       # specific network
+ns import path/to/network.hocon        # from a local file
 ```
 
 See [`docs/cli/import.md`](docs/cli/import.md) for details.
@@ -276,14 +277,15 @@ See [`docs/cli/export.md`](docs/cli/export.md) for details.
 
 <!-- pyml disable line-length -->
 
-| Command             | Purpose                                          | Key flags                                                                                              |
-|---------------------|--------------------------------------------------|--------------------------------------------------------------------------------------------------------|
-| `ns init`           | Scaffold a starter project in the current dir.   | `--providers openai,anthropic,google`                                                                  |
-| `ns run`            | Start the Neuro SAN server and nsflow UI.        | `--server-host`, `--server-http-port`, `--nsflow-port`, `--log-level`, `--client-only`, `--server-only` |
-| `ns import`         | Import agent networks into the current project.  | Positional: group name, network name, comma-separated list, or `all`. `-f` / `--from-file` to install a local `.hocon` or `.zip`. `--force` to overwrite. Omit args for interactive mode. |
-| `ns export`         | Bundle a network from the current project into a shareable file. | Positional: network name (e.g. `music_nerd` or `basic/music_nerd`). `-o` / `--output` to set the output path. Omit args for interactive picker. |
-| `ns check-llm-keys` | Validate LLM API keys / env vars.                | `--tier 1` (placeholder), `--tier 2` (format), `--tier 3` (live API call, default)                     |
-| `ns check-config`   | Validate the LLM configurations in a HOCON file. | `--hocon-path` (defaults to `config/llm_config.hocon`)                                                 |
+| Command             | Purpose                                                          | Key flags                                                                                                                                                                       |
+|---------------------|------------------------------------------------------------------|---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `ns init`           | Scaffold a starter project in the current dir.                   | `--providers openai,anthropic,google`                                                                                                                                           |
+| `ns run`            | Start the Neuro SAN server and nsflow UI.                        | `--server-host`, `--server-http-port`, `--nsflow-port`, `--log-level`, `--client-only`, `--server-only`                                                                         |
+| `ns chat`           | Chat with an agent network directly (no server needed).          | Positional: agent name, `--connection`,  `--host`, `--port`, `--one-shot`, `--list`.                                                                                            |
+| `ns import`         | Import agent networks into the current project.                  | Positional: space-separated group names, network names, or `all`; or local `.hocon` / `.zip` paths (don't mix the two). `--force` to overwrite. Omit args for interactive mode. |
+| `ns export`         | Bundle a network from the current project into a shareable file. | Positional: network name (e.g. `music_nerd` or `basic/music_nerd`). `-o` / `--output` to set the output path. Omit args for interactive picker.                                 |
+| `ns check-llm-keys` | Validate LLM API keys / env vars.                                | `--tier 1` (placeholder), `--tier 2` (format), `--tier 3` (live API call, default)                                                                                              |
+| `ns check-config`   | Validate the LLM configurations in a HOCON file.                 | `--hocon-path` (defaults to `config/llm_config.hocon`)                                                                                                                          |
 
 <!-- pyml enable line-length -->
 

@@ -1,0 +1,85 @@
+# Copyright © 2025-2026 Cognizant Technology Solutions Corp, www.cognizant.com.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
+# END COPYRIGHT
+
+{
+    # This file is NOT an agent network HOCON.
+    # It defines a set of key-value pairs for substitution, typically used in agent network HOCON files.
+    # Each key can be referenced in agent configs using the ${key} syntax.
+    # Do not define agents or tools directly here—this file only provides reusable values.
+
+    # Similar to the default developer config, except that we provide more detailed setup information
+    # for configurations for private LLM instances given by cloud providers.
+    #
+    # To most easily use this config, copy it over this directory's llm_config.hocon file.
+    "llm_config": {
+        "fallbacks": [
+            {
+                # Try OpenAI first
+                "class": "azure-openai",
+                # "model_name": "gpt-5.2",  # For Azure OpenAI, the model_name is really the deployment_name below.
+
+                                                                            # Values below can also come from env vars:
+                # Your dev-ops set up for Azure OpenAI might vary w/rt
+                # the deployment_name. Consult your dev-ops team as to how
+                # they set up the deployment_name for the model of your choice.
+                "deployment_name": "gpt-5-2",                               # AZURE_OPENAI_DEPLOYMENT_NAME
+
+                # This openai_api_version is generally not a secret.
+                "openai_api_version": "2024-10-21",                         # OPENAI_API_VERSION
+
+                # You *will* need to also set these env vars for Azure OpenAI such as:
+                #   AZURE_OPENAI_API_KEY
+                #   AZURE_OPENAI_ENDPOINT   (you could also set as "azure_endpoint" key in this config)
+                # ... these will be provided by the dev-ops team that set up your Azure OpenAI instance.
+
+                # You *might also* want to set these optional env vars for your Azure OpenAI such as:
+                #   AZURE_OPENAI_REGION
+                #   AZURE_OPENAI_RESOURCE_GROUP
+                #   AZURE_OPENAI_MODEL_VERSION
+
+                # Any env var mentioned above has been known to be emitted from TerraForm output (for instance).
+
+                # Note that there are ways to use a regular OpenAI chat class to do these same things,
+                # however that would require setting an "openai_api_key" in this config to use the
+                # AZURE_OPENAI_API_KEY env var, which is not recommended due to security concerns.
+                # You would also need to set  "openai_api_base" in this config to use the
+                # AZURE_OPENAI_ENDPOINT env var + "openai/vi/".
+
+                # Try this one first, but move on to the next at any hint of a problem.
+                "max_retries": 0
+            },
+            {
+                # A private fallback LLM used if the default LLM is unavailable or cannot
+                # complete a request. If you don't need a fallback provider, you can remove
+                # this entire block.
+                "class": "azure-openai",
+
+                # Your dev-ops set up for Azure OpenAI might vary w/rt
+                # the deployment_name. Consult your dev-ops team as to how
+                # they set up the deployment_name for the model of your choice.
+                "deployment_name": "gpt-5-2-b",                             # AZURE_OPENAI_DEPLOYMENT_NAME
+
+                # This openai_api_version is generally not a secret.
+                "openai_api_version": "2024-10-21",                         # OPENAI_API_VERSION
+
+                # No max_retries here.
+                # If this one fails, there's nowhere else to go and you need more LLM instances.
+            },
+
+            # ... More for different llm + cloud provider combinations as they come
+        ]
+    }
+}

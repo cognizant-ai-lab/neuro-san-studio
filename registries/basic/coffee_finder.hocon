@@ -16,6 +16,8 @@
 
 include "registries/aaosa_basic.hocon"
 
+include "config/llm_config.hocon"
+
 # Optional metadata describing this agent network
 metadata {
     description = "Agent network that helps users find coffee at any time of the day. It shows how multiple agents can provide the same service and how the AAOSA instructions can be used to choose the best option depending on the context."
@@ -26,11 +28,6 @@ metadata {
         "It's now 2 am, where can I get coffee?",
         "Where can I find coffee liquor?",
     ]
-}
-
-llm_config {
-    class = "openai"
-    model_name = "gpt-4.1-mini"
 }
 
 tools = [
@@ -53,7 +50,9 @@ Ask the user back if you need additional information.
     }
     {
         name = "CoffeeShop"
-        function = ${aaosa_call}
+        function = ${aaosa_call}{
+            description = "A coffee shop open between 7 am and 6 pm."
+        }
         instructions =
 """
 Your name is Bob's Coffee Shop.
@@ -66,7 +65,9 @@ You must know the time of day to provide an answer.
     }
     {
         name = "FastFoodChain"
-        function = ${aaosa_call}
+        function = ${aaosa_call}{
+            description = "A fast food chain open between 5:30 am and 12 am."
+        }
         instructions =
 """
 Your name is Henry's Fast Food.
@@ -79,7 +80,9 @@ You must know the time of day to provide an answer.
     }
     {
         name = "GasStation"
-        function = ${aaosa_call}
+        function = ${aaosa_call}{
+            description = "A gas station that serves coffee at any time."
+        }
         instructions =
 """
 Your name is Joe's Gas Station.
@@ -89,7 +92,9 @@ You can provide coffee at any time.
     }
     {
         name = "LiquorStore"
-        function = ${aaosa_call}
+        function = ${aaosa_call}{
+            description = "A liquor store that sells alcohol at any time to customers of legal age."
+        }
         instructions =
 """
 Your name is Jack's Liquor Store.

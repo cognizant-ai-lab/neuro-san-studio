@@ -27,6 +27,7 @@
       - [Ollama Configuration](#ollama-configuration)
       - [Using Ollama in Docker or Remote Server](#using-ollama-in-docker-or-remote-server)
       - [Example agent network](#example-agent-network)
+    - [Mistral](#mistral)
     - [Configuring Default Models with Environment Variables](#configuring-default-models-with-environment-variables)
       - [Using Optional Environment Variable Substitution](#using-optional-environment-variable-substitution)
       - [Setting Your Own Default Model](#setting-your-own-default-model)
@@ -489,20 +490,11 @@ To find which models are available in your region, refer to the official AWS doc
 
 To use Gemini models:
 
-1. Confirm that `langchain-google-genai` is installed:
+1. The `langchain-google-genai` package is already included with neuro-san-studio,
+   so no need to install anything new.
 
-    ```bash
-    pip show langchain-google-genai
-    ```
-
-2. If not installed, install it:
-
-    ```bash
-    pip install langchain-google-genai
-    ```
-
-3. Set the `GOOGLE_API_KEY` environment variable to your Google Gemini API key
-and specify which model to use in the `model_name` field of the `llm_config` section of an agent network hocon file:
+2. Set the `GOOGLE_API_KEY` environment variable to your Google Gemini API key
+   and specify which model to use in the `model_name` field of the `llm_config` section of an agent network hocon file:
 
 ```hocon
     "llm_config": {
@@ -713,6 +705,31 @@ See the [./examples/music_nerd_pro_local.md](examples/basic/music_nerd_pro_local
 
 For more information about how to use Ollama with LangChain,
 see [this page](https://python.langchain.com/docs/integrations/chat/ollama/)
+
+### Mistral
+
+Mistral is not one of the built-in providers in the
+[default llm info file](https://github.com/cognizant-ai-lab/neuro-san/blob/main/neuro_san/internals/run_context/langchain/llms/default_llm_info.hocon),
+so it is configured using the `class` key with the full LangChain chat model path (see
+[Using the `class` Key](#using-the-class-key)).
+
+First, install the LangChain Mistral AI integration:
+
+```shell
+pip install langchain-mistralai==1.1.2
+```
+
+Then set the `MISTRAL_API_KEY` environment variable to your Mistral API key and specify the model
+in the `llm_config` section of an agent network hocon file:
+
+```hocon
+    "llm_config": {
+        "class": "langchain_mistralai.chat_models.ChatMistralAI",
+        "model_name": "mistral-medium-latest",
+    }
+```
+
+Here you can get a Mistral API [key](https://admin.mistral.ai/).
 
 ### Configuring Default Models with Environment Variables
 

@@ -19,6 +19,7 @@ from typing import Any
 
 from neuro_san.interfaces.coded_tool import CodedTool
 
+from coded_tools.agent_network_editor.agent_name_guard import AgentNameGuard
 from coded_tools.agent_network_editor.constants import AGENT_NETWORK_DEFINITION
 from coded_tools.agent_network_editor.progress_handler import ProgressHandler
 
@@ -71,6 +72,11 @@ class AddAgent(CodedTool):
         the_agent_name: str = args.get("agent_name", "")
         if the_agent_name == "":
             return "Error: No agent_name provided."
+        # External references must live inside a tools list, not as a node, and local
+        # names must be valid tool names (letters/digits/underscore/hyphen only).
+        name_error: str | None = AgentNameGuard.agent_name_error(the_agent_name)
+        if name_error:
+            return name_error
         is_tool: bool = args.get("is_tool")
         if is_tool is None:
             return "Error: No is_tool provided."

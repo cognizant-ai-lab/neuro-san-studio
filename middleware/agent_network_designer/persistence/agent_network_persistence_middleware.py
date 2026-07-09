@@ -47,8 +47,7 @@ from middleware.agent_network_designer.validation.agent_network_structure_valida
     AgentNetworkStructureValidationMiddleware,
 )
 
-# To use reservations, turn this environment variable to true and also
-# export AGENT_TEMPORARY_NETWORK_UPDATE_PERIOD_SECONDS=5
+# To use reservations, turn this environment variable to true
 WRITE_TO_FILE: bool = environ.get("AGENT_NETWORK_DESIGNER_USE_RESERVATIONS", "false").lower() != "true"
 
 # Set this to False if the agents are grounded and don't need demo mode instructions
@@ -56,6 +55,9 @@ DEMO_MODE: bool = environ.get("AGENT_NETWORK_DESIGNER_DEMO_MODE", "true").lower(
 
 # Subdirectory under registries directory where networks are saved when using file persistence.
 SUBDIRECTORY: str = environ.get("AGENT_NETWORK_DESIGNER_SUBDIRECTORY", DEFAULT_SUBDIRECTORY)
+
+# Default number of validation retry rounds when the env var is unset or unparseable.
+DEFAULT_MAX_VALIDATION_ATTEMPTS: int = 3
 
 
 class AgentNetworkPersistenceMiddleware(AgentMiddleware):
@@ -100,6 +102,22 @@ class AgentNetworkPersistenceMiddleware(AgentMiddleware):
         self.logger: Logger = getLogger(self.__class__.__name__)
         self.reservationist = reservationist
         self.sly_data = sly_data
+        # Maximum number of validation retry rounds before bailing without persisting.
+        # Parsed per-instance so a bad env var degrades this one session, not the whole server.
+        raw_max: str = environ.get(
+            "AGENT_NETWORK_DESIGNER_MAX_VALIDATION_ATTEMPTS", str(DEFAULT_MAX_VALIDATION_ATTEMPTS)
+        )
+        try:
+            self.max_validation_attempts: int = max(0, int(raw_max))
+        except ValueError:
+            self.logger.warning(
+                "Invalid AGENT_NETWORK_DESIGNER_MAX_VALIDATION_ATTEMPTS=%r; falling back to %d.",
+                raw_max,
+                DEFAULT_MAX_VALIDATION_ATTEMPTS,
+            )
+            self.max_validation_attempts = DEFAULT_MAX_VALIDATION_ATTEMPTS
+        # Counts validation rounds that failed in this session, used to cap retries.
+        self._validation_attempts: int = 0
 
     # Reenter the agent loop at the model node if validation fails.
     # If no agent network definition is present, return None to let the agent respond freely.
@@ -137,7 +155,22 @@ class AgentNetworkPersistenceMiddleware(AgentMiddleware):
             structure_errors, instructions_errors = await self._validate_network(network_def)
             if structure_errors or instructions_errors:
                 self.logger.warning("Validation errors: %s", structure_errors + instructions_errors)
-                self.logger.warning("Invoking agent network designer to fix the issues.")
+                # Bail out if we've already retried the max number of times. Returning None
+                # ends the session without persisting; the agent's last message reaches the user.
+                # Prevents runaway loops when the model can't fix the errors (e.g., the required
+                # tool was silently dropped from the tools array under load).
+                if self._validation_attempts >= self.max_validation_attempts:
+                    self.logger.warning(
+                        "Reached max validation attempts (%d); ending without persisting.",
+                        self.max_validation_attempts,
+                    )
+                    return None
+                self._validation_attempts += 1
+                self.logger.warning(
+                    "Invoking agent network designer to fix the issues (attempt %d/%d).",
+                    self._validation_attempts,
+                    self.max_validation_attempts,
+                )
                 message_parts: list[str] = []
                 if structure_errors:
                     message_parts.append(
@@ -155,6 +188,10 @@ class AgentNetworkPersistenceMiddleware(AgentMiddleware):
                         "then address the instructions issues with `agent_network_instructions_editor`."
                     )
                 return self._error_response(" ".join(message_parts))
+
+            # Validation succeeded. Reset the counter so a later turn in the same session
+            # (e.g., a follow-up modification) gets its own full retry budget.
+            self._validation_attempts = 0
 
             sample_queries: list[str] = self.sly_data.get(AGENT_NETWORK_QUERIES, [])
 

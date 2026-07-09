@@ -21,6 +21,9 @@
     include "config/llm_config.hocon",
     "max_steps": 40000,
     "max_execution_seconds": 6000,
+    "error_formatter": "json",
+    "error_fragments": ["Error:", "Exception:", "Traceback (most recent call last)"],
+
     "tools": [
         # This first agent definition is regarded as the "Front Man", which
         # does all the talking to the outside world/client.
@@ -69,6 +72,8 @@ Always respond with "The sample queries have been set." when successful.
                 }
             },
             "tools": ["set_sample_queries_tool"],
+            # Parse any JSON in responses into the structure field of the ChatMessage.
+            "structure_formats": "json",
             "middleware": [
                 {
                     "class": "middleware.agent_network_designer.agent_network_definition_middleware.AgentNetworkDefinitionMiddleware",

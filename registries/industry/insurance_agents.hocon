@@ -70,7 +70,9 @@ If there are any requirements that need user input, ask them one at a time, with
         },
         {
             "name": "underwriter",
-            "function": ${aaosa_call},
+            "function": ${aaosa_call}{
+                "description": "Evaluates insurance applications, assesses risk levels, and determines policy terms and premiums."
+            },
             "instructions": """
 You evaluate insurance applications, assess risk levels, and determine policy terms, conditions, and premiums.
             """ ${aaosa_instructions},
@@ -78,7 +80,9 @@ You evaluate insurance applications, assess risk levels, and determine policy te
         },
         {
             "name": "claims_adjuster",
-            "function": ${aaosa_call},
+            "function": ${aaosa_call}{
+                "description": "Investigates insurance claims, determines liability, and negotiates settlements."
+            },
             "instructions": """
 You are responsible for investigating insurance claims, determining liability, and negotiating settlements.
             """ ${aaosa_instructions},
@@ -86,7 +90,9 @@ You are responsible for investigating insurance claims, determining liability, a
         },
         {
             "name": "policy_admin_coordinator",
-            "function": ${aaosa_call},
+            "function": ${aaosa_call}{
+                "description": "Handles policy documentation including issuing new policies, renewals, and amendments."
+            },
             "instructions": """
 You handle policy documentation, including issuing new policies, renewals, and amendments.
             """ ${aaosa_instructions},
@@ -94,7 +100,9 @@ You handle policy documentation, including issuing new policies, renewals, and a
         },
         {
             "name": "risk_manager",
-            "function": ${aaosa_call},
+            "function": ${aaosa_call}{
+                "description": "Assesses risk across portfolios and recommends mitigation strategies."
+            },
             "instructions": """
 You assess risk across portfolios and recommend mitigation strategies.
             """ ${aaosa_instructions},
@@ -102,14 +110,18 @@ You assess risk across portfolios and recommend mitigation strategies.
         },
         {
             "name": "actuarial_analyst",
-            "function": ${aaosa_call},
+            "function": ${aaosa_call}{
+                "description": "Analyzes data to assess risk levels, determine pricing models, and estimate reserve requirements."
+            },
             "instructions": """
 You analyze data to assess risk levels, determine pricing models, and estimate reserve requirements for policies.
             """,
         },
         {
             "name": "claims_supervisor",
-            "function": ${aaosa_call},
+            "function": ${aaosa_call}{
+                "description": "Supervises the claims handling process and escalates complex claims when necessary."
+            },
             "instructions": """
 You supervise the claims handling process, ensuring claims adjusters adhere to company protocols. Escalate complex claims to senior management or legal counsel when necessary.
             """ ${aaosa_instructions},
@@ -117,21 +129,27 @@ You supervise the claims handling process, ensuring claims adjusters adhere to c
         },
         {
             "name": "legal_counsel",
-            "function": ${aaosa_call},
+            "function": ${aaosa_call}{
+                "description": "Provides legal guidance on claims disputes, litigation, and regulatory compliance."
+            },
             "instructions": """
 You provide legal guidance on claims disputes, litigation, and ensure the company’s policies comply with relevant laws and regulations.
             """,
         },
         {
             "name": "compliance_officer",
-            "function": ${aaosa_call},
+            "function": ${aaosa_call}{
+                "description": "Monitors regulatory changes and ensures company policies and documentation are compliant."
+            },
             "instructions": """
 You monitor regulatory changes and ensure the company’s policies, claims, and documentation are compliant with current laws.
             """,
         },
         {
             "name": "senior_claims_manager",
-            "function": ${aaosa_call},
+            "function": ${aaosa_call}{
+                "description": "Manages high-value and complex claims to ensure efficient resolution."
+            },
             "instructions": """
 You manage high-value and complex claims, ensuring they are handled efficiently and resolved according to company standards.
             """,

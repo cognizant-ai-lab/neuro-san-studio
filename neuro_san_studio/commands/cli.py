@@ -38,6 +38,32 @@ class NeuroSanStudioCli:  # pylint: disable=too-few-public-methods
     )
 
     @staticmethod
+    def _version_callback(value: bool) -> bool:
+        """Print the neuro-san-studio version (and where it resolved from) and exit."""
+        if value:
+            # pylint: disable-next=import-outside-toplevel
+            from neuro_san_studio.utils.version import resolve_version
+
+            version, source = resolve_version()
+            typer.echo(f"neuro-san-studio {version} ({source})")
+            raise typer.Exit()
+        return value
+
+    @staticmethod
+    @app.callback()
+    def _main(
+        _version: bool = typer.Option(
+            False,
+            "--version",
+            "-V",
+            help="Show the installed neuro-san-studio version and exit.",
+            callback=_version_callback,
+            is_eager=True,
+        ),
+    ) -> None:
+        """Neuro SAN Studio CLI."""
+
+    @staticmethod
     def _invoke_run(extra_args: List[str]) -> None:
         """Run the server, exposing `extra_args` to NeuroSanRunner.parse_args() via sys.argv."""
         sys.argv = [sys.argv[0], *extra_args]
@@ -125,15 +151,14 @@ class NeuroSanStudioCli:  # pylint: disable=too-few-public-methods
     @staticmethod
     @app.command("import", help="Import agent networks into existing project.")
     def _import_command(
-        networks: Optional[str] = typer.Argument(
+        networks: Optional[List[str]] = typer.Argument(
             None,
-            help=("Comma-separated group names, network names, or 'all'. Omit for interactive mode."),
-        ),
-        from_file: Optional[str] = typer.Option(
-            None,
-            "--from-file",
-            "-f",
-            help="Path to a local .hocon file to import (self-contained network).",
+            help=(
+                "Space-separated group names, network names, or 'all'. "
+                "Paths ending in .hocon or .zip are imported as local files "
+                "(one or more); don't mix files with registry names. "
+                "Omit for interactive mode."
+            ),
         ),
         force: bool = typer.Option(
             False,
@@ -144,9 +169,7 @@ class NeuroSanStudioCli:  # pylint: disable=too-few-public-methods
         """Import agent networks into an existing neuro-san-studio project."""
         from neuro_san_studio.commands.import_networks import ImportCommand  # pylint: disable=import-outside-toplevel
 
-        if networks and from_file:
-            raise typer.BadParameter("Cannot pass both 'networks' and '--from-file'; they are mutually exclusive.")
-        ImportCommand(networks_arg=networks, from_file=from_file, force=force).run()
+        ImportCommand(networks_arg=networks, force=force).run()
 
     @staticmethod
     @app.command("export", help="Export an agent network from the current project into a shareable file.")
@@ -199,6 +222,154 @@ class NeuroSanStudioCli:  # pylint: disable=too-few-public-methods
         from neuro_san_studio.commands.check_config import CheckConfigCommand
 
         raise typer.Exit(code=CheckConfigCommand(hocon_path=hocon_path).run())
+
+    @staticmethod
+    @app.command(
+        "chat",
+        help=(
+            "Chat with an agent network directly (without starting nsflow).\n\n"
+            "Pass the agent name as AGENT, e.g. ns chat music_nerd"
+        ),
+        no_args_is_help=True,
+        context_settings={
+            "allow_extra_args": True,
+            "ignore_unknown_options": True,
+        },
+    )
+    def _chat_command(  # pylint: disable=too-many-arguments
+        ctx: typer.Context,
+        *,
+        connection: str = typer.Option(
+            "direct",
+            "--connection",
+            help="Connection type: 'direct' (library call, default), 'http', or 'https'.",
+        ),
+        host: Optional[str] = typer.Option(
+            None,
+            "--host",
+            help="Hostname of the neuro-san server (for http/https connections).",
+        ),
+        port: Optional[int] = typer.Option(
+            None,
+            "--port",
+            help="Port of the neuro-san server.",
+        ),
+        one_shot: bool = typer.Option(
+            False,
+            "--one-shot",
+            help="Send one prompt and exit (non-interactive mode).",
+        ),
+        list_agents: bool = typer.Option(
+            False,
+            "--list",
+            help="List all available agents and exit.",
+        ),
+    ) -> None:
+        """Chat with an agent network, forwarding extra options to AgentCli."""
+        # pylint: disable-next=import-outside-toplevel
+        from neuro_san_studio.commands.chat import ChatCommand
+
+        extra = list(ctx.args)
+        agent = None
+        if extra and not extra[0].startswith("--"):
+            agent = extra.pop(0)
+
+        raise typer.Exit(
+            code=ChatCommand(
+                agent=agent,
+                connection=connection,
+                host=host,
+                port=port,
+                one_shot=one_shot,
+                list_agents=list_agents,
+                extra_args=extra,
+            ).run()
+        )
+
+    @staticmethod
+    @app.command("validate", help="Validate the structure of an agent network HOCON file.")
+    def _validate_command(
+        hocon_path: str = typer.Argument(
+            ...,
+            help="Path to the agent network HOCON file to validate.",
+        ),
+        verbose: bool = typer.Option(
+            False,
+            "--verbose",
+            help="Print an agent network summary when validation passes.",
+        ),
+        external_agents: Optional[str] = typer.Option(
+            None,
+            "--external-agents",
+            help="Comma-separated external agent references to treat as valid (e.g. '/agent1,/agent2').",
+        ),
+        mcp_servers: Optional[str] = typer.Option(
+            None,
+            "--mcp-servers",
+            help="Comma-separated MCP server URLs to treat as valid.",
+        ),
+        registry_dir: Optional[str] = typer.Option(
+            None,
+            "--registry-dir",
+            help="Base directory for resolving HOCON includes. Defaults to the current directory.",
+        ),
+    ) -> None:
+        """Run the agent network HOCON validation and propagate its exit code."""
+        # pylint: disable-next=import-outside-toplevel
+        from neuro_san_studio.commands.validate import ValidateCommand
+
+        raise typer.Exit(
+            code=ValidateCommand(
+                hocon_path=hocon_path,
+                verbose=verbose,
+                external_agents=external_agents,
+                mcp_servers=mcp_servers,
+                registry_dir=registry_dir,
+            ).run()
+        )
+
+    @staticmethod
+    @app.command(
+        "internalize-agents",
+        help="Inline external-agent references in a HOCON file into one self-contained file.",
+    )
+    def _internalize_agents_command(
+        input_path: str = typer.Argument(
+            ...,
+            help="Path to the parent HOCON file containing /-prefixed external-agent references.",
+        ),
+        output_path: str = typer.Option(
+            ...,
+            "--output",
+            "-o",
+            help=(
+                "Path to write the self-contained HOCON output. The output is fully resolved "
+                "(no includes, no /-prefixed external refs) and formatted as HOCON (JSON-like with "
+                "quoted keys/commas; multi-line strings use HOCON triple quotes)."
+            ),
+        ),
+        search_paths: Optional[str] = typer.Option(
+            None,
+            "--search-paths",
+            help=(
+                "Colon-separated directories to look up external HOCON files. Each `/<ref>` "
+                "is joined as `<search_path>/<ref>.hocon`, so refs containing `/` (e.g. "
+                "`/industry/banking_ops`) reach subdirectories naturally without listing "
+                "them here. Defaults to 'registries'."
+            ),
+        ),
+    ) -> None:
+        """Run the internalize-agents command and propagate its exit code."""
+        # pylint: disable-next=import-outside-toplevel
+        from neuro_san_studio.commands.internalize_agents import InternalizeAgentsCommand
+
+        raise typer.Exit(
+            code=InternalizeAgentsCommand(
+                input_path=input_path,
+                output_path=output_path,
+                search_paths=search_paths,
+            ).run()
+        )
 
 
 def main() -> None:

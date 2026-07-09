@@ -1,0 +1,113 @@
+# Copyright © 2025-2026 Cognizant Technology Solutions Corp, www.cognizant.com.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
+# END COPYRIGHT
+
+{
+    # This file is NOT an agent network HOCON.
+    # It defines a set of key-value pairs for substitution, typically used in agent network HOCON files.
+    # Each key can be referenced in agent configs using the ${key} syntax.
+    # Do not define agents or tools directly here—this file only provides reusable values.
+
+    # A Bring-Your-Own-Key (BYOK) llm_config.
+    # Similar to the default developer config above, except that any api keys must be provided by the
+    # client in sly_data.
+    #
+    # To most easily use this config, copy it over this directory's llm_config.hocon file.
+    "llm_config": {
+        "fallbacks": [
+            {
+                # Try OpenAI first
+                "class": "openai",
+                "model_name": "gpt-5.2",
+
+                # The "sly_data" value here says that the user's OpenAI API key must be provided
+                # by the client in the llm_config.openai_api_key field of the client request's sly_data,
+                # otherwise this block of the configuration will be skipped.
+                "openai_api_key": "sly_data",
+            },
+            {
+                # Fall back to Anthropic Claude if OpenAI is unavailable.
+                # The "sly_data" value here says that the user's Anthropic API key must be provided
+                # by the client in the llm_config.anthropic_api_key field of the client request's sly_data,
+                # otherwise this block of the configuration will be skipped.
+                # Let neuro-san figure out the latest version of the model
+                "model_name": "claude-sonnet",
+                "anthropic_api_key": "sly_data",
+            },
+            {
+                # Fall back to Google Gemini if both OpenAI and Anthropic are unavailable.
+                # The "sly_data" value here says that the user's Google API key must be provided
+                # by the client in the llm_config.google_api_key field of the client request's sly_data,
+                # otherwise this block of the configuration will be skipped.
+                # Let neuro-san figure out the latest version of the model
+                "model_name": "gemini-3-flash",
+                "google_api_key": "sly_data",
+            }
+        ]
+    }
+
+    #
+    # sly_data_schema definitions to communicate the needs of BYOK to a generic client.
+    # By convention, we send keys over in the "llm_config" key's dictionary value of the sly_data in
+    # the client request.
+
+    # A key to use when referencing the BYOK llm_config in a given agent network node's front man sly_data_schema
+    # or allow block.
+    "llm_config_key": "llm_config"
+
+    # This global definition gets merged with any existing sly_data_schema definitions
+    # in a given agent network's front man sly_data_schema specification.
+    "sly_data_schema": {
+        "type": "object",
+        "properties": {
+            # A BYOK llm_config_property to be inserted in an already existing sly_data_schema.
+            # Note that with hocon we can only define values to be used later in substitution.
+            "llm_config": {
+                "type": "object",
+                "properties": {
+                    "openai_api_key": {
+                        "type": "string",
+                        "description": "The user's OpenAI API key"
+                    },
+                    "anthropic_api_key": {
+                        "type": "string",
+                        "description": "The user's Anthropic API key"
+                    },
+                    "google_api_key": {
+                        "type": "string",
+                        "description": "The user's Google API key for use with Gemini models"
+                    },
+                },
+                # Note that none of these properties are strictly required, as all are individually optional,
+                # but at least one of these properties must be present, hence the "anyOf" below.
+                # However, in a BYOK situation, we do always expect the llm_config property itself to be required
+                # with at least one of these values present.
+                "anyOf": [
+                    { "required": ["openai_api_key"] },
+                    { "required": ["anthropic_api_key"] },
+                    { "required": ["google_api_key"] }
+                ]
+            }
+        },
+        "required": [${llm_config_key}]
+    }
+
+    # A full definition for sending BYOK llm_config to downstream agents.
+    "allow_llm_config_downstream": {
+        "to_downstream": {
+            "sly_data": [${llm_config_key}]
+        }
+    }
+}

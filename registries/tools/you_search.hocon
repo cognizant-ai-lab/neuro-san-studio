@@ -14,11 +14,20 @@
 #
 # END COPYRIGHT
 
-# Requirement to use this agent network:
-    # - neuro-san>=0.6.24
-    # - YDC_API_KEY
-    # - Get a free API key with $100 in credits (no credit card required) at https://you.com/platform
-    # - Use MCP_SERVERS_INFO_FILE for authentication. See ../../neuro_san_studio/mcp/mcp_info.hocon and ../../docs/user_guide.md#authentication
+# Requirements to use this agent network:
+#   - neuro-san >= 0.6.24
+#   - Credentials for the you.com MCP server: either a YDC_API_KEY or a bearer token.
+#     you.com offers a free tier; use the `you_search_free` agent network to access it.
+#
+# Supported authentication methods:
+#   1. OAuth token exchange in the client application. Pass the resulting bearer token
+#      via the sly data "http_headers" input, following the schema in the agent function
+#      definition below.
+#   2. MCP_SERVERS_INFO_FILE. See ../../neuro_san_studio/mcp/mcp_info.hocon and
+#      ../../docs/user_guide.md#authentication.
+#
+# Note: when `sly_data_schema` is defined, nsflow requires the bearer token to be passed
+# as sly data even if an API key is already configured in the MCP info file.
 
 {
     # Optional metadata describing this agent network
@@ -60,7 +69,39 @@
                         },
                     },
                     "required": ["user_inquiry"]
-                }
+                },
+
+                # You can optionally specify the schema needed for any sly_data as input.
+                # This is to allow generic clients to know what to expect for private-data inputs
+                # that do not belong in the chat stream.
+                #
+                # Note: this block is required only for the OAuth bearer-token flow. If you are
+                # authenticating via YDC_API_KEY (or via MCP_SERVERS_INFO_FILE), comment out or
+                # remove the entire "sly_data_schema" block below — otherwise nsflow will still
+                # expect a bearer token to be passed in as sly data.
+                "sly_data_schema": {
+                    "type": "object",
+                    "properties": {
+                        # This tells the client to pass the necessary authentication info for accessing the you.com MCP server via sly data.
+                        "http_headers": {
+                            "type": "object",
+                            "description": "HTTP headers to be sent with MCP tool requests.",
+                            "properties": {
+                                "https://api.you.com/mcp": {
+                                    "type": "object",
+                                    "description": "URL for You.com MCP server.",
+                                        "Authorization": {
+                                            "type": "string",
+                                            "description": "Authorization header for you.com API access, e.g., 'Bearer <token_value>'."
+                                        }
+                                },
+                                    "required": ["Authorization"]
+                            }
+                        },
+                            "required": ["https://api.you.com/mcp"]
+                    }
+                },
+                    "required": ["http_headers"]
             },
 
             "instructions": """

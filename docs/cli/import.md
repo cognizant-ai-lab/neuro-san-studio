@@ -2,8 +2,8 @@
 
 Imports agent networks (and their dependencies) into the current project. Two
 modes: discovery-driven (pull networks from the installed neuro-san-studio
-package) and file-based (`-f` / `--from-file` to install a single `.hocon` or a
-`.zip` bundle from disk).
+package) and file-based (pass a path ending in `.hocon` or `.zip` to install a
+single network or bundle from disk).
 
 ## Usage
 
@@ -30,24 +30,33 @@ Top menu (single-select, Enter to pick):
 ### Non-interactive
 
 ```bash
-ns import basic                       # one group
-ns import industry,experimental       # multiple groups
-ns import all                         # everything
-ns import music_nerd                  # one network (any group)
-ns import basic,agent_network_designer  # mix
+ns import basic                          # one group
+ns import industry experimental          # multiple groups
+ns import all                            # everything
+ns import music_nerd                     # one network (any group)
+ns import basic agent_network_designer   # mix
 ```
 
-### From a local file (`-f`)
+Arguments without a file extension are resolved against the installed package's
+registry (groups, network names, or `all`).
+
+### From a local file
+
+A positional argument ending in `.hocon` or `.zip` is imported as a local file,
+no flag required. Pass one or more, space-separated, to import them in one call:
 
 ```bash
-ns import -f path/to/network.hocon            # self-contained single HOCON
-ns import -f path/to/bundle.zip               # network + dependencies
-ns import -f path/to/bundle.zip --force       # overwrite existing files
+ns import path/to/network.hocon            # self-contained single HOCON
+ns import music_nerd.hocon                 # bare name resolved in the current directory
+ns import path/to/bundle.zip               # network + dependencies
+ns import a.hocon path/to/b.zip            # multiple files in one call
+ns import path/to/bundle.zip --force       # overwrite existing files
 ```
 
-`-f` is mutually exclusive with the positional `networks` argument — pass one or
-the other, not both. Pair with [`ns export`](./export.md) to ship a network
-between projects.
+The `.hocon` / `.zip` extension is what selects file mode; an extensionless
+argument is always a registry lookup. Every token must be the same kind; mixing
+file paths with registry names in one call is rejected. Pair with
+[`ns export`](./export.md) to ship a network between projects.
 
 #### Source shapes
 
@@ -73,7 +82,7 @@ Archive paths land verbatim under the project root:
 | `middleware/my_network/bar.py` | `<project>/middleware/my_network/bar.py` | (n/a) |
 | `mcp/mcp_info.hocon` | merged additively into `<project>/mcp/mcp_info.hocon` | (n/a) |
 
-Single-HOCON `-f` imports have no enclosing directory, so they land at
+Single-HOCON file imports have no enclosing directory, so they land at
 `<project>/registries/` with their basename.
 
 #### Zip safety
@@ -129,16 +138,19 @@ A running server auto-reloads within ~5s.
 ## Idempotency
 
 Existing files are skipped, not overwritten. Re-running is safe. Pass `--force`
-(file mode only) to overwrite existing files in the target — `<project>/mcp/mcp_info.hocon`
+to overwrite existing files in the target — `<project>/mcp/mcp_info.hocon`
 is exempt and always merged additively.
 
 ## Network naming
+
+Registry lookups use extensionless names (an argument ending in `.hocon`/`.zip`
+is treated as a local file instead; see the [From a local file](#from-a-local-file)
+section).
 
 | Format | Example |
 |---|---|
 | Bare name | `music_nerd` |
 | Group/name | `basic/music_nerd` |
-| With extension | `basic/music_nerd.hocon` |
 | Root network | `agent_network_designer` |
 
 ## Requirements
@@ -151,6 +163,3 @@ Run from a project initialized with `ns init` (must contain `registries/manifest
 |---|---|
 | 0 | Success |
 | 1 | Project not initialized, or import failed |
-
-Passing both `-f` and the positional argument is rejected at the parser layer
-with a Typer `Invalid value` message before any work begins.

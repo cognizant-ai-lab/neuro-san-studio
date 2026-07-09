@@ -34,6 +34,8 @@
     #   4. Requires use of external services not readily deployed by the average bear
     #      (like databases)
     #   5. Have-a or is-a dependency on a particular agent network that has one of the above issues.
+    #   6. Developer-facing example of specific HOCON features/patterns (not an end-user demo).
+    #   7. Requires per-user authentication credentials (e.g. OAuth bearer token or API key)
     #
     # To use this file, we simply add a reference to it at the end of our existing
     # AGENT_MANIFEST_FILE specification # like this:
@@ -42,11 +44,22 @@
     #
     # Basically the data for later manifest files gets overlayed on top of earlier ones.
 
+    # Basic examples
+    "basic/book_recommender_multiple_llm_configs.hocon": false,  # Reason #6
+    "basic/internal_communication_skill.hocon": false,           # Reason #6
+    "basic/job_guessing_skill.hocon": false,                     # Reason #6
+    "basic/music_nerd_llm_fallbacks.hocon": false,               # Reason #6
+    "basic/music_nerd_local.hocon": false,                       # Reason #4
+    "basic/music_nerd_pro_local.hocon": false,                   # Reason #4
+    "basic/music_nerd_pro_sly.hocon": false,                     # Reason #6
+    "basic/music_nerd_pro_sly_local.hocon": false,               # Reason #4
+
     # Tools
     "tools/agent_network_html_creator.hocon": false,    # Reason #3
     "tools/agentforce.hocon": false,                    # Reason #2
     "tools/openai_image_generation.hocon": false,       # Reason #1
     "tools/persistent_memory_local.hocon": false,       # Reason #1
+    "tools/you_search.hocon": false,                    # Reason #7
 
     # Experimental and research
     "agent_network_designer.hocon": true,               # Reason #1. Needs AGENT_NETWORK_DESIGNER_USE_RESERVATIONS=true
