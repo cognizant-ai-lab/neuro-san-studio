@@ -14,7 +14,6 @@
 #
 # END COPYRIGHT
 
-import argparse
 import logging
 import os
 import signal
@@ -25,6 +24,8 @@ import time
 from pathlib import Path
 from typing import Any
 from typing import Dict
+from typing import List
+from typing import Optional
 from typing import Tuple
 
 from timedinput import timedinput
@@ -43,8 +44,17 @@ class NeuroSanRunner:
     """Command-line tool to run the Neuro SAN server and web client."""
 
     # pylint: disable=too-many-instance-attributes
-    def __init__(self):
-        """Initialize configuration and parse CLI arguments."""
+    def __init__(self, cli_overrides: Optional[Dict[str, Any]] = None, extra_args: Optional[List[str]] = None):
+        """Initialize configuration.
+
+        Args:
+            cli_overrides: Values parsed by the Typer `run` command, keyed by the same names
+                as ``self.args`` (e.g. ``server_host``). Only user-supplied flags are present;
+                they take precedence over env-var defaults and plugin-provided defaults.
+            extra_args: Unrecognized CLI tokens forwarded verbatim (plugin-injected flags).
+                Retained for the upcoming Typer-native plugin-option contract; unused today.
+        """
+        self.extra_args: List[str] = extra_args or []
         self._logger = logging.getLogger(self.__class__.__name__)
         self.is_windows = os.name == "nt"
         self.root_dir = Path.cwd()
@@ -82,6 +92,10 @@ class NeuroSanRunner:
             "agent_toolbox_info_file": self.project_env.resolve_toolbox_info_file(),
             "mcp_servers_info_file": self.project_env.resolve_mcp_info_file(),
             "logs_dir": str(self.logs_dir),
+            # Run-mode flags default off; a CLI override flips them on. Kept in the base dict
+            # so the runner can read them unconditionally regardless of what was passed.
+            "client_only": False,
+            "server_only": False,
         }
 
         # Ensure logs directory exists
@@ -97,8 +111,11 @@ class NeuroSanRunner:
             self._logger.info("Updating args dict with plugin: %s", plugin)
             plugin.update_args_dict(self.args)
 
-        # Parse command-line arguments
-        self.args.update(self.parse_args())
+        # Apply CLI overrides last so user-supplied flags win over env-var and plugin defaults.
+        # Only keys actually passed on the command line are present, so unset flags keep their
+        # resolved defaults.
+        for key, value in (cli_overrides or {}).items():
+            self.args[key] = value
 
         # Process references
         self.server_process = None
@@ -116,62 +133,6 @@ class NeuroSanRunner:
             print(f"AGENT_TOOLBOX_INFO_FILE set to: {toolbox_file}")
         else:
             print("AGENT_TOOLBOX_INFO_FILE: (not set — using built-in default toolbox)")
-
-    def parse_args(self):
-        """Parses command-line arguments for configuration."""
-        parser = argparse.ArgumentParser(
-            description="Run the Neuro SAN server and web client.",
-            formatter_class=argparse.ArgumentDefaultsHelpFormatter,
-        )
-
-        parser.add_argument(
-            "--server-host", type=str, default=self.args["server_host"], help="Host address for the Neuro SAN server"
-        )
-        parser.add_argument(
-            "--server-http-port",
-            type=int,
-            default=self.args["server_http_port"],
-            help="Port number for the Neuro SAN server http endpoint",
-        )
-        parser.add_argument(
-            "--nsflow-port",
-            type=int,
-            default=self.args["nsflow_port"],
-            help="Port number for the nsflow client",
-        )
-        parser.add_argument(
-            "--log-level", type=str, default=self.args["log_level"], help="Log level for all processes"
-        )
-        parser.add_argument(
-            "--thinking-file", type=str, default=self.args["thinking_file"], help="Path to the agent thinking file"
-        )
-        parser.add_argument(
-            "--client-only", action="store_true", help="Run only the nsflow client without NeuroSan server"
-        )
-        parser.add_argument(
-            "--server-only", action="store_true", help="Run only the NeuroSan server without the default nsflow client"
-        )
-
-        # add arguments from plugins
-        for plugin in self.plugins:
-            self._logger.info("Updating parser args with plugin: %s", plugin)
-            plugin.update_parser_args(parser)
-
-        args, _ = parser.parse_known_args()
-        explicitly_passed_args = {arg for arg in sys.argv[1:] if arg.startswith("--")}
-        # Check for mutually exclusive arguments
-        if args.client_only and (
-            "--server-host" in explicitly_passed_args or "--server-port" in explicitly_passed_args
-        ):
-            parser.error("[x] You cannot specify --server-host or --server-port when using --client-only mode.")
-        if args.server_only and (
-            "--nsflow-host" in explicitly_passed_args or "--nsflow-port" in explicitly_passed_args
-        ):
-            parser.error("[x] You cannot specify --nsflow-host or --nsflow-port when using --server-only mode.")
-        if args.client_only and args.server_only:
-            parser.error("[x] You cannot specify both --client-only and --server-only at the same time.")
-
-        return vars(args)
 
     def set_environment_variables(self):
         """Set required environment variables, optionally using neuro-san defaults."""
