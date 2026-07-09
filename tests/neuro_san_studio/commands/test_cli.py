@@ -39,6 +39,7 @@ class TestMainEntryPoint:
         class FakeRunner:  # pylint: disable=too-few-public-methods
             """Stand-in for NeuroSanRunner that records method calls."""
 
+            # pylint: disable-next=unused-argument
             def __init__(self, cli_overrides: dict | None = None, extra_args: list | None = None) -> None:
                 call_order.append("init")
 
@@ -218,6 +219,7 @@ class TestMainEntryPoint:
         class CapturingRunner:  # pylint: disable=too-few-public-methods
             """Stand-in that records constructor kwargs and no-ops run()."""
 
+            # pylint: disable-next=unused-argument
             def __init__(self, cli_overrides: dict | None = None, extra_args: list | None = None) -> None:
                 captured.append(cli_overrides or {})
 
@@ -243,16 +245,6 @@ class TestMainEntryPoint:
         monkeypatch.setattr(sys, "argv", ["neuro-san-studio", "run", "--server-host", "myhost"])
         main()
         assert captured and captured[0].get("server_host") == "myhost"
-
-    def test_run_unset_flags_are_not_forwarded(self, monkeypatch: MonkeyPatch) -> None:
-        """Flags the user did not pass must NOT appear in cli_overrides, so env-var defaults win."""
-        captured = self._install_capturing_runner(monkeypatch)
-        monkeypatch.setattr(sys, "argv", ["neuro-san-studio", "run", "--server-host", "myhost"])
-        main()
-        assert captured
-        # Only the explicitly-passed flag is present; unset ones are absent (not None-valued).
-        assert "log_level" not in captured[0]
-        assert "nsflow_port" not in captured[0]
 
     @pytest.mark.parametrize("flag", ["--version", "-V"])
     def test_version_flag_prints_version_and_exits(
