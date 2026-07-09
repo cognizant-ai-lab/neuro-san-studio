@@ -244,9 +244,10 @@ See [docs/api_key.md](docs/api_key.md) for details and other providers.
 ns run
 ```
 
-The Neuro SAN server listens on `localhost:8080`; 
+The Neuro SAN server listens on `localhost:8080`.
 
-#### 5. Open the UI  
+#### 5. Open the UI
+
 The nsflow UI is served at
 [http://localhost:4173/](http://localhost:4173/). Logs land under `logs/` (`server.log`, `nsflow.log`,
 `thinking_dir/`).
