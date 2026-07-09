@@ -39,7 +39,7 @@ class TestMainEntryPoint:
         class FakeRunner:  # pylint: disable=too-few-public-methods
             """Stand-in for NeuroSanRunner that records method calls."""
 
-            def __init__(self) -> None:
+            def __init__(self, cli_overrides: dict | None = None, extra_args: list | None = None) -> None:
                 call_order.append("init")
 
             def run(self) -> None:
@@ -188,6 +188,9 @@ class TestMainEntryPoint:
         class ExplodingRunner:  # pylint: disable=too-few-public-methods
             """Runner whose run() raises, to verify main() does not swallow errors."""
 
+            def __init__(self, cli_overrides: dict | None = None, extra_args: list | None = None) -> None:
+                """Accept the runner's constructor kwargs; we only care about run() raising."""
+
             def run(self) -> None:
                 """Raise to simulate a runtime failure."""
                 raise RuntimeError("boom")
@@ -196,6 +199,60 @@ class TestMainEntryPoint:
         monkeypatch.setattr(sys, "argv", ["neuro-san-studio", "run"])
         with pytest.raises(RuntimeError, match="boom"):
             main()
+
+    _BUILTIN_RUN_FLAGS = (
+        "--server-host",
+        "--server-http-port",
+        "--nsflow-port",
+        "--log-level",
+        "--thinking-file",
+        "--client-only",
+        "--server-only",
+    )
+
+    @staticmethod
+    def _install_capturing_runner(monkeypatch: MonkeyPatch) -> list[dict]:
+        """Replace NeuroSanRunner with a stub that records the cli_overrides it was constructed with."""
+        captured: list[dict] = []
+
+        class CapturingRunner:  # pylint: disable=too-few-public-methods
+            """Stand-in that records constructor kwargs and no-ops run()."""
+
+            def __init__(self, cli_overrides: dict | None = None, extra_args: list | None = None) -> None:
+                captured.append(cli_overrides or {})
+
+            def run(self) -> None:
+                """No-op."""
+
+        monkeypatch.setattr(cli_module, "NeuroSanRunner", CapturingRunner)
+        return captured
+
+    def test_run_help_lists_all_builtin_flags(self) -> None:
+        """`ns run --help` must list every built-in run flag (single source of truth = Typer)."""
+        # pylint: disable-next=import-outside-toplevel
+        from typer.testing import CliRunner
+
+        result = CliRunner().invoke(cli_module.NeuroSanStudioCli.app, ["run", "--help"])
+        assert result.exit_code == 0
+        for flag in self._BUILTIN_RUN_FLAGS:
+            assert flag in result.output, f"{flag} missing from `ns run --help`"
+
+    def test_run_forwards_flag_values_as_cli_overrides(self, monkeypatch: MonkeyPatch) -> None:
+        """A user-supplied flag reaches NeuroSanRunner as a cli_overrides entry."""
+        captured = self._install_capturing_runner(monkeypatch)
+        monkeypatch.setattr(sys, "argv", ["neuro-san-studio", "run", "--server-host", "myhost"])
+        main()
+        assert captured and captured[0].get("server_host") == "myhost"
+
+    def test_run_unset_flags_are_not_forwarded(self, monkeypatch: MonkeyPatch) -> None:
+        """Flags the user did not pass must NOT appear in cli_overrides, so env-var defaults win."""
+        captured = self._install_capturing_runner(monkeypatch)
+        monkeypatch.setattr(sys, "argv", ["neuro-san-studio", "run", "--server-host", "myhost"])
+        main()
+        assert captured
+        # Only the explicitly-passed flag is present; unset ones are absent (not None-valued).
+        assert "log_level" not in captured[0]
+        assert "nsflow_port" not in captured[0]
 
     @pytest.mark.parametrize("flag", ["--version", "-V"])
     def test_version_flag_prints_version_and_exits(
