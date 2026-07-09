@@ -18,6 +18,7 @@ Here are a few examples ordered by level of complexity.
     - [Music Nerd Pro Sly](#music-nerd-pro-sly)
     - [Music Nerd Pro Sly Local](#music-nerd-pro-sly-local)
     - [Music Nerd LLM Fallbacks](#music-nerd-llm-fallbacks)
+    - [Wolfram MCP](#wolfram-mcp)
     - [Book Recommender with Multiple LLM Configs](#book-recommender-with-multiple-llm-configs)
     - [Coffee Finder](#coffee-finder)
     - [Coffee Finder Advanced](#coffee-finder-advanced)
@@ -53,6 +54,7 @@ Here are a few examples ordered by level of complexity.
   - [🏢 Industry-Specific Examples](#-industry-specific-examples)
     - [Intranet Agents](#intranet-agents)
     - [Intranet Agents With Tools](#intranet-agents-with-tools)
+    - [Intranet Agents With Memory Routing](#intranet-agents-with-memory-routing)
     - [Airline Policy 360 Assistant](#airline-policy-360-assistant)
     - [Airline Policy Web Search Assistant](#airline-policy-web-search-assistant)
     - [Telco Network Orchestration](#telco-network-orchestration)
@@ -142,6 +144,16 @@ a **tool-calling** LLM that runs locally with Ollama.
 its `llm_config` to automatically try another LLM config if the first one fails.
 
 **Tags:** `llm_config` `llm_fallbacks`
+
+### Wolfram MCP
+
+[Wolfram MCP](examples/basic/wolfram_mcp.md) is a single-agent network that connects to the
+Wolfram Cloud MCP server, giving the agent access to Wolfram|Alpha's computational knowledge
+engine and the Wolfram Language for symbolic math, scientific computation, unit conversions,
+and curated factual data. It is the simplest example of wiring an agent to a remote MCP
+server via streamable HTTP.
+
+**Tags:** `basic` `example` `MCP` `Wolfram`
 
 ### Book Recommender with Multiple LLM Configs
 
@@ -431,6 +443,18 @@ intranet of a major corporation. It allows you to interact and get information f
 Finance, Legal, HR, etc. Some of the down-chain agents call coded tools.
 
 **Tags:** `tool`, `API`, `AAOSA`
+
+### Intranet Agents With Memory Routing
+
+[Intranet Agents With Memory Routing](examples/industry/intranet_agents_with_memory_routing.md) is the
+Intranet Agents With Tools network whose top-level agent also learns how to route. On the first inquiry of a
+kind it discovers the fulfilling leaf agents via AAOSA, then caches that route, along with the parameters those
+agents require, in persistent memory under a generalized topic. Caching the parameters lets it collect them up
+front on repeat inquiries and call the leaf agents directly, avoiding follow-up round-trips.
+Disabled by default: it uses the Mem0 cloud backend, so it requires `pip install "mem0ai>=2.0.2,<3.0"` and the
+`MEM0_API_KEY` environment variable.
+
+**Tags:** `tool`, `API`, `AAOSA`, `memory`, `routing`
 
 ### Airline Policy 360 Assistant
 

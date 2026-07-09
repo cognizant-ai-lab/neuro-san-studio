@@ -21,6 +21,7 @@ from __future__ import annotations
 import asyncio
 import json
 from pathlib import Path
+from typing import Any
 from unittest.mock import AsyncMock
 
 from middleware.persistent_memory.persistent_memory_middleware import PersistentMemoryMiddleware
@@ -54,6 +55,65 @@ class PersistentMemoryMiddlewareTests(MemoryTestBase):
         search_result = asyncio.run(tool_fn.coroutine(operation="search", query="black"))
         topics = [r.get("topic") for r in search_result.get("result", {}).get("results", [])]
         self.assertIn("coffee", topics)
+
+    def _make_middleware_with_preamble(self, preamble: Any) -> PersistentMemoryMiddleware:
+        """Construct a middleware whose ``memory_config`` carries ``preamble``.
+
+        :param preamble: Value to place under ``memory_config.preamble``.
+        :return:         A ready-to-use middleware.
+        """
+        return PersistentMemoryMiddleware(
+            origin_str="test_net.test_agent-1.dispatch",
+            memory_config={
+                "storage": {"backend": "json_file", "folder_name": self._tmp},
+                "preamble": preamble,
+            },
+        )
+
+    def _run_awrap(self, mw: PersistentMemoryMiddleware) -> str:
+        """Run ``awrap_model_call`` with a stub request and return the resulting preamble.
+
+        :param mw: The middleware under test.
+        :return:   The trailing preamble applied to the system message.
+        """
+        captured: dict[str, Any] = {}
+
+        class _StubRequest:  # pylint: disable=too-few-public-methods
+            """Minimal ``ModelRequest`` stand-in capturing the overridden system message."""
+
+            system_message = None
+
+            def override(self, system_message: Any) -> "_StubRequest":
+                """Record the overridden system message and return self."""
+                captured["system_message"] = system_message
+                return self
+
+        async def _handler(_request: Any) -> str:
+            """Return a sentinel so the coroutine completes."""
+            return "ok"
+
+        asyncio.run(mw.awrap_model_call(_StubRequest(), _handler))  # type: ignore[arg-type]
+        return captured["system_message"].content
+
+    def test_preamble_override_used_in_system_message(self) -> None:
+        """A non-blank ``preamble`` overrides the built-in default."""
+        override = "ROUTING CACHE PREAMBLE"
+        mw = self._make_middleware_with_preamble(override)
+        applied = self._run_awrap(mw)
+        self.assertEqual(applied, override)
+        self.assertNotEqual(applied, mw.build_preamble())
+
+    def test_blank_preamble_falls_back_to_default(self) -> None:
+        """A blank/whitespace-only ``preamble`` falls back to ``build_preamble()``."""
+        mw = self._make_middleware_with_preamble("   ")
+        applied = self._run_awrap(mw)
+        self.assertEqual(applied, mw.build_preamble())
+
+    def test_non_string_preamble_falls_back_to_default(self) -> None:
+        """A non-string ``preamble`` is ignored and does not crash init."""
+        mw = self._make_middleware_with_preamble(123)
+        applied = self._run_awrap(mw)
+        self.assertEqual(applied, mw.build_preamble())
 
     def test_summarizes_when_topic_exceeds_max_size(self) -> None:
         """A topic larger than ``max_topic_size`` is replaced with its summary."""

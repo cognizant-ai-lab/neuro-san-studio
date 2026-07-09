@@ -24,7 +24,7 @@
     # Similar to the default developer config above, except that any api keys must be provided by the
     # client in sly_data.
     #
-    # To most easily use this config, copy it over this directory's llm_config.hocon file. 
+    # To most easily use this config, copy it over this directory's llm_config.hocon file.
     "llm_config": {
         "fallbacks": [
             {
@@ -59,41 +59,55 @@
     }
 
     #
-    # sly_data_schema definitions for to communicate the needs of BYOK to a generic client.
+    # sly_data_schema definitions to communicate the needs of BYOK to a generic client.
     # By convention, we send keys over in the "llm_config" key's dictionary value of the sly_data in
     # the client request.
-    #
 
-    # A BYOK llm_config_property to be inserted in an already existing sly_data_schema.
-    # Note that with hocon we can only define values to be used later in substitution.
-    "llm_config_property": {
-        "type": "object",
-        "properties": {
-            "openai_api_key": {
-                "type": "string",
-                "description": "The user's OpenAI API key"
-            },
-            "anthropic_api_key": {
-                "type": "string",
-                "description": "The user's Anthropic API key"
-            },
-            "google_api_key": {
-                "type": "string",
-                "description": "The user's Google API key for use withGemini models"
-            },
-        },
-        # Note that none of these properties are strictly required, as all are individually optional.
-        # However in a BYOK situation, we do expect the llm_config property itself to be required
-        # with one of these values present.
-    }
+    # A key to use when referencing the BYOK llm_config in a given agent network node's front man sly_data_schema
+    # or allow block.
+    "llm_config_key": "llm_config"
 
-    # When there are no entries in the sly_data_schema, we can use this complete definition.
-    # to fill out what is necessary for BYOK
+    # This global definition gets merged with any existing sly_data_schema definitions
+    # in a given agent network's front man sly_data_schema specification.
     "sly_data_schema": {
         "type": "object",
         "properties": {
-            "llm_config": ${llm_config_property}
+            # A BYOK llm_config_property to be inserted in an already existing sly_data_schema.
+            # Note that with hocon we can only define values to be used later in substitution.
+            "llm_config": {
+                "type": "object",
+                "properties": {
+                    "openai_api_key": {
+                        "type": "string",
+                        "description": "The user's OpenAI API key"
+                    },
+                    "anthropic_api_key": {
+                        "type": "string",
+                        "description": "The user's Anthropic API key"
+                    },
+                    "google_api_key": {
+                        "type": "string",
+                        "description": "The user's Google API key for use with Gemini models"
+                    },
+                },
+                # Note that none of these properties are strictly required, as all are individually optional,
+                # but at least one of these properties must be present, hence the "anyOf" below.
+                # However, in a BYOK situation, we do always expect the llm_config property itself to be required
+                # with at least one of these values present.
+                "anyOf": [
+                    { "required": ["openai_api_key"] },
+                    { "required": ["anthropic_api_key"] },
+                    { "required": ["google_api_key"] }
+                ]
+            }
         },
-        "required": ["llm_config"]
+        "required": [${llm_config_key}]
+    }
+
+    # A full definition for sending BYOK llm_config to downstream agents.
+    "allow_llm_config_downstream": {
+        "to_downstream": {
+            "sly_data": [${llm_config_key}]
+        }
     }
 }

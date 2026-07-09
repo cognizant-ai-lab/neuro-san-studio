@@ -64,12 +64,15 @@ You are responsible for coordinating the writing of `instructions` and `descript
 **Only coordinate writing of `instructions` and `description` for agents that have these fields in the network definition. These are non-function agents.**
 
 Behavior by mode:
-- `create`: Call `instructions_writer` once for each non-function agent in the network to set both its `instructions` and `description`.
-            Pass the same `agent_network_description` (network-wide context) for every call. Do not pass `change_request` in `create` mode.
+- `create`: Call `write_all_instructions` ONCE with `agents` covering EVERY non-function agent in the network.
+            Pass `agent_network_description` once for shared network-wide context.
+            For each entry, set `change_request` ONLY when the user explicitly stated a directive
+            targeting that specific agent (e.g. 'agent A should handle refunds'). Omit it otherwise.
+            Per-agent directives belong in `change_request`, not in `agent_network_description`.
 - `modify`: Read `agent_network_description` and identify the impacted agents (explicitly named agents, newly added agents, and agents whose responsibilities changed).
-            Call `instructions_writer` once per impacted agent to update its `instructions` and `description`.
-            For each call, pass `change_request` ONLY when the user stated a specific change targeting that agent (e.g. 'change agent A to do X'). Omit it otherwise.
-            Pass `agent_network_description` only when there is genuine network-wide context to share, and when passed it must be the SAME value across every call in the request.
+            Call `write_all_instructions` ONCE with `agents` = a list of objects, one per impacted agent.
+            For each entry, set `change_request` ONLY when the user stated a specific change targeting that agent (e.g. 'change agent A to do X'). Omit it otherwise.
+            Pass `agent_network_description` only when there is genuine network-wide context to share; when passed, it applies uniformly to every agent in the call.
             Do not involve unaffected agents except when they lack `instructions`/`description` or the user explicitly requests broader edits.
 
 Guardrails:
@@ -78,7 +81,8 @@ Guardrails:
 - Skip agents that are not referenced/affected by the current request.
 - Do not trigger rewrites if `instructions` and `description` are semantically unchanged.
 - Be surgical: avoid network-wide rewrites during `modify`; touch only what the request necessitates.
-- Never tailor `agent_network_description` per agent — it is shared network context. Per-agent specifics belong in `change_request`.
+- Never tailor `agent_network_description` per agent — it is shared network context. Per-agent specifics belong in each entry's `change_request`.
+- Always batch into a single `write_all_instructions` call per request; do not loop or split into multiple calls.
 
 **Response format**
 Always respond with "Instructions/description have been set in the agent network." when successful.
@@ -88,7 +92,7 @@ Always respond with "Instructions/description have been set in the agent network
                     "sly_data": ["agent_network_definition"]
                 }
             },
-            "tools": ["instructions_writer"],
+            "tools": ["write_all_instructions"],
             # Parse any JSON in responses into the structure field of the ChatMessage.
             "structure_formats": "json",
             "middleware": [
@@ -108,6 +112,52 @@ Always respond with "Instructions/description have been set in the agent network
         },
 
         {
+            "name": "write_all_instructions",
+            "class": "coded_tools.agent_network_instructions_editor.write_all_instructions.WriteAllInstructions",
+            "function": {
+                "description": "Fan out writing of `instructions`/`description` for many agents in parallel. Call this ONCE per request with the full list of target agents.",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "agent_network_description": {
+                            "type": "string",
+                            "description": """
+Shared network-wide context describing what the agent network as a whole is for. Sent ONCE and applied uniformly to every entry in `agents`. Omit when there is no relevant network-wide context to pass (typically `modify` mode with only per-agent change requests).
+                            """
+                        },
+                        "agents": {
+                            "type": "array",
+                            "description": "List of agents whose instructions/description should be written. One entry per target agent.",
+                            "items": {
+                                "type": "object",
+                                "properties": {
+                                    "agent_name": {
+                                        "type": "string",
+                                        "description": "The agent whose `instructions` and `description` are being written."
+                                    },
+                                    "change_request": {
+                                        "type": "string",
+                                        "description": "Per-agent change directive from the user (e.g. 'make this agent's instructions shorter', \"use 'foo bar' as this agent's instructions\"). Set ONLY when the user explicitly targeted this specific agent. Applies in both `create` and `modify` modes. Omit it for any agent the user did not specifically call out."
+                                    }
+                                },
+                                "required": ["agent_name"]
+                            }
+                        }
+                    },
+                    "required": ["agents"]
+                }
+            },
+            # Mirrors the decomposition_solver pattern: declare downstream tool names via
+            # args.tools so the Python class can look them up and the graph stays connected
+            # for Connectivity() reporting / visualization.
+            "args": {
+                "tools": {
+                    "instructions_writer": "instructions_writer"
+                }
+            }
+        },
+
+        {
             "name": "instructions_writer",
             "instructions": """
 You are an instructions and description writer for agents in an agent network.
@@ -118,10 +168,12 @@ For each agent, call `set_agent_instructions_tool` and `set_agent_description_to
 - `agent_name`: the agent you are writing for.
 - `agent_network_description` (optional): shared network-wide context. Use it as background only — it is not specific to this agent.
 - `change_request` (optional): the user's specific change request for this agent. When present, treat it as the primary directive and apply it faithfully to this agent's `instructions`/`description`.
+  - If the `change_request` is scoped to a single field (only `instructions` or only `description`), leave the other field unchanged: call its setter with the current value from the agent network definition rather than regenerating it.
 
 **Writing requirements**
 - Only write `instructions` and `description` for the specified agent. Do not write for any other agents, even if they are mentioned in the description or network definition.
 - Make `instructions` clear, concise, and specific to the agent’s scope of responsibilities.
+- If `agent_network_description` already states a network-wide policy (safety, privacy, escalation, compliance), do NOT restate it per-agent. Only include policy details that are specific to this agent's scope.
 - Write the `description` as a short summary of what the agent does, suitable for its callers to understand when to invoke it.
 - Do NOT mention other agents, up-chains, or down-chains; keep the text scoped to this agent only.
 - Align with the company’s cultural values and business objectives.
@@ -149,8 +201,8 @@ Primarily used in `create` mode, or in `modify` mode when the change is network-
                         "change_request": {
                             "type": "string",
                             "description": """
-The user's specific, per-agent change request (e.g. 'change agent A's instructions to do X', 'make agent B's instructions shorter'). This varies per call and applies ONLY to the agent named in `agent_name`.
-OPTIONAL — only set this when the user has explicitly stated a change targeting this specific agent. Do NOT synthesize, infer, or fabricate this value. Omit it for `create` mode and for any agent the user did not specifically call out.
+The user's specific, per-agent change request (e.g. 'change agent A's instructions to do X', 'make agent B's instructions shorter', "use 'foo bar' as agent C's instructions"). This varies per call and applies ONLY to the agent named in `agent_name`.
+OPTIONAL — only set this when the user has explicitly stated a directive targeting this specific agent. Applies in both `create` and `modify` modes. Do NOT synthesize, infer, or fabricate this value. Omit it for any agent the user did not specifically call out.
                             """
                         },
                     },

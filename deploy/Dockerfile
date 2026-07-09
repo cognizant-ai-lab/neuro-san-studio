@@ -169,13 +169,14 @@ ENV PYTHONPATH="${APP_SOURCE}"
 
 # Where to find the tool registry manifest file which lists all the agent hocon
 # files to serve up from this server instance.  To specify multiple manifest files,
-# simply use a space-separated list of manifest files.  Manifest dictionaries will
-# effectively be merged, where content coming from manifests later in the list
-# have precedence.
-# This particular Dockerfile is put together to support a server that hosts multiple users
+# simply use a delimited list of manifest files approriate to the OS
+# (delimiter is ':' on linux, ';' on Windows).  Manifest dictionaries will then effectively
+# be merged, where content coming from manifests later in the list have precedence.
+#
+# This particular Dockerfile is put together to support a linux server that hosts multiple users
 # and so we use the multiple manifest file aspect of the neuro-san server to turn off some networks
 # that are not appropriate for such a deployment. See manifest_multiuser_overlay.hocon for more info.
-ENV AGENT_MANIFEST_FILE="${APP_SOURCE}/registries/manifest.hocon ${APP_SOURCE}/registries/manifest_multiuser_overlay.hocon"
+ENV AGENT_MANIFEST_FILE="${APP_SOURCE}/registries/manifest.hocon:${APP_SOURCE}/registries/manifest_multiuser_overlay.hocon"
 
 # An llm_info hocon file with user-provided llm descriptions that are to be used
 # in addition to the neuro-san defaults.
@@ -219,7 +220,7 @@ ENV AGENT_FORWARDED_REQUEST_METADATA="request_id user_id"
 # for it on your docker run command line.
 ENV AGENT_HTTP_PORT="8080"
 
-# Maximm number of requests that can be served at the same time
+# Maximum number of requests that can be served at the same time
 ENV AGENT_MAX_CONCURRENT_REQUESTS="50"
 
 # Number of requests served before the server shuts down in an orderly fashion.
@@ -246,17 +247,6 @@ ENV AGENT_MANIFEST_UPDATE_PERIOD_SECONDS="0"
 # after a colon, like this: "my_repo:1.2.3".
 # You can combine these too, like this: "langchain openai my_repo:1.2.3"
 ENV AGENT_VERSION_LIBS=""
-
-# A reference to a Python class that can be used to log per-user request information.
-# This class must have a no-args constructor and implement the
-# neuro_san.interfaces.usage_logger.UsageLogger interface.
-# When not set, this defaults to a null implementation.
-ENV AGENT_USAGE_LOGGER=""
-
-# A space-delimited list of http metadata request keys to forward to the AGENT_USAGE_LOGGER
-# described above. When not set, this defaults to the value provided by
-# AGENT_FORWARDED_REQUEST_METADATA
-ENV AGENT_USAGE_LOGGER_METADATA=""
 
 # A space-delimited list of http metadata request keys to forward to tracing/Observability
 # infrastructure. When not set, this defaults to the value provided by
@@ -299,9 +289,14 @@ ENV AGENT_HTTP_IDLE_CONNECTIONS_TIMEOUT="3600"
 # Allows utilization of multiple CPU cores.
 # Improves concurrency without blocking a single IOLoop.
 # Typical Usage:
-# start(0) → Automatically spawns one process per CPU core.
-# start(N) → Manually specifies number of worker processes.
-ENV AGENT_HTTP_SERVER_INSTANCES="1"
+#   Value of 0 → Automatically spawns one process per CPU core.
+#   Positive integer (N) → Manually specifies number of worker processes.
+# The developer-oriented default is 1, but we set to 0 here to allow pod CPU configuration
+# to dictate the number of server instance processes.
+# Note 7/7/2026: If your installation requires temporary agent networks (aka Reservations),
+# the server systems in place are not yet suitable for the multi-process operation
+# that is implied by a value that is not 1.
+ENV AGENT_HTTP_SERVER_INSTANCES="0"
 
 # If set to a value>0, will start periodic logging of currently used
 # run-time server resources:
@@ -310,16 +305,15 @@ ENV AGENT_HTTP_SERVER_INSTANCES="1"
 # Logging period is specified in seconds.
 ENV AGENT_HTTP_RESOURCES_MONITOR_INTERVAL="0"
 
-# If this value is specified and >0,
-# it will enable dynamic temporary network updates of the server agents
-# allowing CodedTools to reserve temporary networks via the Reservationist
-# interface, if the agent network hocon file specifically allows it for the tool.
-# Update will be done every AGENT_TEMPORARY_NETWORK_UPDATE_PERIOD_SECONDS seconds;
-# if value is not specified or <= 0, no such dynamic updates will be executed.
-# This particular sample deployment turns this on to 5 seconds to be able to show off the feature
-# in a multi-user environment, however most Neuro SAN deployments will want this set to 0
-# to disable the feature for safety.
-ENV AGENT_TEMPORARY_NETWORK_UPDATE_PERIOD_SECONDS="5"
+# Interval in seconds between HTTP keep-alive messages sent to streaming clients
+# to keep the connection alive during long quiet periods. This is important
+# when intermediaries (nginx, load balancers, AWS ALB) or clients would otherwise
+# drop an idle HTTP connection (commonly after ~60s) before the agent produces
+# its next streamed message. The keep-alive message only fires when the stream has been
+# quiet for approximately the full interval; real message traffic suppresses it.
+# A value of 0 (the default) disables the keep-alive messages entirely.
+# Typical production value is 25-30 (under the 60s defaults of common proxies).
+ENV AGENT_STREAM_KEEP_ALIVE_WITH_PROGRESS_INTERVAL_SECONDS=0
 
 # Optional URL describing how the server is to be referenced by the outside world.
 # This is useful when a server is behind a load-balancer as part of a larger cluster.
@@ -339,6 +333,19 @@ ENV AGENT_EXTERNAL_RESERVATIONS_STORAGE=""
 # to use for cross-pod reservations storage.
 ENV AGENT_RESERVATIONS_S3_BUCKET=""
 
+# If AGENT_EXTERNAL_RESERVATIONS_STORAGE is set,
+# then this parameter specifies the period in seconds for checking the external storage for expired reservations.
+# Value of 0 means no periodic checks will be performed by the service,
+# in this case it is expected that the external storage itself will handle expired reservations,
+# or it will be done on demand by other tools.
+ENV AGENT_RESERVATIONS_EXTERNAL_STORAGE_CHECK_PERIOD_SECONDS="0"
+
+# The maximum number of temporary agent networks that will be kept internally
+# in service memory at the same time. If this limit is reached,
+# the oldest temporary networks (by access time) will be evicted.
+# 0 or negative value means unlimited.
+ENV AGENT_MAX_TEMP_NETWORKS="0"
+
 # A hocon file with MCP servers information to be used by LangChainMcpAdapter
 # for connecting to external MCP servers with authentication and tool filtering.
 ENV MCP_SERVERS_INFO_FILE="${APP_SOURCE}/neuro_san_studio/mcp/mcp_info.hocon"
@@ -352,10 +359,20 @@ ENV AGENT_MCP_ENABLE="true"
 # while disabling neuro-san own http API.
 ENV AGENT_MCP_ONLY="false"
 
+#
+# Server Hardening
+#
+
 # When set to "true", this parameter requires https for internal agent session communication.
-# The default is "false", to allow developers to work locally without acquiring certificates.
-# Strongly consider turning this on for production deployments.
-ENV AGENT_SESSION_REQUIRE_HTTPS="false"
+# The default is "true". Developers should set this to false to work locally without acquiring certificates.
+# Strongly consider keeping this on for production deployments.
+ENV AGENT_SESSION_REQUIRE_HTTPS="true"
+
+# When set to "false", this parameter will squelch the logging of sensitive information
+# as flagged by static analysis (SAST) tools.
+# The default is "false". Developers should set this to true to work locally with reasonable failure information.
+# Strongly consider keeping this off for production deployments.
+ENV LEAF_LOG_SENSITIVE="false"
 
 #
 # Authorization
@@ -447,5 +464,11 @@ ENV AGENT_NETWORK_DESIGNER_MANIFEST_FILE="registries/manifest_and.hocon"
 # Toolbox info file providing available tools for the Agent Network Designer to choose from.
 # Defaults to "neuro_san_studio/toolbox/agent_network_designer_toolbox_info.hocon" if not set.
 ENV AGENT_NETWORK_DESIGNER_TOOLBOX_INFO_FILE="neuro_san_studio/toolbox/agent_network_designer_toolbox_info.hocon"
+
+# Maximum number of validation retry rounds before the persistence middleware gives up and
+# ends the session without persisting. Prevents runaway loops when the model cannot fix
+# validation errors (e.g., a required tool was unavailable during session setup).
+# Defaults to "3" if not set.
+ENV AGENT_NETWORK_DESIGNER_MAX_VALIDATION_ATTEMPTS="3"
 
 ENTRYPOINT ["/bin/bash", "-c", "exec ${APP_ENTRYPOINT}"]
