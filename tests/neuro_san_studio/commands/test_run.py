@@ -150,3 +150,31 @@ class TestNeuroSanRunner:
         monkeypatch.setattr(run_module, "timedinput", _capturing_input)
         self._make_runner()._validate_yes_no_input("Kill processes? ")
         assert seen_prompts == ["Kill processes? "]
+
+
+class TestRunnerArgsInitialization:
+    """The real __init__ must always populate self.args, applying cli_overrides last."""
+
+    def test_mode_flags_default_false_without_overrides(self, tmp_path: Path, monkeypatch: MonkeyPatch) -> None:
+        """client_only/server_only are always present (default False) so the runner reads them safely.
+
+        Regression: cli_overrides omits unset booleans, so these must live in the base args dict.
+        """
+        monkeypatch.chdir(tmp_path)
+        runner = NeuroSanRunner()
+        assert runner.args["client_only"] is False
+        assert runner.args["server_only"] is False
+
+    def test_cli_override_flips_mode_flag(self, tmp_path: Path, monkeypatch: MonkeyPatch) -> None:
+        """A cli_overrides entry wins over the base default."""
+        monkeypatch.chdir(tmp_path)
+        runner = NeuroSanRunner(cli_overrides={"server_only": True, "server_host": "example"})
+        assert runner.args["server_only"] is True
+        assert runner.args["server_host"] == "example"
+
+    def test_unset_override_keeps_env_default(self, tmp_path: Path, monkeypatch: MonkeyPatch) -> None:
+        """A flag absent from cli_overrides keeps its env-var-driven default."""
+        monkeypatch.chdir(tmp_path)
+        monkeypatch.setenv("NEURO_SAN_SERVER_HOST", "envhost")
+        runner = NeuroSanRunner(cli_overrides={})
+        assert runner.args["server_host"] == "envhost"
