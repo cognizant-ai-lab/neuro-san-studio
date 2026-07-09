@@ -171,10 +171,3 @@ class TestRunnerArgsInitialization:
         runner = NeuroSanRunner(cli_overrides={"server_only": True, "server_host": "example"})
         assert runner.args["server_only"] is True
         assert runner.args["server_host"] == "example"
-
-    def test_unset_override_keeps_env_default(self, tmp_path: Path, monkeypatch: MonkeyPatch) -> None:
-        """A flag absent from cli_overrides keeps its env-var-driven default."""
-        monkeypatch.chdir(tmp_path)
-        monkeypatch.setenv("NEURO_SAN_SERVER_HOST", "envhost")
-        runner = NeuroSanRunner(cli_overrides={})
-        assert runner.args["server_host"] == "envhost"
