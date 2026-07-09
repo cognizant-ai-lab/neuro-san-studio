@@ -15,6 +15,7 @@
 # END COPYRIGHT
 
 from socket import AF_INET
+from socket import IPPROTO_TCP
 from socket import SOCK_STREAM
 from unittest.mock import AsyncMock
 from unittest.mock import MagicMock
@@ -33,7 +34,7 @@ def make_dns_patch(outcome: list[str] | Exception):
     if isinstance(outcome, Exception):
         mock_loop.getaddrinfo = AsyncMock(side_effect=outcome)
     else:
-        addr_infos = [(AF_INET, SOCK_STREAM, 6, "", (ip, 0)) for ip in outcome]
+        addr_infos = [(AF_INET, SOCK_STREAM, IPPROTO_TCP, "", (ip, 0)) for ip in outcome]
         mock_loop.getaddrinfo = AsyncMock(return_value=addr_infos)
     return patch("neuro_san_studio.coded_tools.web_fetch.get_running_loop", return_value=mock_loop)
 
