@@ -27,6 +27,7 @@ from pytest import CaptureFixture
 from pytest import MonkeyPatch
 
 from neuro_san_studio.commands import run as run_module
+from neuro_san_studio.commands.project_environment import ProjectEnvironment
 from neuro_san_studio.commands.run import NeuroSanRunner
 
 
@@ -83,60 +84,6 @@ class TestNeuroSanRunner:
         monkeypatch.setattr(run_module, "timedinput", self._scripted_input(["bad", "yes"]))
         assert self._make_runner()._validate_yes_no_input("prompt: ", max_attempts=2) is True
 
-    def test_toolbox_env_var_takes_precedence(self, monkeypatch: MonkeyPatch, tmp_path: Path) -> None:
-        """Explicit AGENT_TOOLBOX_INFO_FILE should be used verbatim, ignoring the filesystem."""
-        monkeypatch.setenv("AGENT_TOOLBOX_INFO_FILE", "/custom/path/toolbox.hocon")
-        runner = self._make_runner()
-        runner.root_dir = str(tmp_path)
-        assert runner._resolve_toolbox_info_file() == "/custom/path/toolbox.hocon"
-
-    def test_toolbox_default_path_used_when_file_exists(self, monkeypatch: MonkeyPatch, tmp_path: Path) -> None:
-        """With no env var, fall back to <root>/neuro_san_studio/toolbox/toolbox_info.hocon if it exists."""
-        monkeypatch.delenv("AGENT_TOOLBOX_INFO_FILE", raising=False)
-        toolbox_dir = tmp_path / "neuro_san_studio" / "toolbox"
-        toolbox_dir.mkdir(parents=True)
-        toolbox_file = toolbox_dir / "toolbox_info.hocon"
-        toolbox_file.write_text("{}\n", encoding="utf-8")
-        runner = self._make_runner()
-        runner.root_dir = str(tmp_path)
-        assert runner._resolve_toolbox_info_file() == str(toolbox_file)
-
-    def test_toolbox_unset_when_no_env_and_no_file(self, monkeypatch: MonkeyPatch, tmp_path: Path) -> None:
-        """With no env var and no file on disk, return "" so the env var stays unset."""
-        monkeypatch.delenv("AGENT_TOOLBOX_INFO_FILE", raising=False)
-        runner = self._make_runner()
-        runner.root_dir = str(tmp_path)
-        assert runner._resolve_toolbox_info_file() == ""
-
-    def test_mcp_env_var_takes_precedence(self, monkeypatch: MonkeyPatch, tmp_path: Path) -> None:
-        """Explicit MCP_SERVERS_INFO_FILE should be used verbatim, ignoring the filesystem."""
-        monkeypatch.setenv("MCP_SERVERS_INFO_FILE", "/custom/path/mcp_info.hocon")
-        runner = self._make_runner()
-        runner.root_dir = str(tmp_path)
-        assert runner._resolve_mcp_info_file() == "/custom/path/mcp_info.hocon"
-
-    def test_mcp_scaffolded_path_used_when_file_exists(self, monkeypatch: MonkeyPatch, tmp_path: Path) -> None:
-        """With no env var, prefer <root>/mcp/mcp_info.hocon (what `init` scaffolds) over the bundled file."""
-        monkeypatch.delenv("MCP_SERVERS_INFO_FILE", raising=False)
-        mcp_dir = tmp_path / "mcp"
-        mcp_dir.mkdir()
-        mcp_file = mcp_dir / "mcp_info.hocon"
-        mcp_file.write_text("{}\n", encoding="utf-8")
-        runner = self._make_runner()
-        runner.root_dir = str(tmp_path)
-        assert runner._resolve_mcp_info_file() == str(mcp_file)
-
-    def test_mcp_falls_back_to_bundled_when_no_env_and_no_scaffold(
-        self, monkeypatch: MonkeyPatch, tmp_path: Path
-    ) -> None:
-        """With no env var and no scaffolded file, fall back to the mcp_info.hocon shipped in the package."""
-        monkeypatch.delenv("MCP_SERVERS_INFO_FILE", raising=False)
-        runner = self._make_runner()
-        runner.root_dir = str(tmp_path)
-        result = runner._resolve_mcp_info_file()
-        assert os.path.isfile(result)
-        assert result.endswith(os.path.join("neuro_san_studio", "mcp", "mcp_info.hocon"))
-
     def test_set_environment_variables_skips_empty_toolbox(
         self, monkeypatch: MonkeyPatch, tmp_path: Path, capsys: CaptureFixture[str]
     ) -> None:
@@ -145,6 +92,7 @@ class TestNeuroSanRunner:
         monkeypatch.delenv("AGENT_TOOLBOX_INFO_FILE", raising=False)
         runner = self._make_runner()
         runner.root_dir = str(tmp_path)
+        runner.project_env = ProjectEnvironment(runner.root_dir)
         runner.args = {
             "agent_manifest_file": str(tmp_path / "manifest.hocon"),
             "agent_tool_path": str(tmp_path / "coded_tools"),
@@ -172,6 +120,7 @@ class TestNeuroSanRunner:
         monkeypatch.delenv("AGENT_TOOLBOX_INFO_FILE", raising=False)
         runner = self._make_runner()
         runner.root_dir = str(tmp_path)
+        runner.project_env = ProjectEnvironment(runner.root_dir)
         runner.args = {
             "agent_manifest_file": str(tmp_path / "manifest.hocon"),
             "agent_tool_path": str(tmp_path / "coded_tools"),
