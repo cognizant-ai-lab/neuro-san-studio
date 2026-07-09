@@ -211,13 +211,26 @@ class TestMainEntryPoint:
         "--server-only",
     )
 
-    @staticmethod
-    def _install_capturing_runner(monkeypatch: MonkeyPatch) -> list[dict]:
-        """Replace NeuroSanRunner with a stub that records the cli_overrides it was constructed with."""
+    def test_run_help_lists_all_builtin_flags(self) -> None:
+        """Every built-in run flag is a declared Typer option (so it shows in `ns run --help`).
+
+        Inspects the compiled Click command's registered option strings rather than the
+        rendered help text, which wraps/ANSI-styles at the terminal width and is flaky in CI.
+        """
+        # pylint: disable-next=import-outside-toplevel
+        from typer.main import get_command
+
+        run_cmd = get_command(cli_module.NeuroSanStudioCli.app).commands["run"]
+        declared = {opt for param in run_cmd.params for opt in getattr(param, "opts", [])}
+        for flag in self._BUILTIN_RUN_FLAGS:
+            assert flag in declared, f"{flag} not declared as a Typer option on `run`"
+
+    def test_run_forwards_flag_values_as_cli_overrides(self, monkeypatch: MonkeyPatch) -> None:
+        """A user-supplied flag reaches NeuroSanRunner as a cli_overrides entry."""
         captured: list[dict] = []
 
         class CapturingRunner:  # pylint: disable=too-few-public-methods
-            """Stand-in that records constructor kwargs and no-ops run()."""
+            """Stand-in that records the cli_overrides it was constructed with."""
 
             # pylint: disable-next=unused-argument
             def __init__(self, cli_overrides: dict | None = None, extra_args: list | None = None) -> None:
@@ -227,24 +240,9 @@ class TestMainEntryPoint:
                 """No-op."""
 
         monkeypatch.setattr(cli_module, "NeuroSanRunner", CapturingRunner)
-        return captured
-
-    def test_run_help_lists_all_builtin_flags(self) -> None:
-        """`ns run --help` must list every built-in run flag (single source of truth = Typer)."""
-        # pylint: disable-next=import-outside-toplevel
-        from typer.testing import CliRunner
-
-        result = CliRunner().invoke(cli_module.NeuroSanStudioCli.app, ["run", "--help"])
-        assert result.exit_code == 0
-        for flag in self._BUILTIN_RUN_FLAGS:
-            assert flag in result.output, f"{flag} missing from `ns run --help`"
-
-    def test_run_forwards_flag_values_as_cli_overrides(self, monkeypatch: MonkeyPatch) -> None:
-        """A user-supplied flag reaches NeuroSanRunner as a cli_overrides entry."""
-        captured = self._install_capturing_runner(monkeypatch)
         monkeypatch.setattr(sys, "argv", ["neuro-san-studio", "run", "--server-host", "myhost"])
         main()
-        assert captured and captured[0].get("server_host") == "myhost"
+        assert captured[0]["server_host"] == "myhost"
 
     @pytest.mark.parametrize("flag", ["--version", "-V"])
     def test_version_flag_prints_version_and_exits(
