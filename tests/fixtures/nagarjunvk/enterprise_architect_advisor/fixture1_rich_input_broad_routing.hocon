@@ -1,0 +1,71 @@
+# Copyright © 2025-2026 Cognizant Technology Solutions Corp, www.cognizant.com.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
+# END COPYRIGHT
+
+# Fixture 1 — Rich input, broad routing
+#
+# A healthcare claims-processing platform with a clear multi-domain signal:
+# cloud target (Azure), compliance (HIPAA), database (SQL Server), Java backend.
+# Expected behaviour:
+#   Phase 1: produces an intake template that asks ONLY for missing fields —
+#             it should NOT re-ask target cloud (already stated) or compliance
+#             (already stated).
+#   Phase 2: at least 5 distinct specialists are engaged.
+#   Concurrency: the ea_call_ledger sly_data key is written to, confirming
+#                middleware is active.
+#
+# Test assertions (single turn — Phase 1 only for speed):
+#   - The reply is an intake template (asks at least one numbered question).
+#   - The reply does NOT ask the user to specify their target cloud platform
+#     (Azure was already given).
+#   - The reply does NOT ask about compliance / regulatory requirements
+#     (HIPAA was already given).
+#   - The reply references a generated project-name slug.
+{
+    "agent": "nagarjunvk/enterprise_architect_advisor",
+    "connections": ["direct"],
+    "timeout_in_seconds": 600,
+    "success_ratio": "1/1",
+
+    "interactions": [
+        {
+            # Rich input: Java monolith healthcare claims, Azure target, SQL Server, HIPAA
+            "text": "We are modernising our healthcare claims-processing platform. It is a Java Spring Boot monolith running on on-premises VMs with SQL Server as the database. We handle PHI data and must comply with HIPAA. We want to migrate to Azure within 18 months. We have about 500 daily active users and our team is comfortable with Docker but has not used Kubernetes in production.",
+
+            "response": {
+                "text": {
+                    # The response should be an intake template asking clarifying questions.
+                    # The negative constraints (no cloud re-ask, no HIPAA re-ask) are
+                    # enforced by not_keywords below — keep the gist purely positive.
+                    "gist": "The response is a Phase 1 intake template that presents the user's confirmed details in a recap section, then asks numbered clarifying questions about missing context fields.",
+
+                    # A numbered question list must appear
+                    "keywords": "1.",
+
+                    # Must NOT ask the user to choose or specify a cloud or compliance
+                    # Note: "target cloud" may appear in the CONFIRMED recap section —
+                    # we only ban it as an open question directed at the user.
+                    "not_keywords": [
+                        "which cloud platform",
+                        "what cloud",
+                        "what is your target cloud",
+                        "regulatory requirement?",
+                        "compliance requirement?"
+                    ]
+                }
+            }
+        }
+    ]
+}

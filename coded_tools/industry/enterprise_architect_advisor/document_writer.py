@@ -107,7 +107,7 @@ class DocumentWriter(CodedTool):
         filename: str = args.get("filename", "").strip()
         content: str = args.get("content", "")
         mode: str = args.get("mode", "").strip().lower()
-        provided_session_id: str = args.get("session_id", "").strip()
+        provided_session_id: str = (args.get("session_id") or "").strip()
 
         if not filename:
             return {"error": "invalid_input: 'filename' is required."}

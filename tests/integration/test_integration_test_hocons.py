@@ -1,36 +1,47 @@
-# Copyright © 2025-2026 Cognizant Technology Solutions Corp, www.cognizant.com.
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#     http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
-#
-# END COPYRIGHT
-
-# This file defines everything necessary for a data-driven test.
-# The schema specifications for this file are documented here:
-# https://github.com/cognizant-ai-lab/neuro-san/blob/main/docs/test_case_hocon_reference.md
-#
-# You can run this test by doing the following:
-# https://github.dev/cognizant-ai-lab/neuro-san-studio/blob/355_add_smoke_test_using_music_pro_hocon/CONTRIBUTING.md#testing-guidelines
-
 from unittest import TestCase
 
 import pytest
 from neuro_san.test.unittest.dynamic_hocon_unit_tests import DynamicHoconUnitTests
 from parameterized import parameterized
 
-from tests.utils.fail_fast_param_mixin import FailFastParamMixin
 
+class TestIntegrationTestHocons(TestCase):
+    """
+    Data-driven dynamic test cases where each test case is specified by a single hocon file.
+    """
 
-class TestIntegrationTestHocons(TestCase, FailFastParamMixin):
+    # A single instance of the DynamicHoconUnitTests helper class.
+    # We pass it our source file location and a relative path to the common
+    # root of the test hocon files listed in the @parameterized.expand()
+    # annotation below so the instance can find the hocon test cases listed.
+    DYNAMIC = DynamicHoconUnitTests(__file__, path_to_basis="../fixtures")
+
+    @parameterized.expand(
+        DynamicHoconUnitTests.from_hocon_list(
+            [
+                "nagarjunvk/enterprise_architect_advisor/fixture1_rich_input_broad_routing.hocon",
+                "nagarjunvk/enterprise_architect_advisor/fixture2_vague_input_scope_question.hocon",
+                "nagarjunvk/enterprise_architect_advisor/fixture3_infra_only_domain_gated_intake.hocon",
+                "nagarjunvk/enterprise_architect_advisor/fixture4_compliance_signal_security_routing.hocon",
+                "nagarjunvk/enterprise_architect_advisor/fixture5_followup_topic_continuity.hocon",
+            ]
+        ),
+        skip_on_empty=True,
+    )
+    @pytest.mark.integration
+    @pytest.mark.integration_nagarjunvk
+    @pytest.mark.integration_nagarjunvk_ea
+    def test_hocon_nagarjunvk_ea(self, test_name: str, test_hocon: str):
+        """
+        Test method for the Enterprise Architect Advisor agent network.
+        Covers Phase 1 intake gating, Phase 2 specialist routing,
+        and Phase 3 follow-up topic continuity.
+
+        :param test_name: The name of a single test.
+        :param test_hocon: The hocon file of a single data-driven test case.
+        """
+        self.DYNAMIC.one_test_hocon(self, test_name, test_hocon)
+
     """
     Data-driven dynamic test cases where each test case is specified by a single hocon file.
     """
@@ -323,4 +334,37 @@ class TestIntegrationTestHocons(TestCase, FailFastParamMixin):
         # This will expand the test_hocon file name from the expanded list to
         # include the file basis implied by the __file__ and path_to_basis above.
 
+        self.DYNAMIC.one_test_hocon(self, test_name, test_hocon)
+
+    @parameterized.expand(
+        DynamicHoconUnitTests.from_hocon_list(
+            [
+                # These can be in any order.
+                # Ideally more basic functionality will come first.
+                # Barring that, try to stick to alphabetical order.
+                "nagarjunvk/enterprise_architect_advisor/fixture1_rich_input_broad_routing.hocon",
+                "nagarjunvk/enterprise_architect_advisor/fixture2_vague_input_scope_question.hocon",
+                "nagarjunvk/enterprise_architect_advisor/fixture3_infra_only_domain_gated_intake.hocon",
+                "nagarjunvk/enterprise_architect_advisor/fixture4_compliance_signal_security_routing.hocon",
+                "nagarjunvk/enterprise_architect_advisor/fixture5_followup_topic_continuity.hocon",
+                # List more hocon files as they become available here.
+            ]
+        ),
+        skip_on_empty=True,
+    )
+    @pytest.mark.integration
+    @pytest.mark.integration_nagarjunvk
+    @pytest.mark.integration_nagarjunvk_ea
+    def test_hocon_nagarjunvk_ea(self, test_name: str, test_hocon: str):
+        """
+        Test method for the Enterprise Architect Advisor agent network.
+        Covers Phase 1 intake gating, Phase 2 specialist routing,
+        and Phase 3 follow-up topic continuity.
+
+        :param test_name: The name of a single test.
+        :param test_hocon: The hocon file of a single data-driven test case.
+        """
+        # Call the guts of the dynamic test driver.
+        # This will expand the test_hocon file name from the expanded list to
+        # include the file basis implied by the __file__ and path_to_basis above.
         self.DYNAMIC.one_test_hocon(self, test_name, test_hocon)

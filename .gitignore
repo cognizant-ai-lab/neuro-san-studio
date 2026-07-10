@@ -207,3 +207,12 @@ memory/
 
 # test local only
 registries/manifest.hocon.test
+
+# Runtime database
+nss_local.db
+
+# Test output logs
+logs/
+
+# Generated outputs
+outputs/

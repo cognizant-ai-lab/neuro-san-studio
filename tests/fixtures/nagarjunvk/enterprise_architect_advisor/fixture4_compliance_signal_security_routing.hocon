@@ -1,0 +1,76 @@
+# Copyright © 2025-2026 Cognizant Technology Solutions Corp, www.cognizant.com.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
+# END COPYRIGHT
+
+# Fixture 4 — Compliance signal routes security_architect
+#
+# A Java monolith with explicit SOC 2 compliance requirement.
+# This is a two-turn test:
+#   Turn 1 (Phase 1): agent asks intake questions.
+#   Turn 2 (Phase 1 answers → Phase 2): user says "go ahead" to proceed.
+#
+# Expected behaviour in Phase 2 summary:
+#   - security_architect appears in the specialist findings
+#     (SOC 2 is a direct security_architect domain trigger)
+#   - The response contains architecture/security recommendations,
+#     not just clarifying questions
+#   - The summary does NOT mention specialists that were skipped
+#     (routing integrity: summary only covers what ran)
+{
+    "agent": "nagarjunvk/enterprise_architect_advisor",
+    "connections": ["direct"],
+    "timeout_in_seconds": 900,
+    "success_ratio": "1/1",
+
+    "interactions": [
+        {
+            # Turn 1 — initial submission with SOC 2 compliance signal
+            "text": "We want to migrate our Java monolith to the cloud. Our backend uses Spring Boot and our database is SQL Server. Our compliance team has flagged SOC 2 Type II requirements. We are not sure which cloud to use.",
+
+            # Phase 1 asks for missing context — we do not assert on exact questions,
+            # just that it is an intake template and not a full analysis.
+            "response": {
+                "text": {
+                    "gist": "The response is a Phase 1 intake template that asks the user clarifying questions about missing context, such as the target cloud preference, team size, timeline, existing CI/CD tooling, or budget. It does not yet contain scored specialist findings or option tables.",
+                    "keywords": "?",
+                    "not_keywords": ["Score /100"]
+                }
+            }
+        },
+        {
+            # Turn 2 — user instructs the network to proceed with assumptions
+            "text": "Go ahead with reasonable assumptions for anything missing. Use Azure as the target cloud.",
+
+            # Phase 2 summary assertions:
+            "response": {
+                "text": {
+                    # security_architect must have run due to SOC 2 signal
+                    # Note: scored option tables are written to files, NOT to the chat reply.
+                    # The chat reply is an executive summary with a file-path pointer.
+                    "gist": [
+                        "The response is a Phase 2 analysis summary that mentions security architecture, identity and access management, network security, or data protection controls relevant to the SOC 2 requirement.",
+                        "The response references SOC 2 compliance controls, audit readiness, or certification requirements."
+                    ],
+
+                    # SOC 2 must appear in the findings
+                    "keywords": "SOC 2",
+
+                    # Phase 2 summary must not mention skipped specialist domains as if they ran
+                    "not_keywords": ["Score /100: not applicable"]
+                }
+            }
+        }
+    ]
+}

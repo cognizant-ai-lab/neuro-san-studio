@@ -1,0 +1,84 @@
+# Copyright © 2025-2026 Cognizant Technology Solutions Corp, www.cognizant.com.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
+# END COPYRIGHT
+
+# Local override of the neuro-san library's gist.hocon discriminator agent.
+# This version uses azure-openai so that the gist evaluator works in
+# environments where only Azure OpenAI credentials are available
+# (i.e. AZURE_OPENAI_API_KEY / AZURE_OPENAI_ENDPOINT are set, but
+#  OPENAI_API_KEY is not).
+#
+# The llm_config here reads the deployment name from the
+# AZURE_OPENAI_DEPLOYMENT_NAME environment variable (via the azure-openai
+# provider's built-in env-var lookup), so no hard-coded model name is needed.
+{
+    "metadata": {
+        "description": "Used by Neuro-SAN test infrastructure to determine agent network response failures (Azure OpenAI version)",
+        "tags": ["test_infrastructure"]
+    },
+
+    "llm_config": {
+        "class": "azure-openai"
+    },
+
+    "tools": [
+        {
+            "name": "gist",
+
+            "function": {
+                "description": """
+Will return the single string "pass" if the text sample meets the given acceptance criteria
+or the single string "fail" if the text sample does not meet the given acceptance criteria.
+""",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "acceptance_criteria": {
+                            "type": "string",
+                            "description": """
+A description of what kind of content or meaning a text_sample would need to contain
+in order to constitute a passing value for the test.
+"""
+                        },
+                        "text_sample": {
+                            "type": "string",
+                            "description": "The sample of text to match against the acceptance_criteria"
+                        }
+                    },
+                    "required": ["text_sample", "acceptance_criteria"]
+                }
+            },
+
+            "instructions": """
+You are an expert at evaluating text samples.
+
+You will be given two inputs:
+1. an acceptance_criteria which describes what constitutes a passing evaluation for any sample of text.
+2. a text_sample which is to be evaluated against the acceptance_criteria description.
+
+Evaluate the text_sample and come to a conclusion as to whether or not
+it meets what is described by the acceptance_criteria.
+
+Should there be multiple points described in the acceptance_criteria, take care that any logical 
+descriptions containing OR or AND are upheld in your conclusion.
+
+If you conclude that what is described by the acceptance_criteria is met by the contents of the text_sample, 
+output only the single word "pass", otherwise output only the single word "fail".
+Never add any embellishment or commentary to your answer.
+""",
+            "tools": []
+        }
+    ]
+}

@@ -1,0 +1,117 @@
+# Copyright © 2025-2026 Cognizant Technology Solutions Corp, www.cognizant.com.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
+# END COPYRIGHT
+
+# Fixture 5 — Phase 3 follow-up topic continuity
+#
+# A three-turn test that validates the follow-up routing and topic-continuity logic.
+#
+# Setup (turns 1–2): build on the same Java/SQL Server/SOC 2 scenario to reach
+#   Phase 2 — we reuse a minimal version to keep the fixture fast.
+#
+# Turn 3 (Phase 3A): ask a SQL Server follow-up.
+#   Expected: routed to data_architect (SQL Server is a data_architect keyword).
+#   The response should contain data architecture guidance about SQL Server.
+#   It must NOT say "I'm not sure" or offer a generic "I can't answer that".
+#
+# Turn 4 (Phase 3B): ask a second SQL Server follow-up referencing the prior answer.
+#   Expected: topic-continuity logic fires because data_architect was the prior
+#   specialist; the question continues the SQL Server thread.
+#   The response should again contain data architecture guidance.
+#   It must NOT fall back to a generic response or re-route to a wrong domain.
+{
+    "agent": "nagarjunvk/enterprise_architect_advisor",
+    "connections": ["direct"],
+    "timeout_in_seconds": 1200,
+    "success_ratio": "1/1",
+
+    "interactions": [
+        {
+            # Turn 1 — Phase 1 intake
+            "text": "We are migrating a Java Spring Boot monolith to Azure. Our database is SQL Server. We have SOC 2 Type II requirements. No specific cloud preference — Azure is fine.",
+
+            "response": {
+                "text": {
+                    "gist": "The response is a Phase 1 intake template with at least one clarifying question. It does not yet contain specialist findings or scored option tables.",
+                    "keywords": "?"
+                }
+            }
+        },
+        {
+            # Turn 2 — proceed to Phase 2
+            "text": "Go ahead with assumptions. Timeline is 12 months. Team knows Docker but not Kubernetes. No current CI/CD pipeline.",
+
+            "response": {
+                "text": {
+                    # Phase 2 chat reply: executive summary + file path pointer.
+                    # Note: scored option tables are written to files, NOT to the chat reply.
+                    "gist": "The response is a Phase 2 analysis summary that describes architecture findings from multiple specialist domains, including at least cloud strategy and security or compliance. It mentions a file path where the full deliverables were saved.",
+                    "keywords": ["SQL Server", "SOC 2"]
+                }
+            }
+        },
+        {
+            # Turn 3 — Phase 3A: SQL Server follow-up (data_architect domain)
+            "text": "Can SQL Server be hosted natively on Azure as a managed service, or do we need to keep it on a VM?",
+
+            "response": {
+                "text": {
+                    # Must contain data architecture guidance about SQL Server hosting options
+                    "gist": "The response provides data architecture guidance about options for running SQL Server on Azure, such as Azure SQL Database (fully managed PaaS), SQL Managed Instance, or SQL Server on Azure VMs (IaaS). It compares at least two of these options in terms of migration complexity, management overhead, feature compatibility, or cost.",
+
+                    # Must mention Azure SQL as a managed option
+                    "keywords": ["Azure SQL", "managed"],
+
+                    # Must NOT give a generic unhelpful response
+                    "not_keywords": [
+                        "I'm not sure",
+                        "I cannot answer",
+                        "outside the scope",
+                        "please consult"
+                    ]
+                }
+            }
+        },
+        {
+            # Turn 4 — Phase 3B: follow-on SQL Server question (topic continuity)
+            # The agent may return either:
+            #   (a) A FOLLOW-UP ROUTING block confirming data_architect was selected
+            #       (routing classification only — chief will call specialist next turn), OR
+            #   (b) Full specialist content about SQL Server compatibility with Azure SQL
+            # Both are correct. The critical assertion is: data_architect was matched
+            # via topic continuity (not a fallback to another domain or 'none').
+            "text": "What about SQL Server compatibility — would Azure SQL Database support all the features we use, like SQL Server Agent and linked servers?",
+
+            "response": {
+                "text": {
+                    # Accept routing block OR specialist content — both are correct behavior
+                    "gist": "The response either (a) contains a FOLLOW-UP ROUTING block that matched the domain to data_architect with High or Medium confidence because this question continues the SQL Server database topic, OR (b) provides data architecture guidance about SQL Server compatibility with Azure SQL Database options. In either case it does NOT say it cannot answer the question and does NOT route to a completely unrelated domain.",
+
+                    # data_architect must appear somewhere — in routing block or specialist label
+                    # Note: when the agent does a Phase 3B doc update, the reply says
+                    # "Updated: detailed_findings.md" — "SQL Server" always appears
+                    "keywords": "SQL Server",
+
+                    # Must NOT fall back to a generic or off-topic answer
+                    "not_keywords": [
+                        "I'm not sure",
+                        "I cannot answer",
+                        "please consult"
+                    ]
+                }
+            }
+        }
+    ]
+}

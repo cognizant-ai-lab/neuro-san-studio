@@ -1,3 +1,0 @@
-tldextract
-bs4
-pytest

@@ -692,6 +692,11 @@ Before calling any specialist, output:
 THEN call each selected specialist, passing it the relevant excerpt from the
 context table plus the full context table for cross-domain awareness.
 
+CONCURRENCY REQUIREMENT: Issue ALL selected specialist tool calls in a SINGLE
+response turn — do NOT chain them sequentially one-by-one. Emit all tool calls
+at once so the framework can run them in parallel. This is critical for
+performance; sequential execution is incorrect behaviour in this mode.
+
 After all selected specialists respond, compile their findings and return:
   1. The routing_plan (reproduced)
   2. Each specialist's output, clearly labelled by specialist name and domain
@@ -858,7 +863,16 @@ Key factors to weigh:
 - Timeline and risk tolerance (rehost = fastest, rearchitect = highest value but slowest)
 - Cost pressure and commercial agreements (ELA / EA / committed-use discounts)
 - Team skills and operational capability
-"""
+""",
+            "middleware": [
+                {
+                    "class": "middleware.enterprise_architect_advisor.call_ledger_middleware.CallLedgerMiddleware",
+                    "args": {
+                        "agent_name": "cloud_strategy_architect",
+                        "sly_data": true
+                    }
+                }
+            ]
         },
 
         # =====================================================================
@@ -908,7 +922,16 @@ Key factors:
 - Scale and traffic patterns
 - Stateful vs stateless workload profile
 - Whether the roadmap includes AI/ML workloads (influences container vs serverless choice)
-"""
+""",
+            "middleware": [
+                {
+                    "class": "middleware.enterprise_architect_advisor.call_ledger_middleware.CallLedgerMiddleware",
+                    "args": {
+                        "agent_name": "application_architect",
+                        "sly_data": true
+                    }
+                }
+            ]
         },
 
         # =====================================================================
@@ -956,7 +979,16 @@ Key factors:
 - Compliance requirements (data residency, encryption-at-rest, audit logging)
 - ETL / reporting tooling already in place
 - Any stated analytics or AI/ML data consumption requirements
-"""
+""",
+            "middleware": [
+                {
+                    "class": "middleware.enterprise_architect_advisor.call_ledger_middleware.CallLedgerMiddleware",
+                    "args": {
+                        "agent_name": "data_architect",
+                        "sly_data": true
+                    }
+                }
+            ]
         },
 
         # =====================================================================
@@ -1002,7 +1034,16 @@ Key factors:
 - Real-time vs batch integration requirements
 - API monetisation or external partner exposure intent
 - Compliance requirements around data-in-transit logging and encryption
-"""
+""",
+            "middleware": [
+                {
+                    "class": "middleware.enterprise_architect_advisor.call_ledger_middleware.CallLedgerMiddleware",
+                    "args": {
+                        "agent_name": "integration_architect",
+                        "sly_data": true
+                    }
+                }
+            ]
         },
 
         # =====================================================================
@@ -1051,7 +1092,16 @@ IMPORTANT: If compliance context is "No specific regulatory requirement" (the de
 state that assumption clearly and note which controls are still recommended as
 cloud security baselines regardless of compliance mandate.
 Assumed Needed note if applicable.
-"""
+""",
+            "middleware": [
+                {
+                    "class": "middleware.enterprise_architect_advisor.call_ledger_middleware.CallLedgerMiddleware",
+                    "args": {
+                        "agent_name": "security_architect",
+                        "sly_data": true
+                    }
+                }
+            ]
         },
 
         # =====================================================================
@@ -1100,7 +1150,16 @@ Key factors:
 - Multi-cloud or single-cloud targeting
 - DR / backup strategy requirements
 - Container / Kubernetes operations complexity
-"""
+""",
+            "middleware": [
+                {
+                    "class": "middleware.enterprise_architect_advisor.call_ledger_middleware.CallLedgerMiddleware",
+                    "args": {
+                        "agent_name": "operations_architect",
+                        "sly_data": true
+                    }
+                }
+            ]
         },
 
         # =====================================================================
@@ -1154,7 +1213,16 @@ Key factors:
 - Scale and workload profile (steady-state vs bursty)
 - Existing Microsoft / AWS / Google licensing agreements
 - Timeline (shorter timeline → less time to benefit from reserved pricing)
-"""
+""",
+            "middleware": [
+                {
+                    "class": "middleware.enterprise_architect_advisor.call_ledger_middleware.CallLedgerMiddleware",
+                    "args": {
+                        "agent_name": "finops_architect",
+                        "sly_data": true
+                    }
+                }
+            ]
         },
 
         # =====================================================================
@@ -1207,7 +1275,16 @@ Key factors:
 - Compliance constraints on data used for training / inference
 - Team ML skills
 - Cost budget for AI services
-"""
+""",
+            "middleware": [
+                {
+                    "class": "middleware.enterprise_architect_advisor.call_ledger_middleware.CallLedgerMiddleware",
+                    "args": {
+                        "agent_name": "ai_architect",
+                        "sly_data": true
+                    }
+                }
+            ]
         },
 
         # =====================================================================

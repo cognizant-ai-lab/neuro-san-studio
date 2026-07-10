@@ -1,0 +1,57 @@
+# Copyright © 2025-2026 Cognizant Technology Solutions Corp, www.cognizant.com.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
+# END COPYRIGHT
+
+# Fixture 2 — Vague input, scope-clarifying question
+#
+# The user provides a minimal, ambiguous request ("modernise my app").
+# Expected behaviour:
+#   Phase 1: the agent does NOT launch into a full analysis. Instead it should
+#             ask at least one scope-clarifying question to understand what is
+#             being modernised (infrastructure? application? data platform?) and
+#             what technology is currently in use.
+#   No specialists should be explicitly mentioned in the response — no findings,
+#   no option tables, no scored recommendations.
+{
+    "agent": "nagarjunvk/enterprise_architect_advisor",
+    "connections": ["direct"],
+    "timeout_in_seconds": 600,
+    "success_ratio": "1/1",
+
+    "interactions": [
+        {
+            # Intentionally vague — barely enough signal to do anything
+            "text": "I want to modernise my app.",
+
+            "response": {
+                "text": {
+                    # Should ask clarifying questions, not produce findings
+                    "gist": "The response is a Phase 1 intake template that asks the user one or more numbered clarifying questions about their application, technology stack, or modernisation goals. It has not yet produced any scored architecture analysis or specialist recommendations.",
+
+                    # Must contain at least one question marker
+                    "keywords": "?",
+
+                    # No specialist-level analysis should appear
+                    "not_keywords": [
+                        "Score /100",
+                        "Migration Strategy",
+                        "Routing Plan",
+                        "ROUTING PLAN"
+                    ]
+                }
+            }
+        }
+    ]
+}
