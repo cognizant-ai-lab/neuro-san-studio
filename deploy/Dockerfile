@@ -428,6 +428,11 @@ ENV FGA_STORE_NAME=""
 # Environment Variables that control specific Agent Network behavior
 #
 
+# When set to "INFO" (the coded default), Agent Network Designer will log at INFO level.
+# When set to anything other than "INFO", Agent Network Designer will log at DEBUG level,
+# which is much saner for day-to-day server usage, avoiding mountains of logs.
+ENV AGENT_NETWORK_DESIGNER_LOG_LEVEL="DEBUG"
+
 # When set, this parameter allows the Agent Network Designer to use
 # Resevations as the means for temporary deployment of vibe-coded agent networks.
 # When not set, this defaults to false and the file-system is modified.
