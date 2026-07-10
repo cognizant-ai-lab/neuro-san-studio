@@ -48,9 +48,8 @@ class AndLogger(ConditionalLogger):
 
     def info(self, msg, *args, **kwargs):
         """
-        By default, with no env var set, log 'msg % args' with severity 'INFO'.
-        If the env var is set, log 'msg % args' with severity 'DEBUG'.
-
+        By default, when the env var is unset or set to "INFO", log 'msg % args' with severity 'INFO'.
+        When the env var is set to any other value (e.g. "DEBUG"), log 'msg % args' with severity 'DEBUG'.
         To pass exception information, use the keyword argument exc_info with
         a true value, e.g.
 
