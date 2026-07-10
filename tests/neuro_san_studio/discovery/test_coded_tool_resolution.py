@@ -16,8 +16,6 @@
 
 """Tests for DependencyAnalyzer.resolve_coded_tool_path short-form hierarchy resolution."""
 
-# pylint: disable=protected-access
-
 from pathlib import Path
 
 from neuro_san_studio.discovery.dependency_analyzer import DependencyAnalyzer

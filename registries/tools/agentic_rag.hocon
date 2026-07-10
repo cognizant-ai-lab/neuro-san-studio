@@ -14,6 +14,8 @@
 #
 # END COPYRIGHT
 {
+    include "registries/expertise_scoping_instructions.hocon",
+
     # Load the shared LLM configuration from a single source of truth.
     # This allows users to change the model in one file rather than
     # modifying the configuration for each agent network.
@@ -54,7 +56,8 @@
                 "description": "Answer caller's query with answers from tools.",
             },
 
-            "instructions": """Use your tool to respond to the inquiry.""",
+            "instructions": """Use your tool to respond to the inquiry.
+""" ${expertise_scoping_instructions},
             "tools": ["website_search", "rag_retriever", "slack_tool"]
         },
         # LangChain search tool using Bing; no need to define "function" since "args_schema" is pre-defined.

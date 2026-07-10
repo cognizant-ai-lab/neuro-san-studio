@@ -15,6 +15,7 @@
 # END COPYRIGHT
 
 include "registries/aaosa_basic.hocon"
+include "registries/expertise_scoping_instructions.hocon"
 
 include "config/llm_config.hocon"
 
@@ -42,9 +43,9 @@ tools = [
         function {
             description = """Finds coffee places at any time of day."""
         }
-        instructions =
+        instructions = ${expertise_scoping_instructions}
 """
-Answer user inquiries about coffee places and take orders.
+You are the agent responsible for answering user inquiries about coffee places and taking orders.
 Always return order IDs and details when placing orders.
 Do not worry about the location.
 Call ALL your downstream agents to see if they can help with the inquiry before answering.

@@ -24,9 +24,8 @@ from aiohttp import ClientResponseError
 
 from neuro_san_studio.coded_tools.web_fetch import MAX_RESPONSE_BYTES
 from neuro_san_studio.coded_tools.web_fetch import WebFetch
-
-from .helpers import make_head_session
-from .helpers import make_response_error
+from tests.neuro_san_studio.coded_tools.web_fetch.helpers import make_head_session
+from tests.neuro_san_studio.coded_tools.web_fetch.helpers import make_response_error
 
 
 class TestGetContentType(TestCase):

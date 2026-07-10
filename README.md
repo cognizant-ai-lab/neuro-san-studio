@@ -343,6 +343,9 @@ run Neuro SAN agents continuously or on triggers through a separate service, wit
 * [Annual Report Reader](https://github.com/shrushtiimehta/neuro-san-annual-report-reader):
 analyzes a LinkedIn profile and delivers a personalized summary of Cognizant's 2024 Annual Report,
 surfacing content most relevant to the user's industry and seniority level.
+* [Tochiro File organizer](https://github.com/ofrancon/tochiro):
+a macOS file organization assistant with a dedicated UI to analyze a folder,
+create a plan for moving the files, ask for approval and execute the moves.
 
 ### Utilities
 

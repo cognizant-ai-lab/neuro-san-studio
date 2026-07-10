@@ -20,6 +20,7 @@ from unittest.mock import AsyncMock
 from unittest.mock import patch
 
 from neuro_san_studio.coded_tools.web_fetch import WebFetch
+from tests.neuro_san_studio.coded_tools.web_fetch.helpers import make_dns_patch
 
 
 class TestAsyncInvoke(TestCase):
@@ -28,6 +29,10 @@ class TestAsyncInvoke(TestCase):
     def setUp(self):
         self.tool = WebFetch()
         self.sly_data: dict = {}
+        # Resolve every hostname to a public IP so tests never do live DNS lookups.
+        dns_patcher = make_dns_patch(["93.184.216.34"])
+        dns_patcher.start()
+        self.addCleanup(dns_patcher.stop)
 
     def test_html_fetch_returns_correct_keys(self):
         """Tests that fetching an HTML page returns a result with url, content, and retrieved_at keys."""
