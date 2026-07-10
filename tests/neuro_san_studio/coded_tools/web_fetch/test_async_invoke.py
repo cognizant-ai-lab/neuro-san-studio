@@ -20,8 +20,7 @@ from unittest.mock import AsyncMock
 from unittest.mock import patch
 
 from neuro_san_studio.coded_tools.web_fetch import WebFetch
-
-from .helpers import make_dns_patch
+from tests.neuro_san_studio.coded_tools.web_fetch.helpers import make_dns_patch
 
 
 class TestAsyncInvoke(TestCase):

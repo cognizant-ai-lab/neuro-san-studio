@@ -18,8 +18,7 @@ from unittest import IsolatedAsyncioTestCase
 
 from neuro_san_studio.coded_tools.web_fetch import MAX_URL_LENGTH
 from neuro_san_studio.coded_tools.web_fetch import WebFetch
-
-from .helpers import make_dns_patch
+from tests.neuro_san_studio.coded_tools.web_fetch.helpers import make_dns_patch
 
 
 class TestValidateUrl(IsolatedAsyncioTestCase):  # pylint: disable=too-many-public-methods
