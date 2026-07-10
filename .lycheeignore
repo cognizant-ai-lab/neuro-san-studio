@@ -17,12 +17,7 @@ http://arxiv.org/abs/$
 https://test
 
 # Sites with network-level blocks (not resolvable via --accept)
-https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.1/socket.io.js
-https://img.shields.io/pypi/v/neuro-san.svg
-https://ollama.com/
-https://pymarkdown.readthedocs.io/
 https://www.united.com/
-https://you.com/platform/api-keys
 https://mcp/
 
 # Login-walled pages that redirect through an auth flow lychee can't resolve
