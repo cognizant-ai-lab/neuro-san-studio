@@ -1,0 +1,7 @@
+agent {
+
+  name = "candidate_ranker"
+
+  description = "Ranks candidates using skill, experience and availability scores"
+
+}
