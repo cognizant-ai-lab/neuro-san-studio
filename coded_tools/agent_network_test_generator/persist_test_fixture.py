@@ -24,6 +24,8 @@ from typing import Union
 import aiofiles
 from neuro_san.interfaces.coded_tool import CodedTool
 
+from coded_tools.agent_network_editor.and_logger import AndLogger
+
 _REFERENCE_COMMENT: str = """\
 
 # This file defines everything necessary for a data-driven test.
@@ -64,7 +66,7 @@ class PersistTestFixture(CodedTool):
             otherwise:
                 A text string error message.
         """
-        logger = logging.getLogger(self.__class__.__name__)
+        logger = AndLogger(logging.getLogger(self.__class__.__name__))
 
         test_fixture: dict[str, Any] = args.get("test_fixture")
         if not test_fixture:

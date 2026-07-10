@@ -45,6 +45,7 @@ from neuro_san.interfaces.agent_progress_reporter import AgentProgressReporter
 from neuro_san.internals.persistence.abstract_async_config_restorer import AbstractAsyncConfigRestorer
 from pyparsing.exceptions import ParseException
 
+from coded_tools.agent_network_editor.and_logger import AndLogger
 from coded_tools.agent_network_editor.connectivity_dictionary_converter import ConnectivityDictionaryConverter
 from coded_tools.agent_network_editor.constants import AGENT_NETWORK_DEFINITION
 from coded_tools.agent_network_editor.constants import AGENT_NETWORK_NAME
@@ -89,7 +90,7 @@ class AgentNetworkDefinitionMiddleware(AgentMiddleware):
         self.progress_reporter: AgentProgressReporter | None = progress_reporter
         self.sly_data = sly_data
 
-        self.logger: Logger = getLogger(self.__class__.__name__)
+        self.logger: Logger = AndLogger(getLogger(self.__class__.__name__))
         # Initialize agent network definition
         self.network_def: dict[str, Any] | list[dict[str, Any]] | None = None
         # Initialize an error message to store issues encountered during loading from HOCON file or S3 reservation.
