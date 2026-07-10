@@ -65,9 +65,9 @@ class AndLogger(ConditionalLogger):
         Always log 'msg % args' with severity 'INFO'.  Bypasses the env var.
 
         This is meant to be for specialized use cases where we always want
-        the log message to be INFO when sent to to the logs in cases where
+        the log message to be INFO when sent to the logs, in cases where
         the people who read server logs will actually be interested in the message.
-        (Most of the time this is not the case, an the intention of this class
+        (Most of the time this is not the case, and the intention of this class
         is to get rid of the mountain of INFO chatter in production logs,
         hence we make you think about it.)
 
