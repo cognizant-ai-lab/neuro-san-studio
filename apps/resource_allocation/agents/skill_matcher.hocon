@@ -1,0 +1,7 @@
+agent {
+
+  name = "skill_matcher"
+
+  description = "Calculates skill match score for discovered candidates"
+
+}

@@ -1,0 +1,7 @@
+agent {
+
+  name = "experience_assessor"
+
+  description = "Calculates experience match score for candidates"
+
+}

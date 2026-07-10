@@ -1,0 +1,7 @@
+agent {
+
+  name = "availability_assessor"
+
+  description = "Calculates availability score for candidates"
+
+}
