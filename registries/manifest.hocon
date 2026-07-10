@@ -90,6 +90,8 @@
     #   The default ports are 8080 for HTTP and 4173 for nsflow.
     #   For example, you can run:
     #     python -m neuro_san_studio run --server-http-port 8081 --nsflow-port 4174
+     "socratic_tutor.hocon": true,
     "agent_network_architect.hocon": false,
+
 
 }
