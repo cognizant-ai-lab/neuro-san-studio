@@ -22,9 +22,9 @@ from leaf_common.logging.conditional_logger import ConditionalLogger
 
 class AndLogger(ConditionalLogger):
     """
-    A logger that is always enabled which can redirect INFO logs to DEBUG upon
+    A ConditionalLogger that is always enabled which can redirect INFO logs to DEBUG based on
     an environment variable setting. The idea is to get rid of most of the INFO chatter
-    in production logs.
+    in production logs, but still allow them through for the default developer setting.
     """
 
     def __init__(self, logger: Logger):
