@@ -48,7 +48,8 @@ class AndLogger(ConditionalLogger):
 
     def info(self, msg, *args, **kwargs):
         """
-        Log 'msg % args' with severity 'INFO'.
+        By default, with no env var set, log 'msg % args' with severity 'INFO'.
+        If the env var is set, log 'msg % args' with severity 'DEBUG'.
 
         To pass exception information, use the keyword argument exc_info with
         a true value, e.g.
@@ -59,3 +60,21 @@ class AndLogger(ConditionalLogger):
             super().info(msg, *args, **kwargs)
         else:
             super().debug(msg, *args, **kwargs)
+
+    def always_info(self, msg, *args, **kwargs):
+        """
+        Always log 'msg % args' with severity 'INFO'.  Bypasses the env var.
+
+        This is meant to be for specialized use cases where we always want
+        the log message to be INFO when sent to to the logs in cases where
+        the people who read server logs will actually be interested in the message.
+        (Most of the time this is not the case, an the intention of this class
+        is to get rid of the mountain of INFO chatter in production logs,
+        hence we make you think about it.)
+
+        To pass exception information, use the keyword argument exc_info with
+        a true value, e.g.
+
+        logger.info("Houston, we have a %s", "notable problem", exc_info=True)
+        """
+        super().info(msg, *args, **kwargs)
