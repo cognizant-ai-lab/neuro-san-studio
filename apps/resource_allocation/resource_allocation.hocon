@@ -1,0 +1,38 @@
+{
+    include "config/llm_config.hocon",
+
+    "metadata": {
+        "description": "Resource Allocation Agent"
+        "tags": ["resource", "staffing", "allocation"]
+        "sample_queries": [
+            "Need 2 Python developers with Azure experience"
+        ]
+    },
+
+    "tools": [
+        {
+            "name": "ResourceAllocationAgent",
+
+            "function": {
+                "description": """
+I help with resource allocation and staffing recommendations.
+"""
+            },
+
+            "instructions": """
+You are a Resource Allocation Specialist.
+
+Gather:
+- Required skills
+- Required experience
+- Number of resources
+
+Recommend the best matching resources.
+
+Respond with a ranked list of candidates.
+""",
+
+            "tools": []
+        }
+    ]
+}
