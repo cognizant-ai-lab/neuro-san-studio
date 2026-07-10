@@ -15,7 +15,6 @@
 # END COPYRIGHT
 
 from logging import Logger
-from os import environ
 
 from leaf_common.logging.conditional_logger import ConditionalLogger
 
@@ -33,11 +32,9 @@ class AndLogger(ConditionalLogger):
 
         :param logger: The wrapped logger to redirect write() calls to.
         """
-        env_var: str = "AGENT_NETWORK_DESIGNER_LOG_LEVEL"
-        super().__init__(logger, env_var)
+        super().__init__(logger, "AGENT_NETWORK_DESIGNER_VERBOSE")
 
-        log_level: str = environ.get(env_var, "INFO").strip().upper()
-        self.use_info: bool = log_level == "INFO"
+        self.use_info: bool = not super().should_log()
 
     def should_log(self) -> bool:
         """
@@ -48,8 +45,8 @@ class AndLogger(ConditionalLogger):
 
     def info(self, msg, *args, **kwargs):
         """
-        By default, when the env var is unset or set to "INFO", log 'msg % args' with severity 'INFO'.
-        When the env var is set to any other value (e.g. "DEBUG"), log 'msg % args' with severity 'DEBUG'.
+        By default, when the env var is unset or set to "true", log 'msg % args' with severity 'INFO'.
+        When the env var is set to any other value (e.g. "false"), log 'msg % args' with severity 'DEBUG'.
         To pass exception information, use the keyword argument exc_info with
         a true value, e.g.
 
