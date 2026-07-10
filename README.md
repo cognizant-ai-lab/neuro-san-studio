@@ -6,12 +6,6 @@ tools that let you design, test, and deploy sophisticated agent networks in minu
 researcher exploring adaptive AI systems, a developer prototyping production solutions, or a domain expert configuring
 agents without code, this studio handles the orchestration complexity so you can focus on solving real problems.
 
-<!-- pyml disable-next-line no-inline-html -->
-<p align="center">
-  <a href="https://deepwiki.com/cognizant-ai-lab/neuro-san-studio">
-  <img src="https://deepwiki.com/badge.svg" alt="Ask DeepWiki: Neuro SAN Studio" /></a>
-</p>
-
 ---
 
 <!-- pyml disable-next-line no-inline-html -->
@@ -33,6 +27,13 @@ agents without code, this studio handles the orchestration complexity so you can
   <img src="https://img.shields.io/github/last-commit/cognizant-ai-lab/neuro-san-studio" alt="Last Commit">
   <img src="https://img.shields.io/github/issues/cognizant-ai-lab/neuro-san-studio" alt="Issues">
   <img src="https://img.shields.io/github/issues-pr/cognizant-ai-lab/neuro-san-studio" alt="Pull Requests">
+  <a href="https://pepy.tech/projects/neuro-san-studio"><img alt="PyPI Downloads"
+  src="https://static.pepy.tech/badge/neuro-san-studio" /></a>
+  <a href="https://pypi.org/project/neuro-san-studio/">
+  <img alt="neuro-san-studio@PyPI" src="https://img.shields.io/pypi/v/neuro-san-studio.svg?style=flat-square"></a>
+  <a href="https://deepwiki.com/cognizant-ai-lab/neuro-san-studio">
+  <img src="https://deepwiki.com/badge.svg" alt="Ask DeepWiki: Neuro SAN Studio" /></a>
+
 </p>
 
 <!-- pyml disable-next-line no-inline-html -->
