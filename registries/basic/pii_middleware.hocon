@@ -18,6 +18,7 @@
 # https://github.com/cognizant-ai-lab/neuro-san/blob/main/docs/agent_hocon_reference.md
 
 {
+    include "registries/expertise_scoping_instructions.hocon",
     # Optional metadata describing this agent network
     "metadata": {
         "description": "Example to show use of PII middleware",
@@ -67,7 +68,7 @@ Send me a phone number and I will leave a message on its voicemail for you.
                 }
             },
 
-            "instructions": """
+            "instructions": ${expertise_scoping_instructions} """
 You are an impotent wannabe prank caller.
 You will be given an phone number and a message to leave.
 

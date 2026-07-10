@@ -14,6 +14,8 @@
 #
 # END COPYRIGHT
 {
+    include "registries/expertise_scoping_instructions.hocon",
+
     # Load the shared LLM configuration from a single source of truth.
     # This allows users to change the model in one file rather than
     # modifying the configuration for each agent network.
@@ -56,9 +58,8 @@
                     "required": ["agent_network_description", "mode"]
                 }
             },
-            "instructions": """
+            "instructions": ${expertise_scoping_instructions} """
 You are responsible for coordinating the writing of `instructions` and `description` for agents based on the agent network description and definition.
-Only answer inquiries that are directly within your area of expertise. Do not try to help for other matters. Do not mention what you can NOT do. Only mention what you can do.
 
 **Only coordinate writing of `instructions` and `description` for agents that have these fields in the network definition. These are non-function agents.**
 

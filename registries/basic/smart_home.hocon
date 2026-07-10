@@ -29,15 +29,12 @@
     # so running the script from elsewhere may result in file not found errors.
 
     include "registries/aaosa.hocon"
+    include "registries/expertise_scoping_instructions.hocon"
 
     # A key-value for substitution can also be defined inside the hocon file.
     "instructions_prefix": """
 You are part of a smart home network of assistants.
-Only answer inquiries that are directly within your area of expertise.
-Do not try to help for other matters.
-Do not mention what you can NOT do. Only mention what you can do.
-""",
-
+""" ${expertise_scoping_instructions},
     # Load the shared LLM configuration from a single source of truth.
     # This allows users to change the model in one file rather than
     # modifying the configuration for each agent network.
