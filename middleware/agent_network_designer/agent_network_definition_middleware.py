@@ -90,7 +90,7 @@ class AgentNetworkDefinitionMiddleware(AgentMiddleware):
         self.progress_reporter: AgentProgressReporter | None = progress_reporter
         self.sly_data = sly_data
 
-        self.logger: Logger = AndLogger(getLogger(self.__class__.__name__))
+        self.logger: AndLogger = AndLogger(getLogger(self.__class__.__name__))
         # Initialize agent network definition
         self.network_def: dict[str, Any] | list[dict[str, Any]] | None = None
         # Initialize an error message to store issues encountered during loading from HOCON file or S3 reservation.

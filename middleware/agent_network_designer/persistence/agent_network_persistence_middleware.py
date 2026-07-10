@@ -100,7 +100,7 @@ class AgentNetworkPersistenceMiddleware(AgentMiddleware):
                 Keys expected for this implementation are:
                     "agent_network_definition": an outline of an agent network
         """
-        self.logger: Logger = AndLogger(getLogger(self.__class__.__name__))
+        self.logger: AndLogger = AndLogger(getLogger(self.__class__.__name__))
         self.reservationist = reservationist
         self.sly_data = sly_data
         # Maximum number of validation retry rounds before bailing without persisting.
