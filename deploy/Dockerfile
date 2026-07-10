@@ -428,9 +428,9 @@ ENV FGA_STORE_NAME=""
 # Environment Variables that control specific Agent Network behavior
 #
 
-# When set to "INFO" (the coded default), Agent Network Designer will log at INFO level.
-# When set to anything other than "INFO", Agent Network Designer will log at DEBUG level,
-# which is much saner for day-to-day server usage, avoiding mountains of logs.
+# When unset or set to "INFO" (the coded default), Agent Network Designer will emit INFO logs at INFO level.
+# When set to anything other than "INFO" (e.g. "DEBUG"), INFO logs are redirected to DEBUG to reduce production log volume.
+# This image defaults to "DEBUG"; set to "INFO" to restore INFO-level output for INFO logs.
 ENV AGENT_NETWORK_DESIGNER_LOG_LEVEL="DEBUG"
 
 # When set, this parameter allows the Agent Network Designer to use
