@@ -19,7 +19,6 @@ import json
 import os
 import re
 from json import JSONDecodeError
-from logging import Logger
 from logging import getLogger
 from pathlib import Path
 from re import Match
