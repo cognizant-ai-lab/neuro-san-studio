@@ -1,0 +1,7 @@
+agent {
+
+  name = "resource_recommendation"
+
+  description = "Presents ranked candidates in a business friendly format"
+
+}
