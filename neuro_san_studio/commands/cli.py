@@ -16,11 +16,8 @@
 
 """Typer CLI dispatcher for the neuro-san-studio package."""
 
-import sys
-from typing import Any
 from typing import List
 from typing import Optional
-from typing import Tuple
 
 import typer
 
@@ -64,30 +61,30 @@ class NeuroSanStudioCli:  # pylint: disable=too-few-public-methods
         """Neuro SAN Studio CLI."""
 
     @staticmethod
-    def _invoke_run(extra_args: List[str]) -> None:
-        """Run the server, exposing `extra_args` to NeuroSanRunner.parse_args() via sys.argv."""
-        sys.argv = [sys.argv[0], *extra_args]
-        NeuroSanRunner().run()
+    def _validate_run_flags(overrides: dict) -> None:
+        """Reject mutually-exclusive run-flag combinations before starting anything.
 
-    @staticmethod
-    def _build_run_forward_args(valued: List[Tuple[str, Any]], booleans: List[Tuple[str, bool]]) -> List[str]:
-        """Build the forwarded-args list from Typer-parsed valued and boolean flags."""
-        forwarded: List[str] = []
-        for flag, value in valued:
-            if value is not None:
-                forwarded.extend([flag, str(value)])
-        for flag, value in booleans:
-            if value:
-                forwarded.append(flag)
-        return forwarded
+        Only user-supplied flags are present in ``overrides`` (booleans appear only when true),
+        so membership tests double as "did the user pass this flag?".
+        """
+        client_only = "client_only" in overrides
+        server_only = "server_only" in overrides
+        if client_only and server_only:
+            raise typer.BadParameter("You cannot specify both --client-only and --server-only at the same time.")
+        if client_only and ("server_host" in overrides or "server_http_port" in overrides):
+            raise typer.BadParameter(
+                "You cannot specify --server-host or --server-http-port when using --client-only mode."
+            )
+        if server_only and "nsflow_port" in overrides:
+            raise typer.BadParameter("You cannot specify --nsflow-port when using --server-only mode.")
 
     @staticmethod
     @app.command(
         "run",
         help="Start the Neuro SAN server and client (default).",
         context_settings={
-            # Forward unknown options (e.g. plugin-injected flags via
-            # plugin.update_parser_args) through to NeuroSanRunner's argparse layer.
+            # Tolerate unknown options (e.g. plugin-injected flags) without erroring; they are
+            # collected in ctx.args and handed to the runner. Made Typer-native in a follow-up.
             "allow_extra_args": True,
             "ignore_unknown_options": True,
         },
@@ -111,28 +108,28 @@ class NeuroSanStudioCli:  # pylint: disable=too-few-public-methods
             False, "--server-only", help="Run only the NeuroSan server without the default nsflow client."
         ),
     ) -> None:
-        """Forward declared flags + any plugin extras to NeuroSanRunner's argparse layer.
+        """Pass Typer-parsed run flags straight to NeuroSanRunner (single CLI framework: Typer).
 
-        Typer parses the known flags so they appear in `--help` with Typer styling.
-        Only user-supplied values are forwarded; unset options stay `None` so the
-        runner's env-var-driven defaults still apply. Plugin-injected flags arrive
-        via `ctx.args` and are forwarded verbatim.
+        Only user-supplied flags become cli_overrides, so unset options keep the runner's
+        env-var-driven defaults. Unknown/plugin flags arrive via ctx.args and are forwarded
+        verbatim for the runner to handle.
         """
-        forwarded = NeuroSanStudioCli._build_run_forward_args(
-            [
-                ("--server-host", server_host),
-                ("--server-http-port", server_http_port),
-                ("--nsflow-port", nsflow_port),
-                ("--log-level", log_level),
-                ("--thinking-file", thinking_file),
-            ],
-            [
-                ("--client-only", client_only),
-                ("--server-only", server_only),
-            ],
-        )
-        forwarded.extend(ctx.args)
-        NeuroSanStudioCli._invoke_run(forwarded)
+        # Map each self.args key to the flag the user supplied. Valued flags default to None and
+        # booleans to False when unset; forwarding only truthy/non-None values means unset flags
+        # keep the runner's env-var-driven defaults.
+        run_flags: dict = {
+            "server_host": server_host,
+            "server_http_port": server_http_port,
+            "nsflow_port": nsflow_port,
+            "log_level": log_level,
+            "thinking_file": thinking_file,
+            "client_only": client_only,
+            "server_only": server_only,
+        }
+        overrides = {key: value for key, value in run_flags.items() if value not in (None, False)}
+
+        NeuroSanStudioCli._validate_run_flags(overrides)
+        NeuroSanRunner(cli_overrides=overrides, extra_args=list(ctx.args)).run()
 
     @staticmethod
     @app.command("init", help="Scaffold a starter project in the current directory.")
