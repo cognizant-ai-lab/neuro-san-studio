@@ -185,7 +185,7 @@ These instructions are for Linux and macOS systems. Please adjust the commands a
 [`uv`](https://docs.astral.sh/uv/) is a fast Python package and project manager built by Astral.
 
 Official installation docs:  
-👉 https://docs.astral.sh/uv/getting-started/installation/
+👉 [https://docs.astral.sh/uv/getting-started/installation/](https://docs.astral.sh/uv/getting-started/installation/)
 
 ### Create a new Python project
 
@@ -209,16 +209,17 @@ uv add neuro-san-studio
 
 Run `ns init` to initialize a Neuro SAN Studio project. `ns` stands for Neuro SAN. You can also use the long command
 `neuro-san-studio` instead. It will:
-- let you choose an LLM provider
-- create a `config` folder with your choice of LLM models and plugins configuration
-- create an `mcp` folder with a list of MCP tools 
-- create a `registries` folder with a simple agent network
+* let you choose an LLM provider
+* create a `config` folder with your choice of LLM models and plugins configuration
+* create an `mcp` folder with a list of MCP tools
+* create a `registries` folder with a simple agent network
 
 To learn more about the `ns` command run `ns --help`.
 
-```
+```bash
 ns init
 ```
+
 ```bash
 Which LLM providers do you want to enable?
 
@@ -235,19 +236,23 @@ Enter numbers separated by commas (default: 1):
 1. Set your provider key, e.g. `OPENAI_API_KEY`, `ANTHROPIC_API_KEY` or `GOOGLE_API_KEY`
 (or create a `.env` file in the current directory).
 See [docs/api_key.md](docs/api_key.md) for details and other providers.
-    ```
+
+   ```bash
    export OPENAI_API_KEY="XXX"
    ```
 
 2. Check your LLM API keys are correctly configured:
+
     ```bash
     ns check-llm-keys
     ```
 
 3. Check your `config/llm_config.hocon` is working:
+
     ```bash
     ns check-config
     ```
+
     If the configuration is valid you will get a `hello` response from the configured LLMs.
 
 ### Import agent networks
@@ -261,7 +266,9 @@ See [`docs/cli/import.md`](docs/cli/import.md) for details.
 ```bash
 ns import
 ```
+
 Shows the following prompt:
+
 ```bash
 [info]  Discovering available agent networks...
 
@@ -279,10 +286,12 @@ Shows the following prompt:
 Choose `root` and press Enter. Confirm with `Y` to import the agent networks that are listed.
 
 From `Experimental`, also import:
+
 ```bash
    ● cruse_theme_agent
  » ● cruse_widget_agent
 ````
+
 to enable CRUSE, the interactive UI that adapts the UI to the user/agents' needs.
 
 ### Start the developer UI
@@ -310,15 +319,17 @@ Use the Agent Network Designer to create your own agent network.
 
 1. From the `nsflow` UI, click the `NEW` button at the top, center of the screen.
 ![AND Button](docs/images/agent_network_designer_new_button.png)
-2. In the new window that opens, type your prompts in the text box in the bottom right corner of the screen. Then Agent Network Designer:
-    - Creates the agents
-    - Links them together
-    - Writes instructions for each agent
-    - Generates a few sample queries you can ask this agent network
-    - Saves the agent network in the `registries/generated` folder
+2. In the new window that opens, type your prompts in the text box in the bottom right
+corner of the screen. Then Agent Network Designer:
+   * Creates the agents
+   * Links them together
+   * Writes instructions for each agent
+   * Generates a few sample queries you can ask this agent network
+   * Saves the agent network in the `registries/generated` folder
 3. Once the Agent Network Designer is done and comes back with an answer in the chat window,
 you can continue the design by asking it to make changes
-4. Once you're happy with the design, test it! Click the blue `Launch` button at the top center of the screen. It opens a new window from which you can chat with the agent network. 
+4. Once you're happy with the design, test it! Click the blue `Launch` button at the top
+center of the screen. It opens a new window from which you can chat with the agent network.
 5. If you want to make modifications, go back to the editor window and ask for changes.
 6. You can also edit any agent network by clicking the pen icon next to its name in the main window.
 
@@ -331,9 +342,11 @@ ns import ~/Downloads/my_project.hocon
 ```
 
 Similarly, you can export an agent network and all its dependencies using the `ns export` command:
+
 ```bash
 ns export my_project.hocon
 ```
+
 See [`docs/cli/export.md`](docs/cli/export.md) for details.
 
 ### Command reference
