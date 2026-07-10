@@ -14,7 +14,6 @@
 #
 # END COPYRIGHT
 
-from logging import Logger
 from logging import getLogger
 from os import environ
 from typing import Any
