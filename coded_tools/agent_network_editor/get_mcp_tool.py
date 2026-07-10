@@ -24,6 +24,7 @@ from neuro_san.interfaces.coded_tool import CodedTool
 from neuro_san.internals.run_context.langchain.mcp.langchain_mcp_adapter import LangChainMcpAdapter
 from neuro_san.internals.run_context.langchain.mcp.mcp_servers_info_restorer import McpServersInfoRestorer
 
+from coded_tools.agent_network_editor.and_logger import AndLogger
 from coded_tools.agent_network_editor.constants import MCP_SERVERS
 from coded_tools.agent_network_editor.sly_data_lock import SlyDataLock
 from neuro_san_studio import mcp as _mcp_pkg
@@ -32,7 +33,7 @@ from neuro_san_studio import mcp as _mcp_pkg
 # Resolved via the imported package's __file__ so it works both in-repo and
 # after `pip install` on every platform. Mirrors run.py.
 BUNDLED_MCP_INFO_FILE: Path = Path(_mcp_pkg.__file__).parent / "mcp_info.hocon"
-logger = logging.getLogger(__name__)
+logger = AndLogger(logging.getLogger(__name__))
 
 
 class GetMcpTool(CodedTool):
