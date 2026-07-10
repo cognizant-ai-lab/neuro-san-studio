@@ -1,0 +1,186 @@
+{
+    # =========================================================================
+    #  Socratic Tutor  —  adaptive multi-agent tutoring with a mastery loop
+    #
+    #  Front-man (tutor) orchestrates two sub-agents (teacher, examiner) and two
+    #  coded tools (answer_checker, mastery_tracker). AAOSA-style delegation: the
+    #  tutor decides who to call, and the examiner further delegates grading to a
+    #  coded tool. Learner progress lives in sly-data, so the stopping condition
+    #  is computed in code and never guessed by an LLM.
+    # =========================================================================
+
+    "llm_config": {
+        # Network-wide default model. Set this to whatever you enabled in
+        # config/llm_config.hocon (e.g. a Mistral model such as
+        # "mistral-large-latest", or "gpt-4o", "claude-3-7-sonnet", ...).
+         "model_name": "claude-sonnet"
+    },
+
+    "commondefs": {
+        "replacement_strings": {
+            "instructions_prefix": """
+You are one agent in a Socratic math-tutoring assistant built from several cooperating agents.
+Stay strictly within your own area of responsibility. Be concise, warm, and encouraging.
+""",
+            "aaosa_instructions": """
+When you receive an inquiry:
+1. Decide whether it (or part of it) falls within your area of responsibility.
+2. If you need another agent listed in your tools to help, call it and wait for its answer.
+3. Fold everything into a single clear response for whoever called you.
+Always reply in the same natural language the inquiry used.
+"""
+        }
+    },
+
+    "tools": [
+
+        # ---- Front-man: the tutor / orchestrator ----------------------------
+        {
+            "name": "tutor",
+            "function": {
+                "description": """
+An adaptive math tutor for fractions and beginning algebra. Tell it what you want to learn,
+or answer the question it just asked, and it will teach, quiz, and track your mastery, raising
+the difficulty only once you have genuinely mastered the current level.
+"""
+            },
+            # To show multi-provider routing, you can give the light-weight router
+            # a cheaper model and the specialists a stronger one, e.g. uncomment:
+            # "llm_config": { "model_name": "mistral-small-latest" },
+            "instructions": """
+{instructions_prefix}
+You are the tutor: the learner's only point of contact and the orchestrator of the session.
+
+Run this loop for the current concept (start at difficulty 1):
+1. If the learner is new to the concept or seems confused, call `teacher` to explain it at the
+   current difficulty. Pass the concept and the current difficulty in the inquiry.
+2. Call `examiner` to pose exactly ONE question at the current difficulty, then show that question
+   to the learner. Remember the exact problem text you were given.
+3. When the learner answers, call `examiner` again, giving it the problem and the learner's answer.
+   The examiner verifies correctness with a coded tool (trust its result) and also reports
+   examiner_ready — its own read on whether the learner seems ready to level up.
+4. Call `mastery_tracker` with the concept, last_correct, and examiner_ready. Use its status:
+     - "learning": stay at this level. If the answer was wrong, explain the fix in one line, then go to step 2.
+     - "advance": congratulate briefly, then go to step 1 for the new, higher difficulty.
+     - "mastered": celebrate — the learner has mastered the concept across all levels. Stop and offer a new concept.
+Never decide difficulty or mastery yourself; always act on mastery_tracker's status. Keep every message
+short and focused on a single question at a time.
+""",
+            "tools": ["teacher", "examiner", "mastery_tracker"]
+        },
+
+        # ---- Sub-agent: the teacher ----------------------------------------
+        {
+            "name": "teacher",
+            "function": {
+                "description": "Explains a math concept at a requested difficulty level.",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "inquiry": {
+                            "type": "string",
+                            "description": "The concept to explain and the current difficulty level (1-3)."
+                        }
+                    },
+                    "required": ["inquiry"]
+                }
+            },
+            "instructions": """
+{instructions_prefix}
+You are the teacher. Given a concept (fractions or beginning algebra) and a difficulty level (1-3),
+explain it clearly with ONE short worked example suited to that level:
+  - Difficulty 1: the core idea with small, friendly numbers.
+  - Difficulty 2: a typical textbook case.
+  - Difficulty 3: a multi-step or trickier case.
+Do not quiz the learner (that is the examiner's job). Keep it to a few sentences.
+{aaosa_instructions}
+"""
+        },
+
+        # ---- Sub-agent: the examiner (delegates grading to a coded tool) ----
+        {
+            "name": "examiner",
+            "function": {
+                "description": "Poses one question at a difficulty level, or grades a learner's answer to a given problem.",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "inquiry": {
+                            "type": "string",
+                            "description": "Either a request for a question at difficulty 1-3, or a problem plus the learner's answer to grade."
+                        }
+                    },
+                    "required": ["inquiry"]
+                }
+            },
+            "instructions": """
+{instructions_prefix}
+You are the examiner. You do one of two jobs depending on the inquiry.
+
+POSE A QUESTION: When asked for a question at a difficulty level (1-3), invent ONE math problem on the
+concept at that level and return only the problem statement, written so it can be checked exactly
+(prefer forms like 3/4 + 1/6, or: solve 2*x + 3 = 7 for x).
+
+GRADE AN ANSWER: When given a problem and the learner's answer, call the answer_checker coded tool,
+passing the exact problem text as problem and the learner's answer as student_answer. Never grade the
+arithmetic yourself — always use answer_checker. Then return a short summary the tutor can act on, stating:
+  - correct: true or false (taken from answer_checker)
+  - examiner_ready: true or false — YOUR judgement of whether the learner seems ready to move up a level,
+    based on how cleanly and confidently they answered
+  - if they were wrong, one encouraging line pointing at the right approach.
+{aaosa_instructions}
+""",
+            "tools": ["answer_checker"]
+        },
+
+        # ---- Coded tool: deterministic answer checking ----------------------
+        {
+            "name": "answer_checker",
+            "function": {
+                "description": "Deterministically checks a math answer (fraction/arithmetic expression or a linear equation) using sympy.",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "problem": {
+                            "type": "string",
+                            "description": "The problem to check, e.g. '3/4 + 1/6' or 'solve 2*x + 3 = 7 for x'."
+                        },
+                        "student_answer": {
+                            "type": "string",
+                            "description": "The learner's answer, e.g. '11/12' or 'x = 2'."
+                        }
+                    },
+                    "required": ["problem", "student_answer"]
+                }
+            },
+            "class": "answer_checker.AnswerChecker"
+        },
+
+        # ---- Coded tool: stateful mastery tracking (score + examiner) -------
+        {
+            "name": "mastery_tracker",
+            "function": {
+                "description": "Updates the learner's mastery state in sly-data and returns a status of learning, advance, or mastered.",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "concept": {
+                            "type": "string",
+                            "description": "The concept being learned, e.g. 'adding fractions'."
+                        },
+                        "last_correct": {
+                            "type": "boolean",
+                            "description": "Was the learner's most recent answer correct?"
+                        },
+                        "examiner_ready": {
+                            "type": "boolean",
+                            "description": "Does the examiner judge the learner ready to advance?"
+                        }
+                    },
+                    "required": ["concept", "last_correct", "examiner_ready"]
+                }
+            },
+            "class": "mastery_tracker.MasteryTracker"
+        }
+    ]
+}
