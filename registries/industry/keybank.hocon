@@ -15,6 +15,7 @@
 # END COPYRIGHT
 {
     include "registries/aaosa.hocon",
+    include "registries/expertise_scoping_instructions.hocon",
 
     "metadata": {
         "description": "Multi-agent system simulating KeyBank's financial services operations. Covers consumer banking, commercial lending, wealth management, investment advisory, estate and retirement planning, and risk management including fraud prevention and compliance through specialized agents using the AAOSA pattern.",
@@ -36,11 +37,7 @@
     "max_execution_seconds": 600,
     "instructions_prefix": """
     You are an assistant helping with a portion of the operations for Keybank.
-    Only answer inquiries that are directly within your area of expertise.
-    Do not try to help for other matters.
-    Do not mention what you can NOT do. Only mention what you can do.
-    """,
-    
+""" ${expertise_scoping_instructions},
     "tools": [
         # This first agent definition is regarded as the "Front Man", which
         # does all the talking to the outside world/client.

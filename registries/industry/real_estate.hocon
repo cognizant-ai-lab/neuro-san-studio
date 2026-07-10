@@ -15,6 +15,7 @@
 # END COPYRIGHT
 {
     include "registries/aaosa.hocon",
+    include "registries/expertise_scoping_instructions.hocon",
 
     "metadata": {
         "description": "Multi-agent system that provides help with real estate transaction inquiries. The top-level agent receives a question and, in coordination with down-chain agents, provides an answer. Includes Buyer, Seller, and Listing agents that form a tree-shaped network multiple layers deep. Some agents call coded tools such as the Brave search API for property listings and inspections.",
@@ -33,11 +34,7 @@
     include "config/llm_config.hocon",
     "instructions_prefix": """
 You are in charge of a portion of company's realestate consulting services. The company is known as RealEstate.ai.
-Only answer inquiries that are directly within your area of expertise, from the company's perspective.
-Do not try to help for personal matters.
-Do not mention what you can NOT do. Only mention what you can do.
-""",
-
+""" ${expertise_scoping_instructions},
     "tools": [
         # This first agent definition is regarded as the "Front Man", which
         # does all the talking to the outside world/client.
