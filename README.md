@@ -15,6 +15,7 @@ agents without code, this studio handles the orchestration complexity so you can
 </p>
 
 ---
+
 <!-- pyml disable-next-line no-inline-html -->
 <p align="center">
   <!-- GitHub Stats -->
@@ -175,71 +176,108 @@ And many more: check out [docs/examples.md](docs/examples.md).
 
 ---
 
-## Getting Started
+## Install
 
-To dive into Neuro SAN and start building your own multi-agent networks, this repository contains a collection of demos
-for the [neuro-san library](https://github.com/cognizant-ai-lab/neuro-san).
+These instructions are for Linux and macOS systems. Please adjust the commands accordingly for Windows.
 
-You'll find comprehensive documentation, example agent networks, and tutorials to guide you through your first steps.
+### Install `uv`
 
----
+[`uv`](https://docs.astral.sh/uv/) is a fast Python package and project manager built by Astral.
 
-### Install from PyPI
+Official installation docs:  
+👉 https://docs.astral.sh/uv/getting-started/installation/
 
-If you just want to build agent networks on top of Neuro SAN Studio, you don't need to clone this
-repository — install from PyPI and scaffold a project in any directory. Requires Python 3.10+.
+### Create a new Python project
 
-The quickstart flow is:
-
-1. Install the package
-2. Scaffold a starter project (`ns init`)
-3. Set your API key
-4. Start the server (`ns run`)
-5. Open the UI
-
-The `ns` console script is registered as a shortcut for `neuro-san-studio` — both work interchangeably.
-
-#### 1. Install
+Create a folder for your project:
 
 ```bash
-pip install neuro-san-studio
+mkdir my_project
+cd my_project
 ```
 
-The OpenAI, Anthropic, and Google Gemini provider libraries (`langchain-openai`, `langchain-anthropic`,
-`langchain-google-genai`) ship with the base install. No extras to add.
-
-#### 2. Scaffold a starter project
+Create a virtual environment, initialize a git repo and install `neuro-san-studio`
 
 ```bash
+uv init
+uv venv
+source .venv/bin/activate
+uv add neuro-san-studio
+```
+
+### Initialize neuro-san-studio
+
+Run `ns init` to initialize a Neuro SAN Studio project. `ns` stands for Neuro SAN. You can also use the long command
+`neuro-san-studio` instead. It will:
+- let you choose an LLM provider
+- create a `config` folder with your choice of LLM models and plugins configuration
+- create an `mcp` folder with a list of MCP tools 
+- create a `registries` folder with a simple agent network
+
+To learn more about the `ns` command run `ns --help`.
+
+```
 ns init
 ```
-
-`init` prompts for the LLM provider(s) you want enabled and writes a minimal project into the current
-directory:
-
-* `config/llm_config.hocon` — provider/model wiring (defaults to OpenAI `gpt-5.2`)
-* `config/plugins.hocon` — observability and logging plugin wiring (the rich-formatted log bridge is enabled by default)
-* `registries/manifest.hocon` — registry of active agent networks
-* `registries/music_nerd.hocon` — sample agent network
-* `registries/aaosa.hocon` — AAOSA substitution variables (instructions, call, command)
-* `registries/aaosa_basic.hocon` — simplified AAOSA substitution variables
-* `mcp/mcp_info.hocon` — MCP server config
-
-Skip the prompt with `--providers`:
-
 ```bash
-ns init --providers openai,anthropic,google
+Which LLM providers do you want to enable?
+
+#  Provider       Default model
+1  OpenAI         gpt-5.2 (default)
+2  Anthropic      claude-sonnet
+3  Google Gemini  gemini-3-flash
+
+Enter numbers separated by commas (default: 1):
 ```
 
-Providers are written in the order you select them. The first becomes the primary model and the rest
-become ordered fallbacks; OpenAI is used only as the default when no selection is made.
+### Set your LLM API key(s)
 
-#### 3. Set your API key
-
-Set your provider key, e.g. `OPENAI_API_KEY` (or create a `.env` file in the current directory).
+1. Set your provider key, e.g. `OPENAI_API_KEY` (or create a `.env` file in the current directory).
 See [docs/api_key.md](docs/api_key.md) for details and other providers.
 
-#### 4. Start the server
+2. Check your LLM API keys are correctly configured:
+    ```bash
+    ns check-llm-keys
+    ```
+
+3. Check your `config/llm_config.hocon` is working:
+    ```bash
+    ns check-config
+    ```
+    If the configuration is valid you will get a `hello` response from the configured LLMs.
+
+### Import agent networks
+
+You can import the agent networks that ship with `neuro-san-studio` using the `ns import` command.
+It will run an interactive prompt. You can for instance import the `root` agent networks to use the
+Agent Network Designer to create your own agent network.
+
+See [`docs/cli/import.md`](docs/cli/import.md) for details.
+
+
+```bash
+ns import
+```
+Shows the following prompt:
+```bash
+[info]  Discovering available agent networks...
+
+? What do you want to import? (Use arrow keys)
+   Basic (17)
+   Experimental (9)
+   Industry (22)
+ » Root (6)
+   Tools (28)
+   ---------------
+   Custom selection
+   All (82)
+```
+
+Choose `root` and press Enter. Confirm with `Y` to import the agent networks that are listed.
+
+### Start the developer UI
+
+You can start a `neuro-san` server and the `nsflow` UI with the `ns run` command:
 
 ```bash
 ns run
@@ -247,42 +285,30 @@ ns run
 
 The Neuro SAN server listens on `localhost:8080`.
 
-#### 5. Open the UI
-
 The nsflow UI is served at
-[http://localhost:4173/](http://localhost:4173/). Logs land under `logs/` (`server.log`, `nsflow.log`,
-`thinking_dir/`).
+[http://localhost:4173/](http://localhost:4173/).
+
+Logs land under `logs/` (`server.log`, `nsflow.log`, `thinking_dir/`).
 
 Screenshot:
 
 ![NSFlow UI Snapshot](https://raw.githubusercontent.com/cognizant-ai-lab/nsflow/main/docs/snapshot01.png)
 
-#### Import more agent networks
+### Import a project from a file / Export to a file
 
-Beyond the `music_nerd` sample scaffolded by `ns init`, you can import more agent networks from the 80+
-included in neuro-san-studio:
-
-```bash
-ns import                              # interactive
-ns import basic industry               # by group(s)
-ns import agent_network_designer       # specific network
-ns import path/to/network.hocon        # from a local file
-```
-
-See [`docs/cli/import.md`](docs/cli/import.md) for details.
-
-To share a network across projects, bundle it from the current project and drop
-the resulting file into another:
+You can import a project from a .hocon file or from a zip file using the `ns import <PATH>`.
 
 ```bash
-ns export music_nerd                  # → music_nerd.hocon (no deps)
-ns export agent_network_designer      # → agent_network_designer.zip (with deps)
-ns import -f music_nerd.hocon         # install in another project
+ns import ~/Downloads/my_project.hocon
 ```
 
+Similarly, you can export an agent network and all its dependencies using the `ns export` command:
+```bash
+ns export my_project.hocon
+```
 See [`docs/cli/export.md`](docs/cli/export.md) for details.
 
-#### Command reference
+### Command reference
 
 <!-- pyml disable line-length -->
 
