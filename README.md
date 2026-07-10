@@ -232,8 +232,12 @@ Enter numbers separated by commas (default: 1):
 
 ### Set your LLM API key(s)
 
-1. Set your provider key, e.g. `OPENAI_API_KEY` (or create a `.env` file in the current directory).
+1. Set your provider key, e.g. `OPENAI_API_KEY`, `ANTHROPIC_API_KEY` or `GOOGLE_API_KEY`
+(or create a `.env` file in the current directory).
 See [docs/api_key.md](docs/api_key.md) for details and other providers.
+    ```
+   export OPENAI_API_KEY="XXX"
+   ```
 
 2. Check your LLM API keys are correctly configured:
     ```bash
@@ -253,7 +257,6 @@ It will run an interactive prompt. You can for instance import the `root` agent 
 Agent Network Designer to create your own agent network.
 
 See [`docs/cli/import.md`](docs/cli/import.md) for details.
-
 
 ```bash
 ns import
@@ -275,6 +278,13 @@ Shows the following prompt:
 
 Choose `root` and press Enter. Confirm with `Y` to import the agent networks that are listed.
 
+From `Experimental`, also import:
+```bash
+   ● cruse_theme_agent
+ » ● cruse_widget_agent
+````
+to enable CRUSE, the interactive UI that adapts the UI to the user/agents' needs.
+
 ### Start the developer UI
 
 You can start a `neuro-san` server and the `nsflow` UI with the `ns run` command:
@@ -293,6 +303,24 @@ Logs land under `logs/` (`server.log`, `nsflow.log`, `thinking_dir/`).
 Screenshot:
 
 ![NSFlow UI Snapshot](https://raw.githubusercontent.com/cognizant-ai-lab/nsflow/main/docs/snapshot01.png)
+
+### Agent Network Designer
+
+Use the Agent Network Designer to create your own agent network.
+
+1. From the `nsflow` UI, click the `NEW` button at the top, center of the screen.
+![AND Button](docs/images/agent_network_designer_new_button.png)
+2. In the new window that opens, type your prompts in the text box in the bottom right corner of the screen. Then Agent Network Designer:
+    - Creates the agents
+    - Links them together
+    - Writes instructions for each agent
+    - Generates a few sample queries you can ask this agent network
+    - Saves the agent network in the `registries/generated` folder
+3. Once the Agent Network Designer is done and comes back with an answer in the chat window,
+you can continue the design by asking it to make changes
+4. Once you're happy with the design, test it! Click the blue `Launch` button at the top center of the screen. It opens a new window from which you can chat with the agent network. 
+5. If you want to make modifications, go back to the editor window and ask for changes.
+6. You can also edit any agent network by clicking the pen icon next to its name in the main window.
 
 ### Import a project from a file / Export to a file
 
@@ -370,7 +398,7 @@ run Neuro SAN agents continuously or on triggers through a separate service, wit
 * [Annual Report Reader](https://github.com/shrushtiimehta/neuro-san-annual-report-reader):
 analyzes a LinkedIn profile and delivers a personalized summary of Cognizant's 2024 Annual Report,
 surfacing content most relevant to the user's industry and seniority level.
-* [Tochiro File organizer](https://github.com/ofrancon/tochiro):
+* [Tochiro File Organizer](https://github.com/ofrancon/tochiro):
 a macOS file organization assistant with a dedicated UI to analyze a folder,
 create a plan for moving the files, ask for approval and execute the moves.
 
