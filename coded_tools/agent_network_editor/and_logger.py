@@ -34,7 +34,7 @@ class AndLogger(ConditionalLogger):
         """
         super().__init__(logger, "AGENT_NETWORK_DESIGNER_VERBOSE")
 
-        self.use_info: bool = not super().should_log()
+        self.use_info: bool = super().should_log()
 
     def should_log(self) -> bool:
         """
