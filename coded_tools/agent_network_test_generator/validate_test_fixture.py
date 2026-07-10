@@ -21,6 +21,8 @@ from typing import Union
 
 from neuro_san.interfaces.coded_tool import CodedTool
 
+from coded_tools.agent_network_editor.and_logger import AndLogger
+
 # The complete set of stock tests recognised by the neuro-san test runner.
 _VALID_STOCK_TESTS: frozenset[str] = frozenset(
     {
@@ -417,7 +419,7 @@ class ValidateTestFixture(CodedTool):
                 "valid": True/False
                 "errors": list of error strings (only when invalid)
         """
-        logger = logging.getLogger(self.__class__.__name__)
+        logger = AndLogger(logging.getLogger(self.__class__.__name__))
 
         test_fixture: dict[str, Any] = args.get("test_fixture", {})
         if not test_fixture:

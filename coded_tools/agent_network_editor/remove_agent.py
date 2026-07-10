@@ -19,6 +19,7 @@ from typing import Any
 
 from neuro_san.interfaces.coded_tool import CodedTool
 
+from coded_tools.agent_network_editor.and_logger import AndLogger
 from coded_tools.agent_network_editor.constants import AGENT_NETWORK_DEFINITION
 from coded_tools.agent_network_editor.progress_handler import ProgressHandler
 
@@ -73,7 +74,7 @@ class RemoveAgent(CodedTool):
         if the_agent_name not in network_def:
             return "Error: agent_name not in the agent network"
 
-        logger = logging.getLogger(self.__class__.__name__)
+        logger = AndLogger(logging.getLogger(self.__class__.__name__))
         logger.info(">>>>>>>>>>>>>>>>>>>Remove Agent>>>>>>>>>>>>>>>>>>")
         logger.info("Agent Name: %s", the_agent_name)
         network_def.pop(the_agent_name, None)
