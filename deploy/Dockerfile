@@ -63,6 +63,9 @@ WORKDIR /
 # Stage 2: Final Stage - Use a slim Python image
 FROM python:3.13-slim AS final
 
+ARG NEURO_SAN_STUDIO_VERSION="unknown"
+ENV NEURO_SAN_STUDIO_VERSION=${NEURO_SAN_STUDIO_VERSION}
+
 # Set the shell and options in each FROM section per hadolint recommendations
 SHELL ["/bin/bash", "-o", "pipefail", "-c"]
 
