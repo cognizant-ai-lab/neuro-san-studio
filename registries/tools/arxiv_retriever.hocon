@@ -20,6 +20,8 @@
 #     pip install pymupdf
 
 {
+    include "registries/expertise_scoping_instructions.hocon",
+
     # Load the shared LLM configuration from a single source of truth.
     # This allows users to change the model in one file rather than
     # modifying the configuration for each agent network.
@@ -45,7 +47,7 @@
               "description": "Coordinate ArXiv retrieval and answering by invoking the appropriate tools.",
             },
 
-            "instructions": """You must always use a tool to respond to the user’s query.
+            "instructions": ${expertise_scoping_instructions} """You must always use a tool to respond to the user’s query.
 
 Workflow:
 1. Use the retrieval tool to find relevant ArXiv papers.
