@@ -21,11 +21,12 @@ from typing import Any
 from neuro_san.interfaces.coded_tool import CodedTool
 from neuro_san.internals.run_context.langchain.toolbox.toolbox_info_restorer import ToolboxInfoRestorer
 
+from coded_tools.agent_network_editor.and_logger import AndLogger
 from coded_tools.agent_network_editor.constants import TOOLBOX_INFO
 from coded_tools.agent_network_editor.sly_data_lock import SlyDataLock
 
 DEFAULT_TOOLBOX_INFO_FILE = os.path.join("neuro_san_studio", "toolbox", "agent_network_designer_toolbox_info.hocon")
-logger = logging.getLogger(__name__)
+logger = AndLogger(logging.getLogger(__name__))
 
 
 class GetToolbox(CodedTool):

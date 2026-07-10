@@ -21,6 +21,7 @@ from typing import Any
 from neuro_san.interfaces.coded_tool import CodedTool
 from neuro_san.internals.graph.activations.branch_activation import BranchActivation
 
+from coded_tools.agent_network_editor.and_logger import AndLogger
 from neuro_san_studio.coded_tools.coded_tool_agent_caller import CodedToolAgentCaller
 
 
@@ -69,7 +70,7 @@ class WriteAllInstructions(BranchActivation, CodedTool):
         tools_map: dict[str, str] = args.get("tools") or {}
         writer_name: str = tools_map.get("instructions_writer", "instructions_writer")
 
-        logger = logging.getLogger(self.__class__.__name__)
+        logger = AndLogger(logging.getLogger(self.__class__.__name__))
         logger.info("Dispatching %d parallel '%s' calls", len(agents), writer_name)
 
         tasks = []
