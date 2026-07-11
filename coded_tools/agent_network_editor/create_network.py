@@ -19,6 +19,8 @@ from typing import Any
 
 from neuro_san.interfaces.coded_tool import CodedTool
 
+from coded_tools.agent_network_editor.agent_name_guard import AgentNameGuard
+from coded_tools.agent_network_editor.and_logger import AndLogger
 from coded_tools.agent_network_editor.constants import AGENT_NETWORK_DEFINITION
 from coded_tools.agent_network_editor.constants import AGENT_NETWORK_NAME
 from coded_tools.agent_network_editor.progress_handler import ProgressHandler
@@ -69,21 +71,44 @@ class CreateNetwork(CodedTool):
                 a text string of an error message in the format:
                 "Error: <error message>"
         """
-        sly_data[AGENT_NETWORK_DEFINITION] = {}
         agent_network_name: str = args.get("agent_network_name")
         if not agent_network_name:
             return "Error: No agent_network_name provided."
+        # Type-check before len()/iteration: a non-list (str/dict) or wrong element types
+        # would otherwise be iterated per-character/per-key and build a bogus network.
         agent_names: list[str] = args.get("agent_names")
-        if not agent_names:
-            return "Error: No agent_names provided."
+        if (
+            not agent_names
+            or not isinstance(agent_names, list)
+            or not all(isinstance(name, str) for name in agent_names)
+        ):
+            return "Error: agent_names must be a non-empty list of strings."
         is_tool_list: list[bool] = args.get("is_tool_list")
-        if not is_tool_list:
-            return "Error: No is_tool_list provided."
+        if (
+            not is_tool_list
+            or not isinstance(is_tool_list, list)
+            or not all(isinstance(flag, bool) for flag in is_tool_list)
+        ):
+            return "Error: is_tool_list must be a non-empty list of booleans."
         if len(agent_names) != len(is_tool_list):
             return "Error: The length of agent_names and is_tool_list must be the same."
+        # Validate all node names before mutating sly_data, so an invalid name doesn't
+        # leave a partially-created network. Collect every offending name so the caller
+        # can fix them all in one pass rather than one per turn. External references must
+        # be referenced inside a tools list, not created as nodes; local names must be
+        # valid tool names.
+        name_errors: list[str] = []
+        for agent_name in agent_names:
+            name_error: str | None = AgentNameGuard.agent_name_error(agent_name)
+            if name_error:
+                name_errors.append(name_error)
+        if name_errors:
+            return "\n".join(name_errors)
 
-        logger = logging.getLogger(self.__class__.__name__)
+        logger = AndLogger(logging.getLogger(self.__class__.__name__))
         logger.info(">>>>>>>>>>>>>>>>>>Create New Agent Netwrok Definiton for %s>>>>>>>>>>>>>>>>>", agent_network_name)
+        # Reset/overwrite any existing network only after all inputs validate.
+        sly_data[AGENT_NETWORK_DEFINITION] = {}
         for i, agent_name in enumerate(agent_names):
             logger.info(">>>>>>>>>>>>>>>>>>>Adding Agent>>>>>>>>>>>>>>>>>>")
             logger.info("Agent Name: %s", agent_name)

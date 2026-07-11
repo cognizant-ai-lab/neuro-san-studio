@@ -14,6 +14,8 @@
 #
 # END COPYRIGHT
 {
+    include "registries/expertise_scoping_instructions.hocon",
+
     # Load the shared LLM configuration from a single source of truth.
     # This allows users to change the model in one file rather than
     # modifying the configuration for each agent network.
@@ -70,9 +72,8 @@
                     "required": ["agent_network_description", "mode"]
                 }
             },
-            "instructions": """
+            "instructions": ${expertise_scoping_instructions} """
 You are responsible for generating and editing the structure of the agent network according to the given specifications. 
-Only answer inquiries that are directly within your area of expertise. Do not describe what you cannot do; only state what you can do.
 
 **Always begin by calling `get_toolbox`, `get_subnetwork`, and `get_mcp_tool` unless the corresponding flag (toolbox, subnetwork, or mcp_tool) is explicitly set to false.**  
 These calls provide the list of available tools for use in the network:

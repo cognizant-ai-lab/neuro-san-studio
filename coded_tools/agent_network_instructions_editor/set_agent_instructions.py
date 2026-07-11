@@ -19,6 +19,7 @@ from typing import Any
 
 from neuro_san.interfaces.coded_tool import CodedTool
 
+from coded_tools.agent_network_editor.and_logger import AndLogger
 from coded_tools.agent_network_editor.constants import AGENT_NETWORK_DEFINITION
 from coded_tools.agent_network_editor.progress_handler import ProgressHandler
 
@@ -81,7 +82,7 @@ class SetAgentInstructions(CodedTool):
         if not new_instructions:
             return "Error: No agent instructions provided."
 
-        logger = logging.getLogger(self.__class__.__name__)
+        logger = AndLogger(logging.getLogger(self.__class__.__name__))
         logger.info(">>>>>>>>>>>>>>>>>>>Set Agent Instructions>>>>>>>>>>>>>>>>>>")
         logger.info("Agent Name: %s", the_agent_name)
         logger.info("Instructions: %s", new_instructions)

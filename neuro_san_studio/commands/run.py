@@ -14,7 +14,6 @@
 #
 # END COPYRIGHT
 
-import argparse
 import logging
 import os
 import signal
@@ -22,14 +21,16 @@ import socket
 import subprocess
 import sys
 import time
+from pathlib import Path
 from typing import Any
 from typing import Dict
+from typing import List
+from typing import Optional
 from typing import Tuple
 
-from dotenv import load_dotenv
 from timedinput import timedinput
 
-from neuro_san_studio import mcp as _mcp_pkg
+from neuro_san_studio.commands.project_environment import ProjectEnvironment
 from neuro_san_studio.interfaces.process_logger_interface import ProcessLoggerInterface
 from neuro_san_studio.plugins.plugin_loader import PluginLoader
 from neuro_san_studio.runner.simple_process_logger import SimpleProcessLogger
@@ -38,28 +39,34 @@ from neuro_san_studio.runner.simple_process_logger import SimpleProcessLogger
 # detached terminal can't hang the process forever.
 INPUT_TIMEOUT_SECONDS = 300
 
-# Path to the mcp_info.hocon that ships inside the neuro_san_studio package.
-# Resolving via the imported package's __file__ works both in-repo (where
-# neuro_san_studio/ is just a folder on sys.path) and after `pip install`
-# (where it lives in site-packages), on every supported platform.
-_BUNDLED_MCP_INFO_FILE = os.path.join(os.path.dirname(_mcp_pkg.__file__), "mcp_info.hocon")
-
 
 class NeuroSanRunner:
     """Command-line tool to run the Neuro SAN server and web client."""
 
     # pylint: disable=too-many-instance-attributes
-    def __init__(self):
-        """Initialize configuration and parse CLI arguments."""
+    def __init__(self, cli_overrides: Optional[Dict[str, Any]] = None, extra_args: Optional[List[str]] = None):
+        """Initialize configuration.
+
+        Args:
+            cli_overrides: Values parsed by the Typer `run` command, keyed by the same names
+                as ``self.args`` (e.g. ``server_host``). Only user-supplied flags are present;
+                they take precedence over env-var defaults and plugin-provided defaults.
+            extra_args: Unrecognized CLI tokens forwarded verbatim (plugin-injected flags).
+                Retained for the upcoming Typer-native plugin-option contract; unused today.
+        """
+        self.extra_args: List[str] = extra_args or []
         self._logger = logging.getLogger(self.__class__.__name__)
         self.is_windows = os.name == "nt"
-        self.root_dir = os.getcwd()
-        self.logs_dir = os.path.join(self.root_dir, "logs")
-        self.thinking_file = os.path.join(self.logs_dir, "agent_thinking.txt")
-        self.thinking_dir = os.path.join(self.logs_dir, "thinking_dir")
+        self.root_dir = Path.cwd()
+        self.logs_dir = self.root_dir / "logs"
+        self.thinking_file = self.logs_dir / "agent_thinking.txt"
+        self.thinking_dir = self.logs_dir / "thinking_dir"
         print(f"Root directory: {self.root_dir}")
-        # Load environment variables from .env file
-        self.load_env_variables()
+        # Shared project-resource resolution (manifest, tool path, mcp, toolbox, .env),
+        # also used by `ns chat` so the two commands resolve a project identically.
+        self.project_env = ProjectEnvironment(self.root_dir)
+        # Load environment variables from the project .env file (if any)
+        self.project_env.load_env_file()
 
         plugins_file = PluginLoader.resolve_plugins_file(self.root_dir)
         self.plugin_classes = PluginLoader.load_plugin_classes(plugins_file)
@@ -77,21 +84,23 @@ class NeuroSanRunner:
             "log_level": os.getenv("LOG_LEVEL", "info"),
             "vite_api_protocol": os.getenv("VITE_API_PROTOCOL", "http"),
             "vite_ws_protocol": os.getenv("VITE_WS_PROTOCOL", "ws"),
-            "thinking_file": os.getenv("THINKING_FILE", self.thinking_file),
-            "thinking_dir": os.getenv("THINKING_DIR", self.thinking_dir),
+            "thinking_file": os.getenv("THINKING_FILE", str(self.thinking_file)),
+            "thinking_dir": os.getenv("THINKING_DIR", str(self.thinking_dir)),
             # Ensure all paths are resolved relative to `self.root_dir`
-            "agent_manifest_file": os.getenv(
-                "AGENT_MANIFEST_FILE", os.path.join(self.root_dir, "registries", "manifest.hocon")
-            ),
-            "agent_tool_path": os.getenv("AGENT_TOOL_PATH", os.path.join(self.root_dir, "coded_tools")),
-            "agent_toolbox_info_file": self._resolve_toolbox_info_file(),
-            "mcp_servers_info_file": self._resolve_mcp_info_file(),
-            "logs_dir": self.logs_dir,
+            "agent_manifest_file": self.project_env.resolve_manifest_file(),
+            "agent_tool_path": self.project_env.resolve_tool_path(),
+            "agent_toolbox_info_file": self.project_env.resolve_toolbox_info_file(),
+            "mcp_servers_info_file": self.project_env.resolve_mcp_info_file(),
+            "logs_dir": str(self.logs_dir),
+            # Run-mode flags default off; a CLI override flips them on. Kept in the base dict
+            # so the runner can read them unconditionally regardless of what was passed.
+            "client_only": False,
+            "server_only": False,
         }
 
         # Ensure logs directory exists
-        os.makedirs(self.logs_dir, exist_ok=True)
-        os.makedirs(self.thinking_dir, exist_ok=True)
+        self.logs_dir.mkdir(parents=True, exist_ok=True)
+        self.thinking_dir.mkdir(parents=True, exist_ok=True)
 
         # Instantiate plugins now that args are fully built
         self.plugins = [cls(self.args) for cls in self.plugin_classes]
@@ -102,8 +111,11 @@ class NeuroSanRunner:
             self._logger.info("Updating args dict with plugin: %s", plugin)
             plugin.update_args_dict(self.args)
 
-        # Parse command-line arguments
-        self.args.update(self.parse_args())
+        # Apply CLI overrides last so user-supplied flags win over env-var and plugin defaults.
+        # Only keys actually passed on the command line are present, so unset flags keep their
+        # resolved defaults.
+        for key, value in (cli_overrides or {}).items():
+            self.args[key] = value
 
         # Process references
         self.server_process = None
@@ -122,132 +134,12 @@ class NeuroSanRunner:
         else:
             print("AGENT_TOOLBOX_INFO_FILE: (not set — using built-in default toolbox)")
 
-    def _resolve_toolbox_info_file(self) -> str:
-        """Resolve the toolbox info file path, or return "" if it should not be exported.
-
-        A user-provided toolbox is purely an override on top of the neuro-san framework's
-        built-in default toolbox. Only set AGENT_TOOLBOX_INFO_FILE when the user has
-        opted in explicitly via the env var, or when the conventional
-        `<root>/neuro_san_studio/toolbox/toolbox_info.hocon` actually exists. Otherwise return "" so the
-        env var stays unset and the framework uses its built-in default only.
-        """
-        env_value = os.getenv("AGENT_TOOLBOX_INFO_FILE")
-        if env_value is not None:
-            return env_value
-        default_path = os.path.join(self.root_dir, "neuro_san_studio", "toolbox", "toolbox_info.hocon")
-        if os.path.isfile(default_path):
-            return default_path
-        return ""
-
-    # TODO: This duplicates GetMcpTool.get_mcp_info_file in
-    # coded_tools/agent_network_editor/get_mcp_tool.py. Refactor to call that
-    # method instead of maintaining a second copy of the resolver.
-    def _resolve_mcp_info_file(self) -> str:
-        """Resolve the MCP servers info file path.
-
-        Precedence (matches GetMcpTool.get_mcp_info_file):
-          1. MCP_SERVERS_INFO_FILE env var (used verbatim if non-empty).
-          2. <root>/mcp/mcp_info.hocon if it exists (what `init` scaffolds into a user project).
-          3. The mcp_info.hocon shipped inside the neuro_san_studio package.
-        """
-        env_value = os.getenv("MCP_SERVERS_INFO_FILE")
-        if env_value:
-            return env_value
-        scaffolded_path = os.path.join(self.root_dir, "mcp", "mcp_info.hocon")
-        if os.path.isfile(scaffolded_path):
-            return scaffolded_path
-        return _BUNDLED_MCP_INFO_FILE
-
-    def load_env_variables(self):
-        """Load .env file from project root and set variables."""
-        env_path = os.path.join(self.root_dir, ".env")
-        if os.path.exists(env_path):
-            load_dotenv(env_path)
-            print(f"Loaded environment variables from: {env_path}")
-        else:
-            print(f"No .env file found at {env_path}. \nUsing defaults.\n")
-
-    def parse_args(self):
-        """Parses command-line arguments for configuration."""
-        parser = argparse.ArgumentParser(
-            description="Run the Neuro SAN server and web client.",
-            formatter_class=argparse.ArgumentDefaultsHelpFormatter,
-        )
-
-        parser.add_argument(
-            "--server-host", type=str, default=self.args["server_host"], help="Host address for the Neuro SAN server"
-        )
-        parser.add_argument(
-            "--server-http-port",
-            type=int,
-            default=self.args["server_http_port"],
-            help="Port number for the Neuro SAN server http endpoint",
-        )
-        parser.add_argument(
-            "--nsflow-port",
-            type=int,
-            default=self.args["nsflow_port"],
-            help="Port number for the nsflow client",
-        )
-        parser.add_argument(
-            "--log-level", type=str, default=self.args["log_level"], help="Log level for all processes"
-        )
-        parser.add_argument(
-            "--thinking-file", type=str, default=self.args["thinking_file"], help="Path to the agent thinking file"
-        )
-        parser.add_argument(
-            "--client-only", action="store_true", help="Run only the nsflow client without NeuroSan server"
-        )
-        parser.add_argument(
-            "--server-only", action="store_true", help="Run only the NeuroSan server without the default nsflow client"
-        )
-
-        # add arguments from plugins
-        for plugin in self.plugins:
-            self._logger.info("Updating parser args with plugin: %s", plugin)
-            plugin.update_parser_args(parser)
-
-        args, _ = parser.parse_known_args()
-        explicitly_passed_args = {arg for arg in sys.argv[1:] if arg.startswith("--")}
-        # Check for mutually exclusive arguments
-        if args.client_only and (
-            "--server-host" in explicitly_passed_args or "--server-port" in explicitly_passed_args
-        ):
-            parser.error("[x] You cannot specify --server-host or --server-port when using --client-only mode.")
-        if args.server_only and (
-            "--nsflow-host" in explicitly_passed_args or "--nsflow-port" in explicitly_passed_args
-        ):
-            parser.error("[x] You cannot specify --nsflow-host or --nsflow-port when using --server-only mode.")
-        if args.client_only and args.server_only:
-            parser.error("[x] You cannot specify both --client-only and --server-only at the same time.")
-
-        return vars(args)
-
-    def set_pythonpath(self):
-        """
-        Sets the PYTHONPATH environment variable to include the project root directory.
-        """
-        existing: str = os.environ.get("PYTHONPATH", "")
-
-        # Check to see if the root_dir is already in PYTHONPATH. If so, don't add it again.
-        # This block below was suggested by Copilot.
-        normalized_root_dir = os.path.normcase(os.path.abspath(self.root_dir))
-        existing_paths = [path for path in existing.split(os.pathsep) if path]
-        if any(os.path.normcase(os.path.abspath(path)) == normalized_root_dir for path in existing_paths):
-            return
-
-        # Add the root_dir to PYTHONPATH differently depending on existing value
-        new_path: str = self.root_dir
-        if existing:
-            new_path = existing + os.pathsep + self.root_dir
-        os.environ["PYTHONPATH"] = new_path
-
     def set_environment_variables(self):
         """Set required environment variables, optionally using neuro-san defaults."""
         print("\n" + "=" * 50 + "\n")
         print("Setting environment variables...\n")
         # Common env variables
-        self.set_pythonpath()
+        self.project_env.set_pythonpath()
         os.environ["AGENT_MANIFEST_FILE"] = self.args["agent_manifest_file"]
         os.environ["AGENT_TOOL_PATH"] = self.args["agent_tool_path"]
         self._apply_toolbox_env()
@@ -532,7 +424,7 @@ class NeuroSanRunner:
             plugin.pre_server_start_action()
 
         # Ensure logs directory exists
-        os.makedirs("logs", exist_ok=True)
+        Path("logs").mkdir(parents=True, exist_ok=True)
 
         # Set up signal handling for termination
         signal.signal(signal.SIGINT, self.signal_handler)  # Handle Ctrl+C
@@ -557,7 +449,7 @@ class NeuroSanRunner:
                 ("nsflow", self.nsflow_process),
             ]:
                 if proc is not None:
-                    log_file = os.path.join(self.logs_dir, f"{name.lower()}.log")
+                    log_file = str(self.logs_dir / f"{name.lower()}.log")
                     simple_logger.attach_process_logger(proc, name, log_file)
 
         print("\n" + "=" * 50 + "\n")

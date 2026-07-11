@@ -16,11 +16,8 @@
 
 """Typer CLI dispatcher for the neuro-san-studio package."""
 
-import sys
-from typing import Any
 from typing import List
 from typing import Optional
-from typing import Tuple
 
 import typer
 
@@ -64,30 +61,30 @@ class NeuroSanStudioCli:  # pylint: disable=too-few-public-methods
         """Neuro SAN Studio CLI."""
 
     @staticmethod
-    def _invoke_run(extra_args: List[str]) -> None:
-        """Run the server, exposing `extra_args` to NeuroSanRunner.parse_args() via sys.argv."""
-        sys.argv = [sys.argv[0], *extra_args]
-        NeuroSanRunner().run()
+    def _validate_run_flags(overrides: dict) -> None:
+        """Reject mutually-exclusive run-flag combinations before starting anything.
 
-    @staticmethod
-    def _build_run_forward_args(valued: List[Tuple[str, Any]], booleans: List[Tuple[str, bool]]) -> List[str]:
-        """Build the forwarded-args list from Typer-parsed valued and boolean flags."""
-        forwarded: List[str] = []
-        for flag, value in valued:
-            if value is not None:
-                forwarded.extend([flag, str(value)])
-        for flag, value in booleans:
-            if value:
-                forwarded.append(flag)
-        return forwarded
+        Only user-supplied flags are present in ``overrides`` (booleans appear only when true),
+        so membership tests double as "did the user pass this flag?".
+        """
+        client_only = "client_only" in overrides
+        server_only = "server_only" in overrides
+        if client_only and server_only:
+            raise typer.BadParameter("You cannot specify both --client-only and --server-only at the same time.")
+        if client_only and ("server_host" in overrides or "server_http_port" in overrides):
+            raise typer.BadParameter(
+                "You cannot specify --server-host or --server-http-port when using --client-only mode."
+            )
+        if server_only and "nsflow_port" in overrides:
+            raise typer.BadParameter("You cannot specify --nsflow-port when using --server-only mode.")
 
     @staticmethod
     @app.command(
         "run",
         help="Start the Neuro SAN server and client (default).",
         context_settings={
-            # Forward unknown options (e.g. plugin-injected flags via
-            # plugin.update_parser_args) through to NeuroSanRunner's argparse layer.
+            # Tolerate unknown options (e.g. plugin-injected flags) without erroring; they are
+            # collected in ctx.args and handed to the runner. Made Typer-native in a follow-up.
             "allow_extra_args": True,
             "ignore_unknown_options": True,
         },
@@ -111,28 +108,28 @@ class NeuroSanStudioCli:  # pylint: disable=too-few-public-methods
             False, "--server-only", help="Run only the NeuroSan server without the default nsflow client."
         ),
     ) -> None:
-        """Forward declared flags + any plugin extras to NeuroSanRunner's argparse layer.
+        """Pass Typer-parsed run flags straight to NeuroSanRunner (single CLI framework: Typer).
 
-        Typer parses the known flags so they appear in `--help` with Typer styling.
-        Only user-supplied values are forwarded; unset options stay `None` so the
-        runner's env-var-driven defaults still apply. Plugin-injected flags arrive
-        via `ctx.args` and are forwarded verbatim.
+        Only user-supplied flags become cli_overrides, so unset options keep the runner's
+        env-var-driven defaults. Unknown/plugin flags arrive via ctx.args and are forwarded
+        verbatim for the runner to handle.
         """
-        forwarded = NeuroSanStudioCli._build_run_forward_args(
-            [
-                ("--server-host", server_host),
-                ("--server-http-port", server_http_port),
-                ("--nsflow-port", nsflow_port),
-                ("--log-level", log_level),
-                ("--thinking-file", thinking_file),
-            ],
-            [
-                ("--client-only", client_only),
-                ("--server-only", server_only),
-            ],
-        )
-        forwarded.extend(ctx.args)
-        NeuroSanStudioCli._invoke_run(forwarded)
+        # Map each self.args key to the flag the user supplied. Valued flags default to None and
+        # booleans to False when unset; forwarding only truthy/non-None values means unset flags
+        # keep the runner's env-var-driven defaults.
+        run_flags: dict = {
+            "server_host": server_host,
+            "server_http_port": server_http_port,
+            "nsflow_port": nsflow_port,
+            "log_level": log_level,
+            "thinking_file": thinking_file,
+            "client_only": client_only,
+            "server_only": server_only,
+        }
+        overrides = {key: value for key, value in run_flags.items() if value not in (None, False)}
+
+        NeuroSanStudioCli._validate_run_flags(overrides)
+        NeuroSanRunner(cli_overrides=overrides, extra_args=list(ctx.args)).run()
 
     @staticmethod
     @app.command("init", help="Scaffold a starter project in the current directory.")
@@ -224,6 +221,69 @@ class NeuroSanStudioCli:  # pylint: disable=too-few-public-methods
         raise typer.Exit(code=CheckConfigCommand(hocon_path=hocon_path).run())
 
     @staticmethod
+    @app.command(
+        "chat",
+        help=(
+            "Chat with an agent network directly (without starting nsflow).\n\n"
+            "Pass the agent name as AGENT, e.g. ns chat music_nerd"
+        ),
+        no_args_is_help=True,
+        context_settings={
+            "allow_extra_args": True,
+            "ignore_unknown_options": True,
+        },
+    )
+    def _chat_command(  # pylint: disable=too-many-arguments
+        ctx: typer.Context,
+        *,
+        connection: str = typer.Option(
+            "direct",
+            "--connection",
+            help="Connection type: 'direct' (library call, default), 'http', or 'https'.",
+        ),
+        host: Optional[str] = typer.Option(
+            None,
+            "--host",
+            help="Hostname of the neuro-san server (for http/https connections).",
+        ),
+        port: Optional[int] = typer.Option(
+            None,
+            "--port",
+            help="Port of the neuro-san server.",
+        ),
+        one_shot: bool = typer.Option(
+            False,
+            "--one-shot",
+            help="Send one prompt and exit (non-interactive mode).",
+        ),
+        list_agents: bool = typer.Option(
+            False,
+            "--list",
+            help="List all available agents and exit.",
+        ),
+    ) -> None:
+        """Chat with an agent network, forwarding extra options to AgentCli."""
+        # pylint: disable-next=import-outside-toplevel
+        from neuro_san_studio.commands.chat import ChatCommand
+
+        extra = list(ctx.args)
+        agent = None
+        if extra and not extra[0].startswith("--"):
+            agent = extra.pop(0)
+
+        raise typer.Exit(
+            code=ChatCommand(
+                agent=agent,
+                connection=connection,
+                host=host,
+                port=port,
+                one_shot=one_shot,
+                list_agents=list_agents,
+                extra_args=extra,
+            ).run()
+        )
+
+    @staticmethod
     @app.command("validate", help="Validate the structure of an agent network HOCON file.")
     def _validate_command(
         hocon_path: str = typer.Argument(
@@ -262,6 +322,49 @@ class NeuroSanStudioCli:  # pylint: disable=too-few-public-methods
                 external_agents=external_agents,
                 mcp_servers=mcp_servers,
                 registry_dir=registry_dir,
+            ).run()
+        )
+
+    @staticmethod
+    @app.command(
+        "internalize-agents",
+        help="Inline external-agent references in a HOCON file into one self-contained file.",
+    )
+    def _internalize_agents_command(
+        input_path: str = typer.Argument(
+            ...,
+            help="Path to the parent HOCON file containing /-prefixed external-agent references.",
+        ),
+        output_path: str = typer.Option(
+            ...,
+            "--output",
+            "-o",
+            help=(
+                "Path to write the self-contained HOCON output. The output is fully resolved "
+                "(no includes, no /-prefixed external refs) and formatted as HOCON (JSON-like with "
+                "quoted keys/commas; multi-line strings use HOCON triple quotes)."
+            ),
+        ),
+        search_paths: Optional[str] = typer.Option(
+            None,
+            "--search-paths",
+            help=(
+                "Colon-separated directories to look up external HOCON files. Each `/<ref>` "
+                "is joined as `<search_path>/<ref>.hocon`, so refs containing `/` (e.g. "
+                "`/industry/banking_ops`) reach subdirectories naturally without listing "
+                "them here. Defaults to 'registries'."
+            ),
+        ),
+    ) -> None:
+        """Run the internalize-agents command and propagate its exit code."""
+        # pylint: disable-next=import-outside-toplevel
+        from neuro_san_studio.commands.internalize_agents import InternalizeAgentsCommand
+
+        raise typer.Exit(
+            code=InternalizeAgentsCommand(
+                input_path=input_path,
+                output_path=output_path,
+                search_paths=search_paths,
             ).run()
         )
 

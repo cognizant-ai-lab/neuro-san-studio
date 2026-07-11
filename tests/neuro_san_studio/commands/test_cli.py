@@ -24,6 +24,7 @@ from pytest import MonkeyPatch
 from neuro_san_studio.commands import cli as cli_module
 from neuro_san_studio.commands import import_networks as import_networks_module
 from neuro_san_studio.commands import init as init_module
+from neuro_san_studio.commands import internalize_agents as internalize_agents_module
 from neuro_san_studio.commands.cli import main
 
 
@@ -38,7 +39,8 @@ class TestMainEntryPoint:
         class FakeRunner:  # pylint: disable=too-few-public-methods
             """Stand-in for NeuroSanRunner that records method calls."""
 
-            def __init__(self) -> None:
+            # pylint: disable-next=unused-argument
+            def __init__(self, cli_overrides: dict | None = None, extra_args: list | None = None) -> None:
                 call_order.append("init")
 
             def run(self) -> None:
@@ -110,11 +112,85 @@ class TestMainEntryPoint:
         main()
         assert captured == [{"networks_arg": ["a.hocon", "b.zip"], "force": True}]
 
+    def test_main_with_internalize_agents_passes_args_through(self, monkeypatch: MonkeyPatch) -> None:
+        """`internalize-agents <in> -o <out> --search-paths <p>` forwards all three kwargs."""
+        captured: list[dict] = []
+
+        class FakeInternalize:  # pylint: disable=too-few-public-methods
+            """Stand-in for InternalizeAgentsCommand that records constructor kwargs."""
+
+            def __init__(
+                self,
+                input_path: str,
+                output_path: str,
+                search_paths: str | None = None,
+            ) -> None:
+                captured.append(
+                    {
+                        "input_path": input_path,
+                        "output_path": output_path,
+                        "search_paths": search_paths,
+                    }
+                )
+
+            def run(self) -> int:
+                """Return success so main() does not raise."""
+                return 0
+
+        monkeypatch.setattr(internalize_agents_module, "InternalizeAgentsCommand", FakeInternalize)
+        monkeypatch.setattr(
+            sys,
+            "argv",
+            [
+                "neuro-san-studio",
+                "internalize-agents",
+                "in.hocon",
+                "--output",
+                "out.hocon",
+                "--search-paths",
+                "registries:other",
+            ],
+        )
+        main()
+        assert captured == [
+            {
+                "input_path": "in.hocon",
+                "output_path": "out.hocon",
+                "search_paths": "registries:other",
+            }
+        ]
+
+    def test_main_with_internalize_agents_propagates_exit_code(self, monkeypatch: MonkeyPatch) -> None:
+        """A non-zero return from InternalizeAgentsCommand.run() should reach SystemExit."""
+
+        class FakeInternalize:  # pylint: disable=too-few-public-methods
+            """Stand-in whose run() returns a failure exit code."""
+
+            def __init__(self, **_kwargs) -> None:
+                """Accept any kwargs; we only care about the exit code."""
+
+            def run(self) -> int:
+                """Return a non-zero exit code to verify it propagates through main()."""
+                return 1
+
+        monkeypatch.setattr(internalize_agents_module, "InternalizeAgentsCommand", FakeInternalize)
+        monkeypatch.setattr(
+            sys,
+            "argv",
+            ["neuro-san-studio", "internalize-agents", "in.hocon", "-o", "out.hocon"],
+        )
+        with pytest.raises(SystemExit) as exc_info:
+            main()
+        assert exc_info.value.code == 1
+
     def test_main_propagates_runner_exceptions(self, monkeypatch: MonkeyPatch) -> None:
         """Exceptions from NeuroSanRunner().run() should bubble up to the caller."""
 
         class ExplodingRunner:  # pylint: disable=too-few-public-methods
             """Runner whose run() raises, to verify main() does not swallow errors."""
+
+            def __init__(self, cli_overrides: dict | None = None, extra_args: list | None = None) -> None:
+                """Accept the runner's constructor kwargs; we only care about run() raising."""
 
             def run(self) -> None:
                 """Raise to simulate a runtime failure."""
@@ -124,6 +200,49 @@ class TestMainEntryPoint:
         monkeypatch.setattr(sys, "argv", ["neuro-san-studio", "run"])
         with pytest.raises(RuntimeError, match="boom"):
             main()
+
+    _BUILTIN_RUN_FLAGS = (
+        "--server-host",
+        "--server-http-port",
+        "--nsflow-port",
+        "--log-level",
+        "--thinking-file",
+        "--client-only",
+        "--server-only",
+    )
+
+    def test_run_help_lists_all_builtin_flags(self) -> None:
+        """Every built-in run flag is a declared Typer option (so it shows in `ns run --help`).
+
+        Inspects the compiled Click command's registered option strings rather than the
+        rendered help text, which wraps/ANSI-styles at the terminal width and is flaky in CI.
+        """
+        # pylint: disable-next=import-outside-toplevel
+        from typer.main import get_command
+
+        run_cmd = get_command(cli_module.NeuroSanStudioCli.app).commands["run"]
+        declared = {opt for param in run_cmd.params for opt in getattr(param, "opts", [])}
+        for flag in self._BUILTIN_RUN_FLAGS:
+            assert flag in declared, f"{flag} not declared as a Typer option on `run`"
+
+    def test_run_forwards_flag_values_as_cli_overrides(self, monkeypatch: MonkeyPatch) -> None:
+        """A user-supplied flag reaches NeuroSanRunner as a cli_overrides entry."""
+        captured: list[dict] = []
+
+        class CapturingRunner:  # pylint: disable=too-few-public-methods
+            """Stand-in that records the cli_overrides it was constructed with."""
+
+            # pylint: disable-next=unused-argument
+            def __init__(self, cli_overrides: dict | None = None, extra_args: list | None = None) -> None:
+                captured.append(cli_overrides or {})
+
+            def run(self) -> None:
+                """No-op."""
+
+        monkeypatch.setattr(cli_module, "NeuroSanRunner", CapturingRunner)
+        monkeypatch.setattr(sys, "argv", ["neuro-san-studio", "run", "--server-host", "myhost"])
+        main()
+        assert captured[0]["server_host"] == "myhost"
 
     @pytest.mark.parametrize("flag", ["--version", "-V"])
     def test_version_flag_prints_version_and_exits(

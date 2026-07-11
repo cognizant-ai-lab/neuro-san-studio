@@ -63,6 +63,9 @@ WORKDIR /
 # Stage 2: Final Stage - Use a slim Python image
 FROM python:3.13-slim AS final
 
+ARG NEURO_SAN_STUDIO_VERSION="unknown"
+ENV NEURO_SAN_STUDIO_VERSION=${NEURO_SAN_STUDIO_VERSION}
+
 # Set the shell and options in each FROM section per hadolint recommendations
 SHELL ["/bin/bash", "-o", "pipefail", "-c"]
 
@@ -169,13 +172,14 @@ ENV PYTHONPATH="${APP_SOURCE}"
 
 # Where to find the tool registry manifest file which lists all the agent hocon
 # files to serve up from this server instance.  To specify multiple manifest files,
-# simply use a space-separated list of manifest files.  Manifest dictionaries will
-# effectively be merged, where content coming from manifests later in the list
-# have precedence.
-# This particular Dockerfile is put together to support a server that hosts multiple users
+# simply use a delimited list of manifest files approriate to the OS
+# (delimiter is ':' on linux, ';' on Windows).  Manifest dictionaries will then effectively
+# be merged, where content coming from manifests later in the list have precedence.
+#
+# This particular Dockerfile is put together to support a linux server that hosts multiple users
 # and so we use the multiple manifest file aspect of the neuro-san server to turn off some networks
 # that are not appropriate for such a deployment. See manifest_multiuser_overlay.hocon for more info.
-ENV AGENT_MANIFEST_FILE="${APP_SOURCE}/registries/manifest.hocon ${APP_SOURCE}/registries/manifest_multiuser_overlay.hocon"
+ENV AGENT_MANIFEST_FILE="${APP_SOURCE}/registries/manifest.hocon:${APP_SOURCE}/registries/manifest_multiuser_overlay.hocon"
 
 # An llm_info hocon file with user-provided llm descriptions that are to be used
 # in addition to the neuro-san defaults.
@@ -288,9 +292,14 @@ ENV AGENT_HTTP_IDLE_CONNECTIONS_TIMEOUT="3600"
 # Allows utilization of multiple CPU cores.
 # Improves concurrency without blocking a single IOLoop.
 # Typical Usage:
-# start(0) → Automatically spawns one process per CPU core.
-# start(N) → Manually specifies number of worker processes.
-ENV AGENT_HTTP_SERVER_INSTANCES="1"
+#   Value of 0 → Automatically spawns one process per CPU core.
+#   Positive integer (N) → Manually specifies number of worker processes.
+# The developer-oriented default is 1, but we set to 0 here to allow pod CPU configuration
+# to dictate the number of server instance processes.
+# Note 7/7/2026: If your installation requires temporary agent networks (aka Reservations),
+# the server systems in place are not yet suitable for the multi-process operation
+# that is implied by a value that is not 1.
+ENV AGENT_HTTP_SERVER_INSTANCES="0"
 
 # If set to a value>0, will start periodic logging of currently used
 # run-time server resources:
@@ -422,6 +431,11 @@ ENV FGA_STORE_NAME=""
 # Environment Variables that control specific Agent Network behavior
 #
 
+# When unset or set to "true" (the coded default), Agent Network Designer will emit INFO logs at INFO level.
+# When set to anything other than "true" (e.g. "false"), INFO logs are redirected to DEBUG to reduce production
+# log volume.  This image defaults to "false"; set to "true" to restore INFO-level output for INFO logs.
+ENV AGENT_NETWORK_DESIGNER_VERBOSE="false"
+
 # When set, this parameter allows the Agent Network Designer to use
 # Resevations as the means for temporary deployment of vibe-coded agent networks.
 # When not set, this defaults to false and the file-system is modified.
@@ -458,5 +472,11 @@ ENV AGENT_NETWORK_DESIGNER_MANIFEST_FILE="registries/manifest_and.hocon"
 # Toolbox info file providing available tools for the Agent Network Designer to choose from.
 # Defaults to "neuro_san_studio/toolbox/agent_network_designer_toolbox_info.hocon" if not set.
 ENV AGENT_NETWORK_DESIGNER_TOOLBOX_INFO_FILE="neuro_san_studio/toolbox/agent_network_designer_toolbox_info.hocon"
+
+# Maximum number of validation retry rounds before the persistence middleware gives up and
+# ends the session without persisting. Prevents runaway loops when the model cannot fix
+# validation errors (e.g., a required tool was unavailable during session setup).
+# Defaults to "3" if not set.
+ENV AGENT_NETWORK_DESIGNER_MAX_VALIDATION_ATTEMPTS="3"
 
 ENTRYPOINT ["/bin/bash", "-c", "exec ${APP_ENTRYPOINT}"]
