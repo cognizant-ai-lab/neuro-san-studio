@@ -20,6 +20,7 @@ from typing import Any
 from neuro_san.interfaces.coded_tool import CodedTool
 
 from coded_tools.agent_network_editor.agent_name_guard import AgentNameGuard
+from coded_tools.agent_network_editor.and_logger import AndLogger
 from coded_tools.agent_network_editor.constants import AGENT_NETWORK_DEFINITION
 from coded_tools.agent_network_editor.constants import AGENT_NETWORK_NAME
 from coded_tools.agent_network_editor.progress_handler import ProgressHandler
@@ -104,7 +105,7 @@ class CreateNetwork(CodedTool):
         if name_errors:
             return "\n".join(name_errors)
 
-        logger = logging.getLogger(self.__class__.__name__)
+        logger = AndLogger(logging.getLogger(self.__class__.__name__))
         logger.info(">>>>>>>>>>>>>>>>>>Create New Agent Netwrok Definiton for %s>>>>>>>>>>>>>>>>>", agent_network_name)
         # Reset/overwrite any existing network only after all inputs validate.
         sly_data[AGENT_NETWORK_DEFINITION] = {}

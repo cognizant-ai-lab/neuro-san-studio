@@ -63,6 +63,9 @@ WORKDIR /
 # Stage 2: Final Stage - Use a slim Python image
 FROM python:3.13-slim AS final
 
+ARG NEURO_SAN_STUDIO_VERSION="unknown"
+ENV NEURO_SAN_STUDIO_VERSION=${NEURO_SAN_STUDIO_VERSION}
+
 # Set the shell and options in each FROM section per hadolint recommendations
 SHELL ["/bin/bash", "-o", "pipefail", "-c"]
 
@@ -293,6 +296,9 @@ ENV AGENT_HTTP_IDLE_CONNECTIONS_TIMEOUT="3600"
 #   Positive integer (N) → Manually specifies number of worker processes.
 # The developer-oriented default is 1, but we set to 0 here to allow pod CPU configuration
 # to dictate the number of server instance processes.
+# Note 7/7/2026: If your installation requires temporary agent networks (aka Reservations),
+# the server systems in place are not yet suitable for the multi-process operation
+# that is implied by a value that is not 1.
 ENV AGENT_HTTP_SERVER_INSTANCES="0"
 
 # If set to a value>0, will start periodic logging of currently used
@@ -424,6 +430,11 @@ ENV FGA_STORE_NAME=""
 #
 # Environment Variables that control specific Agent Network behavior
 #
+
+# When unset or set to "true" (the coded default), Agent Network Designer will emit INFO logs at INFO level.
+# When set to anything other than "true" (e.g. "false"), INFO logs are redirected to DEBUG to reduce production
+# log volume.  This image defaults to "false"; set to "true" to restore INFO-level output for INFO logs.
+ENV AGENT_NETWORK_DESIGNER_VERBOSE="false"
 
 # When set, this parameter allows the Agent Network Designer to use
 # Resevations as the means for temporary deployment of vibe-coded agent networks.

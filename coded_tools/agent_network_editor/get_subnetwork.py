@@ -29,12 +29,13 @@ from neuro_san.internals.graph.persistence.raw_manifest_restorer import RawManif
 from neuro_san.internals.graph.persistence.served_manifest_config_filter import ServedManifestConfigFilter
 from pyparsing.exceptions import ParseException
 
+from coded_tools.agent_network_editor.and_logger import AndLogger
 from coded_tools.agent_network_editor.constants import SUBNETWORK_NAMES
 from coded_tools.agent_network_editor.constants import SUBNETWORKS
 from coded_tools.agent_network_editor.sly_data_lock import SlyDataLock
 
 DEFAULT_MANIFEST_FILE = os.path.join("registries", "manifest_and.hocon")
-logger = logging.getLogger(__name__)
+logger = AndLogger(logging.getLogger(__name__))
 
 
 # pylint: disable=too-many-ancestors

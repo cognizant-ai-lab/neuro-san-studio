@@ -24,6 +24,8 @@
 # https://python.langchain.com/docs/integrations/chat/openai/#responses-api
 
 {
+    include "registries/expertise_scoping_instructions.hocon",
+
     # Load the shared LLM configuration from a single source of truth.
     # This allows users to change the model in one file rather than
     # modifying the configuration for each agent network.
@@ -69,7 +71,8 @@
                 }
             },
 
-            "instructions": "Use your tool to respond to the inquiry.",
+            "instructions": """Use your tool to respond to the inquiry.
+""" ${expertise_scoping_instructions},
             "tools": ["code_interpreter"]
         },
         {

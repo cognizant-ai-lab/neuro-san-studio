@@ -14,7 +14,9 @@
 #
 # END COPYRIGHT
 
-import asyncio
+from asyncio import AbstractEventLoop
+from asyncio import TimeoutError as AsyncTimeoutError
+from asyncio import get_running_loop
 from datetime import datetime
 from datetime import timezone
 from http import HTTPStatus
@@ -23,6 +25,8 @@ from ipaddress import IPv6Address
 from ipaddress import ip_address
 from logging import Logger
 from logging import getLogger
+from socket import SOCK_STREAM
+from socket import gaierror
 from typing import Any
 from urllib.parse import ParseResult
 from urllib.parse import urlparse
@@ -56,8 +60,10 @@ class WebFetch(CodedTool):
     Uses aiohttp for HTTP requests and BeautifulSoup to strip HTML markup from
     the response. PDF URLs are handled via PyPDFLoader.
 
-    Note: IP-literal SSRF protection blocks private/loopback/reserved ranges and localhost, but
-    non-IP hostnames are not DNS-resolved. Use allowed_domains for stricter control.
+    Note: SSRF protection blocks private/loopback/reserved ranges and localhost. Non-IP
+    hostnames are DNS-resolved and every resolved address must be globally routable.
+    DNS rebinding is not mitigated (see _validate_hostname_safety); use allowed_domains
+    for stricter control.
     Redirects are not followed; a 3xx response raises url_not_allowed.
     The byte cap (MAX_RESPONSE_BYTES) is enforced via the Content-Length header only (checked
     before download). A server that lies about or omits Content-Length can still deliver an
@@ -104,7 +110,7 @@ class WebFetch(CodedTool):
         :raises aiohttp.ClientResponseError: url_not_accessible / too_many_requests (non-2xx response).
         :raises aiohttp.ClientError: url_not_accessible when PDF or text fetch fails.
         """
-        url: str = self._validate_url(args)
+        url: str = await self._validate_url(args)
         max_chars: int = self._validate_max_content_chars(args)
 
         logger: Logger = getLogger(self.__class__.__name__)
@@ -141,7 +147,7 @@ class WebFetch(CodedTool):
             "retrieved_at": retrieved_at,
         }
 
-    def _validate_url(self, args: dict[str, Any]) -> str:
+    async def _validate_url(self, args: dict[str, Any]) -> str:
         """Validate URL format, length, and domain rules. Returns the cleaned URL."""
         url_value: Any = args.get("url", "")
         if not isinstance(url_value, str):
@@ -167,8 +173,6 @@ class WebFetch(CodedTool):
         # but not "badexample.com".
         hostname: str = raw_hostname.lower()
 
-        self._validate_hostname_safety(hostname)
-
         allowed_domains: list[str] = self._validate_domain_list(args.get("allowed_domains"), "allowed_domains")
         if allowed_domains and not any(
             hostname == domain.lower() or hostname.endswith("." + domain.lower()) for domain in allowed_domains
@@ -181,24 +185,55 @@ class WebFetch(CodedTool):
         ):
             raise ValueError(f"url_not_allowed: Domain '{hostname}' is blocked.")
 
+        # Domain rules run first so rejected URLs never trigger a DNS lookup.
+        await self._validate_hostname_safety(hostname)
+
         return url
 
-    def _validate_hostname_safety(self, hostname: str) -> None:
-        """Reject IP literals in private/loopback/link-local/multicast/reserved ranges and localhost.
+    async def _validate_hostname_safety(self, hostname: str) -> None:
+        """Reject hosts that are, or resolve to, non-globally-routable IP addresses.
 
-        Note: non-IP hostnames are not DNS-resolved here; use allowed_domains for stricter control.
+        IP literals are checked directly. Other hostnames are DNS-resolved, and every
+        resolved address must be globally routable (rejects private/loopback/link-local/
+        multicast/reserved ranges and localhost).
+
+        Warning: this does not prevent DNS rebinding. The HTTP client re-resolves the
+        hostname at connection time, so an attacker-controlled DNS server can return a
+        safe address here and an internal one for the actual fetch. Closing that gap
+        requires pinning the validated addresses into the connection (e.g. a custom
+        resolver on the aiohttp TCPConnector).
         """
         if hostname == "localhost" or hostname.endswith(".localhost"):
             raise ValueError(f"url_not_allowed: Host '{hostname}' targets a loopback address.")
 
+        addresses: list[IPv4Address | IPv6Address]
         try:
-            addr: IPv4Address | IPv6Address = ip_address(hostname)
-        except ValueError:
-            # Not an IP literal; DNS-based checks are out of scope
-            return
+            addresses = [ip_address(hostname)]
+        except ValueError as literal_exc:
+            # Not an IP literal; resolve the hostname and validate every DNS record.
+            loop: AbstractEventLoop = get_running_loop()
+            try:
+                # loop.getaddrinfo works like socket.getaddrinfo but is non-blocking
+                addr_infos = await loop.getaddrinfo(hostname, None, type=SOCK_STREAM)
+            except gaierror as dns_exc:
+                raise ValueError(f"url_not_allowed: Host '{hostname}' could not be resolved.") from dns_exc
 
-        if not addr.is_global:
-            raise ValueError(f"url_not_allowed: IP address '{hostname}' is not a globally routable address.")
+            addresses = []
+            for info in addr_infos:
+                addresses.append(ip_address(info[4][0]))
+            if not addresses:
+                raise ValueError(
+                    f"url_not_allowed: Host '{hostname}' doesn't resolve to an IP address."
+                ) from literal_exc
+
+        # Every address must be global: with multiple DNS records the OS may connect
+        # to any of them, so a single non-global record makes the host unsafe.
+        for addr in addresses:
+            if not addr.is_global:
+                raise ValueError(
+                    f"url_not_allowed: Host '{hostname}' uses IP address '{addr}', "
+                    "which is not a globally routable address."
+                )
 
     def _validate_domain_list(self, value: Any, param_name: str) -> list[str]:
         """Coerce and validate a domain list parameter. Accepts None, list[str], or a single str."""
@@ -276,7 +311,7 @@ class WebFetch(CodedTool):
                 message=f"{prefix}: HTTP {exc.status} for '{url}'.",
                 headers=exc.headers,
             ) from exc
-        except (ClientError, asyncio.TimeoutError) as exc:
+        except (ClientError, AsyncTimeoutError) as exc:
             raise ClientError(f"url_not_accessible: Could not reach '{url}': {exc}") from exc
 
     def _check_content_length(self, content_length_header: str | None, url: str) -> None:
@@ -325,7 +360,7 @@ class WebFetch(CodedTool):
                 message=f"{prefix}: HTTP {exc.status} for '{url}'.",
                 headers=exc.headers,
             ) from exc
-        except (ClientError, asyncio.TimeoutError) as exc:
+        except (ClientError, AsyncTimeoutError) as exc:
             raise ClientError(f"url_not_accessible: Failed to fetch '{url}': {exc}") from exc
 
         return self._parse_raw_text(raw_content)

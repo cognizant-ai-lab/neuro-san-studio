@@ -19,6 +19,8 @@ from typing import Any
 
 from neuro_san.interfaces.coded_tool import CodedTool
 
+from coded_tools.agent_network_editor.and_logger import AndLogger
+
 AGENT_NETWORK_QUERIES: str = "agent_network_queries"
 
 
@@ -64,7 +66,7 @@ class SetSampleQueries(CodedTool):
         if not all(isinstance(sample_query, str) for sample_query in sample_queries):
             raise ValueError("Error: sample_queries must be a list of strings.")
 
-        logger = logging.getLogger(self.__class__.__name__)
+        logger = AndLogger(logging.getLogger(self.__class__.__name__))
         logger.info(">>>>>>>>>>>>>>>>>>>Set Sample Queries>>>>>>>>>>>>>>>>>>")
         sly_data[AGENT_NETWORK_QUERIES] = sample_queries
         logger.info("The Sample queries: %s", str(sample_queries))

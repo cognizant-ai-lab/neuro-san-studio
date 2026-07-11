@@ -23,9 +23,8 @@ from aiohttp import ClientError
 from aiohttp import ClientResponseError
 
 from neuro_san_studio.coded_tools.web_fetch import WebFetch
-
-from .helpers import make_get_response
-from .helpers import make_response_error
+from tests.neuro_san_studio.coded_tools.web_fetch.helpers import make_get_response
+from tests.neuro_san_studio.coded_tools.web_fetch.helpers import make_response_error
 
 
 class TestFetchText(TestCase):
