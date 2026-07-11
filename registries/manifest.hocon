@@ -92,4 +92,6 @@
     #     python -m neuro_san_studio run --server-http-port 8081 --nsflow-port 4174
     "agent_network_architect.hocon": false,
 
+    "MQ_OPS.hocon": true,
+
 }
