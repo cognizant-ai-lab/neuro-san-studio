@@ -309,18 +309,21 @@ via HTTP requests instead of direct invocation.
 
 There are two options to start the neuro-san server and nsflow client.
 
-If you've installed neuro-san-studio to your project.
+If you've installed neuro-san-studio package to your project:
+
 ```bash
 ns run
 ```
 
 If you've cloned this repo:
+
 ```bash
 python -m neuro_san_studio run
 ```
 
 This starts the neuro-san HTTP API on `http://localhost:8080` by default (and also launches the
-nsflow UI on `http://localhost:4173/`). See the [README](https://github.com/cognizant-ai-lab/neuro-san-studio/blob/main/README.md#install) and
+nsflow UI on `http://localhost:4173/`). See the
+[README](https://github.com/cognizant-ai-lab/neuro-san-studio/blob/main/README.md#install) and
 [docs/cli.md](cli.md) for details, or use `ns run --server-only` to skip the UI.
 
 ### 5.2: Make HTTP Requests
