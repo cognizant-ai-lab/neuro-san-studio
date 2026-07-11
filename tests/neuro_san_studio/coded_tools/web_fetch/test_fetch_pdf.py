@@ -67,6 +67,23 @@ class TestFetchPdf(TestCase):
 
         self.assertEqual(result, "Page one\nPage two")
 
+    def test_none_page_text_coerced_to_empty(self):
+        """Tests that a page whose extract_text() returns None is treated as empty text."""
+        pages = [MagicMock(), MagicMock(), MagicMock()]
+        pages[0].extract_text.return_value = "Page one"
+        pages[1].extract_text.return_value = None
+        pages[2].extract_text.return_value = "Page three"
+        mock_reader = MagicMock()
+        mock_reader.pages = pages
+
+        with (
+            patch.object(self.tool, "_download_pdf_bytes", new=AsyncMock(return_value=b"%PDF-fake")),
+            patch("neuro_san_studio.coded_tools.web_fetch.PdfReader", return_value=mock_reader),
+        ):
+            result = self._call("http://example.com/doc.pdf", MagicMock())
+
+        self.assertEqual(result, "Page one\n\nPage three")
+
     def test_real_pdf_bytes_parse_successfully(self):
         """Tests that genuine PDF bytes are parsed by real pypdf without errors."""
         data = make_pdf_bytes(pages=2)

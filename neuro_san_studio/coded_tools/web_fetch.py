@@ -359,7 +359,13 @@ class WebFetch(CodedTool):
     def _parse_pdf_bytes(data: bytes) -> str:
         """Extract text from in-memory PDF bytes, joining pages with newlines."""
         reader = PdfReader(BytesIO(data))
-        return "\n".join(page.extract_text() for page in reader.pages)
+        page_texts: list[str] = []
+        for page in reader.pages:
+            # extract_text() is typed Optional[str] in newer pypdf and can return
+            # None for pages without extractable text (e.g. scanned images);
+            # coerce to "" so the join never fails on a valid PDF.
+            page_texts.append(page.extract_text() or "")
+        return "\n".join(page_texts)
 
     async def _download_pdf_bytes(self, url: str, session: ClientSession) -> bytes:
         """Stream a PDF body through the protected session, capping its size.
