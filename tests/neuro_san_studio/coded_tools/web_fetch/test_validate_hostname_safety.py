@@ -97,3 +97,30 @@ class TestValidateHostnameSafety(TestCase):
         with self.assertRaises(ValueError) as ctx:
             self._call("100.64.0.1")
         self.assertIn("url_not_allowed", str(ctx.exception))
+
+    def test_zoned_ipv6_link_local_blocked(self):
+        """Tests that zoned IPv6 link-local literals (RFC 6874) are blocked with url_not_allowed.
+
+        Covers both the raw zone form and the percent-encoded form as surfaced by
+        urlparse().hostname. ip_address() parses zoned literals on Python >= 3.9,
+        so these are rejected as non-global addresses.
+        """
+        for hostname in ("fe80::1%eth0", "fe80::1%25eth0"):
+            with self.subTest(hostname=hostname):
+                with self.assertRaises(ValueError) as ctx:
+                    self._call(hostname)
+                self.assertIn("url_not_allowed", str(ctx.exception))
+
+    def test_malformed_ip_like_string_blocked(self):
+        """Tests that IP-like strings that ip_address() cannot parse fail closed.
+
+        '%' and ':' are illegal in DNS hostnames, so such strings can only be
+        malformed or zoned IP literals. They must be rejected rather than deferred
+        to the resolver, because aiohttp's literal detection may treat them as IP
+        literals and bypass GlobalOnlyResolver.
+        """
+        for hostname in ("fe80::1%", "gggg::1", "1.2.3.4%zone"):
+            with self.subTest(hostname=hostname):
+                with self.assertRaises(ValueError) as ctx:
+                    self._call(hostname)
+                self.assertIn("url_not_allowed", str(ctx.exception))

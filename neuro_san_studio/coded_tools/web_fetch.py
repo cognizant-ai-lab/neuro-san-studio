@@ -210,7 +210,12 @@ class WebFetch(CodedTool):
         safe address and rebound to an internal one before the connection).
 
         IP literals must be checked up front because aiohttp short-circuits them in
-        TCPConnector._resolve_host and never calls the resolver for them.
+        TCPConnector._resolve_host and never calls the resolver for them. Zoned IPv6
+        literals (e.g. "fe80::1%eth0") are parsed by ip_address() on Python >= 3.9 and
+        validated like any other literal; strings that ip_address() cannot parse but
+        that contain characters illegal in DNS hostnames ('%' or ':') are rejected
+        outright, because aiohttp's own literal detection may still treat them as IP
+        literals and bypass the resolver.
         """
         if hostname == "localhost" or hostname.endswith(".localhost"):
             raise ValueError(f"url_not_allowed: Host '{hostname}' targets a loopback address.")
@@ -218,8 +223,17 @@ class WebFetch(CodedTool):
         addr: IPv4Address | IPv6Address
         try:
             addr = ip_address(hostname)
-        except ValueError:
-            # Not an IP literal; GlobalOnlyResolver validates its DNS records at
+        except ValueError as parse_exc:
+            if "%" in hostname or ":" in hostname:
+                # Not parseable as an IP address, yet it cannot be a DNS hostname
+                # either: '%' and ':' are illegal in hostnames. Treat it as a
+                # malformed or zoned IP literal and fail closed — aiohttp may
+                # consider such strings IP literals and skip GlobalOnlyResolver,
+                # so anything ip_address() cannot vouch for must not pass.
+                raise ValueError(
+                    f"url_not_allowed: Host '{hostname}' is not a valid hostname or IP address."
+                ) from parse_exc
+            # A genuine hostname; GlobalOnlyResolver validates its DNS records at
             # connection time.
             return
 
