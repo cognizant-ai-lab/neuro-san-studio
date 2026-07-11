@@ -14,29 +14,10 @@
 #
 # END COPYRIGHT
 
-from socket import AF_INET
-from socket import IPPROTO_TCP
-from socket import SOCK_STREAM
 from unittest.mock import AsyncMock
 from unittest.mock import MagicMock
-from unittest.mock import patch
 
 from aiohttp import ClientResponseError
-
-
-def make_dns_patch(outcome: list[str] | Exception):
-    """Patch WebFetch DNS resolution so tests never do live lookups.
-
-    :param outcome: IP strings that getaddrinfo resolves to, or an exception it raises.
-    :return: A patcher usable as a context manager or via start()/stop().
-    """
-    mock_loop = MagicMock()
-    if isinstance(outcome, Exception):
-        mock_loop.getaddrinfo = AsyncMock(side_effect=outcome)
-    else:
-        addr_infos = [(AF_INET, SOCK_STREAM, IPPROTO_TCP, "", (ip, 0)) for ip in outcome]
-        mock_loop.getaddrinfo = AsyncMock(return_value=addr_infos)
-    return patch("neuro_san_studio.coded_tools.web_fetch.get_running_loop", return_value=mock_loop)
 
 
 def make_request_info(url: str = "http://example.com") -> MagicMock:
@@ -83,6 +64,42 @@ def make_head_session(
     session.head = MagicMock(return_value=head_cm)
 
     return session, head_response
+
+
+def make_stream_session(
+    chunks: list[bytes],
+    status: int = 200,
+    content_type: str = "application/pdf",
+    content_length: int | None = None,
+    raise_for_status_exc: Exception | None = None,
+) -> tuple[MagicMock, MagicMock]:
+    """Return (mock_session, mock_response) whose body streams via content.iter_chunked.
+
+    :param chunks: Byte chunks yielded by response.content.iter_chunked.
+    """
+    headers: dict[str, str] = {"Content-Type": content_type}
+    if content_length is not None:
+        headers["Content-Length"] = str(content_length)
+
+    response = MagicMock()
+    response.status = status
+    response.headers = headers
+    response.raise_for_status = MagicMock(side_effect=raise_for_status_exc if raise_for_status_exc else None)
+
+    async def iter_chunked(_chunk_size: int):
+        for chunk in chunks:
+            yield chunk
+
+    response.content.iter_chunked = iter_chunked
+
+    response_cm = MagicMock()
+    response_cm.__aenter__ = AsyncMock(return_value=response)
+    response_cm.__aexit__ = AsyncMock(return_value=False)
+
+    session = MagicMock()
+    session.get = MagicMock(return_value=response_cm)
+
+    return session, response
 
 
 def make_get_response(

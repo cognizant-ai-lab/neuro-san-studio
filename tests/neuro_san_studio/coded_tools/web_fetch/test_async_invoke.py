@@ -20,19 +20,19 @@ from unittest.mock import AsyncMock
 from unittest.mock import patch
 
 from neuro_san_studio.coded_tools.web_fetch import WebFetch
-from tests.neuro_san_studio.coded_tools.web_fetch.helpers import make_dns_patch
 
 
 class TestAsyncInvoke(TestCase):
-    """Integration-level tests for WebFetch.async_invoke with mocked helpers."""
+    """Integration-level tests for WebFetch.async_invoke with mocked helpers.
+
+    URL validation performs no DNS lookups (DNS records are validated at connection
+    time by GlobalOnlyResolver), and the network-facing helpers are mocked, so these
+    tests never touch the network.
+    """
 
     def setUp(self):
         self.tool = WebFetch()
         self.sly_data: dict = {}
-        # Resolve every hostname to a public IP so tests never do live DNS lookups.
-        dns_patcher = make_dns_patch(["93.184.216.34"])
-        dns_patcher.start()
-        self.addCleanup(dns_patcher.stop)
 
     def test_html_fetch_returns_correct_keys(self):
         """Tests that fetching an HTML page returns a result with url, content, and retrieved_at keys."""
