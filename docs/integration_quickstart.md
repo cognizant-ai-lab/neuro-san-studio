@@ -305,16 +305,22 @@ Hello! I'm doing great, thank you for asking. How about you? How's your day goin
 If you prefer running neuro-san as a separate server process, you can interact with it
 via HTTP requests instead of direct invocation.
 
-### 5.1: Start the Server
+### 5.1: Start the Server and Client
 
-First, start the neuro-san server in a terminal:
+There are two options to start the neuro-san server and nsflow client.
 
+If you've installed neuro-san-studio to your project.
 ```bash
 ns run
 ```
 
+If you've cloned this repo:
+```bash
+python -m neuro_san_studio run
+```
+
 This starts the neuro-san HTTP API on `http://localhost:8080` by default (and also launches the
-nsflow UI on `http://localhost:4173/`). See the [README](../README.md#4-run-the-server) and
+nsflow UI on `http://localhost:4173/`). See the [README](https://github.com/cognizant-ai-lab/neuro-san-studio/blob/main/README.md#install) and
 [docs/cli.md](cli.md) for details, or use `ns run --server-only` to skip the UI.
 
 ### 5.2: Make HTTP Requests
