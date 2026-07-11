@@ -16,4 +16,25 @@
 
 # By default, use the developer llm_config
 # Worth noting that includes using env var substitution is expressly forbidden by HOCON readers.
-include "developer_llm_config.hocon"
+#include "developer_llm_config.hocon"
+{
+    "llm_config" {
+
+        "fallbacks": [
+            {
+             "class": "langchain_mistralai.chat_models.ChatMistralAI",
+              "model_name": "mistral-small-latest"
+            },
+            {
+                "class": "gemini",
+                "model_name": "gemini-2.5-flash",
+            },
+            {
+                "class": "openai",
+                "model_name": "gpt-5.2",
+            },
+                               
+        ]
+    }
+}
+
