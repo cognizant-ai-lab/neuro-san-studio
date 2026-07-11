@@ -37,6 +37,7 @@
     "industry/telco_network_support.hocon": true,
     "industry/telco_network_orchestration.hocon": true,
     "industry/therapy_vignette_supervisors.hocon": true,
+    "industry/investment_research_coach.hocon": true,
     
     # The following agent networks are used as sub-networks by consumer_decision_assistant.hocon
     "industry/airbnb.hocon": true,
