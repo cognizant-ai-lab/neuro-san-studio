@@ -122,7 +122,6 @@ print("✓ Created manifest: ./registries/manifest.hocon")
 - Setting `"music_nerd.hocon": true` tells neuro-san to load this agent
 - If you have multiple agents, you can enable them all here
 
-
 ## Step 3: Invoke the Agent
 
 Now for the exciting part! Let's create a session and talk to our agent!
@@ -403,5 +402,5 @@ code. You can go through it for a better understanding.
 - Make sure neuro-san is installed: `pip install neuro-san`
 - Check your Python environment is activated
 
-**HOCON Issues**
+**HOCON issues?**
 - Use `ns validate path/to/hocon` to check that your hocon is valid
