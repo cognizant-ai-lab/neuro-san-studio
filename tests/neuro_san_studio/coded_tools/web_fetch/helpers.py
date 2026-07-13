@@ -66,6 +66,42 @@ def make_head_session(
     return session, head_response
 
 
+def make_stream_session(
+    chunks: list[bytes],
+    status: int = 200,
+    content_type: str = "application/pdf",
+    content_length: int | None = None,
+    raise_for_status_exc: Exception | None = None,
+) -> tuple[MagicMock, MagicMock]:
+    """Return (mock_session, mock_response) whose body streams via content.iter_chunked.
+
+    :param chunks: Byte chunks yielded by response.content.iter_chunked.
+    """
+    headers: dict[str, str] = {"Content-Type": content_type}
+    if content_length is not None:
+        headers["Content-Length"] = str(content_length)
+
+    response = MagicMock()
+    response.status = status
+    response.headers = headers
+    response.raise_for_status = MagicMock(side_effect=raise_for_status_exc if raise_for_status_exc else None)
+
+    async def iter_chunked(_chunk_size: int):
+        for chunk in chunks:
+            yield chunk
+
+    response.content.iter_chunked = iter_chunked
+
+    response_cm = MagicMock()
+    response_cm.__aenter__ = AsyncMock(return_value=response)
+    response_cm.__aexit__ = AsyncMock(return_value=False)
+
+    session = MagicMock()
+    session.get = MagicMock(return_value=response_cm)
+
+    return session, response
+
+
 def make_get_response(
     status: int = 200,
     content_type: str = "text/html",

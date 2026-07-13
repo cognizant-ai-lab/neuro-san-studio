@@ -14,7 +14,6 @@
 #
 # END COPYRIGHT
 
-from logging import Logger
 from logging import getLogger
 from os import environ
 from typing import Any
@@ -27,6 +26,7 @@ from langgraph.runtime import Runtime
 from neuro_san.interfaces.reservationist import Reservationist
 from neuro_san.internals.validation.network.unreachable_nodes_network_validator import UnreachableNodesNetworkValidator
 
+from coded_tools.agent_network_editor.and_logger import AndLogger
 from coded_tools.agent_network_editor.connectivity_dictionary_converter import ConnectivityDictionaryConverter
 from coded_tools.agent_network_editor.constants import AGENT_NETWORK_DEFINITION
 from coded_tools.agent_network_editor.constants import AGENT_NETWORK_HOCON_TEXT
@@ -99,7 +99,7 @@ class AgentNetworkPersistenceMiddleware(AgentMiddleware):
                 Keys expected for this implementation are:
                     "agent_network_definition": an outline of an agent network
         """
-        self.logger: Logger = getLogger(self.__class__.__name__)
+        self.logger: AndLogger = AndLogger(getLogger(self.__class__.__name__))
         self.reservationist = reservationist
         self.sly_data = sly_data
         # Maximum number of validation retry rounds before bailing without persisting.

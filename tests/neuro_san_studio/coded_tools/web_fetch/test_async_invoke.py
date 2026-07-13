@@ -23,7 +23,12 @@ from neuro_san_studio.coded_tools.web_fetch import WebFetch
 
 
 class TestAsyncInvoke(TestCase):
-    """Integration-level tests for WebFetch.async_invoke with mocked helpers."""
+    """Integration-level tests for WebFetch.async_invoke with mocked helpers.
+
+    URL validation performs no DNS lookups (DNS records are validated at connection
+    time by GlobalOnlyResolver), and the network-facing helpers are mocked, so these
+    tests never touch the network.
+    """
 
     def setUp(self):
         self.tool = WebFetch()

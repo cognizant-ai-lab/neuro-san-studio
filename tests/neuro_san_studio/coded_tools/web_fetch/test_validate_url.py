@@ -20,8 +20,12 @@ from neuro_san_studio.coded_tools.web_fetch import MAX_URL_LENGTH
 from neuro_san_studio.coded_tools.web_fetch import WebFetch
 
 
-class TestValidateUrl(TestCase):
-    """Unit tests for WebFetch._validate_url."""
+class TestValidateUrl(TestCase):  # pylint: disable=too-many-public-methods
+    """Unit tests for WebFetch._validate_url.
+
+    Validation performs no DNS lookups; DNS records are validated at connection
+    time by GlobalOnlyResolver (see test_global_only_resolver.py).
+    """
 
     def setUp(self):
         self.tool = WebFetch()
@@ -134,3 +138,11 @@ class TestValidateUrl(TestCase):
         """Tests that a URL with a port number still matches the allowed domain correctly."""
         url = self._call({"url": "https://example.com:8080/path", "allowed_domains": ["example.com"]})
         self.assertEqual(url, "https://example.com:8080/path")
+
+    def test_blocked_domain_checked_against_hostname(self):
+        """Tests that blocked domains are enforced on the hostname itself."""
+        # Regression test: the hostname must never be replaced by a resolved IP
+        # before domain checks run.
+        with self.assertRaises(ValueError) as ctx:
+            self._call({"url": "https://test-blocked.com/x", "blocked_domains": ["test-blocked.com"]})
+        self.assertIn("Domain 'test-blocked.com' is blocked", str(ctx.exception))

@@ -35,6 +35,8 @@
         ]
     },
 
+    include "registries/expertise_scoping_instructions.hocon",
+
     # Load the shared LLM configuration from a single source of truth.
     # This allows users to change the model in one file rather than
     # modifying the configuration for each agent network.
@@ -216,9 +218,8 @@ After this time the network can no longer be counted upon to exist.
                     "required": ["agent_network_definition", "agent_network_hocon_text", "agent_network_name"]
                 }
             },
-            "instructions": """
+            "instructions": ${expertise_scoping_instructions} """
 You are responsible for designing and modifying agent networks based on user requirements.
-Only answer inquiries that are directly within your area of expertise. Do not try to help for other matters. Do not mention what you can NOT do. Only mention what you can do.
 
 Take the following steps. Make sure you don't miss any details and follow the steps carefully.
 
