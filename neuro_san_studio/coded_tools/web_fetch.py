@@ -19,6 +19,7 @@ from asyncio import to_thread
 from datetime import datetime
 from datetime import timezone
 from http import HTTPStatus
+from io import BytesIO
 from ipaddress import IPv4Address
 from ipaddress import IPv6Address
 from ipaddress import ip_address
@@ -35,9 +36,9 @@ from aiohttp import ClientTimeout
 from aiohttp import TCPConnector
 from bs4 import BeautifulSoup
 from neuro_san.interfaces.coded_tool import CodedTool
+from pypdf import PdfReader
 
 from neuro_san_studio.coded_tools.global_only_resolver import GlobalOnlyResolver
-from neuro_san_studio.coded_tools.utils.pdf_utils import PdfUtils
 
 MAX_CHARS: int = 20_000
 MAX_URL_LENGTH: int = 250
@@ -350,9 +351,21 @@ class WebFetch(CodedTool):
         try:
             # Text extraction is CPU-bound; run it in a worker thread so a large
             # or complex PDF does not stall the event loop.
-            return await to_thread(PdfUtils.parse_pdf_bytes, data)
+            return await to_thread(self._parse_pdf_bytes, data)
         except Exception as exc:
             raise ClientError(f"url_not_accessible: Failed to parse PDF '{url}': {exc}") from exc
+
+    @staticmethod
+    def _parse_pdf_bytes(data: bytes) -> str:
+        """Extract text from in-memory PDF bytes, joining pages with newlines."""
+        reader = PdfReader(BytesIO(data))
+        page_texts: list[str] = []
+        for page in reader.pages:
+            # extract_text() is typed Optional[str] in newer pypdf and can return
+            # None for pages without extractable text (e.g. scanned images);
+            # coerce to "" so the join never fails on a valid PDF.
+            page_texts.append(page.extract_text() or "")
+        return "\n".join(page_texts)
 
     async def _download_pdf_bytes(self, url: str, session: ClientSession) -> bytes:
         """Stream a PDF body through the protected session, capping its size.

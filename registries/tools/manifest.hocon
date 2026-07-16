@@ -43,6 +43,8 @@
 
     # To use this arxiv_retriever agent network, start by installing the required package:
     #     pip install arxiv
+    # If "get_full_documents" is set to True
+    #     pip install pymupdf
     "tools/arxiv_retriever.hocon": false,
 
     # To use this agent network with Brave Search, obtain an API key from: https://brave.com/search/api/

@@ -104,6 +104,7 @@ Rules:
                 # True = full PDF text (slower, richer context)
                 # False = abstracts only (faster, smaller)
                 # Default is False.
+                # if this is set to True, pymupdf package is required.
                 "get_full_documents": false,
 
                 # Per-document character cap to keep long pages from inflating context/cost
@@ -126,12 +127,6 @@ Rules:
                 # False = fail fast
                 # Default to True.
                 "continue_on_failure": true,
-
-                # Maximum number of PDFs downloaded in parallel when get_full_documents is True
-                # Bounds transient memory (one raw PDF buffer per in-flight download)
-                # and keeps the connection count to arXiv polite
-                # Default to 5.
-                # "max_concurrent_downloads": 5,
             }
         },
         

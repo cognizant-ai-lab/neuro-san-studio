@@ -61,7 +61,7 @@ class TestFetchPdf(TestCase):
 
         with (
             patch.object(self.tool, "_download_pdf_bytes", new=AsyncMock(return_value=b"%PDF-fake")),
-            patch("neuro_san_studio.coded_tools.utils.pdf_utils.PdfReader", return_value=mock_reader),
+            patch("neuro_san_studio.coded_tools.web_fetch.PdfReader", return_value=mock_reader),
         ):
             result = self._call("http://example.com/doc.pdf", MagicMock())
 
@@ -78,7 +78,7 @@ class TestFetchPdf(TestCase):
 
         with (
             patch.object(self.tool, "_download_pdf_bytes", new=AsyncMock(return_value=b"%PDF-fake")),
-            patch("neuro_san_studio.coded_tools.utils.pdf_utils.PdfReader", return_value=mock_reader),
+            patch("neuro_san_studio.coded_tools.web_fetch.PdfReader", return_value=mock_reader),
         ):
             result = self._call("http://example.com/doc.pdf", MagicMock())
 

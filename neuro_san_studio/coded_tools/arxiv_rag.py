@@ -45,8 +45,6 @@ class ArxivRag(CodedTool):
             "continue_on_failure": whether to continue processing if an error occurs (default is True)
             "sort_by": options are `relevance`, `lastUpdatedDate`, and `submittedDate`. Default to `relevance`.
             "sort_order": options are `ascending` and `descending`. Default to `descending`.
-            "max_concurrent_downloads": maximum number of PDFs downloaded in parallel
-                when `get_full_documents` is True (default is 5)
 
         :param sly_data: A dictionary whose keys are defined by the agent
             hierarchy, but whose values are meant to be kept out of the
@@ -87,7 +85,6 @@ class ArxivRag(CodedTool):
             continue_on_failure=args.get("continue_on_failure", True),
             sort_by=args.get("sort_by") or "relevance",
             sort_order=args.get("sort_order") or "descending",
-            max_concurrent_downloads=args.get("max_concurrent_downloads") or 5,
         )
 
         # Query the retriever
