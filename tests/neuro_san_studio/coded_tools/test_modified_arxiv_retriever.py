@@ -23,6 +23,7 @@ from unittest.mock import MagicMock
 from unittest.mock import patch
 
 import pytest
+
 # skip the whole test module since arxiv is not installed; the retriever tool is optional
 pytest.importorskip("arxiv")
 
