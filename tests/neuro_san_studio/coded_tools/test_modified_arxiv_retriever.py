@@ -24,9 +24,6 @@ from unittest.mock import patch
 
 import pytest
 
-# skip the whole test module since arxiv is not installed; the retriever tool is optional
-pytest.importorskip("arxiv")
-
 from aiohttp import ClientError
 
 # pylint: disable=import-error
@@ -37,6 +34,9 @@ from langchain_core.documents import Document
 from pypdf.errors import PyPdfError
 
 from neuro_san_studio.coded_tools.modified_arxiv_retriever import ModifiedArxivRetriever
+
+# skip the whole test module since arxiv is not installed; the retriever tool is optional
+pytest.importorskip("arxiv")
 
 # Patch names in the module under test, not their origin packages.
 MODULE = "neuro_san_studio.coded_tools.modified_arxiv_retriever"
