@@ -107,6 +107,7 @@ class TestModifiedArxivRetriever:
         return session
 
     # --- entry-point branching (sync) ------------------------------------ #
+    # pylint: disable=protected-access
     def test_get_relevant_documents_full_uses_load(self):
         """The sync entry point delegates to load() when get_full_documents is True."""
         retriever = ModifiedArxivRetriever(get_full_documents=True)
