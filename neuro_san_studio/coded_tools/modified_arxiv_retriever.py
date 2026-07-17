@@ -310,7 +310,10 @@ class ModifiedArxivRetriever(BaseRetriever):
             r"(?:\d{2}(?:0[1-9]|1[0-2])\.\d{4,5}(?:v\d+)?"
             r"|[a-z-]+(?:\.[A-Z]{2})?/\d{7}(?:v\d+)?)"
         )
-        for query_item in query[: self.ARXIV_MAX_QUERY_LENGTH].split():
+        tokens = query[: self.ARXIV_MAX_QUERY_LENGTH].split()
+        if not tokens:
+            return False
+        for query_item in tokens:
             if re.fullmatch(arxiv_identifier_pattern, query_item) is None:
                 return False
         return True
