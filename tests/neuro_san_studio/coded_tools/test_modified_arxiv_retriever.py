@@ -52,6 +52,7 @@ class TestModifiedArxivRetriever:
     """
 
     # --- helpers ---------------------------------------------------------- #
+    # pylint: disable=too-many-arguments, too-many-positional-arguments
     @staticmethod
     def _make_result(
         entry_id="http://arxiv.org/abs/2301.01234v1",
