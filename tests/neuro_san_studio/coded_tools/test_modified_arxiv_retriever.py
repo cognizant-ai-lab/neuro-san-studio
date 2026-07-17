@@ -24,6 +24,8 @@ from unittest.mock import patch
 
 import pytest
 from aiohttp import ClientError
+
+# pylint: disable=import-error
 from arxiv import ArxivError
 from arxiv import SortCriterion
 from arxiv import SortOrder
