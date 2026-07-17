@@ -149,6 +149,8 @@ class ModifiedArxivRetriever(BaseRetriever):
         timeout = ClientTimeout(total=DOWNLOAD_TIMEOUT_SECONDS)
         # The semaphore bounds transient memory (at most max_concurrent_downloads
         # raw PDF buffers in flight) and keeps the connection count to arXiv polite.
+        if self.max_concurrent_downloads < 1:
+            raise ValueError("max_concurrent_downloads must be >= 1")
         semaphore = Semaphore(self.max_concurrent_downloads)
         async with ClientSession(timeout=timeout) as session:
             # return_exceptions=True lets every download finish before the session
