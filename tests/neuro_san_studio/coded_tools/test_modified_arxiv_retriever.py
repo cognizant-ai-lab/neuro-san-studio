@@ -14,6 +14,13 @@
 #
 # END COPYRIGHT
 
+# The optional `arxiv` package is not part of requirements.txt (see the
+# arxiv_retriever.hocon header), so it is absent in CI. importorskip must run
+# BEFORE anything imports arxiv, otherwise collection fails with
+# ModuleNotFoundError; that forces imports below code, hence the E402 waiver.
+# ruff: noqa: E402
+# pylint: disable=wrong-import-position
+
 import asyncio
 from asyncio import TimeoutError as AsyncTimeoutError
 from contextlib import asynccontextmanager
@@ -23,6 +30,9 @@ from unittest.mock import MagicMock
 from unittest.mock import patch
 
 import pytest
+
+pytest.importorskip("arxiv", reason="optional arxiv package not installed; skipping retriever tests")
+
 from aiohttp import ClientError
 
 # pylint: disable=import-error
@@ -33,9 +43,6 @@ from langchain_core.documents import Document
 from pypdf.errors import PyPdfError
 
 from neuro_san_studio.coded_tools.modified_arxiv_retriever import ModifiedArxivRetriever
-
-# skip the whole test module since arxiv is not installed; the retriever tool is optional
-pytest.importorskip("arxiv")
 
 # Patch names in the module under test, not their origin packages.
 MODULE = "neuro_san_studio.coded_tools.modified_arxiv_retriever"
