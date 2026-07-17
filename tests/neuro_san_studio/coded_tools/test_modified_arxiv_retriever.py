@@ -293,17 +293,24 @@ class TestModifiedArxivRetriever:
 
     # --- _is_arxiv_identifier() ------------------------------------------ #
     def test_is_arxiv_identifier_true_cases(self):
-        """New-style ids, versioned ids, and multiple ids are all recognized."""
+        """Modern, versioned, and legacy ids (single or multiple) are all recognized."""
         retriever = ModifiedArxivRetriever()
         assert retriever._is_arxiv_identifier("2301.01234") is True
+        assert retriever._is_arxiv_identifier("2301.0123") is True  # pre-2015 4-digit
         assert retriever._is_arxiv_identifier("2301.01234v3") is True
         assert retriever._is_arxiv_identifier("2301.01234 2302.05678") is True
+        assert retriever._is_arxiv_identifier("hep-th/9901001") is True  # legacy
+        assert retriever._is_arxiv_identifier("math.AG/0309136") is True  # legacy + subject
+        assert retriever._is_arxiv_identifier("hep-th/9901001v2") is True  # legacy + version
 
     def test_is_arxiv_identifier_false_cases(self):
-        """Free text, or any non-identifier token in the query, is rejected."""
+        """Free text, mixed tokens, and bare/junk numeric strings are rejected."""
         retriever = ModifiedArxivRetriever()
         assert retriever._is_arxiv_identifier("machine learning") is False
         assert retriever._is_arxiv_identifier("2301.01234 hello") is False
+        assert retriever._is_arxiv_identifier("1234567") is False  # bare 7 digits, no archive
+        assert retriever._is_arxiv_identifier("1234567abc") is False  # junk after 7 digits
+        assert retriever._is_arxiv_identifier("2313.01234") is False  # month 13 is invalid
 
     # --- sort mappings ---------------------------------------------------- #
     def test_sort_criterion_mapping_and_default(self):

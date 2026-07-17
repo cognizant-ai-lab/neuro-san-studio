@@ -302,10 +302,12 @@ class ModifiedArxivRetriever(BaseRetriever):
         :param query: a plaintext search query
         :return: True when every whitespace-separated token is an arXiv identifier
         """
-        arxiv_identifier_pattern = r"\d{2}(0[1-9]|1[0-2])\.\d{4,5}(v\d+|)|\d{7}.*"
+        arxiv_identifier_pattern = (
+            r"(?:\d{2}(?:0[1-9]|1[0-2])\.\d{4,5}(?:v\d+)?"
+            r"|[a-z-]+(?:\.[A-Z]{2})?/\d{7}(?:v\d+)?)"
+        )
         for query_item in query[: self.ARXIV_MAX_QUERY_LENGTH].split():
-            match_result = re.match(arxiv_identifier_pattern, query_item)
-            if not match_result or match_result.group(0) != query_item:
+            if re.fullmatch(arxiv_identifier_pattern, query_item) is None:
                 return False
         return True
 
