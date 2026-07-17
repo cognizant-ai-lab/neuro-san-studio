@@ -29,7 +29,6 @@ from typing import Optional
 from aiohttp import ClientError
 from aiohttp import ClientSession
 from aiohttp import ClientTimeout
-
 from arxiv import ArxivError
 from arxiv import Client
 from arxiv import Result
