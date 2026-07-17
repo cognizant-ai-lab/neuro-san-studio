@@ -15,11 +15,12 @@
 # END COPYRIGHT
 
 """Tests for PdfUtils.parse_pdf_bytes."""
+
 from io import BytesIO
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock
+from unittest.mock import patch
 
 import pytest
-
 from pypdf.errors import PdfReadError
 
 from neuro_san_studio.coded_tools.utils.pdf_utils import PdfUtils

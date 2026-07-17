@@ -30,7 +30,6 @@ from aiohttp import ClientError
 from aiohttp import ClientSession
 from aiohttp import ClientTimeout
 
-# pylint: disable=import-error
 from arxiv import ArxivError
 from arxiv import Client
 from arxiv import Result
