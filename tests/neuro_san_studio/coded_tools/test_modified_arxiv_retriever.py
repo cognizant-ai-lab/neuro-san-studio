@@ -36,6 +36,7 @@ from neuro_san_studio.coded_tools.modified_arxiv_retriever import ModifiedArxivR
 MODULE = "neuro_san_studio.coded_tools.modified_arxiv_retriever"
 
 
+# pylint: disable=too-many-public-methods
 class TestModifiedArxivRetriever:
     """Behavioral tests for ModifiedArxivRetriever.
 
