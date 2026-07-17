@@ -195,11 +195,13 @@ class ModifiedArxivRetriever(BaseRetriever):
         except (ClientError, AsyncTimeoutError, PyPdfError) as f_ex:
             logger.debug(f_ex)
             return None
-        except Exception as e:
+        except Exception as exception:
             if self.continue_on_failure:
-                logger.error(e)
+                logger.error(
+                    "Unexpected error downloading/parsing PDF for %s: %s", result.entry_id, exception, exc_info=True
+                )
                 return None
-            raise e
+            raise
 
         return Document(page_content=text[: self.doc_content_chars_max], metadata=self._build_metadata(result))
 
