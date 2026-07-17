@@ -253,7 +253,7 @@ class ModifiedArxivRetriever(BaseRetriever):
                 page_content=result.summary,
                 metadata={
                     "Entry ID": result.entry_id,
-                    "Published": result.updated.date(),
+                    "Published": str(result.updated.date()),
                     "Title": result.title,
                     "Authors": ", ".join(a.name for a in result.authors),
                 },
