@@ -19,7 +19,7 @@ from io import BytesIO
 from pypdf import PdfReader
 
 
-class PdfUtils:  # pylint: disable=too-few-public-methods
+class PdfUtils:
     """Shared helpers for extracting text from PDF documents."""
 
     @staticmethod
@@ -33,3 +33,9 @@ class PdfUtils:  # pylint: disable=too-few-public-methods
             # coerce to "" so the join never fails on a valid PDF.
             page_texts.append(page.extract_text() or "")
         return "\n".join(page_texts)
+
+    @staticmethod
+    def parse_pdf_pages(data: bytes) -> list[str]:
+        """Extract each PDF page separately, preserving page boundaries."""
+        reader = PdfReader(BytesIO(data))
+        return [page.extract_text() or "" for page in reader.pages]

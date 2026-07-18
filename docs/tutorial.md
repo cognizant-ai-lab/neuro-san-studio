@@ -714,10 +714,10 @@ don’t need to redefine it in the agent network — just reference it by name.
 
 ```json
 "tavily_search": {
-  "class": "langchain_community.tools.tavily_search.TavilySearchResults",
+  "class": "langchain_tavily.TavilySearch",
   "args": {
     "api_wrapper": {
-      "class": "langchain_community.utilities.tavily_search.TavilySearchAPIWrapper"
+      "max_results": 5
     }
   }
 }

@@ -19,14 +19,8 @@
 import json
 from typing import Any
 from typing import Dict
-from typing import Literal
 
-from langchain_community.tools.slack.get_channel import SlackGetChannel
-from langchain_community.tools.slack.get_message import SlackGetMessage
 from neuro_san.interfaces.coded_tool import CodedTool
-from pydantic import PydanticUserError
-
-EMPTY: Literal[""] = ""
 
 
 class Slack(CodedTool):
@@ -90,25 +84,28 @@ class Slack(CodedTool):
         # a following format:
         # '[{"user": "WU0JH", "text": "Yes", "ts": "1744677036.155459"}, ...]'
         try:
-            # Get a str of channel ids and names
-            channel_id_name_str: str = await SlackGetChannel().ainvoke(input=EMPTY)
-            # Convert the JSON str to a list
-            channel_id_name_list: list = json.loads(channel_id_name_str)
+            # pylint: disable=import-error,import-outside-toplevel
+            from slack_sdk.web.async_client import AsyncWebClient
+
+            client = AsyncWebClient()
+            channel_response = await client.conversations_list(types="public_channel,private_channel")
+            channel_id_name_list = channel_response.get("channels", [])
             # Make a lookup table with channel names as keys and ids as values
             channel_id_name_dict: dict = {channel["name"]: channel["id"] for channel in channel_id_name_list}
 
             # Get channel id and return the messages if possible.
             channel_id: str = channel_id_name_dict.get(channel_name)
             if channel_id:
-                return await SlackGetMessage().ainvoke(channel_id)
+                history = await client.conversations_history(channel=channel_id)
+                return json.dumps(history.get("messages", []))
             return f"The {channel_name} channel not found."
 
         except json.JSONDecodeError as err:
             return f"Error: Could not parse slack channel list: {err}"
 
-        # If slack-sdk is not installed, PydanticUserError is triggered
+        # If slack-sdk or credentials are unavailable, retain the demo's mock data.
         # Return a mock message depending on the channel_name
-        except PydanticUserError:
+        except Exception:  # pylint: disable=broad-exception-caught
             if channel_name == "higher_education":
                 return """Opportunity Areas:
 

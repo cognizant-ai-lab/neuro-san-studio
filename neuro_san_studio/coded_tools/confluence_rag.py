@@ -16,19 +16,16 @@
 
 """Tool module for doing RAG from confluence pages"""
 
-import inspect
 import logging
 import os
+from asyncio import to_thread
 from typing import Any
 from typing import Dict
 from typing import List
 
-# pylint: disable=import-error
-from atlassian.errors import ApiPermissionError
-from langchain_community.document_loaders.confluence import ConfluenceLoader
+from bs4 import BeautifulSoup
 from langchain_core.documents import Document
 from neuro_san.interfaces.coded_tool import CodedTool
-from requests.exceptions import HTTPError
 
 from neuro_san_studio.coded_tools.base_rag import BaseRag
 
@@ -69,14 +66,11 @@ class ConfluenceRag(CodedTool, BaseRag):
         # Extract arguments from the input dictionary
         query: str = args.get("query", "")
 
-        # Create a list of parameters of ConfluenceLoader
-        # https://python.langchain.com/api_reference/community/document_loaders/langchain_community.document_loaders.confluence.ConfluenceLoader.html
-        confluence_loader_params = [
-            name for name in inspect.signature(ConfluenceLoader.__init__).parameters if name != "self"
-        ]
-
-        # Filter args from the above list
-        loader_args = {arg: arg_value for arg, arg_value in args.items() if arg in confluence_loader_params}
+        loader_args = {
+            name: args[name]
+            for name in ("url", "space_key", "page_ids", "username", "api_key", "cloud", "include_attachments")
+            if name in args
+        }
 
         # Check the env var for "username" and "api_key"
         loader_args.setdefault("username", os.getenv("JIRA_USERNAME"))
@@ -122,13 +116,64 @@ class ConfluenceRag(CodedTool, BaseRag):
         url = loader_args.get("url")
         docs: List[Document] = []
         try:
-            loader = ConfluenceLoader(**loader_args)
-            docs = await loader.aload()
+            docs = await to_thread(self._load_pages, loader_args)
             logger.info("Successfully loaded Confluence pages from %s", url)
-        except HTTPError as http_error:
-            logger.error("HTTP error while loading from %s: %s", url, http_error)
-            return []
-        except ApiPermissionError as api_error:
-            logger.error("API Permission error while loading from %s: %s", url, api_error)
+        except Exception as error:  # pylint: disable=broad-exception-caught
+            logger.error("Failed to load Confluence pages from %s: %s", url, error)
 
         return docs
+
+    @staticmethod
+    def _load_pages(loader_args: Dict[str, Any]) -> List[Document]:
+        """Load Confluence page bodies using ``atlassian-python-api`` directly."""
+        # pylint: disable=import-error,import-outside-toplevel
+        from atlassian import Confluence
+
+        confluence = Confluence(
+            url=loader_args["url"],
+            username=loader_args.get("username"),
+            password=loader_args.get("api_key"),
+            cloud=loader_args.get("cloud", True),
+        )
+        pages: list[dict[str, Any]] = []
+        for page_id in loader_args.get("page_ids") or []:
+            pages.append(confluence.get_page_by_id(page_id, expand="body.storage,version,space"))
+        if loader_args.get("space_key"):
+            start = 0
+            while True:
+                batch = confluence.get_all_pages_from_space(
+                    loader_args["space_key"],
+                    start=start,
+                    limit=100,
+                    status="current",
+                    expand="body.storage,version,space",
+                )
+                pages.extend(batch)
+                if len(batch) < 100:
+                    break
+                start += len(batch)
+
+        documents: list[Document] = []
+        seen: set[str] = set()
+        for page in pages:
+            page_id = str(page.get("id", ""))
+            if not page_id or page_id in seen:
+                continue
+            seen.add(page_id)
+            html = page.get("body", {}).get("storage", {}).get("value", "")
+            text = BeautifulSoup(html, "html.parser").get_text(separator="\n", strip=True)
+            documents.append(
+                Document(
+                    page_content=text,
+                    metadata={
+                        "id": page_id,
+                        "title": page.get("title", ""),
+                        "source": f"{loader_args['url'].rstrip('/')}/pages/viewpage.action?pageId={page_id}",
+                        "space_key": page.get("space", {}).get("key"),
+                        "version": page.get("version", {}).get("number"),
+                    },
+                )
+            )
+        if loader_args.get("include_attachments"):
+            logger.warning("include_attachments is not yet supported by the direct Confluence loader")
+        return documents

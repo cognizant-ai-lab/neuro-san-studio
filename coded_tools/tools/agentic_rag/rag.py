@@ -20,13 +20,15 @@ from typing import Any
 from typing import Dict
 from typing import List
 
-from langchain_community.document_loaders import PyPDFLoader
-from langchain_community.vectorstores import InMemoryVectorStore
+from aiohttp import ClientSession
 from langchain_core.documents import Document
+from langchain_core.vectorstores import InMemoryVectorStore
 from langchain_core.vectorstores.base import VectorStoreRetriever
 from langchain_openai import OpenAIEmbeddings
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from neuro_san.interfaces.coded_tool import CodedTool
+
+from neuro_san_studio.coded_tools.utils.pdf_utils import PdfUtils
 
 PDF_FILE_URL = "https://www.usac.org/wp-content/uploads/rural-health-care/documents/samples/LargeProjectScopeRFP.pdf"
 
@@ -97,8 +99,14 @@ class Rag(CodedTool):
         :return: In-memory vector store containing the embedded document chunks
         """
 
-        loader = PyPDFLoader(file_path=url)
-        docs: List[Document] = await loader.aload()
+        async with ClientSession() as session:
+            async with session.get(url) as response:
+                response.raise_for_status()
+                data = await response.read()
+        docs = [
+            Document(page_content=text, metadata={"source": url, "page": page_number})
+            for page_number, text in enumerate(PdfUtils.parse_pdf_pages(data))
+        ]
 
         # Split documents into smaller chunks for better embedding and
         # retrieval

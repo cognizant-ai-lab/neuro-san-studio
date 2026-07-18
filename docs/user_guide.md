@@ -1217,14 +1217,14 @@ To use tools from toolbox in your agent network, simply call them with field `to
    - langchain tools
        - Each tool or toolkit must have a `class` key.
        - The specified class must be available in the server's `PYTHONPATH`.
-       - Additional dependencies (outside of `langchain_community`) must be installed separately.
+       - Integration-specific dependencies must be installed separately.
 
         Example:
 
         ```hocon
             "tavily_search": {
                 # Fully qualified class path of the tool to be instantiated.
-                "class": "langchain_community.tools.tavily_search.TavilySearchResults",
+                "class": "langchain_tavily.TavilySearch",
 
                 # (Optional) URL for reference documentation about this tool.
                 "base_tool_info_url": "https://python.langchain.com/docs/integrations/tools/tavily_search/",
@@ -1234,7 +1234,7 @@ To use tools from toolbox in your agent network, simply call them with field `to
                     "api_wrapper": {
                         # If the argument should be instantiated as a class, specify it using the "class" key.
                         # This tells the system to create an instance of the provided class instead of passing it as-is.
-                        "class": "langchain_community.utilities.tavily_search.TavilySearchAPIWrapper"
+                        "max_results": 5
                     },
                 }
             }

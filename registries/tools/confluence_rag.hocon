@@ -17,9 +17,6 @@
 # To use this agent network, start by installing the required package:
 #     pip install atlassian-python-api
 #
-# Additional installations may be required depending on the attachment types used.
-# For details, see the "Attachments" section below.
-
 {
     include "registries/expertise_scoping_instructions.hocon",
 
@@ -31,7 +28,7 @@
 
     # Optional metadata describing this agent network
     "metadata": {
-        "description": "Confluence RAG assistant that answers user queries using Retrieval-Augmented Generation on Confluence pages, supporting page and space loading with optional attachment processing.",
+        "description": "Confluence RAG assistant that answers user queries using Retrieval-Augmented Generation on Confluence page bodies.",
         "tags": ["rag", "confluence", "tool"],
         "sample_queries": [
             "What information is on the team wiki page?",
@@ -105,26 +102,7 @@
 
                 # --- Optional Arguments ---
                 #
-                # Attachments
-                #
-                "include_attachments": false
-                # If True, download and extract text content to add to the document.
-                # (the default value is false)
-                #
-                # Currently supported attachment types:
-                # PDF (.pdf)
-                # PNG (.png)
-                # JPEG/JPG (.jpeg, .jpg)
-                # SVG (.svg)
-                # Word (.doc, .docx)
-                # Excel (.xls, .xlsx)
-                #
-                # Note: Some file types require additional Python packages (e.g., pytesseract, pdf2image, Pillow)
-                # and external system dependencies (e.g., Poppler for PDFs, Tesseract for OCR).
-                #
-                # For full details on supported arguments and required dependencies for loading Confluence pages,
-                # refer to the official LangChain documentation:
-                # https://python.langchain.com/api_reference/_modules/langchain_community/document_loaders/confluence.html#ConfluenceLoader
+                # Attachment extraction is not currently supported by the project-owned loader.
 
                 # Vector Store
                 #

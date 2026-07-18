@@ -56,7 +56,7 @@
     #     pip install atlassian-python-api
     #
     # Additional installations may be required depending on the attachment types used.
-    # For details, see https://python.langchain.com/api_reference/_modules/langchain_community/document_loaders/confluence.html#ConfluenceLoader
+    # See https://atlassian-python-api.readthedocs.io/confluence.html
     # Set "username" and "api_key" in the agent network hocon or
     # as environment variable "JIRA_USERNAME" and "JIRA_API_TOKEN", respectively.
     "tools/confluence_rag.hocon": false,
