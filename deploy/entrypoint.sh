@@ -38,6 +38,11 @@ then
 fi
 export PYTHONPATH
 
+echo "Configuration information:"
+cat /proc/meminfo | grep MemTotal
+lscpu | grep "^CPU(s):"
+ulimit -a
+
 echo "Toolchain:"
 ${PYTHON} --version
 ${PIP} --version
