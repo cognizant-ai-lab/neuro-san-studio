@@ -34,3 +34,8 @@ file://.*%7B%7B.*%7D%7D
 
 # Shell/template variable URLs (lychee cannot resolve these)
 https://go.dev/dl/go\$
+
+# For unit test, test_modified_arxiv_retriever
+http://link/a
+http://link/b
+http://x/
