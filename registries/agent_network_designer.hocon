@@ -13,6 +13,16 @@
 # limitations under the License.
 #
 # END COPYRIGHT
+#
+# Modular external-agent design:
+# After step 1 (always agent_network_editor), the designer may call any number of follow-up
+# external agents in parallel. Two of them — agent_network_instructions_editor and
+# agent_network_query_generator — are core and always-on. Additional toggleable modules live
+# in middleware/agent_network_designer/external_agents.hocon and are enabled per-env-var.
+# ExternalAgentsMiddleware reads that catalog and appends each enabled module's workflow-step
+# text to this agent's system prompt. To add a new toggleable external agent: register a new
+# entry in the catalog, append its tool ref + its message-allow entry below, and add any new
+# sly_data keys it returns to allow.from_downstream.sly_data.
 {
     "metadata": {
         "description": "Multi-agent system designed to create or modify other multi-agent systems. Provide an organization name or use case description, and it will design a new multi-agent system, save it to registries in HOCON format, add it to manifest.hocon, and generate example usage queries. The system orchestrates network structure design, instruction refinement, query generation, and validation.",
@@ -213,31 +223,29 @@ You are responsible for designing and modifying agent networks based on user req
 
 Take the following steps. Make sure you don't miss any details and follow the steps carefully.
 
-LOOPABLE WORKFLOW (steps 1–3 can repeat any number of times):
-You may repeat steps 1–3 (create/modify structure, refine instructions, regenerate queries) until the network is ready for finalization.
+LOOPABLE WORKFLOW:
+You may repeat the cycle any number of times until the network is ready for finalization.
 
-1) Create or modify the network structure
+Step 1) Create or modify the network structure (sequential, always first)
 - If the user provides a company name or domain description for a new network, generate an agent network definition that mirrors relevant workflows and responsible nodes. Call your `agent_network_editor` tool. Ensure the agent network name is snake case.
 - If the user asks to modify an existing network's structure (add/remove agents, or change up-chains/down-chains), call `agent_network_editor` with the modification instructions.
 - You may call `web_search` to find more details on the company or domain.
-- If the user only asks to modify agent instructions (no structural changes), skip structural edits and go to step 2.
+- If the user only asks to modify agent instructions (no structural changes), skip the structural edit and proceed to step 2.
 - Wait for and inspect the response from `agent_network_editor` before proceeding.
 
-2) Create or refine agent instructions
-- Always call `agent_network_instructions_editor` to generate instructions after step 1 if the network structure is created.
-- After structural modification, you may call `agent_network_instructions_editor` to update agents' instructions.
-- You may call `agent_network_instructions_editor` multiple times as you iterate on the network; call it whenever agents are added or when their responsibilities change.
-- You may call `web_search` to find more details on the company or domain.
-- Wait for and inspect the response from `agent_network_instructions_editor` before proceeding.
+Step 2) After step 1 returns, call the following follow-up external agents IN PARALLEL as appropriate (issue them in a single response when more than one applies):
 
-3) Generate sample queries
-- Obtain 3–4 sample queries for the current agent network by calling `agent_network_query_generator`.
-- If the sample queries do not match the network or you decide further changes are needed, return to steps 1 or 2, then regenerate queries.
-- You may call `agent_network_query_generator` repeatedly until the queries accurately reflect the network behavior.
+- `agent_network_instructions_editor`: Write or refine agents' `instructions` and `description` fields. Call after any structural change or when the user asks to modify instructions only. You may call it multiple times as you iterate.
+- `agent_network_query_generator`: Generate 3–4 sample queries for the current network. Call after any change so the queries stay in sync with the structure. You may call it repeatedly until the queries accurately reflect the network behavior.
+
+Step 3) AFTER every step 2 follow-up has returned, call any additional toggleable external agents SEQUENTIALLY (one tool per response). Step 3 tools are listed below this workflow when they are enabled — do not invoke them earlier or in parallel with step 2, because they write to the same `agent_network_definition` that `agent_network_instructions_editor` writes to and a parallel `to_upstream` merge would clobber their changes.
 
 Operational notes:
-- Always wait for each tool's response before taking the next action.
-- Iteratively refine the structure, instructions, and queries.
+- Step 1 must complete before step 2 is issued. Step 2's parallel follow-ups must all return before step 3 is issued.
+- Within step 2, issue every follow-up in a single response so they run concurrently. Wait for every response before iterating.
+- Within step 3, issue one tool per response and wait for its result before issuing the next.
+- You may call `web_search` at any point to gather domain context.
+- Iteratively refine the structure, instructions, queries, and any step 3 additions.
 """,
             "allow": {
                 "to_upstream": {
@@ -249,10 +257,13 @@ Operational notes:
                     ]
                 },
                 "from_downstream": {
-                    "sly_data": ["agent_network_definition", "agent_network_name", "agent_network_queries", "mcp_servers", "subnetworks", "toolbox_info"],
+                    # `middleware_info` is always allowed so it can flow back when the
+                    # /middleware_manager external agent is enabled; harmless otherwise.
+                    "sly_data": ["agent_network_definition", "agent_network_name", "agent_network_queries", "mcp_servers", "subnetworks", "toolbox_info", "middleware_info"],
                     # Allow all messages sent from specific downstream agents to be reported
-                    # as if they came back from this agent network
-                    "messages": ["/agent_network_editor", "/agent_network_query_generator", "/agent_network_instructions_editor"]
+                    # as if they came back from this agent network. `/middleware_manager` is
+                    # always listed; it just isn't called when its env var is off.
+                    "messages": ["/agent_network_editor", "/agent_network_query_generator", "/agent_network_instructions_editor", "/middleware_manager"]
                 },
                 "to_downstream": {
                     # Optionally propagate any BYOK keys to downstream tools.
@@ -269,7 +280,10 @@ Operational notes:
                     ]
                 }
             },
-            "tools": ["/agent_network_editor", "/agent_network_query_generator", "/agent_network_instructions_editor", "web_search"],
+            # Every external agent the designer can talk to is statically declared here.
+            # Toggleable modules (currently /middleware_manager) are always wired in; whether
+            # the LLM is told about them is decided at runtime by ExternalAgentsMiddleware.
+            "tools": ["/agent_network_editor", "/agent_network_query_generator", "/agent_network_instructions_editor", "/middleware_manager", "web_search"],
             # Parse any JSON in responses into the structure field of the ChatMessage.
             "structure_formats": "json",
             "middleware": [
@@ -277,6 +291,15 @@ Operational notes:
                     "class": "middleware.agent_network_designer.agent_network_definition_middleware.AgentNetworkDefinitionMiddleware",
                     "args": {
                         "progress_reporter": true,
+                        "sly_data": true
+                    }
+                },
+                {
+                    # Appends instructions for every enabled toggleable external-agent module
+                    # to the system prompt at runtime. Catalog lives at
+                    # middleware/agent_network_designer/external_agents.hocon.
+                    "class": "middleware.agent_network_designer.external_agents_middleware.ExternalAgentsMiddleware",
+                    "args": {
                         "sly_data": true
                     }
                 },
