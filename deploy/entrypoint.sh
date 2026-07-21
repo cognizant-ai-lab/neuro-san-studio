@@ -38,6 +38,17 @@ then
 fi
 export PYTHONPATH
 
+echo "Configuration information:"
+cat /proc/meminfo | grep MemTotal
+cat /sys/fs/cgroup/memory/memory.limit_in_bytes
+cat /sys/fs/cgroup/memory.max
+echo
+lscpu | grep "^CPU(s):"
+cat /sys/fs/cgroup/cpu/cpu.cfs_quota_us
+cat /sys/fs/cgroup/cpu.max
+echo
+ulimit -a
+
 echo "Toolchain:"
 ${PYTHON} --version
 ${PIP} --version
