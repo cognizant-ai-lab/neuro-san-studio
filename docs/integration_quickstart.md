@@ -1,6 +1,8 @@
 # Neuro-SAN Integration Quick Start
 
 This tutorial will teach you how to use a neuro-san agent network as a Python library using the "direct" session feature.
+In this tutorial, we assume that we are working in a blank directory. If you've already created a neuro-san project
+with `ns init` command, you can directly skip to step 3 of this tutorial.
 
 ## Who is this for ?
 
@@ -27,6 +29,11 @@ Before starting, ensure you have:
 - API keys for your chosen LLM provider (such as OpenAI for GPT-4o)
 - An empty folder to work in
 
+> **Tip:** If you just want to chat with an agent network without writing any Python, the `ns chat`
+> command (see [docs/cli/chat.md](cli/chat.md)) gives you a direct, in-process session with zero
+> boilerplate. This tutorial is for when you want to embed that same "direct" session inside your
+> own Python application.
+
 ## Setup
 
 First, import the necessary libraries:
@@ -43,7 +50,7 @@ warnings.filterwarnings('ignore', category=RuntimeWarning)
 ## Step 1: Create a Basic Agent
 
 An agent in neuro-san is defined using a HOCON configuration file. Let's create a simple
-"hello_world" agent that greets users.
+"music_nerd" agent that answers questions about music.
 
 **Note:** This example uses the `gpt-4o` model. You can substitute it with any available
 model (e.g., `gpt-3.5-turbo`, `claude-3-sonnet`, etc.). Make sure your API keys are
@@ -61,19 +68,20 @@ basic_agent_hocon = '''
 
     "tools": [
         {
-            "name": "HelloWorldAgent",
+            "name": "MusicNerd",
             "function" : {
                 # The description acts as an initial prompt. 
-                "description": """I greet people"""
+                "description": """I help with music-related inquiries."""
             },
-             "instructions": """You are an agent that greets people. When you 
-            receive a request, respond with a friendly greeting message.""",
+             "instructions": """You’re Music Nerd, the go-to brain for all things rock, pop, 
+             and everything in between from the 60s onward. You live for liner notes, B-sides, 
+             lost demos, and legendary live sets.""",
         },
     ]
 }
 '''
 
-agent_file_name = "hello_world.hocon"
+agent_file_name = "music_nerd.hocon"
 
 # Create the registries directory if it doesn't exist
 os.makedirs("./registries", exist_ok=True)
@@ -88,7 +96,7 @@ print(f"✓ Created agent configuration: ./registries/{agent_file_name}")
 **What's happening here?**
 - We define an agent configuration that specifies which LLM model to use
 - The agent has a description and instructions that guide its behavior
-- We save this configuration to `./registries/hello_world.hocon`
+- We save this configuration to `./registries/music_nerd.hocon`
 
 ## Step 2: Register the Agent
 
@@ -98,7 +106,7 @@ neuro-san uses a `manifest.hocon` file to discover available agents. Let's creat
 # Define the manifest that lists all available agents
 manifest_hocon = '''
 {
-    "hello_world.hocon": true,
+    "music_nerd.hocon": true,
 }
 '''
 
@@ -111,17 +119,8 @@ print("✓ Created manifest: ./registries/manifest.hocon")
 
 **What's happening here?**
 - The manifest lists all agent configuration files and enables/disables them
-- Setting `"hello_world.hocon": true` tells neuro-san to load this agent
+- Setting `"music_nerd.hocon": true` tells neuro-san to load this agent
 - If you have multiple agents, you can enable them all here
-
-Next, tell neuro-san where to find the manifest:
-
-```py
-# Set the manifest location as an environment variable
-os.environ['AGENT_MANIFEST_FILE'] = './registries/manifest.hocon'
-
-print("✓ Set AGENT_MANIFEST_FILE environment variable")
-```
 
 ## Step 3: Invoke the Agent
 
@@ -130,13 +129,19 @@ Now for the exciting part! Let's create a session and talk to our agent!
 ### 3.1: Create a Session
 
 ```py
-from neuro_san.client.agent_session_factory import DirectAgentSessionFactory
+from neuro_san.client.direct_agent_session_factory import DirectAgentSessionFactory
+
+# Set the manifest location BEFORE creating the factory — the factory reads
+# AGENT_MANIFEST_FILE when it is constructed, so this must come first.
+os.environ['AGENT_MANIFEST_FILE'] = './registries/manifest.hocon'
+
+print("✓ Set AGENT_MANIFEST_FILE environment variable")
 
 # Create a factory for building agent sessions
 factory = DirectAgentSessionFactory()
 
 # Specify which agent to use (matches the filename without .hocon)
-agent_name = 'hello_world'
+agent_name = 'music_nerd'
 
 # Create a direct session with the agent
 session = factory.create_session(
@@ -152,7 +157,7 @@ print(f"✓ Created session with agent: {agent_name}")
 
 ```py
 # Define the message you want to send to the agent
-user_message = 'Hello how are you!?'
+user_message = 'Which band wrote Yellow Submarine?'
 
 # Format it in the structure neuro-san expects
 request_payload = {
@@ -170,14 +175,8 @@ The agent returns a streaming response. Let's collect all the messages:
 # Get the streaming response (returns a generator)
 stream = session.streaming_chat(request_payload)
 
-# Collect all messages from the stream
-msg = []
-for chat_msg in stream:
-    msg.append(chat_msg)
-    if chat_msg.get("done") is True:
-        break
-
-# msg = list(stream) # or you could do this too
+# Collect all messages from the stream (the generator ends once the agent is done responding)
+msg = list(stream)
 
 # Print the agent's response
 print(f"Agent Response: {msg[-1]['response']['text']}")
@@ -186,7 +185,7 @@ print(f"Agent Response: {msg[-1]['response']['text']}")
 **Expected output:**
 
 ```txt
-Agent Response: Hello! I'm doing well, thank you for asking. How about you?
+Agent Response: Yellow Submarine was written by The Beatles - credited to Lennon-McCartney and sung by Ringo Starr. It first appeared on 1966's Revolver.
 ```
 
 ### 3.4: Inspect the Full Response
@@ -203,34 +202,43 @@ The response includes rich metadata about the conversation, including:
 
 ```txt
 [{'response': {'chat_context': {'chat_histories': [{'messages': [{'origin': [{'instantiation_index': 1,
-                                                                              'tool': 'HelloWorldAgent'}],
-                                                                  'text': 'Hello '
-                                                                          'how '
-                                                                          'are '
-                                                                          'you!?',
+                                                                              'tool': 'MusicNerd'}],
+                                                                  'text': 'Which '
+                                                                          'band '
+                                                                          'wrote '
+                                                                          'Yellow '
+                                                                          'Submarine?',
                                                                   'type': <ChatMessageType.HUMAN: 2>},
                                                                  {'origin': [{'instantiation_index': 1,
-                                                                              'tool': 'HelloWorldAgent'}],
-                                                                  'text': 'Hello! '
-                                                                          "I'm "
-                                                                          'doing '
-                                                                          'great, '
-                                                                          'thank '
-                                                                          'you '
-                                                                          'for '
-                                                                          'asking. '
-                                                                          'How '
-                                                                          'about '
-                                                                          'you? '
-                                                                          "How's "
-                                                                          'your '
-                                                                          'day '
-                                                                          'going?',
+                                                                              'tool': 'MusicNerd'}],
+                                                                  'text': 'Yellow '
+                                                                          'Submarine '
+                                                                          'was '
+                                                                          'written '
+                                                                          'by '
+                                                                          'The '
+                                                                          'Beatles '
+                                                                          '- '
+                                                                          'credited '
+                                                                          'to '
+                                                                          'Lennon-McCartney '
+                                                                          'and '
+                                                                          'sung '
+                                                                          'by '
+                                                                          'Ringo '
+                                                                          'Starr. '
+                                                                          'It '
+                                                                          'first '
+                                                                          'appeared '
+                                                                          'on '
+                                                                          "1966's "
+                                                                          'Revolver.',
                                                                   'type': <ChatMessageType.AI: 4>}],
                                                     'origin': [{'instantiation_index': 1,
-                                                                'tool': 'HelloWorldAgent'}]}]},
-               'text': "Hello! I'm doing great, thank you for asking. How "
-                       "about you? How's your day going?",
+                                                                'tool': 'MusicNerd'}]}]},
+               'text': 'Yellow Submarine was written by The Beatles - credited '
+                       'to Lennon-McCartney and sung by Ringo Starr. It first '
+                       "appeared on 1966's Revolver.",
                'type': <ChatMessageType.AGENT_FRAMEWORK: 101>}}]
 ```
 
@@ -244,7 +252,7 @@ The response includes rich metadata about the conversation, including:
 Instead of repeating all that code every time, let's wrap it in a convenient function:
 
 ```py
-from neuro_san.client.agent_session_factory import DirectAgentSessionFactory
+from neuro_san.client.direct_agent_session_factory import DirectAgentSessionFactory
 
 
 def invoke_agent(agent_name: str, user_text: str, sly_data=None):
@@ -275,14 +283,10 @@ def invoke_agent(agent_name: str, user_text: str, sly_data=None):
         "sly_data": sly_data,
     }
 
-    # Stream the response and collect messages
+    # Stream the response and collect messages (the generator ends once the agent is done responding)
     stream = session.streaming_chat(request_payload)
-    msg = []
-    for chat_msg in stream:
-        msg.append(chat_msg)
-        if chat_msg.get("done") is True:
-            break
-    
+    msg = list(stream)
+
     # Return the last message (which contains the complete response)
     return msg[-1]
 ```
@@ -293,7 +297,7 @@ Now invoking an agent is just one line of code:
 
 ```py
 # Invoke the agent with a simple message
-response = invoke_agent('hello_world', 'Hello! How are you?')
+response = invoke_agent('music_nerd', 'Which band wrote Yellow Submarine?')
 
 # Print just the text response
 print(response['response']['text'])
@@ -302,7 +306,7 @@ print(response['response']['text'])
 **Expected output:**
 
 ```txt
-Hello! I'm doing great, thank you for asking. How about you? How's your day going?
+Yellow Submarine was written by The Beatles - credited to Lennon-McCartney and sung by Ringo Starr. It first appeared on 1966's Revolver.
 ```
 
 ## Step 5: Using HTTP Requests (Alternative Method)
@@ -310,15 +314,26 @@ Hello! I'm doing great, thank you for asking. How about you? How's your day goin
 If you prefer running neuro-san as a separate server process, you can interact with it
 via HTTP requests instead of direct invocation.
 
-### 5.1: Start the Server
+### 5.1: Start the Server and Client
 
-First, start the neuro-san server in a terminal:
+There are two options to start the neuro-san server and nsflow client.
+
+If you've installed neuro-san-studio package to your project:
 
 ```bash
-python -m neuro_san.service.main_loop.server_main_loop
+ns run
 ```
 
-The server will start on `http://localhost:8080` by default.
+If you've cloned this repo:
+
+```bash
+python -m neuro_san_studio run
+```
+
+This starts the neuro-san HTTP API on `http://localhost:8080` by default (and also launches the
+nsflow UI on `http://localhost:4173/`). See the
+[README](https://github.com/cognizant-ai-lab/neuro-san-studio/blob/main/README.md#install) and
+[docs/cli.md](cli.md) for details, or use `ns run --server-only` to skip the UI.
 
 ### 5.2: Make HTTP Requests
 
@@ -328,10 +343,10 @@ Now you can send requests to your agent via HTTP:
 import requests
 
 # Define the agent and message
-agent_name = 'hello_world'
+agent_name = 'music_nerd'
 request_payload = {
     "user_message": {
-        "text": "Hello! How are you?"
+        "text": "Which band wrote Yellow Submarine?"
     }
 }
 
@@ -386,3 +401,6 @@ code. You can go through it for a better understanding.
 **Import errors?**
 - Make sure neuro-san is installed: `pip install neuro-san`
 - Check your Python environment is activated
+
+**HOCON issues?**
+- Use `ns validate path/to/hocon` to check that your hocon is valid
