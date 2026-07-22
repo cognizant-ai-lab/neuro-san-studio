@@ -643,6 +643,13 @@ validations.
 
 **Tags:** `AAOSA`, `app`
 
+### Load Test Analyst
+
+[Load Test Analyst](examples/experimental/load_test_analyst.md) parses load-test output into an evidence-backed report and
+provides an optional agent network for issue prioritization, next-run recommendations, and observed pod sizing.
+
+**Tags:** `AAOSA`, `app`, `load_test`
+
 ### MDAP Decomposer (MAKER example)
 
 [MDAP Decomposer](examples/experimental/mdap_decomposer.md) is a multi-agent system that decomposes problems down
