@@ -93,7 +93,7 @@ class SetAgentDescription(CodedTool):
         logger.info("The resulting agent network: \n %s", str(network_def))
         sly_data[AGENT_NETWORK_DEFINITION] = network_def
 
-        await ProgressHandler.report_progress(args, network_def)
+        await ProgressHandler.report_progress(args, sly_data, network_def)
 
         logger.debug(">>>>>>>>>>>>>>>>>>> DONE %s !!!>>>>>>>>>>>>>>>>>>", self.__class__.__name__)
         return f"The description for '{the_agent_name}' has been set in 'agent_network_definition' successfully."
