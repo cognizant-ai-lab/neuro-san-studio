@@ -27,7 +27,6 @@ from coded_tools.agent_network_editor.constants import AGENT_NETWORK_NAME
 from coded_tools.agent_network_editor.sly_data_lock import SlyDataLock
 
 
-# pylint: disable=too-few-public-methods
 class ProgressHandler:
     """
     Common handler for progress during the building of agent networks
