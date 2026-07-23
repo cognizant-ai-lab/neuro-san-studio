@@ -122,7 +122,8 @@ class CreateNetwork(CodedTool):
         # Put the agent network name in the sly data
         sly_data[AGENT_NETWORK_NAME] = agent_network_name
 
-        await ProgressHandler.report_progress(args, sly_data[AGENT_NETWORK_DEFINITION], sly_data[AGENT_NETWORK_NAME])
+        await ProgressHandler.report_progress(args, sly_data,
+                                              sly_data[AGENT_NETWORK_DEFINITION], sly_data[AGENT_NETWORK_NAME])
 
         logger.debug(">>>>>>>>>>>>>>>>>>> DONE %s !!!>>>>>>>>>>>>>>>>>>", self.__class__.__name__)
         return f"Successfully created agent network definition for {agent_network_name}."
