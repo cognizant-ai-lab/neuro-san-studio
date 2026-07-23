@@ -20,6 +20,8 @@ from typing import Any
 
 from middleware.agent_network_designer.persistence.agent_network_assembler import AgentNetworkAssembler
 
+DEFAULT_MAX_EXECUTION_SECONDS = 600
+
 HOCON_HEADER_START = (
     "{\n"
     "# Importing content from other HOCON files\n"
@@ -48,6 +50,8 @@ HOCON_HEADER_START = (
     "# modifying the configuration for each agent network.\n"
     "# Note that the file path here is relative to the root level of the repo.\n"
     '    include "config/llm_config.hocon",\n'
+    "\n"
+    f'    "max_execution_seconds": {DEFAULT_MAX_EXECUTION_SECONDS},\n'
     "\n"
     '   "instructions_prefix": """\n'
     "You are part of a team of assistants in "
