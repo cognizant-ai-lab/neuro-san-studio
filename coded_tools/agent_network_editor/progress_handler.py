@@ -54,8 +54,9 @@ class ProgressHandler:
         return True
 
     @staticmethod
-    async def report_progress(args: dict[str, Any], sly_data: Dict[str, Any],
-                              network_definition: dict[str, Any], name: str = None):
+    async def report_progress(
+        args: dict[str, Any], sly_data: Dict[str, Any], network_definition: dict[str, Any], name: str = None
+    ):
         """
         Common handler for progress during the building of agent networks
 

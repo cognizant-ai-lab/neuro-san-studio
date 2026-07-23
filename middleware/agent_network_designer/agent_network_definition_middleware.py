@@ -401,8 +401,7 @@ class AgentNetworkDefinitionMiddleware(AgentMiddleware):
 
         if self.progress_reporter is not None:
             await ProgressHandler.report_progress(
-                {"progress_reporter": self.progress_reporter}, None, 
-                network_def, self.sly_data.get(AGENT_NETWORK_NAME)
+                {"progress_reporter": self.progress_reporter}, None, network_def, self.sly_data.get(AGENT_NETWORK_NAME)
             )
 
         return await handler(request.override(system_message=system_message))
