@@ -21,19 +21,19 @@
     # For all the grouped registries such as basic, tools, industry, we include the respective manifest file.
 
     # Basic examples
-    include "registries/basic/manifest.hocon",
+    include "basic/manifest.hocon",
 
     # Tool integration examples
-    include "registries/tools/manifest.hocon",
-    
+    include "tools/manifest.hocon",
+
     # Industry use cases
-    include "registries/industry/manifest.hocon",
+    include "industry/manifest.hocon",
 
     # Experimental and research
-    include "registries/experimental/manifest.hocon",
+    include "experimental/manifest.hocon",
 
     # Generated agent networks
-    include "registries/generated/manifest.hocon",
+    include "generated/manifest.hocon",
 
     # Currently we list each hocon file we want to serve as a key with a boolean value.
     # Eventually we might have a dictionary value with server specifications for each.
