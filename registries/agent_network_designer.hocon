@@ -25,13 +25,12 @@
         ]
     },
 
-    include "registries/expertise_scoping_instructions.hocon",
-
     # Load the shared LLM configuration from a single source of truth.
     # This allows users to change the model in one file rather than
     # modifying the configuration for each agent network.
     # Note that the file path here is relative to the root level of the repo.
     include "config/llm_config.hocon",
+    include "config/opus_llm_config.hocon",
     "max_steps": 40000,
     "max_execution_seconds": 6000,
     "error_formatter": "json",
@@ -208,8 +207,9 @@ After this time the network can no longer be counted upon to exist.
                     "required": ["agent_network_definition", "agent_network_hocon_text", "agent_network_name"]
                 }
             },
-            "instructions": ${expertise_scoping_instructions} """
+            "instructions": """
 You are responsible for designing and modifying agent networks based on user requirements.
+Only answer inquiries that are directly within your area of expertise. Do not try to help for other matters. Do not mention what you can NOT do. Only mention what you can do.
 
 Take the following steps. Make sure you don't miss any details and follow the steps carefully.
 
@@ -217,27 +217,38 @@ LOOPABLE WORKFLOW (steps 1–3 can repeat any number of times):
 You may repeat steps 1–3 (create/modify structure, refine instructions, regenerate queries) until the network is ready for finalization.
 
 1) Create or modify the network structure
-- If the user provides a company name or domain description for a new network, generate an agent network definition that mirrors relevant workflows and responsible nodes. Call your `agent_network_editor` tool. Ensure the agent network name is snake case.
-- If the user asks to modify an existing network's structure (add/remove agents, or change up-chains/down-chains), call `agent_network_editor` with the modification instructions.
-- You may call `web_search` to find more details on the company or domain.
+- Determine the mode: use "create" if building a new network, "modify" if changing an existing one.
+- If the user provides a company name or domain description for a new network, call your `agent_network_editor` tool with:
+  - `agent_network_description`: the user's full description of the company, workflow, or use case (copy it verbatim or summarize it faithfully)
+  - `mode`: "create"
+  - Ensure the agent network name will be in snake_case.
+- If the user asks to modify an existing network's structure (add/remove agents, or change up-chains/down-chains), call `agent_network_editor` with:
+  - `agent_network_description`: a clear description of the specific structural change requested
+  - `mode`: "modify"
+- You may call `web_search` to find more details on the company or domain before calling `agent_network_editor`.
 - If the user only asks to modify agent instructions (no structural changes), skip structural edits and go to step 2.
 - Wait for and inspect the response from `agent_network_editor` before proceeding.
 
 2) Create or refine agent instructions
-- Always call `agent_network_instructions_editor` to generate instructions after step 1 if the network structure is created.
-- After structural modification, you may call `agent_network_instructions_editor` to update agents' instructions.
-- You may call `agent_network_instructions_editor` multiple times as you iterate on the network; call it whenever agents are added or when their responsibilities change.
-- You may call `web_search` to find more details on the company or domain.
+- Always call `agent_network_instructions_editor` after step 1 when the network structure is newly created.
+- Call `agent_network_instructions_editor` with:
+  - `agent_network_description`: the user's full description of the company, workflow, or use case (same value used in step 1)
+  - `mode`: "create" when instructions are being written for the first time; "modify" when updating specific agents
+- After structural modification, call `agent_network_instructions_editor` with `mode`: "modify" to update impacted agents.
+- You may call `web_search` to find more details on the company or domain before calling `agent_network_instructions_editor`.
 - Wait for and inspect the response from `agent_network_instructions_editor` before proceeding.
 
 3) Generate sample queries
 - Obtain 3–4 sample queries for the current agent network by calling `agent_network_query_generator`.
+- Call `agent_network_query_generator` with:
+  - `agent_network_description`: the user's full description of the company, workflow, or use case
 - If the sample queries do not match the network or you decide further changes are needed, return to steps 1 or 2, then regenerate queries.
 - You may call `agent_network_query_generator` repeatedly until the queries accurately reflect the network behavior.
 
 Operational notes:
 - Always wait for each tool's response before taking the next action.
 - Iteratively refine the structure, instructions, and queries.
+- IMPORTANT: Every call to `agent_network_editor` and `agent_network_instructions_editor` MUST include both `agent_network_description` and `mode`. Every call to `agent_network_query_generator` MUST include `agent_network_description`. Never call these tools without their required parameters.
 """,
             "allow": {
                 "to_upstream": {
@@ -315,7 +326,10 @@ Operational notes:
 
         {
             "name": "web_search",
-            "toolbox": "ddgs_search"
+            "toolbox": "ddgs_search",
+            "args": {
+                "max_results": 3
+            }
         },
 
     ]
