@@ -65,6 +65,12 @@ class AgentNetworkDefinitionMiddleware(AgentMiddleware):
 
     This allows the LLM to reason about the current agent network structure without
     requiring it to be passed explicitly through the chat stream.
+
+    This middleware also anchors the progress-throttling contract of the editor
+    coded tools: its aafter_agent hook flushes any progress report that
+    ProgressHandler's throttle suppressed during the run (see flush_pending()).
+    A network that wires the editor tools without registering this middleware
+    silently loses that end-of-run flush.
     """
 
     def __init__(self, sly_data: dict[str, Any], progress_reporter: AgentProgressReporter | None = None) -> None:
@@ -195,8 +201,10 @@ class AgentNetworkDefinitionMiddleware(AgentMiddleware):
         ProgressHandler's throttle drops (rather than delays) reports arriving within the
         throttle window, so without this hook a build whose final edit lands shortly after
         the previous sent report would leave the client's progress view permanently stale
-        (issue #1257). Flushing here — at the end of the agent loop, while the request and
-        its journal are still alive — guarantees the final network state always goes out.
+        (issue #1257). Flushing here — when the agent loop exits normally, while the
+        request and its journal are still alive — ensures the final network state goes
+        out. (If the run aborts on an unhandled error, after-agent hooks are skipped and
+        the throttled report stays dropped, matching pre-throttle behavior.)
 
         This matters most in the subnetworks (agent_network_editor and pals) and when those
         networks are used directly: their middleware has no progress_reporter by design
@@ -206,6 +214,9 @@ class AgentNetworkDefinitionMiddleware(AgentMiddleware):
 
         In the top-level designer this is effectively a no-op: its forced middleware
         reports (see _inject_into_request) clear the pending state on every model call.
+
+        flush_pending contains its own error handling — this hook runs as a langgraph
+        node, and an exception escaping it would replace the run's real final answer.
 
         :param state: Current agent state
         :param runtime: Runtime context
