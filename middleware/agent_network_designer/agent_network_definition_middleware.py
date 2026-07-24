@@ -65,6 +65,12 @@ class AgentNetworkDefinitionMiddleware(AgentMiddleware):
 
     This allows the LLM to reason about the current agent network structure without
     requiring it to be passed explicitly through the chat stream.
+
+    This middleware also anchors the progress-throttling contract of the editor
+    coded tools: its aafter_agent hook flushes any progress report that
+    ProgressHandler's throttle suppressed during the run (see flush_pending()).
+    A network that wires the editor tools without registering this middleware
+    silently loses that end-of-run flush.
     """
 
     def __init__(self, sly_data: dict[str, Any], progress_reporter: AgentProgressReporter | None = None) -> None:
@@ -186,6 +192,38 @@ class AgentNetworkDefinitionMiddleware(AgentMiddleware):
             return await handler(request)
 
         return await self._inject_into_request(self.network_def, request, handler)
+
+    @override
+    async def aafter_agent(self, state: AgentState[Any], runtime: Any) -> dict[str, Any] | None:
+        """
+        Flush any progress report that the throttle suppressed during this agent run.
+
+        ProgressHandler's throttle drops (rather than delays) reports arriving within the
+        throttle window, so without this hook a build whose final edit lands shortly after
+        the previous sent report would leave the client's progress view permanently stale
+        (issue #1257). Flushing here — when the agent loop exits normally, while the
+        request and its journal are still alive — ensures the final network state goes
+        out. (If the run aborts on an unhandled error, after-agent hooks are skipped and
+        the throttled report stays dropped, matching pre-throttle behavior.)
+
+        This matters most in the subnetworks (agent_network_editor and pals) and when those
+        networks are used directly: their middleware has no progress_reporter by design
+        (the client already receives the tools' own progress reports, so a middleware
+        reporter would duplicate that stream). The flush therefore reuses the reporter
+        stashed from the throttled tool call instead of needing one of its own.
+
+        In the top-level designer this is effectively a no-op: its forced middleware
+        reports (see _inject_into_request) clear the pending state on every model call.
+
+        flush_pending contains its own error handling — this hook runs as a langgraph
+        node, and an exception escaping it would replace the run's real final answer.
+
+        :param state: Current agent state
+        :param runtime: Runtime context
+        :return: None to proceed normally
+        """
+        await ProgressHandler.flush_pending(self.sly_data)
+        return None
 
     async def _resolve_network_def(self) -> dict[str, Any] | list[dict[str, Any]] | None:
         """
@@ -400,8 +438,24 @@ class AgentNetworkDefinitionMiddleware(AgentMiddleware):
             system_message = SystemMessage(content=definition_prompt)
 
         if self.progress_reporter is not None:
+            # Pass the real sly_data (the same dict instance the coded tools receive) so this
+            # report shares the ToolboxFactory cache and the throttle bookkeeping with the tools.
+            # Previously None was passed here, which skipped the cache and made ConnectivityReporter
+            # re-read the toolbox info files on every single report — the expensive part the
+            # throttle was introduced to avoid in the first place.
+            #
+            # force=True keeps this report unthrottled: it fires at most once per model call of
+            # the top-level designer (only the designer's middleware is configured with a
+            # progress_reporter) — far less frequently than the editor tools in the subnetworks —
+            # and it is what guarantees the client sees the fully merged network state, including
+            # subnetwork edits whose own throttled reports may have been dropped, before each
+            # designer model call.
             await ProgressHandler.report_progress(
-                {"progress_reporter": self.progress_reporter}, None, network_def, self.sly_data.get(AGENT_NETWORK_NAME)
+                {"progress_reporter": self.progress_reporter},
+                self.sly_data,
+                network_def,
+                self.sly_data.get(AGENT_NETWORK_NAME),
+                force=True,
             )
 
         return await handler(request.override(system_message=system_message))
