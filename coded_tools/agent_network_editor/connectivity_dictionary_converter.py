@@ -21,6 +21,7 @@ from leaf_common.serialization.interface.dictionary_converter import DictionaryC
 # Reaching into neuro_san internals because we expect to know the gory details here because
 # we are building agent networks.  This is not normally a recommended practice.
 from neuro_san.internals.chat.connectivity_reporter import ConnectivityReporter
+from neuro_san.internals.interfaces.context_type_toolbox_factory import ContextTypeToolboxFactory
 from neuro_san.internals.run_context.interfaces.agent_network_inspector import AgentNetworkInspector
 from neuro_san.internals.validation.network.url_network_validator import UrlNetworkValidator
 
@@ -41,7 +42,7 @@ class ConnectivityDictionaryConverter(DictionaryConverter):
     yet-another format.
     """
 
-    def __init__(self, include_keys: list[str] = None):
+    def __init__(self, include_keys: list[str] = None, toolbox_factory: ContextTypeToolboxFactory = None):
         """
         Constructor
         :param include_keys: A list of keys to include in the conversion
@@ -49,6 +50,7 @@ class ConnectivityDictionaryConverter(DictionaryConverter):
         self.include_keys = include_keys
         if include_keys is None:
             self.include_keys = ["tools", "instructions", "description"]
+        self.toolbox_factory: ContextTypeToolboxFactory = toolbox_factory
 
     def to_dict(self, obj: Connectivity) -> dict[str, Any]:
         """
@@ -101,7 +103,7 @@ class ConnectivityDictionaryConverter(DictionaryConverter):
 
         inspector: AgentNetworkInspector = DesignerNetworkInspector(obj_dict_copy)
 
-        reporter: ConnectivityReporter = ConnectivityReporter(inspector)
+        reporter: ConnectivityReporter = ConnectivityReporter(inspector, self.toolbox_factory)
         connectivity = reporter.report_network_connectivity()
 
         # Add any keys that are not already in the connectivity report
