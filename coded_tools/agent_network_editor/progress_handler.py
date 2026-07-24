@@ -20,6 +20,8 @@ from typing import Any
 from typing import Dict
 
 from neuro_san.interfaces.agent_progress_reporter import AgentProgressReporter
+from neuro_san.internals.interfaces.context_type_toolbox_factory import ContextTypeToolboxFactory
+from neuro_san.internals.run_context.factory.master_toolbox_factory import MasterToolboxFactory
 
 from coded_tools.agent_network_editor.connectivity_dictionary_converter import ConnectivityDictionaryConverter
 from coded_tools.agent_network_editor.constants import AGENT_NETWORK_DEFINITION
@@ -32,7 +34,7 @@ class ProgressHandler:
     Common handler for progress during the building of agent networks
     """
 
-    PROGRESS_THROTTLE_SECONDS: float = 2.0
+    PROGRESS_THROTTLE_SECONDS: float = 5.0
 
     def __init__(self):
         """
@@ -63,10 +65,9 @@ class ProgressHandler:
         :param network_definition: The network definition dictionary
         :param name: The name of the agent network. If None, will not be reported in progress.
         """
-        progress_handler: ProgressHandler = None
         if sly_data is not None:
             async with await SlyDataLock.get_lock(sly_data, "progress_handler_lock"):
-                progress_handler = sly_data.get("progress_handler")
+                progress_handler: ProgressHandler = sly_data.get("progress_handler")
                 if progress_handler is None:
                     progress_handler = ProgressHandler()
                     sly_data["progress_handler"] = progress_handler
@@ -85,8 +86,25 @@ class ProgressHandler:
             # so that agent network progress is converted to connectivity-style data format
             # that it already knows how to render.  Using the different key name allows the AGENT_PROGRESS
             # dictionary to look just like a ConnectivityResponse from the service.
+
+            # Get a cached toolbox factory so we don't have to read info from a file every time
+            toolbox_factory: ContextTypeToolboxFactory = None
+            if sly_data is not None:
+                toolbox_factory: ContextTypeToolboxFactory = sly_data.get("toolbox_factory")
+                if toolbox_factory is None:
+                    async with await SlyDataLock.get_lock(sly_data, "toolbox_factory_lock"):
+                        toolbox_factory: ContextTypeToolboxFactory = sly_data.get("toolbox_factory")
+                        if toolbox_factory is None:
+                            # DEF - not sure if this empty dict is good enough
+                            empty: Dict[str, Any] = {}
+                            toolbox_factory: ContextTypeToolboxFactory = \
+                                MasterToolboxFactory.create_toolbox_factory(empty)
+                            toolbox_factory.load()
+                            sly_data["toolbox_factory"] = toolbox_factory
+
+            # Do the conversion
             use_key: str = "connectivity_info"
-            converter = ConnectivityDictionaryConverter()
+            converter = ConnectivityDictionaryConverter(toolbox_factory=toolbox_factory)
             use_network_definition = converter.from_dict(network_definition)
 
         elif agent_progress_style == "internal":
