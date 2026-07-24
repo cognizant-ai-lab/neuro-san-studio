@@ -39,3 +39,9 @@ SUBNETWORKS: str = "subnetworks"
 
 # Cached dict mapping toolbox tool name to its description.
 TOOLBOX_INFO: str = "toolbox_info"
+
+# Cached ToolboxFactory instance used during ProgressHandler reporting.
+TOOLBOX_FACTORY: str = "toolbox_factory"
+
+# Cached ProgressHandler instance controls AGENT_PROGRESS reporting throttling
+PROGRESS_HANDLER: str = "progress_handler"

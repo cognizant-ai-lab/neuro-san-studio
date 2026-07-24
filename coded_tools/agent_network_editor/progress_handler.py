@@ -26,6 +26,8 @@ from neuro_san.internals.run_context.factory.master_toolbox_factory import Maste
 from coded_tools.agent_network_editor.connectivity_dictionary_converter import ConnectivityDictionaryConverter
 from coded_tools.agent_network_editor.constants import AGENT_NETWORK_DEFINITION
 from coded_tools.agent_network_editor.constants import AGENT_NETWORK_NAME
+from coded_tools.agent_network_editor.constants import PROGRESS_HANDLER
+from coded_tools.agent_network_editor.constants import TOOLBOX_FACTORY
 from coded_tools.agent_network_editor.sly_data_lock import SlyDataLock
 
 
@@ -67,10 +69,10 @@ class ProgressHandler:
         """
         if sly_data is not None:
             async with await SlyDataLock.get_lock(sly_data, "progress_handler_lock"):
-                progress_handler: ProgressHandler = sly_data.get("progress_handler")
+                progress_handler: ProgressHandler = sly_data.get(PROGRESS_HANDLER)
                 if progress_handler is None:
                     progress_handler = ProgressHandler()
-                    sly_data["progress_handler"] = progress_handler
+                    sly_data[PROGRESS_HANDLER] = progress_handler
 
                 if not progress_handler.should_report():
                     return
@@ -90,10 +92,10 @@ class ProgressHandler:
             # Get a cached toolbox factory so we don't have to read info from a file every time
             toolbox_factory: ContextTypeToolboxFactory = None
             if sly_data is not None:
-                toolbox_factory: ContextTypeToolboxFactory = sly_data.get("toolbox_factory")
+                toolbox_factory: ContextTypeToolboxFactory = sly_data.get(TOOLBOX_FACTORY)
                 if toolbox_factory is None:
                     async with await SlyDataLock.get_lock(sly_data, "toolbox_factory_lock"):
-                        toolbox_factory: ContextTypeToolboxFactory = sly_data.get("toolbox_factory")
+                        toolbox_factory: ContextTypeToolboxFactory = sly_data.get(TOOLBOX_FACTORY)
                         if toolbox_factory is None:
                             # DEF - not sure if this empty dict is good enough
                             empty: Dict[str, Any] = {}
@@ -101,7 +103,7 @@ class ProgressHandler:
                                 empty
                             )
                             toolbox_factory.load()
-                            sly_data["toolbox_factory"] = toolbox_factory
+                            sly_data[TOOLBOX_FACTORY] = toolbox_factory
 
             # Do the conversion
             use_key: str = "connectivity_info"
