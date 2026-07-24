@@ -97,8 +97,9 @@ class ProgressHandler:
                         if toolbox_factory is None:
                             # DEF - not sure if this empty dict is good enough
                             empty: Dict[str, Any] = {}
-                            toolbox_factory: ContextTypeToolboxFactory = \
-                                MasterToolboxFactory.create_toolbox_factory(empty)
+                            toolbox_factory: ContextTypeToolboxFactory = MasterToolboxFactory.create_toolbox_factory(
+                                empty
+                            )
                             toolbox_factory.load()
                             sly_data["toolbox_factory"] = toolbox_factory
 
