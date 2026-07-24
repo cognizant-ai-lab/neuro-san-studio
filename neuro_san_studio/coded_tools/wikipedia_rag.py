@@ -15,10 +15,11 @@
 # END COPYRIGHT
 
 import logging
+from asyncio import to_thread
 from typing import Any
 from typing import Dict
 
-from langchain_community.retrievers import WikipediaRetriever
+from langchain_core.documents import Document
 from neuro_san.interfaces.coded_tool import CodedTool
 
 from neuro_san_studio.coded_tools.base_rag import BaseRag
@@ -66,11 +67,40 @@ class WikipediaRag(CodedTool):
             logger.error("Missing required input: 'query' (retrieval question).")
             return "❌ Missing required input: 'query'."
 
-        # Initialize WikipediaRetriever with the provided arguments
-        retriever = WikipediaRetriever(
-            lang=str(args.get("lang", "en")),
-            top_k_results=int(args.get("top_k_results", 3)),
-            doc_content_chars_max=int(args.get("doc_content_chars_max", 4000)),
-        )
+        lang = str(args.get("lang", "en"))
+        top_k_results = int(args.get("top_k_results", 3))
+        doc_content_chars_max = int(args.get("doc_content_chars_max", 4000))
+        documents = await to_thread(self._retrieve, query, lang, top_k_results, doc_content_chars_max)
+        return await BaseRag.query_retriever(_DocumentRetriever(documents), query)
 
-        return await BaseRag.query_retriever(retriever, query)
+    @staticmethod
+    def _retrieve(query: str, lang: str, top_k_results: int, max_chars: int) -> list[Document]:
+        """Retrieve Wikipedia pages through the optional ``wikipedia`` package."""
+        # pylint: disable=import-error,import-outside-toplevel
+        import wikipedia
+
+        wikipedia.set_lang(lang)
+        documents: list[Document] = []
+        for title in wikipedia.search(query, results=top_k_results):
+            try:
+                page = wikipedia.page(title=title, auto_suggest=False)
+                documents.append(
+                    Document(
+                        page_content=page.content[:max_chars],
+                        metadata={"title": page.title, "source": page.url, "summary": page.summary},
+                    )
+                )
+            except (wikipedia.DisambiguationError, wikipedia.PageError):
+                logger.debug("Skipping unavailable Wikipedia page %s", title)
+        return documents
+
+
+class _DocumentRetriever:  # pylint: disable=too-few-public-methods
+    """Minimal async retriever for already-loaded documents."""
+
+    def __init__(self, documents: list[Document]):
+        self.documents = documents
+
+    async def ainvoke(self, _query: str) -> list[Document]:
+        """Return the documents loaded for this invocation."""
+        return self.documents

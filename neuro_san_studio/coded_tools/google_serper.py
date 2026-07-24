@@ -14,11 +14,13 @@
 #
 # END COPYRIGHT
 
+import os
 from typing import Any
 from typing import Dict
 from typing import Union
 
-from langchain_community.utilities import GoogleSerperAPIWrapper
+from aiohttp import ClientSession
+from aiohttp import ClientTimeout
 from neuro_san.interfaces.coded_tool import CodedTool
 
 # Default parameters for google serper
@@ -98,10 +100,19 @@ class GoogleSerper(CodedTool):
         # Default is None.
         tbs: str = args.get("tbs")
 
-        # Create search with the above parameters
-        search = GoogleSerperAPIWrapper(gl=gl, hl=hl, k=k, type=search_type, tbs=tbs)
+        api_key = os.getenv("SERPER_API_KEY")
+        if not api_key:
+            return "Error: SERPER_API_KEY is not set."
 
-        # Perform search asynchronously
-        results = await search.aresults(query)
+        if search_type not in {"search", "news", "images", "places"}:
+            return f"Error: Unsupported search type '{search_type}'."
 
-        return results
+        payload = {"q": query, "gl": gl, "hl": hl, "num": k}
+        if tbs:
+            payload["tbs"] = tbs
+        headers = {"X-API-KEY": api_key, "Content-Type": "application/json"}
+        async with ClientSession(timeout=ClientTimeout(total=30)) as session:
+            endpoint = f"https://google.serper.dev/{search_type}"
+            async with session.post(endpoint, headers=headers, json=payload) as response:
+                response.raise_for_status()
+                return await response.json()

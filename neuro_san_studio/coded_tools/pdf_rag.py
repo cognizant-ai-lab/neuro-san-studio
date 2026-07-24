@@ -18,17 +18,21 @@
 
 import logging
 import os
+from asyncio import to_thread
+from pathlib import Path
 from typing import Any
 from typing import Dict
 from typing import List
 
-from langchain_community.document_loaders import PyMuPDFLoader
+from aiohttp import ClientSession
+from aiohttp import ClientTimeout
 from langchain_core.documents import Document
 from langchain_core.vectorstores import VectorStore
 from neuro_san.interfaces.coded_tool import CodedTool
 
 from neuro_san_studio.coded_tools.base_rag import BaseRag
 from neuro_san_studio.coded_tools.base_rag import PostgresConfig
+from neuro_san_studio.coded_tools.utils.pdf_utils import PdfUtils
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -117,9 +121,18 @@ class PdfRag(CodedTool, BaseRag):
 
         for url in urls:
             try:
-                loader = PyMuPDFLoader(file_path=url)
-                doc: List[Document] = await loader.aload()
-                docs.extend(doc)
+                if url.startswith(("http://", "https://")):
+                    async with ClientSession(timeout=ClientTimeout(total=60)) as session:
+                        async with session.get(url) as response:
+                            response.raise_for_status()
+                            data = await response.read()
+                else:
+                    data = await to_thread(Path(url).read_bytes)
+                pages = await to_thread(PdfUtils.parse_pdf_pages, data)
+                docs.extend(
+                    Document(page_content=text, metadata={"source": url, "page": page_number})
+                    for page_number, text in enumerate(pages)
+                )
                 logger.info("Successfully loaded PDF file from %s", url)
             except FileNotFoundError:
                 logger.error("File not found: %s", url)

@@ -18,14 +18,14 @@ import logging
 import os
 from typing import Any
 
-from langchain_community.document_loaders import WebBaseLoader
+from aiohttp import ClientError
 from langchain_core.documents import Document
 from langchain_core.vectorstores import VectorStore
 from neuro_san.interfaces.coded_tool import CodedTool
-from requests.exceptions import HTTPError
 
 from neuro_san_studio.coded_tools.base_rag import BaseRag
 from neuro_san_studio.coded_tools.base_rag import PostgresConfig
+from neuro_san_studio.coded_tools.web_fetch import WebFetch
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -38,8 +38,8 @@ class WebpageRag(CodedTool, BaseRag):
 
     async def async_invoke(self, args: dict[str, Any], sly_data: dict[str, Any]) -> str:
         """
-        Load webpages from URLs using WebBaseLoader, build a vector store, and run a query against it.
-        See https://reference.langchain.com/python/langchain-community/document_loaders/web_base/WebBaseLoader.
+        Load webpages with the studio's protected WebFetch tool, build a vector store,
+        and run a query against it.
 
         :param args: Dictionary containing:
           "query": search string
@@ -113,16 +113,13 @@ class WebpageRag(CodedTool, BaseRag):
         docs: list[Document] = []
         urls: list[str] = loader_args.get("urls", [])
 
-        loader = WebBaseLoader(web_path=urls)
-        async for doc in loader.alazy_load():
+        fetcher = WebFetch()
+        for url in urls:
             try:
-                docs.append(doc)
-                logger.info("Successfully loaded PDF file from %s", doc.metadata.get("source", "unknown source"))
-            except HTTPError as http_e:
-                logger.error("HTTP error occurred: %s", http_e)
-            except FileNotFoundError as fnf_e:
-                logger.error("File not found: %s", fnf_e)
-            except ValueError as val_e:
-                logger.error("Value error: %s", val_e)
+                result = await fetcher.async_invoke({"url": url}, {})
+                docs.append(Document(page_content=result["content"], metadata={"source": result["url"]}))
+                logger.info("Successfully loaded webpage from %s", url)
+            except (ClientError, OSError, ValueError) as error:
+                logger.error("Failed to load webpage from %s: %s", url, error)
 
         return docs
