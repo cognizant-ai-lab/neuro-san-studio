@@ -414,6 +414,10 @@ surfacing content most relevant to the user's industry and seniority level.
 * [Tochiro File Organizer](https://github.com/ofrancon/tochiro):
 a macOS file organization assistant with a dedicated UI to analyze a folder,
 create a plan for moving the files, ask for approval and execute the moves.
+* [Legacy Business-Rule Extractor](https://github.com/Sivakumarraj/neuro-san-legacy-analyzer):
+a 6-agent network that extracts business rules from legacy COBOL, Java, and PL/SQL code,
+pairing deterministic CodedTool parsers with LLM agents to produce a modernization-ready
+specification document.
 
 ### Utilities
 
