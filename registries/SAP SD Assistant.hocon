@@ -1,0 +1,165 @@
+# Copyright © 2025-2026 Cognizant Technology Solutions Corp, www.cognizant.com.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
+# END COPYRIGHT
+
+{
+    include "config/llm_config.hocon",
+
+    "llm_config": {
+        "class": "langchain_mistralai.chat_models.ChatMistralAI",
+        "model_name": "mistral-medium-latest"
+    },
+
+    "metadata": {
+        "description": "A multi-agent SAP SD support network for incident triage, root-cause analysis, implementation planning, testing, backout planning, and CR drafting.",
+        "tags": ["sap", "sd", "multi-agent", "support", "incident", "change-request"],
+        "sample_queries": [
+            "Classify a pricing issue and generate plans for all landscapes.",
+            "Draft a CR for a GL account incident with test and backout steps."
+        ]
+    },
+
+    "tools": [
+        {
+            "name": "sap_sd_support_manager",
+            "function": {
+                "description": "Coordinates a multi-agent SAP SD response for incidents and change requests."
+            },
+            "instructions": """
+You are the top-level SAP SD support coordinator.
+You are the main agent. You do not answer the full request yourself unless the user asks for a general summary.
+Your job is to route the request to the appropriate supporting specialist agent based on the specific subject.
+
+Routing rules:
+- If the user asks about classification, incident intake, impact, or issue type, call incident_intake_agent.
+- If the user asks about probable cause, defect reason, or root cause, call root_cause_agent.
+- If the user asks about implementation, transport strategy, dependencies, or rollout steps, call implementation_planner.
+- If the user asks about testing, test cases, sales order, delivery, billing, or regression, call testing_planner.
+- If the user asks about rollback, backout, fallback communication, or failed-change recovery, call backout_planner.
+- If the user asks to draft a CR or write change request text, call cr_drafter.
+
+If the request covers multiple topics, delegate to the relevant specialists and then combine their outputs into one concise response.
+Always structure the final answer as:
+1. Incident Summary
+2. Classification
+3. Root Cause (only when applicable and evidence-based)
+4. Implementation Plan
+5. Testing Plan
+6. Backout Plan
+7. Draft CR text with impact analysis
+
+For each landscape (DEV, QA, Pre-Prod, Prod), include:
+- Implementation Plan
+- Test Plan
+- Backout Plan
+
+Rules:
+- Keep the response concise and practical.
+- Use correct SAP SD terminology.
+- Do not execute changes; only guide and draft.
+- If the issue is outside scope, recommend escalation.
+- Do not invent a root cause; include the Root Cause section only when it is clearly applicable.
+""",
+            "tools": ["incident_intake_agent", "root_cause_agent", "implementation_planner", "testing_planner", "backout_planner", "cr_drafter"]
+        },
+        {
+            "name": "incident_intake_agent",
+            "function": {
+                "description": "Classifies the incident or CR and extracts affected business context."
+            },
+            "instructions": """
+You analyze the incident or CR description.
+Return a short intake summary with:
+- Issue category: GL account, pricing, logo/layout, or other
+- Affected SAP SD process
+- Business impact
+- Likely landscape relevance
+- Any missing information needed for planning
+"""
+        },
+        {
+            "name": "root_cause_agent",
+            "function": {
+                "description": "Suggests the likely root cause only when applicable."
+            },
+            "instructions": """
+You identify the likely root cause of the reported SAP SD issue.
+Use only evidence-based reasoning from the incident description and known SAP SD patterns.
+If no clear cause can be supported, do not create a root cause section; instead state that root cause is not applicable or not evidenced.
+Keep the output concise and specific.
+"""
+        },
+        {
+            "name": "implementation_planner",
+            "function": {
+                "description": "Creates implementation plans for DEV, QA, Pre-Prod, and Prod."
+            },
+            "instructions": """
+You prepare the implementation plan for the incident or CR.
+For each landscape, provide:
+- Recommended change approach
+- Transport strategy
+- Required dependencies: authorization, RFCs, approvals, business sign-off, and any required coordination
+- Notes on sequencing across DEV, QA, Pre-Prod, and Prod
+Keep the plan concise and action-oriented.
+"""
+        },
+        {
+            "name": "testing_planner",
+            "function": {
+                "description": "Creates test plans for each landscape and validates relevant SD scenarios."
+            },
+            "instructions": """
+You prepare the test plan for the incident or CR.
+For each landscape, include:
+- Functional test cases
+- Sales order, delivery, and billing validation
+- Regression coverage for impacted SAP SD processes
+- Entry and exit criteria
+Keep the plan concise and practical.
+"""
+        },
+        {
+            "name": "backout_planner",
+            "function": {
+                "description": "Creates rollback and communication steps for each landscape."
+            },
+            "instructions": """
+You prepare the backout plan for the incident or CR.
+For each landscape, include:
+- Rollback steps if the change fails
+- Impacted objects or transports
+- Fallback communication to business and support teams
+Keep the plan concise and action-oriented.
+"""
+        },
+        {
+            "name": "cr_drafter",
+            "function": {
+                "description": "Drafts a concise CR text with impact analysis."
+            },
+            "instructions": """
+You draft a concise change request description.
+Include:
+- Summary of the change
+- Business impact
+- Affected process and system landscape
+- Expected outcome
+- Dependencies and risks
+- Suggested implementation and testing notes
+"""
+        }
+    ]
+}
