@@ -61,14 +61,21 @@ function run() {
     SERVICE_HTTP_PORT=$(grep ^EXPOSE < "${DOCKERFILE}" | head -1 | awk '{ print $2 }')
     echo "SERVICE_HTTP_PORT: ${SERVICE_HTTP_PORT}"
 
+    # Note that we have to set the equivalent of the ulimit -n via the docker run
+    # command line.  We don't want the ceiling of fds to interfere with how many
+    # requests we can serve in the container.
+    FILE_DESCRIPTOR_MAX=100000
+
     # Run the docker container in interactive mode
     #   Mount the 1st command line arg as the place where input files come from
     #   Slurp in the rest as environment variables, all of which are optional.
 
     docker_cmd="docker run --rm -it \
+        --ulimit nofile=${FILE_DESCRIPTOR_MAX}:${FILE_DESCRIPTOR_MAX} \
         --name=$SERVICE_NAME \
         --network=$network \
         -e OPENAI_API_KEY \
+        -e OPENAI_API_BASE \
         -e ANTHROPIC_API_KEY \
         -e LANGFUSE_ENABLED \
         -e LANGFUSE_SECRET_KEY \
@@ -77,6 +84,9 @@ function run() {
         -e AGENT_RESERVATIONS_S3_BUCKET \
         -e AGENT_EXTERNAL_RESERVATIONS_STORAGE \
         -e AGENT_SESSION_REQUIRE_HTTPS=false \
+        -e AGENT_NETWORK_DESIGNER_USER_RESERVATIONS \
+        -e AWS_SECRET_ACCESS_KEY \
+        -e AWS_ACCESS_KEY_ID \
         -e LEAF_LOG_SENSITIVE=true \
         -e TOOL_REGISTRY_FILE=$1 \
         -p $SERVICE_HTTP_PORT:$SERVICE_HTTP_PORT \

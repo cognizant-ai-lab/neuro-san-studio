@@ -196,7 +196,19 @@ class AgentNetworkPersistenceMiddleware(AgentMiddleware):
             sample_queries: list[str] = self.sly_data.get(AGENT_NETWORK_QUERIES, [])
 
             await self._assemble_and_persist(network_def, agent_network_name, sample_queries)
-            self._determine_exported_network_definition(self.sly_data)
+
+            agent_progress_style: str = environ.get("AGENT_NETWORK_DESIGNER_PROGRESS_STYLE", "internal")
+
+            # Pre-warm the shared ToolboxFactory off the event loop before the
+            # sync export below converts to connectivity style. In the normal
+            # designer flow ProgressHandler has already done this while
+            # reporting progress, but a skip_designer run never reports
+            # progress, so on a cold process the from_dict() fallback inside
+            # the export would otherwise pay the one-time toolbox file read
+            # and HOCON parse on the event loop.
+            if agent_progress_style == "connectivity":
+                await ConnectivityDictionaryConverter.get_shared_toolbox_factory()
+            self._determine_exported_network_definition(self.sly_data, agent_progress_style)
 
             self.logger.debug(">>>>>>>>>>>>>>>>>>> DONE %s !!!>>>>>>>>>>>>>>>>>>", self.__class__.__name__)
 
@@ -250,8 +262,8 @@ class AgentNetworkPersistenceMiddleware(AgentMiddleware):
         self.logger.info(">>>>>>>>>>>>>>>>>>>Assemble and Persist Agent Network>>>>>>>>>>>>>>>>>>")
         self.logger.info("Agent Network Name: %s", agent_network_name)
 
-        subnetwork_names: list[str] = await GetSubnetwork.get_subnetwork_names(self.sly_data)
-        mcp_servers: list[str] = await GetMcpTool.get_mcp_servers(self.sly_data)
+        subnetwork_names: list[str] = await GetSubnetwork.get_subnetwork_names()
+        mcp_servers: list[str] = await GetMcpTool.get_mcp_servers()
         persistor: AgentNetworkPersistor = AgentNetworkPersistorFactory.create_persistor(
             {"reservationist": self.reservationist},
             WRITE_TO_FILE,
@@ -289,15 +301,19 @@ class AgentNetworkPersistenceMiddleware(AgentMiddleware):
         if isinstance(persisted_reference, list):
             self.sly_data["agent_reservations"] = persisted_reference
 
-    def _determine_exported_network_definition(self, sly_data: dict[str, Any]):
+    def _determine_exported_network_definition(self, sly_data: dict[str, Any], agent_progress_style: str):
         """
-        Check the AGENT_NETWORK_DESIGNER_PROGRESS_STYLE env var to determine how to export
-        the agent network definition.
+        Determine how to export the agent network definition.
+
+        :param sly_data: The sly_data dictionary whose AGENT_NETWORK_DEFINITION
+                entry gets rewritten in place.
+        :param agent_progress_style: The AGENT_NETWORK_DESIGNER_PROGRESS_STYLE
+                env var value, read once by the caller (which also uses it to
+                decide whether to pre-warm the shared ToolboxFactory).
         """
         network_definition: dict[str, Any] = sly_data.get(AGENT_NETWORK_DEFINITION)
         use_network_definition: dict[str, Any] | list[dict[str, Any]] = network_definition
 
-        agent_progress_style: str = environ.get("AGENT_NETWORK_DESIGNER_PROGRESS_STYLE", "internal")
         if agent_progress_style == "connectivity":
             # The idea here is that a multi-user MAUI server can turn on this env variable
             # so that agent network progress is converted to connectivity-style data format

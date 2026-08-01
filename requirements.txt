@@ -1,7 +1,7 @@
 # Neuro SAN
-leaf-common>=1.2.45
-neuro-san==0.6.76
-nsflow==0.6.16
+leaf-common>=1.2.49
+neuro-san==0.6.88
+nsflow==0.6.17
 
 # For config parsing
 pyhocon>=0.3.60
@@ -28,6 +28,8 @@ langchain-mcp-adapters>=0.1.7,<1.0
 langchain-openai>=1.1.9,<2.0
 langchain-anthropic>=1.4.3,<2.0
 langchain-google-genai>=4.2.2,<5.0
+
+langchain-community>=0.4.2
 
 # For rich logging
 rich>=14.2.0
