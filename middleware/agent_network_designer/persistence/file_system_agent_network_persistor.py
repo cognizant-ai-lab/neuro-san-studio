@@ -47,9 +47,11 @@ class FileSystemAgentNetworkPersistor(AgentNetworkPersistor):
         self.demo_mode: bool = demo_mode
         self.subdirectory: str = subdirectory.strip("/")
 
-        # Derive output_path from the first file listed in AGENT_MANIFEST_FILE
+        # Derive output_path from the first file listed in AGENT_MANIFEST_FILE.
+        # AGENT_MANIFEST_FILE is colon-separated (like PATH), so split on ":"
+        # rather than whitespace to correctly isolate the first manifest path.
         agent_manifest_file: str = os.environ.get("AGENT_MANIFEST_FILE", "")
-        parts: list[str] = agent_manifest_file.split()
+        parts: list[str] = [p.strip() for p in agent_manifest_file.split(":") if p.strip()]
         if parts:
             self.output_path: str = os.path.dirname(parts[0])
             self.main_manifest_path: str = parts[0]
