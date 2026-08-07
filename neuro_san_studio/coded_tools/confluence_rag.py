@@ -14,18 +14,18 @@
 #
 # END COPYRIGHT
 
-"""Tool module for doing RAG from confluence pages"""
+"""Tool module for doing RAG from Confluence pages."""
 
-import inspect
+import asyncio
 import logging
 import os
+from io import BytesIO
+from pathlib import Path
 from typing import Any
 from typing import Dict
 from typing import List
 
-# pylint: disable=import-error
-from atlassian.errors import ApiPermissionError
-from langchain_community.document_loaders.confluence import ConfluenceLoader
+from bs4 import BeautifulSoup
 from langchain_core.documents import Document
 from neuro_san.interfaces.coded_tool import CodedTool
 from requests.exceptions import HTTPError
@@ -36,6 +36,10 @@ INVALID_PATH_PATTERN = r"[<>:\"|?*\x00-\x1F]"
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
+
+PAGE_EXPANSIONS = "body.storage,version"
+DEFAULT_PAGE_LIMIT = 50
+DEFAULT_MAX_PAGES = 1000
 
 
 class ConfluenceRag(CodedTool, BaseRag):
@@ -69,14 +73,22 @@ class ConfluenceRag(CodedTool, BaseRag):
         # Extract arguments from the input dictionary
         query: str = args.get("query", "")
 
-        # Create a list of parameters of ConfluenceLoader
-        # https://python.langchain.com/api_reference/community/document_loaders/langchain_community.document_loaders.confluence.ConfluenceLoader.html
-        confluence_loader_params = [
-            name for name in inspect.signature(ConfluenceLoader.__init__).parameters if name != "self"
-        ]
-
-        # Filter args from the above list
-        loader_args = {arg: arg_value for arg, arg_value in args.items() if arg in confluence_loader_params}
+        loader_args = {
+            name: args[name]
+            for name in (
+                "url",
+                "username",
+                "api_key",
+                "cloud",
+                "space_key",
+                "page_ids",
+                "include_attachments",
+                "limit",
+                "max_pages",
+                "ocr_languages",
+            )
+            if name in args
+        }
 
         # Check the env var for "username" and "api_key"
         loader_args.setdefault("username", os.getenv("JIRA_USERNAME"))
@@ -120,15 +132,168 @@ class ConfluenceRag(CodedTool, BaseRag):
         :return: List of loaded Confluence pages
         """
         url = loader_args.get("url")
-        docs: List[Document] = []
+        # pylint: disable=import-outside-toplevel,import-error
+        from atlassian.errors import ApiPermissionError
+
         try:
-            loader = ConfluenceLoader(**loader_args)
-            docs = await loader.aload()
+            docs = await asyncio.to_thread(self._load_documents_sync, loader_args)
             logger.info("Successfully loaded Confluence pages from %s", url)
         except HTTPError as http_error:
             logger.error("HTTP error while loading from %s: %s", url, http_error)
             return []
         except ApiPermissionError as api_error:
             logger.error("API Permission error while loading from %s: %s", url, api_error)
+            return []
 
         return docs
+
+    def _load_documents_sync(self, loader_args: Dict[str, Any]) -> List[Document]:
+        """Load and convert Confluence pages using the synchronous Atlassian client."""
+        # pylint: disable=import-outside-toplevel,import-error
+        from atlassian import Confluence
+
+        url = loader_args["url"]
+        confluence = Confluence(
+            url=url,
+            username=loader_args.get("username"),
+            password=loader_args.get("api_key"),
+            cloud=loader_args.get("cloud", True),
+        )
+        pages = self._get_pages(confluence, loader_args)
+        include_attachments = loader_args.get("include_attachments", False)
+        ocr_languages = loader_args.get("ocr_languages")
+
+        return [self._page_to_document(confluence, url, page, include_attachments, ocr_languages) for page in pages]
+
+    @staticmethod
+    def _get_pages(confluence: Any, loader_args: Dict[str, Any]) -> List[Dict[str, Any]]:
+        """Fetch configured pages, preserving order and removing duplicates."""
+        pages: List[Dict[str, Any]] = []
+        seen_page_ids = set()
+
+        space_key = loader_args.get("space_key")
+        if space_key:
+            limit = loader_args.get("limit", DEFAULT_PAGE_LIMIT)
+            max_pages = loader_args.get("max_pages", DEFAULT_MAX_PAGES)
+            start = 0
+            while len(pages) < max_pages:
+                batch = confluence.get_all_pages_from_space(
+                    space=space_key,
+                    start=start,
+                    limit=min(limit, max_pages - len(pages)),
+                    status="current",
+                    expand=PAGE_EXPANSIONS,
+                )
+                if not batch:
+                    break
+                for page in batch:
+                    page_id = str(page["id"])
+                    if page_id not in seen_page_ids:
+                        seen_page_ids.add(page_id)
+                        pages.append(page)
+                if len(batch) < limit:
+                    break
+                start += len(batch)
+
+        for page_id in loader_args.get("page_ids") or []:
+            page_id = str(page_id)
+            if page_id in seen_page_ids:
+                continue
+            page = confluence.get_page_by_id(page_id=page_id, expand=PAGE_EXPANSIONS)
+            if page:
+                seen_page_ids.add(page_id)
+                pages.append(page)
+
+        return pages
+
+    # pylint: disable=too-many-arguments,too-many-positional-arguments
+    def _page_to_document(
+        self,
+        confluence: Any,
+        base_url: str,
+        page: Dict[str, Any],
+        include_attachments: bool,
+        ocr_languages: str | None,
+    ) -> Document:
+        """Convert one Confluence API page into a LangChain document."""
+        html = page.get("body", {}).get("storage", {}).get("value", "")
+        text = BeautifulSoup(html, "html.parser").get_text(" ", strip=True)
+        if include_attachments:
+            text += "".join(self._load_attachment_texts(confluence, base_url, str(page["id"]), ocr_languages))
+
+        metadata = {
+            "title": page["title"],
+            "id": str(page["id"]),
+            "source": base_url.rstrip("/") + page.get("_links", {}).get("webui", ""),
+        }
+        updated_at = page.get("version", {}).get("when")
+        if updated_at:
+            metadata["when"] = updated_at
+        return Document(page_content=text, metadata=metadata)
+
+    def _load_attachment_texts(
+        self, confluence: Any, base_url: str, page_id: str, ocr_languages: str | None
+    ) -> List[str]:
+        """Download and extract text from supported page attachments."""
+        attachments = confluence.get_attachments_from_content(page_id).get("results", [])
+        texts = []
+        for attachment in attachments:
+            media_type = attachment.get("metadata", {}).get("mediaType", "")
+            title = attachment.get("title", "")
+            download_path = attachment.get("_links", {}).get("download")
+            if not download_path:
+                continue
+            download_url = base_url.rstrip("/") + download_path
+            try:
+                response = confluence.request(path=download_url, absolute=True)
+                response.raise_for_status()
+            except HTTPError as http_error:
+                if http_error.response is not None and http_error.response.status_code == 404:
+                    logger.warning("Attachment not found at %s", download_url)
+                    continue
+                raise
+
+            extracted_text = self._extract_attachment_text(response.content, title, media_type, ocr_languages)
+            if extracted_text:
+                texts.append(f"\n{title}\n{extracted_text}")
+        return texts
+
+    @staticmethod
+    def _extract_attachment_text(content: bytes, title: str, media_type: str, ocr_languages: str | None) -> str:
+        """Extract text from an attachment according to its media type."""
+        # Attachment processors are optional dependencies and are imported only when needed.
+        # pylint: disable=import-outside-toplevel,import-error
+        suffix = Path(title).suffix.lower()
+        if media_type == "application/pdf" or suffix == ".pdf":
+            from pypdf import PdfReader
+
+            return "\n".join(page.extract_text() or "" for page in PdfReader(BytesIO(content)).pages)
+        if media_type in {"image/png", "image/jpeg", "image/jpg"} or suffix in {".png", ".jpg", ".jpeg"}:
+            import pytesseract
+            from PIL import Image
+
+            return pytesseract.image_to_string(Image.open(BytesIO(content)), lang=ocr_languages)
+        if media_type == "image/svg+xml" or suffix == ".svg":
+            import pytesseract
+            from PIL import Image
+            from reportlab.graphics import renderPM
+            from svglib.svglib import svg2rlg
+
+            image_bytes = BytesIO()
+            renderPM.drawToFile(svg2rlg(BytesIO(content)), image_bytes, fmt="PNG")
+            image_bytes.seek(0)
+            return pytesseract.image_to_string(Image.open(image_bytes), lang=ocr_languages)
+        if suffix == ".docx":
+            import docx2txt
+
+            return docx2txt.process(BytesIO(content))
+        if suffix in {".xls", ".xlsx"}:
+            import pandas
+
+            sheets = pandas.read_excel(BytesIO(content), sheet_name=None, header=None)
+            return "\n\n".join(
+                f"{name}:\n{sheet.to_string(index=False, header=False)}" for name, sheet in sheets.items()
+            )
+
+        logger.info("Skipping unsupported Confluence attachment type %s (%s)", media_type, title)
+        return ""
