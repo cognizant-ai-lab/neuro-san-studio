@@ -16,11 +16,13 @@
 
 """Typer CLI dispatcher for the neuro-san-studio package."""
 
+import os
 from typing import List
 from typing import Optional
 
 import typer
 
+from neuro_san_studio.commands.project_environment import ProjectEnvironment
 from neuro_san_studio.commands.run import NeuroSanRunner
 
 
@@ -59,6 +61,8 @@ class NeuroSanStudioCli:  # pylint: disable=too-few-public-methods
         ),
     ) -> None:
         """Neuro SAN Studio CLI."""
+        if os.path.isfile(".env"):
+            ProjectEnvironment(os.getcwd()).load_env_file()
 
     @staticmethod
     def _validate_run_flags(overrides: dict) -> None:

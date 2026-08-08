@@ -17,6 +17,7 @@
 """Tests for the Typer CLI dispatcher and `main()` entry point."""
 
 import sys
+from pathlib import Path
 
 import pytest
 from pytest import MonkeyPatch
@@ -259,3 +260,21 @@ class TestMainEntryPoint:
         main()
         assert "neuro-san-studio 1.2.3 (installed)" in capsys.readouterr().out
         assert not call_order
+
+
+class TestLoadsProjectEnvFile:  # pylint: disable=too-few-public-methods
+    """The top-level callback loads the project .env before any subcommand runs."""
+
+    def test_check_llm_keys_picks_up_dotenv(
+        self, tmp_path: Path, monkeypatch: MonkeyPatch, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        """A key defined only in <cwd>/.env is visible to `check-llm-keys` via os.getenv."""
+        monkeypatch.chdir(tmp_path)
+        (tmp_path / ".env").write_text("OPENAI_API_KEY=sk-from-dotenv-1234567890abcdef\n")
+        monkeypatch.delenv("OPENAI_API_KEY", raising=False)
+        monkeypatch.setattr(sys, "argv", ["neuro-san-studio", "check-llm-keys", "--tier", "1"])
+        try:
+            main()
+        except SystemExit as exc:
+            assert exc.code == 0
+        assert "sk-f...cdef" in capsys.readouterr().out

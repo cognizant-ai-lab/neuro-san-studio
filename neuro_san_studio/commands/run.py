@@ -63,11 +63,11 @@ class NeuroSanRunner:
         self.thinking_file = self.logs_dir / "agent_thinking.txt"
         self.thinking_dir = self.logs_dir / "thinking_dir"
         print(f"Root directory: {self.root_dir}")
-        # Shared project-resource resolution (manifest, tool path, mcp, toolbox, .env),
+        # Shared project-resource resolution (manifest, tool path, mcp, toolbox),
         # also used by `ns chat` so the two commands resolve a project identically.
+        # The project .env file is loaded once, globally, by the CLI's top-level
+        # callback before any subcommand runs.
         self.project_env = ProjectEnvironment(self.root_dir)
-        # Load environment variables from the project .env file (if any)
-        self.project_env.load_env_file()
 
         # Fail fast on a misconfiguration that otherwise surfaces as per-request
         # server errors and an nsflow client that hangs forever: neuro-san's

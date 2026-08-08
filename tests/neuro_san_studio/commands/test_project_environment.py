@@ -148,12 +148,12 @@ class TestToolboxApply:
 
 
 class TestEnvFile:  # pylint: disable=too-few-public-methods
-    """apply() loads a project-root .env so API keys are available."""
+    """load_env_file() loads a project-root .env so API keys are available."""
 
     def test_loads_dotenv(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
         """Keys defined in <root>/.env are loaded into the environment."""
         root = _project(tmp_path)
         (root / ".env").write_text("NS_TEST_ENV_KEY=from_dotenv\n")
         monkeypatch.delenv("NS_TEST_ENV_KEY", raising=False)
-        ProjectEnvironment(str(root)).apply()
+        ProjectEnvironment(str(root)).load_env_file()
         assert os.environ.get("NS_TEST_ENV_KEY") == "from_dotenv"
