@@ -30,6 +30,7 @@ jobs:
           https://github.com/lycheeverse/lychee/releases/download/lychee-v0.24.1/lychee-x86_64-unknown-linux-gnu.tar.gz \
           | tar --extract --gzip --directory /tmp --strip-components=1
         # To prevent flaky CI failures, accept:
+        # - 2xx (all success codes, e.g. 202 Accepted for endpoints that process asynchronously)
         # - 401 (Unauthorized) for API endpoints that require authentication
         # - 403 (Forbidden) if the server blocks bots or requests without a browser-like User-Agent
         # - 405 (Method Not Allowed) for MCP/API endpoints that only accept POST, not GET
@@ -38,7 +39,7 @@ jobs:
         # - 429 (rate limit)
         # - 502 (bad gateway) if the server is reachable but its backend momentarily failed to respond
         # - 503 (temporary outage)
-        /tmp/lychee --max-retries 3 --retry-wait-time 3 --max-concurrency 32 --verbose --accept '200,203,204,401,403,405,406,422,429,502,503' --exclude-path venv --include-verbatim '**/*.py' '**/*.md' '**/*.rst' '**/*.hocon' '**/*.txt' '**/*.yaml' '**/*.yml' '**/*.json' '**/*.html' '**/*.sh' .
+        /tmp/lychee --max-retries 3 --retry-wait-time 3 --max-concurrency 32 --verbose --accept '200..=299,401,403,405,406,422,429,502,503' --exclude-path venv --include-verbatim '**/*.py' '**/*.md' '**/*.rst' '**/*.hocon' '**/*.txt' '**/*.yaml' '**/*.yml' '**/*.json' '**/*.html' '**/*.sh' .
       test-command-override: 'VIRTUAL_ENV=system AGENT_TOOL_PATH=./neuro_san/coded_tools PYTHONPATH=.:$PYTHONPATH make test'
       check-readme-pypi: true
     secrets:

@@ -25,9 +25,9 @@ from typing import Any
 from typing import Literal
 from typing import Optional
 
-from langchain_community.vectorstores import InMemoryVectorStore
 from langchain_core.documents import Document
 from langchain_core.embeddings import Embeddings
+from langchain_core.vectorstores import InMemoryVectorStore
 from langchain_core.vectorstores import VectorStore
 from langchain_core.vectorstores.base import VectorStoreRetriever
 from langchain_openai import OpenAIEmbeddings

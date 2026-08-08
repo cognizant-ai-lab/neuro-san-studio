@@ -190,7 +190,7 @@ Always respond with "Successfully created/edited the structure of the agent netw
 """,
             "allow": {
                 "to_upstream": {
-                    "sly_data": ["agent_network_definition", "agent_network_name", "mcp_servers", "subnetworks", "toolbox_info"]
+                    "sly_data": ["agent_network_definition", "agent_network_name"]
                 }
             },
             "tools": [

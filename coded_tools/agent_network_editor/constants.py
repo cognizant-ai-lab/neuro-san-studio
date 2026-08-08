@@ -26,16 +26,10 @@ AGENT_NETWORK_HOCON_TEXT: str = "agent_network_hocon_text"
 # Name of the agent network, used as the persistence file path or reservation identifier.
 AGENT_NETWORK_NAME: str = "agent_network_name"
 
-# Cached list of MCP server URLs available to the designer.
-MCP_SERVERS: str = "mcp_servers"
+# Cached ProgressHandler instance controls AGENT_PROGRESS reporting throttling
+PROGRESS_HANDLER: str = "progress_handler"
 
-# Cached list of external agent / subnetwork names (each in "/<name>" form). Populated by a lightweight
-# manifest-only parse so validators can check tool references without loading each subnetwork's full HOCON.
-SUBNETWORK_NAMES: str = "subnetwork_names"
-
-# Cached dict mapping external agent / subnetwork name to its front-man's description. Used when the editor needs to
-# surface available subnetworks (with descriptions) to the LLM.
-SUBNETWORKS: str = "subnetworks"
-
-# Cached dict mapping toolbox tool name to its description.
-TOOLBOX_INFO: str = "toolbox_info"
+# Name of the sly_data lock (see SlyDataLock.get_lock) guarding the entry above.
+# Defined here because SlyDataLock creates a fresh lock for any unknown name —
+# a typo'd literal would silently hand out a second, independent lock.
+PROGRESS_HANDLER_LOCK: str = "progress_handler_lock"
