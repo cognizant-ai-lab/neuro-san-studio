@@ -120,7 +120,9 @@ Imported alongside each network:
 - Sub-networks (`/network_name` references) — transitively
 - MCP tool URLs (`http://` / `https://`) — referenced server config is merged into `<project>/mcp/mcp_info.hocon` (additive; existing URLs preserved)
 
-Shared registry HOCONs (`aaosa.hocon`, `aaosa_basic.hocon`, `aaosa_basic_debug.hocon`) are scaffolded by `ns init`; the importer copies them as a safety net if missing.
+Shared registry HOCONs (`aaosa.hocon`, `aaosa_basic.hocon`, `aaosa_basic_debug.hocon`,
+`expertise_scoping_instructions.hocon`) are scaffolded by `ns init`; the importer copies them as a safety net if
+missing.
 
 ## Manifest
 

@@ -27,7 +27,7 @@ from typing import Optional
 from typing import Set
 
 from neuro_san.internals.persistence.abstract_async_config_restorer import AbstractAsyncConfigRestorer
-from neuro_san.internals.run_context.utils.external_agent_parsing import ExternalAgentParsing
+from neuro_san.internals.utils.external_agent_parsing import ExternalAgentParsing
 from pyparsing.exceptions import ParseException
 
 LLM_CLASSES = {"openai", "anthropic", "google", "bedrock", "azure"}

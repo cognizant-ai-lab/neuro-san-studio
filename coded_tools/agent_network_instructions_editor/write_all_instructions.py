@@ -20,7 +20,7 @@ from typing import Any
 
 from neuro_san.interfaces.coded_tool import CodedTool
 from neuro_san.internals.graph.activations.branch_activation import BranchActivation
-from neuro_san.internals.parsers.structure.json_structure_parser import JsonStructureParser
+from neuro_san.message.parsers.structure.json_structure_parser import JsonStructureParser
 
 from coded_tools.agent_network_editor.and_logger import AndLogger
 from coded_tools.agent_network_editor.constants import AGENT_NETWORK_DEFINITION

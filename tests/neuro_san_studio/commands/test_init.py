@@ -26,6 +26,8 @@ from pytest import MonkeyPatch
 
 from neuro_san_studio.commands import init as init_module
 from neuro_san_studio.commands.init import InitCommand
+from neuro_san_studio.importer.agent_network_importer import AgentNetworkImporter
+from neuro_san_studio.utils.shared_registries import SHARED_REGISTRY_INCLUDES
 
 
 class TestProvidersArgParsing:
@@ -167,9 +169,8 @@ class TestRunFlow:
         self._run_init(tmp_path, monkeypatch)
 
         assert (tmp_path / "registries" / "music_nerd.hocon").is_file()
-        assert (tmp_path / "registries" / "aaosa.hocon").is_file()
-        assert (tmp_path / "registries" / "aaosa_basic.hocon").is_file()
-        assert (tmp_path / "registries" / "aaosa_basic_debug.hocon").is_file()
+        for shared in SHARED_REGISTRY_INCLUDES:
+            assert (tmp_path / "registries" / shared).is_file()
         assert (tmp_path / "registries" / "manifest.hocon").read_text().strip().startswith("{")
         # registries/generated/ must exist with an empty manifest so the include in the
         # main manifest resolves before agent_network_designer ever runs.
@@ -339,6 +340,22 @@ class TestRunFlow:
             tmp_path, "aaosa_basic_debug.hocon", "registries/aaosa_basic_debug.hocon", "registries"
         )
 
+    def test_expertise_scoping_instructions_sourced_from_registries(
+        self, tmp_path: Path, monkeypatch: MonkeyPatch
+    ) -> None:
+        """expertise_scoping_instructions.hocon should be copied from the registries package.
+
+        The scaffolded music_nerd.hocon includes it and substitutes
+        ``${expertise_scoping_instructions}``, so a project missing this file fails to parse.
+        """
+        self._run_init(tmp_path, monkeypatch)
+        self._assert_matches_template(
+            tmp_path,
+            "expertise_scoping_instructions.hocon",
+            "registries/expertise_scoping_instructions.hocon",
+            "registries",
+        )
+
     def test_manifest_sourced_from_templates(self, tmp_path: Path, monkeypatch: MonkeyPatch) -> None:
         """manifest.hocon should be copied from neuro_san_studio.templates."""
         self._run_init(tmp_path, monkeypatch)
@@ -377,3 +394,42 @@ class TestTemplateSync:
     def test_plugins_template_matches_config(self) -> None:
         """templates/plugins.hocon must be byte-identical to config/plugins.hocon."""
         self._assert_template_matches_source("plugins.hocon", "config/plugins.hocon")
+
+
+class TestSharedRegistryIncludes:
+    """Guard the single shared-includes list that `ns init` and `ns import` both consume."""
+
+    def test_importer_uses_the_shared_constant(self) -> None:
+        """AgentNetworkImporter must not maintain its own copy of the list.
+
+        `expertise_scoping_instructions.hocon` was missing from both lists because they were
+        edited independently. Asserting identity — not equality — keeps them one object.
+        """
+        assert AgentNetworkImporter.SHARED_INCLUDES is SHARED_REGISTRY_INCLUDES
+
+    def test_every_shared_include_exists_in_the_packaged_registries(self) -> None:
+        """Each name must resolve to a real file, or `ns init` silently scaffolds nothing.
+
+        `_copy_template` reads through importlib.resources, so a typo or a renamed fragment
+        surfaces only at scaffold time — and `ns import` degrades to a warning, not an error.
+        """
+        import importlib.resources  # pylint: disable=import-outside-toplevel
+
+        for shared in SHARED_REGISTRY_INCLUDES:
+            assert (importlib.resources.files("registries") / shared).is_file(), (
+                f"{shared} is listed in SHARED_REGISTRY_INCLUDES but is not in the registries package."
+            )
+
+    def test_no_shared_include_is_an_agent_network(self) -> None:
+        """Shared includes must be substitution fragments, never networks.
+
+        The list doubles as the manifest exclusion set, so anything with a `tools` block
+        landing here would stop being served the moment it was added.
+        """
+        import importlib.resources  # pylint: disable=import-outside-toplevel
+
+        for shared in SHARED_REGISTRY_INCLUDES:
+            text = (importlib.resources.files("registries") / shared).read_text(encoding="utf-8")
+            assert "tools" not in ConfigFactory.parse_string(text), (
+                f"{shared} looks like an agent network; excluding it from the manifest would unserve it."
+            )
