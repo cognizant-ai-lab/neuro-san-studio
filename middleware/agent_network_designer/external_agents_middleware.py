@@ -16,6 +16,7 @@
 
 import logging
 import os
+from pathlib import Path
 from typing import Any
 from typing import Awaitable
 from typing import Callable
@@ -30,9 +31,12 @@ from langchain_core.messages import BaseMessage
 from langchain_core.messages import SystemMessage
 from neuro_san.internals.persistence.abstract_async_config_restorer import AbstractAsyncConfigRestorer
 from neuro_san.internals.utils.external_agent_parsing import ExternalAgentParsing
+from pyparsing.exceptions import ParseException
 
 EXTERNAL_AGENTS_CATALOG: str = "external_agents_catalog"
-DEFAULT_EXTERNAL_AGENTS_FILE: str = os.path.join("middleware", "agent_network_designer", "external_agents.hocon")
+# Relative to the repository root, like every other default path in this project
+# (the server is expected to be started from the top of the repo — see run.py).
+DEFAULT_EXTERNAL_AGENTS_FILE: str = str(Path("middleware", "agent_network_designer", "external_agents.hocon"))
 TRUTHY_VALUES: frozenset[str] = frozenset({"1", "true", "yes", "on"})
 
 
@@ -50,6 +54,12 @@ class ExternalAgentsMiddleware(AgentMiddleware):
     The catalog is loaded once per session and cached in sly_data under the key
     "external_agents_catalog". Env var values are re-evaluated on every model call so a toggle
     flipped mid-session takes effect without restarting the server.
+
+    The catalog is the only source of knowledge about which tools are toggleable — the
+    designer's hocon must statically declare every external agent it can ever talk to, so
+    this gate can only strip tools, never add them. If the catalog cannot be loaded, the
+    middleware therefore fails CLOSED: the model call is refused with an actionable error
+    instead of proceeding with disabled tools still reachable.
     """
 
     def __init__(self, sly_data: dict[str, Any]) -> None:
@@ -84,9 +94,20 @@ class ExternalAgentsMiddleware(AgentMiddleware):
             try:
                 hocon = AbstractAsyncConfigRestorer(file_purpose="get_external_agents", must_exist=True)
                 catalog = await hocon.async_restore(file_reference=catalog_file)
-            except FileNotFoundError:
-                self.logger.warning("WARNING: External agents catalog file not found: %s. Skipping.", catalog_file)
-                return await handler(request)
+            except (OSError, ValueError, ParseException) as error:
+                # OSError covers FileNotFoundError / PermissionError / IsADirectoryError;
+                # ValueError is raised for unsupported file extensions; ParseException is
+                # AbstractAsyncConfigRestorer's wrapper for HOCON/JSON parse failures.
+                # Fail CLOSED: without the catalog we cannot know which toggleable tools
+                # to strip, and proceeding would leave disabled external agents (e.g.
+                # /middleware_manager) invokable even though their toggle is off. A loud,
+                # actionable error beats a silent security downgrade.
+                raise ValueError(
+                    f"External agents catalog could not be loaded from '{catalog_file}': {error}. "
+                    "Tool gating cannot be applied without it, so the designer refuses to run. "
+                    "Fix (or unset) the EXTERNAL_AGENTS_FILE environment variable, or restore the "
+                    "default catalog file, and start the server from the top of the repository."
+                ) from error
 
             self.sly_data[EXTERNAL_AGENTS_CATALOG] = catalog
 

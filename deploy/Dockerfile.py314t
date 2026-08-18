@@ -709,7 +709,10 @@ ENV EXTERNAL_AGENTS_FILE="${APP_SOURCE}/middleware/agent_network_designer/extern
 # about the middleware step in its workflow and the /middleware_manager tool is kept in
 # ModelRequest.tools so it can be invoked. When unset or set to any other value (including
 # "false"), the workflow step is omitted from the system prompt AND the tool is stripped
-# from ModelRequest.tools, so the designer literally cannot reach /middleware_manager.
+# from ModelRequest.tools, so the designer cannot reach /middleware_manager. This gate
+# depends on the external-agents catalog (EXTERNAL_AGENTS_FILE above): if the catalog
+# cannot be loaded, the designer fails closed — model calls error out rather than
+# proceeding with disabled tools still reachable.
 # Defaults to "false" if not set.
 ENV AGENT_NETWORK_DESIGNER_USE_MIDDLEWARE="false"
 
