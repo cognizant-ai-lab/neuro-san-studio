@@ -39,14 +39,29 @@ fi
 export PYTHONPATH
 
 echo "Configuration information:"
-cat /proc/meminfo | grep MemTotal
-cat /sys/fs/cgroup/memory/memory.limit_in_bytes
-cat /sys/fs/cgroup/memory.max
-echo
-lscpu | grep "^CPU(s):"
-cat /sys/fs/cgroup/cpu/cpu.cfs_quota_us
-cat /sys/fs/cgroup/cpu.max
-echo
+grep MemTotal < /proc/meminfo
+if [ -f /sys/fs/cgroup/memory/memory.limit_in_bytes ]
+then
+    cat /sys/fs/cgroup/memory/memory.limit_in_bytes
+fi
+if [ -f /sys/fs/cgroup/memory.max ]
+then
+    cat /sys/fs/cgroup/memory.max
+fi
+
+if command -v lscpu >/dev/null 2>&1
+then
+    lscpu | grep "^CPU(s):"
+fi
+if [ -f /sys/fs/cgroup/cpu/cpu.cfs_quota_us ]
+then
+    cat /sys/fs/cgroup/cpu/cpu.cfs_quota_us
+fi
+if [ -f /sys/fs/cgroup/cpu.max ]
+then
+    cat /sys/fs/cgroup/cpu.max
+fi
+
 ulimit -a
 
 echo "Toolchain:"

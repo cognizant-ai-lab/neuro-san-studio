@@ -14,6 +14,8 @@
 #
 # END COPYRIGHT
 
+from collections.abc import Collection
+from collections.abc import Mapping
 from copy import copy as shallow_copy
 from copy import deepcopy
 from typing import Any
@@ -50,9 +52,14 @@ class DeployableAgentNetworkAssembler(AgentNetworkAssembler):
         self.template: dict[str, Any] = None
         self.aaosa_defs: dict[str, Any] = None
 
-    # pylint: disable=too-many-locals
+    # pylint: disable=too-many-locals, too-many-arguments, too-many-positional-arguments
     async def assemble_agent_network(
-        self, network_def: dict[str, Any], top_agent_name: str, agent_network_name: str, sample_queries: list[str]
+        self,
+        network_def: dict[str, Any],
+        top_agent_name: str,
+        agent_network_name: str,
+        sample_queries: list[str],
+        client_token_mcp_headers: Mapping[str, Collection[str]] | None = None,
     ) -> dict[str, Any]:
         """
         Assemble the agent network from the definition.
@@ -61,6 +68,9 @@ class DeployableAgentNetworkAssembler(AgentNetworkAssembler):
         :param top_agent_name: The name of the top agent
         :param agent_network_name: The file name, without the .hocon extension
         :param sample_queries: List of sample queries for the agent network
+        :param client_token_mcp_headers: Optional mapping of client-token MCP
+                server URL to the header names the conversation supplied for it,
+                driving the front man's sly_data_schema (see the base class)
 
         :return: Some representation of the agent network
         """
@@ -83,6 +93,11 @@ class DeployableAgentNetworkAssembler(AgentNetworkAssembler):
         # Add metadata if sample queries are provided
         if sample_queries:
             agent_network["metadata"] = {"sample_queries": sample_queries}
+
+        # None when the network uses no client-token MCP servers.
+        sly_data_schema: dict[str, Any] | None = self.build_mcp_sly_data_schema(
+            use_network_def, client_token_mcp_headers
+        )
 
         agent_name: str = None
         agent_def: dict[str, Any] = {}
@@ -131,6 +146,12 @@ class DeployableAgentNetworkAssembler(AgentNetworkAssembler):
                     agent_spec["function"]["description"] = (
                         agent_description or "An assistant that answers inquiries from the user."
                     )
+                    # Injected after filter_agent() on purpose: there is no
+                    # template placeholder to delete for the no-MCP case, and
+                    # the URL keys never pass through the string filter's
+                    # {placeholder} replacement.
+                    if sly_data_schema:
+                        agent_spec["function"]["sly_data_schema"] = sly_data_schema
                 else:
                     agent_spec["function"]["description"] = agent_description
 

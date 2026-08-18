@@ -258,7 +258,7 @@ class WebFetch(CodedTool):
     @staticmethod
     def _validate_max_content_chars(args: dict[str, Any]) -> int:
         """Return a validated max_content_chars value, raising invalid_input on bad input."""
-        value: int = args.get("max_content_chars", MAX_CHARS)
+        value: int = args.get("max_content_chars") or MAX_CHARS
         if not isinstance(value, int) or value <= 0:
             raise ValueError(f"invalid_input: 'max_content_chars' must be a positive integer, got {value!r}.")
         return value

@@ -59,6 +59,7 @@
     "tools/agentforce.hocon": false,                    # Reason #2
     "tools/openai_image_generation.hocon": false,       # Reason #1
     "tools/persistent_memory_local.hocon": false,       # Reason #1
+    "tools/google_workspace.hocon": false,              # Reason #7
     "tools/you_search.hocon": false,                    # Reason #7
 
     # Experimental and research

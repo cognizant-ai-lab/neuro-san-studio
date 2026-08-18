@@ -87,6 +87,7 @@
             "class": "rag.Rag"
         },
         # Retrieves messages from a specified Slack channel.
+        # Install slack-sdk and set SLACK_BOT_TOKEN or SLACK_USER_TOKEN to use this tool.
         {
             "name": "slack_tool",
             "function": {

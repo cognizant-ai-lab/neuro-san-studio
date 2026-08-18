@@ -26,8 +26,12 @@
 #   2. MCP_SERVERS_INFO_FILE. See ../../neuro_san_studio/mcp/mcp_info.hocon and
 #      ../../docs/user_guide.md#authentication.
 #
-# Note: when `sly_data_schema` is defined, nsflow requires the bearer token to be passed
-# as sly data even if an API key is already configured in the MCP info file.
+# Note: nsflow forces an OAuth connect (blocking chat until it succeeds) only for the MCP
+# server URLs listed under `sly_data_schema.http_headers.required`. A URL declared under
+# `http_headers.properties` but omitted from `required` still has its bearer token injected
+# opportunistically when one is passed, but its absence no longer blocks chatting — so
+# YDC_API_KEY or MCP_SERVERS_INFO_FILE auth works. Here `https://api.you.com/mcp` is in
+# `required`, so a bearer token is expected even if an API key is set in the MCP info file.
 
 {
     # Optional metadata describing this agent network
@@ -76,10 +80,11 @@
                 # This is to allow generic clients to know what to expect for private-data inputs
                 # that do not belong in the chat stream.
                 #
-                # Note: this block is required only for the OAuth bearer-token flow. If you are
-                # authenticating via YDC_API_KEY (or via MCP_SERVERS_INFO_FILE), comment out or
-                # remove the entire "sly_data_schema" block below — otherwise nsflow will still
-                # expect a bearer token to be passed in as sly data.
+                # Note: this block drives the OAuth bearer-token flow. If you authenticate via
+                # YDC_API_KEY (or via MCP_SERVERS_INFO_FILE) instead, either remove the entire
+                # "sly_data_schema" block below, or keep it (for opportunistic token injection)
+                # and set `http_headers.required` to [] — that stops nsflow from forcing an OAuth
+                # connect / redirect to home when no bearer token is passed in as sly data.
                 "sly_data_schema": {
                     "type": "object",
                     "properties": {
@@ -91,18 +96,24 @@
                                 "https://api.you.com/mcp": {
                                     "type": "object",
                                     "description": "URL for You.com MCP server.",
+                                    "properties": {
                                         "Authorization": {
                                             "type": "string",
                                             "description": "Authorization header for you.com API access, e.g., 'Bearer <token_value>'."
                                         }
-                                },
+                                    },
                                     "required": ["Authorization"]
-                            }
-                        },
+                                }
+                            },
+                            # URLs listed here gate chatting: nsflow forces an OAuth connect and
+                            # redirects to home until each is connected. Set to [] to disable the
+                            # gate (the token is still injected opportunistically when passed); omit
+                            # `required` entirely to gate every URL declared under `properties`.
                             "required": ["https://api.you.com/mcp"]
-                    }
-                },
+                        }
+                    },
                     "required": ["http_headers"]
+                }
             },
 
             "instructions": """

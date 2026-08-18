@@ -184,7 +184,7 @@ These instructions are for Linux and macOS systems. Please adjust the commands a
 
 [`uv`](https://docs.astral.sh/uv/) is a fast Python package and project manager built by Astral.
 
-Official installation docs:  
+Official installation docs:
 👉 [https://docs.astral.sh/uv/getting-started/installation/](https://docs.astral.sh/uv/getting-started/installation/)
 
 ### Create a new Python project
@@ -414,6 +414,10 @@ surfacing content most relevant to the user's industry and seniority level.
 * [Tochiro File Organizer](https://github.com/ofrancon/tochiro):
 a macOS file organization assistant with a dedicated UI to analyze a folder,
 create a plan for moving the files, ask for approval and execute the moves.
+* [Legacy Business-Rule Extractor](https://github.com/Sivakumarraj/neuro-san-legacy-analyzer):
+a 6-agent network that extracts business rules from legacy COBOL, Java, and PL/SQL code,
+pairing deterministic CodedTool parsers with LLM agents to produce a modernization-ready
+specification document.
 
 ### Utilities
 
@@ -430,6 +434,8 @@ a Slack integration that lets you interact with Neuro SAN directly from your wor
 * YouTube: [Decision AI](https://www.youtube.com/@decision-ai)
 * X: [@cognizantailab](https://x.com/cognizantailab)
 * LinkedIn: [Cognizant AI Lab](https://www.linkedin.com/showcase/cognizant-ai-lab)
+* Amazon Marketplace: [Cognizant Neuro SAN](https://aws.amazon.com/marketplace/pp/prodview-z246c4x7j3xb6)
+* Azure Marketplace: [Cognizant Neuro SAN](https://marketplace.microsoft.com/en-us/product/virtual-machine/cognizant.cognizant_neurosanai-application)
 
 ---
 

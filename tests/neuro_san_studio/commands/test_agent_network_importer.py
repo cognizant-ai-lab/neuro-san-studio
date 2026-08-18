@@ -48,7 +48,7 @@ class TestImportNetwork:
         (registries / "basic").mkdir(parents=True)
         (registries / "basic" / "music_nerd.hocon").write_text('{ "tools": [] }\n')
         # Shared registry includes that the importer always copies.
-        for shared in ("aaosa.hocon", "aaosa_basic.hocon", "aaosa_basic_debug.hocon"):
+        for shared in AgentNetworkImporter.SHARED_INCLUDES:
             (registries / shared).write_text(f"# {shared}\n")
 
         coded_tools = source_dir / "coded_tools" / "music_nerd"
@@ -100,7 +100,7 @@ class TestImportNetwork:
         (registries / "agent_network_designer.hocon").write_text('{ "tools": [] }\n')
         (registries / "advanced_calculator.hocon").write_text('{ "tools": [] }\n')
         (registries / "agentforce_adapter.hocon").write_text('{ "tools": [] }\n')
-        for shared in ("aaosa.hocon", "aaosa_basic.hocon", "aaosa_basic_debug.hocon"):
+        for shared in AgentNetworkImporter.SHARED_INCLUDES:
             (registries / shared).write_text("")
 
         importer = AgentNetworkImporter(str(source_dir), str(target_dir))
@@ -112,10 +112,11 @@ class TestImportNetwork:
         assert "agent_network_designer.hocon" in result.manifest_entries
         assert "advanced_calculator.hocon" in result.manifest_entries
         assert "agentforce_adapter.hocon" in result.manifest_entries
-        # Shared includes ride along on disk (line 86) but must NOT be registered as networks.
-        assert "aaosa.hocon" not in result.manifest_entries
-        assert "aaosa_basic.hocon" not in result.manifest_entries
-        assert "aaosa_basic_debug.hocon" not in result.manifest_entries
+        # Shared includes ride along on disk but must NOT be registered as networks: they are
+        # substitution fragments, and neuro-san's validator crashes on a manifest entry whose
+        # file holds a bare string instead of agent specs.
+        for shared in AgentNetworkImporter.SHARED_INCLUDES:
+            assert shared not in result.manifest_entries
 
     def test_import_skips_existing_files(self, tmp_path: Path) -> None:
         """Pre-existing target files must not be overwritten and should be reported as skipped."""
@@ -463,7 +464,7 @@ class TestMcpInfoMerge:
         target_dir.mkdir()
         (source_dir / "registries" / "basic").mkdir(parents=True)
         (source_dir / "registries" / "basic" / "mcp_user.hocon").write_text('{ "tools": [] }\n')
-        for shared in ("aaosa.hocon", "aaosa_basic.hocon", "aaosa_basic_debug.hocon"):
+        for shared in AgentNetworkImporter.SHARED_INCLUDES:
             (source_dir / "registries" / shared).write_text("")
         (source_dir / "mcp").mkdir()
         (source_dir / "mcp" / "mcp_info.hocon").write_text(
@@ -582,7 +583,7 @@ class TestForceOverwrite:
         registries.mkdir(parents=True)
         (registries / "music_nerd.hocon").write_text("NEW\n")
         # SHARED_INCLUDES are always copied; create empty stand-ins so import_network doesn't warn.
-        for shared in ("aaosa.hocon", "aaosa_basic.hocon", "aaosa_basic_debug.hocon"):
+        for shared in AgentNetworkImporter.SHARED_INCLUDES:
             (source_dir / "registries" / shared).write_text("")
 
         target_dir = tmp_path / "target"
