@@ -86,7 +86,7 @@ class RemoveMiddleware(CodedTool):
         network_def[agent_name] = agent_def
         sly_data[AGENT_NETWORK_DEFINITION] = network_def
 
-        await ProgressHandler.report_progress(args, network_def)
+        await ProgressHandler.report_progress(args, sly_data, network_def)
 
         logger.debug(">>>>>>>>>>>>>>>>>>> DONE %s !!!>>>>>>>>>>>>>>>>>>", self.__class__.__name__)
         return f"Successfully removed middleware '{middleware_class}' from agent '{agent_name}'."

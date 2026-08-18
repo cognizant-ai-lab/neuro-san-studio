@@ -29,7 +29,7 @@ from langchain.agents.middleware.types import ResponseT
 from langchain_core.messages import BaseMessage
 from langchain_core.messages import SystemMessage
 from neuro_san.internals.persistence.abstract_async_config_restorer import AbstractAsyncConfigRestorer
-from neuro_san.internals.run_context.utils.external_agent_parsing import ExternalAgentParsing
+from neuro_san.internals.utils.external_agent_parsing import ExternalAgentParsing
 
 EXTERNAL_AGENTS_CATALOG: str = "external_agents_catalog"
 DEFAULT_EXTERNAL_AGENTS_FILE: str = os.path.join("middleware", "agent_network_designer", "external_agents.hocon")
