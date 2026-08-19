@@ -27,13 +27,17 @@ from langchain.agents.middleware.types import ContextT
 from langchain.agents.middleware.types import ModelRequest
 from langchain.agents.middleware.types import ModelResponse
 from langchain.agents.middleware.types import ResponseT
+from langchain.agents.middleware.types import ToolCallRequest
 from langchain_core.messages import BaseMessage
 from langchain_core.messages import SystemMessage
+from langchain_core.messages import ToolMessage
+from langgraph.types import Command
 from neuro_san.internals.persistence.abstract_async_config_restorer import AbstractAsyncConfigRestorer
 from neuro_san.internals.utils.external_agent_parsing import ExternalAgentParsing
 from pyparsing.exceptions import ParseException
 
-EXTERNAL_AGENTS_CATALOG: str = "external_agents_catalog"
+from coded_tools.agent_network_editor.shared_process_cache import SharedProcessCache
+
 # Relative to the repository root, like every other default path in this project
 # (the server is expected to be started from the top of the repo — see run.py).
 DEFAULT_EXTERNAL_AGENTS_FILE: str = str(Path("middleware", "agent_network_designer", "external_agents.hocon"))
@@ -42,17 +46,23 @@ TRUTHY_VALUES: frozenset[str] = frozenset({"1", "true", "yes", "on"})
 
 class ExternalAgentsMiddleware(AgentMiddleware):
     """
-    Middleware that loads the toggleable external-agent catalog from a HOCON file and, per
-    model call, applies the env-var gate for each catalog entry:
+    Middleware that loads the toggleable external-agent catalog from a HOCON file and
+    applies the env-var gate for each catalog entry:
 
     - When a module's `enabled_env_var` is truthy ("1"/"true"/"yes"/"on", case-insensitive):
       its `instructions` are appended to the system prompt and its `tool` is left in
       `ModelRequest.tools`.
     - When the env var is unset or falsy: the module's `tool` is stripped from
-      `ModelRequest.tools` so the LLM cannot invoke it, and no prompt text is injected.
+      `ModelRequest.tools` so the LLM is never offered it, AND any tool call naming it
+      anyway is denied at execution time by awrap_tool_call(). Stripping alone only
+      changes what is *advertised*: the agent executor is built once with the full
+      static tool list, so it would happily execute a stripped tool's name replayed
+      from earlier chat history, hallucinated, or steered by prompt injection.
 
-    The catalog is loaded once per session and cached in sly_data under the key
-    "external_agents_catalog". Env var values are re-evaluated on every model call so a toggle
+    The catalog is loaded once per process and shared via SharedProcessCache (see
+    ProcessGlobals entry 7); an edited catalog file — or a changed EXTERNAL_AGENTS_FILE —
+    is picked up on the next call through the path + modification-time fingerprint.
+    Env-var toggle values are re-evaluated on every model and tool call, so a toggle
     flipped mid-session takes effect without restarting the server.
 
     The catalog is the only source of knowledge about which tools are toggleable — the
@@ -62,16 +72,93 @@ class ExternalAgentsMiddleware(AgentMiddleware):
     instead of proceeding with disabled tools still reachable.
     """
 
+    @staticmethod
+    def _load_external_agents_catalog() -> dict[str, Any]:
+        """
+        SharedProcessCache loader: read and parse the external-agents catalog.
+
+        Runs in a worker thread (reached through aget()), so the blocking file read
+        and HOCON parse stay off the event loop.
+
+        :return: The parsed catalog dictionary ({} for an empty file — loaders must
+                never return None, the cache's miss sentinel).
+        :raises ValueError: when the catalog cannot be read or parsed. Nothing is
+                published on a raise, so the next call retries — an operator can fix
+                the file and recover without restarting the server.
+        """
+        catalog_file: str = os.getenv("EXTERNAL_AGENTS_FILE", DEFAULT_EXTERNAL_AGENTS_FILE)
+        try:
+            # An empty env var (EXTERNAL_AGENTS_FILE="", the docker-compose/k8s idiom
+            # for "unset") makes restore() return None before its must_exist check
+            # ever runs. Treating that as an empty catalog would silently disable the
+            # gate, so reject it here and let the fail-closed error below explain.
+            if not catalog_file:
+                raise ValueError("EXTERNAL_AGENTS_FILE is set to an empty string")
+            restorer = AbstractAsyncConfigRestorer(file_purpose="get_external_agents", must_exist=True)
+            catalog: dict[str, Any] = restorer.restore(file_reference=catalog_file)
+        except (OSError, ValueError, ParseException) as error:
+            # OSError covers FileNotFoundError / PermissionError / IsADirectoryError;
+            # ValueError is raised for unsupported file extensions and is what current
+            # neuro-san re-wraps HOCON/JSON parse failures into; ParseException stays
+            # in the tuple defensively for neuro-san versions that surface pyhocon's
+            # exception directly. Fail CLOSED: without the catalog we cannot know
+            # which toggleable tools to strip, and proceeding would leave disabled
+            # external agents (e.g. /middleware_manager) invokable even though their
+            # toggle is off. A loud, actionable error beats a silent security
+            # downgrade.
+            raise ValueError(
+                f"External agents catalog could not be loaded from '{catalog_file}': {error}. "
+                "Tool gating cannot be applied without it, so the designer refuses to run. "
+                "Fix (or unset) the EXTERNAL_AGENTS_FILE environment variable, or restore the "
+                "default catalog file, and start the server from the top of the repository."
+            ) from error
+        return catalog or {}
+
+    @staticmethod
+    def _catalog_fingerprint() -> tuple[str, int | None]:
+        """
+        SharedProcessCache fingerprint: the resolved catalog path plus its
+        modification time, so both an edited file and a changed EXTERNAL_AGENTS_FILE
+        register as a miss and trigger a reload. Cheap and never raises, per the
+        fingerprint contract.
+        """
+        catalog_file: str = os.getenv("EXTERNAL_AGENTS_FILE", DEFAULT_EXTERNAL_AGENTS_FILE)
+        return catalog_file, SharedProcessCache.stat_modification_time_ns(catalog_file)
+
+    # Process-wide cache of the parsed catalog (see ProcessGlobals entry 7). The
+    # catalog is static server-side configuration: caching it per process replaces
+    # the previous per-session sly_data cache, which re-read and re-parsed the file
+    # for every new designer conversation. Access goes through the class by name
+    # (not cls) so a hypothetical subclass shares the one cache instead of
+    # splitting it.
+    _shared_catalog_cache: SharedProcessCache[dict[str, Any]] = SharedProcessCache(
+        loader=_load_external_agents_catalog,
+        fingerprint=_catalog_fingerprint,
+    )
+
     def __init__(self, sly_data: dict[str, Any]) -> None:
         """
         :param sly_data: A dictionary whose keys are defined by the agent hierarchy,
                 but whose values are meant to be kept out of the chat stream.
-
-                Keys expected for this implementation are:
-                    "external_agents_catalog": the loaded catalog (populated on first call)
+                No longer used by this middleware (the catalog moved to a
+                process-wide cache); the parameter stays because MiddlewareFactory
+                wires it in per the "sly_data": true arg in
+                registries/agent_network_designer.hocon.
         """
         self.sly_data = sly_data
         self.logger = logging.getLogger(self.__class__.__name__)
+
+    @classmethod
+    def clear_shared_catalog_for_testing(cls):
+        """
+        Reset the process-wide catalog cache. For test isolation only.
+
+        Production code must never call this: the cache is deliberately
+        load-once-per-process with fingerprint-based refresh. Tests call it (via
+        tests/conftest.py's ProcessGlobals reset) so a catalog loaded under one
+        test's EXTERNAL_AGENTS_FILE state cannot leak into later tests.
+        """
+        ExternalAgentsMiddleware._shared_catalog_cache.clear_for_testing()
 
     @override
     async def awrap_model_call(
@@ -83,35 +170,9 @@ class ExternalAgentsMiddleware(AgentMiddleware):
         Filter disabled tools out of the request and append enabled modules' workflow-step
         instructions to the system prompt before the model call.
         """
-        catalog: dict[str, Any] | None = self.sly_data.get(EXTERNAL_AGENTS_CATALOG)
+        catalog: dict[str, Any] = await ExternalAgentsMiddleware._shared_catalog_cache.aget()
 
-        if catalog is None:
-            catalog_file: str = os.getenv("EXTERNAL_AGENTS_FILE", DEFAULT_EXTERNAL_AGENTS_FILE)
-            self.logger.debug(
-                ">>>>>>>>>>>>>>>>>>>Loading External Agents Catalog from '%s'>>>>>>>>>>>>>>>>>>>",
-                catalog_file,
-            )
-            try:
-                hocon = AbstractAsyncConfigRestorer(file_purpose="get_external_agents", must_exist=True)
-                catalog = await hocon.async_restore(file_reference=catalog_file)
-            except (OSError, ValueError, ParseException) as error:
-                # OSError covers FileNotFoundError / PermissionError / IsADirectoryError;
-                # ValueError is raised for unsupported file extensions; ParseException is
-                # AbstractAsyncConfigRestorer's wrapper for HOCON/JSON parse failures.
-                # Fail CLOSED: without the catalog we cannot know which toggleable tools
-                # to strip, and proceeding would leave disabled external agents (e.g.
-                # /middleware_manager) invokable even though their toggle is off. A loud,
-                # actionable error beats a silent security downgrade.
-                raise ValueError(
-                    f"External agents catalog could not be loaded from '{catalog_file}': {error}. "
-                    "Tool gating cannot be applied without it, so the designer refuses to run. "
-                    "Fix (or unset) the EXTERNAL_AGENTS_FILE environment variable, or restore the "
-                    "default catalog file, and start the server from the top of the repository."
-                ) from error
-
-            self.sly_data[EXTERNAL_AGENTS_CATALOG] = catalog
-
-        enabled_blocks, disabled_tools = self._classify(catalog or {})
+        enabled_blocks, disabled_tools = self._classify(catalog)
 
         new_tools = self._filter_tools(request.tools, disabled_tools) if disabled_tools else None
         new_system_message = (
@@ -134,6 +195,55 @@ class ExternalAgentsMiddleware(AgentMiddleware):
         )
         return await handler(request.override(**overrides))
 
+    @override
+    async def awrap_tool_call(
+        self,
+        request: ToolCallRequest,
+        handler: Callable[[ToolCallRequest], Awaitable[ToolMessage | Command]],
+    ) -> ToolMessage | Command:
+        """
+        Enforce the env-var gate at tool-execution time.
+
+        Narrowing ModelRequest.tools in awrap_model_call() only changes what is
+        advertised to the model: the agent executor is still built with the full
+        static tool list, so a tool call naming a stripped tool would otherwise
+        still execute. This hook closes that gap by denying any call to a
+        currently disabled module tool with an error ToolMessage the model can
+        read and recover from.
+
+        The disabled set is recomputed from the env vars here rather than recorded
+        per tool call id (as neuro-san's LlmConfigToolSelectorMiddleware does for
+        its model-driven selection): this gate is a deployment toggle over a
+        static catalog, so current env state — not what was advertised on the call
+        that produced the tool call — is the source of truth. A toggle flipped off
+        between the model call and execution is denied, which is the stricter,
+        intended reading.
+
+        :param request: The ToolCallRequest describing the tool call to execute
+        :param handler: Async callback that actually executes the tool call
+        :return: The ToolMessage or Command from the tool call, or an error
+                ToolMessage when the tool's module is currently toggled off.
+        """
+        tool_name: str | None = request.tool_call.get("name")
+
+        catalog: dict[str, Any] = await ExternalAgentsMiddleware._shared_catalog_cache.aget()
+        _, disabled_tools = self._classify(catalog)
+
+        if tool_name in disabled_tools:
+            self.logger.warning("Denying tool call for disabled external agent '%s'.", tool_name)
+            call_id: str | None = request.tool_call.get("id")
+            return ToolMessage(
+                content=f"Error: tool '{tool_name}' is disabled on this deployment and was not executed.",
+                # ToolMessage requires a string tool_call_id, but providers may
+                # omit ids from tool calls (ToolCall.id is Optional). Preserve an
+                # empty-string id so the message still matches its tool call.
+                tool_call_id=call_id if call_id is not None else "unknown",
+                name=tool_name,
+                status="error",
+            )
+
+        return await handler(request)
+
     def _classify(self, catalog: dict[str, Any]) -> tuple[list[str], set[str]]:
         """
         Walk the catalog and split modules into enabled (whose instructions to inject) and
@@ -153,6 +263,16 @@ class ExternalAgentsMiddleware(AgentMiddleware):
         disabled_tools: set[str] = set()
 
         for module_name, module in catalog.items():
+            if not isinstance(module, dict):
+                # A custom catalog with a scalar top-level entry (e.g. "version": "1")
+                # must degrade to a warning, not an AttributeError on every model call.
+                self.logger.warning(
+                    "External-agent module '%s' is not a mapping (got %s); skipping.",
+                    module_name,
+                    type(module).__name__,
+                )
+                continue
+
             env_var: str = module.get("enabled_env_var", "")
             tool: str = module.get("tool", "")
             if not env_var or not tool:

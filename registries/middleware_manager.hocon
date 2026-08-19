@@ -98,7 +98,11 @@ is a dict with zero or more of these fields:
 """,
             "allow": {
                 "to_upstream": {
-                    "sly_data": ["agent_network_definition", "middleware_info"]
+                    # Only the network definition flows back to the designer. The
+                    # middleware catalog (middleware_info) is served from a
+                    # process-wide cache inside MiddlewareInfoMiddleware and never
+                    # needs to travel through sly_data.
+                    "sly_data": ["agent_network_definition"]
                 }
             },
             "tools": [

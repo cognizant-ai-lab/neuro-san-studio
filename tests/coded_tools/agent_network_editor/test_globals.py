@@ -60,7 +60,9 @@ class TestProcessGlobals(TestCase):
     def test_registry_entries_resolve_when_imported(self):
         """Registry triples must resolve against any imported owner module."""
         for module_name, class_name, clear_method_name in ProcessGlobals.REGISTRY:
-            self.assertTrue(module_name.startswith("coded_tools."))
+            # Owners live in the designer family's two packages; anything else
+            # in the registry is almost certainly a typo'd module path.
+            self.assertTrue(module_name.startswith(("coded_tools.", "middleware.")))
             # Owner modules need neuro-san, so only validate the ones this test
             # run happens to have imported; a typo'd class or method name in an
             # imported module must fail here rather than being skipped silently.

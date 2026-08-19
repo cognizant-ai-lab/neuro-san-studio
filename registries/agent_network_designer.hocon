@@ -268,9 +268,7 @@ Operational notes:
                     ]
                 },
                 "from_downstream": {
-                    # `middleware_info` is always allowed so it can flow back when the
-                    # /middleware_manager external agent is enabled; harmless otherwise.
-                    "sly_data": ["agent_network_definition", "agent_network_name", "agent_network_queries", "middleware_info"],
+                    "sly_data": ["agent_network_definition", "agent_network_name", "agent_network_queries"],
                     # Allow all messages sent from specific downstream agents to be reported
                     # as if they came back from this agent network. `/middleware_manager` is
                     # always listed; it just isn't called when its env var is off.
@@ -313,7 +311,8 @@ Operational notes:
                 },
                 {
                     # Appends instructions for every enabled toggleable external-agent module
-                    # to the system prompt at runtime. Catalog lives at
+                    # to the system prompt, strips disabled modules' tools from the model
+                    # request, and denies their tool calls at execution time. Catalog lives at
                     # middleware/agent_network_designer/external_agents.hocon.
                     "class": "middleware.agent_network_designer.external_agents_middleware.ExternalAgentsMiddleware",
                     "args": {
