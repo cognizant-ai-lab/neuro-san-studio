@@ -111,10 +111,7 @@ is a dict with zero or more of these fields:
             ],
             "middleware": [
                 {
-                    "class": "middleware.agent_network_designer.middleware_info_middleware.MiddlewareInfoMiddleware",
-                    "args": {
-                        "sly_data": true
-                    }
+                    "class": "middleware.agent_network_designer.middleware_info_middleware.MiddlewareInfoMiddleware"
                 },
                 {
                     "class": "middleware.agent_network_designer.agent_network_definition_middleware.AgentNetworkDefinitionMiddleware",

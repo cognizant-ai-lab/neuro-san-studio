@@ -32,11 +32,10 @@ from langchain_core.messages import BaseMessage
 from langchain_core.messages import SystemMessage
 from langchain_core.messages import ToolMessage
 from langgraph.types import Command
-from neuro_san.internals.persistence.abstract_async_config_restorer import AbstractAsyncConfigRestorer
 from neuro_san.internals.utils.external_agent_parsing import ExternalAgentParsing
-from pyparsing.exceptions import ParseException
 
-from coded_tools.agent_network_editor.shared_process_cache import SharedProcessCache
+from middleware.agent_network_designer.hocon_catalog_cache import CatalogLoadError
+from middleware.agent_network_designer.hocon_catalog_cache import HoconCatalogCache
 
 # Relative to the working directory, matching the repo/scaffold layout when the
 # server is started from the top of the repository or of an `ns init` project.
@@ -63,11 +62,11 @@ class ExternalAgentsMiddleware(AgentMiddleware):
       static tool list, so it would happily execute a stripped tool's name replayed
       from earlier chat history, hallucinated, or steered by prompt injection.
 
-    The catalog is loaded once per process and shared via SharedProcessCache (see
-    ProcessGlobals entry 7); an edited catalog file — or a changed EXTERNAL_AGENTS_FILE —
-    is picked up on the next call through the path + modification-time fingerprint.
-    Env-var toggle values are re-evaluated on every model and tool call, so a toggle
-    flipped mid-session takes effect without restarting the server.
+    The catalog is loaded once per process through HoconCatalogCache (see ProcessGlobals
+    entry 7), which also handles path resolution (env var, working-directory layout, the
+    copy bundled beside this module) and freshness. Env-var toggle values are
+    re-evaluated on every model and tool call, so a toggle flipped mid-session takes
+    effect without restarting the server.
 
     The catalog is the only source of knowledge about which tools are toggleable — the
     designer's hocon must statically declare every external agent it can ever talk to, so
@@ -76,121 +75,18 @@ class ExternalAgentsMiddleware(AgentMiddleware):
     instead of proceeding with disabled tools still reachable.
     """
 
-    @staticmethod
-    def _resolve_catalog_file() -> str:
-        """
-        Resolve the catalog path: an explicit EXTERNAL_AGENTS_FILE always wins
-        (including an explicitly empty one, which the loader rejects rather than
-        silently disabling the gate); otherwise prefer the working-directory
-        repo/project layout, falling back to the copy bundled next to this module
-        so scaffolded projects and installed wheels work without configuration.
-        """
-        env_path: str | None = os.getenv("EXTERNAL_AGENTS_FILE")
-        if env_path is not None:
-            return env_path
-        if os.path.isfile(DEFAULT_EXTERNAL_AGENTS_FILE):
-            return DEFAULT_EXTERNAL_AGENTS_FILE
-        return BUNDLED_EXTERNAL_AGENTS_FILE
-
-    @staticmethod
-    def _load_external_agents_catalog() -> dict[str, Any]:
-        """
-        SharedProcessCache loader: read and parse the external-agents catalog.
-
-        Runs in a worker thread (reached through aget()), so the blocking file read
-        and HOCON parse stay off the event loop.
-
-        :return: The parsed catalog dictionary ({} for an empty file — loaders must
-                never return None, the cache's miss sentinel).
-        :raises ValueError: when the catalog cannot be read or parsed. Nothing is
-                published on a raise, so the next call retries — an operator can fix
-                the file and recover without restarting the server. The raised
-                message is deliberately client-safe; the detailed cause goes to the
-                server log.
-        """
-        catalog_file: str = ExternalAgentsMiddleware._resolve_catalog_file()
-        logger = logging.getLogger(ExternalAgentsMiddleware.__name__)
-        try:
-            # An empty env var (EXTERNAL_AGENTS_FILE="", the docker-compose/k8s idiom
-            # for "unset") makes restore() return None before its must_exist check
-            # ever runs. Treating that as an empty catalog would silently disable the
-            # gate, so reject it here and let the fail-closed error below explain.
-            if not catalog_file:
-                raise ValueError("EXTERNAL_AGENTS_FILE is set to an empty string")
-            restorer = AbstractAsyncConfigRestorer(file_purpose="get_external_agents", must_exist=True)
-            catalog: dict[str, Any] = restorer.restore(file_reference=catalog_file)
-            if catalog is not None and not isinstance(catalog, dict):
-                # A root-level array or scalar parses fine but is not a catalog.
-                # Raising here (instead of publishing it) keeps the failure on the
-                # actionable fail-closed path below, and recovery needs only a file
-                # fix — nothing bad is ever cached.
-                raise ValueError(f"catalog root must be a mapping of module entries, got {type(catalog).__name__}")
-        except (OSError, ValueError, ParseException) as error:
-            # OSError covers FileNotFoundError / PermissionError / IsADirectoryError;
-            # ValueError is raised for unsupported file extensions and is what current
-            # neuro-san re-wraps HOCON/JSON parse failures into; ParseException stays
-            # in the tuple defensively for neuro-san versions that surface its own
-            # ParseException wrapper directly. Fail CLOSED: without the catalog we
-            # cannot know which toggleable tools to strip, and proceeding would leave
-            # disabled external agents (e.g. /middleware_manager) invokable even
-            # though their toggle is off.
-            #
-            # The detailed message (resolved path + underlying error) goes to the
-            # server log only. The raised message must be client-safe: an exception
-            # escaping a model call becomes the turn's client-visible answer
-            # ("Agent stopped due to exception ..."), and the resolved server path
-            # plus the restorer's cwd guidance would leak filesystem details to
-            # remote users.
-            logger.error("External agents catalog could not be loaded from '%s': %s", catalog_file, error)
-            raise ValueError(
-                "The Agent Network Designer's external-agents catalog failed to load, so tool "
-                "gating cannot be applied and the designer refuses to run. Ask the server "
-                "operator to check the EXTERNAL_AGENTS_FILE setting and the server logs."
-            ) from error
-        if not catalog:
-            # An empty catalog is a legitimate "no toggleable modules" configuration,
-            # but it looks exactly like an accidentally truncated file — and with
-            # nothing to strip, every statically-declared module tool becomes
-            # reachable. Leave a breadcrumb rather than failing a legitimate config.
-            logger.warning(
-                "External agents catalog '%s' is empty: no external-agent tools will be gated.", catalog_file
-            )
-            return {}
-        return catalog
-
-    @staticmethod
-    def _catalog_fingerprint() -> tuple[str, tuple[int, int] | None]:
-        """
-        SharedProcessCache fingerprint: the resolved catalog path plus its
-        (size, modification time), so an edited file, a changed
-        EXTERNAL_AGENTS_FILE, and a same-clock-tick truncate-then-write all
-        register as a miss and trigger a reload. Cheap and never raises, per the
-        fingerprint contract.
-        """
-        catalog_file: str = ExternalAgentsMiddleware._resolve_catalog_file()
-        return catalog_file, SharedProcessCache.stat_size_and_modification_time_ns(catalog_file)
-
-    # Process-wide cache of the parsed catalog (see ProcessGlobals entry 7). The
-    # catalog is static server-side configuration: caching it per process replaces
-    # the previous per-session sly_data cache, which re-read and re-parsed the file
-    # for every new designer conversation. Access goes through the class by name
-    # (not cls) so a hypothetical subclass shares the one cache instead of
-    # splitting it.
-    _shared_catalog_cache: SharedProcessCache[dict[str, Any]] = SharedProcessCache(
-        loader=_load_external_agents_catalog,
-        fingerprint=_catalog_fingerprint,
+    # Process-wide cache of the parsed catalog (see ProcessGlobals entry 7). Access
+    # goes through the class by name (not cls) so a hypothetical subclass shares the
+    # one cache instead of splitting it.
+    _shared_catalog_cache: HoconCatalogCache = HoconCatalogCache(
+        env_var="EXTERNAL_AGENTS_FILE",
+        default_file=DEFAULT_EXTERNAL_AGENTS_FILE,
+        bundled_file=BUNDLED_EXTERNAL_AGENTS_FILE,
+        file_purpose="get_external_agents",
+        empty_effect="no external-agent tools will be gated",
     )
 
-    def __init__(self, sly_data: dict[str, Any]) -> None:
-        """
-        :param sly_data: A dictionary whose keys are defined by the agent hierarchy,
-                but whose values are meant to be kept out of the chat stream.
-                No longer used by this middleware (the catalog moved to a
-                process-wide cache); the parameter stays because MiddlewareFactory
-                wires it in per the "sly_data": true arg in
-                registries/agent_network_designer.hocon.
-        """
-        self.sly_data = sly_data
+    def __init__(self) -> None:
         self.logger = logging.getLogger(self.__class__.__name__)
 
     @classmethod
@@ -205,6 +101,27 @@ class ExternalAgentsMiddleware(AgentMiddleware):
         """
         ExternalAgentsMiddleware._shared_catalog_cache.clear_for_testing()
 
+    async def _get_catalog(self) -> dict[str, Any]:
+        """
+        Fetch the catalog, applying this middleware's fail-CLOSED policy.
+
+        :return: The catalog dictionary.
+        :raises ValueError: when the catalog cannot be loaded. The detailed cause
+                (resolved path + underlying error) goes to the server log only;
+                the raised message is client-safe, because an exception escaping a
+                model call becomes the turn's client-visible answer and the
+                resolved server path would leak filesystem details to remote users.
+        """
+        try:
+            return await ExternalAgentsMiddleware._shared_catalog_cache.aget()
+        except CatalogLoadError as error:
+            self.logger.error("%s", error)
+            raise ValueError(
+                "The Agent Network Designer's external-agents catalog failed to load, so tool "
+                "gating cannot be applied and the designer refuses to run. Ask the server "
+                "operator to check the EXTERNAL_AGENTS_FILE setting and the server logs."
+            ) from error
+
     @override
     async def awrap_model_call(
         self,
@@ -215,7 +132,7 @@ class ExternalAgentsMiddleware(AgentMiddleware):
         Filter disabled tools out of the request and append enabled modules' workflow-step
         instructions to the system prompt before the model call.
         """
-        catalog: dict[str, Any] = await ExternalAgentsMiddleware._shared_catalog_cache.aget()
+        catalog: dict[str, Any] = await self._get_catalog()
 
         enabled_blocks, disabled_tools = self._classify(catalog)
 
@@ -271,7 +188,7 @@ class ExternalAgentsMiddleware(AgentMiddleware):
         """
         tool_name: str | None = request.tool_call.get("name")
 
-        catalog: dict[str, Any] = await ExternalAgentsMiddleware._shared_catalog_cache.aget()
+        catalog: dict[str, Any] = await self._get_catalog()
         _, disabled_tools = self._classify(catalog)
 
         if tool_name in disabled_tools:
@@ -280,8 +197,9 @@ class ExternalAgentsMiddleware(AgentMiddleware):
             return ToolMessage(
                 content=f"Error: tool '{tool_name}' is disabled on this deployment and was not executed.",
                 # ToolMessage requires a string tool_call_id, but providers may
-                # omit ids from tool calls (ToolCall.id is Optional). Preserve an
-                # empty-string id so the message still matches its tool call.
+                # omit ids from tool calls (ToolCall.id is Optional): fall back to
+                # the "unknown" placeholder then. A provider-supplied empty-string
+                # id is preserved as-is (hence `is not None`, not truthiness).
                 tool_call_id=call_id if call_id is not None else "unknown",
                 name=tool_name,
                 status="error",

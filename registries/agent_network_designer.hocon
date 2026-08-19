@@ -297,7 +297,8 @@ Operational notes:
             },
             # Every external agent the designer can talk to is statically declared here.
             # Toggleable modules (currently /middleware_manager) are always wired in; whether
-            # the LLM is told about them is decided at runtime by ExternalAgentsMiddleware.
+            # the LLM can see or invoke them is decided at runtime by ExternalAgentsMiddleware
+            # (prompt/tool stripping plus execution-time denial of their tool calls).
             "tools": ["/agent_network_editor", "/agent_network_query_generator", "/agent_network_instructions_editor", "/middleware_manager", "web_search"],
             # Parse any JSON in responses into the structure field of the ChatMessage.
             "structure_formats": "json",
@@ -314,10 +315,7 @@ Operational notes:
                     # to the system prompt, strips disabled modules' tools from the model
                     # request, and denies their tool calls at execution time. Catalog lives at
                     # middleware/agent_network_designer/external_agents.hocon.
-                    "class": "middleware.agent_network_designer.external_agents_middleware.ExternalAgentsMiddleware",
-                    "args": {
-                        "sly_data": true
-                    }
+                    "class": "middleware.agent_network_designer.external_agents_middleware.ExternalAgentsMiddleware"
                 },
                 {
                     "class": "middleware.agent_network_designer.persistence.agent_network_persistence_middleware.AgentNetworkPersistenceMiddleware",

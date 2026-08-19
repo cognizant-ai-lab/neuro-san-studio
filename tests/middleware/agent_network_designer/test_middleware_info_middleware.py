@@ -25,6 +25,7 @@ from unittest.mock import AsyncMock
 from unittest.mock import patch
 
 from langchain_core.messages import SystemMessage
+from neuro_san.internals.persistence.abstract_async_config_restorer import AbstractAsyncConfigRestorer
 
 from middleware.agent_network_designer.middleware_info_middleware import MiddlewareInfoMiddleware
 
@@ -60,7 +61,7 @@ class TestMiddlewareInfoMiddleware:
         handler = AsyncMock(return_value="model-response")
         request = _FakeModelRequest(system_message=SystemMessage(content="base"))
 
-        result = asyncio.run(MiddlewareInfoMiddleware(sly_data={}).awrap_model_call(request, handler))
+        result = asyncio.run(MiddlewareInfoMiddleware().awrap_model_call(request, handler))
 
         assert result == "model-response"
         seen_content = handler.await_args.args[0].system_message.content
@@ -75,7 +76,7 @@ class TestMiddlewareInfoMiddleware:
         request = _FakeModelRequest(system_message=SystemMessage(content="base"))
 
         with caplog.at_level("WARNING"):
-            result = asyncio.run(MiddlewareInfoMiddleware(sly_data={}).awrap_model_call(request, handler))
+            result = asyncio.run(MiddlewareInfoMiddleware().awrap_model_call(request, handler))
 
         assert result == "model-response"
         assert "could not be loaded" in caplog.text
@@ -88,7 +89,7 @@ class TestMiddlewareInfoMiddleware:
         catalog_file.write_text("{ this is : : not valid hocon }}", encoding="utf-8")
         monkeypatch.setenv("MIDDLEWARE_INFO_FILE", str(catalog_file))
         handler = AsyncMock(return_value="model-response")
-        middleware = MiddlewareInfoMiddleware(sly_data={})
+        middleware = MiddlewareInfoMiddleware()
 
         with caplog.at_level("WARNING"):
             asyncio.run(middleware.awrap_model_call(_FakeModelRequest(), handler))
@@ -105,7 +106,7 @@ class TestMiddlewareInfoMiddleware:
         catalog_file.write_text('[{"class": "x"}]', encoding="utf-8")
         monkeypatch.setenv("MIDDLEWARE_INFO_FILE", str(catalog_file))
         handler = AsyncMock(return_value="model-response")
-        middleware = MiddlewareInfoMiddleware(sly_data={})
+        middleware = MiddlewareInfoMiddleware()
 
         with caplog.at_level("WARNING"):
             result = asyncio.run(middleware.awrap_model_call(_FakeModelRequest(), handler))
@@ -124,7 +125,7 @@ class TestMiddlewareInfoMiddleware:
         monkeypatch.delenv("MIDDLEWARE_INFO_FILE", raising=False)
         handler = AsyncMock(return_value="model-response")
 
-        result = asyncio.run(MiddlewareInfoMiddleware(sly_data={}).awrap_model_call(_FakeModelRequest(), handler))
+        result = asyncio.run(MiddlewareInfoMiddleware().awrap_model_call(_FakeModelRequest(), handler))
 
         assert result == "model-response"
         assert "## Available Middleware" in handler.await_args.args[0].system_message.content
@@ -135,7 +136,7 @@ class TestMiddlewareInfoMiddleware:
         handler = AsyncMock(return_value="model-response")
 
         with caplog.at_level("WARNING"):
-            result = asyncio.run(MiddlewareInfoMiddleware(sly_data={}).awrap_model_call(_FakeModelRequest(), handler))
+            result = asyncio.run(MiddlewareInfoMiddleware().awrap_model_call(_FakeModelRequest(), handler))
 
         assert result == "model-response"
         assert "empty string" in caplog.text
@@ -145,14 +146,12 @@ class TestMiddlewareInfoMiddleware:
         self._install_catalog(tmp_path, monkeypatch)
         handler = AsyncMock(return_value="model-response")
 
-        real_loader = MiddlewareInfoMiddleware._load_middleware_info  # pylint: disable=protected-access
-        with patch.object(MiddlewareInfoMiddleware, "_load_middleware_info", side_effect=real_loader) as load_spy:
-            with patch.object(
-                MiddlewareInfoMiddleware._shared_info_cache,  # pylint: disable=protected-access
-                "_loader",
-                load_spy,
-            ):
-                for _ in range(2):
-                    asyncio.run(MiddlewareInfoMiddleware(sly_data={}).awrap_model_call(_FakeModelRequest(), handler))
+        # Spy on the file parse itself: with autospec the original method still
+        # runs (captured before patching, so no recursion), and the call count
+        # tells us how many times the file was actually read.
+        real_restore = AbstractAsyncConfigRestorer.restore
+        with patch.object(AbstractAsyncConfigRestorer, "restore", autospec=True, side_effect=real_restore) as spy:
+            for _ in range(2):
+                asyncio.run(MiddlewareInfoMiddleware().awrap_model_call(_FakeModelRequest(), handler))
 
-        assert load_spy.call_count == 1
+        assert spy.call_count == 1

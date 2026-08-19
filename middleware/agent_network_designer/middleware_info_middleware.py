@@ -16,7 +16,6 @@
 
 import json
 import logging
-import os
 from pathlib import Path
 from typing import Any
 from typing import Awaitable
@@ -30,10 +29,9 @@ from langchain.agents.middleware.types import ModelResponse
 from langchain.agents.middleware.types import ResponseT
 from langchain_core.messages import BaseMessage
 from langchain_core.messages import SystemMessage
-from neuro_san.internals.persistence.abstract_async_config_restorer import AbstractAsyncConfigRestorer
-from pyparsing.exceptions import ParseException
 
-from coded_tools.agent_network_editor.shared_process_cache import SharedProcessCache
+from middleware.agent_network_designer.hocon_catalog_cache import CatalogLoadError
+from middleware.agent_network_designer.hocon_catalog_cache import HoconCatalogCache
 
 # Relative to the working directory, matching the repo/scaffold layout when the
 # server is started from the top of the repository or of an `ns init` project.
@@ -44,111 +42,50 @@ DEFAULT_MIDDLEWARE_INFO_FILE: str = str(Path("middleware", "agent_network_design
 BUNDLED_MIDDLEWARE_INFO_FILE: str = str(Path(__file__).with_name("middleware_info.hocon"))
 
 
+def _format_middleware_info_prompt(middleware_info: dict[str, Any]) -> str:
+    """
+    Format the middleware catalog as a system prompt section.
+
+    Run once per catalog load (via the cache's transform), not once per model
+    call — the catalog is immutable per fingerprint, so the rendered section is
+    a pure function of the file.
+
+    :param middleware_info: The middleware catalog dictionary
+    :return: Formatted prompt string
+    """
+    info_str: str = json.dumps(middleware_info, indent=2)
+    return f"## Available Middleware\n\n```json\n{info_str}\n```"
+
+
 class MiddlewareInfoMiddleware(AgentMiddleware):
     """
     Middleware that reads the available middleware catalog from a HOCON file and injects it
     into the system prompt before each model call, so the LLM can reason about which
     middleware are available without the information passing through the chat stream.
 
-    The catalog is loaded once per process and shared via SharedProcessCache (see
-    ProcessGlobals entry 8); an edited catalog file — or a changed MIDDLEWARE_INFO_FILE —
-    is picked up on the next call through the path + modification-time fingerprint. The
-    previous per-session sly_data cache never actually survived between /middleware_manager
-    invocations (each call starts with fresh downstream sly_data), so it cold-parsed the
-    file every time.
+    The catalog is loaded once per process through HoconCatalogCache (see ProcessGlobals
+    entry 8), which also handles path resolution (env var, working-directory layout, the
+    copy bundled beside this module) and freshness; the prompt section is rendered once
+    per load rather than once per model call.
 
     Unlike ExternalAgentsMiddleware — a security gate that fails closed — this middleware
     only enriches the prompt, so a catalog that cannot be loaded degrades to a warning and
     an uninjected prompt rather than failing the model call.
     """
 
-    @staticmethod
-    def _resolve_info_file() -> str:
-        """
-        Resolve the catalog path: an explicit MIDDLEWARE_INFO_FILE always wins
-        (including an explicitly empty one, which the loader rejects so the caller
-        warns instead of silently injecting nothing forever); otherwise prefer the
-        working-directory repo/project layout, falling back to the copy bundled
-        next to this module so scaffolded projects and installed wheels work
-        without configuration.
-        """
-        env_path: str | None = os.getenv("MIDDLEWARE_INFO_FILE")
-        if env_path is not None:
-            return env_path
-        if os.path.isfile(DEFAULT_MIDDLEWARE_INFO_FILE):
-            return DEFAULT_MIDDLEWARE_INFO_FILE
-        return BUNDLED_MIDDLEWARE_INFO_FILE
-
-    @staticmethod
-    def _load_middleware_info() -> dict[str, Any]:
-        """
-        SharedProcessCache loader: read and parse the middleware catalog.
-
-        Runs in a worker thread (reached through aget()), so the blocking file read
-        and HOCON parse stay off the event loop.
-
-        :return: The parsed catalog dictionary ({} for an empty file — loaders must
-                never return None, the cache's miss sentinel).
-        :raises OSError, ValueError: when the catalog cannot be read or parsed
-                (current neuro-san re-wraps parse failures into ValueError). Nothing
-                is published on a raise, so the next call retries; awrap_model_call()
-                catches these and skips injection. Detailed messages are fine here —
-                the caller only logs them server-side, never to the client.
-        """
-        middleware_info_file: str = MiddlewareInfoMiddleware._resolve_info_file()
-        if not middleware_info_file:
-            # An empty env var (MIDDLEWARE_INFO_FILE="") makes restore() return None
-            # before its must_exist check; surface it as a load failure so the
-            # caller's warn-and-skip path reports it instead of silently injecting
-            # nothing forever.
-            raise ValueError("MIDDLEWARE_INFO_FILE is set to an empty string")
-        restorer = AbstractAsyncConfigRestorer(file_purpose="get_middleware_info", must_exist=True)
-        middleware_info: dict[str, Any] = restorer.restore(file_reference=middleware_info_file)
-        if middleware_info is not None and not isinstance(middleware_info, dict):
-            # A root-level array or scalar parses fine but is not a catalog. Raising
-            # (instead of publishing it) keeps the failure on the warn-and-skip path,
-            # and recovery needs only a file fix — nothing bad is ever cached.
-            raise ValueError(f"catalog root must be a mapping, got {type(middleware_info).__name__}")
-        if not middleware_info:
-            logging.getLogger(MiddlewareInfoMiddleware.__name__).warning(
-                "Middleware info catalog '%s' is empty: no middleware will be offered to the LLM.",
-                middleware_info_file,
-            )
-            return {}
-        return middleware_info
-
-    @staticmethod
-    def _info_fingerprint() -> tuple[str, tuple[int, int] | None]:
-        """
-        SharedProcessCache fingerprint: the resolved catalog path plus its
-        (size, modification time), so an edited file, a changed
-        MIDDLEWARE_INFO_FILE, and a same-clock-tick truncate-then-write all
-        register as a miss and trigger a reload. Cheap and never raises, per the
-        fingerprint contract.
-        """
-        middleware_info_file: str = MiddlewareInfoMiddleware._resolve_info_file()
-        return middleware_info_file, SharedProcessCache.stat_size_and_modification_time_ns(middleware_info_file)
-
-    # Process-wide cache of the parsed catalog (see ProcessGlobals entry 8). Access
-    # goes through the class by name (not cls) so a hypothetical subclass shares the
-    # one cache instead of splitting it.
-    _shared_info_cache: SharedProcessCache[dict[str, Any]] = SharedProcessCache(
-        loader=_load_middleware_info,
-        fingerprint=_info_fingerprint,
+    # Process-wide cache of (catalog, rendered prompt section) — see ProcessGlobals
+    # entry 8. Access goes through the class by name (not cls) so a hypothetical
+    # subclass shares the one cache instead of splitting it.
+    _shared_info_cache: HoconCatalogCache = HoconCatalogCache(
+        env_var="MIDDLEWARE_INFO_FILE",
+        default_file=DEFAULT_MIDDLEWARE_INFO_FILE,
+        bundled_file=BUNDLED_MIDDLEWARE_INFO_FILE,
+        file_purpose="get_middleware_info",
+        empty_effect="no middleware will be offered to the LLM",
+        transform=lambda info: (info, _format_middleware_info_prompt(info)),
     )
 
-    def __init__(self, sly_data: dict[str, Any]) -> None:
-        """
-        Initialize middleware info middleware.
-
-        :param sly_data: A dictionary whose keys are defined by the agent hierarchy,
-                but whose values are meant to be kept out of the chat stream.
-                No longer used by this middleware (the catalog moved to a
-                process-wide cache); the parameter stays because MiddlewareFactory
-                wires it in per the "sly_data": true arg in
-                registries/middleware_manager.hocon.
-        """
-        self.sly_data = sly_data
+    def __init__(self) -> None:
         self.logger = logging.getLogger(self.__class__.__name__)
 
     @classmethod
@@ -177,22 +114,17 @@ class MiddlewareInfoMiddleware(AgentMiddleware):
         :return: Model response from handler
         """
         try:
-            middleware_info: dict[str, Any] = await MiddlewareInfoMiddleware._shared_info_cache.aget()
-        except (OSError, ValueError, ParseException) as error:
-            # OSError covers FileNotFoundError / PermissionError / IsADirectoryError;
-            # ValueError is raised for unsupported file extensions and is what current
-            # neuro-san re-wraps HOCON/JSON parse failures into; ParseException stays
-            # in the tuple defensively for neuro-san versions that surface pyhocon's
-            # exception directly. This catalog only enriches the prompt, so degrade
-            # gracefully instead of failing the model call; the load is retried on
-            # the next call.
+            middleware_info, info_prompt = await MiddlewareInfoMiddleware._shared_info_cache.aget()
+        except CatalogLoadError as error:
+            # This catalog only enriches the prompt, so degrade gracefully instead
+            # of failing the model call; the load is retried on the next call. The
+            # detailed message stays server-side — this warning never reaches the
+            # client.
             self.logger.warning("Middleware info catalog could not be loaded (%s). Skipping injection.", error)
             return await handler(request)
 
         if middleware_info:
             self.logger.debug(">>>>>>>>>>>>>>>>>>>Injecting Middleware Info into System Prompt>>>>>>>>>>>>>>>>>>>")
-            info_prompt: str = self.format_middleware_info_prompt(middleware_info)
-
             system_message: BaseMessage | None = request.system_message
             if system_message is not None:
                 original_content: str = system_message.content if isinstance(system_message.content, str) else ""
@@ -203,13 +135,3 @@ class MiddlewareInfoMiddleware(AgentMiddleware):
             return await handler(request.override(system_message=system_message))
 
         return await handler(request)
-
-    def format_middleware_info_prompt(self, middleware_info: dict[str, Any]) -> str:
-        """
-        Format the middleware catalog as a system prompt section.
-
-        :param middleware_info: The middleware catalog dictionary
-        :return: Formatted prompt string
-        """
-        info_str: str = json.dumps(middleware_info, indent=2)
-        return f"## Available Middleware\n\n```json\n{info_str}\n```"

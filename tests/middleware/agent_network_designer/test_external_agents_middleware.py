@@ -28,6 +28,7 @@ from unittest.mock import patch
 import pytest
 from langchain_core.messages import SystemMessage
 from langchain_core.messages import ToolMessage
+from neuro_san.internals.persistence.abstract_async_config_restorer import AbstractAsyncConfigRestorer
 
 from middleware.agent_network_designer.external_agents_middleware import ExternalAgentsMiddleware
 
@@ -99,7 +100,7 @@ class TestExternalAgentsMiddleware:
         handler = AsyncMock(return_value="model-response")
         request = _FakeModelRequest(tools=self._request_tools(), system_message=SystemMessage(content="base"))
 
-        result = asyncio.run(ExternalAgentsMiddleware(sly_data={}).awrap_model_call(request, handler))
+        result = asyncio.run(ExternalAgentsMiddleware().awrap_model_call(request, handler))
 
         assert result == "model-response"
         seen_request = handler.await_args.args[0]
@@ -114,7 +115,7 @@ class TestExternalAgentsMiddleware:
         handler = AsyncMock(return_value="model-response")
         request = _FakeModelRequest(tools=self._request_tools(), system_message=SystemMessage(content="base"))
 
-        asyncio.run(ExternalAgentsMiddleware(sly_data={}).awrap_model_call(request, handler))
+        asyncio.run(ExternalAgentsMiddleware().awrap_model_call(request, handler))
 
         seen_request = handler.await_args.args[0]
         assert [t["name"] for t in seen_request.tools] == [SAFE_TOOL_NAME, "other_tool"]
@@ -128,7 +129,7 @@ class TestExternalAgentsMiddleware:
         handler = AsyncMock(return_value="model-response")
         request = _FakeModelRequest(tools=self._request_tools())
 
-        asyncio.run(ExternalAgentsMiddleware(sly_data={}).awrap_model_call(request, handler))
+        asyncio.run(ExternalAgentsMiddleware().awrap_model_call(request, handler))
 
         seen_request = handler.await_args.args[0]
         assert [t["name"] for t in seen_request.tools] == ["other_tool"]
@@ -142,7 +143,7 @@ class TestExternalAgentsMiddleware:
         request = _FakeModelRequest(tools=self._request_tools())
 
         with caplog.at_level("WARNING"):
-            asyncio.run(ExternalAgentsMiddleware(sly_data={}).awrap_model_call(request, handler))
+            asyncio.run(ExternalAgentsMiddleware().awrap_model_call(request, handler))
 
         assert "not a mapping" in caplog.text
         # The well-formed module was still processed.
@@ -158,14 +159,14 @@ class TestExternalAgentsMiddleware:
         request = _FakeModelRequest(tools=self._request_tools())
 
         with caplog.at_level("WARNING"):
-            asyncio.run(ExternalAgentsMiddleware(sly_data={}).awrap_model_call(request, handler))
+            asyncio.run(ExternalAgentsMiddleware().awrap_model_call(request, handler))
 
         assert "disabling its tool" in caplog.text
         seen_request = handler.await_args.args[0]
         assert [t["name"] for t in seen_request.tools] == ["other_tool"]
 
         denial = asyncio.run(
-            ExternalAgentsMiddleware(sly_data={}).awrap_tool_call(_FakeToolCallRequest(SAFE_TOOL_NAME), AsyncMock())
+            ExternalAgentsMiddleware().awrap_tool_call(_FakeToolCallRequest(SAFE_TOOL_NAME), AsyncMock())
         )
         assert isinstance(denial, ToolMessage)
 
@@ -178,7 +179,7 @@ class TestExternalAgentsMiddleware:
         request = _FakeModelRequest(tools=self._request_tools())
 
         with caplog.at_level("WARNING"):
-            asyncio.run(ExternalAgentsMiddleware(sly_data={}).awrap_model_call(request, handler))
+            asyncio.run(ExternalAgentsMiddleware().awrap_model_call(request, handler))
 
         assert "non-string `enabled_env_var`" in caplog.text
         seen_request = handler.await_args.args[0]
@@ -199,7 +200,7 @@ class TestExternalAgentsMiddleware:
         request = _FakeModelRequest(tools=self._request_tools())
 
         with caplog.at_level("WARNING"):
-            asyncio.run(ExternalAgentsMiddleware(sly_data={}).awrap_model_call(request, handler))
+            asyncio.run(ExternalAgentsMiddleware().awrap_model_call(request, handler))
 
         assert "missing its leading '/'" in caplog.text
         seen_request = handler.await_args.args[0]
@@ -220,7 +221,7 @@ class TestExternalAgentsMiddleware:
         request = _FakeModelRequest(tools=self._request_tools())
 
         with caplog.at_level("WARNING"):
-            asyncio.run(ExternalAgentsMiddleware(sly_data={}).awrap_model_call(request, handler))
+            asyncio.run(ExternalAgentsMiddleware().awrap_model_call(request, handler))
 
         assert "matched nothing" in caplog.text
         # Nothing legitimate was stripped.
@@ -235,7 +236,7 @@ class TestExternalAgentsMiddleware:
         request = _FakeModelRequest(tools=self._request_tools())
 
         with caplog.at_level("WARNING"):
-            asyncio.run(ExternalAgentsMiddleware(sly_data={}).awrap_model_call(request, handler))
+            asyncio.run(ExternalAgentsMiddleware().awrap_model_call(request, handler))
 
         assert "is empty" in caplog.text
         seen_request = handler.await_args.args[0]
@@ -254,9 +255,7 @@ class TestExternalAgentsMiddleware:
 
         with caplog.at_level("ERROR"):
             with pytest.raises(ValueError, match="failed to load") as raised:
-                asyncio.run(
-                    ExternalAgentsMiddleware(sly_data={}).awrap_model_call(_FakeModelRequest(tools=[]), handler)
-                )
+                asyncio.run(ExternalAgentsMiddleware().awrap_model_call(_FakeModelRequest(tools=[]), handler))
 
         handler.assert_not_awaited()
         # The client-visible message must not disclose the server-side path...
@@ -272,9 +271,7 @@ class TestExternalAgentsMiddleware:
 
         with caplog.at_level("ERROR"):
             with pytest.raises(ValueError, match="failed to load"):
-                asyncio.run(
-                    ExternalAgentsMiddleware(sly_data={}).awrap_model_call(_FakeModelRequest(tools=[]), handler)
-                )
+                asyncio.run(ExternalAgentsMiddleware().awrap_model_call(_FakeModelRequest(tools=[]), handler))
 
         handler.assert_not_awaited()
         assert "empty string" in caplog.text
@@ -286,7 +283,7 @@ class TestExternalAgentsMiddleware:
         catalog_file.write_text('[{"tool": "/middleware_manager"}]', encoding="utf-8")
         monkeypatch.setenv("EXTERNAL_AGENTS_FILE", str(catalog_file))
         handler = AsyncMock(return_value="model-response")
-        middleware = ExternalAgentsMiddleware(sly_data={})
+        middleware = ExternalAgentsMiddleware()
 
         with pytest.raises(ValueError, match="failed to load"):
             asyncio.run(middleware.awrap_model_call(_FakeModelRequest(tools=[]), handler))
@@ -302,7 +299,7 @@ class TestExternalAgentsMiddleware:
         catalog_file.write_text("{ this is : : not valid hocon }}", encoding="utf-8")
         monkeypatch.setenv("EXTERNAL_AGENTS_FILE", str(catalog_file))
         handler = AsyncMock(return_value="model-response")
-        middleware = ExternalAgentsMiddleware(sly_data={})
+        middleware = ExternalAgentsMiddleware()
 
         with pytest.raises(ValueError, match="failed to load"):
             asyncio.run(middleware.awrap_model_call(_FakeModelRequest(tools=[]), handler))
@@ -323,7 +320,7 @@ class TestExternalAgentsMiddleware:
         handler = AsyncMock(return_value="model-response")
         request = _FakeModelRequest(tools=self._request_tools())
 
-        result = asyncio.run(ExternalAgentsMiddleware(sly_data={}).awrap_model_call(request, handler))
+        result = asyncio.run(ExternalAgentsMiddleware().awrap_model_call(request, handler))
 
         assert result == "model-response"
         seen_request = handler.await_args.args[0]
@@ -339,9 +336,7 @@ class TestExternalAgentsMiddleware:
         monkeypatch.delenv(TOGGLE_ENV_VAR, raising=False)
         handler = AsyncMock()
 
-        result = asyncio.run(
-            ExternalAgentsMiddleware(sly_data={}).awrap_tool_call(_FakeToolCallRequest(SAFE_TOOL_NAME), handler)
-        )
+        result = asyncio.run(ExternalAgentsMiddleware().awrap_tool_call(_FakeToolCallRequest(SAFE_TOOL_NAME), handler))
 
         handler.assert_not_awaited()
         assert isinstance(result, ToolMessage)
@@ -355,9 +350,7 @@ class TestExternalAgentsMiddleware:
         monkeypatch.delenv(TOGGLE_ENV_VAR, raising=False)
 
         result = asyncio.run(
-            ExternalAgentsMiddleware(sly_data={}).awrap_tool_call(
-                _FakeToolCallRequest(SAFE_TOOL_NAME, call_id=None), AsyncMock()
-            )
+            ExternalAgentsMiddleware().awrap_tool_call(_FakeToolCallRequest(SAFE_TOOL_NAME, call_id=None), AsyncMock())
         )
 
         assert isinstance(result, ToolMessage)
@@ -369,9 +362,7 @@ class TestExternalAgentsMiddleware:
         monkeypatch.setenv(TOGGLE_ENV_VAR, "1")
         handler = AsyncMock(return_value="tool-result")
 
-        result = asyncio.run(
-            ExternalAgentsMiddleware(sly_data={}).awrap_tool_call(_FakeToolCallRequest(SAFE_TOOL_NAME), handler)
-        )
+        result = asyncio.run(ExternalAgentsMiddleware().awrap_tool_call(_FakeToolCallRequest(SAFE_TOOL_NAME), handler))
 
         handler.assert_awaited_once()
         assert result == "tool-result"
@@ -382,9 +373,7 @@ class TestExternalAgentsMiddleware:
         monkeypatch.delenv(TOGGLE_ENV_VAR, raising=False)
         handler = AsyncMock(return_value="tool-result")
 
-        result = asyncio.run(
-            ExternalAgentsMiddleware(sly_data={}).awrap_tool_call(_FakeToolCallRequest("other_tool"), handler)
-        )
+        result = asyncio.run(ExternalAgentsMiddleware().awrap_tool_call(_FakeToolCallRequest("other_tool"), handler))
 
         handler.assert_awaited_once()
         assert result == "tool-result"
@@ -395,9 +384,7 @@ class TestExternalAgentsMiddleware:
         handler = AsyncMock()
 
         with pytest.raises(ValueError, match="failed to load"):
-            asyncio.run(
-                ExternalAgentsMiddleware(sly_data={}).awrap_tool_call(_FakeToolCallRequest(SAFE_TOOL_NAME), handler)
-            )
+            asyncio.run(ExternalAgentsMiddleware().awrap_tool_call(_FakeToolCallRequest(SAFE_TOOL_NAME), handler))
 
         handler.assert_not_awaited()
 
@@ -411,28 +398,23 @@ class TestExternalAgentsMiddleware:
         monkeypatch.delenv(TOGGLE_ENV_VAR, raising=False)
         handler = AsyncMock(return_value="model-response")
 
-        real_restore = ExternalAgentsMiddleware._load_external_agents_catalog  # pylint: disable=protected-access
-        with patch.object(
-            ExternalAgentsMiddleware, "_load_external_agents_catalog", side_effect=real_restore
-        ) as load_spy:
-            # Re-point the cache's loader at the spy for this test only.
-            with patch.object(
-                ExternalAgentsMiddleware._shared_catalog_cache,  # pylint: disable=protected-access
-                "_loader",
-                load_spy,
-            ):
-                for _ in range(2):
-                    request = _FakeModelRequest(tools=self._request_tools())
-                    asyncio.run(ExternalAgentsMiddleware(sly_data={}).awrap_model_call(request, handler))
+        # Spy on the file parse itself: with autospec the original method still
+        # runs (captured before patching, so no recursion), and the call count
+        # tells us how many times the file was actually read.
+        real_restore = AbstractAsyncConfigRestorer.restore
+        with patch.object(AbstractAsyncConfigRestorer, "restore", autospec=True, side_effect=real_restore) as spy:
+            for _ in range(2):
+                request = _FakeModelRequest(tools=self._request_tools())
+                asyncio.run(ExternalAgentsMiddleware().awrap_model_call(request, handler))
 
-        assert load_spy.call_count == 1
+        assert spy.call_count == 1
 
     def test_catalog_edit_is_picked_up_via_fingerprint(self, tmp_path, monkeypatch):
         """Editing the catalog file is visible on the next call, no restart needed."""
         catalog_file = self._install_catalog(tmp_path, monkeypatch)
         monkeypatch.delenv(TOGGLE_ENV_VAR, raising=False)
         handler = AsyncMock(return_value="model-response")
-        middleware = ExternalAgentsMiddleware(sly_data={})
+        middleware = ExternalAgentsMiddleware()
 
         asyncio.run(middleware.awrap_model_call(_FakeModelRequest(tools=self._request_tools()), handler))
         assert [t["name"] for t in handler.await_args.args[0].tools] == ["other_tool"]
