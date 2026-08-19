@@ -98,6 +98,37 @@ class TestMiddlewareInfoMiddleware:
         asyncio.run(middleware.awrap_model_call(_FakeModelRequest(), handler))
         assert "## Available Middleware" in handler.await_args.args[0].system_message.content
 
+    def test_root_list_catalog_degrades_gracefully(self, tmp_path, monkeypatch, caplog):
+        """A root-level array is not a catalog: warn and skip, and never publish it
+        (so no AttributeError-per-call until an mtime change)."""
+        catalog_file = tmp_path / "middleware_info.hocon"
+        catalog_file.write_text('[{"class": "x"}]', encoding="utf-8")
+        monkeypatch.setenv("MIDDLEWARE_INFO_FILE", str(catalog_file))
+        handler = AsyncMock(return_value="model-response")
+        middleware = MiddlewareInfoMiddleware(sly_data={})
+
+        with caplog.at_level("WARNING"):
+            result = asyncio.run(middleware.awrap_model_call(_FakeModelRequest(), handler))
+
+        assert result == "model-response"
+        assert "could not be loaded" in caplog.text
+        # Fixing the file recovers on the next call — nothing bad was cached.
+        catalog_file.write_text(json.dumps({"pii_middleware": {"class": "x"}}), encoding="utf-8")
+        asyncio.run(middleware.awrap_model_call(_FakeModelRequest(), handler))
+        assert "## Available Middleware" in handler.await_args.args[0].system_message.content
+
+    def test_bundled_catalog_is_the_fallback_when_cwd_has_no_copy(self, tmp_path, monkeypatch):
+        """With no env var and no repo/project-layout copy in the working directory,
+        the catalog bundled next to the middleware module is used."""
+        monkeypatch.chdir(tmp_path)
+        monkeypatch.delenv("MIDDLEWARE_INFO_FILE", raising=False)
+        handler = AsyncMock(return_value="model-response")
+
+        result = asyncio.run(MiddlewareInfoMiddleware(sly_data={}).awrap_model_call(_FakeModelRequest(), handler))
+
+        assert result == "model-response"
+        assert "## Available Middleware" in handler.await_args.args[0].system_message.content
+
     def test_empty_env_var_degrades_with_warning(self, monkeypatch, caplog):
         """MIDDLEWARE_INFO_FILE="" warns and skips instead of silently injecting nothing."""
         monkeypatch.setenv("MIDDLEWARE_INFO_FILE", "")

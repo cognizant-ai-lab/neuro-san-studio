@@ -35,9 +35,13 @@ from pyparsing.exceptions import ParseException
 
 from coded_tools.agent_network_editor.shared_process_cache import SharedProcessCache
 
-# Relative to the repository root, like every other default path in this project
-# (the server is expected to be started from the top of the repo — see run.py).
+# Relative to the working directory, matching the repo/scaffold layout when the
+# server is started from the top of the repository or of an `ns init` project.
 DEFAULT_MIDDLEWARE_INFO_FILE: str = str(Path("middleware", "agent_network_designer", "middleware_info.hocon"))
+# The copy of the catalog that ships right next to this module — the fallback when
+# the working directory has no repo/project-layout copy (e.g. `ns run` inside a
+# scaffolded project, or an installed wheel).
+BUNDLED_MIDDLEWARE_INFO_FILE: str = str(Path(__file__).with_name("middleware_info.hocon"))
 
 
 class MiddlewareInfoMiddleware(AgentMiddleware):
@@ -59,6 +63,23 @@ class MiddlewareInfoMiddleware(AgentMiddleware):
     """
 
     @staticmethod
+    def _resolve_info_file() -> str:
+        """
+        Resolve the catalog path: an explicit MIDDLEWARE_INFO_FILE always wins
+        (including an explicitly empty one, which the loader rejects so the caller
+        warns instead of silently injecting nothing forever); otherwise prefer the
+        working-directory repo/project layout, falling back to the copy bundled
+        next to this module so scaffolded projects and installed wheels work
+        without configuration.
+        """
+        env_path: str | None = os.getenv("MIDDLEWARE_INFO_FILE")
+        if env_path is not None:
+            return env_path
+        if os.path.isfile(DEFAULT_MIDDLEWARE_INFO_FILE):
+            return DEFAULT_MIDDLEWARE_INFO_FILE
+        return BUNDLED_MIDDLEWARE_INFO_FILE
+
+    @staticmethod
     def _load_middleware_info() -> dict[str, Any]:
         """
         SharedProcessCache loader: read and parse the middleware catalog.
@@ -71,9 +92,10 @@ class MiddlewareInfoMiddleware(AgentMiddleware):
         :raises OSError, ValueError: when the catalog cannot be read or parsed
                 (current neuro-san re-wraps parse failures into ValueError). Nothing
                 is published on a raise, so the next call retries; awrap_model_call()
-                catches these and skips injection.
+                catches these and skips injection. Detailed messages are fine here —
+                the caller only logs them server-side, never to the client.
         """
-        middleware_info_file: str = os.getenv("MIDDLEWARE_INFO_FILE", DEFAULT_MIDDLEWARE_INFO_FILE)
+        middleware_info_file: str = MiddlewareInfoMiddleware._resolve_info_file()
         if not middleware_info_file:
             # An empty env var (MIDDLEWARE_INFO_FILE="") makes restore() return None
             # before its must_exist check; surface it as a load failure so the
@@ -82,18 +104,30 @@ class MiddlewareInfoMiddleware(AgentMiddleware):
             raise ValueError("MIDDLEWARE_INFO_FILE is set to an empty string")
         restorer = AbstractAsyncConfigRestorer(file_purpose="get_middleware_info", must_exist=True)
         middleware_info: dict[str, Any] = restorer.restore(file_reference=middleware_info_file)
-        return middleware_info or {}
+        if middleware_info is not None and not isinstance(middleware_info, dict):
+            # A root-level array or scalar parses fine but is not a catalog. Raising
+            # (instead of publishing it) keeps the failure on the warn-and-skip path,
+            # and recovery needs only a file fix — nothing bad is ever cached.
+            raise ValueError(f"catalog root must be a mapping, got {type(middleware_info).__name__}")
+        if not middleware_info:
+            logging.getLogger(MiddlewareInfoMiddleware.__name__).warning(
+                "Middleware info catalog '%s' is empty: no middleware will be offered to the LLM.",
+                middleware_info_file,
+            )
+            return {}
+        return middleware_info
 
     @staticmethod
-    def _info_fingerprint() -> tuple[str, int | None]:
+    def _info_fingerprint() -> tuple[str, tuple[int, int] | None]:
         """
         SharedProcessCache fingerprint: the resolved catalog path plus its
-        modification time, so both an edited file and a changed MIDDLEWARE_INFO_FILE
+        (size, modification time), so an edited file, a changed
+        MIDDLEWARE_INFO_FILE, and a same-clock-tick truncate-then-write all
         register as a miss and trigger a reload. Cheap and never raises, per the
         fingerprint contract.
         """
-        middleware_info_file: str = os.getenv("MIDDLEWARE_INFO_FILE", DEFAULT_MIDDLEWARE_INFO_FILE)
-        return middleware_info_file, SharedProcessCache.stat_modification_time_ns(middleware_info_file)
+        middleware_info_file: str = MiddlewareInfoMiddleware._resolve_info_file()
+        return middleware_info_file, SharedProcessCache.stat_size_and_modification_time_ns(middleware_info_file)
 
     # Process-wide cache of the parsed catalog (see ProcessGlobals entry 8). Access
     # goes through the class by name (not cls) so a hypothetical subclass shares the

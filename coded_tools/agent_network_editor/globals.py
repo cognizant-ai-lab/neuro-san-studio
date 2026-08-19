@@ -144,7 +144,7 @@ class ProcessGlobals:  # pylint: disable=too-few-public-methods
     #             EXTERNAL_AGENTS_FILE (default
     #             middleware/agent_network_designer/external_agents.hocon).
     #    Lives:   external_agents_middleware.ExternalAgentsMiddleware
-    #    Expiry:  catalog path/modification_time change — no time bucket,
+    #    Expiry:  catalog path/size/modification_time change — no time bucket,
     #             since nothing writes the file at runtime. A failed load is
     #             never published (fail-closed errors recur until the file is
     #             fixed, then the next call recovers).
@@ -157,7 +157,7 @@ class ProcessGlobals:  # pylint: disable=too-few-public-methods
     #             MIDDLEWARE_INFO_FILE (default
     #             middleware/agent_network_designer/middleware_info.hocon).
     #    Lives:   middleware_info_middleware.MiddlewareInfoMiddleware
-    #    Expiry:  catalog path/modification_time change — no time bucket,
+    #    Expiry:  catalog path/size/modification_time change — no time bucket,
     #             since nothing writes the file at runtime (a missing or
     #             broken file is retried, never cached).
     #    Used by: MiddlewareInfoMiddleware.awrap_model_call() (system-prompt

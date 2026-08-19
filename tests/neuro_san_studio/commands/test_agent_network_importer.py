@@ -86,6 +86,27 @@ class TestImportNetwork:
         assert (target_dir / "registries" / "aaosa.hocon").is_file()
         assert not result.errors
 
+    def test_import_copies_hocon_data_files_beside_middleware(self, tmp_path: Path) -> None:
+        """Data catalogs colocated with a copied middleware module ride along.
+
+        The designer's ExternalAgentsMiddleware/MiddlewareInfoMiddleware resolve
+        their catalog hocons relative to their own module as a fallback, so a
+        scaffolded project must receive them exactly where the source ships them.
+        """
+        source_dir = tmp_path / "source"
+        target_dir = tmp_path / "target"
+        target_dir.mkdir()
+        self._build_fake_source(source_dir)
+        (source_dir / "middleware" / "music_nerd" / "catalog.hocon").write_text('{ "entry": {} }\n')
+
+        importer = AgentNetworkImporter(str(source_dir), str(target_dir))
+        deps = AgentNetworkDependencies(middleware=["middleware/music_nerd/logger.py"])
+
+        result = importer.import_network("basic/music_nerd.hocon", deps)
+
+        assert (target_dir / "middleware" / "music_nerd" / "catalog.hocon").is_file()
+        assert not result.errors
+
     def test_sub_networks_are_registered_in_manifest_entries(self, tmp_path: Path) -> None:
         """import_network must record both the top-level network AND every sub-network for manifest registration.
 
