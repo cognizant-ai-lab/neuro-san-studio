@@ -431,11 +431,11 @@ ENV AGENT_TOOL_PATH_ONLY="false"
 # When not set (the default) the server uses an implementation for the Authorizer
 # that effectively lets all requests for all users through.
 # We offer the following implementations:
-#   neuro_san.internals.authorization.null.always_yes_authorizer.AlwaysYesAuthorizer (default)
-#   neuro_san.internals.authorization.null.always_no_authorizer.AlwaysNoAuthorizer
-#   neuro_san.internals.authorization.openfga.open_fga_authorizer.OpenFgaAuthorizer
+#   neuro_san.service.authorization.null.always_yes_authorizer.AlwaysYesAuthorizer (default)
+#   neuro_san.service.authorization.null.always_no_authorizer.AlwaysNoAuthorizer
+#   neuro_san.service.authorization.openfga.open_fga_authorizer.OpenFgaAuthorizer
 # Feel free to make your own as long as it derives from this interface:
-#   neuro_san.internals.authorization.interfaces.authorizer.Authorizer
+#   neuro_san.service.authorization.interfaces.authorizer.Authorizer
 ENV AGENT_AUTHORIZER=""
 
 # The request metadata field to use as the actor id for authorization
