@@ -46,12 +46,6 @@ DEFAULT_EXTERNAL_AGENTS_FILE: str = str(Path("middleware", "agent_network_design
 # the working directory has no repo/project-layout copy (e.g. `ns run` inside a
 # scaffolded project, or an installed wheel).
 BUNDLED_EXTERNAL_AGENTS_FILE: str = str(Path(__file__).with_name("external_agents.hocon"))
-# Shared truthy-string vocabulary ("1"/"true"/"yes"/"on", anything else False) —
-# the same parser the wider leaf ecosystem uses, so toggle env vars here behave
-# like boolean settings everywhere else. Call sites strip the raw value first:
-# BooleanParser does not, and a trailing space from a .env line would otherwise
-# silently disable a tool the operator meant to enable.
-BOOLEAN_PARSER: BooleanParser = BooleanParser()
 
 
 class ExternalAgentsMiddleware(AgentMiddleware):
@@ -284,7 +278,11 @@ class ExternalAgentsMiddleware(AgentMiddleware):
                 disabled_tools.add(safe_name)
                 continue
 
-            if BOOLEAN_PARSER.parse(os.getenv(env_var, "").strip()):
+            # BooleanParser gives the leaf-wide truthy vocabulary ("1"/"true"/
+            # "yes"/"on", anything else False) but does not strip, and a trailing
+            # space from a .env line would otherwise silently disable a tool the
+            # operator meant to enable.
+            if BooleanParser().parse(os.getenv(env_var, "").strip()):
                 instructions: Any = module.get("instructions")
                 if isinstance(instructions, str) and instructions.strip():
                     enabled_blocks.append(instructions.strip())
