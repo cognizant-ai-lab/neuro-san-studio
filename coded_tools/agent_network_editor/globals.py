@@ -139,22 +139,22 @@ class ProcessGlobals:  # pylint: disable=too-few-public-methods
     #    Used by: GetMcpTool.async_invoke() (the coded tool the editor LLM
     #             calls).
     #
-    # 7. Shared external-agents catalog
-    #    Holds:   the toggleable external-agent catalog parsed from
-    #             EXTERNAL_AGENTS_FILE (default
-    #             middleware/agent_network_designer/external_agents.hocon).
-    #    Lives:   external_agents_middleware.ExternalAgentsMiddleware
+    # 7. Shared optional-agents catalog
+    #    Holds:   the designer's optional-agents catalog parsed from
+    #             AGENT_NETWORK_DESIGNER_OPTIONAL_AGENTS_FILE (default
+    #             middleware/agent_network_designer/optional_agents.hocon).
+    #    Lives:   optional_agents_middleware.OptionalAgentsMiddleware
     #    Expiry:  catalog path/size/modification_time change — no time bucket,
     #             since nothing writes the file at runtime. A failed load is
     #             never published (fail-closed errors recur until the file is
     #             fixed, then the next call recovers).
-    #    Used by: ExternalAgentsMiddleware.awrap_model_call() (tool stripping
+    #    Used by: OptionalAgentsMiddleware.awrap_model_call() (tool stripping
     #             + instruction injection) and awrap_tool_call()
     #             (execution-time denial of disabled module tools).
     #
     # 8. Shared middleware info catalog
     #    Holds:   the middleware allow-list catalog parsed from
-    #             MIDDLEWARE_INFO_FILE (default
+    #             AGENT_NETWORK_DESIGNER_MIDDLEWARE_INFO_FILE (default
     #             middleware/agent_network_designer/middleware_info.hocon).
     #    Lives:   middleware_info_middleware.MiddlewareInfoMiddleware
     #    Expiry:  catalog path/size/modification_time change — no time bucket,
@@ -199,8 +199,8 @@ class ProcessGlobals:  # pylint: disable=too-few-public-methods
             "clear_shared_mcp_tool_descriptions_for_testing",
         ),
         (
-            "middleware.agent_network_designer.external_agents_middleware",
-            "ExternalAgentsMiddleware",
+            "middleware.agent_network_designer.optional_agents_middleware",
+            "OptionalAgentsMiddleware",
             "clear_shared_catalog_for_testing",
         ),
         (

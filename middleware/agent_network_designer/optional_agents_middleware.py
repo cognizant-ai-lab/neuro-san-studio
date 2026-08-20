@@ -41,17 +41,24 @@ from middleware.agent_network_designer.hocon_catalog_cache import HoconCatalogCa
 
 # Relative to the working directory, matching the repo/scaffold layout when the
 # server is started from the top of the repository or of an `ns init` project.
-DEFAULT_EXTERNAL_AGENTS_FILE: str = str(Path("middleware", "agent_network_designer", "external_agents.hocon"))
+DEFAULT_OPTIONAL_AGENTS_FILE: str = str(Path("middleware", "agent_network_designer", "optional_agents.hocon"))
 # The copy of the catalog that ships right next to this module — the fallback when
 # the working directory has no repo/project-layout copy (e.g. `ns run` inside a
 # scaffolded project, or an installed wheel).
-BUNDLED_EXTERNAL_AGENTS_FILE: str = str(Path(__file__).with_name("external_agents.hocon"))
+BUNDLED_OPTIONAL_AGENTS_FILE: str = str(Path(__file__).with_name("optional_agents.hocon"))
 
 
-class ExternalAgentsMiddleware(AgentMiddleware):
+class OptionalAgentsMiddleware(AgentMiddleware):
     """
-    Middleware that loads the toggleable external-agent catalog from a HOCON file and
-    applies the env-var gate for each catalog entry:
+    Middleware that loads the designer's optional-agents catalog from a HOCON file and
+    applies the env-var gate for each catalog entry.
+
+    Naming: every entry's `tool` is an external agent in the neuro-san core sense (a
+    "/name" reference) — but so are the designer's required subnetworks, which this
+    gate never touches. "Optional" is the distinguishing property: these are the
+    deployment-toggleable add-on modules of the designer's workflow.
+
+    The gate per entry:
 
     - When a module's `enabled_env_var` is truthy ("1"/"true"/"yes"/"on", case-insensitive):
       its `instructions` are appended to the system prompt and its `tool` is left in
@@ -80,11 +87,11 @@ class ExternalAgentsMiddleware(AgentMiddleware):
     # goes through the class by name (not cls) so a hypothetical subclass shares the
     # one cache instead of splitting it.
     _shared_catalog_cache: HoconCatalogCache = HoconCatalogCache(
-        env_var="EXTERNAL_AGENTS_FILE",
-        default_file=DEFAULT_EXTERNAL_AGENTS_FILE,
-        bundled_file=BUNDLED_EXTERNAL_AGENTS_FILE,
-        file_purpose="get_external_agents",
-        empty_effect="no external-agent tools will be gated",
+        env_var="AGENT_NETWORK_DESIGNER_OPTIONAL_AGENTS_FILE",
+        default_file=DEFAULT_OPTIONAL_AGENTS_FILE,
+        bundled_file=BUNDLED_OPTIONAL_AGENTS_FILE,
+        file_purpose="get_optional_agents",
+        empty_effect="no optional-agent tools will be gated",
     )
 
     def __init__(self) -> None:
@@ -98,9 +105,9 @@ class ExternalAgentsMiddleware(AgentMiddleware):
         Production code must never call this: the cache is deliberately
         load-once-per-process with fingerprint-based refresh. Tests call it (via
         tests/conftest.py's ProcessGlobals reset) so a catalog loaded under one
-        test's EXTERNAL_AGENTS_FILE state cannot leak into later tests.
+        test's AGENT_NETWORK_DESIGNER_OPTIONAL_AGENTS_FILE state cannot leak into later tests.
         """
-        ExternalAgentsMiddleware._shared_catalog_cache.clear_for_testing()
+        OptionalAgentsMiddleware._shared_catalog_cache.clear_for_testing()
 
     async def _get_catalog(self) -> dict[str, Any]:
         """
@@ -114,13 +121,13 @@ class ExternalAgentsMiddleware(AgentMiddleware):
                 resolved server path would leak filesystem details to remote users.
         """
         try:
-            return await ExternalAgentsMiddleware._shared_catalog_cache.aget()
+            return await OptionalAgentsMiddleware._shared_catalog_cache.aget()
         except CatalogLoadError as error:
             self.logger.error("%s", error)
             raise ValueError(
-                "The Agent Network Designer's external-agents catalog failed to load, so tool "
+                "The Agent Network Designer's optional-agents catalog failed to load, so tool "
                 "gating cannot be applied and the designer refuses to run. Ask the server "
-                "operator to check the EXTERNAL_AGENTS_FILE setting and the server logs."
+                "operator to check the AGENT_NETWORK_DESIGNER_OPTIONAL_AGENTS_FILE setting and the server logs."
             ) from error
 
     @override
@@ -152,7 +159,7 @@ class ExternalAgentsMiddleware(AgentMiddleware):
             overrides["system_message"] = new_system_message
 
         self.logger.debug(
-            ">>>>>>>>>>>>>>>>>>>External Agents: dropped %d tool(s), injected %d block(s)>>>>>>>>>>>>>>>>>>>",
+            ">>>>>>>>>>>>>>>>>>>Optional Agents: dropped %d tool(s), injected %d block(s)>>>>>>>>>>>>>>>>>>>",
             len(disabled_tools),
             len(enabled_blocks),
         )
@@ -193,7 +200,7 @@ class ExternalAgentsMiddleware(AgentMiddleware):
         _, disabled_tools = self._classify(catalog)
 
         if tool_name in disabled_tools:
-            self.logger.warning("Denying tool call for disabled external agent '%s'.", tool_name)
+            self.logger.warning("Denying tool call for disabled optional agent '%s'.", tool_name)
             call_id: str | None = request.tool_call.get("id")
             return ToolMessage(
                 content=f"Error: tool '{tool_name}' is disabled on this deployment and was not executed.",
@@ -232,7 +239,7 @@ class ExternalAgentsMiddleware(AgentMiddleware):
                 # must degrade to a warning, not an AttributeError on every model call.
                 # There is no tool reference to fail closed on here.
                 self.logger.warning(
-                    "External-agent module '%s' is not a mapping (got %s); skipping.",
+                    "Optional-agent module '%s' is not a mapping (got %s); skipping.",
                     module_name,
                     type(module).__name__,
                 )
@@ -243,7 +250,7 @@ class ExternalAgentsMiddleware(AgentMiddleware):
             if not tool_ref:
                 # Without a usable tool reference there is nothing to gate.
                 self.logger.warning(
-                    "External-agent module '%s' has a missing or non-string `tool` reference; skipping.",
+                    "Optional-agent module '%s' has a missing or non-string `tool` reference; skipping.",
                     module_name,
                 )
                 continue
@@ -254,7 +261,7 @@ class ExternalAgentsMiddleware(AgentMiddleware):
                 # get_safe_agent_name unchanged and would match nothing — leaving
                 # the real tool silently ungated.
                 self.logger.warning(
-                    "External-agent module '%s' tool ref '%s' is missing its leading '/'; treating it as '/%s'.",
+                    "Optional-agent module '%s' tool ref '%s' is missing its leading '/'; treating it as '/%s'.",
                     module_name,
                     tool_ref,
                     tool_ref,
@@ -270,7 +277,7 @@ class ExternalAgentsMiddleware(AgentMiddleware):
                 # operator's intent, and leaving the tool live would silently
                 # defeat the gate.
                 self.logger.warning(
-                    "External-agent module '%s' has a missing or non-string `enabled_env_var`; "
+                    "Optional-agent module '%s' has a missing or non-string `enabled_env_var`; "
                     "disabling its tool '%s'.",
                     module_name,
                     tool_ref,
@@ -320,7 +327,7 @@ class ExternalAgentsMiddleware(AgentMiddleware):
             # (wrong case, wrong name, or a stale entry) — surface it, because a
             # misspelled module's real tool is silently ungated.
             self.logger.warning(
-                "Disabled external-agent tool(s) %s matched nothing in the model request's tools.",
+                "Disabled optional-agent tool(s) %s matched nothing in the model request's tools.",
                 sorted(unmatched),
             )
         return kept
@@ -349,7 +356,7 @@ class ExternalAgentsMiddleware(AgentMiddleware):
         """
         Build a new SystemMessage with the enabled modules' instruction blocks appended.
         """
-        addendum: str = "## Additional External Agents (toggled on)\n\n" + "\n".join(enabled_blocks)
+        addendum: str = "## Additional Optional Agents (toggled on)\n\n" + "\n".join(enabled_blocks)
         if system_message is None:
             return SystemMessage(content=addendum)
         original: str = system_message.content if isinstance(system_message.content, str) else ""

@@ -15,10 +15,10 @@
 # END COPYRIGHT
 """
 The one copy of the resolve/load/validate/fingerprint discipline for the
-designer's env-var-pathed HOCON catalogs (the external-agents catalog and the
+designer's env-var-pathed HOCON catalogs (the optional-agents catalog and the
 middleware-info catalog).
 
-The two consuming middlewares keep only their failure POLICY — the external
+The two consuming middlewares keep only their failure POLICY — the optional-
 agents gate fails closed with a client-safe error, the info injector warns and
 skips — while everything they must otherwise keep in lockstep lives here once:
 path resolution, empty-path and root-shape rejection, the empty-catalog
@@ -107,7 +107,7 @@ class HoconCatalogCache:
                 fallback when the working directory has no layout copy.
         :param file_purpose: AbstractAsyncConfigRestorer purpose string.
         :param empty_effect: One clause describing what an empty catalog means,
-                spliced into the breadcrumb warning (e.g. "no external-agent
+                spliced into the breadcrumb warning (e.g. "no optional-agent
                 tools will be gated").
         :param transform: Optional post-parse projection of the catalog dict
                 into the cached value (e.g. pre-rendering a prompt section), run

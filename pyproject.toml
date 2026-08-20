@@ -41,7 +41,7 @@ exclude = ["apps*", "build_scripts*", "config*", "deploy*", "docs*", "servers*",
 "registries" = ["**/*.hocon"]
 "coded_tools" = ["**/*.py"]
 # middleware ships .hocon data catalogs colocated with the modules that read them
-# (e.g. the designer's external_agents.hocon / middleware_info.hocon, resolved
+# (e.g. the designer's optional_agents.hocon / middleware_info.hocon, resolved
 # relative to their module as a fallback) — package them alongside the code.
 "middleware" = ["**/*.py", "**/*.hocon"]
 "skills" = ["**/*.md", "**/*.py"]

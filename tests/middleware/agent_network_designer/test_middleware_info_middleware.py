@@ -28,18 +28,7 @@ from langchain_core.messages import SystemMessage
 from neuro_san.internals.persistence.abstract_async_config_restorer import AbstractAsyncConfigRestorer
 
 from middleware.agent_network_designer.middleware_info_middleware import MiddlewareInfoMiddleware
-
-
-class _FakeModelRequest:  # pylint: disable=too-few-public-methods
-    """Just enough of langchain's ModelRequest for awrap_model_call: a system_message
-    and an override() that returns a modified copy."""
-
-    def __init__(self, system_message: SystemMessage | None = None):
-        self.system_message = system_message
-
-    def override(self, **kwargs) -> "_FakeModelRequest":
-        """Mirror ModelRequest.override(): a copy with the given fields replaced."""
-        return _FakeModelRequest(kwargs.get("system_message", self.system_message))
+from tests.middleware.agent_network_designer.fake_model_request import FakeModelRequest
 
 
 class TestMiddlewareInfoMiddleware:
@@ -47,19 +36,19 @@ class TestMiddlewareInfoMiddleware:
 
     @staticmethod
     def _install_catalog(tmp_path: Path, monkeypatch, catalog: dict[str, Any] | None = None) -> Path:
-        """Write a catalog file (JSON is valid HOCON) and point MIDDLEWARE_INFO_FILE at it."""
+        """Write a catalog file (JSON is valid HOCON) and point AGENT_NETWORK_DESIGNER_MIDDLEWARE_INFO_FILE at it."""
         if catalog is None:
             catalog = {"pii_middleware": {"class": "middleware.pii.PII", "args": {}}}
         catalog_file = tmp_path / "middleware_info.hocon"
         catalog_file.write_text(json.dumps(catalog), encoding="utf-8")
-        monkeypatch.setenv("MIDDLEWARE_INFO_FILE", str(catalog_file))
+        monkeypatch.setenv("AGENT_NETWORK_DESIGNER_MIDDLEWARE_INFO_FILE", str(catalog_file))
         return catalog_file
 
     def test_catalog_injected_into_system_prompt(self, tmp_path, monkeypatch):
         """The catalog is appended to the system prompt as an Available Middleware section."""
         self._install_catalog(tmp_path, monkeypatch)
         handler = AsyncMock(return_value="model-response")
-        request = _FakeModelRequest(system_message=SystemMessage(content="base"))
+        request = FakeModelRequest(system_message=SystemMessage(content="base"))
 
         result = asyncio.run(MiddlewareInfoMiddleware().awrap_model_call(request, handler))
 
@@ -71,9 +60,9 @@ class TestMiddlewareInfoMiddleware:
 
     def test_missing_catalog_degrades_gracefully(self, tmp_path, monkeypatch, caplog):
         """A missing catalog warns and skips injection instead of failing the model call."""
-        monkeypatch.setenv("MIDDLEWARE_INFO_FILE", str(tmp_path / "nope.hocon"))
+        monkeypatch.setenv("AGENT_NETWORK_DESIGNER_MIDDLEWARE_INFO_FILE", str(tmp_path / "nope.hocon"))
         handler = AsyncMock(return_value="model-response")
-        request = _FakeModelRequest(system_message=SystemMessage(content="base"))
+        request = FakeModelRequest(system_message=SystemMessage(content="base"))
 
         with caplog.at_level("WARNING"):
             result = asyncio.run(MiddlewareInfoMiddleware().awrap_model_call(request, handler))
@@ -87,16 +76,16 @@ class TestMiddlewareInfoMiddleware:
         """A corrupt catalog is retried, not cached: fixing the file recovers injection."""
         catalog_file = tmp_path / "middleware_info.hocon"
         catalog_file.write_text("{ this is : : not valid hocon }}", encoding="utf-8")
-        monkeypatch.setenv("MIDDLEWARE_INFO_FILE", str(catalog_file))
+        monkeypatch.setenv("AGENT_NETWORK_DESIGNER_MIDDLEWARE_INFO_FILE", str(catalog_file))
         handler = AsyncMock(return_value="model-response")
         middleware = MiddlewareInfoMiddleware()
 
         with caplog.at_level("WARNING"):
-            asyncio.run(middleware.awrap_model_call(_FakeModelRequest(), handler))
+            asyncio.run(middleware.awrap_model_call(FakeModelRequest(), handler))
         assert "could not be loaded" in caplog.text
 
         catalog_file.write_text(json.dumps({"pii_middleware": {"class": "x"}}), encoding="utf-8")
-        asyncio.run(middleware.awrap_model_call(_FakeModelRequest(), handler))
+        asyncio.run(middleware.awrap_model_call(FakeModelRequest(), handler))
         assert "## Available Middleware" in handler.await_args.args[0].system_message.content
 
     def test_root_list_catalog_degrades_gracefully(self, tmp_path, monkeypatch, caplog):
@@ -104,39 +93,39 @@ class TestMiddlewareInfoMiddleware:
         (so no AttributeError-per-call until an mtime change)."""
         catalog_file = tmp_path / "middleware_info.hocon"
         catalog_file.write_text('[{"class": "x"}]', encoding="utf-8")
-        monkeypatch.setenv("MIDDLEWARE_INFO_FILE", str(catalog_file))
+        monkeypatch.setenv("AGENT_NETWORK_DESIGNER_MIDDLEWARE_INFO_FILE", str(catalog_file))
         handler = AsyncMock(return_value="model-response")
         middleware = MiddlewareInfoMiddleware()
 
         with caplog.at_level("WARNING"):
-            result = asyncio.run(middleware.awrap_model_call(_FakeModelRequest(), handler))
+            result = asyncio.run(middleware.awrap_model_call(FakeModelRequest(), handler))
 
         assert result == "model-response"
         assert "could not be loaded" in caplog.text
         # Fixing the file recovers on the next call — nothing bad was cached.
         catalog_file.write_text(json.dumps({"pii_middleware": {"class": "x"}}), encoding="utf-8")
-        asyncio.run(middleware.awrap_model_call(_FakeModelRequest(), handler))
+        asyncio.run(middleware.awrap_model_call(FakeModelRequest(), handler))
         assert "## Available Middleware" in handler.await_args.args[0].system_message.content
 
     def test_bundled_catalog_is_the_fallback_when_cwd_has_no_copy(self, tmp_path, monkeypatch):
         """With no env var and no repo/project-layout copy in the working directory,
         the catalog bundled next to the middleware module is used."""
         monkeypatch.chdir(tmp_path)
-        monkeypatch.delenv("MIDDLEWARE_INFO_FILE", raising=False)
+        monkeypatch.delenv("AGENT_NETWORK_DESIGNER_MIDDLEWARE_INFO_FILE", raising=False)
         handler = AsyncMock(return_value="model-response")
 
-        result = asyncio.run(MiddlewareInfoMiddleware().awrap_model_call(_FakeModelRequest(), handler))
+        result = asyncio.run(MiddlewareInfoMiddleware().awrap_model_call(FakeModelRequest(), handler))
 
         assert result == "model-response"
         assert "## Available Middleware" in handler.await_args.args[0].system_message.content
 
     def test_empty_env_var_degrades_with_warning(self, monkeypatch, caplog):
-        """MIDDLEWARE_INFO_FILE="" warns and skips instead of silently injecting nothing."""
-        monkeypatch.setenv("MIDDLEWARE_INFO_FILE", "")
+        """AGENT_NETWORK_DESIGNER_MIDDLEWARE_INFO_FILE="" warns and skips instead of silently injecting nothing."""
+        monkeypatch.setenv("AGENT_NETWORK_DESIGNER_MIDDLEWARE_INFO_FILE", "")
         handler = AsyncMock(return_value="model-response")
 
         with caplog.at_level("WARNING"):
-            result = asyncio.run(MiddlewareInfoMiddleware().awrap_model_call(_FakeModelRequest(), handler))
+            result = asyncio.run(MiddlewareInfoMiddleware().awrap_model_call(FakeModelRequest(), handler))
 
         assert result == "model-response"
         assert "empty string" in caplog.text
@@ -152,6 +141,6 @@ class TestMiddlewareInfoMiddleware:
         real_restore = AbstractAsyncConfigRestorer.restore
         with patch.object(AbstractAsyncConfigRestorer, "restore", autospec=True, side_effect=real_restore) as spy:
             for _ in range(2):
-                asyncio.run(MiddlewareInfoMiddleware().awrap_model_call(_FakeModelRequest(), handler))
+                asyncio.run(MiddlewareInfoMiddleware().awrap_model_call(FakeModelRequest(), handler))
 
         assert spy.call_count == 1

@@ -43,21 +43,6 @@ DEFAULT_MIDDLEWARE_INFO_FILE: str = str(Path("middleware", "agent_network_design
 BUNDLED_MIDDLEWARE_INFO_FILE: str = str(Path(__file__).with_name("middleware_info.hocon"))
 
 
-def _format_middleware_info_prompt(middleware_info: dict[str, Any]) -> str:
-    """
-    Format the middleware catalog as a system prompt section.
-
-    Run once per catalog load (via the cache's transform), not once per model
-    call — the catalog is immutable per fingerprint, so the rendered section is
-    a pure function of the file.
-
-    :param middleware_info: The middleware catalog dictionary
-    :return: Formatted prompt string
-    """
-    info_str: str = json.dumps(middleware_info, indent=2)
-    return f"## Available Middleware\n\n```json\n{info_str}\n```"
-
-
 class MiddlewareInfoMiddleware(AgentMiddleware):
     """
     Middleware that reads the available middleware catalog from a HOCON file and injects it
@@ -69,21 +54,38 @@ class MiddlewareInfoMiddleware(AgentMiddleware):
     copy bundled beside this module) and freshness; the prompt section is rendered once
     per load rather than once per model call.
 
-    Unlike ExternalAgentsMiddleware — a security gate that fails closed — this middleware
+    Unlike OptionalAgentsMiddleware — a security gate that fails closed — this middleware
     only enriches the prompt, so a catalog that cannot be loaded degrades to a warning and
     an uninjected prompt rather than failing the model call.
     """
 
+    @staticmethod
+    def _format_middleware_info_prompt(middleware_info: dict[str, Any]) -> str:
+        """
+        Format the middleware catalog as a system prompt section.
+
+        Run once per catalog load (via the cache's transform), not once per model
+        call — the catalog is immutable per fingerprint, so the rendered section is
+        a pure function of the file.
+
+        :param middleware_info: The middleware catalog dictionary
+        :return: Formatted prompt string
+        """
+        info_str: str = json.dumps(middleware_info, indent=2)
+        return f"## Available Middleware\n\n```json\n{info_str}\n```"
+
     # Process-wide cache of (catalog, rendered prompt section) — see ProcessGlobals
     # entry 8. Access goes through the class by name (not cls) so a hypothetical
-    # subclass shares the one cache instead of splitting it.
+    # subclass shares the one cache instead of splitting it. The transform lambda
+    # runs at load time, well after this class body finishes executing, so its
+    # by-name reference to the class resolves fine.
     _shared_info_cache: HoconCatalogCache = HoconCatalogCache(
-        env_var="MIDDLEWARE_INFO_FILE",
+        env_var="AGENT_NETWORK_DESIGNER_MIDDLEWARE_INFO_FILE",
         default_file=DEFAULT_MIDDLEWARE_INFO_FILE,
         bundled_file=BUNDLED_MIDDLEWARE_INFO_FILE,
         file_purpose="get_middleware_info",
         empty_effect="no middleware will be offered to the LLM",
-        transform=lambda info: (info, _format_middleware_info_prompt(info)),
+        transform=lambda info: (info, MiddlewareInfoMiddleware._format_middleware_info_prompt(info)),
     )
 
     def __init__(self) -> None:
@@ -97,7 +99,7 @@ class MiddlewareInfoMiddleware(AgentMiddleware):
         Production code must never call this: the cache is deliberately
         load-once-per-process with fingerprint-based refresh. Tests call it (via
         tests/conftest.py's ProcessGlobals reset) so a catalog loaded under one
-        test's MIDDLEWARE_INFO_FILE state cannot leak into later tests.
+        test's AGENT_NETWORK_DESIGNER_MIDDLEWARE_INFO_FILE state cannot leak into later tests.
         """
         MiddlewareInfoMiddleware._shared_info_cache.clear_for_testing()
 

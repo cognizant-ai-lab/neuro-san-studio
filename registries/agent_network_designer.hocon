@@ -14,13 +14,13 @@
 #
 # END COPYRIGHT
 #
-# Modular external-agent design:
+# Modular optional-agent design:
 # After step 1 (always agent_network_editor), the designer may call any number of follow-up
 # external agents in parallel. Two of them — agent_network_instructions_editor and
 # agent_network_query_generator — are core and always-on. Additional toggleable modules live
-# in middleware/agent_network_designer/external_agents.hocon and are enabled per-env-var.
-# ExternalAgentsMiddleware reads that catalog and appends each enabled module's workflow-step
-# text to this agent's system prompt. To add a new toggleable external agent: register a new
+# in middleware/agent_network_designer/optional_agents.hocon and are enabled per-env-var.
+# OptionalAgentsMiddleware reads that catalog and appends each enabled module's workflow-step
+# text to this agent's system prompt. To add a new optional agent: register a new
 # entry in the catalog, append its tool ref + its message-allow entry below, and add any new
 # sly_data keys it returns to allow.from_downstream.sly_data.
 {
@@ -249,7 +249,7 @@ Step 2) After step 1 returns, call the following follow-up external agents IN PA
 - `agent_network_instructions_editor`: Write or refine agents' `instructions` and `description` fields. Call after any structural change or when the user asks to modify instructions only. You may call it multiple times as you iterate.
 - `agent_network_query_generator`: Generate 3–4 sample queries for the current network. Call after any change so the queries stay in sync with the structure. You may call it repeatedly until the queries accurately reflect the network behavior.
 
-Step 3) AFTER every step 2 follow-up has returned, call any additional toggleable external agents SEQUENTIALLY (one tool per response). Step 3 tools are listed below this workflow when they are enabled — do not invoke them earlier or in parallel with step 2, because they write to the same `agent_network_definition` that `agent_network_instructions_editor` writes to and a parallel `to_upstream` merge would clobber their changes.
+Step 3) AFTER every step 2 follow-up has returned, call any additional optional agents SEQUENTIALLY (one tool per response). Step 3 tools are listed below this workflow when they are enabled — do not invoke them earlier or in parallel with step 2, because they write to the same `agent_network_definition` that `agent_network_instructions_editor` writes to and a parallel `to_upstream` merge would clobber their changes.
 
 Operational notes:
 - Step 1 must complete before step 2 is issued. Step 2's parallel follow-ups must all return before step 3 is issued.
@@ -297,7 +297,7 @@ Operational notes:
             },
             # Every external agent the designer can talk to is statically declared here.
             # Toggleable modules (currently /middleware_manager) are always wired in; whether
-            # the LLM can see or invoke them is decided at runtime by ExternalAgentsMiddleware
+            # the LLM can see or invoke them is decided at runtime by OptionalAgentsMiddleware
             # (prompt/tool stripping plus execution-time denial of their tool calls).
             "tools": ["/agent_network_editor", "/agent_network_query_generator", "/agent_network_instructions_editor", "/middleware_manager", "web_search"],
             # Parse any JSON in responses into the structure field of the ChatMessage.
@@ -311,11 +311,11 @@ Operational notes:
                     }
                 },
                 {
-                    # Appends instructions for every enabled toggleable external-agent module
+                    # Appends instructions for every enabled optional-agent module
                     # to the system prompt, strips disabled modules' tools from the model
                     # request, and denies their tool calls at execution time. Catalog lives at
-                    # middleware/agent_network_designer/external_agents.hocon.
-                    "class": "middleware.agent_network_designer.external_agents_middleware.ExternalAgentsMiddleware"
+                    # middleware/agent_network_designer/optional_agents.hocon.
+                    "class": "middleware.agent_network_designer.optional_agents_middleware.OptionalAgentsMiddleware"
                 },
                 {
                     "class": "middleware.agent_network_designer.persistence.agent_network_persistence_middleware.AgentNetworkPersistenceMiddleware",

@@ -14,20 +14,25 @@
 #
 # END COPYRIGHT
 
-# Catalog of toggleable external agents that the agent_network_designer can call after step 1.
+# Catalog of the designer's OPTIONAL agents: toggleable add-on modules for the
+# agent_network_designer's workflow. The "steps" referenced below are the numbered workflow
+# steps in the designer front man's instructions (registries/agent_network_designer.hocon):
+# step 1 builds/edits the network structure via agent_network_editor, step 2 runs
+# instructions_editor and query_generator in parallel, and step 3 runs whichever of the
+# optional modules in this catalog are enabled — after step 2, one at a time.
 #
 # Each entry is gated by an environment variable. When the env var is set to a truthy value
-# ("1", "true", "yes", "on" — case-insensitive), ExternalAgentsMiddleware (a) appends the
+# ("1", "true", "yes", "on" — case-insensitive), OptionalAgentsMiddleware (a) appends the
 # entry's `instructions` text to the designer's system prompt and (b) keeps the entry's `tool`
 # in the model request's tools list. When the env var is unset/falsy, the middleware strips
 # the tool from `ModelRequest.tools` before the model call so the LLM literally can't invoke
 # it — the static declaration in the designer HOCON is only the upper bound; this catalog is
 # the gate.
 #
-# This catalog is parsed by ExternalAgentsMiddleware
-# (middleware/agent_network_designer/external_agents_middleware.py). That class is also
+# This catalog is parsed by OptionalAgentsMiddleware
+# (middleware/agent_network_designer/optional_agents_middleware.py). That class is also
 # where the entries below are evaluated against env vars and turned into prompt + tool-list
-# overrides — see ExternalAgentsMiddleware._classify for the field semantics in code.
+# overrides — see OptionalAgentsMiddleware._classify for the field semantics in code.
 #
 # Fields:
 #   enabled_env_var: name of the env var that toggles this module on/off.

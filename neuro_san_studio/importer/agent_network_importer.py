@@ -179,7 +179,7 @@ class AgentNetworkImporter:
     def _copy_sibling_data_files(self, source_file: str, roots: "_Roots", result: ImportResult, force: bool = False):
         """Copy .hocon data files that live beside a copied module.
 
-        Middleware such as the designer's ExternalAgentsMiddleware and
+        Middleware such as the designer's OptionalAgentsMiddleware and
         MiddlewareInfoMiddleware resolve their catalog files relative to their own
         module as a fallback, so a scaffolded project needs those catalogs colocated
         exactly as the source ships them — without this, the module imports fine but

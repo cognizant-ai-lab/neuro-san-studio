@@ -14,7 +14,7 @@
 #
 # END COPYRIGHT
 
-"""Tests for ExternalAgentsMiddleware: env-var gating, fail-closed catalog loading,
+"""Tests for OptionalAgentsMiddleware: env-var gating, fail-closed catalog loading,
 process-wide caching, and execution-time tool-call denial."""
 
 import asyncio
@@ -30,7 +30,9 @@ from langchain_core.messages import SystemMessage
 from langchain_core.messages import ToolMessage
 from neuro_san.internals.persistence.abstract_async_config_restorer import AbstractAsyncConfigRestorer
 
-from middleware.agent_network_designer.external_agents_middleware import ExternalAgentsMiddleware
+from middleware.agent_network_designer.optional_agents_middleware import OptionalAgentsMiddleware
+from tests.middleware.agent_network_designer.fake_model_request import FakeModelRequest
+from tests.middleware.agent_network_designer.fake_tool_call_request import FakeToolCallRequest
 
 # The env var each test catalog's single module is toggled by.
 TOGGLE_ENV_VAR = "TEST_USE_MIDDLEWARE_MODULE"
@@ -38,34 +40,14 @@ TOGGLE_ENV_VAR = "TEST_USE_MIDDLEWARE_MODULE"
 SAFE_TOOL_NAME = "__middleware_manager"
 
 
-class _FakeModelRequest:  # pylint: disable=too-few-public-methods
-    """Just enough of langchain's ModelRequest for awrap_model_call: tools,
-    system_message, and an override() that returns a modified copy."""
-
-    def __init__(self, tools: list[Any], system_message: SystemMessage | None = None):
-        self.tools = tools
-        self.system_message = system_message
-
-    def override(self, **kwargs) -> "_FakeModelRequest":
-        """Mirror ModelRequest.override(): a copy with the given fields replaced."""
-        return _FakeModelRequest(kwargs.get("tools", self.tools), kwargs.get("system_message", self.system_message))
-
-
-class _FakeToolCallRequest:  # pylint: disable=too-few-public-methods
-    """Just enough of langchain's ToolCallRequest for awrap_tool_call: the tool_call dict."""
-
-    def __init__(self, name: str, call_id: str | None = "call_1"):
-        self.tool_call: dict[str, Any] = {"name": name, "args": {}, "id": call_id}
-
-
 # One public method per gated behavior; same accepted trade as the sibling
 # definition-middleware tests.
 # pylint: disable-next=too-many-public-methods
-class TestExternalAgentsMiddleware:
-    """Tests for ExternalAgentsMiddleware."""
+class TestOptionalAgentsMiddleware:
+    """Tests for OptionalAgentsMiddleware."""
 
     @staticmethod
-    def _write_catalog(tmp_path: Path, catalog: dict[str, Any], name: str = "external_agents.hocon") -> Path:
+    def _write_catalog(tmp_path: Path, catalog: dict[str, Any], name: str = "optional_agents.hocon") -> Path:
         """Write a catalog file (JSON is valid HOCON) and return its path."""
         catalog_file = tmp_path / name
         catalog_file.write_text(json.dumps(catalog), encoding="utf-8")
@@ -83,9 +65,9 @@ class TestExternalAgentsMiddleware:
         }
 
     def _install_catalog(self, tmp_path: Path, monkeypatch, catalog: dict[str, Any] | None = None) -> Path:
-        """Write a catalog and point EXTERNAL_AGENTS_FILE at it."""
+        """Write a catalog and point AGENT_NETWORK_DESIGNER_OPTIONAL_AGENTS_FILE at it."""
         catalog_file = self._write_catalog(tmp_path, catalog if catalog is not None else self._standard_catalog())
-        monkeypatch.setenv("EXTERNAL_AGENTS_FILE", str(catalog_file))
+        monkeypatch.setenv("AGENT_NETWORK_DESIGNER_OPTIONAL_AGENTS_FILE", str(catalog_file))
         return catalog_file
 
     @staticmethod
@@ -101,9 +83,9 @@ class TestExternalAgentsMiddleware:
         self._install_catalog(tmp_path, monkeypatch)
         monkeypatch.delenv(TOGGLE_ENV_VAR, raising=False)
         handler = AsyncMock(return_value="model-response")
-        request = _FakeModelRequest(tools=self._request_tools(), system_message=SystemMessage(content="base"))
+        request = FakeModelRequest(tools=self._request_tools(), system_message=SystemMessage(content="base"))
 
-        result = asyncio.run(ExternalAgentsMiddleware().awrap_model_call(request, handler))
+        result = asyncio.run(OptionalAgentsMiddleware().awrap_model_call(request, handler))
 
         assert result == "model-response"
         seen_request = handler.await_args.args[0]
@@ -116,9 +98,9 @@ class TestExternalAgentsMiddleware:
         self._install_catalog(tmp_path, monkeypatch)
         monkeypatch.setenv(TOGGLE_ENV_VAR, "true")
         handler = AsyncMock(return_value="model-response")
-        request = _FakeModelRequest(tools=self._request_tools(), system_message=SystemMessage(content="base"))
+        request = FakeModelRequest(tools=self._request_tools(), system_message=SystemMessage(content="base"))
 
-        asyncio.run(ExternalAgentsMiddleware().awrap_model_call(request, handler))
+        asyncio.run(OptionalAgentsMiddleware().awrap_model_call(request, handler))
 
         seen_request = handler.await_args.args[0]
         assert [t["name"] for t in seen_request.tools] == [SAFE_TOOL_NAME, "other_tool"]
@@ -130,9 +112,9 @@ class TestExternalAgentsMiddleware:
         self._install_catalog(tmp_path, monkeypatch)
         monkeypatch.setenv(TOGGLE_ENV_VAR, "false")
         handler = AsyncMock(return_value="model-response")
-        request = _FakeModelRequest(tools=self._request_tools())
+        request = FakeModelRequest(tools=self._request_tools())
 
-        asyncio.run(ExternalAgentsMiddleware().awrap_model_call(request, handler))
+        asyncio.run(OptionalAgentsMiddleware().awrap_model_call(request, handler))
 
         seen_request = handler.await_args.args[0]
         assert [t["name"] for t in seen_request.tools] == ["other_tool"]
@@ -143,10 +125,10 @@ class TestExternalAgentsMiddleware:
         self._install_catalog(tmp_path, monkeypatch, catalog)
         monkeypatch.delenv(TOGGLE_ENV_VAR, raising=False)
         handler = AsyncMock(return_value="model-response")
-        request = _FakeModelRequest(tools=self._request_tools())
+        request = FakeModelRequest(tools=self._request_tools())
 
         with caplog.at_level("WARNING"):
-            asyncio.run(ExternalAgentsMiddleware().awrap_model_call(request, handler))
+            asyncio.run(OptionalAgentsMiddleware().awrap_model_call(request, handler))
 
         assert "not a mapping" in caplog.text
         # The well-formed module was still processed.
@@ -159,17 +141,17 @@ class TestExternalAgentsMiddleware:
         catalog = {"middleware_manager": {"tool": "/middleware_manager"}}
         self._install_catalog(tmp_path, monkeypatch, catalog)
         handler = AsyncMock(return_value="model-response")
-        request = _FakeModelRequest(tools=self._request_tools())
+        request = FakeModelRequest(tools=self._request_tools())
 
         with caplog.at_level("WARNING"):
-            asyncio.run(ExternalAgentsMiddleware().awrap_model_call(request, handler))
+            asyncio.run(OptionalAgentsMiddleware().awrap_model_call(request, handler))
 
         assert "disabling its tool" in caplog.text
         seen_request = handler.await_args.args[0]
         assert [t["name"] for t in seen_request.tools] == ["other_tool"]
 
         denial = asyncio.run(
-            ExternalAgentsMiddleware().awrap_tool_call(_FakeToolCallRequest(SAFE_TOOL_NAME), AsyncMock())
+            OptionalAgentsMiddleware().awrap_tool_call(FakeToolCallRequest(SAFE_TOOL_NAME), AsyncMock())
         )
         assert isinstance(denial, ToolMessage)
 
@@ -179,10 +161,10 @@ class TestExternalAgentsMiddleware:
         catalog = {"middleware_manager": {"enabled_env_var": True, "tool": "/middleware_manager"}}
         self._install_catalog(tmp_path, monkeypatch, catalog)
         handler = AsyncMock(return_value="model-response")
-        request = _FakeModelRequest(tools=self._request_tools())
+        request = FakeModelRequest(tools=self._request_tools())
 
         with caplog.at_level("WARNING"):
-            asyncio.run(ExternalAgentsMiddleware().awrap_model_call(request, handler))
+            asyncio.run(OptionalAgentsMiddleware().awrap_model_call(request, handler))
 
         assert "non-string `enabled_env_var`" in caplog.text
         seen_request = handler.await_args.args[0]
@@ -200,10 +182,10 @@ class TestExternalAgentsMiddleware:
         self._install_catalog(tmp_path, monkeypatch, catalog)
         monkeypatch.delenv(TOGGLE_ENV_VAR, raising=False)
         handler = AsyncMock(return_value="model-response")
-        request = _FakeModelRequest(tools=self._request_tools())
+        request = FakeModelRequest(tools=self._request_tools())
 
         with caplog.at_level("WARNING"):
-            asyncio.run(ExternalAgentsMiddleware().awrap_model_call(request, handler))
+            asyncio.run(OptionalAgentsMiddleware().awrap_model_call(request, handler))
 
         assert "missing its leading '/'" in caplog.text
         seen_request = handler.await_args.args[0]
@@ -221,10 +203,10 @@ class TestExternalAgentsMiddleware:
         self._install_catalog(tmp_path, monkeypatch, catalog)
         monkeypatch.delenv(TOGGLE_ENV_VAR, raising=False)
         handler = AsyncMock(return_value="model-response")
-        request = _FakeModelRequest(tools=self._request_tools())
+        request = FakeModelRequest(tools=self._request_tools())
 
         with caplog.at_level("WARNING"):
-            asyncio.run(ExternalAgentsMiddleware().awrap_model_call(request, handler))
+            asyncio.run(OptionalAgentsMiddleware().awrap_model_call(request, handler))
 
         assert "matched nothing" in caplog.text
         # Nothing legitimate was stripped.
@@ -236,10 +218,10 @@ class TestExternalAgentsMiddleware:
         breadcrumb: it is indistinguishable from an accidentally truncated file."""
         self._install_catalog(tmp_path, monkeypatch, {})
         handler = AsyncMock(return_value="model-response")
-        request = _FakeModelRequest(tools=self._request_tools())
+        request = FakeModelRequest(tools=self._request_tools())
 
         with caplog.at_level("WARNING"):
-            asyncio.run(ExternalAgentsMiddleware().awrap_model_call(request, handler))
+            asyncio.run(OptionalAgentsMiddleware().awrap_model_call(request, handler))
 
         assert "is empty" in caplog.text
         seen_request = handler.await_args.args[0]
@@ -253,12 +235,12 @@ class TestExternalAgentsMiddleware:
         """A missing catalog file refuses the model call instead of leaving tools intact,
         with a client-safe message; the resolved path goes to the server log only."""
         bad_path = tmp_path / "nope.hocon"
-        monkeypatch.setenv("EXTERNAL_AGENTS_FILE", str(bad_path))
+        monkeypatch.setenv("AGENT_NETWORK_DESIGNER_OPTIONAL_AGENTS_FILE", str(bad_path))
         handler = AsyncMock()
 
         with caplog.at_level("ERROR"):
             with pytest.raises(ValueError, match="failed to load") as raised:
-                asyncio.run(ExternalAgentsMiddleware().awrap_model_call(_FakeModelRequest(tools=[]), handler))
+                asyncio.run(OptionalAgentsMiddleware().awrap_model_call(FakeModelRequest(tools=[]), handler))
 
         handler.assert_not_awaited()
         # The client-visible message must not disclose the server-side path...
@@ -267,14 +249,14 @@ class TestExternalAgentsMiddleware:
         assert str(bad_path) in caplog.text
 
     def test_empty_env_var_fails_closed(self, monkeypatch, caplog):
-        """EXTERNAL_AGENTS_FILE="" (the docker-compose/k8s 'unset' idiom) must not
+        """AGENT_NETWORK_DESIGNER_OPTIONAL_AGENTS_FILE="" (the docker-compose/k8s 'unset' idiom) must not
         silently publish an empty catalog and turn the gate off."""
-        monkeypatch.setenv("EXTERNAL_AGENTS_FILE", "")
+        monkeypatch.setenv("AGENT_NETWORK_DESIGNER_OPTIONAL_AGENTS_FILE", "")
         handler = AsyncMock()
 
         with caplog.at_level("ERROR"):
             with pytest.raises(ValueError, match="failed to load"):
-                asyncio.run(ExternalAgentsMiddleware().awrap_model_call(_FakeModelRequest(tools=[]), handler))
+                asyncio.run(OptionalAgentsMiddleware().awrap_model_call(FakeModelRequest(tools=[]), handler))
 
         handler.assert_not_awaited()
         assert "empty string" in caplog.text
@@ -282,34 +264,34 @@ class TestExternalAgentsMiddleware:
     def test_root_list_catalog_fails_closed(self, tmp_path, monkeypatch):
         """A root-level array parses fine but is not a catalog: it must raise the
         actionable fail-closed error, not get published and AttributeError per call."""
-        catalog_file = tmp_path / "external_agents.hocon"
+        catalog_file = tmp_path / "optional_agents.hocon"
         catalog_file.write_text('[{"tool": "/middleware_manager"}]', encoding="utf-8")
-        monkeypatch.setenv("EXTERNAL_AGENTS_FILE", str(catalog_file))
+        monkeypatch.setenv("AGENT_NETWORK_DESIGNER_OPTIONAL_AGENTS_FILE", str(catalog_file))
         handler = AsyncMock(return_value="model-response")
-        middleware = ExternalAgentsMiddleware()
+        middleware = OptionalAgentsMiddleware()
 
         with pytest.raises(ValueError, match="failed to load"):
-            asyncio.run(middleware.awrap_model_call(_FakeModelRequest(tools=[]), handler))
+            asyncio.run(middleware.awrap_model_call(FakeModelRequest(tools=[]), handler))
 
         # Nothing bad was published: fixing the file recovers on the next call.
         catalog_file.write_text(json.dumps(self._standard_catalog()), encoding="utf-8")
-        result = asyncio.run(middleware.awrap_model_call(_FakeModelRequest(tools=self._request_tools()), handler))
+        result = asyncio.run(middleware.awrap_model_call(FakeModelRequest(tools=self._request_tools()), handler))
         assert result == "model-response"
 
     def test_corrupt_catalog_fails_closed_then_recovers_after_fix(self, tmp_path, monkeypatch):
         """A corrupt catalog raises; fixing the file recovers without a process restart."""
-        catalog_file = tmp_path / "external_agents.hocon"
+        catalog_file = tmp_path / "optional_agents.hocon"
         catalog_file.write_text("{ this is : : not valid hocon }}", encoding="utf-8")
-        monkeypatch.setenv("EXTERNAL_AGENTS_FILE", str(catalog_file))
+        monkeypatch.setenv("AGENT_NETWORK_DESIGNER_OPTIONAL_AGENTS_FILE", str(catalog_file))
         handler = AsyncMock(return_value="model-response")
-        middleware = ExternalAgentsMiddleware()
+        middleware = OptionalAgentsMiddleware()
 
         with pytest.raises(ValueError, match="failed to load"):
-            asyncio.run(middleware.awrap_model_call(_FakeModelRequest(tools=[]), handler))
+            asyncio.run(middleware.awrap_model_call(FakeModelRequest(tools=[]), handler))
 
         # Fix the file in place; a failed load is never published, so the next call reloads.
         catalog_file.write_text(json.dumps(self._standard_catalog()), encoding="utf-8")
-        result = asyncio.run(middleware.awrap_model_call(_FakeModelRequest(tools=self._request_tools()), handler))
+        result = asyncio.run(middleware.awrap_model_call(FakeModelRequest(tools=self._request_tools()), handler))
         assert result == "model-response"
 
     def test_bundled_catalog_is_the_fallback_when_cwd_has_no_copy(self, tmp_path, monkeypatch):
@@ -317,13 +299,13 @@ class TestExternalAgentsMiddleware:
         (the `ns run`-in-a-scaffolded-project case), the catalog bundled next to the
         middleware module is used — the designer must not brick."""
         monkeypatch.chdir(tmp_path)
-        monkeypatch.delenv("EXTERNAL_AGENTS_FILE", raising=False)
+        monkeypatch.delenv("AGENT_NETWORK_DESIGNER_OPTIONAL_AGENTS_FILE", raising=False)
         # The bundled (shipped) catalog gates /middleware_manager by this env var.
         monkeypatch.delenv("AGENT_NETWORK_DESIGNER_USE_MIDDLEWARE", raising=False)
         handler = AsyncMock(return_value="model-response")
-        request = _FakeModelRequest(tools=self._request_tools())
+        request = FakeModelRequest(tools=self._request_tools())
 
-        result = asyncio.run(ExternalAgentsMiddleware().awrap_model_call(request, handler))
+        result = asyncio.run(OptionalAgentsMiddleware().awrap_model_call(request, handler))
 
         assert result == "model-response"
         seen_request = handler.await_args.args[0]
@@ -339,7 +321,7 @@ class TestExternalAgentsMiddleware:
         monkeypatch.delenv(TOGGLE_ENV_VAR, raising=False)
         handler = AsyncMock()
 
-        result = asyncio.run(ExternalAgentsMiddleware().awrap_tool_call(_FakeToolCallRequest(SAFE_TOOL_NAME), handler))
+        result = asyncio.run(OptionalAgentsMiddleware().awrap_tool_call(FakeToolCallRequest(SAFE_TOOL_NAME), handler))
 
         handler.assert_not_awaited()
         assert isinstance(result, ToolMessage)
@@ -353,7 +335,7 @@ class TestExternalAgentsMiddleware:
         monkeypatch.delenv(TOGGLE_ENV_VAR, raising=False)
 
         result = asyncio.run(
-            ExternalAgentsMiddleware().awrap_tool_call(_FakeToolCallRequest(SAFE_TOOL_NAME, call_id=None), AsyncMock())
+            OptionalAgentsMiddleware().awrap_tool_call(FakeToolCallRequest(SAFE_TOOL_NAME, call_id=None), AsyncMock())
         )
 
         assert isinstance(result, ToolMessage)
@@ -365,7 +347,7 @@ class TestExternalAgentsMiddleware:
         monkeypatch.setenv(TOGGLE_ENV_VAR, "1")
         handler = AsyncMock(return_value="tool-result")
 
-        result = asyncio.run(ExternalAgentsMiddleware().awrap_tool_call(_FakeToolCallRequest(SAFE_TOOL_NAME), handler))
+        result = asyncio.run(OptionalAgentsMiddleware().awrap_tool_call(FakeToolCallRequest(SAFE_TOOL_NAME), handler))
 
         handler.assert_awaited_once()
         assert result == "tool-result"
@@ -376,18 +358,18 @@ class TestExternalAgentsMiddleware:
         monkeypatch.delenv(TOGGLE_ENV_VAR, raising=False)
         handler = AsyncMock(return_value="tool-result")
 
-        result = asyncio.run(ExternalAgentsMiddleware().awrap_tool_call(_FakeToolCallRequest("other_tool"), handler))
+        result = asyncio.run(OptionalAgentsMiddleware().awrap_tool_call(FakeToolCallRequest("other_tool"), handler))
 
         handler.assert_awaited_once()
         assert result == "tool-result"
 
     def test_tool_call_fails_closed_on_missing_catalog(self, tmp_path, monkeypatch):
         """The execution-time gate fails closed too: no catalog, no tool execution."""
-        monkeypatch.setenv("EXTERNAL_AGENTS_FILE", str(tmp_path / "nope.hocon"))
+        monkeypatch.setenv("AGENT_NETWORK_DESIGNER_OPTIONAL_AGENTS_FILE", str(tmp_path / "nope.hocon"))
         handler = AsyncMock()
 
         with pytest.raises(ValueError, match="failed to load"):
-            asyncio.run(ExternalAgentsMiddleware().awrap_tool_call(_FakeToolCallRequest(SAFE_TOOL_NAME), handler))
+            asyncio.run(OptionalAgentsMiddleware().awrap_tool_call(FakeToolCallRequest(SAFE_TOOL_NAME), handler))
 
         handler.assert_not_awaited()
 
@@ -407,8 +389,8 @@ class TestExternalAgentsMiddleware:
         real_restore = AbstractAsyncConfigRestorer.restore
         with patch.object(AbstractAsyncConfigRestorer, "restore", autospec=True, side_effect=real_restore) as spy:
             for _ in range(2):
-                request = _FakeModelRequest(tools=self._request_tools())
-                asyncio.run(ExternalAgentsMiddleware().awrap_model_call(request, handler))
+                request = FakeModelRequest(tools=self._request_tools())
+                asyncio.run(OptionalAgentsMiddleware().awrap_model_call(request, handler))
 
         assert spy.call_count == 1
 
@@ -417,9 +399,9 @@ class TestExternalAgentsMiddleware:
         catalog_file = self._install_catalog(tmp_path, monkeypatch)
         monkeypatch.delenv(TOGGLE_ENV_VAR, raising=False)
         handler = AsyncMock(return_value="model-response")
-        middleware = ExternalAgentsMiddleware()
+        middleware = OptionalAgentsMiddleware()
 
-        asyncio.run(middleware.awrap_model_call(_FakeModelRequest(tools=self._request_tools()), handler))
+        asyncio.run(middleware.awrap_model_call(FakeModelRequest(tools=self._request_tools()), handler))
         assert [t["name"] for t in handler.await_args.args[0].tools] == ["other_tool"]
 
         # Empty the catalog and force a distinct modification time so the
@@ -428,6 +410,6 @@ class TestExternalAgentsMiddleware:
         stat = os.stat(catalog_file)
         os.utime(catalog_file, ns=(stat.st_atime_ns, stat.st_mtime_ns + 1_000_000))
 
-        asyncio.run(middleware.awrap_model_call(_FakeModelRequest(tools=self._request_tools()), handler))
+        asyncio.run(middleware.awrap_model_call(FakeModelRequest(tools=self._request_tools()), handler))
         # No modules -> nothing stripped anymore.
         assert [t["name"] for t in handler.await_args.args[0].tools] == [SAFE_TOOL_NAME, "other_tool"]

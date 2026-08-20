@@ -538,20 +538,21 @@ ENV AGENT_NETWORK_DESIGNER_MCP_TOOLS_FETCH_TIMEOUT_SECONDS="30"
 # Defaults to "3" if not set.
 ENV AGENT_NETWORK_DESIGNER_MAX_VALIDATION_ATTEMPTS="3"
 
-# Path to the HOCON catalog of toggleable external agents the Agent Network Designer can
-# call after step 1 of its workflow (e.g. /middleware_manager). Each entry pairs an
+# Path to the HOCON catalog of the Agent Network Designer's optional agents: toggleable
+# add-on modules (e.g. /middleware_manager) it calls in step 3 of the numbered workflow in
+# its system prompt, after the network is built (step 1) and refined (step 2). Each entry pairs an
 # external-agent tool ref with the env var that toggles it and the workflow-step text to
-# inject when enabled. Read by ExternalAgentsMiddleware. Override only when serving a
-# custom set of toggleable external agents.
-ENV EXTERNAL_AGENTS_FILE="${APP_SOURCE}/middleware/agent_network_designer/external_agents.hocon"
+# inject when enabled. Read by OptionalAgentsMiddleware. Override only when serving a
+# custom set of optional agents.
+ENV AGENT_NETWORK_DESIGNER_OPTIONAL_AGENTS_FILE="${APP_SOURCE}/middleware/agent_network_designer/optional_agents.hocon"
 
-# Toggles the /middleware_manager external agent for the Agent Network Designer. When set
+# Toggles the /middleware_manager optional agent for the Agent Network Designer. When set
 # to a truthy value ("1", "true", "yes", "on" — case-insensitive), the designer is told
 # about the middleware step in its workflow and the /middleware_manager tool is kept in
 # ModelRequest.tools so it can be invoked. When unset or set to any other value (including
 # "false"), the workflow step is omitted from the system prompt AND the tool is stripped
 # from ModelRequest.tools, so the designer cannot reach /middleware_manager. This gate
-# depends on the external-agents catalog (EXTERNAL_AGENTS_FILE above): if the catalog
+# depends on the optional-agents catalog (AGENT_NETWORK_DESIGNER_OPTIONAL_AGENTS_FILE above): if the catalog
 # cannot be loaded, the designer fails closed — model calls error out rather than
 # proceeding with disabled tools still reachable.
 # Defaults to "false" if not set.
@@ -561,6 +562,6 @@ ENV AGENT_NETWORK_DESIGNER_USE_MIDDLEWARE="false"
 # is allowed to attach to agents. Each entry pairs a friendly key with the fully qualified
 # class name and an arg schema. Read by MiddlewareInfoMiddleware. Override only when
 # serving a custom middleware allow-list.
-ENV MIDDLEWARE_INFO_FILE="${APP_SOURCE}/middleware/agent_network_designer/middleware_info.hocon"
+ENV AGENT_NETWORK_DESIGNER_MIDDLEWARE_INFO_FILE="${APP_SOURCE}/middleware/agent_network_designer/middleware_info.hocon"
 
 ENTRYPOINT ["/bin/bash", "-c", "exec ${APP_ENTRYPOINT}"]

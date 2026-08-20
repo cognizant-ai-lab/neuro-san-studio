@@ -23,6 +23,7 @@ from coded_tools.agent_network_editor.and_logger import AndLogger
 from coded_tools.agent_network_editor.constants import AGENT_NETWORK_DEFINITION
 from coded_tools.agent_network_editor.constants import MIDDLEWARE_KEY
 from coded_tools.agent_network_editor.progress_handler import ProgressHandler
+from coded_tools.middleware_manager.middleware_request_guard import MiddlewareRequestGuard
 
 
 class RemoveMiddleware(CodedTool):
@@ -55,19 +56,7 @@ class RemoveMiddleware(CodedTool):
                 back to the calling LLM as an actionable error message.
         :return: On success, a text string confirming the middleware was removed.
         """
-        network_def: dict[str, Any] = sly_data.get(AGENT_NETWORK_DEFINITION)
-        if not network_def:
-            raise ValueError("No agent network definition found in sly data.")
-
-        agent_name: str = args.get("agent_name", "")
-        if not agent_name:
-            raise ValueError("No agent_name provided.")
-        if agent_name not in network_def:
-            raise ValueError(f"Agent '{agent_name}' not found in the agent network definition.")
-
-        middleware_class: str = args.get("middleware_class", "")
-        if not middleware_class:
-            raise ValueError("No middleware_class provided.")
+        network_def, agent_name, middleware_class = MiddlewareRequestGuard.validated_target(args, sly_data)
 
         logger = AndLogger(logging.getLogger(self.__class__.__name__))
         logger.info(">>>>>>>>>>>>>>>>>>>Remove Middleware>>>>>>>>>>>>>>>>>>")
