@@ -29,6 +29,14 @@ langchain-openai>=1.1.9,<2.0
 langchain-anthropic>=1.4.3,<2.0
 langchain-google-genai>=4.2.2,<5.0
 
+# The Anthropic SDK is also imported directly (anthropic_code_execution,
+# anthropic_tool, check_llm_keys), so it needs its own floor: 0.124.0 renamed
+# the beta Files API type FileMetadata to BetaFileMetadata with no compat
+# alias, and no langchain-anthropic release guarantees a version that new
+# (even 1.6.0 only requires anthropic>=0.120), so bumping langchain-anthropic
+# cannot express this constraint.
+anthropic>=0.124.0,<1.0
+
 langchain-community>=0.4.2
 
 # For rich logging
