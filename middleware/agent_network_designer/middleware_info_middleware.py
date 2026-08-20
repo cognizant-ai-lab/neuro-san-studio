@@ -31,7 +31,7 @@ from langchain_core.messages import BaseMessage
 from langchain_core.messages import SystemMessage
 
 from coded_tools.agent_network_editor.and_logger import AndLogger
-from middleware.agent_network_designer.hocon_catalog_cache import CatalogLoadError
+from middleware.agent_network_designer.catalog_load_error import CatalogLoadError
 from middleware.agent_network_designer.hocon_catalog_cache import HoconCatalogCache
 
 # Relative to the working directory, matching the repo/scaffold layout when the

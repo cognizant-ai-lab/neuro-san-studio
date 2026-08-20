@@ -36,7 +36,7 @@ from leaf_common.parsers.boolean_parser import BooleanParser
 from neuro_san.internals.utils.external_agent_parsing import ExternalAgentParsing
 
 from coded_tools.agent_network_editor.and_logger import AndLogger
-from middleware.agent_network_designer.hocon_catalog_cache import CatalogLoadError
+from middleware.agent_network_designer.catalog_load_error import CatalogLoadError
 from middleware.agent_network_designer.hocon_catalog_cache import HoconCatalogCache
 
 # Relative to the working directory, matching the repo/scaffold layout when the

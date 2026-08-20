@@ -23,6 +23,27 @@ agents gate fails closed with a client-safe error, the info injector warns and
 skips — while everything they must otherwise keep in lockstep lives here once:
 path resolution, empty-path and root-shape rejection, the empty-catalog
 breadcrumb, load-failure normalization, and the freshness fingerprint.
+
+The designer's other shared loads — GetToolbox, GetSubnetwork, and GetMcpTool
+in coded_tools/agent_network_editor, candidates for recasting as middlewares
+like the two above — sit on the same SharedProcessCache but are NOT tenants of
+this class: each deliberately differs in a policy this class fixes.
+
+* Parse: they use special-purpose restorers (ToolboxInfoRestorer, the manifest
+  filter chain, McpServersInfoRestorer) where this class does a raw HOCON read.
+* Empty results: the toolbox treats an empty mapping as a failed read and
+  raises; MCP treats a missing file as an authoritative empty and publishes
+  it; this class publishes empty with a warning breadcrumb.
+* Freshness: the toolbox cache is deliberately immortal (lockstep with the
+  shared ToolboxFactory); the manifest and MCP fingerprints carry time-bucket
+  components that this class's (path, size, mtime) probe does not.
+
+Recasting those tools as middlewares reuses the SHAPE of the two consumers
+here (a class-level cache, prompt injection in awrap_model_call, an explicit
+degrade policy — see MiddlewareInfoMiddleware for the template); hosting their
+file loads in this class would mean growing the three policy knobs above.
+Their network fan-out halves (subnetwork description fetches, MCP tool
+listings) are not file catalogs at all and stay on SharedProcessCache directly.
 """
 
 import logging
@@ -35,17 +56,7 @@ from pyparsing.exceptions import ParseException
 
 from coded_tools.agent_network_editor.and_logger import AndLogger
 from coded_tools.agent_network_editor.shared_process_cache import SharedProcessCache
-
-
-class CatalogLoadError(ValueError):
-    """
-    Raised when a catalog cannot be resolved, read, or parsed.
-
-    The message carries the resolved path and the underlying cause — server-side
-    detail. Each caller decides what (if anything) of it reaches clients: an
-    exception escaping a model call becomes the turn's client-visible answer, so
-    a security-gating caller must log this and re-raise something client-safe.
-    """
+from middleware.agent_network_designer.catalog_load_error import CatalogLoadError
 
 
 # One attribute over pylint's cap of 7: six configuration knobs (each consumed
