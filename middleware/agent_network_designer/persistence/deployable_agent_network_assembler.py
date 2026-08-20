@@ -25,6 +25,7 @@ from neuro_san.internals.graph.filters.dictionary_common_defs_config_filter impo
 from neuro_san.internals.graph.filters.string_common_defs_config_filter import StringCommonDefsConfigFilter
 from neuro_san.internals.persistence.abstract_async_config_restorer import AbstractAsyncConfigRestorer
 
+from coded_tools.agent_network_editor.constants import MIDDLEWARE_KEY
 from middleware.agent_network_designer.persistence.agent_network_assembler import AgentNetworkAssembler
 
 
@@ -156,9 +157,9 @@ class DeployableAgentNetworkAssembler(AgentNetworkAssembler):
                     agent_spec["function"]["description"] = agent_description
 
             # Carry over middleware if present in the agent definition
-            middleware: list[dict[str, Any]] | None = agent_def.get("middleware")
+            middleware: list[dict[str, Any]] | None = agent_def.get(MIDDLEWARE_KEY)
             if middleware:
-                agent_spec["middleware"] = middleware
+                agent_spec[MIDDLEWARE_KEY] = middleware
 
             # Add agent to tools
             agent_network["tools"].append(agent_spec)

@@ -21,6 +21,7 @@ from collections.abc import Mapping
 from copy import copy as shallow_copy
 from typing import Any
 
+from coded_tools.agent_network_editor.constants import MIDDLEWARE_KEY
 from middleware.agent_network_designer.persistence.agent_network_assembler import AgentNetworkAssembler
 
 HOCON_HEADER_START = (
@@ -283,7 +284,7 @@ class HoconAgentNetworkAssembler(AgentNetworkAssembler):
         tools: str = self._format_tools(raw_tools)
         description: str = (agent.get("description") or "").strip()
         instructions: str = (agent.get("instructions") or "").strip()
-        middleware_block: str = self._render_middleware(agent.get("middleware") or [])
+        middleware_block: str = self._render_middleware(agent.get(MIDDLEWARE_KEY) or [])
 
         if agent_name == top_agent_name:
             use_description = description or "An assistant that answers inquiries from the user."
@@ -330,7 +331,7 @@ class HoconAgentNetworkAssembler(AgentNetworkAssembler):
         if not middleware:
             return ""
 
-        lines: list[str] = ['            "middleware": [']
+        lines: list[str] = [f'            "{MIDDLEWARE_KEY}": [']
         for i, entry in enumerate(middleware):
             lines.append("                {")
             lines.append(f'                    "class": "{entry["class"]}",')

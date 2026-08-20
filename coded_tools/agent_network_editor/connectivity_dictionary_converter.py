@@ -26,6 +26,7 @@ from neuro_san.internals.run_context.factory.master_toolbox_factory import Maste
 from neuro_san.internals.run_context.interfaces.agent_network_inspector import AgentNetworkInspector
 from neuro_san.internals.validation.network.url_network_validator import UrlNetworkValidator
 
+from coded_tools.agent_network_editor.constants import MIDDLEWARE_KEY
 from coded_tools.agent_network_editor.designer_network_inspector import DesignerNetworkInspector
 from coded_tools.agent_network_editor.shared_process_cache import SharedProcessCache
 
@@ -99,7 +100,7 @@ class ConnectivityDictionaryConverter(DictionaryConverter):
         """
         self.include_keys = include_keys
         if include_keys is None:
-            self.include_keys = ["tools", "instructions", "description", "middleware"]
+            self.include_keys = ["tools", "instructions", "description", MIDDLEWARE_KEY]
         self.toolbox_factory: ContextTypeToolboxFactory | None = toolbox_factory
 
     @classmethod

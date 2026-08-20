@@ -48,6 +48,7 @@ from coded_tools.agent_network_editor.and_logger import AndLogger
 from coded_tools.agent_network_editor.connectivity_dictionary_converter import ConnectivityDictionaryConverter
 from coded_tools.agent_network_editor.constants import AGENT_NETWORK_DEFINITION
 from coded_tools.agent_network_editor.constants import AGENT_NETWORK_NAME
+from coded_tools.agent_network_editor.constants import MIDDLEWARE_KEY
 from coded_tools.agent_network_editor.progress_handler import ProgressHandler
 from coded_tools.agent_network_editor.sly_data_lock import SlyDataLock
 from middleware.agent_network_designer.persistence.file_system_agent_network_persistor import DEFAULT_REGISTRIES_DIR
@@ -678,7 +679,7 @@ class AgentNetworkDefinitionMiddleware(AgentMiddleware):
         # Preserve middleware attached to LLM agents. The assembler writes this back out
         # via HoconAgentNetworkAssembler._render_middleware on save, so without preserving
         # it on load a round-trip would silently strip every previously-attached middleware.
-        middleware: Any = agent.get("middleware")
+        middleware: Any = agent.get(MIDDLEWARE_KEY)
         if middleware:
             if not isinstance(middleware, list) or not all(isinstance(entry, dict) for entry in middleware):
                 self.logger.warning(
@@ -688,7 +689,7 @@ class AgentNetworkDefinitionMiddleware(AgentMiddleware):
                     middleware,
                 )
             else:
-                agent_def["middleware"] = middleware
+                agent_def[MIDDLEWARE_KEY] = middleware
 
         return agent_name, agent_def
 
