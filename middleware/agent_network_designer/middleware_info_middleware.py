@@ -30,6 +30,7 @@ from langchain.agents.middleware.types import ResponseT
 from langchain_core.messages import BaseMessage
 from langchain_core.messages import SystemMessage
 
+from coded_tools.agent_network_editor.and_logger import AndLogger
 from middleware.agent_network_designer.hocon_catalog_cache import CatalogLoadError
 from middleware.agent_network_designer.hocon_catalog_cache import HoconCatalogCache
 
@@ -86,7 +87,7 @@ class MiddlewareInfoMiddleware(AgentMiddleware):
     )
 
     def __init__(self) -> None:
-        self.logger = logging.getLogger(self.__class__.__name__)
+        self.logger = AndLogger(logging.getLogger(self.__class__.__name__))
 
     @classmethod
     def clear_shared_info_for_testing(cls):

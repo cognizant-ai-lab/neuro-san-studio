@@ -33,6 +33,7 @@ from typing import Callable
 from neuro_san.internals.persistence.abstract_async_config_restorer import AbstractAsyncConfigRestorer
 from pyparsing.exceptions import ParseException
 
+from coded_tools.agent_network_editor.and_logger import AndLogger
 from coded_tools.agent_network_editor.shared_process_cache import SharedProcessCache
 
 
@@ -47,6 +48,10 @@ class CatalogLoadError(ValueError):
     """
 
 
+# One attribute over pylint's cap of 7: six configuration knobs (each consumed
+# in a different place, so grouping any two would be an arbitrary pairing) plus
+# the logger and the wrapped cache.
+# pylint: disable-next=too-many-instance-attributes
 class HoconCatalogCache:
     """
     Process-wide cache of one env-var-pathed HOCON catalog.
@@ -104,7 +109,7 @@ class HoconCatalogCache:
         self.file_purpose = file_purpose
         self.empty_effect = empty_effect
         self.transform = transform
-        self.logger = logging.getLogger(f"{self.__class__.__name__}({env_var})")
+        self.logger = AndLogger(logging.getLogger(f"{self.__class__.__name__}({env_var})"))
         self._cache: SharedProcessCache[Any] = SharedProcessCache(
             loader=self._load,
             fingerprint=self._fingerprint,
