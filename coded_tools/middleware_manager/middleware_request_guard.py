@@ -19,6 +19,8 @@ from typing import Any
 from coded_tools.agent_network_editor.constants import AGENT_NETWORK_DEFINITION
 
 
+# One shared guard method is the point; same accepted trade as AgentNameGuard.
+# pylint: disable=too-few-public-methods
 class MiddlewareRequestGuard:
     """
     The request-validation policy shared by the middleware_manager coded tools.
