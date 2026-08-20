@@ -32,6 +32,7 @@ from langchain_core.messages import BaseMessage
 from langchain_core.messages import SystemMessage
 from langchain_core.messages import ToolMessage
 from langgraph.types import Command
+from leaf_common.parsers.boolean_parser import BooleanParser
 from neuro_san.internals.utils.external_agent_parsing import ExternalAgentParsing
 
 from coded_tools.agent_network_editor.and_logger import AndLogger
@@ -45,7 +46,12 @@ DEFAULT_EXTERNAL_AGENTS_FILE: str = str(Path("middleware", "agent_network_design
 # the working directory has no repo/project-layout copy (e.g. `ns run` inside a
 # scaffolded project, or an installed wheel).
 BUNDLED_EXTERNAL_AGENTS_FILE: str = str(Path(__file__).with_name("external_agents.hocon"))
-TRUTHY_VALUES: frozenset[str] = frozenset({"1", "true", "yes", "on"})
+# Shared truthy-string vocabulary ("1"/"true"/"yes"/"on", anything else False) —
+# the same parser the wider leaf ecosystem uses, so toggle env vars here behave
+# like boolean settings everywhere else. Call sites strip the raw value first:
+# BooleanParser does not, and a trailing space from a .env line would otherwise
+# silently disable a tool the operator meant to enable.
+BOOLEAN_PARSER: BooleanParser = BooleanParser()
 
 
 class ExternalAgentsMiddleware(AgentMiddleware):
@@ -278,7 +284,7 @@ class ExternalAgentsMiddleware(AgentMiddleware):
                 disabled_tools.add(safe_name)
                 continue
 
-            if self._is_truthy(os.getenv(env_var)):
+            if BOOLEAN_PARSER.parse(os.getenv(env_var, "").strip()):
                 instructions: Any = module.get("instructions")
                 if isinstance(instructions, str) and instructions.strip():
                     enabled_blocks.append(instructions.strip())
@@ -350,12 +356,3 @@ class ExternalAgentsMiddleware(AgentMiddleware):
             return SystemMessage(content=addendum)
         original: str = system_message.content if isinstance(system_message.content, str) else ""
         return SystemMessage(content=f"{original}\n\n{addendum}")
-
-    @staticmethod
-    def _is_truthy(value: str | None) -> bool:
-        """
-        Treat the env var as enabled when set to a recognized truthy string.
-        """
-        if value is None:
-            return False
-        return value.strip().lower() in TRUTHY_VALUES
