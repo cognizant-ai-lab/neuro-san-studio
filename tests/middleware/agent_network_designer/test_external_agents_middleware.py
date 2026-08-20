@@ -58,6 +58,9 @@ class _FakeToolCallRequest:  # pylint: disable=too-few-public-methods
         self.tool_call: dict[str, Any] = {"name": name, "args": {}, "id": call_id}
 
 
+# One public method per gated behavior; same accepted trade as the sibling
+# definition-middleware tests.
+# pylint: disable-next=too-many-public-methods
 class TestExternalAgentsMiddleware:
     """Tests for ExternalAgentsMiddleware."""
 
