@@ -103,13 +103,18 @@
     # - Maps Grounding Lite API enabled in Google Cloud project. See https://developers.google.com/maps/ai/grounding-lite
     # - Use MCP_SERVERS_INFO_FILE for authentication. See ../../neuro_san_studio/mcp/mcp_info.hocon and ../../docs/user_guide.md#authentication
     "tools/google_maps.hocon": false,
-
+    
     # Google Workspace assistant backed by Google's hosted MCP servers (Gmail, Calendar,
     # Drive, Docs, Sheets). No server-side credentials: connect each server with your Google
     # account in an OAuth-capable client (e.g. nsflow), which passes the bearer tokens via
     # sly_data http_headers per the network's sly_data_schema. Chat is gated until the
     # required servers are connected. See docs/examples/tools/google_workspace.md.
     "tools/google_workspace.hocon": true,
+    
+    # Searches the web via the you.com MCP server's free tier (no API key or OAuth), then
+    # reads the result pages with the web_fetch toolbox tool. Works out of the box.
+    # See docs/examples/tools/internet_info_gatherer.md.
+    "tools/internet_info_gatherer.hocon": true,
 
     # Before turning on and running the following agent network, make sure that:
     # The MCP server is running.
