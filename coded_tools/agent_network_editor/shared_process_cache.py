@@ -149,6 +149,32 @@ class SharedProcessCache(Generic[CachedValue]):
             return None
 
     @staticmethod
+    def stat_size_and_modification_time_ns(path: str) -> tuple[int, int] | None:
+        """
+        Fingerprint building block: a file's (st_size, st_mtime_ns) pair.
+
+        Folding the size in alongside the modification time closes the
+        coarse-clock hole a bare mtime probe leaves open: on filesystems whose
+        clock ticks in milliseconds (Linux) or seconds (some NFS), a
+        truncate-then-write can land both writes in one tick, so a reader that
+        raced into the window would otherwise keep serving the truncated
+        snapshot forever. Content swaps that preserve BOTH size and mtime
+        remain invisible, as with any stat-based probe.
+
+        :param path: The file to probe.
+        :return: (st_size, st_mtime_ns), or None when the file cannot be
+                stat-ed (missing file, permission problem, ...). Never raises,
+                per the fingerprint contract — and None compares like any other
+                component value, so "file missing" is itself a version that
+                goes stale the moment the file appears.
+        """
+        try:
+            file_stat = stat(path)
+            return file_stat.st_size, file_stat.st_mtime_ns
+        except OSError:
+            return None
+
+    @staticmethod
     def time_bucket(period_seconds: float) -> int:
         """
         Fingerprint building block: TTL-style expiry for sources with no

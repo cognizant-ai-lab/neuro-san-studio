@@ -174,6 +174,27 @@ class AgentNetworkImporter:
         self._copy_file_or_dir(source, target, dep_path, result, force=force)
         if os.path.isfile(source):
             self._copy_parent_inits(os.path.dirname(source), roots, result, force=force)
+            self._copy_sibling_data_files(source, roots, result, force=force)
+
+    def _copy_sibling_data_files(self, source_file: str, roots: "_Roots", result: ImportResult, force: bool = False):
+        """Copy .hocon data files that live beside a copied module.
+
+        Middleware such as the designer's OptionalAgentsMiddleware and
+        MiddlewareInfoMiddleware resolve their catalog files relative to their own
+        module as a fallback, so a scaffolded project needs those catalogs colocated
+        exactly as the source ships them — without this, the module imports fine but
+        its data file is missing at runtime.
+        """
+        source_dir = os.path.dirname(source_file)
+        for name in sorted(os.listdir(source_dir)):
+            if not name.endswith(".hocon"):
+                continue
+            sibling = os.path.join(source_dir, name)
+            if not os.path.isfile(sibling):
+                continue
+            rel = os.path.relpath(sibling, roots.source)
+            display = os.path.join(os.path.basename(roots.target), rel)
+            self._copy_file_or_dir(sibling, os.path.join(roots.target, rel), display, result, force=force)
 
     @staticmethod
     def _copy_file_or_dir(source: str, target: str, display: str, result: ImportResult, force: bool = False) -> None:

@@ -138,6 +138,30 @@ class ProcessGlobals:  # pylint: disable=too-few-public-methods
     #             publishing, so recovery stays possible.
     #    Used by: GetMcpTool.async_invoke() (the coded tool the editor LLM
     #             calls).
+    #
+    # 7. Shared optional-agents catalog
+    #    Holds:   the designer's optional-agents catalog parsed from
+    #             AGENT_NETWORK_DESIGNER_OPTIONAL_AGENTS_FILE (default
+    #             middleware/agent_network_designer/optional_agents.hocon).
+    #    Lives:   optional_agents_middleware.OptionalAgentsMiddleware
+    #    Expiry:  catalog path/size/modification_time change — no time bucket,
+    #             since nothing writes the file at runtime. A failed load is
+    #             never published (fail-closed errors recur until the file is
+    #             fixed, then the next call recovers).
+    #    Used by: OptionalAgentsMiddleware.awrap_model_call() (tool stripping
+    #             + instruction injection) and awrap_tool_call()
+    #             (execution-time denial of disabled module tools).
+    #
+    # 8. Shared middleware info catalog
+    #    Holds:   the middleware allow-list catalog parsed from
+    #             AGENT_NETWORK_DESIGNER_MIDDLEWARE_INFO_FILE (default
+    #             middleware/agent_network_designer/middleware_info.hocon).
+    #    Lives:   middleware_info_middleware.MiddlewareInfoMiddleware
+    #    Expiry:  catalog path/size/modification_time change — no time bucket,
+    #             since nothing writes the file at runtime (a missing or
+    #             broken file is retried, never cached).
+    #    Used by: MiddlewareInfoMiddleware.awrap_model_call() (system-prompt
+    #             injection for the middleware_manager subnetwork).
     # -----------------------------------------------------------------------
 
     # Machine-readable registry of the entries above, as
@@ -173,6 +197,16 @@ class ProcessGlobals:  # pylint: disable=too-few-public-methods
             "coded_tools.agent_network_editor.get_mcp_tool",
             "GetMcpTool",
             "clear_shared_mcp_tool_descriptions_for_testing",
+        ),
+        (
+            "middleware.agent_network_designer.optional_agents_middleware",
+            "OptionalAgentsMiddleware",
+            "clear_shared_catalog_for_testing",
+        ),
+        (
+            "middleware.agent_network_designer.middleware_info_middleware",
+            "MiddlewareInfoMiddleware",
+            "clear_shared_info_for_testing",
         ),
     ]
 
