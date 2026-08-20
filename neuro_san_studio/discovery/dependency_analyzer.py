@@ -30,6 +30,8 @@ from neuro_san.internals.persistence.abstract_async_config_restorer import Abstr
 from neuro_san.internals.utils.external_agent_parsing import ExternalAgentParsing
 from pyparsing.exceptions import ParseException
 
+from neuro_san_studio.discovery.local_import_walker import LocalImportWalker
+
 LLM_CLASSES = {"openai", "anthropic", "google", "bedrock", "azure"}
 
 
@@ -159,6 +161,10 @@ class DependencyAnalyzer:
         self, hocon_path: str, visited: Optional[Set[str]] = None
     ) -> AgentNetworkDependencies:
         """Recursively collect dependencies from a network and its sub-networks."""
+        # Only the outermost call closes the dependency set under Python-level imports:
+        # the recursion below merges each sub-network's results into `deps`, so expanding
+        # once at the top covers everything without re-parsing the same files per level.
+        is_root_call = visited is None
         if visited is None:
             visited = set()
         abs_path = os.path.abspath(hocon_path)
@@ -187,4 +193,21 @@ class DependencyAnalyzer:
             for attr in ("coded_tools", "middleware", "sub_networks", "toolbox_tools", "mcp_tools"):
                 merged = getattr(deps, attr) + [x for x in getattr(sub_deps, attr) if x not in getattr(deps, attr)]
                 setattr(deps, attr, merged)
+
+        if is_root_call:
+            self._expand_local_imports(deps)
         return deps
+
+    def _expand_local_imports(self, deps: AgentNetworkDependencies) -> None:
+        """Close ``deps.coded_tools`` / ``deps.middleware`` under the imports those files make.
+
+        A HOCON `class` field names one module, but that module's own helper imports are just as
+        required at runtime and no HOCON ever mentions them. Without this, an imported or
+        exported network lands a tree that raises ``ModuleNotFoundError`` on first use. The
+        walker returns one flat list, which is re-split by root prefix so each dependency keeps
+        landing in the bucket ``AgentNetworkImporter`` expects.
+        """
+        walker = LocalImportWalker({"coded_tools": self.coded_tools_dir, "middleware": self.middleware_dir})
+        expanded: List[str] = walker.expand(deps.coded_tools + deps.middleware)
+        deps.coded_tools = [path for path in expanded if path.startswith("coded_tools/")]
+        deps.middleware = [path for path in expanded if path.startswith("middleware/")]

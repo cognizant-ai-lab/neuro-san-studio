@@ -172,8 +172,11 @@ class AgentNetworkImporter:
             result.warnings.append(f"Dependency not found: {dep_path}")
             return
         self._copy_file_or_dir(source, target, dep_path, result, force=force)
-        if os.path.isfile(source):
-            self._copy_parent_inits(os.path.dirname(source), roots, result, force=force)
+        # A directory dependency is its own starting point; a file's package chain starts at
+        # the directory holding it.
+        self._copy_parent_inits(
+            source if os.path.isdir(source) else os.path.dirname(source), roots, result, force=force
+        )
 
     @staticmethod
     def _copy_file_or_dir(source: str, target: str, display: str, result: ImportResult, force: bool = False) -> None:
@@ -193,8 +196,16 @@ class AgentNetworkImporter:
 
     @staticmethod
     def _copy_parent_inits(current_dir: str, roots: "_Roots", result: ImportResult, force: bool = False) -> None:
-        """Copy __init__.py up the parent chain so the package is importable in the target."""
-        while current_dir.startswith(roots.source) and current_dir != roots.source:
+        """Copy __init__.py up the parent chain so the package is importable in the target.
+
+        The chain includes the root itself (``coded_tools/__init__.py``,
+        ``middleware/__init__.py``). Without it the target's directory is only a namespace
+        *portion*, and Python's finder skips namespace portions in favor of any regular package
+        of the same name further along sys.path — which for a pip-installed project is
+        neuro-san-studio's own bundled copy. The project's coded tools would then be silently
+        shadowed by the installed ones, no matter that the project root comes first on the path.
+        """
+        while current_dir.startswith(roots.source):
             init_src = os.path.join(current_dir, "__init__.py")
             if os.path.exists(init_src):
                 rel = os.path.relpath(init_src, roots.source)
@@ -206,6 +217,8 @@ class AgentNetworkImporter:
                         result.copied_files.append(os.path.join(os.path.basename(roots.target), rel))
                     except OSError as exc:
                         result.errors.append(f"Failed to copy __init__.py: {exc}")
+            if current_dir == roots.source:
+                break
             current_dir = os.path.dirname(current_dir)
 
     def import_from_path(self, source_path: str, force: bool = False) -> ImportResult:

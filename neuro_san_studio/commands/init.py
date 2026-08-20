@@ -28,7 +28,11 @@ from rich.console import Console
 from rich.table import Table
 from timedinput import timedinput
 
+from neuro_san_studio.discovery.dependency_analyzer import DependencyAnalyzer
+from neuro_san_studio.importer.agent_network_importer import AgentNetworkImporter
 from neuro_san_studio.utils.cli_status import CliStatus
+from neuro_san_studio.utils.default_networks import DEFAULT_NETWORK_HOCONS
+from neuro_san_studio.utils.package_paths import PackagePaths
 from neuro_san_studio.utils.shared_registries import SHARED_REGISTRY_INCLUDES
 
 PROVIDERS: Dict[str, Dict[str, str]] = {
@@ -77,11 +81,113 @@ class InitCommand:  # pylint: disable=too-few-public-methods
         # scaffolding them up front means `ns import <group>` works without surprises.
         for shared in SHARED_REGISTRY_INCLUDES:
             self._copy_template(shared, os.path.join("registries", shared), package="registries")
+        # The designer reads this to learn which networks it may compose into a design.
+        # Separate from the served manifest above so the two lists can diverge.
+        self._copy_template("manifest_and.hocon", os.path.join("registries", "manifest_and.hocon"))
         self._copy_template("mcp_info.hocon", os.path.join("mcp", "mcp_info.hocon"), package="neuro_san_studio.mcp")
         self._copy_template("plugins.hocon", os.path.join("config", "plugins.hocon"))
         self._write_file(os.path.join("config", "llm_config.hocon"), self._render_llm_config(providers))
 
+        # Last, so the dependency walker sees a project that already has the shared HOCON
+        # fragments and llm_config.hocon the networks include.
+        self._install_default_networks()
+
         self._print_next_steps()
+
+    def _install_default_networks(self) -> None:
+        """Copy the default agent networks and their dependencies into the project.
+
+        Reuses the same discovery/importer layer as `ns import` rather than a second
+        hand-maintained file list, so the two commands cannot drift about what a network
+        actually depends on.
+
+        The manifest entries are NOT written here: `manifest.hocon` is scaffolded from a
+        template that already declares each of these with the right flags. Registering them
+        through `AgentNetworkImporter.update_manifest` would write a flat `"x": true` and lose
+        the `serve/public` distinction the support networks need.
+        """
+        try:
+            source_dir = PackagePaths.installed_library_root()
+        except FileNotFoundError as exc:
+            CliStatus.warn(f"Skipping default agent networks: {exc}")
+            return
+
+        analyzer = DependencyAnalyzer(
+            os.path.join(source_dir, "registries"),
+            os.path.join(source_dir, "coded_tools"),
+            os.path.join(source_dir, "middleware"),
+        )
+        importer = AgentNetworkImporter(source_dir, self.root_dir)
+
+        _console.print()
+        CliStatus.info("Installing the Agent Network Designer...")
+        copied = 0
+        skipped = 0
+        for hocon_path in DEFAULT_NETWORK_HOCONS:
+            result = self._install_one_network(hocon_path, analyzer, importer, source_dir)
+            if result is None:
+                continue
+            copied += len(result.copied_files)
+            skipped += len(result.skipped_files)
+            for warning in result.warnings:
+                CliStatus.warn(warning)
+            for error in result.errors:
+                CliStatus.err(error)
+            CliStatus.ok(os.path.join("registries", hocon_path))
+
+        # Python resolves a directory without __init__.py as a namespace *portion* and keeps
+        # searching sys.path, so the studio's own installed coded_tools package would win over
+        # the project's. The importer copies these along with each dependency; assert it rather
+        # than leave a silently-shadowed project if that ever regresses.
+        self._ensure_package_roots(source_dir)
+
+        CliStatus.info(f"Copied {copied} file(s), skipped {skipped} already present.")
+
+    @staticmethod
+    def _install_one_network(
+        hocon_path: str,
+        analyzer: DependencyAnalyzer,
+        importer: AgentNetworkImporter,
+        source_dir: str,
+    ):
+        """Analyze and import one network. Returns its ImportResult, or None on failure.
+
+        A failure is reported and skipped rather than aborting: a project missing one of the
+        default networks is still usable, while a half-written scaffold is not.
+        """
+        full_path = os.path.join(source_dir, "registries", hocon_path)
+        # pyhocon resolves `include "registries/..."` and `include "config/..."` relative to
+        # CWD. chdir to the source so they resolve against the installed package rather than
+        # whatever the project happens to have scaffolded so far.
+        prev_cwd = os.getcwd()
+        try:
+            os.chdir(source_dir)
+            deps = analyzer.get_transitive_dependencies(full_path)
+        except (OSError, ValueError) as exc:
+            CliStatus.warn(f"Could not analyze {hocon_path}: {exc}")
+            return None
+        finally:
+            os.chdir(prev_cwd)
+
+        try:
+            return importer.import_network(hocon_path, deps)
+        except (OSError, ValueError) as exc:
+            CliStatus.warn(f"Could not install {hocon_path}: {exc}")
+            return None
+
+    def _ensure_package_roots(self, source_dir: str) -> None:
+        """Guarantee coded_tools/__init__.py and middleware/__init__.py exist in the project."""
+        for package in ("coded_tools", "middleware"):
+            target = os.path.join(self.root_dir, package, "__init__.py")
+            if os.path.exists(target) or not os.path.isdir(os.path.dirname(target)):
+                continue
+            source = os.path.join(source_dir, package, "__init__.py")
+            if os.path.isfile(source):
+                shutil.copy2(source, target)
+            else:
+                with open(target, "w", encoding="utf-8"):
+                    pass
+            CliStatus.ok(os.path.join(package, "__init__.py"))
 
     def _resolve_providers(self) -> List[str]:
         """Return the ordered list of provider keys to enable."""
@@ -231,4 +337,10 @@ class InitCommand:  # pylint: disable=too-few-public-methods
         _console.print(
             "  2. Start the server:  [bold red]neuro-san-studio run[/bold red] or [bold red]ns run[/bold red]"
         )
+        _console.print(
+            "  3. Design your own agent network: click [bold]NEW[/bold] in the nsflow UI to open the "
+            "Agent Network Designer."
+        )
+        _console.print()
+        _console.print("[dim]Add more of the networks that ship with neuro-san-studio with 'ns import'.[/dim]")
         _console.print("=" * 60, style="dim")

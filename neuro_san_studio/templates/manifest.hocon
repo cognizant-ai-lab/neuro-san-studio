@@ -3,5 +3,42 @@
     # The include keeps them visible to the server without editing this file by hand.
     include "registries/generated/manifest.hocon",
 
-    "music_nerd.hocon": true
+    "music_nerd.hocon": true,
+
+    #
+    # Agent Network Designer family, installed by `ns init`.
+    # Keep in sync with neuro_san_studio/utils/default_networks.py, which decides what gets
+    # copied onto disk; a key here without a matching file is served as a 404.
+    #
+    "agent_network_designer.hocon": true,
+    "agent_network_editor.hocon": {
+        # Support network for agent_network_designer.
+        # We want it served up, but not listed as a public agent network.
+        "serve": true,
+        "public": false
+    },
+    "agent_network_instructions_editor.hocon": {
+        "serve": true,
+        "public": false
+    },
+    "agent_network_query_generator.hocon": {
+        "serve": true,
+        "public": false
+    },
+
+    # Generates test fixtures for an existing agent network.
+    "agent_network_test_generator.hocon": true,
+
+    #
+    # CRUSE: the interactive UI that adapts itself to the user's and agents' needs.
+    # Support networks for the interface, so served but not publicly listed.
+    #
+    "experimental/cruse_theme_agent.hocon": {
+        "serve": true,
+        "public": false
+    },
+    "experimental/cruse_widget_agent.hocon": {
+        "serve": true,
+        "public": false
+    }
 }
