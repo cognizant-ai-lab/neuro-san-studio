@@ -720,6 +720,37 @@ Options are `ascending` and `descending`. Default to `descending`.
         }
     },
 
+    # Lists the entries of a local directory with allow/block-list access control.
+    #
+    # Same operator-configuration model as read_file / write_file above: access
+    # control is supplied by the operator via `args` (deny-by-default without
+    # `allowed_paths`) and is intentionally not exposed in the schema below.
+    # The directory target is checked against the path rules only; extension
+    # rules filter the file entries inside it. Entries outside the allow/block
+    # rules are silently omitted so the listing never leaks scoped-out paths.
+    "list_directory": {
+        "class": "neuro_san_studio.coded_tools.file_management.list_directory.ListDirectory",
+        "description": "Lists the files and subdirectories of a local directory (name, type, size), sorted by name. Access is restricted by operator-configured allow/block lists for paths and extensions; the LLM cannot influence those lists. Entries outside the allowed scope are omitted from the listing.",
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "directory_path": {
+                    "type": "string",
+                    "description": "Absolute or relative path to the directory to list."
+                },
+                "include_hidden": {
+                    "type": "boolean",
+                    "description": "Set true to include dotfiles and dot-directories. Defaults to false."
+                },
+                "max_entries": {
+                    "type": "int",
+                    "description": "Maximum number of entries to return. Defaults to 500. The result reports whether it was truncated."
+                }
+            },
+            "required": ["directory_path"]
+        }
+    },
+
     # ---------- Search Tools ----------
 
     # To use this search tool, obtain an API key from: https://brave.com/search/api/

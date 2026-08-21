@@ -183,6 +183,48 @@ class TestPathAccess(TestCase):  # pylint: disable=too-many-public-methods
             self._call_check_path_allowed(makefile, [str(self.tmp_root)], allowed_exts=None, blocked_exts=["Makefile"])
         self.assertIn("path_not_allowed", str(ctx.exception))
 
+    def test_check_path_allowed_extension_rules_skipped_for_directory_targets(self):
+        """Tests that apply_extension_rules=False exempts a target from extension rules.
+
+        A directory named 'data' would otherwise be treated as extension '.data'
+        and spuriously denied under a file-oriented extension allow-list.
+        """
+        data_dir = self.tmp_root / "data"
+        data_dir.mkdir()
+        # Denied with extension rules on...
+        with self.assertRaises(ValueError):
+            self._call_check_path_allowed(data_dir, [str(self.tmp_root)], allowed_exts=[".txt"])
+        # ...allowed with extension rules off.
+        PathAccess.check_path_allowed(data_dir, [str(self.tmp_root)], [".txt"], [], [".env"], False)  # no raise
+
+    def test_check_path_allowed_path_rules_still_apply_without_extension_rules(self):
+        """Tests that apply_extension_rules=False does not bypass allowed_paths/blocked_paths."""
+        data_dir = self.tmp_root / "data"
+        data_dir.mkdir()
+        with self.assertRaises(ValueError) as ctx:
+            PathAccess.check_path_allowed(data_dir, ["/some/other/root"], None, [], None, False)
+        self.assertIn("path_not_allowed", str(ctx.exception))
+        with self.assertRaises(ValueError) as ctx:
+            PathAccess.check_path_allowed(data_dir, [str(self.tmp_root)], None, [str(data_dir)], None, False)
+        self.assertIn("path_not_allowed", str(ctx.exception))
+
+    # --------------------------------------------------------- is_path_allowed
+
+    def test_is_path_allowed_returns_bool_instead_of_raising(self):
+        """Tests that is_path_allowed maps allow/deny to True/False for entry filtering."""
+        allowed_file = self.tmp_root / "a.txt"
+        allowed_file.write_text("x", encoding="utf-8")
+        args = {"allowed_paths": [str(self.tmp_root)], "blocked_file_extensions": [".env"]}
+        self.assertTrue(PathAccess.is_path_allowed(args, allowed_file))
+        self.assertFalse(PathAccess.is_path_allowed(args, Path("/some/other/root/b.txt")))
+        self.assertFalse(PathAccess.is_path_allowed(args, self.tmp_root / ".env"))
+
+    def test_is_path_allowed_propagates_config_errors(self):
+        """Tests that invalid_input from malformed operator config still raises (fail loudly, not filter-all)."""
+        with self.assertRaises(ValueError) as ctx:
+            PathAccess.is_path_allowed({"allowed_paths": []}, self.tmp_root / "a.txt")
+        self.assertIn("invalid_input", str(ctx.exception))
+
     # -------------------------------------------------- normalize_extensions
 
     def test_normalize_extensions_already_normalized(self):
