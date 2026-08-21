@@ -744,7 +744,7 @@ Options are `ascending` and `descending`. Default to `descending`.
                 },
                 "max_entries": {
                     "type": "int",
-                    "description": "Maximum number of entries to return. Defaults to 500. The result reports whether it was truncated."
+                    "description": "Maximum number of entries to return. Defaults to 500; hard-capped at 10000. The result reports whether it was truncated."
                 }
             },
             "required": ["directory_path"]

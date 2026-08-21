@@ -19,6 +19,7 @@ from pathlib import Path
 from unittest import TestCase
 
 from neuro_san_studio.coded_tools.file_management.path_access import PathAccess
+from neuro_san_studio.coded_tools.file_management.path_not_allowed_error import PathNotAllowedError
 
 
 # One consolidated TestCase per source module means many test methods by design.
@@ -183,22 +184,35 @@ class TestPathAccess(TestCase):  # pylint: disable=too-many-public-methods
             self._call_check_path_allowed(makefile, [str(self.tmp_root)], allowed_exts=None, blocked_exts=["Makefile"])
         self.assertIn("path_not_allowed", str(ctx.exception))
 
-    def test_check_path_allowed_extension_rules_skipped_for_directory_targets(self):
-        """Tests that apply_extension_rules=False exempts a target from extension rules.
+    def test_check_path_allowed_allow_extensions_skipped_for_directory_targets(self):
+        """Tests that enforce_allowed_extensions=False exempts a target from the extension ALLOW-list.
 
         A directory named 'data' would otherwise be treated as extension '.data'
         and spuriously denied under a file-oriented extension allow-list.
         """
         data_dir = self.tmp_root / "data"
         data_dir.mkdir()
-        # Denied with extension rules on...
+        # Denied with the allow-list enforced...
         with self.assertRaises(ValueError):
             self._call_check_path_allowed(data_dir, [str(self.tmp_root)], allowed_exts=[".txt"])
-        # ...allowed with extension rules off.
+        # ...allowed with the allow-list exemption ('.data' also isn't blocked).
         PathAccess.check_path_allowed(data_dir, [str(self.tmp_root)], [".txt"], [], [".env"], False)  # no raise
 
+    def test_check_path_allowed_blocked_extensions_always_apply(self):
+        """Tests that blocked_file_extensions still denies a directory-shaped target.
+
+        A block rule is explicit operator intent: a directory named 'prod.env'
+        must not slip past blocked_file_extensions=['.env'] just because the
+        allow-list exemption is active for directory targets.
+        """
+        env_dir = self.tmp_root / "prod.env"
+        env_dir.mkdir()
+        with self.assertRaises(ValueError) as ctx:
+            PathAccess.check_path_allowed(env_dir, [str(self.tmp_root)], None, [], [".env"], False)
+        self.assertIn("path_not_allowed", str(ctx.exception))
+
     def test_check_path_allowed_path_rules_still_apply_without_extension_rules(self):
-        """Tests that apply_extension_rules=False does not bypass allowed_paths/blocked_paths."""
+        """Tests that enforce_allowed_extensions=False does not bypass allowed_paths/blocked_paths."""
         data_dir = self.tmp_root / "data"
         data_dir.mkdir()
         with self.assertRaises(ValueError) as ctx:
@@ -207,6 +221,11 @@ class TestPathAccess(TestCase):  # pylint: disable=too-many-public-methods
         with self.assertRaises(ValueError) as ctx:
             PathAccess.check_path_allowed(data_dir, [str(self.tmp_root)], None, [str(data_dir)], None, False)
         self.assertIn("path_not_allowed", str(ctx.exception))
+
+    def test_check_path_allowed_raises_dedicated_subclass(self):
+        """Tests that denials raise PathNotAllowedError so filters need not string-match messages."""
+        with self.assertRaises(PathNotAllowedError):
+            self._call_check_path_allowed(self.tmp_root / "a.txt", ["/some/other/root"])
 
     # --------------------------------------------------------- is_path_allowed
 
@@ -375,6 +394,31 @@ class TestPathAccess(TestCase):  # pylint: disable=too-many-public-methods
         self.assertEqual(self._call_validate_allowed_paths({"allowed_paths": "/a"}), ["/a"])
 
     # --------------------------------------------------------- validate_bool
+
+    def test_validate_positive_int_defaults_and_values(self):
+        """Tests that validate_positive_int returns explicit values and falls back to the default."""
+        self.assertEqual(PathAccess.validate_positive_int({"n": 7}, "n", 500), 7)
+        self.assertEqual(PathAccess.validate_positive_int({}, "n", 500), 500)
+
+    def test_validate_positive_int_rejects_bad_values(self):
+        """Tests that zero, negative, bool, float, string, and None values raise invalid_input.
+
+        bool is rejected explicitly even though it subclasses int, so True can
+        never silently pass as 1 anywhere in the tool family.
+        """
+        for bad in [0, -1, True, False, "10", 1.5, None]:
+            with self.assertRaises(ValueError) as ctx:
+                PathAccess.validate_positive_int({"n": bad}, "n", 500)
+            self.assertIn("invalid_input", str(ctx.exception))
+
+    # --------------------------------------------------------- effective_suffix
+
+    def test_effective_suffix_variants(self):
+        """Tests the suffix extraction incl. the dotfile / extensionless-name fallback."""
+        self.assertEqual(PathAccess.effective_suffix("a.TXT"), ".txt")
+        self.assertEqual(PathAccess.effective_suffix(".gitignore"), ".gitignore")
+        self.assertEqual(PathAccess.effective_suffix("Dockerfile"), ".dockerfile")
+        self.assertEqual(PathAccess.effective_suffix("archive.tar.gz"), ".gz")
 
     def test_validate_bool_explicit_true_returned(self):
         """Tests that an explicit True value is returned."""

@@ -18,6 +18,8 @@ import asyncio
 from pathlib import Path
 from typing import Any
 
+from neuro_san_studio.coded_tools.file_management.path_not_allowed_error import PathNotAllowedError
+
 
 class PathAccess:
     """
@@ -58,10 +60,10 @@ class PathAccess:
 
     @staticmethod
     async def async_validate_and_check_access(
-        args: dict[str, Any], file_path: Path, apply_extension_rules: bool = True
+        args: dict[str, Any], file_path: Path, enforce_allowed_extensions: bool = True
     ) -> None:
         """Async wrapper around validate_and_check_access."""
-        await asyncio.to_thread(PathAccess.validate_and_check_access, args, file_path, apply_extension_rules)
+        await asyncio.to_thread(PathAccess.validate_and_check_access, args, file_path, enforce_allowed_extensions)
 
     # ------------------------------------------------------------------
     # Validation helpers
@@ -83,17 +85,21 @@ class PathAccess:
         value: Any = args.get(param_name, "")
         if not isinstance(value, str):
             raise ValueError(f"invalid_input: '{param_name}' must be a string, got {value!r}.")
-        path_str: str = value.strip()
-        if not path_str:
+        # Whitespace is only used to detect an effectively-empty argument — the
+        # path is resolved from the verbatim value. Stripping the used path would
+        # break round-tripping: list_directory emits entry names verbatim, so a
+        # file named 'reports ' (trailing space) must be addressable by the very
+        # name the listing advertised.
+        if not value.strip():
             raise ValueError(f"invalid_input: No '{param_name}' provided.")
 
         try:
             # expanduser() raises RuntimeError (not OSError) when the home directory
             # of a '~user' path cannot be determined, so it must be caught explicitly
             # to keep the invalid_input taxonomy instead of leaking a raw traceback.
-            return Path(path_str).expanduser().resolve(strict=False)
+            return Path(value).expanduser().resolve(strict=False)
         except (ValueError, OSError, RuntimeError) as exc:
-            raise ValueError(f"invalid_input: Cannot resolve '{param_name}' '{path_str}': {exc}") from exc
+            raise ValueError(f"invalid_input: Cannot resolve '{param_name}' '{value}': {exc}") from exc
 
     @staticmethod
     def validate_allowed_paths(args: dict[str, Any]) -> list[str]:
@@ -104,14 +110,19 @@ class PathAccess:
         return paths
 
     @staticmethod
-    def validate_and_check_access(args: dict[str, Any], file_path: Path, apply_extension_rules: bool = True) -> None:
+    def validate_and_check_access(
+        args: dict[str, Any], file_path: Path, enforce_allowed_extensions: bool = True
+    ) -> None:
         """Validate the four allow/block rule lists from args and enforce them against file_path.
 
-        :param apply_extension_rules: Pass False when file_path is a directory
+        :param enforce_allowed_extensions: Pass False when file_path is a directory
                 target (e.g. list_directory's root). Directories have no meaningful
                 extension — the dotless-name fallback would otherwise treat a
                 directory named 'data' as extension '.data' and spuriously deny it
-                under an extension allow-list meant for files. Path rules always apply.
+                under an extension allow-list meant for files. Path rules and
+                blocked_file_extensions ALWAYS apply: a block-list is explicit
+                operator intent, so a directory named 'prod.env' must still be
+                denied under blocked_file_extensions=[".env"].
         """
         PathAccess.check_path_allowed(
             file_path,
@@ -119,25 +130,24 @@ class PathAccess:
             PathAccess.validate_extension_list(args.get("allowed_file_extensions"), "allowed_file_extensions"),
             PathAccess.validate_path_list(args.get("blocked_paths"), "blocked_paths"),
             PathAccess.validate_extension_list(args.get("blocked_file_extensions"), "blocked_file_extensions"),
-            apply_extension_rules,
+            enforce_allowed_extensions,
         )
 
     @staticmethod
-    def is_path_allowed(args: dict[str, Any], file_path: Path, apply_extension_rules: bool = True) -> bool:
-        """Non-raising variant of validate_and_check_access for filtering many paths.
+    def is_path_allowed(args: dict[str, Any], file_path: Path, enforce_allowed_extensions: bool = True) -> bool:
+        """Non-raising variant of validate_and_check_access for one-off allow/deny questions.
 
-        Returns False instead of raising path_not_allowed, so callers that enumerate
-        entries (list_directory, and later file_search/grep) can silently omit
-        out-of-scope entries rather than leaking their existence through an error.
+        Returns False instead of raising path_not_allowed, so callers can turn a
+        denial into control flow (e.g. list_directory's existence-oracle guard).
         Genuine configuration errors (invalid_input from malformed rule lists) still
         propagate — a bad operator config must fail loudly, not filter everything.
+        For filtering MANY paths per call, use PathRules, which validates and
+        resolves the rule lists once instead of per path.
         """
         try:
-            PathAccess.validate_and_check_access(args, file_path, apply_extension_rules)
-        except ValueError as exc:
-            if str(exc).startswith("path_not_allowed"):
-                return False
-            raise
+            PathAccess.validate_and_check_access(args, file_path, enforce_allowed_extensions)
+        except PathNotAllowedError:
+            return False
         return True
 
     @staticmethod
@@ -192,22 +202,35 @@ class PathAccess:
             raise ValueError(f"invalid_input: '{param_name}' must be a boolean, got {value!r}.")
         return value
 
+    @staticmethod
+    def validate_positive_int(args: dict[str, Any], param_name: str, default: int) -> int:
+        """Return a validated positive integer parameter, raising invalid_input on bad input.
+
+        bool is explicitly rejected even though it subclasses int, so True does not
+        silently pass as 1. Shared by every tool with a count/cap parameter so the
+        family judges the same input the same way.
+        """
+        value: Any = args.get(param_name, default)
+        if not isinstance(value, int) or isinstance(value, bool) or value <= 0:
+            raise ValueError(f"invalid_input: '{param_name}' must be a positive integer, got {value!r}.")
+        return value
+
     # ------------------------------------------------------------------
     # Access-control helpers
     # ------------------------------------------------------------------
 
-    # pylint: disable=too-many-arguments
-    # pylint: disable=too-many-positional-arguments
     @staticmethod
+    # pylint: disable-next=too-many-arguments, too-many-positional-arguments
     def check_path_allowed(
         file_path: Path,
         allowed_paths: list[str],
         allowed_file_extensions: list[str] | None,
         blocked_paths: list[str],
         blocked_file_extensions: list[str] | None,
-        apply_extension_rules: bool = True,
+        enforce_allowed_extensions: bool = True,
     ) -> None:
-        """Raise ValueError(path_not_allowed) when the file fails the allow/block rules.
+        """Raise PathNotAllowedError (a ValueError with the path_not_allowed prefix)
+        when the file fails the allow/block rules.
 
         Evaluation order:
           1. allowed_paths:      non-empty whitelist (caller guarantees this via validation).
@@ -215,45 +238,58 @@ class PathAccess:
           3. blocked_paths:      [] or omitted = skip; non-empty = deny matching paths/dirs.
           4. blocked_file_extensions: [] or omitted = skip; non-empty = deny matching extensions.
 
-        apply_extension_rules=False skips steps 2 and 4 — used for directory targets,
-        which have no meaningful extension. Path rules (steps 1 and 3) always apply.
+        enforce_allowed_extensions=False skips ONLY step 2 — used for directory
+        targets, which have no meaningful extension for a file-oriented allow-list.
+        Path rules (1, 3) and blocked_file_extensions (4) always apply: a block
+        rule is explicit operator intent regardless of the target's kind.
         """
-        # pathlib returns suffix="" for dotfiles (".gitignore") and extensionless files ("Dockerfile").
-        # Fall back to the filename, ensuring a leading dot so it normalizes to the same shape
-        # as a real extension and can be matched against allow/block lists.
-        suffix: str = file_path.suffix.lower()
-        if not suffix:
-            name: str = file_path.name.lower()
-            suffix = name if name.startswith(".") else f".{name}"
+        suffix: str = PathAccess.effective_suffix(file_path.name)
 
         # 1. allowed_paths
         if not PathAccess.path_matches_any(file_path, allowed_paths):
-            raise ValueError(f"path_not_allowed: '{file_path}' is not within any of the allowed_paths entries.")
+            raise PathNotAllowedError(
+                f"path_not_allowed: '{file_path}' is not within any of the allowed_paths entries."
+            )
 
         # 2. allowed_file_extensions
-        if apply_extension_rules and allowed_file_extensions is not None:
+        if enforce_allowed_extensions and allowed_file_extensions is not None:
             if not allowed_file_extensions:
-                raise ValueError(
+                raise PathNotAllowedError(
                     f"path_not_allowed: Extension '{suffix}' is not allowed (allowed_file_extensions is empty)."
                 )
             normalized_allowed_exts: list[str] = PathAccess.normalize_extensions(allowed_file_extensions)
             if suffix not in normalized_allowed_exts:
-                raise ValueError(
+                raise PathNotAllowedError(
                     f"path_not_allowed: Extension '{suffix}' is not in "
                     f"allowed_file_extensions {allowed_file_extensions}."
                 )
 
         # 3. blocked_paths
         if blocked_paths and PathAccess.path_matches_any(file_path, blocked_paths):
-            raise ValueError(f"path_not_allowed: '{file_path}' is blocked by blocked_paths.")
+            raise PathNotAllowedError(f"path_not_allowed: '{file_path}' is blocked by blocked_paths.")
 
         # 4. blocked_file_extensions
-        if apply_extension_rules and blocked_file_extensions:
+        if blocked_file_extensions:
             normalized_blocked_exts: list[str] = PathAccess.normalize_extensions(blocked_file_extensions)
             if suffix in normalized_blocked_exts:
-                raise ValueError(
+                raise PathNotAllowedError(
                     f"path_not_allowed: Extension '{suffix}' is in blocked_file_extensions {blocked_file_extensions}."
                 )
+
+    @staticmethod
+    def effective_suffix(name: str) -> str:
+        """Return the lowercase extension of a file name, with the dotless-name fallback.
+
+        pathlib returns suffix="" for dotfiles (".gitignore") and extensionless
+        files ("Dockerfile"). Fall back to the filename, ensuring a leading dot so
+        it normalizes to the same shape as a real extension and can be matched
+        against allow/block lists.
+        """
+        suffix: str = Path(name).suffix.lower()
+        if not suffix:
+            lowered: str = name.lower()
+            suffix = lowered if lowered.startswith(".") else f".{lowered}"
+        return suffix
 
     @staticmethod
     def normalize_extensions(extensions: list[str]) -> list[str]:

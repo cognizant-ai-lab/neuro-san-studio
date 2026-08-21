@@ -15,11 +15,13 @@
 # END COPYRIGHT
 
 import asyncio
+import os
 import tempfile
 from pathlib import Path
 from unittest import TestCase
 
 from neuro_san_studio.coded_tools.file_management.list_directory import LIST_DIRECTORY_HISTORY_KEY
+from neuro_san_studio.coded_tools.file_management.list_directory import MAX_ENTRIES
 from neuro_san_studio.coded_tools.file_management.list_directory import ListDirectory
 
 
@@ -201,6 +203,83 @@ class TestListDirectory(TestCase):
         )
         self.assertEqual(self._names(result), ["a.txt"])
 
+    def test_async_invoke_symlink_to_directory_survives_extension_allow_list(self):
+        """Tests that a symlink to an in-scope directory is listed under an extension allow-list.
+
+        Directories are exempt from the extension allow-list whether reached
+        directly or via symlink — a symlinked subdir must not vanish as
+        pseudo-extension '.docs' (common monorepo/venv layouts).
+        """
+        docs = self.tmp_root / "docs"
+        docs.mkdir()
+        (self.tmp_root / "docs_link").symlink_to(docs)
+        self._make("plain.txt")
+        result = self._invoke({"allowed_file_extensions": [".txt"]})
+        self.assertEqual(self._names(result), ["docs", "docs_link", "plain.txt"])
+
+    def test_async_invoke_blocked_extension_applies_to_symlink_display_name(self):
+        """Tests that a symlink whose VISIBLE name matches a blocked extension is omitted.
+
+        The operator blocked '.env' names; a symlink displayed as 'prod.env' must
+        not appear just because its target resolves to an innocent '.txt' suffix.
+        """
+        target = self._make("readme.txt")
+        (self.tmp_root / "prod.env").symlink_to(target)
+        result = self._invoke({"blocked_file_extensions": [".env"]})
+        self.assertEqual(self._names(result), ["readme.txt"])
+
+    def test_async_invoke_blocked_extension_applies_to_directory_entries_and_target(self):
+        """Tests that block rules always apply to directories: as listing entries and as the target."""
+        (self.tmp_root / "prod.env").mkdir()
+        self._make("keep.txt")
+        result = self._invoke({"blocked_file_extensions": [".env"]})
+        self.assertEqual(self._names(result), ["keep.txt"])
+        with self.assertRaises(ValueError) as ctx:
+            self._invoke({"directory_path": str(self.tmp_root / "prod.env"), "blocked_file_extensions": [".env"]})
+        self.assertIn("path_not_allowed", str(ctx.exception))
+
+    def test_async_invoke_special_files_omitted(self):
+        """Tests that FIFOs are omitted rather than advertised as readable files.
+
+        A FIFO listed as a 0-byte 'file' would pass read_file's prechecks and then
+        hang its open() waiting for a writer.
+        """
+        os.mkfifo(self.tmp_root / "pipe")
+        self._make("real.txt")
+        result = self._invoke({})
+        self.assertEqual(self._names(result), ["real.txt"])
+        self.assertEqual(result["unreadable_entries"], 0)
+
+    def test_async_invoke_unsearchable_directory_raises_list_error(self):
+        """Tests that a readable-but-unsearchable directory fails instead of looking empty."""
+        locked = self.tmp_root / "locked"
+        locked.mkdir()
+        (locked / "a.txt").write_text("x", encoding="utf-8")
+        os.chmod(locked, 0o444)  # r-- : names enumerable, metadata unreadable
+        try:
+            with self.assertRaises(ValueError) as ctx:
+                self._invoke({"directory_path": str(locked)})
+            self.assertIn("list_error", str(ctx.exception))
+        finally:
+            os.chmod(locked, 0o700)
+
+    def test_async_invoke_reports_unreadable_entries(self):
+        """Tests that partially unreadable listings self-report their gaps."""
+        self._make("fine.txt")
+        result = self._invoke({})
+        self.assertIn("unreadable_entries", result)
+        self.assertEqual(result["unreadable_entries"], 0)
+
+    def test_async_invoke_advertised_names_round_trip(self):
+        """Tests that a name emitted by the listing (with trailing space) is directly usable as a target."""
+        weird = self.tmp_root / "reports "
+        weird.mkdir()
+        (weird / "inner.txt").write_text("x", encoding="utf-8")
+        listing = self._invoke({})
+        self.assertIn("reports ", self._names(listing))
+        inner = self._invoke({"directory_path": str(self.tmp_root / "reports ")})
+        self.assertEqual(self._names(inner), ["inner.txt"])
+
     # ---------------------------------------------------- _validate_max_entries
 
     def test_validate_max_entries_defaults(self):
@@ -208,24 +287,66 @@ class TestListDirectory(TestCase):
         self.assertEqual(self.tool._validate_max_entries({}), 500)  # pylint: disable=protected-access
 
     def test_validate_max_entries_rejects_bad_values(self):
-        """Tests that zero, negative, boolean, and non-int max_entries raise invalid_input."""
-        for bad in [0, -1, True, "10", 1.5, None]:
+        """Tests that zero, negative, boolean, non-int, and over-hard-cap max_entries raise invalid_input.
+
+        The hard MAX_ENTRIES ceiling exists because max_entries is LLM-settable:
+        without it a single call against a huge allowed directory could build an
+        unbounded response.
+        """
+        for bad in [0, -1, True, "10", 1.5, None, MAX_ENTRIES + 1, 10**12]:
             with self.assertRaises(ValueError) as ctx:
                 self.tool._validate_max_entries({"max_entries": bad})  # pylint: disable=protected-access
             self.assertIn("invalid_input", str(ctx.exception))
 
-    # ------------------------------------------------- _check_directory_exists
+    def test_validate_max_entries_accepts_hard_cap(self):
+        """Tests that exactly MAX_ENTRIES is accepted (boundary)."""
+        result = self.tool._validate_max_entries({"max_entries": MAX_ENTRIES})  # pylint: disable=protected-access
+        self.assertEqual(result, MAX_ENTRIES)
 
-    def test_check_directory_exists_passes_for_directory(self):
+    # ------------------------------------------------- _check_directory_target
+
+    def _check_target(self, path: Path, **extra_args) -> None:
+        """Invoke _check_directory_target with allowed_paths defaulted to the temp root."""
+        args = {"allowed_paths": [str(self.tmp_root)]}
+        args.update(extra_args)
+        self.tool._check_directory_target(args, path)  # pylint: disable=protected-access
+
+    def test_check_directory_target_passes_for_directory(self):
         """Tests that an existing directory passes the existence check."""
-        self.tool._check_directory_exists(self.tmp_root)  # pylint: disable=protected-access
+        self._check_target(self.tmp_root)  # should not raise
 
-    def test_check_directory_exists_rejects_file_and_missing(self):
-        """Tests the not_a_directory and path_not_found error types."""
+    def test_check_directory_target_rejects_file_and_missing(self):
+        """Tests the not_a_directory and path_not_found error types for unrestricted configs."""
         path = self._make("a.txt")
         with self.assertRaises(ValueError) as ctx:
-            self.tool._check_directory_exists(path)  # pylint: disable=protected-access
+            self._check_target(path)
         self.assertIn("not_a_directory", str(ctx.exception))
         with self.assertRaises(ValueError) as ctx:
-            self.tool._check_directory_exists(self.tmp_root / "nope")  # pylint: disable=protected-access
+            self._check_target(self.tmp_root / "nope")
         self.assertIn("path_not_found", str(ctx.exception))
+
+    def test_check_directory_target_no_existence_oracle_for_scoped_out_files(self):
+        """Tests that extension-scoped-out targets get path_not_allowed whether they exist or not.
+
+        Without this, comparing not_a_directory (exists) against path_not_found
+        (doesn't) would let an agent probe the existence of files the extension
+        rules hide from listings.
+        """
+        self._make("secret.key")
+        for name in ["secret.key", "nonexistent.key"]:
+            with self.assertRaises(ValueError) as ctx:
+                self._check_target(self.tmp_root / name, allowed_file_extensions=[".txt"])
+            self.assertIn("path_not_allowed", str(ctx.exception))
+
+    def test_check_directory_target_permission_error_is_list_error(self):
+        """Tests that an untraversable parent surfaces as list_error, not a false path_not_found."""
+        locked = self.tmp_root / "locked"
+        inner = locked / "inner"
+        inner.mkdir(parents=True)
+        os.chmod(locked, 0o000)
+        try:
+            with self.assertRaises(ValueError) as ctx:
+                self._check_target(inner)
+            self.assertIn("list_error", str(ctx.exception))
+        finally:
+            os.chmod(locked, 0o700)
