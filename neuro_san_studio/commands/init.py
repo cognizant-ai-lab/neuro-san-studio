@@ -45,8 +45,8 @@ PROVIDERS: Dict[str, Dict[str, str]] = {
 TEMPLATES_PACKAGE = "neuro_san_studio.templates"
 MANIFEST_TEMPLATE = "manifest.hocon"
 
-# The line that includes "generated" networks. Dropped before the template is parsed for the install
-# list as we don't want to install generated networks by default. See _default_network_hocons.
+# The line that includes "generated" networks: we want to ignore them when we install
+# the default agent networks. See _default_network_hocons().
 GENERATED_MANIFEST_INCLUDE = 'include "registries/generated/manifest.hocon"'
 
 # Long enough to never bite a real user; finite so timedinput is happy and so a
