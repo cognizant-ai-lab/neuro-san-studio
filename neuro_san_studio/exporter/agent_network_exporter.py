@@ -83,15 +83,8 @@ class AgentNetworkExporter:  # pylint: disable=too-few-public-methods
         rel_hocon = self._resolve_network(network)
         full_hocon = os.path.join(self.registries_dir, rel_hocon)
 
-        # pyhocon resolves `include "registries/..."` directives relative to CWD; chdir to
-        # the project root while the analyzer parses, mirroring AgentNetworkRegistry.
         analyzer = DependencyAnalyzer(self.registries_dir, self.coded_tools_dir, self.middleware_dir)
-        prev_cwd = os.getcwd()
-        try:
-            os.chdir(self.project_dir)
-            deps = analyzer.get_transitive_dependencies(full_hocon)
-        finally:
-            os.chdir(prev_cwd)
+        deps = analyzer.get_transitive_dependencies(full_hocon)
         # Shared HOCON `include` directives don't surface through the structured walker —
         # do a textual scan over the network's own file so includes count toward "has_deps".
         own_includes = self._collect_shared_includes([full_hocon])

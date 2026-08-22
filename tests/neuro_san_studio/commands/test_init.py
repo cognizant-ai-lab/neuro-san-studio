@@ -40,7 +40,7 @@ LOCAL_ROOTS: Tuple[str, ...] = ("coded_tools", "middleware")
 # neuro_san_studio/templates/manifest.hocon, so pinning the expectation independently makes a change
 # to that template a deliberate, reviewed change to what every new project contains, instead of a
 # side effect noticed after release. Update both in the same commit.
-EXPECTED_DEFAULT_NETWORKS: Tuple[str, ...] = (
+EXPECTED_DEFAULT_NETWORKS: List[str] = [
     "basic/music_nerd.hocon",
     "agent_network_designer.hocon",
     "agent_network_editor.hocon",
@@ -49,7 +49,7 @@ EXPECTED_DEFAULT_NETWORKS: Tuple[str, ...] = (
     "agent_network_test_generator.hocon",
     "experimental/cruse_theme_agent.hocon",
     "experimental/cruse_widget_agent.hocon",
-)
+]
 
 
 @pytest.fixture(name="scaffolded_project", scope="module")

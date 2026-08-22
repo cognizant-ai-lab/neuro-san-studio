@@ -16,6 +16,7 @@
 
 """Walk a HOCON network's `tools` list to extract its file dependencies."""
 
+import contextlib
 import os
 from dataclasses import dataclass
 from dataclasses import field
@@ -50,9 +51,11 @@ class DependencyAnalyzer:
     """Resolve dependencies referenced by a HOCON agent network."""
 
     def __init__(self, registries_dir: str, coded_tools_dir: str, middleware_dir: str):
-        self.registries_dir = registries_dir
-        self.coded_tools_dir = coded_tools_dir
-        self.middleware_dir = middleware_dir
+        # Absolute, because get_transitive_dependencies chdirs while parsing (see there) and
+        # relpath/exists checks against these roots must not shift underneath it.
+        self.registries_dir = os.path.abspath(registries_dir)
+        self.coded_tools_dir = os.path.abspath(coded_tools_dir)
+        self.middleware_dir = os.path.abspath(middleware_dir)
 
     def analyze_network(self, hocon_path: str) -> AgentNetworkDependencies:
         """Parse one HOCON file and extract its references (one level, no recursion)."""
@@ -157,20 +160,34 @@ class DependencyAnalyzer:
             name = name + ".hocon"
         return name if os.path.exists(os.path.join(self.registries_dir, name)) else None
 
-    def get_transitive_dependencies(
-        self, hocon_path: str, visited: Optional[Set[str]] = None
-    ) -> AgentNetworkDependencies:
-        """Recursively collect dependencies from a network and its sub-networks."""
-        # Only the outermost call closes the dependency set under Python-level imports:
-        # the recursion below merges each sub-network's results into `deps`, so expanding
-        # once at the top covers everything without re-parsing the same files per level.
-        is_root_call = visited is None
-        if visited is None:
-            visited = set()
+    def get_transitive_dependencies(self, hocon_path: str) -> AgentNetworkDependencies:
+        """Recursively collect dependencies from a network and its sub-networks.
+
+        The walk runs with the working directory set to the tree being analyzed. Networks
+        pull shared prompt fragments in with `include "registries/<name>.hocon"` and then
+        substitute them; pyhocon resolves a relative include against the process CWD, and
+        `analyze_network` swallows the ValueError an unresolved `${substitution}` raises.
+        Analyzing from the caller's directory therefore returned an *empty* dependency set
+        with no error whenever that directory didn't happen to hold the same fragments --
+        the network landed in the target project with none of its coded tools.
+        """
+        # Resolve before the chdir: a caller may hand us a path relative to *their* cwd.
         abs_path = os.path.abspath(hocon_path)
-        if abs_path in visited:
+        source_root = os.path.dirname(self.registries_dir)
+        anchor = contextlib.chdir(source_root) if os.path.isdir(source_root) else contextlib.nullcontext()
+        with anchor:
+            deps = self._walk(abs_path, set())
+        # Closing the set under Python-level imports is done once, at the top: `_walk`
+        # merges each sub-network's results upward, so one expansion covers everything
+        # without re-parsing the same files per level.
+        self._expand_local_imports(deps)
+        return deps
+
+    def _walk(self, hocon_path: str, visited: Set[str]) -> AgentNetworkDependencies:
+        """Collect one network's dependencies, recursing into its sub-networks."""
+        if hocon_path in visited:
             return AgentNetworkDependencies()
-        visited.add(abs_path)
+        visited.add(hocon_path)
 
         # context_dir lets us resolve short-form coded-tool refs ("module.Class") relative
         # to the network's group directory. A network at `<registries>/basic/foo.hocon` lives
@@ -189,13 +206,11 @@ class DependencyAnalyzer:
             sub_rel = self.resolve_sub_network(sub_ref)
             if not sub_rel:
                 continue
-            sub_deps = self.get_transitive_dependencies(os.path.join(self.registries_dir, sub_rel), visited)
+            sub_deps = self._walk(os.path.join(self.registries_dir, sub_rel), visited)
             for attr in ("coded_tools", "middleware", "sub_networks", "toolbox_tools", "mcp_tools"):
                 merged = getattr(deps, attr) + [x for x in getattr(sub_deps, attr) if x not in getattr(deps, attr)]
                 setattr(deps, attr, merged)
 
-        if is_root_call:
-            self._expand_local_imports(deps)
         return deps
 
     def _expand_local_imports(self, deps: AgentNetworkDependencies) -> None:

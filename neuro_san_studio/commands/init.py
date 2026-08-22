@@ -23,16 +23,15 @@ import sys
 from typing import Dict
 from typing import List
 from typing import Optional
-from typing import Tuple
 
 from pyhocon import ConfigFactory
 from rich.console import Console
 from rich.table import Table
 from timedinput import timedinput
 
-from neuro_san_studio.discovery.dependency_analyzer import DependencyAnalyzer
 from neuro_san_studio.importer.agent_network_importer import AgentNetworkImporter
 from neuro_san_studio.utils.cli_status import CliStatus
+from neuro_san_studio.utils.import_reporter import ImportReporter
 from neuro_san_studio.utils.package_paths import PackagePaths
 from neuro_san_studio.utils.shared_registries import SHARED_REGISTRY_INCLUDES
 
@@ -100,7 +99,7 @@ class InitCommand:  # pylint: disable=too-few-public-methods
         self._print_next_steps()
 
     @staticmethod
-    def _default_network_hocons() -> Tuple[str, ...]:
+    def _default_network_hocons() -> List[str]:
         """Return the registry-relative networks `ns init` installs, per the manifest template
         `neuro_san_studio/templates/manifest.hocon`.
 
@@ -114,16 +113,16 @@ class InitCommand:  # pylint: disable=too-few-public-methods
         config = ConfigFactory.parse_string(declared)
         # as_plain_ordered_dict() strips the quotes pyhocon bakes into keys that had to be quoted in
         # the source; the raw ConfigTree hands back '"basic/music_nerd.hocon"', quote characters and all.
-        return tuple(config.as_plain_ordered_dict())
+        return list(config.as_plain_ordered_dict())
 
     def _install_default_networks(self) -> None:
         """Copy the default agent networks and their dependencies into the project.
 
-        Reuses the same discovery/importer layer as `ns import` rather than a second
-        hand-maintained file list, so the two commands cannot drift about what a network
-        actually depends on. The list of networks is likewise derived from the manifest
-        template (see `_default_network_hocons`) rather than duplicated, so the file that
-        decides what is served is the same file that decides what is copied.
+        Runs the same `AgentNetworkImporter.import_networks` batch that `ns import` runs,
+        rather than a second hand-maintained copy of the analyze-then-copy loop, so the two
+        commands cannot drift about what a network actually depends on. The list of networks
+        is likewise derived from the manifest template (see `_default_network_hocons`), so the
+        file that decides what is served is the same file that decides what is copied.
 
         The manifest entries are NOT written here: `manifest.hocon` is scaffolded from a
         template that already declares each of these with the right flags. Registering them
@@ -136,28 +135,10 @@ class InitCommand:  # pylint: disable=too-few-public-methods
             CliStatus.warn(f"Skipping default agent networks: {exc}")
             return
 
-        analyzer = DependencyAnalyzer(
-            os.path.join(source_dir, "registries"),
-            os.path.join(source_dir, "coded_tools"),
-            os.path.join(source_dir, "middleware"),
-        )
-        importer = AgentNetworkImporter(source_dir, self.root_dir)
-
         _console.print()
         CliStatus.info("Installing the Agent Network Designer...")
-        copied = 0
-        skipped = 0
-        for hocon_path in self._default_network_hocons():
-            result = self._install_one_network(hocon_path, analyzer, importer, source_dir)
-            if result is None:
-                continue
-            copied += len(result.copied_files)
-            skipped += len(result.skipped_files)
-            for warning in result.warnings:
-                CliStatus.warn(warning)
-            for error in result.errors:
-                CliStatus.err(error)
-            CliStatus.ok(os.path.join("registries", hocon_path))
+        importer = AgentNetworkImporter(source_dir, self.root_dir)
+        bulk = importer.import_networks(self._default_network_hocons(), on_network=ImportReporter.announce)
 
         # Python resolves a directory without __init__.py as a namespace *portion* and keeps
         # searching sys.path, so the studio's own installed coded_tools package would win over
@@ -165,39 +146,7 @@ class InitCommand:  # pylint: disable=too-few-public-methods
         # than leave a silently-shadowed project if that ever regresses.
         self._ensure_package_roots(source_dir)
 
-        CliStatus.info(f"Copied {copied} file(s), skipped {skipped} already present.")
-
-    @staticmethod
-    def _install_one_network(
-        hocon_path: str,
-        analyzer: DependencyAnalyzer,
-        importer: AgentNetworkImporter,
-        source_dir: str,
-    ):
-        """Analyze and import one network. Returns its ImportResult, or None on failure.
-
-        A failure is reported and skipped rather than aborting: a project missing one of the
-        default networks is still usable, while a half-written scaffold is not.
-        """
-        full_path = os.path.join(source_dir, "registries", hocon_path)
-        # pyhocon resolves `include "registries/..."` and `include "config/..."` relative to
-        # CWD. chdir to the source so they resolve against the installed package rather than
-        # whatever the project happens to have scaffolded so far.
-        prev_cwd = os.getcwd()
-        try:
-            os.chdir(source_dir)
-            deps = analyzer.get_transitive_dependencies(full_path)
-        except (OSError, ValueError) as exc:
-            CliStatus.warn(f"Could not analyze {hocon_path}: {exc}")
-            return None
-        finally:
-            os.chdir(prev_cwd)
-
-        try:
-            return importer.import_network(hocon_path, deps)
-        except (OSError, ValueError) as exc:
-            CliStatus.warn(f"Could not install {hocon_path}: {exc}")
-            return None
+        ImportReporter.report(bulk)
 
     def _ensure_package_roots(self, source_dir: str) -> None:
         """Guarantee coded_tools/__init__.py and middleware/__init__.py exist in the project."""
