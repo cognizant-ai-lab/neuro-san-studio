@@ -3,8 +3,7 @@
     # Read via AGENT_NETWORK_DESIGNER_MANIFEST_FILE (see
     # coded_tools/agent_network_editor/get_subnetwork.py), which defaults to this path.
     #
-    # A scaffolded project starts with only its generated networks here. Add other manifests --
-    # or individual "<group>/<network>.hocon": true entries -- to let the designer compose
-    # networks you imported with `ns import`.
+    # Add other manifests -- or individual "<group>/<network>.hocon": true entries --
+    # to let the designer use them to compose networks.
     include "registries/generated/manifest.hocon"
 }

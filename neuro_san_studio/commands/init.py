@@ -23,7 +23,9 @@ import sys
 from typing import Dict
 from typing import List
 from typing import Optional
+from typing import Tuple
 
+from pyhocon import ConfigFactory
 from rich.console import Console
 from rich.table import Table
 from timedinput import timedinput
@@ -31,7 +33,6 @@ from timedinput import timedinput
 from neuro_san_studio.discovery.dependency_analyzer import DependencyAnalyzer
 from neuro_san_studio.importer.agent_network_importer import AgentNetworkImporter
 from neuro_san_studio.utils.cli_status import CliStatus
-from neuro_san_studio.utils.default_networks import DEFAULT_NETWORK_HOCONS
 from neuro_san_studio.utils.package_paths import PackagePaths
 from neuro_san_studio.utils.shared_registries import SHARED_REGISTRY_INCLUDES
 
@@ -42,6 +43,11 @@ PROVIDERS: Dict[str, Dict[str, str]] = {
 }
 
 TEMPLATES_PACKAGE = "neuro_san_studio.templates"
+MANIFEST_TEMPLATE = "manifest.hocon"
+
+# The line that includes "generated" networks. Dropped before the template is parsed for the install
+# list as we don't want to install generated networks by default. See _default_network_hocons.
+GENERATED_MANIFEST_INCLUDE = 'include "registries/generated/manifest.hocon"'
 
 # Long enough to never bite a real user; finite so timedinput is happy and so a
 # detached terminal can't hang the process forever.
@@ -70,8 +76,7 @@ class InitCommand:  # pylint: disable=too-few-public-methods
         provider_labels = ", ".join(PROVIDERS[p]["label"] for p in providers)
         _console.print(f"[bold]Selected providers:[/bold] {provider_labels}\n")
 
-        self._copy_template("music_nerd.hocon", os.path.join("registries", "music_nerd.hocon"))
-        self._copy_template("manifest.hocon", os.path.join("registries", "manifest.hocon"))
+        self._copy_template(MANIFEST_TEMPLATE, os.path.join("registries", MANIFEST_TEMPLATE))
         # Pre-create registries/generated/ so the include in the main manifest resolves the
         # first time the server reads it, even before agent_network_designer has produced
         # any files. Empty `{}` is a valid manifest — neuro-san just sees no extra networks.
@@ -94,12 +99,31 @@ class InitCommand:  # pylint: disable=too-few-public-methods
 
         self._print_next_steps()
 
+    @staticmethod
+    def _default_network_hocons() -> Tuple[str, ...]:
+        """Return the registry-relative networks `ns init` installs, per the manifest template
+        `neuro_san_studio/templates/manifest.hocon`.
+
+        Ignores the GENERATED_MANIFEST_INCLUDE line. It exists so the running *server* picks up
+        networks agent_network_designer writes later.
+        """
+        source = importlib.resources.files(TEMPLATES_PACKAGE) / MANIFEST_TEMPLATE
+        declared = "\n".join(
+            line for line in source.read_text(encoding="utf-8").splitlines() if GENERATED_MANIFEST_INCLUDE not in line
+        )
+        config = ConfigFactory.parse_string(declared)
+        # as_plain_ordered_dict() strips the quotes pyhocon bakes into keys that had to be quoted in
+        # the source; the raw ConfigTree hands back '"basic/music_nerd.hocon"', quote characters and all.
+        return tuple(config.as_plain_ordered_dict())
+
     def _install_default_networks(self) -> None:
         """Copy the default agent networks and their dependencies into the project.
 
         Reuses the same discovery/importer layer as `ns import` rather than a second
         hand-maintained file list, so the two commands cannot drift about what a network
-        actually depends on.
+        actually depends on. The list of networks is likewise derived from the manifest
+        template (see `_default_network_hocons`) rather than duplicated, so the file that
+        decides what is served is the same file that decides what is copied.
 
         The manifest entries are NOT written here: `manifest.hocon` is scaffolded from a
         template that already declares each of these with the right flags. Registering them
@@ -123,7 +147,7 @@ class InitCommand:  # pylint: disable=too-few-public-methods
         CliStatus.info("Installing the Agent Network Designer...")
         copied = 0
         skipped = 0
-        for hocon_path in DEFAULT_NETWORK_HOCONS:
+        for hocon_path in self._default_network_hocons():
             result = self._install_one_network(hocon_path, analyzer, importer, source_dir)
             if result is None:
                 continue
