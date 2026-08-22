@@ -16,11 +16,16 @@
 
 """Tests for the `neuro-san-studio init` command."""
 
+import ast
+import logging
 import os
 import sys
 from pathlib import Path
+from typing import List
+from typing import Tuple
 
 import pytest
+from neuro_san.internals.graph.persistence.raw_manifest_restorer import RawManifestRestorer
 from pyhocon import ConfigFactory
 from pytest import MonkeyPatch
 
@@ -28,6 +33,59 @@ from neuro_san_studio.commands import init as init_module
 from neuro_san_studio.commands.init import InitCommand
 from neuro_san_studio.importer.agent_network_importer import AgentNetworkImporter
 from neuro_san_studio.utils.shared_registries import SHARED_REGISTRY_INCLUDES
+
+LOCAL_ROOTS: Tuple[str, ...] = ("coded_tools", "middleware")
+
+# What `ns init` must install. Spelled out rather than derived: the production list now comes from
+# neuro_san_studio/templates/manifest.hocon, so pinning the expectation independently makes a change
+# to that template a deliberate, reviewed change to what every new project contains, instead of a
+# side effect noticed after release. Update both in the same commit.
+EXPECTED_DEFAULT_NETWORKS: List[str] = [
+    "basic/music_nerd.hocon",
+    "agent_network_designer.hocon",
+    "agent_network_editor.hocon",
+    "agent_network_instructions_editor.hocon",
+    "agent_network_query_generator.hocon",
+    "agent_network_test_generator.hocon",
+    "experimental/cruse_theme_agent.hocon",
+    "experimental/cruse_widget_agent.hocon",
+]
+
+
+@pytest.fixture(name="scaffolded_project", scope="module")
+def fixture_scaffolded_project(tmp_path_factory: pytest.TempPathFactory) -> Path:
+    """One `ns init --providers openai` scaffold, shared by every read-only assertion.
+
+    Scaffolding copies ~55 files, so doing it per test dominated this module's runtime.
+    Tests that mutate the tree must scaffold their own instead of using this.
+    """
+    root = tmp_path_factory.mktemp("scaffold")
+    InitCommand(providers_arg="openai", root_dir=str(root)).run()
+    return root
+
+
+def _local_imports_of(source: Path) -> List[str]:
+    """Return every coded_tools.*/middleware.* module name that `source` imports."""
+    modules: List[str] = []
+    for node in ast.walk(ast.parse(source.read_text(encoding="utf-8"))):
+        if isinstance(node, ast.Import):
+            modules.extend(alias.name for alias in node.names)
+        elif isinstance(node, ast.ImportFrom) and node.level == 0 and node.module:
+            modules.append(node.module)
+            modules.extend(f"{node.module}.{alias.name}" for alias in node.names)
+    return [module for module in modules if module.split(".")[0] in LOCAL_ROOTS]
+
+
+def _resolves_in(project: Path, module: str) -> bool:
+    """Whether `module` — or, for a `from x import y` name, its parent — exists under `project`."""
+    parts = module.split(".")
+    for candidate in (parts, parts[:-1]):
+        if not candidate:
+            continue
+        base = project.joinpath(*candidate)
+        if base.with_suffix(".py").is_file() or (base / "__init__.py").is_file():
+            return True
+    return False
 
 
 class TestProvidersArgParsing:
@@ -168,7 +226,7 @@ class TestRunFlow:
         monkeypatch.chdir(tmp_path)
         self._run_init(tmp_path, monkeypatch)
 
-        assert (tmp_path / "registries" / "music_nerd.hocon").is_file()
+        assert (tmp_path / "registries" / "basic" / "music_nerd.hocon").is_file()
         for shared in SHARED_REGISTRY_INCLUDES:
             assert (tmp_path / "registries" / shared).is_file()
         assert (tmp_path / "registries" / "manifest.hocon").read_text().strip().startswith("{")
@@ -186,6 +244,16 @@ class TestRunFlow:
         llm_config = (tmp_path / "config" / "llm_config.hocon").read_text()
         assert '"model_name": "gpt-5.2"' in llm_config
         assert '"class"' not in llm_config
+        # The designer reads manifest_and.hocon to learn which networks it may compose.
+        assert (tmp_path / "registries" / "manifest_and.hocon").is_file()
+        # Every default network lands on disk...
+        for network in EXPECTED_DEFAULT_NETWORKS:
+            assert (tmp_path / "registries" / network).is_file(), f"{network} was not scaffolded"
+        # ...along with the coded tools and middleware they need.
+        assert (tmp_path / "coded_tools" / "agent_network_editor" / "add_agent.py").is_file()
+        assert (
+            tmp_path / "middleware" / "agent_network_designer" / "agent_network_definition_middleware.py"
+        ).is_file()
 
     def test_run_skips_existing_files(self, tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
         """Existing target files must be left untouched and logged as [skip]."""
@@ -318,62 +386,60 @@ class TestRunFlow:
         llm_config = (tmp_path / "config" / "llm_config.hocon").read_text()
         assert '"model_name": "gpt-5.2"' in llm_config
 
-    def test_music_nerd_sourced_from_templates(self, tmp_path: Path, monkeypatch: MonkeyPatch) -> None:
-        """music_nerd.hocon should be copied from neuro_san_studio.templates."""
-        self._run_init(tmp_path, monkeypatch)
-        self._assert_matches_template(tmp_path, "music_nerd.hocon", "registries/music_nerd.hocon")
+    def test_music_nerd_sourced_from_registries(self, scaffolded_project: Path) -> None:
+        """music_nerd should be installed from the registries package like every other network."""
+        import importlib.resources  # pylint: disable=import-outside-toplevel
 
-    def test_aaosa_sourced_from_registries(self, tmp_path: Path, monkeypatch: MonkeyPatch) -> None:
+        upstream = (importlib.resources.files("registries") / "basic" / "music_nerd.hocon").read_bytes()
+        local = (scaffolded_project / "registries" / "basic" / "music_nerd.hocon").read_bytes()
+        assert local == upstream
+
+    def test_aaosa_sourced_from_registries(self, scaffolded_project: Path) -> None:
         """aaosa.hocon should be copied from the registries package via the safety-net loop."""
-        self._run_init(tmp_path, monkeypatch)
-        self._assert_matches_template(tmp_path, "aaosa.hocon", "registries/aaosa.hocon", "registries")
+        self._assert_matches_template(scaffolded_project, "aaosa.hocon", "registries/aaosa.hocon", "registries")
 
-    def test_aaosa_basic_sourced_from_registries(self, tmp_path: Path, monkeypatch: MonkeyPatch) -> None:
+    def test_aaosa_basic_sourced_from_registries(self, scaffolded_project: Path) -> None:
         """aaosa_basic.hocon should be copied from the registries package via the safety-net loop."""
-        self._run_init(tmp_path, monkeypatch)
-        self._assert_matches_template(tmp_path, "aaosa_basic.hocon", "registries/aaosa_basic.hocon", "registries")
-
-    def test_aaosa_basic_debug_sourced_from_registries(self, tmp_path: Path, monkeypatch: MonkeyPatch) -> None:
-        """aaosa_basic_debug.hocon should be copied from the registries package via the safety-net loop."""
-        self._run_init(tmp_path, monkeypatch)
         self._assert_matches_template(
-            tmp_path, "aaosa_basic_debug.hocon", "registries/aaosa_basic_debug.hocon", "registries"
+            scaffolded_project, "aaosa_basic.hocon", "registries/aaosa_basic.hocon", "registries"
         )
 
-    def test_expertise_scoping_instructions_sourced_from_registries(
-        self, tmp_path: Path, monkeypatch: MonkeyPatch
-    ) -> None:
+    def test_aaosa_basic_debug_sourced_from_registries(self, scaffolded_project: Path) -> None:
+        """aaosa_basic_debug.hocon should be copied from the registries package via the safety-net loop."""
+        self._assert_matches_template(
+            scaffolded_project, "aaosa_basic_debug.hocon", "registries/aaosa_basic_debug.hocon", "registries"
+        )
+
+    def test_expertise_scoping_instructions_sourced_from_registries(self, scaffolded_project: Path) -> None:
         """expertise_scoping_instructions.hocon should be copied from the registries package.
 
-        The scaffolded music_nerd.hocon includes it and substitutes
+        The scaffolded basic/music_nerd.hocon includes it and substitutes
         ``${expertise_scoping_instructions}``, so a project missing this file fails to parse.
         """
-        self._run_init(tmp_path, monkeypatch)
         self._assert_matches_template(
-            tmp_path,
+            scaffolded_project,
             "expertise_scoping_instructions.hocon",
             "registries/expertise_scoping_instructions.hocon",
             "registries",
         )
 
-    def test_manifest_sourced_from_templates(self, tmp_path: Path, monkeypatch: MonkeyPatch) -> None:
+    def test_manifest_sourced_from_templates(self, scaffolded_project: Path) -> None:
         """manifest.hocon should be copied from neuro_san_studio.templates."""
-        self._run_init(tmp_path, monkeypatch)
-        self._assert_matches_template(tmp_path, "manifest.hocon", "registries/manifest.hocon")
+        self._assert_matches_template(scaffolded_project, "manifest.hocon", "registries/manifest.hocon")
 
-    def test_mcp_info_sourced_from_mcp_package(self, tmp_path: Path, monkeypatch: MonkeyPatch) -> None:
+    def test_mcp_info_sourced_from_mcp_package(self, scaffolded_project: Path) -> None:
         """mcp_info.hocon should be copied from neuro_san_studio.mcp (the same file run.py uses)."""
-        self._run_init(tmp_path, monkeypatch)
-        self._assert_matches_template(tmp_path, "mcp_info.hocon", "mcp/mcp_info.hocon", "neuro_san_studio.mcp")
+        self._assert_matches_template(
+            scaffolded_project, "mcp_info.hocon", "mcp/mcp_info.hocon", "neuro_san_studio.mcp"
+        )
 
-    def test_plugins_sourced_from_templates(self, tmp_path: Path, monkeypatch: MonkeyPatch) -> None:
+    def test_plugins_sourced_from_templates(self, scaffolded_project: Path) -> None:
         """plugins.hocon should be copied from neuro_san_studio.templates."""
-        self._run_init(tmp_path, monkeypatch)
-        self._assert_matches_template(tmp_path, "plugins.hocon", "config/plugins.hocon")
+        self._assert_matches_template(scaffolded_project, "plugins.hocon", "config/plugins.hocon")
 
 
-class TestTemplateSync:
-    """Ensure scaffolded templates stay in sync with their source-of-truth files in registries/ and config/."""
+class TestTemplateSync:  # pylint: disable=too-few-public-methods
+    """Ensure packaged templates stay in sync with their source-of-truth files."""
 
     @staticmethod
     def _assert_template_matches_source(template_name: str, source_rel: str) -> None:
@@ -386,10 +452,6 @@ class TestTemplateSync:
         assert template == source_of_truth, (
             f"templates/{template_name} has drifted from {source_rel}. Update both together."
         )
-
-    def test_music_nerd_template_matches_registries_basic(self) -> None:
-        """templates/music_nerd.hocon must be byte-identical to registries/basic/music_nerd.hocon."""
-        self._assert_template_matches_source("music_nerd.hocon", "registries/basic/music_nerd.hocon")
 
     def test_plugins_template_matches_config(self) -> None:
         """templates/plugins.hocon must be byte-identical to config/plugins.hocon."""
@@ -433,3 +495,168 @@ class TestSharedRegistryIncludes:
             assert "tools" not in ConfigFactory.parse_string(text), (
                 f"{shared} looks like an agent network; excluding it from the manifest would unserve it."
             )
+
+
+class TestDefaultNetworks:
+    """`ns init` must scaffold a project where the Agent Network Designer actually runs."""
+
+    @staticmethod
+    def _manifest_keys(project: Path) -> dict:
+        """Parse the scaffolded manifest the way the neuro-san server reads it."""
+        prev_cwd = os.getcwd()
+        try:
+            os.chdir(project)
+            return dict(RawManifestRestorer().restore(file_reference="registries/manifest.hocon"))
+        finally:
+            os.chdir(prev_cwd)
+
+    def test_scaffolded_tree_is_import_complete(self, scaffolded_project: Path) -> None:
+        """Every coded_tools/middleware module the scaffold imports must exist in the scaffold.
+
+        This is the regression guard for the dependency-walker gap. The walker used to map each
+        HOCON `class` field to exactly one .py file and stop, so add_agent.py landed without the
+        constants.py / and_logger.py / progress_handler.py it imports at module scope, and the
+        designer died with ModuleNotFoundError on first use. Asserting the closure — rather than
+        a hand-written file list — keeps holding as the designer's own imports change.
+        """
+        project = scaffolded_project
+
+        missing = [
+            (str(source.relative_to(project)), module)
+            for root in LOCAL_ROOTS
+            for source in (project / root).rglob("*.py")
+            for module in _local_imports_of(source)
+            if not _resolves_in(project, module)
+        ]
+
+        assert not missing, f"scaffolded modules import files that were not scaffolded: {missing}"
+
+    def test_package_roots_are_regular_packages(self, scaffolded_project: Path) -> None:
+        """coded_tools/ and middleware/ need an __init__.py or the installed copies shadow them.
+
+        Python treats a directory without __init__.py as a namespace *portion* and keeps
+        scanning sys.path, so neuro-san-studio's own installed coded_tools package wins even
+        though the project root comes first. The project's tools would then be silently ignored.
+        """
+        project = scaffolded_project
+
+        assert (project / "coded_tools" / "__init__.py").is_file()
+        assert (project / "middleware" / "__init__.py").is_file()
+
+    def test_manifest_declares_every_default_network(self, scaffolded_project: Path) -> None:
+        """A network on disk but absent from the manifest is not served at all."""
+        keys = self._manifest_keys(scaffolded_project)
+
+        for network in EXPECTED_DEFAULT_NETWORKS:
+            assert network in keys, f"{network} was scaffolded but not registered"
+
+    def test_support_networks_are_served_but_not_public(self, scaffolded_project: Path) -> None:
+        """The designer's sub-networks and the CRUSE pair must be reachable, not listed.
+
+        `ns import` would register these as a flat `true`, which is why init scaffolds the
+        manifest from a template instead of calling update_manifest.
+        """
+        keys = self._manifest_keys(scaffolded_project)
+
+        for support in (
+            "agent_network_editor.hocon",
+            "agent_network_instructions_editor.hocon",
+            "agent_network_query_generator.hocon",
+            "experimental/cruse_theme_agent.hocon",
+            "experimental/cruse_widget_agent.hocon",
+        ):
+            assert dict(keys[support]) == {"serve": True, "public": False}, support
+
+    def test_public_networks_are_plain_true(self, scaffolded_project: Path) -> None:
+        """The entry points a user picks from the UI stay publicly listed."""
+        keys = self._manifest_keys(scaffolded_project)
+
+        for public in (
+            "basic/music_nerd.hocon",
+            "agent_network_designer.hocon",
+            "agent_network_test_generator.hocon",
+        ):
+            assert keys[public] is True, public
+
+    def test_architect_is_not_installed(self, scaffolded_project: Path) -> None:
+        """agent_network_architect needs Gmail credentials, Selenium, and a second server.
+
+        It ships disabled even in this repo's manifest, so scaffolding it would only give a new
+        user a network that cannot run. `ns import agent_network_architect` remains available.
+        """
+        project = scaffolded_project
+
+        assert not (project / "registries" / "agent_network_architect.hocon").exists()
+        assert "agent_network_architect.hocon" not in self._manifest_keys(project)
+
+    def test_rerun_is_idempotent_and_preserves_edits(self, tmp_path: Path) -> None:
+        """A second `ns init` must not clobber a network the user has since edited."""
+        project = tmp_path
+        InitCommand(providers_arg="openai", root_dir=str(project)).run()
+        edited = project / "registries" / "agent_network_designer.hocon"
+        edited.write_text("# my edits\n")
+
+        InitCommand(providers_arg="openai", root_dir=str(project)).run()
+
+        assert edited.read_text() == "# my edits\n"
+
+    def test_manifest_declares_nothing_it_does_not_install(self, scaffolded_project: Path) -> None:
+        """Every served key must have landed on disk, or the server hands out a 404."""
+        keys = self._manifest_keys(scaffolded_project)
+
+        assert set(keys) == set(EXPECTED_DEFAULT_NETWORKS)
+
+
+class TestDefaultNetworkDerivation:
+    """Guard the install list `ns init` derives from templates/manifest.hocon."""
+
+    def test_derived_list_is_pinned(self) -> None:
+        """What every new project gets must be an explicit, reviewed decision.
+
+        The list is derived from the manifest template so it cannot drift from what is served --
+        but that also means a one-line edit to the template silently changes what every `ns init`
+        installs. Pin it here so the change shows up in review.
+        """
+        assert InitCommand._default_network_hocons() == EXPECTED_DEFAULT_NETWORKS  # pylint: disable=protected-access
+
+    def test_derivation_ignores_the_generated_include(self, tmp_path: Path, monkeypatch: MonkeyPatch) -> None:
+        """The result must not depend on the directory `ns init` was invoked from.
+
+        The template carries `include "registries/generated/manifest.hocon"` for the benefit of the
+        running server. pyhocon resolves a relative include against the process CWD, so honoring it
+        from a studio checkout would splice every designer-generated network into the install list,
+        and honoring it from a re-initialized project would splice in that project's own output.
+        """
+        # pylint: disable=protected-access
+        monkeypatch.chdir(Path(__file__).resolve().parents[3])
+        from_studio_root = InitCommand._default_network_hocons()
+        monkeypatch.chdir(tmp_path)
+        from_empty_dir = InitCommand._default_network_hocons()
+
+        assert from_studio_root == from_empty_dir == EXPECTED_DEFAULT_NETWORKS
+        assert not [name for name in from_studio_root if name.startswith("generated/")]
+
+    def test_derivation_logs_no_include_warning(self, caplog: pytest.LogCaptureFixture) -> None:
+        """An unresolvable include makes pyhocon log "Cannot include file ..." to the console.
+
+        `ns init` output is the first thing a new user sees; it must not carry parser warnings
+        about a file that was never meant to be resolved at scaffold time.
+        """
+        with caplog.at_level(logging.WARNING, logger="pyhocon.config_parser"):
+            InitCommand._default_network_hocons()  # pylint: disable=protected-access
+
+        assert not caplog.records
+
+    def test_every_derived_network_exists_in_the_registries_package(self) -> None:
+        """A typo'd or renamed key would otherwise surface only as a [warn] during a real init.
+
+        AgentNetworkImporter degrades a missing source HOCON to a warning rather than an error, so
+        a bad key in the template produces a project quietly missing a network.
+        """
+        import importlib.resources  # pylint: disable=import-outside-toplevel
+
+        for network in InitCommand._default_network_hocons():  # pylint: disable=protected-access
+            path = importlib.resources.files("registries")
+            for segment in network.split("/"):
+                path = path / segment
+            assert path.is_file(), f"{network} is declared in templates/manifest.hocon but is not in registries/."

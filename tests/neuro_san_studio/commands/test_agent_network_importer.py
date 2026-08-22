@@ -597,3 +597,154 @@ class TestForceOverwrite:
         assert (target_basic / "music_nerd.hocon").read_text() == "NEW\n"
         assert "basic/music_nerd.hocon" in result.copied_files
         assert "basic/music_nerd.hocon" not in result.skipped_files
+
+
+class TestImportNetworks:
+    """Tests for the bulk `import_networks` seam shared by `ns init` and `ns import`."""
+
+    @staticmethod
+    def _build_source(source_dir: Path) -> None:
+        """Two real networks, one with a coded tool reached through an include + substitution."""
+        registries = source_dir / "registries"
+        (registries / "basic").mkdir(parents=True)
+        for shared in AgentNetworkImporter.SHARED_INCLUDES:
+            (registries / shared).write_text('{ "shared_instructions": "be helpful" }\n')
+        (registries / "basic" / "music_nerd.hocon").write_text(
+            """{
+    include "registries/aaosa.hocon",
+    "tools": [
+        { "name": "nerd", "instructions": ${shared_instructions}, "class": "lookup.Lookup" }
+    ]
+}
+"""
+        )
+        (registries / "basic" / "plain.hocon").write_text('{ "tools": [] }\n')
+
+        coded_tools = source_dir / "coded_tools" / "basic"
+        coded_tools.mkdir(parents=True)
+        (source_dir / "coded_tools" / "__init__.py").write_text("")
+        (coded_tools / "__init__.py").write_text("")
+        (coded_tools / "lookup.py").write_text("class Lookup:\n    pass\n")
+        (source_dir / "middleware").mkdir(parents=True)
+
+    def _importer(self, tmp_path: Path) -> AgentNetworkImporter:
+        """Build an importer over a freshly-laid-out source and an empty target."""
+        source_dir = tmp_path / "source"
+        target_dir = tmp_path / "target"
+        target_dir.mkdir()
+        self._build_source(source_dir)
+        return AgentNetworkImporter(str(source_dir), str(target_dir))
+
+    def test_import_networks_does_not_touch_the_manifest(self, tmp_path: Path) -> None:
+        """The bulk seam must leave the target manifest byte-identical.
+
+        This is what makes the seam safe for `ns init`, whose manifest is scaffolded from a
+        template declaring support networks as `{"serve": true, "public": false}`. Writing
+        entries here would flatten those to a bare `true` and unlist the designer's
+        sub-networks. `ns import` calls `update_manifest` itself, afterwards.
+        """
+        importer = self._importer(tmp_path)
+        manifest = tmp_path / "target" / "registries" / "manifest.hocon"
+        manifest.parent.mkdir(parents=True, exist_ok=True)
+        original = '{\n    "basic/music_nerd.hocon": { "serve": true, "public": false }\n}\n'
+        manifest.write_text(original)
+
+        importer.import_networks(["basic/music_nerd.hocon", "basic/plain.hocon"])
+
+        assert manifest.read_text() == original
+
+    def test_aggregates_copied_and_skipped_across_networks(self, tmp_path: Path) -> None:
+        """Counts must span the whole batch, and a re-run must report everything as skipped."""
+        importer = self._importer(tmp_path)
+        paths = ["basic/music_nerd.hocon", "basic/plain.hocon"]
+
+        first = importer.import_networks(paths)
+        assert len(first.results) == 2
+        assert first.copied > 0
+        assert not first.all_errors
+        # Every network re-offers the shared includes, so the second one in the batch finds
+        # them already landed by the first. That is the existing per-network contract; the
+        # bulk seam just sums it.
+        assert first.skipped == len(AgentNetworkImporter.SHARED_INCLUDES)
+
+        # Re-running copies nothing. The exact skip count is not asserted: `_copy_parent_inits`
+        # records the __init__.py files it copies but not the ones it finds already present,
+        # so the two runs' totals are deliberately not mirror images.
+        second = importer.import_networks(paths)
+        assert second.copied == 0
+        assert second.skipped > 0
+        assert not second.all_errors
+
+    def test_dependencies_are_resolved_regardless_of_cwd(self, tmp_path: Path, monkeypatch) -> None:
+        """The coded tool behind an include + substitution must land even from an alien cwd.
+
+        Regression guard for `ns import`, which analyzed source HOCONs while sitting in the
+        user's project directory and silently imported networks with no coded tools.
+        """
+        importer = self._importer(tmp_path)
+        elsewhere = tmp_path / "elsewhere"
+        elsewhere.mkdir()
+        monkeypatch.chdir(elsewhere)
+
+        importer.import_networks(["basic/music_nerd.hocon"])
+
+        assert (tmp_path / "target" / "coded_tools" / "basic" / "lookup.py").is_file()
+
+    def test_missing_network_warns_and_the_batch_continues(self, tmp_path: Path) -> None:
+        """A network absent from the source must not stop the ones that are present."""
+        importer = self._importer(tmp_path)
+
+        bulk = importer.import_networks(["basic/nope.hocon", "basic/plain.hocon"])
+
+        assert any("nope.hocon" in warning for warning in bulk.warnings)
+        assert (tmp_path / "target" / "registries" / "basic" / "plain.hocon").is_file()
+
+    def test_raising_import_is_recorded_and_the_batch_continues(self, tmp_path: Path) -> None:
+        """An unexpected OSError mid-batch lands in `errors`; later networks still import."""
+        importer = self._importer(tmp_path)
+        real_import = importer.import_network
+
+        def _explode_on_first(hocon_path: str, dependencies, force: bool = False):
+            if hocon_path == "basic/music_nerd.hocon":
+                raise OSError("disk on fire")
+            return real_import(hocon_path, dependencies, force=force)
+
+        importer.import_network = _explode_on_first
+
+        bulk = importer.import_networks(["basic/music_nerd.hocon", "basic/plain.hocon"])
+
+        assert bulk.errors == ["Failed to import basic/music_nerd.hocon: disk on fire"]
+        assert bulk.all_errors == bulk.errors
+        assert [result.hocon_path for result in bulk.results] == ["basic/plain.hocon"]
+
+    def test_on_network_fires_once_per_path_in_order(self, tmp_path: Path) -> None:
+        """The progress hook is the only output seam, so it must be exact."""
+        importer = self._importer(tmp_path)
+        seen: list = []
+
+        importer.import_networks(["basic/music_nerd.hocon", "basic/plain.hocon"], on_network=seen.append)
+
+        assert seen == ["basic/music_nerd.hocon", "basic/plain.hocon"]
+
+    def test_manifest_entries_are_flat_deduped_and_exclude_shared_includes(self, tmp_path: Path) -> None:
+        """Every imported HOCON is offered for registration exactly once; fragments never are."""
+        importer = self._importer(tmp_path)
+
+        bulk = importer.import_networks(["basic/music_nerd.hocon", "basic/plain.hocon", "basic/plain.hocon"])
+
+        assert bulk.manifest_entries == ["basic/music_nerd.hocon", "basic/plain.hocon"]
+        for shared in AgentNetworkImporter.SHARED_INCLUDES:
+            assert shared not in bulk.manifest_entries
+
+    def test_force_threads_through_to_each_network(self, tmp_path: Path) -> None:
+        """Without --force an existing file is preserved; with it, the source wins."""
+        importer = self._importer(tmp_path)
+        landed = tmp_path / "target" / "registries" / "basic" / "plain.hocon"
+        landed.parent.mkdir(parents=True, exist_ok=True)
+        landed.write_text("# my edits\n")
+
+        importer.import_networks(["basic/plain.hocon"])
+        assert landed.read_text() == "# my edits\n"
+
+        importer.import_networks(["basic/plain.hocon"], force=True)
+        assert landed.read_text() == '{ "tools": [] }\n'
