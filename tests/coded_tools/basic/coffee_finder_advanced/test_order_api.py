@@ -24,6 +24,13 @@ class TestOrderAPI(TestCase):
     Unit tests for the OrderAPI class.
     """
 
+    def setUp(self) -> None:
+        """
+        Reset the per-shop order-id counter so each test starts at FIRST_ORDER_ID.
+        """
+        super().setUp()
+        OrderAPI.reset_order_ids()
+
     def test_invoke(self):
         """
         Tests the invoke method of the OrderAPI CodedTool.
@@ -86,3 +93,24 @@ class TestOrderAPI(TestCase):
         response_3 = order_api.invoke(args=order, sly_data={})
         expected_resp_3 = f"Order 301 placed successfully for Olivier at {OrderAPI.SHOP_3}. Details: Black coffee"
         self.assertEqual(expected_resp_3, response_3)
+
+    def test_invoke_order_id_increments_per_shop(self):
+        """
+        Consecutive orders to the same shop within one run get distinct, incrementing ids.
+        """
+        order_api = OrderAPI()
+        order = {"customer_name": "Olivier", "shop_name": OrderAPI.SHOP_3, "order_details": "Black coffee"}
+
+        response_1 = order_api.invoke(args=order, sly_data={})
+        self.assertIn("Order 301", response_1)
+
+        response_2 = order_api.invoke(args=order, sly_data={})
+        self.assertIn("Order 302", response_2)
+
+        response_3 = order_api.invoke(args=order, sly_data={})
+        self.assertIn("Order 303", response_3)
+
+        # Other shops are unaffected and still start at their own base.
+        other_order = {"customer_name": "Olivier", "shop_name": OrderAPI.SHOP_1, "order_details": "Black coffee"}
+        response_other = order_api.invoke(args=other_order, sly_data={})
+        self.assertIn("Order 101", response_other)
