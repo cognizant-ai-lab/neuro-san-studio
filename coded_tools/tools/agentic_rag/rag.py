@@ -21,8 +21,8 @@ from typing import Dict
 from typing import List
 
 from langchain_community.document_loaders import PyPDFLoader
-from langchain_community.vectorstores import InMemoryVectorStore
 from langchain_core.documents import Document
+from langchain_core.vectorstores import InMemoryVectorStore
 from langchain_core.vectorstores.base import VectorStoreRetriever
 from langchain_openai import OpenAIEmbeddings
 from langchain_text_splitters import RecursiveCharacterTextSplitter

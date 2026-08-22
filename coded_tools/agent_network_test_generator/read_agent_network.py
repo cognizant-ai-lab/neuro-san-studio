@@ -21,6 +21,8 @@ from typing import Union
 from neuro_san.interfaces.coded_tool import CodedTool
 from neuro_san.internals.graph.persistence.agent_network_restorer import AgentNetworkRestorer
 
+from coded_tools.agent_network_editor.and_logger import AndLogger
+
 
 class ReadAgentNetwork(CodedTool):
     """
@@ -85,7 +87,7 @@ class ReadAgentNetwork(CodedTool):
             otherwise:
                 A text string error message.
         """
-        logger = logging.getLogger(self.__class__.__name__)
+        logger = AndLogger(logging.getLogger(self.__class__.__name__))
 
         hocon_file: str = args.get("agent_network_hocon_file", "")
         if not hocon_file:

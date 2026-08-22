@@ -31,8 +31,13 @@ This agent network requires the following setup:
 
 ### Python Dependencies
 
+This agent network requires langchain-openai for OpenAI's Responses API integration.
+This is already included with neuro-san-studio, so no need to install it separately.
+
+Additional dependencies for video processing:
+
 ```bash
-pip install langchain-openai>=0.3.26 opencv-python aiohttp
+pip install opencv-python aiohttp
 ```
 
 ### Environment Variables
@@ -161,7 +166,6 @@ When developing or debugging the OpenAI Video Generation Assistant, keep the fol
 - **Video Generation Access**: Confirm your account has access to the video generation tool.
 - **Tool Registration**: Ensure the `openai_video_generation` toolbox is correctly registered and mapped to the
 OpenAIVideoGeneration coded tool.
-- **LangChain Version**: Verify langchain-openai>=0.3.26 is installed for proper integration.
 - **Query Formatting**: Check that user inquiries are properly formatted and passed to the video generation tool.
 - **Browser Access**: Ensure the system can open a web browser to display generated videos.
 - **File Permissions**: If `save_video_file` is enabled, verify write permissions in the target directory.
@@ -174,7 +178,7 @@ videos.
 
 ### Common Issues
 
-- **Import Errors**: Ensure all dependencies (langchain-openai>=0.3.26, opencv-python, aiohttp) are installed
+- **Import Errors**: Ensure langchain-openai, opencv-python and aiohttp are installed
 - **Authentication Failures**: Verify API key is set and valid
 - **Video Generation Access**: Check that your account has video generation permissions
 - **Model Errors**: Confirm the specified model is accessible and supports video generation

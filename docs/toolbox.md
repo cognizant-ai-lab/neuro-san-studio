@@ -88,12 +88,12 @@ Perform real-time web searches using various search engines and APIs.
 ## Configuration and Setup
 
 Each tool may require specific API keys, environment variables, or dependencies.
-Refer to the detailed configuration instructions in the [Toolbox HOCON file](../toolbox/toolbox_info.hocon)
+Refer to the detailed configuration instructions in the [Toolbox HOCON file](../neuro_san_studio/toolbox/toolbox_info.hocon)
 for setup requirements.
 
 ## Learn More
 
 * **[User Guide: Toolbox Section](user_guide.md#toolbox)** — Comprehensive guide on configuring and customizing tools
-* **[Toolbox Configuration Reference](../toolbox/toolbox_info.hocon)** — Complete tool definitions and parameters
+* **[Toolbox Configuration Reference](../neuro_san_studio/toolbox/toolbox_info.hocon)** — Complete tool definitions and parameters
 <!-- pyml disable-next-line line-length -->
 * **[Default Toolbox](https://github.com/cognizant-ai-lab/neuro-san/blob/main/neuro_san/internals/run_context/langchain/toolbox/toolbox_info.hocon)** — NeuroSAN's default toolbox

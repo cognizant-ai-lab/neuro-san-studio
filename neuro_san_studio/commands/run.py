@@ -14,8 +14,6 @@
 #
 # END COPYRIGHT
 
-import argparse
-import glob
 import logging
 import os
 import signal
@@ -23,13 +21,17 @@ import socket
 import subprocess
 import sys
 import time
+from importlib.util import find_spec
+from pathlib import Path
 from typing import Any
 from typing import Dict
+from typing import List
+from typing import Optional
 from typing import Tuple
 
-from dotenv import load_dotenv
 from timedinput import timedinput
 
+from neuro_san_studio.commands.project_environment import ProjectEnvironment
 from neuro_san_studio.interfaces.process_logger_interface import ProcessLoggerInterface
 from neuro_san_studio.plugins.plugin_loader import PluginLoader
 from neuro_san_studio.runner.simple_process_logger import SimpleProcessLogger
@@ -43,19 +45,41 @@ class NeuroSanRunner:
     """Command-line tool to run the Neuro SAN server and web client."""
 
     # pylint: disable=too-many-instance-attributes
-    def __init__(self):
-        """Initialize configuration and parse CLI arguments."""
+    def __init__(self, cli_overrides: Optional[Dict[str, Any]] = None, extra_args: Optional[List[str]] = None):
+        """Initialize configuration.
+
+        Args:
+            cli_overrides: Values parsed by the Typer `run` command, keyed by the same names
+                as ``self.args`` (e.g. ``server_host``). Only user-supplied flags are present;
+                they take precedence over env-var defaults and plugin-provided defaults.
+            extra_args: Unrecognized CLI tokens forwarded verbatim (plugin-injected flags).
+                Retained for the upcoming Typer-native plugin-option contract; unused today.
+        """
+        self.extra_args: List[str] = extra_args or []
         self._logger = logging.getLogger(self.__class__.__name__)
         self.is_windows = os.name == "nt"
-        self.root_dir = os.getcwd()
-        self.logs_dir = os.path.join(self.root_dir, "logs")
-        self.thinking_file = os.path.join(self.logs_dir, "agent_thinking.txt")
-        self.thinking_dir = os.path.join(self.logs_dir, "thinking_dir")
+        self.root_dir = Path.cwd()
+        self.logs_dir = self.root_dir / "logs"
+        self.thinking_file = self.logs_dir / "agent_thinking.txt"
+        self.thinking_dir = self.logs_dir / "thinking_dir"
         print(f"Root directory: {self.root_dir}")
-        # Load environment variables from .env file
-        self.load_env_variables()
+        # Shared project-resource resolution (manifest, tool path, mcp, toolbox),
+        # also used by `ns chat` so the two commands resolve a project identically.
+        # The project .env file is loaded once, globally, by the CLI's top-level
+        # callback before any subcommand runs.
+        self.project_env = ProjectEnvironment(self.root_dir)
 
-        plugins_file = os.path.join(self.root_dir, "config", "plugins.hocon")
+        # Fail fast on a misconfiguration that otherwise surfaces as per-request
+        # server errors and an nsflow client that hangs forever: neuro-san's
+        # built-in Langfuse tracing requires the optional langfuse package.
+        if os.getenv("LANGFUSE_ENABLED", "false").strip().lower() == "true" and find_spec("langfuse") is None:
+            sys.exit(
+                "LANGFUSE_ENABLED=true but the 'langfuse' package is not installed.\n"
+                "Install it with: pip install -r neuro_san_studio/plugins/langfuse/requirements.txt\n"
+                '(or: pip install "neuro-san-studio[langfuse]"), or set LANGFUSE_ENABLED=false.'
+            )
+
+        plugins_file = PluginLoader.resolve_plugins_file(self.root_dir)
         self.plugin_classes = PluginLoader.load_plugin_classes(plugins_file)
 
         # Default Configuration
@@ -64,6 +88,9 @@ class NeuroSanRunner:
             "server_http_port": int(os.getenv("NEURO_SAN_SERVER_HTTP_PORT", "8080")),
             "server_connection": str(os.getenv("NEURO_SAN_SERVER_CONNECTION", "http")),
             "manifest_update_period_seconds": int(os.getenv("AGENT_MANIFEST_UPDATE_PERIOD_SECONDS", "5")),
+            # "spawn" is not the fastest, but the safest and most available on all OSes.
+            # See comment on the env var in the Dockerfile for more info.
+            "manifest_concurrency_context": os.getenv("AGENT_MANIFEST_CONCURRENCY_CONTEXT", "spawn"),
             "default_sly_data": str(os.getenv("DEFAULT_SLY_DATA", "")),
             "nsflow_host": os.getenv("NSFLOW_HOST", "localhost"),
             "nsflow_port": int(os.getenv("NSFLOW_PORT", "4173")),
@@ -71,24 +98,23 @@ class NeuroSanRunner:
             "log_level": os.getenv("LOG_LEVEL", "info"),
             "vite_api_protocol": os.getenv("VITE_API_PROTOCOL", "http"),
             "vite_ws_protocol": os.getenv("VITE_WS_PROTOCOL", "ws"),
-            "neuro_san_web_client_port": int(os.getenv("NEURO_SAN_WEB_CLIENT_PORT", "5003")),
-            "thinking_file": os.getenv("THINKING_FILE", self.thinking_file),
-            "thinking_dir": os.getenv("THINKING_DIR", self.thinking_dir),
+            "thinking_file": os.getenv("THINKING_FILE", str(self.thinking_file)),
+            "thinking_dir": os.getenv("THINKING_DIR", str(self.thinking_dir)),
             # Ensure all paths are resolved relative to `self.root_dir`
-            "agent_manifest_file": os.getenv(
-                "AGENT_MANIFEST_FILE", os.path.join(self.root_dir, "registries", "manifest.hocon")
-            ),
-            "agent_tool_path": os.getenv("AGENT_TOOL_PATH", os.path.join(self.root_dir, "coded_tools")),
-            "agent_toolbox_info_file": self._resolve_toolbox_info_file(),
-            "mcp_servers_info_file": os.getenv(
-                "MCP_SERVERS_INFO_FILE", os.path.join(self.root_dir, "mcp", "mcp_info.hocon")
-            ),
-            "logs_dir": self.logs_dir,
+            "agent_manifest_file": self.project_env.resolve_manifest_file(),
+            "agent_tool_path": self.project_env.resolve_tool_path(),
+            "agent_toolbox_info_file": self.project_env.resolve_toolbox_info_file(),
+            "mcp_servers_info_file": self.project_env.resolve_mcp_info_file(),
+            "logs_dir": str(self.logs_dir),
+            # Run-mode flags default off; a CLI override flips them on. Kept in the base dict
+            # so the runner can read them unconditionally regardless of what was passed.
+            "client_only": False,
+            "server_only": False,
         }
 
         # Ensure logs directory exists
-        os.makedirs(self.logs_dir, exist_ok=True)
-        os.makedirs(self.thinking_dir, exist_ok=True)
+        self.logs_dir.mkdir(parents=True, exist_ok=True)
+        self.thinking_dir.mkdir(parents=True, exist_ok=True)
 
         # Instantiate plugins now that args are fully built
         self.plugins = [cls(self.args) for cls in self.plugin_classes]
@@ -99,12 +125,14 @@ class NeuroSanRunner:
             self._logger.info("Updating args dict with plugin: %s", plugin)
             plugin.update_args_dict(self.args)
 
-        # Parse command-line arguments
-        self.args.update(self.parse_args())
+        # Apply CLI overrides last so user-supplied flags win over env-var and plugin defaults.
+        # Only keys actually passed on the command line are present, so unset flags keep their
+        # resolved defaults.
+        for key, value in (cli_overrides or {}).items():
+            self.args[key] = value
 
         # Process references
         self.server_process = None
-        self.flask_webclient_process = None
         self.nsflow_process = None
 
     def _apply_toolbox_env(self) -> None:
@@ -120,129 +148,19 @@ class NeuroSanRunner:
         else:
             print("AGENT_TOOLBOX_INFO_FILE: (not set — using built-in default toolbox)")
 
-    def _resolve_toolbox_info_file(self) -> str:
-        """Resolve the toolbox info file path, or return "" if it should not be exported.
-
-        A user-provided toolbox is purely an override on top of the neuro-san framework's
-        built-in default toolbox. Only set AGENT_TOOLBOX_INFO_FILE when the user has
-        opted in explicitly via the env var, or when the conventional
-        `<root>/toolbox/toolbox_info.hocon` actually exists. Otherwise return "" so the
-        env var stays unset and the framework uses its built-in default only.
-        """
-        env_value = os.getenv("AGENT_TOOLBOX_INFO_FILE")
-        if env_value is not None:
-            return env_value
-        default_path = os.path.join(self.root_dir, "toolbox", "toolbox_info.hocon")
-        if os.path.isfile(default_path):
-            return default_path
-        return ""
-
-    def load_env_variables(self):
-        """Load .env file from project root and set variables."""
-        env_path = os.path.join(self.root_dir, ".env")
-        if os.path.exists(env_path):
-            load_dotenv(env_path)
-            print(f"Loaded environment variables from: {env_path}")
-        else:
-            print(f"No .env file found at {env_path}. \nUsing defaults.\n")
-
-    def parse_args(self):
-        """Parses command-line arguments for configuration."""
-        parser = argparse.ArgumentParser(
-            description="Run the Neuro SAN server and web client.",
-            formatter_class=argparse.ArgumentDefaultsHelpFormatter,
-        )
-
-        parser.add_argument(
-            "--server-host", type=str, default=self.args["server_host"], help="Host address for the Neuro SAN server"
-        )
-        parser.add_argument(
-            "--server-http-port",
-            type=int,
-            default=self.args["server_http_port"],
-            help="Port number for the Neuro SAN server http endpoint",
-        )
-        parser.add_argument(
-            "--nsflow-port",
-            type=int,
-            default=self.args["nsflow_port"],
-            help="Port number for the nsflow client",
-        )
-        parser.add_argument(
-            "--web-client-port",
-            type=int,
-            default=self.args["neuro_san_web_client_port"],
-            help="Port number for the web client",
-        )
-        parser.add_argument(
-            "--log-level", type=str, default=self.args["log_level"], help="Log level for all processes"
-        )
-        parser.add_argument(
-            "--thinking-file", type=str, default=self.args["thinking_file"], help="Path to the agent thinking file"
-        )
-        parser.add_argument("--no-html", action="store_true", help="Don't generate html for network diagrams")
-        parser.add_argument(
-            "--client-only", action="store_true", help="Run only the nsflow client without NeuroSan server"
-        )
-        parser.add_argument(
-            "--server-only", action="store_true", help="Run only the NeuroSan server without the default nsflow client"
-        )
-        parser.add_argument(
-            "--use-flask-web-client", action="store_true", help="Use the flask based neuro-san-web-client"
-        )
-
-        # add arguments from plugins
-        for plugin in self.plugins:
-            self._logger.info("Updating parser args with plugin: %s", plugin)
-            plugin.update_parser_args(parser)
-
-        args, _ = parser.parse_known_args()
-        explicitly_passed_args = {arg for arg in sys.argv[1:] if arg.startswith("--")}
-        # Check for mutually exclusive arguments
-        if args.client_only and (
-            "--server-host" in explicitly_passed_args or "--server-port" in explicitly_passed_args
-        ):
-            parser.error("[x] You cannot specify --server-host or --server-port when using --client-only mode.")
-        if args.server_only and (
-            "--nsflow-host" in explicitly_passed_args or "--nsflow-port" in explicitly_passed_args
-        ):
-            parser.error("[x] You cannot specify --nsflow-host or --nsflow-port when using --server-only mode.")
-        if args.client_only and args.server_only:
-            parser.error("[x] You cannot specify both --client-only and --server-only at the same time.")
-
-        return vars(args)
-
-    def set_pythonpath(self):
-        """
-        Sets the PYTHONPATH environment variable to include the project root directory.
-        """
-        existing: str = os.environ.get("PYTHONPATH", "")
-
-        # Check to see if the root_dir is already in PYTHONPATH. If so, don't add it again.
-        # This block below was suggested by Copilot.
-        normalized_root_dir = os.path.normcase(os.path.abspath(self.root_dir))
-        existing_paths = [path for path in existing.split(os.pathsep) if path]
-        if any(os.path.normcase(os.path.abspath(path)) == normalized_root_dir for path in existing_paths):
-            return
-
-        # Add the root_dir to PYTHONPATH differently depending on existing value
-        new_path: str = self.root_dir
-        if existing:
-            new_path = existing + os.pathsep + self.root_dir
-        os.environ["PYTHONPATH"] = new_path
-
     def set_environment_variables(self):
         """Set required environment variables, optionally using neuro-san defaults."""
         print("\n" + "=" * 50 + "\n")
         print("Setting environment variables...\n")
         # Common env variables
-        self.set_pythonpath()
+        self.project_env.set_pythonpath()
         os.environ["AGENT_MANIFEST_FILE"] = self.args["agent_manifest_file"]
         os.environ["AGENT_TOOL_PATH"] = self.args["agent_tool_path"]
         self._apply_toolbox_env()
         os.environ["MCP_SERVERS_INFO_FILE"] = self.args["mcp_servers_info_file"]
         os.environ["NEURO_SAN_SERVER_CONNECTION"] = self.args["server_connection"]
         os.environ["AGENT_MANIFEST_UPDATE_PERIOD_SECONDS"] = str(self.args["manifest_update_period_seconds"])
+        os.environ["AGENT_MANIFEST_CONCURRENCY_CONTEXT"] = str(self.args["manifest_concurrency_context"])
         os.environ["LOG_LEVEL"] = self.args["log_level"]
         print(f"PYTHONPATH set to: {os.environ['PYTHONPATH']}")
         print(f"AGENT_MANIFEST_FILE set to: {os.environ['AGENT_MANIFEST_FILE']}")
@@ -250,6 +168,7 @@ class NeuroSanRunner:
         print(f"MCP_SERVERS_INFO_FILE set to: {os.environ['MCP_SERVERS_INFO_FILE']}")
         print(f"NEURO_SAN_SERVER_CONNECTION set to: {os.environ['NEURO_SAN_SERVER_CONNECTION']}")
         print(f"AGENT_MANIFEST_UPDATE_PERIOD_SECONDS set to: {os.environ['AGENT_MANIFEST_UPDATE_PERIOD_SECONDS']}")
+        print(f"AGENT_MANIFEST_CONCURRENCY_CONTEXT set to: {os.environ['AGENT_MANIFEST_CONCURRENCY_CONTEXT']}")
         print(f"LOG_LEVEL set to: {os.environ['LOG_LEVEL']}\n")
 
         # Client-only env variables
@@ -258,24 +177,20 @@ class NeuroSanRunner:
             os.environ["THINKING_DIR"] = self.args["thinking_dir"]
             print(f"THINKING_FILE set to: {os.environ['THINKING_FILE']}")
             print(f"THINKING_DIR set to: {os.environ['THINKING_DIR']}")
-            if self.args["use_flask_web_client"]:
-                os.environ["NEURO_SAN_WEB_CLIENT_PORT"] = str(self.args["web_client_port"])
-                print(f"NEURO_SAN_WEB_CLIENT_PORT set to: {os.environ['NEURO_SAN_WEB_CLIENT_PORT']}")
-            else:
-                os.environ["NSFLOW_HOST"] = str(self.args["nsflow_host"])
-                os.environ["NSFLOW_PORT"] = str(self.args["nsflow_port"])
-                os.environ["NSFLOW_PLUGIN_CRUSE"] = str(self.args["nsflow_plugin_cruse"])
-                os.environ["VITE_API_PROTOCOL"] = str(self.args["vite_api_protocol"])
-                os.environ["VITE_WS_PROTOCOL"] = str(self.args["vite_ws_protocol"])
-                print(f"NSFLOW_HOST set to: {os.environ['NSFLOW_HOST']}")
-                print(f"NSFLOW_PORT set to: {os.environ['NSFLOW_PORT']}")
-                print(f"NSFLOW_PLUGIN_CRUSE set to: {os.environ['NSFLOW_PLUGIN_CRUSE']}")
-                print(f"VITE_API_PROTOCOL set to: {os.environ['VITE_API_PROTOCOL']}")
-                print(f"VITE_WS_PROTOCOL set to: {os.environ['VITE_WS_PROTOCOL']}")
-                # Set env variable for using nsflow in client-only mode
-                if self.args["client_only"]:
-                    os.environ["NSFLOW_CLIENT_ONLY"] = "True"
-                    print(f"NSFLOW_CLIENT_ONLY set to: {os.environ['NSFLOW_CLIENT_ONLY']}")
+            os.environ["NSFLOW_HOST"] = str(self.args["nsflow_host"])
+            os.environ["NSFLOW_PORT"] = str(self.args["nsflow_port"])
+            os.environ["NSFLOW_PLUGIN_CRUSE"] = str(self.args["nsflow_plugin_cruse"])
+            os.environ["VITE_API_PROTOCOL"] = str(self.args["vite_api_protocol"])
+            os.environ["VITE_WS_PROTOCOL"] = str(self.args["vite_ws_protocol"])
+            print(f"NSFLOW_HOST set to: {os.environ['NSFLOW_HOST']}")
+            print(f"NSFLOW_PORT set to: {os.environ['NSFLOW_PORT']}")
+            print(f"NSFLOW_PLUGIN_CRUSE set to: {os.environ['NSFLOW_PLUGIN_CRUSE']}")
+            print(f"VITE_API_PROTOCOL set to: {os.environ['VITE_API_PROTOCOL']}")
+            print(f"VITE_WS_PROTOCOL set to: {os.environ['VITE_WS_PROTOCOL']}")
+            # Set env variable for using nsflow in client-only mode
+            if self.args["client_only"]:
+                os.environ["NSFLOW_CLIENT_ONLY"] = "True"
+                print(f"NSFLOW_CLIENT_ONLY set to: {os.environ['NSFLOW_CLIENT_ONLY']}")
 
         # Server-only env variables
         if not self.args["client_only"]:
@@ -286,23 +201,6 @@ class NeuroSanRunner:
             print(f"NEURO_SAN_SERVER_HTTP_PORT set to: {os.environ['NEURO_SAN_SERVER_HTTP_PORT']}\n")
 
         print("\n" + "=" * 50 + "\n")
-
-    @staticmethod
-    def generate_html_files():
-        """Generate .html files for all registry files except manifest.hocon."""
-        for file in glob.glob("./registries/*"):
-            if os.path.basename(file) != "manifest.hocon":
-                print(f"Generating .html file for: {file}")
-                result = subprocess.run(
-                    [sys.executable, "-m", "neuro_san_web_client.agents_diagram_builder", "--input_file", file],
-                    stdout=subprocess.PIPE,
-                    stderr=subprocess.PIPE,
-                    universal_newlines=True,
-                    check=True,
-                )
-                print(result.stdout)
-                if result.stderr:
-                    print(result.stderr, file=sys.stderr)
 
     def start_process(self, command, process_name, log_file):
         """Start a subprocess and capture logs."""
@@ -372,26 +270,6 @@ class NeuroSanRunner:
         self.nsflow_process = self.start_process(command, "nsflow", "logs/nsflow.log")
         print(f"nsflow client started on {self.args['nsflow_host']}:{self.args['nsflow_port']}")
 
-    def start_flask_web_client(self):
-        """Start the Flask web client."""
-        print("Starting Flask web client...")
-        command = [
-            sys.executable,
-            "-u",
-            "-m",
-            "neuro_san_web_client.app",
-            "--server-host",
-            self.args["server_host"],
-            "--server-port",
-            str(self.args["server_http_port"]),
-            "--web-client-port",
-            str(self.args["web_client_port"]),
-            "--thinking-file",
-            self.args["thinking_file"],
-        ]
-        self.flask_webclient_process = self.start_process(command, "FlaskWebClient", "logs/webclient.log")
-        print("Flask web client started on port: ", self.args["web_client_port"])
-
     # pylint: disable=unused-argument
     def signal_handler(self, signum, frame):
         """Handle termination signals to cleanly exit."""
@@ -403,15 +281,8 @@ class NeuroSanRunner:
                 self.server_process.terminate()
             else:
                 os.killpg(os.getpgid(self.server_process.pid), signal.SIGTERM)
-            # Wait for the server to finish cleanup (e.g. flushing Langfuse traces)
+            # Wait for the server to finish cleanup (e.g. flushing observability traces)
             self.server_process.wait(timeout=10)
-
-        if self.flask_webclient_process:
-            print(f"Stopping WEB CLIENT (PID {self.flask_webclient_process.pid})...")
-            if self.is_windows:
-                self.flask_webclient_process.terminate()
-            else:
-                os.killpg(os.getpgid(self.flask_webclient_process.pid), signal.SIGKILL)
 
         if self.nsflow_process:
             print(f"Stopping NSFLOW (PID {self.nsflow_process.pid})...")
@@ -454,13 +325,6 @@ class NeuroSanRunner:
             if self.is_port_open(self.args["server_host"], self.args["server_http_port"]):
                 port_conflicts.append(f"Neuro-San server http port {self.args['server_http_port']} is already in use.")
                 conflicting_ports.append(self.args["server_http_port"])
-
-        if self.args.get("use_flask_web_client"):
-            if self.is_port_open("localhost", self.args["neuro_san_web_client_port"]):
-                port_conflicts.append(
-                    f"Flask web client port {self.args['neuro_san_web_client_port']} is already in use."
-                )
-                conflicting_ports.append(self.args["neuro_san_web_client_port"])
 
         return port_conflicts, conflicting_ports
 
@@ -529,25 +393,15 @@ class NeuroSanRunner:
 
     def conditional_start_servers(self):
         """
-        Start neuro-san, nsflow, and flask client based on conditions while running on localhost.
+        Start neuro-san server and nsflow client based on --client-only and --server-only flags.
         Exit if any port is in use.
         """
         client_only = self.args["client_only"]
         server_only = self.args["server_only"]
-        use_flask = self.args.get("use_flask_web_client", False)
-        no_html = self.args.get("no_html", False)
 
         if client_only and server_only:
             print("Cannot use --client-only and --server-only together.")
             sys.exit(1)
-
-        if use_flask:
-            # Check if flask web client is available
-            try:
-                import neuro_san_web_client  # pylint: disable=unused-import,import-outside-toplevel  # noqa: F401
-            except ImportError:
-                print("Flask web client is not available. Please install it with `pip install neuro-san-web-client`.")
-                sys.exit(1)
 
         port_conflicts, conflicting_ports = self._check_port_conflicts()
 
@@ -566,14 +420,8 @@ class NeuroSanRunner:
                 sys.exit(1)
 
         if not server_only:
-            if use_flask:
-                if not no_html:
-                    self.generate_html_files()
-                self.start_flask_web_client()
-                print("Flask web-client is now running.")
-            else:
-                self.start_nsflow()
-                print("nsflow client is now running.")
+            self.start_nsflow()
+            print("nsflow client is now running.")
 
         if not client_only:
             self.start_neuro_san()
@@ -592,7 +440,7 @@ class NeuroSanRunner:
             plugin.pre_server_start_action()
 
         # Ensure logs directory exists
-        os.makedirs("logs", exist_ok=True)
+        Path("logs").mkdir(parents=True, exist_ok=True)
 
         # Set up signal handling for termination
         signal.signal(signal.SIGINT, self.signal_handler)  # Handle Ctrl+C
@@ -615,10 +463,9 @@ class NeuroSanRunner:
             for name, proc in [
                 ("NeuroSan", self.server_process),
                 ("nsflow", self.nsflow_process),
-                ("FlaskWebClient", self.flask_webclient_process),
             ]:
                 if proc is not None:
-                    log_file = os.path.join(self.logs_dir, f"{name.lower()}.log")
+                    log_file = str(self.logs_dir / f"{name.lower()}.log")
                     simple_logger.attach_process_logger(proc, name, log_file)
 
         print("\n" + "=" * 50 + "\n")
@@ -631,76 +478,3 @@ class NeuroSanRunner:
             self.nsflow_process.wait()
         if self.server_process:
             self.server_process.wait()
-        if self.flask_webclient_process:
-            self.flask_webclient_process.wait()
-
-
-def main():
-    """Entry point for the `neuro-san-studio` console script.
-
-    Dispatches to the `run` or `init` subcommand. Invoking the script with no
-    subcommand (or with only `run`-style flags) starts the server directly (run).
-    """
-    parser = argparse.ArgumentParser(prog="neuro-san-studio", add_help=True)
-    subparsers = parser.add_subparsers(dest="command")
-    subparsers.add_parser("run", help="Start the Neuro SAN server and client (default)")
-    init_parser = subparsers.add_parser("init", help="Scaffold a starter project in the current directory")
-    init_parser.add_argument(
-        "--providers",
-        type=str,
-        default=None,
-        help="Comma-separated providers to enable (openai,anthropic,google). Skips the interactive prompt.",
-    )
-    check_config_parser = subparsers.add_parser("check-config", help="Validate LLM configurations in a HOCON file")
-    check_config_parser.add_argument(
-        "hocon_path",
-        nargs="?",
-        default=None,
-        metavar="HOCON_PATH",
-        help="Path to the HOCON file to validate. Defaults to config/llm_config.hocon.",
-    )
-    check_llm_keys_parser = subparsers.add_parser(
-        "check-llm-keys", help="Validate LLM API keys and other critical environment variables"
-    )
-    check_llm_keys_parser.add_argument(
-        "--tier",
-        type=int,
-        choices=[1, 2, 3],
-        default=3,
-        help="Validation tier: 1=placeholder detection, 2=format validation, 3=live API calls (default: 3)",
-    )
-
-    # Back-compat: if the first token is not a known subcommand, treat the invocation
-    # as `run` so existing usages like `neuro-san-studio --server-http-port 8080` still work.
-    argv = sys.argv[1:]
-    known_subcommands = {"run", "init", "check-config", "check-llm-keys"}
-    if argv and argv[0] not in known_subcommands and argv[0] not in {"-h", "--help"}:
-        argv = ["run", *argv]
-    args, remainder = parser.parse_known_args(argv)
-
-    if args.command == "init":
-        from neuro_san_studio.commands.init import InitCommand  # pylint: disable=import-outside-toplevel
-
-        InitCommand(providers_arg=args.providers).run()
-        return
-
-    if args.command == "check-config":
-        # pylint: disable-next=import-outside-toplevel
-        from neuro_san_studio.commands.check_config import CheckConfigCommand
-
-        sys.exit(CheckConfigCommand(hocon_path=args.hocon_path).run())
-
-    if args.command == "check-llm-keys":
-        # pylint: disable-next=import-outside-toplevel
-        from neuro_san_studio.commands.check_llm_keys import CheckLlmKeysCommand
-
-        sys.exit(CheckLlmKeysCommand(tier=args.tier).run())
-
-    # `run` (or bare). Restore sys.argv so NeuroSanRunner.parse_args() sees the remaining flags.
-    sys.argv = [sys.argv[0], *remainder]
-    runner = NeuroSanRunner()
-    runner.run()
-
-
-if __name__ == "__main__":
-    main()

@@ -24,6 +24,7 @@
     # The path to this substitution file is **relative to the top-level directory**,
     # so running the script from elsewhere may result in file not found errors.
     include "registries/aaosa.hocon",
+    include "registries/expertise_scoping_instructions.hocon",
 
     "metadata": {
         "description": "Multi-agent system that mimics the intranet of a major corporation with integrated tools. Allows you to interact with and get information from various departments such as IT, Finance, Legal, HR, and Procurement. The top-level agent receives a question and, in coordination with down-chain agents and functional tools, provides comprehensive answers. Some agents call coded tools, including HR agents that integrate with HCM APIs for absence management and leave scheduling.",
@@ -43,13 +44,10 @@
 
     "instructions_prefix": """
     You are in charge of a portion of company's intranet. The intranet is also known as MyIntranet.
-    Only answer inquiries that are directly within your area of expertise, from the company's perspective.
-    Do not try to help for personal matters.
-    Do not mention what you can NOT do. Only mention what you can do.
-    Alwasy ask your down-chain agents for their take on the inquiry, and delegate to them as much as possible
+    Always ask your down-chain agents for their take on the inquiry, and delegate to them as much as possible
     to fulfill the user's inquiry.
     If needed ask the user for clarification.
-    """
+    """ ${expertise_scoping_instructions},
     "tools": [
         # This first agent definition is regarded as the "Front Man", which
         # does all the talking to the outside world/client.

@@ -24,6 +24,8 @@
 # Note: If `langchain-google-genai` is already installed in your environment, `google-genai` is already included.
 
 {
+    include "registries/expertise_scoping_instructions.hocon",
+
     # Load the shared LLM configuration from a single source of truth.
     # This allows users to change the model in one file rather than
     # modifying the configuration for each agent network.
@@ -71,7 +73,8 @@
                 }
             },
 
-            "instructions": "Use your tool to generate image.",
+            "instructions": """Use your tool to generate image.
+""" ${expertise_scoping_instructions},
             "tools": ["gemini_image_generation"]
         },
         {

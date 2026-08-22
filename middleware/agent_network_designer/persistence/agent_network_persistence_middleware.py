@@ -14,7 +14,6 @@
 #
 # END COPYRIGHT
 
-from logging import Logger
 from logging import getLogger
 from os import environ
 from typing import Any
@@ -27,12 +26,15 @@ from langgraph.runtime import Runtime
 from neuro_san.interfaces.reservationist import Reservationist
 from neuro_san.internals.validation.network.unreachable_nodes_network_validator import UnreachableNodesNetworkValidator
 
+from coded_tools.agent_network_editor.and_logger import AndLogger
 from coded_tools.agent_network_editor.connectivity_dictionary_converter import ConnectivityDictionaryConverter
 from coded_tools.agent_network_editor.constants import AGENT_NETWORK_DEFINITION
 from coded_tools.agent_network_editor.constants import AGENT_NETWORK_HOCON_TEXT
 from coded_tools.agent_network_editor.constants import AGENT_NETWORK_NAME
 from coded_tools.agent_network_editor.get_mcp_tool import GetMcpTool
 from coded_tools.agent_network_editor.get_subnetwork import GetSubnetwork
+from coded_tools.agent_network_editor.mcp_header_hygiene import McpHeaderHygiene
+from coded_tools.agent_network_editor.mcp_servers_load import McpServersLoad
 from coded_tools.agent_network_query_generator.set_sample_queries import AGENT_NETWORK_QUERIES
 from middleware.agent_network_designer.agent_network_definition_middleware import SKIP_DESIGNER
 from middleware.agent_network_designer.persistence.agent_network_assembler import AgentNetworkAssembler
@@ -47,8 +49,7 @@ from middleware.agent_network_designer.validation.agent_network_structure_valida
     AgentNetworkStructureValidationMiddleware,
 )
 
-# To use reservations, turn this environment variable to true and also
-# export AGENT_TEMPORARY_NETWORK_UPDATE_PERIOD_SECONDS=5
+# To use reservations, turn this environment variable to true
 WRITE_TO_FILE: bool = environ.get("AGENT_NETWORK_DESIGNER_USE_RESERVATIONS", "false").lower() != "true"
 
 # Set this to False if the agents are grounded and don't need demo mode instructions
@@ -56,6 +57,9 @@ DEMO_MODE: bool = environ.get("AGENT_NETWORK_DESIGNER_DEMO_MODE", "true").lower(
 
 # Subdirectory under registries directory where networks are saved when using file persistence.
 SUBDIRECTORY: str = environ.get("AGENT_NETWORK_DESIGNER_SUBDIRECTORY", DEFAULT_SUBDIRECTORY)
+
+# Default number of validation retry rounds when the env var is unset or unparseable.
+DEFAULT_MAX_VALIDATION_ATTEMPTS: int = 3
 
 
 class AgentNetworkPersistenceMiddleware(AgentMiddleware):
@@ -97,9 +101,25 @@ class AgentNetworkPersistenceMiddleware(AgentMiddleware):
                 Keys expected for this implementation are:
                     "agent_network_definition": an outline of an agent network
         """
-        self.logger: Logger = getLogger(self.__class__.__name__)
+        self.logger: AndLogger = AndLogger(getLogger(self.__class__.__name__))
         self.reservationist = reservationist
         self.sly_data = sly_data
+        # Maximum number of validation retry rounds before bailing without persisting.
+        # Parsed per-instance so a bad env var degrades this one session, not the whole server.
+        raw_max: str = environ.get(
+            "AGENT_NETWORK_DESIGNER_MAX_VALIDATION_ATTEMPTS", str(DEFAULT_MAX_VALIDATION_ATTEMPTS)
+        )
+        try:
+            self.max_validation_attempts: int = max(0, int(raw_max))
+        except ValueError:
+            self.logger.warning(
+                "Invalid AGENT_NETWORK_DESIGNER_MAX_VALIDATION_ATTEMPTS=%r; falling back to %d.",
+                raw_max,
+                DEFAULT_MAX_VALIDATION_ATTEMPTS,
+            )
+            self.max_validation_attempts = DEFAULT_MAX_VALIDATION_ATTEMPTS
+        # Counts validation rounds that failed in this session, used to cap retries.
+        self._validation_attempts: int = 0
 
     # Reenter the agent loop at the model node if validation fails.
     # If no agent network definition is present, return None to let the agent respond freely.
@@ -137,7 +157,22 @@ class AgentNetworkPersistenceMiddleware(AgentMiddleware):
             structure_errors, instructions_errors = await self._validate_network(network_def)
             if structure_errors or instructions_errors:
                 self.logger.warning("Validation errors: %s", structure_errors + instructions_errors)
-                self.logger.warning("Invoking agent network designer to fix the issues.")
+                # Bail out if we've already retried the max number of times. Returning None
+                # ends the session without persisting; the agent's last message reaches the user.
+                # Prevents runaway loops when the model can't fix the errors (e.g., the required
+                # tool was silently dropped from the tools array under load).
+                if self._validation_attempts >= self.max_validation_attempts:
+                    self.logger.warning(
+                        "Reached max validation attempts (%d); ending without persisting.",
+                        self.max_validation_attempts,
+                    )
+                    return None
+                self._validation_attempts += 1
+                self.logger.warning(
+                    "Invoking agent network designer to fix the issues (attempt %d/%d).",
+                    self._validation_attempts,
+                    self.max_validation_attempts,
+                )
                 message_parts: list[str] = []
                 if structure_errors:
                     message_parts.append(
@@ -156,10 +191,26 @@ class AgentNetworkPersistenceMiddleware(AgentMiddleware):
                     )
                 return self._error_response(" ".join(message_parts))
 
+            # Validation succeeded. Reset the counter so a later turn in the same session
+            # (e.g., a follow-up modification) gets its own full retry budget.
+            self._validation_attempts = 0
+
             sample_queries: list[str] = self.sly_data.get(AGENT_NETWORK_QUERIES, [])
 
             await self._assemble_and_persist(network_def, agent_network_name, sample_queries)
-            self._determine_exported_network_definition(self.sly_data)
+
+            agent_progress_style: str = environ.get("AGENT_NETWORK_DESIGNER_PROGRESS_STYLE", "internal")
+
+            # Pre-warm the shared ToolboxFactory off the event loop before the
+            # sync export below converts to connectivity style. In the normal
+            # designer flow ProgressHandler has already done this while
+            # reporting progress, but a skip_designer run never reports
+            # progress, so on a cold process the from_dict() fallback inside
+            # the export would otherwise pay the one-time toolbox file read
+            # and HOCON parse on the event loop.
+            if agent_progress_style == "connectivity":
+                await ConnectivityDictionaryConverter.get_shared_toolbox_factory()
+            self._determine_exported_network_definition(self.sly_data, agent_progress_style)
 
             self.logger.debug(">>>>>>>>>>>>>>>>>>> DONE %s !!!>>>>>>>>>>>>>>>>>>", self.__class__.__name__)
 
@@ -193,6 +244,49 @@ class AgentNetworkPersistenceMiddleware(AgentMiddleware):
         )
         return structure_errors, instructions_errors
 
+    def _client_token_mcp_headers(self, load: McpServersLoad) -> dict[str, list[str]]:
+        """
+        Map each client-token MCP server to the header names to declare for
+        it in the persisted network's sly_data_schema.
+
+        Client-token servers are the ones this conversation supplied auth
+        headers for via sly_data (nsflow injects one per connected server
+        when chatting with the designer) that are not file-configured. Each
+        maps to the usable header names supplied for it (names only, never
+        values), so the schema declares the actual headers a server needs
+        rather than assuming "Authorization". McpHeaderHygiene.usable_header_names
+        owns which names count — stripped, legal field names with non-blank
+        values, exactly what the fetch would send — so the persisted schema
+        never requires a header that would not actually authenticate.
+        sly_data_http_header_urls only yields URLs whose
+        sly_data["http_headers"][url] is a dict with at least one such
+        name, so the index below is safe and no entry comes out empty.
+
+        When mcp_info.hocon exists but could not be read (loaded_ok False),
+        the file-server set is UNKNOWN, so genuinely client-token servers
+        cannot be told apart from file-configured-but-unreadable ones. Emit
+        no client-token schema in that case rather than bake a wrong
+        required-list into the persisted (durable) network; a re-persist
+        once the config is fixed produces the correct schema.
+
+        :param load: The mcp_info.hocon load result.
+        :return: {server URL: header names}, empty when the file load
+                failed or the conversation supplied no client-token server.
+        """
+        if not load.loaded_ok:
+            self.logger.warning(
+                "MCP servers info file could not be read; omitting client-token sly_data_schema "
+                "from the persisted network until the file is valid again."
+            )
+            return {}
+        client_token_mcp_headers: dict[str, list[str]] = {}
+        for url in GetMcpTool.sly_data_http_header_urls(self.sly_data):
+            if url not in load.urls:
+                client_token_mcp_headers[url] = McpHeaderHygiene.usable_header_names(
+                    self.sly_data["http_headers"][url]
+                )
+        return client_token_mcp_headers
+
     async def _assemble_and_persist(
         self,
         network_def: dict[str, Any],
@@ -213,8 +307,10 @@ class AgentNetworkPersistenceMiddleware(AgentMiddleware):
         self.logger.info(">>>>>>>>>>>>>>>>>>>Assemble and Persist Agent Network>>>>>>>>>>>>>>>>>>")
         self.logger.info("Agent Network Name: %s", agent_network_name)
 
-        subnetwork_names: list[str] = await GetSubnetwork.get_subnetwork_names(self.sly_data)
-        mcp_servers: list[str] = await GetMcpTool.get_mcp_servers(self.sly_data)
+        subnetwork_names: list[str] = await GetSubnetwork.get_subnetwork_names()
+        load: McpServersLoad = await GetMcpTool.get_mcp_servers_load()
+        client_token_mcp_headers: dict[str, list[str]] = self._client_token_mcp_headers(load)
+        mcp_servers: list[str] = load.urls + list(client_token_mcp_headers)
         persistor: AgentNetworkPersistor = AgentNetworkPersistorFactory.create_persistor(
             {"reservationist": self.reservationist},
             WRITE_TO_FILE,
@@ -223,11 +319,15 @@ class AgentNetworkPersistenceMiddleware(AgentMiddleware):
             subnetwork_names,
             mcp_servers,
         )
-        top_agent_name: str = UnreachableNodesNetworkValidator().find_all_top_agents(network_def).pop()
+        top_agent_name: str = UnreachableNodesNetworkValidator().find_all_front_man_agents(network_def).pop()
 
         # Always assemble and store HOCON content for client consumption.
         persisted_content: str = await HoconAgentNetworkAssembler(DEMO_MODE).assemble_agent_network(
-            network_def, top_agent_name, agent_network_name, sample_queries
+            network_def,
+            top_agent_name,
+            agent_network_name,
+            sample_queries,
+            client_token_mcp_headers=client_token_mcp_headers,
         )
         self.logger.info("The resulting agent network content: \n %s", persisted_content)
         self.sly_data[AGENT_NETWORK_HOCON_TEXT] = persisted_content
@@ -242,7 +342,11 @@ class AgentNetworkPersistenceMiddleware(AgentMiddleware):
             assembler: AgentNetworkAssembler = persistor.get_assembler()
             # The persisted content for reservations is config.
             persisted_content: dict[str, Any] = await assembler.assemble_agent_network(
-                network_def, top_agent_name, agent_network_name, sample_queries
+                network_def,
+                top_agent_name,
+                agent_network_name,
+                sample_queries,
+                client_token_mcp_headers=client_token_mcp_headers,
             )
         # Persist the agent network
         persisted_reference: str | list[dict[str, Any]] = await persistor.async_persist(
@@ -252,15 +356,19 @@ class AgentNetworkPersistenceMiddleware(AgentMiddleware):
         if isinstance(persisted_reference, list):
             self.sly_data["agent_reservations"] = persisted_reference
 
-    def _determine_exported_network_definition(self, sly_data: dict[str, Any]):
+    def _determine_exported_network_definition(self, sly_data: dict[str, Any], agent_progress_style: str):
         """
-        Check the AGENT_NETWORK_DESIGNER_PROGRESS_STYLE env var to determine how to export
-        the agent network definition.
+        Determine how to export the agent network definition.
+
+        :param sly_data: The sly_data dictionary whose AGENT_NETWORK_DEFINITION
+                entry gets rewritten in place.
+        :param agent_progress_style: The AGENT_NETWORK_DESIGNER_PROGRESS_STYLE
+                env var value, read once by the caller (which also uses it to
+                decide whether to pre-warm the shared ToolboxFactory).
         """
         network_definition: dict[str, Any] = sly_data.get(AGENT_NETWORK_DEFINITION)
         use_network_definition: dict[str, Any] | list[dict[str, Any]] = network_definition
 
-        agent_progress_style: str = environ.get("AGENT_NETWORK_DESIGNER_PROGRESS_STYLE", "internal")
         if agent_progress_style == "connectivity":
             # The idea here is that a multi-user MAUI server can turn on this env variable
             # so that agent network progress is converted to connectivity-style data format

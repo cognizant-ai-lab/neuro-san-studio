@@ -27,6 +27,8 @@
         ]
     },
 
+    include "registries/expertise_scoping_instructions.hocon",
+
     # Load the shared LLM configuration from a single source of truth.
     # This allows users to change the model in one file rather than
     # modifying the configuration for each agent network.
@@ -77,7 +79,7 @@
                 }
             },
 
-            "instructions": """
+            "instructions": ${expertise_scoping_instructions} """
 You are a background theme generation specialist for the CRUSE (Context Reactive User Experience) system.
 Your job is to analyze agent metadata and generate appropriate background configurations using either dynamic (css-doodle) or static (Gradient) backgrounds.
 

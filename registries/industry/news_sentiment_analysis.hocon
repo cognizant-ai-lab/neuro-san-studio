@@ -19,6 +19,7 @@
 
 {
     include "registries/aaosa.hocon",
+    include "registries/expertise_scoping_instructions.hocon",
     
     "metadata": {
         "description": "Multi-agent system that analyzes news articles from The New York Times, The Guardian, and Al Jazeera to reveal how topics, events, or individuals are emotionally framed across diverse geopolitical perspectives. Uses keyword-driven VADER sentiment analysis to generate data-backed insights highlighting variations in tone, polarity, and narrative emphasis.",
@@ -38,11 +39,7 @@
     "max_execution_seconds": 6000,
     "instructions_prefix": """
     You are part of a news_sentiment_analysis_network of assistants.
-    Only answer inquiries that are directly within your area of expertise.
-    Do not try to help for other matters.
-    Do not mention what you can NOT do. Only mention what you can do.
-    """,
-
+""" ${expertise_scoping_instructions},
     "tools": [
         # This first agent definition is regarded as the "Front Man", which
         # does all the talking to the outside world/client.
@@ -99,7 +96,9 @@ A topic or subject for which media sentiment analysis is requested, covering sen
         },
         {
             "name": "data_analyst",
-            "function": ${aaosa_call},
+            "function": ${aaosa_call}{
+                "description": "Analyzes sentiment-tagged datasets and generates comprehensive sentiment analysis reports."
+            },
             "instructions": ${instructions_prefix} """
             Produce a comprehensive sentiment analysis report that is detailed, quantitative, and based on clear inferences. 
             The average compound sentiment scores for each source and overall sentiment in this format: "<source_name>": "avg_compound": <..>,

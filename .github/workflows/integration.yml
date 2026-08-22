@@ -10,8 +10,8 @@ permissions:
 
 jobs:
   test:
-    # cognizant-ai-lab/build-common 1.0.3
-    uses: cognizant-ai-lab/build-common/.github/workflows/_python-quality-gate.yml@a5d90457ea6e44b8f24f878755f77c00216e2947
+    # cognizant-ai-lab/build-common 1.0.9
+    uses: cognizant-ai-lab/build-common/.github/workflows/_python-quality-gate.yml@b14b3de23cb9aca02b2165e57542335e0c8f5304
     with:
       python-version: '3.13'
       # No lint steps in the original workflow
@@ -21,7 +21,7 @@ jobs:
         export OPENAI_API_VERSION="${{ vars.OPENAI_API_VERSION }}" &&
         export AGENT_TOOL_PATH="coded_tools/" &&
         export AGENT_MANIFEST_FILE="registries/manifest.hocon" &&
-        export AGENT_TEMPORARY_NETWORK_UPDATE_PERIOD_SECONDS=5 &&
+        export AGENT_TOOLBOX_INFO_FILE="neuro_san_studio/toolbox/toolbox_info.hocon" &&
         export PYTHONPATH="${PYTHONPATH:+$PYTHONPATH:}." &&
         pytest --capture=no -m "integration"
     secrets:

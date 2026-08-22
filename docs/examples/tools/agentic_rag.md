@@ -15,6 +15,20 @@ enterprise question-answering.
 
 ---
 
+## Setup
+
+This agent network is disabled by default. Before enabling `"tools/agentic_rag.hocon"` in
+`registries/tools/manifest.hocon`, install the optional Slack dependency:
+
+```bash
+pip install slack-sdk
+```
+
+Set either `SLACK_BOT_TOKEN` or `SLACK_USER_TOKEN` to retrieve Slack messages. Without the package or a configured
+token, the Slack tool returns demo data.
+
+---
+
 ## Description
 
 The assistant is built around a **Front Man** agent that acts as the main point of contact with users. This agent determines

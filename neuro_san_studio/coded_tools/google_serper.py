@@ -1,0 +1,139 @@
+# Copyright © 2025-2026 Cognizant Technology Solutions Corp, www.cognizant.com.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
+# END COPYRIGHT
+
+import logging
+import os
+from typing import Any
+from typing import Dict
+from typing import Union
+
+from aiohttp import ClientError
+from aiohttp import ClientSession
+from aiohttp import ClientTimeout
+from neuro_san.interfaces.coded_tool import CodedTool
+
+# Default parameters for google serper
+K = 10  # number of search results
+GL = "us"  # country
+HL = "en"  # langauge
+TYPE = "search"  # search type
+SERPER_API_URL = "https://google.serper.dev"
+SERPER_TIMEOUT = 30.0
+SEARCH_TYPES = {"images", "news", "places", "search"}
+
+logger = logging.getLogger(__name__)
+
+
+class GoogleSerper(CodedTool):
+    """
+    CodedTool implementation which provides a way to do website search by Google Serper
+
+    Search the web using Google Serper API with customizable parameters.
+
+        Supports multiple search types (web, news, images, places) with geographic and language localization.
+        Returns structured search results with metadata for easy processing.
+
+        Available parameters:
+        - query (required): The search term or question to look up online
+        - type (optional): Search type - 'search' (default, general web), 'news', 'images', or 'places'
+        - k (optional): Number of results to return (default: 10)
+        - gl (optional): Country code for geographic localization (default: 'us', e.g., 'uk', 'de', 'fr')
+        - hl (optional): Language code for search interface (default: 'en', e.g., 'es', 'fr', 'de')
+        - tbs (optional): Time-based search filter (e.g., 'qdr:d' for past day, 'qdr:w' for past week, or
+                          'qdr:m' for past month)
+
+        Use this for: real-time web information, news searches, location-based queries, and when you need
+        fresh data not available in the AI model's training data.
+    """
+
+    async def async_invoke(self, args: Dict[str, Any], sly_data: Dict[str, Any]) -> Union[Dict[str, Any], str]:
+        """
+        :param args: An argument dictionary whose keys are the parameters
+                to the coded tool and whose values are the values passed for them
+                by the calling agent.  This dictionary is to be treated as read-only.
+
+                The argument dictionary expects the following keys:
+                    "query" the query to search for.
+
+        :param sly_data: A dictionary whose keys are defined by the agent hierarchy,
+                but whose values are meant to be kept out of the chat stream.
+
+                This dictionary is largely to be treated as read-only.
+                It is possible to add key/value pairs to this dict that do not
+                yet exist as a bulletin board, as long as the responsibility
+                for which coded_tool publishes new entries is well understood
+                by the agent chain implementation and the coded_tool implementation
+                adding the data is not invoke()-ed more than once.
+
+                Keys expected for this implementation are:
+                    None
+
+        :return:
+            In case of successful execution:
+                A dictionary including metadata.
+            otherwise:
+                a text string an error message in the format:
+                "Error: <error message>"
+        """
+        # Get query from args
+        query: str = args.get("query", "")
+        if query == "":
+            return "Error: No query provided."
+
+        serper_api_key = os.getenv("SERPER_API_KEY")
+        if not serper_api_key:
+            return "Error: SERPER_API_KEY is not set."
+
+        # Parameters for google serper
+
+        # Country code to localize search results (e.g., "us" for United States)
+        gl: str = args.get("gl", GL)
+        # Language code for the search interface (e.g., "en" for English)
+        hl: str = args.get("hl", HL)
+        # Number of top search results to retrieve
+        try:
+            k: int = int(args.get("k", K))
+        except (TypeError, ValueError):
+            return f"Error: 'k' must be an integer, got: {args.get('k')!r}."
+        # Type of search (e.g., "news", "places", "images", or "search" for general)
+        search_type: str = args.get("type", TYPE)
+        if search_type not in SEARCH_TYPES:
+            return f"Error: Unsupported search type: {search_type}."
+        # Search filter string (e.g., "qdr:d" for past day results); optional and can be used for time filtering
+        # Default is None.
+        tbs: str = args.get("tbs")
+
+        headers = {
+            "X-API-KEY": serper_api_key,
+            "Content-Type": "application/json",
+        }
+        params = {
+            "q": query,
+            "gl": gl,
+            "hl": hl,
+            "num": k,
+        }
+        if tbs is not None:
+            params["tbs"] = tbs
+
+        try:
+            async with ClientSession(timeout=ClientTimeout(total=SERPER_TIMEOUT)) as session:
+                async with session.post(f"{SERPER_API_URL}/{search_type}", headers=headers, params=params) as response:
+                    response.raise_for_status()
+                    return await response.json()
+        except (ClientError, TimeoutError) as error:
+            logger.error("Serper request failed: %s", error)
+            return f"Error: Serper request failed: {error}"

@@ -12,8 +12,8 @@ jobs:
   agent-network-designer-test:
     # don't run this job in sync'd clones
     if: github.repository == 'cognizant-ai-lab/neuro-san-studio'
-    # cognizant-ai-lab/build-common 1.0.3
-    uses: cognizant-ai-lab/build-common/.github/workflows/_python-quality-gate.yml@a5d90457ea6e44b8f24f878755f77c00216e2947
+    # cognizant-ai-lab/build-common 1.0.9
+    uses: cognizant-ai-lab/build-common/.github/workflows/_python-quality-gate.yml@b14b3de23cb9aca02b2165e57542335e0c8f5304
     with:
       python-version: '3.13'
       # Required by build_scripts/server_start.sh:
@@ -40,7 +40,6 @@ jobs:
         source venv/bin/activate
         export AGENT_TOOL_PATH="coded_tools/"
         export AGENT_MANIFEST_FILE="registries/manifest.hocon"
-        export AGENT_TEMPORARY_NETWORK_UPDATE_PERIOD_SECONDS=5
         export PYTHONPATH=".:${PYTHONPATH:-}"
         build_scripts/server_start.sh
         if ! pytest --capture=no --verbose \

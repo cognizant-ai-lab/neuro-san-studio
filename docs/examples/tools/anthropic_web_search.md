@@ -22,9 +22,8 @@ This agent network requires the following setup:
 
 ### Python Dependencies
 
-```bash
-pip install langchain-anthropic>=0.3.13
-```
+This agent network requires langchain-anthropic for Anthropic's built-in tool integration.
+This is already included with neuro-san-studio, so no need to install anything new.
 
 ### Environment Variable
 
@@ -111,7 +110,7 @@ When developing or debugging the Web Search Assistant, keep the following in min
 
 ### Common Issues
 
-- **Import Errors**: Ensure langchain-anthropic>=0.3.13 is installed
+- **Import Errors**: Ensure langchain-anthropic is installed
 
 - **Authentication Failures**: Verify API key is set and valid
 

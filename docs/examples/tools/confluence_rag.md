@@ -14,14 +14,20 @@ The **Confluence RAG Assistant** answers user queries using Retrieval-Augmented 
 
 This agent is **disabled by default**. To enable and use it:
 
-1. Installing the required package:
+1. Install the required package:
 
    ```bash
-    pip install atlassian-python-api
-    ```
+   pip install atlassian-python-api
+   ```
 
-2. Install additional dependencies depending on the attachment types (e.g., PDFs, images, Office files). These may include
-both Python packages and system tools. See: [ConfluenceLoader documentation](https://python.langchain.com/api_reference/_modules/langchain_community/document_loaders/confluence.html#ConfluenceLoader)
+2. If attachments are enabled, install the dependencies for the file types you need:
+
+   ```bash
+   pip install docx2txt openpyxl pandas Pillow pytesseract reportlab svglib xlrd
+   ```
+
+   Image and SVG extraction also requires the Tesseract executable. PDF text extraction uses the project's existing
+   `pypdf` dependency.
 
 3. Set authentication credentials, either in the HOCON config file or via environment variables:
 
@@ -48,8 +54,8 @@ both Python packages and system tools. See: [ConfluenceLoader documentation](htt
 ##### Required
 
 - `url` (str): Base URL of your Confluence instance.
-- `page_ids` (list): List of `page_id` to load
-- `space_key` (str): Space to load all pages from
+- `page_ids` (list): List of `page_id` values to load.
+- `space_key` (str): Space from which to load all pages.
     > Note: If both `page_ids` and `space_key` are provided, the loader returns the union of pages from both lists.
 
 Both space_key and page_id can be found in the URL of a Confluence page:
@@ -64,13 +70,14 @@ Both space_key and page_id can be found in the URL of a Confluence page:
 
 ##### Optional
 
-- `include_attachments` (bool): If True, download and extract text content to add to the document.
-
-For a full list of options and supported file types, refer to the
-[LangChain ConfluenceLoader documentation](https://python.langchain.com/api_reference/_modules/langchain_community/document_loaders/confluence.html#ConfluenceLoader).
+- `include_attachments` (bool): If true, download supported attachments and append their extracted text to the page.
+  Supported file types are PDF, PNG, JPEG/JPG, SVG, DOCX, XLS, and XLSX.
+- `limit` (int): Maximum pages retrieved per request. Defaults to 50.
+- `max_pages` (int): Maximum pages retrieved from a space. Defaults to 1000.
+- `ocr_languages` (str): Optional Tesseract language selection for image and SVG attachments.
 
 - `save_vector_store` (bool): Save the vector store to a JSON file.
-- `vector_store_path`(str): Path to save/load the vector store (absolute or relative to `neuro-san-studio/coded_tools/tools/pdf_rag/`).
+- `vector_store_path`(str): Path to save/load the vector store (absolute or relative to `neuro-san-studio/neuro_san_studio/coded_tools/pdf_rag/`).
 
 ---
 

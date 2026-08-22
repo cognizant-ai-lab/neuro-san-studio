@@ -17,10 +17,12 @@ jobs:
       (github.event_name == 'push' && github.ref != 'refs/heads/main') ||
       (github.event_name == 'pull_request' &&
         github.event.pull_request.head.repo.full_name != github.repository)
-    # 1.0.3
-    uses: cognizant-ai-lab/build-common/.github/workflows/_python-quality-gate.yml@a5d90457ea6e44b8f24f878755f77c00216e2947
+    # 1.0.9
+    uses: cognizant-ai-lab/build-common/.github/workflows/_python-quality-gate.yml@b14b3de23cb9aca02b2165e57542335e0c8f5304
     with:
       python-version: '3.13'
+      run-hadolint: true
+      dockerfile-path: 'deploy/Dockerfile'
       lint-command-override: |
         set -e
         VIRTUAL_ENV=system make lint-check
@@ -28,6 +30,7 @@ jobs:
           https://github.com/lycheeverse/lychee/releases/download/lychee-v0.24.1/lychee-x86_64-unknown-linux-gnu.tar.gz \
           | tar --extract --gzip --directory /tmp --strip-components=1
         # To prevent flaky CI failures, accept:
+        # - 2xx (all success codes, e.g. 202 Accepted for endpoints that process asynchronously)
         # - 401 (Unauthorized) for API endpoints that require authentication
         # - 403 (Forbidden) if the server blocks bots or requests without a browser-like User-Agent
         # - 405 (Method Not Allowed) for MCP/API endpoints that only accept POST, not GET
@@ -36,7 +39,7 @@ jobs:
         # - 429 (rate limit)
         # - 502 (bad gateway) if the server is reachable but its backend momentarily failed to respond
         # - 503 (temporary outage)
-        /tmp/lychee --max-retries 3 --retry-wait-time 3 --max-concurrency 32 --verbose --accept '200,203,204,401,403,405,406,422,429,502,503' --exclude-path venv --include-verbatim '**/*.py' '**/*.md' '**/*.rst' '**/*.hocon' '**/*.txt' '**/*.yaml' '**/*.yml' '**/*.json' '**/*.html' '**/*.sh' .
+        /tmp/lychee --max-retries 3 --retry-wait-time 3 --max-concurrency 32 --verbose --accept '200..=299,401,403,405,406,422,429,502,503' --exclude-path venv --include-verbatim '**/*.py' '**/*.md' '**/*.rst' '**/*.hocon' '**/*.txt' '**/*.yaml' '**/*.yml' '**/*.json' '**/*.html' '**/*.sh' .
       test-command-override: 'VIRTUAL_ENV=system AGENT_TOOL_PATH=./neuro_san/coded_tools PYTHONPATH=.:$PYTHONPATH make test'
       check-readme-pypi: true
     secrets:

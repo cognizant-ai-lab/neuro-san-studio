@@ -122,14 +122,19 @@ allowing developers to monitor and analyze their networks in real-time.
 ### Arize Phoenix
 
 The [Arize Phoenix plugin](../neuro_san_studio/plugins/phoenix/README.md) integrates
-[Arize Phoenix](https://phoenix.arize.com/) for AI observability in Neuro SAN Studio,
+[Arize Phoenix](https://arize.com/phoenix/) for AI observability in Neuro SAN Studio,
 providing comprehensive monitoring and analysis of LLM interactions.
 
 ### Langfuse
 
-The [Langfuse plugin](../neuro_san_studio/plugins/langfuse/README.md) integrates [Langfuse](https://langfuse.com/) for AI
-observability in Neuro SAN Studio, providing trace collection, cost tracking, and performance metrics
-for LLM interactions. It supports both cloud and self-hosted Langfuse instances.
+The [Langfuse integration](../neuro_san_studio/plugins/langfuse/README.md) provides
+[Langfuse](https://langfuse.com/) observability for Neuro SAN Studio: trace collection, cost tracking, and
+performance metrics for LLM interactions, with support for both cloud and self-hosted Langfuse instances.
+Langfuse tracing is built into Neuro SAN itself — no plugin class is required. To use it, install the
+optional dependency (`pip install -r neuro_san_studio/plugins/langfuse/requirements.txt`) and set
+`LANGFUSE_ENABLED=true` along with `LANGFUSE_SECRET_KEY`, `LANGFUSE_PUBLIC_KEY`, and (optionally)
+`LANGFUSE_HOST` in your `.env` file. See the [README](../neuro_san_studio/plugins/langfuse/README.md) for
+the full configuration reference and troubleshooting.
 
 ### LangSmith
 

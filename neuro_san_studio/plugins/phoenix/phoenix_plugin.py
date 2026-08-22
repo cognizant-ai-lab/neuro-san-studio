@@ -37,7 +37,7 @@ from typing import Optional
 from typing import Type
 
 # Use lazy loading of types to avoid dependency bloat for stuff most people don't need.
-from leaf_common.config.resolver_util import ResolverUtil
+from leaf_common.resolution.resolver_util import ResolverUtil
 
 from neuro_san_studio.interfaces.base_plugin import BasePlugin
 

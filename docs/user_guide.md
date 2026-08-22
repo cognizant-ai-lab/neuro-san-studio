@@ -27,6 +27,7 @@
       - [Ollama Configuration](#ollama-configuration)
       - [Using Ollama in Docker or Remote Server](#using-ollama-in-docker-or-remote-server)
       - [Example agent network](#example-agent-network)
+    - [Mistral](#mistral)
     - [Configuring Default Models with Environment Variables](#configuring-default-models-with-environment-variables)
       - [Using Optional Environment Variable Substitution](#using-optional-environment-variable-substitution)
       - [Setting Your Own Default Model](#setting-your-own-default-model)
@@ -489,20 +490,11 @@ To find which models are available in your region, refer to the official AWS doc
 
 To use Gemini models:
 
-1. Confirm that `langchain-google-genai` is installed:
+1. The `langchain-google-genai` package is already included with neuro-san-studio,
+   so no need to install anything new.
 
-    ```bash
-    pip show langchain-google-genai
-    ```
-
-2. If not installed, install it:
-
-    ```bash
-    pip install langchain-google-genai
-    ```
-
-3. Set the `GOOGLE_API_KEY` environment variable to your Google Gemini API key
-and specify which model to use in the `model_name` field of the `llm_config` section of an agent network hocon file:
+2. Set the `GOOGLE_API_KEY` environment variable to your Google Gemini API key
+   and specify which model to use in the `model_name` field of the `llm_config` section of an agent network hocon file:
 
 ```hocon
     "llm_config": {
@@ -713,6 +705,31 @@ See the [./examples/music_nerd_pro_local.md](examples/basic/music_nerd_pro_local
 
 For more information about how to use Ollama with LangChain,
 see [this page](https://python.langchain.com/docs/integrations/chat/ollama/)
+
+### Mistral
+
+Mistral is not one of the built-in providers in the
+[default llm info file](https://github.com/cognizant-ai-lab/neuro-san/blob/main/neuro_san/internals/run_context/langchain/llms/default_llm_info.hocon),
+so it is configured using the `class` key with the full LangChain chat model path (see
+[Using the `class` Key](#using-the-class-key)).
+
+First, install the LangChain Mistral AI integration:
+
+```shell
+pip install langchain-mistralai==1.1.2
+```
+
+Then set the `MISTRAL_API_KEY` environment variable to your Mistral API key and specify the model
+in the `llm_config` section of an agent network hocon file:
+
+```hocon
+    "llm_config": {
+        "class": "langchain_mistralai.chat_models.ChatMistralAI",
+        "model_name": "mistral-medium-latest",
+    }
+```
+
+Here you can get a Mistral API [key](https://admin.mistral.ai/).
 
 ### Configuring Default Models with Environment Variables
 
@@ -1200,25 +1217,21 @@ To use tools from toolbox in your agent network, simply call them with field `to
    - langchain tools
        - Each tool or toolkit must have a `class` key.
        - The specified class must be available in the server's `PYTHONPATH`.
-       - Additional dependencies (outside of `langchain_community`) must be installed separately.
+       - Integration-specific dependencies must be installed separately.
 
         Example:
 
         ```hocon
             "tavily_search": {
                 # Fully qualified class path of the tool to be instantiated.
-                "class": "langchain_community.tools.tavily_search.TavilySearchResults",
+                "class": "langchain_tavily.TavilySearch",
 
                 # (Optional) URL for reference documentation about this tool.
                 "base_tool_info_url": "https://python.langchain.com/docs/integrations/tools/tavily_search/",
 
                 # Arguments for the tool's constructor.
                 "args": {
-                    "api_wrapper": {
-                        # If the argument should be instantiated as a class, specify it using the "class" key.
-                        # This tells the system to create an instance of the provided class instead of passing it as-is.
-                        "class": "langchain_community.utilities.tavily_search.TavilySearchAPIWrapper"
-                    },
+                    "max_results": 5,
                 }
             }
         ```
@@ -1268,9 +1281,26 @@ For more information on toolbox, please see [Toolbox Info HOCON File Reference](
 ## MCP Servers
 
 Agents can invoke tools exposed by remote **Model Context Protocol (MCP)** servers.
-URLs must either:
-- start with `https://mcp`, **or**
-- end with `/mcp`.
+
+MCP server URLs are recognized when they conform to the
+[MCP canonical server URI specification](https://modelcontextprotocol.io/specification/2025-11-25/basic/authorization#canonical-server-uri):
+they must use the `http` or `https` scheme, must include a host, and must not contain a fragment.
+To distinguish MCP server URLs from other external agent URLs, the literal `mcp` must appear either
+as a label in the hostname (e.g. `mcp.example.com`) or as any segment of the URL path
+(e.g. `/mcp`, `/mcp/free`, `/server/mcp`, `/v1/mcp/server`).
+
+Examples of URLs that are recognized as MCP servers:
+
+- `https://mcp.example.com/mcp`
+- `https://mcp.example.com`
+- `https://mcp.example.com:8443`
+- `https://example.com/mcp/free`
+- `https://mcp.example.com/mcp?profile=free`
+- `https://example.com/v1/mcp/server`
+- `http://localhost:8000/mcp/`
+
+If a URL you want to use does not satisfy these rules, fall back to the dictionary form below,
+which is always treated as an MCP reference regardless of URL shape.
 
 ### MCP Server Configuration
 
@@ -1290,7 +1320,8 @@ MCP servers can be configured in one of two formats under the `tools` field.
 
 2. Dictionary Reference
 
-    Use this format when you want to explicitly control which tools are exposed from a given MCP server.
+    Use this format when you want to explicitly control which tools are exposed from a given MCP server,
+    or when your URL does not satisfy the recognition rules above.
 
     ```json
     "tools": [
@@ -1301,8 +1332,8 @@ MCP servers can be configured in one of two formats under the `tools` field.
     ]
     ```
 
-   - The tools key specifies a whitelist of tools made available to the agent.
-   - If the tools key is omitted, all tools from the MCP server will be accessible.
+   - The `tools` key specifies a whitelist of tools made available to the agent.
+   - If the `tools` key is omitted, all tools from the MCP server will be accessible.
 
 ### Authentication
 
@@ -1351,9 +1382,60 @@ following methods.
    - If authentication headers are defined in both sly_data, and `MCP_SERVERS_INFO_FILE` then sly_data takes precedence.
    - Tool filtering from `MCP_SERVERS_INFO_FILE` is applied only if no tool filtering is defined
     directly in the agent network HOCON configuration.
-   - For example, see [mcp_info.hocon](../mcp/mcp_info.hocon)
+   - For example, see [mcp_info.hocon](../neuro_san_studio/mcp/mcp_info.hocon)
+
+3. OAuth bearer-token flow (client-driven)
+
+    Rather than passing a token in sly data directly or setting it up as an environment variable in
+    `MCP_SERVERS_INFO_FILE`, an agent network can **declare** which MCP server URLs need
+    `http_headers` and let a client that supports OAuth — such as
+    [nsflow](https://github.com/cognizant-ai-lab/nsflow) — obtain the token and inject it into
+    sly_data for you. The client runs the OAuth 2.1 authorization-code flow with PKCE (and Dynamic
+    Client Registration where the server supports it), keeps the token on the backend, and at chat
+    time injects `sly_data["http_headers"]["<MCP_URL>"] = {"Authorization": "Bearer <token>"}`.
+    Tokens are never shown to the LLM or stored in the network.
+
+    Declare the expected shape under the agent `function` using `sly_data_schema`:
+
+    ```json
+    "sly_data_schema": {
+        "type": "object",
+        "properties": {
+            "http_headers": {
+                "type": "object",
+                "properties": {
+                    "https://api.you.com/mcp": {
+                        "type": "object",
+                        "properties": {
+                            "Authorization": { "type": "string" }
+                        },
+                        "required": ["Authorization"]
+                    }
+                },
+                "required": ["https://api.you.com/mcp"]
+            }
+        },
+        "required": ["http_headers"]
+    }
+    ```
+
+   - **Injection is opportunistic.** Every URL declared under `http_headers.properties` receives an
+    injected token whenever the user has connected it; user-supplied `http_headers` still take precedence.
+   - **The connect gate is driven by `http_headers.required`** — the client forces the user to connect
+    (blocking chat until they do) only for the URLs listed there.
+       - Omit `required` → every declared URL is treated as required (gate on all).
+       - `"required": []` → nothing is gated, but tokens are still injected opportunistically; use this
+        when the server also accepts an API key (via `MCP_SERVERS_INFO_FILE`) or needs no auth.
+       - List specific URLs → only those URLs are gated.
+   - For a complete example see [you_search.hocon](../registries/tools/you_search.hocon); for the client
+    side (Connectors tab, token storage, redirect URI, troubleshooting) see nsflow's
+    [MCP OAuth Connectors guide](https://github.com/cognizant-ai-lab/nsflow/blob/main/docs/MCP_OAUTH.md).
 
 ### Examples
+
+For a configured example in this repo — an agent network wired to the You.com MCP server, with the
+OAuth bearer-token `sly_data_schema` setup described above and comments walking through the auth
+options — see [you_search.hocon](../registries/tools/you_search.hocon).
 
 For simple examples of MCP servers in various languages (e.g. Python, Java) and connecting them to neuro-san,
 please visit this repo: [neuro-san-mcp-examples](https://github.com/kaushik-cognizant/neuro-san-mcp-examples)

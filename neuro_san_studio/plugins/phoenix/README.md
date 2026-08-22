@@ -1,6 +1,6 @@
 # Phoenix AI Observability Plugin
 
-This plugin integrates [Arize Phoenix](https://phoenix.arize.com/) for AI observability in Neuro SAN Studio, providing comprehensive monitoring and analysis of LLM interactions.
+This plugin integrates [Arize Phoenix](https://arize.com/phoenix/) for AI observability in Neuro SAN Studio, providing comprehensive monitoring and analysis of LLM interactions.
 
 ## Features
 

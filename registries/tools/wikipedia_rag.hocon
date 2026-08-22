@@ -18,6 +18,8 @@
 #     pip install wikipedia
 
 {
+    include "registries/expertise_scoping_instructions.hocon",
+
     # Load the shared LLM configuration from a single source of truth.
     # This allows users to change the model in one file rather than
     # modifying the configuration for each agent network.
@@ -45,7 +47,7 @@
 
             "instructions": """Always use your tool to respond to the inquiry.
             If the tool failed or unavailable, just notify the user.
-            Do not attempt to answer the question by yourself.""",
+            Do not attempt to answer the question by yourself.""" ${expertise_scoping_instructions},
 
             "tools": ["rag_retriever"]
         },

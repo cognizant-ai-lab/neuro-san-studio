@@ -111,7 +111,7 @@ The `WikimediaSearch` agent serves as the multimedia finder, specializing in loc
 
 **`WikimediaMediaSearch`**
 
-A CodedTool implementation defined in [wikimedia_media_search.py](../../coded_tools/tools/wikimedia_media_search.py) that searches Wikimedia Commons for media files.
+A CodedTool implementation defined in [wikimedia_media_search.py](../../neuro_san_studio/coded_tools/wikimedia_media_search.py) that searches Wikimedia Commons for media files.
 
 **Parameters:**
 - `query` (required): The search query for finding media

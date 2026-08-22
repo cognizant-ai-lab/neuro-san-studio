@@ -14,8 +14,11 @@
 #
 # END COPYRIGHT
 
+import asyncio
 import logging
 import os
+from math import isfinite
+from pathlib import Path
 from typing import Any
 
 from langchain_core.tools import BaseTool
@@ -23,56 +26,564 @@ from neuro_san.interfaces.coded_tool import CodedTool
 from neuro_san.internals.run_context.langchain.mcp.langchain_mcp_adapter import LangChainMcpAdapter
 from neuro_san.internals.run_context.langchain.mcp.mcp_servers_info_restorer import McpServersInfoRestorer
 
-from coded_tools.agent_network_editor.constants import MCP_SERVERS
-from coded_tools.agent_network_editor.sly_data_lock import SlyDataLock
+from coded_tools.agent_network_editor.and_logger import AndLogger
+from coded_tools.agent_network_editor.mcp_header_hygiene import McpHeaderHygiene
+from coded_tools.agent_network_editor.mcp_servers_load import McpServersLoad
+from coded_tools.agent_network_editor.shared_process_cache import SharedProcessCache
+from neuro_san_studio import mcp as _mcp_pkg
 
-# Use deepwiki MCP server as default since it is free and does not require authorization.
-DEFAULT_MCP_INFO_FILE = os.path.join("mcp", "mcp_info.hocon")
-logger = logging.getLogger(__name__)
+# Path to the mcp_info.hocon shipped inside the neuro_san_studio package.
+# Resolved via the imported package's __file__ so it works both in-repo and
+# after `pip install` on every platform. Mirrors run.py.
+BUNDLED_MCP_INFO_FILE: Path = Path(_mcp_pkg.__file__).parent / "mcp_info.hocon"
+
+# Default cap on how long one MCP server may take to answer a tool listing
+# (see _mcp_tools_fetch_timeout_seconds for the env-var override). The
+# listings are fetched by a process-wide shared load, so without a cap a
+# single hung server would stall every conversation's get_mcp_tool call
+# (previously it only stalled the one conversation doing the fetch). A slow
+# server is logged, omitted from this round's result, and retried after the
+# TTL window. The cap bounds the listing attempt itself, not the whole
+# stall: cancelling a timed-out fetch awaits the MCP client's teardown,
+# which talks to the same unresponsive server under the HTTP client's own,
+# much longer timeouts — bounding that too needs a fix in the MCP client,
+# not here.
+DEFAULT_MCP_TOOLS_FETCH_TIMEOUT_SECONDS: float = 30.0
+
+# Default for how long fetched tool listings may be served before being
+# re-fetched (see _mcp_tools_ttl_seconds for the env-var override).
+DEFAULT_MCP_TOOLS_TTL_SECONDS: float = 300.0
+
+logger = AndLogger(logging.getLogger(__name__))
 
 
 class GetMcpTool(CodedTool):
     """
-    CodedTool implementation which provides a way to get tool definition from given MCP servers
+    CodedTool implementation which provides a way to get tool definition from given MCP servers.
+
+    Two sources of servers:
+
+    * mcp_info.hocon — file-configured servers whose auth (if any) lives
+      server-side. Their listings are fetched with the adapter's own
+      file-configured headers and cached process-wide.
+    * sly_data["http_headers"] — per-conversation auth headers injected by
+      an OAuth-capable client. nsflow injects a fresh Authorization header
+      for EVERY connected MCP server when the chat target is the Agent
+      Network Designer (its NSFLOW_WAND_NAME), and the designer network
+      forwards http_headers downstream to this tool's network. These
+      listings are fetched per call and never cached process-wide, because
+      the headers belong to one conversation.
     """
 
+    # TODO: This duplicates NeuroSanRunner._resolve_mcp_info_file in
+    # neuro_san_studio/commands/run.py. Refactor so run.py calls this method
+    # instead of maintaining its own copy.
     @staticmethod
-    async def get_mcp_servers(sly_data: dict[str, Any]) -> list[str]:
+    def get_mcp_info_file() -> str:
+        """Resolve the mcp_info.hocon path at call time.
+
+        Precedence (mirrors NeuroSanRunner._resolve_mcp_info_file):
+          1. MCP_SERVERS_INFO_FILE env var (used verbatim if non-empty).
+          2. <cwd>/mcp/mcp_info.hocon if it exists (what `init` scaffolds).
+          3. The mcp_info.hocon bundled in the neuro_san_studio package.
         """
-        Read the MCP servers associated with this instance
-        either from a cache on sly_data or from a file.
+        env_value = os.getenv("MCP_SERVERS_INFO_FILE")
+        if env_value:
+            return env_value
+        try:
+            scaffolded = Path.cwd() / "mcp" / "mcp_info.hocon"
+            if scaffolded.is_file():
+                return str(scaffolded)
+        except OSError:
+            # Path.cwd() raises when the working directory has been deleted
+            # out from under the process. This resolver runs inside
+            # fingerprint probes, which must not raise, so fall through to
+            # the bundled file instead.
+            pass
+        return str(BUNDLED_MCP_INFO_FILE)
 
-        :param sly_data: sly_data possibly containing cached mcp_servers info
-        :return: list of MCP servers
+    @staticmethod
+    def _mcp_info_fingerprint() -> tuple[str, int | None]:
         """
-        mcp_servers: list[str] = []
+        Freshness probe for the shared MCP-servers cache (see
+        SharedProcessCache): the cached list is served only while this value
+        is unchanged. Unlike the designer manifest there is no time bucket:
+        mcp_info.hocon is a plain config file with no `include`s and nothing
+        writes it at runtime, so the two components cover everything the
+        probe can see —
 
-        async with await SlyDataLock.get_lock(sly_data, "mcp_servers_lock"):
-            # Try getting from sly_data
-            if MCP_SERVERS in sly_data:
-                # Exit early, including when the cached value is an empty list
-                return sly_data.get(MCP_SERVERS)
+        * the resolved path — an env-var change or the cwd-scaffolded file
+          appearing takes effect on the next read;
+        * the file's modification_time — a direct edit invalidates immediately, and a
+          missing file (modification_time None) self-heals the moment it appears.
 
-            # Check for MCP servers info file in env var
-            use_mcp_info_file: str = os.getenv("MCP_SERVERS_INFO_FILE")
-            if not use_mcp_info_file:
-                # Use a default if no value specified
-                use_mcp_info_file = DEFAULT_MCP_INFO_FILE
+        Two changes are invisible to this probe: HOCON `${...}` references
+        inside the file resolve against the environment at parse time, so
+        changing THOSE env vars alters the parse result without touching
+        path or modification_time; and LangChainMcpAdapter keeps its own copy of the
+        servers info, frozen at its first load — a file edit refreshes
+        which URLs this class serves, but not the connection details the
+        adapter already latched. Both heal on process restart (or on the
+        modification_time change of the next file edit, for the first).
 
-            # Try to restore
-            mcp_servers_from_file: dict[str, Any] = {}
-            try:
-                restorer = McpServersInfoRestorer()
-                mcp_servers_from_file = await restorer.async_restore(file_reference=use_mcp_info_file)
-            except FileNotFoundError:
+        :return: (path, modification_time_ns or None) tuple.
+        """
+        mcp_info_file: str = GetMcpTool.get_mcp_info_file()
+        return (mcp_info_file, SharedProcessCache.stat_modification_time_ns(mcp_info_file))
+
+    @staticmethod
+    def _load_mcp_servers() -> McpServersLoad:
+        """
+        Loader for the shared MCP-servers list (runs inside
+        SharedProcessCache, off the event loop when reached via aget()).
+
+        :return: A McpServersLoad. A missing, unreadable, or unparseable
+                file returns an empty URL list, which IS published: the
+                fingerprint self-heals it — a missing file flips the
+                modification_time component when it appears, and fixing a
+                broken file changes its modification_time — so nothing can pin an empty
+                list past the next change to the file itself (env-var
+                references INSIDE the file are the one exception; see
+                _mcp_info_fingerprint).
+        """
+        mcp_info_file: str = GetMcpTool.get_mcp_info_file()
+        logger.info("MCP servers info file: %s", mcp_info_file)
+
+        servers: list[str] = []
+        loaded_ok: bool = True
+        try:
+            # McpServersInfoRestorer is constructed with must_exist=False, so
+            # a missing file comes back as None rather than an exception.
+            info: dict[str, Any] = McpServersInfoRestorer().restore(file_reference=mcp_info_file)
+            if info is None:
+                # Servers supplied per-conversation via sly_data http_headers
+                # (if any) are unaffected — only the file half is empty. A
+                # missing file is an authoritative empty (loaded_ok stays
+                # True): there genuinely are no file-configured servers.
                 logger.warning(
-                    "MCP servers info file not found at %s. No MCP Servers will be used.", use_mcp_info_file
+                    "MCP servers info file not found at %s. No file-configured MCP servers will be used.",
+                    mcp_info_file,
                 )
+                info = {}
+            servers = list(info.keys())
+        except (OSError, ValueError) as error:
+            # neuro-san re-wraps HOCON parse errors as ValueError; OSError
+            # covers a file that exists but cannot be read (permissions, I/O
+            # failure). Neither may escape: a loader exception would fail
+            # every caller sharing this load, when the healthy answer is
+            # simply "no file-configured MCP servers right now". But flag the
+            # load as FAILED (not an authoritative empty) so a caller that
+            # persists a network can tell "no file servers" from "the set is
+            # unknown" and avoid baking a wrong schema (get_mcp_servers_load).
+            logger.warning("Failed to read MCP servers info file %s: %s", mcp_info_file, error)
+            loaded_ok = False
+        return McpServersLoad(servers, loaded_ok)
 
-            mcp_servers = list(mcp_servers_from_file.keys())
-            sly_data[MCP_SERVERS] = mcp_servers
+    # Process-wide cache of the MCP server URLs parsed from mcp_info.hocon.
+    # Previously cached per sly_data scope, so a server handling N concurrent
+    # conversations re-parsed the same HOCON N times, on the event loop.
+    # The (path, modification_time) fingerprint picks up env-var changes and file edits
+    # immediately; there is no time bucket because nothing changes this file
+    # at runtime. Per-conversation servers from sly_data http_headers are
+    # deliberately NOT part of this cache — they belong to one conversation.
+    # Locking, publish ordering, and the async once-gate live in
+    # SharedProcessCache; access goes through the class by name (not cls) so
+    # a hypothetical subclass shares the one cache instead of splitting it.
+    _shared_mcp_servers_cache: SharedProcessCache[McpServersLoad] = SharedProcessCache(
+        loader=_load_mcp_servers, fingerprint=_mcp_info_fingerprint
+    )
 
-        return mcp_servers
+    @staticmethod
+    def _mcp_tools_fetch_timeout_seconds() -> float | None:
+        """
+        :return: Cap in seconds on one MCP server's tool-listing fetch, from
+                the AGENT_NETWORK_DESIGNER_MCP_TOOLS_FETCH_TIMEOUT_SECONDS
+                env var (default 30) — the escape hatch for servers that
+                legitimately need longer than the default to answer, which
+                the pre-cache code (no cap at all) tolerated. <= 0 removes
+                the cap entirely (returned as None, what asyncio.wait_for
+                takes for "no timeout"), restoring that old behavior at the
+                cost of letting one hung server stall the shared load. An
+                unparseable or non-finite value falls back to the default.
+        """
+        raw: str = os.getenv("AGENT_NETWORK_DESIGNER_MCP_TOOLS_FETCH_TIMEOUT_SECONDS", "")
+        try:
+            timeout: float = float(raw) if raw else DEFAULT_MCP_TOOLS_FETCH_TIMEOUT_SECONDS
+        except ValueError:
+            timeout = DEFAULT_MCP_TOOLS_FETCH_TIMEOUT_SECONDS
+        if not isfinite(timeout):
+            timeout = DEFAULT_MCP_TOOLS_FETCH_TIMEOUT_SECONDS
+        return None if timeout <= 0 else timeout
+
+    @staticmethod
+    def _mcp_tools_ttl_seconds() -> float:
+        """
+        :return: How long the shared tool-descriptions mapping may be served
+                before the listings are re-fetched from the MCP servers, from
+                the AGENT_NETWORK_DESIGNER_MCP_TOOLS_TTL_SECONDS env var
+                (default 300). Unlike the file-backed caches there is no
+                local change to observe — the servers are external and their
+                tool sets can change (or an outage can end) without any local
+                signal — so a TTL is the freshness mechanism, and it doubles
+                as the recovery bound after a failed or partial fetch.
+                <= 0 disables time-based refresh entirely: the listings are
+                fetched once and only an mcp_info.hocon change refreshes
+                them. An unparseable or non-finite value falls back to the
+                default (nan and inf would otherwise silently freeze the
+                time bucket). A positive value is clamped to at least twice
+                the per-server fetch cap: a TTL shorter than one fetch means
+                every fill is already stale by the time it publishes, so no
+                call is ever served warm and every call re-fetches every
+                server — a permanent fetch storm instead of a cache.
+        """
+        raw: str = os.getenv("AGENT_NETWORK_DESIGNER_MCP_TOOLS_TTL_SECONDS", "")
+        try:
+            ttl: float = float(raw) if raw else DEFAULT_MCP_TOOLS_TTL_SECONDS
+        except ValueError:
+            ttl = DEFAULT_MCP_TOOLS_TTL_SECONDS
+        if not isfinite(ttl):
+            ttl = DEFAULT_MCP_TOOLS_TTL_SECONDS
+        if ttl <= 0:
+            return ttl
+        fetch_cap: float | None = GetMcpTool._mcp_tools_fetch_timeout_seconds()
+        if fetch_cap is None:
+            # With the cap disabled a fetch is unbounded, so no clamp can
+            # guarantee anything; twice the default cap is the best effort.
+            fetch_cap = DEFAULT_MCP_TOOLS_FETCH_TIMEOUT_SECONDS
+        return max(ttl, 2 * fetch_cap)
+
+    @staticmethod
+    def _mcp_tools_fingerprint() -> tuple[str, int | None, float, int]:
+        """
+        Freshness probe for the shared tool-descriptions cache: the
+        MCP-servers-list fingerprint (so an mcp_info.hocon edit refreshes the
+        listings immediately) plus the TTL and a time bucket that rolls once
+        per TTL window (see _mcp_tools_ttl_seconds; frozen when TTL <= 0).
+        The TTL value itself rides along because bucket numbers from
+        different TTL regimes are not comparable — after an env-var change,
+        bucket N under the new TTL can collide with bucket N under the old
+        one and revive a stale entry; carrying the TTL makes any change to
+        it an immediate miss instead.
+
+        :return: (path, modification_time_ns or None, ttl, time bucket) tuple.
+        """
+        mcp_info_file, modification_time_ns = GetMcpTool._mcp_info_fingerprint()
+        ttl: float = GetMcpTool._mcp_tools_ttl_seconds()
+        return (mcp_info_file, modification_time_ns, ttl, SharedProcessCache.time_bucket(ttl))
+
+    @staticmethod
+    async def _fetch_tool_descriptions(
+        server: str, fetch_timeout: float | None, headers: dict[str, str] | None = None
+    ) -> tuple[str, str | None]:
+        """
+        Fetch one MCP server's tool listing and flatten it into a
+        description string. Runs both on the private event loop of the
+        shared loader (file-configured servers, headers=None — the adapter
+        resolves connection details from its own copy of the servers info,
+        loaded once per process; see _mcp_info_fingerprint) and on the
+        server's event loop for the per-conversation sly_data path
+        (headers=the conversation's per-URL header dict, which overrides
+        any file-configured headers, mirroring runtime precedence).
+
+        :param server: The MCP server URL.
+        :param fetch_timeout: Per-server cap in seconds, or None for no cap
+                (see _mcp_tools_fetch_timeout_seconds).
+        :param headers: Optional HTTP headers for the MCP requests. Holds
+                token material when set — never log it.
+        :return: (server, newline-joined tool descriptions) on success,
+                (server, None) on any failure — this never raises, so one
+                broken server cannot take out the whole gathered batch. A
+                stale or revoked token is just such a failure: its server
+                is dropped from this round's listing (attempt-and-drop).
+        """
+        logger.info("MCP Server: %s", server)
+        try:
+            tools: list[BaseTool] = await asyncio.wait_for(
+                LangChainMcpAdapter().get_mcp_tools(server, headers=headers), timeout=fetch_timeout
+            )
+            logger.info("Successfully loaded the following tools: %s", str(tools))
+            # Flatten the descriptions INSIDE the try: a malformed tool
+            # (description None or missing) must degrade to this one
+            # server's failure, not escape the gather and fail the load
+            # for every server.
+            description: str = ""
+            for tool in tools:
+                description += tool.description + "\n"
+        except Exception as error:  # pylint: disable=broad-exception-caught
+            # Broad on purpose: this is a shared load, so one bad server
+            # (ExceptionGroup out of the MCP client, TimeoutError from the
+            # cap above, connection errors, ...) must not take out every
+            # conversation's listing of the healthy servers. This warning is
+            # the only trace of a dropped server, so surface group leaves
+            # (see McpHeaderHygiene.error_summary).
+            # Redact the values we sent (sly_data path): a header
+            # validation error echoes the raw value, which may be a token.
+            summary: str = McpHeaderHygiene.redact_values(McpHeaderHygiene.error_summary(error), headers)
+            logger.warning("Error: Failed to load tools from %s. %s", server, summary)
+            return server, None
+        return server, description
+
+    @staticmethod
+    async def _fetch_all_tool_descriptions(servers: list[str]) -> dict[str, str]:
+        """
+        Fetch every file-configured server's tool listing concurrently; the
+        entry point of the private event loop that
+        _load_mcp_tool_descriptions runs.
+
+        :param servers: The MCP server URLs from the shared servers cache.
+        :return: dict mapping each server URL that answered to its tools'
+                descriptions; servers that failed are absent.
+        """
+        fetch_timeout: float | None = GetMcpTool._mcp_tools_fetch_timeout_seconds()
+        fetches: list[Any] = []
+        for server in servers:
+            fetches.append(GetMcpTool._fetch_tool_descriptions(server, fetch_timeout))
+        # return_exceptions=False is safe here because
+        # _fetch_tool_descriptions swallows its own errors.
+        results = await asyncio.gather(*fetches)
+        descriptions: dict[str, str] = {}
+        for server, description in results:
+            if description is not None:
+                descriptions[server] = description
+        return descriptions
+
+    @staticmethod
+    def _load_mcp_tool_descriptions() -> dict[str, str]:
+        """
+        Loader for the shared tool-descriptions mapping (runs inside
+        SharedProcessCache, in a worker thread when reached via aget()).
+
+        Fetches every configured server's tool listing CONCURRENTLY on a
+        private event loop (asyncio.run — legal here because the loader runs
+        in a worker thread, never on the server's loop). The old per-session
+        code fetched sequentially, paying the sum of the servers' latencies
+        per conversation; gather pays only the slowest.
+
+        :return: dict mapping each server URL to a newline-joined string of
+                its tools' descriptions. Servers that fail or time out are
+                logged and omitted (matching the old per-session behavior),
+                and the partial — possibly empty — result IS published: the
+                entry self-expires via the TTL bucket, so an outage cannot
+                poison the process beyond one window, and publishing
+                prevents a per-call fetch storm during it.
+        :raises RuntimeError: when servers are configured but EVERY fetch
+                failed AND time-based refresh is disabled (TTL <= 0, frozen
+                bucket). Publishing that all-failed result would pin it
+                until an mcp_info.hocon change or a process restart — the
+                outage's recovery is invisible to the frozen fingerprint —
+                so nothing is published and the next call retries instead.
+                Same failure shape, same remedy as the subnetwork
+                descriptions filler's all-empty guard.
+        """
+        # Already in a worker thread here, so the blocking get() is fine.
+        servers: list[str] = GetMcpTool._shared_mcp_servers_cache.get().urls
+        descriptions: dict[str, str] = asyncio.run(GetMcpTool._fetch_all_tool_descriptions(servers))
+        if servers and not descriptions and GetMcpTool._mcp_tools_ttl_seconds() <= 0:
+            raise RuntimeError(
+                f"all {len(servers)} MCP tool-listing fetches failed and time-based refresh is disabled; "
+                "treating as a failed load"
+            )
+        return descriptions
+
+    # Process-wide cache of the {server URL: tool descriptions} mapping
+    # fetched from the file-configured MCP servers themselves. Previously
+    # cached per sly_data scope, so every conversation paid the full network
+    # round-trip to every server (sequentially). The sources are external
+    # servers with no local change signal, so freshness is time-based: the
+    # fingerprint reuses the mcp_info.hocon (path, modification_time) probe
+    # — a config edit refreshes immediately — plus a TTL bucket (default
+    # 300s, see _mcp_tools_ttl_seconds) that bounds both staleness and how
+    # long a failed fetch's empty/partial result can be served. (With
+    # time-based refresh disabled, an all-failed fetch raises instead of
+    # publishing — see the loader.) Listings for per-conversation sly_data
+    # servers are deliberately NOT cached here: their auth headers belong to
+    # one conversation, and a process-wide entry would serve one user's
+    # authenticated listing to every other (see
+    # _fetch_sly_data_tool_descriptions). Locking, publish ordering, and the
+    # async once-gate live in SharedProcessCache; access goes through the
+    # class by name (not cls) so a hypothetical subclass shares the one
+    # cache instead of splitting it.
+    _shared_mcp_tool_descriptions_cache: SharedProcessCache[dict[str, str]] = SharedProcessCache(
+        loader=_load_mcp_tool_descriptions, fingerprint=_mcp_tools_fingerprint
+    )
+
+    @classmethod
+    def clear_shared_mcp_servers_for_testing(cls):
+        """
+        Reset the process-wide MCP-servers cache. For test isolation only.
+
+        Production code must never call this — staleness is already bounded
+        by the fingerprint. Tests call it (via tests/conftest.py) so a list
+        loaded under one test's MCP_SERVERS_INFO_FILE state cannot leak into
+        later tests. Living here rather than in conftest keeps all the
+        singleton policy in this one class.
+        """
+        GetMcpTool._shared_mcp_servers_cache.clear_for_testing()
+
+    @classmethod
+    def clear_shared_mcp_tool_descriptions_for_testing(cls):
+        """
+        Reset the process-wide tool-descriptions cache. For test isolation
+        only — see clear_shared_mcp_servers_for_testing.
+        """
+        GetMcpTool._shared_mcp_tool_descriptions_cache.clear_for_testing()
+
+    @staticmethod
+    async def get_mcp_servers() -> list[str]:
+        """
+        Get the list of MCP server URLs from mcp_info.hocon.
+
+        Used by callers (e.g. middleware) that need to validate MCP
+        references. Reads only the config file, not the servers — and at
+        most once per process per config change, off the event loop, shared
+        by concurrent cold callers. Per-conversation servers supplied via
+        sly_data http_headers are not included: callers that need those too
+        union this list with sly_data_http_header_urls(sly_data).
+
+        :return: List of MCP server URLs, or an empty list if the file is
+                missing or fails to parse (see the loader for the
+                self-healing semantics). The returned list is a copy, so
+                callers may mutate it without corrupting the shared cache.
+                Callers that PERSIST a network want get_mcp_servers_load
+                instead, so a broken file (unknown set) is not mistaken for
+                "no file servers".
+        """
+        return (await GetMcpTool.get_mcp_servers_load()).urls
+
+    @staticmethod
+    async def get_mcp_servers_load() -> McpServersLoad:
+        """
+        Like get_mcp_servers, but also reports whether mcp_info.hocon was
+        actually read: loaded_ok is False when the file exists yet could
+        not be read or parsed, as opposed to urls == [] with loaded_ok True
+        for a genuinely missing or empty file.
+
+        The file-vs-client classification ("a sly_data server not in the
+        file list is client-token") is only sound when the file list is
+        complete. When the file failed to load, the set is unknown, so a
+        caller that persists a network checks loaded_ok to decline emitting
+        a client-token sly_data_schema rather than bake a wrong one from an
+        incomplete list (see AgentNetworkPersistenceMiddleware).
+
+        :return: The load result. urls is a fresh copy, so callers may
+                mutate it without corrupting the shared cache.
+        """
+        load: McpServersLoad = await GetMcpTool._shared_mcp_servers_cache.aget()
+        return McpServersLoad(list(load.urls), load.loaded_ok)
+
+    @staticmethod
+    def sly_data_http_header_urls(sly_data: dict[str, Any] | None) -> list[str]:
+        """
+        Get the MCP server URLs a conversation supplies auth headers for.
+
+        These come from sly_data["http_headers"], the per-URL header dicts
+        an OAuth-capable client injects (nsflow injects one for every
+        connected server when chatting with the Agent Network Designer; the
+        designer's allow.to_downstream forwards the key to this network).
+
+        Only well-formed http(s) URLs (see McpHeaderHygiene.usable_server_url)
+        that carry at least one usable header (a legal header name with a
+        non-blank string value — see McpHeaderHygiene.usable_header_names)
+        are returned; everything else is skipped rather than raising, since
+        chat clients control this input. That covers a missing/non-dict
+        http_headers; a key that is not a string, not http(s), or not a
+        well-formed URL — control characters that would forge log lines,
+        userinfo, a missing host — which must never become a fetch target,
+        a log line, or an accepted URL-validation reference; a non-dict
+        header value; and a header-less or blank-valued entry (which
+        supplies no credential to fetch with, declare, or gate on).
+
+        :param sly_data: The conversation's sly_data (may be None).
+        :return: URLs in first-appearance order. Values are URLs only — no
+                header material leaves this function.
+        """
+        http_headers: Any = sly_data.get("http_headers") if isinstance(sly_data, dict) else None
+        if not isinstance(http_headers, dict):
+            return []
+        urls: list[str] = []
+        for url, headers in http_headers.items():
+            if not McpHeaderHygiene.usable_server_url(url):
+                continue
+            if not isinstance(headers, dict) or not McpHeaderHygiene.usable_header_names(headers):
+                continue
+            urls.append(url)
+        return urls
+
+    @staticmethod
+    async def _fetch_sly_data_tool_descriptions(sly_data: dict[str, Any], exclude: set[str]) -> dict[str, str]:
+        """
+        Fetch tool listings for the conversation's sly_data http_headers
+        servers, concurrently, on the caller's event loop.
+
+        Deliberately NOT cached process-wide: the headers are one
+        conversation's credentials (nsflow refreshes them every message),
+        and a shared cache entry would serve one user's authenticated
+        listing to every other conversation. The editor LLM calls
+        get_mcp_tool once per conversation, so the per-call cost is one
+        bounded concurrent fetch round.
+
+        :param sly_data: The conversation's sly_data; http_headers holds
+                token material — never log it.
+        :param exclude: URLs to skip — the file-configured servers, whose
+                auth is a server-side concern and whose listings the shared
+                cache already provides. Skipping them also keeps a stale
+                client header from displacing working file-side auth.
+        :return: dict mapping each answering server URL to its tools'
+                descriptions; servers that failed are absent
+                (attempt-and-drop, same as the shared path).
+        """
+        urls: list[str] = []
+        for url in GetMcpTool.sly_data_http_header_urls(sly_data):
+            if url not in exclude:
+                urls.append(url)
+        if not urls:
+            return {}
+        http_headers: dict[str, Any] = sly_data["http_headers"]
+        fetch_timeout: float | None = GetMcpTool._mcp_tools_fetch_timeout_seconds()
+        # Headers are sanitized per URL first (see
+        # McpHeaderHygiene.sanitized_headers) so a malformed header can
+        # neither raise a value-bearing error nor reach a log.
+        fetches: list[Any] = []
+        for url in urls:
+            fetches.append(
+                GetMcpTool._fetch_tool_descriptions(
+                    url, fetch_timeout, McpHeaderHygiene.sanitized_headers(url, http_headers[url])
+                )
+            )
+        # return_exceptions=False is safe here because
+        # _fetch_tool_descriptions swallows its own errors.
+        results = await asyncio.gather(*fetches)
+        descriptions: dict[str, str] = {}
+        for server, description in results:
+            if description is not None:
+                descriptions[server] = description
+        return descriptions
+
+    @staticmethod
+    async def get_mcp_tool_descriptions() -> dict[str, str]:
+        """
+        Get the {server URL: tool descriptions} mapping for the
+        file-configured servers, fetching from the MCP servers at most once
+        per process per TTL window (or config change), off the event loop,
+        shared by concurrent cold callers.
+
+        :return: dict mapping each server URL to a newline-joined string of
+                its tools' descriptions; servers that failed this round are
+                absent (retried after the TTL window). An empty dict when no
+                servers are configured — or, with time-based refresh
+                disabled, when every fetch failed: that result is degraded
+                per-call rather than published (see the loader), so the
+                next call retries. The returned dict is a copy, so callers
+                may mutate it without corrupting the shared cache.
+        """
+        try:
+            return dict(await GetMcpTool._shared_mcp_tool_descriptions_cache.aget())
+        except RuntimeError as error:
+            # The loader refused to publish an all-failed result (frozen
+            # TTL). Degrade to an empty dict for THIS call only — nothing
+            # was published, so the next call retries immediately.
+            logger.warning("MCP tool-listing fetch failed; returning no MCP tools for this call: %s", error)
+            return {}
 
     async def async_invoke(self, args: dict[str, Any], sly_data: dict[str, Any]) -> str:
         """
@@ -94,41 +605,33 @@ class GetMcpTool(CodedTool):
                 adding the data is not invoke()-ed more than once.
 
                 Keys expected for this implementation are:
-                    None
+                    "http_headers" (optional): {MCP server URL: {header: value}}
+                    per-conversation auth headers injected by an OAuth-capable
+                    client (see sly_data_http_header_urls). Absent for clients
+                    that inject nothing — the listing then covers only the
+                    file-configured servers.
 
         :return:
             In case of successful execution:
-                the server name and tool definition from the server as a dictionary.
+                a string rendering of the dictionary that maps each MCP
+                server URL to the descriptions of the tools it provides —
+                the union of the file-configured servers (shared, cached)
+                and the conversation's sly_data servers (fetched per call).
             otherwise:
-                a text string of an error message in the format:
-                "Error: <error message>"
+                servers that failed to respond are omitted from that
+                dictionary; "{}" if none responded or none are configured.
         """
 
         # Get tool list from MCP servers
         logger.info(">>>>>>>>>>>>>>>>>>>Getting Tool Definition from MCP Servers>>>>>>>>>>>>>>>>>>>")
 
-        async with await SlyDataLock.get_lock(sly_data, "tool_dict_lock"):
-            if "tool_dict" not in sly_data:
-                # tool_dict is a dict with urls as keys and combined descriptions of tools as a values.
-                tool_dict: dict[str, str] = {}
-                mcp_servers: list[str] = await self.get_mcp_servers(sly_data)
-                for mcp_server in mcp_servers:
-                    try:
-                        logger.info("MCP Server: %s", mcp_server)
-                        tools: list[BaseTool] = await LangChainMcpAdapter().get_mcp_tools(mcp_server)
-                        logger.info("Successfully loaded the following tools: %s", str(tools))
-
-                        # Gather each tool's description into one string.
-                        tool_dict[mcp_server] = ""
-                        for tool in tools:
-                            tool_dict[mcp_server] += tool.description + "\n"
-
-                    except ExceptionGroup as exception:
-                        error_msg = f"Error: Failed to load tools from {mcp_server}. {str(exception)}"
-                        logger.warning(error_msg)
-
-                # Stash a string representation of the tool_dict
-                sly_data["tool_dict"] = str(tool_dict)
-
-        # Return the cached tool_dict
-        return sly_data["tool_dict"]
+        file_descriptions: dict[str, str] = await self.get_mcp_tool_descriptions()
+        # Exclude by the configured server list, not by which servers
+        # answered: a file server whose shared fetch failed stays a
+        # server-side concern — retrying it with a client header would let
+        # a stale token mask (or briefly "fix") a config problem.
+        file_servers: set[str] = set(await self.get_mcp_servers())
+        client_descriptions: dict[str, str] = await self._fetch_sly_data_tool_descriptions(
+            sly_data, exclude=file_servers
+        )
+        return str({**file_descriptions, **client_descriptions})

@@ -18,6 +18,7 @@
 
 import os
 import tempfile
+from pathlib import Path
 
 import pytest
 
@@ -267,3 +268,20 @@ class TestIsEnabled:  # pylint: disable=protected-access
     def test_string_false_variants(self, value):
         """Test that string falsy values are recognized."""
         assert PluginLoader._is_enabled({"enabled": value}) is False
+
+
+class TestResolvePluginsFile:
+    """Tests for PluginLoader.resolve_plugins_file."""
+
+    def test_user_local_path_used_when_file_exists(self, tmp_path: Path) -> None:
+        """A scaffolded <root_dir>/config/plugins.hocon wins over the bundled fallback."""
+        scaffolded = tmp_path / "config" / "plugins.hocon"
+        scaffolded.parent.mkdir()
+        scaffolded.write_text("plugins = []\n")
+        assert PluginLoader.resolve_plugins_file(str(tmp_path)) == str(scaffolded)
+
+    def test_falls_back_to_bundled(self, tmp_path: Path) -> None:
+        """With no scaffolded copy, the bundled templates path is returned."""
+        result = PluginLoader.resolve_plugins_file(str(tmp_path))
+        assert os.path.isfile(result)
+        assert result.endswith(os.path.join("neuro_san_studio", "templates", "plugins.hocon"))

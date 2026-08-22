@@ -14,6 +14,8 @@
 #
 # END COPYRIGHT
 {
+    include "registries/expertise_scoping_instructions.hocon",
+
     # Load the shared LLM configuration from a single source of truth.
     # This allows users to change the model in one file rather than
     # modifying the configuration for each agent network.
@@ -21,7 +23,9 @@
     include "config/llm_config.hocon",
     "max_steps": 40000,
     "max_execution_seconds": 6000,
-    
+    "error_formatter": "json",
+    "error_fragments": ["Error:", "Exception:", "Traceback (most recent call last)"],
+
     "tools": [
         # This first agent definition is regarded as the "Front Man", which
         # does all the talking to the outside world/client.
@@ -66,9 +70,8 @@
                     "required": ["agent_network_description", "mode"]
                 }
             },
-            "instructions": """
+            "instructions": ${expertise_scoping_instructions} """
 You are responsible for generating and editing the structure of the agent network according to the given specifications. 
-Only answer inquiries that are directly within your area of expertise. Do not describe what you cannot do; only state what you can do.
 
 **Always begin by calling `get_toolbox`, `get_subnetwork`, and `get_mcp_tool` unless the corresponding flag (toolbox, subnetwork, or mcp_tool) is explicitly set to false.**  
 These calls provide the list of available tools for use in the network:
@@ -185,7 +188,7 @@ Always respond with "Successfully created/edited the structure of the agent netw
 """,
             "allow": {
                 "to_upstream": {
-                    "sly_data": ["agent_network_definition", "agent_network_name", "mcp_servers", "subnetworks", "toolbox_info"]
+                    "sly_data": ["agent_network_definition", "agent_network_name"]
                 }
             },
             "tools": [
@@ -197,6 +200,8 @@ Always respond with "Successfully created/edited the structure of the agent netw
                 "get_subnetwork",
                 "get_toolbox",
             ],
+            # Parse any JSON in responses into the structure field of the ChatMessage.
+            "structure_formats": "json",
             "middleware": [
                 {
                     "class": "middleware.agent_network_designer.agent_network_definition_middleware.AgentNetworkDefinitionMiddleware",

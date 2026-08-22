@@ -14,11 +14,24 @@
 #
 # END COPYRIGHT
 
-# Requirement to use this agent network:
-    # - neuro-san>=0.6.24
-    # - YDC_API_KEY
-    # - Get a free API key with $100 in credits (no credit card required) at https://you.com/platform
-    # - Use MCP_SERVERS_INFO_FILE for authentication. See https://github.com/cognizant-ai-lab/neuro-san-studio/blob/main/mcp/mcp_info.hocon and https://github.com/cognizant-ai-lab/neuro-san-studio/blob/main/docs/user_guide.md#authentication
+# Requirements to use this agent network:
+#   - neuro-san >= 0.6.24
+#   - Credentials for the you.com MCP server: either a YDC_API_KEY or a bearer token.
+#     you.com offers a free tier; use the `you_search_free` agent network to access it.
+#
+# Supported authentication methods:
+#   1. OAuth token exchange in the client application. Pass the resulting bearer token
+#      via the sly data "http_headers" input, following the schema in the agent function
+#      definition below.
+#   2. MCP_SERVERS_INFO_FILE. See ../../neuro_san_studio/mcp/mcp_info.hocon and
+#      ../../docs/user_guide.md#authentication.
+#
+# Note: nsflow forces an OAuth connect (blocking chat until it succeeds) only for the MCP
+# server URLs listed under `sly_data_schema.http_headers.required`. A URL declared under
+# `http_headers.properties` but omitted from `required` still has its bearer token injected
+# opportunistically when one is passed, but its absence no longer blocks chatting — so
+# YDC_API_KEY or MCP_SERVERS_INFO_FILE auth works. Here `https://api.you.com/mcp` is in
+# `required`, so a bearer token is expected even if an API key is set in the MCP info file.
 
 {
     # Optional metadata describing this agent network
@@ -32,6 +45,7 @@
         ]
     },
 
+    include "registries/expertise_scoping_instructions.hocon",
     include "config/llm_config.hocon",
 
     "tools": [
@@ -60,12 +74,51 @@
                         },
                     },
                     "required": ["user_inquiry"]
+                },
+
+                # You can optionally specify the schema needed for any sly_data as input.
+                # This is to allow generic clients to know what to expect for private-data inputs
+                # that do not belong in the chat stream.
+                #
+                # Note: this block drives the OAuth bearer-token flow. If you authenticate via
+                # YDC_API_KEY (or via MCP_SERVERS_INFO_FILE) instead, either remove the entire
+                # "sly_data_schema" block below, or keep it (for opportunistic token injection)
+                # and set `http_headers.required` to [] — that stops nsflow from forcing an OAuth
+                # connect / redirect to home when no bearer token is passed in as sly data.
+                "sly_data_schema": {
+                    "type": "object",
+                    "properties": {
+                        # This tells the client to pass the necessary authentication info for accessing the you.com MCP server via sly data.
+                        "http_headers": {
+                            "type": "object",
+                            "description": "HTTP headers to be sent with MCP tool requests.",
+                            "properties": {
+                                "https://api.you.com/mcp": {
+                                    "type": "object",
+                                    "description": "URL for You.com MCP server.",
+                                    "properties": {
+                                        "Authorization": {
+                                            "type": "string",
+                                            "description": "Authorization header for you.com API access, e.g., 'Bearer <token_value>'."
+                                        }
+                                    },
+                                    "required": ["Authorization"]
+                                }
+                            },
+                            # URLs listed here gate chatting: nsflow forces an OAuth connect and
+                            # redirects to home until each is connected. Set to [] to disable the
+                            # gate (the token is still injected opportunistically when passed); omit
+                            # `required` entirely to gate every URL declared under `properties`.
+                            "required": ["https://api.you.com/mcp"]
+                        }
+                    },
+                    "required": ["http_headers"]
                 }
             },
 
             "instructions": """
 Use your tools to respond to the inquiry.
-""",
+""" ${expertise_scoping_instructions},
             "tools": ["https://api.you.com/mcp"]
         },
     ]

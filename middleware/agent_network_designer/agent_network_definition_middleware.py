@@ -14,10 +14,11 @@
 #
 # END COPYRIGHT
 
+import asyncio
 import json
 import os
 import re
-from logging import Logger
+from json import JSONDecodeError
 from logging import getLogger
 from pathlib import Path
 from re import Match
@@ -27,6 +28,7 @@ from typing import Callable
 from typing import override
 
 from botocore.exceptions import ClientError
+from botocore.exceptions import NoCredentialsError
 from langchain.agents.middleware.types import AgentMiddleware
 from langchain.agents.middleware.types import AgentState
 from langchain.agents.middleware.types import ContextT
@@ -37,11 +39,12 @@ from langchain.agents.middleware.types import hook_config
 from langchain_core.messages import AIMessage
 from langchain_core.messages import BaseMessage
 from langchain_core.messages import SystemMessage
+from leaf_common.resolution.resolver_util import ResolverUtil
 from neuro_san.interfaces.agent_progress_reporter import AgentProgressReporter
 from neuro_san.internals.persistence.abstract_async_config_restorer import AbstractAsyncConfigRestorer
-from neuro_san.service.watcher.temp_networks.s3_reservations_storage import S3ReservationsStorage
 from pyparsing.exceptions import ParseException
 
+from coded_tools.agent_network_editor.and_logger import AndLogger
 from coded_tools.agent_network_editor.connectivity_dictionary_converter import ConnectivityDictionaryConverter
 from coded_tools.agent_network_editor.constants import AGENT_NETWORK_DEFINITION
 from coded_tools.agent_network_editor.constants import AGENT_NETWORK_NAME
@@ -62,6 +65,12 @@ class AgentNetworkDefinitionMiddleware(AgentMiddleware):
 
     This allows the LLM to reason about the current agent network structure without
     requiring it to be passed explicitly through the chat stream.
+
+    This middleware also anchors the progress-throttling contract of the editor
+    coded tools: its aafter_agent hook flushes any progress report that
+    ProgressHandler's throttle suppressed during the run (see flush_pending()).
+    A network that wires the editor tools without registering this middleware
+    silently loses that end-of-run flush.
     """
 
     def __init__(self, sly_data: dict[str, Any], progress_reporter: AgentProgressReporter | None = None) -> None:
@@ -86,7 +95,7 @@ class AgentNetworkDefinitionMiddleware(AgentMiddleware):
         self.progress_reporter: AgentProgressReporter | None = progress_reporter
         self.sly_data = sly_data
 
-        self.logger: Logger = getLogger(self.__class__.__name__)
+        self.logger: AndLogger = AndLogger(getLogger(self.__class__.__name__))
         # Initialize agent network definition
         self.network_def: dict[str, Any] | list[dict[str, Any]] | None = None
         # Initialize an error message to store issues encountered during loading from HOCON file or S3 reservation.
@@ -184,6 +193,38 @@ class AgentNetworkDefinitionMiddleware(AgentMiddleware):
 
         return await self._inject_into_request(self.network_def, request, handler)
 
+    @override
+    async def aafter_agent(self, state: AgentState[Any], runtime: Any) -> dict[str, Any] | None:
+        """
+        Flush any progress report that the throttle suppressed during this agent run.
+
+        ProgressHandler's throttle drops (rather than delays) reports arriving within the
+        throttle window, so without this hook a build whose final edit lands shortly after
+        the previous sent report would leave the client's progress view permanently stale
+        (issue #1257). Flushing here — when the agent loop exits normally, while the
+        request and its journal are still alive — ensures the final network state goes
+        out. (If the run aborts on an unhandled error, after-agent hooks are skipped and
+        the throttled report stays dropped, matching pre-throttle behavior.)
+
+        This matters most in the subnetworks (agent_network_editor and pals) and when those
+        networks are used directly: their middleware has no progress_reporter by design
+        (the client already receives the tools' own progress reports, so a middleware
+        reporter would duplicate that stream). The flush therefore reuses the reporter
+        stashed from the throttled tool call instead of needing one of its own.
+
+        In the top-level designer this is effectively a no-op: its forced middleware
+        reports (see _inject_into_request) clear the pending state on every model call.
+
+        flush_pending contains its own error handling — this hook runs as a langgraph
+        node, and an exception escaping it would replace the run's real final answer.
+
+        :param state: Current agent state
+        :param runtime: Runtime context
+        :return: None to proceed normally
+        """
+        await ProgressHandler.flush_pending(self.sly_data)
+        return None
+
     async def _resolve_network_def(self) -> dict[str, Any] | list[dict[str, Any]] | None:
         """
         Resolve the agent network definition from sly_data, HOCON file, or S3 reservation.
@@ -274,38 +315,38 @@ class AgentNetworkDefinitionMiddleware(AgentMiddleware):
             self.error_message = error_message
             return None
 
+        # AWS credentials are picked up from the standard boto3 credential chain
+        # (env vars, ~/.aws/credentials, IAM role on EC2/ECS/Lambda, etc.).
+        # AGENT_RESERVATIONS_S3_BUCKET must point at the bucket holding the reservations.
+        bucket: str = os.getenv("AGENT_RESERVATIONS_S3_BUCKET", "")
+        if not bucket:
+            error_message = (
+                f"Error: AGENT_RESERVATIONS_S3_BUCKET is not set; cannot load reservation '{reservation_id}'."
+            )
+            self.logger.error(error_message)
+            self.error_message = error_message
+            return None
+
         config: dict[str, Any] | None = None
         try:
-            # Setting up AWS credentials in environment variables is required for S3ReservationsStorage to work.
-            # AWS_ACCESS_KEY_ID="your-access-key"
-            # AWS_SECRET_ACCESS_KEY="your-secret-key"
-            # AWS_DEFAULT_REGION="us-east-1" or your region
-            # (Optional if your credentials file has the region specified)
-            # Other options include:
-            # AWS profile: AWS_PROFILE="your-profile" (reads from ~/.aws/credentials)
-            # Session token (temporary creds): add AWS_SESSION_TOKEN="your-token"
-            # IAM role: no env vars needed if running on EC2/ECS/Lambda with an attached role
-            #
-            # This env var must be set to the S3 Bucket that the network reservations is stored.
-            # AGENT_RESERVATIONS_S3_BUCKET
-            s3_storage = S3ReservationsStorage()
-            s3_storage.start()
-            try:
-                _, agent_network = s3_storage.get_one_reservation(reservation_id)
-                config = agent_network.get_config()
-            except AttributeError as attribute_error:
-                error_message = (
-                    f"Error: Reservation '{reservation_id}' does not contain an agent network or config. "
-                    f"{attribute_error}"
-                )
-                self.logger.error(error_message)
-            except ClientError as client_error:
+            config = await asyncio.to_thread(self.fetch_reservation_from_s3, bucket, reservation_id)
+        except NoCredentialsError as creds_error:
+            error_message = (
+                f"Error: AWS credentials not found while loading reservation '{reservation_id}'. {creds_error}"
+            )
+            self.logger.error(error_message)
+        except ClientError as client_error:
+            error_code: str = client_error.response.get("Error", {}).get("Code", "")
+            if error_code in ("NoSuchKey", "404"):
+                error_message = f"Error: Reservation '{reservation_id}' not found in S3 bucket '{bucket}'."
+            else:
                 error_message = f"Error: Failed to retrieve reservation '{reservation_id}' from S3. {client_error}"
-                self.logger.error(error_message)
-            finally:
-                s3_storage.stop()
+            self.logger.error(error_message)
+        except JSONDecodeError as json_error:
+            error_message = f"Error: Reservation '{reservation_id}' in S3 contains invalid JSON. {json_error}"
+            self.logger.error(error_message)
         except ValueError as value_error:
-            error_message = f"Error: Failed to initialize S3 storage for reservation '{reservation_id}'. {value_error}"
+            error_message = f"Error: Reservation '{reservation_id}' in S3 has unexpected shape. {value_error}"
             self.logger.error(error_message)
 
         if not config:
@@ -321,6 +362,36 @@ class AgentNetworkDefinitionMiddleware(AgentMiddleware):
             os.getenv("AGENT_RESERVATIONS_S3_BUCKET"),
         )
         return await self._config_to_network_def(config, reservation_id)
+
+    @staticmethod
+    def fetch_reservation_from_s3(bucket: str, reservation_id: str) -> dict[str, Any]:
+        """
+        Read a reservation JSON object from S3 and return the parsed config dict.
+
+        Runs synchronously; call via ``asyncio.to_thread`` from async code so the boto3
+        network I/O does not block the event loop. Mirrors the storage layout used by
+        the neuro-san server (``reservations/<reservation_id>.json``) so the middleware
+        can read what the server writes without depending on the server's internal
+        storage classes.
+
+        :param bucket: Target S3 bucket name
+        :param reservation_id: Reservation ID whose JSON object should be fetched
+        :return: Parsed JSON content as a dict (matches what ``AgentNetwork.get_config()``
+                would return for the same reservation)
+        """
+        boto3_client = ResolverUtil.create_type("boto3.client", install_if_missing="boto3")
+        s3 = boto3_client("s3")
+        key: str = f"reservations/{reservation_id}.json"
+        response: dict[str, Any] = s3.get_object(Bucket=bucket, Key=key)
+        stream = response["Body"]
+        try:
+            body: bytes = stream.read()
+        finally:
+            stream.close()
+        parsed: Any = json.loads(body)
+        if not isinstance(parsed, dict):
+            raise ValueError(f"Reservation JSON must decode to an object, got {type(parsed).__name__}")
+        return parsed
 
     def _normalize_network_def(self, network_def: dict[str, Any] | list[dict[str, Any]]) -> dict[str, Any]:
         """
@@ -368,8 +439,23 @@ class AgentNetworkDefinitionMiddleware(AgentMiddleware):
             system_message = SystemMessage(content=definition_prompt)
 
         if self.progress_reporter is not None:
+            # Pass the real sly_data (the same dict instance the coded tools receive) so this
+            # report shares the throttle bookkeeping with the tools and can look up the network
+            # name. (The ToolboxFactory used for connectivity conversion is no longer kept on
+            # sly_data — it is a process-wide cache on ConnectivityDictionaryConverter.)
+            #
+            # force=True keeps this report unthrottled: it fires at most once per model call of
+            # the top-level designer (only the designer's middleware is configured with a
+            # progress_reporter) — far less frequently than the editor tools in the subnetworks —
+            # and it is what guarantees the client sees the fully merged network state, including
+            # subnetwork edits whose own throttled reports may have been dropped, before each
+            # designer model call.
             await ProgressHandler.report_progress(
-                {"progress_reporter": self.progress_reporter}, network_def, self.sly_data.get(AGENT_NETWORK_NAME)
+                {"progress_reporter": self.progress_reporter},
+                self.sly_data,
+                network_def,
+                self.sly_data.get(AGENT_NETWORK_NAME),
+                force=True,
             )
 
         return await handler(request.override(system_message=system_message))

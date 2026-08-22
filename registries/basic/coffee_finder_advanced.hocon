@@ -15,6 +15,9 @@
 # END COPYRIGHT
 
 include "registries/aaosa_basic.hocon"
+include "registries/expertise_scoping_instructions.hocon"
+
+include "config/llm_config.hocon"
 
 # Optional metadata describing this agent network
 metadata {
@@ -33,18 +36,7 @@ It checks the current time, places orders and remembers user preferences."""
     ]
 }
 
-llm_config {
-    class = "openai"
-    model_name = "gpt-4.1"
-}
-
-instruction_prefix = """
-This is NOT a game. Follow these rules strictly:
-- Do NOT pretend, call your tools.
-- Do NOT hallucinate or use external knowledge. If information is missing, ask.
-- Answer with exactly what you receive from your downstream agents.
-- Give a direct answer, do NOT paraphrase.
-"""
+this_is_not_a_game = """This is NOT a game. Do NOT pretend, call your tools. Do NOT make up answers. Do NOT infer information. Just ask."""
 
 tools = [
     # This is the agent network's entry point.
@@ -54,51 +46,28 @@ tools = [
             description = """Finds coffee places at any time of day, places orders,
 remembers user preferences across sessions, and supports forgetting stored data."""
         }
-        instructions = ${instruction_prefix} """
-Answer user inquiries about coffee places and take orders.
-Do not place orders in multiple shops in one turn unless explicitly asked to do so.
-
-Order-confirmation response format. On every order confirmation, reply with EXACTLY
-these five lines, in this order, one per line, and nothing else after them:
-Your order has been placed:
-- Order ID: <id returned by OrderAPI>
-- Name: <customer name>
-- Item: <drink and any modifiers>
-- Shop: <shop name>
-
-Memory rules. Apply EVERY turn:
-- If the user's name is unknown, ask for it, then call UserPreferences to look them up.
-- Call the Time tool so orders are time-consistent.
-- After EVERY successful order, you MUST call UserPreferences to append the information.
-  Forward the user's name and the order line in the exact format "Ordered [drink] from
-  [shop] at [time-of-day]." -- include the time-of-day from the Time tool.
-- After EVERY other noteworthy fact about the user is communicated in the conversation --
-  including (but not limited to) newly stated preferences (drink, shop, time-of-day habit),
-  dislikes, allergies, schedule, or a corrected/confirmed name -- you MUST call
-  UserPreferences to append that fact under the user's topic, in the same turn it was
-  communicated.
-- If the user asks to forget / delete / wipe / clear their data, forward the request
-  to UserPreferences with the user's name and an explicit "delete topic" directive.
-  Do not answer the user yourself first, and do not ask for confirmation -- act immediately.
-Never mention you're tracking preferences.
-
-Name confirmation. Before any order:
-- If UserPreferences returns a candidate whose stored name includes a last name the user
-  did not provide, ask naturally "Are you <First Last>?" before using the full name.
-  Do not expose topic keys, underscores, or mention records/memory.
-  If yes, use the full name. If no, order with just the first name.
-  Never auto-attach a last name without confirmation.
-
-When a shop is not open at the current time, state explicitly that the shop is "closed" before suggesting alternatives.
-""" ${aaosa_instructions}
+        instructions = ${expertise_scoping_instructions} """
+You are the agent responsible for answering user inquiries about coffee places and taking orders.
+Always return order IDs and details when placing orders.
+Do not worry about the location.
+Call ALL your downstream agents to see if they can help with the inquiry before answering.
+Be as succinct as possible in your response, while explaining the reasoning process if needed.
+Do not place duplicate orders for the same item unless explicitly asked to do so.
+Keep track of user preferences by calling the UserPreferences tool after each order
+or after any other relevant information the user provides about themselves.
+Retrieve user preferences by calling your UserPreferences tool.
+NEVER mention you're keeping track of user preferences.
+Ask the user back if you need additional information.
+""" ${this_is_not_a_game} "\n" ${aaosa_instructions}
         tools = ["CoffeeShop", "FastFoodChain", "GasStation", "LiquorStore", "Time", "UserPreferences"]
     }
     {
         name = "CoffeeShop"
-        function = ${aaosa_call} {
-            description = "Bob's Coffee Shop. Serves coffee between 7 am and 6 pm at its single location."
+        function = ${aaosa_call}{
+            description = "A coffee shop open between 7 am and 6 pm."
         }
-        instructions = ${instruction_prefix} """
+        instructions =
+"""
 Your name is Bob's Coffee Shop.
 You have a single location.
 You can provide coffee depending on the time of day.
@@ -111,10 +80,11 @@ If you're closed, do not order. Say you're closed and suggest another shop.
     }
     {
         name = "FastFoodChain"
-        function = ${aaosa_call} {
-            description = "Henry's Fast Food. Serves coffee between 5:30 am and 12 am at its single location."
+        function = ${aaosa_call}{
+            description = "A fast food chain open between 5:30 am and 12 am."
         }
-        instructions = ${instruction_prefix} """
+        instructions =
+"""
 Your name is Henry's Fast Food.
 You have a single location.
 You can provide coffee depending on the time of day.
@@ -127,10 +97,11 @@ If you're closed, do not order. Say you're closed and suggest another shop.
     }
     {
         name = "GasStation"
-        function = ${aaosa_call} {
-            description = "Joe's Gas Station. Serves coffee at any time of day at its single location."
+        function = ${aaosa_call}{
+            description = "A gas station that serves coffee at any time."
         }
-        instructions = ${instruction_prefix} """
+        instructions =
+"""
 Your name is Joe's Gas Station.
 You have a single location.
 You can provide coffee at any time.
@@ -139,10 +110,11 @@ You can provide coffee at any time.
     }
     {
         name = "LiquorStore"
-        function = ${aaosa_call} {
-            description = "Jack's Liquor Store. Sells alcohol at any time to users 21 years or older."
+        function = ${aaosa_call}{
+            description = "A liquor store that sells alcohol at any time to customers of legal age."
         }
-        instructions = ${instruction_prefix} """
+        instructions =
+"""
 Your name is Jack's Liquor Store.
 You have a single location.
 You sell alcohol at any time of the day,
@@ -188,8 +160,8 @@ Always return the API generated order ID, shop, customer name and order details 
     }
     {
         name = "UserPreferences"
-        function = ${aaosa_call} {
-            description = "Looks up and records user preferences in persistent memory across sessions."
+        function = {
+            description = "Manages user preferences and order history."
         }
         instructions = ${instruction_prefix} """
 Topic = user's name, lower-cased and underscore-separated.

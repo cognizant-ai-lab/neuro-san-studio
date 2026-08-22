@@ -15,6 +15,9 @@
 # END COPYRIGHT
 
 import datetime
+import json
+from collections.abc import Collection
+from collections.abc import Mapping
 from copy import copy as shallow_copy
 from typing import Any
 
@@ -67,7 +70,10 @@ TOP_AGENT_TEMPLATE = (
     '            "function": ${aaosa_call}{\n'
     '                "description": """\n'
     "%s\n"
-    '                """\n'
+    # The slot after the closing triple quotes takes the optional
+    # sly_data_schema block (see _render_sly_data_schema_block), which
+    # starts with the separating comma when present.
+    '                """%s\n'
     "            },\n"
     '            "instructions": ${instructions_prefix} """\n'
     "            Never express irrelevance unless you have first consulted all your tools.\n"
@@ -111,7 +117,6 @@ TOOLBOX_AGENT_TEMPLATE = "        {\n" '            "name": "%s",\n' '          
 # fmt: on
 
 
-# pylint: disable=too-few-public-methods
 class HoconAgentNetworkAssembler(AgentNetworkAssembler):
     """
     AgentNetworkAssembler implementation which creates a full hocon of a designed agent network
@@ -131,8 +136,14 @@ class HoconAgentNetworkAssembler(AgentNetworkAssembler):
         """
         self.demo_mode: bool = demo_mode
 
+    # pylint: disable=too-many-arguments, too-many-positional-arguments
     async def assemble_agent_network(
-        self, network_def: dict[str, Any], top_agent_name: str, agent_network_name: str, sample_queries: list[str]
+        self,
+        network_def: dict[str, Any],
+        top_agent_name: str,
+        agent_network_name: str,
+        sample_queries: list[str],
+        client_token_mcp_headers: Mapping[str, Collection[str]] | None = None,
     ) -> str:
         """
         Substitutes value from agent network definition into the template of agent network HOCON file
@@ -141,6 +152,9 @@ class HoconAgentNetworkAssembler(AgentNetworkAssembler):
         :param top_agent_name: The name of the top agent
         :param agent_network_name: The file name, without the .hocon extension
         :param sample_queries: List of sample queries for the agent network
+        :param client_token_mcp_headers: Optional mapping of client-token MCP
+                server URL to the header names the conversation supplied for it,
+                driving the front man's sly_data_schema (see the base class)
 
         :return: A full agent network HOCON as a string.
         """
@@ -149,9 +163,13 @@ class HoconAgentNetworkAssembler(AgentNetworkAssembler):
 
         header: str = self._build_header(agent_network_name, sample_queries)
 
+        sly_data_schema_block: str = self._render_sly_data_schema_block(
+            self.build_mcp_sly_data_schema(use_network_def, client_token_mcp_headers)
+        )
+
         body: list[str] = []
         for agent_name, agent in use_network_def.items():
-            body.append(self._render_agent_block(agent_name, agent, top_agent_name))
+            body.append(self._render_agent_block(agent_name, agent, top_agent_name, sly_data_schema_block))
 
         return header + "".join(body) + "]\n}\n"
 
@@ -212,13 +230,51 @@ class HoconAgentNetworkAssembler(AgentNetworkAssembler):
             + HOCON_HEADER_REMAINDER % demo_mode_block
         )
 
-    def _render_agent_block(self, agent_name: str, agent: dict[str, Any], top_agent_name: str) -> str:
+    @staticmethod
+    def _render_sly_data_schema_block(schema: dict[str, Any] | None) -> str:
+        """
+        Render the front man's sly_data_schema as a HOCON fragment for the
+        TOP_AGENT_TEMPLATE slot that follows the description's closing
+        triple quotes.
+
+        :param schema: The schema dict from build_mcp_sly_data_schema, or None
+
+        :return: "" when there is no schema (leaving the template output
+                unchanged), else a block starting with the comma that
+                separates it from the description entry. JSON is valid
+                HOCON, and the fragment always parses as written because
+                json.dumps keeps every key and value double-quoted and
+                HOCON performs no ${...} substitution inside double-quoted
+                strings (json.dumps does NOT escape $ or { — a URL
+                containing ${...} survives verbatim, safely, only thanks to
+                the quoting). ensure_ascii=False keeps a non-ASCII URL key
+                as its raw character: pyhocon does not decode \\uXXXX
+                escapes, so an escaped key would read back as literal text
+                that no longer matches the raw URL in the tools list.
+        """
+        if not schema:
+            return ""
+        indent: str = " " * 16
+        lines: list[str] = json.dumps(schema, indent=4, ensure_ascii=False).splitlines()
+        # Re-indent every line but the first ("{"), which lands right after
+        # the key on the same line and needs no leading spaces of its own.
+        body_lines: list[str] = [lines[0]]
+        for line in lines[1:]:
+            body_lines.append(indent + line)
+        body: str = "\n".join(body_lines)
+        return f',\n{indent}"sly_data_schema": {body}'
+
+    def _render_agent_block(
+        self, agent_name: str, agent: dict[str, Any], top_agent_name: str, sly_data_schema_block: str = ""
+    ) -> str:
         """
         Render a single agent block depending on its type.
 
         :param agent_name: The name of the agent
         :param agent: The agent definition
         :param top_agent_name: The name of the top agent
+        :param sly_data_schema_block: Rendered sly_data_schema fragment for the
+                top agent's function block ("" for none)
 
         :return: The rendered agent block as a string.
         """
@@ -230,7 +286,7 @@ class HoconAgentNetworkAssembler(AgentNetworkAssembler):
 
         if agent_name == top_agent_name:
             use_description = description or "An assistant that answers inquiries from the user."
-            return TOP_AGENT_TEMPLATE % (agent_name, use_description, instructions, tools)
+            return TOP_AGENT_TEMPLATE % (agent_name, use_description, sly_data_schema_block, instructions, tools)
 
         if raw_tools:
             return REGULAR_AGENT_TEMPLATE % (agent_name, description, instructions, tools)

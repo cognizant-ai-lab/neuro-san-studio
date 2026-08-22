@@ -30,6 +30,7 @@
 
     "tools/agent_network_html_creator.hocon": true,
     "tools/agentforce.hocon": true,
+    # Install slack-sdk and set SLACK_BOT_TOKEN or SLACK_USER_TOKEN before enabling this agent network.
     "tools/agentic_rag.hocon": false,
     "tools/agentspace_adapter.hocon": false,
 
@@ -43,8 +44,6 @@
 
     # To use this arxiv_retriever agent network, start by installing the required package:
     #     pip install arxiv
-    # If "get_full_documents" is set to True
-    #     pip install pymupdf
     "tools/arxiv_retriever.hocon": false,
 
     # To use this agent network with Brave Search, obtain an API key from: https://brave.com/search/api/
@@ -57,8 +56,8 @@
     # To use this confluence agent network, start by installing the required package:
     #     pip install atlassian-python-api
     #
-    # Additional installations may be required depending on the attachment types used.
-    # For details, see https://python.langchain.com/api_reference/_modules/langchain_community/document_loaders/confluence.html#ConfluenceLoader
+    # Additional Python packages and system tools may be required depending on the attachment types used.
+    # See docs/examples/tools/confluence_rag.md for details.
     # Set "username" and "api_key" in the agent network hocon or
     # as environment variable "JIRA_USERNAME" and "JIRA_API_TOKEN", respectively.
     "tools/confluence_rag.hocon": false,
@@ -102,8 +101,20 @@
     # - neuro-san>=0.6.24
     # - GOOGLE_API_KEY
     # - Maps Grounding Lite API enabled in Google Cloud project. See https://developers.google.com/maps/ai/grounding-lite
-    # - Use MCP_SERVERS_INFO_FILE for authentication. See https://github.com/cognizant-ai-lab/neuro-san-studio/blob/main/mcp/mcp_info.hocon and https://github.com/cognizant-ai-lab/neuro-san-studio/blob/main/docs/user_guide.md#authentication
+    # - Use MCP_SERVERS_INFO_FILE for authentication. See ../../neuro_san_studio/mcp/mcp_info.hocon and ../../docs/user_guide.md#authentication
     "tools/google_maps.hocon": false,
+    
+    # Google Workspace assistant backed by Google's hosted MCP servers (Gmail, Calendar,
+    # Drive, Docs, Sheets). No server-side credentials: connect each server with your Google
+    # account in an OAuth-capable client (e.g. nsflow), which passes the bearer tokens via
+    # sly_data http_headers per the network's sly_data_schema. Chat is gated until the
+    # required servers are connected. See docs/examples/tools/google_workspace.md.
+    "tools/google_workspace.hocon": true,
+    
+    # Searches the web via the you.com MCP server's free tier (no API key or OAuth), then
+    # reads the result pages with the web_fetch toolbox tool. Works out of the box.
+    # See docs/examples/tools/internet_info_gatherer.md.
+    "tools/internet_info_gatherer.hocon": true,
 
     # Before turning on and running the following agent network, make sure that:
     # The MCP server is running.
@@ -151,6 +162,8 @@
     # Wikimedia media search
     "tools/wikimedia_search.hocon": true,
 
-    # Requires YDC_API_KEY. See docs/search_tools.md and mcp/mcp_info.hocon for setup.
-    "tools/you_search.hocon": false,
+    # Requires YDC_API_KEY or OAuth Authentication. See docs/search_tools.md and neuro_san_studio/mcp/mcp_info.hocon for setup.
+    "tools/you_search.hocon": true,
+    # Free version of you_search that does not require API key but has limited capabilities via the you.com MCP server.
+    "tools/you_search_free.hocon": true,
 }

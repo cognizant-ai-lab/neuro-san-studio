@@ -53,6 +53,10 @@ Do not mention what you can NOT do. Only mention what you can do.
     "tools": [
 
         # Top agent template
+        # Note: the assembler sets "function.description" in code after
+        # filtering, and — when the network uses MCP servers — also injects
+        # a "function.sly_data_schema" declaring the http_headers clients
+        # must pass via sly_data (see DeployableAgentNetworkAssembler).
         {
             "name": "{agent_name}",
             "function": "aaosa_call",
@@ -67,7 +71,9 @@ call all the relevant tools and make sure the command is fully serviced and expr
 
 {aaosa_instructions}
 """,
-            "tools": "tools"
+            "tools": "tools",
+            # Optionally allow any BYOK keys to propagate to local downstream agents
+            "allow": ${?allow_llm_config_downstream}
         },
 
         # Regular agent template
@@ -81,7 +87,9 @@ call all the relevant tools and make sure the command is fully serviced and expr
 
 {aaosa_instructions}
 """,
-            "tools": "tools"
+            "tools": "tools",
+            # Optionally allow any BYOK keys to propagate to local downstream agents
+            "allow": ${?allow_llm_config_downstream}
         },
 
         # Leaf agent template

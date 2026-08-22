@@ -41,6 +41,7 @@ Supports two HOCON formats:
 """
 
 import asyncio
+import logging
 import os
 import traceback
 from typing import Any
@@ -62,6 +63,14 @@ from neuro_san.internals.interfaces.context_type_llm_factory import ContextTypeL
 from neuro_san.internals.persistence.abstract_async_config_restorer import AbstractAsyncConfigRestorer
 from neuro_san.internals.run_context.factory.master_llm_factory import MasterLlmFactory
 from neuro_san.internals.run_context.langchain.llms.langchain_llm_resources import LangChainLlmResources
+
+# parse_hocon_file chdir's into a HOCON file's own directory so file-relative
+# includes resolve. For agent-network files (repo-root-relative includes) that
+# scoped parse will fail to resolve their `include "config/..."` directives and
+# pyhocon logs a "Cannot include file ..." warning. That parse is only used to
+# detect the file format (inline "tools" key), so demote the noise. Mirrors
+# agent_network_registry.py.
+logging.getLogger("pyhocon.config_parser").setLevel(logging.ERROR)
 
 DEFAULT_HOCON_PATH = os.path.join("config", "llm_config.hocon")
 
@@ -117,9 +126,23 @@ def redact_llm_config(config: Dict[str, Any]) -> Dict[str, Any]:
 
 
 def parse_hocon_file(network_hocon_file: str) -> Dict[str, Any]:
-    """Parse a raw HOCON file into a Python dict via AbstractAsyncConfigRestorer."""
+    """Parse a raw HOCON file into a Python dict via AbstractAsyncConfigRestorer.
+
+    Temporarily chdir into the file's directory so file-relative `include`
+    directives (e.g. config/llm_config.hocon's `include "developer_llm_config.hocon"`)
+    resolve -- pyhocon resolves relative includes against the current working
+    directory, not the file's location. CWD is restored in `finally`. os.chdir is
+    process-global (not thread-safe); this matches existing precedent in
+    agent_network_registry.py.
+    """
+    abs_path: str = os.path.abspath(network_hocon_file)
     hocon = AbstractAsyncConfigRestorer(file_purpose="get_agent_network_definition_for_validation", must_exist=True)
-    hocon_file = hocon.restore(file_reference=network_hocon_file)
+    prev_cwd: str = os.getcwd()
+    try:
+        os.chdir(os.path.dirname(abs_path))
+        hocon_file = hocon.restore(file_reference=os.path.basename(abs_path))
+    finally:
+        os.chdir(prev_cwd)
     return hocon_file
 
 

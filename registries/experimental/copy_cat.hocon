@@ -22,6 +22,7 @@
     # This allows users to change the model in one file rather than
     # modifying the configuration for each agent network.
     # Note that the file path here is relative to the root level of the repo.
+    include "registries/expertise_scoping_instructions.hocon",
     include "config/llm_config.hocon",
 
     # Optional metadata describing this agent network
@@ -117,7 +118,7 @@ After this time the network can no longer be counted upon to exist.
 Always call the copyist tool to copy the agent network referred to by the user input.
 Return verbatim whatever it returns.
 If there is an error or list of errors, report that.
-""",
+""" ${expertise_scoping_instructions},
             "tools": ["copyist"],
 
             "allow": {

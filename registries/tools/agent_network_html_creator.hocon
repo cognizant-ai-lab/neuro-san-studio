@@ -18,6 +18,8 @@
 # Requirement: Chrome browser.
 
 {
+    include "registries/expertise_scoping_instructions.hocon",
+
     # Load the shared LLM configuration from a single source of truth.
     # This allows users to change the model in one file rather than
     # modifying the configuration for each agent network.
@@ -58,7 +60,8 @@
                 "description": "Create a html file for agent network.",
             },
 
-            "instructions": """Use your tools to create a html file for agent network.""",
+            "instructions": """Use your tools to create a html file for agent network.
+""" ${expertise_scoping_instructions},
             "tools": ["html_generator"]
         },
         {

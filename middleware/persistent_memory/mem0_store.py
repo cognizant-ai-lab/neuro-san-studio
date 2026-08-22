@@ -70,7 +70,7 @@ from typing import override
 
 from mem0 import AsyncMemoryClient  # pylint: disable=import-error
 from mem0.exceptions import ConfigurationError as Mem0ConfigurationError  # pylint: disable=import-error
-from mem0.exceptions import MemoryError as Mem0Error  # pylint: disable=import-error,redefined-builtin
+from mem0.exceptions import MemoryError as Mem0Error  # pylint: disable=import-error
 
 from middleware.persistent_memory.topic_store import TopicStore
 

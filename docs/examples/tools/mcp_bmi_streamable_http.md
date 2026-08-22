@@ -54,7 +54,7 @@ transport method. The main purpose is to show how one can connect to mcp server 
 
 Check the following during development or troubleshooting:
 
-- `langchain-mcp-adapters` is installed with a valid version
+- `langchain-mcp-adapters` is installed
 - MCP server is running
 - Client is connected to the correct port
 

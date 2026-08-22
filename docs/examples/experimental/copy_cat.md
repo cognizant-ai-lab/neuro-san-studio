@@ -50,13 +50,8 @@ Nothing special.
 
 ### Environment Variables
 
-```bash
-export AGENT_TEMPORARY_NETWORK_UPDATE_PERIOD_SECONDS=5
-```
-
-This environment variable controls the frequency that the server will check for
-new and/or expired temporary networks. The default is 0, implying that temporary networks
-are not allowed on the server (a reasonable precaution for most servers).
+No special environment variables are required. Temporary network processing is
+enabled automatically by the server.
 
 ---
 
@@ -164,8 +159,6 @@ When developing or debugging with OpenAI models, keep the following in mind:
 
 - **Rate Limits**: Be aware of API rate limits that may affect LLM calling frequency.
 
-- **Turn on server processing of temporary networks**: Set `AGENT_TEMPORARY_NETWORK_UPDATE_PERIOD_SECONDS` as above.
-
 ### Common Issues
 
 - **Import Errors**: Ensure langchain-openai is installed
@@ -173,8 +166,6 @@ When developing or debugging with OpenAI models, keep the following in mind:
 - **Authentication Failures**: Verify API key is set and valid
 
 - **Model Errors**: Confirm the specified GPT model is accessible
-
-- **AGENT_TEMPORARY_NETWORK_UPDATE_PERIOD_SECONDS not set Errors**: Ensure the environment variable is set as described above
 
 - **Agent network .hocon file not found Errors**: Look for typos in your network name you wanted to copy.
   Be sure the .hocon file exists in the filesystem.  If you have copy/pasted this example be sure the
