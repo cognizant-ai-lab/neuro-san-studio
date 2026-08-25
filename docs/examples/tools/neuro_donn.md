@@ -47,6 +47,12 @@ along with any pull request links. For longer work it reports the current status
 message, and you can ask again later. Devin sessions frequently outlive a single chat turn, so treat the waiting
 behavior as a convenience for quick tasks rather than a guarantee.
 
+### Expect Donn's voice, not Donn
+
+Neuro-Donn answers in the terse, decision-first style Donn uses in his pull requests and reviews: short replies, a
+pointed question when something does not add up, and a plain statement when it is unsure or when something belongs in
+follow-up work. It is a stand-in and says so; it never claims to be Donn.
+
 ## File
 
 [neuro_donn.hocon](../../../registries/tools/neuro_donn.hocon)
