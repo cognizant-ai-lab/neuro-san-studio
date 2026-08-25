@@ -336,14 +336,17 @@ class HoconAgentNetworkAssembler(AgentNetworkAssembler):
             lines.append("                {")
             lines.append(f'                    "class": "{entry["class"]}",')
             args = entry.get("args")
-            if args:
+            # `is not None` rather than truthiness: a hand-authored explicit empty
+            # args dict must round-trip as `"args": {}` instead of vanishing on save.
+            if args is not None:
                 # HOCON is a superset of JSON, so json.dumps emits valid HOCON for every value
                 # type (str/int/float/bool/None/list/dict). Don't try to format these by hand —
                 # Python's str() produces Python repr (single quotes, `None`, etc.) which would
                 # break round-trip for middleware whose args contain lists or dicts.
                 args_lines: list[str] = [f'                        "{k}": {json.dumps(v)}' for k, v in args.items()]
                 lines.append('                    "args": {')
-                lines.append(",\n".join(args_lines))
+                if args_lines:
+                    lines.append(",\n".join(args_lines))
                 lines.append("                    }")
             else:
                 # Remove the trailing comma from "class" line since it's the last field

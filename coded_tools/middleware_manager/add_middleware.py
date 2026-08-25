@@ -83,7 +83,9 @@ class AddMiddleware(CodedTool):
         logger.info("Agent Name: %s", agent_name)
         logger.info("Middleware Class: %s", middleware_class)
 
-        existing_middleware: list[dict[str, Any]] = agent_def.get(MIDDLEWARE_KEY, [])
+        existing_middleware: list[dict[str, Any]] = MiddlewareRequestGuard.validated_middleware_list(
+            agent_def, agent_name
+        )
 
         # Check for duplicate
         for entry in existing_middleware:

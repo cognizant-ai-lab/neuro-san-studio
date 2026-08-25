@@ -64,7 +64,9 @@ class RemoveMiddleware(CodedTool):
         logger.info("Middleware Class: %s", middleware_class)
 
         agent_def: dict[str, Any] = network_def[agent_name]
-        existing_middleware: list[dict[str, Any]] = agent_def.get(MIDDLEWARE_KEY, [])
+        existing_middleware: list[dict[str, Any]] = MiddlewareRequestGuard.validated_middleware_list(
+            agent_def, agent_name
+        )
 
         updated_middleware = [entry for entry in existing_middleware if entry.get("class") != middleware_class]
 
