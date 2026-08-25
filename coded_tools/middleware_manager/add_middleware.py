@@ -93,7 +93,9 @@ class AddMiddleware(CodedTool):
                 raise ValueError(f"Middleware '{middleware_class}' is already present on agent '{agent_name}'.")
 
         new_entry: dict[str, Any] = {"class": middleware_class}
-        if middleware_args:
+        # Presence, not truthiness: an explicitly passed empty args dict is stored —
+        # the persistence layer round-trips `"args": {}` — rather than silently dropped.
+        if middleware_args is not None:
             new_entry["args"] = middleware_args
 
         existing_middleware.append(new_entry)

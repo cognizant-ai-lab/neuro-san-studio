@@ -107,6 +107,24 @@ class TestImportNetwork:
         assert (target_dir / "middleware" / "music_nerd" / "catalog.hocon").is_file()
         assert not result.errors
 
+    def test_sibling_hocon_copy_is_scoped_to_python_modules(self, tmp_path: Path) -> None:
+        """A non-Python dependency file must not drag its directory's other .hocon files along."""
+        source_dir = tmp_path / "source"
+        target_dir = tmp_path / "target"
+        target_dir.mkdir()
+        self._build_fake_source(source_dir)
+        (source_dir / "middleware" / "music_nerd" / "notes.hocon").write_text('{ "notes": {} }\n')
+        (source_dir / "middleware" / "music_nerd" / "unrelated.hocon").write_text('{ "unrelated": {} }\n')
+
+        importer = AgentNetworkImporter(str(source_dir), str(target_dir))
+        deps = AgentNetworkDependencies(middleware=["middleware/music_nerd/notes.hocon"])
+
+        result = importer.import_network("basic/music_nerd.hocon", deps)
+
+        assert (target_dir / "middleware" / "music_nerd" / "notes.hocon").is_file()
+        assert not (target_dir / "middleware" / "music_nerd" / "unrelated.hocon").exists()
+        assert not result.errors
+
     def test_sub_networks_are_registered_in_manifest_entries(self, tmp_path: Path) -> None:
         """import_network must record both the top-level network AND every sub-network for manifest registration.
 

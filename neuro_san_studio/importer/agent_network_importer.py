@@ -174,7 +174,11 @@ class AgentNetworkImporter:
         self._copy_file_or_dir(source, target, dep_path, result, force=force)
         if os.path.isfile(source):
             self._copy_parent_inits(os.path.dirname(source), roots, result, force=force)
-            self._copy_sibling_data_files(source, roots, result, force=force)
+            # Sibling catalogs are a Python-module concern (a module resolves its data
+            # file relative to itself); a non-module dependency must not drag its
+            # directory's other .hocon files along.
+            if source.endswith(".py"):
+                self._copy_sibling_data_files(source, roots, result, force=force)
 
     def _copy_sibling_data_files(self, source_file: str, roots: "_Roots", result: ImportResult, force: bool = False):
         """Copy .hocon data files that live beside a copied module.
