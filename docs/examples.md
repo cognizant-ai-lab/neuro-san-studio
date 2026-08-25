@@ -37,6 +37,7 @@ Here are a few examples ordered by level of complexity.
     - [Gemini Image Generation](#gemini-image-generation)
     - [Wikimedia Search](#wikimedia-search)
     - [Internet Info Gatherer](#internet-info-gatherer)
+    - [Neuro-Donn](#neuro-donn)
     - [Gmail Assistant](#gmail-assistant)
     - [Google Workspace Assistant](#google-workspace-assistant)
     - [Agent Network HTML Creator](#agent-network-html-creator)
@@ -318,6 +319,15 @@ the promising pages with the `web_fetch` toolbox tool so its answers come from a
 It needs no API keys or OAuth — the free search tier and the local fetch tool work out of the box.
 
 **Tags:** `tool`, `MCP`, `toolbox`, `web`
+
+### Neuro-Donn
+
+[Neuro-Donn](examples/tools/neuro_donn.md) helps colleagues describe work in plain language, finds a matching Devin
+playbook when the request is recurring or procedural, or recognizes when a one-off request should go directly to Devin.
+It confirms the request and selected playbook before launching a Devin session, then returns the session URL. Every
+session is tagged `neuro-donn`.
+
+**Tags:** `tool`, `MCP`, `Devin`, `playbook`
 
 ### Gmail Assistant
 

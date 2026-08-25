@@ -122,7 +122,10 @@
     # python bmi_server.py
     "tools/mcp_bmi_streamable_http.hocon": false,
 
-    "tools/neuro_donn.hocon": true,
+    # Not credential-free: supply Devin auth for the MCP URL, either as sly_data.http_headers
+    # from the client or via MCP_SERVERS_INFO_FILE carrying Authorization: Bearer <Devin PAT>
+    # and X-Org-Id: <org id>. Without them the two MCP agents fail.
+    "tools/neuro_donn.hocon": false,
     "tools/now_agents.hocon": true,
 
     # Requirement to use this openai based agent network:
