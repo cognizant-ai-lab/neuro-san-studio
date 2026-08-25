@@ -342,8 +342,14 @@ class HoconAgentNetworkAssembler(AgentNetworkAssembler):
                 # HOCON is a superset of JSON, so json.dumps emits valid HOCON for every value
                 # type (str/int/float/bool/None/list/dict). Don't try to format these by hand —
                 # Python's str() produces Python repr (single quotes, `None`, etc.) which would
-                # break round-trip for middleware whose args contain lists or dicts.
-                args_lines: list[str] = [f'                        "{k}": {json.dumps(v)}' for k, v in args.items()]
+                # break round-trip for middleware whose args contain lists or dicts. Keys go
+                # through json.dumps too (a quote/backslash in a key must be escaped, not
+                # hand-quoted), with ensure_ascii=False because pyhocon never decodes \uXXXX
+                # escapes in keys — same round-trip quirk the sly_data_schema emitter documents.
+                args_lines: list[str] = [
+                    f"                        {json.dumps(str(k), ensure_ascii=False)}: {json.dumps(v)}"
+                    for k, v in args.items()
+                ]
                 lines.append('                    "args": {')
                 if args_lines:
                     lines.append(",\n".join(args_lines))
