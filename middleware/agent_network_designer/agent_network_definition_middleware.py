@@ -681,9 +681,10 @@ class AgentNetworkDefinitionMiddleware(AgentMiddleware):
         # it on load a round-trip would silently strip every previously-attached middleware.
         middleware: Any = agent.get(MIDDLEWARE_KEY)
         if middleware:
-            if not isinstance(middleware, list) or not all(isinstance(entry, dict) for entry in middleware):
+            if not self._is_preservable_middleware(middleware):
                 self.logger.warning(
-                    "WARNING: Ignoring 'middleware' on agent %s in '%s' — expected list[dict], got %r",
+                    "WARNING: Ignoring 'middleware' on agent %s in '%s' — expected a list of "
+                    '{"class": <non-empty string>, "args": <optional dict>} entries, got %r',
                     agent_name,
                     source,
                     middleware,
@@ -692,6 +693,35 @@ class AgentNetworkDefinitionMiddleware(AgentMiddleware):
                 agent_def[MIDDLEWARE_KEY] = middleware
 
         return agent_name, agent_def
+
+    @staticmethod
+    def _is_preservable_middleware(middleware: Any) -> bool:
+        """
+        Report whether a source agent's middleware block can be round-tripped.
+
+        Preserved middleware is re-rendered verbatim on save by
+        HoconAgentNetworkAssembler._render_middleware, which indexes
+        entry["class"] and iterates entry["args"].items() — so a block is only
+        preservable when every entry honors that shape. The caller warns about
+        and drops anything else at load time, where the source file is still
+        known, rather than letting a malformed entry crash a later save.
+
+        :param middleware: The raw middleware value from the source agent spec.
+        :return: True when middleware is a list whose entries each have a
+                non-empty string "class" and, when present, a dict "args".
+        """
+        if not isinstance(middleware, list):
+            return False
+        for entry in middleware:
+            if not isinstance(entry, dict):
+                return False
+            middleware_class: Any = entry.get("class")
+            if not isinstance(middleware_class, str) or not middleware_class.strip():
+                return False
+            entry_args: Any = entry.get("args")
+            if entry_args is not None and not isinstance(entry_args, dict):
+                return False
+        return True
 
     async def _extract_custom_instructions(self, instructions: str) -> str:
         """

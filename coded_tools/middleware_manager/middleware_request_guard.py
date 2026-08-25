@@ -41,21 +41,28 @@ class MiddlewareRequestGuard:
         :param sly_data: The coded tool's sly_data dictionary.
         :return: (network_def, agent_name, middleware_class) — the agent's own
                 definition is network_def[agent_name], guaranteed present.
-        :raises ValueError: when the network definition is missing from sly_data,
-                the agent name is missing or unknown, or middleware_class is
-                missing.
+        :raises ValueError: when the network definition is missing from sly_data
+                or not a dictionary, the agent name is missing, non-string, or
+                unknown, or middleware_class is missing or non-string.
         """
+        # Type checks before use: a non-string agent_name would raise TypeError
+        # on the `in` membership test below (lists are unhashable), escaping the
+        # ValueError contract the error_formatter relies on.
         network_def: dict[str, Any] = sly_data.get(AGENT_NETWORK_DEFINITION)
-        if not network_def:
+        if not isinstance(network_def, dict) or not network_def:
             raise ValueError("No agent network definition found in sly data.")
 
-        agent_name: str = args.get("agent_name", "")
+        agent_name: Any = args.get("agent_name", "")
+        if not isinstance(agent_name, str):
+            raise ValueError(f"Error: agent_name must be a string, got {type(agent_name).__name__}.")
         if not agent_name:
             raise ValueError("No agent_name provided.")
         if agent_name not in network_def:
             raise ValueError(f"Agent '{agent_name}' not found in the agent network definition.")
 
-        middleware_class: str = args.get("middleware_class", "")
+        middleware_class: Any = args.get("middleware_class", "")
+        if not isinstance(middleware_class, str):
+            raise ValueError(f"Error: middleware_class must be a string, got {type(middleware_class).__name__}.")
         if not middleware_class:
             raise ValueError("No middleware_class provided.")
 

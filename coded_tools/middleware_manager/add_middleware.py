@@ -69,7 +69,14 @@ class AddMiddleware(CodedTool):
                 f"Agent '{agent_name}' is a function/toolbox node (no `instructions`) and cannot have middleware."
             )
 
+        # A non-dict here would not fail now but on save, when the HOCON assembler
+        # iterates the entry's args.items() — reject it while the caller can react.
         middleware_args: dict[str, Any] | None = args.get("args")
+        if middleware_args is not None and not isinstance(middleware_args, dict):
+            raise ValueError(
+                f"Error: middleware args must be a dictionary of constructor arguments, "
+                f"got {type(middleware_args).__name__}."
+            )
 
         logger = AndLogger(logging.getLogger(self.__class__.__name__))
         logger.info(">>>>>>>>>>>>>>>>>>>Add Middleware>>>>>>>>>>>>>>>>>>")

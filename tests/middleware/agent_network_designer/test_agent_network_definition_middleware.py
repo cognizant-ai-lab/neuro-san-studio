@@ -144,6 +144,21 @@ class TestAgentNetworkDefinitionMiddleware:
         _, agent_def = asyncio.run(mw._parse_agent({"name": "a", "middleware": ["not a dict"]}, "src"))
         assert "middleware" not in agent_def
 
+    def test_parse_agent_drops_middleware_when_entry_lacks_class(self):
+        """Entries without a non-empty string `class` would crash the assembler on save."""
+        mw = self._make_mw()
+        for bad_entry in [{"args": {"k": "v"}}, {"class": ""}, {"class": "   "}, {"class": 42}]:
+            _, agent_def = asyncio.run(mw._parse_agent({"name": "a", "middleware": [bad_entry]}, "src"))
+            assert "middleware" not in agent_def, f"entry {bad_entry!r} should not be preserved"
+
+    def test_parse_agent_drops_middleware_when_entry_args_not_a_dict(self):
+        """Entries whose `args` is not a dict would crash the assembler's args.items() on save."""
+        mw = self._make_mw()
+        _, agent_def = asyncio.run(
+            mw._parse_agent({"name": "a", "middleware": [{"class": "X", "args": ["not", "a", "dict"]}]}, "src")
+        )
+        assert "middleware" not in agent_def
+
     def test_parse_agent_omits_middleware_key_when_empty(self):
         """An empty middleware list adds no `middleware` key to the agent definition."""
         mw = self._make_mw()
