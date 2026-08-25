@@ -373,6 +373,8 @@ Use `ns <command> --help` for the full flag list of any subcommand.
 
 Ready to dive in? Check out the [user guide](docs/user_guide.md) for a detailed overview of the neuro-san library
 and its features.
+Developers who want to access all the capabilities of Neuro SAN Studio should clone this repository and follow the
+instructions in the [Developer Guide](#developer-guide) section.
 
 ---
 
