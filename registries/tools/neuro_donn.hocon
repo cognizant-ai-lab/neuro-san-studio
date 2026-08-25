@@ -18,13 +18,14 @@
     include "config/llm_config.hocon",
 
     "metadata": {
-        "description": "Neuro-Donn finds the right Devin playbook and starts the requested work.",
+        "description": "Neuro-Donn finds the right Devin playbook, starts the requested work, and reports the result.",
         "tags": ["mcp", "devin", "demo"],
         "sample_queries": [
             "Create a unileaf user in Auth0 for jane@example.com",
             "Give me a PR status report for neuro-san-deploy",
             "Bump build-common to the latest release in neuro-san-deploy",
             "Review PR 123 with Code_Fink",
+            "What is the result of the session you just launched?",
         ]
     },
 
@@ -32,7 +33,7 @@
         {
             "name": "neuro_donn",
             "function": {
-                "description": "Find the right Devin playbook for the user's request, or send it to Devin directly, and launch the work."
+                "description": "Find the right Devin playbook for the user's request, or send it to Devin directly, launch the work, and report the result."
             },
             "instructions": """
 You are Neuro-Donn, your Donn-on-demand.
@@ -44,9 +45,13 @@ When a playbook matches, always tell the user which one you chose, including its
 When no playbook matches or none is needed, say so plainly and treat the request as a direct Devin task.
 Before launching any Devin session, restate the request and, if there is one, the selected playbook, and ask the user to confirm.
 Only after the user confirms should you use task_launcher, passing the playbook ID only when a playbook was selected.
-After launch, share the session ID and URL returned by task_launcher.
+After launch, share the session ID and URL returned by task_launcher, and tell the user they can ask you for the result at any time.
+Use result_fetcher whenever the user asks how a launched session is going or what its answer was, passing the session ID and the number of seconds you are willing to wait.
+Wait only for work that should finish quickly, no more than 300 seconds, and otherwise fetch the current state immediately by passing zero.
+When result_fetcher reports that the session is still working, say so, repeat what it last reported, and invite the user to ask again later.
+When result_fetcher returns a finished session, present its answer as your own final answer, including any pull request links, and keep the session URL for reference.
             """,
-            "tools": ["playbook_finder", "task_launcher"]
+            "tools": ["playbook_finder", "task_launcher", "result_fetcher"]
         },
         {
             "name": "playbook_finder",
@@ -110,6 +115,40 @@ Return the resulting session ID and its URL in the form https://app.devin.ai/ses
                 {
                     "url": "https://mcp.devin.ai/mcp",
                     "tools": ["devin_session_create"]
+                }
+            ]
+        },
+        {
+            "name": "result_fetcher",
+            "function": {
+                "description": "Report the status and latest answer of a Devin session, optionally waiting for it to settle first.",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "session_id": {
+                            "type": "string",
+                            "description": "The Devin session ID to report on."
+                        },
+                        "wait_seconds": {
+                            "type": "integer",
+                            "description": "How long to wait for the session to settle before reporting. Zero reports the current state immediately."
+                        }
+                    },
+                    "required": ["session_id"]
+                }
+            },
+            "instructions": """
+When wait_seconds is given and greater than zero, first call devin_session_gather with the session ID and that many seconds, capped at 590.
+Then call devin_session_interact with action get to read the session's status, status_detail, url, and pull_requests.
+Then call devin_session_interact with action get_messages to read what the session has said, and take the most recent message from Devin as its answer so far.
+Report the status, whether the session is finished or still working, that latest answer, and any pull request links.
+When the status shows the session is waiting for the user or waiting for approval, say what it is waiting for.
+Do not send messages to the session and do not terminate, archive, or otherwise change it.
+            """,
+            "tools": [
+                {
+                    "url": "https://mcp.devin.ai/mcp",
+                    "tools": ["devin_session_gather", "devin_session_interact"]
                 }
             ]
         }

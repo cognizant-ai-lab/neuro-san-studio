@@ -2,7 +2,8 @@
 
 **Neuro-Donn** is a front man for starting work in Devin. Describe a task in plain language and it finds the matching
 Devin playbook when there is one, or recognizes that the request is an ad-hoc task with no playbook. It restates the
-request, asks for confirmation, launches a Devin session after you confirm, and hands back the session URL. Every
+request, asks for confirmation, launches a Devin session after you confirm, and hands back the session URL. It can
+also report back on a launched session, so the answer arrives in this chat instead of only in the Devin session. Every
 session it launches is tagged `neuro-donn`.
 
 ## What You Can Do
@@ -31,6 +32,19 @@ Fix the failing configuration test in my current repository
 Neuro-Donn identifies this as a direct Devin task, skips playbook lookup, asks you to confirm the request, and then
 launches a plain Devin session. If it is unsure whether a request is recurring or one-off, it can look for a playbook
 before asking for confirmation.
+
+### Get the answer back in this chat
+
+After a launch, ask for the result and Neuro-Donn reports it here:
+
+```text
+What is the result of the session you just launched?
+```
+
+For short tasks it waits for the session to settle, up to a few minutes, and then gives you the session's answer
+along with any pull request links. For longer work it reports the current status and the session's most recent
+message, and you can ask again later. Devin sessions frequently outlive a single chat turn, so treat the waiting
+behavior as a convenience for quick tasks rather than a guarantee.
 
 ## File
 
@@ -86,7 +100,7 @@ Sessions are attributed to the owner of the PAT configured on the server, not to
 
 ## Architecture Overview
 
-Neuro-Donn has three agents:
+Neuro-Donn has four agents:
 
 - **Front man: `neuro_donn`** — classifies the request, coordinates playbook selection when useful, requires
   confirmation, and launches the work.
@@ -94,11 +108,13 @@ Neuro-Donn has three agents:
   playbooks, inspect plausible candidates, and return the best match.
 - **Task launcher: `task_launcher`** — calls Devin's `devin_session_create` MCP tool with the confirmed request,
   optional playbook ID, and the `neuro-donn` tag.
+- **Result fetcher: `result_fetcher`** — calls Devin's `devin_session_gather` MCP tool to wait for a session to settle
+  and `devin_session_interact` to read its status and messages, then returns the session's latest answer.
 
 Devin's MCP server exposes many tools, so each downstream agent receives a filtered MCP tool list. The playbook finder
 can only call `devin_playbook_manage`; it structurally cannot create sessions. The task launcher can only call
-`devin_session_create`. Keeping these responsibilities separate makes routing more reliable and limits accidental
-tool use.
+`devin_session_create`. The result fetcher is read-only by instruction and never messages or terminates a session.
+Keeping these responsibilities separate makes routing more reliable and limits accidental tool use.
 
 ## Debugging Hints
 
@@ -109,3 +125,5 @@ tool use.
   request to launch a plain session.
 - **Nothing launches after describing a task:** Confirmation is intentional. No Devin session is created until you
   restate the request and answer the confirmation question affirmatively.
+- **Result never arrives in chat:** Long sessions do not finish within a chat turn. Ask again later, or open the
+  session URL. `devin_session_gather` waits at most 590 seconds per call.
