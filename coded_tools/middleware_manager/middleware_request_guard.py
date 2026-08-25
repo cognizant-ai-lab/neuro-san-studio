@@ -68,7 +68,9 @@ class MiddlewareRequestGuard:
         middleware_class: Any = args.get("middleware_class", "")
         if not isinstance(middleware_class, str):
             raise ValueError(f"Error: middleware_class must be a string, got {type(middleware_class).__name__}.")
-        if not middleware_class:
+        # strip(): the persistence layer refuses to preserve a whitespace-only
+        # class, so the tool must not create an entry a round trip would drop.
+        if not middleware_class.strip():
             raise ValueError("No middleware_class provided.")
 
         return network_def, agent_name, middleware_class
@@ -88,7 +90,11 @@ class MiddlewareRequestGuard:
         :raises ValueError: when a middleware block is present but is not a
                 list of dictionaries.
         """
-        existing_middleware: Any = agent_def.get(MIDDLEWARE_KEY) or []
+        # Explicit None check, not `or []`: a present-but-falsy block ({} or "")
+        # is malformed and must raise below, not be silently treated as empty.
+        existing_middleware: Any = agent_def.get(MIDDLEWARE_KEY)
+        if existing_middleware is None:
+            existing_middleware = []
         if not isinstance(existing_middleware, list) or not all(
             isinstance(entry, dict) for entry in existing_middleware
         ):
