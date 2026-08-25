@@ -1,0 +1,116 @@
+# Copyright © 2025-2026 Cognizant Technology Solutions Corp, www.cognizant.com.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
+# END COPYRIGHT
+
+{
+    include "config/llm_config.hocon",
+
+    "metadata": {
+        "description": "Neuro-Donn finds the right Devin playbook and starts the requested work.",
+        "tags": ["mcp", "devin", "demo"],
+        "sample_queries": [
+            "Create a unileaf user in Auth0 for jane@example.com",
+            "Give me a PR status report for neuro-san-deploy",
+            "Bump build-common to the latest release in neuro-san-deploy",
+            "Review PR 123 with Code_Fink",
+        ]
+    },
+
+    "tools": [
+        {
+            "name": "neuro_donn",
+            "function": {
+                "description": "Help the user find and launch the right Devin playbook."
+            },
+            "instructions": """
+You are Neuro-Donn, your Donn-on-demand.
+You help colleagues get work started by finding the right Devin playbook and launching a Devin session.
+Ask a clarifying question when the user's request is vague.
+For every actionable request, use playbook_finder to identify the best matching playbook.
+Always tell the user which playbook you chose, including its title and playbook ID, and briefly explain what it does.
+Before launching any Devin session, ask the user to confirm that the selected playbook and request are correct.
+Only after the user confirms should you use task_launcher.
+If no playbook matches, say so clearly and ask the user to confirm launching a plain Devin session with their request.
+After launch, share the session ID and URL returned by task_launcher.
+            """,
+            "tools": ["playbook_finder", "task_launcher"]
+        },
+        {
+            "name": "playbook_finder",
+            "function": {
+                "description": "Find the Devin playbook that best matches the user's request.",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "request": {
+                            "type": "string",
+                            "description": "The user's request to match against Devin playbooks."
+                        }
+                    },
+                    "required": ["request"]
+                }
+            },
+            "instructions": """
+Call devin_playbook_manage with action list to retrieve the available Devin playbooks.
+Review the list and identify one to three plausible candidates for the user's request.
+Call devin_playbook_manage with action get and each candidate's playbook_id to read their content.
+Return the best match as its playbook title, playbook_id, and one line describing what it does.
+If none of the available playbooks matches the request, explicitly report that no playbook matches.
+            """,
+            "tools": [
+                {
+                    "url": "https://mcp.devin.ai/mcp",
+                    "tools": ["devin_playbook_manage"]
+                }
+            ]
+        },
+        {
+            "name": "task_launcher",
+            "function": {
+                "description": "Launch a Devin session for the user's confirmed request.",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "prompt": {
+                            "type": "string",
+                            "description": "The user's request to send to Devin."
+                        },
+                        "playbook_id": {
+                            "type": "string",
+                            "description": "The selected Devin playbook ID, if one matched."
+                        },
+                        "title": {
+                            "type": "string",
+                            "description": "An optional title for the Devin session."
+                        }
+                    },
+                    "required": ["prompt"]
+                }
+            },
+            "instructions": """
+Call devin_session_create with the prompt and any supplied playbook_id and title.
+Always pass tags ["neuro-donn"].
+If no playbook matched, still launch a plain session using the user's request as the prompt.
+Return the resulting session ID and its URL in the form https://app.devin.ai/sessions/<id>.
+            """,
+            "tools": [
+                {
+                    "url": "https://mcp.devin.ai/mcp",
+                    "tools": ["devin_session_create"]
+                }
+            ]
+        }
+    ]
+}

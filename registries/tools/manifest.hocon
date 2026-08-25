@@ -122,6 +122,7 @@
     # python bmi_server.py
     "tools/mcp_bmi_streamable_http.hocon": false,
 
+    "tools/neuro_donn.hocon": true,
     "tools/now_agents.hocon": true,
 
     # Requirement to use this openai based agent network:
