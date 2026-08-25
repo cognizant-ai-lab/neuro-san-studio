@@ -211,7 +211,7 @@ Forgetting:
                         }
                         summarization = {
                             max_topic_size  = 1000
-                            model           = "gpt-4.1-mini"
+                            model           = "gpt-5.4-mini"
                             personalization = "Summarize the user's coffee ordering habits in a concise, neutral tone. Retain per-drink order counts, preferred shops, and time-of-day patterns so the 'usual' can still be inferred. Preserve customer names and any explicit preferences verbatim."
                         }
                         enabled_operations = ["create", "read", "append", "delete", "search", "list"]

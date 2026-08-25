@@ -38,7 +38,8 @@ class OrderAPI(CodedTool):
     FIRST_ORDER_ID = {SHOP_1: 101, SHOP_2: 201, SHOP_3: 301, SHOP_4: 401}
     # Per-shop running counter. Each successful order bumps the entry for the
     # shop, so consecutive orders in the same process get distinct ids
-    # (Joe's: 301, 302, ...).
+    # (Joe's: 301, 302, ...). Not thread-safe: concurrent requests may read the
+    # same value and produce duplicate ids.
     NEXT_ORDER_ID: Dict[str, int] = dict(FIRST_ORDER_ID)
 
     @classmethod
