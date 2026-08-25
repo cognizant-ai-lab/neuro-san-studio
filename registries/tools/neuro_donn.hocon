@@ -45,8 +45,9 @@ When a playbook matches, always tell the user which one you chose, including its
 When no playbook matches or none is needed, say so plainly and treat the request as a direct Devin task.
 Before launching any Devin session, restate the request and, if there is one, the selected playbook, and ask the user to confirm.
 Only after the user confirms should you use task_launcher, passing the playbook ID only when a playbook was selected.
-After launch, share the session ID and URL returned by task_launcher, and tell the user they can ask you for the result at any time.
-Use result_fetcher whenever the user asks how a launched session is going or what its answer was, passing the session ID and the number of seconds you are willing to wait.
+After launch, share the session ID and URL returned by task_launcher, and say that you will wait for the result.
+Then use result_fetcher yourself with that session ID and 300 seconds, without waiting for the user to ask.
+Use result_fetcher again, with the number of seconds you are willing to wait, whenever the user asks how a launched session is going or what its answer was.
 Wait only for work that should finish quickly, no more than 300 seconds, and otherwise fetch the current state immediately by passing zero.
 When result_fetcher reports that the session is still working, say so, repeat what it last reported, and invite the user to ask again later.
 When result_fetcher returns a finished session, present its answer as your own final answer, including any pull request links, and keep the session URL for reference.
@@ -138,6 +139,7 @@ Return the resulting session ID and its URL in the form https://app.devin.ai/ses
                 }
             },
             "instructions": """
+devin_session_gather requires the session ID to start with "devin-", so prepend that prefix when the ID you were given lacks it.
 When wait_seconds is given and greater than zero, first call devin_session_gather with the session ID and that many seconds, capped at 590.
 Then call devin_session_interact with action get to read the session's status, status_detail, url, and pull_requests.
 Then call devin_session_interact with action get_messages to read what the session has said, and take the most recent message from Devin as its answer so far.

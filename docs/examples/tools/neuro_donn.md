@@ -35,7 +35,8 @@ before asking for confirmation.
 
 ### Get the answer back in this chat
 
-After a launch, ask for the result and Neuro-Donn reports it here:
+After a launch Neuro-Donn waits for the session on its own and reports the answer here, so you do not have to ask.
+You can also ask again at any time:
 
 ```text
 What is the result of the session you just launched?
