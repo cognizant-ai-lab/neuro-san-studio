@@ -56,6 +56,12 @@ DEFAULT_MCP_TOOLS_TTL_SECONDS: float = 300.0
 
 logger = AndLogger(logging.getLogger(__name__))
 
+# If this tool is ever recast as a designer middleware, see the module
+# docstring of middleware/agent_network_designer/hocon_catalog_cache.py for
+# which pieces of its load/cache discipline are reusable here and which
+# policies below (McpServersInfoRestorer, missing-file-as-authoritative-empty,
+# TTL-bucketed fingerprint, the per-conversation sly_data fetch path) differ.
+
 
 class GetMcpTool(CodedTool):
     """
