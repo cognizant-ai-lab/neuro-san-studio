@@ -2,9 +2,8 @@
 
 **Neuro-Donn** is a front man for starting work in Devin. Describe a task in plain language and it first looks for the
 matching Devin playbook. Only a plainly one-off code change in a named repository goes directly to Devin without a
-playbook lookup. It chooses the playbook and launches a Devin session immediately, states any assumptions it made, and
-hands back the session URL. It can also report back on a launched session, so the answer arrives in this chat instead
-of only in the Devin session. Every session it launches is tagged `neuro-donn`.
+playbook lookup. It chooses the playbook and launches the work immediately, states any assumptions it made, and reports
+the answer in chat. Every task it launches is tagged `neuro-donn`.
 
 ## What You Can Do
 
@@ -36,17 +35,16 @@ proceeds; you can correct it afterwards if it got the request or routing wrong.
 
 ### Get the answer back in this chat
 
-After a launch Neuro-Donn waits for the session on its own and reports the answer here, so you do not have to ask.
-You can also ask again at any time:
+After a launch Neuro-Donn tells you what it is running, then waits and reports the answer here, so you do not have to
+ask. You can ask again at any time:
 
 ```text
-What is the result of the session you just launched?
+How is that going, and what did it find?
 ```
 
-For short tasks it waits for the session to settle, up to a few minutes, and then gives you the session's answer
-along with any pull request links. For longer work it reports the current status and the session's most recent
-message, and you can ask again later. Devin sessions frequently outlive a single chat turn, so treat the waiting
-behavior as a convenience for quick tasks rather than a guarantee.
+For short tasks it waits up to a few minutes and then gives you the answer along with any pull request links. For
+longer work it reports the current status and most recent message, and you can ask again later. Devin work frequently
+outlives a single chat turn, so treat the waiting behavior as a convenience for quick tasks rather than a guarantee.
 
 ### Expect Donn's voice, not Donn
 
@@ -131,7 +129,8 @@ Keeping these responsibilities separate makes routing more reliable and limits a
   provide headers, client `sly_data` takes precedence.
 - **No playbook matches:** Neuro-Donn should say that no playbook matches, launch a plain Devin task immediately, and
   state any assumptions it made. Correct the request afterwards if its interpretation was wrong.
-- **An unwanted session launched:** Neuro-Donn launches without asking for confirmation. If it misunderstood a request
-  or chose the wrong playbook, correct the assumption in chat and terminate the unwanted session in the Devin UI.
-- **Result never arrives in chat:** Long sessions do not finish within a chat turn. Ask again later, or open the
-  session URL. `devin_session_gather` waits at most 590 seconds per call.
+- **An unwanted task launched:** Neuro-Donn launches without asking for confirmation. If it misunderstood a request or
+  chose the wrong playbook, correct the assumption in chat and stop the unwanted work in the Devin UI.
+- **Result never arrives in chat:** Long-running work may not finish within a chat turn. Ask again in chat; the work
+  remains visible in the Devin UI to whoever owns the configured PAT. `devin_session_gather` waits at most 590 seconds
+  per call.
