@@ -193,9 +193,7 @@ class ValidateCaptureSpec(CodedTool):
             return
         for index, timeout in enumerate(suggested_timeouts):
             if not isinstance(timeout, int) or isinstance(timeout, bool) or timeout < 1:
-                errors.append(
-                    f"suggested_timeout_seconds[{index}] must be a positive integer, got: {timeout!r}."
-                )
+                errors.append(f"suggested_timeout_seconds[{index}] must be a positive integer, got: {timeout!r}.")
         turn_count: Any = capture_spec.get("turn_count")
         if ValidateCaptureSpec._valid_turn_count(turn_count) and len(suggested_timeouts) != turn_count:
             errors.append(
@@ -279,8 +277,7 @@ class ValidateCaptureSpec(CodedTool):
                 )
             if key not in seeds:
                 errors.append(
-                    f"Neutral scenario seed key '{key}' is missing from sly_data_seeds "
-                    f"(scenario values: {values!r})."
+                    f"Neutral scenario seed key '{key}' is missing from sly_data_seeds (scenario values: {values!r})."
                 )
 
     def _check_state_reset(self, capture_spec: dict[str, Any], errors: list[str]) -> None:
@@ -363,8 +360,7 @@ class ValidateCaptureSpec(CodedTool):
             )
         if needs_structure and "response_structure" not in capture_fields:
             errors.append(
-                "capture_per_turn must include 'response_structure' because the assertions "
-                "require response.structure."
+                "capture_per_turn must include 'response_structure' because the assertions require response.structure."
             )
 
     @staticmethod
@@ -445,8 +441,7 @@ class ValidateCaptureSpec(CodedTool):
             )
         elif not isinstance(expected, float) and (not isinstance(expected, str) or not expected.strip()):
             errors.append(
-                f"{path}.expected.{test_name}: expected value must be a float or non-empty string, "
-                f"got: {expected!r}."
+                f"{path}.expected.{test_name}: expected value must be a float or non-empty string, got: {expected!r}."
             )
 
     @staticmethod
@@ -656,9 +651,7 @@ class ValidateCaptureSpec(CodedTool):
         if not isinstance(assertions, list):
             return
         fuzzy_count: int = sum(
-            1
-            for assertion in assertions
-            if isinstance(assertion, dict) and assertion.get("determinism") == "fuzzy"
+            1 for assertion in assertions if isinstance(assertion, dict) and assertion.get("determinism") == "fuzzy"
         )
         if fuzzy_count == 0:
             return
@@ -692,9 +685,7 @@ class ValidateCaptureSpec(CodedTool):
         if scenario_format != _NEUTRAL_SCENARIO_FORMAT:
             return {
                 "valid": False,
-                "errors": [
-                    f"'scenario_format' must be '{_NEUTRAL_SCENARIO_FORMAT}', got: {scenario_format!r}."
-                ],
+                "errors": [f"'scenario_format' must be '{_NEUTRAL_SCENARIO_FORMAT}', got: {scenario_format!r}."],
             }
         logger.info(">>>>>>>>>>>>>>>>>>>Validating Capture Spec>>>>>>>>>>>>>>>>>>")
         errors: list[str] = []

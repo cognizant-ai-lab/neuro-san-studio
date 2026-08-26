@@ -87,10 +87,7 @@ class CollectTestKit(CodedTool):
                 elif not isinstance(test_entry["scenario_format"], str) or not test_entry["scenario_format"].strip():
                     error = f"{path}.scenario_format must be a non-empty string."
                 elif test_entry["scenario_format"] not in SUPPORTED_SCENARIO_FORMATS:
-                    error = (
-                        f"{path}.scenario_format must be one of "
-                        f"{sorted(SUPPORTED_SCENARIO_FORMATS)}."
-                    )
+                    error = f"{path}.scenario_format must be one of {sorted(SUPPORTED_SCENARIO_FORMATS)}."
                 elif not isinstance(test_entry["capture_spec"], dict):
                     error = f"{path}.capture_spec must be a dictionary."
                 else:
@@ -121,9 +118,7 @@ class CollectTestKit(CodedTool):
                 return self._error(f"'tests' is not valid JSON: {exc.msg}.")
         if not isinstance(tests, list) or not tests:
             return self._error("'tests' must be a non-empty list of test entries.")
-        required_keys: frozenset[str] = frozenset(
-            {"scenario_name", "scenario", "scenario_format", "capture_spec"}
-        )
+        required_keys: frozenset[str] = frozenset({"scenario_name", "scenario", "scenario_format", "capture_spec"})
         scenario_names: set[str] = set()
         for index, test_entry in enumerate(tests):
             entry_error: str | None = self._validate_entry(test_entry, index, required_keys, scenario_names)

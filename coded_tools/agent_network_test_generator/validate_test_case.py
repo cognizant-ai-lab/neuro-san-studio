@@ -25,9 +25,7 @@ from coded_tools.agent_network_test_generator.stock_test_constants import _FORBI
 from coded_tools.agent_network_test_generator.validate_capture_spec import ValidateCaptureSpec
 
 _NEUTRAL_SCENARIO_FORMAT: str = "antegen_neutral"
-_ALLOWED_NEUTRAL_SCENARIO_KEYS: frozenset[str] = frozenset(
-    {"agent", "attempts", "required_passes", "turns"}
-)
+_ALLOWED_NEUTRAL_SCENARIO_KEYS: frozenset[str] = frozenset({"agent", "attempts", "required_passes", "turns"})
 _ALLOWED_NEUTRAL_TURN_KEYS: frozenset[str] = frozenset({"text", "seeds"})
 
 
@@ -107,8 +105,7 @@ class ValidateTestCase(CodedTool):
             assertions: Any = capture_spec.get("assertions")
             if isinstance(assertions, list):
                 fuzzy = any(
-                    isinstance(assertion, dict) and assertion.get("determinism") == "fuzzy"
-                    for assertion in assertions
+                    isinstance(assertion, dict) and assertion.get("determinism") == "fuzzy" for assertion in assertions
                 )
         expected_attempts, expected_passes = (3, 2) if fuzzy else (1, 1)
         if attempts != expected_attempts or required_passes != expected_passes:
