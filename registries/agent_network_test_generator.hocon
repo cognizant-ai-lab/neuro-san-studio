@@ -16,7 +16,7 @@
 {
     include "registries/expertise_scoping_instructions.hocon",
     "metadata": {
-        "description": "ANTeGen (Agent Network Test Generator) — generates data-driven test fixture HOCON files for existing agent networks. Provide the name of an agent network and it will read its definition, analyze its capabilities, and produce test cases with interactions, expected responses, and sly_data.",        "tags": ["tool", "testing"],
+        "description": "ANTeGen (Agent Network Test Generator) — generates data-driven test fixture HOCON files for existing agent networks. Provide the name of an agent network and it will read its definition, analyze its capabilities, and produce test cases with interactions, expected responses, and sly_data. By default it instead produces an in-memory test kit of scenarios and capture specs, leaving the disk untouched.",        "tags": ["tool", "testing"],
         "sample_queries": [
             "Generate test cases for basic/coffee_finder_advanced",
             "Generate test cases for basic/coffee_finder_advanced with max coverage",
@@ -32,7 +32,7 @@
         {
             "name": "agent_network_test_generator",
             "function": {
-                "description": "Generate data-driven test fixture HOCON files for an existing agent network.",
+                "description": "Generate data-driven test fixture HOCON files for an existing agent network, or by default an in-memory framework-agnostic test kit.",
                 "parameters": {
                     "type": "object",
                     "properties": {
@@ -51,6 +51,7 @@
             },
             "instructions": ${expertise_scoping_instructions} """
 You orchestrate the generation of data-driven test fixture HOCON files for existing neuro-san agent networks.
+You also generate a framework-neutral test kit in memory when the user does not ask for fixture files.
 Follow these steps carefully:
 
 1) Read the target agent network
@@ -61,22 +62,54 @@ Follow these steps carefully:
 - Call `test_scenario_planner` with the network summary and the `test_level` (default "minimum" if the user did not specify one).
 - It will return a list of scenario descriptions, each describing what to test and what sly_data to use.
 
-3) Build test fixtures (batched)
+Then take exactly one of the two paths below, never both, and never mix their tools:
+- Take path (a) only when the user explicitly asks for a neuro-san DataDriven fixture, a fixture file, or files on disk.
+- Otherwise take path (b). Path (b) is the default when the request is ambiguous.
+
+3a) Build test fixtures (batched)
 - Call `test_fixture_builder` ONCE with ALL scenarios from step 2 and the network summary.
 - It will return a JSON list of complete test fixture dictionaries — one per scenario.
 
-4) Validate each fixture
-- For each fixture from step 3, call `validate_test_fixture` with the fixture dictionary.
+4a) Validate each fixture
+- For each fixture from step 3a, call `validate_test_fixture` with the fixture dictionary.
 - If validation fails, call `test_fixture_builder` again with ONLY the failed scenario and the error messages to fix the issues. Repeat until validation passes (up to 3 attempts per fixture).
 
-5) Persist each validated fixture
+5a) Persist each validated fixture
 - For each validated fixture, call `persist_test_fixture` with:
   - `test_fixture`: the complete test case dictionary.
   - `file_name`: a descriptive snake_case file name ending in .hocon.
+- Do not call `collect_test_kit` on this path.
 
-6) Return a summary of all generated test cases with their file paths and what each one tests.
+6a) Return a summary of all generated test cases with their file paths and what each one tests.
+
+3b) Build test cases (batched)
+- Call `test_case_builder` ONCE with ALL scenarios from step 2 and the network summary.
+- It will return a JSON list of `{scenario_name, scenario, scenario_format, capture_spec}` objects — one per scenario, with `scenario_format` equal to `"antegen_neutral"`.
+
+4b) Validate each test case
+- For each object from step 3b, call `validate_test_case` with the scenario, its `scenario_format`, and its capture spec.
+- If validation fails, call `test_case_builder` again with ONLY the failed scenario and the error messages to fix the issues. Repeat until validation passes (up to 3 attempts per test case).
+
+5b) Collect the validated test cases in memory
+- Call `collect_test_kit` ONCE with the network name and ALL validated objects.
+- Do not call `persist_test_fixture` on this path. This path writes no files.
+
+6b) Return a summary of all generated test cases and what each one tests, noting that the kit is published to sly_data under `antegen_test_kit`.
+
+7b) Explicitly export the in-memory kit as DataDriven fixtures (optional follow-on to path (b))
+- Take this step ONLY when the user explicitly asks to also export the in-memory kit as DataDriven fixtures or files.
+- This is an explicit opt-in follow-on to path (b), not a third generation path; the request still takes exactly one of path (a) or path (b).
+- Call `emit_datadriven_from_kit` ONCE, optionally with the requested `scenario_names`.
+- For EACH returned fixture, call `validate_test_fixture` with its `test_fixture` dictionary.
+- For EACH validated fixture, call `persist_test_fixture` with that `test_fixture` and the returned `file_name`.
+- Report any `errors` and `dropped` fields returned by `emit_datadriven_from_kit` to the user.
 """,
-            "tools": ["read_agent_network", "test_scenario_planner", "test_fixture_builder", "validate_test_fixture", "persist_test_fixture"]
+            "tools": ["read_agent_network", "test_scenario_planner", "test_fixture_builder", "validate_test_fixture", "persist_test_fixture", "test_case_builder", "validate_test_case", "collect_test_kit", "emit_datadriven_from_kit"],
+            "allow": {
+                "to_upstream": {
+                    "sly_data": ["antegen_test_kit"]
+                }
+            }
         },
 
         {
@@ -225,6 +258,8 @@ Rules for building fixtures:
 - Do NOT add `name` inside interactions. The only allowed interaction keys are: `text`, `timeout_in_seconds`, `response`, `sly_data`.
 
 - `success_ratio` must be a string in "N/M" format (e.g. "1/1"), NOT a number like 1.0.
+  - If ANY interaction's response uses `gist` or `not_gist`, set `"success_ratio": "2/3"`.
+  - Otherwise, set `"success_ratio": "1/1"`.
 
 - Prefer `structure` over `gist` when the expected output can be validated deterministically.
 
@@ -255,6 +290,98 @@ Return a JSON list of fixture dictionaries — one per scenario. If only one sce
         },
 
         {
+            "name": "test_case_builder",
+            "function": {
+                "description": "Build complete framework-agnostic neutral test-case objects from scenario descriptions and a network summary. Accepts one or more scenarios and returns one object for each.",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "scenarios": {
+                            "type": "string",
+                            "description": "A JSON list of scenario descriptions from test_scenario_planner. May also be a single scenario when retrying after validation failure."
+                        },
+                        "network_summary": {
+                            "type": "string",
+                            "description": "The full network summary from read_agent_network."
+                        },
+                        "validation_errors": {
+                            "type": "string",
+                            "description": "Optional. Error messages from validate_test_case if a previous attempt failed. Fix all listed errors."
+                        }
+                    },
+                    "required": ["scenarios", "network_summary"]
+                }
+            },
+            "instructions": """
+You are a neutral test-case builder. Given one or more scenario descriptions and a network summary, produce one complete test-case object for EACH scenario.
+
+Each object must have exactly this shape:
+{{
+    "scenario_name": "<scenario name>",
+    "scenario": {{
+        "agent": "<network name without .hocon extension>",
+        "attempts": 1,
+        "required_passes": 1,
+        "turns": [
+            {{ "text": "<natural user message>", "seeds": {{ "key": "value" }} }}
+        ]
+    }},
+    "scenario_format": "antegen_neutral",
+    "capture_spec": {{
+        "turn_count": 1,
+        "sly_data_seeds": {{}},
+        "stateful": false,
+        "reset_required": [],
+        "capture_per_turn": ["response_text"],
+        "suggested_timeout_seconds": [120],
+        "assertions": [
+            {{
+                "turn": 1,
+                "target": "response.text",
+                "test": "keywords",
+                "determinism": "deterministic",
+                "expected": ["Coffee"]
+            }},
+            {{
+                "turn": 2,
+                "target": "response.structure.order_id",
+                "test": "value",
+                "determinism": "deterministic",
+                "expected": 201.0
+            }}
+        ]
+    }}
+}}
+
+The outer object must contain only `scenario_name`, `scenario`, `scenario_format`, and `capture_spec`.
+The neutral `scenario` must contain exactly the required keys `agent`, `attempts`, `required_passes`, and `turns`.
+`attempts` and `required_passes` are positive integers with `required_passes <= attempts`.
+`turns` is a non-empty list. Each turn contains required non-empty string `text` and optional dictionary `seeds`, and no other keys.
+Do NOT use DataDriven keys such as `success_ratio`, `connections`, or `interactions`.
+Do NOT put `timeout_in_seconds` or `response` in turns: timeouts belong in capture_spec and assertions belong only in capture_spec.
+Never include runtime-managed seed keys `running_cost`, `TopicMemory`, or `username`.
+
+Use the valid stock tests `keywords`, `not_keywords`, `value`, `not_value`, `gist`, `not_gist`, `less`, `not_less`, `greater`, and `not_greater` when constructing assertions. Use `response.text` or `response.structure.<key>` targets.
+Set `capture_per_turn` to the supported fields needed by the assertions, plus any other supported fields required by the runner: `response_text`, `response_structure`, `sly_data_after`, `elapsed_seconds`, and `error`.
+Set `stateful` and `reset_required` from memory tools in the network summary. Set `sly_data_seeds` to the exact union of the turn `seeds` dictionaries.
+Set `turn_count` to the number of turns. Set one positive advisory `suggested_timeout_seconds` value per turn, in turn order.
+Create one assertion entry for every stock test represented by the planned response behavior. Each entry has `turn`, `target`, `test`, `determinism`, and a required `expected` value. For `keywords`, `not_keywords`, `gist`, and `not_gist`, `expected` is a non-empty list of non-empty strings. For `value` and `not_value`, `expected` is an exact float or an exact non-empty string; comparison tests `less`, `not_less`, `greater`, and `not_greater` require an exact float, never an integer. For example, use `{{"test": "keywords", "expected": ["Coffee"]}}` for a short phrase check, `{{"test": "value", "expected": "Order 201"}}` for exact string equality, and `{{"test": "value", "expected": 201.0}}` for deterministic numeric equality. Gist and not_gist are `fuzzy`, every other stock test is `deterministic`. Every fuzzy assertion MUST include a non-empty explanatory `note`.
+Emit at most one assertion per `(turn, target, test)` combination. When several phrases must appear in the same turn's text, put them all in one `expected` list rather than repeating the assertion: use one `keywords` assertion with `expected: ["Bob's Coffee Shop", "Henry's Fast Food", "Joe's Gas Station"]`, not three assertions.
+
+Prefer a deterministic check over `gist` when the expected output can be checked deterministically. Prefer `response.structure.<key>` targets when the network returns structured output. Use `gist` only for natural language, with short single-fact criteria.
+Be careful with `not_keywords`: it checks that a word does NOT appear ANYWHERE in the response text. Agents often mention unavailable or closed entities in passing while explaining why they are not options. Do NOT use `not_keywords` for entities the agent might mention in passing; use it only for words that should truly never appear.
+`keywords` matching is case-sensitive. Entries must be short distinctive phrases of at most 5 words, not generic short words. Prefer `gist` for order IDs and dynamically formatted values.
+Each turn's assertions must match what the agent actually says in THAT turn. Put confirmations and final results only in the last turn. Multi-turn scenarios need one assertion set per turn; use order-agnostic gist criteria for intermediate turns when follow-up questions may come in any order.
+When a coded tool produces deterministic numeric values, use exact floats, preserving the float type.
+If the network summary includes an agent named "Accountant", include a `response.structure.running_cost` assertion with `value` 3.0 for the first turn, 6.0 for the second, and so on, incrementing by 3.0 per turn. If there is no Accountant agent, do not include a `running_cost` assertion.
+If any assertion has `determinism: "fuzzy"`, set `attempts` to 3 and `required_passes` to 2. Otherwise set both to 1.
+If `validation_errors` is provided, fix every listed error before returning the test case.
+
+Return a JSON list of complete test-case objects. If only one scenario is provided, still return a list with one element.
+"""
+        },
+
+        {
             "name": "read_agent_network",
             "class": "agent_network_test_generator.read_agent_network.ReadAgentNetwork",
             "function": {
@@ -276,16 +403,68 @@ Return a JSON list of fixture dictionaries — one per scenario. If only one sce
             "name": "validate_test_fixture",
             "class": "agent_network_test_generator.validate_test_fixture.ValidateTestFixture",
             "function": {
-                "description": "Programmatically validate a test fixture dictionary before persisting. Returns a result with valid (true/false) and, when invalid, an errors list with specific error messages.",
+                "description": "Programmatically validate a test fixture dictionary before persisting. Returns a result with valid (true/false) and, when invalid, an errors list with specific error messages. Use this for neuro-san DataDriven fixtures only.",
                 "parameters": {
                     "type": "object",
                     "properties": {
                         "test_fixture": {
                             "type": "object",
-                            "description": "The complete test fixture dictionary to validate."
+                            "description": "The complete test fixture dictionary to validate, in the neuro-san DataDriven dialect."
                         }
                     },
                     "required": ["test_fixture"]
+                }
+            }
+        },
+
+        {
+            "name": "collect_test_kit",
+            "class": "agent_network_test_generator.collect_test_kit.CollectTestKit",
+            "function": {
+                "description": "Collect scenarios and capture specs into an in-memory ANTeGen test kit and publish it to sly_data. Each test entry has scenario_name, scenario, scenario_format, and capture_spec; scenario_format is antegen_neutral or neuro_san_data_driven.",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "agent": {
+                            "type": "string",
+                            "description": "The agent network name without the .hocon extension."
+                        },
+                        "tests": {
+                            "type": "string",
+                            "description": "A JSON list of entries containing scenario_name, scenario, scenario_format, and capture_spec. A list is also accepted."
+                        }
+                    },
+                    "required": ["agent", "tests"]
+                }
+            }
+        },
+
+        {
+            "name": "validate_test_case",
+            "class": "agent_network_test_generator.validate_test_case.ValidateTestCase",
+            "function": {
+                "description": "Programmatically validate one complete neutral test-case object, including its scenario and capture_spec. Returns a result with valid (true/false) and, when invalid, one combined errors list.",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "scenario_name": {
+                            "type": "string",
+                            "description": "The scenario name for this test case."
+                        },
+                        "scenario": {
+                            "type": "object",
+                            "description": "The scenario to validate; mode is selected by scenario_format."
+                        },
+                        "scenario_format": {
+                            "type": "string",
+                            "description": "The scenario dialect; must be antegen_neutral."
+                        },
+                        "capture_spec": {
+                            "type": "object",
+                            "description": "The runner capture specification paired with the scenario."
+                        }
+                    },
+                    "required": ["scenario", "scenario_format", "capture_spec"]
                 }
             }
         },
@@ -308,6 +487,25 @@ Return a JSON list of fixture dictionaries — one per scenario. If only one sce
                         }
                     },
                     "required": ["test_fixture", "file_name"]
+                }
+            }
+        },
+        {
+            "name": "emit_datadriven_from_kit",
+            "class": "agent_network_test_generator.emit_datadriven_from_kit.EmitDataDrivenFromKit",
+            "function": {
+                "description": "Convert the in-memory neutral kit into neuro-san DataDriven fixture dictionaries; this tool writes nothing itself.",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "scenario_names": {
+                            "type": "array",
+                            "description": "Optional scenario names to convert; omit or provide an empty list to convert all kit entries.",
+                            "items": {
+                                "type": "string"
+                            }
+                        }
+                    }
                 }
             }
         }
