@@ -1,10 +1,10 @@
 # Neuro-Donn
 
-**Neuro-Donn** is a front man for starting work in Devin. Describe a task in plain language and it finds the matching
-Devin playbook when there is one, or recognizes that the request is an ad-hoc task with no playbook. It chooses the
-playbook and launches a Devin session immediately, states any assumptions it made, and hands back the session URL. It can
-also report back on a launched session, so the answer arrives in this chat instead of only in the Devin session. Every
-session it launches is tagged `neuro-donn`.
+**Neuro-Donn** is a front man for starting work in Devin. Describe a task in plain language and it first looks for the
+matching Devin playbook. Only a plainly one-off code change in a named repository goes directly to Devin without a
+playbook lookup. It chooses the playbook and launches a Devin session immediately, states any assumptions it made, and
+hands back the session URL. It can also report back on a launched session, so the answer arrives in this chat instead
+of only in the Devin session. Every session it launches is tagged `neuro-donn`.
 
 ## What You Can Do
 
@@ -18,20 +18,21 @@ Create a unileaf user in Auth0 for jane@example.com
 ```
 
 Neuro-Donn searches the available Devin playbooks, reads the most plausible matches, and launches the most plausible
-match immediately. It tells you the selected playbook's title, ID, and purpose, along with any assumptions it made.
+match immediately. The matched playbook may cover more ground than the request spelled out; Neuro-Donn tells you the
+selected playbook's title, ID, and purpose, along with any assumptions it made.
 
-### Send an ad-hoc task directly to Devin
+### Send a plainly one-off code change directly to Devin
 
-One-off work does not need a playbook. Code changes, bug fixes, investigations, and questions about a repository can
-go straight to Devin:
+Only a plainly one-off code change in a named repository skips playbook lookup. For example:
 
 ```text
 Fix the failing configuration test in my current repository
 ```
 
-Neuro-Donn identifies this as a direct Devin task, skips playbook lookup, and launches a plain Devin session
-immediately. If it is unsure whether a request is recurring or one-off, it makes a reasonable assumption, states it,
-and proceeds; you can correct it afterwards if it got the request or routing wrong.
+Neuro-Donn identifies this as a direct Devin task and launches a plain Devin session immediately. Investigations,
+questions about a repository, and other requests that are not plainly one-off code changes go through playbook lookup
+first. If it is unsure whether a request is recurring or one-off, it makes a reasonable assumption, states it, and
+proceeds; you can correct it afterwards if it got the request or routing wrong.
 
 ### Get the answer back in this chat
 
@@ -109,8 +110,8 @@ Sessions are attributed to the owner of the PAT configured on the server, not to
 
 Neuro-Donn has four agents:
 
-- **Front man: `neuro_donn`** — classifies the request, coordinates playbook selection when useful, launches the work
-  without confirmation, and states any assumptions it made.
+- **Front man: `neuro_donn`** — checks for a playbook by default, uses direct Devin only for plainly one-off code
+  changes in a named repository, launches the work without confirmation, and states any assumptions it made.
 - **Playbook finder: `playbook_finder`** — calls Devin's `devin_playbook_manage` MCP tool to list available
   playbooks, inspect plausible candidates, and return the best match.
 - **Task launcher: `task_launcher`** — calls Devin's `devin_session_create` MCP tool with the request, optional
