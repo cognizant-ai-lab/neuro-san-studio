@@ -1,8 +1,8 @@
 # Neuro-Donn
 
 **Neuro-Donn** is a front man for starting work in Devin. Describe a task in plain language and it finds the matching
-Devin playbook when there is one, or recognizes that the request is an ad-hoc task with no playbook. It restates the
-request, asks for confirmation, launches a Devin session after you confirm, and hands back the session URL. It can
+Devin playbook when there is one, or recognizes that the request is an ad-hoc task with no playbook. It chooses the
+playbook and launches a Devin session immediately, states any assumptions it made, and hands back the session URL. It can
 also report back on a launched session, so the answer arrives in this chat instead of only in the Devin session. Every
 session it launches is tagged `neuro-donn`.
 
@@ -17,8 +17,8 @@ or a routine repository chore. For example:
 Create a unileaf user in Auth0 for jane@example.com
 ```
 
-Neuro-Donn searches the available Devin playbooks, reads the most plausible matches, and tells you the selected
-playbook's title, ID, and purpose. It asks you to confirm the request and playbook before launching Devin.
+Neuro-Donn searches the available Devin playbooks, reads the most plausible matches, and launches the most plausible
+match immediately. It tells you the selected playbook's title, ID, and purpose, along with any assumptions it made.
 
 ### Send an ad-hoc task directly to Devin
 
@@ -29,9 +29,9 @@ go straight to Devin:
 Fix the failing configuration test in my current repository
 ```
 
-Neuro-Donn identifies this as a direct Devin task, skips playbook lookup, asks you to confirm the request, and then
-launches a plain Devin session. If it is unsure whether a request is recurring or one-off, it can look for a playbook
-before asking for confirmation.
+Neuro-Donn identifies this as a direct Devin task, skips playbook lookup, and launches a plain Devin session
+immediately. If it is unsure whether a request is recurring or one-off, it makes a reasonable assumption, states it,
+and proceeds; you can correct it afterwards if it got the request or routing wrong.
 
 ### Get the answer back in this chat
 
@@ -109,12 +109,12 @@ Sessions are attributed to the owner of the PAT configured on the server, not to
 
 Neuro-Donn has four agents:
 
-- **Front man: `neuro_donn`** — classifies the request, coordinates playbook selection when useful, requires
-  confirmation, and launches the work.
+- **Front man: `neuro_donn`** — classifies the request, coordinates playbook selection when useful, launches the work
+  without confirmation, and states any assumptions it made.
 - **Playbook finder: `playbook_finder`** — calls Devin's `devin_playbook_manage` MCP tool to list available
   playbooks, inspect plausible candidates, and return the best match.
-- **Task launcher: `task_launcher`** — calls Devin's `devin_session_create` MCP tool with the confirmed request,
-  optional playbook ID, and the `neuro-donn` tag.
+- **Task launcher: `task_launcher`** — calls Devin's `devin_session_create` MCP tool with the request, optional
+  playbook ID, and the `neuro-donn` tag.
 - **Result fetcher: `result_fetcher`** — calls Devin's `devin_session_gather` MCP tool to wait for a session to settle
   and `devin_session_interact` to read its status and messages, then returns the session's latest answer.
 
@@ -128,9 +128,9 @@ Keeping these responsibilities separate makes routing more reliable and limits a
 - **Authentication errors or missing tools:** Check that the Devin PAT is valid, both required headers are present,
   and the MCP URL in `MCP_SERVERS_INFO_FILE` exactly matches `https://mcp.devin.ai/mcp`. If both the client and server
   provide headers, client `sly_data` takes precedence.
-- **No playbook matches:** Neuro-Donn should say that no playbook matches and offer a direct Devin task. Confirm the
-  request to launch a plain session.
-- **Nothing launches after describing a task:** Confirmation is intentional. No Devin session is created until you
-  restate the request and answer the confirmation question affirmatively.
+- **No playbook matches:** Neuro-Donn should say that no playbook matches, launch a plain Devin task immediately, and
+  state any assumptions it made. Correct the request afterwards if its interpretation was wrong.
+- **An unwanted session launched:** Neuro-Donn launches without asking for confirmation. If it misunderstood a request
+  or chose the wrong playbook, correct the assumption in chat and terminate the unwanted session in the Devin UI.
 - **Result never arrives in chat:** Long sessions do not finish within a chat turn. Ask again later, or open the
   session URL. `devin_session_gather` waits at most 590 seconds per call.
