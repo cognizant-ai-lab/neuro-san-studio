@@ -155,7 +155,7 @@ The middleware manages skill lifecycle:
 
 ### Skill Structure
 ```
-docs/agent-skills/tests/job_guessing/
+skills/tests/job_guessing/
 ├── SKILL.md              # Main skill file with YAML frontmatter
 ├── location/
 │   └── LOCATION.md       # Additional resource (name → location mapping)

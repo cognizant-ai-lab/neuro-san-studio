@@ -898,7 +898,7 @@ Point `skill_sources` at a local directory containing a `SKILL.md` file:
         {
             "class": "middleware.agent_skills_middleware.AgentSkillsMiddleware",
             "args": {
-                "skill_sources": ["docs/agent-skills/tests/job_guessing"],
+                "skill_sources": ["skills/tests/job_guessing"],
                 "keep_skill_in_context": true
             }
         }
