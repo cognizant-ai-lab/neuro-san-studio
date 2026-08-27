@@ -97,7 +97,7 @@ You are a name assistant that provides career information based on user's name.
                         #
                         # Note: The following skills are intended for testing only.
                         # Personal or sensitive information should not be included in agent skills.
-                        "skill_sources": ["skills/tests/job_guessing"],
+                        "skill_sources": ["docs/agent-skills/tests/job_guessing"],
 
                         # Control how skill content is managed in the conversation context.
                         # 
