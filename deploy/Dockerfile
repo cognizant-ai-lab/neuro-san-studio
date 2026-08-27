@@ -50,9 +50,10 @@ RUN if [ -f ${APP_SOURCE}/requirements.txt ]; \
         pip install --prefix=/install --no-cache-dir -r ${APP_SOURCE}/requirements.txt ; \
     fi
 
-# Install plugin dependencies.
-# To install additional plugins, add more lines following this pattern:
-#   pip install --prefix=/install --no-cache-dir -r ${APP_SOURCE}/neuro_san_studio/plugins/<plugin>/requirements.txt
+# Install the optional Langfuse dependency so this deployment can use
+# neuro-san's built-in Langfuse tracing (see the LANGFUSE_* env vars below).
+# Remove this (and the COPY above) if your deployment does not use Langfuse.
+# To install other optional or plugin dependencies, follow the same pattern.
 # hadolint ignore=DL3059
 RUN pip install --prefix=/install --no-cache-dir \
     -r ${APP_SOURCE}/neuro_san_studio/plugins/langfuse/requirements.txt
@@ -224,7 +225,7 @@ ENV AGENT_FORWARDED_REQUEST_METADATA="request_id user_id"
 ENV AGENT_HTTP_PORT="8080"
 
 # Maximum number of requests that can be served at the same time
-ENV AGENT_MAX_CONCURRENT_REQUESTS="50"
+ENV AGENT_MAX_CONCURRENT_REQUESTS="0"
 
 # Maximum number of worker threads per request.
 # Default of <= 0 (or unset) indicates system default of (num_cpus + 4).
@@ -244,6 +245,28 @@ ENV AGENT_REQUEST_LIMIT="-1"
 # Update will be done every AGENT_MANIFEST_UPDATE_PERIOD_SECONDS seconds;
 # if value is not specified or <= 0, no such dynamic updates will be executed.
 ENV AGENT_MANIFEST_UPDATE_PERIOD_SECONDS="0"
+
+# Describes the concurrency model used for the manifest file updates.
+# Valid values are "thread" (the default) and "spawn" and "fork".
+#
+# "thread":     uses the default threading concurrency model.  It is best for servers who
+#               know their manifest content will be changing over the course of their lifetime.
+#               It is slowest of all options, but has the least amount of overall memory overhead
+#               and is lightweight and generally the safest and problem-free.
+# "spawn":      uses a multi-process based concurrency model.  It is the safest option (avoiding deadlocks)
+#               for environments where the manifest is changing, but some speed is still desired
+#               (like development servers).
+# "forkserver"  Is just like "fork" below, but forks from a clean process for memory conservation,
+#               More process overhead, not as quick but safer than "fork".
+# "fork":       uses a multi-process based concurrency model. It is actually the fastest option,
+#               but has potential to lead to deadlocks over repeated manifest reads.
+#               It can still be a reasonable option for server environments where the manifest
+#               is known never to change at all (AGENT_MANIFEST_UPDATE_PERIOD_SECONDS="0").
+#
+# See https://docs.python.org/3/library/multiprocessing.html#contexts-and-start-methods
+# for more details on "spawn", "fork" and "forkserver" concurrency models.
+# Not all are available on all OSes.
+ENV AGENT_MANIFEST_CONCURRENCY_CONTEXT="thread"
 
 # By default, the HTTP service reports the neuro-san library pip version in its health-check response.
 # It is possible to add other libraries to those results by listing them within this env var
@@ -265,13 +288,12 @@ ENV AGENT_TRACING_METADATA_REQUEST_KEYS="request_id user_id"
 # Only environment variables that are set to something other than the empty string will be forwarded.
 ENV AGENT_TRACING_METADATA_ENV_VARS="POD_NAME POD_NAMESPACE POD_IP NODE_NAME"
 
-# Langfuse observability plugin.
-# See https://github.com/cognizant-ai-lab/neuro-san-studio/blob/main/neuro_san_studio/plugins/langfuse/README.md
-# for more details.
+# Langfuse observability.
+# Langfuse tracing is built into neuro-san itself; no plugin is required.
 
-# "true" or "false" to turn on/off the Langfuse plugin.
+# "true" or "false" to turn on/off Langfuse tracing.
 ENV LANGFUSE_ENABLED=""
-# The secrect and public keys for the Langfuse plugin.
+# The secret and public keys for Langfuse.
 # These can be found in your Langfuse account settings.
 ENV LANGFUSE_SECRET_KEY=""
 ENV LANGFUSE_PUBLIC_KEY=""
@@ -300,9 +322,6 @@ ENV AGENT_HTTP_IDLE_CONNECTIONS_TIMEOUT="3600"
 #   Positive integer (N) → Manually specifies number of worker processes.
 # The developer-oriented default is 1, but we set to 0 here to allow pod CPU configuration
 # to dictate the number of server instance processes.
-# Note 7/7/2026: If your installation requires temporary agent networks (aka Reservations),
-# the server systems in place are not yet suitable for the multi-process operation
-# that is implied by a value that is not 1.
 ENV AGENT_HTTP_SERVER_INSTANCES="0"
 
 # If set to a value>0, will start periodic logging of currently used
@@ -322,6 +341,12 @@ ENV AGENT_HTTP_RESOURCES_MONITOR_INTERVAL="0"
 # Typical production value is 25-30 (under the 60s defaults of common proxies).
 ENV AGENT_STREAM_KEEP_ALIVE_WITH_PROGRESS_INTERVAL_SECONDS=0
 
+# When any particular CodedTool execution takes longer than this many seconds,
+# the system issues a message in the log.  This is very useful for determining
+# where your scale-up problems are with particular networks.  The default value of
+# 0 disables this feature.
+ENV AGENT_TOOL_EXECUTION_LOG_THRESHOLD_SECONDS=0
+
 # Optional URL describing how the server is to be referenced by the outside world.
 # This is useful when a server is behind a load-balancer as part of a larger cluster.
 ENV AGENT_EXTERNAL_SERVER_URL=""
@@ -332,7 +357,8 @@ ENV AGENT_EXTERNAL_SERVER_URL=""
 # neuro_san.internals.interfaces.ReservationsStorage interface.
 # When not set, this defaults to a null implementation.
 # A simple default implementation is provided by the class
-# "neuro_san.service.watcher.temp_networks.s3_reservations_storage.S3ReservationsStorage"
+# "neuro_san.service.watcher.temp_networks.s3.s3_reservations_storage.S3ReservationsStorage"
+# Note that you will need to install appropriate botocore and aiobotocore packages to use this class.
 ENV AGENT_EXTERNAL_RESERVATIONS_STORAGE=""
 
 # When the AGENT_EXTERNAL_RESERVATIONS_STORAGE (immediately above) is set to the
@@ -381,6 +407,19 @@ ENV AGENT_SESSION_REQUIRE_HTTPS="true"
 # Strongly consider keeping this off for production deployments.
 ENV LEAF_LOG_SENSITIVE="false"
 
+# When set to "true" (default "false"), CodedTool "class" references -- including
+# shared coded tools referenced through the toolbox -- resolve ONLY from within
+# the AGENT_TOOL_PATH hierarchy (see AGENT_TOOL_PATH above).  Fully-qualified
+# references to modules elsewhere on the PYTHONPATH are not resolved -- not even
+# imported -- so an agent network hocon file cannot trigger import-time execution
+# of an arbitrary installed module through a CodedTool class reference.  See
+# https://github.com/cognizant-ai-lab/neuro-san/blob/main/docs/agent_hocon_reference.md#class
+# Left off for now: some agent networks in this repo still
+# use fully-qualified CodedTool class references, which the restriction refuses.
+# We will change this to "true" once this repo's class references are cleaned up
+# to the "<module>.<ClassName>" form relative to AGENT_TOOL_PATH.
+ENV AGENT_TOOL_PATH_ONLY="false"
+
 #
 # Authorization
 #
@@ -389,11 +428,11 @@ ENV LEAF_LOG_SENSITIVE="false"
 # When not set (the default) the server uses an implementation for the Authorizer
 # that effectively lets all requests for all users through.
 # We offer the following implementations:
-#   neuro_san.internals.authorization.null.always_yes_authorizer.AlwaysYesAuthorizer (default)
-#   neuro_san.internals.authorization.null.always_no_authorizer.AlwaysNoAuthorizer
-#   neuro_san.internals.authorization.openfga.open_fga_authorizer.OpenFgaAuthorizer
+#   neuro_san.service.authorization.null.always_yes_authorizer.AlwaysYesAuthorizer (default)
+#   neuro_san.service.authorization.null.always_no_authorizer.AlwaysNoAuthorizer
+#   neuro_san.service.authorization.openfga.open_fga_authorizer.OpenFgaAuthorizer
 # Feel free to make your own as long as it derives from this interface:
-#   neuro_san.internals.authorization.interfaces.authorizer.Authorizer
+#   neuro_san.service.authorization.interfaces.authorizer.Authorizer
 ENV AGENT_AUTHORIZER=""
 
 # The request metadata field to use as the actor id for authorization
@@ -476,6 +515,19 @@ ENV AGENT_NETWORK_DESIGNER_MANIFEST_FILE="registries/manifest_and.hocon"
 # Toolbox info file providing available tools for the Agent Network Designer to choose from.
 # Defaults to "neuro_san_studio/toolbox/agent_network_designer_toolbox_info.hocon" if not set.
 ENV AGENT_NETWORK_DESIGNER_TOOLBOX_INFO_FILE="neuro_san_studio/toolbox/agent_network_designer_toolbox_info.hocon"
+
+# Time in seconds that the Agent Network Designer's cached MCP tool listings are served before
+# being re-fetched from the MCP servers. Positive values are clamped to at least twice the
+# fetch timeout below; 0 or a negative value disables the time-based refresh (listings then
+# refresh only when the MCP servers info file changes).
+# Defaults to "300" if not set.
+ENV AGENT_NETWORK_DESIGNER_MCP_TOOLS_TTL_SECONDS="300"
+
+# Time in seconds one MCP server may take to answer the Agent Network Designer's tool-listing
+# fetch before it is dropped from that refresh round (retried on the next one).
+# 0 or a negative value removes the cap.
+# Defaults to "30" if not set.
+ENV AGENT_NETWORK_DESIGNER_MCP_TOOLS_FETCH_TIMEOUT_SECONDS="30"
 
 # Maximum number of validation retry rounds before the persistence middleware gives up and
 # ends the session without persisting. Prevents runaway loops when the model cannot fix

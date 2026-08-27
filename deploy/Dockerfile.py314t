@@ -1,0 +1,697 @@
+# Copyright © 2025-2026 Cognizant Technology Solutions Corp, www.cognizant.com.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
+# END COPYRIGHT
+
+# ---------------------------------------------------------------------------
+# Free-threaded (Python 3.14t / no-GIL) build of the neuro-san-studio image.
+#
+# This is a variant of ./Dockerfile that:
+#   1. Runs on a FREE-THREADED CPython 3.14t interpreter.
+#   2. Ships a C/Rust build toolchain in the builder stage, because not every
+#      third-party dependency publishes cp314t wheels yet, so some must be
+#      compiled from source for the free-threaded ABI.
+#
+# All Python dependencies -- including neuro-san and the in-house leaf-common --
+# are installed from requirements.txt (i.e. from PyPI), exactly like
+# ./Dockerfile. No sibling source repositories are needed.
+#
+# WHY NOT `FROM python:3.14t-slim`?
+#   The Docker official `python` images do NOT publish a free-threaded variant
+#   (there is no `3.14t*` tag). We therefore provision the free-threaded
+#   interpreter with `uv`, which downloads a python-build-standalone
+#   free-threaded CPython (the "3.14t" variant) and builds a venv on top of it.
+#   Swap out the "provision python" step below if your organization has its own
+#   free-threaded base image; the rest of the file is provisioning-agnostic.
+#
+# Use ./deploy/build_py314t.sh to build this container. After a successful
+# build, you can use ./deploy/run.sh to run the built container locally.
+#
+# To find server-oriented environment variables to help you configure things
+# how you want, search for "ENV AGENT_" in this file.
+# ---------------------------------------------------------------------------
+
+# Build arguments
+ARG NEURO_SAN_STUDIO_VERSION="unknown"
+
+# OS base image for both stages (a plain Debian slim; the Python interpreter is
+# provisioned separately by uv, see below).
+ARG BASE_IMAGE="debian:trixie-slim"
+
+# Image to lift the statically-linked `uv` binary from.
+ARG UV_IMAGE="ghcr.io/astral-sh/uv:latest"
+
+# The free-threaded interpreter to install. The trailing "t" selects the
+# free-threaded (no-GIL) build. uv resolves this to a python-build-standalone
+# free-threaded CPython.
+ARG PYTHON_VERSION="3.14t"
+
+# Fixed locations for the uv-managed interpreter and the application venv.
+# These MUST be identical between the builder and final stages so the venv's
+# reference to its base interpreter stays valid after the copy.
+ARG PYTHON_INSTALL_DIR="/opt/python"
+ARG VENV_DIR="/opt/venv"
+
+# ===========================================================================
+# Stage 0: uv source - a tiny stage we lift the static `uv` binary out of.
+# Referenced as a named stage (rather than COPY --from=${UV_IMAGE}) because a
+# global ARG is usable in FROM but NOT inside a COPY --from within a stage.
+# ===========================================================================
+FROM ${UV_IMAGE} AS uvsrc
+
+# ===========================================================================
+# Stage 1: Builder - provision free-threaded 3.14t and install all deps
+# ===========================================================================
+FROM ${BASE_IMAGE} AS builder
+
+# Set the shell and options per hadolint recommendations
+SHELL ["/bin/bash", "-o", "pipefail", "-c"]
+
+WORKDIR /
+
+# App-specific constants
+ENV USERNAME="neuro-san"
+ENV APP_HOME="/usr/local/${USERNAME}"
+ENV APP_SOURCE="${APP_HOME}/myapp"
+
+# Toolchain needed to build C/Rust extensions from source for the cp314t ABI
+# when no prebuilt free-threaded wheel is available on PyPI. pydantic-core (via
+# pydantic) in particular is a Rust extension, hence the Rust toolchain below.
+# hadolint ignore=DL3008
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends \
+        build-essential \
+        gcc \
+        g++ \
+        make \
+        cmake \
+        pkg-config \
+        libffi-dev \
+        libssl-dev \
+        curl \
+        ca-certificates \
+    && rm -rf /var/lib/apt/lists/*
+
+# Rust toolchain (for pydantic-core and any other maturin/rust-built deps that
+# lack a cp314t wheel). Rather than pipe https://sh.rustup.rs straight into a
+# shell -- which pulls an unpinned, unverified script over the network on every
+# build -- we download a PINNED rustup-init from the immutable versioned archive
+# and verify its SHA-256 before running it. rustup itself then cryptographically
+# verifies the toolchain it downloads. Bump RUSTUP_VERSION + the two checksums
+# together from https://static.rust-lang.org/rustup/archive/<ver>/<target>/rustup-init.sha256
+# RUST_TOOLCHAIN can be pinned to an exact version (e.g. "1.90.0") for fully
+# reproducible builds; "stable" tracks the latest stable at build time.
+ENV RUSTUP_HOME="/usr/local/rustup" \
+    CARGO_HOME="/usr/local/cargo" \
+    PATH="/usr/local/cargo/bin:${PATH}"
+ARG RUSTUP_VERSION="1.29.0"
+ARG RUST_TOOLCHAIN="stable"
+ARG RUSTUP_INIT_SHA256_AMD64="4acc9acc76d5079515b46346a485974457b5a79893cfb01112423c89aeb5aa10"
+ARG RUSTUP_INIT_SHA256_ARM64="9732d6c5e2a098d3521fca8145d826ae0aaa067ef2385ead08e6feac88fa5792"
+RUN dpkgArch="$(dpkg --print-architecture)" \
+    && case "${dpkgArch}" in \
+        amd64) rustArch="x86_64-unknown-linux-gnu"; sha256="${RUSTUP_INIT_SHA256_AMD64}" ;; \
+        arm64) rustArch="aarch64-unknown-linux-gnu"; sha256="${RUSTUP_INIT_SHA256_ARM64}" ;; \
+        *) echo "unsupported architecture: ${dpkgArch}" >&2; exit 1 ;; \
+    esac \
+    && url="https://static.rust-lang.org/rustup/archive/${RUSTUP_VERSION}/${rustArch}/rustup-init" \
+    && curl --proto '=https' --tlsv1.2 -sSfL "${url}" -o /tmp/rustup-init \
+    && echo "${sha256}  /tmp/rustup-init" | sha256sum -c - \
+    && chmod +x /tmp/rustup-init \
+    && /tmp/rustup-init -y --no-modify-path --profile minimal --default-toolchain "${RUST_TOOLCHAIN}" \
+    && rm -f /tmp/rustup-init \
+    && rustc --version \
+    && cargo --version
+
+# Bring in the uv binary (static, no runtime deps).
+COPY --from=uvsrc /uv /usr/local/bin/uv
+
+# ---------------------------------------------------------------------------
+# Provision the free-threaded interpreter and an application venv on top of it.
+# ---------------------------------------------------------------------------
+ARG PYTHON_VERSION
+ARG PYTHON_INSTALL_DIR
+ARG VENV_DIR
+ENV UV_PYTHON_INSTALL_DIR="${PYTHON_INSTALL_DIR}"
+ENV VIRTUAL_ENV="${VENV_DIR}"
+ENV UV_NO_CACHE=1
+
+# --seed puts pip/setuptools in the venv so the runtime entrypoint's
+# `pip3 --version`/`pip3 freeze` diagnostics keep working.
+RUN uv python install "${PYTHON_VERSION}" \
+    && uv venv --python "${PYTHON_VERSION}" --seed "${VENV_DIR}" \
+    && "${VENV_DIR}/bin/python" -c "import sys; print('python', sys.version); print('gil_enabled =', getattr(sys, '_is_gil_enabled', lambda: 'n/a')())"
+
+# From here on, put the venv first on PATH so `python`/`pip` mean the venv's.
+ENV PATH="${VENV_DIR}/bin:${PATH}"
+
+# ---------------------------------------------------------------------------
+# neuro-san-studio runtime dependencies, installed straight from
+# requirements.txt (neuro-san and leaf-common come from PyPI like everything
+# else). The optional Langfuse plugin requirements are installed too so this
+# deployment can use neuro-san's built-in Langfuse tracing (see the LANGFUSE_*
+# env vars below); drop that second -r if your deployment does not use Langfuse.
+# ---------------------------------------------------------------------------
+COPY requirements.txt /build/requirements.txt
+COPY neuro_san_studio/plugins/langfuse/requirements.txt /build/langfuse-requirements.txt
+
+# orjson (pulled in transitively via langsmith / langgraph-sdk) REFUSES TO COMPILE
+# under a free-threaded interpreter unless this opt-in build env var is set: its
+# build.rs gates free-threaded builds behind `ORJSON_BUILD_FREETHREADED` and exits
+# with "does not support free-threaded Python" otherwise. We opt in here rather than
+# patching the Rust source.
+#
+# Caveat: this only lets orjson BUILD; orjson does not declare itself free-thread
+# safe, so at run time CPython will automatically re-enable the GIL when orjson is
+# imported (with a warning) unless the GIL is forced off (PYTHON_GIL=0 below).
+ENV ORJSON_BUILD_FREETHREADED=1
+
+RUN uv pip install \
+        -r /build/requirements.txt \
+        -r /build/langfuse-requirements.txt \
+    && python -c "import leaf_common, neuro_san; print('neuro-san / leaf imports OK')"
+
+# ===========================================================================
+# Stage 2: Final - slim runtime image carrying the 3.14t venv
+# ===========================================================================
+FROM ${BASE_IMAGE} AS final
+
+ARG NEURO_SAN_STUDIO_VERSION="unknown"
+ENV NEURO_SAN_STUDIO_VERSION=${NEURO_SAN_STUDIO_VERSION}
+
+# Set the shell and options in each FROM section per hadolint recommendations
+SHELL ["/bin/bash", "-o", "pipefail", "-c"]
+
+# A couple of runtime OS bits the app expects (bash for the entrypoint, certs
+# for outbound TLS to LLM providers).
+# hadolint ignore=DL3008
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends \
+        bash \
+        ca-certificates \
+    && rm -rf /var/lib/apt/lists/*
+
+# Set up user for app running in container
+ENV USERNAME="neuro-san"
+ENV APP_HOME="/usr/local/${USERNAME}"
+ENV APP_SOURCE="${APP_HOME}/myapp"
+
+RUN \
+    useradd -ms /bin/bash -d ${APP_HOME} -u 1001 ${USERNAME} \
+    && usermod -L ${USERNAME} \
+    && mkdir -p ${APP_HOME}/.ssh \
+    && chown -R ${USERNAME}: ${APP_HOME} \
+    && chown -R ${USERNAME}: /var/log
+
+# Set up a place for the mount of secrets to happen
+RUN mkdir -p ${APP_HOME}/certs/aws \
+    && ln -s ${APP_HOME}/certs/aws ${APP_HOME}/.aws
+
+# This is the port the service will accept http requests on.
+# This should be consistent with the main port for the service as described
+# in any kubernetes <service>.yaml file
+# This port number is also mentioned as AGENT_HTTP_PORT below
+# and ServiceAgentSession.DEFAULT_HTTP_PORT
+EXPOSE 8080
+
+# Carry over the free-threaded interpreter and the fully-populated venv.
+# Both paths must match the builder stage so the venv keeps working.
+ARG PYTHON_INSTALL_DIR
+ARG VENV_DIR
+COPY --from=builder ${PYTHON_INSTALL_DIR} ${PYTHON_INSTALL_DIR}
+COPY --from=builder ${VENV_DIR} ${VENV_DIR}
+ENV VIRTUAL_ENV="${VENV_DIR}"
+ENV PATH="${VENV_DIR}/bin:${PATH}"
+
+# Copy application code and necessary files
+# Note: The registries directory where agent definitions live is mandatory
+#       The coded_tools directory where agent code lives is optional
+#       [s] allows for registries/coded_tools from within client repo or neuro-san repo
+#       The config directory where the LLM configuration lives is mandatory
+#       The Agent Network Designer relies on:
+#       - its own toolbox in ./neuro_san_studio/toolbox
+#       - ./middleware for validation of designed networks
+COPY ./neuro_san_studio ${APP_SOURCE}/neuro_san_studio
+COPY ./registries ${APP_SOURCE}/registries
+COPY ./coded_tool[s] ${APP_SOURCE}/coded_tools
+COPY ./middleware ${APP_SOURCE}/middleware
+# The skills directory holds local skill packages (each containing a SKILL.md
+# and any supporting resources) that are loaded at runtime by the
+# AgentSkillsMiddleware via the "skill_sources" config. This is required by
+# registries/basic/job_guessing_skill.hocon and by any future agent network
+# that references local skills under skills/.
+COPY ./skills ${APP_SOURCE}/skills
+COPY ./deploy/entrypoint.sh ${APP_SOURCE}/deploy/entrypoint.sh
+COPY ./deploy/logging.hocon ${APP_SOURCE}/deploy/logging.hocon
+COPY ./config ${APP_SOURCE}/config
+# To override the default LLM configuration at runtime, mount your custom
+# llm_config.hocon using a Docker volume, e.g.:
+# docker run -v /path/to/your/llm_config.hocon:${APP_SOURCE}/config/llm_config.hocon ...
+
+# Set up the entry point for when the container is run
+USER ${USERNAME}
+WORKDIR ${APP_SOURCE}
+
+# Where the installed dependencies (neuro-san, leaf-common, ...) live. Unlike
+# the python:3.13 image, deps are in the uv-managed free-threaded venv, not
+# /usr/local/lib/python3.13/site-packages. Used by the entrypoint for
+# diagnostics only.
+ENV PACKAGE_INSTALL="${VENV_DIR}"
+ENV APP_ENTRYPOINT="${APP_SOURCE}/deploy/entrypoint.sh"
+
+#
+# Free-threading (no-GIL) control
+#
+# This image runs a free-threaded 3.14t interpreter. We FORCE the GIL OFF by
+# default: PYTHON_GIL=0 keeps the GIL disabled even when a C/Rust extension that
+# is not marked free-thread-safe is imported (CPython would otherwise auto
+# RE-ENABLE the GIL for such an import). So every `docker run` of this image
+# gets true free-threading unless overridden.
+#
+# WARNING: this stack loads native extensions that do NOT declare free-thread
+# safety (e.g. orjson -- see ORJSON_BUILD_FREETHREADED above -- and others).
+# Running them with the GIL forced off means CPython proceeds WITHOUT the GIL's
+# protection; concurrent use of a not-yet-safe extension can data-race or crash.
+# This is a deliberate choice for this image.
+#
+# Override at runtime if needed (docker run -e PYTHON_GIL=...):
+#   PYTHON_GIL=1  -> force the GIL ON (run 3.14t as a conventional interpreter)
+#   PYTHON_GIL=0  -> (this image's default) force the GIL OFF
+ENV PYTHON_GIL=0
+
+#
+# API Keys for LLM Access
+#
+# Which env vars you need may vary depending on which LLM(s) you choose for your own setup.
+# See https://github.com/cognizant-ai-lab/neuro-san/blob/main/docs/agent_hocon_reference.md#llm_config
+# for details on different LLM providers' needs for out-of-the-box support.
+#
+# Note that you really really don't want to leak secrets by checking the actual values into source control.
+# These are best injected into the container via environment variables at runtime ala:
+#   docker run -e OPENAI_API_KEY=...
+#
+
+# OpenAI/ChatGPT access
+ENV OPENAI_API_KEY=""
+
+# Amazon Bedrock access
+ENV AWS_ACCESS_KEY_ID=""
+ENV AWS_SECRET_ACCESS_KEY=""
+
+# Anthropic/Claude access
+ENV ANTHROPIC_API_KEY=""
+
+# MicroSoft Azure/OpenAI access
+# OPENAI_API_KEY is a fallback for AZURE_OPENAI_API_KEY
+# ENV AZURE_OPENAI_API_KEY=""
+ENV AZURE_OPENAI_ENDPOINT=""
+
+# Google/Gemini access
+ENV GOOGLE_API_KEY=""
+
+# NVidia LLM access
+ENV NVIDIA_API_KEY=""
+
+#
+# Server configuration
+#
+
+# Point to the root folder of the app
+ENV PYTHONPATH="${APP_SOURCE}"
+
+# Where to find the tool registry manifest file which lists all the agent hocon
+# files to serve up from this server instance.  To specify multiple manifest files,
+# simply use a delimited list of manifest files approriate to the OS
+# (delimiter is ':' on linux, ';' on Windows).  Manifest dictionaries will then effectively
+# be merged, where content coming from manifests later in the list have precedence.
+#
+# This particular Dockerfile is put together to support a linux server that hosts multiple users
+# and so we use the multiple manifest file aspect of the neuro-san server to turn off some networks
+# that are not appropriate for such a deployment. See manifest_multiuser_overlay.hocon for more info.
+ENV AGENT_MANIFEST_FILE="${APP_SOURCE}/registries/manifest.hocon:${APP_SOURCE}/registries/manifest_multiuser_overlay.hocon"
+
+# An llm_info hocon file with user-provided llm descriptions that are to be used
+# in addition to the neuro-san defaults.
+ENV AGENT_LLM_INFO_FILE=""
+
+# A toolbox_info hocon file with user-provided base tool and coded tool
+# descriptions that are to be used in addition to the neuro-san defaults.
+ENV AGENT_TOOLBOX_INFO_FILE="${APP_SOURCE}/neuro_san_studio/toolbox/toolbox_info.hocon"
+
+# Where to find the classes for CodedTool class implementations
+# that are used by specific agent networks.
+ENV AGENT_TOOL_PATH="${APP_SOURCE}/coded_tools"
+
+# Where to find the configuration file for Python logging.
+# See https://docs.python.org/3/library/logging.config.html#dictionary-schema-details
+# as to how this file can be configured for your own needs.  Examples there are provided in YAML,
+# but these can be easily translated to JSON or HOCON (which we prefer).
+# Another good resource: https://docs.python.org/3/howto/logging-cookbook.html
+ENV AGENT_SERVICE_LOG_JSON="${APP_SOURCE}/deploy/logging.hocon"
+
+# Threshold for logging.
+# See https://docs.python.org/3/library/logging.html#logging.Handler.setLevel
+# and https://docs.python.org/3/library/logging.html#logging-levels for details.
+ENV AGENT_SERVICE_LOG_LEVEL="DEBUG"
+
+# The name of the service for health reporting purposes
+ENV AGENT_SERVER_NAME="neuro-san-studio.Agent"
+
+# Name of the service as seen in logs
+ENV AGENT_SERVER_NAME_FOR_LOGS="Agent Server"
+
+# A space-delimited list of http metadata request keys to forward to logs/other requests
+# You can see how these are used in the AGENT_SERVICE_LOG_JSON file (see above) and
+# customize this and the AGENT_SERVER_LOG_JSON file to your needs.
+# Note that any metadata key needs to be all lowercase.
+ENV AGENT_FORWARDED_REQUEST_METADATA="request_id user_id"
+
+# Port number for http service endpoint
+# If you are changing this, you should also change the EXPOSE port above
+# and when running your container locally be sure to have a -p <port>:<port> entry
+# for it on your docker run command line.
+ENV AGENT_HTTP_PORT="8080"
+
+# Maximum number of requests that can be served at the same time
+ENV AGENT_MAX_CONCURRENT_REQUESTS="0"
+
+# Maximum number of worker threads per request.
+# Default of <= 0 (or unset) indicates system default of (num_cpus + 4).
+ENV AGENT_MAX_WORKERS_PER_REQUEST="0"
+
+# Number of requests served before the server shuts down in an orderly fashion.
+# This is useful for testing response handling in clusters with duplicated pods.
+# A value of -1 indicates unlimited requests are handled.
+ENV AGENT_REQUEST_LIMIT="-1"
+
+# If this value is specified and >0,
+# it will enable dynamic run-time updates of the server agents configuration according
+# to current state of manifest file and separate agents registry files.
+# Both manifest file and agent registry files could be modified (edited),
+# agent registry files could be added or deleted from registry directory
+# with corresponding changes in manifest file.
+# Update will be done every AGENT_MANIFEST_UPDATE_PERIOD_SECONDS seconds;
+# if value is not specified or <= 0, no such dynamic updates will be executed.
+ENV AGENT_MANIFEST_UPDATE_PERIOD_SECONDS="0"
+
+# Describes the concurrency model used for the manifest file updates.
+# Valid values are "thread" (the default) and "spawn" and "fork".
+#
+# "thread":     uses the default threading concurrency model.  It is best for servers who
+#               know their manifest content will be changing over the course of their lifetime.
+#               It is slowest of all options, but has the least amount of overall memory overhead
+#               and is lightweight and generally the safest and problem-free.
+# "spawn":      uses a multi-process based concurrency model.  It is the safest option (avoiding deadlocks)
+#               for environments where the manifest is changing, but some speed is still desired
+#               (like development servers).
+# "forkserver"  Is just like "fork" below, but forks from a clean process for memory conservation,
+#               More process overhead, not as quick but safer than "fork".
+# "fork":       uses a multi-process based concurrency model. It is actually the fastest option,
+#               but has potential to lead to deadlocks over repeated manifest reads.
+#               It can still be a reasonable option for server environments where the manifest
+#               is known never to change at all (AGENT_MANIFEST_UPDATE_PERIOD_SECONDS="0").
+#
+# See https://docs.python.org/3/library/multiprocessing.html#contexts-and-start-methods
+# for more details on "spawn", "fork" and "forkserver" concurrency models.
+# Not all are available on all OSes.
+ENV AGENT_MANIFEST_CONCURRENCY_CONTEXT="thread"
+
+# By default, the HTTP service reports the neuro-san library pip version in its health-check response.
+# It is possible to add other libraries to those results by listing them within this env var
+# below and separating them with spaces, like this: "langchain openai".
+# Sometimes it is useful to report a library version explicitly when they are not actually
+# pip-installed (for instance when building a container from your own source, it's the
+# tag of your repo that you care about.)  In that case you can add an entry with its version
+# after a colon, like this: "my_repo:1.2.3".
+# You can combine these too, like this: "langchain openai my_repo:1.2.3"
+ENV AGENT_VERSION_LIBS=""
+
+# A space-delimited list of http metadata request keys to forward to tracing/Observability
+# infrastructure. When not set, this defaults to the value provided by
+# AGENT_USAGE_LOGGER_METADATA or AGENT_FORWARDED_REQUEST_METADATA.
+ENV AGENT_TRACING_METADATA_REQUEST_KEYS="request_id user_id"
+
+# A space-delimited list of environment variables to be forwarded to observability tracing metadata.
+# The defaults given here are standard Kubernetes environment variables for any given deployment pod.
+# Only environment variables that are set to something other than the empty string will be forwarded.
+ENV AGENT_TRACING_METADATA_ENV_VARS="POD_NAME POD_NAMESPACE POD_IP NODE_NAME"
+
+# Langfuse observability.
+# Langfuse tracing is built into neuro-san itself; no plugin is required.
+
+# "true" or "false" to turn on/off Langfuse tracing.
+ENV LANGFUSE_ENABLED=""
+# The secret and public keys for Langfuse.
+# These can be found in your Langfuse account settings.
+ENV LANGFUSE_SECRET_KEY=""
+ENV LANGFUSE_PUBLIC_KEY=""
+# Langfuse instance URL, e.g. "https://us.cloud.langfuse.com".
+ENV LANGFUSE_HOST=""
+
+# Size of backlog for TCP connections to http server.
+# Sets the maximum number of pending TCP connections waiting to be accepted by the server.
+# Impact:
+# Higher values allow the kernel to queue more incoming connections during traffic spikes,
+# reducing the chance of refused connections.
+ENV AGENT_HTTP_CONNECTIONS_BACKLOG="128"
+
+# Sets the maximum idle time (in seconds) before Tornado closes a keep-alive connection.
+# Impact:
+# Shorter timeouts free up resources faster under high load.
+# Longer timeouts reduce reconnections for clients that make periodic requests.
+ENV AGENT_HTTP_IDLE_CONNECTIONS_TIMEOUT="3600"
+
+# Forks multiple worker processes, each with its own Tornado event loop, all sharing the same listening socket.
+# Impact:
+# Allows utilization of multiple CPU cores.
+# Improves concurrency without blocking a single IOLoop.
+# Typical Usage:
+#   Value of 0 → Automatically spawns one process per CPU core.
+#   Positive integer (N) → Manually specifies number of worker processes.
+# The developer-oriented default is 1, but we set to 0 here to allow pod CPU configuration
+# to dictate the number of server instance processes.
+ENV AGENT_HTTP_SERVER_INSTANCES="0"
+
+# If set to a value>0, will start periodic logging of currently used
+# run-time server resources:
+# open file descriptors;
+# open connections for server port.
+# Logging period is specified in seconds.
+ENV AGENT_HTTP_RESOURCES_MONITOR_INTERVAL="0"
+
+# Interval in seconds between HTTP keep-alive messages sent to streaming clients
+# to keep the connection alive during long quiet periods. This is important
+# when intermediaries (nginx, load balancers, AWS ALB) or clients would otherwise
+# drop an idle HTTP connection (commonly after ~60s) before the agent produces
+# its next streamed message. The keep-alive message only fires when the stream has been
+# quiet for approximately the full interval; real message traffic suppresses it.
+# A value of 0 (the default) disables the keep-alive messages entirely.
+# Typical production value is 25-30 (under the 60s defaults of common proxies).
+ENV AGENT_STREAM_KEEP_ALIVE_WITH_PROGRESS_INTERVAL_SECONDS=0
+
+# When any particular CodedTool execution takes longer than this many seconds,
+# the system issues a message in the log.  This is very useful for determining
+# where your scale-up problems are with particular networks.  The default value of
+# 0 disables this feature.
+ENV AGENT_TOOL_EXECUTION_LOG_THRESHOLD_SECONDS=0
+
+# Optional URL describing how the server is to be referenced by the outside world.
+# This is useful when a server is behind a load-balancer as part of a larger cluster.
+ENV AGENT_EXTERNAL_SERVER_URL=""
+
+# A reference to a Python class that can be used to store temporary agent references
+# External to the server, so other replicated pods can pick them up.
+# This class must have a no-args constructor and implement the
+# neuro_san.internals.interfaces.ReservationsStorage interface.
+# When not set, this defaults to a null implementation.
+# A simple default implementation is provided by the class
+# "neuro_san.service.watcher.temp_networks.s3.s3_reservations_storage.S3ReservationsStorage"
+# Note that you will need to install appropriate botocore and aiobotocore packages to use this class.
+ENV AGENT_EXTERNAL_RESERVATIONS_STORAGE=""
+
+# When the AGENT_EXTERNAL_RESERVATIONS_STORAGE (immediately above) is set to the
+# S3ReservationsStorage class mentioned there, this env var must be set to the S3 Bucket
+# to use for cross-pod reservations storage.
+ENV AGENT_RESERVATIONS_S3_BUCKET=""
+
+# If AGENT_EXTERNAL_RESERVATIONS_STORAGE is set,
+# then this parameter specifies the period in seconds for checking the external storage for expired reservations.
+# Value of 0 means no periodic checks will be performed by the service,
+# in this case it is expected that the external storage itself will handle expired reservations,
+# or it will be done on demand by other tools.
+ENV AGENT_RESERVATIONS_EXTERNAL_STORAGE_CHECK_PERIOD_SECONDS="0"
+
+# The maximum number of temporary agent networks that will be kept internally
+# in service memory at the same time. If this limit is reached,
+# the oldest temporary networks (by access time) will be evicted.
+# 0 or negative value means unlimited.
+ENV AGENT_MAX_TEMP_NETWORKS="0"
+
+# A hocon file with MCP servers information to be used by LangChainMcpAdapter
+# for connecting to external MCP servers with authentication and tool filtering.
+ENV MCP_SERVERS_INFO_FILE="${APP_SOURCE}/neuro_san_studio/mcp/mcp_info.hocon"
+
+# When set, this parameter enables MCP service protocol for running neuro-san server.
+# Service endpoint is http://host:port/mcp
+# (neuro-san own http API is also enabled in this case)
+ENV AGENT_MCP_ENABLE="true"
+
+# When set, this parameter will only enable MCP service protocol for running neuro-san server,
+# while disabling neuro-san own http API.
+ENV AGENT_MCP_ONLY="false"
+
+#
+# Server Hardening
+#
+
+# When set to "true", this parameter requires https for internal agent session communication.
+# The default is "true". Developers should set this to false to work locally without acquiring certificates.
+# Strongly consider keeping this on for production deployments.
+ENV AGENT_SESSION_REQUIRE_HTTPS="true"
+
+# When set to "false", this parameter will squelch the logging of sensitive information
+# as flagged by static analysis (SAST) tools.
+# The default is "false". Developers should set this to true to work locally with reasonable failure information.
+# Strongly consider keeping this off for production deployments.
+ENV LEAF_LOG_SENSITIVE="false"
+
+# When set to "true" (default "false"), CodedTool "class" references -- including
+# shared coded tools referenced through the toolbox -- resolve ONLY from within
+# the AGENT_TOOL_PATH hierarchy (see AGENT_TOOL_PATH above).  Fully-qualified
+# references to modules elsewhere on the PYTHONPATH are not resolved -- not even
+# imported -- so an agent network hocon file cannot trigger import-time execution
+# of an arbitrary installed module through a CodedTool class reference.  See
+# https://github.com/cognizant-ai-lab/neuro-san/blob/main/docs/agent_hocon_reference.md#class
+# Left off for now: some agent networks in this repo still
+# use fully-qualified CodedTool class references, which the restriction refuses.
+# We will change this to "true" once this repo's class references are cleaned up
+# to the "<module>.<ClassName>" form relative to AGENT_TOOL_PATH.
+ENV AGENT_TOOL_PATH_ONLY="false"
+
+#
+# Authorization
+#
+
+# What class neuro-san server should use for authorization
+# When not set (the default) the server uses an implementation for the Authorizer
+# that effectively lets all requests for all users through.
+# We offer the following implementations:
+#   neuro_san.service.authorization.null.always_yes_authorizer.AlwaysYesAuthorizer (default)
+#   neuro_san.service.authorization.null.always_no_authorizer.AlwaysNoAuthorizer
+#   neuro_san.service.authorization.openfga.open_fga_authorizer.OpenFgaAuthorizer
+# Feel free to make your own as long as it derives from this interface:
+#   neuro_san.service.authorization.interfaces.authorizer.Authorizer
+ENV AGENT_AUTHORIZER=""
+
+# The request metadata field to use as the actor id for authorization
+ENV AGENT_AUTHORIZER_ACTOR_ID_METADATA_KEY="user_id"
+
+# See authorization logging.
+# In production you would not want to set this at all.
+# For debugging you might want to set this to "true".
+ENV AGENT_DEBUG_AUTH=""
+
+# The Actor type sent to the Authorizer
+# This typically corresponds to a specific type set up in the authorization policy
+ENV AGENT_AUTHORIZER_ACTOR_KEY="User"
+
+# The Resource type sent to the Authorizer
+# This typically corresponds to a specific type set up in the authorization policy
+ENV AGENT_AUTHORIZER_RESOURCE_KEY="AgentNetwork"
+
+# The Relation type sent to the Authorizer used to judge whether the Actor has permission to access the Resource.
+# This typically corresponds to a specific relation set up in the authorization policy
+# Typically "read" from CRUD-based permissions.
+ENV AGENT_AUTHORIZER_ALLOW_RELATION="read"
+
+# Below: Env vars specific to OpenFgaAuthorizer
+
+# Where the OpenFGA HTTP server is running for the OpenFgaAuthorizer
+# Typical development example might be "http://localhost:8082"
+ENV FGA_API_URL=""
+
+# The file containing the authorization policy for the OpenFgaAuthorizer
+# This is a path to a json file that has been compiled from a .fga policy file using the fga CLI tool.
+ENV FGA_POLICY_FILE=""
+
+# The name of the authorization store to use
+# Typically "default"
+ENV FGA_STORE_NAME=""
+
+#
+# Environment Variables that control specific Agent Network behavior
+#
+
+# When unset or set to "true" (the coded default), Agent Network Designer will emit INFO logs at INFO level.
+# When set to anything other than "true" (e.g. "false"), INFO logs are redirected to DEBUG to reduce production
+# log volume.  This image defaults to "false"; set to "true" to restore INFO-level output for INFO logs.
+ENV AGENT_NETWORK_DESIGNER_VERBOSE="false"
+
+# When set, this parameter allows the Agent Network Designer to use
+# Resevations as the means for temporary deployment of vibe-coded agent networks.
+# When not set, this defaults to false and the file-system is modified.
+# While appropriate for single-user development, the false setting is not recommended
+# for multi-user production use.
+ENV AGENT_NETWORK_DESIGNER_USE_RESERVATIONS="true"
+
+# Time in seconds that any Reservation from the Agent Network Designer will be valid.
+# Typically 3 days.  259200 = 3 days * 24 hr/day * 60 min/hour * 60 sec/min
+ENV AGENT_NETWORK_DESIGNER_RESERVATIONS_LIFETIME_IN_SECONDS="259200"
+
+# Progress style for the Agent Network Designer.
+# By default an internal representation is sent for AGENT_PROGRESS updated.
+# This is unfortunate, but it is what nsflow currently expects. :shrug:
+# For multi-user deployments, we use the connectivity style, meaning the progress reports that
+# are sent are in the same format at the Connectivity() API for neuro-san.
+ENV AGENT_NETWORK_DESIGNER_PROGRESS_STYLE="connectivity"
+
+# Controls whether the Agent Network Designer runs in demo mode.
+# In demo mode, generated agents simulate grounded behavior without connecting to real systems.
+# Set to "false" once agents are wired to real APIs, databases, or tools via Toolbox or MCP.
+# Defaults to "true" if not set.
+ENV AGENT_NETWORK_DESIGNER_DEMO_MODE="true"
+
+# Subdirectory under the output path (registries/) where generated networks are saved.
+# Also determines where the manifest.hocon for generated networks is located.
+# Defaults to "generated" if not set.
+ENV AGENT_NETWORK_DESIGNER_SUBDIRECTORY="generated"
+
+# Manifest file(s) providing available external agents for the Agent Network Designer to choose from.
+# Defaults to "registries/manifest_and.hocon" if not set.
+ENV AGENT_NETWORK_DESIGNER_MANIFEST_FILE="registries/manifest_and.hocon"
+
+# Toolbox info file providing available tools for the Agent Network Designer to choose from.
+# Defaults to "neuro_san_studio/toolbox/agent_network_designer_toolbox_info.hocon" if not set.
+ENV AGENT_NETWORK_DESIGNER_TOOLBOX_INFO_FILE="neuro_san_studio/toolbox/agent_network_designer_toolbox_info.hocon"
+
+# Time in seconds that the Agent Network Designer's cached MCP tool listings are served before
+# being re-fetched from the MCP servers. Positive values are clamped to at least twice the
+# fetch timeout below; 0 or a negative value disables the time-based refresh (listings then
+# refresh only when the MCP servers info file changes).
+# Defaults to "300" if not set.
+ENV AGENT_NETWORK_DESIGNER_MCP_TOOLS_TTL_SECONDS="300"
+
+# Time in seconds one MCP server may take to answer the Agent Network Designer's tool-listing
+# fetch before it is dropped from that refresh round (retried on the next one).
+# 0 or a negative value removes the cap.
+# Defaults to "30" if not set.
+ENV AGENT_NETWORK_DESIGNER_MCP_TOOLS_FETCH_TIMEOUT_SECONDS="30"
+
+# Maximum number of validation retry rounds before the persistence middleware gives up and
+# ends the session without persisting. Prevents runaway loops when the model cannot fix
+# validation errors (e.g., a required tool was unavailable during session setup).
+# Defaults to "3" if not set.
+ENV AGENT_NETWORK_DESIGNER_MAX_VALIDATION_ATTEMPTS="3"
+
+ENTRYPOINT ["/bin/bash", "-c", "exec ${APP_ENTRYPOINT}"]

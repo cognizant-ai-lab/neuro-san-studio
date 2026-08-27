@@ -29,6 +29,7 @@ from rich.table import Table
 from timedinput import timedinput
 
 from neuro_san_studio.utils.cli_status import CliStatus
+from neuro_san_studio.utils.shared_registries import SHARED_REGISTRY_INCLUDES
 
 PROVIDERS: Dict[str, Dict[str, str]] = {
     "openai": {"label": "OpenAI", "model_name": "gpt-5.2"},
@@ -71,10 +72,10 @@ class InitCommand:  # pylint: disable=too-few-public-methods
         # first time the server reads it, even before agent_network_designer has produced
         # any files. Empty `{}` is a valid manifest — neuro-san just sees no extra networks.
         self._copy_template("generated_manifest.hocon", os.path.join("registries", "generated", "manifest.hocon"))
-        # Shared registry-level HOCONs that AAOSA-style networks include. Most networks in
-        # the basic/industry/experimental groups depend on at least one of these, so
+        # Shared registry-level HOCONs that networks include. Most networks in the
+        # basic/industry/experimental groups depend on at least one of these, so
         # scaffolding them up front means `ns import <group>` works without surprises.
-        for shared in ("aaosa.hocon", "aaosa_basic.hocon", "aaosa_basic_debug.hocon"):
+        for shared in SHARED_REGISTRY_INCLUDES:
             self._copy_template(shared, os.path.join("registries", shared), package="registries")
         self._copy_template("mcp_info.hocon", os.path.join("mcp", "mcp_info.hocon"), package="neuro_san_studio.mcp")
         self._copy_template("plugins.hocon", os.path.join("config", "plugins.hocon"))

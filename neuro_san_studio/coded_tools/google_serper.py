@@ -14,11 +14,15 @@
 #
 # END COPYRIGHT
 
+import logging
+import os
 from typing import Any
 from typing import Dict
 from typing import Union
 
-from langchain_community.utilities import GoogleSerperAPIWrapper
+from aiohttp import ClientError
+from aiohttp import ClientSession
+from aiohttp import ClientTimeout
 from neuro_san.interfaces.coded_tool import CodedTool
 
 # Default parameters for google serper
@@ -26,6 +30,11 @@ K = 10  # number of search results
 GL = "us"  # country
 HL = "en"  # langauge
 TYPE = "search"  # search type
+SERPER_API_URL = "https://google.serper.dev"
+SERPER_TIMEOUT = 30.0
+SEARCH_TYPES = {"images", "news", "places", "search"}
+
+logger = logging.getLogger(__name__)
 
 
 class GoogleSerper(CodedTool):
@@ -84,6 +93,10 @@ class GoogleSerper(CodedTool):
         if query == "":
             return "Error: No query provided."
 
+        serper_api_key = os.getenv("SERPER_API_KEY")
+        if not serper_api_key:
+            return "Error: SERPER_API_KEY is not set."
+
         # Parameters for google serper
 
         # Country code to localize search results (e.g., "us" for United States)
@@ -91,17 +104,36 @@ class GoogleSerper(CodedTool):
         # Language code for the search interface (e.g., "en" for English)
         hl: str = args.get("hl", HL)
         # Number of top search results to retrieve
-        k: int = args.get("k", K)
+        try:
+            k: int = int(args.get("k", K))
+        except (TypeError, ValueError):
+            return f"Error: 'k' must be an integer, got: {args.get('k')!r}."
         # Type of search (e.g., "news", "places", "images", or "search" for general)
         search_type: str = args.get("type", TYPE)
+        if search_type not in SEARCH_TYPES:
+            return f"Error: Unsupported search type: {search_type}."
         # Search filter string (e.g., "qdr:d" for past day results); optional and can be used for time filtering
         # Default is None.
         tbs: str = args.get("tbs")
 
-        # Create search with the above parameters
-        search = GoogleSerperAPIWrapper(gl=gl, hl=hl, k=k, type=search_type, tbs=tbs)
+        headers = {
+            "X-API-KEY": serper_api_key,
+            "Content-Type": "application/json",
+        }
+        params = {
+            "q": query,
+            "gl": gl,
+            "hl": hl,
+            "num": k,
+        }
+        if tbs is not None:
+            params["tbs"] = tbs
 
-        # Perform search asynchronously
-        results = await search.aresults(query)
-
-        return results
+        try:
+            async with ClientSession(timeout=ClientTimeout(total=SERPER_TIMEOUT)) as session:
+                async with session.post(f"{SERPER_API_URL}/{search_type}", headers=headers, params=params) as response:
+                    response.raise_for_status()
+                    return await response.json()
+        except (ClientError, TimeoutError) as error:
+            logger.error("Serper request failed: %s", error)
+            return f"Error: Serper request failed: {error}"

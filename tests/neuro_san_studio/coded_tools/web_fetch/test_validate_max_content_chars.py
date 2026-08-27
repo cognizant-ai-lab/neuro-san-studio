@@ -34,15 +34,17 @@ class TestValidateMaxContentChars(TestCase):
         """Tests that the default MAX_CHARS value is returned when max_content_chars is absent."""
         self.assertEqual(self._call({}), MAX_CHARS)
 
+    def test_none_falls_back_to_default(self):
+        """Tests that an explicit None falls back to MAX_CHARS instead of raising."""
+        self.assertEqual(self._call({"max_content_chars": None}), MAX_CHARS)
+
     def test_valid_positive_int(self):
         """Tests that a valid positive integer is accepted and returned as-is."""
         self.assertEqual(self._call({"max_content_chars": 500}), 500)
 
-    def test_zero_raises(self):
-        """Tests that zero raises ValueError with invalid_input."""
-        with self.assertRaises(ValueError) as ctx:
-            self._call({"max_content_chars": 0})
-        self.assertIn("invalid_input", str(ctx.exception))
+    def test_zero_falls_back_to_default(self):
+        """Tests that zero (falsy) falls back to MAX_CHARS instead of raising."""
+        self.assertEqual(self._call({"max_content_chars": 0}), MAX_CHARS)
 
     def test_negative_raises(self):
         """Tests that a negative value raises ValueError with invalid_input."""

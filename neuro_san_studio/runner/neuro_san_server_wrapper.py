@@ -74,7 +74,7 @@ class NeuroSanServerWrapper:  # pylint: disable=too-few-public-methods
         os.environ["AGENT_VERSION_LIBS"] = " ".join(libs_list)
 
     def run(self):
-        """Initialize Phoenix and Langfuse and run the server main loop."""
+        """Initialize plugins and run the server main loop."""
         for plugin in self.plugins:
             self._logger.info("Initializing plugin: %s", plugin)
             plugin.initialize()

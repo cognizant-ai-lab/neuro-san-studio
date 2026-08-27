@@ -99,7 +99,7 @@ class UpdateAgent(CodedTool):
         logger.info("The resulting agent network definition: \n %s", str(network_def))
         sly_data[AGENT_NETWORK_DEFINITION] = network_def
 
-        await ProgressHandler.report_progress(args, network_def)
+        await ProgressHandler.report_progress(args, sly_data, network_def)
 
         logger.debug(">>>>>>>>>>>>>>>>>>> DONE %s !!!>>>>>>>>>>>>>>>>>>", self.__class__.__name__)
         return f"Successfully updated down-chained agents for {the_agent_name} in the agent network definition."

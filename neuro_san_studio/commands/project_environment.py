@@ -40,12 +40,13 @@ class ProjectEnvironment:
         self.root_dir = Path(root_dir)
 
     def apply(self) -> None:
-        """Load the project .env and export the agent env vars (without clobbering overrides).
+        """Export the agent env vars for this project (without clobbering overrides).
 
         This is the in-process entry point used by `ns chat`: after it runs, a direct
-        neuro-san session in this process resolves the project's own networks.
+        neuro-san session in this process resolves the project's own networks. The
+        project .env file is loaded once, globally, by the CLI's top-level callback
+        before any subcommand runs.
         """
-        self.load_env_file()
         self.set_pythonpath()
         self._setdefault_env("AGENT_MANIFEST_FILE", self.resolve_manifest_file())
         self._setdefault_env("AGENT_TOOL_PATH", self.resolve_tool_path())

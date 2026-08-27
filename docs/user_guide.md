@@ -1217,25 +1217,21 @@ To use tools from toolbox in your agent network, simply call them with field `to
    - langchain tools
        - Each tool or toolkit must have a `class` key.
        - The specified class must be available in the server's `PYTHONPATH`.
-       - Additional dependencies (outside of `langchain_community`) must be installed separately.
+       - Integration-specific dependencies must be installed separately.
 
         Example:
 
         ```hocon
             "tavily_search": {
                 # Fully qualified class path of the tool to be instantiated.
-                "class": "langchain_community.tools.tavily_search.TavilySearchResults",
+                "class": "langchain_tavily.TavilySearch",
 
                 # (Optional) URL for reference documentation about this tool.
                 "base_tool_info_url": "https://python.langchain.com/docs/integrations/tools/tavily_search/",
 
                 # Arguments for the tool's constructor.
                 "args": {
-                    "api_wrapper": {
-                        # If the argument should be instantiated as a class, specify it using the "class" key.
-                        # This tells the system to create an instance of the provided class instead of passing it as-is.
-                        "class": "langchain_community.utilities.tavily_search.TavilySearchAPIWrapper"
-                    },
+                    "max_results": 5,
                 }
             }
         ```
@@ -1388,7 +1384,58 @@ following methods.
     directly in the agent network HOCON configuration.
    - For example, see [mcp_info.hocon](../neuro_san_studio/mcp/mcp_info.hocon)
 
+3. OAuth bearer-token flow (client-driven)
+
+    Rather than passing a token in sly data directly or setting it up as an environment variable in
+    `MCP_SERVERS_INFO_FILE`, an agent network can **declare** which MCP server URLs need
+    `http_headers` and let a client that supports OAuth — such as
+    [nsflow](https://github.com/cognizant-ai-lab/nsflow) — obtain the token and inject it into
+    sly_data for you. The client runs the OAuth 2.1 authorization-code flow with PKCE (and Dynamic
+    Client Registration where the server supports it), keeps the token on the backend, and at chat
+    time injects `sly_data["http_headers"]["<MCP_URL>"] = {"Authorization": "Bearer <token>"}`.
+    Tokens are never shown to the LLM or stored in the network.
+
+    Declare the expected shape under the agent `function` using `sly_data_schema`:
+
+    ```json
+    "sly_data_schema": {
+        "type": "object",
+        "properties": {
+            "http_headers": {
+                "type": "object",
+                "properties": {
+                    "https://api.you.com/mcp": {
+                        "type": "object",
+                        "properties": {
+                            "Authorization": { "type": "string" }
+                        },
+                        "required": ["Authorization"]
+                    }
+                },
+                "required": ["https://api.you.com/mcp"]
+            }
+        },
+        "required": ["http_headers"]
+    }
+    ```
+
+   - **Injection is opportunistic.** Every URL declared under `http_headers.properties` receives an
+    injected token whenever the user has connected it; user-supplied `http_headers` still take precedence.
+   - **The connect gate is driven by `http_headers.required`** — the client forces the user to connect
+    (blocking chat until they do) only for the URLs listed there.
+       - Omit `required` → every declared URL is treated as required (gate on all).
+       - `"required": []` → nothing is gated, but tokens are still injected opportunistically; use this
+        when the server also accepts an API key (via `MCP_SERVERS_INFO_FILE`) or needs no auth.
+       - List specific URLs → only those URLs are gated.
+   - For a complete example see [you_search.hocon](../registries/tools/you_search.hocon); for the client
+    side (Connectors tab, token storage, redirect URI, troubleshooting) see nsflow's
+    [MCP OAuth Connectors guide](https://github.com/cognizant-ai-lab/nsflow/blob/main/docs/MCP_OAUTH.md).
+
 ### Examples
+
+For a configured example in this repo — an agent network wired to the You.com MCP server, with the
+OAuth bearer-token `sly_data_schema` setup described above and comments walking through the auth
+options — see [you_search.hocon](../registries/tools/you_search.hocon).
 
 For simple examples of MCP servers in various languages (e.g. Python, Java) and connecting them to neuro-san,
 please visit this repo: [neuro-san-mcp-examples](https://github.com/kaushik-cognizant/neuro-san-mcp-examples)

@@ -33,6 +33,7 @@ from neuro_san.internals.graph.persistence.raw_manifest_restorer import RawManif
 
 from neuro_san_studio.discovery.dependency_analyzer import AgentNetworkDependencies
 from neuro_san_studio.mcp.mcp_info_merger import McpInfoMerger
+from neuro_san_studio.utils.shared_registries import SHARED_REGISTRY_INCLUDES
 
 # `mcp/` is whitelisted so an export-side bundle can carry the filtered mcp_info.hocon. The
 # importer extracts it into memory and merges into the receiver's file additively rather than
@@ -107,7 +108,9 @@ class AgentNetworkImporter:
     # These aren't agent networks themselves so the dependency walker doesn't see them, but
     # almost every network in the basic/industry/experimental groups includes one. Copy them
     # alongside any imported network. (llm_config is generated fresh by `ns init`, not copied.)
-    SHARED_INCLUDES = ("aaosa.hocon", "aaosa_basic.hocon", "aaosa_basic_debug.hocon")
+    # Defined in neuro_san_studio.utils.shared_registries so `ns init` scaffolds exactly the
+    # same set — the two lists used to be maintained separately and drifted.
+    SHARED_INCLUDES = SHARED_REGISTRY_INCLUDES
 
     def _register_manifest_entry(self, result: ImportResult, registries_relative: str) -> None:
         """Append ``registries_relative`` to ``result.manifest_entries`` unless it's a shared

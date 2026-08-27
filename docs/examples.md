@@ -36,7 +36,9 @@ Here are a few examples ordered by level of complexity.
     - [Google Maps](#google-maps)
     - [Gemini Image Generation](#gemini-image-generation)
     - [Wikimedia Search](#wikimedia-search)
+    - [Internet Info Gatherer](#internet-info-gatherer)
     - [Gmail Assistant](#gmail-assistant)
+    - [Google Workspace Assistant](#google-workspace-assistant)
     - [Agent Network HTML Creator](#agent-network-html-creator)
     - [Agentforce](#agentforce)
     - [Agentspace](#agentspace)
@@ -308,12 +310,31 @@ deliver the best matching media files for user descriptions.
 
 **Tags:** `tool`, `API`, `multi-media`
 
+### Internet Info Gatherer
+
+[Internet Info Gatherer](examples/tools/internet_info_gatherer.md) is a single-agent system that answers questions
+from the live web in two steps: it searches through the you.com MCP server's free tier to find sources, then reads
+the promising pages with the `web_fetch` toolbox tool so its answers come from actual page content, with cited URLs.
+It needs no API keys or OAuth — the free search tier and the local fetch tool work out of the box.
+
+**Tags:** `tool`, `MCP`, `toolbox`, `web`
+
 ### Gmail Assistant
 
 [Gmail Assistant](examples/tools/gmail.md) is a conversational agent that helps users manage their Gmail inbox using natural
 language. It can search, read, draft, and send emails by delegating tasks to specialized tools in the Gmail Toolkit.
 
 **Tags:** `tool`, `Gmail`, `API`
+
+### Google Workspace Assistant
+
+[Google Workspace Assistant](examples/tools/google_workspace.md) is a single-agent system that manages a user's Gmail,
+Calendar, Drive, Docs, and Sheets through Google's hosted Workspace MCP servers, so one request can span services —
+find a report in Drive and email a link to it, or turn a Doc's meeting notes into Calendar events. Authentication is
+per user and per conversation: an OAuth-capable client such as nsflow connects each server with the user's Google
+account and passes the bearer tokens through `sly_data`, with no server-side credentials at all.
+
+**Tags:** `tool`, `Google Workspace`, `MCP`, `OAuth`
 
 ### Agent Network HTML Creator
 
