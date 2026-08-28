@@ -139,28 +139,7 @@ class InitCommand:  # pylint: disable=too-few-public-methods
         CliStatus.info("Installing the Agent Network Designer...")
         importer = AgentNetworkImporter(source_dir, self.root_dir)
         bulk = importer.import_networks(self._default_network_hocons(), on_network=ImportReporter.announce)
-
-        # Python resolves a directory without __init__.py as a namespace *portion* and keeps
-        # searching sys.path, so the studio's own installed coded_tools package would win over
-        # the project's. The importer copies these along with each dependency; assert it rather
-        # than leave a silently-shadowed project if that ever regresses.
-        self._ensure_package_roots(source_dir)
-
         ImportReporter.report(bulk)
-
-    def _ensure_package_roots(self, source_dir: str) -> None:
-        """Guarantee coded_tools/__init__.py and middleware/__init__.py exist in the project."""
-        for package in ("coded_tools", "middleware"):
-            target = os.path.join(self.root_dir, package, "__init__.py")
-            if os.path.exists(target) or not os.path.isdir(os.path.dirname(target)):
-                continue
-            source = os.path.join(source_dir, package, "__init__.py")
-            if os.path.isfile(source):
-                shutil.copy2(source, target)
-            else:
-                with open(target, "w", encoding="utf-8"):
-                    pass
-            CliStatus.ok(os.path.join(package, "__init__.py"))
 
     def _resolve_providers(self) -> List[str]:
         """Return the ordered list of provider keys to enable."""

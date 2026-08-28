@@ -171,6 +171,7 @@ class AgentNetworkImporter:
             self._copy_hocon(shared, result, force=force)
         if dependencies.mcp_tools:
             self._merge_mcp_from_source(dependencies.mcp_tools, result)
+        self._ensure_package_roots(result)
 
         return result
 
@@ -242,6 +243,32 @@ class AgentNetworkImporter:
                 break
             current_dir = os.path.dirname(current_dir)
 
+    def _ensure_package_roots(self, result: ImportResult) -> None:
+        """Guarantee coded_tools/ and middleware/ are regular packages in the target.
+
+        `_copy_parent_inits` covers this whenever the source has an ``__init__.py`` to copy and
+        a dependency lands under that root. This is the fallback for when neither holds: a zip
+        bundle that omitted the root file (the zip path extracts verbatim and never walks the
+        parent chain), or a source tree whose own root is a namespace package. See
+        `_copy_parent_inits` for why a namespace *portion* here silently shadows the project.
+
+        Only ever creates an empty file, never copies: if the source had one to give,
+        `_copy_parent_inits` already delivered it. Deliberately does not create the directory
+        -- the contract is "if we put files there, make it importable", not "every project
+        gets a coded_tools/".
+        """
+        for roots in (self.coded_tools, self.middleware):
+            target = os.path.join(roots.target, "__init__.py")
+            if os.path.exists(target) or not os.path.isdir(roots.target):
+                continue
+            try:
+                with open(target, "w", encoding="utf-8"):
+                    pass
+            except OSError as exc:
+                result.errors.append(f"Failed to create {target}: {exc}")
+                continue
+            result.copied_files.append(f"{os.path.basename(roots.target)}/__init__.py")
+
     def import_from_path(self, source_path: str, force: bool = False) -> ImportResult:
         """Import a single network from a local file path.
 
@@ -262,10 +289,13 @@ class AgentNetworkImporter:
             # the target already exists (skip path) — re-running an import shouldn't drop
             # an entry that earlier failed to make it into the manifest.
             self._register_manifest_entry(result, basename)
+            self._ensure_package_roots(result)
             return result
 
         if suffix == ".zip":
-            return self._import_from_zip(source_path, force=force)
+            result = self._import_from_zip(source_path, force=force)
+            self._ensure_package_roots(result)
+            return result
 
         raise ValueError(f"Unsupported file type: {suffix or '(none)'}. Expected .hocon or .zip")
 

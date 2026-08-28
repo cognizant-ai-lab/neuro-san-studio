@@ -748,3 +748,98 @@ class TestImportNetworks:
 
         importer.import_networks(["basic/plain.hocon"], force=True)
         assert landed.read_text() == '{ "tools": [] }\n'
+
+
+class TestPackageRootsAreRegularPackages:
+    """Every path that lands files under coded_tools/ or middleware/ must leave a real package.
+
+    A directory without __init__.py is only a namespace *portion*, and Python's finder prefers
+    any regular package of the same name later on sys.path -- for a pip-installed project, the
+    studio's own bundled coded_tools. The project's tools would be silently shadowed.
+    `_copy_parent_inits` covers this whenever the source has an __init__.py to copy; these are
+    the cases where it doesn't.
+    """
+
+    @staticmethod
+    def _source_without_root_init(source_dir: Path) -> None:
+        """A source tree whose coded_tools/ root is itself a namespace package."""
+        registries = source_dir / "registries"
+        registries.mkdir(parents=True)
+        (registries / "demo.hocon").write_text('{ "tools": [] }\n')
+        for shared in AgentNetworkImporter.SHARED_INCLUDES:
+            (registries / shared).write_text(f"# {shared}\n")
+        tool_dir = source_dir / "coded_tools" / "demo"
+        tool_dir.mkdir(parents=True)
+        (tool_dir / "__init__.py").write_text("")
+        (tool_dir / "tool.py").write_text("class Tool:\n    pass\n")
+        (source_dir / "middleware").mkdir(parents=True)
+        # Deliberately no source_dir/coded_tools/__init__.py.
+
+    def test_zip_without_root_init_still_lands_a_regular_package(self, tmp_path: Path) -> None:
+        """A bundle carrying coded_tools/foo/tool.py but no coded_tools/__init__.py.
+
+        The zip path extracts entries verbatim and never runs the parent-__init__ walk, so
+        nothing used to supply the root file. `ns export` normally bundles it, but its
+        directory-dependency branch does not, and a hand-rolled bundle need not either.
+        """
+        zip_path = tmp_path / "bundle.zip"
+        with zipfile.ZipFile(zip_path, "w") as zf:
+            zf.writestr("registries/demo.hocon", '{ "tools": [] }\n')
+            zf.writestr("coded_tools/demo/__init__.py", "")
+            zf.writestr("coded_tools/demo/tool.py", "class Tool:\n    pass\n")
+        target_dir = tmp_path / "target"
+        target_dir.mkdir()
+        importer = AgentNetworkImporter(str(target_dir), str(target_dir))
+
+        result = importer.import_from_path(str(zip_path))
+
+        assert (target_dir / "coded_tools" / "demo" / "tool.py").is_file()
+        assert (target_dir / "coded_tools" / "__init__.py").is_file()
+        assert "coded_tools/__init__.py" in result.copied_files
+
+    def test_discovery_import_from_a_namespace_package_source(self, tmp_path: Path) -> None:
+        """When the source root has no __init__.py there is nothing to copy, so create one."""
+        source_dir = tmp_path / "source"
+        target_dir = tmp_path / "target"
+        target_dir.mkdir()
+        self._source_without_root_init(source_dir)
+        importer = AgentNetworkImporter(str(source_dir), str(target_dir))
+
+        importer.import_network("demo.hocon", AgentNetworkDependencies(coded_tools=["coded_tools/demo/tool.py"]))
+
+        assert (target_dir / "coded_tools" / "demo" / "tool.py").is_file()
+        assert (target_dir / "coded_tools" / "__init__.py").is_file()
+
+    def test_no_directory_means_no_file(self, tmp_path: Path) -> None:
+        """A network with no coded tools must not conjure the package directories into existence.
+
+        The guarantee is "if we put files there, make it importable" -- not "every project gets
+        a coded_tools/". Scaffolding empty packages nobody asked for would be its own bug.
+        """
+        source_dir = tmp_path / "source"
+        target_dir = tmp_path / "target"
+        target_dir.mkdir()
+        self._source_without_root_init(source_dir)
+        importer = AgentNetworkImporter(str(source_dir), str(target_dir))
+
+        importer.import_network("demo.hocon", AgentNetworkDependencies())
+
+        assert not (target_dir / "coded_tools").exists()
+        assert not (target_dir / "middleware").exists()
+
+    def test_existing_root_init_is_never_clobbered(self, tmp_path: Path) -> None:
+        """A project's own __init__.py survives a re-import byte-for-byte."""
+        source_dir = tmp_path / "source"
+        target_dir = tmp_path / "target"
+        target_dir.mkdir()
+        self._source_without_root_init(source_dir)
+        (target_dir / "coded_tools").mkdir()
+        root_init = target_dir / "coded_tools" / "__init__.py"
+        root_init.write_text('"""My package."""\n')
+        importer = AgentNetworkImporter(str(source_dir), str(target_dir))
+        deps = AgentNetworkDependencies(coded_tools=["coded_tools/demo/tool.py"])
+
+        importer.import_network("demo.hocon", deps)
+        importer.import_network("demo.hocon", deps, force=True)
+
+        assert root_init.read_text() == '"""My package."""\n'
