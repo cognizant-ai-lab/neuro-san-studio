@@ -22,11 +22,11 @@ modules are only validated when a test run happens to have imported them.
 """
 
 import sys
-import types
 from unittest import TestCase
 from unittest.mock import patch
 
 from coded_tools.agent_network_editor.globals import ProcessGlobals
+from tests.coded_tools.agent_network_editor.fake_process_globals_owner import FakeProcessGlobalsOwner
 
 
 class TestProcessGlobals(TestCase):
@@ -34,33 +34,26 @@ class TestProcessGlobals(TestCase):
 
     def test_clear_all_clears_imported_owners_and_skips_unimported(self):
         """The registry clears imported owners and skips unimported ones."""
-        cleared: list[str] = []
+        FakeProcessGlobalsOwner.cleared.clear()
 
-        class FakeOwner:  # pylint: disable=too-few-public-methods
-            """Stand-in owner class exposing a clear method like the real caches."""
-
-            @classmethod
-            def clear_fake_for_testing(cls):
-                """Record that the registry reached this clear method."""
-                cleared.append("cleared")
-
-        fake_module = types.ModuleType("fake_process_globals_owner_module")
-        fake_module.FakeOwner = FakeOwner
+        # The fake lives in a real module which the import above has placed in
+        # sys.modules, so the registry resolves it exactly like a real owner.
         registry = [
-            ("fake_process_globals_owner_module", "FakeOwner", "clear_fake_for_testing"),
+            (FakeProcessGlobalsOwner.__module__, FakeProcessGlobalsOwner.__name__, "clear_fake_for_testing"),
             # Never imported: must be skipped silently (an unimported module
             # cannot have a populated cache), not raise.
             ("module_that_was_never_imported_for_test", "Nope", "clear_nope_for_testing"),
         ]
-        with patch.dict(sys.modules, {"fake_process_globals_owner_module": fake_module}):
-            with patch.object(ProcessGlobals, "REGISTRY", registry):
-                ProcessGlobals.clear_all_for_testing()
-        self.assertEqual(cleared, ["cleared"])
+        with patch.object(ProcessGlobals, "REGISTRY", registry):
+            ProcessGlobals.clear_all_for_testing()
+        self.assertEqual(FakeProcessGlobalsOwner.cleared, ["cleared"])
 
     def test_registry_entries_resolve_when_imported(self):
         """Registry triples must resolve against any imported owner module."""
         for module_name, class_name, clear_method_name in ProcessGlobals.REGISTRY:
-            self.assertTrue(module_name.startswith("coded_tools."))
+            # Owners live in the designer family's two packages; anything else
+            # in the registry is almost certainly a typo'd module path.
+            self.assertTrue(module_name.startswith(("coded_tools.", "middleware.")))
             # Owner modules need neuro-san, so only validate the ones this test
             # run happens to have imported; a typo'd class or method name in an
             # imported module must fail here rather than being skipped silently.

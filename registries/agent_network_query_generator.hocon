@@ -69,7 +69,17 @@ Always respond with "The sample queries have been set." when successful.
             """,
             "allow": {
                 "to_upstream": {
-                    "sly_data": ["agent_network_definition", "agent_network_queries"]
+                    # `agent_network_definition` must NOT be allowed here. This network only
+                    # writes `agent_network_queries` (see set_sample_queries_tool); it never
+                    # modifies the definition. If the definition were allowed to_upstream,
+                    # neuro-san would echo this network's unmodified snapshot back to the
+                    # designer, where upstream sly_data merges are last-write-wins. Since the
+                    # designer calls this network IN PARALLEL with
+                    # /agent_network_instructions_editor (workflow step 2), that stale snapshot
+                    # would clobber the freshly written instructions whenever this network's
+                    # response merges second — silently persisting a network with blank or
+                    # stale instructions.
+                    "sly_data": ["agent_network_queries"]
                 }
             },
             "tools": ["set_sample_queries_tool"],

@@ -27,19 +27,19 @@ from neuro_san_studio.discovery.dependency_analyzer import AgentNetworkDependenc
 from neuro_san_studio.importer.agent_network_importer import AgentNetworkImporter
 
 
-def _read_manifest_keys(manifest_path: Path) -> set:
-    """Read a manifest.hocon (with possible includes) into a set of declared keys."""
-    prev_cwd = os.getcwd()
-    try:
-        os.chdir(manifest_path.parent.parent)
-        raw = RawManifestRestorer().restore(file_reference=str(manifest_path))
-    finally:
-        os.chdir(prev_cwd)
-    return {key.strip('"') for key in raw if isinstance(key, str)}
-
-
 class TestImportNetwork:
     """Integration tests for AgentNetworkImporter."""
+
+    @staticmethod
+    def _read_manifest_keys(manifest_path: Path) -> set:
+        """Read a manifest.hocon (with possible includes) into a set of declared keys."""
+        prev_cwd = os.getcwd()
+        try:
+            os.chdir(manifest_path.parent.parent)
+            raw = RawManifestRestorer().restore(file_reference=str(manifest_path))
+        finally:
+            os.chdir(prev_cwd)
+        return {key.strip('"') for key in raw if isinstance(key, str)}
 
     @staticmethod
     def _build_fake_source(source_dir: Path) -> None:
@@ -84,6 +84,27 @@ class TestImportNetwork:
         assert (target_dir / "middleware" / "music_nerd" / "__init__.py").is_file()
         # Shared registry includes ride along.
         assert (target_dir / "registries" / "aaosa.hocon").is_file()
+        assert not result.errors
+
+    def test_import_copies_hocon_data_files_beside_middleware(self, tmp_path: Path) -> None:
+        """Data catalogs colocated with a copied middleware module ride along.
+
+        The designer's OptionalAgentsMiddleware/MiddlewareInfoMiddleware resolve
+        their catalog hocons relative to their own module as a fallback, so a
+        scaffolded project must receive them exactly where the source ships them.
+        """
+        source_dir = tmp_path / "source"
+        target_dir = tmp_path / "target"
+        target_dir.mkdir()
+        self._build_fake_source(source_dir)
+        (source_dir / "middleware" / "music_nerd" / "catalog.hocon").write_text('{ "entry": {} }\n')
+
+        importer = AgentNetworkImporter(str(source_dir), str(target_dir))
+        deps = AgentNetworkDependencies(middleware=["middleware/music_nerd/logger.py"])
+
+        result = importer.import_network("basic/music_nerd.hocon", deps)
+
+        assert (target_dir / "middleware" / "music_nerd" / "catalog.hocon").is_file()
         assert not result.errors
 
     def test_sub_networks_are_registered_in_manifest_entries(self, tmp_path: Path) -> None:
@@ -146,7 +167,7 @@ class TestImportNetwork:
         importer = AgentNetworkImporter(str(tmp_path / "source"), str(target_dir))
         importer.update_manifest(["basic/music_nerd.hocon", "agent_network_designer.hocon"])
 
-        merged = _read_manifest_keys(manifest_path)
+        merged = self._read_manifest_keys(manifest_path)
         assert merged == {
             "agent_network_designer.hocon",
             "basic/coffee_finder.hocon",
@@ -160,7 +181,7 @@ class TestImportNetwork:
         importer.update_manifest(["basic/music_nerd.hocon"])
 
         manifest_path = target_dir / "registries" / "manifest.hocon"
-        assert _read_manifest_keys(manifest_path) == {"basic/music_nerd.hocon"}
+        assert self._read_manifest_keys(manifest_path) == {"basic/music_nerd.hocon"}
 
     def test_update_manifest_preserves_include_directive(self, tmp_path: Path) -> None:
         """The scaffolded `include "registries/generated/manifest.hocon"` line must survive imports.
@@ -196,7 +217,7 @@ class TestImportNetwork:
         # music_nerd.hocon was already declared — never duplicated, never re-emitted.
         assert text.count('"music_nerd.hocon"') == 1
         # Both new entries got registered.
-        keys = _read_manifest_keys(manifest_path)
+        keys = self._read_manifest_keys(manifest_path)
         assert "agent_network_designer.hocon" in keys
         assert "advanced_calculator.hocon" in keys
         assert "music_nerd.hocon" in keys

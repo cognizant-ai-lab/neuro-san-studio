@@ -669,11 +669,11 @@ ENV AGENT_NETWORK_DESIGNER_SUBDIRECTORY="generated"
 
 # Manifest file(s) providing available external agents for the Agent Network Designer to choose from.
 # Defaults to "registries/manifest_and.hocon" if not set.
-ENV AGENT_NETWORK_DESIGNER_MANIFEST_FILE="registries/manifest_and.hocon"
+ENV AGENT_NETWORK_DESIGNER_MANIFEST_FILE="${APP_SOURCE}/registries/manifest_and.hocon"
 
 # Toolbox info file providing available tools for the Agent Network Designer to choose from.
 # Defaults to "neuro_san_studio/toolbox/agent_network_designer_toolbox_info.hocon" if not set.
-ENV AGENT_NETWORK_DESIGNER_TOOLBOX_INFO_FILE="neuro_san_studio/toolbox/agent_network_designer_toolbox_info.hocon"
+ENV AGENT_NETWORK_DESIGNER_TOOLBOX_INFO_FILE="${APP_SOURCE}/neuro_san_studio/toolbox/agent_network_designer_toolbox_info.hocon"
 
 # Time in seconds that the Agent Network Designer's cached MCP tool listings are served before
 # being re-fetched from the MCP servers. Positive values are clamped to at least twice the
@@ -693,5 +693,31 @@ ENV AGENT_NETWORK_DESIGNER_MCP_TOOLS_FETCH_TIMEOUT_SECONDS="30"
 # validation errors (e.g., a required tool was unavailable during session setup).
 # Defaults to "3" if not set.
 ENV AGENT_NETWORK_DESIGNER_MAX_VALIDATION_ATTEMPTS="3"
+
+# Path to the HOCON catalog of the Agent Network Designer's optional agents: toggleable
+# add-on modules (e.g. /middleware_manager) it calls in step 3 of the numbered workflow in
+# its system prompt, after the network is built (step 1) and refined (step 2). Each entry pairs an
+# external-agent tool ref with the env var that toggles it and the workflow-step text to
+# inject when enabled. Read by OptionalAgentsMiddleware. Override only when serving a
+# custom set of optional agents.
+ENV AGENT_NETWORK_DESIGNER_OPTIONAL_AGENTS_FILE="${APP_SOURCE}/middleware/agent_network_designer/optional_agents.hocon"
+
+# Toggles the /middleware_manager optional agent for the Agent Network Designer. When set
+# to a truthy value ("1", "true", "yes", "on" — case-insensitive), the designer is told
+# about the middleware step in its workflow and the /middleware_manager tool is kept in
+# ModelRequest.tools so it can be invoked. When unset or set to any other value (including
+# "false"), the workflow step is omitted from the system prompt AND the tool is stripped
+# from ModelRequest.tools, so the designer cannot reach /middleware_manager. This gate
+# depends on the optional-agents catalog (AGENT_NETWORK_DESIGNER_OPTIONAL_AGENTS_FILE above): if the catalog
+# cannot be loaded, the designer fails closed — model calls error out rather than
+# proceeding with disabled tools still reachable.
+# Defaults to "false" if not set.
+ENV AGENT_NETWORK_DESIGNER_USE_MIDDLEWARE="false"
+
+# Path to the HOCON catalog of middleware classes that the middleware_manager subnetwork
+# is allowed to attach to agents. Each entry pairs a friendly key with the fully qualified
+# class name and an arg schema. Read by MiddlewareInfoMiddleware. Override only when
+# serving a custom middleware allow-list.
+ENV AGENT_NETWORK_DESIGNER_MIDDLEWARE_INFO_FILE="${APP_SOURCE}/middleware/agent_network_designer/middleware_info.hocon"
 
 ENTRYPOINT ["/bin/bash", "-c", "exec ${APP_ENTRYPOINT}"]
