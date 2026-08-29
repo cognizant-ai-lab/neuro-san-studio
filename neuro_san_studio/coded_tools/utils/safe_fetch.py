@@ -375,9 +375,13 @@ class SafeFetch:
             )
 
     @staticmethod
-    def _is_text_content_type(content_type: str) -> bool:
+    def is_text_content_type(content_type: str) -> bool:
         """
-        Report whether a Content-Type is text-like and worth prefetching as text.
+        Report whether a Content-Type is text-like and safe to ingest as text.
+
+        Used both by get_content_type (to decide whether to prefetch a 405 GET
+        body) and by the RAG loaders (to decide whether a URL's body should be
+        stripped to text or skipped as an unsupported binary).
 
         :param content_type: The raw Content-Type header value (may include params).
         :return: True for text/* and (x)html/xml types; False for PDF, binary, or
@@ -389,6 +393,23 @@ class SafeFetch:
         # to download it again as a PDF.
         base_type: str = content_type.split(";", 1)[0].strip().lower()
         return base_type.startswith("text/") or "html" in base_type or "xml" in base_type
+
+    @staticmethod
+    def is_pdf(content_type: str, url: str) -> bool:
+        """
+        Report whether a resource should be parsed as a PDF.
+
+        Kept in one place so WebFetch and the RAG loaders classify PDFs identically:
+        a base media type of application/pdf, or a URL path ending in ".pdf". The
+        suffix is a deliberate fallback because some servers serve PDFs as
+        application/octet-stream or another generic type.
+
+        :param content_type: The raw Content-Type header value (may include params).
+        :param url: The already-validated URL, used for the ".pdf" suffix fallback.
+        :return: True if the resource should be parsed as a PDF.
+        """
+        base_type: str = content_type.split(";", 1)[0].strip().lower()
+        return base_type == "application/pdf" or url.lower().endswith(".pdf")
 
     @staticmethod
     async def get_content_type(url: str, session: ClientSession) -> tuple[str, str | None]:
@@ -433,7 +454,7 @@ class SafeFetch:
                         # separately by fetch_pdf_text, and any other/binary type is
                         # rejected by the caller, so reading it here would download
                         # bytes only to discard them.
-                        if SafeFetch._is_text_content_type(content_type):
+                        if SafeFetch.is_text_content_type(content_type):
                             # Stream with the running byte cap (like fetch_raw); the
                             # Content-Length pre-check above only guards honest servers.
                             body: str | None = await SafeFetch._read_capped_text(get, url)

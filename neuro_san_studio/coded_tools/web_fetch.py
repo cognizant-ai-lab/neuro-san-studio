@@ -100,7 +100,7 @@ class WebFetch(CodedTool):
             # affect the decision, and substring matching would misclassify types
             # like "image/png; profile=text/plain" or "application/x-text/plain".
             base_type: str = content_type.split(";", 1)[0].strip().lower()
-            is_pdf: bool = base_type == "application/pdf" or url.lower().endswith(".pdf")
+            is_pdf: bool = SafeFetch.is_pdf(content_type, url)
 
             if not is_pdf and not self._is_supported_content_type(base_type):
                 raise ValueError(
