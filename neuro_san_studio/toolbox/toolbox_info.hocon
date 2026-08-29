@@ -655,6 +655,71 @@ Options are `ascending` and `descending`. Default to `descending`.
         }
     },
 
+    # Writes text content to a local file with allow/block-list access control.
+    #
+    # Content larger than 10 MB (UTF-8 encoded) is rejected with content_too_large.
+    # Writes are atomic (same-directory temp file + atomic install), so a failed
+    # write never leaves a truncated file behind, and the overwrite=False policy is
+    # enforced atomically at install time — a file that appears concurrently is
+    # never clobbered. New files get the umask-derived default mode; overwriting
+    # preserves the existing file's mode.
+    #
+    # ============================================================================
+    # IMPORTANT — operator configuration is required for this tool to work.
+    # ============================================================================
+    #
+    # Access control (allowed_paths / allowed_file_extensions / blocked_paths /
+    # blocked_file_extensions) is INTENTIONALLY NOT exposed in the schema below.
+    # The LLM must never be able to set those values — that would let the model
+    # bypass the access control. The operator configures them in the agent network
+    # hocon, and neuro-san merges operator-supplied `args` over LLM-supplied args
+    # so operator values always win.
+    #
+    # Deny-by-default: without `allowed_paths`, the tool raises invalid_input on
+    # every call and refuses to write anything. To make this tool usable, you MUST
+    # supply at least `allowed_paths` via the `args` field on the tool reference
+    # in your agent network hocon, e.g.:
+    #
+    #   {
+    #       "name": "write_file",
+    #       "toolbox": "write_file",
+    #       "args": {
+    #           "allowed_paths": ["/path/to/project/output"],
+    #           "allowed_file_extensions": [".md", ".txt"],
+    #           "blocked_file_extensions": [".env"]
+    #       }
+    #   }
+    #
+    # Overwriting an existing file and creating missing parent directories are
+    # opt-in per call (overwrite / create_parents, both default False). Operators
+    # can also pin either flag in `args` to force a policy the LLM cannot change.
+    "write_file": {
+        "class": "neuro_san_studio.coded_tools.file_management.write_file.WriteFile",
+        "description": "Creates or overwrites a local text file with the given content. Access is restricted by operator-configured allow/block lists for paths and extensions; the LLM cannot influence those lists. Overwriting an existing file and creating missing parent directories both require explicit opt-in flags.",
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "file_path": {
+                    "type": "string",
+                    "description": "Absolute or relative path to the file to write."
+                },
+                "content": {
+                    "type": "string",
+                    "description": "Text content to write to the file (UTF-8)."
+                },
+                "overwrite": {
+                    "type": "boolean",
+                    "description": "Set true to replace an existing file. Defaults to false; writing to an existing path without it fails with file_already_exists."
+                },
+                "create_parents": {
+                    "type": "boolean",
+                    "description": "Set true to create missing parent directories (mkdir -p). Defaults to false; a missing parent fails with parent_not_found."
+                }
+            },
+            "required": ["file_path", "content"]
+        }
+    },
+
     # ---------- Search Tools ----------
 
     # To use this search tool, obtain an API key from: https://brave.com/search/api/
