@@ -35,7 +35,7 @@ from neuro_san_studio.coded_tools.utils.safe_fetch import SafeFetch
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-# Cap on simultaneous downloads within one load_documents call.
+# Cap on how many URLs are processed at once (download + parse) in one load_documents call.
 MAX_CONCURRENT_FETCHES: int = 5
 
 
@@ -133,10 +133,11 @@ class WebpageRag(CodedTool, BaseRag):
         """
         Load documents from URLs through the SSRF-hardened fetch path.
 
-        Each URL is fetched concurrently (capped by MAX_CONCURRENT_FETCHES) over one
-        shared protected session. A URL that fails to validate or download, or whose
-        content type is a declared non-text binary, is logged and skipped so one bad
-        URL does not discard the rest of the corpus.
+        Each URL is processed concurrently (download + parse, capped at
+        MAX_CONCURRENT_FETCHES in-flight URLs) over one shared protected session.
+        A URL that fails to validate or download, or whose content type is a declared
+        non-text binary, is logged and skipped so one bad URL does not discard the
+        rest of the corpus.
 
         :param loader_args: Dictionary containing 'urls' (list of webpage/PDF URLs).
         :return: One Document per successfully loaded URL, in input order.
@@ -149,9 +150,10 @@ class WebpageRag(CodedTool, BaseRag):
 
         # Concurrency limiter. A Semaphore holds a fixed number of "slots"
         # (MAX_CONCURRENT_FETCHES); a coroutine must acquire one (via `async with
-        # semaphore` in _load_single) before it downloads and releases it on exit. So
-        # at most that many URLs are ever fetching at the same time — polite to servers
-        # and bounds peak memory — while the rest wait their turn for a free slot.
+        # semaphore` in _load_single) and holds it for that URL's WHOLE processing —
+        # download and parse — releasing it on block exit. So at most that many URLs
+        # are in flight at any moment, which is polite to servers and bounds peak
+        # memory (at most that many raw bodies held at once); the rest wait for a slot.
         semaphore: Semaphore = Semaphore(MAX_CONCURRENT_FETCHES)
 
         # One protected session is shared across all fetches so they reuse the
@@ -166,7 +168,8 @@ class WebpageRag(CodedTool, BaseRag):
             # gather() launches all the coroutines on the event loop concurrently and
             # waits for every one to finish. It returns results in the SAME order as
             # `tasks` (input order, not whichever finished first). The semaphore above
-            # is what actually caps how many are hitting the network at any instant.
+            # is what actually caps how many are being processed (downloading or
+            # parsing) at any instant.
             # Each result is a Document, or None for a URL that was skipped/failed
             # (_load_single returns None instead of raising, so one bad URL cannot
             # make gather abort the others).
@@ -190,17 +193,18 @@ class WebpageRag(CodedTool, BaseRag):
 
         :param url: The webpage or PDF URL to fetch.
         :param session: The shared protected session created by open_session.
-        :param semaphore: Caps how many downloads run concurrently.
+        :param semaphore: Caps how many URLs are processed (downloaded and parsed) at once.
         :return: The loaded Document, or None when the URL is skipped.
         """
         try:
             # validate_url is pure (no network); keep it outside the semaphore so a
             # rejected URL does not consume a concurrency slot.
             validated_url: str = SafeFetch.validate_url(url)
-            # Acquire one of the semaphore's slots for the network work below. If all
-            # slots are taken (MAX_CONCURRENT_FETCHES already downloading), execution
-            # pauses here until another coroutine leaves its `async with` block and
-            # frees a slot; the slot is released automatically when this block exits.
+            # Acquire one of the semaphore's slots for the per-URL work below. The slot
+            # is deliberately held through both the download AND the parse: that bounds
+            # peak memory to a few raw bodies in flight, not just open connections. If
+            # all slots are taken, execution pauses here until another coroutine exits
+            # its `async with` block and frees one; release is automatic on block exit.
             async with semaphore:
                 # A HEAD probe decides PDF vs HTML before any body is downloaded, so
                 # a PDF is parsed with pypdf rather than run through the HTML stripper
