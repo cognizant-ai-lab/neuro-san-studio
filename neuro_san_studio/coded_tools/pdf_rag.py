@@ -18,34 +18,49 @@
 
 import logging
 import os
+from asyncio import Semaphore
+from asyncio import gather
+from asyncio import to_thread
 from typing import Any
-from typing import Dict
-from typing import List
+from urllib.parse import urlparse
 
-from langchain_community.document_loaders import PyMuPDFLoader
+from aiohttp import ClientSession
 from langchain_core.documents import Document
 from langchain_core.vectorstores import VectorStore
 from neuro_san.interfaces.coded_tool import CodedTool
 
 from neuro_san_studio.coded_tools.base_rag import BaseRag
 from neuro_san_studio.coded_tools.base_rag import PostgresConfig
+from neuro_san_studio.coded_tools.utils.pdf_utils import PdfUtils
+from neuro_san_studio.coded_tools.utils.safe_fetch import SafeFetch
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
+# Cap on how many PDFs are processed at once (download/read + parse) in one load_documents call.
+MAX_CONCURRENT_FETCHES: int = 5
+
 
 class PdfRag(CodedTool, BaseRag):
     """
-    CodedTool implementation which provides a way to do RAG on pdf files
+    CodedTool implementation which provides a way to do RAG on pdf files.
+
+    Remote PDFs are downloaded through the shared SSRF-hardened fetch path
+    (SafeFetch): private/loopback/reserved hosts are rejected, DNS records are
+    validated at connection time (anti DNS-rebinding), redirects are not followed,
+    and response sizes are capped. Local file paths (a documented input form for
+    this tool) are read directly from disk — SafeFetch governs network fetches
+    only. All PDFs are parsed with pypdf via the shared PdfUtils helper, one
+    Document per page so page numbers survive into the vector store metadata.
     """
 
-    async def async_invoke(self, args: Dict[str, Any], sly_data: Dict[str, Any]) -> str:
+    async def async_invoke(self, args: dict[str, Any], sly_data: dict[str, Any]) -> str | list[dict[str, Any]]:
         """
-        Load a PDF from URL, build a vector store, and run a query against it.
+        Load PDFs from URLs or file paths, build a vector store, and query it.
 
         :param args: Dictionary containing:
           "query": search string
-          "urls": list of pdf files
+          "urls": list of PDF URLs and/or local file paths
           "save_vector_store": save to JSON file if True
           "vector_store_path": relative path to this file
 
@@ -62,12 +77,12 @@ class PdfRag(CodedTool, BaseRag):
 
             Keys expected for this implementation are:
                 None
-        :return: Text result from querying the built vector store,
-            or error message
+        :return: Retrieved chunks as a list of {"content", "metadata"} dicts,
+            or an error/status message string.
         """
         # Extract arguments from the input dictionary
         query: str = args.get("query", "")
-        urls: List[str] = args.get("urls", [])
+        urls: list[str] = args.get("urls", [])
 
         # Validate presence of required inputs
         if not query:
@@ -103,27 +118,142 @@ class PdfRag(CodedTool, BaseRag):
         )
 
         # Run the query against the vector store
-        return await self.query_vectorstore(vector_store, query)
+        results: Any = await self.query_vectorstore(vector_store, query)
 
-    async def load_documents(self, loader_args: Dict[str, Any]) -> List[Document]:
+        # Every input may have been skipped (unreachable/blocked/unparseable),
+        # leaving an empty store whose retriever returns no documents. Surface that
+        # plainly instead of handing the agent an empty list it cannot act on. A
+        # non-empty store always returns its nearest chunks, so an empty list here
+        # means "nothing was ingested", not merely "no strong match".
+        if isinstance(results, list) and not results:
+            return (
+                "❌ No content could be retrieved from the provided PDFs. "
+                "They may be unreachable, blocked, missing, or not parseable as PDF."
+            )
+        return results
+
+    async def load_documents(self, loader_args: dict[str, Any]) -> list[Document]:
         """
-        Load PDF documents from URLs.
+        Load PDF documents from URLs and/or local file paths.
 
-        :param loader_args: Dictionary containing 'urls' (list of PDF file URLs)
-        :return: List of loaded PDF documents
+        Each item is processed concurrently (download/read + parse, capped at
+        MAX_CONCURRENT_FETCHES in flight) — remote items over one shared
+        SSRF-protected session, local items straight from disk. An item that fails
+        to validate, download, or parse is logged and skipped so one bad input does
+        not discard the rest of the corpus.
+
+        :param loader_args: Dictionary containing 'urls' (PDF URLs or file paths).
+        :return: One Document per page of each successfully loaded PDF, in input
+                 order.
         """
-        docs: List[Document] = []
-        urls: List[str] = loader_args.get("urls", [])
+        urls: list[str] = loader_args.get("urls", [])
+        # Nothing to do for an empty list; return early rather than opening a
+        # network session just to await an empty gather().
+        if not urls:
+            return []
 
-        for url in urls:
-            try:
-                loader = PyMuPDFLoader(file_path=url)
-                doc: List[Document] = await loader.aload()
-                docs.extend(doc)
-                logger.info("Successfully loaded PDF file from %s", url)
-            except FileNotFoundError:
-                logger.error("File not found: %s", url)
-            except ValueError as e:
-                logger.error("Invalid file path or unsupported input: %s – %s", url, e)
+        # Concurrency limiter. A Semaphore holds a fixed number of "slots"
+        # (MAX_CONCURRENT_FETCHES); a coroutine must acquire one (via `async with
+        # semaphore` in _load_single) and holds it for that item's WHOLE processing —
+        # download/read and parse — releasing it on block exit. So at most that many
+        # PDFs are in flight at any moment, which is polite to servers and bounds
+        # peak memory (each raw PDF can be megabytes); the rest wait for a slot.
+        semaphore: Semaphore = Semaphore(MAX_CONCURRENT_FETCHES)
+        # One protected session is shared by all remote downloads so they reuse the
+        # SSRF-validated connector (GlobalOnlyResolver) and its connection pool. It
+        # costs nothing until a request is made, so a list of only local paths is
+        # fine — the session simply goes unused.
+        async with SafeFetch.open_session() as session:
+            # Build one coroutine per item but do NOT await them here: awaiting
+            # inside the loop would run them one-after-another (sequentially).
+            tasks: list[Any] = []
+            for url in urls:
+                tasks.append(self._load_single(url, session, semaphore))
+            # gather() launches all the coroutines on the event loop concurrently
+            # and waits for every one to finish, returning results in the SAME
+            # order as `tasks`. Each result is a list of per-page Documents, or
+            # None for an item that was skipped/failed (_load_single returns None
+            # instead of raising, so one bad item cannot make gather abort the rest).
+            results: list[list[Document] | None] = await gather(*tasks)
 
-        return docs
+        # Flatten the per-item page lists, dropping skipped items and preserving
+        # input order (and page order within each PDF).
+        documents: list[Document] = []
+        for item_documents in results:
+            if item_documents is not None:
+                documents.extend(item_documents)
+        return documents
+
+    async def _load_single(self, url: str, session: ClientSession, semaphore: Semaphore) -> list[Document] | None:
+        """
+        Load one PDF (remote URL or local path) into per-page Documents.
+
+        Returns None (rather than raising) whenever an item cannot contribute
+        documents — a policy/validation failure, a download or file-read error, or
+        a parse failure — so a single bad input never aborts the load.
+
+        :param url: The PDF URL (http/https) or local file path to load.
+        :param session: The shared protected session created by open_session.
+        :param semaphore: Caps how many PDFs are processed (fetched and parsed) at once.
+        :return: One Document per page, or None when the item is skipped.
+        """
+        try:
+            # An http(s) scheme means a remote download through SafeFetch; anything
+            # else is treated as a local file path, a documented input form this
+            # tool has always accepted (see registries/tools/pdf_rag.hocon). Only
+            # network fetches go through the SSRF policy — a local path is
+            # operator-supplied configuration, not a URL to validate.
+            parsed_scheme: str = urlparse(url).scheme
+            if parsed_scheme in ("http", "https"):
+                validated_url: str = SafeFetch.validate_url(url)
+                async with semaphore:
+                    data: bytes = await SafeFetch.download_pdf_bytes(validated_url, session)
+                    # pypdf parsing is blocking CPU work; to_thread() runs it on a
+                    # worker thread so the event loop stays free to drive the other
+                    # concurrent downloads (same pattern as SafeFetch.fetch_pdf_text).
+                    page_texts: list[str] = await to_thread(PdfUtils.parse_pdf_bytes_per_page, data)
+                source: str = validated_url
+            else:
+                async with semaphore:
+                    # File I/O and parsing are both blocking; do the whole read+parse
+                    # on a worker thread.
+                    page_texts = await to_thread(self._read_local_pdf_pages, url)
+                source = url
+        # A broad catch keeps the batch resilient: URL-policy failures (ValueError),
+        # network/HTTP failures (ClientError), missing/unreadable files (OSError),
+        # and pypdf parse failures all mean "skip this one item", never "abort the
+        # whole load". The error is logged so nothing fails silently.
+        except Exception as error:  # pylint: disable=broad-exception-caught
+            logger.error("Failed to load PDF %s: %s", url, error)
+            return None
+
+        logger.info("Successfully loaded PDF file from %s", source)
+
+        # One Document per page, mirroring the granularity of the previous
+        # PyMuPDFLoader-based loader so page numbers survive into the vector-store
+        # metadata (chunking downstream does not preserve them otherwise).
+        total_pages: int = len(page_texts)
+        documents: list[Document] = []
+        for page_index, page_text in enumerate(page_texts):
+            documents.append(
+                Document(
+                    page_content=page_text,
+                    metadata={"source": source, "page": page_index, "total_pages": total_pages},
+                )
+            )
+        return documents
+
+    @staticmethod
+    def _read_local_pdf_pages(path: str) -> list[str]:
+        """
+        Read a local PDF file and extract its text, one string per page.
+
+        Blocking (file I/O + pypdf parse); callers run it via asyncio.to_thread.
+
+        :param path: The local filesystem path of the PDF.
+        :return: The extracted text of each page, in page order.
+        :raises OSError: When the file is missing or unreadable.
+        """
+        with open(path, "rb") as pdf_file:
+            data: bytes = pdf_file.read()
+        return PdfUtils.parse_pdf_bytes_per_page(data)
