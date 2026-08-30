@@ -384,14 +384,20 @@ class SafeFetch:
         stripped to text or skipped as an unsupported binary).
 
         :param content_type: The raw Content-Type header value (may include params).
-        :return: True for text/* and (x)html/xml types; False for PDF, binary, or
-                 anything else.
+        :return: True for text/* and (x)html/xml types; False for PDF, images
+                 (including XML-based ones like image/svg+xml), binary, or anything else.
         """
         # Match only the base media type, not the parameters: a header such as
         # 'application/pdf; profile="text/html"' is a PDF, and scanning the whole
         # value would misread it as text and stream the body here only for WebFetch
         # to download it again as a PDF.
         base_type: str = content_type.split(";", 1)[0].strip().lower()
+        # A declared image is never ingestible text, even when its subtype is
+        # XML-based: image/svg+xml would match the "xml" test below, but SVG markup
+        # is path/coordinate noise for RAG and callers advertise this method as
+        # skipping images. Check the top-level type first so that policy holds.
+        if base_type.startswith("image/"):
+            return False
         return base_type.startswith("text/") or "html" in base_type or "xml" in base_type
 
     @staticmethod
@@ -409,7 +415,12 @@ class SafeFetch:
         :return: True if the resource should be parsed as a PDF.
         """
         base_type: str = content_type.split(";", 1)[0].strip().lower()
-        return base_type == "application/pdf" or url.lower().endswith(".pdf")
+        if base_type == "application/pdf":
+            return True
+        # Test the suffix on the URL *path* so a query string or fragment after the
+        # filename ("/file.pdf?download=1", "/file.pdf#page=2") cannot hide the
+        # extension and misroute the PDF through the HTML/text path.
+        return urlparse(url).path.lower().endswith(".pdf")
 
     @staticmethod
     async def get_content_type(url: str, session: ClientSession) -> tuple[str, str | None]:

@@ -223,6 +223,14 @@ class TestWebpageRag(TestCase):
 
         self.assertIn("No content could be retrieved", result)
 
+    def test_empty_url_list_returns_empty_without_session(self):
+        """An empty URL list returns [] without ever opening a network session."""
+        with patch.object(SafeFetch, "open_session") as mock_session:
+            docs = self._load([])
+
+        self.assertEqual(docs, [])
+        mock_session.assert_not_called()
+
     def test_missing_query_or_urls_returns_error_without_network(self):
         """async_invoke reports missing inputs before any session is opened."""
         with patch.object(SafeFetch, "open_session") as mock_session:

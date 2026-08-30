@@ -23,7 +23,6 @@ from typing import Any
 
 from aiohttp import ClientSession
 from bs4 import BeautifulSoup
-from bs4 import NavigableString
 from bs4 import Tag
 from langchain_core.documents import Document
 from langchain_core.vectorstores import VectorStore
@@ -52,7 +51,7 @@ class WebpageRag(CodedTool, BaseRag):
     link is ingested as readable text instead of being embedded as binary garbage.
     """
 
-    async def async_invoke(self, args: dict[str, Any], sly_data: dict[str, Any]) -> str:
+    async def async_invoke(self, args: dict[str, Any], sly_data: dict[str, Any]) -> str | list[dict[str, Any]]:
         """
         Load webpages from URLs, build a vector store, and run a query against it.
 
@@ -75,8 +74,8 @@ class WebpageRag(CodedTool, BaseRag):
 
             Keys expected for this implementation are:
                 None
-        :return: Text result from querying the built vector store,
-            or error message
+        :return: Retrieved chunks as a list of {"content", "metadata"} dicts,
+            or an error/status message string.
         """
         # Extract arguments from the input dictionary
         query: str = args.get("query", "")
@@ -143,6 +142,10 @@ class WebpageRag(CodedTool, BaseRag):
         :return: One Document per successfully loaded URL, in input order.
         """
         urls: list[str] = loader_args.get("urls", [])
+        # Nothing to load: return early rather than opening a network session just
+        # to await an empty gather().
+        if not urls:
+            return []
 
         # Concurrency limiter. A Semaphore holds a fixed number of "slots"
         # (MAX_CONCURRENT_FETCHES); a coroutine must acquire one (via `async with
@@ -277,10 +280,12 @@ class WebpageRag(CodedTool, BaseRag):
         # actually provides it, matching WebBaseLoader's metadata shape.
         if soup.title and soup.title.get_text(strip=True):
             metadata["title"] = soup.title.get_text(strip=True)
-        description: Tag | NavigableString | None = soup.find("meta", attrs={"name": "description"})
+        # find() by tag name only ever matches Tag nodes (NavigableString results
+        # need a `string=` search), so Tag | None is the accurate type here.
+        description: Tag | None = soup.find("meta", attrs={"name": "description"})
         if description and description.get("content"):
             metadata["description"] = description["content"].strip()
-        html_tag: Tag | NavigableString | None = soup.find("html")
+        html_tag: Tag | None = soup.find("html")
         if html_tag and html_tag.get("lang"):
             metadata["language"] = html_tag["lang"]
 

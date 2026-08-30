@@ -1042,3 +1042,21 @@ class TestSafeFetch(TestCase):  # pylint: disable=too-many-public-methods
         with self.assertRaises(ClientError) as ctx:
             self._call_download_pdf_bytes(session)
         self.assertIn("url_not_accessible", str(ctx.exception))
+
+    def test_is_pdf_detects_suffix_despite_query_or_fragment(self):
+        """Tests that a .pdf path is detected even with a query string or fragment after it."""
+        self.assertTrue(SafeFetch.is_pdf("", "https://example.com/file.pdf?download=1"))
+        self.assertTrue(SafeFetch.is_pdf("", "https://example.com/file.PDF#page=2"))
+        self.assertTrue(SafeFetch.is_pdf("application/pdf", "https://example.com/report"))
+        # A .pdf that is not the path suffix must not match.
+        self.assertFalse(SafeFetch.is_pdf("text/html", "https://example.com/file.pdf.html"))
+        self.assertFalse(SafeFetch.is_pdf("text/html", "https://example.com/page?name=file.pdf"))
+
+    def test_is_text_content_type_rejects_images_including_svg(self):
+        """Tests that declared image types are not text, even XML-based ones like image/svg+xml."""
+        self.assertFalse(SafeFetch.is_text_content_type("image/svg+xml"))
+        self.assertFalse(SafeFetch.is_text_content_type("image/png"))
+        # Genuinely textual types remain accepted.
+        self.assertTrue(SafeFetch.is_text_content_type("application/xml"))
+        self.assertTrue(SafeFetch.is_text_content_type("text/markdown"))
+        self.assertTrue(SafeFetch.is_text_content_type("TEXT/HTML; charset=utf-8"))
