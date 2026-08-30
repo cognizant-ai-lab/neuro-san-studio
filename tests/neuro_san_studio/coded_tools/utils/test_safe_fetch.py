@@ -1060,3 +1060,21 @@ class TestSafeFetch(TestCase):  # pylint: disable=too-many-public-methods
         self.assertTrue(SafeFetch.is_text_content_type("application/xml"))
         self.assertTrue(SafeFetch.is_text_content_type("text/markdown"))
         self.assertTrue(SafeFetch.is_text_content_type("TEXT/HTML; charset=utf-8"))
+
+    def test_is_text_content_type_rejects_binary_vendor_types_containing_xml(self):
+        """Tests that ZIP-container vendor types whose names contain 'xml' are not treated as text.
+
+        Guards against the old substring scan: .docx/.xlsx/.pptx media types contain
+        "xml" (openxmlformats) but are binary ZIP containers, while genuine XML types
+        are recognized by the RFC 6839 "+xml" structured suffix.
+        """
+        self.assertFalse(
+            SafeFetch.is_text_content_type("application/vnd.openxmlformats-officedocument.wordprocessingml.document")
+        )
+        self.assertFalse(
+            SafeFetch.is_text_content_type("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+        )
+        # Real XML feed/document types keep matching via the "+xml" suffix.
+        self.assertTrue(SafeFetch.is_text_content_type("application/rss+xml"))
+        self.assertTrue(SafeFetch.is_text_content_type("application/atom+xml"))
+        self.assertTrue(SafeFetch.is_text_content_type("application/xhtml+xml"))

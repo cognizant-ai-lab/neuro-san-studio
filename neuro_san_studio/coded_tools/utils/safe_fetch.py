@@ -384,8 +384,9 @@ class SafeFetch:
         stripped to text or skipped as an unsupported binary).
 
         :param content_type: The raw Content-Type header value (may include params).
-        :return: True for text/* and (x)html/xml types; False for PDF, images
-                 (including XML-based ones like image/svg+xml), binary, or anything else.
+        :return: True for text/*, application/xml, and "+xml"-suffixed types (html is
+                 covered by text/html and application/xhtml+xml); False for PDF, images
+                 (including image/svg+xml), binary vendor types, or anything else.
         """
         # Match only the base media type, not the parameters: a header such as
         # 'application/pdf; profile="text/html"' is a PDF, and scanning the whole
@@ -393,12 +394,17 @@ class SafeFetch:
         # to download it again as a PDF.
         base_type: str = content_type.split(";", 1)[0].strip().lower()
         # A declared image is never ingestible text, even when its subtype is
-        # XML-based: image/svg+xml would match the "xml" test below, but SVG markup
+        # XML-based: image/svg+xml would match the "+xml" test below, but SVG markup
         # is path/coordinate noise for RAG and callers advertise this method as
         # skipping images. Check the top-level type first so that policy holds.
         if base_type.startswith("image/"):
             return False
-        return base_type.startswith("text/") or "html" in base_type or "xml" in base_type
+        # Recognize XML types by the RFC 6839 "+xml" structured suffix (or the exact
+        # application/xml type), NOT by an "xml"/"html" substring scan: binary vendor
+        # types such as .docx's
+        # application/vnd.openxmlformats-officedocument.wordprocessingml.document are
+        # ZIP containers whose names merely contain "xml" and must not be read as text.
+        return base_type.startswith("text/") or base_type == "application/xml" or base_type.endswith("+xml")
 
     @staticmethod
     def is_pdf(content_type: str, url: str) -> bool:
