@@ -17,6 +17,7 @@
 """Tests for the webpage RAG coded tool's SafeFetch-backed document loading."""
 
 import asyncio
+from typing import Any
 from unittest import TestCase
 from unittest.mock import AsyncMock
 from unittest.mock import MagicMock
@@ -171,7 +172,8 @@ class TestWebpageRag(TestCase):
     def test_failed_download_does_not_discard_other_pages(self):
         """One unreachable page is logged and skipped; the rest of the corpus survives."""
 
-        async def fetch_raw(url, _session):
+        async def fetch_raw(url: str, _session: Any) -> str:
+            """Return a page body, raising ClientError for any URL containing 'bad'."""
             if "bad" in url:
                 raise ClientError("url_not_accessible: connection reset")
             return HTML_PAGE
@@ -185,6 +187,41 @@ class TestWebpageRag(TestCase):
 
         self.assertEqual(len(docs), 1)
         self.assertEqual(docs[0].metadata["source"], "http://example.com/good")
+
+    def test_empty_content_type_is_treated_as_text(self):
+        """A missing/empty Content-Type is loaded as text rather than skipped (WebBaseLoader parity)."""
+        with (
+            patch.object(SafeFetch, "open_session", return_value=make_session_cm()),
+            patch.object(SafeFetch, "get_content_type", new=AsyncMock(return_value=("", None))),
+            patch.object(SafeFetch, "fetch_raw", new=AsyncMock(return_value=HTML_PAGE)) as mock_raw,
+        ):
+            docs = self._load(["http://example.com/page"])
+
+        mock_raw.assert_awaited_once()
+        self.assertEqual(len(docs), 1)
+        self.assertIn("Hello world", docs[0].page_content)
+
+    def test_parse_failure_skips_only_that_url(self):
+        """A parse error in _to_document skips that URL instead of aborting the whole load."""
+        with (
+            patch.object(SafeFetch, "open_session", return_value=make_session_cm()),
+            patch.object(SafeFetch, "get_content_type", new=AsyncMock(return_value=("text/html", None))),
+            patch.object(SafeFetch, "fetch_raw", new=AsyncMock(return_value=HTML_PAGE)),
+            patch.object(WebpageRag, "_to_document", side_effect=RecursionError("boom")),
+        ):
+            docs = self._load(["http://example.com/page"])
+
+        self.assertEqual(docs, [])  # skipped, not raised
+
+    def test_all_urls_skipped_returns_clear_message(self):
+        """When nothing is ingested, async_invoke returns a clear message, not an empty list."""
+        with (
+            patch.object(WebpageRag, "generate_vector_store", new=AsyncMock(return_value=MagicMock())),
+            patch.object(WebpageRag, "query_vectorstore", new=AsyncMock(return_value=[])),
+        ):
+            result = asyncio.run(self.tool.async_invoke({"query": "q", "urls": ["http://example.com"]}, {}))
+
+        self.assertIn("No content could be retrieved", result)
 
     def test_missing_query_or_urls_returns_error_without_network(self):
         """async_invoke reports missing inputs before any session is opened."""
