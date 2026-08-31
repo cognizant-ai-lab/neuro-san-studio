@@ -471,9 +471,9 @@ class SafeFetch:
         if base_type and base_type not in GENERIC_DOWNLOAD_CONTENT_TYPES:
             return False
         # No usable declared type: sniff the URL for a ".pdf" filename.
-        # urlparse(url).path is only the path segment of the URL: for
-        # "https://host/file.pdf?download=1#page=2" it is "/file.pdf", with the
-        # "?query" and "#fragment" parts split off. endswith(".pdf") on the path
+        # urlparse(url).path is only the path segment of the URL: for a URL
+        # ending in "/file.pdf?download=1#page=2" the path is "/file.pdf", with
+        # the "?query" and "#fragment" parts split off. endswith(".pdf") on the path
         # therefore still matches when a query string or fragment follows the
         # filename — the same check on the full url string would miss it.
         if urlparse(url).path.lower().endswith(".pdf"):
