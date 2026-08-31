@@ -87,10 +87,12 @@ class TestWebFetch(TestCase):
 
     def test_unsupported_content_type_raises(self):
         """Tests that an unsupported content type raises ValueError with unsupported_content_type."""
-        with patch.object(SafeFetch, "get_content_type", new=AsyncMock(return_value=("image/png", None))):
-            with self.assertRaises(ValueError) as ctx:
-                asyncio.run(self.tool.async_invoke({"url": "http://example.com/img.png"}, self.sly_data))
-        self.assertIn("unsupported_content_type", str(ctx.exception))
+        for content_type in ("image/png", "image/svg+xml"):
+            with self.subTest(content_type=content_type):
+                with patch.object(SafeFetch, "get_content_type", new=AsyncMock(return_value=(content_type, None))):
+                    with self.assertRaises(ValueError) as ctx:
+                        asyncio.run(self.tool.async_invoke({"url": "http://example.com/image"}, self.sly_data))
+                self.assertIn("unsupported_content_type", str(ctx.exception))
 
     def test_uppercase_pdf_content_type_routes_to_pdf(self):
         """Tests that a mixed-case 'Application/PDF' header still routes to PDF parsing, not rejection."""
@@ -102,14 +104,28 @@ class TestWebFetch(TestCase):
         mock_pdf.assert_called_once()
         self.assertEqual(result["content"], "PDF content")
 
-    def test_mixed_case_text_content_type_supported(self):
-        """Tests that a mixed-case 'TEXT/HTML' header is accepted rather than rejected as unsupported."""
-        with (
-            patch.object(SafeFetch, "get_content_type", new=AsyncMock(return_value=("TEXT/HTML", None))),
-            patch.object(SafeFetch, "fetch_text", new=AsyncMock(return_value="hello")),
-        ):
-            result = asyncio.run(self.tool.async_invoke({"url": "http://example.com"}, self.sly_data))
-        self.assertEqual(result["content"], "hello")
+    def test_supported_text_content_types_route_to_text_fetch(self):
+        """Tests that each vetted textual media type is fetched through the text path."""
+        content_types = (
+            "TEXT/HTML",
+            "application/atom+xml",
+            "application/rss+xml",
+            "application/xml",
+            "text/csv",
+            "text/markdown",
+            "text/xml",
+        )
+
+        for content_type in content_types:
+            with self.subTest(content_type=content_type):
+                with (
+                    patch.object(SafeFetch, "get_content_type", new=AsyncMock(return_value=(content_type, None))),
+                    patch.object(SafeFetch, "fetch_text", new=AsyncMock(return_value="readable text")) as mock_text,
+                ):
+                    result = asyncio.run(self.tool.async_invoke({"url": "http://example.com/doc"}, self.sly_data))
+
+                mock_text.assert_awaited_once()
+                self.assertEqual(result["content"], "readable text")
 
     def test_supported_token_in_parameter_still_unsupported(self):
         """Tests that a supported token appearing only in a parameter does not make a type supported.

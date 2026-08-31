@@ -26,16 +26,24 @@ from neuro_san_studio.coded_tools.utils.safe_fetch import SafeFetch
 
 MAX_CHARS: int = 20_000
 SUPPORTED_CONTENT_TYPES: set[str] = {
-    "text/html",
-    "text/plain",
-    "application/xhtml+xml",
+    "application/atom+xml",
     "application/pdf",
+    "application/rss+xml",
+    "application/xhtml+xml",
+    "application/xml",
+    "text/csv",
+    "text/html",
+    "text/markdown",
+    "text/plain",
+    "text/xml",
 }
 
 
 class WebFetch(CodedTool):
     """
     CodedTool implementation that fetches a URL and returns its plain-text body.
+
+    XML and feed responses are returned as extracted text; raw XML markup is not preserved.
 
     All validation and network access is delegated to the shared SSRF-hardened
     fetch path (SafeFetch): private/loopback/reserved hosts are rejected,
@@ -51,7 +59,7 @@ class WebFetch(CodedTool):
                                     or returns a redirect.
         url_not_accessible       – HTTP error or network failure while fetching the page.
         too_many_requests        – Server returned HTTP 429.
-        unsupported_content_type – Content type is not text/HTML or PDF.
+        unsupported_content_type – Content type is not an approved text, XML, feed, HTML, or PDF type.
         response_too_large       – Content-Length header or streamed body (text or PDF) exceeds the byte limit.
     """
 
@@ -105,7 +113,7 @@ class WebFetch(CodedTool):
             if not is_pdf and not self._is_supported_content_type(base_type):
                 raise ValueError(
                     f"unsupported_content_type: Content type '{content_type}' is not supported. "
-                    "Only text/HTML and PDF are accepted."
+                    "Only approved text, XML, feed, HTML, and PDF types are accepted."
                 )
 
             retrieved_at: str = datetime.now(timezone.utc).isoformat()
@@ -133,11 +141,11 @@ class WebFetch(CodedTool):
     @staticmethod
     def _is_supported_content_type(base_type: str) -> bool:
         """
-        Report whether a base media type is exactly one of the supported text/PDF types.
+        Report whether a base media type is exactly one of the supported text and PDF types.
 
         Exact membership (not substring) is required so an unsupported type that merely
-        contains a supported token — e.g. "application/x-text/plain", or a parameter
-        like "image/png; profile=text/plain" once reduced to its base — is rejected.
+        contains a supported token, such as "application/x-text/plain", or a parameter
+        like "image/png; profile=text/plain" once reduced to its base, is rejected.
 
         :param base_type: The base media type with parameters removed, lower-cased.
         :return: True if base_type is exactly one of SUPPORTED_CONTENT_TYPES.
