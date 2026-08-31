@@ -1159,6 +1159,12 @@ class TestSafeFetch(TestCase):  # pylint: disable=too-many-public-methods
         self.assertFalse(SafeFetch.is_pdf("text/html", "https://example.com/download?name=report.pdf&sig=abc123"))
         # A generic type with no .pdf anywhere in the URL is not a PDF.
         self.assertFalse(SafeFetch.is_pdf("application/octet-stream", "https://example.com/download?name=report.zip"))
+        # A bare valueless query token still counts (parse_qs drops it; the
+        # query-suffix check catches it) ...
+        self.assertTrue(SafeFetch.is_pdf("application/octet-stream", "https://example.com/download?report.pdf"))
+        # ... but a fragment never does: fragments are not sent to the server, so
+        # "/page#report.pdf" says nothing about what /page serves.
+        self.assertFalse(SafeFetch.is_pdf("application/octet-stream", "https://example.com/page#report.pdf"))
 
     def test_is_text_content_type_rejects_images_including_svg(self):
         """Tests that declared image types are not text, even XML-based ones like image/svg+xml."""

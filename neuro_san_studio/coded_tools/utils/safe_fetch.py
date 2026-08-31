@@ -484,12 +484,15 @@ class SafeFetch:
         # instead of the path. Check each query parameter's value so the filename
         # is found wherever it sits ("?name=report.pdf" and "?name=report.pdf&sig=x"
         # alike). parse_qs drops a bare valueless token ("?report.pdf" has no "="),
-        # so the raw-URL endswith below still has a case of its own.
+        # so the query-suffix check below still has a case of its own.
         for values in parse_qs(parsed.query).values():
             for value in values:
                 if value.lower().endswith(".pdf"):
                     return True
-        return url.lower().endswith(".pdf")
+        # Test the query string, NOT the raw URL: a raw endswith would also match a
+        # "#fragment" ending in ".pdf" ("/page#report.pdf"), and fragments are never
+        # sent to the server, so they say nothing about what the resource is.
+        return parsed.query.lower().endswith(".pdf")
 
     @staticmethod
     async def get_content_type(url: str, session: ClientSession) -> tuple[str, str | None]:
