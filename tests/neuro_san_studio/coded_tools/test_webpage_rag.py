@@ -114,7 +114,7 @@ class TestWebpageRag(TestCase):
         self.assertEqual(docs[0].metadata, {"source": "http://example.com/doc"})
 
     def test_pdf_url_suffix_routes_to_fetch_pdf(self):
-        """A .pdf URL is parsed as PDF even when the server mislabels the content type."""
+        """A .pdf URL is parsed as PDF when the server only declares a generic download type."""
         with (
             patch.object(SafeFetch, "open_session", return_value=make_session_cm()),
             patch.object(

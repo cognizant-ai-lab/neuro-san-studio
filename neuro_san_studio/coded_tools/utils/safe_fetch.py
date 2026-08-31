@@ -44,6 +44,17 @@ MAX_RESPONSE_BYTES: int = 10 * 1024 * 1024  # 10 MB
 # Read size per iteration when streaming a response body.
 DOWNLOAD_CHUNK_BYTES: int = 64 * 1024
 TIMEOUT_SECONDS: int = 15
+# Generic "download" media types that carry no real format information. When a server
+# declares one of these (or no Content-Type at all), is_pdf falls back to sniffing
+# the URL for a ".pdf" filename; any other concrete declared type is trusted as-is.
+GENERIC_DOWNLOAD_CONTENT_TYPES: frozenset[str] = frozenset(
+    {
+        "application/octet-stream",
+        "binary/octet-stream",
+        "application/x-download",
+        "application/force-download",
+    }
+)
 # Characters permitted in a canonical (post-IDNA, lower-cased) DNS hostname. IP
 # literals are validated separately; a genuine hostname containing anything outside
 # this set means IDNA could not canonicalize it and it is not a usable DNS name.
@@ -411,22 +422,43 @@ class SafeFetch:
         """
         Report whether a resource should be parsed as a PDF.
 
-        Kept in one place so WebFetch and the RAG loaders classify PDFs identically:
-        a base media type of application/pdf, or a URL path ending in ".pdf". The
-        suffix is a deliberate fallback because some servers serve PDFs as
-        application/octet-stream or another generic type.
+        Kept in one place so WebFetch and the RAG loaders classify PDFs identically.
+        A declared base media type of application/pdf is a PDF. Any other concrete
+        declared type is trusted and means "not a PDF": a ".pdf" URL serving declared
+        text/html is an error page or a moved document, and force-feeding it to the
+        PDF parser turns a readable page into a parse failure. Only when the server
+        gives no usable type (missing header, or a generic download type from
+        GENERIC_DOWNLOAD_CONTENT_TYPES) does the URL decide.
 
         :param content_type: The raw Content-Type header value (may include params).
         :param url: The already-validated URL, used for the ".pdf" suffix fallback.
         :return: True if the resource should be parsed as a PDF.
         """
+        # A Content-Type header has the form "type/subtype[; parameter=value ...]",
+        # e.g. "application/pdf" or "application/pdf; qs=0.8". Split at the first ";"
+        # and keep only the base "type/subtype" token so trailing parameters never
+        # affect the comparison; strip/lower because header tokens are
+        # case-insensitive and may carry surrounding whitespace.
         base_type: str = content_type.split(";", 1)[0].strip().lower()
         if base_type == "application/pdf":
             return True
-        # Test the suffix on the URL *path* so a query string or fragment after the
-        # filename ("/file.pdf?download=1", "/file.pdf#page=2") cannot hide the
-        # extension and misroute the PDF through the HTML/text path.
-        return urlparse(url).path.lower().endswith(".pdf")
+        # A concrete declared type other than application/pdf wins over the URL:
+        # the server knows what it is serving, and the suffix is only a filename hint.
+        if base_type and base_type not in GENERIC_DOWNLOAD_CONTENT_TYPES:
+            return False
+        # No usable declared type: sniff the URL for a ".pdf" filename.
+        # urlparse(url).path is only the path segment of the URL: for
+        # "https://host/file.pdf?download=1#page=2" it is "/file.pdf", with the
+        # "?query" and "#fragment" parts split off. endswith(".pdf") on the path
+        # therefore still matches when a query string or fragment follows the
+        # filename — the same check on the full url string would miss it.
+        if urlparse(url).path.lower().endswith(".pdf"):
+            return True
+        # The full-url check covers the complementary case: download endpoints often
+        # carry the filename only in the query string ("/download?name=report.pdf"),
+        # where the path ("/download") has no ".pdf" suffix but the raw URL string
+        # ends with one.
+        return url.lower().endswith(".pdf")
 
     @staticmethod
     async def get_content_type(url: str, session: ClientSession) -> tuple[str, str | None]:

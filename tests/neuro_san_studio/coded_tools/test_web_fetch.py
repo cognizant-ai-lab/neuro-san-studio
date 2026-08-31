@@ -74,7 +74,7 @@ class TestWebFetch(TestCase):
         self.assertEqual(result["content"], "PDF content")
 
     def test_pdf_by_url_extension_calls_fetch_pdf(self):
-        """Tests that a .pdf URL extension routes to fetch_pdf_text regardless of content type."""
+        """Tests that a .pdf URL extension routes to fetch_pdf_text when the type is a generic download type."""
         with (
             patch.object(
                 SafeFetch, "get_content_type", new=AsyncMock(return_value=("application/octet-stream", None))

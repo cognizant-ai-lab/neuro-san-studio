@@ -1071,6 +1071,26 @@ class TestSafeFetch(TestCase):  # pylint: disable=too-many-public-methods
         self.assertFalse(SafeFetch.is_pdf("text/html", "https://example.com/file.pdf.html"))
         self.assertFalse(SafeFetch.is_pdf("text/html", "https://example.com/page?name=file.pdf"))
 
+    def test_is_pdf_trusts_concrete_declared_type_over_url_suffix(self):
+        """Tests that a concrete declared type beats the ".pdf" suffix; generic types defer to the URL.
+
+        A .pdf path serving declared text/html is an error page or a moved document
+        and must not be force-fed to the PDF parser. Generic download types carry no
+        format information, so there the URL decides — including a filename that only
+        appears in the query string ("/download?name=report.pdf"), which download
+        endpoints commonly use.
+        """
+        # Concrete declared types win over the path suffix.
+        self.assertFalse(SafeFetch.is_pdf("text/html", "https://example.com/file.pdf"))
+        self.assertFalse(SafeFetch.is_pdf("application/zip", "https://example.com/file.pdf"))
+        # Generic download types defer to the URL.
+        self.assertTrue(SafeFetch.is_pdf("application/octet-stream", "https://example.com/file.pdf"))
+        self.assertTrue(SafeFetch.is_pdf("binary/octet-stream", "https://example.com/file.pdf"))
+        # With a generic type, a filename in the query string is still recognized.
+        self.assertTrue(SafeFetch.is_pdf("application/octet-stream", "https://example.com/download?name=report.pdf"))
+        # A generic type with no .pdf anywhere in the URL is not a PDF.
+        self.assertFalse(SafeFetch.is_pdf("application/octet-stream", "https://example.com/download?name=report.zip"))
+
     def test_is_text_content_type_rejects_images_including_svg(self):
         """Tests that declared image types are not text, even XML-based ones like image/svg+xml."""
         self.assertFalse(SafeFetch.is_text_content_type("image/svg+xml"))
