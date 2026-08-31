@@ -32,6 +32,7 @@ from neuro_san.interfaces.coded_tool import CodedTool
 from neuro_san_studio.coded_tools.base_rag import BaseRag
 from neuro_san_studio.coded_tools.base_rag import PostgresConfig
 from neuro_san_studio.coded_tools.utils.pdf_utils import PdfUtils
+from neuro_san_studio.coded_tools.utils.safe_fetch import MAX_RESPONSE_BYTES
 from neuro_san_studio.coded_tools.utils.safe_fetch import SafeFetch
 
 logging.basicConfig(level=logging.INFO)
@@ -50,8 +51,10 @@ class PdfRag(CodedTool, BaseRag):
     validated at connection time (anti DNS-rebinding), redirects are not followed,
     and response sizes are capped. Local file paths (a documented input form for
     this tool) are read directly from disk — SafeFetch governs network fetches
-    only. All PDFs are parsed with pypdf via the shared PdfUtils helper, one
-    Document per page so page numbers survive into the vector store metadata.
+    only — subject to the same byte cap as downloads. Items with any other URL
+    scheme (file://, s3://, ...) are skipped with a logged message. All PDFs are
+    parsed with pypdf via the shared PdfUtils helper, one Document per page so
+    page numbers survive into the vector store metadata.
     """
 
     async def async_invoke(self, args: dict[str, Any], sly_data: dict[str, Any]) -> str | list[dict[str, Any]]:
@@ -82,7 +85,10 @@ class PdfRag(CodedTool, BaseRag):
         """
         # Extract arguments from the input dictionary
         query: str = args.get("query", "")
-        urls: list[str] = args.get("urls", [])
+        # Deliberately Any: this comes from the operator's hocon args block (the
+        # toolbox schema exposes only 'query' to the LLM) and may be a bare string
+        # instead of a list; load_documents normalizes that case.
+        urls: Any = args.get("urls")
 
         # Validate presence of required inputs
         if not query:
@@ -140,15 +146,25 @@ class PdfRag(CodedTool, BaseRag):
         MAX_CONCURRENT_FETCHES in flight) — remote items over one shared
         SSRF-protected session, local items straight from disk. An item that fails
         to validate, download, or parse is logged and skipped so one bad input does
-        not discard the rest of the corpus.
+        not discard the rest of the corpus. If the surrounding task is cancelled,
+        the cancellation is re-raised only after every in-flight item has unwound,
+        so the shared session never closes while a download is still using it.
 
-        :param loader_args: Dictionary containing 'urls' (PDF URLs or file paths).
+        :param loader_args: Dictionary containing 'urls' (list of PDF URLs or file
+            paths, or a single one as a bare string).
         :return: One Document per page of each successfully loaded PDF, in input
                  order.
         """
-        urls: list[str] = loader_args.get("urls", [])
-        # Nothing to do for an empty list; return early rather than opening a
-        # network session just to await an empty gather().
+        urls: Any = loader_args.get("urls")
+        # A hand-edited hocon may pass a single URL/path as a bare string instead
+        # of a list. A string is itself iterable, so the loop below would "load"
+        # it one character at a time, every character failing, and the whole run
+        # would come back empty with no hint why. Treat a single string as a
+        # one-item list instead.
+        if isinstance(urls, str):
+            urls = [urls]
+        # Nothing to do (or no 'urls' key at all); return early rather than
+        # opening a network session just to await an empty gather().
         if not urls:
             return []
 
@@ -174,14 +190,31 @@ class PdfRag(CodedTool, BaseRag):
             # order as `tasks`. Each result is a list of per-page Documents, or
             # None for an item that was skipped/failed (_load_single returns None
             # instead of raising, so one bad item cannot make gather abort the rest).
-            results: list[list[Document] | None] = await gather(*tasks)
+            #
+            # return_exceptions=True matters for CANCELLATION, the one thing that
+            # can still escape _load_single (CancelledError is a BaseException, so
+            # the broad `except Exception` there deliberately does not catch it).
+            # Without it, gather() re-raises the FIRST child's CancelledError
+            # immediately, while sibling tasks are still unwinding; this
+            # `async with` block would then close the shared session under them,
+            # and they would die with confusing secondary "session is closed"
+            # errors. With it, gather() waits until EVERY child has finished
+            # unwinding before completing — and when the gather itself was
+            # cancelled, asyncio still re-raises CancelledError to our caller at
+            # that point — so the session only closes once nothing is using it.
+            results: list[list[Document] | None | BaseException] = await gather(*tasks, return_exceptions=True)
 
         # Flatten the per-item page lists, dropping skipped items and preserving
-        # input order (and page order within each PDF).
+        # input order (and page order within each PDF). None entries were already
+        # logged by _load_single; anything else is a stray BaseException collected
+        # by return_exceptions=True, which bypassed _load_single's logging, so log
+        # it here.
         documents: list[Document] = []
-        for item_documents in results:
-            if item_documents is not None:
-                documents.extend(item_documents)
+        for result in results:
+            if isinstance(result, list):
+                documents.extend(result)
+            elif result is not None:
+                logger.error("Skipped a PDF after an unexpected error: %r", result)
         return documents
 
     async def _load_single(self, url: str, session: ClientSession, semaphore: Semaphore) -> list[Document] | None:
@@ -189,8 +222,9 @@ class PdfRag(CodedTool, BaseRag):
         Load one PDF (remote URL or local path) into per-page Documents.
 
         Returns None (rather than raising) whenever an item cannot contribute
-        documents — a policy/validation failure, a download or file-read error, or
-        a parse failure — so a single bad input never aborts the load.
+        documents — an unsupported URL scheme, a policy/validation failure, a
+        download or file-read error, or a parse failure — so a single bad input
+        never aborts the load.
 
         :param url: The PDF URL (http/https) or local file path to load.
         :param session: The shared protected session created by open_session.
@@ -198,12 +232,19 @@ class PdfRag(CodedTool, BaseRag):
         :return: One Document per page, or None when the item is skipped.
         """
         try:
-            # An http(s) scheme means a remote download through SafeFetch; anything
-            # else is treated as a local file path, a documented input form this
-            # tool has always accepted (see registries/tools/pdf_rag.hocon). Only
-            # network fetches go through the SSRF policy — a local path is
-            # operator-supplied configuration, not a URL to validate.
-            parsed_scheme: str = urlparse(url).scheme
+            # Route explicitly by URL scheme. http(s) means a remote download
+            # through SafeFetch. No scheme at all means a local file path, a
+            # documented input form this tool has always accepted (see
+            # registries/tools/pdf_rag.hocon); a single-letter "scheme" is really
+            # a Windows drive letter ("C:\\docs\\file.pdf" parses with scheme "c"),
+            # so that is a local path too. Anything else (file://, s3://, ftp://,
+            # or a typo) is skipped with an explicit message — the old
+            # negative-space routing handed every non-http string to open(), which
+            # failed with a misleading "file not found" for URLs this tool simply
+            # does not support. Only network fetches go through the SSRF policy —
+            # a local path is operator-supplied configuration, not a URL to
+            # validate.
+            parsed_scheme: str = urlparse(url).scheme.lower()
             if parsed_scheme in ("http", "https"):
                 validated_url: str = SafeFetch.validate_url(url)
                 async with semaphore:
@@ -213,6 +254,13 @@ class PdfRag(CodedTool, BaseRag):
                     # concurrent downloads (same pattern as SafeFetch.fetch_pdf_text).
                     page_texts: list[str] = await to_thread(PdfUtils.parse_pdf_bytes_per_page, data)
                 source: str = validated_url
+            elif len(parsed_scheme) > 1:
+                logger.warning(
+                    "Skipping %s: unsupported URL scheme '%s'. Use an http(s) URL or a local file path.",
+                    url,
+                    parsed_scheme,
+                )
+                return None
             else:
                 async with semaphore:
                     # File I/O and parsing are both blocking; do the whole read+parse
@@ -253,7 +301,16 @@ class PdfRag(CodedTool, BaseRag):
         :param path: The local filesystem path of the PDF.
         :return: The extracted text of each page, in page order.
         :raises OSError: When the file is missing or unreadable.
+        :raises ValueError: response_too_large when the file exceeds MAX_RESPONSE_BYTES.
         """
+        # Apply the same byte cap the remote path enforces: SafeFetch caps
+        # downloads via Content-Length and on the streamed bytes, and without
+        # this check a huge local file would be read fully into memory.
+        file_size: int = os.path.getsize(path)
+        if file_size > MAX_RESPONSE_BYTES:
+            raise ValueError(
+                f"response_too_large: '{path}' is {file_size} bytes, over the {MAX_RESPONSE_BYTES}-byte limit."
+            )
         with open(path, "rb") as pdf_file:
             data: bytes = pdf_file.read()
         return PdfUtils.parse_pdf_bytes_per_page(data)

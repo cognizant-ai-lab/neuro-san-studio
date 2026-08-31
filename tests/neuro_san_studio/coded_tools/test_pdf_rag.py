@@ -19,6 +19,7 @@
 import asyncio
 import os
 import tempfile
+from functools import partial
 from typing import Any
 from unittest import TestCase
 from unittest.mock import AsyncMock
@@ -46,6 +47,72 @@ def make_session_cm() -> MagicMock:
     session_cm.__aenter__ = AsyncMock(return_value=session)
     session_cm.__aexit__ = AsyncMock(return_value=False)
     return session_cm
+
+
+async def download_failing_bad_urls(url: str, _session: Any) -> bytes:
+    """
+    Stand in for download_pdf_bytes: return PDF bytes, failing URLs containing 'bad'.
+
+    :param url: The URL being downloaded.
+    :param _session: The shared session; unused.
+    :return: The stub PDF bytes for any URL not containing 'bad'.
+    :raises ClientError: For any URL containing 'bad'.
+    """
+    if "bad" in url:
+        raise ClientError("url_not_accessible: connection reset")
+    return PDF_BYTES
+
+
+async def record_session_close(order: list[str], *_args: Any) -> bool:
+    """
+    Stand in for the session context manager's __aexit__, recording when it runs.
+
+    :param order: The shared event-order list the test asserts on.
+    :param _args: The (exc_type, exc, tb) triple passed to __aexit__ (plus the mock
+        itself, prepended by MagicMock's magic-method plumbing); unused.
+    :return: False so any exception keeps propagating.
+    """
+    order.append("session_closed")
+    return False
+
+
+async def blocked_download(order: list[str], url: str, _session: Any) -> Any:
+    """
+    Stand in for download_pdf_bytes: block until cancelled, then record the unwind.
+
+    :param order: The shared event-order list the test asserts on.
+    :param url: The URL being downloaded; 'b.pdf' takes several extra event-loop
+        ticks to unwind, which is what exposes a premature session close (a single
+        tick is absorbed by asyncio's own deferred done-callbacks).
+    :param _session: The shared session; unused.
+    :return: Never returns normally.
+    """
+    try:
+        await asyncio.Event().wait()
+    except asyncio.CancelledError:
+        if url.endswith("b.pdf"):
+            for _ in range(5):
+                await asyncio.sleep(0)
+        order.append("child_unwound")
+        raise
+
+
+async def cancel_mid_flight_load(tool: PdfRag) -> None:
+    """
+    Start a two-URL load, cancel it once both item tasks are in flight, and await teardown.
+
+    :param tool: The PdfRag instance under test.
+    :raises asyncio.CancelledError: always — re-raised from the cancelled load once
+        its teardown (children unwound, session closed) has completed.
+    """
+    task = asyncio.ensure_future(
+        tool.load_documents({"urls": ["http://example.com/a.pdf", "http://example.com/b.pdf"]})
+    )
+    # A few no-op ticks let load_documents start and both children block in the download.
+    for _ in range(3):
+        await asyncio.sleep(0)
+    task.cancel()
+    await task
 
 
 class TestPdfRag(TestCase):
@@ -118,16 +185,9 @@ class TestPdfRag(TestCase):
 
     def test_failed_download_does_not_discard_other_pdfs(self):
         """One unreachable PDF is logged and skipped; the rest of the corpus survives."""
-
-        async def download(url: str, _session: Any) -> bytes:
-            """Return PDF bytes, raising ClientError for any URL containing 'bad'."""
-            if "bad" in url:
-                raise ClientError("url_not_accessible: connection reset")
-            return PDF_BYTES
-
         with (
             patch.object(SafeFetch, "open_session", return_value=make_session_cm()),
-            patch.object(SafeFetch, "download_pdf_bytes", new=AsyncMock(side_effect=download)),
+            patch.object(SafeFetch, "download_pdf_bytes", new=AsyncMock(side_effect=download_failing_bad_urls)),
             patch.object(PdfUtils, "parse_pdf_bytes_per_page", return_value=["ok"]),
         ):
             docs = self._load(["http://bad.example.com/a.pdf", "http://example.com/good.pdf"])
@@ -152,6 +212,83 @@ class TestPdfRag(TestCase):
             docs = self._load(["/nonexistent/dir/missing.pdf"])
 
         self.assertEqual(docs, [])
+
+    def test_bare_string_urls_is_treated_as_single_item(self):
+        """A single URL passed as a bare string loads as one PDF, not one fetch per character."""
+        with (
+            patch.object(SafeFetch, "open_session", return_value=make_session_cm()),
+            patch.object(SafeFetch, "download_pdf_bytes", new=AsyncMock(return_value=PDF_BYTES)) as mock_dl,
+            patch.object(PdfUtils, "parse_pdf_bytes_per_page", return_value=PAGE_TEXTS),
+        ):
+            docs = asyncio.run(self.tool.load_documents({"urls": "http://example.com/report.pdf"}))
+
+        self.assertEqual(len(docs), 2)
+        self.assertEqual(docs[0].metadata["source"], "http://example.com/report.pdf")
+        # Exactly one download — not one per character of the string.
+        mock_dl.assert_awaited_once()
+
+    def test_unsupported_scheme_is_skipped_with_message(self):
+        """file:// and s3:// items are skipped with an explicit message; the corpus survives.
+
+        The old negative-space routing handed every non-http string to open(),
+        which failed with a misleading "file not found" for such URLs.
+        """
+        with (
+            patch.object(SafeFetch, "open_session", return_value=make_session_cm()),
+            patch.object(SafeFetch, "download_pdf_bytes", new=AsyncMock(return_value=PDF_BYTES)) as mock_dl,
+            patch.object(PdfUtils, "parse_pdf_bytes_per_page", return_value=["ok"]),
+        ):
+            with self.assertLogs("neuro_san_studio.coded_tools.pdf_rag", level="WARNING") as logs:
+                docs = self._load(["s3://bucket/key.pdf", "file:///tmp/x.pdf", "http://example.com/good.pdf"])
+
+        self.assertEqual(len(docs), 1)
+        self.assertEqual(docs[0].metadata["source"], "http://example.com/good.pdf")
+        mock_dl.assert_awaited_once()  # only the http URL reached the network
+        joined_logs: str = "\n".join(logs.output)
+        self.assertIn("unsupported URL scheme 's3'", joined_logs)
+        self.assertIn("unsupported URL scheme 'file'", joined_logs)
+
+    def test_oversized_local_file_is_skipped(self):
+        """A local file over the byte cap is skipped instead of being read into memory."""
+        with tempfile.NamedTemporaryFile(suffix=".pdf", delete=False) as handle:
+            handle.write(PDF_BYTES)
+            local_path = handle.name
+        try:
+            with (
+                patch.object(SafeFetch, "open_session", return_value=make_session_cm()),
+                # Shrink the cap below the file size so the tiny temp file trips it.
+                patch("neuro_san_studio.coded_tools.pdf_rag.MAX_RESPONSE_BYTES", len(PDF_BYTES) - 1),
+                patch.object(PdfUtils, "parse_pdf_bytes_per_page", return_value=["ok"]) as mock_parse,
+            ):
+                docs = self._load([local_path])
+        finally:
+            os.unlink(local_path)
+
+        self.assertEqual(docs, [])
+        mock_parse.assert_not_called()
+
+    def test_cancellation_closes_session_only_after_children_unwind(self):
+        """Cancelling the load lets every in-flight item unwind before the session closes.
+
+        Without return_exceptions=True on the gather, the first child's CancelledError
+        propagates as soon as that child finishes unwinding, and the shared session is
+        closed while the slower sibling is still using it.
+        """
+        order: list[str] = []
+
+        session_cm = MagicMock()
+        session_cm.__aenter__ = AsyncMock(return_value=MagicMock())
+        # partial() binds the shared order list; the helpers live at module level.
+        session_cm.__aexit__ = partial(record_session_close, order)
+
+        with (
+            patch.object(SafeFetch, "open_session", return_value=session_cm),
+            patch.object(SafeFetch, "download_pdf_bytes", new=partial(blocked_download, order)),
+        ):
+            with self.assertRaises(asyncio.CancelledError):
+                asyncio.run(cancel_mid_flight_load(self.tool))
+
+        self.assertEqual(order, ["child_unwound", "child_unwound", "session_closed"])
 
     def test_empty_url_list_returns_empty_without_session(self):
         """An empty item list returns [] without ever opening a network session."""
