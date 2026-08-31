@@ -24,6 +24,7 @@ from ipaddress import ip_address
 from typing import Any
 from typing import NoReturn
 from urllib.parse import ParseResult
+from urllib.parse import parse_qs
 from urllib.parse import urlparse
 
 import idna
@@ -471,17 +472,23 @@ class SafeFetch:
         if base_type and base_type not in GENERIC_DOWNLOAD_CONTENT_TYPES:
             return False
         # No usable declared type: sniff the URL for a ".pdf" filename.
-        # urlparse(url).path is only the path segment of the URL: for a URL
-        # ending in "/file.pdf?download=1#page=2" the path is "/file.pdf", with
-        # the "?query" and "#fragment" parts split off. endswith(".pdf") on the path
+        # parsed.path is only the path segment of the URL: for a URL ending in
+        # "/file.pdf?download=1#page=2" the path is "/file.pdf", with the
+        # "?query" and "#fragment" parts split off. endswith(".pdf") on the path
         # therefore still matches when a query string or fragment follows the
         # filename — the same check on the full url string would miss it.
-        if urlparse(url).path.lower().endswith(".pdf"):
+        parsed: ParseResult = urlparse(url)
+        if parsed.path.lower().endswith(".pdf"):
             return True
-        # The full-url check covers the complementary case: download endpoints often
-        # carry the filename only in the query string ("/download?name=report.pdf"),
-        # where the path ("/download") has no ".pdf" suffix but the raw URL string
-        # ends with one.
+        # Download endpoints often carry the filename only in the query string
+        # instead of the path. Check each query parameter's value so the filename
+        # is found wherever it sits ("?name=report.pdf" and "?name=report.pdf&sig=x"
+        # alike). parse_qs drops a bare valueless token ("?report.pdf" has no "="),
+        # so the raw-URL endswith below still has a case of its own.
+        for values in parse_qs(parsed.query).values():
+            for value in values:
+                if value.lower().endswith(".pdf"):
+                    return True
         return url.lower().endswith(".pdf")
 
     @staticmethod

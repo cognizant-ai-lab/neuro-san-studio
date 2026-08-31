@@ -1149,8 +1149,14 @@ class TestSafeFetch(TestCase):  # pylint: disable=too-many-public-methods
         # Generic download types defer to the URL.
         self.assertTrue(SafeFetch.is_pdf("application/octet-stream", "https://example.com/file.pdf"))
         self.assertTrue(SafeFetch.is_pdf("binary/octet-stream", "https://example.com/file.pdf"))
-        # With a generic type, a filename in the query string is still recognized.
+        # With a generic type, a filename in the query string is still recognized —
+        # both trailing and mid-query ("...&sig=x" after the filename parameter).
         self.assertTrue(SafeFetch.is_pdf("application/octet-stream", "https://example.com/download?name=report.pdf"))
+        self.assertTrue(
+            SafeFetch.is_pdf("application/octet-stream", "https://example.com/download?name=report.pdf&sig=abc123")
+        )
+        # ... but a concrete declared type still wins over a query-string filename.
+        self.assertFalse(SafeFetch.is_pdf("text/html", "https://example.com/download?name=report.pdf&sig=abc123"))
         # A generic type with no .pdf anywhere in the URL is not a PDF.
         self.assertFalse(SafeFetch.is_pdf("application/octet-stream", "https://example.com/download?name=report.zip"))
 
