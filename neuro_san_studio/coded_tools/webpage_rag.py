@@ -139,7 +139,9 @@ class WebpageRag(CodedTool, BaseRag):
         MAX_CONCURRENT_FETCHES in-flight URLs) over one shared protected session.
         A URL that fails to validate or download, or whose content type is a declared
         non-text binary, is logged and skipped so one bad URL does not discard the
-        rest of the corpus.
+        rest of the corpus. If the surrounding task is cancelled, the cancellation is
+        re-raised only after every in-flight URL task has unwound, so the shared
+        session never closes while a fetch is still using it.
 
         :param loader_args: Dictionary containing 'urls' (list of webpage/PDF URLs,
             or a single URL as a bare string).
@@ -183,13 +185,30 @@ class WebpageRag(CodedTool, BaseRag):
             # Each result is a Document, or None for a URL that was skipped/failed
             # (_load_single returns None instead of raising, so one bad URL cannot
             # make gather abort the others).
-            results: list[Document | None] = await gather(*tasks)
+            #
+            # return_exceptions=True matters for CANCELLATION, the one thing that can
+            # still escape _load_single (CancelledError is a BaseException, so the
+            # broad `except Exception` there deliberately does not catch it). Without
+            # it, gather() re-raises the FIRST child's CancelledError immediately,
+            # while sibling tasks are still unwinding; this `async with` block would
+            # then close the shared session under them, and they would die with
+            # confusing secondary "session is closed" errors. With it, gather() waits
+            # until EVERY child has finished unwinding before completing — and when
+            # the gather itself was cancelled, asyncio still re-raises CancelledError
+            # to our caller at that point — so the session only closes once nothing
+            # is using it.
+            results: list[Document | None | BaseException] = await gather(*tasks, return_exceptions=True)
 
-        # Drop the None entries (skipped/failed URLs), preserving input order.
+        # Keep only the loaded Documents, preserving input order. None entries are
+        # URLs skipped/failed inside _load_single (already logged there); anything
+        # else is a stray BaseException collected by return_exceptions=True, which
+        # bypassed _load_single's logging, so log it here.
         documents: list[Document] = []
-        for document in results:
-            if document is not None:
-                documents.append(document)
+        for result in results:
+            if isinstance(result, Document):
+                documents.append(result)
+            elif result is not None:
+                logger.error("Skipped a URL after an unexpected error: %r", result)
         return documents
 
     async def _load_single(self, url: str, session: ClientSession, semaphore: Semaphore) -> Document | None:

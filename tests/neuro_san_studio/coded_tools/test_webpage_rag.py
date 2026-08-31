@@ -17,6 +17,7 @@
 """Tests for the webpage RAG coded tool's SafeFetch-backed document loading."""
 
 import asyncio
+from functools import partial
 from typing import Any
 from unittest import TestCase
 from unittest.mock import AsyncMock
@@ -46,6 +47,56 @@ def make_session_cm() -> MagicMock:
     session_cm.__aenter__ = AsyncMock(return_value=session)
     session_cm.__aexit__ = AsyncMock(return_value=False)
     return session_cm
+
+
+async def record_session_close(order: list[str], *_args: Any) -> bool:
+    """
+    Stand in for the session context manager's __aexit__, recording when it runs.
+
+    :param order: The shared event-order list the test asserts on.
+    :param _args: The (exc_type, exc, tb) triple passed to __aexit__ (plus the mock
+        itself, prepended by MagicMock's magic-method plumbing); unused.
+    :return: False so any exception keeps propagating.
+    """
+    order.append("session_closed")
+    return False
+
+
+async def blocked_probe(order: list[str], url: str, _session: Any) -> Any:
+    """
+    Stand in for get_content_type: block until cancelled, then record the unwind.
+
+    :param order: The shared event-order list the test asserts on.
+    :param url: The URL being probed; '/b' takes several extra event-loop ticks to
+        unwind, which is what exposes a premature session close (a single tick is
+        absorbed by asyncio's own deferred done-callbacks).
+    :param _session: The shared session; unused.
+    :return: Never returns normally.
+    """
+    try:
+        await asyncio.Event().wait()
+    except asyncio.CancelledError:
+        if url.endswith("/b"):
+            for _ in range(5):
+                await asyncio.sleep(0)
+        order.append("child_unwound")
+        raise
+
+
+async def cancel_mid_flight_load(tool: WebpageRag) -> None:
+    """
+    Start a two-URL load, cancel it once both URL tasks are in flight, and await teardown.
+
+    :param tool: The WebpageRag instance under test.
+    :raises asyncio.CancelledError: always — re-raised from the cancelled load once
+        its teardown (children unwound, session closed) has completed.
+    """
+    task = asyncio.ensure_future(tool.load_documents({"urls": ["http://example.com/a", "http://example.com/b"]}))
+    # A few no-op ticks let load_documents start and both children block in the probe.
+    for _ in range(3):
+        await asyncio.sleep(0)
+    task.cancel()
+    await task
 
 
 class TestWebpageRag(TestCase):
@@ -230,6 +281,29 @@ class TestWebpageRag(TestCase):
 
         self.assertEqual(docs, [])
         mock_session.assert_not_called()
+
+    def test_cancellation_closes_session_only_after_children_unwind(self):
+        """Cancelling the load lets every in-flight URL task unwind before the session closes.
+
+        Without return_exceptions=True on the gather, the first child's CancelledError
+        propagates as soon as that child finishes unwinding, and the shared session is
+        closed while the slower sibling is still using it.
+        """
+        order: list[str] = []
+
+        session_cm = MagicMock()
+        session_cm.__aenter__ = AsyncMock(return_value=MagicMock())
+        # partial() binds the shared order list; the helpers live at module level.
+        session_cm.__aexit__ = partial(record_session_close, order)
+
+        with (
+            patch.object(SafeFetch, "open_session", return_value=session_cm),
+            patch.object(SafeFetch, "get_content_type", new=partial(blocked_probe, order)),
+        ):
+            with self.assertRaises(asyncio.CancelledError):
+                asyncio.run(cancel_mid_flight_load(self.tool))
+
+        self.assertEqual(order, ["child_unwound", "child_unwound", "session_closed"])
 
     def test_bare_string_urls_is_treated_as_single_url(self):
         """A single URL passed as a bare string loads as one page, not one fetch per character."""
