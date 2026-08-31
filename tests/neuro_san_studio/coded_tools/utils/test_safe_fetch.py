@@ -761,7 +761,10 @@ class TestSafeFetch(TestCase):  # pylint: disable=too-many-public-methods
 
         The langchain WebBaseLoader honored USER_AGENT; some sites answer 403 to
         aiohttp's default User-Agent, so the hardened session keeps that operator
-        knob. Without the variable, no explicit User-Agent header is set.
+        knob. Without the variable, no explicit User-Agent header is set. The unset
+        case asserts session-level configuration only: session.headers reflects
+        just constructor-supplied headers — aiohttp injects its default User-Agent
+        per request, never onto the session — so assertIsNone is deterministic.
         """
         with patch.dict("os.environ", {"USER_AGENT": "studio-test-agent/1.0"}):
             self.assertEqual(asyncio.run(open_session_user_agent()), "studio-test-agent/1.0")
