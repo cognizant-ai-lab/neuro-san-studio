@@ -40,7 +40,26 @@ jobs:
         # - 502 (bad gateway) if the server is reachable but its backend momentarily failed to respond
         # - 503 (temporary outage)
         /tmp/lychee --max-retries 3 --retry-wait-time 3 --max-concurrency 32 --verbose --accept '200..=299,401,403,405,406,422,429,502,503' --exclude-path venv --include-verbatim '**/*.py' '**/*.md' '**/*.rst' '**/*.hocon' '**/*.txt' '**/*.yaml' '**/*.yml' '**/*.json' '**/*.html' '**/*.sh' .
-      test-command-override: 'VIRTUAL_ENV=system AGENT_TOOL_PATH=./neuro_san/coded_tools PYTHONPATH=.:$PYTHONPATH make test'
+      run-pytest: false
       check-readme-pypi: true
     secrets:
       SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+
+  unit-tests:
+    name: Unit tests
+    if: >
+      (github.event_name == 'push' && github.ref != 'refs/heads/main') ||
+      (github.event_name == 'pull_request' &&
+        github.event.pull_request.head.repo.full_name != github.repository)
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ['3.12', '3.13', '3.14']
+    # 1.0.9
+    uses: cognizant-ai-lab/build-common/.github/workflows/_python-quality-gate.yml@b14b3de23cb9aca02b2165e57542335e0c8f5304
+    with:
+      python-version: ${{ matrix.python-version }}
+      # Lint, hadolint and the README check belong to the quality-gate job
+      lint-command-override: 'true'
+      test-command-override: 'VIRTUAL_ENV=system AGENT_TOOL_PATH=./neuro_san/coded_tools PYTHONPATH=.:$PYTHONPATH make test-unit'
+      enable-slack: false
