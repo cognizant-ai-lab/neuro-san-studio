@@ -109,6 +109,7 @@ class TestWebFetch(TestCase):
         content_types = (
             "TEXT/HTML",
             "application/atom+xml",
+            "application/json",
             "application/rss+xml",
             "application/xml",
             "text/csv",

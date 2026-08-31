@@ -167,6 +167,19 @@ def make_pdf_bytes(pages: int = 1) -> bytes:
     return buffer.getvalue()
 
 
+async def open_session_user_agent() -> str | None:
+    """
+    Open a real SafeFetch session and return its User-Agent header, closing the session.
+
+    :return: The session's User-Agent header value, or None when absent.
+    """
+    session = SafeFetch.open_session()
+    try:
+        return session.headers.get("User-Agent")
+    finally:
+        await session.close()
+
+
 class TestSafeFetch(TestCase):  # pylint: disable=too-many-public-methods
     """Unit tests for the SafeFetch shared SSRF-hardened fetch utility.
 
@@ -743,10 +756,57 @@ class TestSafeFetch(TestCase):  # pylint: disable=too-many-public-methods
                 asyncio.run(SafeFetch.get_content_type("http://example.com", session))
         self.assertIn("response_too_large", str(ctx.exception))
 
-    def test_get_content_type_non_2xx_raises_with_url_not_accessible_prefix(self):
-        """Tests that a non-2xx HTTP error raises ClientResponseError with url_not_accessible prefix."""
+    def test_open_session_honors_user_agent_env(self):
+        """Tests that open_session applies the USER_AGENT env value as the session's User-Agent.
+
+        The langchain WebBaseLoader honored USER_AGENT; some sites answer 403 to
+        aiohttp's default User-Agent, so the hardened session keeps that operator
+        knob. Without the variable, no explicit User-Agent header is set.
+        """
+        with patch.dict("os.environ", {"USER_AGENT": "studio-test-agent/1.0"}):
+            self.assertEqual(asyncio.run(open_session_user_agent()), "studio-test-agent/1.0")
+        with patch.dict("os.environ", {}, clear=True):
+            self.assertIsNone(asyncio.run(open_session_user_agent()))
+
+    def test_get_content_type_head_403_falls_back_to_get(self):
+        """Tests that a HEAD failure other than 429 still falls back to GET.
+
+        Presigned S3/Azure URLs sign only the GET method and answer 403 to HEAD;
+        the probe must not report such a resource inaccessible when a plain GET
+        (through the same redirect/size checks) succeeds.
+        """
+        session, _ = make_head_session(status=403)
+        get_response = MagicMock()
+        get_response.status = 200
+        get_response.headers = {"Content-Type": "application/pdf"}
+        get_response.raise_for_status = MagicMock()
+        get_cm = MagicMock()
+        get_cm.__aenter__ = AsyncMock(return_value=get_response)
+        get_cm.__aexit__ = AsyncMock(return_value=False)
+        session.get = MagicMock(return_value=get_cm)
+
+        content_type, body = asyncio.run(SafeFetch.get_content_type("http://example.com/presigned", session))
+        self.assertEqual(content_type, "application/pdf")
+        self.assertIsNone(body)
+        session.get.assert_called_once()
+
+    def test_get_content_type_head_and_get_both_failing_raises_url_not_accessible(self):
+        """Tests that when HEAD fails and the fallback GET also fails, the GET error surfaces.
+
+        A HEAD failure alone no longer raises — it only triggers the GET fallback —
+        so the inaccessible verdict must come from the GET.
+        """
+        session, _ = make_head_session(status=404)
         exc = make_response_error(404)
-        session, _ = make_head_session(status=404, raise_for_status_exc=exc)
+        get_response = MagicMock()
+        get_response.status = 404
+        get_response.headers = {}
+        get_response.raise_for_status = MagicMock(side_effect=exc)
+        get_cm = MagicMock()
+        get_cm.__aenter__ = AsyncMock(return_value=get_response)
+        get_cm.__aexit__ = AsyncMock(return_value=False)
+        session.get = MagicMock(return_value=get_cm)
+
         with self.assertRaises(ClientResponseError) as ctx:
             asyncio.run(SafeFetch.get_content_type("http://example.com", session))
         self.assertIn("url_not_accessible", ctx.exception.message)
@@ -1097,6 +1157,7 @@ class TestSafeFetch(TestCase):  # pylint: disable=too-many-public-methods
         self.assertFalse(SafeFetch.is_text_content_type("image/png"))
         # Genuinely textual types remain accepted.
         self.assertTrue(SafeFetch.is_text_content_type("application/xml"))
+        self.assertTrue(SafeFetch.is_text_content_type("application/json"))
         self.assertTrue(SafeFetch.is_text_content_type("text/markdown"))
         self.assertTrue(SafeFetch.is_text_content_type("TEXT/HTML; charset=utf-8"))
 
