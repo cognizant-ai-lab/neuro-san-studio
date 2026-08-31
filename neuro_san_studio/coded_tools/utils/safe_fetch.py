@@ -569,7 +569,8 @@ class SafeFetch:
         direct caller that skipped the HEAD probe in get_content_type. The bytes are
         decoded once, after the full (capped) body is in hand, using the response's
         declared charset (falling back to utf-8 and replacing undecodable bytes) so
-        multibyte sequences spanning chunk boundaries are never split.
+        multibyte sequences spanning chunk boundaries are never split. A leading
+        byte-order mark is dropped from the decoded text.
 
         :param url: The URL to fetch.
         :param session: A session created by open_session (enforces the SSRF policy).
@@ -621,17 +622,19 @@ class SafeFetch:
         Decoding happens once, after the full (capped) body is in hand, so multibyte
         sequences spanning chunk boundaries are never split. aiohttp's
         response.charset comes from the Content-Type header; fall back to utf-8 and
-        replace undecodable bytes rather than raise.
+        replace undecodable bytes rather than raise. A leading byte-order mark is
+        dropped from the decoded text.
 
         :param response: The aiohttp response whose body to stream and decode.
         :param url: The URL being fetched, included in the raised message.
-        :return: The decoded response body (at most MAX_RESPONSE_BYTES of raw bytes).
+        :return: The decoded response body (at most MAX_RESPONSE_BYTES of raw bytes),
+                 without a leading byte-order mark.
         :raises ValueError: response_too_large when the received bytes exceed the limit.
         """
         body: bytes = await SafeFetch._read_capped_body(response, url)
         encoding: str = response.charset or "utf-8"
         try:
-            return body.decode(encoding, errors="replace")
+            text: str = body.decode(encoding, errors="replace")
         except LookupError:
             # A malformed Content-Type can name a codec Python does not know.
             # bytes.decode() then raises LookupError at codec lookup, before
@@ -640,7 +643,14 @@ class SafeFetch:
             # AsyncTimeoutError, so it would escape the fetch methods'
             # translation and break their url_not_accessible contract. Fall back
             # to utf-8 so a bad charset token never leaks past this boundary.
-            return body.decode("utf-8", errors="replace")
+            text = body.decode("utf-8", errors="replace")
+        # A UTF-8 byte-order mark survives a plain utf-8 decode as a leading U+FEFF.
+        # It is an encoding signature, not content, and str.lstrip() does not treat
+        # it as whitespace, so left in place it hides the leading "<" from the HTML
+        # sniffs in parse_raw_text and WebpageRag._to_document and plants an
+        # invisible character in stored text. Drop it here so every consumer sees
+        # the same text a BOM-less copy of the file would produce.
+        return text.removeprefix("\ufeff")
 
     @staticmethod
     async def fetch_text(url: str, session: ClientSession) -> str:

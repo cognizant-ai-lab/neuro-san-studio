@@ -833,6 +833,25 @@ class TestSafeFetch(TestCase):  # pylint: disable=too-many-public-methods
         self.assertNotIn("alert", result)
         self.assertNotIn("body{}", result)
 
+    def test_fetch_text_bom_prefixed_html_is_still_stripped(self):
+        """Tests that a UTF-8 BOM before the markup does not defeat the HTML sniff.
+
+        A BOM decodes to a leading U+FEFF, which str.lstrip() does not remove
+        (it is not whitespace), so without the decode-time strip the body would
+        come back as raw markup instead of extracted text.
+        """
+        html = "\ufeff<html><body><p>Hello</p></body></html>"
+        session, _ = make_get_response(body=html)
+        result = asyncio.run(SafeFetch.fetch_text("http://example.com", session))
+        self.assertIn("Hello", result)
+        self.assertNotIn("<p>", result)
+
+    def test_fetch_text_bom_prefixed_plain_text_loses_only_the_bom(self):
+        """Tests that a BOM on a non-HTML body is dropped while the text is otherwise unchanged."""
+        session, _ = make_get_response(body="\ufeffjust plain text")
+        result = asyncio.run(SafeFetch.fetch_text("http://example.com", session))
+        self.assertEqual(result, "just plain text")
+
     def test_fetch_text_non_2xx_raises_client_response_error_with_prefix(self):
         """Tests that a non-2xx HTTP error raises ClientResponseError with url_not_accessible prefix."""
         exc = make_response_error(503)
