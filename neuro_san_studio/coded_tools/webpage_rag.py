@@ -79,7 +79,9 @@ class WebpageRag(CodedTool, BaseRag):
         """
         # Extract arguments from the input dictionary
         query: str = args.get("query", "")
-        urls: list[str] = args.get("urls", [])
+        # Deliberately Any: this comes straight from the LLM/hocon and may be a
+        # bare string instead of a list; load_documents normalizes that case.
+        urls: Any = args.get("urls")
 
         # Validate presence of required inputs
         if not query:
@@ -139,12 +141,20 @@ class WebpageRag(CodedTool, BaseRag):
         non-text binary, is logged and skipped so one bad URL does not discard the
         rest of the corpus.
 
-        :param loader_args: Dictionary containing 'urls' (list of webpage/PDF URLs).
+        :param loader_args: Dictionary containing 'urls' (list of webpage/PDF URLs,
+            or a single URL as a bare string).
         :return: One Document per successfully loaded URL, in input order.
         """
-        urls: list[str] = loader_args.get("urls", [])
-        # Nothing to load: return early rather than opening a network session just
-        # to await an empty gather().
+        urls: Any = loader_args.get("urls")
+        # An LLM (or a hand-edited hocon) may pass a single URL as a bare string
+        # instead of a list. A string is itself iterable, so the loop below would
+        # "fetch" it one character at a time ("h", "t", "t", "p", ...), every
+        # character failing URL validation, and the load would come back empty
+        # with no hint why. Treat a single string as a one-item list instead.
+        if isinstance(urls, str):
+            urls = [urls]
+        # Nothing to load (or no 'urls' key at all): return early rather than
+        # opening a network session just to await an empty gather().
         if not urls:
             return []
 

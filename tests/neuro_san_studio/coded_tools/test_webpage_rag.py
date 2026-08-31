@@ -231,6 +231,20 @@ class TestWebpageRag(TestCase):
         self.assertEqual(docs, [])
         mock_session.assert_not_called()
 
+    def test_bare_string_urls_is_treated_as_single_url(self):
+        """A single URL passed as a bare string loads as one page, not one fetch per character."""
+        with (
+            patch.object(SafeFetch, "open_session", return_value=make_session_cm()),
+            patch.object(SafeFetch, "get_content_type", new=AsyncMock(return_value=("text/html", None))) as mock_ct,
+            patch.object(SafeFetch, "fetch_raw", new=AsyncMock(return_value=HTML_PAGE)),
+        ):
+            docs = asyncio.run(self.tool.load_documents({"urls": "http://example.com/page"}))
+
+        self.assertEqual(len(docs), 1)
+        self.assertEqual(docs[0].metadata["source"], "http://example.com/page")
+        # Exactly one URL was probed — not one per character of the string.
+        mock_ct.assert_awaited_once()
+
     def test_missing_query_or_urls_returns_error_without_network(self):
         """async_invoke reports missing inputs before any session is opened."""
         with patch.object(SafeFetch, "open_session") as mock_session:
