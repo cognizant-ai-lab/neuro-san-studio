@@ -255,9 +255,10 @@ class WebpageRag(CodedTool, BaseRag):
                     logger.warning("Skipping %s: unsupported content type '%s'.", validated_url, content_type)
                     return None
 
-                # get_content_type only returns a body on its 405 GET fallback; reuse
-                # it when present to avoid a second request, otherwise fetch the raw
-                # markup so _to_document can read page metadata from it.
+                # get_content_type only returns a body on its GET fallback (taken on
+                # any HEAD failure except 429); reuse it when present to avoid a
+                # second request, otherwise fetch the raw markup so _to_document can
+                # read page metadata from it.
                 raw: str
                 if prefetched_text is not None:
                     raw = prefetched_text

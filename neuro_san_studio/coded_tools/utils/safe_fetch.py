@@ -47,8 +47,8 @@ MAX_URL_LENGTH: int = 2000
 # Maximum bytes accepted via Content-Length header before downloading; also the
 # running cap enforced on streamed response bodies (text and PDF alike). One
 # shared limit for every tool on this path: large enough for real-world PDF
-# corpora (tens of MB), while still bounding peak memory — the RAG loaders can
-# hold up to MAX_CONCURRENT_FETCHES bodies in flight at once.
+# corpora (tens of MB), while still bounding peak memory — the RAG loaders cap
+# how many bodies they hold in flight at once (see their semaphore constants).
 MAX_RESPONSE_BYTES: int = 50 * 1024 * 1024  # 50 MB
 # Read size per iteration when streaming a response body.
 DOWNLOAD_CHUNK_BYTES: int = 64 * 1024
@@ -407,9 +407,9 @@ class SafeFetch:
         """
         Report whether a Content-Type is text-like and safe to ingest as text.
 
-        Used both by get_content_type (to decide whether to prefetch a 405 GET
-        body) and by the RAG loaders (to decide whether a URL's body should be
-        stripped to text or skipped as an unsupported binary).
+        Used both by get_content_type (to decide whether to prefetch the body on
+        its GET fallback) and by the RAG loaders (to decide whether a URL's body
+        should be stripped to text or skipped as an unsupported binary).
 
         :param content_type: The raw Content-Type header value (may include params).
         :return: True for text/*, application/json, application/xml, and
