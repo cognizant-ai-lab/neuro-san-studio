@@ -729,6 +729,13 @@ class SafeFetch:
         # sniffs in parse_raw_text and WebpageRag._to_document and plants an
         # invisible character in stored text. Drop it here so every consumer sees
         # the same text a BOM-less copy of the file would produce.
+        #
+        # Deliberately removeprefix (exactly ONE U+FEFF), not lstrip: this matches
+        # the utf-8-sig codec, which strips only the signature. Any further leading
+        # U+FEFFs are (degenerate) ZWNBSP content characters, so stripping the run
+        # would remove more than the codec-defined amount. The same
+        # removeprefix-vs-lstrip correction came up in the PEP 686 discussion:
+        # https://discuss.python.org/t/pep-686-make-utf-8-mode-default-round-2/14737
         return text.removeprefix("\ufeff")
 
     @staticmethod
