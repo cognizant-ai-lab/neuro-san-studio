@@ -14,7 +14,8 @@
 #
 # END COPYRIGHT
 
-# Common sly_data dictionary key constants used by the agent network designer.
+# Common dictionary key constants used by the agent network designer.
+# Most are sly_data keys; each comment says what dictionary the key lives in.
 
 # Agent network structure — dict mapping agent name to its definition (instructions, description, tools),
 # or the connectivity-list form used by the native Neuro-San representation.
@@ -33,3 +34,10 @@ PROGRESS_HANDLER: str = "progress_handler"
 # Defined here because SlyDataLock creates a fresh lock for any unknown name —
 # a typo'd literal would silently hand out a second, independent lock.
 PROGRESS_HANDLER_LOCK: str = "progress_handler_lock"
+
+# Key within a single agent's definition (not sly_data) holding the list of
+# middleware dicts attached to that agent. One name shared by everything that
+# touches the field — the middleware_manager tools, the definition middleware
+# that preserves it across load round-trips, and both assemblers that write it
+# back out — so the field's readers and writers cannot drift apart.
+MIDDLEWARE_KEY: str = "middleware"

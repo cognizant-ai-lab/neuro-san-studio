@@ -48,6 +48,7 @@ from coded_tools.agent_network_editor.and_logger import AndLogger
 from coded_tools.agent_network_editor.connectivity_dictionary_converter import ConnectivityDictionaryConverter
 from coded_tools.agent_network_editor.constants import AGENT_NETWORK_DEFINITION
 from coded_tools.agent_network_editor.constants import AGENT_NETWORK_NAME
+from coded_tools.agent_network_editor.constants import MIDDLEWARE_KEY
 from coded_tools.agent_network_editor.progress_handler import ProgressHandler
 from coded_tools.agent_network_editor.sly_data_lock import SlyDataLock
 from middleware.agent_network_designer.persistence.file_system_agent_network_persistor import DEFAULT_REGISTRIES_DIR
@@ -634,7 +635,10 @@ class AgentNetworkDefinitionMiddleware(AgentMiddleware):
             self.logger.warning("WARNING: Skipping agent with missing/invalid 'name' in '%s': %r", source, agent)
             return None, {}
 
-        # Only extract agents info and only "instructions" and "tools" parts
+        # Extract the agent fields the designer pipeline cares about: instructions,
+        # description, tools, and middleware. Anything else in the source agent spec
+        # (function schema, allow rules, structure_formats, etc.) is intentionally
+        # dropped — those are reconstructed by the assembler on save.
         agent_def: dict[str, Any] = {}
 
         instructions: str | None = agent.get("instructions")
@@ -672,7 +676,52 @@ class AgentNetworkDefinitionMiddleware(AgentMiddleware):
         if tools:
             agent_def["tools"] = tools
 
+        # Preserve middleware attached to LLM agents. The assembler writes this back out
+        # via HoconAgentNetworkAssembler._render_middleware on save, so without preserving
+        # it on load a round-trip would silently strip every previously-attached middleware.
+        middleware: Any = agent.get(MIDDLEWARE_KEY)
+        if middleware:
+            if not self._is_preservable_middleware(middleware):
+                self.logger.warning(
+                    "WARNING: Ignoring 'middleware' on agent %s in '%s' — expected a list of "
+                    '{"class": <non-empty string>, "args": <optional dict>} entries, got %r',
+                    agent_name,
+                    source,
+                    middleware,
+                )
+            else:
+                agent_def[MIDDLEWARE_KEY] = middleware
+
         return agent_name, agent_def
+
+    @staticmethod
+    def _is_preservable_middleware(middleware: Any) -> bool:
+        """
+        Report whether a source agent's middleware block can be round-tripped.
+
+        Preserved middleware is re-rendered verbatim on save by
+        HoconAgentNetworkAssembler._render_middleware, which indexes
+        entry["class"] and iterates entry["args"].items() — so a block is only
+        preservable when every entry honors that shape. The caller warns about
+        and drops anything else at load time, where the source file is still
+        known, rather than letting a malformed entry crash a later save.
+
+        :param middleware: The raw middleware value from the source agent spec.
+        :return: True when middleware is a list whose entries each have a
+                non-empty string "class" and, when present, a dict "args".
+        """
+        if not isinstance(middleware, list):
+            return False
+        for entry in middleware:
+            if not isinstance(entry, dict):
+                return False
+            middleware_class: Any = entry.get("class")
+            if not isinstance(middleware_class, str) or not middleware_class.strip():
+                return False
+            entry_args: Any = entry.get("args")
+            if entry_args is not None and not isinstance(entry_args, dict):
+                return False
+        return True
 
     async def _extract_custom_instructions(self, instructions: str) -> str:
         """

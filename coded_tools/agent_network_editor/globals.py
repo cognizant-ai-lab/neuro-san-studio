@@ -138,6 +138,17 @@ class ProcessGlobals:  # pylint: disable=too-few-public-methods
     #             publishing, so recovery stays possible.
     #    Used by: GetMcpTool.async_invoke() (the coded tool the editor LLM
     #             calls).
+    #
+    # 7. Shared middleware info catalog
+    #    Holds:   the middleware allow-list catalog parsed from
+    #             AGENT_NETWORK_DESIGNER_MIDDLEWARE_INFO_FILE (default
+    #             middleware/agent_network_designer/middleware_info.hocon).
+    #    Lives:   middleware_info_middleware.MiddlewareInfoMiddleware
+    #    Expiry:  catalog path/size/modification_time change — no time bucket,
+    #             since nothing writes the file at runtime (a missing or
+    #             broken file is retried, never cached).
+    #    Used by: MiddlewareInfoMiddleware.awrap_model_call() (system-prompt
+    #             injection for the middleware_manager subnetwork).
     # -----------------------------------------------------------------------
 
     # Machine-readable registry of the entries above, as
@@ -173,6 +184,11 @@ class ProcessGlobals:  # pylint: disable=too-few-public-methods
             "coded_tools.agent_network_editor.get_mcp_tool",
             "GetMcpTool",
             "clear_shared_mcp_tool_descriptions_for_testing",
+        ),
+        (
+            "middleware.agent_network_designer.middleware_info_middleware",
+            "MiddlewareInfoMiddleware",
+            "clear_shared_info_for_testing",
         ),
     ]
 

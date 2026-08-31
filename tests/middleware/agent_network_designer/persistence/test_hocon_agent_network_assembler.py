@@ -14,7 +14,7 @@
 #
 # END COPYRIGHT
 
-"""Tests for HoconAgentNetworkAssembler's sly_data_schema emission."""
+"""Tests for HoconAgentNetworkAssembler's sly_data_schema and middleware emission."""
 
 import asyncio
 import os
@@ -129,3 +129,46 @@ class TestHoconAssemblerSlyDataSchema:
         http_headers = parse(text)["tools"][0]["function"]["sly_data_schema"]["properties"]["http_headers"]
         assert [unquote(url) for url in http_headers["properties"]] == [unicode_url]
         assert list(http_headers["required"]) == [unicode_url]
+
+
+class TestHoconAssemblerMiddleware:
+    """The generated HOCON text round-trips per-agent middleware blocks."""
+
+    def test_middleware_round_trips_including_empty_args(self):
+        """Per-agent middleware survives the save verbatim — including an explicit
+        empty args dict, which a truthiness check would silently drop, and a
+        non-ASCII args key, which ensure_ascii=False keeps verbatim (pyhocon
+        never decodes \\uXXXX escapes in keys)."""
+        middleware = [
+            {"class": "some.module.SomeMiddleware", "args": {"k": ["v1", "v2"], "café": 1}},
+            {"class": "other.module.OtherMiddleware", "args": {}},
+            {"class": "third.module.ThirdMiddleware"},
+        ]
+        network_def = {
+            "front_man": {"description": "top", "instructions": "Go.", "tools": ["helper"]},
+            "helper": {"description": "helps", "instructions": "Help.", "middleware": middleware},
+        }
+        assembler = HoconAgentNetworkAssembler(demo_mode=False)
+        text = asyncio.run(assembler.assemble_agent_network(network_def, "front_man", "test_net", ["q"], None))
+
+        helper = parse(text)["tools"][1]
+        assert helper["name"] == "helper"
+        assert helper["middleware"] == middleware
+
+    def test_hostile_args_key_still_emits_parseable_hocon(self):
+        """A double quote in an args key is escaped via json.dumps, so the emitted
+        text stays valid HOCON. Exact round-trip is NOT asserted: pyhocon itself
+        mangles escaped quotes in keys on read-back, which is upstream of the
+        assembler — hand-quoting instead would make the whole save unparseable."""
+        network_def = {
+            "front_man": {
+                "description": "top",
+                "instructions": "Go.",
+                "middleware": [{"class": "some.module.SomeMiddleware", "args": {'he said "hi"': 1}}],
+            },
+        }
+        assembler = HoconAgentNetworkAssembler(demo_mode=False)
+        text = asyncio.run(assembler.assemble_agent_network(network_def, "front_man", "test_net", ["q"], None))
+
+        assert '\\"hi\\"' in text
+        parse(text)  # must not raise

@@ -27,6 +27,11 @@ from coded_tools.agent_network_editor.shared_process_cache import SharedProcessC
 DEFAULT_TOOLBOX_INFO_FILE = os.path.join("neuro_san_studio", "toolbox", "agent_network_designer_toolbox_info.hocon")
 logger = AndLogger(logging.getLogger(__name__))
 
+# If this tool is ever recast as a designer middleware, see the module
+# docstring of middleware/agent_network_designer/hocon_catalog_cache.py for
+# which pieces of its load/cache discipline are reusable here and which
+# policies below (restorer, empty-means-failure, immortal cache) differ.
+
 
 class GetToolbox(CodedTool):
     """

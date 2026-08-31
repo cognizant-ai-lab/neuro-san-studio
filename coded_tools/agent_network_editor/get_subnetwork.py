@@ -37,6 +37,12 @@ DEFAULT_MANIFEST_FILE = os.path.join("registries", "manifest_and.hocon")
 
 logger = AndLogger(logging.getLogger(__name__))
 
+# If this tool is ever recast as a designer middleware, see the module
+# docstring of middleware/agent_network_designer/hocon_catalog_cache.py for
+# which pieces of its load/cache discipline are reusable here and which
+# policies below (manifest filter chain, published empties, time-bucket
+# fingerprint, the run_context-bound description fan-out) differ.
+
 
 # pylint: disable=too-many-ancestors
 class GetSubnetwork(BranchActivation, CodedTool):
