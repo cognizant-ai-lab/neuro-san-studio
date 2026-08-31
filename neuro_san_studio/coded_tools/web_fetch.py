@@ -116,7 +116,7 @@ class WebFetch(CodedTool):
             if not is_pdf and not self._is_supported_content_type(base_type):
                 raise ValueError(
                     f"unsupported_content_type: Content type '{content_type}' is not supported. "
-                    "Only approved text, XML, feed, HTML, and PDF types are accepted."
+                    "Only approved text, XML, feed, JSON, HTML, and PDF types are accepted."
                 )
 
             retrieved_at: str = datetime.now(timezone.utc).isoformat()
