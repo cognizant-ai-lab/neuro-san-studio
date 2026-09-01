@@ -17,6 +17,7 @@
 """Walk a HOCON network's `tools` list to extract its file dependencies."""
 
 import contextlib
+import logging
 import os
 from dataclasses import dataclass
 from dataclasses import field
@@ -175,8 +176,24 @@ class DependencyAnalyzer:
         abs_path = os.path.abspath(hocon_path)
         source_root = os.path.dirname(self.registries_dir)
         anchor = contextlib.chdir(source_root) if os.path.isdir(source_root) else contextlib.nullcontext()
-        with anchor:
-            deps = self._walk(abs_path, set())
+        # Demote pyhocon's chatty include-resolution logging for the duration of the walk.
+        # A pip-installed source tree ships no `config/` directory (the package includes only
+        # neuro_san_studio*/registries*/coded_tools*/middleware*/skills*), so nearly every
+        # network's `include "config/llm_config.hocon"` would print "Cannot include file"
+        # to stderr once per parse — noise, not signal: the analyzer tolerates unresolved
+        # includes and substitutions by design (see analyze_network), and a genuinely missing
+        # dependency still surfaces as an importer warning. Same treatment as
+        # AgentNetworkImporter._read_existing_keys. ERROR is the lowest level that mutes the
+        # complaint (pyhocon logs it at WARNING and emits nothing above that), so a genuine
+        # error-level message from a future pyhocon would still get through.
+        pyhocon_logger: logging.Logger = logging.getLogger("pyhocon.config_parser")
+        prev_level: int = pyhocon_logger.level
+        try:
+            pyhocon_logger.setLevel(logging.ERROR)
+            with anchor:
+                deps = self._walk(abs_path, set())
+        finally:
+            pyhocon_logger.setLevel(prev_level)
         # Closing the set under Python-level imports is done once, at the top: `_walk`
         # merges each sub-network's results upward, so one expansion covers everything
         # without re-parsing the same files per level.

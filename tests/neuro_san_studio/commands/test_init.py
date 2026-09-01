@@ -21,6 +21,7 @@ import logging
 import os
 import sys
 from pathlib import Path
+from typing import Any
 from typing import List
 from typing import Tuple
 
@@ -549,6 +550,44 @@ class TestDefaultNetworks:
 
         for network in EXPECTED_DEFAULT_NETWORKS:
             assert network in keys, f"{network} was scaffolded but not registered"
+
+    def test_designer_manifest_parses_and_its_includes_resolve(
+        self, scaffolded_project: Path, caplog: pytest.LogCaptureFixture
+    ) -> None:
+        """The scaffolded manifest_and.hocon must parse cleanly through the designer's read path.
+
+        The designer's GetSubnetwork reads registries/manifest_and.hocon relative to the
+        project root via RawManifestRestorer, and pyhocon resolves its `include` directives
+        against the process CWD. A template drift — e.g. "syncing" it with the repo-level
+        registries/manifest_and.hocon, which additionally includes the industry manifest that
+        `ns init` never scaffolds — would make every fresh project emit pyhocon
+        "Cannot include file" warnings while still returning an empty mapping, so an
+        existence-only assertion cannot catch it. Guard both: the restore must produce a
+        mapping, and pyhocon must stay silent, meaning every include resolved.
+
+        :param scaffolded_project: The shared read-only `ns init` scaffold fixture.
+        :param caplog: pytest's log capture, used to detect pyhocon include failures.
+        """
+        project = scaffolded_project
+        prev_cwd: str = os.getcwd()
+        try:
+            os.chdir(project)
+            with caplog.at_level(logging.WARNING, logger="pyhocon.config_parser"):
+                # The external restorer is annotated `-> Any`; dict(raw) below proves it is a mapping.
+                raw: Any = RawManifestRestorer().restore(
+                    file_reference=os.path.join("registries", "manifest_and.hocon")
+                )
+        finally:
+            os.chdir(prev_cwd)
+
+        # A fresh scaffold has no generated networks yet, so the designer sees an empty
+        # (but valid) palette. dict() also asserts the restore returned a mapping.
+        assert not dict(raw)
+        pyhocon_complaints: List[str] = []
+        for record in caplog.records:
+            if record.name == "pyhocon.config_parser":
+                pyhocon_complaints.append(record.getMessage())
+        assert not pyhocon_complaints, f"manifest_and.hocon includes did not resolve: {pyhocon_complaints}"
 
     def test_support_networks_are_served_but_not_public(self, scaffolded_project: Path) -> None:
         """The designer's sub-networks and the CRUSE pair must be reachable, not listed.
