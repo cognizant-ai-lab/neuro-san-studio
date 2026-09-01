@@ -23,7 +23,9 @@ from pathlib import Path
 
 from pyhocon import ConfigFactory
 
-from middleware.agent_network_designer.persistence.hocon_agent_network_assembler import DEFAULT_MAX_EXECUTION_SECONDS
+from middleware.agent_network_designer.persistence.agent_network_assembler import (
+    GENERATED_NETWORK_MAX_EXECUTION_SECONDS,
+)
 from middleware.agent_network_designer.persistence.hocon_agent_network_assembler import HoconAgentNetworkAssembler
 
 REPO_ROOT = Path(__file__).resolve().parents[4]
@@ -71,10 +73,10 @@ def unquote(key: str) -> str:
 
 
 def test_hocon_assembler_adds_max_execution_seconds():
-    """Generated HOCON networks include the default execution timeout."""
+    """Generated HOCON networks include the generated-network execution timeout."""
     content = assemble(None)
 
-    assert f'"max_execution_seconds": {DEFAULT_MAX_EXECUTION_SECONDS}' in content
+    assert f'"max_execution_seconds": {GENERATED_NETWORK_MAX_EXECUTION_SECONDS}' in content
 
 
 class TestHoconAssemblerSlyDataSchema:
