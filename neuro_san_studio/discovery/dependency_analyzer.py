@@ -182,10 +182,11 @@ class DependencyAnalyzer:
         # network's `include "config/llm_config.hocon"` would print "Cannot include file"
         # to stderr once per parse — noise, not signal: the analyzer tolerates unresolved
         # includes and substitutions by design (see analyze_network), and a genuinely missing
-        # dependency still surfaces as an importer warning. Same treatment as
-        # AgentNetworkImporter._read_existing_keys. ERROR is the lowest level that mutes the
-        # complaint (pyhocon logs it at WARNING and emits nothing above that), so a genuine
-        # error-level message from a future pyhocon would still get through.
+        # dependency still surfaces as an importer warning. Same scoped-demotion pattern as
+        # AgentNetworkImporter._read_existing_keys, though at ERROR rather than that method's
+        # CRITICAL: pyhocon logs the complaint at WARNING and emits nothing above that, so
+        # ERROR is the lowest level that mutes it — a genuine error-level message from a
+        # future pyhocon would still get through.
         pyhocon_logger: logging.Logger = logging.getLogger("pyhocon.config_parser")
         prev_level: int = pyhocon_logger.level
         try:
