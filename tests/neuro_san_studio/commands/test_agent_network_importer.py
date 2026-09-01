@@ -25,6 +25,7 @@ from neuro_san.internals.graph.persistence.raw_manifest_restorer import RawManif
 
 from neuro_san_studio.discovery.dependency_analyzer import AgentNetworkDependencies
 from neuro_san_studio.importer.agent_network_importer import AgentNetworkImporter
+from neuro_san_studio.importer.bulk_import_result import BulkImportResult
 from neuro_san_studio.importer.import_result import ImportResult
 
 
@@ -640,6 +641,42 @@ class TestImportNetworks:
         target_dir.mkdir()
         self._build_source(source_dir)
         return AgentNetworkImporter(str(source_dir), str(target_dir))
+
+    def test_package_init_reexports_land_in_the_target(self, tmp_path: Path) -> None:
+        """A helper re-exported only by a package __init__.py must be copied.
+
+        Importing pkg.entry at runtime executes pkg/__init__.py first, so a tree copied
+        without helper.py raises ModuleNotFoundError before the tool even loads — the exact
+        failure class the dependency walker exists to prevent. coded_tools/tools/now_agents/
+        __init__.py is the in-repo instance of this shape.
+
+        :param tmp_path: pytest-provided temporary directory for the source and target trees.
+        """
+        source_dir: Path = tmp_path / "source"
+        target_dir: Path = tmp_path / "target"
+        target_dir.mkdir()
+        registries: Path = source_dir / "registries"
+        registries.mkdir(parents=True)
+        for shared in AgentNetworkImporter.SHARED_INCLUDES:
+            (registries / shared).write_text('{ "shared_instructions": "be helpful" }\n')
+        (registries / "net.hocon").write_text('{ "tools": [ { "name": "tool", "class": "pkg.entry.Entry" } ] }\n')
+        pkg: Path = source_dir / "coded_tools" / "pkg"
+        pkg.mkdir(parents=True)
+        (source_dir / "coded_tools" / "__init__.py").write_text("")
+        # The re-export is the only reference to helper: no HOCON names it, and entry.py
+        # does not import it.
+        (pkg / "__init__.py").write_text("from .helper import Helper\n")
+        (pkg / "entry.py").write_text("class Entry:\n    pass\n")
+        (pkg / "helper.py").write_text("class Helper:\n    pass\n")
+        (source_dir / "middleware").mkdir(parents=True)
+        importer: AgentNetworkImporter = AgentNetworkImporter(str(source_dir), str(target_dir))
+
+        bulk: BulkImportResult = importer.import_networks(["net.hocon"])
+
+        assert not bulk.all_errors
+        assert (target_dir / "coded_tools" / "pkg" / "helper.py").is_file()
+        # The init itself still arrives through the parent-init chain, not as a closure entry.
+        assert (target_dir / "coded_tools" / "pkg" / "__init__.py").is_file()
 
     def test_import_networks_does_not_touch_the_manifest(self, tmp_path: Path) -> None:
         """The bulk seam must leave the target manifest byte-identical.

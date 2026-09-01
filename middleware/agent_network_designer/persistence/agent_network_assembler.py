@@ -20,6 +20,13 @@ from typing import Any
 
 from neuro_san.internals.validation.network.abstract_network_validator import AbstractNetworkValidator
 
+# Execution timeout stamped into every network the assemblers produce.
+# Not an overridable fallback — each assembler writes it unconditionally,
+# hence no DEFAULT_ prefix. The deployable path gets the same value from
+# deployable_template.hocon; tests assert against this constant so the
+# template and the constant cannot silently drift apart.
+GENERATED_NETWORK_MAX_EXECUTION_SECONDS: int = 600
+
 
 class AgentNetworkAssembler:
     """

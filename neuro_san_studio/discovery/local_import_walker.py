@@ -54,20 +54,31 @@ class LocalImportWalker:
         self.roots = roots
 
     def expand(self, relative_paths: List[str]) -> List[str]:
-        """Return ``relative_paths`` plus every project-local module reachable from them.
+        """
+        Return ``relative_paths`` plus every project-local module reachable from them.
 
-        Args:
-            relative_paths: Root-prefixed paths as produced by
-                ``DependencyAnalyzer.resolve_coded_tool_path``, e.g.
-                ``"coded_tools/agent_network_editor/add_agent.py"``. Directory entries (a coded
-                tool referenced as a package) are kept as-is and scanned for imports.
+        Each member's ancestor package ``__init__.py`` files are scanned too: importing
+        ``pkg.sub.mod`` at runtime executes ``pkg/__init__.py`` and ``pkg/sub/__init__.py``
+        before ``mod.py``, so whatever those files import is just as required as ``mod``'s own
+        imports — and a re-export like ``from .helper import X`` lives nowhere else. The init
+        files themselves are deliberately NOT added to the returned closure: the importer's
+        ``_copy_parent_inits`` and the exporter's parent-init bundling already deliver them for
+        every member, so listing them here would only inflate the copy/skip accounting.
 
-        Returns:
-            The same path shape, input order first and discovered modules appended, de-duplicated.
-            Breadth-first so a network's own entry points stay ahead of their helpers.
+        :param relative_paths: Root-prefixed paths as produced by
+            ``DependencyAnalyzer.resolve_coded_tool_path``, e.g.
+            ``"coded_tools/agent_network_editor/add_agent.py"``. Directory entries (a coded
+            tool referenced as a package) are kept as-is and scanned for imports.
+        :return: The same path shape, input order first and discovered modules appended,
+            de-duplicated. Breadth-first so a network's own entry points stay ahead of their
+            helpers.
         """
         ordered: List[str] = []
         seen: Set[str] = set()
+        # Ancestor __init__.py files already scanned. Kept separate from `seen` so an init
+        # that is later reached as a real import (e.g. `import coded_tools.pkg`) still joins
+        # the closure like it always did.
+        scanned_inits: Set[str] = set()
         queue: Deque[str] = deque(relative_paths)
         while queue:
             relative_path = queue.popleft()
@@ -78,7 +89,48 @@ class LocalImportWalker:
             for discovered in self._imports_of(relative_path):
                 if discovered not in seen:
                     queue.append(discovered)
+            # Scan-only pass over the member's ancestor __init__.py files: their imports
+            # are ordinary dependencies that nothing else would discover, because no HOCON
+            # and no scanned module names the init file itself.
+            for ancestor_init in self._ancestor_inits(relative_path):
+                if ancestor_init in seen or ancestor_init in scanned_inits:
+                    continue
+                scanned_inits.add(ancestor_init)
+                for discovered in self._imports_of(ancestor_init):
+                    if discovered not in seen:
+                        queue.append(discovered)
         return ordered
+
+    def _ancestor_inits(self, relative_path: str) -> List[str]:
+        """
+        Return the existing ``__init__.py`` files of every package containing ``relative_path``.
+
+        For a file ``coded_tools/pkg/sub/mod.py`` that is ``coded_tools/__init__.py``,
+        ``coded_tools/pkg/__init__.py`` and ``coded_tools/pkg/sub/__init__.py``. For a
+        directory member only the packages *above* it count — the directory's own
+        ``__init__.py`` is inside the copied tree and ``_imports_of`` already scans it.
+
+        :param relative_path: Root-prefixed relative path of a closure member (file or
+            directory).
+        :return: Root-prefixed relative paths of the ancestor ``__init__.py`` files that
+            exist on disk, outermost first. Empty when the path's root is not configured.
+        """
+        parts: List[str] = relative_path.split("/")
+        root_dir: Optional[str] = self.roots.get(parts[0])
+        if root_dir is None:
+            return []
+        # Dropping the last segment yields the containing-package chain for a file, and the
+        # strictly-above-packages chain for a directory — both exactly what must be scanned.
+        package_parts: List[str] = parts[:-1]
+        inits: List[str] = []
+        for depth in range(1, len(package_parts) + 1):
+            # depth 1 is the root itself: parts[1:1] is empty, so this checks
+            # <root_dir>/__init__.py, i.e. "coded_tools/__init__.py".
+            init_absolute: str = os.path.join(root_dir, *package_parts[1:depth], "__init__.py")
+            if os.path.isfile(init_absolute):
+                init_parts: List[str] = package_parts[:depth] + ["__init__.py"]
+                inits.append("/".join(init_parts))
+        return inits
 
     def _imports_of(self, relative_path: str) -> List[str]:
         """Return the project-local modules imported by ``relative_path``, as relative paths."""
