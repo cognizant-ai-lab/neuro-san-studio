@@ -20,20 +20,12 @@ from pathlib import Path
 from dotenv import load_dotenv
 
 from neuro_san_studio import mcp as _mcp_pkg
-from neuro_san_studio import toolbox as _toolbox_pkg
 
 # Path to the mcp_info.hocon that ships inside the neuro_san_studio package.
 # Resolving via the imported package's __file__ works both in-repo (where
 # neuro_san_studio/ is just a folder on sys.path) and after `pip install`
 # (where it lives in site-packages), on every supported platform.
 _BUNDLED_MCP_INFO_FILE = Path(_mcp_pkg.__file__).parent / "mcp_info.hocon"
-
-# Same resolution for the two toolbox HOCONs the studio ships: the runtime toolbox that
-# defines tools agent networks reference by name (`ddgs_search` and friends), and the
-# curated palette agent_network_designer offers when designing a new network.
-_BUNDLED_TOOLBOX_DIR = Path(_toolbox_pkg.__file__).parent
-_BUNDLED_TOOLBOX_INFO_FILE = _BUNDLED_TOOLBOX_DIR / "toolbox_info.hocon"
-_BUNDLED_DESIGNER_TOOLBOX_INFO_FILE = _BUNDLED_TOOLBOX_DIR / "agent_network_designer_toolbox_info.hocon"
 
 
 class ProjectEnvironment:
@@ -62,9 +54,6 @@ class ProjectEnvironment:
         toolbox_file = self.resolve_toolbox_info_file()
         if toolbox_file:
             self._setdefault_env("AGENT_TOOLBOX_INFO_FILE", toolbox_file)
-        designer_toolbox_file = self.resolve_designer_toolbox_info_file()
-        if designer_toolbox_file:
-            self._setdefault_env("AGENT_NETWORK_DESIGNER_TOOLBOX_INFO_FILE", designer_toolbox_file)
 
     def resolve_manifest_file(self) -> str:
         """Resolve AGENT_MANIFEST_FILE: the env var if set, else <root>/registries/manifest.hocon."""
@@ -91,47 +80,20 @@ class ProjectEnvironment:
         return str(_BUNDLED_MCP_INFO_FILE)
 
     def resolve_toolbox_info_file(self) -> str:
-        """Resolve the toolbox info file path.
+        """Resolve the toolbox info file path, or "" if it should not be exported.
 
-        Precedence mirrors resolve_mcp_info_file:
-          1. AGENT_TOOLBOX_INFO_FILE env var (used verbatim; set it to "" to opt out and get
-             only neuro-san's built-in toolbox).
-          2. <root>/neuro_san_studio/toolbox/toolbox_info.hocon if it exists (an in-repo run,
-             or a project that deliberately vendored its own).
-          3. The toolbox_info.hocon shipped inside the neuro_san_studio package.
-
-        Tier 3 matters because agent networks reference toolbox tools by name and neuro-san's
-        built-in toolbox holds exactly one (`get_current_date_time`). Without it, a
-        pip-installed project running agent_network_designer — which uses `ddgs_search` — dies
-        with "Tool 'ddgs_search' is not defined", as does every network under registries/tools.
-        The framework overlays whatever we return on top of its built-in set, so this is
-        additive, never a replacement.
+        A project toolbox is purely an override on top of neuro-san's built-in default
+        toolbox. Only return a path when the user opted in via the env var, or when the
+        conventional <root>/neuro_san_studio/toolbox/toolbox_info.hocon exists. Otherwise
+        return "" so the env var stays unset and the framework uses its built-in default.
         """
         env_value = os.getenv("AGENT_TOOLBOX_INFO_FILE")
         if env_value is not None:
             return env_value
-        project_path = self.root_dir / "neuro_san_studio" / "toolbox" / "toolbox_info.hocon"
-        if project_path.is_file():
-            return str(project_path)
-        return str(_BUNDLED_TOOLBOX_INFO_FILE)
-
-    def resolve_designer_toolbox_info_file(self) -> str:
-        """Resolve the toolbox info file listing the tools agent_network_designer may pick from.
-
-        Same three-tier precedence as resolve_toolbox_info_file, against
-        AGENT_NETWORK_DESIGNER_TOOLBOX_INFO_FILE. This is a curated subset, not the runtime
-        toolbox: coded_tools/agent_network_editor/get_toolbox.py reads it to tell the designer
-        LLM which tools exist. It defaults to a path relative to the current directory, which
-        only resolves for an in-repo run; exporting the resolved path here means a scaffolded
-        project gets the real palette instead of an empty list and a recurring warning.
-        """
-        env_value = os.getenv("AGENT_NETWORK_DESIGNER_TOOLBOX_INFO_FILE")
-        if env_value is not None:
-            return env_value
-        project_path = self.root_dir / "neuro_san_studio" / "toolbox" / "agent_network_designer_toolbox_info.hocon"
-        if project_path.is_file():
-            return str(project_path)
-        return str(_BUNDLED_DESIGNER_TOOLBOX_INFO_FILE)
+        default_path = self.root_dir / "neuro_san_studio" / "toolbox" / "toolbox_info.hocon"
+        if default_path.is_file():
+            return str(default_path)
+        return ""
 
     def load_env_file(self) -> None:
         """Load a project-root .env file (if any) so API keys and other settings are available."""

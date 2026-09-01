@@ -22,73 +22,87 @@ import re
 import shutil
 import stat
 import zipfile
-from functools import cached_property
+from dataclasses import dataclass
+from dataclasses import field
 from pathlib import Path
-from typing import Callable
 from typing import List
-from typing import Optional
 from typing import Set
 from typing import Tuple
 
 from neuro_san.internals.graph.persistence.raw_manifest_restorer import RawManifestRestorer
 
 from neuro_san_studio.discovery.dependency_analyzer import AgentNetworkDependencies
-from neuro_san_studio.discovery.dependency_analyzer import DependencyAnalyzer
-from neuro_san_studio.importer.bulk_import_result import BulkImportResult
-from neuro_san_studio.importer.import_result import ImportResult
-from neuro_san_studio.importer.import_roots import ImportRoots
 from neuro_san_studio.mcp.mcp_info_merger import McpInfoMerger
 from neuro_san_studio.utils.shared_registries import SHARED_REGISTRY_INCLUDES
+
+# `mcp/` is whitelisted so an export-side bundle can carry the filtered mcp_info.hocon. The
+# importer extracts it into memory and merges into the receiver's file additively rather than
+# dropping it on disk verbatim — receivers may have already-configured URLs we must not
+# overwrite (e.g. with their own `${ENV}` headers).
+ALLOWED_TOP_LEVEL = ("registries/", "coded_tools/", "middleware/", "skills/", "mcp/")
+MAX_ARCHIVE_BYTES = 100 * 1024 * 1024  # 100 MB
+MAX_ARCHIVE_ENTRIES = 100
+
+
+def is_skippable_metadata(normalized: str) -> bool:
+    """Tolerate common archive noise so a real-world zip isn't rejected over a __MACOSX entry,
+    and so receivers don't end up with stray .DS_Store / __pycache__ files in their tree."""
+    return (
+        normalized.startswith("__MACOSX/")
+        or "/.DS_Store" in normalized
+        or normalized.endswith(".DS_Store")
+        or "/__pycache__/" in normalized
+        or normalized.endswith(".pyc")
+    )
+
+
+@dataclass
+class ImportResult:  # pylint: disable=too-many-instance-attributes
+    """Outcome of importing one agent network into the target project.
+
+    A value object accumulating every interesting datum from one import; the breadth
+    of fields reflects the breadth of an import (files copied/skipped, manifest entries,
+    MCP merge deltas, warnings, errors), not a missing abstraction.
+    """
+
+    network_name: str
+    hocon_path: str
+    copied_files: List[str] = field(default_factory=list)
+    skipped_files: List[str] = field(default_factory=list)
+    errors: List[str] = field(default_factory=list)
+    warnings: List[str] = field(default_factory=list)
+    mcp_added: List[str] = field(default_factory=list)
+    mcp_skipped: List[str] = field(default_factory=list)
+    # Manifest-relative HOCONs that should be registered for serving. Includes the top-level
+    # network plus every transitively-imported sub-network. Distinct from copied_files because
+    # copied_files also contains coded_tools/middleware/__init__.py paths that don't belong
+    # in the manifest, and because skipped (already-present) HOCONs still need their key
+    # ensured in the manifest if the import had to register a new entry for it.
+    manifest_entries: List[str] = field(default_factory=list)
+
+
+@dataclass(frozen=True)
+class _Roots:
+    """Source/target root directories for one dependency category (registries, coded_tools, middleware)."""
+
+    source: str
+    target: str
 
 
 class AgentNetworkImporter:
     """Copy agent networks (and their dependencies) from source_dir into target_dir."""
 
-    # `mcp/` is whitelisted so an export-side bundle can carry the filtered mcp_info.hocon. The
-    # importer extracts it into memory and merges into the receiver's file additively rather than
-    # dropping it on disk verbatim — receivers may have already-configured URLs we must not
-    # overwrite (e.g. with their own `${ENV}` headers).
-    ALLOWED_TOP_LEVEL = ("registries/", "coded_tools/", "middleware/", "skills/", "mcp/")
-    MAX_ARCHIVE_BYTES = 100 * 1024 * 1024  # 100 MB
-    MAX_ARCHIVE_ENTRIES = 100
-
-    @staticmethod
-    def is_skippable_metadata(normalized: str) -> bool:
-        """Tolerate common archive noise so a real-world zip isn't rejected over a __MACOSX entry,
-        and so receivers don't end up with stray .DS_Store / __pycache__ files in their tree."""
-        return (
-            normalized.startswith("__MACOSX/")
-            or "/.DS_Store" in normalized
-            or normalized.endswith(".DS_Store")
-            or "/__pycache__/" in normalized
-            or normalized.endswith(".pyc")
-        )
-
     def __init__(self, source_dir: str, target_dir: str):
         self.source_dir = source_dir
         self.target_dir = target_dir
-        self.registries = ImportRoots(os.path.join(source_dir, "registries"), os.path.join(target_dir, "registries"))
-        self.coded_tools = ImportRoots(
-            os.path.join(source_dir, "coded_tools"), os.path.join(target_dir, "coded_tools")
-        )
-        self.middleware = ImportRoots(os.path.join(source_dir, "middleware"), os.path.join(target_dir, "middleware"))
+        self.registries = _Roots(os.path.join(source_dir, "registries"), os.path.join(target_dir, "registries"))
+        self.coded_tools = _Roots(os.path.join(source_dir, "coded_tools"), os.path.join(target_dir, "coded_tools"))
+        self.middleware = _Roots(os.path.join(source_dir, "middleware"), os.path.join(target_dir, "middleware"))
         # mcp_info.hocon lives under <project>/mcp/. Discovery imports read the source's copy
         # (or the studio fallback) and extract only the URLs the imported network references.
         # File-mode imports get a pre-filtered mcp_info.hocon already inside the zip.
         self.mcp_source = os.path.join(source_dir, "mcp", "mcp_info.hocon")
         self.mcp_target = os.path.join(target_dir, "mcp", "mcp_info.hocon")
-
-    @cached_property
-    def analyzer(self) -> DependencyAnalyzer:
-        """Dependency walker over the source tree.
-
-        Its three roots are exactly the source roots computed in `__init__`, so the importer
-        owns it rather than making every caller rebuild the same object. Built on first use:
-        a file-mode import (`import_from_path`) is self-contained and never walks
-        dependencies, and there `source_dir` is the target project, where an analyzer would
-        mean nothing.
-        """
-        return DependencyAnalyzer(self.registries.source, self.coded_tools.source, self.middleware.source)
 
     # Shared registry-level HOCONs that networks pull in via `include "registries/<name>"`.
     # These aren't agent networks themselves so the dependency walker doesn't see them, but
@@ -107,41 +121,6 @@ class AgentNetworkImporter:
         if os.path.basename(registries_relative) in self.SHARED_INCLUDES:
             return
         result.manifest_entries.append(registries_relative)
-
-    def import_networks(
-        self,
-        hocon_paths: List[str],
-        *,
-        force: bool = False,
-        on_network: Optional[Callable[[str], None]] = None,
-    ) -> BulkImportResult:
-        """Analyze and import each of `hocon_paths` (registry-relative) from the source tree.
-
-        A network that fails to analyze or import is recorded and skipped rather than raised:
-        a batch missing one network is still useful, while a half-written project is not.
-        `on_network` is invoked with each path before its work starts, so a CLI can report
-        progress without this method knowing anything about how progress is displayed.
-
-        Deliberately does NOT touch the manifest. `ns import` registers `manifest_entries`
-        afterwards; `ns init` must not, because it scaffolds its manifest from a template
-        that declares support networks as `{"serve": true, "public": false}` and
-        `update_manifest` would flatten those to a bare `true`.
-        """
-        bulk = BulkImportResult()
-        for hocon_path in hocon_paths:
-            if on_network is not None:
-                on_network(hocon_path)
-            full_path = os.path.join(self.registries.source, hocon_path)
-            try:
-                dependencies = self.analyzer.get_transitive_dependencies(full_path)
-            except (OSError, ValueError) as exc:
-                bulk.errors.append(f"Failed to analyze {hocon_path}: {exc}")
-                continue
-            try:
-                bulk.results.append(self.import_network(hocon_path, dependencies, force=force))
-            except (OSError, ValueError) as exc:
-                bulk.errors.append(f"Failed to import {hocon_path}: {exc}")
-        return bulk
 
     def import_network(
         self,
@@ -171,7 +150,6 @@ class AgentNetworkImporter:
             self._copy_hocon(shared, result, force=force)
         if dependencies.mcp_tools:
             self._merge_mcp_from_source(dependencies.mcp_tools, result)
-        self._ensure_package_roots(result)
 
         return result
 
@@ -185,7 +163,7 @@ class AgentNetworkImporter:
 
     # pylint: disable-next=too-many-arguments
     def _copy_under(
-        self, dep_path: str, prefix: str, roots: ImportRoots, result: ImportResult, *, force: bool = False
+        self, dep_path: str, prefix: str, roots: "_Roots", result: ImportResult, *, force: bool = False
     ) -> None:
         rel = dep_path[len(prefix) + 1 :] if dep_path.startswith(prefix + "/") else dep_path
         source = os.path.join(roots.source, rel)
@@ -194,11 +172,8 @@ class AgentNetworkImporter:
             result.warnings.append(f"Dependency not found: {dep_path}")
             return
         self._copy_file_or_dir(source, target, dep_path, result, force=force)
-        # A directory dependency is its own starting point; a file's package chain starts at
-        # the directory holding it.
-        self._copy_parent_inits(
-            source if os.path.isdir(source) else os.path.dirname(source), roots, result, force=force
-        )
+        if os.path.isfile(source):
+            self._copy_parent_inits(os.path.dirname(source), roots, result, force=force)
 
     @staticmethod
     def _copy_file_or_dir(source: str, target: str, display: str, result: ImportResult, force: bool = False) -> None:
@@ -217,17 +192,9 @@ class AgentNetworkImporter:
             result.errors.append(f"Failed to copy {display}: {exc}")
 
     @staticmethod
-    def _copy_parent_inits(current_dir: str, roots: ImportRoots, result: ImportResult, force: bool = False) -> None:
-        """Copy __init__.py up the parent chain so the package is importable in the target.
-
-        The chain includes the root itself (``coded_tools/__init__.py``,
-        ``middleware/__init__.py``). Without it the target's directory is only a namespace
-        *portion*, and Python's finder skips namespace portions in favor of any regular package
-        of the same name further along sys.path — which for a pip-installed project is
-        neuro-san-studio's own bundled copy. The project's coded tools would then be silently
-        shadowed by the installed ones, no matter that the project root comes first on the path.
-        """
-        while current_dir.startswith(roots.source):
+    def _copy_parent_inits(current_dir: str, roots: "_Roots", result: ImportResult, force: bool = False) -> None:
+        """Copy __init__.py up the parent chain so the package is importable in the target."""
+        while current_dir.startswith(roots.source) and current_dir != roots.source:
             init_src = os.path.join(current_dir, "__init__.py")
             if os.path.exists(init_src):
                 rel = os.path.relpath(init_src, roots.source)
@@ -239,35 +206,7 @@ class AgentNetworkImporter:
                         result.copied_files.append(os.path.join(os.path.basename(roots.target), rel))
                     except OSError as exc:
                         result.errors.append(f"Failed to copy __init__.py: {exc}")
-            if current_dir == roots.source:
-                break
             current_dir = os.path.dirname(current_dir)
-
-    def _ensure_package_roots(self, result: ImportResult) -> None:
-        """Guarantee coded_tools/ and middleware/ are regular packages in the target.
-
-        `_copy_parent_inits` covers this whenever the source has an ``__init__.py`` to copy and
-        a dependency lands under that root. This is the fallback for when neither holds: a zip
-        bundle that omitted the root file (the zip path extracts verbatim and never walks the
-        parent chain), or a source tree whose own root is a namespace package. See
-        `_copy_parent_inits` for why a namespace *portion* here silently shadows the project.
-
-        Only ever creates an empty file, never copies: if the source had one to give,
-        `_copy_parent_inits` already delivered it. Deliberately does not create the directory
-        -- the contract is "if we put files there, make it importable", not "every project
-        gets a coded_tools/".
-        """
-        for roots in (self.coded_tools, self.middleware):
-            target = os.path.join(roots.target, "__init__.py")
-            if os.path.exists(target) or not os.path.isdir(roots.target):
-                continue
-            try:
-                with open(target, "w", encoding="utf-8"):
-                    pass
-            except OSError as exc:
-                result.errors.append(f"Failed to create {target}: {exc}")
-                continue
-            result.copied_files.append(f"{os.path.basename(roots.target)}/__init__.py")
 
     def import_from_path(self, source_path: str, force: bool = False) -> ImportResult:
         """Import a single network from a local file path.
@@ -289,13 +228,10 @@ class AgentNetworkImporter:
             # the target already exists (skip path) — re-running an import shouldn't drop
             # an entry that earlier failed to make it into the manifest.
             self._register_manifest_entry(result, basename)
-            self._ensure_package_roots(result)
             return result
 
         if suffix == ".zip":
-            result = self._import_from_zip(source_path, force=force)
-            self._ensure_package_roots(result)
-            return result
+            return self._import_from_zip(source_path, force=force)
 
         raise ValueError(f"Unsupported file type: {suffix or '(none)'}. Expected .hocon or .zip")
 
@@ -315,9 +251,7 @@ class AgentNetworkImporter:
             for info in entries:
                 rel = info.filename
                 normalized, _ = self._normalize_zip_path(rel)
-                if not normalized.startswith(
-                    AgentNetworkImporter.ALLOWED_TOP_LEVEL
-                ) or AgentNetworkImporter.is_skippable_metadata(normalized):
+                if not normalized.startswith(ALLOWED_TOP_LEVEL) or is_skippable_metadata(normalized):
                     # Tolerated by validation (metadata, __pycache__) but not part of the bundle's
                     # real content — silently drop instead of polluting the receiver's tree.
                     continue
@@ -345,26 +279,20 @@ class AgentNetworkImporter:
     @staticmethod
     def _validate_zip_entries(entries: List[zipfile.ZipInfo]) -> None:
         """Run the four safety checks; raise ValueError on the first failure."""
-        if len(entries) > AgentNetworkImporter.MAX_ARCHIVE_ENTRIES:
-            raise ValueError(
-                f"Archive has too many entries ({len(entries)} > {AgentNetworkImporter.MAX_ARCHIVE_ENTRIES})."
-            )
+        if len(entries) > MAX_ARCHIVE_ENTRIES:
+            raise ValueError(f"Archive has too many entries ({len(entries)} > {MAX_ARCHIVE_ENTRIES}).")
         total_size = 0
         for info in entries:
             total_size += info.file_size
-            if total_size > AgentNetworkImporter.MAX_ARCHIVE_BYTES:
-                raise ValueError(
-                    f"Archive exceeds size limit ({AgentNetworkImporter.MAX_ARCHIVE_BYTES} bytes uncompressed)."
-                )
+            if total_size > MAX_ARCHIVE_BYTES:
+                raise ValueError(f"Archive exceeds size limit ({MAX_ARCHIVE_BYTES} bytes uncompressed).")
             mode = (info.external_attr >> 16) & 0xFFFF
             if stat.S_ISLNK(mode):
                 raise ValueError(f"Archive contains a symlink entry: {info.filename}")
             normalized, escapes = AgentNetworkImporter._normalize_zip_path(info.filename)
             if escapes:
                 raise ValueError(f"Archive entry escapes target root (zip-slip): {info.filename}")
-            if normalized.startswith(
-                AgentNetworkImporter.ALLOWED_TOP_LEVEL
-            ) or AgentNetworkImporter.is_skippable_metadata(normalized):
+            if normalized.startswith(ALLOWED_TOP_LEVEL) or is_skippable_metadata(normalized):
                 continue
             raise ValueError(
                 f"Archive entry not in whitelist (registries/, coded_tools/, middleware/, skills/): {info.filename}"

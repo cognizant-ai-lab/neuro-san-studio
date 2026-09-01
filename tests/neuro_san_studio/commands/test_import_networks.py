@@ -14,14 +14,11 @@
 #
 # END COPYRIGHT
 
-"""Tests for ImportCommand argument handling, and its manifest wiring."""
-
-from pathlib import Path
+"""Tests for ImportCommand argument handling: _parse_arg and file inference."""
 
 import pytest
 
 from neuro_san_studio.commands.import_networks import ImportCommand
-from neuro_san_studio.discovery.agent_network_registry import AgentNetworkRegistry
 
 
 @pytest.fixture(name="networks_by_group")
@@ -166,38 +163,3 @@ class TestSplitFileArgs:
             ImportCommand._split_file_args(["basic", "music_nerd.hocon"])
         assert exc.value.code == 1
         assert "Cannot mix" in capsys.readouterr().out
-
-
-class TestImportRegistersManifestEntries:  # pylint: disable=too-few-public-methods
-    """`ns import` must declare everything it landed -- the counterpart to `ns init`, which must not."""
-
-    @staticmethod
-    def _build_source(source_dir: Path) -> None:
-        """A network plus the sub-network it pulls in, so the batch has something to flatten."""
-        registries = source_dir / "registries"
-        (registries / "basic").mkdir(parents=True)
-        (registries / "manifest.hocon").write_text('{ "basic/lead.hocon": true }\n')
-        (registries / "basic" / "lead.hocon").write_text('{ "tools": [ { "tools": ["/helper"] } ] }\n')
-        (registries / "helper.hocon").write_text('{ "tools": [] }\n')
-        (source_dir / "coded_tools").mkdir(parents=True)
-        (source_dir / "middleware").mkdir(parents=True)
-
-    def test_import_declares_the_network_and_its_sub_networks(self, tmp_path, monkeypatch) -> None:
-        """A sub-network that lands on disk but never reaches the manifest is never served.
-
-        `ns init` deliberately skips this step because its manifest is scaffolded from a
-        template carrying serve/public flags; `ns import` owns the registration instead, and
-        must cover transitively-imported sub-networks, not just the requested entrypoint.
-        """
-        source_dir = tmp_path / "source"
-        target_dir = tmp_path / "target"
-        (target_dir / "registries").mkdir(parents=True)
-        self._build_source(source_dir)
-        monkeypatch.chdir(target_dir)
-
-        command = ImportCommand(networks_arg=["basic/lead.hocon"])
-        command._import(["basic/lead.hocon"], AgentNetworkRegistry(source_dir=str(source_dir)))  # pylint: disable=protected-access
-
-        manifest = (target_dir / "registries" / "manifest.hocon").read_text()
-        assert "basic/lead.hocon" in manifest
-        assert "helper.hocon" in manifest
