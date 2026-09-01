@@ -160,6 +160,79 @@ class TestExportWithDeps:
         assert result.dependencies.coded_tools == ["coded_tools/basic/music_nerd/lookup.py"]
         assert not result.warnings
 
+    def test_zip_bundles_init_reexported_helper(self, tmp_path: Path) -> None:
+        """A helper re-exported only by the tool package's __init__.py must be bundled.
+
+        Importing the tool at runtime executes its package __init__.py first, so a bundle
+        without helper.py raises ModuleNotFoundError on the receiver even though no HOCON and
+        no scanned module ever names it.
+
+        :param tmp_path: pytest-provided temporary directory for the project and the zip.
+        """
+        project_dir: Path = tmp_path / "project"
+        registries: Path = project_dir / "registries" / "basic"
+        registries.mkdir(parents=True)
+        (project_dir / "registries" / "manifest.hocon").write_text("{}\n")
+        coded_tools: Path = project_dir / "coded_tools" / "basic" / "music_nerd"
+        coded_tools.mkdir(parents=True)
+        (project_dir / "coded_tools" / "__init__.py").write_text("")
+        (coded_tools / "__init__.py").write_text("from .helper import Helper\n")
+        (coded_tools / "lookup.py").write_text("class Lookup:\n    pass\n")
+        (coded_tools / "helper.py").write_text("class Helper:\n    pass\n")
+        (registries / "music_nerd.hocon").write_text(
+            '{\n    "tools": [\n        { "name": "lookup", "class": "lookup.Lookup" }\n    ]\n}\n'
+        )
+        target: Path = tmp_path / "out" / "music_nerd.zip"
+
+        exporter = AgentNetworkExporter(project_dir=str(project_dir))
+        exporter.export("music_nerd", output_path=str(target))
+
+        with zipfile.ZipFile(target) as zf:
+            names = set(zf.namelist())
+        assert "coded_tools/basic/music_nerd/helper.py" in names
+        assert "coded_tools/basic/music_nerd/__init__.py" in names
+
+    def test_zip_bundles_directory_dep_ancestor_init(self, tmp_path: Path) -> None:
+        """A directory dep's ancestor __init__.py — and what it imports — must be bundled.
+
+        The exporter's directory branch used to skip parent inits entirely (only the file
+        branch called _add_parent_inits), so the receiver got a namespace portion whose
+        __init__ re-exports silently vanished, while the init's own import shipped orphaned.
+
+        :param tmp_path: pytest-provided temporary directory for the project and the zip.
+        """
+        project_dir: Path = tmp_path / "project"
+        registries: Path = project_dir / "registries"
+        registries.mkdir(parents=True)
+        (registries / "manifest.hocon").write_text("{}\n")
+        coded_tools: Path = project_dir / "coded_tools"
+        (coded_tools / "grp" / "pkg").mkdir(parents=True)
+        (coded_tools / "other").mkdir(parents=True)
+        (coded_tools / "__init__.py").write_text("")
+        # The ancestor init's import is the only reference to other/shared.py anywhere.
+        (coded_tools / "grp" / "__init__.py").write_text("from coded_tools.other.shared import VALUE\n")
+        # No pkg.py next to it, so the class ref below resolves to the package *directory*.
+        (coded_tools / "grp" / "pkg" / "__init__.py").write_text("class Tool:\n    pass\n")
+        (coded_tools / "other" / "__init__.py").write_text("")
+        (coded_tools / "other" / "shared.py").write_text("VALUE = 1\n")
+        (registries / "net.hocon").write_text(
+            '{\n    "tools": [\n        { "name": "tool", "class": "grp.pkg.Tool" }\n    ]\n}\n'
+        )
+        target: Path = tmp_path / "out" / "net.zip"
+
+        exporter = AgentNetworkExporter(project_dir=str(project_dir))
+        result = exporter.export("net", output_path=str(target))
+
+        assert "coded_tools/grp/pkg" in result.dependencies.coded_tools
+        with zipfile.ZipFile(target) as zf:
+            names = set(zf.namelist())
+        # The walker scanned the ancestor init, so its import target is in the closure...
+        assert "coded_tools/other/shared.py" in names
+        # ...and the directory branch now bundles the ancestor init itself, so the
+        # receiver's grp package is regular (not a namespace portion) and re-exports work.
+        assert "coded_tools/grp/__init__.py" in names
+        assert "coded_tools/grp/pkg/__init__.py" in names
+
     def test_default_output_is_zip_when_deps_present(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
         """Omitting -o on a deps network defaults to <name>.zip in cwd."""
         self._build_project_with_coded_tool(tmp_path / "project")
