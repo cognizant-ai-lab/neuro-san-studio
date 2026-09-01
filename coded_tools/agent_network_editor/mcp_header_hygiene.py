@@ -16,7 +16,6 @@
 
 import logging
 import re
-import sys
 from typing import Any
 from urllib.parse import urlsplit
 
@@ -31,12 +30,6 @@ from coded_tools.agent_network_editor.and_logger import AndLogger
 # Matched with fullmatch(); the + quantifier also rejects an empty (blank)
 # name.
 _HEADER_NAME_RE: re.Pattern[str] = re.compile(r"[!#$%&'*+\-.^_`|~0-9A-Za-z]+")
-
-# ExceptionGroup is a builtin from Python 3.11 (the repo minimum is 3.10).
-# On 3.10 the conditional's true branch never evaluates, and isinstance
-# against the empty tuple is simply always False — those interpreters keep
-# the plain str(error) rendering.
-_EXCEPTION_GROUP_TYPES: tuple[type[BaseException], ...] = (BaseExceptionGroup,) if sys.version_info >= (3, 11) else ()
 
 # h11's send-time validation embeds the offending raw header material in
 # its message ("Illegal header name b'...'" / "Illegal header value
@@ -254,13 +247,13 @@ class McpHeaderHygiene:
         :return: str(error) for a plain exception; the flattened
                 "Type: message; ..." leaves for an ExceptionGroup.
         """
-        if not isinstance(error, _EXCEPTION_GROUP_TYPES):
+        if not isinstance(error, BaseExceptionGroup):
             return str(error)
         leaves: list[str] = []
         stack: list[BaseException] = list(error.exceptions)
         while stack:
             sub: BaseException = stack.pop(0)
-            if isinstance(sub, _EXCEPTION_GROUP_TYPES):
+            if isinstance(sub, BaseExceptionGroup):
                 stack.extend(sub.exceptions)
             else:
                 leaves.append(f"{type(sub).__name__}: {sub}")

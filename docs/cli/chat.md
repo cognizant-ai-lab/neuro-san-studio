@@ -79,7 +79,7 @@ are prompted for input. Type `quit` to exit, or press Ctrl+C.
 
 ```bash
 echo "Who wrote Little Black Submarines?" > /tmp/prompt.txt
-ns chat music_nerd --one-shot --first_prompt_file /tmp/prompt.txt
+ns chat basic/music_nerd --one-shot --first_prompt_file /tmp/prompt.txt
 ```
 
 ### Remote server connection

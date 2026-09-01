@@ -27,7 +27,6 @@ get_mcp_tool needs, so the suite still collects everywhere.
 
 import asyncio
 import os
-import sys
 from unittest import TestCase
 from unittest import mock
 
@@ -542,9 +541,6 @@ class TestFetchToolDescriptions(TestCase):
         """The drop-path warning must show the buried cause (e.g. a 401),
         not anyio's opaque 'unhandled errors in a TaskGroup' text (the leaf
         rendering itself is pinned in test_mcp_header_hygiene.py)."""
-        if sys.version_info < (3, 11):
-            self.skipTest("ExceptionGroup is a 3.11+ builtin")
-
         nested = ExceptionGroup(
             "unhandled errors in a TaskGroup",
             [ExceptionGroup("inner", [ValueError("401 Unauthorized for url 'https://auth.example'")]), KeyError("k")],
