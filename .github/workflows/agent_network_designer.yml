@@ -15,7 +15,7 @@ jobs:
     # cognizant-ai-lab/build-common 1.0.9
     uses: cognizant-ai-lab/build-common/.github/workflows/_python-quality-gate.yml@b14b3de23cb9aca02b2165e57542335e0c8f5304
     with:
-      python-version: '3.13'
+      python-version: '3.12'
       # Required by build_scripts/server_start.sh:
       #   netcat-openbsd (nc, port readiness polling)
       #   procps         (ps, PID liveness check)

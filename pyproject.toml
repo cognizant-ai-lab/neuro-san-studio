@@ -6,7 +6,7 @@ build-backend = "setuptools.build_meta"
 name = "neuro-san-studio"
 dynamic = ["version", "dependencies", "optional-dependencies", "readme"]
 description = "Multi-agent orchestration studio built on the neuro-san framework."
-requires-python = ">=3.10"
+requires-python = ">=3.12"
 license = "Apache-2.0"
 license-files = ["LICENSE.txt"]
 authors = [{ name = "Cognizant AI Lab" }]

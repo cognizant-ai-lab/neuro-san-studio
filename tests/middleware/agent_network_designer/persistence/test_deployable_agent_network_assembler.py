@@ -30,6 +30,9 @@ pytest.importorskip("middleware.agent_network_designer.persistence.deployable_ag
 from middleware.agent_network_designer.persistence.deployable_agent_network_assembler import (  # noqa: E402
     DeployableAgentNetworkAssembler,
 )
+from middleware.agent_network_designer.persistence.hocon_agent_network_assembler import (  # noqa: E402
+    DEFAULT_MAX_EXECUTION_SECONDS,
+)
 
 REPO_ROOT = Path(__file__).resolve().parents[4]
 
@@ -67,6 +70,13 @@ def assemble(client_token_mcp_headers: dict[str, list[str]] | None) -> dict:
         )
     finally:
         os.chdir(cwd)
+
+
+def test_deployable_assembler_adds_max_execution_seconds():
+    """Generated deployable networks include the default execution timeout."""
+    config = assemble(None)
+
+    assert config["max_execution_seconds"] == DEFAULT_MAX_EXECUTION_SECONDS
 
 
 class TestDeployableAssemblerSlyDataSchema:

@@ -2,7 +2,8 @@
 
 This tutorial will teach you how to use a neuro-san agent network as a Python library using the "direct" session feature.
 In this tutorial, we assume that we are working in a blank directory. If you've already created a neuro-san project
-with `ns init` command, you can directly skip to step 3 of this tutorial.
+with `ns init` command, you can directly skip to step 3 of this tutorial -- but note that the starter agent a
+scaffolded project ships is named `basic/music_nerd`, so use that name wherever this tutorial says `music_nerd`.
 
 ## Who is this for ?
 
@@ -140,7 +141,7 @@ print("✓ Set AGENT_MANIFEST_FILE environment variable")
 # Create a factory for building agent sessions
 factory = DirectAgentSessionFactory()
 
-# Specify which agent to use (matches the filename without .hocon)
+# Specify which agent to use (the manifest key without .hocon)
 agent_name = 'music_nerd'
 
 # Create a direct session with the agent
