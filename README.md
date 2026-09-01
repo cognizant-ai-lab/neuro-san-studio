@@ -212,7 +212,9 @@ Run `ns init` to initialize a Neuro SAN Studio project. `ns` stands for Neuro SA
 * let you choose an LLM provider
 * create a `config` folder with your choice of LLM models and plugins configuration
 * create an `mcp` folder with a list of MCP tools
-* create a `registries` folder with a simple agent network
+* create a `registries` folder with a simple agent network and the
+[Agent Network Designer](#agent-network-designer), so you can start designing your own networks right away
+* create `coded_tools` and `middleware` folders with the Python code those agent networks need
 
 To learn more about the `ns` command run `ns --help`.
 
@@ -257,42 +259,26 @@ See [docs/api_key.md](docs/api_key.md) for details and other providers.
 
 ### Import agent networks
 
-You can import the agent networks that ship with `neuro-san-studio` using the `ns import` command.
-It will run an interactive prompt. You can for instance import the `root` agent networks to use the
-Agent Network Designer to create your own agent network.
+`ns init` already installs the Agent Network Designer, so you can start building right away.
+Use `ns import` to add any of the other agent network examples that ship with `neuro-san-studio`.
 
-See [`docs/cli/import.md`](docs/cli/import.md) for details.
+Run it with no arguments to pick from an interactive list:
 
 ```bash
 ns import
 ```
 
-Shows the following prompt:
+Or name a group or a single network directly:
 
 ```bash
-[info]  Discovering available agent networks...
-
-? What do you want to import? (Use arrow keys)
-   Basic (17)
-   Experimental (9)
-   Industry (22)
- » Root (6)
-   Tools (28)
-   ---------------
-   Custom selection
-   All (82)
+ns import basic         # every network in the "basic" group
+ns import hello_world   # a single network
 ```
 
-Choose `root` and press Enter. Confirm with `Y` to import the agent networks that are listed.
+Each imported network brings its dependencies with it -- coded tools, middleware, sub-networks -- and is registered in
+`registries/manifest.hocon`. A running server picks it up within a few seconds.
 
-From `Experimental`, also import:
-
-```bash
-   ● cruse_theme_agent
- » ● cruse_widget_agent
-````
-
-to enable CRUSE, the interactive UI that adapts the UI to the user/agents' needs.
+See [`docs/cli/import.md`](docs/cli/import.md) for the full set of options.
 
 ### Start the developer UI
 

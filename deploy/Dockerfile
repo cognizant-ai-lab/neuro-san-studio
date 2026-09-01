@@ -322,9 +322,6 @@ ENV AGENT_HTTP_IDLE_CONNECTIONS_TIMEOUT="3600"
 #   Positive integer (N) → Manually specifies number of worker processes.
 # The developer-oriented default is 1, but we set to 0 here to allow pod CPU configuration
 # to dictate the number of server instance processes.
-# Note 7/7/2026: If your installation requires temporary agent networks (aka Reservations),
-# the server systems in place are not yet suitable for the multi-process operation
-# that is implied by a value that is not 1.
 ENV AGENT_HTTP_SERVER_INSTANCES="0"
 
 # If set to a value>0, will start periodic logging of currently used
@@ -410,6 +407,19 @@ ENV AGENT_SESSION_REQUIRE_HTTPS="true"
 # Strongly consider keeping this off for production deployments.
 ENV LEAF_LOG_SENSITIVE="false"
 
+# When set to "true" (default "false"), CodedTool "class" references -- including
+# shared coded tools referenced through the toolbox -- resolve ONLY from within
+# the AGENT_TOOL_PATH hierarchy (see AGENT_TOOL_PATH above).  Fully-qualified
+# references to modules elsewhere on the PYTHONPATH are not resolved -- not even
+# imported -- so an agent network hocon file cannot trigger import-time execution
+# of an arbitrary installed module through a CodedTool class reference.  See
+# https://github.com/cognizant-ai-lab/neuro-san/blob/main/docs/agent_hocon_reference.md#class
+# Left off for now: some agent networks in this repo still
+# use fully-qualified CodedTool class references, which the restriction refuses.
+# We will change this to "true" once this repo's class references are cleaned up
+# to the "<module>.<ClassName>" form relative to AGENT_TOOL_PATH.
+ENV AGENT_TOOL_PATH_ONLY="false"
+
 #
 # Authorization
 #
@@ -418,11 +428,11 @@ ENV LEAF_LOG_SENSITIVE="false"
 # When not set (the default) the server uses an implementation for the Authorizer
 # that effectively lets all requests for all users through.
 # We offer the following implementations:
-#   neuro_san.internals.authorization.null.always_yes_authorizer.AlwaysYesAuthorizer (default)
-#   neuro_san.internals.authorization.null.always_no_authorizer.AlwaysNoAuthorizer
-#   neuro_san.internals.authorization.openfga.open_fga_authorizer.OpenFgaAuthorizer
+#   neuro_san.service.authorization.null.always_yes_authorizer.AlwaysYesAuthorizer (default)
+#   neuro_san.service.authorization.null.always_no_authorizer.AlwaysNoAuthorizer
+#   neuro_san.service.authorization.openfga.open_fga_authorizer.OpenFgaAuthorizer
 # Feel free to make your own as long as it derives from this interface:
-#   neuro_san.internals.authorization.interfaces.authorizer.Authorizer
+#   neuro_san.service.authorization.interfaces.authorizer.Authorizer
 ENV AGENT_AUTHORIZER=""
 
 # The request metadata field to use as the actor id for authorization

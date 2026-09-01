@@ -23,7 +23,7 @@ git clone https://github.com/kxk302/ml-fastvlm.git
 cd ml-fastvlm
 ```
 
-3. Using Python *3.10*, create/activate a virtual environment
+3. Using Python *3.12*, create/activate a virtual environment
 
 ```bash
 python3 -m venv venv;

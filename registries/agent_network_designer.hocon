@@ -32,10 +32,8 @@
     # modifying the configuration for each agent network.
     # Note that the file path here is relative to the root level of the repo.
     include "config/llm_config.hocon",
-    "max_steps": 10000,
-    "max_execution_seconds": 1200,
-    "request_timeout_seconds": 1500,
-    "max_attempts": 2,
+    "max_steps": 40000,
+    "max_execution_seconds": 6000,
     "error_formatter": "json",
     "error_fragments": ["Error:", "Exception:", "Traceback (most recent call last)"],
 
@@ -147,6 +145,17 @@ This can be used to invoke the newly created network later on the same server/cl
                                 }
                             }
                         },
+                        "http_headers": {
+                            "type": "object",
+                            "description": """
+Optional per-MCP-server HTTP headers, keyed by server URL, e.g.
+{"https://mcp.example.com/mcp": {"Authorization": "Bearer <token>"}}.
+Lets the designer list tools from OAuth-protected MCP servers and declare them in
+generated networks. nsflow injects headers for every connected server automatically
+when chatting with this network; other clients may supply them explicitly.
+No specific URLs are declared here because the set depends on what the user has connected.
+"""
+                        },
                         "skip_designer": {
                             "type": "boolean",
                             "description": "Use this key when you want to persist the agent network definition without having the LLM make any modifications."
@@ -257,9 +266,15 @@ Operational notes:
                     "messages": ["/agent_network_editor", "/agent_network_query_generator", "/agent_network_instructions_editor"]
                 },
                 "to_downstream": {
+                    # http_headers carries the per-conversation MCP auth headers an OAuth-capable
+                    # client (nsflow) injects into sly_data for the designer (nsflow injects ALL
+                    # connected servers' tokens when chatting with this network). It must flow to
+                    # /agent_network_editor so its get_mcp_tool can list OAuth-protected MCP
+                    # servers' tools. The other subnetworks ignore it, and no to_upstream /
+                    # to_tracing allowlist includes it, so tokens never leave the server side.
                     # Optionally propagate any BYOK keys to downstream tools.
                     "sly_data": ["agent_network_definition", "agent_network_name", "agent_network_queries",
-                                 ${?llm_config_key}]
+                                 "http_headers", ${?llm_config_key}]
                 },
                 "to_tracing": {
                     # These keys are not considered private and OK to send to an Observability backend

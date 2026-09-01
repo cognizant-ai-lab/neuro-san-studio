@@ -55,6 +55,10 @@ Do not mention what you can NOT do. Only mention what you can do.
     "tools": [
 
         # Top agent template
+        # Note: the assembler sets "function.description" in code after
+        # filtering, and — when the network uses MCP servers — also injects
+        # a "function.sly_data_schema" declaring the http_headers clients
+        # must pass via sly_data (see DeployableAgentNetworkAssembler).
         {
             "name": "{agent_name}",
             "function": "aaosa_call",

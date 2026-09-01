@@ -105,7 +105,10 @@ class ProcessGlobals:  # pylint: disable=too-few-public-methods
     # 5. Shared MCP servers
     #    Holds:   the list of MCP server URLs parsed from mcp_info.hocon
     #             (MCP_SERVERS_INFO_FILE, the cwd scaffold, or the bundled
-    #             copy — see GetMcpTool.get_mcp_info_file).
+    #             copy — see GetMcpTool.get_mcp_info_file). Per-conversation
+    #             servers supplied via sly_data http_headers are NOT part of
+    #             this cache; callers union them in via
+    #             GetMcpTool.sly_data_http_header_urls(sly_data).
     #    Lives:   get_mcp_tool.GetMcpTool (async get_mcp_servers)
     #    Expiry:  resolved path or modification_time change — no time bucket, since
     #             nothing writes the file at runtime.
@@ -117,7 +120,12 @@ class ProcessGlobals:  # pylint: disable=too-few-public-methods
     #
     # 6. Shared MCP tool descriptions
     #    Holds:   the {server URL: tool descriptions} mapping fetched from
-    #             the MCP servers themselves (network calls).
+    #             the file-configured MCP servers themselves (network
+    #             calls). Listings for per-conversation sly_data servers
+    #             are deliberately NOT cached here — their auth headers
+    #             belong to one conversation, and a process-wide entry
+    #             would serve one user's authenticated listing to every
+    #             other (see GetMcpTool._fetch_sly_data_tool_descriptions).
     #    Lives:   get_mcp_tool.GetMcpTool (async get_mcp_tool_descriptions)
     #    Expiry:  mcp_info.hocon path/modification_time change, or one
     #             AGENT_NETWORK_DESIGNER_MCP_TOOLS_TTL_SECONDS window

@@ -19,9 +19,27 @@
 # more descriptive without the autouse fixture below silently ceasing to run.
 # The inventory of the process-wide globals this fixture resets lives in
 # coded_tools/agent_network_editor/globals.py.
+import os
+
 import pytest
 
 from coded_tools.agent_network_editor.globals import ProcessGlobals
+
+
+@pytest.fixture(autouse=True)
+def restore_os_environ():
+    """
+    Undo any os.environ mutation a test makes, so env state cannot leak between tests.
+
+    Covers writes that bypass monkeypatch -- e.g. ProjectEnvironment.apply()/set_pythonpath(),
+    and the .env file the CLI's top-level callback loads via dotenv. Without this, a variable
+    picked up during one test stays set for the rest of the session and silently changes what
+    later tests see.
+    """
+    saved = os.environ.copy()  # setup: before the test
+    yield  # <- test body runs here
+    os.environ.clear()  # teardown: after, even if the test failed
+    os.environ.update(saved)
 
 
 @pytest.fixture(autouse=True)

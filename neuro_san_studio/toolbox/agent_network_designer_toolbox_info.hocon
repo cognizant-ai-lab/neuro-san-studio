@@ -292,4 +292,36 @@ Supports searching for images, audio files (mp3, ogg, flac, wav), and video file
         }
     },
 
+    # Writes text content to a local file with allow/block-list access control.
+    # See toolbox_info.hocon for the full operator-configuration notes: access
+    # control (allowed_paths etc.) is operator-supplied via `args` and is
+    # intentionally not exposed in the schema below; without `allowed_paths`
+    # the tool refuses every call (deny-by-default).
+    "write_file": {
+        "class": "neuro_san_studio.coded_tools.file_management.write_file.WriteFile",
+        "description": "Creates or overwrites a local text file with the given content. Access is restricted by operator-configured allow/block lists for paths and extensions; the LLM cannot influence those lists. Overwriting an existing file and creating missing parent directories both require explicit opt-in flags.",
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "file_path": {
+                    "type": "string",
+                    "description": "Absolute or relative path to the file to write."
+                },
+                "content": {
+                    "type": "string",
+                    "description": "Text content to write to the file (UTF-8)."
+                },
+                "overwrite": {
+                    "type": "boolean",
+                    "description": "Set true to replace an existing file. Defaults to false; writing to an existing path without it fails with file_already_exists."
+                },
+                "create_parents": {
+                    "type": "boolean",
+                    "description": "Set true to create missing parent directories (mkdir -p). Defaults to false; a missing parent fails with parent_not_found."
+                }
+            },
+            "required": ["file_path", "content"]
+        }
+    },
+
 }

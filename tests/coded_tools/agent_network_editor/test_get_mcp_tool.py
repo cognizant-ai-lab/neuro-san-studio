@@ -14,11 +14,12 @@
 #
 # END COPYRIGHT
 """
-Policy tests for GetMcpTool's process-wide caches: how the TTL and
-per-server fetch cap are validated, what gets published, what must never be
-published, and how failures degrade. The generic cache mechanism itself is
-covered by test_shared_process_cache.py; these tests pin the policy layered
-on top of it, with the MCP client layer stubbed out.
+Policy tests for GetMcpTool's process-wide caches and its per-conversation
+sly_data path: how the TTL and per-server fetch cap are validated, what gets
+published, what must never be published (or cached), and how failures
+degrade. The generic cache mechanism itself is covered by
+test_shared_process_cache.py; these tests pin the policy layered on top of
+it, with the MCP client layer stubbed out.
 
 Skipped (not failed) in environments whose neuro-san predates the imports
 get_mcp_tool needs, so the suite still collects everywhere.
@@ -41,8 +42,12 @@ from coded_tools.agent_network_editor.get_mcp_tool import DEFAULT_MCP_TOOLS_FETC
 from coded_tools.agent_network_editor.get_mcp_tool import DEFAULT_MCP_TOOLS_TTL_SECONDS  # noqa: E402
 from coded_tools.agent_network_editor.get_mcp_tool import GetMcpTool  # noqa: E402
 from coded_tools.agent_network_editor.globals import ProcessGlobals  # noqa: E402
+from coded_tools.agent_network_editor.mcp_servers_load import McpServersLoad  # noqa: E402
 
 MCP_SERVERS: list[str] = ["https://one.example/mcp", "https://two.example/mcp"]
+
+# A server the conversation supplies auth headers for (not file-configured).
+CLIENT_URL: str = "https://oauth.example/mcp"
 
 TTL_ENV: str = "AGENT_NETWORK_DESIGNER_MCP_TOOLS_TTL_SECONDS"
 FETCH_TIMEOUT_ENV: str = "AGENT_NETWORK_DESIGNER_MCP_TOOLS_FETCH_TIMEOUT_SECONDS"
@@ -70,7 +75,8 @@ class TestGetMcpToolConfig(TestCase):
             for raw, expected in (("0", 0.0), ("-5", -5.0)):
                 os.environ[TTL_ENV] = raw
                 self.assertEqual(GetMcpTool._mcp_tools_ttl_seconds(), expected)
-                self.assertEqual(GetMcpTool._mcp_tools_fingerprint()[3], 0)
+                # The time bucket is the last fingerprint component.
+                self.assertEqual(GetMcpTool._mcp_tools_fingerprint()[-1], 0)
 
     def test_ttl_is_clamped_to_twice_the_fetch_cap(self):
         """A TTL shorter than one fetch would livelock the cache; clamp it."""
@@ -135,7 +141,7 @@ class TestGetMcpServers(TestCase):
         GetMcpTool.clear_shared_mcp_tool_descriptions_for_testing()
 
     def test_a_missing_file_publishes_an_empty_list(self):
-        """No config file means no MCP servers, not an error."""
+        """No config file means no file-configured MCP servers, not an error."""
         with mock.patch.dict(os.environ, {"MCP_SERVERS_INFO_FILE": "/nonexistent/mcp_info.hocon"}):
             self.assertEqual(asyncio.run(GetMcpTool.get_mcp_servers()), [])
 
@@ -150,23 +156,125 @@ class TestGetMcpServers(TestCase):
             ):
                 self.assertEqual(asyncio.run(GetMcpTool.get_mcp_servers()), [])
 
+    def test_load_reports_a_failure_only_when_the_file_load_failed(self):
+        """A broken file is 'unknown' (loaded_ok False); missing, empty, and
+        good files all load ok."""
+        # A missing file is an authoritative empty, not a failure.
+        with mock.patch.dict(os.environ, {"MCP_SERVERS_INFO_FILE": "/nonexistent/mcp_info.hocon"}):
+            self.assertEqual(asyncio.run(GetMcpTool.get_mcp_servers_load()), McpServersLoad([], True))
+
+        # A file that exists but cannot be read/parsed is unknown.
+        for error in (OSError("permission denied"), ValueError("bad hocon")):
+            GetMcpTool.clear_shared_mcp_servers_for_testing()
+            restorer = mock.Mock()
+            restorer.restore.side_effect = error
+            with mock.patch(
+                "coded_tools.agent_network_editor.get_mcp_tool.McpServersInfoRestorer", return_value=restorer
+            ):
+                self.assertEqual(asyncio.run(GetMcpTool.get_mcp_servers_load()), McpServersLoad([], False))
+
+        # A file that loads reports its URLs with loaded_ok True.
+        GetMcpTool.clear_shared_mcp_servers_for_testing()
+        restorer = mock.Mock()
+        restorer.restore.return_value = {"https://one.example/mcp": {}}
+        with mock.patch("coded_tools.agent_network_editor.get_mcp_tool.McpServersInfoRestorer", return_value=restorer):
+            self.assertEqual(
+                asyncio.run(GetMcpTool.get_mcp_servers_load()), McpServersLoad(["https://one.example/mcp"], True)
+            )
+
+
+class TestSlyDataHttpHeaderUrls(TestCase):
+    """Extraction of the per-conversation MCP header URLs from sly_data."""
+
+    def test_urls_are_extracted_in_order(self):
+        """Well-formed http_headers yields its URL keys, order preserved."""
+        sly_data = {
+            "http_headers": {
+                "https://a.example/mcp": {"Authorization": "Bearer x"},
+                "https://b.example/mcp": {"X-Api-Key": "y"},
+            }
+        }
+        self.assertEqual(
+            GetMcpTool.sly_data_http_header_urls(sly_data),
+            ["https://a.example/mcp", "https://b.example/mcp"],
+        )
+
+    def test_missing_or_malformed_shapes_read_as_no_urls(self):
+        """Clients control this input: absent/broken shapes must not raise."""
+        for sly_data in (None, {}, {"http_headers": None}, {"http_headers": "not-a-dict"}, {"http_headers": []}):
+            self.assertEqual(GetMcpTool.sly_data_http_header_urls(sly_data), [])
+
+    def test_malformed_entries_are_skipped(self):
+        """Non-string keys and non-dict header values are dropped, not fatal."""
+        sly_data = {
+            "http_headers": {
+                "https://good.example/mcp": {"Authorization": "Bearer x"},
+                42: {"Authorization": "Bearer y"},
+                "https://bad.example/mcp": "not-a-dict",
+            }
+        }
+        self.assertEqual(GetMcpTool.sly_data_http_header_urls(sly_data), ["https://good.example/mcp"])
+
+    def test_non_http_urls_are_skipped(self):
+        """Only http(s) MCP URLs count; a '/'-path or other scheme is not a server."""
+        sly_data = {
+            "http_headers": {
+                "/internal_admin_network": {"Authorization": "Bearer x"},
+                "ftp://host/mcp": {"Authorization": "Bearer y"},
+                "https://ok.example/mcp": {"Authorization": "Bearer z"},
+            }
+        }
+        self.assertEqual(GetMcpTool.sly_data_http_header_urls(sly_data), ["https://ok.example/mcp"])
+
+    def test_malformed_urls_are_skipped(self):
+        """An accepted URL becomes a fetch target and a verbatim log line,
+        so a control-character (log-forging) or userinfo-bearing key never
+        classifies (shape rules pinned in test_mcp_header_hygiene.py)."""
+        sly_data = {
+            "http_headers": {
+                "https://ok.example/mcp\nFORGED": {"Authorization": "Bearer x"},
+                "https://user:pass@ok.example/mcp": {"Authorization": "Bearer y"},
+                "https://ok.example/mcp": {"Authorization": "Bearer z"},
+            }
+        }
+        self.assertEqual(GetMcpTool.sly_data_http_header_urls(sly_data), ["https://ok.example/mcp"])
+
+    def test_urls_without_a_usable_header_are_skipped(self):
+        """An empty dict, a blank value, a non-string value, or an illegal
+        header name supplies no credential the fetch could send."""
+        sly_data = {
+            "http_headers": {
+                "https://empty.example/mcp": {},
+                "https://blank.example/mcp": {"Authorization": "   "},
+                "https://nonstr.example/mcp": {"Authorization": 123},
+                "https://badname.example/mcp": {"Auth orization": "Bearer x"},
+                "https://ok.example/mcp": {"Authorization": "Bearer tok"},
+            }
+        }
+        self.assertEqual(GetMcpTool.sly_data_http_header_urls(sly_data), ["https://ok.example/mcp"])
+
 
 class TestGetMcpToolDescriptions(TestCase):
-    """Publish/degrade policy for the shared tool-descriptions cache."""
+    """Publish/degrade policy for the shared cache, plus the sly_data path."""
 
     def setUp(self):
         GetMcpTool.clear_shared_mcp_servers_for_testing()
         GetMcpTool.clear_shared_mcp_tool_descriptions_for_testing()
         self.fetch_log: list[str] = []
+        self.headers_log: dict[str, dict | None] = {}
         self.listings: dict[str, str] = {server: f"tools of {server}" for server in MCP_SERVERS}
 
     def _patched_fetches(self):
         """Stub the per-server fetch; a server absent from self.listings fails."""
         fetch_log = self.fetch_log
+        headers_log = self.headers_log
         listings = self.listings
 
-        async def fake_fetch(server: str, _fetch_timeout: float | None) -> tuple[str, str | None]:
+        async def fake_fetch(
+            server: str, _fetch_timeout: float | None, headers: dict | None = None
+        ) -> tuple[str, str | None]:
             fetch_log.append(server)
+            headers_log[server] = headers
             return server, listings.get(server)
 
         return mock.patch.object(GetMcpTool, "_fetch_tool_descriptions", new=fake_fetch)
@@ -174,7 +282,8 @@ class TestGetMcpToolDescriptions(TestCase):
     def _patched_servers(self, servers: list[str] | None = None):
         """Pin the servers half so these tests never read the real config file."""
         pinned = MCP_SERVERS if servers is None else servers
-        return mock.patch.object(GetMcpTool._shared_mcp_servers_cache, "get", new=mock.Mock(return_value=list(pinned)))
+        loaded = McpServersLoad(list(pinned), True)
+        return mock.patch.object(GetMcpTool._shared_mcp_servers_cache, "get", new=mock.Mock(return_value=loaded))
 
     def test_concurrent_callers_share_one_fetch_and_warm_reads_are_free(self):
         """A cold burst fetches each server once; warm reads fetch nothing."""
@@ -262,6 +371,95 @@ class TestGetMcpToolDescriptions(TestCase):
 
         self.assertEqual(result, str(self.listings))
 
+    def test_async_invoke_merges_sly_data_server_listings(self):
+        """sly_data http_headers servers are fetched with their own headers."""
+        tool: GetMcpTool = GetMcpTool.__new__(GetMcpTool)
+        self.listings[CLIENT_URL] = f"tools of {CLIENT_URL}"
+        sly_data = {"http_headers": {CLIENT_URL: {"Authorization": "Bearer tok-0"}}}
+
+        with mock.patch.dict(os.environ, {TTL_ENV: "100000"}), self._patched_servers(), self._patched_fetches():
+            result = asyncio.run(tool.async_invoke(args={}, sly_data=sly_data))
+
+        # The client server got exactly the conversation's header dict...
+        self.assertEqual(self.headers_log[CLIENT_URL], {"Authorization": "Bearer tok-0"})
+        # ...file servers got none, and everything landed in the output.
+        for server in MCP_SERVERS:
+            self.assertIsNone(self.headers_log[server])
+            self.assertIn(f"tools of {server}", result)
+        self.assertIn(f"tools of {CLIENT_URL}", result)
+        # The token itself never surfaces in what the LLM will see.
+        self.assertNotIn("tok-0", result)
+
+    def test_a_file_configured_server_ignores_sly_data_headers(self):
+        """A URL in both sources stays a server-side concern: no client fetch."""
+        tool: GetMcpTool = GetMcpTool.__new__(GetMcpTool)
+        sly_data = {"http_headers": {MCP_SERVERS[0]: {"Authorization": "Bearer stale"}}}
+
+        with mock.patch.dict(os.environ, {TTL_ENV: "100000"}), self._patched_servers(), self._patched_fetches():
+            asyncio.run(tool.async_invoke(args={}, sly_data=sly_data))
+
+        # Exactly one (shared, headerless) fetch — no second, client-headed one.
+        self.assertEqual(self.fetch_log.count(MCP_SERVERS[0]), 1)
+        self.assertIsNone(self.headers_log[MCP_SERVERS[0]])
+
+    def test_sly_data_listings_are_fetched_per_call_not_cached(self):
+        """Client-authenticated listings must never be served across calls."""
+        tool: GetMcpTool = GetMcpTool.__new__(GetMcpTool)
+        self.listings[CLIENT_URL] = "client tools"
+        sly_data = {"http_headers": {CLIENT_URL: {"Authorization": "Bearer tok"}}}
+
+        with mock.patch.dict(os.environ, {TTL_ENV: "100000"}), self._patched_servers(), self._patched_fetches():
+            asyncio.run(tool.async_invoke(args={}, sly_data=sly_data))
+            asyncio.run(tool.async_invoke(args={}, sly_data=sly_data))
+
+        # File servers: one shared fetch each; the client server: one per call.
+        for server in MCP_SERVERS:
+            self.assertEqual(self.fetch_log.count(server), 1)
+        self.assertEqual(self.fetch_log.count(CLIENT_URL), 2)
+
+    def test_sly_data_header_values_are_sanitized_before_fetch(self):
+        """A token with surrounding whitespace is stripped before it is sent."""
+        tool: GetMcpTool = GetMcpTool.__new__(GetMcpTool)
+        self.listings[CLIENT_URL] = f"tools of {CLIENT_URL}"
+        sly_data = {"http_headers": {CLIENT_URL: {"Authorization": "  Bearer tok-0\n"}}}
+
+        with mock.patch.dict(os.environ, {TTL_ENV: "100000"}), self._patched_servers(), self._patched_fetches():
+            asyncio.run(tool.async_invoke(args={}, sly_data=sly_data))
+
+        # The adapter receives the trimmed value, not the raw client input.
+        self.assertEqual(self.headers_log[CLIENT_URL], {"Authorization": "Bearer tok-0"})
+
+    def test_client_listings_do_not_leak_across_conversations(self):
+        """Two conversations' client-token servers stay isolated: neither
+        conversation's sly_data servers may surface in the other's output,
+        because those listings are fetched per call and never cached."""
+        tool: GetMcpTool = GetMcpTool.__new__(GetMcpTool)
+        alice_url = "https://alice.example/mcp"
+        bob_url = "https://bob.example/mcp"
+        self.listings[alice_url] = "tools of alice"
+        self.listings[bob_url] = "tools of bob"
+        alice_sly = {"http_headers": {alice_url: {"Authorization": "Bearer alice-tok"}}}
+        bob_sly = {"http_headers": {bob_url: {"Authorization": "Bearer bob-tok"}}}
+
+        # Back-to-back in one process, sharing the file-descriptions cache.
+        with mock.patch.dict(os.environ, {TTL_ENV: "100000"}), self._patched_servers(), self._patched_fetches():
+            result_alice = asyncio.run(tool.async_invoke(args={}, sly_data=alice_sly))
+            result_bob = asyncio.run(tool.async_invoke(args={}, sly_data=bob_sly))
+
+        # Each conversation sees its own client server...
+        self.assertIn("tools of alice", result_alice)
+        self.assertIn("tools of bob", result_bob)
+        # ...and never the other conversation's.
+        self.assertNotIn("tools of bob", result_alice)
+        self.assertNotIn("tools of alice", result_bob)
+        # The shared, file-configured servers appear in both (same for everyone).
+        for server in MCP_SERVERS:
+            self.assertIn(f"tools of {server}", result_alice)
+            self.assertIn(f"tools of {server}", result_bob)
+        # Neither token reaches the LLM-visible output.
+        self.assertNotIn("alice-tok", result_alice)
+        self.assertNotIn("bob-tok", result_bob)
+
     def test_registry_covers_both_mcp_caches(self):
         """globals' REGISTRY triples must resolve now that get_mcp_tool is imported."""
         with mock.patch.dict(os.environ, {TTL_ENV: "100000"}), self._patched_servers(), self._patched_fetches():
@@ -286,7 +484,7 @@ class TestFetchToolDescriptions(TestCase):
     def test_a_server_exceeding_the_cap_degrades_to_a_failure(self):
         """A hung server is cut off at the cap and reported as failed."""
 
-        async def never_answers(_server: str) -> list:
+        async def never_answers(_server: str, headers: dict | None = None) -> list:  # pylint: disable=unused-argument
             await asyncio.sleep(10)
             return []
 
@@ -299,7 +497,9 @@ class TestFetchToolDescriptions(TestCase):
     def test_a_malformed_tool_degrades_to_that_server_only(self):
         """A tool with no description must fail this server, not the whole load."""
 
-        async def returns_a_broken_tool(_server: str) -> list:
+        async def returns_a_broken_tool(  # pylint: disable=unused-argument
+            _server: str, headers: dict | None = None
+        ) -> list:
             return [mock.Mock(description=None)]
 
         with self._patched_adapter(returns_a_broken_tool):
@@ -310,10 +510,67 @@ class TestFetchToolDescriptions(TestCase):
     def test_descriptions_are_newline_joined(self):
         """A healthy server's tool descriptions flatten into one string."""
 
-        async def returns_two_tools(_server: str) -> list:
+        async def returns_two_tools(  # pylint: disable=unused-argument
+            _server: str, headers: dict | None = None
+        ) -> list:
             return [mock.Mock(description="alpha"), mock.Mock(description="beta")]
 
         with self._patched_adapter(returns_two_tools):
             _server, description = asyncio.run(GetMcpTool._fetch_tool_descriptions("https://good.example", 5.0))
 
         self.assertEqual(description, "alpha\nbeta\n")
+
+    def test_headers_are_forwarded_to_the_adapter(self):
+        """The per-server fetch passes its headers through to get_mcp_tools."""
+        seen: dict[str, dict | None] = {}
+
+        async def records_headers(server: str, headers: dict | None = None) -> list:
+            seen[server] = headers
+            return [mock.Mock(description="alpha")]
+
+        with self._patched_adapter(records_headers):
+            asyncio.run(
+                GetMcpTool._fetch_tool_descriptions(
+                    "https://auth.example", 5.0, headers={"Authorization": "Bearer tok"}
+                )
+            )
+
+        self.assertEqual(seen["https://auth.example"], {"Authorization": "Bearer tok"})
+
+    def test_exception_group_leaves_surface_in_the_failure_log(self):
+        """The drop-path warning must show the buried cause (e.g. a 401),
+        not anyio's opaque 'unhandled errors in a TaskGroup' text (the leaf
+        rendering itself is pinned in test_mcp_header_hygiene.py)."""
+        nested = ExceptionGroup(
+            "unhandled errors in a TaskGroup",
+            [ExceptionGroup("inner", [ValueError("401 Unauthorized for url 'https://auth.example'")]), KeyError("k")],
+        )
+
+        async def raises_the_group(_server: str, headers: dict | None = None) -> list:
+            raise nested
+
+        with self._patched_adapter(raises_the_group), self.assertLogs(level="WARNING") as captured:
+            _server, description = asyncio.run(GetMcpTool._fetch_tool_descriptions("https://auth.example", 5.0))
+
+        logged = "\n".join(captured.output)
+        self.assertIsNone(description)
+        self.assertIn("401 Unauthorized", logged)
+        self.assertNotIn("TaskGroup", logged)
+
+    def test_a_leaked_header_value_is_redacted_from_the_failure_log(self):
+        """A value-bearing error (mimicking h11) must not put the token in the log."""
+        token = "Bearer FAKE-SECRET-xyz\n"
+
+        async def raises_with_value(_server: str, headers: dict | None = None) -> list:
+            # h11 renders an illegal header value as its bytes repr.
+            raise ValueError(f"Illegal header value {token.encode()!r}")
+
+        with self._patched_adapter(raises_with_value), self.assertLogs(level="WARNING") as captured:
+            _server, description = asyncio.run(
+                GetMcpTool._fetch_tool_descriptions("https://auth.example", 5.0, headers={"Authorization": token})
+            )
+
+        logged = "\n".join(captured.output)
+        self.assertIsNone(description)
+        self.assertNotIn("FAKE-SECRET-xyz", logged)
+        self.assertIn("***", logged)

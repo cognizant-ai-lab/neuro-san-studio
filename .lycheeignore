@@ -4,6 +4,8 @@ http://127.0.0.1
 
 # Private network addresses
 http://192.168.
+# Cloud metadata endpoint used as an SSRF test fixture (link-local, not browsable)
+http://169.254.169.254
 
 # Placeholder and example URLs
 https://github.com/your-username/
@@ -39,3 +41,15 @@ https://go.dev/dl/go\$
 http://link/a
 http://link/b
 http://x/
+
+# For unit test, test_safe_fetch domain-policy fixtures (never actually fetched;
+# validate_url rejects them before any network call). lychee IDNA-normalizes hosts,
+# so these are the punycode/trailing-dot forms it derives from example.com.,
+# münchen.de and faß.de. Dots are escaped so the trailing-dot entry does not also
+# match the plain https://example.com/... URLs used elsewhere.
+https://example\.com\.
+https://xn--mnchen-3ya\.de
+https://xn--fa-hia\.de
+# Root-only authorities used by the empty-canonical-host test (dots escaped).
+http://\./
+http://\.\./
