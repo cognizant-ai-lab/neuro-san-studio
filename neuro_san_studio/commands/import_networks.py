@@ -26,11 +26,11 @@ from typing import Optional
 import questionary
 
 from neuro_san_studio.discovery.agent_network_registry import AgentNetworkRegistry
-from neuro_san_studio.discovery.dependency_analyzer import DependencyAnalyzer
 from neuro_san_studio.importer.agent_network_importer import AgentNetworkImporter
-from neuro_san_studio.importer.agent_network_importer import is_skippable_metadata
+from neuro_san_studio.importer.bulk_import_result import BulkImportResult
 from neuro_san_studio.utils.cli_prompt import CliPrompt
 from neuro_san_studio.utils.cli_status import CliStatus
+from neuro_san_studio.utils.import_reporter import ImportReporter
 from neuro_san_studio.utils.package_paths import PackagePaths
 
 CUSTOM = "__custom__"
@@ -155,19 +155,13 @@ class ImportCommand:  # pylint: disable=too-few-public-methods
         if not results:
             return
 
-        manifest_entries = [name for r in results for name in r.manifest_entries]
-        if manifest_entries:
+        bulk = BulkImportResult(results=results)
+        if bulk.manifest_entries:
             print()
             CliStatus.info("Updating manifest...")
-            importer.update_manifest(manifest_entries)
+            importer.update_manifest(bulk.manifest_entries)
 
-        self._print_summary(
-            copied=sum(len(r.copied_files) for r in results),
-            skipped=sum(len(r.skipped_files) for r in results),
-            warnings=[w for r in results for w in r.warnings],
-            errors=[e for r in results for e in r.errors],
-        )
-        self._print_mcp_summary(results)
+        ImportReporter.report(bulk)
         print()
         CliStatus.ok(f"Done with importing {len(results)} agent network(s) from local storage.")
         print()
@@ -224,7 +218,7 @@ class ImportCommand:  # pylint: disable=too-few-public-methods
     def _confirm_zip_import(source_path: str, names: List[str], force: bool = False) -> bool:
         """List registry HOCONs explicitly; collapse coded_tools/, middleware/, skills/ to counts."""
         # Filter out metadata so the preview matches what actually gets copied.
-        real = [n for n in names if not is_skippable_metadata(n)]
+        real = [n for n in names if not AgentNetworkImporter.is_skippable_metadata(n)]
         registries = sorted(
             n[len("registries/") :] for n in real if n.startswith("registries/") and n.endswith(".hocon")
         )
@@ -433,95 +427,15 @@ class ImportCommand:  # pylint: disable=too-few-public-methods
         return CliPrompt.bind_back_keys(question, BACK).ask()
 
     def _import(self, hocon_paths: List[str], registry: AgentNetworkRegistry) -> None:
-        analyzer = DependencyAnalyzer(
-            registry.registries_dir,
-            os.path.join(registry.source_dir, "coded_tools"),
-            os.path.join(registry.source_dir, "middleware"),
-        )
         importer = AgentNetworkImporter(registry.source_dir, self.target_dir)
-        results, top_errors = self._collect_results(
-            hocon_paths, analyzer, importer, registry.registries_dir, force=self.force
-        )
+        bulk = importer.import_networks(hocon_paths, force=self.force, on_network=ImportReporter.announce)
 
-        # Use manifest_entries (not hocon_path) so transitively-imported sub-networks are
-        # registered too — agent_network_designer pulls in three sub-networks; without this
+        # Register manifest_entries (not hocon_paths) so transitively-imported sub-networks are
+        # declared too — agent_network_designer pulls in three sub-networks; without this
         # they'd land on disk but never get served.
-        imported = [name for r in results for name in r.manifest_entries]
-        if imported:
+        if bulk.manifest_entries:
             print()
             CliStatus.info("Updating manifest...")
-            importer.update_manifest(imported)
+            importer.update_manifest(bulk.manifest_entries)
 
-        copied = sum(len(r.copied_files) for r in results)
-        skipped = sum(len(r.skipped_files) for r in results)
-        warnings = [w for r in results for w in r.warnings]
-        errors = top_errors + [e for r in results for e in r.errors]
-        self._print_summary(copied, skipped, warnings, errors)
-        self._print_mcp_summary(results)
-
-    @staticmethod
-    def _collect_results(
-        hocon_paths: List[str],
-        analyzer: DependencyAnalyzer,
-        importer: AgentNetworkImporter,
-        registries_dir: str,
-        force: bool = False,
-    ):
-        """Analyze and import each network; return successful ImportResults plus any top-level errors."""
-        results = []
-        errors: List[str] = []
-        for hocon_path in hocon_paths:
-            full_path = os.path.join(registries_dir, hocon_path)
-            CliStatus.info(f"Analyzing {hocon_path}...")
-            try:
-                deps = analyzer.get_transitive_dependencies(full_path)
-            except (OSError, ValueError) as exc:
-                errors.append(f"Failed to analyze {hocon_path}: {exc}")
-                continue
-
-            CliStatus.info(f"Importing {hocon_path}...")
-            try:
-                results.append(importer.import_network(hocon_path, deps, force=force))
-            except (OSError, ValueError) as exc:
-                errors.append(f"Failed to import {hocon_path}: {exc}")
-        return results, errors
-
-    @staticmethod
-    def _print_mcp_summary(results) -> None:
-        """List MCP servers merged into <project>/mcp/mcp_info.hocon, plus any skipped (already-present) URLs."""
-        added = [u for r in results for u in r.mcp_added]
-        skipped = [u for r in results for u in r.mcp_skipped]
-        if not (added or skipped):
-            return
-        if added:
-            print()
-            CliStatus.info(f"MCP servers added to mcp/mcp_info.hocon ({len(added)}):")
-            for url in added:
-                print(f"        - {url}")
-        if skipped:
-            print()
-            CliStatus.info(f"MCP servers already configured, left untouched ({len(skipped)}):")
-            for url in skipped:
-                print(f"        - {url}")
-
-    @staticmethod
-    def _print_summary(copied: int, skipped: int, warnings: List[str], errors: List[str]) -> None:
-        print()
-        CliStatus.info("Summary:")
-        CliStatus.ok(f"Copied: {copied} files")
-        if skipped:
-            CliStatus.skip(f"Skipped: {skipped} files (already exist)")
-        if warnings:
-            print()
-            CliStatus.warn(f"Warnings ({len(warnings)}):")
-            for item in warnings[:5]:
-                print(f"        - {item}")
-            if len(warnings) > 5:
-                print(f"        ... and {len(warnings) - 5} more")
-        if errors:
-            print()
-            CliStatus.err(f"Errors ({len(errors)}):")
-            for item in errors[:5]:
-                print(f"        - {item}")
-            if len(errors) > 5:
-                print(f"        ... and {len(errors) - 5} more")
+        ImportReporter.report(bulk)

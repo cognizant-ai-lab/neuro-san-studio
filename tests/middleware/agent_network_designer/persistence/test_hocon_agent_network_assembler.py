@@ -23,6 +23,7 @@ from pathlib import Path
 
 from pyhocon import ConfigFactory
 
+from middleware.agent_network_designer.persistence.hocon_agent_network_assembler import DEFAULT_MAX_EXECUTION_SECONDS
 from middleware.agent_network_designer.persistence.hocon_agent_network_assembler import HoconAgentNetworkAssembler
 
 REPO_ROOT = Path(__file__).resolve().parents[4]
@@ -67,6 +68,13 @@ def unquote(key: str) -> str:
     identical artifact for the hand-written you_search.hocon.
     """
     return key.strip('"')
+
+
+def test_hocon_assembler_adds_max_execution_seconds():
+    """Generated HOCON networks include the default execution timeout."""
+    content = assemble(None)
+
+    assert f'"max_execution_seconds": {DEFAULT_MAX_EXECUTION_SECONDS}' in content
 
 
 class TestHoconAssemblerSlyDataSchema:

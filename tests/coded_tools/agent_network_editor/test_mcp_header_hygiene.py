@@ -21,7 +21,6 @@ sent are redacted out of it. How GetMcpTool wires these into the fetch
 pipeline is covered by test_get_mcp_tool.py.
 """
 
-import sys
 from unittest import TestCase
 
 import pytest
@@ -192,9 +191,6 @@ class TestErrorSummary(TestCase):
         errors in a TaskGroup (N sub-exceptions)' adds nothing once its
         leaves are shown, and the leaves (e.g. a 401) are what pick the
         remedy."""
-        if sys.version_info < (3, 11):
-            self.skipTest("ExceptionGroup is a 3.11+ builtin")
-
         nested = ExceptionGroup(
             "unhandled errors in a TaskGroup",
             [ExceptionGroup("inner", [ValueError("401 Unauthorized for url 'https://auth.example'")]), KeyError("k")],

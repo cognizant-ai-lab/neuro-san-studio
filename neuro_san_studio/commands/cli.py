@@ -236,7 +236,7 @@ class NeuroSanStudioCli:  # pylint: disable=too-few-public-methods
         "chat",
         help=(
             "Chat with an agent network directly (without starting nsflow).\n\n"
-            "Pass the agent name as AGENT, e.g. ns chat music_nerd"
+            "Pass the agent name as AGENT, e.g. ns chat basic/music_nerd"
         ),
         no_args_is_help=True,
         context_settings={
