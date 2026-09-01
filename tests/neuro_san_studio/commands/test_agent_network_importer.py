@@ -871,11 +871,13 @@ class TestPackageRootsAreRegularPackages:
         assert not (target_dir / "middleware").exists()
 
     def test_root_init_healed_when_all_files_skip(self, tmp_path: Path) -> None:
-        """A re-import whose files all already exist must still heal a missing root __init__.py.
+        """A re-import whose coded-tool files all already exist must still heal the root __init__.py.
 
-        Skips prove the import wanted to place content under the root, so the root is part
-        of the import's footprint even when nothing was copied — e.g. a user hand-copied the
-        tool files but not the package inits, then ran the import to repair the project.
+        Everything under coded_tools/ skips here (only the registry hocon copies), so the
+        heal must be triggered by the skips alone: they prove the import wanted to place
+        content under the root, making it part of the import's footprint — e.g. a user
+        hand-copied the tool files but not the package inits, then re-ran the import to
+        repair the project.
 
         :param tmp_path: pytest-provided temporary directory for the source and target trees.
         """
@@ -883,7 +885,8 @@ class TestPackageRootsAreRegularPackages:
         target_dir: Path = tmp_path / "target"
         target_dir.mkdir()
         self._source_without_root_init(source_dir)
-        # Pre-place every file the import would deliver, but no root __init__.py.
+        # Pre-place every coded-tool file the import would deliver, but no root __init__.py.
+        # The registry hocon is deliberately NOT pre-placed; it still copies normally.
         pre_placed: Path = target_dir / "coded_tools" / "demo"
         pre_placed.mkdir(parents=True)
         (pre_placed / "__init__.py").write_text("")
