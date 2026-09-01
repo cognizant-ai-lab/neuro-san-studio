@@ -1,50 +1,7 @@
 {
-    # `ns init` scaffolds this file into new projects as registries/manifest.hocon, and it is the
-    # single source of truth for what a new project gets: InitCommand parses it and installs every
-    # network declared below, together with each one's transitive dependencies. Adding a key here
-    # installs that network. Keys are paths relative to registries/ in the neuro-san-studio source;
-    # a key with no matching file there lands nothing on disk and is served as a 404.
-
     # Networks created by `agent_network_designer` are written under registries/generated/.
-    # Fresh `ns init` projects start with an empty list.
+    # The include keeps them visible to the server without editing this file by hand.
     include "registries/generated/manifest.hocon",
 
-    "basic/music_nerd.hocon": true,
-
-    #
-    # Agent Network Designer family. Installed so a brand-new project can design agent networks
-    # immediately -- the nsflow NEW button, the tutorial, and the docs all assume the designer
-    # is there.
-    #
-    "agent_network_designer.hocon": true,
-    "agent_network_editor.hocon": {
-        # Support network for agent_network_designer.
-        # We want it served up, but not listed as a public agent network.
-        "serve": true,
-        "public": false
-    },
-    "agent_network_instructions_editor.hocon": {
-        "serve": true,
-        "public": false
-    },
-    "agent_network_query_generator.hocon": {
-        "serve": true,
-        "public": false
-    },
-
-    # Generates test fixtures for an existing agent network.
-    "agent_network_test_generator.hocon": true,
-
-    #
-    # CRUSE: the interactive UI that adapts itself to the user's and agents' needs.
-    # Support networks for the interface, so served but not publicly listed.
-    #
-    "experimental/cruse_theme_agent.hocon": {
-        "serve": true,
-        "public": false
-    },
-    "experimental/cruse_widget_agent.hocon": {
-        "serve": true,
-        "public": false
-    }
+    "music_nerd.hocon": true
 }

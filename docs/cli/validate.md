@@ -19,13 +19,13 @@ Under the hood this command delegates to neuro-san's `HoconValidatorCli` (the to
 
 ```bash
 # Validate an agent network HOCON file
-neuro-san-studio validate registries/basic/music_nerd.hocon
+neuro-san-studio validate registries/music_nerd.hocon
 
 # Same command via the shorter alias
-ns validate registries/basic/music_nerd.hocon
+ns validate registries/music_nerd.hocon
 
 # Print an agent network summary when validation passes
-ns validate registries/basic/music_nerd.hocon --verbose
+ns validate registries/music_nerd.hocon --verbose
 ```
 
 The command exits with code `0` when the file is valid and `1` when it is invalid or cannot be found, parsed, or

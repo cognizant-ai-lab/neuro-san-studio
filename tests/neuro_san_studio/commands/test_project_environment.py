@@ -18,7 +18,6 @@ import os
 from pathlib import Path
 
 import pytest
-from neuro_san.internals.run_context.langchain.toolbox.toolbox_info_restorer import ToolboxInfoRestorer
 
 from neuro_san_studio.commands.project_environment import ProjectEnvironment
 
@@ -110,79 +109,33 @@ class TestResolveMcpInfoFile:
 
 
 class TestResolveToolboxInfoFile:
-    """resolve_toolbox_info_file: env var, then a project file, then the packaged HOCON."""
+    """resolve_toolbox_info_file is a pure override: a path only when env-set or a file exists."""
 
     def test_env_var_takes_precedence(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
         """An explicit AGENT_TOOLBOX_INFO_FILE is used verbatim, ignoring the filesystem."""
         monkeypatch.setenv("AGENT_TOOLBOX_INFO_FILE", "/custom/path/toolbox.hocon")
         assert ProjectEnvironment(str(tmp_path)).resolve_toolbox_info_file() == "/custom/path/toolbox.hocon"
 
-    def test_empty_env_var_opts_out(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-        """An explicitly empty env var means "built-in toolbox only" and must not be overridden."""
-        monkeypatch.setenv("AGENT_TOOLBOX_INFO_FILE", "")
-        assert ProjectEnvironment(str(tmp_path)).resolve_toolbox_info_file() == ""
-
-    def test_project_path_beats_packaged(self, tmp_path: Path) -> None:
-        """A vendored <root>/neuro_san_studio/toolbox/toolbox_info.hocon wins over the packaged one."""
+    def test_default_path_used_when_file_exists(self, tmp_path: Path) -> None:
+        """With no env var, fall back to <root>/neuro_san_studio/toolbox/toolbox_info.hocon if it exists."""
         toolbox = tmp_path / "neuro_san_studio" / "toolbox"
         toolbox.mkdir(parents=True)
         (toolbox / "toolbox_info.hocon").write_text("{}\n")
         assert ProjectEnvironment(str(tmp_path)).resolve_toolbox_info_file() == str(toolbox / "toolbox_info.hocon")
 
-    def test_packaged_fallback_when_no_env_and_no_file(self, tmp_path: Path) -> None:
-        """With no env var and no project file, fall back to the toolbox_info.hocon in the package."""
-        result = ProjectEnvironment(str(tmp_path)).resolve_toolbox_info_file()
-        assert os.path.isfile(result)
-        assert result.endswith(os.path.join("neuro_san_studio", "toolbox", "toolbox_info.hocon"))
-
-    def test_packaged_fallback_defines_ddgs_search(self, tmp_path: Path) -> None:
-        """The fallback must actually carry the tools networks reference by name.
-
-        agent_network_designer's web_search agent uses `toolbox: ddgs_search`, and neuro-san's
-        built-in toolbox does not define it — a scaffolded project resolving to a toolbox
-        without it dies with "Tool 'ddgs_search' is not defined" the moment the designer runs.
-        """
-        resolved = ProjectEnvironment(str(tmp_path)).resolve_toolbox_info_file()
-        assert "ddgs_search" in ToolboxInfoRestorer().restore(resolved)
-
-
-class TestResolveDesignerToolboxInfoFile:
-    """resolve_designer_toolbox_info_file: the curated palette agent_network_designer offers."""
-
-    def test_env_var_takes_precedence(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-        """An explicit AGENT_NETWORK_DESIGNER_TOOLBOX_INFO_FILE is used verbatim."""
-        monkeypatch.setenv("AGENT_NETWORK_DESIGNER_TOOLBOX_INFO_FILE", "/custom/designer.hocon")
-        assert ProjectEnvironment(str(tmp_path)).resolve_designer_toolbox_info_file() == "/custom/designer.hocon"
-
-    def test_project_path_beats_packaged(self, tmp_path: Path) -> None:
-        """A vendored copy under <root>/neuro_san_studio/toolbox/ wins over the packaged one."""
-        toolbox = tmp_path / "neuro_san_studio" / "toolbox"
-        toolbox.mkdir(parents=True)
-        designer = toolbox / "agent_network_designer_toolbox_info.hocon"
-        designer.write_text("{}\n")
-        assert ProjectEnvironment(str(tmp_path)).resolve_designer_toolbox_info_file() == str(designer)
-
-    def test_packaged_fallback_when_no_env_and_no_file(self, tmp_path: Path) -> None:
-        """Otherwise fall back to the packaged palette, which must be non-empty.
-
-        get_toolbox.py defaults to a path relative to the current directory, which only
-        resolves for an in-repo run; a scaffolded project would otherwise log "Failed to load
-        toolbox info" and offer the designer an empty tool list.
-        """
-        result = ProjectEnvironment(str(tmp_path)).resolve_designer_toolbox_info_file()
-        assert os.path.isfile(result)
-        assert ToolboxInfoRestorer().restore(result)
+    def test_empty_when_no_env_and_no_file(self, tmp_path: Path) -> None:
+        """With no env var and no file on disk, return "" so the env var stays unset."""
+        assert ProjectEnvironment(str(tmp_path)).resolve_toolbox_info_file() == ""
 
 
 class TestToolboxApply:
-    """apply() exports both toolbox vars without clobbering a user override."""
+    """apply() exports the toolbox var only when resolution yields a real path."""
 
-    def test_packaged_toolbox_exported_by_default(self, tmp_path: Path) -> None:
-        """A project with no toolbox of its own still gets the packaged HOCONs exported."""
+    def test_unset_when_no_toolbox_file(self, tmp_path: Path) -> None:
+        """No toolbox file and no env var means AGENT_TOOLBOX_INFO_FILE stays unset."""
         root = _project(tmp_path)
         ProjectEnvironment(str(root)).apply()
-        assert os.path.isfile(os.environ["AGENT_TOOLBOX_INFO_FILE"])
-        assert os.path.isfile(os.environ["AGENT_NETWORK_DESIGNER_TOOLBOX_INFO_FILE"])
+        assert "AGENT_TOOLBOX_INFO_FILE" not in os.environ
 
     def test_set_when_toolbox_file_present(self, tmp_path: Path) -> None:
         """A scaffolded toolbox file is exported."""

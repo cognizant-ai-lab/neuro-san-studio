@@ -115,10 +115,8 @@ an MCP URL, only the matching block from the studio's bundled
 Imported alongside each network:
 
 - HOCON `include` files
-- Coded tools (`class` fields), plus every module under `coded_tools/` or `middleware/` those
-  files import, transitively -- a coded tool's helper modules are never named in a HOCON but are
-  just as required at runtime
-- Middleware (`middleware` arrays), expanded the same way
+- Coded tools (`class` fields)
+- Middleware (`middleware` arrays)
 - Sub-networks (`/network_name` references) — transitively
 - MCP tool URLs (`http://` / `https://`) — referenced server config is merged into `<project>/mcp/mcp_info.hocon` (additive; existing URLs preserved)
 
@@ -160,10 +158,6 @@ section).
 ## Requirements
 
 Run from a project initialized with `ns init` (must contain `registries/manifest.hocon`). neuro-san-studio must be importable.
-
-> [!NOTE]
-> `ns init` already installs the Agent Network Designer family and the CRUSE support networks,
-so those need no import.
 
 ## Exit codes
 

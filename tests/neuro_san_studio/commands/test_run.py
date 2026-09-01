@@ -87,14 +87,9 @@ class TestNeuroSanRunner:
     def test_set_environment_variables_skips_empty_toolbox(
         self, monkeypatch: MonkeyPatch, tmp_path: Path, capsys: CaptureFixture[str]
     ) -> None:
-        """An empty toolbox arg is an explicit opt-out and must not export the env vars.
-
-        Resolution now falls back to the packaged HOCONs, so "" only reaches the runner when the
-        user deliberately exported an empty AGENT_TOOLBOX_INFO_FILE.
-        """
+        """set_environment_variables should not export AGENT_TOOLBOX_INFO_FILE when the arg is empty."""
         monkeypatch.setattr(os, "environ", os.environ.copy())
         monkeypatch.delenv("AGENT_TOOLBOX_INFO_FILE", raising=False)
-        monkeypatch.delenv("AGENT_NETWORK_DESIGNER_TOOLBOX_INFO_FILE", raising=False)
         runner = self._make_runner()
         runner.root_dir = str(tmp_path)
         runner.project_env = ProjectEnvironment(runner.root_dir)
@@ -102,7 +97,6 @@ class TestNeuroSanRunner:
             "agent_manifest_file": str(tmp_path / "manifest.hocon"),
             "agent_tool_path": str(tmp_path / "coded_tools"),
             "agent_toolbox_info_file": "",
-            "agent_network_designer_toolbox_info_file": "",
             "mcp_servers_info_file": str(tmp_path / "mcp_info.hocon"),
             "server_connection": "http",
             "manifest_update_period_seconds": 5,
@@ -117,16 +111,14 @@ class TestNeuroSanRunner:
         }
         runner.set_environment_variables()
         assert "AGENT_TOOLBOX_INFO_FILE" not in os.environ
-        assert "AGENT_NETWORK_DESIGNER_TOOLBOX_INFO_FILE" not in os.environ
         assert "using built-in default toolbox" in capsys.readouterr().out
 
     def test_set_environment_variables_exports_toolbox_when_present(
         self, monkeypatch: MonkeyPatch, tmp_path: Path
     ) -> None:
-        """set_environment_variables should export both toolbox vars when the args are set."""
+        """set_environment_variables should export AGENT_TOOLBOX_INFO_FILE when the arg is set."""
         monkeypatch.setattr(os, "environ", os.environ.copy())
         monkeypatch.delenv("AGENT_TOOLBOX_INFO_FILE", raising=False)
-        monkeypatch.delenv("AGENT_NETWORK_DESIGNER_TOOLBOX_INFO_FILE", raising=False)
         runner = self._make_runner()
         runner.root_dir = str(tmp_path)
         runner.project_env = ProjectEnvironment(runner.root_dir)
@@ -134,7 +126,6 @@ class TestNeuroSanRunner:
             "agent_manifest_file": str(tmp_path / "manifest.hocon"),
             "agent_tool_path": str(tmp_path / "coded_tools"),
             "agent_toolbox_info_file": "/explicit/path/toolbox.hocon",
-            "agent_network_designer_toolbox_info_file": "/explicit/path/designer.hocon",
             "mcp_servers_info_file": str(tmp_path / "mcp_info.hocon"),
             "server_connection": "http",
             "manifest_update_period_seconds": 5,
@@ -149,7 +140,6 @@ class TestNeuroSanRunner:
         }
         runner.set_environment_variables()
         assert os.environ["AGENT_TOOLBOX_INFO_FILE"] == "/explicit/path/toolbox.hocon"
-        assert os.environ["AGENT_NETWORK_DESIGNER_TOOLBOX_INFO_FILE"] == "/explicit/path/designer.hocon"
 
     def test_passes_prompt_to_input(self, monkeypatch: MonkeyPatch) -> None:
         """Test that the supplied prompt string is forwarded to timedinput()."""

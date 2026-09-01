@@ -1,9 +1,0 @@
-{
-    # External agents available to the networks that agent_network_designer designs.
-    # Read via AGENT_NETWORK_DESIGNER_MANIFEST_FILE (see
-    # coded_tools/agent_network_editor/get_subnetwork.py), which defaults to this path.
-    #
-    # Add other manifests -- or individual "<group>/<network>.hocon": true entries --
-    # to let the designer use them to compose networks.
-    include "registries/generated/manifest.hocon"
-}
