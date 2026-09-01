@@ -207,6 +207,64 @@ class TestExpand:
 
         assert result == ["coded_tools/pkg", "coded_tools/helper.py"]
 
+    def test_package_init_reexports_are_followed(self, tmp_path: Path) -> None:
+        """A re-export made only in a package __init__.py joins the closure.
+
+        Importing pkg.helper_a at runtime executes pkg/__init__.py first, so helper_b is as
+        required as helper_a even though no HOCON and no scanned module ever names it. The
+        init file itself stays out of the closure: the importer's parent-init chain and the
+        exporter's parent-init bundling already deliver it for every member.
+
+        :param tmp_path: pytest-provided temporary directory holding the synthetic roots.
+        """
+        _write(tmp_path, "coded_tools/pkg/__init__.py", "from .helper_a import A\nfrom .helper_b import B\n")
+        _write(tmp_path, "coded_tools/pkg/helper_a.py", "class A: pass\n")
+        _write(tmp_path, "coded_tools/pkg/helper_b.py", "class B: pass\n")
+
+        result = _walker(tmp_path).expand(["coded_tools/pkg/helper_a.py"])
+
+        assert "coded_tools/pkg/helper_b.py" in result
+        assert "coded_tools/pkg/__init__.py" not in result
+
+    def test_every_ancestor_init_is_scanned(self, tmp_path: Path) -> None:
+        """Imports made at any level of the containing-package chain are discovered.
+
+        Importing pkg.sub.mod executes pkg/__init__.py AND pkg/sub/__init__.py, so a
+        dependency named only in the outer init is required too — including one that lives
+        in a different package entirely.
+
+        :param tmp_path: pytest-provided temporary directory holding the synthetic roots.
+        """
+        _write(tmp_path, "coded_tools/other/__init__.py")
+        _write(tmp_path, "coded_tools/other/shared.py", "VALUE = 1\n")
+        _write(tmp_path, "coded_tools/pkg/__init__.py", "from coded_tools.other.shared import VALUE\n")
+        _write(tmp_path, "coded_tools/pkg/sub/__init__.py", "from .mod import Tool\n")
+        _write(tmp_path, "coded_tools/pkg/sub/mod.py", "class Tool: pass\n")
+
+        result = _walker(tmp_path).expand(["coded_tools/pkg/sub/mod.py"])
+
+        assert "coded_tools/other/shared.py" in result
+
+    def test_directory_member_ancestor_init_is_scanned(self, tmp_path: Path) -> None:
+        """A directory dependency's *ancestor* inits are scanned like a file member's.
+
+        The directory's own __init__.py is inside the copied tree and scanned by the
+        directory walk; the root package's __init__.py above it is neither, so an import
+        made only there used to be missed.
+
+        :param tmp_path: pytest-provided temporary directory holding the synthetic roots.
+        """
+        walker = _walker(tmp_path)
+        _write(tmp_path, "coded_tools/util.py", "VALUE = 1\n")
+        _write(tmp_path, "coded_tools/pkg/__init__.py", "class Tool: pass\n")
+        # After _walker(): it scaffolds the root __init__.py empty, and this test needs the
+        # root init to carry a real import.
+        (tmp_path / "coded_tools" / "__init__.py").write_text("from coded_tools.util import VALUE\n")
+
+        result = walker.expand(["coded_tools/pkg"])
+
+        assert "coded_tools/util.py" in result
+
     def test_input_order_preserved_and_deduplicated(self, tmp_path: Path) -> None:
         """Entry points stay ahead of their helpers, and nothing is listed twice."""
         _write(tmp_path, "coded_tools/pkg/__init__.py")
