@@ -24,11 +24,15 @@ from typing import Dict
 from typing import List
 from typing import Optional
 
+from pyhocon import ConfigFactory
 from rich.console import Console
 from rich.table import Table
 from timedinput import timedinput
 
+from neuro_san_studio.importer.agent_network_importer import AgentNetworkImporter
 from neuro_san_studio.utils.cli_status import CliStatus
+from neuro_san_studio.utils.import_reporter import ImportReporter
+from neuro_san_studio.utils.package_paths import PackagePaths
 from neuro_san_studio.utils.shared_registries import SHARED_REGISTRY_INCLUDES
 
 PROVIDERS: Dict[str, Dict[str, str]] = {
@@ -38,6 +42,11 @@ PROVIDERS: Dict[str, Dict[str, str]] = {
 }
 
 TEMPLATES_PACKAGE = "neuro_san_studio.templates"
+MANIFEST_TEMPLATE = "manifest.hocon"
+
+# The line that includes "generated" networks: we want to ignore them when we install
+# the default agent networks. See _default_network_hocons().
+GENERATED_MANIFEST_INCLUDE = 'include "registries/generated/manifest.hocon"'
 
 # Long enough to never bite a real user; finite so timedinput is happy and so a
 # detached terminal can't hang the process forever.
@@ -66,8 +75,7 @@ class InitCommand:  # pylint: disable=too-few-public-methods
         provider_labels = ", ".join(PROVIDERS[p]["label"] for p in providers)
         _console.print(f"[bold]Selected providers:[/bold] {provider_labels}\n")
 
-        self._copy_template("music_nerd.hocon", os.path.join("registries", "music_nerd.hocon"))
-        self._copy_template("manifest.hocon", os.path.join("registries", "manifest.hocon"))
+        self._copy_template(MANIFEST_TEMPLATE, os.path.join("registries", MANIFEST_TEMPLATE))
         # Pre-create registries/generated/ so the include in the main manifest resolves the
         # first time the server reads it, even before agent_network_designer has produced
         # any files. Empty `{}` is a valid manifest — neuro-san just sees no extra networks.
@@ -77,11 +85,61 @@ class InitCommand:  # pylint: disable=too-few-public-methods
         # scaffolding them up front means `ns import <group>` works without surprises.
         for shared in SHARED_REGISTRY_INCLUDES:
             self._copy_template(shared, os.path.join("registries", shared), package="registries")
+        # The designer reads this to learn which networks it may compose into a design.
+        # Separate from the served manifest above so the two lists can diverge.
+        self._copy_template("manifest_and.hocon", os.path.join("registries", "manifest_and.hocon"))
         self._copy_template("mcp_info.hocon", os.path.join("mcp", "mcp_info.hocon"), package="neuro_san_studio.mcp")
         self._copy_template("plugins.hocon", os.path.join("config", "plugins.hocon"))
         self._write_file(os.path.join("config", "llm_config.hocon"), self._render_llm_config(providers))
 
+        # Last, so the dependency walker sees a project that already has the shared HOCON
+        # fragments and llm_config.hocon the networks include.
+        self._install_default_networks()
+
         self._print_next_steps()
+
+    @staticmethod
+    def _default_network_hocons() -> List[str]:
+        """Return the registry-relative networks `ns init` installs, per the manifest template
+        `neuro_san_studio/templates/manifest.hocon`.
+
+        Ignores the GENERATED_MANIFEST_INCLUDE line. It exists so the running *server* picks up
+        networks agent_network_designer writes later.
+        """
+        source = importlib.resources.files(TEMPLATES_PACKAGE) / MANIFEST_TEMPLATE
+        declared = "\n".join(
+            line for line in source.read_text(encoding="utf-8").splitlines() if GENERATED_MANIFEST_INCLUDE not in line
+        )
+        config = ConfigFactory.parse_string(declared)
+        # as_plain_ordered_dict() strips the quotes pyhocon bakes into keys that had to be quoted in
+        # the source; the raw ConfigTree hands back '"basic/music_nerd.hocon"', quote characters and all.
+        return list(config.as_plain_ordered_dict())
+
+    def _install_default_networks(self) -> None:
+        """Copy the default agent networks and their dependencies into the project.
+
+        Runs the same `AgentNetworkImporter.import_networks` batch that `ns import` runs,
+        rather than a second hand-maintained copy of the analyze-then-copy loop, so the two
+        commands cannot drift about what a network actually depends on. The list of networks
+        is likewise derived from the manifest template (see `_default_network_hocons`), so the
+        file that decides what is served is the same file that decides what is copied.
+
+        The manifest entries are NOT written here: `manifest.hocon` is scaffolded from a
+        template that already declares each of these with the right flags. Registering them
+        through `AgentNetworkImporter.update_manifest` would write a flat `"x": true` and lose
+        the `serve/public` distinction the support networks need.
+        """
+        try:
+            source_dir = PackagePaths.installed_library_root()
+        except FileNotFoundError as exc:
+            CliStatus.warn(f"Skipping default agent networks: {exc}")
+            return
+
+        _console.print()
+        CliStatus.info("Installing the Agent Network Designer...")
+        importer = AgentNetworkImporter(source_dir, self.root_dir)
+        bulk = importer.import_networks(self._default_network_hocons(), on_network=ImportReporter.announce)
+        ImportReporter.report(bulk)
 
     def _resolve_providers(self) -> List[str]:
         """Return the ordered list of provider keys to enable."""
@@ -231,4 +289,10 @@ class InitCommand:  # pylint: disable=too-few-public-methods
         _console.print(
             "  2. Start the server:  [bold red]neuro-san-studio run[/bold red] or [bold red]ns run[/bold red]"
         )
+        _console.print(
+            "  3. Design your own agent network: click [bold]NEW[/bold] in the nsflow UI to open the "
+            "Agent Network Designer."
+        )
+        _console.print()
+        _console.print("[dim]Add more of the networks that ship with neuro-san-studio with 'ns import'.[/dim]")
         _console.print("=" * 60, style="dim")

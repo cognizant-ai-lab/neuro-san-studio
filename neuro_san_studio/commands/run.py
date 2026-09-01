@@ -104,6 +104,7 @@ class NeuroSanRunner:
             "agent_manifest_file": self.project_env.resolve_manifest_file(),
             "agent_tool_path": self.project_env.resolve_tool_path(),
             "agent_toolbox_info_file": self.project_env.resolve_toolbox_info_file(),
+            "agent_network_designer_toolbox_info_file": self.project_env.resolve_designer_toolbox_info_file(),
             "mcp_servers_info_file": self.project_env.resolve_mcp_info_file(),
             "logs_dir": str(self.logs_dir),
             # Run-mode flags default off; a CLI override flips them on. Kept in the base dict
@@ -136,10 +137,12 @@ class NeuroSanRunner:
         self.nsflow_process = None
 
     def _apply_toolbox_env(self) -> None:
-        """Export AGENT_TOOLBOX_INFO_FILE only if a user-provided toolbox path is configured.
+        """Export the two toolbox paths, unless resolution deliberately yielded nothing.
 
-        When unset, the neuro-san framework falls back to its built-in default toolbox,
-        so a user-provided file is a pure override and is optional.
+        Resolution (see ProjectEnvironment.resolve_toolbox_info_file) falls back to the
+        HOCONs bundled in the neuro_san_studio package, so in practice both are set. An empty
+        value only happens when the user explicitly exported an empty env var to opt out, in
+        which case the neuro-san framework uses its built-in default toolbox alone.
         """
         toolbox_file = self.args["agent_toolbox_info_file"]
         if toolbox_file:
@@ -147,6 +150,11 @@ class NeuroSanRunner:
             print(f"AGENT_TOOLBOX_INFO_FILE set to: {toolbox_file}")
         else:
             print("AGENT_TOOLBOX_INFO_FILE: (not set — using built-in default toolbox)")
+
+        designer_toolbox_file = self.args["agent_network_designer_toolbox_info_file"]
+        if designer_toolbox_file:
+            os.environ["AGENT_NETWORK_DESIGNER_TOOLBOX_INFO_FILE"] = designer_toolbox_file
+            print(f"AGENT_NETWORK_DESIGNER_TOOLBOX_INFO_FILE set to: {designer_toolbox_file}")
 
     def set_environment_variables(self):
         """Set required environment variables, optionally using neuro-san defaults."""
