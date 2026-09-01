@@ -33,53 +33,53 @@ from neuro_san_studio.discovery.dependency_analyzer import AgentNetworkDependenc
 from neuro_san_studio.discovery.dependency_analyzer import DependencyAnalyzer
 
 
-def _build_source_with_missing_include(source_dir: Path) -> Path:
-    """
-    Lay out a source tree whose network includes a file that does not exist there.
+class TestAnalysisLogging:
+    """`get_transitive_dependencies` must keep pyhocon quiet and put its logger back."""
 
-    Mirrors the pip layout: the network references `config/llm_config.hocon`, which the
-    installed package never ships. No `${substitution}` is used, so the parse itself
-    succeeds and the class reference below stays extractable.
+    @staticmethod
+    def _build_source_with_missing_include(source_dir: Path) -> Path:
+        """
+        Lay out a source tree whose network includes a file that does not exist there.
 
-    :param source_dir: Root directory to build the synthetic source tree under.
-    :return: The full path of the network HOCON to analyze.
-    """
-    registries: Path = source_dir / "registries"
-    registries.mkdir(parents=True)
-    hocon: Path = registries / "demo.hocon"
-    hocon.write_text(
-        """{
+        Mirrors the pip layout: the network references `config/llm_config.hocon`, which the
+        installed package never ships. No `${substitution}` is used, so the parse itself
+        succeeds and the class reference below stays extractable.
+
+        :param source_dir: Root directory to build the synthetic source tree under.
+        :return: The full path of the network HOCON to analyze.
+        """
+        registries: Path = source_dir / "registries"
+        registries.mkdir(parents=True)
+        hocon: Path = registries / "demo.hocon"
+        hocon.write_text(
+            """{
     include "config/llm_config.hocon",
     "tools": [
         { "name": "demo", "class": "demo_tool.DemoTool" }
     ]
 }
 """
-    )
-    coded_tools: Path = source_dir / "coded_tools"
-    coded_tools.mkdir(parents=True)
-    (coded_tools / "__init__.py").write_text("")
-    (coded_tools / "demo_tool.py").write_text("class DemoTool:\n    pass\n")
-    (source_dir / "middleware").mkdir(parents=True)
-    return hocon
+        )
+        coded_tools: Path = source_dir / "coded_tools"
+        coded_tools.mkdir(parents=True)
+        (coded_tools / "__init__.py").write_text("")
+        (coded_tools / "demo_tool.py").write_text("class DemoTool:\n    pass\n")
+        (source_dir / "middleware").mkdir(parents=True)
+        return hocon
 
+    @staticmethod
+    def _analyzer(source_dir: Path) -> DependencyAnalyzer:
+        """
+        Build an analyzer rooted at `source_dir`.
 
-def _analyzer(source_dir: Path) -> DependencyAnalyzer:
-    """
-    Build an analyzer rooted at `source_dir`.
-
-    :param source_dir: Root of the synthetic source tree.
-    :return: A DependencyAnalyzer over that tree's registries/coded_tools/middleware roots.
-    """
-    return DependencyAnalyzer(
-        str(source_dir / "registries"),
-        str(source_dir / "coded_tools"),
-        str(source_dir / "middleware"),
-    )
-
-
-class TestAnalysisLogging:
-    """`get_transitive_dependencies` must keep pyhocon quiet and put its logger back."""
+        :param source_dir: Root of the synthetic source tree.
+        :return: A DependencyAnalyzer over that tree's registries/coded_tools/middleware roots.
+        """
+        return DependencyAnalyzer(
+            str(source_dir / "registries"),
+            str(source_dir / "coded_tools"),
+            str(source_dir / "middleware"),
+        )
 
     def test_unresolvable_include_logs_nothing(self, tmp_path: Path, caplog: pytest.LogCaptureFixture) -> None:
         """An include that cannot resolve must not reach the console, and analysis must still work.
@@ -88,10 +88,10 @@ class TestAnalysisLogging:
         :param caplog: pytest's log capture, used to detect pyhocon's include complaints.
         """
         source: Path = tmp_path / "source"
-        hocon: Path = _build_source_with_missing_include(source)
+        hocon: Path = self._build_source_with_missing_include(source)
 
         with caplog.at_level(logging.WARNING, logger="pyhocon.config_parser"):
-            deps: AgentNetworkDependencies = _analyzer(source).get_transitive_dependencies(str(hocon))
+            deps: AgentNetworkDependencies = self._analyzer(source).get_transitive_dependencies(str(hocon))
 
         # The failed include must not have cost us the actual dependency extraction.
         assert deps.coded_tools == ["coded_tools/demo_tool.py"]
@@ -107,13 +107,13 @@ class TestAnalysisLogging:
         :param tmp_path: pytest-provided temporary directory for the synthetic source tree.
         """
         source: Path = tmp_path / "source"
-        hocon: Path = _build_source_with_missing_include(source)
+        hocon: Path = self._build_source_with_missing_include(source)
         pyhocon_logger: logging.Logger = logging.getLogger("pyhocon.config_parser")
         prev_level: int = pyhocon_logger.level
         try:
             pyhocon_logger.setLevel(logging.DEBUG)
 
-            _analyzer(source).get_transitive_dependencies(str(hocon))
+            self._analyzer(source).get_transitive_dependencies(str(hocon))
 
             assert pyhocon_logger.level == logging.DEBUG
         finally:
