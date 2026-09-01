@@ -26,7 +26,7 @@ from aiohttp import ClientSession
 from aiohttp import TCPConnector
 from aiohttp.abc import ResolveResult
 
-from neuro_san_studio.coded_tools.global_only_resolver import GlobalOnlyResolver
+from neuro_san_studio.coded_tools.utils.global_only_resolver import GlobalOnlyResolver
 
 
 def make_entry(ip: str, host: str = "test-host.example.com", port: int = 80) -> ResolveResult:

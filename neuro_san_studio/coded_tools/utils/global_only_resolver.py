@@ -52,7 +52,7 @@ class GlobalOnlyResolver(AbstractResolver):
     Limitations:
     - aiohttp's TCPConnector short-circuits IP-literal hosts and never calls
       the resolver for them (see TCPConnector._resolve_host), so IP literals
-      must be validated before the fetch (see WebFetch._validate_hostname_safety,
+      must be validated before the fetch (see SafeFetch.validate_hostname_safety,
       which shares ensure_global_address for that check).
     - DNS is not the only rebinding vector: this does not protect requests made
       outside the connector this resolver is attached to.
