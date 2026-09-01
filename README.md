@@ -232,7 +232,7 @@ Enter numbers separated by commas (default: 1):
 ```
 
 **Note:** To access all Neuro SAN Studio capabilities, clone this repository and follow the setup instructions in the
-[Developer Guide](docs/dev_guide.md).
+[docs/dev_guide.md](docs/dev_guide.md).
 
 ### Set your LLM API key(s)
 
@@ -393,7 +393,7 @@ For examples of agent networks, check out [docs/examples.md](docs/examples.md).
 
 ## Developer Guide
 
-For local development setup and contribution instructions, see the [Developer Guide](docs/dev_guide.md).
+For local development setup and contribution instructions, see the [docs/dev_guide.md](docs/dev_guide.md).
 
 ---
 
