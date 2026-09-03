@@ -17,10 +17,11 @@ jobs:
       (github.event_name == 'push' && github.ref != 'refs/heads/main') ||
       (github.event_name == 'pull_request' &&
         github.event.pull_request.head.repo.full_name != github.repository)
-    # 1.0.9
-    uses: cognizant-ai-lab/build-common/.github/workflows/_python-quality-gate.yml@b14b3de23cb9aca02b2165e57542335e0c8f5304
+    # 1.0.12
+    uses: cognizant-ai-lab/build-common/.github/workflows/_python-quality-gate.yml@3f4cdab31b6ac10382c99452b720eb0b8b2dab8f
     with:
       python-version: '3.12'
+      test-python-versions: '["3.12", "3.13", "3.14"]'
       run-hadolint: true
       dockerfile-path: 'deploy/Dockerfile'
       lint-command-override: |
@@ -41,25 +42,8 @@ jobs:
         # - 503 (temporary outage)
         /tmp/lychee --max-retries 3 --retry-wait-time 3 --max-concurrency 32 --verbose --accept '200..=299,401,403,405,406,422,429,502,503' --exclude-path venv --include-verbatim '**/*.py' '**/*.md' '**/*.rst' '**/*.hocon' '**/*.txt' '**/*.yaml' '**/*.yml' '**/*.json' '**/*.html' '**/*.sh' .
       run-pytest: false
+      test-command-override: 'VIRTUAL_ENV=system AGENT_TOOL_PATH=./neuro_san/coded_tools PYTHONPATH=.:$PYTHONPATH make test-unit'
       check-readme-pypi: true
     secrets:
       SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
 
-  unit-tests:
-    name: Unit tests
-    if: >
-      (github.event_name == 'push' && github.ref != 'refs/heads/main') ||
-      (github.event_name == 'pull_request' &&
-        github.event.pull_request.head.repo.full_name != github.repository)
-    strategy:
-      fail-fast: false
-      matrix:
-        python-version: ['3.12', '3.13', '3.14']
-    # 1.0.9
-    uses: cognizant-ai-lab/build-common/.github/workflows/_python-quality-gate.yml@b14b3de23cb9aca02b2165e57542335e0c8f5304
-    with:
-      python-version: ${{ matrix.python-version }}
-      # Lint, hadolint and the README check belong to the quality-gate job
-      lint-command-override: 'true'
-      test-command-override: 'VIRTUAL_ENV=system AGENT_TOOL_PATH=./neuro_san/coded_tools PYTHONPATH=.:$PYTHONPATH make test-unit'
-      enable-slack: false
