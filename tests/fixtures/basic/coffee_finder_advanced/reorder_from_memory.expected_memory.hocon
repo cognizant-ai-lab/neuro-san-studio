@@ -1,0 +1,9 @@
+# Post-test assertion schema for the persistent-memory file.
+#   topics_present  – topic must exist; listed substrings must appear (case-insensitive).
+#   topics_absent   – topic must NOT exist after the test.
+#   substrings_absent – topic exists but must NOT contain these substrings.
+{
+  "topics_present": {
+    "pixel_smith": ["black coffee", "joe"]
+  }
+}
