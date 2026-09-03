@@ -24,6 +24,13 @@ class TestOrderAPI(TestCase):
     Unit tests for the OrderAPI class.
     """
 
+    def setUp(self) -> None:
+        """
+        Reset the per-shop order-id counter so each test starts at FIRST_ORDER_ID.
+        """
+        super().setUp()
+        OrderAPI.reset_order_ids()
+
     def test_invoke(self):
         """
         Tests the invoke method of the OrderAPI CodedTool.
