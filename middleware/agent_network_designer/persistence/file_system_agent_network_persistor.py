@@ -47,20 +47,38 @@ class FileSystemAgentNetworkPersistor(AgentNetworkPersistor):
         self.demo_mode: bool = demo_mode
         self.subdirectory: str = subdirectory.strip("/")
 
-        # Derive output_path from the first file listed in AGENT_MANIFEST_FILE.
-        # The env var is an os.pathsep-separated list (like PATH), matching how
-        # neuro-san's RegistryManifestRestorer parses the same variable.
-        agent_manifest_file: str = os.environ.get("AGENT_MANIFEST_FILE", "")
-        parts: list[str] = agent_manifest_file.split(os.pathsep)
-        # Splitting on an explicit separator never yields an empty list — an empty
-        # env var gives [""] — so guard on the first entry being non-empty before
-        # trusting it as the main manifest path; otherwise fall back to defaults.
-        if parts[0]:
-            self.output_path: str = os.path.dirname(parts[0])
-            self.main_manifest_path: str = parts[0]
+        # Derive output_path from the first file listed in AGENT_MANIFEST_FILE,
+        # falling back to the repo defaults when no usable entry exists.
+        first_manifest: str = self.get_first_manifest_path()
+        if first_manifest:
+            self.output_path: str = os.path.dirname(first_manifest)
+            self.main_manifest_path: str = first_manifest
         else:
             self.output_path = DEFAULT_REGISTRIES_DIR
             self.main_manifest_path = os.path.join(DEFAULT_REGISTRIES_DIR, MANIFEST_FILENAME)
+
+    @staticmethod
+    def get_first_manifest_path() -> str:
+        """
+        Returns the first non-empty entry of the AGENT_MANIFEST_FILE environment variable.
+
+        The env var is an os.pathsep-separated list (like PATH), matching how neuro-san's
+        RegistryManifestRestorer parses the same variable. Empty entries — from a stray
+        leading or doubled separator, or an empty env var (which splits to [""]) — are
+        skipped because the neuro-san server likewise skips them and serves the remaining
+        manifests. Entries are deliberately NOT stripped of whitespace: the server does not
+        strip either, so padded values fail consistently on both sides instead of silently
+        diverging. AgentNetworkDefinitionMiddleware shares this helper so loads and saves
+        agree on file location.
+
+        :return: The first non-empty manifest path, or "" when no such entry exists.
+        """
+        agent_manifest_file: str = os.environ.get("AGENT_MANIFEST_FILE", "")
+        parts: list[str] = agent_manifest_file.split(os.pathsep)
+        for part in parts:
+            if part:
+                return part
+        return ""
 
     def get_assembler(self) -> AgentNetworkAssembler:
         """

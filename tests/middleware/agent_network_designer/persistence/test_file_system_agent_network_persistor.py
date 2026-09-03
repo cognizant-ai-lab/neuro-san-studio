@@ -53,6 +53,17 @@ class TestFileSystemAgentNetworkPersistor:
         assert persistor.main_manifest_path == first_manifest
         assert persistor.output_path == "first_dir"
 
+    def test_init_skips_empty_leading_entry(self) -> None:
+        """
+        __init__ uses the first non-empty entry when AGENT_MANIFEST_FILE has a leading separator.
+        """
+        manifest: str = os.path.join("real_dir", "manifest.hocon")
+        env_value: str = os.pathsep + manifest
+        with patch.dict(os.environ, {"AGENT_MANIFEST_FILE": env_value}):
+            persistor = FileSystemAgentNetworkPersistor(demo_mode=False)
+        assert persistor.main_manifest_path == manifest
+        assert persistor.output_path == "real_dir"
+
     def test_init_defaults_when_manifest_env_var_empty(self) -> None:
         """
         __init__ falls back to the default registries paths when AGENT_MANIFEST_FILE is empty.

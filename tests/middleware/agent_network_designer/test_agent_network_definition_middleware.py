@@ -19,9 +19,7 @@
 import os
 from unittest.mock import patch
 
-from middleware.agent_network_designer.agent_network_definition_middleware import (
-    AgentNetworkDefinitionMiddleware,
-)
+from middleware.agent_network_designer.agent_network_definition_middleware import AgentNetworkDefinitionMiddleware
 
 
 class TestAgentNetworkDefinitionMiddleware:
@@ -40,6 +38,18 @@ class TestAgentNetworkDefinitionMiddleware:
         with patch.dict(os.environ, {"AGENT_MANIFEST_FILE": env_value}):
             middleware = AgentNetworkDefinitionMiddleware(sly_data={})
             # The input must not exist relative to cwd, so resolution falls through to base_dir.
+            resolved: str | None = middleware._resolve_hocon_path(  # pylint: disable=protected-access
+                "generated/does_not_exist.hocon"
+            )
+        assert resolved == "first_dir/generated/does_not_exist.hocon"
+
+    def test_resolve_skips_empty_leading_entry(self) -> None:
+        """
+        _resolve_hocon_path uses the first non-empty entry when AGENT_MANIFEST_FILE has a leading separator.
+        """
+        env_value: str = os.pathsep + os.path.join("first_dir", "manifest.hocon")
+        with patch.dict(os.environ, {"AGENT_MANIFEST_FILE": env_value}):
+            middleware = AgentNetworkDefinitionMiddleware(sly_data={})
             resolved: str | None = middleware._resolve_hocon_path(  # pylint: disable=protected-access
                 "generated/does_not_exist.hocon"
             )
