@@ -492,10 +492,10 @@ class AgentNetworkDefinitionMiddleware(AgentMiddleware):
              existing file under cwd, it is used as-is. This covers paths copied from the
              repo tree such as "registries/generated/foo.hocon".
           3. Otherwise, paths are resolved against ``base_dir`` — the directory of the
-             first entry in ``AGENT_MANIFEST_FILE`` (a whitespace-separated list of
-             manifest files), or ``DEFAULT_REGISTRIES_DIR`` when the env var is empty or
-             unset. This mirrors ``FileSystemAgentNetworkPersistor`` so loads and saves
-             agree on file location.
+             first entry in ``AGENT_MANIFEST_FILE`` (an ``os.pathsep``-separated list of
+             manifest files, like ``PATH``), or ``DEFAULT_REGISTRIES_DIR`` when the env
+             var is empty or unset. This mirrors ``FileSystemAgentNetworkPersistor`` so
+             loads and saves agree on file location.
 
         Backslashes in the input are normalized to forward slashes so Windows-style paths
         work on POSIX (and vice versa).
@@ -540,10 +540,13 @@ class AgentNetworkDefinitionMiddleware(AgentMiddleware):
             return trimmed_input
 
         # Derive the base registries directory from AGENT_MANIFEST_FILE (the dirname of the
-        # first listed manifest), falling back to the default registries directory.
+        # first listed manifest), falling back to the default registries directory. The env
+        # var is an os.pathsep-separated list (like PATH), matching how neuro-san's
+        # RegistryManifestRestorer and FileSystemAgentNetworkPersistor parse it. Splitting
+        # an empty string yields [""], so guard on the first entry being non-empty.
         agent_manifest_file: str = os.environ.get("AGENT_MANIFEST_FILE", "")
-        manifest_parts: list[str] = agent_manifest_file.split()
-        base_dir: str = os.path.dirname(manifest_parts[0]) if manifest_parts else DEFAULT_REGISTRIES_DIR
+        manifest_parts: list[str] = agent_manifest_file.split(os.pathsep)
+        base_dir: str = os.path.dirname(manifest_parts[0]) if manifest_parts[0] else DEFAULT_REGISTRIES_DIR
         return (Path(base_dir) / trimmed_input).as_posix()
 
     async def _hocon_to_config(self, network_hocon_file: str | None) -> dict[str, Any] | None:

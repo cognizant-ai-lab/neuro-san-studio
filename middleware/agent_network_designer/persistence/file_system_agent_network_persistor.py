@@ -47,10 +47,15 @@ class FileSystemAgentNetworkPersistor(AgentNetworkPersistor):
         self.demo_mode: bool = demo_mode
         self.subdirectory: str = subdirectory.strip("/")
 
-        # Derive output_path from the first file listed in AGENT_MANIFEST_FILE
+        # Derive output_path from the first file listed in AGENT_MANIFEST_FILE.
+        # The env var is an os.pathsep-separated list (like PATH), matching how
+        # neuro-san's RegistryManifestRestorer parses the same variable.
         agent_manifest_file: str = os.environ.get("AGENT_MANIFEST_FILE", "")
-        parts: list[str] = agent_manifest_file.split()
-        if parts:
+        parts: list[str] = agent_manifest_file.split(os.pathsep)
+        # Splitting on an explicit separator never yields an empty list — an empty
+        # env var gives [""] — so guard on the first entry being non-empty before
+        # trusting it as the main manifest path; otherwise fall back to defaults.
+        if parts[0]:
             self.output_path: str = os.path.dirname(parts[0])
             self.main_manifest_path: str = parts[0]
         else:

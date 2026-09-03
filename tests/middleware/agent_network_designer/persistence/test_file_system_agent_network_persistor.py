@@ -39,6 +39,29 @@ class TestFileSystemAgentNetworkPersistor:
         persistor.subdirectory = subdirectory
         return persistor
 
+    # Tests for AGENT_MANIFEST_FILE parsing in __init__
+
+    def test_init_splits_manifest_env_var_on_pathsep(self) -> None:
+        """
+        __init__ takes the first entry of an os.pathsep-separated AGENT_MANIFEST_FILE.
+        """
+        first_manifest: str = os.path.join("first_dir", "manifest.hocon")
+        second_manifest: str = os.path.join("second_dir", "manifest.hocon")
+        env_value: str = os.pathsep.join([first_manifest, second_manifest])
+        with patch.dict(os.environ, {"AGENT_MANIFEST_FILE": env_value}):
+            persistor = FileSystemAgentNetworkPersistor(demo_mode=False)
+        assert persistor.main_manifest_path == first_manifest
+        assert persistor.output_path == "first_dir"
+
+    def test_init_defaults_when_manifest_env_var_empty(self) -> None:
+        """
+        __init__ falls back to the default registries paths when AGENT_MANIFEST_FILE is empty.
+        """
+        with patch.dict(os.environ, {"AGENT_MANIFEST_FILE": ""}):
+            persistor = FileSystemAgentNetworkPersistor(demo_mode=False)
+        assert persistor.output_path == "registries"
+        assert persistor.main_manifest_path == os.path.join("registries", "manifest.hocon")
+
     # Tests for async_persist reading a manifest with various encodings
 
     def test_persist_appends_to_utf8_manifest(self):
