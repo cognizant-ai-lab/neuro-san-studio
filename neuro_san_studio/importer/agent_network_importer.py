@@ -236,7 +236,11 @@ class AgentNetworkImporter:
                     try:
                         os.makedirs(os.path.dirname(init_dst), exist_ok=True)
                         shutil.copy2(init_src, init_dst)
-                        result.copied_files.append(os.path.join(os.path.basename(roots.target), rel))
+                        # Record with forward slashes regardless of platform: every other
+                        # display uses "/", and downstream bookkeeping (`_touched_under`)
+                        # compares displays as "/"-separated strings.
+                        display = os.path.join(os.path.basename(roots.target), rel).replace(os.sep, "/")
+                        result.copied_files.append(display)
                     except OSError as exc:
                         result.errors.append(f"Failed to copy __init__.py: {exc}")
             if current_dir == roots.source:
@@ -255,9 +259,15 @@ class AgentNetworkImporter:
         Only ever creates an empty file, never copies: if the source had one to give,
         `_copy_parent_inits` already delivered it. Deliberately does not create the directory
         -- the contract is "if we put files there, make it importable", not "every project
-        gets a coded_tools/".
+        gets a coded_tools/". The same contract is why a root this import never touched is
+        left alone: a self-contained .hocon import must not convert a target's intentional
+        namespace-package coded_tools/ into a regular package as a side effect.
         """
         for roots in (self.coded_tools, self.middleware):
+            # Skipped files count as "touched" too: on a re-run of the same import, the files
+            # are already in place and a missing root __init__.py should still be healed.
+            if not self._touched_under(result, os.path.basename(roots.target) + "/"):
+                continue
             target = os.path.join(roots.target, "__init__.py")
             if os.path.exists(target) or not os.path.isdir(roots.target):
                 continue
@@ -268,6 +278,26 @@ class AgentNetworkImporter:
                 result.errors.append(f"Failed to create {target}: {exc}")
                 continue
             result.copied_files.append(f"{os.path.basename(roots.target)}/__init__.py")
+
+    @staticmethod
+    def _touched_under(result: ImportResult, prefix: str) -> bool:
+        """
+        Whether this import copied or skipped anything under the given root prefix.
+
+        Skips count: a skipped file proves the import *wanted* to place content there, so the
+        root is part of this import's footprint even when every file already existed.
+
+        :param result: The in-progress import outcome to inspect.
+        :param prefix: Root-relative display prefix, e.g. ``"coded_tools/"``.
+        :return: True when any copied or skipped display path starts with ``prefix``.
+        """
+        for copied_file in result.copied_files:
+            if copied_file.startswith(prefix):
+                return True
+        for skipped_file in result.skipped_files:
+            if skipped_file.startswith(prefix):
+                return True
+        return False
 
     def import_from_path(self, source_path: str, force: bool = False) -> ImportResult:
         """Import a single network from a local file path.
@@ -327,19 +357,24 @@ class AgentNetworkImporter:
                     payload = zf.read(info).decode("utf-8")
                     self._merge_mcp_text(payload, result)
                     continue
-                target = os.path.join(self.target_dir, rel)
+                # Extract to — and record — the normalized path, not the raw entry name.
+                # A zip may spell entries "./coded_tools/tool.py" or (from a Windows builder)
+                # "coded_tools\\tool.py"; validation normalizes only its whitelist check, so
+                # raw names would land odd paths on disk and leave displays that downstream
+                # bookkeeping (`_touched_under`) cannot match against.
+                target = os.path.join(self.target_dir, normalized)
                 # Track every bundled registry HOCON for manifest registration — including
                 # skipped (already-present) ones, so re-running with the same bundle still
                 # ensures the entry exists in the receiver's manifest.
                 if normalized.startswith("registries/") and normalized.endswith(".hocon"):
                     self._register_manifest_entry(result, normalized[len("registries/") :])
                 if os.path.exists(target) and not force:
-                    result.skipped_files.append(rel)
+                    result.skipped_files.append(normalized)
                     continue
                 os.makedirs(os.path.dirname(target), exist_ok=True)
                 with zf.open(info) as src, open(target, "wb") as dst:
                     shutil.copyfileobj(src, dst)
-                result.copied_files.append(rel)
+                result.copied_files.append(normalized)
         return result
 
     @staticmethod
