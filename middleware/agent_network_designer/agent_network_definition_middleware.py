@@ -51,6 +51,9 @@ from coded_tools.agent_network_editor.constants import AGENT_NETWORK_NAME
 from coded_tools.agent_network_editor.progress_handler import ProgressHandler
 from coded_tools.agent_network_editor.sly_data_lock import SlyDataLock
 from middleware.agent_network_designer.persistence.file_system_agent_network_persistor import DEFAULT_REGISTRIES_DIR
+from middleware.agent_network_designer.persistence.file_system_agent_network_persistor import (
+    FileSystemAgentNetworkPersistor,
+)
 
 AGENT_NETWORK_HOCON_FILE: str = "agent_network_hocon_file"
 AGENT_RESERVATIONS: str = "agent_reservations"
@@ -492,10 +495,10 @@ class AgentNetworkDefinitionMiddleware(AgentMiddleware):
              existing file under cwd, it is used as-is. This covers paths copied from the
              repo tree such as "registries/generated/foo.hocon".
           3. Otherwise, paths are resolved against ``base_dir`` — the directory of the
-             first entry in ``AGENT_MANIFEST_FILE`` (a whitespace-separated list of
-             manifest files), or ``DEFAULT_REGISTRIES_DIR`` when the env var is empty or
-             unset. This mirrors ``FileSystemAgentNetworkPersistor`` so loads and saves
-             agree on file location.
+             first non-empty entry in ``AGENT_MANIFEST_FILE`` (an ``os.pathsep``-separated
+             list of manifest files, like ``PATH``), or ``DEFAULT_REGISTRIES_DIR`` when the
+             env var is empty or unset. The parse is shared with
+             ``FileSystemAgentNetworkPersistor`` so loads and saves agree on file location.
 
         Backslashes in the input are normalized to forward slashes so Windows-style paths
         work on POSIX (and vice versa).
@@ -540,10 +543,10 @@ class AgentNetworkDefinitionMiddleware(AgentMiddleware):
             return trimmed_input
 
         # Derive the base registries directory from AGENT_MANIFEST_FILE (the dirname of the
-        # first listed manifest), falling back to the default registries directory.
-        agent_manifest_file: str = os.environ.get("AGENT_MANIFEST_FILE", "")
-        manifest_parts: list[str] = agent_manifest_file.split()
-        base_dir: str = os.path.dirname(manifest_parts[0]) if manifest_parts else DEFAULT_REGISTRIES_DIR
+        # first non-empty entry), falling back to the default registries directory. The
+        # parse is shared with the persistor so loads and saves cannot drift apart again.
+        first_manifest: str = FileSystemAgentNetworkPersistor.get_first_manifest_path()
+        base_dir: str = os.path.dirname(first_manifest) if first_manifest else DEFAULT_REGISTRIES_DIR
         return (Path(base_dir) / trimmed_input).as_posix()
 
     async def _hocon_to_config(self, network_hocon_file: str | None) -> dict[str, Any] | None:
