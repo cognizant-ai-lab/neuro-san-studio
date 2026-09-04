@@ -1,7 +1,7 @@
 # Neuro SAN
-leaf-common>=1.3.1
-neuro-san==0.6.95
-nsflow==0.6.19
+leaf-common>=1.4.0
+neuro-san==0.7.0
+nsflow==0.7.0
 
 # For config parsing
 pyhocon>=0.3.60
