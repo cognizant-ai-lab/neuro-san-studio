@@ -233,6 +233,9 @@ Which LLM providers do you want to enable?
 Enter numbers separated by commas (default: 1):
 ```
 
+**Note:** To access all Neuro SAN Studio capabilities, clone this repository and follow the setup instructions in the
+[docs/dev_guide.md](docs/dev_guide.md).
+
 ### Set your LLM API key(s)
 
 1. Set your provider key, e.g. `OPENAI_API_KEY`, `ANTHROPIC_API_KEY` or `GOOGLE_API_KEY`
@@ -376,7 +379,7 @@ For examples of agent networks, check out [docs/examples.md](docs/examples.md).
 
 ## Developer Guide
 
-For the development guide, check out [docs/dev_guide.md](docs/dev_guide.md).
+For local development setup and contribution instructions, see the [docs/dev_guide.md](docs/dev_guide.md).
 
 ---
 
