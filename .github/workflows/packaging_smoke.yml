@@ -1,0 +1,29 @@
+name: Packaged Install Smoke Test
+
+on:
+  pull_request:
+    branches:
+      - main
+  workflow_dispatch:      # enables manual triggering
+
+permissions:
+  contents: read
+
+jobs:
+  packaged-install-smoke-test:
+    # don't run this job in sync'd clones
+    if: github.repository == 'cognizant-ai-lab/neuro-san-studio'
+    # cognizant-ai-lab/build-common 1.0.12
+    uses: cognizant-ai-lab/build-common/.github/workflows/_python-quality-gate.yml@3f4cdab31b6ac10382c99452b720eb0b8b2dab8f
+    with:
+      python-version: '3.12'
+      # Lint runs in tests.yml; this workflow only builds and exercises the wheel.
+      lint-command-override: 'true'
+      # The smoke test builds a wheel, so setuptools-scm needs a version. The gate checks the
+      # repository out shallow and without tags, where it would have to fall back to a
+      # placeholder anyway, and the version the wheel carries is irrelevant here.
+      test-command-override: >-
+        SETUPTOOLS_SCM_PRETEND_VERSION=0.0.0
+        pytest --verbose -m "smoke"
+    secrets:
+      SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}

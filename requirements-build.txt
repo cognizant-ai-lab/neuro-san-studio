@@ -19,3 +19,6 @@ pylint==3.3.1
 
 # Lets `ns --version` resolve the version from a source checkout.
 setuptools-scm==8.1.0
+
+# Builds the wheel the packaged-install smoke tests install into a clean venv.
+build>=1.2.2
