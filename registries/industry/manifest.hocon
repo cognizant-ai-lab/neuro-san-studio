@@ -24,6 +24,7 @@
     "industry/airline_policy.hocon": true,
     "industry/airline_policy_web_search.hocon": true,
     "industry/banking_ops.hocon": true,
+    "industry/fraud_defense.hocon": true,
     "industry/cpg_agents.hocon": true,
     "industry/consumer_decision_assistant.hocon": true,
     "industry/insurance_agents.hocon": false,  # This is a deprecated version of insurance_underwriting_agents.hocon

@@ -1,0 +1,72 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Fraud War Room | Autonomy Engine</title>
+  <link rel="stylesheet" href="/static/styles.css">
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand"><span class="brand-mark">FW</span><div><strong>FRAUD WAR ROOM</strong><small>Fraud Defense Autonomy Engine</small></div></div>
+    <div class="top-meta"><span class="live-dot"></span><span>LIVE SYNTHETIC ENVIRONMENT</span><span class="divider"></span><span id="clock">14:00:00 UTC</span></div>
+    <div class="top-actions"><span class="env-chip">NA BFS / DEMO</span><button class="icon-button" title="Notifications">◌</button><div class="avatar">IR</div></div>
+  </header>
+
+  <main class="shell">
+    <section class="hero-row">
+      <div><div class="eyebrow">AUTONOMOUS DEFENSE CONTROL PLANE</div><h1>Investigation command center</h1><p class="subhead">Detect the attack. Challenge the defense. Govern the decision.</p></div>
+      <div class="hero-actions"><button class="ghost-button" id="benchmarkButton">Run benchmark</button><button class="primary-button" id="approveTop">Approve to shadow <span>→</span></button></div>
+    </section>
+
+    <section class="stat-grid" id="stats">
+      <article class="stat-card accent"><div class="stat-label">ACTIVE INCIDENT</div><div class="stat-value" id="statCase">CASE-0001</div><div class="stat-note"><span class="status-dot red"></span> Coordinated payment fraud</div></article>
+      <article class="stat-card"><div class="stat-label">RISK LEVEL</div><div class="stat-value risk-text" id="statRisk">CRITICAL</div><div class="stat-note" id="statRiskNote">Multi-signal escalation</div></article>
+      <article class="stat-card"><div class="stat-label">FRAUD LOSS AT RISK</div><div class="stat-value" id="statLoss">$60.5K</div><div class="stat-note positive">↗ 5 transaction chain</div></article>
+      <article class="stat-card"><div class="stat-label">DECISION CONFIDENCE</div><div class="stat-value" id="statConfidence">—</div><div class="confidence-bar"><span id="confidenceBar"></span></div><div class="stat-note" id="statDisagreement">Independent review pending</div></article>
+      <article class="stat-card"><div class="stat-label">DEFENSE LIFECYCLE</div><div class="stat-value" id="statLifecycle">RECOMMEND</div><div class="stat-note"><span class="status-dot amber"></span> Human approval required</div></article>
+    </section>
+
+    <div class="dashboard-grid">
+      <aside class="panel queue-panel">
+        <div class="panel-header"><div><span class="panel-kicker">OPERATIONS</span><h2>Alert queue</h2></div><span class="count-badge" id="queueCount">—</span></div>
+        <div class="search"><span>⌕</span><input id="caseSearch" placeholder="Search cases" aria-label="Search cases"></div>
+        <div class="queue-list" id="queueList"></div>
+        <div class="queue-footer"><span class="status-dot green"></span><span>Data plane healthy</span><span class="footer-spacer"></span><span id="caseTotal">600 cases</span></div>
+      </aside>
+
+      <section class="panel graph-panel">
+        <div class="panel-header"><div><span class="panel-kicker">ENTITY INTELLIGENCE</span><h2>Fraud campaign graph</h2></div><div class="graph-legend"><span><i class="legend-node red"></i> Incident</span><span><i class="legend-node blue"></i> Entity</span><span><i class="legend-line"></i> Relationship</span></div></div>
+        <div class="graph-wrap" id="graphWrap"><svg id="graphSvg" viewBox="0 0 720 430" role="img" aria-label="Fraud campaign relationship graph"></svg><div class="graph-overlay"><span class="overlay-label">COMPONENT</span><strong id="componentSize">—</strong><span>nodes</span><span class="overlay-sep"></span><span class="overlay-label">LINKED ACCOUNTS</span><strong id="linkedAccounts">—</strong></div></div>
+        <div class="graph-caption"><span class="status-dot red"></span><span id="graphCaption">Loading campaign signal…</span><button class="text-button">Open graph explorer ↗</button></div>
+      </section>
+
+      <aside class="panel activity-panel">
+        <div class="panel-header"><div><span class="panel-kicker">NEURO SAN TOPOLOGY / CODED-TOOL TRACE</span><h2>Agent activity</h2></div><span class="pulse-badge"><i></i> RUNNING</span></div>
+        <div class="activity-list" id="activityList"></div>
+        <div class="activity-footer"><span>Deterministic workbench trace · HOCON network available</span><button class="text-button">View network ↗</button></div>
+      </aside>
+    </div>
+
+    <section class="lower-grid">
+      <section class="panel evidence-panel">
+        <div class="panel-header tabs-header"><div class="tabs"><button class="tab active" data-tab="hypotheses">Hypotheses <span id="hypothesisCount">3</span></button><button class="tab" data-tab="evidence">Evidence <span id="evidenceCount">—</span></button><button class="tab" data-tab="timeline">Timeline</button></div><span class="panel-kicker" id="lowerKicker">COMPETING EXPLANATIONS</span></div>
+        <div id="tabContent"></div>
+      </section>
+      <section class="panel defense-panel">
+        <div class="panel-header"><div><span class="panel-kicker">COUNTERFACTUAL CONTROL LAB</span><h2>Defense comparison</h2></div><span class="sim-badge">SIMULATED</span></div>
+        <div class="defense-table-wrap"><table><thead><tr><th>CONTROL</th><th>FRAUD PREVENTED</th><th>FALSE POSITIVE</th><th>FRICTION</th><th>UTILITY</th></tr></thead><tbody id="defenseTable"></tbody></table></div>
+        <div class="selected-defense" id="selectedDefense"></div>
+      </section>
+    </section>
+
+    <section class="passport-strip panel"><div class="passport-icon">✓</div><div class="passport-copy"><span class="panel-kicker">DECISION PASSPORT</span><strong id="passportDecision">Awaiting investigation</strong><span id="passportMeta">Auditable evidence package will appear here.</span></div><div class="passport-tags"><span id="passportTag">PENDING</span><span>NO CHAIN-OF-THOUGHT</span></div><button class="ghost-button" id="passportButton">Open passport ↗</button></section>
+
+    <section class="lifecycle panel"><div class="lifecycle-title"><span class="panel-kicker">CONTROL LIFECYCLE</span><strong>Shadow deployment rail</strong><small>Human-approved controls never skip observation.</small></div><div class="rail"><div class="rail-step active"><span>01</span><strong>OBSERVE</strong></div><div class="rail-link active"></div><div class="rail-step active"><span>02</span><strong>RECOMMEND</strong></div><div class="rail-link" id="railShadowLink"></div><div class="rail-step" id="railShadow"><span>03</span><strong>SHADOW</strong></div><div class="rail-link"></div><div class="rail-step"><span>04</span><strong>LIMITED</strong></div><div class="rail-link"></div><div class="rail-step"><span>05</span><strong>ACTIVE</strong></div></div><div class="lifecycle-actions"><button class="ghost-button" id="moreButton">Request more investigation</button><button class="ghost-button" id="rejectButton">Reject</button><button class="primary-button" id="shadowButton">Approve & enter shadow <span>→</span></button></div></section>
+  </main>
+
+  <div class="toast" id="toast" role="status"></div>
+  <dialog id="passportDialog"><div class="dialog-header"><div><span class="panel-kicker">AUDIT ARTIFACT</span><h2>Decision Passport</h2></div><button class="close-button" id="closeDialog">×</button></div><pre id="passportJson"></pre></dialog>
+  <script src="/static/app.js"></script>
+</body>
+</html>

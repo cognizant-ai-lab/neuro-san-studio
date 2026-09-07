@@ -1,0 +1,31 @@
+{
+  "description": "Optional Fraud War Room provider routing. Blank model/base URL values keep the prototype offline.",
+  "providers": {
+    "nvidia": {
+      "api_key_env": "NVIDIA_API_KEY",
+      "model_env": "FRAUD_NVIDIA_MODEL",
+      "base_url_env": "FRAUD_NVIDIA_BASE_URL",
+      "role": "high-volume transaction, graph, and evidence workers"
+    },
+    "cerebras": {
+      "api_key_env": "CEREBRAS_API_KEY",
+      "model_env": "FRAUD_CEREBRAS_MODEL",
+      "base_url_env": "FRAUD_CEREBRAS_BASE_URL",
+      "role": "commander, attacker, defender, challenger, final synthesis"
+    },
+    "gemini": {
+      "api_key_env": "GEMINI_API_KEY",
+      "model_env": "FRAUD_GEMINI_MODEL",
+      "base_url_env": "FRAUD_GEMINI_BASE_URL",
+      "role": "independent policy and document reasoning"
+    },
+    "sarvam": {
+      "api_key_env": "SARVAM_API_KEY",
+      "model_env": "FRAUD_SARVAM_MODEL",
+      "base_url_env": "FRAUD_SARVAM_BASE_URL",
+      "role": "optional voice, translation, and language extension"
+    }
+  },
+  "disagreement_threshold": 0.18,
+  "provider_timeout_seconds": 8
+}

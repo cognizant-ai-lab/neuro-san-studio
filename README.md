@@ -1,5 +1,9 @@
 # Neuro SAN Studio
 
+## Hackathon application: Fraud War Room
+
+This repository includes a synthetic NA BFS Fraud Defense Autonomy Engine at [`apps/fraud_war_room/README.md`](apps/fraud_war_room/README.md). It uses the repository's Neuro SAN HOCON agent network to investigate alerts, reconstruct attacks, generate and adversarially challenge defenses, simulate counterfactual outcomes, govern human approval, enter shadow mode, and learn from outcomes.
+
 **Your launchpad for building intelligent multi-agent systems.** Neuro SAN Studio is a hands-on playground for the
 [Neuro SAN](https://github.com/cognizant-ai-lab/neuro-san) framework, featuring ready-to-run examples, tutorials, and
 tools that let you design, test, and deploy sophisticated agent networks in minutes—not months. Whether you're a

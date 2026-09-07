@@ -1,0 +1,3 @@
+# Flat NSFlow alias for the grouped industry/fraud_defense network.
+# The canonical network remains registries/industry/fraud_defense.hocon.
+include required(package("coded_tools:../registries/industry/fraud_defense.hocon"))

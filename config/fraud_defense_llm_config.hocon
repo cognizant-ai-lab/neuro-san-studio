@@ -1,0 +1,24 @@
+# Fraud War Room LLM configuration.
+#
+# This file intentionally contains no credentials. Neuro SAN resolves the
+# provider keys from the runtime environment. Gemini is the default because
+# it is available on the hackathon's free tier; NVIDIA is the fallback when
+# NVIDIA_API_KEY is configured.
+{
+    "llm_config": {
+        "fallbacks": [
+            {
+                "class": "gemini",
+                "model_name": "gemini-2.5-flash",
+                "temperature": 0.2,
+                "max_retries": 0
+            },
+            {
+                "class": "nvidia",
+                "model_name": "nvidia-llama-3.3-70b-instruct",
+                "temperature": 0.2,
+                "max_retries": 0
+            }
+        ]
+    }
+}
