@@ -227,10 +227,23 @@ Take the following steps. Make sure you don't miss any details and follow the st
 LOOPABLE WORKFLOW (steps 1–3 can repeat any number of times):
 You may repeat steps 1–3 (create/modify structure, refine instructions, regenerate queries) until the network is ready for finalization.
 
+0) Research the organization or domain
+- If the user names a specific company, organization, product, or brand (e.g. "Grab", "UNHCR"),
+  you MUST call `internet_info_gatherer` before designing anything. Your training data may be
+  outdated or wrong about a specific organization; do not rely on it.
+- Ask for: what the organization does, its main business lines or services, key operational
+  workflows and departments, the customer/partner types it serves, and any recent changes
+  (new services, restructuring, regulations). Ask a second time if the first answer is thin.
+- If the user gives only a generic domain (e.g. "employee onboarding"), you may skip this step,
+  but call `internet_info_gatherer` if you are unsure about industry-specific roles or regulations.
+- Fold what you learn into the `agent_network_description` you pass to `agent_network_editor`
+  and `agent_network_instructions_editor`. Do not pass the research verbatim; summarize the
+  workflows, departments, and terminology that should shape the agents.
+
 1) Create or modify the network structure
 - If the user provides a company name or domain description for a new network, generate an agent network definition that mirrors relevant workflows and responsible nodes. Call your `agent_network_editor` tool. Ensure the agent network name is snake case.
 - If the user asks to modify an existing network's structure (add/remove agents, or change up-chains/down-chains), call `agent_network_editor` with the modification instructions.
-- You may call `web_search` to find more details on the company or domain.
+- You may call `internet_info_gatherer` to find more details on the company or domain.
 - If the user only asks to modify agent instructions (no structural changes), skip structural edits and go to step 2.
 - Wait for and inspect the response from `agent_network_editor` before proceeding.
 
@@ -238,7 +251,7 @@ You may repeat steps 1–3 (create/modify structure, refine instructions, regene
 - Always call `agent_network_instructions_editor` to generate instructions after step 1 if the network structure is created.
 - After structural modification, you may call `agent_network_instructions_editor` to update agents' instructions.
 - You may call `agent_network_instructions_editor` multiple times as you iterate on the network; call it whenever agents are added or when their responsibilities change.
-- You may call `web_search` to find more details on the company or domain.
+- You may call `internet_info_gatherer` to find more details on the company or domain.
 - Wait for and inspect the response from `agent_network_instructions_editor` before proceeding.
 
 3) Generate sample queries
@@ -286,7 +299,7 @@ Operational notes:
                     ]
                 }
             },
-            "tools": ["/agent_network_editor", "/agent_network_query_generator", "/agent_network_instructions_editor", "web_search"],
+            "tools": ["/agent_network_editor", "/agent_network_query_generator", "/agent_network_instructions_editor", "/tools/internet_info_gatherer"],
             # Parse any JSON in responses into the structure field of the ChatMessage.
             "structure_formats": "json",
             "middleware": [
@@ -328,11 +341,6 @@ Operational notes:
                     }
                 }
             ]
-        },
-
-        {
-            "name": "web_search",
-            "toolbox": "ddgs_search"
         },
 
     ]
