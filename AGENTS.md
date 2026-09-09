@@ -42,6 +42,8 @@ Contribution guide for coding agents working in **neuro-san-studio**.
 
 ## 3. Opening the PR
 
+The essentials are below; for more details go through [CONTRIBUTING.md](CONTRIBUTING.md).
+
 Branch as `feature/short-name`, `fix/short-name` or `docs/short-name` — never commit to `main`. Commits are a
 one-line summary, prefixed with the issue number when there is one:
 
