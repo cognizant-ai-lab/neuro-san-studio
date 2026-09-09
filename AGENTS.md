@@ -8,12 +8,12 @@ Rules for coding agents in Neuro-san-studio. Follow them and the §4 gates pass 
 
 - Check the toolbox before writing Python. [toolbox_info.hocon](neuro_san_studio/toolbox/toolbox_info.hocon)
   already provides web search, RAG, code execution, Gmail, Jira and more.
-- Review any internet-sourced agent skill before use; a `SKILL.md` can reference untrusted tools.
 - Every network sets `max_steps` and `max_execution_seconds`; never leave them unbounded. Older networks that
   lack them are not precedent.
 - No secrets in HOCON: use the environment or `.env`. Never log or print `sly_data`.
 - Add optional dependencies in `coded_tools/<group>/<agent_network>/requirements.txt`, and keep the network disabled
   by default in the manifest.
+- Review any internet-sourced agent skill before use; a `SKILL.md` can reference untrusted tools.
 - Keep the diff focused: no unrequested refactors and no reformatting of untouched files. Review it before creating a
   PR and remove debug prints, commented-out code, stray `TODO`s and files touched by accident.
 - Documentation ships in the same PR. A curated example (`basic/`, `industry/`, `tools/`) requires `metadata`,
@@ -46,7 +46,7 @@ Rules for coding agents in Neuro-san-studio. Follow them and the §4 gates pass 
 - Use long-form flags (`--force`, not `-f`), and docstrings on functions, classes and modules.
 - Cover new behavior with a test: a unit test for a coded tool, an integration fixture for a network.
 
-## 3. Framework gotchas
+## 3. Framework behavior
 
 - The Front Man must be an LLM agent, never a coded or toolbox tool.
 - Network-level `tools` (agent definitions) is not an agent's `tools` (down-chain agents it may call).
