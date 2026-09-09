@@ -8,7 +8,12 @@ Contribution guide for coding agents working in **neuro-san-studio**.
 
 - **Every network you add or edit sets `max_steps` and `max_execution_seconds`.** Never unbounded. Older curated
   networks that lack them are not precedent.
-- **No secrets in HOCON** — use environment or `.env`. Never log or print `sly_data`.
+- **No secrets in HOCON** — use environment or `.env`. Never log or print `sly_data`. Don't claim generic keys like
+  `headers` in `sly_data` — it becomes a reserved word visible in every UI; use `http_headers`.
+- **It must work out of the box.** A dependency only some users need goes in a tool-specific
+  `coded_tools/<group>/<tool>/requirements.txt`, not the main `requirements.txt`; the tool or feature that needs
+  it is then *disabled by default* in the manifest. Dev-only packages go in `requirements-build.txt`. Don't add a
+  package that already arrives transitively with `neuro-san`. New feature flags default to off.
 - **Keep the diff focused.** No unrequested refactors, no drive-by reformatting of untouched files.
 - **Check the toolbox before writing Python.**
   [toolbox_info.hocon](neuro_san_studio/toolbox/toolbox_info.hocon) already has web search, RAG, code execution,
@@ -19,7 +24,8 @@ Contribution guide for coding agents working in **neuro-san-studio**.
 - **Tests mirror the tree they cover**, named `test_<functionality>_<scenario>`, arrange-act-assert, with
   external calls and file I/O mocked.
 - **A user-facing change ships its docs in the same PR.** A curated example (`basic/`, `industry/`, `tools/`)
-  needs `metadata` in the HOCON, a doc under `docs/examples/<group>/` named after it, a line plus TOC entry in
+  needs `metadata` (including realistic, self-contained `sample_queries` that don't assume data the network can't
+  see), a doc under `docs/examples/<group>/` named after it, a line plus TOC entry in
   [examples.md](docs/examples.md), and a registered fixture. A feature rather than a network updates its own
   reference doc — [toolbox.md](docs/toolbox.md), [plugins.md](docs/plugins.md), [search_tools.md](docs/search_tools.md),
   or [user_guide.md → Middleware](docs/user_guide.md#middleware). A network in `generated/` needs none; it is
@@ -50,7 +56,16 @@ Contribution guide for coding agents working in **neuro-san-studio**.
   reason in the PR.
 - **Tests**: prefer real fixture files over heavy mocking; keep timeouts realistic; don't make required parameters
   optional just for test convenience.
-- **Dependencies** float within a major/minor range — don't pin micro versions.
+- **Dependencies carry a version** (`pkg>=x.y.z` like the rest of `requirements.txt`; exact pins only where
+  neuro-san/nsflow already are). Never unversioned, never a stale or retired API.
+- **Keep `__init__.py` empty**; import modules explicitly. A class not meant to be instantiated extends `ABC` with
+  `@abstractmethod`. Fixed value sets are an `Enum`. Keep variables in the narrowest scope (inside `main`, not at
+  module level).
+- **Never fail silently.** A missing or unreadable file, a malformed input or an unknown choice is reported with
+  the full exception, not swallowed. LLM-supplied args can be `None` or the wrong type — default them defensively
+  and comment why. Conversely, a disabled plugin or feature does *nothing*, not even log.
+- **Don't duplicate config.** A second HOCON that mostly matches another uses `include`; an overlay carries only the
+  differences. Use `${ENV_VAR}` substitution instead of parallel overlay entries.
 
 ## 3. Things that bite
 
@@ -65,6 +80,10 @@ Contribution guide for coding agents working in **neuro-san-studio**.
 - Network-level `tools` (agent *definitions*) is not an agent's `tools` (down-chain agents it may *call*).
 - `sly_data` does not reach external or other-network agents without an explicit `allow` policy; its schemas are
   Front-Man-only.
+- `function.description` says *what* an agent does (so other agents know when to call it); `instructions` say
+  *how*. Don't mix them.
+- Paths in HOCON are relative to the repo root. Reference files in other repos (e.g. neuro-san) by HTTP link, not a
+  local path studio users won't have.
 - Review any internet-sourced agent skill before wiring it in — a `SKILL.md` can reference untrusted tools.
 
 ## 4. Opening the PR
@@ -101,10 +120,13 @@ Then, before you push:
 - [ ] **One concern per PR.** Split anything that needs the word "and" to describe.
 - [ ] **Read your own diff** (`git diff main...HEAD`). Remove debug prints, commented-out code, stray `TODO`s, files you
       touched by accident.
-- [ ] **Nothing unrelated committed** — no `.env`, no `logs/`, no editor or OS files, and nothing pasted from a
-      terminal that carries a key or an internal URL.
+- [ ] **Nothing unrelated committed** — no `.env`, no `logs/`, no `__pycache__`, no editor or OS files, and nothing pasted
+      from a terminal that carries a key or an internal URL.
 - [ ] **New behavior has a test** — unit test for a coded tool, integration fixture for a network.
-- [ ] **Links in any doc you touched still resolve.**
+- [ ] **Links in any doc you touched still resolve** — relative depth included. If you moved or renamed a file, grep
+      the whole repo (docs, README, test READMEs, other `.hocon`) for the old path.
+- [ ] **Markdown is well-formed**: heading levels nest (`##` then `###`), TOC regenerated, no blank lines between
+      list items, links cleaned of tracking params.
 - [ ] **Backward compatible**, or the break is called out in the description with the migration path.
 - [ ] **Rebased on current `main`**, conflicts resolved locally rather than merged from the GitHub UI.
 
