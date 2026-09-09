@@ -18,7 +18,7 @@
 
 Builds a wheel from this checkout, installs it into a clean virtual environment, and drives
 the packaged `ns` console script through the sequence a brand-new user follows: `ns init`,
-`ns import`, load every scaffolded network, check the project `.env`.
+`ns import`, load every scaffolded network, validate every served one, check the project `.env`.
 
 The rest of the test suite runs against the development checkout, where every registry and
 template file is present whether or not the wheel ships it, and where `neuro_san_studio` is
@@ -40,8 +40,10 @@ from pathlib import Path
 from typing import Dict
 from typing import List
 from typing import Set
+from typing import Tuple
 
 import pytest
+from pyhocon import ConfigFactory
 
 pytestmark = pytest.mark.smoke
 
@@ -51,12 +53,6 @@ REPO_ROOT: Path = Path(__file__).resolve().parents[3]
 # between them pull in the aaosa includes, coded tools, MCP config and the generated-manifest
 # include, which is the machinery a scaffold can be missing pieces of.
 IMPORTED_NETWORKS: List[str] = ["basic", "agent_network_designer"]
-
-# A manifest key declared with a bare `true` is served and public, so `ns chat --list` has to
-# report it. Keys with a dict body are support networks marked `"public": false`; they are
-# deliberately absent from that listing, so they can only be checked via the failure markers
-# below.
-PUBLIC_MANIFEST_KEY: re.Pattern = re.compile(r'^\s*"(?P<key>[^"]+)\.hocon"\s*:\s*true\s*,?\s*$', re.MULTILINE)
 
 LISTED_AGENT: re.Pattern = re.compile(r'"agent_name"\s*:\s*"(?P<name>[^"]+)"')
 
@@ -143,9 +139,13 @@ def _build_wheel(dist_dir: Path) -> Path:
     :param dist_dir: Directory to write the wheel to.
     :return: Path to the built wheel.
     """
+    # Run the build from outside the checkout: ``python -m build`` puts the cwd on
+    # sys.path, and a leftover ``build/`` dir at the repo root (gitignored output of
+    # ``python setup.py build``) would shadow the ``build`` package itself.
+    dist_dir.mkdir(exist_ok=True)
     subprocess.run(
-        [sys.executable, "-m", "build", "--wheel", "--outdir", str(dist_dir)],
-        cwd=REPO_ROOT,
+        [sys.executable, "-m", "build", "--wheel", "--outdir", str(dist_dir), str(REPO_ROOT)],
+        cwd=dist_dir,
         check=True,
         timeout=INSTALL_TIMEOUT_SECONDS,
     )
@@ -189,17 +189,37 @@ def fixture_packaged_project(tmp_path_factory: pytest.TempPathFactory) -> Packag
     return project
 
 
-def _expected_public_networks(project_dir: Path) -> Set[str]:
+def _scaffold_manifest_entries(project_dir: Path) -> Tuple[Set[str], Set[str]]:
     """
-    Read the networks the scaffolded manifest declares as public.
+    Read the networks the scaffolded manifest serves and the subset it lists as public.
+
+    A manifest key declared with a bare `true` is served and public. Keys with a dict body
+    are support networks declared with explicit `serve`/`public` flags. Includes are
+    resolved relative to the project root, matching how the packaged CLI sees them.
 
     :param project_dir: The scaffolded project root.
-    :return: Agent network names, i.e. manifest keys without the .hocon suffix.
+    :return: (served keys, public keys). Keys are the manifest's registry-relative
+        ``.hocon`` file names, e.g. ``basic/hello_world.hocon``.
     """
     manifest: Path = project_dir / "registries" / "manifest.hocon"
-    keys: Set[str] = {match.group("key") for match in PUBLIC_MANIFEST_KEY.finditer(manifest.read_text())}
-    assert keys, f"no public networks found in {manifest}"
-    return keys
+    parsed = ConfigFactory.parse_string(manifest.read_text(encoding="utf-8"), basedir=str(project_dir))
+
+    # pyhocon keeps the literal quotes of a quoted key, so strip them back off.
+    entries = ((key.strip().strip('"'), value) for key, value in parsed.items())
+    served: Set[str] = set()
+    public: Set[str] = set()
+    for key, value in entries:
+        if value is True:
+            served.add(key)
+            public.add(key)
+        elif isinstance(value, dict):
+            if value.get("serve", False):
+                served.add(key)
+            if value.get("public", False):
+                public.add(key)
+
+    assert served, f"no served networks found in {manifest}"
+    return served, public
 
 
 def test_scaffolded_networks_load(packaged_project: PackagedProject) -> None:
@@ -210,9 +230,31 @@ def test_scaffolded_networks_load(packaged_project: PackagedProject) -> None:
     for marker in LOAD_FAILURE_MARKERS:
         assert marker not in listed.stdout, f"network failed to load:\n{listed.stdout}"
 
-    served: Set[str] = {match.group("name") for match in LISTED_AGENT.finditer(listed.stdout)}
-    missing: Set[str] = _expected_public_networks(packaged_project.project_dir) - served
+    listed_agents: Set[str] = {match.group("name") for match in LISTED_AGENT.finditer(listed.stdout)}
+    _, public = _scaffold_manifest_entries(packaged_project.project_dir)
+    missing: Set[str] = {key.removesuffix(".hocon") for key in public} - listed_agents
     assert not missing, f"manifest networks missing from `ns chat --list`: {sorted(missing)}\n{listed.stdout}"
+
+
+def test_served_networks_validate(packaged_project: PackagedProject) -> None:
+    """Every served manifest entry passes `ns validate`.
+
+    `ns chat --list` only reports public networks and tolerates a failed load by logging
+    and skipping, so support networks (`"serve": true, "public": false`) could break without
+    failing any assertion above. `ns validate` exits non-zero on a file that fails to parse,
+    fails to validate, or is missing from the wheel, so each served entry gets checked
+    directly instead of relying on the absence of a log marker.
+    """
+    served, _ = _scaffold_manifest_entries(packaged_project.project_dir)
+
+    # `ns validate` checks one file at a time, so `/agent_name` references to the other
+    # networks in the manifest must be declared to it explicitly. At load time they
+    # resolve as external agents, which is exactly what `--external-agents` declares.
+    external_agents: str = ",".join(f"/{key.removesuffix('.hocon')}" for key in sorted(served))
+    for network_file in sorted(served):
+        result = packaged_project.run("validate", f"registries/{network_file}",
+                                      "--external-agents", external_agents)
+        assert result.returncode == 0, f"`ns validate` failed for {network_file}:\n{result.stdout}"
 
 
 def test_check_llm_keys_reads_project_env(packaged_project: PackagedProject) -> None:
