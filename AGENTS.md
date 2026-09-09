@@ -25,7 +25,34 @@ Contribution guide for coding agents working in **neuro-san-studio**.
   or [user_guide.md → Middleware](docs/user_guide.md#middleware). A network in `generated/` needs none; it is
   git-ignored and personal.
 
-## 2. Things that bite
+## 2. Python style reviewers will flag
+
+- **Everything lives in a class.** No standalone helper functions — not in tests either. `main()` is a static method
+  on a class. No nested `def`s unless a comment explains why. Data-only classes stay data-only: no policy methods on
+  them. One class per file, file name matching the class name.
+- **`snake_case` for every identifier** (`fail_fast`, not `failfast`). If an external API forces `camelCase`,
+  comment why.
+- **Double quotes** for strings (`ruff format` enforces it). Imports one per line (`force-single-line`), only what is
+  used, no star imports.
+- **Dictionary access is always `.get()`**, never `dict[key]`.
+- **Catch specific exceptions**, never bare `except Exception`. Only catch what you can handle at that level.
+- **Logging**: lazy `%` formatting (`logger.info("Loaded %s", name)`), not f-strings. `WARNING` is reserved for
+  something an operator can act on — otherwise `INFO` or `DEBUG`. Write messages devops can understand.
+- **Use accessors, not internals.** Don't reach into another class's attributes; don't `isinstance` against concrete
+  classes — check the interface, or add an interface method that answers the question.
+- **Don't modify system env vars** and don't hardcode values that belong in one (`localhost`, ports, paths).
+- **Every `.py` starts with the Apache copyright header** ending in `# END COPYRIGHT`; put module comments and
+  docstrings *below* that block so the auto-updater does not clobber them.
+- **Comment the non-obvious**: which `_method`s are overrides vs. ours, threading and lifecycle behavior, design
+  decisions, and a breadcrumb pointing to related code or docs. Order lifecycle methods logically (`start()` before
+  `stop()`).
+- **Don't rename or remove public classes, interfaces, log lines or comments** without a compatibility layer or a
+  reason in the PR.
+- **Tests**: prefer real fixture files over heavy mocking; keep timeouts realistic; don't make required parameters
+  optional just for test convenience.
+- **Dependencies** float within a major/minor range — don't pin micro versions.
+
+## 3. Things that bite
 
 - In a manifest, `serve` loads the network, `public` lists it in `/list`, `mcp` exposes it as an MCP tool. Paths
   resolve relative to `registries/`.
@@ -40,7 +67,7 @@ Contribution guide for coding agents working in **neuro-san-studio**.
   Front-Man-only.
 - Review any internet-sourced agent skill before wiring it in — a `SKILL.md` can reference untrusted tools.
 
-## 3. Opening the PR
+## 4. Opening the PR
 
 The essentials are below; for more details go through [CONTRIBUTING.md](CONTRIBUTING.md).
 
