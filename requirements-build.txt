@@ -21,4 +21,4 @@ pylint==3.3.1
 setuptools-scm==8.1.0
 
 # Builds the wheel the packaged-install smoke tests install into a clean venv.
-build>=1.2.2
+build==1.6.0
