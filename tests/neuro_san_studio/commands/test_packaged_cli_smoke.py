@@ -58,12 +58,12 @@ LISTED_AGENT: re.Pattern = re.compile(r'"agent_name"\s*:\s*"(?P<name>[^"]+)"')
 
 # A registry file that fails to parse or validate is logged and skipped rather than raised, so
 # loading "succeeds" with the network silently missing. Fail on the log lines instead.
-LOAD_FAILURE_MARKERS: List[str] = [
-    "Parse error in registry item",
-    "Failed to restore registry item",
-    # Prefix of both "manifest registry <file> has validation errors" and
-    # "manifest registry <key> not found in <manifest>".
-    "manifest registry",
+# These match the exact messages neuro-san's RegistryManifestRestorer emits; a pattern
+# rather than a prefix so an unrelated line containing "manifest registry" can't trip it.
+LOAD_FAILURE_MARKERS: List[re.Pattern] = [
+    re.compile(r"Parse error in registry item \S+\. Skipping"),
+    re.compile(r"Failed to restore (?:registry item|agent_network) \S+.*Skipping"),
+    re.compile(r"manifest registry \S+ (?:has validation errors|not found in)"),
 ]
 
 # A syntactically valid key that no provider call is made with: tier 1 only checks that the
@@ -228,7 +228,7 @@ def test_scaffolded_networks_load(packaged_project: PackagedProject) -> None:
 
     assert listed.returncode == 0, f"`ns chat --list` failed:\n{listed.stdout}"
     for marker in LOAD_FAILURE_MARKERS:
-        assert marker not in listed.stdout, f"network failed to load:\n{listed.stdout}"
+        assert not marker.search(listed.stdout), f"network failed to load ({marker.pattern}):\n{listed.stdout}"
 
     listed_agents: Set[str] = {match.group("name") for match in LISTED_AGENT.finditer(listed.stdout)}
     _, public = _scaffold_manifest_entries(packaged_project.project_dir)
@@ -252,8 +252,7 @@ def test_served_networks_validate(packaged_project: PackagedProject) -> None:
     # resolve as external agents, which is exactly what `--external-agents` declares.
     external_agents: str = ",".join(f"/{key.removesuffix('.hocon')}" for key in sorted(served))
     for network_file in sorted(served):
-        result = packaged_project.run("validate", f"registries/{network_file}",
-                                      "--external-agents", external_agents)
+        result = packaged_project.run("validate", f"registries/{network_file}", "--external-agents", external_agents)
         assert result.returncode == 0, f"`ns validate` failed for {network_file}:\n{result.stdout}"
 
 
