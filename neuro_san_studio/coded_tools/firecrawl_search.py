@@ -119,12 +119,21 @@ class FirecrawlSearch(CodedTool):
 
         logger.info("FirecrawlSearch query: %s", payload["query"])
 
+        # The Search API timeout is milliseconds. Keep it aligned with the client timeout,
+        # otherwise the server still uses its 60s default while aiohttp waits longer.
+        payload["timeout"] = int(firecrawl_timeout * 1000)
+
         try:
             async with ClientSession(timeout=ClientTimeout(total=firecrawl_timeout)) as session:
                 async with session.post(firecrawl_url, headers=headers, json=payload) as response:
-                    response.raise_for_status()
-                    results: Dict[str, Any] = await response.json()
-        except (ClientError, TimeoutError) as error:
+                    results: Dict[str, Any] = await response.json(content_type=None)
+                    if response.status >= 400:
+                        error_message = (
+                            results.get("error") if isinstance(results, dict) else None
+                        ) or f"{response.status} {response.reason}"
+                        logger.error("Firecrawl request failed: %s", error_message)
+                        return f"Error: Firecrawl request failed: {error_message}"
+        except (ClientError, TimeoutError, ValueError) as error:
             logger.error("Firecrawl request failed: %s", error)
             return f"Error: Firecrawl request failed: {error}"
 
@@ -146,26 +155,29 @@ class FirecrawlSearch(CodedTool):
 
         :return: The request body, or a text string error message in the format "Error: <error message>".
         """
-        # Get query from args
-        query: str = args.get("query", "")
+        # Get query from args. Neuro SAN includes unused optional keys as JSON null.
+        query: str = args.get("query") or ""
         if query == "":
             return "Error: No query provided."
         if len(query) > MAX_QUERY_LENGTH:
             return f"Error: 'query' must be at most {MAX_QUERY_LENGTH} characters, got: {len(query)}."
 
         # Number of top search results to retrieve
-        limit: Union[int, str] = FirecrawlSearch.parse_limit(args.get("limit", LIMIT))
+        limit_arg: Any = LIMIT if args.get("limit") is None else args.get("limit")
+        limit: Union[int, str] = FirecrawlSearch.parse_limit(limit_arg)
         if isinstance(limit, str):
             return limit
 
-        # Result source (e.g., "news" for news results, or "web" for general)
-        source: str = args.get("source", SOURCE)
+        # Result source (e.g., "news" for news results, or "web" for general).
+        # Neuro SAN passes JSON null for unused optional args; dict.get(key, default)
+        # does not apply the default when the key is present and None.
+        source: str = args.get("source") or SOURCE
         if source not in SOURCES:
             return f"Error: Unsupported source: {source}."
 
         # Optional index to restrict the search to: "developer" (repos, issues, docs), "research" (papers),
         # or "pdf". Default is None, which searches the general web index.
-        category: str = args.get("category")
+        category: str = args.get("category") or None
         if category is not None and category not in CATEGORIES:
             return f"Error: Unsupported category: {category}."
 
@@ -174,13 +186,14 @@ class FirecrawlSearch(CodedTool):
             "limit": limit,
             "sources": [{"type": source}],
             # ISO country code to localize search results (e.g., "us" for United States)
-            "country": args.get("country", COUNTRY),
+            "country": args.get("country") or COUNTRY,
         }
         if category is not None:
             payload["categories"] = [{"type": category}]
         # Search filter string (e.g., "qdr:d" for past day results); optional and can be used for time filtering
-        if args.get("tbs") is not None:
-            payload["tbs"] = args.get("tbs")
+        tbs = args.get("tbs")
+        if tbs:
+            payload["tbs"] = tbs
         # Whether to also return the cleaned Markdown of each result page
         if FirecrawlSearch.as_bool(args.get("scrape_content"), SCRAPE_CONTENT):
             payload["scrapeOptions"] = {"formats": ["markdown"], "onlyMainContent": True}

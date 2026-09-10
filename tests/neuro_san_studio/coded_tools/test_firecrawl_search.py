@@ -21,8 +21,6 @@ from unittest.mock import MagicMock
 from unittest.mock import patch
 
 import pytest
-from aiohttp import ClientError
-
 from neuro_san_studio.coded_tools.firecrawl_search import FirecrawlSearch
 
 MODULE = "neuro_san_studio.coded_tools.firecrawl_search"
@@ -79,7 +77,8 @@ def _client_session(response):
 def _invoke(args, payload=None):
     """Invoke FirecrawlSearch with a mocked HTTP response."""
     response = MagicMock()
-    response.raise_for_status = MagicMock()
+    response.status = 200
+    response.reason = "OK"
     response.json = AsyncMock(return_value=payload if payload is not None else RAW_RESPONSE)
 
     session_context, session = _client_session(response)
@@ -95,10 +94,9 @@ class TestFirecrawlSearch:
 
     def test_defaults_are_translated_to_the_request_body(self):
         """Default arguments are translated to the Firecrawl request body."""
-        result, response, client_session, session = _invoke({"query": "python"})
+        result, _, client_session, session = _invoke({"query": "python"})
 
         assert result == FORMATTED_RESPONSE
-        response.raise_for_status.assert_called_once_with()
         client_session.assert_called_once()
         session.post.assert_called_once_with(
             URL,
@@ -108,6 +106,7 @@ class TestFirecrawlSearch:
                 "limit": 5,
                 "sources": [{"type": "web"}],
                 "country": "us",
+                "timeout": 120000,
                 "scrapeOptions": {"formats": ["markdown"], "onlyMainContent": True},
             },
         )
@@ -207,6 +206,7 @@ class TestFirecrawlSearch:
                 "country": "fr",
                 "categories": [{"type": "research"}],
                 "tbs": "qdr:d",
+                "timeout": 120000,
             },
         )
 
@@ -218,6 +218,7 @@ class TestFirecrawlSearch:
 
         assert session.post.call_args.args[0] == "https://firecrawl.internal/v2/search"
         assert client_session.call_args.kwargs["timeout"].total == 5.0
+        assert session.post.call_args.kwargs["json"]["timeout"] == 5000
 
     def test_results_without_scraped_content_omit_markdown(self):
         """Snippet-only results do not carry an empty markdown key."""
@@ -280,14 +281,43 @@ class TestFirecrawlSearch:
         assert result == "Error: Unsupported category: news."
         client_session.assert_not_called()
 
-    @pytest.mark.parametrize("invalid_limit", [None, "many"])
-    def test_invalid_result_count_returns_error_without_request(self, invalid_limit):
+    def test_null_optional_args_use_defaults(self):
+        """JSON null from Neuro SAN is treated as omitted, not sent to the API."""
+        _, _, _, session = _invoke(
+            {
+                "query": "2026 Subaru BRZ tS price",
+                "limit": 3,
+                "source": "web",
+                "category": None,
+                "country": None,
+                "scrape_content": True,
+                "tbs": None,
+                "firecrawl_timeout": 120.0,
+            }
+        )
+
+        assert session.post.call_args.kwargs["json"] == {
+            "query": "2026 Subaru BRZ tS price",
+            "limit": 3,
+            "sources": [{"type": "web"}],
+            "country": "us",
+            "timeout": 120000,
+            "scrapeOptions": {"formats": ["markdown"], "onlyMainContent": True},
+        }
+
+    def test_null_limit_uses_the_default(self):
+        """A null limit is the default result count, not an invalid integer."""
+        _, _, _, session = _invoke({"query": "python", "limit": None})
+
+        assert session.post.call_args.kwargs["json"]["limit"] == 5
+
+    def test_invalid_result_count_returns_error_without_request(self):
         """Invalid result counts follow the coded tool error contract."""
         with patch.dict("os.environ", {"FIRECRAWL_API_KEY": "secret"}, clear=True):
             with patch(f"{MODULE}.ClientSession") as client_session:
-                result = asyncio.run(FirecrawlSearch().async_invoke({"query": "python", "limit": invalid_limit}, {}))
+                result = asyncio.run(FirecrawlSearch().async_invoke({"query": "python", "limit": "many"}, {}))
 
-        assert result == f"Error: 'limit' must be an integer, got: {invalid_limit!r}."
+        assert result == "Error: 'limit' must be an integer, got: 'many'."
         client_session.assert_not_called()
 
     @pytest.mark.parametrize("out_of_range", [0, -1, 101, 500])
@@ -318,19 +348,18 @@ class TestFirecrawlSearch:
         }
 
     def test_http_errors_return_error_string(self):
-        """HTTP failures follow the coded tool error contract."""
-        error = ClientError("request failed")
+        """HTTP failures follow the coded tool error contract and include the API error body."""
         response = MagicMock()
-        response.raise_for_status.side_effect = error
-        response.json = AsyncMock()
+        response.status = 400
+        response.reason = "Bad Request"
+        response.json = AsyncMock(return_value={"success": False, "error": "Invalid request body"})
         session_context, _ = _client_session(response)
 
         with patch.dict("os.environ", {"FIRECRAWL_API_KEY": "secret"}, clear=True):
             with patch(f"{MODULE}.ClientSession", return_value=session_context):
                 result = asyncio.run(FirecrawlSearch().async_invoke({"query": "python"}, {}))
 
-        assert result == "Error: Firecrawl request failed: request failed"
-        response.json.assert_not_awaited()
+        assert result == "Error: Firecrawl request failed: Invalid request body"
 
     def test_timeout_returns_error_string(self):
         """Request timeouts follow the coded tool error contract."""
