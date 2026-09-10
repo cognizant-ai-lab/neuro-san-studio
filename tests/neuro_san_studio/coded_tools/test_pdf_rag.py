@@ -239,7 +239,14 @@ class TestPdfRag(TestCase):
             patch.object(PdfUtils, "parse_pdf_bytes_per_page", return_value=["ok"]),
         ):
             with self.assertLogs("neuro_san_studio.coded_tools.pdf_rag", level="WARNING") as logs:
-                docs = self._load(["s3://bucket/key.pdf", "file:///path/to/x.pdf", "http://example.com/good.pdf"])
+                docs = self._load(
+                    [
+                        "s3://bucket/key.pdf",
+                        "file:///path/to/x.pdf",
+                        "x://host/file.pdf",
+                        "http://example.com/good.pdf",
+                    ]
+                )
 
         self.assertEqual(len(docs), 1)
         self.assertEqual(docs[0].metadata["source"], "http://example.com/good.pdf")
@@ -247,6 +254,23 @@ class TestPdfRag(TestCase):
         joined_logs: str = "\n".join(logs.output)
         self.assertIn("unsupported URL scheme 's3'", joined_logs)
         self.assertIn("unsupported URL scheme 'file'", joined_logs)
+        # A one-letter scheme with URI syntax is NOT mistaken for a drive letter.
+        self.assertIn("unsupported URL scheme 'x'", joined_logs)
+
+    def test_windows_drive_path_is_treated_as_local_file(self):
+        """A drive-letter path parses with a one-letter scheme but must route to the local reader."""
+        with (
+            patch.object(SafeFetch, "open_session", return_value=make_session_cm()),
+            patch.object(SafeFetch, "download_pdf_bytes", new=AsyncMock()) as mock_dl,
+        ):
+            with self.assertLogs("neuro_san_studio.coded_tools.pdf_rag", level="WARNING") as logs:
+                docs = self._load(["C:\\docs\\file.pdf"])
+
+        # The path does not exist on this machine, so it is skipped as a file-read
+        # failure — not as an unsupported scheme, and never as a download.
+        self.assertEqual(docs, [])
+        mock_dl.assert_not_awaited()
+        self.assertNotIn("unsupported URL scheme", "\n".join(logs.output))
 
     def test_oversized_local_file_is_skipped(self):
         """A local file over the byte cap is skipped instead of being read into memory."""

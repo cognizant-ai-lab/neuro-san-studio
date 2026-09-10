@@ -235,16 +235,18 @@ class PdfRag(CodedTool, BaseRag):
             # Route explicitly by URL scheme. http(s) means a remote download
             # through SafeFetch. No scheme at all means a local file path, a
             # documented input form this tool has always accepted (see
-            # registries/tools/pdf_rag.hocon); a single-letter "scheme" is really
-            # a Windows drive letter ("C:\\docs\\file.pdf" parses with scheme "c"),
-            # so that is a local path too. Anything else (file://, s3://, ftp://,
-            # or a typo) is skipped with an explicit message — the old
-            # negative-space routing handed every non-http string to open(), which
-            # failed with a misleading "file not found" for URLs this tool simply
-            # does not support. Only network fetches go through the SSRF policy —
-            # a local path is operator-supplied configuration, not a URL to
-            # validate.
+            # registries/tools/pdf_rag.hocon). A single-letter "scheme" is a
+            # Windows drive letter ("C:\\docs\\file.pdf" parses with scheme "c")
+            # only when the rest is path syntax; with URI syntax ("x://host/f.pdf")
+            # it is an unsupported scheme like any other. Everything else
+            # (file://, s3://, ftp://, or a typo) is skipped with an explicit
+            # message — the old negative-space routing handed every non-http
+            # string to open(), which failed with a misleading "file not found"
+            # for URLs this tool simply does not support. Only network fetches go
+            # through the SSRF policy — a local path is operator-supplied
+            # configuration, not a URL to validate.
             parsed_scheme: str = urlparse(url).scheme.lower()
+            is_drive_letter: bool = len(parsed_scheme) == 1 and "://" not in url
             if parsed_scheme in ("http", "https"):
                 validated_url: str = SafeFetch.validate_url(url)
                 async with semaphore:
@@ -254,7 +256,7 @@ class PdfRag(CodedTool, BaseRag):
                     # concurrent downloads (same pattern as SafeFetch.fetch_pdf_text).
                     page_texts: list[str] = await to_thread(PdfUtils.parse_pdf_bytes_per_page, data)
                 source: str = validated_url
-            elif len(parsed_scheme) > 1:
+            elif parsed_scheme and not is_drive_letter:
                 logger.warning(
                     "Skipping %s: unsupported URL scheme '%s'. Use an http(s) URL or a local file path.",
                     url,
@@ -303,14 +305,13 @@ class PdfRag(CodedTool, BaseRag):
         :raises OSError: When the file is missing or unreadable.
         :raises ValueError: response_too_large when the file exceeds MAX_RESPONSE_BYTES.
         """
-        # Apply the same byte cap the remote path enforces: SafeFetch caps
-        # downloads via Content-Length and on the streamed bytes, and without
-        # this check a huge local file would be read fully into memory.
-        file_size: int = os.path.getsize(path)
-        if file_size > MAX_RESPONSE_BYTES:
-            raise ValueError(
-                f"response_too_large: '{path}' is {file_size} bytes, over the {MAX_RESPONSE_BYTES}-byte limit."
-            )
+        # Apply the same byte cap the remote path enforces, as a bound on the read
+        # itself rather than an os.path.getsize() pre-check: a size probe is not a
+        # hard cap (special files such as /dev/zero report size 0, and a regular
+        # file can grow or be replaced between the probe and the read). Reading at
+        # most one byte past the cap is cheap and makes the limit unconditional.
         with open(path, "rb") as pdf_file:
-            data: bytes = pdf_file.read()
+            data: bytes = pdf_file.read(MAX_RESPONSE_BYTES + 1)
+        if len(data) > MAX_RESPONSE_BYTES:
+            raise ValueError(f"response_too_large: '{path}' exceeds the {MAX_RESPONSE_BYTES}-byte limit.")
         return PdfUtils.parse_pdf_bytes_per_page(data)
