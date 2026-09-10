@@ -170,13 +170,17 @@ class TestNoLangchainCommunity(unittest.TestCase):
             try:
                 findings.extend(self._forbidden_imports(path, source))
             except SyntaxError as error:
-                # A file this interpreter cannot parse (e.g. a deliberately broken
-                # fixture) is noted, not silently dropped, so a review can tell
-                # whether coverage was lost.
                 unparseable.append(f"{path}: {error.msg} (line {error.lineno})")
 
-        if unparseable:
-            print("Skipped unparseable Python files:\n  " + "\n  ".join(unparseable))
+        # A file this interpreter cannot parse is a hole in the scan: a forbidden
+        # import inside it would go unseen, so an unparseable file fails the test
+        # instead of being skipped. Every module in the repo is expected to parse
+        # under the interpreters CI runs, so this should never trigger in practice.
+        self.assertEqual(
+            unparseable,
+            [],
+            "These Python files could not be parsed, so they were not scanned:\n  " + "\n  ".join(unparseable),
+        )
 
         self.assertEqual(
             findings,
