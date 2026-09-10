@@ -84,7 +84,7 @@
 
             # --- Optional Arguments ---
             "args": {
-                # OpenAI model calls the built-in web search tool. Default to gpt-4o-2024-08-06.
+                # OpenAI model calls the built-in web search tool. Default to gpt-5.2.
                 "openai_model": "gpt-4.1"
             }
         },

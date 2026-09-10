@@ -92,7 +92,7 @@ which leverages OpenAI's built-in web search capabilities.
 
 - `query`: The search query derived from user inquiry
 
-- `openai_model`: Model used for search processing ("gpt-4o-2024-08-06" as default)
+- `openai_model`: Model used for search processing ("gpt-5.2" as default)
 
 - `additional_kwargs`: Optional parameters for fine-tuning search behavior
 

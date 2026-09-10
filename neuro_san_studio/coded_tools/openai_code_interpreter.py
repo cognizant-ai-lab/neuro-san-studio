@@ -38,7 +38,7 @@ class OpenAICodeInterpreter(CodedTool):
                 - from calling agent
                     - "query" (str): Request from the user prompt.
                 - from user
-                    - "openai_model" (str): OpenAI model to call the tool. Default to gpt-4o-2024-08-06.
+                    - "openai_model" (str): OpenAI model to call the tool. Default to gpt-5.2.
                     - "additional_kwargs" (dict): Any additional arguments for the tool.
 
         :param sly_data: A dictionary whose keys are defined by the agent hierarchy,

@@ -112,7 +112,7 @@ which leverages Anthropic's built-in code execution capabilities.
 
 - `query`: The user's natural language request for code execution
 
-- `openai_model`: Model used for code generation ("gpt-4o-2024-08-06" as default)
+- `openai_model`: Model used for code generation ("gpt-5.2" as default)
 
 - `container`: Execution container configuration (automatically created if not specified)
 

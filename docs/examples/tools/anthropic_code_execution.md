@@ -104,7 +104,7 @@ which leverages Anthropic's built-in code execution capabilities.
 
 - `query`: The user's natural language request for code execution
 
-- `anthropic_model`: Model used for code generation ("claude-3-7-sonnet-20250219" as default)
+- `anthropic_model`: Model used for code generation ("claude-sonnet-5" as default)
 
 - `save_file`: Boolean flag to automatically save generated files (Default to `false`)
 

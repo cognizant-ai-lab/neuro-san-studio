@@ -48,7 +48,7 @@ class AnthropicCodeExecution(CodedTool):
                 - from calling agent
                     - "query" (str): Request from the user prompt.
                 - from user
-                    - "anthropic_model" (str): Anthropic model to call the tool. Default to claude-3-7-sonnet-20250219.
+                    - "anthropic_model" (str): Anthropic model to call the tool. Default to claude-sonnet-5.
                     - "save_file" (bool): Whether or not to save generated files.
                     - "additional_kwargs" (dict): Any additional arguments for the tool.
 

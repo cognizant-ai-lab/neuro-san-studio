@@ -90,7 +90,7 @@ which leverages Anthropic's built-in web search capabilities.
 
 - `query`: The search query derived from user inquiry that `searcher` passes to the tool
 
-- `anthropic_model`: Model used for search processing ("claude-3-7-sonnet-20250219" as default)
+- `anthropic_model`: Model used for search processing ("claude-sonnet-5" as default)
 
 - `additional_kwargs`: Optional parameters for fine-tuning search behavior
 
