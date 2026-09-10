@@ -39,8 +39,8 @@ FIRECRAWL_TIMEOUT = 120.0
 SOURCES = {"web", "images", "news"}
 CATEGORIES = {"developer", "research", "pdf"}
 MAX_QUERY_LENGTH = 500
-MIN_LIMIT = 1
-MAX_LIMIT = 100
+MIN_LIMIT = 1  # minimum number of search results the API accepts
+MAX_LIMIT = 100  # maximum number of search results the API accepts
 
 # Each source returns a different result shape, so they cannot share one field list.
 # Field names are passed through exactly as the Firecrawl API documents them.
