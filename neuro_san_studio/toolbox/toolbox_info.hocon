@@ -759,6 +759,71 @@ Options are `ascending` and `descending`. Default to `descending`.
         }
     },
 
+    # To use this search tool, obtain an API key from: https://www.firecrawl.dev/
+    # Once you have the API key, set it using the FIRECRAWL_API_KEY environment variable.
+    # You can optionally set a custom search URL via the FIRECRAWL_URL environment variable.
+    # If FIRECRAWL_URL is not set, the default is: https://api.firecrawl.dev/v2/search
+    # You can also configure the request timeout (in seconds) using FIRECRAWL_TIMEOUT; the default is 120 seconds,
+    # which allows for the extra time taken to scrape each result page.
+    "firecrawl_search": {
+        "class": "neuro_san_studio.coded_tools.firecrawl_search.FirecrawlSearch",
+        "description": """Search the web using the Firecrawl Search API.
+
+        Returns ranked search results and, in the same call, the cleaned Markdown of each result page.
+        Use this instead of a search tool followed by a separate extraction tool when the agent needs to
+        read the sources, not just rank them.
+
+        Available parameters:
+        - query (required): The search term or question to look up online
+        - limit (optional): Number of results to return (default: 5)
+        - source (optional): Result source - 'web' (default), 'news', or 'images'
+        - category (optional): Restrict the search - 'developer' (code repositories, issues and technical
+                               docs), 'research' (narrows the web search to academic domains such as arXiv,
+                               Nature, IEEE and PubMed), or 'pdf' (PDF documents). Default: the general web
+        - country (optional): ISO country code for geographic localization (default: 'us', e.g., 'uk', 'de')
+        - scrape_content (optional): Whether to return the cleaned Markdown of each result page (default: true).
+                                     Set to false for cheaper, faster, snippet-only results
+        - tbs (optional): Time-based search filter (e.g., 'qdr:d' for past day, 'qdr:w' for past week, or
+                          'qdr:m' for past month)
+
+        Use this for: real-time web information, reading the full content of sources, searching code
+        repositories and technical documentation, and academic paper lookups.""",
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "query": {
+                    "type": "string",
+                    "description": "The search term or question to look up online."
+                },
+                "limit": {
+                    "type": "integer",
+                    "description": "Number of search results to retrieve, 1 to 100. Default: 5"
+                },
+                "source": {
+                    "type": "string",
+                    "description": "Result source: 'web' (general web), 'news', or 'images'. Default: 'web'"
+                },
+                "category": {
+                    "type": "string",
+                    "description": "Restrict the search: 'developer' (code repositories and technical docs), 'research' (academic domains such as arXiv, Nature, IEEE, PubMed), or 'pdf'. Default: the general web."
+                },
+                "country": {
+                    "type": "string",
+                    "description": "ISO country code to localize search results (e.g., 'us', 'uk', 'de'). Default: 'us'"
+                },
+                "scrape_content": {
+                    "type": "boolean",
+                    "description": "Whether to return the cleaned Markdown of each result page. Default: true"
+                },
+                "tbs": {
+                    "type": "string",
+                    "description": "Time-based search filter (e.g., 'qdr:d' for past day, 'qdr:w' for past week, 'qdr:m' for past month)"
+                }
+            },
+            "required": ["query"]
+        }
+    },
+
     # To use this search tool, you must
     #
     # 1. Create a Custom Search Engine (CSE)

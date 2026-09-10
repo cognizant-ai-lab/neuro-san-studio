@@ -42,6 +42,10 @@ http://link/a
 http://link/b
 http://x/
 
+# For unit test, test_firecrawl_search. Stands in for a self-hosted Firecrawl instance to check
+# that the FIRECRAWL_URL override is honored; the request is mocked and never actually made.
+https://firecrawl\.internal/
+
 # For unit test, test_safe_fetch domain-policy fixtures (never actually fetched;
 # validate_url rejects them before any network call). lychee IDNA-normalizes hosts,
 # so these are the punycode/trailing-dot forms it derives from example.com.,
