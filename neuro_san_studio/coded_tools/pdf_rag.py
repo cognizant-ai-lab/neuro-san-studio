@@ -245,8 +245,15 @@ class PdfRag(CodedTool, BaseRag):
             # for URLs this tool simply does not support. Only network fetches go
             # through the SSRF policy — a local path is operator-supplied
             # configuration, not a URL to validate.
-            parsed_scheme: str = urlparse(url).scheme.lower()
-            is_drive_letter: bool = len(parsed_scheme) == 1 and "://" not in url
+            #
+            # Route on a whitespace-stripped copy: SafeFetch.validate_url strips
+            # padding itself, so " https://host/f.pdf" is a valid remote input, but
+            # urlparse on the raw string would see no scheme and misroute it to the
+            # local reader. The original string is kept for the local path, since
+            # filesystem names may legitimately carry leading/trailing spaces.
+            routing_url: str = url.strip()
+            parsed_scheme: str = urlparse(routing_url).scheme.lower()
+            is_drive_letter: bool = len(parsed_scheme) == 1 and "://" not in routing_url
             if parsed_scheme in ("http", "https"):
                 validated_url: str = SafeFetch.validate_url(url)
                 async with semaphore:

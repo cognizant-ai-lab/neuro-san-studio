@@ -257,6 +257,23 @@ class TestPdfRag(TestCase):
         # A one-letter scheme with URI syntax is NOT mistaken for a drive letter.
         self.assertIn("unsupported URL scheme 'x'", joined_logs)
 
+    def test_whitespace_padded_remote_url_is_routed_as_remote(self):
+        """A remote URL with surrounding whitespace is downloaded, not mistaken for a local path.
+
+        SafeFetch.validate_url strips padding, so the routing decision must be made
+        on the stripped candidate too; parsing the raw string would see no scheme.
+        """
+        with (
+            patch.object(SafeFetch, "open_session", return_value=make_session_cm()),
+            patch.object(SafeFetch, "download_pdf_bytes", new=AsyncMock(return_value=PDF_BYTES)) as mock_dl,
+            patch.object(PdfUtils, "parse_pdf_bytes_per_page", return_value=["ok"]),
+        ):
+            docs = self._load(["  http://example.com/padded.pdf  "])
+
+        self.assertEqual(len(docs), 1)
+        self.assertEqual(docs[0].metadata["source"], "http://example.com/padded.pdf")
+        mock_dl.assert_awaited_once()
+
     def test_windows_drive_path_is_treated_as_local_file(self):
         """A drive-letter path parses with a one-letter scheme but must route to the local reader."""
         with (
