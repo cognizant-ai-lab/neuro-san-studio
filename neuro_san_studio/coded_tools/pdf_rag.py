@@ -285,10 +285,21 @@ class PdfRag(CodedTool, BaseRag):
             return None
 
         logger.info("Successfully loaded PDF file from %s", source)
+        return self._to_page_documents(source, page_texts)
 
-        # One Document per page, mirroring the granularity of the previous
-        # PyMuPDFLoader-based loader so page numbers survive into the vector-store
-        # metadata (chunking downstream does not preserve them otherwise).
+    @staticmethod
+    def _to_page_documents(source: str, page_texts: list[str]) -> list[Document]:
+        """
+        Wrap extracted page texts as one Document per page.
+
+        Mirrors the granularity of the previous PyMuPDFLoader-based loader so page
+        numbers survive into the vector-store metadata (chunking downstream does
+        not preserve them otherwise).
+
+        :param source: The URL or file path the pages came from, recorded as metadata.
+        :param page_texts: The extracted text of each page, in page order.
+        :return: One Document per page with source, page index, and total_pages metadata.
+        """
         total_pages: int = len(page_texts)
         documents: list[Document] = []
         for page_index, page_text in enumerate(page_texts):
