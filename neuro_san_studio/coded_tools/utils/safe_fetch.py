@@ -14,6 +14,7 @@
 #
 # END COPYRIGHT
 
+import os
 from asyncio import TimeoutError as AsyncTimeoutError
 from asyncio import to_thread
 from http import HTTPStatus
@@ -23,6 +24,7 @@ from ipaddress import ip_address
 from typing import Any
 from typing import NoReturn
 from urllib.parse import ParseResult
+from urllib.parse import parse_qs
 from urllib.parse import urlparse
 
 import idna
@@ -37,13 +39,32 @@ from bs4 import BeautifulSoup
 from neuro_san_studio.coded_tools.utils.global_only_resolver import GlobalOnlyResolver
 from neuro_san_studio.coded_tools.utils.pdf_utils import PdfUtils
 
-MAX_URL_LENGTH: int = 250
+# Maximum accepted URL length, shared by every tool on this path (WebFetch and
+# the RAG loaders) so they all accept the same URLs. 2000 is what browsers and
+# CDNs commonly tolerate, and it leaves room for presigned object-store links
+# (S3/Azure SAS), which routinely run 300-1000+ characters; anything longer is
+# far more likely malformed or hostile than legitimate.
+MAX_URL_LENGTH: int = 2000
 # Maximum bytes accepted via Content-Length header before downloading; also the
-# running cap enforced on streamed response bodies (text and PDF alike).
-MAX_RESPONSE_BYTES: int = 10 * 1024 * 1024  # 10 MB
+# running cap enforced on streamed response bodies (text and PDF alike). One
+# shared limit for every tool on this path: large enough for real-world PDF
+# corpora (tens of MB), while still bounding peak memory — the RAG loaders cap
+# how many bodies they hold in flight at once (see their semaphore constants).
+MAX_RESPONSE_BYTES: int = 50 * 1024 * 1024  # 50 MB
 # Read size per iteration when streaming a response body.
 DOWNLOAD_CHUNK_BYTES: int = 64 * 1024
 TIMEOUT_SECONDS: int = 15
+# Generic "download" media types that carry no real format information. When a server
+# declares one of these (or no Content-Type at all), is_pdf falls back to sniffing
+# the URL for a ".pdf" filename; any other concrete declared type is trusted as-is.
+GENERIC_DOWNLOAD_CONTENT_TYPES: frozenset[str] = frozenset(
+    {
+        "application/octet-stream",
+        "binary/octet-stream",
+        "application/x-download",
+        "application/force-download",
+    }
+)
 # Characters permitted in a canonical (post-IDNA, lower-cased) DNS hostname. IP
 # literals are validated separately; a genuine hostname containing anything outside
 # this set means IDNA could not canonicalize it and it is not a usable DNS name.
@@ -98,7 +119,15 @@ class SafeFetch:
         """
         timeout = ClientTimeout(total=TIMEOUT_SECONDS)
         connector = TCPConnector(resolver=GlobalOnlyResolver(), use_dns_cache=False)
-        session: ClientSession = ClientSession(timeout=timeout, connector=connector)
+        # Honor the USER_AGENT environment variable, like the langchain
+        # WebBaseLoader this path replaced: some sites answer 403 to aiohttp's
+        # default "Python/x.y aiohttp/x.y.z" User-Agent, and operators already
+        # use this variable to identify their crawlers.
+        headers: dict[str, str] | None = None
+        user_agent: str | None = os.environ.get("USER_AGENT")
+        if user_agent:
+            headers = {"User-Agent": user_agent}
+        session: ClientSession = ClientSession(timeout=timeout, connector=connector, headers=headers)
         # Mark the session so the network methods can reject a caller-supplied default
         # session, which would skip GlobalOnlyResolver and reopen the SSRF hole.
         # open_session is the only sanctioned constructor and always wires the
@@ -375,37 +404,116 @@ class SafeFetch:
             )
 
     @staticmethod
-    def _is_text_content_type(content_type: str) -> bool:
+    def is_text_content_type(content_type: str) -> bool:
         """
-        Report whether a Content-Type is text-like and worth prefetching as text.
+        Report whether a Content-Type is text-like and safe to ingest as text.
+
+        Used both by get_content_type (to decide whether to prefetch the body on
+        its GET fallback) and by the RAG loaders (to decide whether a URL's body
+        should be stripped to text or skipped as an unsupported binary).
 
         :param content_type: The raw Content-Type header value (may include params).
-        :return: True for text/* and (x)html/xml types; False for PDF, binary, or
-                 anything else.
+        :return: True for text/*, application/json, application/xml, and
+                 "+xml"-suffixed types (html is covered by text/html and
+                 application/xhtml+xml); False for PDF, images (including
+                 image/svg+xml), binary vendor types, or anything else.
         """
         # Match only the base media type, not the parameters: a header such as
         # 'application/pdf; profile="text/html"' is a PDF, and scanning the whole
         # value would misread it as text and stream the body here only for WebFetch
         # to download it again as a PDF.
         base_type: str = content_type.split(";", 1)[0].strip().lower()
-        return base_type.startswith("text/") or "html" in base_type or "xml" in base_type
+        # A declared image is never ingestible text, even when its subtype is
+        # XML-based: image/svg+xml would match the "+xml" test below, but SVG markup
+        # is path/coordinate noise for RAG and callers advertise this method as
+        # skipping images. Check the top-level type first so that policy holds.
+        if base_type.startswith("image/"):
+            return False
+        # JSON is plain text in practice (API responses, JSON document corpora) and
+        # the langchain loaders this path replaced ingested it; downstream the
+        # HTML-sniff passthrough keeps a JSON body verbatim since it does not start
+        # with "<".
+        if base_type == "application/json":
+            return True
+        # Recognize XML types by the RFC 6839 "+xml" structured suffix (or the exact
+        # application/xml type), NOT by an "xml"/"html" substring scan: binary vendor
+        # types such as .docx's
+        # application/vnd.openxmlformats-officedocument.wordprocessingml.document are
+        # ZIP containers whose names merely contain "xml" and must not be read as text.
+        return base_type.startswith("text/") or base_type == "application/xml" or base_type.endswith("+xml")
+
+    @staticmethod
+    def is_pdf(content_type: str, url: str) -> bool:
+        """
+        Report whether a resource should be parsed as a PDF.
+
+        Kept in one place so WebFetch and the RAG loaders classify PDFs identically.
+        A declared base media type of application/pdf is a PDF. Any other concrete
+        declared type is trusted and means "not a PDF": a ".pdf" URL serving declared
+        text/html is an error page or a moved document, and force-feeding it to the
+        PDF parser turns a readable page into a parse failure. Only when the server
+        gives no usable type (missing header, or a generic download type from
+        GENERIC_DOWNLOAD_CONTENT_TYPES) does the URL decide.
+
+        :param content_type: The raw Content-Type header value (may include params).
+        :param url: The already-validated URL, used for the ".pdf" suffix fallback.
+        :return: True if the resource should be parsed as a PDF.
+        """
+        # A Content-Type header has the form "type/subtype[; parameter=value ...]",
+        # e.g. "application/pdf" or "application/pdf; qs=0.8". Split at the first ";"
+        # and keep only the base "type/subtype" token so trailing parameters never
+        # affect the comparison; strip/lower because header tokens are
+        # case-insensitive and may carry surrounding whitespace.
+        base_type: str = content_type.split(";", 1)[0].strip().lower()
+        if base_type == "application/pdf":
+            return True
+        # A concrete declared type other than application/pdf wins over the URL:
+        # the server knows what it is serving, and the suffix is only a filename hint.
+        if base_type and base_type not in GENERIC_DOWNLOAD_CONTENT_TYPES:
+            return False
+        # No usable declared type: sniff the URL for a ".pdf" filename.
+        # parsed.path is only the path segment of the URL: for a URL ending in
+        # "/file.pdf?download=1#page=2" the path is "/file.pdf", with the
+        # "?query" and "#fragment" parts split off. endswith(".pdf") on the path
+        # therefore still matches when a query string or fragment follows the
+        # filename — the same check on the full url string would miss it.
+        parsed: ParseResult = urlparse(url)
+        if parsed.path.lower().endswith(".pdf"):
+            return True
+        # Download endpoints often carry the filename only in the query string
+        # instead of the path. Check each query parameter's value so the filename
+        # is found wherever it sits ("?name=report.pdf" and "?name=report.pdf&sig=x"
+        # alike). parse_qs drops a bare valueless token ("?report.pdf" has no "="),
+        # so the query-suffix check below still has a case of its own.
+        for values in parse_qs(parsed.query).values():
+            for value in values:
+                if value.lower().endswith(".pdf"):
+                    return True
+        # Test the query string, NOT the raw URL: a raw endswith would also match a
+        # "#fragment" ending in ".pdf" ("/page#report.pdf"), and fragments are never
+        # sent to the server, so they say nothing about what the resource is.
+        return parsed.query.lower().endswith(".pdf")
 
     @staticmethod
     async def get_content_type(url: str, session: ClientSession) -> tuple[str, str | None]:
         """
         Probe the URL with a HEAD request and return (Content-Type, prefetched_body).
 
-        Falls back to a GET request if the server returns 405 (Method Not Allowed).
-        In the 405 case a text-like body is read and returned as the second element
-        so the caller can skip a second GET; PDF and other/binary content types
-        return None so their bodies are not downloaded here only to be discarded.
+        Falls back to a GET request when HEAD fails with any HTTP error except 429:
+        many servers reject HEAD while serving GET fine (405 from HEAD-less
+        endpoints, 403 from presigned S3/Azure URLs that sign only the GET method),
+        so a HEAD failure only proves HEAD is unsupported, not that the resource is
+        inaccessible. On the fallback a text-like body is read and returned as the
+        second element so the caller can skip a second GET; PDF and other/binary
+        content types return None so their bodies are not downloaded here only to
+        be discarded.
 
         :param url: The URL to probe.
         :param session: A session created by open_session (enforces the SSRF policy).
         :return: A (content_type, prefetched_body) tuple; prefetched_body is the text
-                 body only on the 405 text-like path, otherwise None.
+                 body only on the GET-fallback text-like path, otherwise None.
         :raises ValueError: url_not_allowed on a redirect, or response_too_large when
-                the Content-Length header or the streamed 405 text body exceeds
+                the Content-Length header or the streamed fallback text body exceeds
                 MAX_RESPONSE_BYTES.
         :raises aiohttp.ClientResponseError: url_not_accessible / too_many_requests on a non-2xx response.
         :raises aiohttp.ClientError: url_not_accessible on a connection/DNS/timeout failure.
@@ -421,28 +529,37 @@ class SafeFetch:
         try:
             async with session.head(url, allow_redirects=False) as head:
                 SafeFetch.raise_if_redirect(head, url)
-                if head.status == HTTPStatus.METHOD_NOT_ALLOWED:
-                    # Server does not support HEAD; probe with GET and read the body
-                    # so the caller can reuse it and avoid a second round-trip.
-                    async with session.get(url, allow_redirects=False) as get:
-                        SafeFetch.raise_if_redirect(get, url)
-                        get.raise_for_status()
-                        SafeFetch.check_content_length(get.headers.get("Content-Length"), url)
-                        content_type: str = get.headers.get("Content-Type", "")
-                        # Only prefetch text-like bodies: a PDF is downloaded
-                        # separately by fetch_pdf_text, and any other/binary type is
-                        # rejected by the caller, so reading it here would download
-                        # bytes only to discard them.
-                        if SafeFetch._is_text_content_type(content_type):
-                            # Stream with the running byte cap (like fetch_raw); the
-                            # Content-Length pre-check above only guards honest servers.
-                            body: str | None = await SafeFetch._read_capped_text(get, url)
-                        else:
-                            body = None
-                        return content_type, body
-                head.raise_for_status()
-                SafeFetch.check_content_length(head.headers.get("Content-Length"), url)
-                return head.headers.get("Content-Type", ""), None
+                # Any 2xx success (200 OK up to, but excluding, 300 MULTIPLE_CHOICES —
+                # the first 3xx code): HEAD succeeded, so the headers alone answer
+                # the probe and there is no body to read.
+                if HTTPStatus.OK <= head.status < HTTPStatus.MULTIPLE_CHOICES:
+                    SafeFetch.check_content_length(head.headers.get("Content-Length"), url)
+                    return head.headers.get("Content-Type", ""), None
+                if head.status == HTTPStatus.TOO_MANY_REQUESTS:
+                    # 429 is authoritative: the server is rate-limiting us, and an
+                    # immediate GET retry would only make that worse. Raise (it is
+                    # translated to too_many_requests below).
+                    head.raise_for_status()
+                # Any other HEAD failure falls through to the GET fallback below,
+                # which passes through the exact same redirect/size/SSRF checks.
+                # (Redirects were already handled above: a 3xx means the resource
+                # moved, and a GET would just see the same redirect.)
+            async with session.get(url, allow_redirects=False) as get:
+                SafeFetch.raise_if_redirect(get, url)
+                get.raise_for_status()
+                SafeFetch.check_content_length(get.headers.get("Content-Length"), url)
+                content_type: str = get.headers.get("Content-Type", "")
+                # Only prefetch text-like bodies: a PDF is downloaded separately by
+                # fetch_pdf_text, and any other/binary type is rejected by the
+                # caller, so reading it here would download bytes only to discard
+                # them.
+                if SafeFetch.is_text_content_type(content_type):
+                    # Stream with the running byte cap (like fetch_raw); the
+                    # Content-Length pre-check above only guards honest servers.
+                    body: str | None = await SafeFetch._read_capped_text(get, url)
+                else:
+                    body = None
+                return content_type, body
         except (ClientError, AsyncTimeoutError) as exc:
             SafeFetch._raise_translated(exc, url)
 
@@ -531,7 +648,8 @@ class SafeFetch:
         direct caller that skipped the HEAD probe in get_content_type. The bytes are
         decoded once, after the full (capped) body is in hand, using the response's
         declared charset (falling back to utf-8 and replacing undecodable bytes) so
-        multibyte sequences spanning chunk boundaries are never split.
+        multibyte sequences spanning chunk boundaries are never split. A leading
+        byte-order mark is dropped from the decoded text.
 
         :param url: The URL to fetch.
         :param session: A session created by open_session (enforces the SSRF policy).
@@ -583,17 +701,19 @@ class SafeFetch:
         Decoding happens once, after the full (capped) body is in hand, so multibyte
         sequences spanning chunk boundaries are never split. aiohttp's
         response.charset comes from the Content-Type header; fall back to utf-8 and
-        replace undecodable bytes rather than raise.
+        replace undecodable bytes rather than raise. A leading byte-order mark is
+        dropped from the decoded text.
 
         :param response: The aiohttp response whose body to stream and decode.
         :param url: The URL being fetched, included in the raised message.
-        :return: The decoded response body (at most MAX_RESPONSE_BYTES of raw bytes).
+        :return: The decoded response body (at most MAX_RESPONSE_BYTES of raw bytes),
+                 without a leading byte-order mark.
         :raises ValueError: response_too_large when the received bytes exceed the limit.
         """
         body: bytes = await SafeFetch._read_capped_body(response, url)
         encoding: str = response.charset or "utf-8"
         try:
-            return body.decode(encoding, errors="replace")
+            text: str = body.decode(encoding, errors="replace")
         except LookupError:
             # A malformed Content-Type can name a codec Python does not know.
             # bytes.decode() then raises LookupError at codec lookup, before
@@ -602,7 +722,21 @@ class SafeFetch:
             # AsyncTimeoutError, so it would escape the fetch methods'
             # translation and break their url_not_accessible contract. Fall back
             # to utf-8 so a bad charset token never leaks past this boundary.
-            return body.decode("utf-8", errors="replace")
+            text = body.decode("utf-8", errors="replace")
+        # A UTF-8 byte-order mark survives a plain utf-8 decode as a leading U+FEFF.
+        # It is an encoding signature, not content, and str.lstrip() does not treat
+        # it as whitespace, so left in place it hides the leading "<" from the HTML
+        # sniffs in parse_raw_text and WebpageRag._to_document and plants an
+        # invisible character in stored text. Drop it here so every consumer sees
+        # the same text a BOM-less copy of the file would produce.
+        #
+        # Deliberately removeprefix (exactly ONE U+FEFF), not lstrip: this matches
+        # the utf-8-sig codec, which strips only the signature. Any further leading
+        # U+FEFFs are (degenerate) ZWNBSP content characters, so stripping the run
+        # would remove more than the codec-defined amount. The same
+        # removeprefix-vs-lstrip correction came up in the PEP 686 discussion:
+        # https://discuss.python.org/t/pep-686-make-utf-8-mode-default-round-2/14737
+        return text.removeprefix("\ufeff")
 
     @staticmethod
     async def fetch_text(url: str, session: ClientSession) -> str:
