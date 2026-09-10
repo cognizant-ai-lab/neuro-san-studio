@@ -49,22 +49,24 @@ pytestmark = pytest.mark.smoke
 
 REPO_ROOT: Path = Path(__file__).resolve().parents[3]
 
-# The networks `ns init` and `ns import` are asked for. `basic` and `agent_network_designer`
-# between them pull in the aaosa includes, coded tools, MCP config and the generated-manifest
-# include, which is the machinery a scaffold can be missing pieces of.
-IMPORTED_NETWORKS: List[str] = ["basic", "agent_network_designer"]
+# `ns init` already scaffolds agent_network_designer and the aaosa includes it needs; the
+# `basic` group adds the rest of the networks a new user is likely to reach for first.
+IMPORTED_NETWORKS: List[str] = ["basic"]
 
 LISTED_AGENT: re.Pattern = re.compile(r'"agent_name"\s*:\s*"(?P<name>[^"]+)"')
 
 # A registry file that fails to parse or validate is logged and skipped rather than raised, so
-# loading "succeeds" with the network silently missing. Fail on the log lines instead.
-# These match the exact messages neuro-san's RegistryManifestRestorer emits; a pattern
-# rather than a prefix so an unrelated line containing "manifest registry" can't trip it.
-LOAD_FAILURE_MARKERS: List[re.Pattern] = [
-    re.compile(r"Parse error in registry item \S+\. Skipping"),
-    re.compile(r"Failed to restore (?:registry item|agent_network) \S+.*Skipping"),
-    re.compile(r"manifest registry \S+ (?:has validation errors|not found in)"),
-]
+# loading "succeeds" with the network silently missing and the command still exits 0. Matching
+# neuro-san's exact log wording would go stale the first time those messages are reworded, so
+# any of these words in a log line counts as a failed load; a clean run has none of them.
+LOAD_FAILURE_WORDS: re.Pattern = re.compile(
+    r"\b(error|errors|fail|fails|failed|failure|failures|skip|skipped|skipping|traceback)\b",
+    re.IGNORECASE,
+)
+
+# Tells the log lines apart from the JSON listing they surround: agent descriptions are prose
+# and say things like "in case its first configured LLM fails", which is not a failure.
+JSON_FIELD: re.Pattern = re.compile(r'^\s*"[^"]+"\s*:')
 
 # A syntactically valid key that no provider call is made with: tier 1 only checks that the
 # variable is set to something other than a placeholder.
@@ -227,8 +229,10 @@ def test_scaffolded_networks_load(packaged_project: PackagedProject) -> None:
     listed = packaged_project.run("chat", "--list")
 
     assert listed.returncode == 0, f"`ns chat --list` failed:\n{listed.stdout}"
-    for marker in LOAD_FAILURE_MARKERS:
-        assert not marker.search(listed.stdout), f"network failed to load ({marker.pattern}):\n{listed.stdout}"
+    complaints: List[str] = [
+        line for line in listed.stdout.splitlines() if not JSON_FIELD.match(line) and LOAD_FAILURE_WORDS.search(line)
+    ]
+    assert not complaints, "`ns chat --list` reported a problem:\n" + "\n".join(complaints)
 
     listed_agents: Set[str] = {match.group("name") for match in LISTED_AGENT.finditer(listed.stdout)}
     _, public = _scaffold_manifest_entries(packaged_project.project_dir)
