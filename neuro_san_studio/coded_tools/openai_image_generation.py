@@ -62,7 +62,8 @@ class OpenAIImageGeneration(CodedTool):
                 adding the data is not invoke()-ed more than once.
 
                 Keys expected for this implementation are:
-                    None
+                    - "llm_config" (dict, optional): BYOK keys sent by the client. When it holds
+                        "openai_api_key", that key is used instead of the OPENAI_API_KEY env var.
 
         :return:
             In case of successful execution:
@@ -88,8 +89,9 @@ class OpenAIImageGeneration(CodedTool):
         save_image_file: bool = args.get("save_image_file", False)
 
         # This should be a list of content blocks if success and a string of error text otherwise.
+        # Forward sly_data so a BYOK OpenAI key sent by the client is used for this call.
         content_blocks: list[dict[str, Any]] | str = await OpenAITool.arun(
-            query, "image_generation", openai_model, **additional_kwargs
+            query, "image_generation", openai_model, sly_data=sly_data, **additional_kwargs
         )
 
         if isinstance(content_blocks, str):

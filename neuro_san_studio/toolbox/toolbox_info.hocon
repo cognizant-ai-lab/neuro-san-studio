@@ -25,6 +25,7 @@
     # Requirement to use this agent network:
     # - langchain-anthropic>=0.3.13
     # - ANTHROPIC_API_KEY
+    #   (or llm_config.anthropic_api_key in the request's sly_data on a BYOK deployment; see config/byok_llm_config.hocon)
     # See https://docs.anthropic.com/en/docs/agents-and-tools/tool-use/overview and
     # https://python.langchain.com/docs/integrations/chat/anthropic/#built-in-tools
 
@@ -173,6 +174,7 @@
     # Requirement to use this agent network:
     # - google-genai
     # - GOOGLE_API_KEY
+    #   (or llm_config.google_api_key in the request's sly_data on a BYOK deployment; see config/byok_llm_config.hocon)
     # Note: If `langchain-google-genai` is already installed in your environment, `google-genai` is already included.
     # See also:
     # - https://ai.google.dev/gemini-api/docs
@@ -270,6 +272,7 @@
     # Requirement to use these tools:
     # - langchain-openai >= 0.3.26
     # - OPENAI_API_KEY
+    #   (or llm_config.openai_api_key in the request's sly_data on a BYOK deployment; see config/byok_llm_config.hocon)
     # See https://platform.openai.com/docs/guides/tools?api-mode=responses and
     # https://python.langchain.com/docs/integrations/chat/openai/#responses-api
 

@@ -19,6 +19,7 @@
 
 # Requirement to use this agent network:
 # - OPENAI_API_KEY
+#   (or llm_config.openai_api_key in the request's sly_data on a BYOK deployment; see config/byok_llm_config.hocon)
 # - opencv-python
 # See https://platform.openai.com/docs/guides/video-generation
 

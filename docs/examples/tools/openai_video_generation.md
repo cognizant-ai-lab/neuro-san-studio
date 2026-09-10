@@ -46,6 +46,12 @@ pip install opencv-python aiohttp
 export OPENAI_API_KEY="your_openai_api_key_here"
 ```
 
+On a Bring-Your-Own-Key (BYOK) deployment the client can send the key in the request's `sly_data` instead,
+under `llm_config.openai_api_key`. A key provided that way takes precedence over the environment variable,
+so the tool call is billed to the user's key just like the agents' own LLM calls. Without such a key the tool
+falls back to the environment variable, so leave that variable unset on a BYOK-only server.
+See [config/byok_llm_config.hocon](../../../config/byok_llm_config.hocon) for the `sly_data` convention.
+
 For more information on setting up OpenAI tools, see:
 
 - [OpenAI Video Generation Guide](https://developers.openai.com/api/docs/guides/video-generation)

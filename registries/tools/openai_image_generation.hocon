@@ -20,6 +20,7 @@
 # Requirement to use this agent network:
 # - langchain-openai >= 0.3.26
 # - OPENAI_API_KEY
+#   (or llm_config.openai_api_key in the request's sly_data on a BYOK deployment; see config/byok_llm_config.hocon)
 # See https://platform.openai.com/docs/guides/tools?api-mode=responses and
 # https://python.langchain.com/docs/integrations/chat/openai/#responses-api
 

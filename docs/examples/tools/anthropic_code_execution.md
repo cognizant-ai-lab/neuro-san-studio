@@ -31,6 +31,12 @@ This is already included with neuro-san-studio, so no need to install anything n
 export ANTHROPIC_API_KEY="your_anthropic_api_key_here"
 ```
 
+On a Bring-Your-Own-Key (BYOK) deployment the client can send the key in the request's `sly_data` instead,
+under `llm_config.anthropic_api_key`. A key provided that way takes precedence over the environment variable,
+so the tool call is billed to the user's key just like the agents' own LLM calls. Without such a key the tool
+falls back to the environment variable, so leave that variable unset on a BYOK-only server.
+See [config/byok_llm_config.hocon](../../../config/byok_llm_config.hocon) for the `sly_data` convention.
+
 ### System Requirements
 
   - Appplications for opening generated files (charts, reports, etc.)

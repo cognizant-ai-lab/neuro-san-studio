@@ -24,6 +24,8 @@ from langchain_core.messages import HumanMessage
 from langchain_openai import ChatOpenAI
 from neuro_san.interfaces.coded_tool import CodedTool
 
+from neuro_san_studio.coded_tools.openai_tool import OpenAITool
+
 INSTRUCTIONS = "Describe the content of the video in detail."
 
 
@@ -50,6 +52,10 @@ class VideoDescriber(CodedTool):
         :param sly_data: A dictionary whose keys are defined by the agent hierarchy,
                 but whose values are meant to be kept out of the chat stream.
 
+                Keys expected for this implementation are:
+                    - "llm_config" (dict, optional): BYOK keys sent by the client. When it holds
+                        "openai_api_key", that key is used instead of the OPENAI_API_KEY env var.
+
         :return: Text string describing the video.
         """
 
@@ -74,7 +80,9 @@ class VideoDescriber(CodedTool):
         video.release()
         self.logger.info("%d frames read from %s.", len(base64_frames), file_path)
 
-        llm = ChatOpenAI(model=openai_model)
+        # A BYOK key from sly_data must win over the server's OPENAI_API_KEY, so resolve it
+        # here instead of letting ChatOpenAI read the environment on its own.
+        llm = ChatOpenAI(model=openai_model, api_key=OpenAITool.get_api_key(sly_data))
         content = [
             {
                 "type": "text",

@@ -52,7 +52,8 @@ class OpenAIWebSearch(CodedTool):
                 adding the data is not invoke()-ed more than once.
 
                 Keys expected for this implementation are:
-                    None
+                    - "llm_config" (dict, optional): BYOK keys sent by the client. When it holds
+                        "openai_api_key", that key is used instead of the OPENAI_API_KEY env var.
 
         :return:
             In case of successful execution:
@@ -76,4 +77,5 @@ class OpenAIWebSearch(CodedTool):
         # See https://platform.openai.com/docs/guides/tools-web-search?api-mode=responses
         additional_kwargs: dict[str, Any] = args.get("additional_kwargs", {})
 
-        return await OpenAITool.arun(query, "web_search_preview", openai_model, **additional_kwargs)
+        # Forward sly_data so a BYOK OpenAI key sent by the client is used for this call.
+        return await OpenAITool.arun(query, "web_search_preview", openai_model, sly_data=sly_data, **additional_kwargs)

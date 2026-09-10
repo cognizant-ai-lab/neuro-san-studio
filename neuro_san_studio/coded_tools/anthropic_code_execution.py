@@ -63,7 +63,8 @@ class AnthropicCodeExecution(CodedTool):
                 adding the data is not invoke()-ed more than once.
 
                 Keys expected for this implementation are:
-                    None
+                    - "llm_config" (dict, optional): BYOK keys sent by the client. When it holds
+                        "anthropic_api_key", that key is used instead of the ANTHROPIC_API_KEY env var.
 
         :return:
             In case of successful execution:
@@ -95,13 +96,17 @@ class AnthropicCodeExecution(CodedTool):
             tool_name="code_execution",
             anthropic_model=anthropic_model,
             betas=[CODE_EXECUTION_BETA],
+            # Forward sly_data so a BYOK Anthropic key sent by the client is used for this call.
+            sly_data=sly_data,
             **additional_kwargs,
         )
 
         # If there are generated files and user wants to save them
         file_ids: list[str] = self.extract_file_ids(content)
         if file_ids and save_file:
-            self.save_file(file_ids)
+            # The download uses the raw Anthropic client, so it needs the same key resolution
+            # as the tool call above or it would silently fall back to the server's env var.
+            self.save_file(file_ids, AnthropicTool.get_api_key(sly_data))
 
         return content
 
@@ -123,14 +128,17 @@ class AnthropicCodeExecution(CodedTool):
                         file_ids.append(file.get("file_id"))
         return file_ids
 
-    def save_file(self, file_ids: list[str]):
+    def save_file(self, file_ids: list[str], api_key: str | None) -> None:
         """
         Save the file on disk.
 
         :param file_ids: ID of the files to save.
+        :param api_key: The Anthropic API key to download with, resolved the same way as the
+                tool call (BYOK sly_data key first, ANTHROPIC_API_KEY second). None when neither
+                source provided one; the SDK then fails the request as it always did.
         """
         # Initialize the client
-        client = Anthropic()
+        client = Anthropic(api_key=api_key)
 
         for file_id in file_ids:
             # Get the file name e.g. output.png
