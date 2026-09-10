@@ -42,8 +42,6 @@ langchain-google-genai>=4.2.2,<5.0
 # cannot express this constraint.
 anthropic>=0.124.0,<1.0
 
-langchain-community>=0.4.2
-
 # For rich logging
 rich>=14.2.0
 
