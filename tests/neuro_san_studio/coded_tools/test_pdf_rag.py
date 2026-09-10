@@ -349,6 +349,17 @@ class TestPdfRag(TestCase):
 
         self.assertIn("No content could be retrieved", result)
 
+    def test_non_list_urls_is_refused_without_network(self):
+        """A non-list, non-string 'urls' (e.g. an int from a hand-edited hocon) is refused, not crashed on."""
+        with patch.object(SafeFetch, "open_session") as mock_session:
+            result = asyncio.run(self.tool.async_invoke({"query": "q", "urls": 123}, {}))
+            docs = asyncio.run(self.tool.load_documents({"urls": 123}))
+
+        self.assertIn("Invalid input: 'urls' must be a list", result)
+        self.assertIn("got int", result)
+        self.assertEqual(docs, [])  # the loader refuses it too, for direct callers
+        mock_session.assert_not_called()
+
     def test_missing_query_or_urls_returns_error_without_network(self):
         """async_invoke reports missing inputs before any session is opened."""
         with patch.object(SafeFetch, "open_session") as mock_session:

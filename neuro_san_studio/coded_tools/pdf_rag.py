@@ -95,6 +95,15 @@ class PdfRag(CodedTool, BaseRag):
             return "❌ Missing required input: 'query'."
         if not urls:
             return "❌ Missing required input: 'urls'."
+        # 'urls' arrives via the hocon args block, which neuro-san does not
+        # schema-validate (only LLM-supplied arguments are), so guard the container
+        # type here: anything but a list or a single string would make
+        # load_documents' for-loop raise TypeError and abort the run with a traceback.
+        if not isinstance(urls, (str, list, tuple)):
+            return (
+                "❌ Invalid input: 'urls' must be a list of PDF URLs/paths (or a single string), "
+                f"got {type(urls).__name__}."
+            )
 
         # Vector store type
         vector_store_type: str = args.get("vector_store_type", "in_memory")
@@ -148,7 +157,10 @@ class PdfRag(CodedTool, BaseRag):
         to validate, download, or parse is logged and skipped so one bad input does
         not discard the rest of the corpus. If the surrounding task is cancelled,
         the cancellation is re-raised only after every in-flight item has unwound,
-        so the shared session never closes while a download is still using it.
+        so the shared session never closes while a download is still using it. A
+        pypdf parse already handed to a worker thread runs to completion (threads
+        cannot be interrupted) but holds only bytes, no session reference, so that
+        guarantee is unaffected.
 
         :param loader_args: Dictionary containing 'urls' (list of PDF URLs or file
             paths, or a single one as a bare string).
@@ -166,6 +178,11 @@ class PdfRag(CodedTool, BaseRag):
         # Nothing to do (or no 'urls' key at all); return early rather than
         # opening a network session just to await an empty gather().
         if not urls:
+            return []
+        # A non-list container (e.g. an int from a hand-edited hocon) cannot be
+        # iterated as URLs; refuse it here rather than letting the loop below raise.
+        if not isinstance(urls, (list, tuple)):
+            logger.error("Ignoring 'urls' of type %s: expected a list of PDF URLs/paths.", type(urls).__name__)
             return []
 
         # Concurrency limiter. A Semaphore holds a fixed number of "slots"
