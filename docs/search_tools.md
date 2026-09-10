@@ -5,11 +5,12 @@ Neuro SAN offers search capability via the following search engines:
 1. [Anthropic Search](#anthropic-search) — Web search via Anthropic's search tool
 2. [Brave Search](#brave-search) — Search using Brave Search API
 3. [Dux Distributed Global Search (DDGS)](#dux-distributed-global-search-ddgs) — Search using DuckDuckGo (no API key required)
-4. [Google Custom Search Engine](#google-custom-search-engine) — Search using Google Custom Search Engine
-5. [Google Serper](#google-serper) — Search using Google Serper API with advanced filtering
-6. [OpenAI Search](#openai-search) — Web search via OpenAI's search tool
-7. [Tavily Search](#tavily-search) — AI-optimized search using Tavily API
-8. [You.com Search](#youcom-search) — Web search, content extraction, and AI research via You.com MCP server
+4. [Firecrawl Search](#firecrawl-search) — Search the web and get the cleaned content of each result in one call
+5. [Google Custom Search Engine](#google-custom-search-engine) — Search using Google Custom Search Engine
+6. [Google Serper](#google-serper) — Search using Google Serper API with advanced filtering
+7. [OpenAI Search](#openai-search) — Web search via OpenAI's search tool
+8. [Tavily Search](#tavily-search) — AI-optimized search using Tavily API
+9. [You.com Search](#youcom-search) — Web search, content extraction, and AI research via You.com MCP server
 
 See also: [Comparison of Search Tools](#comparison-of-search-tools)
 
@@ -90,6 +91,40 @@ _Example Usage in Neuro San Studio_:
 - [carmax.hocon](../registries/industry/carmax.hocon),
 - [expedia.hocon](../registries/industry/expedia.hocon),
 - [LinkedInJobSeekerSupportNetwork.hocon](../registries/industry/LinkedInJobSeekerSupportNetwork.hocon),
+- available as a tool in [toolbox\_info.hocon](../neuro_san_studio/toolbox/toolbox_info.hocon)
+
+## Firecrawl Search
+
+Firecrawl is a developer-focused web data platform. Its Search API is not a search engine of its own: it queries
+the web and then, in the same call, runs the results through Firecrawl's scraping and cleaning pipeline, so a single
+request returns both the ranked results and the Markdown of each result page. For an agent, this replaces the usual
+two-step pattern of calling a search tool and then calling a separate extraction tool on each URL it wants to read.
+
+Alongside the general web, the `category` parameter narrows the search: `developer` searches an index of code
+repositories, issues, merged pull requests and curated technical documentation; `research` restricts an ordinary
+web search to academic domains such as arXiv, Nature, IEEE and PubMed, returning page snippets rather than paper
+records; and `pdf` returns PDF documents.
+
+![Firecrawl](./images/Firecrawl.png)
+
+_Environment Variables:_
+
+To use this search tool, obtain an API key from [https://www.firecrawl.dev/](https://www.firecrawl.dev/). Once you
+have the API key, set it using the `FIRECRAWL_API_KEY` environment variable.
+
+The Firecrawl search URL is specified via the `FIRECRAWL_URL` environment variable. If `FIRECRAWL_URL` is not set,
+the default value listed below is used:
+
+[https://api.firecrawl.dev/v2/search](https://api.firecrawl.dev/v2/search)
+
+Optionally, you can override the default value by setting the `FIRECRAWL_URL` environment variable (E.g., if you are
+running a self-hosted Firecrawl instance). You can also configure the request timeout (in seconds) using
+`FIRECRAWL_TIMEOUT`; the default is 120 seconds. Scraping the result pages takes longer than a snippet-only
+search, so keep the timeout generous unless you set `scrape_content` to `false`.
+
+_Example Usage in Neuro San Studio:_
+
+- [firecrawl\_search.hocon](../registries/tools/firecrawl_search.hocon),
 - available as a tool in [toolbox\_info.hocon](../neuro_san_studio/toolbox/toolbox_info.hocon)
 
 ## Google Custom Search Engine
@@ -239,6 +274,7 @@ _Example Usage in Neuro San Studio:_
 | Anthropic | built-in web search system used by Claude | No | Uses external APIs (e.g., Bing, Brave) | No |
 | Brave | Privacy-focused independent search engine | Yes | Own independent index | Yes |
 | DDGS | A meta-search library, aggregates results from diverse web search services | No | Scrapes public search result pages from DuckDuckGo, Bing, Brave, Google | No |
+| Firecrawl | Search API that returns ranked results together with the cleaned Markdown of each result page | No | Web search results passed through its own scraping and cleaning pipeline, with category filters for developer, academic and PDF sources | Yes |
 | Google | Lets you build a search engine tailored to specific websites or topics | Yes | Google’s index (simpler ranking, limited personalization) | Yes |
 | Serper | Third-party Google Search API service that scrapes Google Search results in JSON format | No | Real Google Search results via scraping | Yes |
 | OpenAI | Built-in web search system used by ChatGP | No | Uses Bing API + other sources | No |
@@ -256,6 +292,7 @@ The cost and rate limit comparison is provided in the table below.
 | Anthropic Search | Yes<br> (Internal to Claude)<br>Check Anthropic rate limits | Yes<br> (Internal to Claude)<br>Check Anthropic rate limits |
 | Brave Search | Yes<br> 1 request/second<br>2,000 request /month | Base AI: $5 per 1,000 requests<br>20 requests/second<br>20 million queries/month<br>Pro AI: $9 per 1,000 requests<br>50 requests/second<br>Unlimited queries/month |
 | DDGS | Yes<br>Rate limit: backend specific | No |
+| Firecrawl Search | Yes<br>1,000 credits/month<br>No credit card required<br>10 requests/minute | Yes<br>Hobby: $19/month, or $16/month billed annually<br>5,000 credits, 100 requests/minute<br>Standard: $83/month billed annually<br>100,000 credits, 500 requests/minute<br>Search costs 2 credits per 10 results (rounded up), plus 1 credit for each result page scraped |
 | Google Search | Yes<br>100 searches/day | Yes<br>$5 for 1,000 queries<br>10,000 queries/day |
 | Google Serper | Yes<br>2,500 queries (one-time) | Yes<br>$50, 50k queries, 50 queries/sec |
 | OpenAI Search | Yes (Internal to ChatGPT)<br>Check OpenAI rate limits | Yes (Internal to ChatGPT)<br>Check OpenAI rate limits |
@@ -267,7 +304,8 @@ The cost and rate limit comparison is provided in the table below.
 Links for cost and rate limit comparison data:
 
 1. [Brave Search](https://brave.com/search/api/)
-2. [Google Search](https://support.google.com/programmable-search/answer/9069107?hl=en)
-3. [Google Serper](https://serper.dev/)
-4. [Tavily Search](https://www.tavily.com/#pricing)
-5. [You.com Search](https://you.com/pricing)
+2. [Firecrawl Search](https://www.firecrawl.dev/pricing)
+3. [Google Search](https://support.google.com/programmable-search/answer/9069107?hl=en)
+4. [Google Serper](https://serper.dev/)
+5. [Tavily Search](https://www.tavily.com/#pricing)
+6. [You.com Search](https://you.com/pricing)

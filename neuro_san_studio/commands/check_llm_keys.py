@@ -130,6 +130,12 @@ class EnvValidator:
             (len(v) >= 20),
             "Brave API keys should be at least 20 characters",
         ),
+        # Length only, not an "fc-" prefix check: FIRECRAWL_URL may point at a self-hosted
+        # instance whose keys do not carry the hosted service's prefix.
+        "FIRECRAWL_API_KEY": lambda v: (
+            (len(v) >= 20),
+            "Firecrawl API keys should be at least 20 characters",
+        ),
     }
 
     LLM_API_KEYS = [

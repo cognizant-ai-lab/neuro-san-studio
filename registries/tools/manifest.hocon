@@ -64,6 +64,13 @@
 
     "tools/ddgs_search.hocon": true,
 
+    # To use this agent network with Firecrawl Search, obtain an API key from: https://www.firecrawl.dev/
+    # Once you have the API key, set it using the FIRECRAWL_API_KEY environment variable.
+    # You can optionally set a custom search URL via the FIRECRAWL_URL environment variable.
+    # If FIRECRAWL_URL is not set, the default is: https://api.firecrawl.dev/v2/search
+    # You can also configure the request timeout (in seconds) using FIRECRAWL_TIMEOUT; the default is 120 seconds.
+    "tools/firecrawl_search.hocon": false,
+
     # Requirement to use this agent network:
     # - google-genai
     # - GOOGLE_API_KEY
