@@ -247,10 +247,11 @@ class PdfRag(CodedTool, BaseRag):
             # configuration, not a URL to validate.
             #
             # Route on a whitespace-stripped copy: SafeFetch.validate_url strips
-            # padding itself, so " https://host/f.pdf" is a valid remote input, but
-            # urlparse on the raw string would see no scheme and misroute it to the
-            # local reader. The original string is kept for the local path, since
-            # filesystem names may legitimately carry leading/trailing spaces.
+            # padding itself, so an https URL with leading whitespace is valid remote
+            # input, but urlparse on the raw string would see no scheme and misroute
+            # it to the local reader. The original string is kept for the local
+            # path, since filesystem names may legitimately carry leading/trailing
+            # spaces.
             routing_url: str = url.strip()
             parsed_scheme: str = urlparse(routing_url).scheme.lower()
             is_drive_letter: bool = len(parsed_scheme) == 1 and "://" not in routing_url
