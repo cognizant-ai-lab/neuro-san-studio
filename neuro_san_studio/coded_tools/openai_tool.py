@@ -23,7 +23,8 @@ from openai import OpenAIError
 
 from neuro_san_studio.coded_tools.utils.byok_api_key import ByokApiKey
 
-DEFAULT_OPENAI_MODEL = "gpt-4o-2024-08-06"
+# Current-generation default; networks override it per tool via the "openai_model" arg.
+DEFAULT_OPENAI_MODEL = "gpt-5.2"
 
 # Where a Bring-Your-Own-Key (BYOK) client puts its OpenAI key inside sly_data["llm_config"],
 # and the server-side environment variable used when the client did not send one. The names
@@ -78,7 +79,7 @@ class OpenAITool:
         :param query: Request from the user prompt.
         :param builtin_tool: The name of the built-in OpenAI tool to invoke.
         :param openai_model: The OpenAI model to use when calling the tool.
-            Defaults to "gpt-4o-2024-08-06" if not provided.
+            Defaults to "gpt-5.2" if not provided.
         :param sly_data: The sly_data dictionary of the calling coded tool. When it carries a
             BYOK key under llm_config.openai_api_key, that key authenticates the call instead
             of the OPENAI_API_KEY environment variable.

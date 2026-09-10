@@ -23,7 +23,9 @@ from langchain_core.messages import AIMessage
 
 from neuro_san_studio.coded_tools.utils.byok_api_key import ByokApiKey
 
-DEFAULT_ANTHROPIC_MODEL = "claude-3-7-sonnet-20250219"
+# Current-generation default (claude-3-7-sonnet-20250219 is retired); networks override it per
+# tool via the "anthropic_model" arg.
+DEFAULT_ANTHROPIC_MODEL = "claude-sonnet-5"
 
 # Where a Bring-Your-Own-Key (BYOK) client puts its Anthropic key inside sly_data["llm_config"],
 # and the server-side environment variable used when the client did not send one. The names
@@ -78,7 +80,7 @@ class AnthropicTool:
         :param tool_type: The versioned type of the built-in Anthropic tool, e.g. "web_search_20250305".
         :param tool_name: The name of the built-in Anthropic tool, e.g. "web_search".
         :param anthropic_model: The Anthropic model to use when calling the tool.
-            Defaults to "claude-3-7-sonnet-20250219" if not provided.
+            Defaults to "claude-sonnet-5" if not provided.
         :param betas: Some tools are still in beta and requires this parameter.
         :param sly_data: The sly_data dictionary of the calling coded tool. When it carries a
             BYOK key under llm_config.anthropic_api_key, that key authenticates the call instead
