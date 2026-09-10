@@ -12,11 +12,7 @@ The **PDF RAG Assistant** answers user queries using Retrieval-Augmented Generat
 
 ## Prerequisites
 
-* Install pymupdf package, a high-performance Python library for data extraction, analysis, conversion & manipulation of PDF (and other) documents:
-
-    ```bash
-    pip install pymupdf
-    ```
+* None beyond the repo's standard requirements: PDFs are downloaded through the shared SSRF-hardened fetch path and parsed with `pypdf`, which is already included in `requirements.txt`.
 
 ## Prerequisites for PostgreSQL Vector Store
 
