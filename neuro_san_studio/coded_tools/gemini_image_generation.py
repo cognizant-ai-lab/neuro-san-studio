@@ -15,7 +15,6 @@
 # END COPYRIGHT
 
 import logging
-import os
 import webbrowser
 from pathlib import Path
 from tempfile import NamedTemporaryFile
@@ -27,6 +26,14 @@ from google.genai.types import GenerateContentConfig
 from google.genai.types import GenerateContentResponse
 from google.genai.types import ImageConfig
 from neuro_san.interfaces.coded_tool import CodedTool
+
+from neuro_san_studio.coded_tools.utils.byok_api_key import ByokApiKey
+
+# Where a Bring-Your-Own-Key (BYOK) client puts its Google key inside sly_data["llm_config"],
+# and the server-side environment variable used when the client did not send one. google.genai
+# also honors GEMINI_API_KEY on its own when handed None, so that alias keeps working last.
+GOOGLE_API_KEY_NAME = "google_api_key"
+GOOGLE_API_KEY_ENV = "GOOGLE_API_KEY"
 
 
 class GeminiImageGeneration(CodedTool):
@@ -71,7 +78,8 @@ class GeminiImageGeneration(CodedTool):
                 adding the data is not invoke()-ed more than once.
 
                 Keys expected for this implementation are:
-                    None
+                    - "llm_config" (dict, optional): BYOK keys sent by the client. When it holds
+                        "google_api_key", that key is used instead of the GOOGLE_API_KEY env var.
 
         :return:
             In case of successful execution:
@@ -84,8 +92,11 @@ class GeminiImageGeneration(CodedTool):
         # Extract arguments
         (query, gemini_model, open_in_browser, save_image_file, image_config, tools) = self.extract_arguments(args)
 
+        # A BYOK key from sly_data must win over the server's GOOGLE_API_KEY.
+        api_key: str | None = ByokApiKey.resolve(sly_data, GOOGLE_API_KEY_NAME, GOOGLE_API_KEY_ENV)
+
         # Call Gemini model for image generation
-        response: GenerateContentResponse = await self.get_response(query, gemini_model, image_config, tools)
+        response: GenerateContentResponse = await self.get_response(query, gemini_model, image_config, tools, api_key)
 
         # Extract text and image blocks
         text: str = ""
@@ -146,20 +157,29 @@ class GeminiImageGeneration(CodedTool):
 
         return query, gemini_model, open_in_browser, save_image_file, image_config, tools
 
-    async def get_response(
-        self, query: str, gemini_model: str, image_config: dict[str, Any], tools: list[dict[str, Any]]
+    async def get_response(  # pylint: disable=too-many-arguments,too-many-positional-arguments
+        self,
+        query: str,
+        gemini_model: str,
+        image_config: dict[str, Any],
+        tools: list[dict[str, Any]],
+        api_key: str | None,
     ) -> GenerateContentResponse:
         """
         Asynchronous version of the Gemini image generation call.
+
         :param query: The prompt for image generation.
         :param gemini_model: The Gemini model to use when calling the tool.
         :param image_config: Configurations for image generation.
         :param tools: Configurations for tools.
+        :param api_key: The Google API key to authenticate with, resolved from sly_data first and
+                GOOGLE_API_KEY second. None lets google.genai run its own environment lookup,
+                which also covers the GEMINI_API_KEY alias.
         :return: GenerateContentResponse from Gemini API.
         """
 
-        # Initialize Gemini client
-        client = Client(api_key=os.environ.get("GOOGLE_API_KEY"))
+        # Initialize Gemini client with the resolved key rather than reading the environment here.
+        client = Client(api_key=api_key)
         # Call Gemini model for image generation
         response: GenerateContentResponse = await client.aio.models.generate_content(
             model=gemini_model,

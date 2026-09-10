@@ -20,6 +20,7 @@
 # Requirement to use this agent network:
 # - google-genai package installed
 # - GOOGLE_API_KEY or GEMINI_API_KEY environment variable set
+#   (or llm_config.google_api_key in the request's sly_data on a BYOK deployment; see config/byok_llm_config.hocon)
 # See https://ai.google.dev/gemini-api/docs
 # Note: If `langchain-google-genai` is already installed in your environment, `google-genai` is already included.
 

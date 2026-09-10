@@ -40,7 +40,7 @@ class AnthropicWebSearch(CodedTool):
                 - from calling agent
                     - "query" (str): Request from the user prompt.
                 - from user
-                    - "anthropic_model" (str): Anthropic model to call the tool. Default to claude-3-7-sonnet-20250219.
+                    - "anthropic_model" (str): Anthropic model to call the tool. Default to claude-sonnet-5.
                     - "additional_kwargs" (dict): Any additional arguments for the tool.
 
         :param sly_data: A dictionary whose keys are defined by the agent hierarchy,
@@ -54,7 +54,8 @@ class AnthropicWebSearch(CodedTool):
                 adding the data is not invoke()-ed more than once.
 
                 Keys expected for this implementation are:
-                    None
+                    - "llm_config" (dict, optional): BYOK keys sent by the client. When it holds
+                        "anthropic_api_key", that key is used instead of the ANTHROPIC_API_KEY env var.
 
         :return:
             In case of successful execution:
@@ -84,5 +85,7 @@ class AnthropicWebSearch(CodedTool):
             tool_name="web_search",
             anthropic_model=anthropic_model,
             betas=None,
+            # Forward sly_data so a BYOK Anthropic key sent by the client is used for this call.
+            sly_data=sly_data,
             **additional_kwargs,
         )

@@ -28,6 +28,11 @@ Get an API key by visiting [https://console.anthropic.com/settings/keys](https:/
 Once you have the API key, set it using the `ANTHROPIC_API_KEY` environment variable. The required
 langchain-anthropic package is already included with neuro-san-studio.
 
+On a Bring-Your-Own-Key (BYOK) deployment the client can instead send the key per request in `sly_data` under
+`llm_config.anthropic_api_key`. That key takes precedence over the environment variable; without it the tool
+falls back to `ANTHROPIC_API_KEY`. See [config/byok_llm_config.hocon](../config/byok_llm_config.hocon) for the
+`sly_data` convention.
+
 _Example Usage in Neuro San Studio_:
 
 - [anthropic\_web_search.hocon](../neuro_san_studio/coded_tools/anthropic_web_search.py),
@@ -154,6 +159,11 @@ To use this search tool, obtain an API key from:
 [https://platform.openai.com/api-keys](https://platform.openai.com/api-keys). Once you have the API key, set it using
 the `OPENAI_API_KEY` environment variable. The required
 langchain-openai package is already included with neuro-san-studio.
+
+On a Bring-Your-Own-Key (BYOK) deployment the client can instead send the key per request in `sly_data` under
+`llm_config.openai_api_key`. That key takes precedence over the environment variable; without it the tool
+falls back to `OPENAI_API_KEY`. See [config/byok_llm_config.hocon](../config/byok_llm_config.hocon) for the
+`sly_data` convention.
 
 _Example Usage in Neuro San Studio:_
 
