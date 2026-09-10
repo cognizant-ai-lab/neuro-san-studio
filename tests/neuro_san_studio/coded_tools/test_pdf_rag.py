@@ -239,7 +239,7 @@ class TestPdfRag(TestCase):
             patch.object(PdfUtils, "parse_pdf_bytes_per_page", return_value=["ok"]),
         ):
             with self.assertLogs("neuro_san_studio.coded_tools.pdf_rag", level="WARNING") as logs:
-                docs = self._load(["s3://bucket/key.pdf", "file:///tmp/x.pdf", "http://example.com/good.pdf"])
+                docs = self._load(["s3://bucket/key.pdf", "file:///path/to/x.pdf", "http://example.com/good.pdf"])
 
         self.assertEqual(len(docs), 1)
         self.assertEqual(docs[0].metadata["source"], "http://example.com/good.pdf")
