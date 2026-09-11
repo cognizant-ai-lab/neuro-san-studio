@@ -26,6 +26,7 @@
       - [Ollama Prerequisites](#ollama-prerequisites)
       - [Ollama Configuration](#ollama-configuration)
       - [Using Ollama in Docker or Remote Server](#using-ollama-in-docker-or-remote-server)
+      - [Using llmman](#using-llmman)
       - [Example agent network](#example-agent-network)
     - [Mistral](#mistral)
     - [Configuring Default Models with Environment Variables](#configuring-default-models-with-environment-variables)
@@ -698,6 +699,35 @@ You can also set the environment variable `OLLAMA_HOST`, but `base_url` takes pr
 
 For more information on logic of parsing the `base_url`
 see [Ollama python SDK](https://github.com/ollama/ollama-python/blob/main/ollama/_client.py#L1274)
+
+#### Using llmman
+
+[llmman](https://github.com/llmmanorg/llmman) is a local model runner that serves the Ollama API on port `17434`,
+so it works with the `ollama` class; only the port differs.
+
+1. Install and start llmman, then pull a model:
+
+    ```bash
+    curl -fsSL https://raw.githubusercontent.com/llmmanorg/llmman/main/install.sh | sh
+    llmman serve
+    llmman pull gemma4
+    ```
+
+2. Point the `ollama` class at llmman via `base_url`:
+
+    ```hocon
+        "llm_config": {
+            "class": "ollama",
+            "model_name": "gemma4",
+            "base_url": "http://localhost:17434"
+        }
+    ```
+
+    Alternatively, set `OLLAMA_HOST=127.0.0.1:17434` in the environment and omit `base_url`.
+
+llmman model names (e.g. `gemma4`, `hf.co/unsloth/Qwen3.5-0.8B-GGUF`) are not in the
+[default llm info file](https://github.com/cognizant-ai-lab/neuro-san/blob/main/neuro_san/internals/run_context/langchain/llms/default_llm_info.hocon),
+so `"class": "ollama"` must be set explicitly. As with Ollama, the model must support tool calling.
 
 #### Example agent network
 
