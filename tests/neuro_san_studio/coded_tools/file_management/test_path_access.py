@@ -19,6 +19,7 @@ from pathlib import Path
 from unittest import TestCase
 
 from neuro_san_studio.coded_tools.file_management.path_access import PathAccess
+from neuro_san_studio.coded_tools.file_management.path_not_allowed_error import PathNotAllowedError
 
 
 # One consolidated TestCase per source module means many test methods by design.
@@ -183,6 +184,11 @@ class TestPathAccess(TestCase):  # pylint: disable=too-many-public-methods
             self._call_check_path_allowed(makefile, [str(self.tmp_root)], allowed_exts=None, blocked_exts=["Makefile"])
         self.assertIn("path_not_allowed", str(ctx.exception))
 
+    def test_check_path_allowed_raises_dedicated_subclass(self):
+        """Tests that denials raise PathNotAllowedError so filters need not string-match messages."""
+        with self.assertRaises(PathNotAllowedError):
+            self._call_check_path_allowed(self.tmp_root / "a.txt", ["/some/other/root"])
+
     # -------------------------------------------------- normalize_extensions
 
     def test_normalize_extensions_already_normalized(self):
@@ -312,6 +318,37 @@ class TestPathAccess(TestCase):  # pylint: disable=too-many-public-methods
 
     # ------------------------------------------------- validate_allowed_paths
 
+    # ------------------------------------------------------------- supplied_name
+
+    def test_supplied_name_returns_final_component_as_given(self) -> None:
+        """Tests that supplied_name keeps the caller's final path component, symlinks unresolved."""
+        target = self.tmp_root / "data"
+        target.mkdir()
+        (self.tmp_root / "prod.env").symlink_to(target)
+        self.assertEqual(PathAccess.supplied_name({"file_path": str(self.tmp_root / "prod.env")}, target), "prod.env")
+        self.assertEqual(
+            PathAccess.supplied_name({"file_path": str(self.tmp_root / "prod.env") + "/"}, target), "prod.env"
+        )
+        self.assertEqual(
+            PathAccess.supplied_name({"file_path": "~/notes.txt"}, Path.home() / "notes.txt"), "notes.txt"
+        )
+
+    def test_supplied_name_falls_back_to_resolved_name_for_dot_components(self) -> None:
+        """Tests that '.', '..', and the root fall back to the already-resolved path's own name."""
+        self.assertEqual(
+            PathAccess.supplied_name({"file_path": str(self.tmp_root / "sub" / "..")}, self.tmp_root),
+            self.tmp_root.name,
+        )
+        self.assertEqual(PathAccess.supplied_name({"file_path": "."}, self.tmp_root), self.tmp_root.name)
+        self.assertEqual(PathAccess.supplied_name({"file_path": "/"}, Path("/")), "")
+
+    def test_supplied_name_rejects_bad_arguments(self) -> None:
+        """Tests that supplied_name shares resolve_path's invalid_input validation."""
+        for args in [{}, {"file_path": "   "}, {"file_path": 3}]:
+            with self.assertRaises(ValueError) as ctx:
+                PathAccess.supplied_name(args, self.tmp_root)
+            self.assertIn("invalid_input", str(ctx.exception))
+
     def test_validate_allowed_paths_missing_key_raises_invalid_input(self):
         """Tests that omitting allowed_paths raises invalid_input (required parameter)."""
         with self.assertRaises(ValueError) as ctx:
@@ -333,6 +370,31 @@ class TestPathAccess(TestCase):  # pylint: disable=too-many-public-methods
         self.assertEqual(self._call_validate_allowed_paths({"allowed_paths": "/a"}), ["/a"])
 
     # --------------------------------------------------------- validate_bool
+
+    def test_validate_positive_int_defaults_and_values(self):
+        """Tests that validate_positive_int returns explicit values and falls back to the default."""
+        self.assertEqual(PathAccess.validate_positive_int({"n": 7}, "n", 500), 7)
+        self.assertEqual(PathAccess.validate_positive_int({}, "n", 500), 500)
+
+    def test_validate_positive_int_rejects_bad_values(self):
+        """Tests that zero, negative, bool, float, string, and None values raise invalid_input.
+
+        bool is rejected explicitly even though it subclasses int, so True can
+        never silently pass as 1 anywhere in the tool family.
+        """
+        for bad in [0, -1, True, False, "10", 1.5, None]:
+            with self.assertRaises(ValueError) as ctx:
+                PathAccess.validate_positive_int({"n": bad}, "n", 500)
+            self.assertIn("invalid_input", str(ctx.exception))
+
+    # --------------------------------------------------------- effective_suffix
+
+    def test_effective_suffix_variants(self):
+        """Tests the suffix extraction incl. the dotfile / extensionless-name fallback."""
+        self.assertEqual(PathAccess.effective_suffix("a.TXT"), ".txt")
+        self.assertEqual(PathAccess.effective_suffix(".gitignore"), ".gitignore")
+        self.assertEqual(PathAccess.effective_suffix("Dockerfile"), ".dockerfile")
+        self.assertEqual(PathAccess.effective_suffix("archive.tar.gz"), ".gz")
 
     def test_validate_bool_explicit_true_returned(self):
         """Tests that an explicit True value is returned."""
