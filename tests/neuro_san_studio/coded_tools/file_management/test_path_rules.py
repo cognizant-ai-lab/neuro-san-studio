@@ -124,6 +124,29 @@ class TestPathRules(TestCase):
             "blocked_extension",
         )
 
+    def test_root_allowed_path_admits_every_absolute_path(self) -> None:
+        """Tests that an allowed root of '/' matches any resolved path (ancestor walk reaches the root)."""
+        rules = PathRules({"allowed_paths": ["/"]})
+        self.assertIsNone(self._deny(rules, self.tmp_root / "deep" / "nested" / "a.txt"))
+
+    def test_sibling_prefix_is_not_a_match(self) -> None:
+        """Tests that root matching is by path component, so '/x/data' never admits '/x/database'."""
+        rules = PathRules({"allowed_paths": [str(self.tmp_root / "data")]})
+        self.assertIsNone(self._deny(rules, self.tmp_root / "data" / "a.txt"))
+        self.assertEqual(self._deny(rules, self.tmp_root / "database" / "a.txt"), "outside_allowed_paths")
+        self.assertEqual(self._deny(rules, self.tmp_root / "data.txt"), "outside_allowed_paths")
+
+    def test_many_roots_do_not_change_verdicts(self) -> None:
+        """Tests that verdicts are identical with one root or many (the lookup is indexed, not scanned)."""
+        roots: list[str] = []
+        for index in range(200):
+            roots.append(str(self.tmp_root / f"root{index}"))
+        roots.append(str(self.tmp_root / "real"))
+        rules = PathRules({"allowed_paths": roots, "blocked_paths": [str(self.tmp_root / "real" / "secret")]})
+        self.assertIsNone(self._deny(rules, self.tmp_root / "real" / "a.txt"))
+        self.assertEqual(self._deny(rules, self.tmp_root / "real" / "secret" / "a.txt"), "blocked_path")
+        self.assertEqual(self._deny(rules, self.tmp_root / "other" / "a.txt"), "outside_allowed_paths")
+
     def test_extension_normalization(self):
         """Tests that rule extensions match case-insensitively with or without the leading dot."""
         rules = self._rules(allowed_file_extensions=["TXT"])

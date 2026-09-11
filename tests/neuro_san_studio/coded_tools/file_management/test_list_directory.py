@@ -15,14 +15,39 @@
 # END COPYRIGHT
 
 import asyncio
+import errno
+import functools
 import os
 import tempfile
+from collections.abc import Callable
 from pathlib import Path
+from typing import Any
 from unittest import TestCase
+from unittest.mock import patch
 
+from neuro_san_studio.coded_tools.file_management import list_directory as list_directory_module
 from neuro_san_studio.coded_tools.file_management.list_directory import LIST_DIRECTORY_HISTORY_KEY
 from neuro_san_studio.coded_tools.file_management.list_directory import MAX_ENTRIES
 from neuro_san_studio.coded_tools.file_management.list_directory import ListDirectory
+
+
+def _stat_failing_for(
+    failing_name: str, real_stat: Callable[..., os.stat_result], path: Any, *args: Any, **kwargs: Any
+) -> os.stat_result:
+    """
+    Stand-in for os.stat that fails with EIO for one handle-relative name and delegates otherwise.
+
+    :param failing_name: The entry name whose handle-relative stat must fail.
+    :param real_stat: The genuine os.stat to delegate every other call to.
+    :param path: The path or name being stat'ed.
+    :param args: Positional arguments forwarded to real_stat.
+    :param kwargs: Keyword arguments forwarded to real_stat.
+    :return: The real stat result for every call that is not the failing one.
+    :raises OSError: EIO for the failing handle-relative name.
+    """
+    if path == failing_name and kwargs.get("dir_fd") is not None:
+        raise OSError(errno.EIO, "simulated I/O error", failing_name)
+    return real_stat(path, *args, **kwargs)
 
 
 # One consolidated TestCase per source module, matching the repo test convention.
@@ -179,6 +204,23 @@ class TestListDirectory(TestCase):
         self.assertEqual(self._names(result), ["a.txt", "b.txt"])
         self.assertFalse(result["truncated"])
 
+    def test_async_invoke_truncated_reflects_only_qualifying_entries(self) -> None:
+        """Tests that truncated never reveals scoped-out entries past the cap.
+
+        With max_entries=1, a tail made only of blocked entries must read as
+        complete, while one more qualifying entry beyond the cap must flag
+        truncation.
+        """
+        self._make("a.txt")
+        self._make("b.env")
+        result = self._invoke({"max_entries": 1, "blocked_file_extensions": [".env"]})
+        self.assertEqual(self._names(result), ["a.txt"])
+        self.assertFalse(result["truncated"])
+        self._make("c.txt")
+        result = self._invoke({"max_entries": 1, "blocked_file_extensions": [".env"]})
+        self.assertEqual(self._names(result), ["a.txt"])
+        self.assertTrue(result["truncated"])
+
     def test_async_invoke_empty_directory_returns_empty_listing(self):
         """Tests that an empty directory yields an empty, non-truncated listing."""
         result = self._invoke({})
@@ -238,13 +280,17 @@ class TestListDirectory(TestCase):
             self._invoke({"directory_path": str(self.tmp_root / "prod.env"), "blocked_file_extensions": [".env"]})
         self.assertIn("path_not_allowed", str(ctx.exception))
 
-    def test_async_invoke_special_files_omitted(self):
-        """Tests that FIFOs are omitted rather than advertised as readable files.
+    def test_async_invoke_special_files_omitted(self) -> None:
+        """Tests that FIFOs, links to FIFOs, dangling links, and link loops are omitted and uncounted.
 
-        A FIFO listed as a 0-byte 'file' would pass read_file's prechecks and then
-        hang its open() waiting for a writer.
+        Any of them advertised as a readable entry would pass read_file's prechecks
+        and then hang (FIFO) or fail (dangling) on open. None of them is a gap in
+        the listing, so unreadable_entries stays 0.
         """
         os.mkfifo(self.tmp_root / "pipe")
+        (self.tmp_root / "pipe_link.txt").symlink_to(self.tmp_root / "pipe")
+        (self.tmp_root / "dangling.txt").symlink_to(self.tmp_root / "missing.txt")
+        (self.tmp_root / "loop").symlink_to(self.tmp_root / "loop")
         self._make("real.txt")
         result = self._invoke({})
         self.assertEqual(self._names(result), ["real.txt"])
@@ -263,12 +309,60 @@ class TestListDirectory(TestCase):
         finally:
             os.chmod(locked, 0o700)
 
-    def test_async_invoke_reports_unreadable_entries(self):
-        """Tests that partially unreadable listings self-report their gaps."""
+    def test_async_invoke_unreadable_count_excludes_denied_entries(self) -> None:
+        """Tests that entries the rules exclude never surface through the unreadable count.
+
+        In a readable-but-unsearchable directory every metadata read fails; the
+        blocked entry must be dropped by the rule prefilter before that read, so
+        only the qualifying entry is counted.
+        """
+        locked = self.tmp_root / "locked"
+        locked.mkdir()
+        (locked / "a.txt").write_text("x", encoding="utf-8")
+        (locked / "b.env").write_text("x", encoding="utf-8")
+        os.chmod(locked, 0o444)
+        try:
+            with self.assertRaises(ValueError) as ctx:
+                self._invoke({"directory_path": str(locked), "blocked_file_extensions": [".env"]})
+            self.assertIn("list_error", str(ctx.exception))
+            self.assertIn("(1 unreadable)", str(ctx.exception))
+        finally:
+            os.chmod(locked, 0o700)
+
+    def test_async_invoke_reports_unreadable_entries(self) -> None:
+        """Tests that a partially unreadable listing returns what it can and counts the gap."""
+        self._make("bad.txt")
         self._make("fine.txt")
-        result = self._invoke({})
-        self.assertIn("unreadable_entries", result)
-        self.assertEqual(result["unreadable_entries"], 0)
+        fake_stat = functools.partial(_stat_failing_for, "bad.txt", os.stat)
+        with patch.object(list_directory_module.os, "stat", fake_stat):
+            result = self._invoke({})
+        self.assertEqual(self._names(result), ["fine.txt"])
+        self.assertEqual(result["unreadable_entries"], 1)
+
+    def test_list_entries_refuses_symlinked_path_component(self) -> None:
+        """Tests that a symlink anywhere in the listed path fails closed at scan time.
+
+        The precheck authorizes a fully resolved path, so a symlink component when
+        the directory is opened means it was swapped after the check; the open must
+        refuse to follow it rather than list whatever it now points at.
+        """
+        real = self.tmp_root / "real"
+        (real / "inner").mkdir(parents=True)
+        (self.tmp_root / "link").symlink_to(real)
+        args = {"allowed_paths": [str(self.tmp_root)]}
+        with self.assertRaises(ValueError) as ctx:
+            self.tool._list_entries(args, self.tmp_root / "link" / "inner", False, 500)  # pylint: disable=protected-access
+        self.assertIn("list_error", str(ctx.exception))
+
+    def test_read_names_enforces_scan_budget(self) -> None:
+        """Tests that a directory beyond the scan budget fails with list_error instead of an unbounded scan."""
+        for name in ["a", "b", "c", "d"]:
+            self._make(name)
+        with patch.object(list_directory_module, "MAX_SCAN_ENTRIES", 3):
+            with self.assertRaises(ValueError) as ctx:
+                self._invoke({})
+        self.assertIn("list_error", str(ctx.exception))
+        self.assertIn("more than 3 entries", str(ctx.exception))
 
     def test_async_invoke_advertised_names_round_trip(self):
         """Tests that a name emitted by the listing (with trailing space) is directly usable as a target."""

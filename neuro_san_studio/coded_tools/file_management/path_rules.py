@@ -14,6 +14,7 @@
 #
 # END COPYRIGHT
 
+import os
 from pathlib import Path
 from typing import Any
 
@@ -30,8 +31,10 @@ class PathRules:
     fine for a tool checking one target, prohibitive for tools that filter every
     entry of a directory tree (list_directory, and later file_search/grep). This
     class does that work once up front, then answers per-path questions with pure
-    lookups and no exceptions, so a large scan costs O(entries) instead of
-    O(entries x rule entries).
+    lookups and no exceptions: the resolved roots are indexed in sets and a path
+    is tested by walking its ancestors, so a check costs O(path depth) hash
+    lookups however many roots the operator configured, and a large scan costs
+    O(entries) instead of O(entries x rule entries).
 
     Parsing failures (malformed or unresolvable rule entries) raise invalid_input
     at construction time, so a bad operator config fails the call loudly before
@@ -45,16 +48,17 @@ class PathRules:
     symlink cannot dodge a block rule under either of its names.
     """
 
-    def __init__(self, args: dict[str, Any]):
-        """Validate and pre-resolve the rule lists from the tool args.
+    def __init__(self, args: dict[str, Any]) -> None:
+        """
+        Validate and pre-resolve the rule lists from the tool args.
 
         :param args: The tool argument dictionary carrying allowed_paths (required),
                 allowed_file_extensions, blocked_paths, and blocked_file_extensions.
         :raises ValueError: invalid_input when a rule list is malformed, empty where
                 required, contains blank entries, or contains an unresolvable path.
         """
-        self._allowed_paths: list[Path] = self._resolve_entries(PathAccess.validate_allowed_paths(args))
-        self._blocked_paths: list[Path] = self._resolve_entries(
+        self._allowed_paths: frozenset[str] = self._resolve_entries(PathAccess.validate_allowed_paths(args))
+        self._blocked_paths: frozenset[str] = self._resolve_entries(
             PathAccess.validate_path_list(args.get("blocked_paths"), "blocked_paths")
         )
 
@@ -73,7 +77,13 @@ class PathRules:
         )
 
     def deny_reason(self, resolved: Path, display_name: str, is_directory: bool) -> str | None:
-        """Return a short reason when the path fails the rules, or None when allowed.
+        """
+        Return a short reason when the path fails the rules, or None when allowed.
+
+        Evaluation order mirrors PathAccess.check_path_allowed. A reason string is
+        returned rather than raised: enumeration callers treat any deny as "omit
+        this entry", and building/catching exceptions per denied entry is pure
+        overhead at directory scale.
 
         :param resolved: The fully resolved path of the entry (symlinks followed),
                 so path rules confine symlink targets, not just link locations.
@@ -83,13 +93,10 @@ class PathRules:
         :param is_directory: True when the resolved target is a directory. Directories
                 are exempt from the extension ALLOW-list (they have no meaningful
                 extension for a file-oriented whitelist) but never from block rules.
-
-        Evaluation order mirrors PathAccess.check_path_allowed. Returns a reason
-        string rather than raising: enumeration callers treat any deny as "omit
-        this entry", and building/catching exceptions per denied entry is pure
-        overhead at directory scale.
+        :return: "outside_allowed_paths", "extension_not_allowed", "blocked_path",
+                "blocked_extension", or None when the path passes every rule.
         """
-        if not any(resolved.is_relative_to(candidate) for candidate in self._allowed_paths):
+        if not self._is_under_any(resolved, self._allowed_paths):
             return "outside_allowed_paths"
 
         suffixes: set[str] = {PathAccess.effective_suffix(display_name), PathAccess.effective_suffix(resolved.name)}
@@ -98,7 +105,7 @@ class PathRules:
             if not suffixes.issubset(self._allowed_extensions):
                 return "extension_not_allowed"
 
-        if any(resolved.is_relative_to(candidate) for candidate in self._blocked_paths):
+        if self._is_under_any(resolved, self._blocked_paths):
             return "blocked_path"
 
         if suffixes & self._blocked_extensions:
@@ -107,12 +114,45 @@ class PathRules:
         return None
 
     @staticmethod
-    def _resolve_entries(entries: list[str]) -> list[Path]:
-        """Resolve rule-list entries once, failing closed on any unresolvable entry."""
-        resolved: list[Path] = []
+    def _is_under_any(path: Path, roots: frozenset[str]) -> bool:
+        """
+        Return True when the path equals or lies beneath any of the given resolved roots.
+
+        Walks the path's ancestors as strings and tests set membership, so the cost
+        is O(depth) hash lookups regardless of how many roots the operator
+        configured — the per-entry hot path of a directory scan must not grow with
+        the size of the rule lists. For the absolute, resolved paths both sides
+        always are here, this is equivalent to Path.is_relative_to against each root.
+
+        :param path: The resolved absolute path to test.
+        :param roots: Resolved root paths as strings, as produced by _resolve_entries.
+        :return: True when some root equals the path or is one of its ancestors.
+        """
+        if not roots:
+            return False
+        current: str = str(path)
+        while True:
+            if current in roots:
+                return True
+            parent: str = os.path.dirname(current)
+            if parent == current:
+                # Reached the filesystem root without a match.
+                return False
+            current = parent
+
+    @staticmethod
+    def _resolve_entries(entries: list[str]) -> frozenset[str]:
+        """
+        Resolve rule-list entries once, failing closed on any unresolvable entry.
+
+        :param entries: The raw operator-supplied path entries.
+        :return: The resolved absolute paths as strings, indexed for membership tests.
+        :raises ValueError: invalid_input when an entry cannot be resolved.
+        """
+        resolved: list[str] = []
         for entry in entries:
             try:
-                resolved.append(Path(entry).expanduser().resolve(strict=False))
+                resolved.append(str(Path(entry).expanduser().resolve(strict=False)))
             except (RuntimeError, ValueError, OSError) as exc:
                 raise ValueError(f"invalid_input: Cannot resolve allow/block list entry {entry!r}: {exc}") from exc
-        return resolved
+        return frozenset(resolved)

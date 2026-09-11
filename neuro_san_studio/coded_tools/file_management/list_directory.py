@@ -15,6 +15,7 @@
 # END COPYRIGHT
 
 import asyncio
+import os
 import stat as stat_module
 from datetime import datetime
 from datetime import timezone
@@ -30,14 +31,16 @@ from neuro_san_studio.coded_tools.file_management.path_rules import PathRules
 from neuro_san_studio.coded_tools.file_management.sly_data_history import SlyDataHistory
 
 DEFAULT_MAX_ENTRIES: int = 500
-MAX_ENTRIES: int = 10_000  # hard cap on max_entries, mirroring the 10 MB caps of read_file/write_file
+MAX_ENTRIES: int = 10_000  # ceiling on the LLM-settable max_entries, mirroring the 10 MB caps of read_file/write_file
+MAX_SCAN_ENTRIES: int = 100_000  # scan budget: names read from one directory before the call fails
 LIST_DIRECTORY_HISTORY_KEY: str = "list_directory_history"  # sly_data key for the list of listed directories
 
-# _describe_entry status values
-_STATUS_OK: str = "ok"
-_STATUS_DENIED: str = "denied"  # entry fails the allow/block rules — omitted silently by design
-_STATUS_ERROR: str = "error"  # entry metadata unreadable — omitted but counted, so listings self-report gaps
-_STATUS_SPECIAL: str = "special"  # FIFO/socket/device — not representable by the file tools, omitted
+# Flags for opening the listing target and each of its path components: read-only,
+# must be a directory, never follow a symlink, and keep the descriptor out of any
+# child process. O_NOFOLLOW / O_CLOEXEC are absent on some platforms; 0 is a no-op.
+_OPEN_DIRECTORY_FLAGS: int = (
+    os.O_RDONLY | getattr(os, "O_DIRECTORY", 0) | getattr(os, "O_NOFOLLOW", 0) | getattr(os, "O_CLOEXEC", 0)
+)
 
 
 class ListDirectory(CodedTool):
@@ -58,20 +61,33 @@ class ListDirectory(CodedTool):
 
     Entries that fail the allow/block rules are silently omitted from the
     listing rather than reported, so the listing never leaks the existence of
-    files the operator has scoped out (e.g. a blocked_paths subtree). For
-    symlinks, path rules are checked against the resolved target (so a link
-    pointing outside the allowed roots is omitted) and extension rules are
-    checked against BOTH the displayed name and the target's name, fail-closed.
-    Symlinks resolving to directories are exempt from the extension allow-list
-    like real directories. Special files (FIFOs, sockets, devices) are omitted:
-    they are not representable by the file management tools, and advertising a
-    FIFO as a readable file would hang a subsequent read_file call.
+    files the operator has scoped out (e.g. a blocked_paths subtree) — not
+    through an error, not through the truncated flag, and not through the
+    unreadable_entries count. For symlinks, the link is followed by the kernel
+    relative to the listed directory's handle and its target must be a regular
+    file or a directory; path rules are checked against the resolved target (so
+    a link pointing outside the allowed roots is omitted) and extension rules
+    are checked against BOTH the displayed name and the target's name,
+    fail-closed. Symlinks resolving to directories are exempt from the
+    extension allow-list like real directories. Special files (FIFOs, sockets,
+    devices), symlinks to them, dangling symlinks, and symlink loops are
+    omitted: they are not representable by the file management tools, and
+    advertising a FIFO — or a link to one — as readable would hang a subsequent
+    read_file call.
+
+    The scan is bound to an open directory handle obtained by walking the
+    access-checked path one component at a time without following symlinks, so
+    a component swapped for a symlink between the check and the scan fails
+    closed (list_error) instead of redirecting the listing. Enumeration reads at
+    most MAX_SCAN_ENTRIES names (list_error beyond that), so a huge allowed
+    directory cannot drive an unbounded scan.
 
     Entries whose metadata cannot be read (or whose names are not UTF-8
     encodable) are omitted and counted in "unreadable_entries", so a listing
     with gaps never presents itself as complete; when NO entry can be returned
-    and at least one was unreadable, the call fails with list_error instead of
-    reporting an unsearchable directory as empty.
+    and at least one metadata read was refused with a permission error, the
+    call fails with list_error instead of reporting an unsearchable directory
+    as empty.
 
     Error types (raised as ValueError with the specified message prefix):
         invalid_input    – required parameter is missing, wrong type, or invalid value.
@@ -82,7 +98,10 @@ class ListDirectory(CodedTool):
                            would hide, so error types never form an existence oracle.
         path_not_found   – the directory does not exist.
         not_a_directory  – the path points to a file, not a directory.
-        list_error       – the directory could not be read (permission error, I/O failure, etc.).
+        list_error       – the directory could not be opened or read (permission
+                           error, I/O failure, a path component swapped for a
+                           symlink after the access check, or more than
+                           MAX_SCAN_ENTRIES entries).
     """
 
     async def async_invoke(self, args: dict[str, Any], sly_data: dict[str, Any] | None) -> dict[str, Any]:
@@ -137,9 +156,10 @@ class ListDirectory(CodedTool):
                                 "name" (str), "type" ("file" | "directory" | "symlink"),
                                 "size_bytes" (int for files, None otherwise).
                 "total_entries" (int): Number of entries returned.
-                "truncated"     (bool): True when the max_entries cap was reached with
-                                directory entries still unexamined — the listing may
-                                be incomplete.
+                "truncated"     (bool): True when at least one more entry that would
+                                have qualified exists beyond the max_entries cap —
+                                the listing is incomplete. Entries the rules exclude
+                                never affect this flag.
                 "unreadable_entries" (int): Number of entries omitted because their
                                 metadata could not be read; 0 for a fully readable
                                 directory.
@@ -166,15 +186,19 @@ class ListDirectory(CodedTool):
     # ------------------------------------------------------------------
 
     async def _async_precheck(self, args: dict[str, Any]) -> tuple[Path, bool, int]:
-        """Run all pre-listing validation and access checks.
-
-        Returns (directory, include_hidden, max_entries).
+        """
+        Run all pre-listing validation and access checks.
 
         Order matters: resolve → access → existence. Access checks run before the
         filesystem is touched so out-of-scope paths never surface path_not_found
         (which would leak filesystem layout). The extension allow-list is not
         applied to the directory target itself — only to the file entries inside
         it; block rules always apply.
+
+        :param args: The tool argument dictionary.
+        :return: A tuple of (directory, include_hidden, max_entries).
+        :raises ValueError: invalid_input, path_not_allowed, path_not_found,
+                not_a_directory, list_error.
         """
         directory: Path = await PathAccess.async_resolve_path(args, "directory_path")
         await PathAccess.async_validate_and_check_access(args, directory, enforce_allowed_extensions=False)
@@ -186,7 +210,15 @@ class ListDirectory(CodedTool):
     async def _async_list_entries(
         self, args: dict[str, Any], directory: Path, include_hidden: bool, max_entries: int
     ) -> tuple[list[dict[str, Any]], bool, int]:
-        """Scan the directory in a worker thread and return (entries, truncated, unreadable)."""
+        """
+        Scan the directory in a worker thread.
+
+        :param args: The tool argument dictionary carrying the operator's rule lists.
+        :param directory: The resolved, access-checked directory to list.
+        :param include_hidden: Whether dot-prefixed names are included.
+        :param max_entries: Maximum number of entries to return.
+        :return: A tuple of (entries, truncated, unreadable_count).
+        """
         logger: Logger = getLogger(self.__class__.__name__)
         logger.info("ListDirectory: listing %s", directory)
         entries, truncated, unreadable = await asyncio.to_thread(
@@ -202,7 +234,12 @@ class ListDirectory(CodedTool):
         return entries, truncated, unreadable
 
     async def _async_cache_listing(self, sly_data: dict[str, Any] | None, directory: Path) -> None:
-        """Append the resolved directory to the session-scoped listing history in sly_data."""
+        """
+        Append the resolved directory to the session-scoped listing history in sly_data.
+
+        :param sly_data: The sly_data dictionary, or None when there is none.
+        :param directory: The resolved directory that was listed.
+        """
         await SlyDataHistory.async_record(
             sly_data, "list_directory_history_lock", LIST_DIRECTORY_HISTORY_KEY, directory
         )
@@ -212,7 +249,12 @@ class ListDirectory(CodedTool):
     # ------------------------------------------------------------------
 
     async def _async_check_directory_target(self, args: dict[str, Any], directory: Path) -> None:
-        """Async wrapper around _check_directory_target."""
+        """
+        Async wrapper around _check_directory_target.
+
+        :param args: The tool argument dictionary.
+        :param directory: The resolved directory target.
+        """
         await asyncio.to_thread(self._check_directory_target, args, directory)
 
     # ------------------------------------------------------------------
@@ -220,7 +262,8 @@ class ListDirectory(CodedTool):
     # ------------------------------------------------------------------
 
     def _check_directory_target(self, args: dict[str, Any], directory: Path) -> None:
-        """Verify the resolved target exists and is a directory, without leaking existence.
+        """
+        Verify the resolved target exists and is a directory, without leaking existence.
 
         os.stat (not Path.exists) is used so a permission failure surfaces as
         list_error instead of being swallowed into a false "does not exist" —
@@ -234,9 +277,13 @@ class ListDirectory(CodedTool):
         first and answer path_not_allowed uniformly when they deny it — the
         existence-revealing error types are only used for paths the agent could
         legitimately see as files anyway.
+
+        :param args: The tool argument dictionary.
+        :param directory: The resolved directory target.
+        :raises ValueError: path_not_allowed, path_not_found, not_a_directory, list_error.
         """
         try:
-            target_stat = directory.stat()
+            target_stat: os.stat_result = directory.stat()
         except FileNotFoundError:
             self._raise_denied_or(args, directory, f"path_not_found: '{directory}' does not exist.")
             return
@@ -253,22 +300,34 @@ class ListDirectory(CodedTool):
             self._raise_denied_or(args, directory, f"not_a_directory: '{directory}' is not a directory.")
 
     def _raise_denied_or(self, args: dict[str, Any], directory: Path, message: str) -> None:
-        """Raise path_not_allowed when the full file rules deny the target, else the given error.
+        """
+        Raise path_not_allowed when the full file rules deny the target, else the given error.
 
         Both the missing and the exists-but-not-a-directory cases funnel through
         here, so a path the extension rules hide gets the SAME path_not_allowed
         answer whether it exists or not.
+
+        :param args: The tool argument dictionary.
+        :param directory: The resolved directory target.
+        :param message: The existence-revealing error to raise when the rules allow the path.
+        :raises ValueError: Always — path_not_allowed or the given message.
         """
         if not PathAccess.is_path_allowed(args, directory, enforce_allowed_extensions=True):
             raise ValueError(f"path_not_allowed: '{directory}' is not allowed as a listing target.")
         raise ValueError(message)
 
     def _validate_max_entries(self, args: dict[str, Any]) -> int:
-        """Return a validated max_entries value, raising invalid_input on bad input.
+        """
+        Return a validated max_entries value.
 
         MAX_ENTRIES is a hard, operator-independent ceiling: max_entries is
         LLM-settable, and without a cap a single call against a huge allowed
         directory could build an unbounded response (memory + token blowup).
+
+        :param args: The tool argument dictionary.
+        :return: The validated max_entries value, or DEFAULT_MAX_ENTRIES when omitted.
+        :raises ValueError: invalid_input when the value is not a positive integer
+                no greater than MAX_ENTRIES.
         """
         value: int = PathAccess.validate_positive_int(args, "max_entries", DEFAULT_MAX_ENTRIES)
         if value > MAX_ENTRIES:
@@ -282,110 +341,252 @@ class ListDirectory(CodedTool):
     def _list_entries(
         self, args: dict[str, Any], directory: Path, include_hidden: bool, max_entries: int
     ) -> tuple[list[dict[str, Any]], bool, int]:
-        """Enumerate, filter, and describe the directory's entries.
+        """
+        Enumerate, filter, and describe the directory's entries.
 
         The rules are parsed and resolved ONCE here (PathRules) so the per-entry
         check is pure lookups — no re-validation, no rule-path resolution, and no
         exception construction per denied entry. A malformed rule entry therefore
         fails the whole call up front instead of aborting midway through a scan.
 
+        The directory is opened without following symlinks and every metadata
+        read is made relative to that handle, so the scan is bound to the
+        directory the access check authorized: a component swapped for a symlink
+        after the check fails the open instead of being followed, and a later
+        rename cannot redirect the reads.
+
         Names are sorted first so the output (and which entries fall past the
         max_entries cap) is deterministic. Entries the access rules exclude are
-        omitted silently — surfacing them (even as an error) would leak the
-        existence of paths the operator scoped out. Entries whose metadata cannot
-        be read are omitted but counted, and if nothing could be returned while at
-        least one entry was unreadable the call fails with list_error rather than
-        presenting an unsearchable directory as empty.
+        omitted silently — surfacing them (even as an error, a count, or the
+        truncated flag) would leak the existence of paths the operator scoped
+        out. Once the cap is filled, the tail is examined only until the next
+        entry that would have qualified, which sets truncated; nothing past the
+        cap is returned. Entries whose metadata cannot be read are omitted but
+        counted, and if nothing could be returned while at least one read was
+        refused with a permission error the call fails with list_error rather
+        than presenting an unsearchable directory as empty.
 
-        Returns (entries, truncated, unreadable_count). truncated=True means the
-        cap was reached with names still unexamined (the tail is NOT scanned —
-        deliberately, so a heavily filtered huge directory can't force a full
-        walk); those unexamined names may or may not have qualified.
-
-        Raises list_error on permission / I/O failures.
+        :param args: The tool argument dictionary carrying the operator's rule lists.
+        :param directory: The resolved, access-checked directory to list.
+        :param include_hidden: Whether dot-prefixed names are included.
+        :param max_entries: Maximum number of entries to return.
+        :return: A tuple of (entries, truncated, unreadable_count).
+        :raises ValueError: invalid_input when a rule list is malformed; list_error
+                when the directory cannot be opened or read, a path component is a
+                symlink, the scan budget is exceeded, or every metadata read was
+                refused with a permission error.
         """
         rules: PathRules = PathRules(args)
-
+        dir_fd: int = self._open_directory(directory)
+        entries: list[dict[str, Any]] = []
+        truncated: bool = False
+        unreadable: int = 0
+        permission_failures: int = 0
         try:
-            # Hidden-name filtering happens before the sort: it needs no metadata,
-            # so excluded dotfiles never cost sort comparisons or syscalls.
-            visible: list[str] = sorted(
-                entry.name for entry in directory.iterdir() if include_hidden or not entry.name.startswith(".")
+            for name in self._read_names(dir_fd, directory, include_hidden):
+                described, failure = self._describe_entry(rules, directory, dir_fd, name)
+                if failure is not None:
+                    unreadable += 1
+                    if isinstance(failure, PermissionError):
+                        permission_failures += 1
+                    if len(entries) >= max_entries:
+                        # Past the cap, an unreadable entry may well have qualified:
+                        # the listing is incomplete either way.
+                        truncated = True
+                        break
+                    continue
+                if described is None:
+                    continue
+                if len(entries) >= max_entries:
+                    # One more qualifying entry exists beyond the cap: flag it, never return it.
+                    truncated = True
+                    break
+                entries.append(described)
+        finally:
+            os.close(dir_fd)
+
+        if permission_failures and not entries:
+            raise ValueError(
+                f"list_error: Permission denied reading entry metadata in '{directory}' "
+                f"({unreadable} unreadable) — is the directory searchable?"
             )
+        return entries, truncated, unreadable
+
+    def _open_directory(self, directory: Path) -> int:
+        """
+        Open the access-checked directory without following any symlink and return its descriptor.
+
+        The path is walked one component at a time, each opened with O_NOFOLLOW
+        relative to the previous component's descriptor. `directory` was fully
+        resolved before the access check, so a legitimate target has no symlink
+        anywhere in its path; meeting one here means a component was swapped after
+        the check, and the open fails closed instead of following it. The returned
+        descriptor is the directory the rules authorized, whatever later happens to
+        the path text.
+
+        :param directory: The resolved, access-checked directory.
+        :return: An open read-only directory descriptor; the caller closes it.
+        :raises ValueError: list_error when any component cannot be opened.
+        """
+        fd: int = -1
+        try:
+            fd = os.open(directory.anchor, _OPEN_DIRECTORY_FLAGS)
+            for part in directory.parts[1:]:
+                next_fd: int = os.open(part, _OPEN_DIRECTORY_FLAGS, dir_fd=fd)
+                os.close(fd)
+                fd = next_fd
+        except PermissionError as exc:
+            if fd >= 0:
+                os.close(fd)
+            raise ValueError(f"list_error: Permission denied listing '{directory}'.") from exc
+        except OSError as exc:
+            if fd >= 0:
+                os.close(fd)
+            raise ValueError(f"list_error: Could not open '{directory}' for listing: {exc}") from exc
+        return fd
+
+    def _read_names(self, dir_fd: int, directory: Path, include_hidden: bool) -> list[str]:
+        """
+        Read the directory's entry names through the open handle, sorted, within the scan budget.
+
+        Only names are kept — no Path objects and no metadata — so the fixed cost
+        of a heavily filtered directory is one readdir plus a sort; metadata is
+        read later for at most the entries that can be returned. Hidden-name
+        filtering happens here because it needs no metadata.
+
+        :param dir_fd: Open descriptor of the directory to read.
+        :param directory: The directory path, used only for error messages.
+        :param include_hidden: Whether dot-prefixed names are kept.
+        :return: The visible entry names, sorted.
+        :raises ValueError: list_error when the read fails or more than
+                MAX_SCAN_ENTRIES entries are encountered.
+        """
+        names: list[str] = []
+        scanned: int = 0
+        try:
+            with os.scandir(dir_fd) as scanner:
+                for entry in scanner:
+                    scanned += 1
+                    if scanned > MAX_SCAN_ENTRIES:
+                        raise ValueError(
+                            f"list_error: '{directory}' has more than {MAX_SCAN_ENTRIES} entries; "
+                            "listing is not supported for directories this large."
+                        )
+                    if include_hidden or not entry.name.startswith("."):
+                        names.append(entry.name)
         except PermissionError as exc:
             raise ValueError(f"list_error: Permission denied listing '{directory}'.") from exc
         except OSError as exc:
             raise ValueError(f"list_error: Could not list '{directory}': {exc}") from exc
+        names.sort()
+        return names
 
-        entries: list[dict[str, Any]] = []
-        truncated: bool = False
-        unreadable: int = 0
-        for index, name in enumerate(visible):
-            described, status = self._describe_entry(rules, directory, name)
-            if status == _STATUS_ERROR:
-                unreadable += 1
-                continue
-            if described is None:
-                continue
-            entries.append(described)
-            if len(entries) >= max_entries:
-                truncated = index + 1 < len(visible)
-                break
+    def _describe_entry(
+        self, rules: PathRules, directory: Path, dir_fd: int, name: str
+    ) -> tuple[dict[str, Any] | None, Exception | None]:
+        """
+        Classify one entry through the directory handle and check it against the pre-parsed rules.
 
-        if unreadable and not entries:
-            raise ValueError(
-                f"list_error: Could not read metadata for any entry in '{directory}' "
-                f"({unreadable} unreadable) — permission denied?"
-            )
-        return entries, truncated, unreadable
+        The rules are consulted BEFORE any metadata is read, under the most
+        permissive assumption (directory: exempt from the extension allow-list).
+        Anything denied that way is denied for every entry type, and it is dropped
+        without touching the filesystem, so a scoped-out entry never contributes to
+        the unreadable count. Metadata then comes from a single lstat relative to
+        the handle: it never follows symlinks, so a swapped-in link cannot leak an
+        out-of-scope target's size; real symlinks are handed to _describe_symlink.
 
-    def _describe_entry(self, rules: PathRules, directory: Path, name: str) -> tuple[dict[str, Any] | None, str]:
-        """Classify one entry and check it against the pre-parsed access rules.
-
-        Returns (entry_dict, status): entry_dict is None unless status is "ok".
-        Statuses: "denied" (fails the rules — omitted silently so scoped-out paths
-        never leak), "special" (FIFO/socket/device — not representable by the file
-        tools), "error" (metadata unreadable or name not UTF-8 encodable — counted
-        by the caller so the listing reports its gaps).
-
-        A single lstat supplies type and size: it never follows symlinks, so there
-        is no window between a type check and a stat in which a swapped-in symlink
-        could leak an out-of-scope target's metadata; only genuine symlinks are
-        resolved (for target confinement), the parent directory itself having been
-        resolved in the precheck.
+        :param rules: The pre-parsed operator rules.
+        :param directory: The listed directory's resolved path, for rule checks.
+        :param dir_fd: Open descriptor of the listed directory.
+        :param name: The entry name.
+        :return: A tuple of (entry_dict, failure). entry_dict is None when the entry
+                is omitted; failure is the exception when the entry's metadata could
+                not be read (the caller counts it) and None otherwise.
         """
         entry_path: Path = directory / name
+        if rules.deny_reason(entry_path, name, True) is not None:
+            return None, None
         try:
             # Names that cannot round-trip through UTF-8 (surrogateescape artifacts
             # from non-UTF-8 filesystems) would make the whole response fail at
             # transport serialization — count them as unreadable instead.
             name.encode("utf-8")
-            entry_stat = entry_path.lstat()
-        except (UnicodeEncodeError, OSError):
-            return None, _STATUS_ERROR
+            entry_stat: os.stat_result = os.stat(name, dir_fd=dir_fd, follow_symlinks=False)
+        except FileNotFoundError:
+            # Removed between readdir and stat: nothing to report, nothing unreadable.
+            return None, None
+        except (UnicodeEncodeError, OSError) as exc:
+            return None, exc
 
+        if stat_module.S_ISLNK(entry_stat.st_mode):
+            return self._describe_symlink(rules, directory, dir_fd, name)
+        entry_type, size_bytes, is_directory = self._classify_entry(entry_stat)
+        if entry_type is None or rules.deny_reason(entry_path, name, is_directory) is not None:
+            # Special file (FIFO/socket/device) or excluded by the rules: omitted silently.
+            return None, None
+        return {"name": name, "type": entry_type, "size_bytes": size_bytes}, None
+
+    @staticmethod
+    def _classify_entry(entry_stat: os.stat_result) -> tuple[str | None, int | None, bool]:
+        """
+        Classify a non-symlink entry from its lstat result.
+
+        :param entry_stat: The entry's lstat result.
+        :return: A tuple of (entry_type, size_bytes, is_directory). entry_type is
+                None for FIFOs, sockets, and devices, which the file tools cannot
+                represent and the listing omits.
+        """
         mode: int = entry_stat.st_mode
-        size_bytes: int | None = None
-        if stat_module.S_ISLNK(mode):
-            entry_type: str = "symlink"
-            try:
-                resolved: Path = entry_path.resolve(strict=False)
-                is_directory: bool = entry_path.is_dir()
-            except (OSError, RuntimeError, ValueError):
-                return None, _STATUS_ERROR
-        elif stat_module.S_ISDIR(mode):
-            entry_type = "directory"
-            resolved = entry_path
-            is_directory = True
-        elif stat_module.S_ISREG(mode):
-            entry_type = "file"
-            size_bytes = entry_stat.st_size
-            resolved = entry_path
+        if stat_module.S_ISDIR(mode):
+            return "directory", None, True
+        if stat_module.S_ISREG(mode):
+            return "file", entry_stat.st_size, False
+        return None, None, False
+
+    def _describe_symlink(
+        self, rules: PathRules, directory: Path, dir_fd: int, name: str
+    ) -> tuple[dict[str, Any] | None, Exception | None]:
+        """
+        Describe a symlink entry, admitting it only when its target is a regular file or a directory.
+
+        The link is followed by the kernel relative to the directory handle, so
+        what it points at is decided against the directory the access check
+        authorized rather than by re-walking the path text. The target's type gates
+        the entry: FIFOs, sockets, devices, dangling links, and loops are omitted
+        exactly like their direct counterparts — a link to a FIFO advertised as a
+        symlink would pass read_file's prechecks and hang its open(). The textual
+        resolution used for the rule check is then verified to land on that same
+        inode, so a link retargeted between the two traversals is dropped rather
+        than trusted.
+
+        :param rules: The pre-parsed operator rules.
+        :param directory: The listed directory's resolved path.
+        :param dir_fd: Open descriptor of the listed directory.
+        :param name: The symlink's name.
+        :return: A tuple of (entry_dict or None, None). A symlink never counts as
+                unreadable: the entry itself was read, and counting an unusable
+                target would reveal that a link to something exists.
+        """
+        try:
+            target_stat: os.stat_result = os.stat(name, dir_fd=dir_fd)
+        except OSError:
+            return None, None
+        target_mode: int = target_stat.st_mode
+        if stat_module.S_ISDIR(target_mode):
+            is_directory: bool = True
+        elif stat_module.S_ISREG(target_mode):
             is_directory = False
         else:
-            return None, _STATUS_SPECIAL
+            return None, None
+
+        try:
+            resolved: Path = (directory / name).resolve(strict=True)
+            resolved_stat: os.stat_result = os.stat(resolved)
+        except (OSError, RuntimeError, ValueError):
+            return None, None
+        if not os.path.samestat(target_stat, resolved_stat):
+            return None, None
 
         if rules.deny_reason(resolved, name, is_directory) is not None:
-            return None, _STATUS_DENIED
-
-        return {"name": name, "type": entry_type, "size_bytes": size_bytes}, _STATUS_OK
+            return None, None
+        return {"name": name, "type": "symlink", "size_bytes": None}, None
