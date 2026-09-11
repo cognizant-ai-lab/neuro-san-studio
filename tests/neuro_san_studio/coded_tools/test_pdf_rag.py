@@ -35,9 +35,9 @@ from neuro_san_studio.coded_tools.utils.pdf_utils import PdfUtils
 from neuro_san_studio.coded_tools.utils.safe_fetch import SafeFetch
 
 PDF_BYTES = b"%PDF-1.4 fake body"
-# A "PDF" longer than the header sniff window, so the local reader has to fetch it in
-# two pieces (head + remainder). Tests built on it pin the byte-budget arithmetic that
-# fixtures shorter than PDF_HEADER_WINDOW cannot observe.
+# A "PDF" longer than the header sniff window, so the sniff alone cannot cover it and
+# the reader must rewind and re-read. Tests built on it pin that the parser gets the
+# whole file and that the cap stays exact, which shorter fixtures cannot observe.
 BIG_PDF_BYTES: bytes = PDF_BYTES + b"x" * (PDF_HEADER_WINDOW * 3)
 PAGE_TEXTS = ["Page one text", "Page two text"]
 
@@ -412,9 +412,8 @@ class TestPdfRag(TestCase):  # pylint: disable=too-many-public-methods
     def test_local_file_larger_than_header_window_reaches_parser_intact(self) -> None:
         """A local PDF longer than the sniff window is handed to the parser whole, not truncated.
 
-        The reader fetches the head and the remainder separately; dropping or
-        mis-sizing the remainder read would silently truncate every real PDF to its
-        first PDF_HEADER_WINDOW bytes.
+        The reader sniffs, rewinds, then reads in full; a forgotten rewind would hand
+        the parser a file missing its first PDF_HEADER_WINDOW bytes.
         """
         local_path: str = self._write_temp_pdf_file(BIG_PDF_BYTES)
         try:
@@ -432,8 +431,8 @@ class TestPdfRag(TestCase):  # pylint: disable=too-many-public-methods
     def test_oversized_local_file_larger_than_header_window_is_skipped(self) -> None:
         """A local PDF longer than the sniff window still trips the byte cap when it exceeds it.
 
-        The head already spent part of the byte budget, so the remainder read must be
-        shortened by exactly that amount for the cap to stay exact.
+        Without the rewind after the sniff, the bounded read would start past the
+        head and a file one byte over the cap would measure under it.
         """
         local_path: str = self._write_temp_pdf_file(BIG_PDF_BYTES)
         try:
@@ -456,7 +455,7 @@ class TestPdfRag(TestCase):  # pylint: disable=too-many-public-methods
         """A local PDF whose size equals the cap is accepted whole (the limit is inclusive).
 
         Together with the one-byte-over sibling this pins both sides of the boundary,
-        so an off-by-one in the remainder read cannot hide.
+        so an off-by-one in the bounded read cannot hide.
         """
         local_path: str = self._write_temp_pdf_file(BIG_PDF_BYTES)
         try:
@@ -489,7 +488,7 @@ class TestPdfRag(TestCase):  # pylint: disable=too-many-public-methods
         return buffer.read(size)
 
     def test_header_read_is_bounded_when_cap_is_below_header_window(self) -> None:
-        """With the cap below the sniff window the sniff read shrinks too: never more than cap + 1 bytes are read.
+        """With the cap below the sniff window the sniff read shrinks too: no read ever asks for more than cap + 1.
 
         Reading PDF_HEADER_WINDOW bytes unconditionally would let a file consume up to
         1024 bytes under a 100-byte cap before the size check ran. A mocked handle
@@ -501,6 +500,8 @@ class TestPdfRag(TestCase):  # pylint: disable=too-many-public-methods
         buffer: BytesIO = BytesIO(BIG_PDF_BYTES)
         handle: MagicMock = MagicMock()
         handle.read.side_effect = partial(self._read_recording_sizes, buffer, sizes)
+        # The reader rewinds after the sniff; route seek() to the buffer so the rewind is real.
+        handle.seek.side_effect = buffer.seek
         opener: MagicMock = MagicMock()
         opener.return_value.__enter__.return_value = handle
 
@@ -515,11 +516,37 @@ class TestPdfRag(TestCase):  # pylint: disable=too-many-public-methods
 
         # The header sits inside the shortened head, so the size cap is what rejected the file...
         self.assertIn("response_too_large", str(raised.exception))
-        self.assertEqual(sizes[0], cap + 1)
-        self.assertLessEqual(max(sizes), cap + 1)
-        # ...and exactly cap + 1 bytes were consumed: not the whole fixture, and not the full sniff window.
+        # ...both reads (the sniff, then the rewound full read) stayed within the budget...
+        self.assertEqual(sizes, [cap + 1, cap + 1])
+        # ...and only cap + 1 bytes were ever consumed: not the whole fixture, not the full sniff window.
         self.assertEqual(buffer.tell(), cap + 1)
         mock_parse.assert_not_called()
+
+    def test_not_a_pdf_message_names_the_window_actually_inspected(self) -> None:
+        """When the cap shortens the sniff window, the not_a_pdf message reports that shorter window, not 1024.
+
+        A marker past the shortened window but inside PDF_HEADER_WINDOW is (correctly)
+        not found; the message must not claim that all 1024 bytes were checked.
+        """
+        cap: int = 100
+        marker_past_window: bytes = b"j" * (cap + 1) + PDF_BYTES
+        local_path: str = self._write_temp_pdf_file(marker_past_window)
+        try:
+            with (
+                patch.object(SafeFetch, "open_session", return_value=self._make_session_cm()),
+                patch("neuro_san_studio.coded_tools.pdf_rag.MAX_RESPONSE_BYTES", cap),
+                patch.object(PdfUtils, "parse_pdf_bytes_per_page", return_value=["ok"]) as mock_parse,
+            ):
+                with self.assertLogs("neuro_san_studio.coded_tools.pdf_rag", level="ERROR") as logs:
+                    docs = self._load([local_path])
+        finally:
+            os.unlink(local_path)
+
+        self.assertEqual(docs, [])
+        mock_parse.assert_not_called()
+        joined_logs: str = "\n".join(logs.output)
+        self.assertIn(f"not_a_pdf: '{local_path}' has no PDF header in its first {cap + 1} bytes.", joined_logs)
+        self.assertNotIn(f"first {PDF_HEADER_WINDOW} bytes", joined_logs)
 
     def test_cancellation_closes_session_only_after_children_unwind(self):
         """Cancelling the load lets every in-flight item unwind before the session closes.
