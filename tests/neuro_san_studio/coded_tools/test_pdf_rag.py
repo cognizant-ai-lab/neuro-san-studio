@@ -29,14 +29,19 @@ from unittest.mock import patch
 from aiohttp import ClientError
 
 from neuro_san_studio.coded_tools.pdf_rag import PdfRag
+from neuro_san_studio.coded_tools.utils.pdf_utils import PDF_HEADER_WINDOW
 from neuro_san_studio.coded_tools.utils.pdf_utils import PdfUtils
 from neuro_san_studio.coded_tools.utils.safe_fetch import SafeFetch
 
 PDF_BYTES = b"%PDF-1.4 fake body"
+# A "PDF" longer than the header sniff window, so the local reader has to fetch it in
+# two pieces (head + remainder). Tests built on it pin the byte-budget arithmetic that
+# fixtures shorter than PDF_HEADER_WINDOW cannot observe.
+BIG_PDF_BYTES: bytes = PDF_BYTES + b"x" * (PDF_HEADER_WINDOW * 3)
 PAGE_TEXTS = ["Page one text", "Page two text"]
 
 
-class TestPdfRag(TestCase):
+class TestPdfRag(TestCase):  # pylint: disable=too-many-public-methods
     """Unit tests for PdfRag: SSRF-hardened remote loading, local paths, input guards."""
 
     def setUp(self):
@@ -65,6 +70,20 @@ class TestPdfRag(TestCase):
         session_cm.__aenter__ = AsyncMock(return_value=session)
         session_cm.__aexit__ = AsyncMock(return_value=False)
         return session_cm
+
+    @staticmethod
+    def _write_temp_pdf_file(content: bytes) -> str:
+        """
+        Write bytes to a fresh temp file carrying a .pdf suffix and return its path.
+
+        The caller is responsible for os.unlink() once the test is done with it.
+
+        :param content: The bytes to store in the file.
+        :return: The absolute path of the temp file.
+        """
+        with tempfile.NamedTemporaryFile(suffix=".pdf", delete=False) as handle:
+            handle.write(content)
+            return handle.name
 
     @staticmethod
     async def _download_failing_bad_urls(url: str, _session: Any) -> bytes:
@@ -290,10 +309,12 @@ class TestPdfRag(TestCase):
         self.assertNotIn("unsupported URL scheme", "\n".join(logs.output))
 
     def test_oversized_local_file_is_skipped(self):
-        """A local file over the byte cap is skipped instead of being read into memory."""
-        with tempfile.NamedTemporaryFile(suffix=".pdf", delete=False) as handle:
-            handle.write(PDF_BYTES)
-            local_path = handle.name
+        """A local file over the byte cap is skipped instead of being read into memory.
+
+        The fixture starts with a real PDF header so the header sniff passes and the
+        size cap is the check that rejects it (the log must say response_too_large).
+        """
+        local_path: str = self._write_temp_pdf_file(PDF_BYTES)
         try:
             with (
                 patch.object(SafeFetch, "open_session", return_value=self._make_session_cm()),
@@ -301,12 +322,155 @@ class TestPdfRag(TestCase):
                 patch("neuro_san_studio.coded_tools.pdf_rag.MAX_RESPONSE_BYTES", len(PDF_BYTES) - 1),
                 patch.object(PdfUtils, "parse_pdf_bytes_per_page", return_value=["ok"]) as mock_parse,
             ):
-                docs = self._load([local_path])
+                with self.assertLogs("neuro_san_studio.coded_tools.pdf_rag", level="ERROR") as logs:
+                    docs = self._load([local_path])
         finally:
             os.unlink(local_path)
 
         self.assertEqual(docs, [])
         mock_parse.assert_not_called()
+        joined_logs: str = "\n".join(logs.output)
+        self.assertIn("response_too_large", joined_logs)
+        self.assertNotIn("not_a_pdf", joined_logs)
+
+    def test_non_pdf_local_file_is_skipped_before_parse(self) -> None:
+        """An HTML error page saved as *.pdf is skipped with a not_a_pdf message; pypdf never sees it.
+
+        Previously such a file was read in full and handed to pypdf, whose
+        "Stream has ended unexpectedly" pointed nowhere near the real problem.
+        """
+        local_path: str = self._write_temp_pdf_file(b"<html><body>404</body></html>")
+        try:
+            with (
+                patch.object(SafeFetch, "open_session", return_value=self._make_session_cm()),
+                patch.object(PdfUtils, "parse_pdf_bytes_per_page", return_value=["ok"]) as mock_parse,
+            ):
+                with self.assertLogs("neuro_san_studio.coded_tools.pdf_rag", level="ERROR") as logs:
+                    docs = self._load([local_path])
+        finally:
+            os.unlink(local_path)
+
+        self.assertEqual(docs, [])
+        mock_parse.assert_not_called()
+        joined_logs: str = "\n".join(logs.output)
+        self.assertIn("not_a_pdf", joined_logs)
+        self.assertIn(local_path, joined_logs)
+
+    def test_local_file_with_leading_junk_before_header_still_loads(self) -> None:
+        """Junk bytes ahead of the %PDF- marker (within the sniff window) do not cause a skip.
+
+        Adobe's implementation notes allow the header anywhere in the first 1024
+        bytes and pypdf parses such files, so the sniff must not be a strict prefix
+        check. The parser receives the FULL bytes, junk included; pypdf handles it.
+        """
+        junk_then_pdf: bytes = b"j" * 300 + PDF_BYTES
+        local_path: str = self._write_temp_pdf_file(junk_then_pdf)
+        try:
+            with (
+                patch.object(SafeFetch, "open_session", return_value=self._make_session_cm()),
+                patch.object(PdfUtils, "parse_pdf_bytes_per_page", return_value=["ok"]) as mock_parse,
+            ):
+                # A skip is reported via logger.error, so no ERROR record means no skip.
+                with self.assertNoLogs("neuro_san_studio.coded_tools.pdf_rag", level="ERROR"):
+                    docs = self._load([local_path])
+        finally:
+            os.unlink(local_path)
+
+        mock_parse.assert_called_once_with(junk_then_pdf)
+        self.assertEqual(len(docs), 1)
+        self.assertEqual(docs[0].metadata["source"], local_path)
+
+    def test_header_check_runs_before_full_read(self) -> None:
+        """The header sniff rejects a non-PDF before the size cap is even reached.
+
+        With the cap shrunk below the file size, a size-check-first implementation
+        would report response_too_large; seeing not_a_pdf instead proves the sniff
+        runs before the size check. The fixture is longer than PDF_HEADER_WINDOW so
+        the head read alone cannot cover the file.
+        """
+        non_pdf: bytes = b"<html>" + b"x" * (PDF_HEADER_WINDOW * 2) + b"</html>"
+        local_path: str = self._write_temp_pdf_file(non_pdf)
+        try:
+            with (
+                patch.object(SafeFetch, "open_session", return_value=self._make_session_cm()),
+                # Cap below THIS fixture's size: a full read would report response_too_large.
+                patch("neuro_san_studio.coded_tools.pdf_rag.MAX_RESPONSE_BYTES", len(non_pdf) - 1),
+                patch.object(PdfUtils, "parse_pdf_bytes_per_page", return_value=["ok"]) as mock_parse,
+            ):
+                with self.assertLogs("neuro_san_studio.coded_tools.pdf_rag", level="ERROR") as logs:
+                    docs = self._load([local_path])
+        finally:
+            os.unlink(local_path)
+
+        self.assertEqual(docs, [])
+        mock_parse.assert_not_called()
+        joined_logs: str = "\n".join(logs.output)
+        self.assertIn("not_a_pdf", joined_logs)
+        self.assertNotIn("response_too_large", joined_logs)
+
+    def test_local_file_larger_than_header_window_reaches_parser_intact(self) -> None:
+        """A local PDF longer than the sniff window is handed to the parser whole, not truncated.
+
+        The reader fetches the head and the remainder separately; dropping or
+        mis-sizing the remainder read would silently truncate every real PDF to its
+        first PDF_HEADER_WINDOW bytes.
+        """
+        local_path: str = self._write_temp_pdf_file(BIG_PDF_BYTES)
+        try:
+            with (
+                patch.object(SafeFetch, "open_session", return_value=self._make_session_cm()),
+                patch.object(PdfUtils, "parse_pdf_bytes_per_page", return_value=["ok"]) as mock_parse,
+            ):
+                docs = self._load([local_path])
+        finally:
+            os.unlink(local_path)
+
+        mock_parse.assert_called_once_with(BIG_PDF_BYTES)
+        self.assertEqual(len(docs), 1)
+
+    def test_oversized_local_file_larger_than_header_window_is_skipped(self) -> None:
+        """A local PDF longer than the sniff window still trips the byte cap when it exceeds it.
+
+        The head already spent part of the byte budget, so the remainder read must be
+        shortened by exactly that amount for the cap to stay exact.
+        """
+        local_path: str = self._write_temp_pdf_file(BIG_PDF_BYTES)
+        try:
+            with (
+                patch.object(SafeFetch, "open_session", return_value=self._make_session_cm()),
+                # One byte under the file size: exactly the smallest cap that must reject it.
+                patch("neuro_san_studio.coded_tools.pdf_rag.MAX_RESPONSE_BYTES", len(BIG_PDF_BYTES) - 1),
+                patch.object(PdfUtils, "parse_pdf_bytes_per_page", return_value=["ok"]) as mock_parse,
+            ):
+                with self.assertLogs("neuro_san_studio.coded_tools.pdf_rag", level="ERROR") as logs:
+                    docs = self._load([local_path])
+        finally:
+            os.unlink(local_path)
+
+        self.assertEqual(docs, [])
+        mock_parse.assert_not_called()
+        self.assertIn("response_too_large", "\n".join(logs.output))
+
+    def test_local_file_exactly_at_cap_larger_than_header_window_loads(self) -> None:
+        """A local PDF whose size equals the cap is accepted whole (the limit is inclusive).
+
+        Together with the one-byte-over sibling this pins both sides of the boundary,
+        so an off-by-one in the remainder read cannot hide.
+        """
+        local_path: str = self._write_temp_pdf_file(BIG_PDF_BYTES)
+        try:
+            with (
+                patch.object(SafeFetch, "open_session", return_value=self._make_session_cm()),
+                patch("neuro_san_studio.coded_tools.pdf_rag.MAX_RESPONSE_BYTES", len(BIG_PDF_BYTES)),
+                patch.object(PdfUtils, "parse_pdf_bytes_per_page", return_value=["ok"]) as mock_parse,
+            ):
+                with self.assertNoLogs("neuro_san_studio.coded_tools.pdf_rag", level="ERROR"):
+                    docs = self._load([local_path])
+        finally:
+            os.unlink(local_path)
+
+        mock_parse.assert_called_once_with(BIG_PDF_BYTES)
+        self.assertEqual(len(docs), 1)
 
     def test_cancellation_closes_session_only_after_children_unwind(self):
         """Cancelling the load lets every in-flight item unwind before the session closes.
