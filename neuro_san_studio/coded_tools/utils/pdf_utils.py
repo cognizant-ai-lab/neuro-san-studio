@@ -19,17 +19,36 @@ from io import BytesIO
 from pypdf import PdfReader
 
 
-class PdfUtils:  # pylint: disable=too-few-public-methods
+class PdfUtils:
     """Shared helpers for extracting text from PDF documents."""
 
     @staticmethod
     def parse_pdf_bytes(data: bytes) -> str:
-        """Extract text from in-memory PDF bytes, joining pages with newlines."""
+        """
+        Extract text from in-memory PDF bytes, joining pages with newlines.
+
+        :param data: The raw PDF bytes.
+        :return: The extracted text of all pages, separated by newlines.
+        """
+        return "\n".join(PdfUtils.parse_pdf_bytes_per_page(data))
+
+    @staticmethod
+    def parse_pdf_bytes_per_page(data: bytes) -> list[str]:
+        """
+        Extract text from in-memory PDF bytes, one string per page.
+
+        Callers that need page-level granularity (e.g. RAG loaders that record a
+        page number in each Document's metadata) use this directly;
+        parse_pdf_bytes is the joined-text convenience built on top of it.
+
+        :param data: The raw PDF bytes.
+        :return: The extracted text of each page, in page order.
+        """
         reader = PdfReader(BytesIO(data))
         page_texts: list[str] = []
         for page in reader.pages:
             # extract_text() is typed Optional[str] in newer pypdf and can return
             # None for pages without extractable text (e.g. scanned images);
-            # coerce to "" so the join never fails on a valid PDF.
+            # coerce to "" so callers never mix None into the page list.
             page_texts.append(page.extract_text() or "")
-        return "\n".join(page_texts)
+        return page_texts
