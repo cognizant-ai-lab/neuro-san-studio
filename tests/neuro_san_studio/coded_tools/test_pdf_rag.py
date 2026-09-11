@@ -20,6 +20,7 @@ import asyncio
 import os
 import tempfile
 from functools import partial
+from io import BytesIO
 from typing import Any
 from unittest import TestCase
 from unittest.mock import AsyncMock
@@ -471,6 +472,54 @@ class TestPdfRag(TestCase):  # pylint: disable=too-many-public-methods
 
         mock_parse.assert_called_once_with(BIG_PDF_BYTES)
         self.assertEqual(len(docs), 1)
+
+    @staticmethod
+    def _read_recording_sizes(buffer: BytesIO, sizes: list[int], size: int) -> bytes:
+        """
+        Serve a read() from an in-memory buffer while recording how many bytes were requested.
+
+        Bound with functools.partial as the side_effect of a mocked file handle's read().
+
+        :param buffer: The in-memory file contents to read from.
+        :param sizes: The list that collects every requested read size, in call order.
+        :param size: The number of bytes the caller asked for.
+        :return: The bytes read from the buffer.
+        """
+        sizes.append(size)
+        return buffer.read(size)
+
+    def test_header_read_is_bounded_when_cap_is_below_header_window(self) -> None:
+        """With the cap below the sniff window the sniff read shrinks too: never more than cap + 1 bytes are read.
+
+        Reading PDF_HEADER_WINDOW bytes unconditionally would let a file consume up to
+        1024 bytes under a 100-byte cap before the size check ran. A mocked handle
+        records every requested size, and the buffer position shows what was consumed.
+        """
+        cap: int = 100
+        self.assertLess(cap, PDF_HEADER_WINDOW)
+        sizes: list[int] = []
+        buffer: BytesIO = BytesIO(BIG_PDF_BYTES)
+        handle: MagicMock = MagicMock()
+        handle.read.side_effect = partial(self._read_recording_sizes, buffer, sizes)
+        opener: MagicMock = MagicMock()
+        opener.return_value.__enter__.return_value = handle
+
+        with (
+            # pdf_rag.py calls the builtin open(); a module-level name shadows it for this test.
+            patch("neuro_san_studio.coded_tools.pdf_rag.open", opener, create=True),
+            patch("neuro_san_studio.coded_tools.pdf_rag.MAX_RESPONSE_BYTES", cap),
+            patch.object(PdfUtils, "parse_pdf_bytes_per_page", return_value=["ok"]) as mock_parse,
+        ):
+            with self.assertRaises(ValueError) as raised:
+                PdfRag._read_local_pdf_pages("big.pdf")  # pylint: disable=protected-access
+
+        # The header sits inside the shortened head, so the size cap is what rejected the file...
+        self.assertIn("response_too_large", str(raised.exception))
+        self.assertEqual(sizes[0], cap + 1)
+        self.assertLessEqual(max(sizes), cap + 1)
+        # ...and exactly cap + 1 bytes were consumed: not the whole fixture, and not the full sniff window.
+        self.assertEqual(buffer.tell(), cap + 1)
+        mock_parse.assert_not_called()
 
     def test_cancellation_closes_session_only_after_children_unwind(self):
         """Cancelling the load lets every in-flight item unwind before the session closes.

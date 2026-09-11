@@ -353,8 +353,11 @@ class PdfRag(CodedTool, BaseRag):
             # report.pdf is read in full (up to the 50 MB cap) only for pypdf to
             # fail with "Stream has ended unexpectedly", which points nowhere near
             # the real problem. Stopping after PDF_HEADER_WINDOW bytes costs one
-            # small read and produces an error that names the actual cause.
-            head: bytes = pdf_file.read(PDF_HEADER_WINDOW)
+            # small read and produces an error that names the actual cause. The
+            # sniff read is itself bounded by the byte budget applied below, so the
+            # cap holds even if it is ever set below the header window (the sniff
+            # then simply sees a shorter head).
+            head: bytes = pdf_file.read(min(PDF_HEADER_WINDOW, MAX_RESPONSE_BYTES + 1))
             if not PdfUtils.has_pdf_header(head):
                 raise ValueError(f"not_a_pdf: '{path}' has no PDF header in its first {PDF_HEADER_WINDOW} bytes.")
             # Apply the same byte cap the remote path enforces, as a bound on the
@@ -364,9 +367,9 @@ class PdfRag(CodedTool, BaseRag):
             # read). Reading at most one byte past the cap is cheap and makes the
             # limit unconditional. The head already consumed len(head) bytes of that
             # budget, so the remainder read is shortened by the same amount; the
-            # max() guards against a negative length (which read() treats as "read
-            # everything") should the cap ever be set below the header window.
-            remaining: int = max(0, MAX_RESPONSE_BYTES + 1 - len(head))
+            # head read was capped at the same budget, so this is never negative
+            # (a negative length would make read() read everything).
+            remaining: int = MAX_RESPONSE_BYTES + 1 - len(head)
             data: bytes = head + pdf_file.read(remaining)
         if len(data) > MAX_RESPONSE_BYTES:
             raise ValueError(f"response_too_large: '{path}' exceeds the {MAX_RESPONSE_BYTES}-byte limit.")
