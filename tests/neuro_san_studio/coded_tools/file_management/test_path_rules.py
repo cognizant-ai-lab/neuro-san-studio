@@ -14,6 +14,7 @@
 #
 # END COPYRIGHT
 
+import os
 import tempfile
 from pathlib import Path
 from unittest import TestCase
@@ -152,15 +153,18 @@ class TestPathRules(TestCase):
     def test_root_matching_follows_platform_case_rules(self) -> None:
         """Tests that roots and candidates both pass through os.path.normcase.
 
-        On POSIX normcase is the identity, so the case-insensitive platform
-        behaviour is simulated by substituting str.lower: a root spelled 'Data'
-        must then admit 'data', matching PathAccess's platform-aware comparisons.
+        The case-insensitive platform behaviour is simulated by substituting
+        str.lower for normcase: a root spelled 'Data' must then admit 'data',
+        matching PathAccess's platform-aware comparisons. Unpatched, the verdict
+        follows the real platform: identity normcase (POSIX) denies, case-folding
+        normcase (Windows) admits.
         """
         with patch.object(path_rules_module.os.path, "normcase", str.lower):
             rules = PathRules({"allowed_paths": [str(self.tmp_root / "Data")]})
             self.assertIsNone(self._deny(rules, self.tmp_root / "data" / "a.txt"))
         rules = PathRules({"allowed_paths": [str(self.tmp_root / "Data")]})
-        self.assertEqual(self._deny(rules, self.tmp_root / "data" / "a.txt"), "outside_allowed_paths")
+        expected: str | None = None if os.path.normcase("A") == "a" else "outside_allowed_paths"
+        self.assertEqual(self._deny(rules, self.tmp_root / "data" / "a.txt"), expected)
 
     def test_extension_normalization(self):
         """Tests that rule extensions match case-insensitively with or without the leading dot."""

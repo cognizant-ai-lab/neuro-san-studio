@@ -395,15 +395,16 @@ class ListDirectory(CodedTool):
         Only names are kept — no Path objects and no metadata — so the fixed cost
         of a heavily filtered directory is one readdir plus a sort, and metadata is
         read later for at most the entries that can be returned. Hidden-name
-        filtering and a rule prefilter happen here because neither needs a metadata
-        read: the readdir d_type carried by each os.DirEntry says whether the entry
-        is a real directory or a symlink, so plain files are judged under the full
-        rules (extension allow-list included) while directories and symlinks — whose
-        target might be a directory — get the exemption. Anything denied here is
-        dropped before it can cost a metadata read, count toward the scan budget, or
-        influence any result field, so scoped-out entries stay invisible everywhere,
-        including in the budget error. When the type cannot be determined the
-        prefilter stays permissive and the later metadata read decides.
+        filtering and a rule prefilter happen here. The readdir d_type carried by
+        each os.DirEntry says whether the entry is a plain file, a real directory,
+        or a symlink without a metadata read: files are judged under the full rules
+        (extension allow-list included), directories get the allow-list exemption,
+        and symlinks — whose verdict depends on their target — are classified fully
+        right away (one stat per link). Anything denied here is dropped before it
+        can count toward the scan budget or influence any result field, so
+        scoped-out entries of every kind stay invisible everywhere, including in
+        the budget error. When the type cannot be determined the prefilter stays
+        permissive and the later metadata read decides.
 
         :param handle: The open handle on the listed directory.
         :param rules: The pre-parsed operator rules.
@@ -420,10 +421,17 @@ class ListDirectory(CodedTool):
                 if not include_hidden and name.startswith("."):
                     continue
                 try:
-                    maybe_directory: bool = entry.is_dir(follow_symlinks=False) or entry.is_symlink()
+                    is_symlink: bool = entry.is_symlink()
+                    is_directory: bool = entry.is_dir(follow_symlinks=False)
                 except OSError:
-                    maybe_directory = True
-                if rules.deny_reason(directory / name, name, maybe_directory) is not None:
+                    is_symlink = False
+                    is_directory = True
+                if is_symlink:
+                    # A link the rules would omit (out-of-scope or special target,
+                    # dangling, loop) must not count toward the budget either.
+                    if self._describe_symlink(handle, rules, name)[0] is None:
+                        continue
+                elif rules.deny_reason(directory / name, name, is_directory) is not None:
                     continue
                 names.append(name)
                 if len(names) > MAX_SCAN_ENTRIES:

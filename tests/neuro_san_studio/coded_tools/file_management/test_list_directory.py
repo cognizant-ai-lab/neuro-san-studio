@@ -20,6 +20,7 @@ import functools
 import os
 import tempfile
 from collections.abc import Callable
+from contextlib import ExitStack
 from pathlib import Path
 from typing import Any
 from unittest import TestCase
@@ -36,22 +37,35 @@ from neuro_san_studio.coded_tools.file_management.path_rules import PathRules
 
 
 def _stat_failing_for(
-    failing_names: frozenset[str], real_stat: Callable[..., os.stat_result], path: Any, *args: Any, **kwargs: Any
+    failing_names: frozenset[str],
+    within: Path,
+    real_call: Callable[..., os.stat_result],
+    path: Any,
+    *args: Any,
+    **kwargs: Any,
 ) -> os.stat_result:
     """
-    Stand-in for os.stat that fails with EIO for given handle-relative names and delegates otherwise.
+    Stand-in for os.stat / os.lstat that fails with EIO for given entries of one directory.
 
-    :param failing_names: The entry names whose handle-relative stat must fail.
-    :param real_stat: The genuine os.stat to delegate every other call to.
-    :param path: The path or name being stat'ed.
-    :param args: Positional arguments forwarded to real_stat.
-    :param kwargs: Keyword arguments forwarded to real_stat.
+    Works for both DirectoryHandle modes: descriptor mode stats the bare name with
+    dir_fd set, path mode stats the full path, so a call fails when the final
+    component is a failing name and it is either handle-relative or a direct
+    child of `within`.
+
+    :param failing_names: The entry names whose metadata read must fail.
+    :param within: The directory whose entries are being listed.
+    :param real_call: The genuine os.stat or os.lstat to delegate every other call to.
+    :param path: The path, name, or descriptor being stat'ed.
+    :param args: Positional arguments forwarded to real_call.
+    :param kwargs: Keyword arguments forwarded to real_call.
     :return: The real stat result for every call that is not a failing one.
-    :raises OSError: EIO for a failing handle-relative name.
+    :raises OSError: EIO for a failing entry.
     """
-    if path in failing_names and kwargs.get("dir_fd") is not None:
-        raise OSError(errno.EIO, "simulated I/O error", str(path))
-    return real_stat(path, *args, **kwargs)
+    if not isinstance(path, int):
+        candidate = Path(os.fsdecode(path))
+        if candidate.name in failing_names and (kwargs.get("dir_fd") is not None or candidate.parent == within):
+            raise OSError(errno.EIO, "simulated I/O error", str(path))
+    return real_call(path, *args, **kwargs)
 
 
 # One consolidated TestCase per source module, matching the repo test convention.
@@ -84,6 +98,25 @@ class TestListDirectory(TestCase):
     def _names(self, result: dict) -> list:
         """Return the entry names from a result."""
         return [entry["name"] for entry in result["entries"]]
+
+    def _failing_metadata(self, names: set[str], descriptor_mode: bool) -> ExitStack:
+        """
+        Build a context in which the metadata read of the given temp-root entries fails with EIO.
+
+        Both os.stat and os.lstat are wrapped so the failure fires in whichever
+        DirectoryHandle mode is active; the mode itself is forced via the module flag.
+
+        :param names: The entry names whose metadata read must fail.
+        :param descriptor_mode: True to run the handle in descriptor mode, False for path mode.
+        :return: An ExitStack holding the patches; use it as a context manager.
+        """
+        stack = ExitStack()
+        stack.enter_context(patch.object(directory_handle_module, "_HAS_DESCRIPTOR_CALLS", descriptor_mode))
+        fake_stat = functools.partial(_stat_failing_for, frozenset(names), self.tmp_root, os.stat)
+        fake_lstat = functools.partial(_stat_failing_for, frozenset(names), self.tmp_root, os.lstat)
+        stack.enter_context(patch.object(directory_handle_module.os, "stat", fake_stat))
+        stack.enter_context(patch.object(directory_handle_module.os, "lstat", fake_lstat))
+        return stack
 
     # ------------------------------------------------------------ async_invoke
 
@@ -325,21 +358,23 @@ class TestListDirectory(TestCase):
         self._make("a.txt")
         self._make("secret.log")
         self._make("prod.env")
-        fake_stat = functools.partial(_stat_failing_for, frozenset({"a.txt", "secret.log", "prod.env"}), os.stat)
-        with patch.object(list_directory_module.os, "stat", fake_stat):
-            result = self._invoke({"allowed_file_extensions": [".txt"], "blocked_file_extensions": [".env"]})
-        self.assertEqual(result["entries"], [])
-        self.assertEqual(result["unreadable_entries"], 1)
+        for descriptor_mode in [True, False]:
+            with self.subTest(descriptor_mode=descriptor_mode):
+                with self._failing_metadata({"a.txt", "secret.log", "prod.env"}, descriptor_mode):
+                    result = self._invoke({"allowed_file_extensions": [".txt"], "blocked_file_extensions": [".env"]})
+                self.assertEqual(result["entries"], [])
+                self.assertEqual(result["unreadable_entries"], 1)
 
     def test_async_invoke_reports_unreadable_entries(self) -> None:
         """Tests that a partially unreadable listing returns what it can and counts the gap."""
         self._make("bad.txt")
         self._make("fine.txt")
-        fake_stat = functools.partial(_stat_failing_for, frozenset({"bad.txt"}), os.stat)
-        with patch.object(list_directory_module.os, "stat", fake_stat):
-            result = self._invoke({})
-        self.assertEqual(self._names(result), ["fine.txt"])
-        self.assertEqual(result["unreadable_entries"], 1)
+        for descriptor_mode in [True, False]:
+            with self.subTest(descriptor_mode=descriptor_mode):
+                with self._failing_metadata({"bad.txt"}, descriptor_mode):
+                    result = self._invoke({})
+                self.assertEqual(self._names(result), ["fine.txt"])
+                self.assertEqual(result["unreadable_entries"], 1)
 
     def test_list_entries_refuses_symlinked_path_component(self) -> None:
         """Tests that a symlink anywhere in the listed path fails closed at scan time.
@@ -393,6 +428,11 @@ class TestListDirectory(TestCase):
             self._make(name)
         self._make("keep.txt")
         (self.tmp_root / "logs").mkdir()
+        outside = Path(tempfile.mkdtemp()).resolve()
+        self.addCleanup(os.rmdir, outside)
+        for index in range(4):
+            (self.tmp_root / f"escape{index}.txt").symlink_to(outside)
+        (self.tmp_root / "dangling0.txt").symlink_to(self.tmp_root / "missing.txt")
         with patch.object(list_directory_module, "MAX_SCAN_ENTRIES", 3):
             result = self._invoke({"blocked_file_extensions": [".env"], "allowed_file_extensions": [".txt"]})
         self.assertEqual(self._names(result), ["keep.txt", "logs"])
@@ -420,6 +460,7 @@ class TestListDirectory(TestCase):
                 self.tool._list_entries(rules, self.tmp_root / "link" / "inner", False, 500)  # pylint: disable=protected-access
             self.assertIn("list_error", str(ctx.exception))
 
+    @skipIf(os.name == "nt", "Windows cannot create names with a trailing space")
     def test_async_invoke_advertised_names_round_trip(self):
         """Tests that a name emitted by the listing (with trailing space) is directly usable as a target."""
         weird = self.tmp_root / "reports "
