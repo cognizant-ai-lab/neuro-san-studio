@@ -70,18 +70,27 @@ class DirectoryHandle:
     each query rather than closing it — the strongest guarantee the platform's
     standard library offers.
 
+    Identity check: a caller that already stat'ed the target during its access
+    check can pass that result as expected_stat. open() then verifies that the
+    directory it actually opened is that same inode (os.path.samestat), so a
+    directory swapped for a different real directory between the check and the
+    open fails closed instead of being scanned under the stale authorization.
+
     Instances are single-use context managers. Queries raise OSError exactly like
     the standard-library calls they wrap; callers map those to their own error
     taxonomy.
     """
 
-    def __init__(self, directory: Path) -> None:
+    def __init__(self, directory: Path, expected_stat: os.stat_result | None = None) -> None:
         """
         Prepare a handle for the given directory; nothing is opened until open().
 
         :param directory: The resolved, access-checked directory.
+        :param expected_stat: The stat result the access check observed for the
+                directory, if any; open() refuses a directory that is not that inode.
         """
         self._directory: Path = directory
+        self._expected_stat: os.stat_result | None = expected_stat
         self._fd: int | None = None
         self._is_open: bool = False
 
@@ -133,13 +142,35 @@ class DirectoryHandle:
         Open the directory in descriptor mode when the platform allows it, else verify it in path mode.
 
         :raises OSError: when a component cannot be opened, a component is a symlink
-                (ELOOP), or the path no longer resolves to itself.
+                (ELOOP), the path no longer resolves to itself, or the opened
+                directory is not the inode expected_stat described (ESTALE).
         """
         if HAS_DESCRIPTOR_CALLS:
             self._fd = self._open_descriptor(self._directory)
         else:
             self._verify_path()
+        try:
+            self._verify_identity()
+        except OSError:
+            self.close()
+            raise
         self._is_open = True
+
+    def _verify_identity(self) -> None:
+        """
+        Require the opened directory to be the inode the access check observed, when one was given.
+
+        :raises OSError: ESTALE when the directory is a different inode now.
+        """
+        if self._expected_stat is None:
+            return
+        current: os.stat_result = os.fstat(self._fd) if self._fd is not None else os.stat(self._directory)
+        if not os.path.samestat(current, self._expected_stat):
+            raise OSError(
+                getattr(errno, "ESTALE", errno.EINVAL),
+                "directory changed between the access check and the listing",
+                str(self._directory),
+            )
 
     def close(self) -> None:
         """

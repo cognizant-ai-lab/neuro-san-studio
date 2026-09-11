@@ -119,6 +119,21 @@ class TestDirectoryHandle(TestCase):
         finally:
             os.chmod(locked, 0o700)
 
+    def test_open_verifies_identity_when_expected_stat_given(self) -> None:
+        """Tests that open() accepts the directory it was checked as and refuses a different inode, in both modes."""
+        other = self.tmp_root / "other"
+        other.mkdir()
+        for descriptor_mode in [directory_handle_module.HAS_DESCRIPTOR_CALLS, False]:
+            with self.subTest(descriptor_mode=descriptor_mode):
+                with patch.object(directory_handle_module, "HAS_DESCRIPTOR_CALLS", descriptor_mode):
+                    with DirectoryHandle(self.tmp_root, self.tmp_root.stat()) as handle:
+                        self.assertTrue(handle.is_open)
+                    stale = DirectoryHandle(self.tmp_root, other.stat())
+                    with self.assertRaises(OSError):
+                        stale.open()
+                    self.assertFalse(stale.is_open)
+                    self.assertFalse(stale.uses_descriptor)
+
     def test_close_is_idempotent(self) -> None:
         """Tests that closing twice (or without opening) is harmless."""
         handle = DirectoryHandle(self.tmp_root)

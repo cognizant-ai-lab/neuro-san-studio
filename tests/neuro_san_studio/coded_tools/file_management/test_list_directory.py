@@ -30,6 +30,7 @@ from unittest.mock import patch
 
 from neuro_san_studio.coded_tools.file_management import directory_handle as directory_handle_module
 from neuro_san_studio.coded_tools.file_management import list_directory as list_directory_module
+from neuro_san_studio.coded_tools.file_management.directory_handle import DirectoryHandle
 from neuro_san_studio.coded_tools.file_management.list_directory import LIST_DIRECTORY_HISTORY_KEY
 from neuro_san_studio.coded_tools.file_management.list_directory import MAX_ENTRIES
 from neuro_san_studio.coded_tools.file_management.list_directory import ListDirectory
@@ -432,9 +433,31 @@ class TestListDirectory(TestCase):
         (real / "inner").mkdir(parents=True)
         (self.tmp_root / "link").symlink_to(real)
         rules = PathRules({"allowed_paths": [str(self.tmp_root)]})
+        handle = DirectoryHandle(self.tmp_root / "link" / "inner")
         with self.assertRaises(ValueError) as ctx:
-            self.tool._list_entries(rules, self.tmp_root / "link" / "inner", False, 500)  # pylint: disable=protected-access
+            self.tool._list_entries(rules, handle, False, 500)  # pylint: disable=protected-access
         self.assertIn("list_error", str(ctx.exception))
+
+    def test_list_entries_refuses_directory_replaced_after_check(self) -> None:
+        """Tests that a directory that is a different inode than the access check observed fails closed."""
+        checked = self.tmp_root / "checked"
+        checked.mkdir()
+        checked_stat = checked.stat()
+        replacement = self.tmp_root / "replacement"
+        replacement.mkdir()
+        (replacement / "smuggled.txt").write_text("x", encoding="utf-8")
+        os.rename(checked, self.tmp_root / "moved_away")
+        os.rename(replacement, checked)
+        rules = PathRules({"allowed_paths": [str(self.tmp_root)]})
+        for descriptor_mode in self._handle_modes():
+            with self.subTest(descriptor_mode=descriptor_mode):
+                with patch.object(directory_handle_module, "HAS_DESCRIPTOR_CALLS", descriptor_mode):
+                    with self.assertRaises(ValueError) as ctx:
+                        self.tool._list_entries(  # pylint: disable=protected-access
+                            rules, DirectoryHandle(checked, checked_stat), False, 500
+                        )
+                self.assertIn("list_error", str(ctx.exception))
+                self.assertIn("changed", str(ctx.exception))
 
     def test_async_invoke_malformed_rule_entry_fails_before_target_check(self) -> None:
         """Tests that every rule entry is validated before the target is examined.
@@ -501,8 +524,9 @@ class TestListDirectory(TestCase):
             self.assertEqual(self._names(result), ["link", "real", "real.txt", "sub", "sub_link"])
             self.assertEqual(result["unreadable_entries"], 0)
             rules = PathRules({"allowed_paths": [str(self.tmp_root)]})
+            handle = DirectoryHandle(self.tmp_root / "link" / "inner")
             with self.assertRaises(ValueError) as ctx:
-                self.tool._list_entries(rules, self.tmp_root / "link" / "inner", False, 500)  # pylint: disable=protected-access
+                self.tool._list_entries(rules, handle, False, 500)  # pylint: disable=protected-access
             self.assertIn("list_error", str(ctx.exception))
 
     @skipIf(os.name == "nt", "Windows cannot create names with a trailing space")
@@ -545,7 +569,7 @@ class TestListDirectory(TestCase):
         """Invoke _check_directory_target with allowed_paths defaulted to the temp root."""
         args = {"allowed_paths": [str(self.tmp_root)]}
         args.update(extra_args)
-        self.tool._check_directory_target(PathRules(args), path, path.name)  # pylint: disable=protected-access
+        self.tool._check_directory_target(PathRules(args), path, path.name, str(path))  # pylint: disable=protected-access
 
     def test_check_directory_target_passes_for_directory(self):
         """Tests that an existing directory passes the existence check."""
