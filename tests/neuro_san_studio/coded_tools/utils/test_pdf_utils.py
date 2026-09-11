@@ -14,15 +14,17 @@
 #
 # END COPYRIGHT
 
-"""Tests for PdfUtils.parse_pdf_bytes."""
+"""Tests for PdfUtils.parse_pdf_bytes and PdfUtils.has_pdf_header."""
 
 from io import BytesIO
 from unittest.mock import MagicMock
 from unittest.mock import patch
 
 import pytest
+from pypdf import PdfWriter
 from pypdf.errors import PdfReadError
 
+from neuro_san_studio.coded_tools.utils.pdf_utils import PDF_HEADER_WINDOW
 from neuro_san_studio.coded_tools.utils.pdf_utils import PdfUtils
 
 # Patch the name in the module under test, not "pypdf.PdfReader".
@@ -63,6 +65,22 @@ class TestPdfUtils:
             c.drawString(72, 720, text)
             c.showPage()
         c.save()
+        return buf.getvalue()
+
+    @staticmethod
+    def _minimal_pdf() -> bytes:
+        """
+        Build the smallest well-formed PDF pypdf will open: one blank page, no fonts.
+
+        Unlike _build_pdf this needs no reportlab, so tests using it run in CI, where
+        reportlab is not installed; pypdf is already a hard dependency of the repo.
+
+        :return: The complete PDF file bytes.
+        """
+        writer = PdfWriter()
+        writer.add_blank_page(width=612, height=792)
+        buf = BytesIO()
+        writer.write(buf)
         return buf.getvalue()
 
     # --- mocked unit tests ------------------------------------------------ #
@@ -157,3 +175,48 @@ class TestPdfUtils:
 
         with pytest.raises((PdfReadError, Exception)):
             PdfUtils.parse_pdf_bytes(b"this is definitely not a pdf")
+
+    # --- has_pdf_header --------------------------------------------------- #
+    @pytest.mark.parametrize(
+        "head, expected",
+        [
+            # The common case: the file starts with the marker.
+            pytest.param(b"%PDF-1.7 fake body", True, id="header_at_offset_zero"),
+            # Junk before the marker is tolerated, as pypdf and Adobe's notes allow (first 1024 bytes).
+            pytest.param(b"j" * 500 + b"%PDF-1.4 body", True, id="leading_junk_within_window"),
+            # A marker first appearing at offset PDF_HEADER_WINDOW is outside the sniffed window.
+            pytest.param(b"j" * PDF_HEADER_WINDOW + b"%PDF-1.4 body", False, id="marker_at_window_boundary"),
+            pytest.param(b"j" * (PDF_HEADER_WINDOW + 300) + b"%PDF-1.4 body", False, id="marker_past_window"),
+            # The marker's last byte is the window's last byte: still fully inside, so True.
+            pytest.param(
+                b"j" * (PDF_HEADER_WINDOW - 5) + b"%PDF-1.4 body", True, id="marker_ends_exactly_at_window_end"
+            ),
+            # Only "%PD" falls inside the window, so the full marker is not present.
+            pytest.param(b"j" * (PDF_HEADER_WINDOW - 3) + b"%PDF-1.4 body", False, id="marker_straddles_boundary"),
+            pytest.param(b"", False, id="empty_bytes"),
+            # A /dev/zero-style NUL stream.
+            pytest.param(b"\x00" * PDF_HEADER_WINDOW, False, id="nul_bytes"),
+            # An HTML error page saved with a .pdf name.
+            pytest.param(b"<html><body><h1>404 Not Found</h1></body></html>", False, id="html_page"),
+        ],
+    )
+    def test_has_pdf_header(self, head: bytes, expected: bool) -> None:
+        """
+        The sniff accepts %PDF- anywhere in the first PDF_HEADER_WINDOW bytes and nothing else.
+
+        :param head: The leading bytes handed to the sniff.
+        :param expected: Whether the sniff must report a PDF header for those bytes.
+        """
+        assert PdfUtils.has_pdf_header(head) is expected
+
+    def test_has_pdf_header_true_for_real_pdf(self) -> None:
+        """A genuine PDF that real pypdf opens also passes the header sniff.
+
+        Uses the hand-built minimal PDF rather than reportlab so this runs in CI; the
+        pypdf parse first proves the fixture is a real PDF, not just header-shaped bytes.
+        """
+        data: bytes = self._minimal_pdf()
+        assert len(PdfUtils.parse_pdf_bytes_per_page(data)) == 1
+        assert PdfUtils.has_pdf_header(data) is True
+        # The sniff only needs the leading window, which is all the local reader hands it.
+        assert PdfUtils.has_pdf_header(data[:PDF_HEADER_WINDOW]) is True

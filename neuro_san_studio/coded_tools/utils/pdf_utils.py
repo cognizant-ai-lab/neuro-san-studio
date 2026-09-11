@@ -18,9 +18,33 @@ from io import BytesIO
 
 from pypdf import PdfReader
 
+# How many leading bytes has_pdf_header inspects for the "%PDF-" marker. Adobe's
+# PDF implementation notes allow the header to appear anywhere within the first
+# 1024 bytes of the file (not only at offset 0), and pypdf tolerates that leading
+# junk (it logs "invalid pdf header" and still parses the document). A strict
+# startswith(b"%PDF-") check would therefore reject files pypdf reads fine.
+PDF_HEADER_WINDOW: int = 1024
+
 
 class PdfUtils:
     """Shared helpers for extracting text from PDF documents."""
+
+    @staticmethod
+    def has_pdf_header(head: bytes) -> bool:
+        """
+        Report whether the leading bytes of a file carry a PDF header marker.
+
+        Cheap sanity check meant to run BEFORE a file is read in full or handed to
+        pypdf: it lets callers reject an HTML error page saved as report.pdf, a NUL
+        stream, or an empty file with a clear message instead of pypdf's
+        "Stream has ended unexpectedly". It is not proof of a valid PDF; pypdf
+        remains the authority on whether the bytes actually parse.
+
+        :param head: The leading bytes of the candidate file (at least
+            PDF_HEADER_WINDOW bytes when the file is that long; extra bytes are ignored).
+        :return: True when "%PDF-" occurs within the first PDF_HEADER_WINDOW bytes.
+        """
+        return b"%PDF-" in head[:PDF_HEADER_WINDOW]
 
     @staticmethod
     def parse_pdf_bytes(data: bytes) -> str:
