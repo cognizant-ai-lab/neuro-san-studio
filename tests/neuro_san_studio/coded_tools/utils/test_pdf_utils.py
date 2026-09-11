@@ -107,6 +107,18 @@ class TestPdfUtils:
         assert PdfUtils.parse_pdf_bytes(b"fake") == ""
 
     @patch(f"{MODULE}.PdfReader")
+    def test_per_page_returns_list_in_page_order(self, mock_reader_cls):
+        """parse_pdf_bytes_per_page returns one string per page, in page order."""
+        mock_reader_cls.return_value = self._reader_with([self._make_page("Page 1"), self._make_page("Page 2")])
+        assert PdfUtils.parse_pdf_bytes_per_page(b"fake") == ["Page 1", "Page 2"]
+
+    @patch(f"{MODULE}.PdfReader")
+    def test_per_page_none_coerced_to_empty_string(self, mock_reader_cls):
+        """A page with no extractable text yields "" in the per-page list, never None."""
+        mock_reader_cls.return_value = self._reader_with([self._make_page("A"), self._make_page(None)])
+        assert PdfUtils.parse_pdf_bytes_per_page(b"fake") == ["A", ""]
+
+    @patch(f"{MODULE}.PdfReader")
     def test_input_is_wrapped_in_bytesio(self, mock_reader_cls):
         """The raw bytes are wrapped in a BytesIO and forwarded to PdfReader unchanged."""
         mock_reader_cls.return_value = self._reader_with([self._make_page("x")])
