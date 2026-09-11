@@ -210,8 +210,10 @@ class ListDirectory(CodedTool):
         """
         rules: PathRules = await asyncio.to_thread(PathRules, args)
         directory: Path = await PathAccess.async_resolve_path(args, "directory_path")
-        display_name: str = PathAccess.supplied_name(args, directory, "directory_path")
-        self._check_target_access(rules, directory, display_name)
+        # supplied_name expands '~user', which can consult the user database, so it
+        # runs off the event loop like every other potentially blocking call.
+        display_name: str = await asyncio.to_thread(PathAccess.supplied_name, args, directory, "directory_path")
+        self._check_target_access(rules, directory, display_name, str(args["directory_path"]))
         include_hidden: bool = PathAccess.validate_bool(args, "include_hidden", False)
         max_entries: int = self._validate_max_entries(args)
         await self._async_check_directory_target(rules, directory, display_name)
@@ -272,7 +274,7 @@ class ListDirectory(CodedTool):
     # Validation helpers
     # ------------------------------------------------------------------
 
-    def _check_target_access(self, rules: PathRules, directory: Path, display_name: str) -> None:
+    def _check_target_access(self, rules: PathRules, directory: Path, display_name: str, supplied_path: str) -> None:
         """
         Enforce the operator's rules against the directory target, judged as a directory.
 
@@ -285,35 +287,42 @@ class ListDirectory(CodedTool):
         :param rules: The pre-parsed operator rules.
         :param directory: The resolved directory target.
         :param display_name: The target's final path component as the caller supplied it.
+        :param supplied_path: The directory_path argument exactly as the caller supplied it.
         :raises PathNotAllowedError: path_not_allowed when the rules deny the target.
         """
         reason: str | None = rules.deny_reason(directory, display_name, True)
         if reason is not None:
-            raise PathNotAllowedError(self._denial_message(reason, directory, display_name))
+            raise PathNotAllowedError(self._denial_message(reason, supplied_path, display_name, directory.name))
 
     @staticmethod
-    def _denial_message(reason: str, directory: Path, display_name: str) -> str:
+    def _denial_message(reason: str, supplied_path: str, display_name: str, resolved_name: str) -> str:
         """
         Turn a PathRules deny reason into the path_not_allowed message the tool family uses.
 
+        Path denials echo the path the caller supplied, never the resolved one: a
+        symlink or junction inside the allowed roots may point anywhere, and naming
+        its resolved target would disclose exactly the location the rules denied.
+
         :param reason: The reason code returned by PathRules.deny_reason.
-        :param directory: The resolved directory target.
+        :param supplied_path: The directory_path argument exactly as the caller supplied it.
         :param display_name: The target's final path component as the caller supplied it.
+        :param resolved_name: The final component of the resolved target (in scope by
+                the time an extension rule fires, since allowed_paths is checked first).
         :return: A message starting with the path_not_allowed prefix.
         """
         if reason == "outside_allowed_paths":
-            return f"path_not_allowed: '{directory}' is not within any of the allowed_paths entries."
+            return f"path_not_allowed: '{supplied_path}' is not within any of the allowed_paths entries."
         if reason == "blocked_path":
-            return f"path_not_allowed: '{directory}' is blocked by blocked_paths."
-        # Extension rules were evaluated on the supplied name AND the resolved name;
-        # name both so the message never contradicts the rule that actually fired.
+            return f"path_not_allowed: '{supplied_path}' is blocked by blocked_paths."
+        # Extension rules were evaluated on the supplied name AND the resolved name,
+        # so the message names both and never contradicts the rule that fired.
         if reason == "blocked_extension":
             return (
-                f"path_not_allowed: '{display_name}' (resolving to '{directory.name}') "
+                f"path_not_allowed: '{display_name}' (resolving to '{resolved_name}') "
                 "has an extension that is in blocked_file_extensions."
             )
         return (
-            f"path_not_allowed: '{display_name}' (resolving to '{directory.name}') "
+            f"path_not_allowed: '{display_name}' (resolving to '{resolved_name}') "
             "has an extension that is not in allowed_file_extensions."
         )
 

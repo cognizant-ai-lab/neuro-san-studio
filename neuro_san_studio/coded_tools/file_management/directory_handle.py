@@ -22,7 +22,9 @@ from types import TracebackType
 from typing import Self
 
 # Descriptor-relative filesystem calls (openat/fstatat/faccessat/fdopendir) are a
-# POSIX facility. Where any of them is missing (Windows), the handle falls back to
+# POSIX facility, and descriptor mode's fail-closed guarantee additionally rests
+# on O_NOFOLLOW (refuse a symlink component) and O_DIRECTORY (refuse a non-
+# directory). Where any of these is missing (Windows), the handle falls back to
 # path mode; see the class docstring for what that mode can and cannot guarantee.
 # Public so tests can skip descriptor-only cases (or force path mode) explicitly.
 HAS_DESCRIPTOR_CALLS: bool = (
@@ -30,11 +32,14 @@ HAS_DESCRIPTOR_CALLS: bool = (
     and os.stat in os.supports_dir_fd
     and os.access in os.supports_dir_fd
     and os.scandir in os.supports_fd
+    and hasattr(os, "O_NOFOLLOW")
+    and hasattr(os, "O_DIRECTORY")
 )
 
 # Flags for opening each path component: read-only, must be a directory, never
-# follow a symlink, and keep the descriptor out of any child process. Flags a
-# platform lacks are replaced by 0, a no-op.
+# follow a symlink, and keep the descriptor out of any child process. The getattr
+# defaults only keep this module importable where a flag is missing; descriptor
+# mode itself is disabled there by HAS_DESCRIPTOR_CALLS above.
 _OPEN_DIRECTORY_FLAGS: int = (
     os.O_RDONLY | getattr(os, "O_DIRECTORY", 0) | getattr(os, "O_NOFOLLOW", 0) | getattr(os, "O_CLOEXEC", 0)
 )

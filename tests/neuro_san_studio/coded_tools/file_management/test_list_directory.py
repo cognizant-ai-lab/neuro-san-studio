@@ -340,6 +340,18 @@ class TestListDirectory(TestCase):
         self.assertEqual(self._names(result), ["a.txt"])
         self.assertEqual(result["path"], str(data))
 
+    def test_async_invoke_denial_message_never_reveals_symlink_target(self) -> None:
+        """Tests that a denied target reached through a symlink is reported by the supplied path only."""
+        outside = Path(tempfile.mkdtemp()).resolve()
+        self.addCleanup(os.rmdir, outside)
+        (self.tmp_root / "portal").symlink_to(outside)
+        with self.assertRaises(ValueError) as ctx:
+            self._invoke({"directory_path": str(self.tmp_root / "portal")})
+        message = str(ctx.exception)
+        self.assertIn("path_not_allowed", message)
+        self.assertIn(str(self.tmp_root / "portal"), message)
+        self.assertNotIn(str(outside), message)
+
     def test_async_invoke_blocked_extension_applies_to_directory_entries_and_target(self):
         """Tests that block rules always apply to directories: as listing entries and as the target."""
         (self.tmp_root / "prod.env").mkdir()
