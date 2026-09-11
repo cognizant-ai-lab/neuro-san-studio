@@ -160,17 +160,22 @@ class DirectoryHandle:
             return os.access(".", os.X_OK, dir_fd=self._fd)
         return os.access(self._directory, os.X_OK)
 
-    def scan_names(self) -> Iterator[str]:
+    def scan_entries(self) -> Iterator[os.DirEntry[str]]:
         """
-        Yield the directory's entry names (never '.' or '..'), in filesystem order.
+        Yield the directory's entries (never '.' or '..'), in filesystem order.
 
-        :return: An iterator over entry names; the handle must stay open while it is consumed.
+        os.DirEntry objects are yielded rather than bare names because the readdir
+        d_type they carry answers is_dir(follow_symlinks=False) / is_symlink()
+        without a syscall on most filesystems — enough for a type-aware rule
+        prefilter before any metadata is read. In descriptor mode those queries
+        are made relative to the descriptor, exactly like lstat() and stat().
+
+        :return: An iterator over entries; the handle must stay open while it is consumed.
         :raises OSError: when the directory cannot be read.
         """
         target: int | Path = self._fd if self._fd is not None else self._directory
         with os.scandir(target) as scanner:
-            for entry in scanner:
-                yield entry.name
+            yield from scanner
 
     def lstat(self, name: str) -> os.stat_result:
         """
@@ -221,9 +226,16 @@ class DirectoryHandle:
         Path mode: require the directory to still resolve strictly to itself.
 
         :raises OSError: FileNotFoundError when it vanished; ELOOP when a component
-                is now a symlink (the strict resolution lands elsewhere).
+                is now a symlink (the strict resolution lands elsewhere or, on
+                interpreters that report loops as RuntimeError, cannot complete).
         """
-        if self._directory.resolve(strict=True) != self._directory:
+        try:
+            resolved: Path = self._directory.resolve(strict=True)
+        except RuntimeError as exc:
+            # Python < 3.13 reports a symlink loop from resolve() as RuntimeError;
+            # callers only expect OSError from this class, so translate it.
+            raise OSError(getattr(errno, "ELOOP", errno.EINVAL), str(exc), str(self._directory)) from exc
+        if resolved != self._directory:
             raise OSError(
                 getattr(errno, "ELOOP", errno.EINVAL),
                 "path no longer resolves to the checked directory",

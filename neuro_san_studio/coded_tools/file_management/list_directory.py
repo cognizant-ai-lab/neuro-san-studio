@@ -166,8 +166,8 @@ class ListDirectory(CodedTool):
         :raises ValueError: invalid_input, path_not_allowed, path_not_found,
                             not_a_directory, list_error.
         """
-        directory, include_hidden, max_entries = await self._async_precheck(args)
-        entries, truncated, unreadable = await self._async_list_entries(args, directory, include_hidden, max_entries)
+        directory, rules, include_hidden, max_entries = await self._async_precheck(args)
+        entries, truncated, unreadable = await self._async_list_entries(rules, directory, include_hidden, max_entries)
         await self._async_cache_listing(sly_data, directory)
 
         return {
@@ -183,35 +183,41 @@ class ListDirectory(CodedTool):
     # Async phases — async_invoke is just orchestration over these three.
     # ------------------------------------------------------------------
 
-    async def _async_precheck(self, args: dict[str, Any]) -> tuple[Path, bool, int]:
+    async def _async_precheck(self, args: dict[str, Any]) -> tuple[Path, PathRules, bool, int]:
         """
         Run all pre-listing validation and access checks.
 
-        Order matters: resolve → access → existence. Access checks run before the
+        Order matters: resolve → rules → access → existence. The operator's four
+        rule lists are parsed and resolved into a PathRules FIRST, so a malformed
+        entry anywhere in them fails with invalid_input before the target is even
+        looked at (PathAccess's one-shot check stops at the first matching root and
+        would let a later bad entry slip through), and the same parsed rules then
+        serve the target check and the whole scan. Access checks run before the
         filesystem is touched so out-of-scope paths never surface path_not_found
         (which would leak filesystem layout). The extension allow-list is not
         applied to the directory target itself — only to the file entries inside
         it; block rules always apply.
 
         :param args: The tool argument dictionary.
-        :return: A tuple of (directory, include_hidden, max_entries).
+        :return: A tuple of (directory, rules, include_hidden, max_entries).
         :raises ValueError: invalid_input, path_not_allowed, path_not_found,
                 not_a_directory, list_error.
         """
         directory: Path = await PathAccess.async_resolve_path(args, "directory_path")
+        rules: PathRules = await asyncio.to_thread(PathRules, args)
         await PathAccess.async_validate_and_check_access(args, directory, enforce_allowed_extensions=False)
         include_hidden: bool = PathAccess.validate_bool(args, "include_hidden", False)
         max_entries: int = self._validate_max_entries(args)
-        await self._async_check_directory_target(args, directory)
-        return directory, include_hidden, max_entries
+        await self._async_check_directory_target(rules, directory)
+        return directory, rules, include_hidden, max_entries
 
     async def _async_list_entries(
-        self, args: dict[str, Any], directory: Path, include_hidden: bool, max_entries: int
+        self, rules: PathRules, directory: Path, include_hidden: bool, max_entries: int
     ) -> tuple[list[dict[str, Any]], bool, int]:
         """
         Scan the directory in a worker thread.
 
-        :param args: The tool argument dictionary carrying the operator's rule lists.
+        :param rules: The pre-parsed operator rules.
         :param directory: The resolved, access-checked directory to list.
         :param include_hidden: Whether dot-prefixed names are included.
         :param max_entries: Maximum number of entries to return.
@@ -220,7 +226,7 @@ class ListDirectory(CodedTool):
         logger: Logger = getLogger(self.__class__.__name__)
         logger.info("ListDirectory: listing %s", directory)
         entries, truncated, unreadable = await asyncio.to_thread(
-            self._list_entries, args, directory, include_hidden, max_entries
+            self._list_entries, rules, directory, include_hidden, max_entries
         )
         logger.info(
             "ListDirectory: returned %d entries from %s (truncated=%s, unreadable=%d)",
@@ -246,20 +252,20 @@ class ListDirectory(CodedTool):
     # Async wrappers for pre-listing checks
     # ------------------------------------------------------------------
 
-    async def _async_check_directory_target(self, args: dict[str, Any], directory: Path) -> None:
+    async def _async_check_directory_target(self, rules: PathRules, directory: Path) -> None:
         """
         Async wrapper around _check_directory_target.
 
-        :param args: The tool argument dictionary.
+        :param rules: The pre-parsed operator rules.
         :param directory: The resolved directory target.
         """
-        await asyncio.to_thread(self._check_directory_target, args, directory)
+        await asyncio.to_thread(self._check_directory_target, rules, directory)
 
     # ------------------------------------------------------------------
     # Validation helpers
     # ------------------------------------------------------------------
 
-    def _check_directory_target(self, args: dict[str, Any], directory: Path) -> None:
+    def _check_directory_target(self, rules: PathRules, directory: Path) -> None:
         """
         Verify the resolved target exists and is a directory, without leaking existence.
 
@@ -276,18 +282,18 @@ class ListDirectory(CodedTool):
         existence-revealing error types are only used for paths the agent could
         legitimately see as files anyway.
 
-        :param args: The tool argument dictionary.
+        :param rules: The pre-parsed operator rules.
         :param directory: The resolved directory target.
         :raises ValueError: path_not_allowed, path_not_found, not_a_directory, list_error.
         """
         try:
             target_stat: os.stat_result = directory.stat()
         except FileNotFoundError:
-            self._raise_denied_or(args, directory, f"path_not_found: '{directory}' does not exist.")
+            self._raise_denied_or(rules, directory, f"path_not_found: '{directory}' does not exist.")
             return
         except NotADirectoryError:
             # A path component is a regular file; the target cannot exist.
-            self._raise_denied_or(args, directory, f"path_not_found: '{directory}' does not exist.")
+            self._raise_denied_or(rules, directory, f"path_not_found: '{directory}' does not exist.")
             return
         except PermissionError as exc:
             raise ValueError(f"list_error: Permission denied accessing '{directory}'.") from exc
@@ -295,22 +301,24 @@ class ListDirectory(CodedTool):
             raise ValueError(f"list_error: Could not access '{directory}': {exc}") from exc
 
         if not stat_module.S_ISDIR(target_stat.st_mode):
-            self._raise_denied_or(args, directory, f"not_a_directory: '{directory}' is not a directory.")
+            self._raise_denied_or(rules, directory, f"not_a_directory: '{directory}' is not a directory.")
 
-    def _raise_denied_or(self, args: dict[str, Any], directory: Path, message: str) -> None:
+    def _raise_denied_or(self, rules: PathRules, directory: Path, message: str) -> None:
         """
         Raise path_not_allowed when the full file rules deny the target, else the given error.
 
         Both the missing and the exists-but-not-a-directory cases funnel through
         here, so a path the extension rules hide gets the SAME path_not_allowed
-        answer whether it exists or not.
+        answer whether it exists or not. The target is judged as a plain FILE
+        (is_directory=False): that applies the extension allow-list, which is
+        exactly the rule set that would hide a file of that name from a listing.
 
-        :param args: The tool argument dictionary.
+        :param rules: The pre-parsed operator rules.
         :param directory: The resolved directory target.
         :param message: The existence-revealing error to raise when the rules allow the path.
         :raises ValueError: Always — path_not_allowed or the given message.
         """
-        if not PathAccess.is_path_allowed(args, directory, enforce_allowed_extensions=True):
+        if rules.deny_reason(directory, directory.name, False) is not None:
             raise PathNotAllowedError(f"path_not_allowed: '{directory}' is not allowed as a listing target.")
         raise ValueError(message)
 
@@ -337,15 +345,14 @@ class ListDirectory(CodedTool):
     # ------------------------------------------------------------------
 
     def _list_entries(
-        self, args: dict[str, Any], directory: Path, include_hidden: bool, max_entries: int
+        self, rules: PathRules, directory: Path, include_hidden: bool, max_entries: int
     ) -> tuple[list[dict[str, Any]], bool, int]:
         """
         Enumerate, filter, and describe the directory's entries.
 
-        The rules are parsed and resolved ONCE here (PathRules) so the per-entry
-        check is pure lookups — no re-validation, no rule-path resolution, and no
-        exception construction per denied entry. A malformed rule entry therefore
-        fails the whole call up front instead of aborting midway through a scan.
+        The rules arrive pre-parsed (PathRules, built once in the precheck) so the
+        per-entry check is pure lookups — no re-validation, no rule-path resolution,
+        and no exception construction per denied entry.
 
         All filesystem reads go through a DirectoryHandle so the scan is bound to
         the directory the access check authorized (see that class for the
@@ -354,16 +361,15 @@ class ListDirectory(CodedTool):
         metadata is unreadable fails loudly here rather than being inferred from
         per-entry failures, which would depend on which entries exist.
 
-        :param args: The tool argument dictionary carrying the operator's rule lists.
+        :param rules: The pre-parsed operator rules.
         :param directory: The resolved, access-checked directory to list.
         :param include_hidden: Whether dot-prefixed names are included.
         :param max_entries: Maximum number of entries to return.
         :return: A tuple of (entries, truncated, unreadable_count).
-        :raises ValueError: invalid_input when a rule list is malformed; list_error
-                when the directory cannot be opened, is not searchable, cannot be
-                read, has a symlink path component, or exceeds the scan budget.
+        :raises ValueError: list_error when the directory cannot be opened, is not
+                searchable, cannot be read, has a symlink path component, or
+                exceeds the scan budget.
         """
-        rules: PathRules = PathRules(args)
         handle: DirectoryHandle = DirectoryHandle(directory)
         try:
             handle.open()
@@ -389,12 +395,15 @@ class ListDirectory(CodedTool):
         Only names are kept — no Path objects and no metadata — so the fixed cost
         of a heavily filtered directory is one readdir plus a sort, and metadata is
         read later for at most the entries that can be returned. Hidden-name
-        filtering and a name-level rule prefilter happen here because neither needs
-        metadata. The prefilter uses the most permissive assumption (a directory:
-        exempt from the extension allow-list); anything denied that way is denied
-        for every entry type, so it is dropped before it can cost a metadata read,
-        count toward the scan budget, or influence any result field — scoped-out
-        entries stay invisible everywhere, including in the budget error.
+        filtering and a rule prefilter happen here because neither needs a metadata
+        read: the readdir d_type carried by each os.DirEntry says whether the entry
+        is a real directory or a symlink, so plain files are judged under the full
+        rules (extension allow-list included) while directories and symlinks — whose
+        target might be a directory — get the exemption. Anything denied here is
+        dropped before it can cost a metadata read, count toward the scan budget, or
+        influence any result field, so scoped-out entries stay invisible everywhere,
+        including in the budget error. When the type cannot be determined the
+        prefilter stays permissive and the later metadata read decides.
 
         :param handle: The open handle on the listed directory.
         :param rules: The pre-parsed operator rules.
@@ -406,10 +415,15 @@ class ListDirectory(CodedTool):
         directory: Path = handle.directory
         names: list[str] = []
         try:
-            for name in handle.scan_names():
+            for entry in handle.scan_entries():
+                name: str = entry.name
                 if not include_hidden and name.startswith("."):
                     continue
-                if rules.deny_reason(directory / name, name, True) is not None:
+                try:
+                    maybe_directory: bool = entry.is_dir(follow_symlinks=False) or entry.is_symlink()
+                except OSError:
+                    maybe_directory = True
+                if rules.deny_reason(directory / name, name, maybe_directory) is not None:
                     continue
                 names.append(name)
                 if len(names) > MAX_SCAN_ENTRIES:

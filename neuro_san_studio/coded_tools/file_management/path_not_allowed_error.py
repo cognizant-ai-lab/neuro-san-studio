@@ -23,7 +23,7 @@ class PathNotAllowedError(ValueError):
     error taxonomies (which promise ValueError with a "path_not_allowed:"
     message prefix) are unchanged. The dedicated type exists so code that must
     distinguish "this path is denied" from "the operator config is malformed"
-    (e.g. PathAccess.is_path_allowed filtering directory entries) can catch it
+    (e.g. list_directory turning a target denial into control flow) can catch it
     structurally instead of string-matching the message prefix — a rewording of
     one message must never turn a routine per-entry denial into an exception
     that aborts a whole listing, or vice versa.

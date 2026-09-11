@@ -227,23 +227,6 @@ class TestPathAccess(TestCase):  # pylint: disable=too-many-public-methods
         with self.assertRaises(PathNotAllowedError):
             self._call_check_path_allowed(self.tmp_root / "a.txt", ["/some/other/root"])
 
-    # --------------------------------------------------------- is_path_allowed
-
-    def test_is_path_allowed_returns_bool_instead_of_raising(self):
-        """Tests that is_path_allowed maps allow/deny to True/False for entry filtering."""
-        allowed_file = self.tmp_root / "a.txt"
-        allowed_file.write_text("x", encoding="utf-8")
-        args = {"allowed_paths": [str(self.tmp_root)], "blocked_file_extensions": [".env"]}
-        self.assertTrue(PathAccess.is_path_allowed(args, allowed_file))
-        self.assertFalse(PathAccess.is_path_allowed(args, Path("/some/other/root/b.txt")))
-        self.assertFalse(PathAccess.is_path_allowed(args, self.tmp_root / ".env"))
-
-    def test_is_path_allowed_propagates_config_errors(self):
-        """Tests that invalid_input from malformed operator config still raises (fail loudly, not filter-all)."""
-        with self.assertRaises(ValueError) as ctx:
-            PathAccess.is_path_allowed({"allowed_paths": []}, self.tmp_root / "a.txt")
-        self.assertIn("invalid_input", str(ctx.exception))
-
     # -------------------------------------------------- normalize_extensions
 
     def test_normalize_extensions_already_normalized(self):

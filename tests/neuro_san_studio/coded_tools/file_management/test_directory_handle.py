@@ -19,6 +19,7 @@ import stat as stat_module
 import tempfile
 from pathlib import Path
 from unittest import TestCase
+from unittest import skipIf
 from unittest.mock import patch
 
 from neuro_san_studio.coded_tools.file_management import directory_handle as directory_handle_module
@@ -48,7 +49,14 @@ class TestDirectoryHandle(TestCase):
         """
         self.assertTrue(handle.is_open)
         self.assertEqual(handle.directory, self.tmp_root)
-        self.assertEqual(sorted(handle.scan_names()), ["a.txt", "link", "sub"])
+        names: list[str] = []
+        kinds: dict[str, tuple[bool, bool]] = {}
+        for entry in handle.scan_entries():
+            names.append(entry.name)
+            kinds[entry.name] = (entry.is_dir(follow_symlinks=False), entry.is_symlink())
+        self.assertEqual(sorted(names), ["a.txt", "link", "sub"])
+        # d_type-derived hints: a real directory, a plain file, and a symlink (not a directory itself).
+        self.assertEqual(kinds, {"a.txt": (False, False), "sub": (True, False), "link": (False, True)})
         self.assertTrue(stat_module.S_ISREG(handle.lstat("a.txt").st_mode))
         self.assertTrue(stat_module.S_ISDIR(handle.lstat("sub").st_mode))
         # lstat sees the link itself; stat follows it to the regular file.
@@ -93,6 +101,7 @@ class TestDirectoryHandle(TestCase):
             with self.assertRaises(FileNotFoundError):
                 DirectoryHandle(self.tmp_root / "nope").open()
 
+    @skipIf(os.name == "nt", "POSIX permission bits")
     def test_is_searchable_false_for_unsearchable_directory(self) -> None:
         """Tests that a readable-but-unsearchable directory reports unsearchable in both modes."""
         locked = self.tmp_root / "locked"

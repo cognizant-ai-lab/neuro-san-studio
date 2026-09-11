@@ -23,6 +23,8 @@ from collections.abc import Callable
 from pathlib import Path
 from typing import Any
 from unittest import TestCase
+from unittest import skipIf
+from unittest import skipUnless
 from unittest.mock import patch
 
 from neuro_san_studio.coded_tools.file_management import directory_handle as directory_handle_module
@@ -30,6 +32,7 @@ from neuro_san_studio.coded_tools.file_management import list_directory as list_
 from neuro_san_studio.coded_tools.file_management.list_directory import LIST_DIRECTORY_HISTORY_KEY
 from neuro_san_studio.coded_tools.file_management.list_directory import MAX_ENTRIES
 from neuro_san_studio.coded_tools.file_management.list_directory import ListDirectory
+from neuro_san_studio.coded_tools.file_management.path_rules import PathRules
 
 
 def _stat_failing_for(
@@ -281,6 +284,7 @@ class TestListDirectory(TestCase):
             self._invoke({"directory_path": str(self.tmp_root / "prod.env"), "blocked_file_extensions": [".env"]})
         self.assertIn("path_not_allowed", str(ctx.exception))
 
+    @skipUnless(hasattr(os, "mkfifo"), "FIFOs require a POSIX platform")
     def test_async_invoke_special_files_omitted(self) -> None:
         """Tests that FIFOs, links to FIFOs, dangling links, and link loops are omitted and uncounted.
 
@@ -297,6 +301,7 @@ class TestListDirectory(TestCase):
         self.assertEqual(self._names(result), ["real.txt"])
         self.assertEqual(result["unreadable_entries"], 0)
 
+    @skipIf(os.name == "nt", "POSIX permission bits")
     def test_async_invoke_unsearchable_directory_raises_list_error(self):
         """Tests that a readable-but-unsearchable directory fails instead of looking empty."""
         locked = self.tmp_root / "locked"
@@ -346,10 +351,26 @@ class TestListDirectory(TestCase):
         real = self.tmp_root / "real"
         (real / "inner").mkdir(parents=True)
         (self.tmp_root / "link").symlink_to(real)
-        args = {"allowed_paths": [str(self.tmp_root)]}
+        rules = PathRules({"allowed_paths": [str(self.tmp_root)]})
         with self.assertRaises(ValueError) as ctx:
-            self.tool._list_entries(args, self.tmp_root / "link" / "inner", False, 500)  # pylint: disable=protected-access
+            self.tool._list_entries(rules, self.tmp_root / "link" / "inner", False, 500)  # pylint: disable=protected-access
         self.assertIn("list_error", str(ctx.exception))
+
+    def test_async_invoke_malformed_rule_entry_fails_before_target_check(self) -> None:
+        """Tests that every rule entry is validated before the target is examined.
+
+        PathAccess's one-shot check stops at the first matching root, so a bad
+        later entry would otherwise slip through and a missing target would answer
+        path_not_found instead of the promised invalid_input.
+        """
+        with self.assertRaises(ValueError) as ctx:
+            self._invoke(
+                {
+                    "directory_path": str(self.tmp_root / "missing"),
+                    "allowed_paths": [str(self.tmp_root), "bad\x00entry"],
+                }
+            )
+        self.assertIn("invalid_input", str(ctx.exception))
 
     def test_read_names_enforces_scan_budget(self) -> None:
         """Tests that a directory beyond the scan budget fails with list_error instead of an unbounded response."""
@@ -362,22 +383,27 @@ class TestListDirectory(TestCase):
         self.assertIn("more than 3 entries in scope", str(ctx.exception))
 
     def test_read_names_scan_budget_ignores_scoped_out_names(self) -> None:
-        """Tests that names the rules exclude never count toward the scan budget, so its error cannot leak them."""
-        for name in ["a.env", "b.env", "c.env", "d.env"]:
+        """Tests that names the rules exclude never count toward the scan budget, so its error cannot leak them.
+
+        Blocked names and, thanks to the d_type-aware prefilter, plain files the
+        extension allow-list hides are both dropped before the budget sees them;
+        directories keep their allow-list exemption.
+        """
+        for name in ["a.env", "b.env", "c.env", "d.env", "e.log", "f.log", "g.log", "h.log"]:
             self._make(name)
         self._make("keep.txt")
+        (self.tmp_root / "logs").mkdir()
         with patch.object(list_directory_module, "MAX_SCAN_ENTRIES", 3):
-            result = self._invoke({"blocked_file_extensions": [".env"]})
-        self.assertEqual(self._names(result), ["keep.txt"])
+            result = self._invoke({"blocked_file_extensions": [".env"], "allowed_file_extensions": [".txt"]})
+        self.assertEqual(self._names(result), ["keep.txt", "logs"])
 
     def test_async_invoke_path_mode_fallback_behaves_like_descriptor_mode(self) -> None:
         """Tests the DirectoryHandle path-mode fallback end to end (platforms without descriptor calls).
 
-        The same fixture as the special-files test must produce the same listing,
-        and a symlinked path component must still fail closed.
+        Files, directories, symlinks to both, and a dangling link must produce the
+        same listing as descriptor mode, and a symlinked path component must still
+        fail closed. FIFOs are covered by the POSIX-only special-files test.
         """
-        os.mkfifo(self.tmp_root / "pipe")
-        (self.tmp_root / "pipe_link.txt").symlink_to(self.tmp_root / "pipe")
         (self.tmp_root / "dangling.txt").symlink_to(self.tmp_root / "missing.txt")
         self._make("real.txt")
         (self.tmp_root / "sub").mkdir()
@@ -389,9 +415,9 @@ class TestListDirectory(TestCase):
             result = self._invoke({})
             self.assertEqual(self._names(result), ["link", "real", "real.txt", "sub", "sub_link"])
             self.assertEqual(result["unreadable_entries"], 0)
-            args = {"allowed_paths": [str(self.tmp_root)]}
+            rules = PathRules({"allowed_paths": [str(self.tmp_root)]})
             with self.assertRaises(ValueError) as ctx:
-                self.tool._list_entries(args, self.tmp_root / "link" / "inner", False, 500)  # pylint: disable=protected-access
+                self.tool._list_entries(rules, self.tmp_root / "link" / "inner", False, 500)  # pylint: disable=protected-access
             self.assertIn("list_error", str(ctx.exception))
 
     def test_async_invoke_advertised_names_round_trip(self):
@@ -433,7 +459,7 @@ class TestListDirectory(TestCase):
         """Invoke _check_directory_target with allowed_paths defaulted to the temp root."""
         args = {"allowed_paths": [str(self.tmp_root)]}
         args.update(extra_args)
-        self.tool._check_directory_target(args, path)  # pylint: disable=protected-access
+        self.tool._check_directory_target(PathRules(args), path)  # pylint: disable=protected-access
 
     def test_check_directory_target_passes_for_directory(self):
         """Tests that an existing directory passes the existence check."""
@@ -462,6 +488,7 @@ class TestListDirectory(TestCase):
                 self._check_target(self.tmp_root / name, allowed_file_extensions=[".txt"])
             self.assertIn("path_not_allowed", str(ctx.exception))
 
+    @skipIf(os.name == "nt", "POSIX permission bits")
     def test_check_directory_target_permission_error_is_list_error(self):
         """Tests that an untraversable parent surfaces as list_error, not a false path_not_found."""
         locked = self.tmp_root / "locked"

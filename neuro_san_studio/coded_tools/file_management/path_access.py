@@ -134,23 +134,6 @@ class PathAccess:
         )
 
     @staticmethod
-    def is_path_allowed(args: dict[str, Any], file_path: Path, enforce_allowed_extensions: bool = True) -> bool:
-        """Non-raising variant of validate_and_check_access for one-off allow/deny questions.
-
-        Returns False instead of raising path_not_allowed, so callers can turn a
-        denial into control flow (e.g. list_directory's existence-oracle guard).
-        Genuine configuration errors (invalid_input from malformed rule lists) still
-        propagate — a bad operator config must fail loudly, not filter everything.
-        For filtering MANY paths per call, use PathRules, which validates and
-        resolves the rule lists once instead of per path.
-        """
-        try:
-            PathAccess.validate_and_check_access(args, file_path, enforce_allowed_extensions)
-        except PathNotAllowedError:
-            return False
-        return True
-
-    @staticmethod
     def validate_path_list(value: Any, param_name: str) -> list[str]:
         """Coerce and validate a path list parameter. Accepts None, list[str], or a single str."""
         coerced: list[str] | None = PathAccess._coerce_str_list(value, param_name)

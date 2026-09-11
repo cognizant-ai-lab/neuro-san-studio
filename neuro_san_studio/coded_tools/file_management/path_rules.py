@@ -121,16 +121,18 @@ class PathRules:
         Walks the path's ancestors as strings and tests set membership, so the cost
         is O(depth) hash lookups regardless of how many roots the operator
         configured — the per-entry hot path of a directory scan must not grow with
-        the size of the rule lists. For the absolute, resolved paths both sides
-        always are here, this is equivalent to Path.is_relative_to against each root.
+        the size of the rule lists. Both sides go through os.path.normcase (a no-op
+        on POSIX, case-folding on Windows), so for the absolute, resolved paths
+        used here this is equivalent to the platform-aware Path comparisons in
+        PathAccess.path_matches_any.
 
         :param path: The resolved absolute path to test.
-        :param roots: Resolved root paths as strings, as produced by _resolve_entries.
+        :param roots: Normalized resolved root paths, as produced by _resolve_entries.
         :return: True when some root equals the path or is one of its ancestors.
         """
         if not roots:
             return False
-        current: str = str(path)
+        current: str = os.path.normcase(str(path))
         while True:
             if current in roots:
                 return True
@@ -146,13 +148,13 @@ class PathRules:
         Resolve rule-list entries once, failing closed on any unresolvable entry.
 
         :param entries: The raw operator-supplied path entries.
-        :return: The resolved absolute paths as strings, indexed for membership tests.
+        :return: The resolved absolute paths as normcase'd strings, indexed for membership tests.
         :raises ValueError: invalid_input when an entry cannot be resolved.
         """
         resolved: list[str] = []
         for entry in entries:
             try:
-                resolved.append(str(Path(entry).expanduser().resolve(strict=False)))
+                resolved.append(os.path.normcase(str(Path(entry).expanduser().resolve(strict=False))))
             except (RuntimeError, ValueError, OSError) as exc:
                 raise ValueError(f"invalid_input: Cannot resolve allow/block list entry {entry!r}: {exc}") from exc
         return frozenset(resolved)
