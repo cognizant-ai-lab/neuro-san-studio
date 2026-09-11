@@ -31,11 +31,6 @@
         "serve": true,
         "public": false
     },
-    # agent_network_designer researches the organization it is designing for through this one.
-    "tools/internet_info_gatherer.hocon": {
-        "serve": true,
-        "public": false
-    },
 
     # Generates test fixtures for an existing agent network.
     "agent_network_test_generator.hocon": true,

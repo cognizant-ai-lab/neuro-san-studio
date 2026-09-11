@@ -54,7 +54,6 @@ EXPECTED_DEFAULT_NETWORKS: List[str] = [
     "agent_network_editor.hocon",
     "agent_network_instructions_editor.hocon",
     "agent_network_query_generator.hocon",
-    "tools/internet_info_gatherer.hocon",
     "agent_network_test_generator.hocon",
     "experimental/cruse_theme_agent.hocon",
     "experimental/cruse_widget_agent.hocon",
