@@ -325,22 +325,28 @@ class TestPathAccess(TestCase):  # pylint: disable=too-many-public-methods
         target = self.tmp_root / "data"
         target.mkdir()
         (self.tmp_root / "prod.env").symlink_to(target)
-        self.assertEqual(PathAccess.supplied_name({"file_path": str(self.tmp_root / "prod.env")}), "prod.env")
-        self.assertEqual(PathAccess.supplied_name({"file_path": str(self.tmp_root / "prod.env") + "/"}), "prod.env")
-        self.assertEqual(PathAccess.supplied_name({"file_path": "~/notes.txt"}), "notes.txt")
+        self.assertEqual(PathAccess.supplied_name({"file_path": str(self.tmp_root / "prod.env")}, target), "prod.env")
+        self.assertEqual(
+            PathAccess.supplied_name({"file_path": str(self.tmp_root / "prod.env") + "/"}, target), "prod.env"
+        )
+        self.assertEqual(
+            PathAccess.supplied_name({"file_path": "~/notes.txt"}, Path.home() / "notes.txt"), "notes.txt"
+        )
 
     def test_supplied_name_falls_back_to_resolved_name_for_dot_components(self) -> None:
-        """Tests that '.', '..', and the root fall back to the resolved path's own name."""
+        """Tests that '.', '..', and the root fall back to the already-resolved path's own name."""
         self.assertEqual(
-            PathAccess.supplied_name({"file_path": str(self.tmp_root / "sub" / "..")}), self.tmp_root.name
+            PathAccess.supplied_name({"file_path": str(self.tmp_root / "sub" / "..")}, self.tmp_root),
+            self.tmp_root.name,
         )
-        self.assertEqual(PathAccess.supplied_name({"file_path": "/"}), "")
+        self.assertEqual(PathAccess.supplied_name({"file_path": "."}, self.tmp_root), self.tmp_root.name)
+        self.assertEqual(PathAccess.supplied_name({"file_path": "/"}, Path("/")), "")
 
     def test_supplied_name_rejects_bad_arguments(self) -> None:
         """Tests that supplied_name shares resolve_path's invalid_input validation."""
         for args in [{}, {"file_path": "   "}, {"file_path": 3}]:
             with self.assertRaises(ValueError) as ctx:
-                PathAccess.supplied_name(args)
+                PathAccess.supplied_name(args, self.tmp_root)
             self.assertIn("invalid_input", str(ctx.exception))
 
     def test_validate_allowed_paths_missing_key_raises_invalid_input(self):

@@ -210,7 +210,7 @@ class ListDirectory(CodedTool):
         """
         rules: PathRules = await asyncio.to_thread(PathRules, args)
         directory: Path = await PathAccess.async_resolve_path(args, "directory_path")
-        display_name: str = PathAccess.supplied_name(args, "directory_path")
+        display_name: str = PathAccess.supplied_name(args, directory, "directory_path")
         self._check_target_access(rules, directory, display_name)
         include_hidden: bool = PathAccess.validate_bool(args, "include_hidden", False)
         max_entries: int = self._validate_max_entries(args)
@@ -305,9 +305,17 @@ class ListDirectory(CodedTool):
             return f"path_not_allowed: '{directory}' is not within any of the allowed_paths entries."
         if reason == "blocked_path":
             return f"path_not_allowed: '{directory}' is blocked by blocked_paths."
+        # Extension rules were evaluated on the supplied name AND the resolved name;
+        # name both so the message never contradicts the rule that actually fired.
         if reason == "blocked_extension":
-            return f"path_not_allowed: The extension of '{display_name}' is in blocked_file_extensions."
-        return f"path_not_allowed: The extension of '{display_name}' is not in allowed_file_extensions."
+            return (
+                f"path_not_allowed: '{display_name}' (resolving to '{directory.name}') "
+                "has an extension that is in blocked_file_extensions."
+            )
+        return (
+            f"path_not_allowed: '{display_name}' (resolving to '{directory.name}') "
+            "has an extension that is not in allowed_file_extensions."
+        )
 
     def _check_directory_target(self, rules: PathRules, directory: Path, display_name: str) -> None:
         """
@@ -454,7 +462,10 @@ class ListDirectory(CodedTool):
         invisible everywhere, including in the budget error. When the type cannot
         be determined the entry is judged as a plain file — the strictest reading,
         so an unknown entry can never widen the budget — and the later metadata
-        read decides.
+        read decides. The budget is a readdir-time snapshot: an entry that is
+        deleted or retargeted between this pass and the describe step still
+        occupied its slot, which is the same tolerance any directory listing has
+        for a directory being modified underneath it.
 
         :param handle: The open handle on the listed directory.
         :param rules: The pre-parsed operator rules.

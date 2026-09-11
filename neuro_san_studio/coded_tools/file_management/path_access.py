@@ -90,7 +90,7 @@ class PathAccess:
             raise ValueError(f"invalid_input: Cannot resolve '{param_name}' '{value}': {exc}") from exc
 
     @staticmethod
-    def supplied_name(args: dict[str, Any], param_name: str = "file_path") -> str:
+    def supplied_name(args: dict[str, Any], resolved: Path, param_name: str = "file_path") -> str:
         """
         Return the final component of a path argument exactly as the caller supplied it.
 
@@ -98,9 +98,12 @@ class PathAccess:
         known by the link target's name afterwards. Extension rules must also see
         the name the caller used — a directory reached as 'prod.env' has to be
         denied under blocked_file_extensions=[".env"] even when the link points at
-        'data' — so callers pass this alongside the resolved path.
+        'data' — so callers pass this alongside the resolved path. Pure string
+        work: nothing here touches the filesystem, so it is safe on the event loop.
 
         :param args: The tool argument dictionary.
+        :param resolved: The path as already returned by resolve_path for the same
+                argument; supplies the fallback name so no second resolution is needed.
         :param param_name: Name of the args key holding the path.
         :return: The last component of the supplied path after user expansion; when
                 that component is empty, '.', or '..', the resolved path's own name.
@@ -113,7 +116,7 @@ class PathAccess:
         except (ValueError, RuntimeError) as exc:
             raise ValueError(f"invalid_input: Cannot resolve '{param_name}' '{value}': {exc}") from exc
         if supplied.name in ("", ".", ".."):
-            return PathAccess.resolve_path(args, param_name).name
+            return resolved.name
         return supplied.name
 
     @staticmethod
