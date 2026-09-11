@@ -25,6 +25,7 @@ from typing import Any
 from unittest import TestCase
 from unittest.mock import patch
 
+from neuro_san_studio.coded_tools.file_management import directory_handle as directory_handle_module
 from neuro_san_studio.coded_tools.file_management import list_directory as list_directory_module
 from neuro_san_studio.coded_tools.file_management.list_directory import LIST_DIRECTORY_HISTORY_KEY
 from neuro_san_studio.coded_tools.file_management.list_directory import MAX_ENTRIES
@@ -32,21 +33,21 @@ from neuro_san_studio.coded_tools.file_management.list_directory import ListDire
 
 
 def _stat_failing_for(
-    failing_name: str, real_stat: Callable[..., os.stat_result], path: Any, *args: Any, **kwargs: Any
+    failing_names: frozenset[str], real_stat: Callable[..., os.stat_result], path: Any, *args: Any, **kwargs: Any
 ) -> os.stat_result:
     """
-    Stand-in for os.stat that fails with EIO for one handle-relative name and delegates otherwise.
+    Stand-in for os.stat that fails with EIO for given handle-relative names and delegates otherwise.
 
-    :param failing_name: The entry name whose handle-relative stat must fail.
+    :param failing_names: The entry names whose handle-relative stat must fail.
     :param real_stat: The genuine os.stat to delegate every other call to.
     :param path: The path or name being stat'ed.
     :param args: Positional arguments forwarded to real_stat.
     :param kwargs: Keyword arguments forwarded to real_stat.
-    :return: The real stat result for every call that is not the failing one.
-    :raises OSError: EIO for the failing handle-relative name.
+    :return: The real stat result for every call that is not a failing one.
+    :raises OSError: EIO for a failing handle-relative name.
     """
-    if path == failing_name and kwargs.get("dir_fd") is not None:
-        raise OSError(errno.EIO, "simulated I/O error", failing_name)
+    if path in failing_names and kwargs.get("dir_fd") is not None:
+        raise OSError(errno.EIO, "simulated I/O error", str(path))
     return real_stat(path, *args, **kwargs)
 
 
@@ -312,28 +313,24 @@ class TestListDirectory(TestCase):
     def test_async_invoke_unreadable_count_excludes_denied_entries(self) -> None:
         """Tests that entries the rules exclude never surface through the unreadable count.
 
-        In a readable-but-unsearchable directory every metadata read fails; the
-        blocked entry must be dropped by the rule prefilter before that read, so
-        only the qualifying entry is counted.
+        Three entries fail their metadata read: a.txt qualifies, secret.log is hidden
+        by the extension allow-list, and prod.env is blocked outright. Only a.txt may
+        be counted; the other two must stay invisible even as a number.
         """
-        locked = self.tmp_root / "locked"
-        locked.mkdir()
-        (locked / "a.txt").write_text("x", encoding="utf-8")
-        (locked / "b.env").write_text("x", encoding="utf-8")
-        os.chmod(locked, 0o444)
-        try:
-            with self.assertRaises(ValueError) as ctx:
-                self._invoke({"directory_path": str(locked), "blocked_file_extensions": [".env"]})
-            self.assertIn("list_error", str(ctx.exception))
-            self.assertIn("(1 unreadable)", str(ctx.exception))
-        finally:
-            os.chmod(locked, 0o700)
+        self._make("a.txt")
+        self._make("secret.log")
+        self._make("prod.env")
+        fake_stat = functools.partial(_stat_failing_for, frozenset({"a.txt", "secret.log", "prod.env"}), os.stat)
+        with patch.object(list_directory_module.os, "stat", fake_stat):
+            result = self._invoke({"allowed_file_extensions": [".txt"], "blocked_file_extensions": [".env"]})
+        self.assertEqual(result["entries"], [])
+        self.assertEqual(result["unreadable_entries"], 1)
 
     def test_async_invoke_reports_unreadable_entries(self) -> None:
         """Tests that a partially unreadable listing returns what it can and counts the gap."""
         self._make("bad.txt")
         self._make("fine.txt")
-        fake_stat = functools.partial(_stat_failing_for, "bad.txt", os.stat)
+        fake_stat = functools.partial(_stat_failing_for, frozenset({"bad.txt"}), os.stat)
         with patch.object(list_directory_module.os, "stat", fake_stat):
             result = self._invoke({})
         self.assertEqual(self._names(result), ["fine.txt"])
@@ -355,14 +352,47 @@ class TestListDirectory(TestCase):
         self.assertIn("list_error", str(ctx.exception))
 
     def test_read_names_enforces_scan_budget(self) -> None:
-        """Tests that a directory beyond the scan budget fails with list_error instead of an unbounded scan."""
+        """Tests that a directory beyond the scan budget fails with list_error instead of an unbounded response."""
         for name in ["a", "b", "c", "d"]:
             self._make(name)
         with patch.object(list_directory_module, "MAX_SCAN_ENTRIES", 3):
             with self.assertRaises(ValueError) as ctx:
                 self._invoke({})
         self.assertIn("list_error", str(ctx.exception))
-        self.assertIn("more than 3 entries", str(ctx.exception))
+        self.assertIn("more than 3 entries in scope", str(ctx.exception))
+
+    def test_read_names_scan_budget_ignores_scoped_out_names(self) -> None:
+        """Tests that names the rules exclude never count toward the scan budget, so its error cannot leak them."""
+        for name in ["a.env", "b.env", "c.env", "d.env"]:
+            self._make(name)
+        self._make("keep.txt")
+        with patch.object(list_directory_module, "MAX_SCAN_ENTRIES", 3):
+            result = self._invoke({"blocked_file_extensions": [".env"]})
+        self.assertEqual(self._names(result), ["keep.txt"])
+
+    def test_async_invoke_path_mode_fallback_behaves_like_descriptor_mode(self) -> None:
+        """Tests the DirectoryHandle path-mode fallback end to end (platforms without descriptor calls).
+
+        The same fixture as the special-files test must produce the same listing,
+        and a symlinked path component must still fail closed.
+        """
+        os.mkfifo(self.tmp_root / "pipe")
+        (self.tmp_root / "pipe_link.txt").symlink_to(self.tmp_root / "pipe")
+        (self.tmp_root / "dangling.txt").symlink_to(self.tmp_root / "missing.txt")
+        self._make("real.txt")
+        (self.tmp_root / "sub").mkdir()
+        (self.tmp_root / "sub_link").symlink_to(self.tmp_root / "sub")
+        real = self.tmp_root / "real"
+        (real / "inner").mkdir(parents=True)
+        (self.tmp_root / "link").symlink_to(real)
+        with patch.object(directory_handle_module, "_HAS_DESCRIPTOR_CALLS", False):
+            result = self._invoke({})
+            self.assertEqual(self._names(result), ["link", "real", "real.txt", "sub", "sub_link"])
+            self.assertEqual(result["unreadable_entries"], 0)
+            args = {"allowed_paths": [str(self.tmp_root)]}
+            with self.assertRaises(ValueError) as ctx:
+                self.tool._list_entries(args, self.tmp_root / "link" / "inner", False, 500)  # pylint: disable=protected-access
+            self.assertIn("list_error", str(ctx.exception))
 
     def test_async_invoke_advertised_names_round_trip(self):
         """Tests that a name emitted by the listing (with trailing space) is directly usable as a target."""
