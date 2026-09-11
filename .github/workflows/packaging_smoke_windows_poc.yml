@@ -1,0 +1,48 @@
+name: Packaged Install Smoke Test (Windows POC)
+
+# Proof of concept: does the packaged-install smoke test pass on a Windows runner?
+# build-common's quality gate is pinned to ubuntu-latest, so this runs the same
+# pytest command directly. Manual trigger only.
+
+on:
+  workflow_dispatch:      # enables manual triggering
+
+permissions:
+  contents: read
+
+jobs:
+  packaged-install-smoke-test:
+    # don't run this job in sync'd clones
+    if: github.repository == 'cognizant-ai-lab/neuro-san-studio'
+    name: smoke (${{ matrix.os }}, py${{ matrix.python-version }})
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [windows-latest, ubuntu-latest]
+        python-version: ['3.12', '3.13', '3.14']
+    steps:
+      # actions/checkout v6.0.2
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
+        with:
+          persist-credentials: false
+
+      # actions/setup-python v6.2.0
+      - uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Install test requirements
+        shell: bash
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install --requirement requirements.txt --requirement requirements-build.txt
+
+      - name: Run packaged-install smoke test
+        shell: bash
+        env:
+          # The smoke test builds a wheel; the checkout is shallow and untagged, so
+          # setuptools-scm needs a version handed to it.
+          SETUPTOOLS_SCM_PRETEND_VERSION: 0.0.0
+        run: python -m pytest --verbose -m "smoke"
