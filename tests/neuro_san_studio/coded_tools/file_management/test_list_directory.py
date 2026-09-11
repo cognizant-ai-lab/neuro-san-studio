@@ -99,6 +99,18 @@ class TestListDirectory(TestCase):
         """Return the entry names from a result."""
         return [entry["name"] for entry in result["entries"]]
 
+    @staticmethod
+    def _handle_modes() -> list[bool]:
+        """
+        Return the DirectoryHandle modes this platform can run: path mode always, descriptor mode where supported.
+
+        :return: [True, False] with dir_fd support, else [False].
+        """
+        modes: list[bool] = [False]
+        if directory_handle_module.HAS_DESCRIPTOR_CALLS:
+            modes.insert(0, True)
+        return modes
+
     def _failing_metadata(self, names: set[str], descriptor_mode: bool) -> ExitStack:
         """
         Build a context in which the metadata read of the given temp-root entries fails with EIO.
@@ -111,7 +123,7 @@ class TestListDirectory(TestCase):
         :return: An ExitStack holding the patches; use it as a context manager.
         """
         stack = ExitStack()
-        stack.enter_context(patch.object(directory_handle_module, "_HAS_DESCRIPTOR_CALLS", descriptor_mode))
+        stack.enter_context(patch.object(directory_handle_module, "HAS_DESCRIPTOR_CALLS", descriptor_mode))
         fake_stat = functools.partial(_stat_failing_for, frozenset(names), self.tmp_root, os.stat)
         fake_lstat = functools.partial(_stat_failing_for, frozenset(names), self.tmp_root, os.lstat)
         stack.enter_context(patch.object(directory_handle_module.os, "stat", fake_stat))
@@ -307,6 +319,27 @@ class TestListDirectory(TestCase):
         result = self._invoke({"blocked_file_extensions": [".env"]})
         self.assertEqual(self._names(result), ["readme.txt"])
 
+    def test_async_invoke_symlink_target_judged_under_supplied_name(self) -> None:
+        """Tests that a directory target reached through a symlink is judged under the link's name too.
+
+        'prod.env' -> 'data' must be denied under blocked_file_extensions=[".env"]
+        exactly like a real directory named 'prod.env', while a symlink to a
+        directory keeps the directory exemption from the extension allow-list.
+        """
+        data = self.tmp_root / "data"
+        data.mkdir()
+        (data / "a.txt").write_text("x", encoding="utf-8")
+        (self.tmp_root / "prod.env").symlink_to(data)
+        (self.tmp_root / "docs_link").symlink_to(data)
+        with self.assertRaises(ValueError) as ctx:
+            self._invoke({"directory_path": str(self.tmp_root / "prod.env"), "blocked_file_extensions": [".env"]})
+        self.assertIn("path_not_allowed", str(ctx.exception))
+        result = self._invoke(
+            {"directory_path": str(self.tmp_root / "docs_link"), "allowed_file_extensions": [".txt"]}
+        )
+        self.assertEqual(self._names(result), ["a.txt"])
+        self.assertEqual(result["path"], str(data))
+
     def test_async_invoke_blocked_extension_applies_to_directory_entries_and_target(self):
         """Tests that block rules always apply to directories: as listing entries and as the target."""
         (self.tmp_root / "prod.env").mkdir()
@@ -358,7 +391,7 @@ class TestListDirectory(TestCase):
         self._make("a.txt")
         self._make("secret.log")
         self._make("prod.env")
-        for descriptor_mode in [True, False]:
+        for descriptor_mode in self._handle_modes():
             with self.subTest(descriptor_mode=descriptor_mode):
                 with self._failing_metadata({"a.txt", "secret.log", "prod.env"}, descriptor_mode):
                     result = self._invoke({"allowed_file_extensions": [".txt"], "blocked_file_extensions": [".env"]})
@@ -369,7 +402,7 @@ class TestListDirectory(TestCase):
         """Tests that a partially unreadable listing returns what it can and counts the gap."""
         self._make("bad.txt")
         self._make("fine.txt")
-        for descriptor_mode in [True, False]:
+        for descriptor_mode in self._handle_modes():
             with self.subTest(descriptor_mode=descriptor_mode):
                 with self._failing_metadata({"bad.txt"}, descriptor_mode):
                     result = self._invoke({})
@@ -451,7 +484,7 @@ class TestListDirectory(TestCase):
         real = self.tmp_root / "real"
         (real / "inner").mkdir(parents=True)
         (self.tmp_root / "link").symlink_to(real)
-        with patch.object(directory_handle_module, "_HAS_DESCRIPTOR_CALLS", False):
+        with patch.object(directory_handle_module, "HAS_DESCRIPTOR_CALLS", False):
             result = self._invoke({})
             self.assertEqual(self._names(result), ["link", "real", "real.txt", "sub", "sub_link"])
             self.assertEqual(result["unreadable_entries"], 0)
@@ -500,7 +533,7 @@ class TestListDirectory(TestCase):
         """Invoke _check_directory_target with allowed_paths defaulted to the temp root."""
         args = {"allowed_paths": [str(self.tmp_root)]}
         args.update(extra_args)
-        self.tool._check_directory_target(PathRules(args), path)  # pylint: disable=protected-access
+        self.tool._check_directory_target(PathRules(args), path, path.name)  # pylint: disable=protected-access
 
     def test_check_directory_target_passes_for_directory(self):
         """Tests that an existing directory passes the existence check."""

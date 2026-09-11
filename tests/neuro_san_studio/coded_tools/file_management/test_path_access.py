@@ -184,44 +184,6 @@ class TestPathAccess(TestCase):  # pylint: disable=too-many-public-methods
             self._call_check_path_allowed(makefile, [str(self.tmp_root)], allowed_exts=None, blocked_exts=["Makefile"])
         self.assertIn("path_not_allowed", str(ctx.exception))
 
-    def test_check_path_allowed_allow_extensions_skipped_for_directory_targets(self):
-        """Tests that enforce_allowed_extensions=False exempts a target from the extension ALLOW-list.
-
-        A directory named 'data' would otherwise be treated as extension '.data'
-        and spuriously denied under a file-oriented extension allow-list.
-        """
-        data_dir = self.tmp_root / "data"
-        data_dir.mkdir()
-        # Denied with the allow-list enforced...
-        with self.assertRaises(ValueError):
-            self._call_check_path_allowed(data_dir, [str(self.tmp_root)], allowed_exts=[".txt"])
-        # ...allowed with the allow-list exemption ('.data' also isn't blocked).
-        PathAccess.check_path_allowed(data_dir, [str(self.tmp_root)], [".txt"], [], [".env"], False)  # no raise
-
-    def test_check_path_allowed_blocked_extensions_always_apply(self):
-        """Tests that blocked_file_extensions still denies a directory-shaped target.
-
-        A block rule is explicit operator intent: a directory named 'prod.env'
-        must not slip past blocked_file_extensions=['.env'] just because the
-        allow-list exemption is active for directory targets.
-        """
-        env_dir = self.tmp_root / "prod.env"
-        env_dir.mkdir()
-        with self.assertRaises(ValueError) as ctx:
-            PathAccess.check_path_allowed(env_dir, [str(self.tmp_root)], None, [], [".env"], False)
-        self.assertIn("path_not_allowed", str(ctx.exception))
-
-    def test_check_path_allowed_path_rules_still_apply_without_extension_rules(self):
-        """Tests that enforce_allowed_extensions=False does not bypass allowed_paths/blocked_paths."""
-        data_dir = self.tmp_root / "data"
-        data_dir.mkdir()
-        with self.assertRaises(ValueError) as ctx:
-            PathAccess.check_path_allowed(data_dir, ["/some/other/root"], None, [], None, False)
-        self.assertIn("path_not_allowed", str(ctx.exception))
-        with self.assertRaises(ValueError) as ctx:
-            PathAccess.check_path_allowed(data_dir, [str(self.tmp_root)], None, [str(data_dir)], None, False)
-        self.assertIn("path_not_allowed", str(ctx.exception))
-
     def test_check_path_allowed_raises_dedicated_subclass(self):
         """Tests that denials raise PathNotAllowedError so filters need not string-match messages."""
         with self.assertRaises(PathNotAllowedError):
@@ -355,6 +317,31 @@ class TestPathAccess(TestCase):  # pylint: disable=too-many-public-methods
         self.assertIn("invalid_input", str(ctx.exception))
 
     # ------------------------------------------------- validate_allowed_paths
+
+    # ------------------------------------------------------------- supplied_name
+
+    def test_supplied_name_returns_final_component_as_given(self) -> None:
+        """Tests that supplied_name keeps the caller's final path component, symlinks unresolved."""
+        target = self.tmp_root / "data"
+        target.mkdir()
+        (self.tmp_root / "prod.env").symlink_to(target)
+        self.assertEqual(PathAccess.supplied_name({"file_path": str(self.tmp_root / "prod.env")}), "prod.env")
+        self.assertEqual(PathAccess.supplied_name({"file_path": str(self.tmp_root / "prod.env") + "/"}), "prod.env")
+        self.assertEqual(PathAccess.supplied_name({"file_path": "~/notes.txt"}), "notes.txt")
+
+    def test_supplied_name_falls_back_to_resolved_name_for_dot_components(self) -> None:
+        """Tests that '.', '..', and the root fall back to the resolved path's own name."""
+        self.assertEqual(
+            PathAccess.supplied_name({"file_path": str(self.tmp_root / "sub" / "..")}), self.tmp_root.name
+        )
+        self.assertEqual(PathAccess.supplied_name({"file_path": "/"}), "")
+
+    def test_supplied_name_rejects_bad_arguments(self) -> None:
+        """Tests that supplied_name shares resolve_path's invalid_input validation."""
+        for args in [{}, {"file_path": "   "}, {"file_path": 3}]:
+            with self.assertRaises(ValueError) as ctx:
+                PathAccess.supplied_name(args)
+            self.assertIn("invalid_input", str(ctx.exception))
 
     def test_validate_allowed_paths_missing_key_raises_invalid_input(self):
         """Tests that omitting allowed_paths raises invalid_input (required parameter)."""

@@ -51,8 +51,11 @@ class ListDirectory(CodedTool):
     is exempt from the extension ALLOW-list (directories have no meaningful
     extension for a file-oriented whitelist); blocked_paths and
     blocked_file_extensions always apply, so a directory named 'prod.env' is
-    still denied under blocked_file_extensions=[".env"]. Block-lists are
-    evaluated after allow-lists; a match in a block-list always denies access.
+    still denied under blocked_file_extensions=[".env"]. The target is judged
+    under both the name the caller supplied and its resolved name, so reaching
+    that directory through a symlink called 'prod.env' is denied as well.
+    Block-lists are evaluated after allow-lists; a match in a block-list always
+    denies access.
 
     Entries that fail the allow/block rules are silently omitted from the
     listing rather than reported, so the listing never leaks the existence of
@@ -85,7 +88,9 @@ class ListDirectory(CodedTool):
     entries whose metadata cannot be read (or whose names are not UTF-8
     encodable) are omitted and counted in "unreadable_entries" — but only when
     the entry would have qualified as a plain file under the rules, so the count
-    can never reveal an entry the extension allow-list hides.
+    can never reveal an entry the extension allow-list hides. The count covers
+    the entries inspected before the max_entries cap was filled; the tail is
+    never inspected beyond deciding "truncated".
 
     Error types (raised as ValueError with the specified message prefix):
         invalid_input    – required parameter is missing, wrong type, or invalid value.
@@ -158,7 +163,8 @@ class ListDirectory(CodedTool):
                                 have qualified exists beyond the max_entries cap —
                                 the listing is incomplete. Entries the rules exclude
                                 never affect this flag.
-                "unreadable_entries" (int): Number of entries omitted because their
+                "unreadable_entries" (int): Number of entries inspected before the
+                                cap was filled that were omitted because their
                                 metadata could not be read; 0 for a fully readable
                                 directory.
                 "listed_at"     (str): ISO-8601 UTC timestamp when the listing was taken.
@@ -187,28 +193,28 @@ class ListDirectory(CodedTool):
         """
         Run all pre-listing validation and access checks.
 
-        Order matters: resolve → rules → access → existence. The operator's four
+        Order matters: rules → resolve → access → existence. The operator's four
         rule lists are parsed and resolved into a PathRules FIRST, so a malformed
-        entry anywhere in them fails with invalid_input before the target is even
-        looked at (PathAccess's one-shot check stops at the first matching root and
-        would let a later bad entry slip through), and the same parsed rules then
-        serve the target check and the whole scan. Access checks run before the
-        filesystem is touched so out-of-scope paths never surface path_not_found
-        (which would leak filesystem layout). The extension allow-list is not
-        applied to the directory target itself — only to the file entries inside
-        it; block rules always apply.
+        entry anywhere in them fails with invalid_input before anything else is
+        attempted — even resolving the target, which can fail on its own — and
+        the same parsed rules then serve the target check and the whole scan.
+        Access checks run before the filesystem is touched so out-of-scope paths
+        never surface path_not_found (which would leak filesystem layout). The
+        target is judged as a directory (exempt from the extension allow-list,
+        never from block rules) under both the supplied and the resolved name.
 
         :param args: The tool argument dictionary.
         :return: A tuple of (directory, rules, include_hidden, max_entries).
         :raises ValueError: invalid_input, path_not_allowed, path_not_found,
                 not_a_directory, list_error.
         """
-        directory: Path = await PathAccess.async_resolve_path(args, "directory_path")
         rules: PathRules = await asyncio.to_thread(PathRules, args)
-        await PathAccess.async_validate_and_check_access(args, directory, enforce_allowed_extensions=False)
+        directory: Path = await PathAccess.async_resolve_path(args, "directory_path")
+        display_name: str = PathAccess.supplied_name(args, "directory_path")
+        self._check_target_access(rules, directory, display_name)
         include_hidden: bool = PathAccess.validate_bool(args, "include_hidden", False)
         max_entries: int = self._validate_max_entries(args)
-        await self._async_check_directory_target(rules, directory)
+        await self._async_check_directory_target(rules, directory, display_name)
         return directory, rules, include_hidden, max_entries
 
     async def _async_list_entries(
@@ -252,20 +258,58 @@ class ListDirectory(CodedTool):
     # Async wrappers for pre-listing checks
     # ------------------------------------------------------------------
 
-    async def _async_check_directory_target(self, rules: PathRules, directory: Path) -> None:
+    async def _async_check_directory_target(self, rules: PathRules, directory: Path, display_name: str) -> None:
         """
         Async wrapper around _check_directory_target.
 
         :param rules: The pre-parsed operator rules.
         :param directory: The resolved directory target.
+        :param display_name: The target's final path component as the caller supplied it.
         """
-        await asyncio.to_thread(self._check_directory_target, rules, directory)
+        await asyncio.to_thread(self._check_directory_target, rules, directory, display_name)
 
     # ------------------------------------------------------------------
     # Validation helpers
     # ------------------------------------------------------------------
 
-    def _check_directory_target(self, rules: PathRules, directory: Path) -> None:
+    def _check_target_access(self, rules: PathRules, directory: Path, display_name: str) -> None:
+        """
+        Enforce the operator's rules against the directory target, judged as a directory.
+
+        Directories are exempt from the extension allow-list (a directory named
+        'data' is not "extension .data") but never from block rules, and both the
+        supplied name and the resolved name are checked, so a symlink 'prod.env'
+        pointing at 'data' is denied under blocked_file_extensions=[".env"] exactly
+        like a real directory named 'prod.env'.
+
+        :param rules: The pre-parsed operator rules.
+        :param directory: The resolved directory target.
+        :param display_name: The target's final path component as the caller supplied it.
+        :raises PathNotAllowedError: path_not_allowed when the rules deny the target.
+        """
+        reason: str | None = rules.deny_reason(directory, display_name, True)
+        if reason is not None:
+            raise PathNotAllowedError(self._denial_message(reason, directory, display_name))
+
+    @staticmethod
+    def _denial_message(reason: str, directory: Path, display_name: str) -> str:
+        """
+        Turn a PathRules deny reason into the path_not_allowed message the tool family uses.
+
+        :param reason: The reason code returned by PathRules.deny_reason.
+        :param directory: The resolved directory target.
+        :param display_name: The target's final path component as the caller supplied it.
+        :return: A message starting with the path_not_allowed prefix.
+        """
+        if reason == "outside_allowed_paths":
+            return f"path_not_allowed: '{directory}' is not within any of the allowed_paths entries."
+        if reason == "blocked_path":
+            return f"path_not_allowed: '{directory}' is blocked by blocked_paths."
+        if reason == "blocked_extension":
+            return f"path_not_allowed: The extension of '{display_name}' is in blocked_file_extensions."
+        return f"path_not_allowed: The extension of '{display_name}' is not in allowed_file_extensions."
+
+    def _check_directory_target(self, rules: PathRules, directory: Path, display_name: str) -> None:
         """
         Verify the resolved target exists and is a directory, without leaking existence.
 
@@ -284,16 +328,17 @@ class ListDirectory(CodedTool):
 
         :param rules: The pre-parsed operator rules.
         :param directory: The resolved directory target.
+        :param display_name: The target's final path component as the caller supplied it.
         :raises ValueError: path_not_allowed, path_not_found, not_a_directory, list_error.
         """
         try:
             target_stat: os.stat_result = directory.stat()
         except FileNotFoundError:
-            self._raise_denied_or(rules, directory, f"path_not_found: '{directory}' does not exist.")
+            self._raise_denied_or(rules, directory, display_name, f"path_not_found: '{directory}' does not exist.")
             return
         except NotADirectoryError:
             # A path component is a regular file; the target cannot exist.
-            self._raise_denied_or(rules, directory, f"path_not_found: '{directory}' does not exist.")
+            self._raise_denied_or(rules, directory, display_name, f"path_not_found: '{directory}' does not exist.")
             return
         except PermissionError as exc:
             raise ValueError(f"list_error: Permission denied accessing '{directory}'.") from exc
@@ -301,9 +346,11 @@ class ListDirectory(CodedTool):
             raise ValueError(f"list_error: Could not access '{directory}': {exc}") from exc
 
         if not stat_module.S_ISDIR(target_stat.st_mode):
-            self._raise_denied_or(rules, directory, f"not_a_directory: '{directory}' is not a directory.")
+            self._raise_denied_or(
+                rules, directory, display_name, f"not_a_directory: '{directory}' is not a directory."
+            )
 
-    def _raise_denied_or(self, rules: PathRules, directory: Path, message: str) -> None:
+    def _raise_denied_or(self, rules: PathRules, directory: Path, display_name: str, message: str) -> None:
         """
         Raise path_not_allowed when the full file rules deny the target, else the given error.
 
@@ -315,10 +362,11 @@ class ListDirectory(CodedTool):
 
         :param rules: The pre-parsed operator rules.
         :param directory: The resolved directory target.
+        :param display_name: The target's final path component as the caller supplied it.
         :param message: The existence-revealing error to raise when the rules allow the path.
         :raises ValueError: Always — path_not_allowed or the given message.
         """
-        if rules.deny_reason(directory, directory.name, False) is not None:
+        if rules.deny_reason(directory, display_name, False) is not None:
             raise PathNotAllowedError(f"path_not_allowed: '{directory}' is not allowed as a listing target.")
         raise ValueError(message)
 
@@ -399,12 +447,14 @@ class ListDirectory(CodedTool):
         each os.DirEntry says whether the entry is a plain file, a real directory,
         or a symlink without a metadata read: files are judged under the full rules
         (extension allow-list included), directories get the allow-list exemption,
-        and symlinks — whose verdict depends on their target — are classified fully
-        right away (one stat per link). Anything denied here is dropped before it
-        can count toward the scan budget or influence any result field, so
-        scoped-out entries of every kind stay invisible everywhere, including in
-        the budget error. When the type cannot be determined the prefilter stays
-        permissive and the later metadata read decides.
+        and symlinks (and Windows junctions) — whose verdict depends on their
+        target — are classified fully right away (one stat per link). Anything
+        denied here is dropped before it can count toward the scan budget or
+        influence any result field, so scoped-out entries of every kind stay
+        invisible everywhere, including in the budget error. When the type cannot
+        be determined the entry is judged as a plain file — the strictest reading,
+        so an unknown entry can never widen the budget — and the later metadata
+        read decides.
 
         :param handle: The open handle on the listed directory.
         :param rules: The pre-parsed operator rules.
@@ -421,11 +471,11 @@ class ListDirectory(CodedTool):
                 if not include_hidden and name.startswith("."):
                     continue
                 try:
-                    is_symlink: bool = entry.is_symlink()
+                    is_symlink: bool = entry.is_symlink() or entry.is_junction()
                     is_directory: bool = entry.is_dir(follow_symlinks=False)
                 except OSError:
                     is_symlink = False
-                    is_directory = True
+                    is_directory = False
                 if is_symlink:
                     # A link the rules would omit (out-of-scope or special target,
                     # dangling, loop) must not count toward the budget either.
@@ -454,9 +504,10 @@ class ListDirectory(CodedTool):
 
         Once the cap is filled, the tail is examined only until the next entry that
         would have qualified (or could have, had its metadata been readable), which
-        sets truncated; nothing past the cap is returned. Because denied names never
-        reach this method, neither truncated nor the unreadable count can reveal an
-        entry the operator scoped out.
+        sets truncated; nothing past the cap is returned and nothing past it is
+        counted — unreadable_entries covers the inspected window only. Because
+        denied names never reach this method, neither truncated nor the unreadable
+        count can reveal an entry the operator scoped out.
 
         :param handle: The open handle on the listed directory.
         :param rules: The pre-parsed operator rules.
@@ -470,12 +521,13 @@ class ListDirectory(CodedTool):
         for name in names:
             described, failure = self._describe_entry(handle, rules, name)
             if failure is not None:
-                unreadable += 1
                 if len(entries) >= max_entries:
                     # Past the cap, an unreadable entry may well have qualified:
-                    # the listing is incomplete either way.
+                    # the listing is incomplete either way. Not counted — the tail
+                    # is not inspected beyond this decision.
                     truncated = True
                     break
+                unreadable += 1
                 continue
             if described is None:
                 continue
@@ -524,13 +576,29 @@ class ListDirectory(CodedTool):
                 return None, None
             return None, exc
 
-        if stat_module.S_ISLNK(entry_stat.st_mode):
+        if stat_module.S_ISLNK(entry_stat.st_mode) or self._is_junction(entry_stat):
             return self._describe_symlink(handle, rules, name)
         entry_type, size_bytes, is_directory = self._classify_entry(entry_stat)
         if entry_type is None or rules.deny_reason(entry_path, name, is_directory) is not None:
             # Special file (FIFO/socket/device) or excluded by the rules: omitted silently.
             return None, None
         return {"name": name, "type": entry_type, "size_bytes": size_bytes}, None
+
+    @staticmethod
+    def _is_junction(entry_stat: os.stat_result) -> bool:
+        """
+        Report whether an lstat result describes a Windows directory junction.
+
+        Junctions are reparse points that lstat reports as directories rather than
+        symlinks, yet they redirect like a link, so they must go through the same
+        target-resolution checks. Always False where the stat result carries no
+        reparse tag (POSIX).
+
+        :param entry_stat: The entry's lstat result.
+        :return: True for a mount-point reparse tag.
+        """
+        tag: int = getattr(entry_stat, "st_reparse_tag", 0)
+        return tag != 0 and tag == getattr(stat_module, "IO_REPARSE_TAG_MOUNT_POINT", None)
 
     @staticmethod
     def _classify_entry(entry_stat: os.stat_result) -> tuple[str | None, int | None, bool]:

@@ -24,7 +24,8 @@ from typing import Self
 # Descriptor-relative filesystem calls (openat/fstatat/faccessat/fdopendir) are a
 # POSIX facility. Where any of them is missing (Windows), the handle falls back to
 # path mode; see the class docstring for what that mode can and cannot guarantee.
-_HAS_DESCRIPTOR_CALLS: bool = (
+# Public so tests can skip descriptor-only cases (or force path mode) explicitly.
+HAS_DESCRIPTOR_CALLS: bool = (
     os.open in os.supports_dir_fd
     and os.stat in os.supports_dir_fd
     and os.access in os.supports_dir_fd
@@ -129,7 +130,7 @@ class DirectoryHandle:
         :raises OSError: when a component cannot be opened, a component is a symlink
                 (ELOOP), or the path no longer resolves to itself.
         """
-        if _HAS_DESCRIPTOR_CALLS:
+        if HAS_DESCRIPTOR_CALLS:
             self._fd = self._open_descriptor(self._directory)
         else:
             self._verify_path()

@@ -20,6 +20,7 @@ import tempfile
 from pathlib import Path
 from unittest import TestCase
 from unittest import skipIf
+from unittest import skipUnless
 from unittest.mock import patch
 
 from neuro_san_studio.coded_tools.file_management import directory_handle as directory_handle_module
@@ -66,6 +67,7 @@ class TestDirectoryHandle(TestCase):
         with self.assertRaises(FileNotFoundError):
             handle.lstat("missing")
 
+    @skipUnless(directory_handle_module.HAS_DESCRIPTOR_CALLS, "descriptor mode needs dir_fd support")
     def test_descriptor_mode_queries(self) -> None:
         """Tests that descriptor mode opens, answers queries relative to the descriptor, and closes."""
         with DirectoryHandle(self.tmp_root) as handle:
@@ -74,6 +76,7 @@ class TestDirectoryHandle(TestCase):
         self.assertFalse(handle.is_open)
         self.assertFalse(handle.uses_descriptor)
 
+    @skipUnless(directory_handle_module.HAS_DESCRIPTOR_CALLS, "descriptor mode needs dir_fd support")
     def test_descriptor_mode_refuses_symlink_component(self) -> None:
         """Tests that a symlink anywhere in the path fails the open instead of being followed."""
         real = self.tmp_root / "real"
@@ -84,7 +87,7 @@ class TestDirectoryHandle(TestCase):
 
     def test_path_mode_queries(self) -> None:
         """Tests that the path-mode fallback answers the same queries without a descriptor."""
-        with patch.object(directory_handle_module, "_HAS_DESCRIPTOR_CALLS", False):
+        with patch.object(directory_handle_module, "HAS_DESCRIPTOR_CALLS", False):
             with DirectoryHandle(self.tmp_root) as handle:
                 self.assertFalse(handle.uses_descriptor)
                 self._assert_queries_work(handle)
@@ -95,7 +98,7 @@ class TestDirectoryHandle(TestCase):
         real = self.tmp_root / "real"
         (real / "inner").mkdir(parents=True)
         (self.tmp_root / "dirlink").symlink_to(real)
-        with patch.object(directory_handle_module, "_HAS_DESCRIPTOR_CALLS", False):
+        with patch.object(directory_handle_module, "HAS_DESCRIPTOR_CALLS", False):
             with self.assertRaises(OSError):
                 DirectoryHandle(self.tmp_root / "dirlink" / "inner").open()
             with self.assertRaises(FileNotFoundError):
@@ -110,7 +113,7 @@ class TestDirectoryHandle(TestCase):
         try:
             with DirectoryHandle(locked) as handle:
                 self.assertFalse(handle.is_searchable())
-            with patch.object(directory_handle_module, "_HAS_DESCRIPTOR_CALLS", False):
+            with patch.object(directory_handle_module, "HAS_DESCRIPTOR_CALLS", False):
                 with DirectoryHandle(locked) as handle:
                     self.assertFalse(handle.is_searchable())
         finally:
