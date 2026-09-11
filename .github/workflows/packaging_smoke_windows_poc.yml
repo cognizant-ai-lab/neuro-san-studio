@@ -2,10 +2,17 @@ name: Packaged Install Smoke Test (Windows POC)
 
 # Proof of concept: does the packaged-install smoke test pass on a Windows runner?
 # build-common's quality gate is pinned to ubuntu-latest, so this runs the same
-# pytest command directly. Manual trigger only.
+# pytest command directly.
+#
+# GitHub only offers workflow_dispatch for workflows present on the default
+# branch, so while this lives on a feature branch the push trigger below is the
+# way to run it: any push to this branch starts a run.
 
 on:
-  workflow_dispatch:      # enables manual triggering
+  push:
+    branches:
+      - devin/1789155328-windows-smoke-poc
+  workflow_dispatch:      # enables manual triggering once on the default branch
 
 permissions:
   contents: read
