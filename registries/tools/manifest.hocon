@@ -150,6 +150,13 @@
     # Refer to ``docs/examples/tools/persistent_memory_mem0.md`` for a usage example.
     "tools/persistent_memory_mem0.hocon": false,
 
+    # To use this agent network with Serply, obtain an API key from: https://serply.io
+    # Once you have the API key, set it using the SERPLY_API_KEY environment variable.
+    # You can optionally set a custom API base URL via the SERPLY_URL environment variable.
+    # If SERPLY_URL is not set, the default is: https://api.serply.io/v1
+    # You can also configure the request timeout (in seconds) using SERPLY_TIMEOUT; the default is 30 seconds.
+    "tools/serply_search.hocon": false,
+
     # To use this agent network, follow the instructions in ./docs/examples/visual_question_answering.md
     "tools/visual_question_answering.hocon": false,
 

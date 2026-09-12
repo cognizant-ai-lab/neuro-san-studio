@@ -83,6 +83,7 @@ Perform real-time web searches using various search engines and APIs.
 * **`google_search`** — Search using Google Custom Search Engine
 * **`google_serper`** — Search using Google Serper API with advanced filtering
 * **`openai_search`** — Web search via OpenAI's search tool
+* **`serply_search`** — Google web, News and Scholar results via the Serply API
 * **`tavily_search`** — AI-optimized search using Tavily API
 
 ## Configuration and Setup

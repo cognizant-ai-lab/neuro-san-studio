@@ -8,8 +8,9 @@ Neuro SAN offers search capability via the following search engines:
 4. [Google Custom Search Engine](#google-custom-search-engine) — Search using Google Custom Search Engine
 5. [Google Serper](#google-serper) — Search using Google Serper API with advanced filtering
 6. [OpenAI Search](#openai-search) — Web search via OpenAI's search tool
-7. [Tavily Search](#tavily-search) — AI-optimized search using Tavily API
-8. [You.com Search](#youcom-search) — Web search, content extraction, and AI research via You.com MCP server
+7. [Serply Search](#serply-search) — Google web, News and Scholar results via the Serply API
+8. [Tavily Search](#tavily-search) — AI-optimized search using Tavily API
+9. [You.com Search](#youcom-search) — Web search, content extraction, and AI research via You.com MCP server
 
 See also: [Comparison of Search Tools](#comparison-of-search-tools)
 
@@ -160,6 +161,33 @@ _Example Usage in Neuro San Studio:_
 - [openai\_web\_search.hocon](../registries/tools/openai_web_search.hocon),
 - available as a tool in [toolbox\_info.hocon](../neuro_san_studio/toolbox/toolbox_info.hocon)
 
+## Serply Search
+
+Serply (serply.io) is a third-party Google Search API service. Like Serper, it does not run a search engine of its
+own: it returns real Google Search results as structured JSON so that you do not have to scrape Google yourself.
+The same API key also serves the Google News and Google Scholar verticals, which the coded tool exposes through
+its `type` parameter, so one tool covers web results, current news and academic papers (with citation counts).
+
+![Serply](./images/Serply.png)
+
+_Environment Variables:_
+
+To use this search tool, obtain an API key from [https://serply.io](https://serply.io). Once you have the API key,
+set it using the `SERPLY_API_KEY` environment variable.
+
+The Serply API base URL is specified via the `SERPLY_URL` environment variable. If `SERPLY_URL` is not set, the
+default value listed below is used:
+
+[https://api.serply.io/v1](https://api.serply.io/v1)
+
+You can also configure the request timeout (in seconds) using `SERPLY_TIMEOUT`; the default is 30 seconds. The API
+reference is at [https://serply.io/docs](https://serply.io/docs).
+
+_Example Usage in Neuro San Studio:_
+
+- [serply\_search.hocon](../registries/tools/serply_search.hocon),
+- available as a tool in [toolbox\_info.hocon](../neuro_san_studio/toolbox/toolbox_info.hocon)
+
 ## Tavily Search
 
 Tavily Search is a developer-focused search API designed specifically for LLMs, AI agents, and automation. It is
@@ -242,6 +270,7 @@ _Example Usage in Neuro San Studio:_
 | Google | Lets you build a search engine tailored to specific websites or topics | Yes | Google’s index (simpler ranking, limited personalization) | Yes |
 | Serper | Third-party Google Search API service that scrapes Google Search results in JSON format | No | Real Google Search results via scraping | Yes |
 | OpenAI | Built-in web search system used by ChatGP | No | Uses Bing API + other sources | No |
+| Serply | Third-party Google Search API service that returns Google web, News and Scholar results in JSON format | No | Real Google Search results via scraping | Yes |
 | Tavily | Search API designed specifically for LLMs, AI agents, and automation | No | Mix of search providers + own crawlers + extraction pipeline | Yes |
 | You.com | Developer-focused search platform with web search, content extraction, and AI research via MCP | No | Own search index + multiple web sources + AI synthesis | Yes |
 <!-- pyml enable line-length -->
@@ -259,6 +288,7 @@ The cost and rate limit comparison is provided in the table below.
 | Google Search | Yes<br>100 searches/day | Yes<br>$5 for 1,000 queries<br>10,000 queries/day |
 | Google Serper | Yes<br>2,500 queries (one-time) | Yes<br>$50, 50k queries, 50 queries/sec |
 | OpenAI Search | Yes (Internal to ChatGPT)<br>Check OpenAI rate limits | Yes (Internal to ChatGPT)<br>Check OpenAI rate limits |
+| Serply Search | Yes<br>2,500 credits in the first 30 days<br>No credit card required | Yes<br>Prepaid packs that never expire, from $5 for 2,500 credits ($2.00 per 1,000 requests) down to $0.75 per 1,000 requests<br>1 credit = 1 successful uncached request |
 | Tavily Search | Yes<br>1,000 API credits/month | Yes<br>Pay-as-you-go: $0.008 per credit<br>Monthly plans: $0.0075 - $0.005 per credit |
 | You.com Search | Yes<br>$100 in free credits<br>No credit card required | Yes<br>Web Search: $5 per 1,000 calls<br>Contents: $1 per 1,000 pages<br>Research: from ~$6.50 per 1,000 calls |
 <!-- pyml enable line-length -->
@@ -269,5 +299,6 @@ Links for cost and rate limit comparison data:
 1. [Brave Search](https://brave.com/search/api/)
 2. [Google Search](https://support.google.com/programmable-search/answer/9069107?hl=en)
 3. [Google Serper](https://serper.dev/)
-4. [Tavily Search](https://www.tavily.com/#pricing)
-5. [You.com Search](https://you.com/pricing)
+4. [Serply Search](https://serply.io/pricing)
+5. [Tavily Search](https://www.tavily.com/#pricing)
+6. [You.com Search](https://you.com/pricing)
