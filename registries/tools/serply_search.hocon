@@ -1,0 +1,119 @@
+# Copyright © 2025-2026 Cognizant Technology Solutions Corp, www.cognizant.com.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
+# END COPYRIGHT
+
+# To use this agent network with Serply, obtain an API key from: https://serply.io
+# Once you have the API key, set it using the SERPLY_API_KEY environment variable.
+# You can optionally set a custom API base URL via the SERPLY_URL environment variable.
+# If SERPLY_URL is not set, the default is: https://api.serply.io/v1
+# You can also configure the request timeout (in seconds) using SERPLY_TIMEOUT; the default is 30 seconds.
+
+{
+    # Optional metadata describing this agent network
+    "metadata": {
+        "description": "Agent network with a single agent that uses the Serply API to search Google web, News and Scholar results.",
+        "tags": ["tool", "serply_search"]
+        "sample_queries": [
+            "Search the web for the latest news on AI agents.",
+            "Find recent news articles about multi-agent systems.",
+            "Find the most cited papers on consensus in multi-agent systems."
+        ]
+    },
+
+    include "registries/expertise_scoping_instructions.hocon",
+
+    # Load the shared LLM configuration from a single source of truth.
+    # This allows users to change the model in one file rather than
+    # modifying the configuration for each agent network.
+    # Note that the file path here is relative to the root level of the repo.
+    include "config/llm_config.hocon",
+    "tools": [
+        # This first agent definition is regarded as the "Front Man", which
+        # does all the talking to the outside world/client.
+        #
+        # Some disqualifications from being a front man:
+        #   1) Cannot use a CodedTool "class" definition
+        #   2) Cannot use a Tool "toolbox" definition
+        #
+        # Besides the first agent being the front man, these tool definitions
+        # do not have to be in any particular order. How they are linked and
+        # call each other is defined within their own specs.
+        # This could be a graph, potentially even with cycles.
+        {
+            "name": "searcher",
+
+            "function": {
+                "description": "Assist caller with searching the web, news or academic papers.",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "user_inquiry": {
+                            "type": "string",
+                            "description": """
+                            An inquiry from a user.
+                            """
+                        },
+                    },
+                    "required": ["user_inquiry"]
+                }
+            },
+
+            "instructions": """
+Use your tool to respond to the inquiry. Pick the search type that fits: "search" for general web
+results, "news" for current events, and "scholar" for academic papers. Cite the links you used.
+""" ${expertise_scoping_instructions},
+            "tools": ["serply_search"]
+        },
+        {
+            "name": "serply_search",
+            "toolbox": "serply_search",
+            "args": {
+                # --- Optional Arguments ---
+
+                # --- Request Configuration ---
+
+                # Serply API base URL. Uncomment to override the env var SERPLY_URL
+                # (which itself defaults to https://api.serply.io/v1). Left commented so
+                # that SERPLY_URL is honored by default.
+                # "serply_url": "https://api.serply.io/v1",
+
+                # Request timeout in seconds
+                # This will override the env var SERPLY_TIMEOUT
+                # (default: 30.0)
+                "serply_timeout": 30.0,
+
+                # --- Search Query Parameters ---
+
+                # Search query string
+                # "query": "<what_to_search_for>"
+                # If specified, this will override the query provided by the LLM
+
+                # Maximum number of search results to return
+                "k": 3,
+
+                # Search type: "search" (default, Google organic results), "news", or "scholar"
+                # If specified, this will override the type chosen by the LLM
+                # "type": "search",
+
+                # Country and language codes to localize results (defaults: "us" and "en")
+                # "gl": "us",
+                # "hl": "en",
+
+                # For more query parameter options, see:
+                # https://serply.io/docs
+            }
+        },
+    ]
+}

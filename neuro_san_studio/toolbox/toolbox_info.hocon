@@ -842,6 +842,61 @@ Options are `ascending` and `descending`. Default to `descending`.
         }
     },
 
+    # To use this search tool, obtain an API key from: https://serply.io
+    # Once you have the API key, set it using the SERPLY_API_KEY environment variable.
+    # You can optionally set a custom API base URL via the SERPLY_URL environment variable.
+    # If SERPLY_URL is not set, the default is: https://api.serply.io/v1
+    # You can also configure the request timeout (in seconds) using SERPLY_TIMEOUT; the default is 30 seconds.
+    "serply_search": {
+        "class": "neuro_san_studio.coded_tools.serply_search.SerplySearch",
+        "description": """Search Google through the Serply API.
+
+        Returns Google organic results as structured JSON. The same key also serves the Google News and
+        Google Scholar verticals, selected with the 'type' parameter, with geographic and language
+        localization.
+
+        Available parameters:
+        - query (required): The search term or question to look up online
+        - type (optional): Search type - 'search' (default, Google web results), 'news', or 'scholar'
+        - k (optional): Number of results to return (default: 10)
+        - gl (optional): Country code for geographic localization (default: 'us', e.g., 'uk', 'de', 'fr')
+        - hl (optional): Language code for search interface (default: 'en', e.g., 'es', 'fr', 'de')
+        - tbs (optional): Time-based search filter (e.g., 'qdr:d' for past day, 'qdr:w' for past week, 'qdr:m' for past month)
+
+        Use this for: real-time web information, news searches, academic paper lookups, and when you need
+        fresh data not available in the AI model's training data.""",
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "query": {
+                    "type": "string",
+                    "description": "The search term or question to look up online."
+                },
+                "type": {
+                    "type": "string",
+                    "description": "Type of search: 'search' (Google web results), 'news', or 'scholar'. Default: 'search'"
+                },
+                "k": {
+                    "type": "integer",
+                    "description": "Number of search results to retrieve, 1 to 100. Default: 10"
+                },
+                "gl": {
+                    "type": "string",
+                    "description": "Country code to localize search results (e.g., 'us', 'uk', 'de'). Default: 'us'"
+                },
+                "hl": {
+                    "type": "string",
+                    "description": "Language code for the search interface (e.g., 'en', 'es', 'fr'). Default: 'en'"
+                },
+                "tbs": {
+                    "type": "string",
+                    "description": "Time-based search filter (e.g., 'qdr:d' for past day, 'qdr:w' for past week, 'qdr:m' for past month)"
+                }
+            },
+            "required": ["query"]
+        }
+    },
+
     # To use this search tool, obtain an API key from: https://www.tavily.com/
     # Once you have the API key, set it using the TAVILY_API_KEY environment variable.
     # Then install the langchain-tavily package:
