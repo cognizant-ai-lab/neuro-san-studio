@@ -61,6 +61,7 @@ Here are a few examples ordered by level of complexity.
     - [Airline Policy Web Search Assistant](#airline-policy-web-search-assistant)
     - [Telco Network Orchestration](#telco-network-orchestration)
     - [Telco Network Support](#telco-network-support)
+    - [LogFix AI](#logfix-ai)
     - [Real Estate Agent](#real-estate-agent)
     - [Consumer Decision Assistant Agents](#consumer-decision-assistant-agents)
     - [Therapy Vignette Supervision](#therapy-vignette-supervision)
@@ -511,6 +512,14 @@ services. The system coordinates technical support, installation, monitoring, an
 through specialized agents.
 
 **Tags:** `AAOSA`
+
+### LogFix AI
+
+[LogFix AI](examples/industry/logfix_ai.md) is a grounded multi-agent incident-triage network that extracts evidence
+from sanitized application logs, classifies the failure, retrieves packaged runbook guidance, recommends safe checks,
+and drafts a support-ready stakeholder update.
+
+**Tags:** `tool`, `AAOSA`, `incident-triage`, `log-analysis`, `grounding`
 
 ### Real Estate Agent
 
