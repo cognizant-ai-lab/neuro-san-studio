@@ -223,3 +223,20 @@ After this, the `liz` topic is removed from the memory file entirely.
 
 For more details on the persistent memory system, see the
 [Persistent Memory (Local) documentation](../../examples/tools/persistent_memory_local.md).
+
+## Testing
+
+This network has an end-to-end memory test framework. Test fixtures live under
+`tests/fixtures/basic/coffee_finder_advanced/` and each scenario is defined by up to
+three files:
+
+* `<scenario>.hocon` — the test interaction (messages, sly\_data, assertions)
+* `<scenario>.initial_memory.json` — optional seed memory loaded before the test
+* `<scenario>.expected_memory.json` — optional assertion schema checked after the test
+  (supports `topics_present`, `topics_absent`, and `substrings_absent`)
+
+When a test HOCON sets `sly_data["test_mode"] = true`, the `TopicStoreFactory`
+redirects memory writes to `memory/test/`, keeping real persisted memory untouched.
+
+Adding a new memory regression test is a no-code task: drop in a HOCON plus its
+JSON sidecars.
