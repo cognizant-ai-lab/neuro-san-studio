@@ -51,15 +51,18 @@ class WebFetch(CodedTool):
     All validation and network access is delegated to the shared SSRF-hardened
     fetch path (SafeFetch): private/loopback/reserved hosts are rejected,
     DNS records are validated at connection time by GlobalOnlyResolver
-    (anti DNS-rebinding), redirects are not followed, and response sizes are
-    capped. HTML is stripped with BeautifulSoup; PDF bodies are parsed with pypdf.
-    Use allowed_domains / blocked_domains for stricter control.
+    (anti DNS-rebinding), redirects are followed up to SafeFetch's MAX_REDIRECTS
+    hops with every hop re-validated as a brand-new URL (including this tool's own
+    allowed_domains / blocked_domains, which are forwarded to SafeFetch for that
+    purpose), and response sizes are capped. HTML is stripped with BeautifulSoup;
+    PDF bodies are parsed with pypdf. Use allowed_domains / blocked_domains for
+    stricter control.
 
     Error types (raised as ValueError or aiohttp.ClientResponseError or aiohttp.ClientError with the specified message)
         invalid_input            – URL is missing, not a valid http/https URL, or a parameter has an invalid type.
         url_too_long             – URL exceeds the SafeFetch URL length limit.
         url_not_allowed          – URL targets a private/reserved host, is blocked by domain rules,
-                                    or returns a redirect.
+                                    or a redirect hop fails those checks / the chain exceeds MAX_REDIRECTS.
         url_not_accessible       – HTTP error or network failure while fetching the page.
         too_many_requests        – Server returned HTTP 429.
         unsupported_content_type – Content type is not an approved text, XML, feed, JSON, HTML, or PDF type.
@@ -96,16 +99,22 @@ class WebFetch(CodedTool):
         :raises aiohttp.ClientResponseError: url_not_accessible / too_many_requests (non-2xx response).
         :raises aiohttp.ClientError: url_not_accessible when PDF or text fetch fails.
         """
-        url: str = SafeFetch.validate_url(
-            args.get("url", ""), args.get("allowed_domains"), args.get("blocked_domains")
-        )
+        allowed_domains: Any = args.get("allowed_domains")
+        blocked_domains: Any = args.get("blocked_domains")
+        url: str = SafeFetch.validate_url(args.get("url", ""), allowed_domains, blocked_domains)
         max_chars: int = self._validate_max_content_chars(args)
 
         logger: Logger = getLogger(self.__class__.__name__)
         logger.info("WebFetch: fetching %s", url)
 
+        # The domain rules are forwarded to every SafeFetch network call so they are
+        # re-applied to each redirect hop: validating only the URL the agent supplied
+        # would let an open redirect on an allowed domain lead to a blocked or
+        # non-allowed one.
         async with SafeFetch.open_session() as session:
-            content_type, prefetched_text = await SafeFetch.get_content_type(url, session)
+            content_type, prefetched_text = await SafeFetch.get_content_type(
+                url, session, allowed_domains=allowed_domains, blocked_domains=blocked_domains
+            )
             # Route on the base media type only, case-insensitively (RFC 9110). A
             # parameter such as "; charset=..." or "; profile=text/plain" must not
             # affect the decision, and substring matching would misclassify types
@@ -123,12 +132,16 @@ class WebFetch(CodedTool):
             if is_pdf:
                 # Note: passing the PDF as base64 directly to the model would be
                 # preferable once neuro-san supports multimodal input.
-                text: str = await SafeFetch.fetch_pdf_text(url, session)
+                text: str = await SafeFetch.fetch_pdf_text(
+                    url, session, allowed_domains=allowed_domains, blocked_domains=blocked_domains
+                )
             elif prefetched_text is not None:
                 # Body was already fetched during the 405 HEAD fallback GET; no second request needed.
                 text = SafeFetch.parse_raw_text(prefetched_text)
             else:
-                text = await SafeFetch.fetch_text(url, session)
+                text = await SafeFetch.fetch_text(
+                    url, session, allowed_domains=allowed_domains, blocked_domains=blocked_domains
+                )
 
         text = text[:max_chars]
 

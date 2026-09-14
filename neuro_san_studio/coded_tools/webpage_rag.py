@@ -45,8 +45,9 @@ class WebpageRag(CodedTool, BaseRag):
 
     Content is downloaded through the shared SSRF-hardened fetch path (SafeFetch):
     private/loopback/reserved hosts are rejected, DNS records are validated at
-    connection time (anti DNS-rebinding), redirects are not followed, and response
-    sizes are capped. Each URL is routed by content type: PDFs are parsed with pypdf
+    connection time (anti DNS-rebinding), redirects are followed up to a bounded
+    number of hops with every hop re-validated, and response sizes are capped. Each
+    URL is routed by content type: PDFs are parsed with pypdf
     (via SafeFetch.fetch_pdf_text) and HTML/text is stripped to plain text, so a PDF
     link is ingested as readable text instead of being embedded as binary garbage.
     """

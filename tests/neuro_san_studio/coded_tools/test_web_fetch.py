@@ -24,7 +24,7 @@ from neuro_san_studio.coded_tools.web_fetch import MAX_CHARS
 from neuro_san_studio.coded_tools.web_fetch import WebFetch
 
 
-class TestWebFetch(TestCase):
+class TestWebFetch(TestCase):  # pylint: disable=too-many-public-methods
     """Unit tests for the WebFetch coded tool.
 
     Covers async_invoke routing/truncation (with SafeFetch mocked so no network
@@ -152,6 +152,62 @@ class TestWebFetch(TestCase):
                 self.tool.async_invoke({"url": "http://example.com", "max_content_chars": 100}, self.sly_data)
             )
         self.assertEqual(len(result["content"]), 100)
+
+    def test_domain_rules_forwarded_to_text_path(self) -> None:
+        """Tests that allowed_domains / blocked_domains reach get_content_type and fetch_text as keyword args.
+
+        SafeFetch re-validates every redirect hop with the rules it is given; if
+        WebFetch validated only the agent's URL and called SafeFetch without them, an
+        open redirect on an allowed domain could land on a blocked or non-allowed one.
+        """
+        allowed = ["example.com"]
+        blocked = ["example.org"]
+        with (
+            patch.object(SafeFetch, "get_content_type", new=AsyncMock(return_value=("text/html", None))) as mock_ct,
+            patch.object(SafeFetch, "fetch_text", new=AsyncMock(return_value="Hello")) as mock_text,
+        ):
+            asyncio.run(
+                self.tool.async_invoke(
+                    {"url": "http://example.com", "allowed_domains": allowed, "blocked_domains": blocked},
+                    self.sly_data,
+                )
+            )
+
+        expected_kwargs = {"allowed_domains": allowed, "blocked_domains": blocked}
+        # Positional args are (url, session); the session is an object created inside
+        # async_invoke, so only the URL and the arity can be pinned from out here.
+        self.assertEqual(mock_ct.await_args.args[0], "http://example.com")
+        self.assertEqual(len(mock_ct.await_args.args), 2)
+        self.assertEqual(mock_ct.await_args.kwargs, expected_kwargs)
+        self.assertEqual(mock_text.await_args.kwargs, expected_kwargs)
+
+    def test_domain_rules_forwarded_to_pdf_path(self) -> None:
+        """Tests that allowed_domains / blocked_domains reach fetch_pdf_text as keyword args on the PDF route."""
+        allowed = ["example.com"]
+        blocked = ["example.org"]
+        with (
+            patch.object(SafeFetch, "get_content_type", new=AsyncMock(return_value=("application/pdf", None))),
+            patch.object(SafeFetch, "fetch_pdf_text", new=AsyncMock(return_value="PDF content")) as mock_pdf,
+        ):
+            asyncio.run(
+                self.tool.async_invoke(
+                    {"url": "http://example.com/file.pdf", "allowed_domains": allowed, "blocked_domains": blocked},
+                    self.sly_data,
+                )
+            )
+
+        self.assertEqual(mock_pdf.await_args.kwargs, {"allowed_domains": allowed, "blocked_domains": blocked})
+
+    def test_absent_domain_rules_forwarded_as_none(self) -> None:
+        """Tests that omitted domain rules are forwarded as None so SafeFetch applies no domain policy to hops."""
+        with (
+            patch.object(SafeFetch, "get_content_type", new=AsyncMock(return_value=("text/plain", None))) as mock_ct,
+            patch.object(SafeFetch, "fetch_text", new=AsyncMock(return_value="Hello")) as mock_text,
+        ):
+            asyncio.run(self.tool.async_invoke({"url": "http://example.com"}, self.sly_data))
+
+        self.assertEqual(mock_ct.await_args.kwargs, {"allowed_domains": None, "blocked_domains": None})
+        self.assertEqual(mock_text.await_args.kwargs, {"allowed_domains": None, "blocked_domains": None})
 
     def test_invalid_url_raises_before_network_call(self):
         """Tests that an invalid URL scheme raises ValueError before any network call is made."""

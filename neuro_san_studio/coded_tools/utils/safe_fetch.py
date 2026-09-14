@@ -17,6 +17,8 @@
 import os
 from asyncio import TimeoutError as AsyncTimeoutError
 from asyncio import to_thread
+from collections.abc import AsyncGenerator
+from contextlib import asynccontextmanager
 from http import HTTPStatus
 from ipaddress import IPv4Address
 from ipaddress import IPv6Address
@@ -25,6 +27,7 @@ from typing import Any
 from typing import NoReturn
 from urllib.parse import ParseResult
 from urllib.parse import parse_qs
+from urllib.parse import urljoin
 from urllib.parse import urlparse
 
 import idna
@@ -54,6 +57,21 @@ MAX_RESPONSE_BYTES: int = 50 * 1024 * 1024  # 50 MB
 # Read size per iteration when streaming a response body.
 DOWNLOAD_CHUNK_BYTES: int = 64 * 1024
 TIMEOUT_SECONDS: int = 15
+# Maximum number of 3xx hops followed per fetch before giving up with
+# url_not_allowed. The chain MUST be bounded: a redirect loop (A -> B -> A ...) or
+# an arbitrarily long chain would otherwise let a remote server drive an unbounded
+# number of requests from this host (a DoS vector, and a cheap way to probe our
+# SSRF policy one hop at a time). 5 is deliberately far below the ~20 browsers
+# tolerate: content fetching only needs the common legitimate chains, and
+# http -> https, bare-host -> www canonicalisation, plus a moved page fit within
+# it with room to spare. Note the wall-clock cost: open_session applies
+# TIMEOUT_SECONDS per request, not per chain, so a hostile server slow-dripping
+# 3xx answers can hold one chain for up to (MAX_REDIRECTS + 1) * TIMEOUT_SECONDS
+# (90 s at the current values) before the cap fires, and one WebFetch call runs
+# up to three chains (HEAD probe, GET fallback, then the content fetch). That is
+# bounded, and it is the price of re-validating each hop as its own request; keep
+# it in mind before raising either constant.
+MAX_REDIRECTS: int = 5
 # Generic "download" media types that carry no real format information. When a server
 # declares one of these (or no Content-Type at all), is_pdf falls back to sniffing
 # the URL for a ".pdf" filename; any other concrete declared type is trusted as-is.
@@ -87,7 +105,11 @@ class SafeFetch:
     entry, so the SSRF policy holds even for a caller that skipped validate_url; all
     requests must still go through a session created by open_session to inherit the
     connection-time resolver check.
-    Redirects are not followed; a 3xx response raises url_not_allowed.
+    Redirects are followed manually, up to MAX_REDIRECTS hops, and every Location
+    target is re-validated with validate_url (including the caller's domain rules)
+    before it is requested; a hop that fails validation, a 3xx without a Location,
+    or a chain longer than MAX_REDIRECTS raises url_not_allowed
+    (see _open_following_redirects).
     The byte cap (MAX_RESPONSE_BYTES) is enforced both via the Content-Length header
     (pre-check) and on the actual streamed bytes, for text fetches and PDF downloads
     alike, so a server that lies about or omits Content-Length cannot deliver an
@@ -97,7 +119,7 @@ class SafeFetch:
         invalid_input            – URL is missing, not a valid http/https URL, or a parameter has an invalid type.
         url_too_long             – URL exceeds MAX_URL_LENGTH characters.
         url_not_allowed          – URL targets a private/reserved host, is blocked by domain rules,
-                                    or returns a redirect.
+                                    or a redirect hop fails those checks / the chain exceeds MAX_REDIRECTS.
         url_not_accessible       – HTTP error or network failure while fetching the page.
         too_many_requests        – Server returned HTTP 429.
         response_too_large       – Content-Length header or streamed body exceeds MAX_RESPONSE_BYTES.
@@ -386,22 +408,107 @@ class SafeFetch:
         return 300 <= status <= 399
 
     @staticmethod
-    def raise_if_redirect(response: Any, url: str) -> None:
+    @asynccontextmanager
+    async def _open_following_redirects(
+        session: ClientSession,
+        method: str,
+        url: str,
+        allowed_domains: Any = None,
+        blocked_domains: Any = None,
+    ) -> AsyncGenerator[Any, None]:
         """
-        Raise url_not_allowed if the response is a 3xx redirect.
+        Issue a request and follow up to MAX_REDIRECTS redirects, re-validating every hop.
 
-        Must be called explicitly when allow_redirects=False, because
-        raise_for_status() only covers 4xx/5xx and silently passes 3xx through.
+        aiohttp's own allow_redirects=True is deliberately NOT used. It hands each
+        Location straight to the connector, so the URL-level policy that was applied
+        to the caller's URL (http/https scheme, hostname format, localhost/IP-literal
+        rejection, and the caller's allowed_domains/blocked_domains) would never see
+        the redirect target, and an open redirect on an allowed site would become an
+        SSRF/policy bypass. Every hop here is therefore requested with
+        allow_redirects=False and its Location is treated as a brand-new URL: it is
+        resolved against the hop that issued it (relative Locations are legal per
+        RFC 7231), then passed through validate_url with the SAME domain rules as the
+        original request. Connection-level safety still holds per hop without any
+        extra work: each hop goes through the same protected session, whose
+        GlobalOnlyResolver checks the resolved address of every connection
+        (anti DNS-rebinding), and validate_url rejects IP literals that would bypass
+        that resolver.
 
-        :param response: The aiohttp response to inspect.
-        :param url: The URL being fetched, included in the raised message.
-        :raises ValueError: url_not_allowed when the response status is a 3xx redirect.
+        The yielded response is the first non-3xx response in the chain; its
+        response.url is the final URL of the chain, which may differ from url. Callers
+        apply raise_for_status and the size checks to it exactly as they would to a
+        direct response, and raise_for_status is unaffected by 3xx (it only covers
+        4xx/5xx), which is why the redirect handling must be explicit here.
+
+        :param session: A session created by open_session (enforces the SSRF policy).
+        :param method: The HTTP method for the first hop; "HEAD" or "GET".
+        :param url: The already-validated starting URL.
+        :param allowed_domains: Optional allow-list applied to every redirect target.
+        :param blocked_domains: Optional block-list applied to every redirect target.
+        :return: An async context manager yielding the final (non-3xx) aiohttp response.
+        :raises ValueError: url_not_allowed when a 3xx carries no Location, when a
+                redirect target fails validate_url (non-http(s) scheme, malformed or
+                over-long URL, localhost/private/reserved host, domain rules), or when
+                the chain exceeds MAX_REDIRECTS.
         """
-        if SafeFetch.is_redirection(response.status):
-            location: str = response.headers.get("Location", "unknown")
-            raise ValueError(
-                f"url_not_allowed: '{url}' redirects to '{location}' ({response.status}); redirects are not followed."
-            )
+        current_url: str = url
+        current_method: str = method
+        redirects_followed: int = 0
+        while True:
+            # Dispatch through session.head / session.get rather than session.request:
+            # they are aiohttp's public convenience wrappers over the same request
+            # machinery, and they are the call shape the mocked-session tests target.
+            requester: Any = session.head if current_method == "HEAD" else session.get
+            async with requester(current_url, allow_redirects=False) as response:
+                status: int = response.status
+                if not SafeFetch.is_redirection(status):
+                    yield response
+                    return
+                # Enforce the cap BEFORE looking at where the hop points: a loop
+                # (A -> B -> A ...) or an arbitrarily long chain must fail closed,
+                # rather than let a remote server drive an unbounded number of
+                # requests from this host (DoS, or probing the SSRF policy hop by hop).
+                if redirects_followed >= MAX_REDIRECTS:
+                    raise ValueError(
+                        f"url_not_allowed: '{url}' exceeded MAX_REDIRECTS ({MAX_REDIRECTS}) redirects "
+                        f"(last hop '{current_url}' answered {status})."
+                    )
+                # 304 Not Modified and any other 3xx without a Location cannot be
+                # followed. Refuse rather than fall through and hand the redirect
+                # page's own body to the caller as if it were the resource.
+                raw_location: str | None = response.headers.get("Location")
+                location: str = raw_location.strip() if raw_location else ""
+                if not location:
+                    raise ValueError(
+                        f"url_not_allowed: '{url}' answered {status} at '{current_url}' without a Location header."
+                    )
+                # Resolve relative Locations ("/new/path", "//host/path") against the
+                # hop that issued them. An absolute Location comes back unchanged from
+                # urljoin, including one with a foreign scheme (ftp://example.com/...), which
+                # validate_url then rejects below.
+                next_url: str = urljoin(current_url, location)
+            # The hop's response context has now been exited, so its connection is
+            # released (back to the pool, or closed) before the next request is made
+            # instead of being held open across the whole chain.
+            try:
+                current_url = SafeFetch.validate_url(next_url, allowed_domains, blocked_domains)
+            except ValueError as exc:
+                # validate_url phrases its errors (invalid_input / url_too_long /
+                # url_not_allowed) from the perspective of a caller-supplied URL, but a
+                # redirect target is chosen by the remote server, not the caller. The
+                # caller's URL was fine; the server pointed somewhere this policy
+                # refuses, so surface every hop failure uniformly as url_not_allowed
+                # and keep the inner reason for diagnosis.
+                raise ValueError(
+                    f"url_not_allowed: '{url}' redirects to '{next_url}' ({status}), which failed validation: {exc}"
+                ) from exc
+            redirects_followed += 1
+            # 303 See Other means "fetch the result with GET" whatever the original
+            # method was (RFC 9110 section 15.4.4); 301/302/307/308 keep the method.
+            # Only HEAD and GET are ever used on this path, so this is the sole
+            # method change that can occur.
+            if status == HTTPStatus.SEE_OTHER:
+                current_method = "GET"
 
     @staticmethod
     def is_text_content_type(content_type: str) -> bool:
@@ -495,7 +602,9 @@ class SafeFetch:
         return parsed.query.lower().endswith(".pdf")
 
     @staticmethod
-    async def get_content_type(url: str, session: ClientSession) -> tuple[str, str | None]:
+    async def get_content_type(
+        url: str, session: ClientSession, *, allowed_domains: Any = None, blocked_domains: Any = None
+    ) -> tuple[str, str | None]:
         """
         Probe the URL with a HEAD request and return (Content-Type, prefetched_body).
 
@@ -506,14 +615,21 @@ class SafeFetch:
         inaccessible. On the fallback a text-like body is read and returned as the
         second element so the caller can skip a second GET; PDF and other/binary
         content types return None so their bodies are not downloaded here only to
-        be discarded.
+        be discarded. Both the HEAD probe and the GET fallback follow redirects
+        through _open_following_redirects, so a moved resource is probed at its final
+        location with every hop re-validated.
 
         :param url: The URL to probe.
         :param session: A session created by open_session (enforces the SSRF policy).
+        :param allowed_domains: Optional allow-list (str or list[str]) applied to the
+                                URL and to every redirect hop.
+        :param blocked_domains: Optional block-list (str or list[str]) applied to the
+                                URL and to every redirect hop.
         :return: A (content_type, prefetched_body) tuple; prefetched_body is the text
                  body only on the GET-fallback text-like path, otherwise None.
-        :raises ValueError: url_not_allowed on a redirect, or response_too_large when
-                the Content-Length header or the streamed fallback text body exceeds
+        :raises ValueError: url_not_allowed when a redirect hop fails validation or the
+                chain exceeds MAX_REDIRECTS, or response_too_large when the
+                Content-Length header or the streamed fallback text body exceeds
                 MAX_RESPONSE_BYTES.
         :raises aiohttp.ClientResponseError: url_not_accessible / too_many_requests on a non-2xx response.
         :raises aiohttp.ClientError: url_not_accessible on a connection/DNS/timeout failure.
@@ -524,14 +640,18 @@ class SafeFetch:
         # Re-validate at the network boundary so the SSRF policy holds even if a
         # caller reached this method without calling validate_url first. Validation
         # is pure and idempotent, so the redundant call on WebFetch's
-        # already-validated URL is harmless.
-        url = SafeFetch.validate_url(url)
+        # already-validated URL is harmless. The domain rules are applied here too
+        # so the first URL and every redirect hop are held to the same policy.
+        url = SafeFetch.validate_url(url, allowed_domains, blocked_domains)
         try:
-            async with session.head(url, allow_redirects=False) as head:
-                SafeFetch.raise_if_redirect(head, url)
+            async with SafeFetch._open_following_redirects(
+                session, "HEAD", url, allowed_domains, blocked_domains
+            ) as head:
                 # Any 2xx success (200 OK up to, but excluding, 300 MULTIPLE_CHOICES —
                 # the first 3xx code): HEAD succeeded, so the headers alone answer
-                # the probe and there is no body to read.
+                # the probe and there is no body to read. (A 3xx never reaches this
+                # point: the follower either resolved it to this final response or
+                # raised url_not_allowed.)
                 if HTTPStatus.OK <= head.status < HTTPStatus.MULTIPLE_CHOICES:
                     SafeFetch.check_content_length(head.headers.get("Content-Length"), url)
                     return head.headers.get("Content-Type", ""), None
@@ -541,11 +661,13 @@ class SafeFetch:
                     # translated to too_many_requests below).
                     head.raise_for_status()
                 # Any other HEAD failure falls through to the GET fallback below,
-                # which passes through the exact same redirect/size/SSRF checks.
-                # (Redirects were already handled above: a 3xx means the resource
-                # moved, and a GET would just see the same redirect.)
-            async with session.get(url, allow_redirects=False) as get:
-                SafeFetch.raise_if_redirect(get, url)
+                # which passes through the exact same redirect/size/SSRF checks. The
+                # GET deliberately restarts from the ORIGINAL url rather than the HEAD
+                # chain's final URL: a server may redirect HEAD and GET differently,
+                # and the GET chain is re-validated hop by hop just the same.
+            async with SafeFetch._open_following_redirects(
+                session, "GET", url, allowed_domains, blocked_domains
+            ) as get:
                 get.raise_for_status()
                 SafeFetch.check_content_length(get.headers.get("Content-Length"), url)
                 content_type: str = get.headers.get("Content-Type", "")
@@ -584,22 +706,32 @@ class SafeFetch:
                 )
 
     @staticmethod
-    async def fetch_pdf_text(url: str, session: ClientSession) -> str:
+    async def fetch_pdf_text(
+        url: str, session: ClientSession, *, allowed_domains: Any = None, blocked_domains: Any = None
+    ) -> str:
         """
         Download a PDF through the protected session and extract its text with pypdf.
 
-        The download uses download_pdf_bytes, so it inherits the full SSRF policy and
-        the streamed MAX_RESPONSE_BYTES cap.
+        The download uses download_pdf_bytes, so it inherits the full SSRF policy,
+        the bounded per-hop-validated redirect following, and the streamed
+        MAX_RESPONSE_BYTES cap.
 
         :param url: The PDF URL to fetch.
         :param session: A session created by open_session (enforces the SSRF policy).
+        :param allowed_domains: Optional allow-list (str or list[str]) applied to the
+                                URL and to every redirect hop.
+        :param blocked_domains: Optional block-list (str or list[str]) applied to the
+                                URL and to every redirect hop.
         :return: The extracted text of the PDF.
-        :raises ValueError: url_not_allowed on a redirect, or response_too_large when
-                the body exceeds MAX_RESPONSE_BYTES.
+        :raises ValueError: url_not_allowed when a redirect hop fails validation or the
+                chain exceeds MAX_REDIRECTS, or response_too_large when the body
+                exceeds MAX_RESPONSE_BYTES.
         :raises aiohttp.ClientResponseError: url_not_accessible / too_many_requests on a non-2xx response.
         :raises aiohttp.ClientError: url_not_accessible on a download or PDF-parse failure.
         """
-        data: bytes = await SafeFetch.download_pdf_bytes(url, session)
+        data: bytes = await SafeFetch.download_pdf_bytes(
+            url, session, allowed_domains=allowed_domains, blocked_domains=blocked_domains
+        )
 
         try:
             # Text extraction is CPU-bound; run it in a worker thread so a large
@@ -609,28 +741,38 @@ class SafeFetch:
             raise ClientError(f"url_not_accessible: Failed to parse PDF '{url}': {exc}") from exc
 
     @staticmethod
-    async def download_pdf_bytes(url: str, session: ClientSession) -> bytes:
+    async def download_pdf_bytes(
+        url: str, session: ClientSession, *, allowed_domains: Any = None, blocked_domains: Any = None
+    ) -> bytes:
         """
         Stream a PDF body through the protected session, capping its size.
 
         The MAX_RESPONSE_BYTES cap is enforced on the bytes actually received (in
         addition to the Content-Length pre-check), so a server that lies about or
-        omits Content-Length cannot deliver an oversized body.
+        omits Content-Length cannot deliver an oversized body. Redirects are followed
+        through _open_following_redirects, so the body streamed is that of the
+        chain's final (re-validated) location.
 
         :param url: The PDF URL to fetch.
         :param session: A session created by open_session (enforces the SSRF policy).
+        :param allowed_domains: Optional allow-list (str or list[str]) applied to the
+                                URL and to every redirect hop.
+        :param blocked_domains: Optional block-list (str or list[str]) applied to the
+                                URL and to every redirect hop.
         :return: The raw PDF bytes.
-        :raises ValueError: url_not_allowed on a redirect, or response_too_large when
-                the streamed body exceeds MAX_RESPONSE_BYTES.
+        :raises ValueError: url_not_allowed when a redirect hop fails validation or the
+                chain exceeds MAX_REDIRECTS, or response_too_large when the streamed
+                body exceeds MAX_RESPONSE_BYTES.
         :raises aiohttp.ClientResponseError: url_not_accessible / too_many_requests on a non-2xx response.
         :raises aiohttp.ClientError: url_not_accessible on a connection/DNS/timeout failure.
         """
         SafeFetch._require_protected_session(session)
         # Re-validate at the network boundary (see get_content_type).
-        url = SafeFetch.validate_url(url)
+        url = SafeFetch.validate_url(url, allowed_domains, blocked_domains)
         try:
-            async with session.get(url, allow_redirects=False) as response:
-                SafeFetch.raise_if_redirect(response, url)
+            async with SafeFetch._open_following_redirects(
+                session, "GET", url, allowed_domains, blocked_domains
+            ) as response:
                 response.raise_for_status()
                 SafeFetch.check_content_length(response.headers.get("Content-Length"), url)
                 return await SafeFetch._read_capped_body(response, url)
@@ -638,7 +780,9 @@ class SafeFetch:
             SafeFetch._raise_translated(exc, url)
 
     @staticmethod
-    async def fetch_raw(url: str, session: ClientSession) -> str:
+    async def fetch_raw(
+        url: str, session: ClientSession, *, allowed_domains: Any = None, blocked_domains: Any = None
+    ) -> str:
         """
         Fetch a URL via aiohttp GET and return its decoded body (not HTML-stripped).
 
@@ -649,25 +793,33 @@ class SafeFetch:
         decoded once, after the full (capped) body is in hand, using the response's
         declared charset (falling back to utf-8 and replacing undecodable bytes) so
         multibyte sequences spanning chunk boundaries are never split. A leading
-        byte-order mark is dropped from the decoded text.
+        byte-order mark is dropped from the decoded text. Redirects are followed
+        through _open_following_redirects, so the body returned is that of the
+        chain's final (re-validated) location.
 
         :param url: The URL to fetch.
         :param session: A session created by open_session (enforces the SSRF policy).
+        :param allowed_domains: Optional allow-list (str or list[str]) applied to the
+                                URL and to every redirect hop.
+        :param blocked_domains: Optional block-list (str or list[str]) applied to the
+                                URL and to every redirect hop.
         :return: The decoded response body (raw markup, not HTML-stripped).
-        :raises ValueError: url_not_allowed on a redirect, or response_too_large when
-                the streamed body exceeds MAX_RESPONSE_BYTES.
+        :raises ValueError: url_not_allowed when a redirect hop fails validation or the
+                chain exceeds MAX_REDIRECTS, or response_too_large when the streamed
+                body exceeds MAX_RESPONSE_BYTES.
         :raises aiohttp.ClientResponseError: url_not_accessible / too_many_requests on a non-2xx response.
         :raises aiohttp.ClientError: url_not_accessible on a connection/DNS/timeout failure.
         """
         SafeFetch._require_protected_session(session)
         # Re-validate at the network boundary (see get_content_type).
-        url = SafeFetch.validate_url(url)
+        url = SafeFetch.validate_url(url, allowed_domains, blocked_domains)
         try:
-            async with session.get(url, allow_redirects=False) as response:
-                # raise_for_status() only covers 4xx/5xx; 3xx passes through silently
-                # returning useless redirect-page HTML. Check explicitly so a server
-                # that behaves differently on GET vs an earlier HEAD probe is still caught.
-                SafeFetch.raise_if_redirect(response, url)
+            # The follower resolves any 3xx (or raises url_not_allowed) before yielding,
+            # so a server that redirects on GET but not on an earlier HEAD probe is
+            # still handled here rather than returning redirect-page HTML.
+            async with SafeFetch._open_following_redirects(
+                session, "GET", url, allowed_domains, blocked_domains
+            ) as response:
                 response.raise_for_status()
                 SafeFetch.check_content_length(response.headers.get("Content-Length"), url)
                 return await SafeFetch._read_capped_text(response, url)
@@ -739,19 +891,28 @@ class SafeFetch:
         return text.removeprefix("\ufeff")
 
     @staticmethod
-    async def fetch_text(url: str, session: ClientSession) -> str:
+    async def fetch_text(
+        url: str, session: ClientSession, *, allowed_domains: Any = None, blocked_domains: Any = None
+    ) -> str:
         """
         Fetch a URL via aiohttp GET and return its plain-text body, stripping HTML.
 
         :param url: The URL to fetch.
         :param session: A session created by open_session (enforces the SSRF policy).
+        :param allowed_domains: Optional allow-list (str or list[str]) applied to the
+                                URL and to every redirect hop.
+        :param blocked_domains: Optional block-list (str or list[str]) applied to the
+                                URL and to every redirect hop.
         :return: The response body with HTML markup stripped when present.
-        :raises ValueError: url_not_allowed on a redirect, or response_too_large when
-                the body exceeds MAX_RESPONSE_BYTES.
+        :raises ValueError: url_not_allowed when a redirect hop fails validation or the
+                chain exceeds MAX_REDIRECTS, or response_too_large when the body
+                exceeds MAX_RESPONSE_BYTES.
         :raises aiohttp.ClientResponseError: url_not_accessible / too_many_requests on a non-2xx response.
         :raises aiohttp.ClientError: url_not_accessible on a connection/DNS/timeout failure.
         """
-        raw_content: str = await SafeFetch.fetch_raw(url, session)
+        raw_content: str = await SafeFetch.fetch_raw(
+            url, session, allowed_domains=allowed_domains, blocked_domains=blocked_domains
+        )
         return SafeFetch.parse_raw_text(raw_content)
 
     @staticmethod
