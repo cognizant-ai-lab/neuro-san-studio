@@ -456,7 +456,9 @@ class SafeFetch:
         that secret on a plaintext connection. http -> https upgrades are followed.
 
         :param session: A session created by open_session (enforces the SSRF policy).
-        :param method: The HTTP method for the first hop; "HEAD" or "GET".
+        :param method: The HTTP method for every hop; "HEAD" or "GET". RFC 9110 lets a
+                303 be retrieved with GET or HEAD matching the original request, and the
+                other 3xx codes keep the method, so it never changes along the chain.
         :param url: The already-validated starting URL.
         :param allowed_domains: Optional allow-list applied to every redirect target.
         :param blocked_domains: Optional block-list applied to every redirect target.
@@ -469,13 +471,17 @@ class SafeFetch:
                 chain exceeds MAX_REDIRECTS.
         """
         current_url: str = url
-        current_method: str = method
         redirects_followed: int = 0
+        # Dispatch through session.head / session.get rather than session.request:
+        # they are aiohttp's public convenience wrappers over the same request
+        # machinery, and they are the call shape the mocked-session tests target.
+        # The method is fixed for the whole chain: 301/302/307/308 preserve it, and
+        # a 303 See Other is retrieved with "GET or HEAD" matching the original
+        # request (RFC 9110 section 15.4.4), which for the two methods used here is
+        # again the same method. Switching a HEAD probe to GET on a 303 would make
+        # the probe fetch a body it never reads (aiohttp keeps HEAD too).
+        requester: Any = session.head if method == "HEAD" else session.get
         while True:
-            # Dispatch through session.head / session.get rather than session.request:
-            # they are aiohttp's public convenience wrappers over the same request
-            # machinery, and they are the call shape the mocked-session tests target.
-            requester: Any = session.head if current_method == "HEAD" else session.get
             async with requester(current_url, allow_redirects=False) as response:
                 status: int = response.status
                 if not SafeFetch.is_redirection(status):
@@ -532,12 +538,6 @@ class SafeFetch:
                 )
             current_url = validated_next
             redirects_followed += 1
-            # 303 See Other means "fetch the result with GET" whatever the original
-            # method was (RFC 9110 section 15.4.4); 301/302/307/308 keep the method.
-            # Only HEAD and GET are ever used on this path, so this is the sole
-            # method change that can occur.
-            if status == HTTPStatus.SEE_OTHER:
-                current_method = "GET"
 
     @staticmethod
     def is_text_content_type(content_type: str) -> bool:

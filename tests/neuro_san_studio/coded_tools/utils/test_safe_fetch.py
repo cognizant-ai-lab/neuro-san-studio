@@ -1278,8 +1278,8 @@ class TestSafeFetch(TestCase):  # pylint: disable=too-many-public-methods
     def test_get_content_type_follows_head_redirect_chain(self) -> None:
         """Tests that the HEAD probe follows each method-preserving 3xx with HEAD and returns the final Content-Type.
 
-        301, 302, 307 and 308 must all keep HEAD (only 303 switches to GET), so the
-        second request is asserted to be a HEAD for every one of them.
+        301, 302, 307 and 308 must all keep HEAD (303 does too, see the next test), so
+        the second request is asserted to be a HEAD for every one of them.
         """
         for status in (301, 302, 307, 308):
             with self.subTest(status=status):
@@ -1296,8 +1296,13 @@ class TestSafeFetch(TestCase):  # pylint: disable=too-many-public-methods
                 self.assertIsNone(body)
                 self.assertEqual(calls, [("HEAD", "http://example.com/start"), ("HEAD", "http://example.com/final")])
 
-    def test_get_content_type_303_switches_head_to_get(self) -> None:
-        """Tests that a 303 See Other is followed with GET even though the probe started with HEAD."""
+    def test_get_content_type_303_keeps_head(self) -> None:
+        """Tests that a 303 See Other during the HEAD probe is followed with HEAD, not GET.
+
+        RFC 9110 lets a 303 be retrieved with GET or HEAD matching the original
+        request; switching the probe to GET would fetch a body it never reads and
+        hit endpoints that distinguish the two methods.
+        """
         hops = [
             self._redirect(303, "http://example.com/result"),
             self._make_hop_response(200, {"Content-Type": "application/pdf"}),
@@ -1306,7 +1311,7 @@ class TestSafeFetch(TestCase):  # pylint: disable=too-many-public-methods
         content_type, _, final_url = asyncio.run(SafeFetch.get_content_type("http://example.com/start", session))
         self.assertEqual(final_url, "http://example.com/result")
         self.assertEqual(content_type, "application/pdf")
-        self.assertEqual(calls, [("HEAD", "http://example.com/start"), ("GET", "http://example.com/result")])
+        self.assertEqual(calls, [("HEAD", "http://example.com/start"), ("HEAD", "http://example.com/result")])
 
     def test_get_content_type_get_fallback_follows_redirect_and_prefetches_body(self) -> None:
         """Tests that after a 405 HEAD the GET fallback restarts from the original URL and follows its redirect."""
