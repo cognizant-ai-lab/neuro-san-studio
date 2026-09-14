@@ -38,7 +38,9 @@ class TestWebFetch(TestCase):  # pylint: disable=too-many-public-methods
     def test_html_fetch_returns_correct_keys(self):
         """Tests that fetching an HTML page returns a result with url, content, and retrieved_at keys."""
         with (
-            patch.object(SafeFetch, "get_content_type", new=AsyncMock(return_value=("text/html", None))),
+            patch.object(
+                SafeFetch, "get_content_type", new=AsyncMock(return_value=("text/html", None, "http://example.com"))
+            ),
             patch.object(SafeFetch, "fetch_text", new=AsyncMock(return_value="Hello world")),
         ):
             result = asyncio.run(self.tool.async_invoke({"url": "http://example.com"}, self.sly_data))
@@ -51,7 +53,9 @@ class TestWebFetch(TestCase):  # pylint: disable=too-many-public-methods
         """Tests that a prefetched body from the 405 GET fallback is used directly without calling fetch_text."""
         with (
             patch.object(
-                SafeFetch, "get_content_type", new=AsyncMock(return_value=("text/html", "<p>prefetched</p>"))
+                SafeFetch,
+                "get_content_type",
+                new=AsyncMock(return_value=("text/html", "<p>prefetched</p>", "http://example.com")),
             ),
             patch.object(SafeFetch, "fetch_text", new=AsyncMock(return_value="should not be called")) as mock_text,
         ):
@@ -63,7 +67,11 @@ class TestWebFetch(TestCase):  # pylint: disable=too-many-public-methods
     def test_pdf_by_content_type_calls_fetch_pdf(self):
         """Tests that an application/pdf content type routes to SafeFetch.fetch_pdf_text and not fetch_text."""
         with (
-            patch.object(SafeFetch, "get_content_type", new=AsyncMock(return_value=("application/pdf", None))),
+            patch.object(
+                SafeFetch,
+                "get_content_type",
+                new=AsyncMock(return_value=("application/pdf", None, "http://example.com/file")),
+            ),
             patch.object(SafeFetch, "fetch_pdf_text", new=AsyncMock(return_value="PDF content")) as mock_pdf,
             patch.object(SafeFetch, "fetch_text", new=AsyncMock(return_value="should not be called")) as mock_text,
         ):
@@ -77,7 +85,9 @@ class TestWebFetch(TestCase):  # pylint: disable=too-many-public-methods
         """Tests that a .pdf URL extension routes to fetch_pdf_text when the type is a generic download type."""
         with (
             patch.object(
-                SafeFetch, "get_content_type", new=AsyncMock(return_value=("application/octet-stream", None))
+                SafeFetch,
+                "get_content_type",
+                new=AsyncMock(return_value=("application/octet-stream", None, "http://example.com/report.pdf")),
             ),
             patch.object(SafeFetch, "fetch_pdf_text", new=AsyncMock(return_value="PDF content")) as mock_pdf,
         ):
@@ -85,11 +95,48 @@ class TestWebFetch(TestCase):  # pylint: disable=too-many-public-methods
 
         mock_pdf.assert_called_once()
 
+    def test_redirected_pdf_is_classified_by_final_url(self) -> None:
+        """A link without a .pdf suffix that redirects to a .pdf served as a generic download type is parsed as PDF.
+
+        The suffix fallback must look at the URL the headers came from, not the
+        requested one. The PDF fetch itself still starts from the requested URL so
+        every hop is re-validated on the way down, and the result keeps that URL.
+        """
+        requested: str = "http://example.com/download?id=42"
+        final: str = "http://cdn.example.com/files/report.pdf"
+        with (
+            patch.object(
+                SafeFetch, "get_content_type", new=AsyncMock(return_value=("application/octet-stream", None, final))
+            ),
+            patch.object(SafeFetch, "fetch_pdf_text", new=AsyncMock(return_value="PDF content")) as mock_pdf,
+        ):
+            result = asyncio.run(self.tool.async_invoke({"url": requested}, self.sly_data))
+
+        mock_pdf.assert_awaited_once()
+        self.assertEqual(mock_pdf.await_args.args[0], requested)
+        self.assertEqual(result["content"], "PDF content")
+        self.assertEqual(result["url"], requested)
+
+    def test_redirected_generic_download_without_pdf_suffix_is_unsupported(self) -> None:
+        """A generic download type whose final URL has no .pdf suffix is still rejected, not guessed as PDF."""
+        with patch.object(
+            SafeFetch,
+            "get_content_type",
+            new=AsyncMock(return_value=("application/octet-stream", None, "http://cdn.example.com/files/blob")),
+        ):
+            with self.assertRaises(ValueError) as ctx:
+                asyncio.run(self.tool.async_invoke({"url": "http://example.com/download?id=43"}, self.sly_data))
+        self.assertIn("unsupported_content_type", str(ctx.exception))
+
     def test_unsupported_content_type_raises(self):
         """Tests that an unsupported content type raises ValueError with unsupported_content_type."""
         for content_type in ("image/png", "image/svg+xml"):
             with self.subTest(content_type=content_type):
-                with patch.object(SafeFetch, "get_content_type", new=AsyncMock(return_value=(content_type, None))):
+                with patch.object(
+                    SafeFetch,
+                    "get_content_type",
+                    new=AsyncMock(return_value=(content_type, None, "http://example.com/image")),
+                ):
                     with self.assertRaises(ValueError) as ctx:
                         asyncio.run(self.tool.async_invoke({"url": "http://example.com/image"}, self.sly_data))
                 self.assertIn("unsupported_content_type", str(ctx.exception))
@@ -97,7 +144,11 @@ class TestWebFetch(TestCase):  # pylint: disable=too-many-public-methods
     def test_uppercase_pdf_content_type_routes_to_pdf(self):
         """Tests that a mixed-case 'Application/PDF' header still routes to PDF parsing, not rejection."""
         with (
-            patch.object(SafeFetch, "get_content_type", new=AsyncMock(return_value=("Application/PDF", None))),
+            patch.object(
+                SafeFetch,
+                "get_content_type",
+                new=AsyncMock(return_value=("Application/PDF", None, "http://example.com/file")),
+            ),
             patch.object(SafeFetch, "fetch_pdf_text", new=AsyncMock(return_value="PDF content")) as mock_pdf,
         ):
             result = asyncio.run(self.tool.async_invoke({"url": "http://example.com/file"}, self.sly_data))
@@ -120,7 +171,11 @@ class TestWebFetch(TestCase):  # pylint: disable=too-many-public-methods
         for content_type in content_types:
             with self.subTest(content_type=content_type):
                 with (
-                    patch.object(SafeFetch, "get_content_type", new=AsyncMock(return_value=(content_type, None))),
+                    patch.object(
+                        SafeFetch,
+                        "get_content_type",
+                        new=AsyncMock(return_value=(content_type, None, "http://example.com/doc")),
+                    ),
                     patch.object(SafeFetch, "fetch_text", new=AsyncMock(return_value="readable text")) as mock_text,
                 ):
                     result = asyncio.run(self.tool.async_invoke({"url": "http://example.com/doc"}, self.sly_data))
@@ -135,7 +190,9 @@ class TestWebFetch(TestCase):  # pylint: disable=too-many-public-methods
         rejected, guarding against the old substring match that accepted it.
         """
         with patch.object(
-            SafeFetch, "get_content_type", new=AsyncMock(return_value=('image/png; profile="text/plain"', None))
+            SafeFetch,
+            "get_content_type",
+            new=AsyncMock(return_value=('image/png; profile="text/plain"', None, "http://example.com/img")),
         ):
             with self.assertRaises(ValueError) as ctx:
                 asyncio.run(self.tool.async_invoke({"url": "http://example.com/img"}, self.sly_data))
@@ -145,7 +202,9 @@ class TestWebFetch(TestCase):  # pylint: disable=too-many-public-methods
         """Tests that fetched content is truncated to the specified max_content_chars limit."""
         long_text = "x" * 1000
         with (
-            patch.object(SafeFetch, "get_content_type", new=AsyncMock(return_value=("text/plain", None))),
+            patch.object(
+                SafeFetch, "get_content_type", new=AsyncMock(return_value=("text/plain", None, "http://example.com"))
+            ),
             patch.object(SafeFetch, "fetch_text", new=AsyncMock(return_value=long_text)),
         ):
             result = asyncio.run(
@@ -163,7 +222,9 @@ class TestWebFetch(TestCase):  # pylint: disable=too-many-public-methods
         allowed = ["example.com"]
         blocked = ["example.org"]
         with (
-            patch.object(SafeFetch, "get_content_type", new=AsyncMock(return_value=("text/html", None))) as mock_ct,
+            patch.object(
+                SafeFetch, "get_content_type", new=AsyncMock(return_value=("text/html", None, "http://example.com"))
+            ) as mock_ct,
             patch.object(SafeFetch, "fetch_text", new=AsyncMock(return_value="Hello")) as mock_text,
         ):
             asyncio.run(
@@ -186,7 +247,11 @@ class TestWebFetch(TestCase):  # pylint: disable=too-many-public-methods
         allowed = ["example.com"]
         blocked = ["example.org"]
         with (
-            patch.object(SafeFetch, "get_content_type", new=AsyncMock(return_value=("application/pdf", None))),
+            patch.object(
+                SafeFetch,
+                "get_content_type",
+                new=AsyncMock(return_value=("application/pdf", None, "http://example.com/file.pdf")),
+            ),
             patch.object(SafeFetch, "fetch_pdf_text", new=AsyncMock(return_value="PDF content")) as mock_pdf,
         ):
             asyncio.run(
@@ -201,7 +266,9 @@ class TestWebFetch(TestCase):  # pylint: disable=too-many-public-methods
     def test_absent_domain_rules_forwarded_as_none(self) -> None:
         """Tests that omitted domain rules are forwarded as None so SafeFetch applies no domain policy to hops."""
         with (
-            patch.object(SafeFetch, "get_content_type", new=AsyncMock(return_value=("text/plain", None))) as mock_ct,
+            patch.object(
+                SafeFetch, "get_content_type", new=AsyncMock(return_value=("text/plain", None, "http://example.com"))
+            ) as mock_ct,
             patch.object(SafeFetch, "fetch_text", new=AsyncMock(return_value="Hello")) as mock_text,
         ):
             asyncio.run(self.tool.async_invoke({"url": "http://example.com"}, self.sly_data))

@@ -32,6 +32,7 @@ from unittest.mock import patch
 from aiohttp import ClientError
 from aiohttp import ClientResponseError
 from aiohttp import ClientSession
+from aiohttp import DummyCookieJar
 from aiohttp import TCPConnector
 from multidict import CIMultiDict
 from pypdf import PdfWriter
@@ -218,6 +219,28 @@ class TestSafeFetch(TestCase):  # pylint: disable=too-many-public-methods
                 await session.close()
 
         asyncio.run(check())
+
+    @staticmethod
+    async def _open_session_cookie_jar_type() -> type:
+        """
+        Open a real SafeFetch session, read the type of its cookie jar, and close it.
+
+        :return: The class of the session's cookie jar.
+        """
+        session = SafeFetch.open_session()
+        try:
+            return type(session.cookie_jar)
+        finally:
+            await session.close()
+
+    def test_open_session_uses_dummy_cookie_jar(self) -> None:
+        """Tests that open_session disables cookie persistence.
+
+        aiohttp gives every ClientSession a real CookieJar by default, which would
+        replay a cookie set on an https hop over a later http hop of the same chain
+        (and across unrelated URLs in one RAG session). SafeFetch never needs cookies.
+        """
+        self.assertIs(asyncio.run(self._open_session_cookie_jar_type()), DummyCookieJar)
 
     def test_network_methods_reject_unprotected_session(self):
         """Tests that network methods refuse a session not created by open_session.
@@ -647,7 +670,9 @@ class TestSafeFetch(TestCase):  # pylint: disable=too-many-public-methods
     def test_get_content_type_head_success_returns_content_type(self):
         """Tests that a successful HEAD response returns the Content-Type header value with no prefetched body."""
         session, _ = make_head_session(status=200, content_type="text/html; charset=utf-8")
-        content_type, body = asyncio.run(SafeFetch.get_content_type("http://example.com", session))
+        content_type, body, final_url = asyncio.run(SafeFetch.get_content_type("http://example.com", session))
+        # No redirect happened, so the URL the headers came from is the requested one.
+        self.assertEqual(final_url, "http://example.com")
         self.assertEqual(content_type, "text/html; charset=utf-8")
         self.assertIsNone(body)
 
@@ -663,7 +688,7 @@ class TestSafeFetch(TestCase):  # pylint: disable=too-many-public-methods
         get_cm.__aexit__ = AsyncMock(return_value=False)
         session.get = MagicMock(return_value=get_cm)
 
-        content_type, body = asyncio.run(SafeFetch.get_content_type("http://example.com", session))
+        content_type, body, _ = asyncio.run(SafeFetch.get_content_type("http://example.com", session))
         self.assertEqual(content_type, "application/pdf")
         self.assertIsNone(body)
         session.get.assert_called_once()
@@ -686,7 +711,7 @@ class TestSafeFetch(TestCase):  # pylint: disable=too-many-public-methods
         get_cm.__aexit__ = AsyncMock(return_value=False)
         session.get = MagicMock(return_value=get_cm)
 
-        content_type, body = asyncio.run(SafeFetch.get_content_type("http://example.com", session))
+        content_type, body, _ = asyncio.run(SafeFetch.get_content_type("http://example.com", session))
         self.assertEqual(content_type, "text/html")
         self.assertEqual(body, "<html>Hello</html>")
 
@@ -707,7 +732,7 @@ class TestSafeFetch(TestCase):  # pylint: disable=too-many-public-methods
         get_cm.__aexit__ = AsyncMock(return_value=False)
         session.get = MagicMock(return_value=get_cm)
 
-        content_type, body = asyncio.run(SafeFetch.get_content_type("http://example.com", session))
+        content_type, body, _ = asyncio.run(SafeFetch.get_content_type("http://example.com", session))
         self.assertEqual(content_type, "image/png")
         self.assertIsNone(body)
         get_response.text.assert_not_awaited()
@@ -734,7 +759,7 @@ class TestSafeFetch(TestCase):  # pylint: disable=too-many-public-methods
         get_cm.__aexit__ = AsyncMock(return_value=False)
         session.get = MagicMock(return_value=get_cm)
 
-        content_type, body = asyncio.run(SafeFetch.get_content_type("http://example.com", session))
+        content_type, body, _ = asyncio.run(SafeFetch.get_content_type("http://example.com", session))
         self.assertEqual(content_type, 'application/pdf; profile="text/html"')
         self.assertIsNone(body)
 
@@ -797,7 +822,7 @@ class TestSafeFetch(TestCase):  # pylint: disable=too-many-public-methods
         get_cm.__aexit__ = AsyncMock(return_value=False)
         session.get = MagicMock(return_value=get_cm)
 
-        content_type, body = asyncio.run(SafeFetch.get_content_type("http://example.com/presigned", session))
+        content_type, body, _ = asyncio.run(SafeFetch.get_content_type("http://example.com/presigned", session))
         self.assertEqual(content_type, "application/pdf")
         self.assertIsNone(body)
         session.get.assert_called_once()
@@ -1214,7 +1239,10 @@ class TestSafeFetch(TestCase):  # pylint: disable=too-many-public-methods
                     self._make_hop_response(200, {"Content-Type": "text/html; charset=utf-8"}),
                 ]
                 session, calls = self._make_chain_session(hops)
-                content_type, body = asyncio.run(SafeFetch.get_content_type("http://example.com/start", session))
+                content_type, body, final_url = asyncio.run(
+                    SafeFetch.get_content_type("http://example.com/start", session)
+                )
+                self.assertEqual(final_url, "http://example.com/final")
                 self.assertEqual(content_type, "text/html; charset=utf-8")
                 self.assertIsNone(body)
                 self.assertEqual(calls, [("HEAD", "http://example.com/start"), ("HEAD", "http://example.com/final")])
@@ -1226,7 +1254,8 @@ class TestSafeFetch(TestCase):  # pylint: disable=too-many-public-methods
             self._make_hop_response(200, {"Content-Type": "application/pdf"}),
         ]
         session, calls = self._make_chain_session(hops)
-        content_type, _ = asyncio.run(SafeFetch.get_content_type("http://example.com/start", session))
+        content_type, _, final_url = asyncio.run(SafeFetch.get_content_type("http://example.com/start", session))
+        self.assertEqual(final_url, "http://example.com/result")
         self.assertEqual(content_type, "application/pdf")
         self.assertEqual(calls, [("HEAD", "http://example.com/start"), ("GET", "http://example.com/result")])
 
@@ -1238,7 +1267,8 @@ class TestSafeFetch(TestCase):  # pylint: disable=too-many-public-methods
             self._make_hop_response(200, {"Content-Type": "text/plain"}, b"hello"),
         ]
         session, calls = self._make_chain_session(hops)
-        content_type, body = asyncio.run(SafeFetch.get_content_type("http://example.com/start", session))
+        content_type, body, final_url = asyncio.run(SafeFetch.get_content_type("http://example.com/start", session))
+        self.assertEqual(final_url, "http://example.com/moved")
         self.assertEqual(content_type, "text/plain")
         self.assertEqual(body, "hello")
         self.assertEqual(

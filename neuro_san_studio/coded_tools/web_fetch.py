@@ -112,17 +112,16 @@ class WebFetch(CodedTool):
         # would let an open redirect on an allowed domain lead to a blocked or
         # non-allowed one.
         async with SafeFetch.open_session() as session:
-            content_type, prefetched_text = await SafeFetch.get_content_type(
+            content_type, prefetched_text, final_url = await SafeFetch.get_content_type(
                 url, session, allowed_domains=allowed_domains, blocked_domains=blocked_domains
             )
-            # Route on the base media type only, case-insensitively (RFC 9110). A
-            # parameter such as "; charset=..." or "; profile=text/plain" must not
-            # affect the decision, and substring matching would misclassify types
-            # like "image/png; profile=text/plain" or "application/x-text/plain".
-            base_type: str = content_type.split(";", 1)[0].strip().lower()
-            is_pdf: bool = SafeFetch.is_pdf(content_type, url)
+            # Classify by the URL the headers actually came from: a link that redirects
+            # to a .pdf served as a generic download type is a PDF even though the
+            # requested URL carries no .pdf suffix. The fetch below still starts from
+            # the requested URL and re-validates every hop.
+            is_pdf: bool = SafeFetch.is_pdf(content_type, final_url)
 
-            if not is_pdf and not self._is_supported_content_type(base_type):
+            if not is_pdf and not self._is_supported_content_type(content_type):
                 raise ValueError(
                     f"unsupported_content_type: Content type '{content_type}' is not supported. "
                     "Only approved text, XML, feed, JSON, HTML, and PDF types are accepted."
@@ -155,17 +154,20 @@ class WebFetch(CodedTool):
         }
 
     @staticmethod
-    def _is_supported_content_type(base_type: str) -> bool:
+    def _is_supported_content_type(content_type: str) -> bool:
         """
-        Report whether a base media type is exactly one of the supported text and PDF types.
+        Report whether a Content-Type's base media type is exactly one of the supported text and PDF types.
 
+        The decision uses the base media type only, case-insensitively (RFC 9110): a
+        parameter such as "; charset=..." or "; profile=text/plain" must not affect it.
         Exact membership (not substring) is required so an unsupported type that merely
         contains a supported token, such as "application/x-text/plain", or a parameter
         like "image/png; profile=text/plain" once reduced to its base, is rejected.
 
-        :param base_type: The base media type with parameters removed, lower-cased.
-        :return: True if base_type is exactly one of SUPPORTED_CONTENT_TYPES.
+        :param content_type: The raw Content-Type header value, parameters included.
+        :return: True if the base media type is exactly one of SUPPORTED_CONTENT_TYPES.
         """
+        base_type: str = content_type.split(";", 1)[0].strip().lower()
         return base_type in SUPPORTED_CONTENT_TYPES
 
     @staticmethod

@@ -241,9 +241,13 @@ class WebpageRag(CodedTool, BaseRag):
                 # (which would embed the raw %PDF bytes as garbage chunks).
                 content_type: str
                 prefetched_text: str | None
-                content_type, prefetched_text = await SafeFetch.get_content_type(validated_url, session)
+                final_url: str
+                content_type, prefetched_text, final_url = await SafeFetch.get_content_type(validated_url, session)
 
-                if SafeFetch.is_pdf(content_type, validated_url):
+                # Classify by the URL the headers came from (after redirects), so a link
+                # that redirects to a .pdf served as a generic download type is parsed
+                # as a PDF. The source metadata below still records the requested URL.
+                if SafeFetch.is_pdf(content_type, final_url):
                     pdf_text: str = await SafeFetch.fetch_pdf_text(validated_url, session)
                     # PDFs carry no HTML metadata; record only the source.
                     return Document(page_content=pdf_text, metadata={"source": validated_url})

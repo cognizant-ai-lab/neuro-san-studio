@@ -18,6 +18,7 @@ import os
 from asyncio import TimeoutError as AsyncTimeoutError
 from asyncio import to_thread
 from collections.abc import AsyncGenerator
+from contextlib import AbstractAsyncContextManager
 from contextlib import asynccontextmanager
 from http import HTTPStatus
 from ipaddress import IPv4Address
@@ -35,6 +36,7 @@ from aiohttp import ClientError
 from aiohttp import ClientResponseError
 from aiohttp import ClientSession
 from aiohttp import ClientTimeout
+from aiohttp import DummyCookieJar
 from aiohttp import TCPConnector
 from aiohttp.helpers import is_ip_address
 from bs4 import BeautifulSoup
@@ -109,7 +111,8 @@ class SafeFetch:
     target is re-validated with validate_url (including the caller's domain rules)
     before it is requested; a hop that fails validation, a 3xx without a Location,
     or a chain longer than MAX_REDIRECTS raises url_not_allowed
-    (see _open_following_redirects).
+    (see _open_following_redirects). Sessions store no cookies (DummyCookieJar),
+    so an https -> http hop cannot replay a cookie set on an earlier hop.
     The byte cap (MAX_RESPONSE_BYTES) is enforced both via the Content-Length header
     (pre-check) and on the actual streamed bytes, for text fetches and PDF downloads
     alike, so a server that lies about or omits Content-Length cannot deliver an
@@ -135,9 +138,16 @@ class SafeFetch:
         disabled so every new connection re-validates instead of reusing a
         previously cached answer.
 
+        The session stores no cookies (DummyCookieJar). SafeFetch is a stateless
+        content fetcher, and a cookie set by one response must never be replayed on
+        a later request: an https -> http redirect hop would otherwise put a
+        non-Secure cookie on the wire, and unrelated URLs fetched through one RAG
+        session would leak state between hosts.
+
         :return: A new ClientSession whose connector validates every resolved
-                 address and disables DNS caching. The caller owns the session and
-                 must close it (use it as an async context manager).
+                 address and disables DNS caching, and which stores no cookies. The
+                 caller owns the session and must close it (use it as an async
+                 context manager).
         """
         timeout = ClientTimeout(total=TIMEOUT_SECONDS)
         connector = TCPConnector(resolver=GlobalOnlyResolver(), use_dns_cache=False)
@@ -149,7 +159,14 @@ class SafeFetch:
         user_agent: str | None = os.environ.get("USER_AGENT")
         if user_agent:
             headers = {"User-Agent": user_agent}
-        session: ClientSession = ClientSession(timeout=timeout, connector=connector, headers=headers)
+        # DummyCookieJar: never store Set-Cookie. Without it aiohttp keeps a real
+        # CookieJar per session and replays matching cookies on later requests,
+        # including over an http hop that follows an https one (see
+        # _open_following_redirects), which would put a non-Secure cookie on the
+        # wire. Nothing in SafeFetch needs cookies.
+        session: ClientSession = ClientSession(
+            timeout=timeout, connector=connector, headers=headers, cookie_jar=DummyCookieJar()
+        )
         # Mark the session so the network methods can reject a caller-supplied default
         # session, which would skip GlobalOnlyResolver and reopen the SSRF hole.
         # open_session is the only sanctioned constructor and always wires the
@@ -415,7 +432,7 @@ class SafeFetch:
         url: str,
         allowed_domains: Any = None,
         blocked_domains: Any = None,
-    ) -> AsyncGenerator[Any, None]:
+    ) -> AsyncGenerator[tuple[Any, str], None]:
         """
         Issue a request and follow up to MAX_REDIRECTS redirects, re-validating every hop.
 
@@ -434,18 +451,26 @@ class SafeFetch:
         (anti DNS-rebinding), and validate_url rejects IP literals that would bypass
         that resolver.
 
-        The yielded response is the first non-3xx response in the chain; its
-        response.url is the final URL of the chain, which may differ from url. Callers
-        apply raise_for_status and the size checks to it exactly as they would to a
-        direct response, and raise_for_status is unaffected by 3xx (it only covers
-        4xx/5xx), which is why the redirect handling must be explicit here.
+        The context manager yields a (response, final_url) pair: the first non-3xx
+        response in the chain, and the validated URL it was requested from, which may
+        differ from url. Callers apply raise_for_status and the size checks to the
+        response exactly as they would to a direct response, and raise_for_status is
+        unaffected by 3xx (it only covers 4xx/5xx), which is why the redirect handling
+        must be explicit here. final_url lets get_content_type classify a resource by
+        the suffix of the URL it actually lives at.
+
+        An https -> http downgrade hop is allowed. The session stores no cookies
+        (open_session uses DummyCookieJar) and sends no credentials, so a downgrade
+        exposes nothing beyond the request itself, and refusing it would break
+        legitimate chains on sites that still serve content over http.
 
         :param session: A session created by open_session (enforces the SSRF policy).
         :param method: The HTTP method for the first hop; "HEAD" or "GET".
         :param url: The already-validated starting URL.
         :param allowed_domains: Optional allow-list applied to every redirect target.
         :param blocked_domains: Optional block-list applied to every redirect target.
-        :return: An async context manager yielding the final (non-3xx) aiohttp response.
+        :return: An async context manager yielding (response, final_url): the final (non-3xx)
+                 aiohttp response and the validated URL string it was fetched from.
         :raises ValueError: url_not_allowed when a 3xx carries no Location, when a
                 redirect target fails validate_url (non-http(s) scheme, malformed or
                 over-long URL, localhost/private/reserved host, domain rules), or when
@@ -462,7 +487,7 @@ class SafeFetch:
             async with requester(current_url, allow_redirects=False) as response:
                 status: int = response.status
                 if not SafeFetch.is_redirection(status):
-                    yield response
+                    yield response, current_url
                     return
                 # Enforce the cap BEFORE looking at where the hop points: a loop
                 # (A -> B -> A ...) or an arbitrarily long chain must fail closed,
@@ -604,9 +629,9 @@ class SafeFetch:
     @staticmethod
     async def get_content_type(
         url: str, session: ClientSession, *, allowed_domains: Any = None, blocked_domains: Any = None
-    ) -> tuple[str, str | None]:
+    ) -> tuple[str, str | None, str]:
         """
-        Probe the URL with a HEAD request and return (Content-Type, prefetched_body).
+        Probe the URL with a HEAD request and return (Content-Type, prefetched_body, final_url).
 
         Falls back to a GET request when HEAD fails with any HTTP error except 429:
         many servers reject HEAD while serving GET fine (405 from HEAD-less
@@ -625,8 +650,13 @@ class SafeFetch:
                                 URL and to every redirect hop.
         :param blocked_domains: Optional block-list (str or list[str]) applied to the
                                 URL and to every redirect hop.
-        :return: A (content_type, prefetched_body) tuple; prefetched_body is the text
-                 body only on the GET-fallback text-like path, otherwise None.
+        :return: A (content_type, prefetched_body, final_url) tuple. prefetched_body is
+                 the text body only on the GET-fallback text-like path, otherwise None.
+                 final_url is the URL the returned headers came from after any
+                 redirects (the requested URL when there were none); callers should
+                 classify by its suffix rather than the requested URL's, so a link that
+                 redirects to a .pdf served as a generic download type is still parsed
+                 as a PDF.
         :raises ValueError: url_not_allowed when a redirect hop fails validation or the
                 chain exceeds MAX_REDIRECTS, or response_too_large when the
                 Content-Length header or the streamed fallback text body exceeds
@@ -644,9 +674,10 @@ class SafeFetch:
         # so the first URL and every redirect hop are held to the same policy.
         url = SafeFetch.validate_url(url, allowed_domains, blocked_domains)
         try:
-            async with SafeFetch._open_following_redirects(
+            head_chain: AbstractAsyncContextManager[tuple[Any, str]] = SafeFetch._open_following_redirects(
                 session, "HEAD", url, allowed_domains, blocked_domains
-            ) as head:
+            )
+            async with head_chain as (head, final_url):
                 # Any 2xx success (200 OK up to, but excluding, 300 MULTIPLE_CHOICES —
                 # the first 3xx code): HEAD succeeded, so the headers alone answer
                 # the probe and there is no body to read. (A 3xx never reaches this
@@ -654,7 +685,7 @@ class SafeFetch:
                 # raised url_not_allowed.)
                 if HTTPStatus.OK <= head.status < HTTPStatus.MULTIPLE_CHOICES:
                     SafeFetch.check_content_length(head.headers.get("Content-Length"), url)
-                    return head.headers.get("Content-Type", ""), None
+                    return head.headers.get("Content-Type", ""), None, final_url
                 if head.status == HTTPStatus.TOO_MANY_REQUESTS:
                     # 429 is authoritative: the server is rate-limiting us, and an
                     # immediate GET retry would only make that worse. Raise (it is
@@ -665,9 +696,10 @@ class SafeFetch:
                 # GET deliberately restarts from the ORIGINAL url rather than the HEAD
                 # chain's final URL: a server may redirect HEAD and GET differently,
                 # and the GET chain is re-validated hop by hop just the same.
-            async with SafeFetch._open_following_redirects(
+            get_chain: AbstractAsyncContextManager[tuple[Any, str]] = SafeFetch._open_following_redirects(
                 session, "GET", url, allowed_domains, blocked_domains
-            ) as get:
+            )
+            async with get_chain as (get, final_url):
                 get.raise_for_status()
                 SafeFetch.check_content_length(get.headers.get("Content-Length"), url)
                 content_type: str = get.headers.get("Content-Type", "")
@@ -681,7 +713,7 @@ class SafeFetch:
                     body: str | None = await SafeFetch._read_capped_text(get, url)
                 else:
                     body = None
-                return content_type, body
+                return content_type, body, final_url
         except (ClientError, AsyncTimeoutError) as exc:
             SafeFetch._raise_translated(exc, url)
 
@@ -770,9 +802,10 @@ class SafeFetch:
         # Re-validate at the network boundary (see get_content_type).
         url = SafeFetch.validate_url(url, allowed_domains, blocked_domains)
         try:
-            async with SafeFetch._open_following_redirects(
-                session, "GET", url, allowed_domains, blocked_domains
-            ) as response:
+            async with SafeFetch._open_following_redirects(session, "GET", url, allowed_domains, blocked_domains) as (
+                response,
+                _,
+            ):
                 response.raise_for_status()
                 SafeFetch.check_content_length(response.headers.get("Content-Length"), url)
                 return await SafeFetch._read_capped_body(response, url)
@@ -817,9 +850,10 @@ class SafeFetch:
             # The follower resolves any 3xx (or raises url_not_allowed) before yielding,
             # so a server that redirects on GET but not on an earlier HEAD probe is
             # still handled here rather than returning redirect-page HTML.
-            async with SafeFetch._open_following_redirects(
-                session, "GET", url, allowed_domains, blocked_domains
-            ) as response:
+            async with SafeFetch._open_following_redirects(session, "GET", url, allowed_domains, blocked_domains) as (
+                response,
+                _,
+            ):
                 response.raise_for_status()
                 SafeFetch.check_content_length(response.headers.get("Content-Length"), url)
                 return await SafeFetch._read_capped_text(response, url)
