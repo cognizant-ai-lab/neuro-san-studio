@@ -15,6 +15,7 @@
 # END COPYRIGHT
 
 import asyncio
+import fnmatch
 import os
 import stat as stat_module
 from datetime import datetime
@@ -37,6 +38,7 @@ DEFAULT_MAX_ENTRIES: int = 500
 MAX_ENTRIES: int = 10_000  # ceiling on the LLM-settable max_entries, mirroring the 10 MB caps of read_file/write_file
 MAX_SCAN_ENTRIES: int = 100_000  # scan budget: in-scope names kept from one directory before the call fails
 LIST_DIRECTORY_HISTORY_KEY: str = "list_directory_history"  # sly_data key for the list of listed directories
+_VALID_SORT_BY: frozenset[str] = frozenset({"name", "modified", "size"})  # accepted sort_by values
 
 
 class ListDirectory(CodedTool):
@@ -141,6 +143,16 @@ class ListDirectory(CodedTool):
                                          entries. Defaults to DEFAULT_MAX_ENTRIES (500);
                                          must be a positive integer no greater than
                                          MAX_ENTRIES (10000).
+                    "detail"             (bool, optional): When True, entry dicts and the
+                                         target dict include 'modified', 'mode', and
+                                         'is_executable'. Defaults to False.
+                    "sort_by"            (str, optional): Criterion to sort entries by:
+                                         'name' (default), 'modified', or 'size'. Ties
+                                         break on name ascending.
+                    "reverse"            (bool, optional): When True, reverses the sort
+                                         order. Defaults to False.
+                    "name_pattern"       (str, optional): Glob pattern (fnmatch syntax)
+                                         to filter entry names. Applied after access rules.
 
         :param sly_data: A dictionary whose keys are defined by the agent hierarchy,
                 but whose values are meant to be kept out of the chat stream.
@@ -156,9 +168,14 @@ class ListDirectory(CodedTool):
         :return:
             A dictionary with the following keys:
                 "path"          (str): The resolved absolute directory that was listed.
-                "entries"       (list[dict]): One dict per entry, sorted by name:
+                "target"        (dict): Metadata about the listed directory itself:
+                                "name" (str), "type" ("directory"), "size_bytes" (None),
+                                plus "modified", "mode", and "is_executable" (False)
+                                when detail=True.
+                "entries"       (list[dict]): One dict per entry, sorted as requested:
                                 "name" (str), "type" ("file" | "directory" | "symlink"),
-                                "size_bytes" (int for files, None otherwise).
+                                "size_bytes" (int for files, None otherwise), plus
+                                "modified", "mode", and "is_executable" when detail=True.
                 "total_entries" (int): Number of entries returned.
                 "truncated"     (bool): True when at least one more entry that would
                                 have qualified exists beyond the max_entries cap —
@@ -173,12 +190,27 @@ class ListDirectory(CodedTool):
         :raises ValueError: invalid_input, path_not_allowed, path_not_found,
                             not_a_directory, list_error.
         """
-        handle, rules, include_hidden, max_entries = await self._async_precheck(args)
-        entries, truncated, unreadable = await self._async_list_entries(rules, handle, include_hidden, max_entries)
+        (
+            handle,
+            rules,
+            include_hidden,
+            max_entries,
+            detail,
+            sort_by,
+            reverse,
+            name_pattern,
+            target_stat,
+        ) = await self._async_precheck(args)
+        entries, truncated, unreadable = await self._async_list_entries(
+            rules, handle, include_hidden, max_entries, detail, sort_by, reverse, name_pattern
+        )
         await self._async_cache_listing(sly_data, handle.directory)
+
+        target_info: dict[str, Any] = self._build_target_info(handle.directory, target_stat, detail)
 
         return {
             "path": str(handle.directory),
+            "target": target_info,
             "entries": entries,
             "total_entries": len(entries),
             "truncated": truncated,
@@ -190,7 +222,9 @@ class ListDirectory(CodedTool):
     # Async phases — async_invoke is just orchestration over these three.
     # ------------------------------------------------------------------
 
-    async def _async_precheck(self, args: dict[str, Any]) -> tuple[DirectoryHandle, PathRules, bool, int]:
+    async def _async_precheck(
+        self, args: dict[str, Any]
+    ) -> tuple[DirectoryHandle, PathRules, bool, int, bool, str, bool, str | None, os.stat_result]:
         """
         Run all pre-listing validation and access checks.
 
@@ -205,10 +239,10 @@ class ListDirectory(CodedTool):
         never from block rules) under both the supplied and the resolved name.
 
         :param args: The tool argument dictionary.
-        :return: A tuple of (handle, rules, include_hidden, max_entries). The handle
-                is prepared (not opened) for the resolved directory and carries the
-                stat the existence check observed, so the scan can verify it opens
-                that same inode.
+        :return: A tuple of (handle, rules, include_hidden, max_entries, detail,
+                sort_by, reverse, name_pattern, target_stat). The handle is prepared
+                (not opened) for the resolved directory and carries the stat the
+                existence check observed, so the scan can verify it opens that same inode.
         :raises ValueError: invalid_input, path_not_allowed, path_not_found,
                 not_a_directory, list_error.
         """
@@ -221,13 +255,35 @@ class ListDirectory(CodedTool):
         self._check_target_access(rules, directory, display_name, supplied_path)
         include_hidden: bool = PathAccess.validate_bool(args, "include_hidden", False)
         max_entries: int = self._validate_max_entries(args)
+        detail: bool = PathAccess.validate_bool(args, "detail", False)
+        sort_by: str = self._validate_sort_by(args)
+        reverse: bool = PathAccess.validate_bool(args, "reverse", False)
+        name_pattern: str | None = self._validate_name_pattern(args)
         target_stat: os.stat_result = await self._async_check_directory_target(
             rules, directory, display_name, supplied_path
         )
-        return DirectoryHandle(directory, target_stat), rules, include_hidden, max_entries
+        return (
+            DirectoryHandle(directory, target_stat),
+            rules,
+            include_hidden,
+            max_entries,
+            detail,
+            sort_by,
+            reverse,
+            name_pattern,
+            target_stat,
+        )
 
     async def _async_list_entries(
-        self, rules: PathRules, handle: DirectoryHandle, include_hidden: bool, max_entries: int
+        self,
+        rules: PathRules,
+        handle: DirectoryHandle,
+        include_hidden: bool,
+        max_entries: int,
+        detail: bool,
+        sort_by: str,
+        reverse: bool,
+        name_pattern: str | None,
     ) -> tuple[list[dict[str, Any]], bool, int]:
         """
         Scan the directory in a worker thread.
@@ -236,12 +292,16 @@ class ListDirectory(CodedTool):
         :param handle: The prepared (unopened) handle on the access-checked directory.
         :param include_hidden: Whether dot-prefixed names are included.
         :param max_entries: Maximum number of entries to return.
+        :param detail: Whether to include detailed metadata per entry.
+        :param sort_by: Criterion to sort entries by: 'name', 'modified', or 'size'.
+        :param reverse: Whether to reverse the sort order.
+        :param name_pattern: Glob pattern to filter entry names, or None.
         :return: A tuple of (entries, truncated, unreadable_count).
         """
         logger: Logger = getLogger(self.__class__.__name__)
         logger.info("ListDirectory: listing %s", handle.directory)
         entries, truncated, unreadable = await asyncio.to_thread(
-            self._list_entries, rules, handle, include_hidden, max_entries
+            self._list_entries, rules, handle, include_hidden, max_entries, detail, sort_by, reverse, name_pattern
         )
         logger.info(
             "ListDirectory: returned %d entries from %s (truncated=%s, unreadable=%d)",
@@ -420,12 +480,77 @@ class ListDirectory(CodedTool):
             raise ValueError(f"invalid_input: 'max_entries' must be at most {MAX_ENTRIES}, got {value}.")
         return value
 
+    @staticmethod
+    def _validate_sort_by(args: dict[str, Any]) -> str:
+        """
+        Return a validated sort_by value.
+
+        :param args: The tool argument dictionary.
+        :return: The validated sort_by value, or 'name' when omitted.
+        :raises ValueError: invalid_input when the value is not one of the accepted sort criteria.
+        """
+        value: Any = args.get("sort_by", "name")
+        if not isinstance(value, str) or value not in _VALID_SORT_BY:
+            raise ValueError(
+                f"invalid_input: 'sort_by' must be one of {sorted(_VALID_SORT_BY)}, got {value!r}."
+            )
+        return value
+
+    @staticmethod
+    def _validate_name_pattern(args: dict[str, Any]) -> str | None:
+        """
+        Return a validated name_pattern value, or None when omitted.
+
+        :param args: The tool argument dictionary.
+        :return: The glob pattern string, or None when the parameter is absent.
+        :raises ValueError: invalid_input when the value is not a non-empty string.
+        """
+        value: Any = args.get("name_pattern")
+        if value is None:
+            return None
+        if not isinstance(value, str) or not value.strip():
+            raise ValueError(f"invalid_input: 'name_pattern' must be a non-empty string, got {value!r}.")
+        return value
+
+    @staticmethod
+    def _build_target_info(directory: Path, target_stat: os.stat_result, detail: bool) -> dict[str, Any]:
+        """
+        Build the target metadata block for the listed directory.
+
+        The existence check observed target_stat, so this comes without an
+        additional filesystem call. Owner and group are deliberately left out
+        because they would expose local account names.
+
+        :param directory: The resolved directory that was listed.
+        :param target_stat: The stat result observed for the directory during precheck.
+        :param detail: Whether to include detailed metadata (modified, mode, is_executable).
+        :return: A dictionary with the target's metadata.
+        """
+        info: dict[str, Any] = {
+            "name": directory.name,
+            "type": "directory",
+            "size_bytes": None,
+        }
+        if detail:
+            info["modified"] = datetime.fromtimestamp(target_stat.st_mtime, tz=timezone.utc).isoformat()
+            info["mode"] = f"{stat_module.S_IMODE(target_stat.st_mode):04o}"
+            info["is_executable"] = False
+        return info
+
     # ------------------------------------------------------------------
     # Listing helpers
     # ------------------------------------------------------------------
 
     def _list_entries(
-        self, rules: PathRules, handle: DirectoryHandle, include_hidden: bool, max_entries: int
+        self,
+        rules: PathRules,
+        handle: DirectoryHandle,
+        include_hidden: bool,
+        max_entries: int,
+        detail: bool = False,
+        sort_by: str = "name",
+        reverse: bool = False,
+        name_pattern: str | None = None,
     ) -> tuple[list[dict[str, Any]], bool, int]:
         """
         Enumerate, filter, and describe the directory's entries.
@@ -447,6 +572,10 @@ class ListDirectory(CodedTool):
         :param handle: The prepared (unopened) handle on the access-checked directory.
         :param include_hidden: Whether dot-prefixed names are included.
         :param max_entries: Maximum number of entries to return.
+        :param detail: Whether to include detailed metadata per entry.
+        :param sort_by: Criterion to sort entries by: 'name', 'modified', or 'size'.
+        :param reverse: Whether to reverse the sort order.
+        :param name_pattern: Glob pattern to filter entry names, or None.
         :return: A tuple of (entries, truncated, unreadable_count).
         :raises ValueError: list_error when the directory cannot be opened, changed
                 identity since the access check, is not searchable, cannot be read,
@@ -465,12 +594,18 @@ class ListDirectory(CodedTool):
                 raise ValueError(
                     f"list_error: Permission denied listing '{directory}': the directory is not searchable."
                 )
-            names: list[str] = self._read_names(handle, rules, include_hidden)
-            return self._collect_entries(handle, rules, names, max_entries)
+            names: list[str] = self._read_names(handle, rules, include_hidden, name_pattern)
+            return self._collect_entries(handle, rules, names, max_entries, detail, sort_by, reverse)
         finally:
             handle.close()
 
-    def _read_names(self, handle: DirectoryHandle, rules: PathRules, include_hidden: bool) -> list[str]:
+    def _read_names(
+        self,
+        handle: DirectoryHandle,
+        rules: PathRules,
+        include_hidden: bool,
+        name_pattern: str | None = None,
+    ) -> list[str]:
         """
         Read the in-scope entry names through the handle, sorted, within the scan budget.
 
@@ -496,6 +631,7 @@ class ListDirectory(CodedTool):
         :param handle: The open handle on the listed directory.
         :param rules: The pre-parsed operator rules.
         :param include_hidden: Whether dot-prefixed names are kept.
+        :param name_pattern: Glob pattern to filter entry names, or None.
         :return: The in-scope entry names, sorted.
         :raises ValueError: list_error when the read fails or more than
                 MAX_SCAN_ENTRIES in-scope names are encountered.
@@ -520,6 +656,8 @@ class ListDirectory(CodedTool):
                         continue
                 elif rules.deny_reason(directory / name, name, is_directory) is not None:
                     continue
+                if name_pattern is not None and not fnmatch.fnmatch(name, name_pattern):
+                    continue
                 names.append(name)
                 if len(names) > MAX_SCAN_ENTRIES:
                     raise ValueError(
@@ -534,34 +672,71 @@ class ListDirectory(CodedTool):
         return names
 
     def _collect_entries(
-        self, handle: DirectoryHandle, rules: PathRules, names: list[str], max_entries: int
+        self,
+        handle: DirectoryHandle,
+        rules: PathRules,
+        names: list[str],
+        max_entries: int,
+        detail: bool = False,
+        sort_by: str = "name",
+        reverse: bool = False,
     ) -> tuple[list[dict[str, Any]], bool, int]:
         """
-        Describe the sorted names in order until the cap is filled, then look one qualifying entry ahead.
+        Describe the in-scope names and return them in the requested order, capped at max_entries.
 
-        Once the cap is filled, the tail is examined only until the next entry that
-        would have qualified (or could have, had its metadata been readable), which
-        sets truncated; nothing past the cap is returned and nothing past it is
-        counted — unreadable_entries covers the inspected window only. Because
-        denied names never reach this method, neither truncated nor the unreadable
-        count can reveal an entry the operator scoped out.
+        For sort_by='name' (the default), names arrive pre-sorted and entries are
+        described in order until the cap is filled, then one qualifying entry ahead
+        is examined to set truncated — the streaming approach.
+
+        For sort_by='modified' or sort_by='size', every in-scope entry must be
+        described first (its metadata is needed for the sort key), then the whole
+        set is sorted deterministically (ties break on name) and truncated. This
+        costs one lstat per in-scope entry regardless of max_entries, bounded by
+        MAX_SCAN_ENTRIES.
+
+        Because denied names never reach this method, neither truncated nor the
+        unreadable count can reveal an entry the operator scoped out.
 
         :param handle: The open handle on the listed directory.
         :param rules: The pre-parsed operator rules.
-        :param names: The in-scope entry names, sorted.
+        :param names: The in-scope entry names, sorted by name.
         :param max_entries: Maximum number of entries to return.
+        :param detail: Whether to include detailed metadata per entry.
+        :param sort_by: Sort criterion: 'name', 'modified', or 'size'.
+        :param reverse: Whether to reverse the sort order.
+        :return: A tuple of (entries, truncated, unreadable_count).
+        """
+        if sort_by == "name":
+            if reverse:
+                names = list(reversed(names))
+            return self._collect_entries_streaming(handle, rules, names, max_entries, detail)
+        return self._collect_entries_sorted(handle, rules, names, max_entries, detail, sort_by, reverse)
+
+    def _collect_entries_streaming(
+        self,
+        handle: DirectoryHandle,
+        rules: PathRules,
+        names: list[str],
+        max_entries: int,
+        detail: bool,
+    ) -> tuple[list[dict[str, Any]], bool, int]:
+        """
+        Describe entries in the given order until the cap is filled, then look one ahead.
+
+        :param handle: The open handle on the listed directory.
+        :param rules: The pre-parsed operator rules.
+        :param names: The in-scope entry names, in the desired output order.
+        :param max_entries: Maximum number of entries to return.
+        :param detail: Whether to include detailed metadata per entry.
         :return: A tuple of (entries, truncated, unreadable_count).
         """
         entries: list[dict[str, Any]] = []
         truncated: bool = False
         unreadable: int = 0
         for name in names:
-            described, failure = self._describe_entry(handle, rules, name)
+            described, failure = self._describe_entry(handle, rules, name, detail)
             if failure is not None:
                 if len(entries) >= max_entries:
-                    # Past the cap, an unreadable entry may well have qualified:
-                    # the listing is incomplete either way. Not counted — the tail
-                    # is not inspected beyond this decision.
                     truncated = True
                     break
                 unreadable += 1
@@ -569,14 +744,67 @@ class ListDirectory(CodedTool):
             if described is None:
                 continue
             if len(entries) >= max_entries:
-                # One more qualifying entry exists beyond the cap: flag it, never return it.
                 truncated = True
                 break
+            described.pop("_mtime", None)
+            described.pop("_size", None)
             entries.append(described)
         return entries, truncated, unreadable
 
+    def _collect_entries_sorted(
+        self,
+        handle: DirectoryHandle,
+        rules: PathRules,
+        names: list[str],
+        max_entries: int,
+        detail: bool,
+        sort_by: str,
+        reverse: bool,
+    ) -> tuple[list[dict[str, Any]], bool, int]:
+        """
+        Describe all in-scope entries, sort by the requested criterion, and truncate.
+
+        Sorting by 'modified' or 'size' requires knowing every entry's metadata
+        before the order can be determined. Ties break on name ascending.
+
+        For sort_by='modified', default order is newest first (descending timestamp),
+        matching ls -t. For sort_by='size', default order is largest first (descending
+        size), matching ls -S. reverse=True reverses the sort order while breaking
+        ties on name ascending.
+
+        :param handle: The open handle on the listed directory.
+        :param rules: The pre-parsed operator rules.
+        :param names: The in-scope entry names, sorted by name.
+        :param max_entries: Maximum number of entries to return.
+        :param detail: Whether to include detailed metadata per entry.
+        :param sort_by: Sort criterion: 'modified' or 'size'.
+        :param reverse: Whether to reverse the sort order.
+        :return: A tuple of (entries, truncated, unreadable_count).
+        """
+        described_all: list[tuple[dict[str, Any], float, int]] = []
+        unreadable: int = 0
+        for name in names:
+            described, failure = self._describe_entry(handle, rules, name, detail)
+            if failure is not None:
+                unreadable += 1
+                continue
+            if described is None:
+                continue
+            mtime: float = described.pop("_mtime", 0.0)
+            size: int = described.pop("_size", 0)
+            described_all.append((described, mtime, size))
+
+        if sort_by == "modified":
+            described_all.sort(key=lambda item: (item[1] if reverse else -item[1], item[0]["name"]))
+        else:  # sort_by == "size"
+            described_all.sort(key=lambda item: (item[2] if reverse else -item[2], item[0]["name"]))
+
+        truncated: bool = len(described_all) > max_entries
+        entries: list[dict[str, Any]] = [item[0] for item in described_all[:max_entries]]
+        return entries, truncated, unreadable
+
     def _describe_entry(
-        self, handle: DirectoryHandle, rules: PathRules, name: str
+        self, handle: DirectoryHandle, rules: PathRules, name: str, detail: bool = False
     ) -> tuple[dict[str, Any] | None, Exception | None]:
         """
         Classify one in-scope entry through the handle and check it against the pre-parsed rules.
@@ -590,6 +818,7 @@ class ListDirectory(CodedTool):
         :param handle: The open handle on the listed directory.
         :param rules: The pre-parsed operator rules.
         :param name: The entry name.
+        :param detail: Whether to include detailed metadata per entry.
         :return: A tuple of (entry_dict, failure). entry_dict is None when the entry
                 is omitted; failure is the exception when the entry's metadata could
                 not be read (the caller counts it) and None otherwise.
@@ -614,12 +843,23 @@ class ListDirectory(CodedTool):
             return None, exc
 
         if stat_module.S_ISLNK(entry_stat.st_mode) or self._is_junction(entry_stat):
-            return self._describe_symlink(handle, rules, name)
+            return self._describe_symlink(handle, rules, name, detail)
         entry_type, size_bytes, is_directory = self._classify_entry(entry_stat)
         if entry_type is None or rules.deny_reason(entry_path, name, is_directory) is not None:
             # Special file (FIFO/socket/device) or excluded by the rules: omitted silently.
             return None, None
-        return {"name": name, "type": entry_type, "size_bytes": size_bytes}, None
+        entry: dict[str, Any] = {
+            "name": name,
+            "type": entry_type,
+            "size_bytes": size_bytes,
+            "_mtime": entry_stat.st_mtime,
+            "_size": entry_stat.st_size if size_bytes is not None else 0,
+        }
+        if detail:
+            entry["modified"] = datetime.fromtimestamp(entry_stat.st_mtime, tz=timezone.utc).isoformat()
+            entry["mode"] = f"{stat_module.S_IMODE(entry_stat.st_mode):04o}"
+            entry["is_executable"] = bool(entry_stat.st_mode & 0o111) if entry_type == "file" else False
+        return entry, None
 
     @staticmethod
     def _is_junction(entry_stat: os.stat_result) -> bool:
@@ -655,7 +895,7 @@ class ListDirectory(CodedTool):
         return None, None, False
 
     def _describe_symlink(
-        self, handle: DirectoryHandle, rules: PathRules, name: str
+        self, handle: DirectoryHandle, rules: PathRules, name: str, detail: bool = False
     ) -> tuple[dict[str, Any] | None, Exception | None]:
         """
         Describe a symlink entry, admitting it only when its target is a regular file or a directory.
@@ -672,6 +912,7 @@ class ListDirectory(CodedTool):
         :param handle: The open handle on the listed directory.
         :param rules: The pre-parsed operator rules.
         :param name: The symlink's name.
+        :param detail: Whether to include detailed metadata per entry.
         :return: A tuple of (entry_dict or None, None). A symlink never counts as
                 unreadable: the entry itself was read, and counting an unusable
                 target would reveal that a link to something exists.
@@ -698,4 +939,24 @@ class ListDirectory(CodedTool):
 
         if rules.deny_reason(resolved, name, is_directory) is not None:
             return None, None
-        return {"name": name, "type": "symlink", "size_bytes": None}, None
+
+        try:
+            link_stat: os.stat_result = handle.lstat(name)
+            mtime: float = link_stat.st_mtime
+            mode_str: str = f"{stat_module.S_IMODE(link_stat.st_mode):04o}"
+        except OSError:
+            mtime = 0.0
+            mode_str = "0777"
+
+        entry: dict[str, Any] = {
+            "name": name,
+            "type": "symlink",
+            "size_bytes": None,
+            "_mtime": mtime,
+            "_size": 0,
+        }
+        if detail:
+            entry["modified"] = datetime.fromtimestamp(mtime, tz=timezone.utc).isoformat()
+            entry["mode"] = mode_str
+            entry["is_executable"] = bool(target_stat.st_mode & 0o111) if not is_directory else False
+        return entry, None

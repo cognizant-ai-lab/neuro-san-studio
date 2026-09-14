@@ -331,7 +331,7 @@ Supports searching for images, audio files (mp3, ogg, flac, wav), and video file
     # the tool refuses every call (deny-by-default).
     "list_directory": {
         "class": "neuro_san_studio.coded_tools.file_management.list_directory.ListDirectory",
-        "description": "Lists the files and subdirectories of a local directory (name, type, size), sorted by name. Access is restricted by operator-configured allow/block lists for paths and extensions; the LLM cannot influence those lists. Entries outside the allowed scope are omitted from the listing.",
+        "description": "Lists the files and subdirectories of a local directory. By default each entry has name, type, and size_bytes sorted by name. Use detail=true for ls -l style metadata (modified, mode, is_executable). Results can be sorted by name, modified time, or size, optionally reversed, and filtered by a glob pattern. Access is restricted by operator-configured allow/block lists; entries outside the allowed scope are omitted.",
         "parameters": {
             "type": "object",
             "properties": {
@@ -346,6 +346,22 @@ Supports searching for images, audio files (mp3, ogg, flac, wav), and video file
                 "max_entries": {
                     "type": "int",
                     "description": "Maximum number of entries to return. Defaults to 500; values above 10000 are rejected. The result's truncated flag reports whether more entries exist beyond the cap."
+                },
+                "detail": {
+                    "type": "boolean",
+                    "description": "Set true to include per-entry modified (ISO 8601 UTC), mode (octal), and is_executable fields. Defaults to false."
+                },
+                "sort_by": {
+                    "type": "string",
+                    "description": "Sort entries by 'name' (default, A-Z), 'modified' (newest first), or 'size' (largest first). Ties break on name."
+                },
+                "reverse": {
+                    "type": "boolean",
+                    "description": "Set true to reverse the sort order. Defaults to false."
+                },
+                "name_pattern": {
+                    "type": "string",
+                    "description": "Glob pattern (fnmatch syntax, e.g. '*.py') to filter entry names. Applied after access rules."
                 }
             },
             "required": ["directory_path"]
