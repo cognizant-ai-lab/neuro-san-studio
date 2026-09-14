@@ -1168,6 +1168,55 @@ class TestSafeFetch(TestCase):  # pylint: disable=too-many-public-methods
         self.assertIn("http://192.168.1.1/x", error)
         self.assertEqual(calls, [("GET", "http://example.com/start")])
 
+    def test_fetch_raw_https_to_http_downgrade_hop_raises_and_is_never_requested(self) -> None:
+        """Tests that a redirect from an https hop to an http URL is refused before the http request is made.
+
+        The URL itself can carry a bearer secret (a presigned query string, say), and
+        the Location is server-controlled, so a downgrade hop could deliberately put
+        that secret on a plaintext connection.
+        """
+        hops = [
+            self._redirect(302, "http://example.com/plain"),
+            self._make_hop_response(200, {"Content-Type": "text/plain"}, b"leaked"),
+        ]
+        session, calls = self._make_chain_session(hops)
+        with self.assertRaises(ValueError) as ctx:
+            asyncio.run(SafeFetch.fetch_raw("https://example.com/start", session))
+        error = str(ctx.exception)
+        self.assertIn("url_not_allowed", error)
+        self.assertIn("downgrade", error)
+        self.assertEqual(calls, [("GET", "https://example.com/start")])
+
+    def test_fetch_raw_http_to_https_upgrade_hop_is_followed(self) -> None:
+        """Tests that an http -> https hop (the common canonicalisation redirect) is followed normally."""
+        hops = [
+            self._redirect(301, "https://example.com/start"),
+            self._make_hop_response(200, {"Content-Type": "text/plain"}, b"secure"),
+        ]
+        session, calls = self._make_chain_session(hops)
+        body: str = asyncio.run(SafeFetch.fetch_raw("http://example.com/start", session))
+        self.assertEqual(body, "secure")
+        self.assertEqual(calls, [("GET", "http://example.com/start"), ("GET", "https://example.com/start")])
+
+    def test_fetch_raw_unparseable_location_raises_url_not_allowed(self) -> None:
+        """Tests that a Location urljoin itself cannot parse fails closed with the documented error, not a bare one.
+
+        urllib raises ValueError("Invalid IPv6 URL") for an unmatched bracket; that
+        must surface as url_not_allowed naming the hop, like every other bad target.
+        """
+        hops = [
+            self._redirect(302, "http://[::1/x"),
+            self._make_hop_response(200, {"Content-Type": "text/plain"}, b"never"),
+        ]
+        session, calls = self._make_chain_session(hops)
+        with self.assertRaises(ValueError) as ctx:
+            asyncio.run(SafeFetch.fetch_raw("http://example.com/start", session))
+        error = str(ctx.exception)
+        self.assertIn("url_not_allowed", error)
+        self.assertIn("failed validation", error)
+        self.assertIn("http://[::1/x", error)
+        self.assertEqual(calls, [("GET", "http://example.com/start")])
+
     def test_fetch_raw_redirect_to_blocked_domain_raises(self) -> None:
         """Tests that the caller's blocked_domains apply to a redirect hop, not just the starting URL."""
         hops = [

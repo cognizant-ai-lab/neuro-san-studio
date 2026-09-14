@@ -59,20 +59,16 @@ MAX_RESPONSE_BYTES: int = 50 * 1024 * 1024  # 50 MB
 # Read size per iteration when streaming a response body.
 DOWNLOAD_CHUNK_BYTES: int = 64 * 1024
 TIMEOUT_SECONDS: int = 15
-# Maximum number of 3xx hops followed per fetch before giving up with
-# url_not_allowed. The chain MUST be bounded: a redirect loop (A -> B -> A ...) or
-# an arbitrarily long chain would otherwise let a remote server drive an unbounded
-# number of requests from this host (a DoS vector, and a cheap way to probe our
-# SSRF policy one hop at a time). 5 is deliberately far below the ~20 browsers
-# tolerate: content fetching only needs the common legitimate chains, and
-# http -> https, bare-host -> www canonicalisation, plus a moved page fit within
-# it with room to spare. Note the wall-clock cost: open_session applies
-# TIMEOUT_SECONDS per request, not per chain, so a hostile server slow-dripping
-# 3xx answers can hold one chain for up to (MAX_REDIRECTS + 1) * TIMEOUT_SECONDS
-# (90 s at the current values) before the cap fires, and one WebFetch call runs
-# up to three chains (HEAD probe, GET fallback, then the content fetch). That is
-# bounded, and it is the price of re-validating each hop as its own request; keep
-# it in mind before raising either constant.
+# Maximum number of 3xx hops followed per fetch before giving up with url_not_allowed.
+# The chain MUST be bounded: a loop (A -> B -> A ...) or an arbitrarily long chain
+# would otherwise let a remote server drive an unbounded number of requests from this
+# host (a DoS vector, and a cheap way to probe our SSRF policy one hop at a time).
+# 5 is far below the ~20 browsers tolerate: http -> https, bare-host -> www and a
+# moved page fit within it with room to spare. Wall-clock cost: open_session applies
+# TIMEOUT_SECONDS per request, not per chain, so a server slow-dripping 3xx answers
+# can hold one chain for (MAX_REDIRECTS + 1) * TIMEOUT_SECONDS (90 s today), and one
+# WebFetch call runs up to three chains (HEAD probe, GET fallback, content fetch).
+# Bounded, and the price of re-validating each hop; keep it in mind before raising either.
 MAX_REDIRECTS: int = 5
 # Generic "download" media types that carry no real format information. When a server
 # declares one of these (or no Content-Type at all), is_pdf falls back to sniffing
@@ -111,8 +107,8 @@ class SafeFetch:
     target is re-validated with validate_url (including the caller's domain rules)
     before it is requested; a hop that fails validation, a 3xx without a Location,
     or a chain longer than MAX_REDIRECTS raises url_not_allowed
-    (see _open_following_redirects). Sessions store no cookies (DummyCookieJar),
-    so an https -> http hop cannot replay a cookie set on an earlier hop.
+    (see _open_following_redirects). An https -> http downgrade hop is refused, and
+    sessions store no cookies (DummyCookieJar).
     The byte cap (MAX_RESPONSE_BYTES) is enforced both via the Content-Length header
     (pre-check) and on the actual streamed bytes, for text fetches and PDF downloads
     alike, so a server that lies about or omits Content-Length cannot deliver an
@@ -140,9 +136,8 @@ class SafeFetch:
 
         The session stores no cookies (DummyCookieJar). SafeFetch is a stateless
         content fetcher, and a cookie set by one response must never be replayed on
-        a later request: an https -> http redirect hop would otherwise put a
-        non-Secure cookie on the wire, and unrelated URLs fetched through one RAG
-        session would leak state between hosts.
+        a later request: other hops of a redirect chain and unrelated URLs fetched
+        through one RAG session would otherwise share state.
 
         :return: A new ClientSession whose connector validates every resolved
                  address and disables DNS caching, and which stores no cookies. The
@@ -159,11 +154,9 @@ class SafeFetch:
         user_agent: str | None = os.environ.get("USER_AGENT")
         if user_agent:
             headers = {"User-Agent": user_agent}
-        # DummyCookieJar: never store Set-Cookie. Without it aiohttp keeps a real
-        # CookieJar per session and replays matching cookies on later requests,
-        # including over an http hop that follows an https one (see
-        # _open_following_redirects), which would put a non-Secure cookie on the
-        # wire. Nothing in SafeFetch needs cookies.
+        # DummyCookieJar: never store Set-Cookie. aiohttp's default CookieJar would
+        # replay matching cookies on later requests, including other hops of a redirect
+        # chain and unrelated URLs fetched through one RAG session; nothing here needs them.
         session: ClientSession = ClientSession(
             timeout=timeout, connector=connector, headers=headers, cookie_jar=DummyCookieJar()
         )
@@ -436,33 +429,31 @@ class SafeFetch:
         """
         Issue a request and follow up to MAX_REDIRECTS redirects, re-validating every hop.
 
-        aiohttp's own allow_redirects=True is deliberately NOT used. It hands each
-        Location straight to the connector, so the URL-level policy that was applied
-        to the caller's URL (http/https scheme, hostname format, localhost/IP-literal
-        rejection, and the caller's allowed_domains/blocked_domains) would never see
-        the redirect target, and an open redirect on an allowed site would become an
+        aiohttp's own allow_redirects=True is deliberately NOT used: it hands each
+        Location straight to the connector, so the URL-level policy applied to the
+        caller's URL (http/https scheme, hostname format, localhost/IP-literal
+        rejection, the caller's allowed_domains/blocked_domains) would never see the
+        redirect target, and an open redirect on an allowed site would become an
         SSRF/policy bypass. Every hop here is therefore requested with
-        allow_redirects=False and its Location is treated as a brand-new URL: it is
-        resolved against the hop that issued it (relative Locations are legal per
-        RFC 7231), then passed through validate_url with the SAME domain rules as the
-        original request. Connection-level safety still holds per hop without any
-        extra work: each hop goes through the same protected session, whose
-        GlobalOnlyResolver checks the resolved address of every connection
-        (anti DNS-rebinding), and validate_url rejects IP literals that would bypass
-        that resolver.
+        allow_redirects=False and its Location is treated as a brand-new URL: resolved
+        against the hop that issued it (relative Locations are legal per RFC 7231),
+        then passed through validate_url with the SAME domain rules as the original
+        request. Connection-level safety holds per hop for free: every hop uses the
+        same protected session, whose GlobalOnlyResolver checks each connection's
+        resolved address (anti DNS-rebinding), and validate_url rejects IP literals.
 
         The context manager yields a (response, final_url) pair: the first non-3xx
-        response in the chain, and the validated URL it was requested from, which may
-        differ from url. Callers apply raise_for_status and the size checks to the
-        response exactly as they would to a direct response, and raise_for_status is
-        unaffected by 3xx (it only covers 4xx/5xx), which is why the redirect handling
-        must be explicit here. final_url lets get_content_type classify a resource by
-        the suffix of the URL it actually lives at.
+        response in the chain and the validated URL it was requested from, which may
+        differ from url (get_content_type classifies by that URL's suffix). Callers
+        apply raise_for_status and the size checks to the response exactly as for a
+        direct response; raise_for_status ignores 3xx (it only covers 4xx/5xx), which
+        is why the redirect handling must be explicit here.
 
-        An https -> http downgrade hop is allowed. The session stores no cookies
-        (open_session uses DummyCookieJar) and sends no credentials, so a downgrade
-        exposes nothing beyond the request itself, and refusing it would break
-        legitimate chains on sites that still serve content over http.
+        An https -> http downgrade hop is refused. The session stores no cookies
+        (open_session uses DummyCookieJar) and sends no credentials, but the URL
+        itself can carry a bearer secret such as a presigned query string, and the
+        Location is chosen by the remote server, so following a downgrade could put
+        that secret on a plaintext connection. http -> https upgrades are followed.
 
         :param session: A session created by open_session (enforces the SSRF policy).
         :param method: The HTTP method for the first hop; "HEAD" or "GET".
@@ -472,9 +463,10 @@ class SafeFetch:
         :return: An async context manager yielding (response, final_url): the final (non-3xx)
                  aiohttp response and the validated URL string it was fetched from.
         :raises ValueError: url_not_allowed when a 3xx carries no Location, when a
-                redirect target fails validate_url (non-http(s) scheme, malformed or
-                over-long URL, localhost/private/reserved host, domain rules), or when
-                the chain exceeds MAX_REDIRECTS.
+                redirect target cannot be parsed or fails validate_url (non-http(s)
+                scheme, malformed or over-long URL, localhost/private/reserved host,
+                domain rules), when a hop would downgrade https to http, or when the
+                chain exceeds MAX_REDIRECTS.
         """
         current_url: str = url
         current_method: str = method
@@ -501,22 +493,24 @@ class SafeFetch:
                 # 304 Not Modified and any other 3xx without a Location cannot be
                 # followed. Refuse rather than fall through and hand the redirect
                 # page's own body to the caller as if it were the resource.
-                raw_location: str | None = response.headers.get("Location")
-                location: str = raw_location.strip() if raw_location else ""
+                location: str = (response.headers.get("Location") or "").strip()
                 if not location:
                     raise ValueError(
                         f"url_not_allowed: '{url}' answered {status} at '{current_url}' without a Location header."
                     )
-                # Resolve relative Locations ("/new/path", "//host/path") against the
-                # hop that issued them. An absolute Location comes back unchanged from
-                # urljoin, including one with a foreign scheme (ftp://example.com/...), which
-                # validate_url then rejects below.
-                next_url: str = urljoin(current_url, location)
             # The hop's response context has now been exited, so its connection is
             # released (back to the pool, or closed) before the next request is made
             # instead of being held open across the whole chain.
+            # next_url starts as the raw Location so the error can name it even if urljoin fails.
+            next_url: str = location
             try:
-                current_url = SafeFetch.validate_url(next_url, allowed_domains, blocked_domains)
+                # Resolve relative Locations ("/new/path", "//host/path") against the
+                # hop that issued them; an absolute Location comes back unchanged,
+                # including a foreign scheme (ftp://example.com/...) that validate_url
+                # then rejects. urljoin parses the server-controlled value and can itself
+                # raise ValueError (an unmatched IPv6 bracket), hence inside this try.
+                next_url = urljoin(current_url, location)
+                validated_next: str = SafeFetch.validate_url(next_url, allowed_domains, blocked_domains)
             except ValueError as exc:
                 # validate_url phrases its errors (invalid_input / url_too_long /
                 # url_not_allowed) from the perspective of a caller-supplied URL, but a
@@ -527,6 +521,16 @@ class SafeFetch:
                 raise ValueError(
                     f"url_not_allowed: '{url}' redirects to '{next_url}' ({status}), which failed validation: {exc}"
                 ) from exc
+            # Refuse https -> http downgrade hops. The session stores no cookies and
+            # sends no credentials, but the URL itself can carry a bearer secret (a
+            # presigned S3/Azure query string), and the server chooses the Location,
+            # so a downgrade hop could deliberately put that secret on plaintext.
+            if urlparse(current_url).scheme.lower() == "https" and urlparse(validated_next).scheme.lower() == "http":
+                raise ValueError(
+                    f"url_not_allowed: '{url}' redirects from https '{current_url}' to http '{validated_next}' "
+                    f"({status}); downgrade redirects are not followed."
+                )
+            current_url = validated_next
             redirects_followed += 1
             # 303 See Other means "fetch the result with GET" whatever the original
             # method was (RFC 9110 section 15.4.4); 301/302/307/308 keep the method.
@@ -652,11 +656,10 @@ class SafeFetch:
                                 URL and to every redirect hop.
         :return: A (content_type, prefetched_body, final_url) tuple. prefetched_body is
                  the text body only on the GET-fallback text-like path, otherwise None.
-                 final_url is the URL the returned headers came from after any
-                 redirects (the requested URL when there were none); callers should
-                 classify by its suffix rather than the requested URL's, so a link that
-                 redirects to a .pdf served as a generic download type is still parsed
-                 as a PDF.
+                 final_url is the URL the headers came from after any redirects (the
+                 requested URL when there were none); classify by its suffix, not the
+                 requested URL's, so a redirect to a .pdf served as a generic download
+                 type is still parsed as a PDF.
         :raises ValueError: url_not_allowed when a redirect hop fails validation or the
                 chain exceeds MAX_REDIRECTS, or response_too_large when the
                 Content-Length header or the streamed fallback text body exceeds
