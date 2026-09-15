@@ -724,16 +724,15 @@ don’t need to redefine it in the agent network — just reference it by name.
 ##### Coded Tool Example
 
 ```json
-"rag_retriever": {
-  "class": "rag.Rag",
-  "description": "Retrieve information on the given urls",
+"slack_tool": {
+  "class": "slack.Slack",
+  "description": "Retrieve messages from the given slack channel",
   "parameters": {
     "type": "object",
     "properties": {
-      "urls": { "type": "array", "items": { "type": "string" } },
-      "query": { "type": "string" }
+      "channel_name": { "type": "string", "description": "slack channel to get messages from" }
     },
-    "required": ["urls", "query"]
+    "required": ["channel_name"]
   }
 }
 ```

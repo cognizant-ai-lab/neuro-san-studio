@@ -1245,25 +1245,18 @@ To use tools from toolbox in your agent network, simply call them with field `to
         Example:
 
         ```json
-            "rag_retriever": {
-                "class": "rag.Rag",
-                "description": "Retrieve information on the given urls",
+            "slack_tool": {
+                "class": "slack.Slack",
+                "description": "Retrieve messages from the given slack channel",
                 "parameters": {
                     "type": "object",
                     "properties": {
-                        "urls": {
-                            "type": "array",
-                            "items": {
-                                "type": "string"
-                            },
-                            "description": "List of url to retrieve info from"
-                        },
-                        "query": {
+                        "channel_name": {
                             "type": "string",
-                            "description": "Query for retrieval"
+                            "description": "slack channel to get messages from"
                         }
                     },
-                    "required": ["urls", "query"]
+                    "required": ["channel_name"]
                 },
             }
         ```

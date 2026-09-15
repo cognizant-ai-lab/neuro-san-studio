@@ -29,6 +29,16 @@ beautifulsoup4>=4.12.0
 # For MCP servers and clients
 langchain-mcp-adapters>=0.1.7,<1.0
 
+# Both of these used to arrive only transitively, via langchain-community (removed
+# in #1401), so they must be declared here now:
+#   - langchain-text-splitters is imported directly by neuro_san_studio/coded_tools/base_rag.py
+#     (RecursiveCharacterTextSplitter).
+#   - numpy is an optional dependency of langchain-core that its InMemoryVectorStore needs at
+#     query time (cosine_similarity raises ImportError without it), which every in-memory RAG
+#     tool in this repo relies on.
+langchain-text-splitters>=1.1.2,<2.0
+numpy>=2.1.0,<3.0
+
 # Neuro-SAN now requires explicit installation of langchain LLM providers' libs
 langchain-openai>=1.1.9,<2.0
 langchain-anthropic>=1.4.3,<2.0
@@ -41,8 +51,6 @@ langchain-google-genai>=4.2.2,<5.0
 # (even 1.6.0 only requires anthropic>=0.120), so bumping langchain-anthropic
 # cannot express this constraint.
 anthropic>=0.124.0,<1.0
-
-langchain-community>=0.4.2
 
 # For rich logging
 rich>=14.2.0
