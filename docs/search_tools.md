@@ -8,8 +8,9 @@ Neuro SAN offers search capability via the following search engines:
 4. [Google Custom Search Engine](#google-custom-search-engine) — Search using Google Custom Search Engine
 5. [Google Serper](#google-serper) — Search using Google Serper API with advanced filtering
 6. [OpenAI Search](#openai-search) — Web search via OpenAI's search tool
-7. [Tavily Search](#tavily-search) — AI-optimized search using Tavily API
-8. [You.com Search](#youcom-search) — Web search, content extraction, and AI research via You.com MCP server
+7. [Serply Search](#serply-search) — Google web, News and Scholar results via the Serply MCP server
+8. [Tavily Search](#tavily-search) — AI-optimized search using Tavily API
+9. [You.com Search](#youcom-search) — Web search, content extraction, and AI research via You.com MCP server
 
 See also: [Comparison of Search Tools](#comparison-of-search-tools)
 
@@ -160,6 +161,53 @@ _Example Usage in Neuro San Studio:_
 - [openai\_web\_search.hocon](../registries/tools/openai_web_search.hocon),
 - available as a tool in [toolbox\_info.hocon](../neuro_san_studio/toolbox/toolbox_info.hocon)
 
+## Serply Search
+
+Serply (serply.io) is a third-party Google Search API service. Like Serper, it does not run a search engine of its
+own: it returns real Google Search results as structured JSON so that you do not have to scrape Google yourself.
+It integrates with Neuro SAN via the Model Context Protocol (MCP), exposing its search verticals as separate tools
+through a single MCP server at `https://api.serply.io/mcp`:
+
+- **`google_search`** — Google organic web results, with geographic and language localization.
+- **`google_news_search`** — Google News results, for current events and recent reporting.
+- **`google_scholar_search`** — Google Scholar results, for academic papers and their citation counts.
+
+Because Serply returns real Google results, Google's own query syntax works as written: quoted phrases, `OR`
+groups, `-exclusions`, `site:`, `filetype:`, and `before:`/`after:` bounds can be passed through in the query
+rather than translated onto vendor-specific filter parameters.
+
+The same server also exposes `bing_search`, `google_maps_search`, `google_video_search`, `google_jobs_search`,
+`amazon_product_search`, `scrape_url`, and a set of Reddit tools (`reddit_post`, `reddit_post_comments`,
+`reddit_subreddit_about`, `reddit_subreddit_posts`, `reddit_user_posts`). Add any of them to the `tools` list to
+enable them.
+
+![Serply](./images/Serply.png)
+
+_Getting a Free API Key:_
+
+1. Go to [https://serply.io](https://serply.io)
+2. Sign up — no credit card required
+3. You automatically receive **2,500 free credits** in the first 30 days
+4. Set your API key using the `SERPLY_API_KEY` environment variable
+5. The API reference is at [https://serply.io/docs](https://serply.io/docs)
+
+_MCP Configuration:_
+
+Serply is integrated as an MCP server. To enable it, uncomment the Serply section in
+[mcp\_info.hocon](../neuro_san_studio/mcp/mcp_info.hocon)
+and set the `SERPLY_API_KEY` environment variable.
+
+Serply authenticates with a bare `X-Api-Key` header rather than `Authorization: Bearer`, which is why its block in
+[mcp\_info.hocon](../neuro_san_studio/mcp/mcp_info.hocon) sets `X-Api-Key` directly.
+
+The server's own documentation, including the full tool list and their arguments, is at
+[https://serply.io/mcp](https://serply.io/mcp).
+
+_Example Usage in Neuro San Studio:_
+
+- [serply\_search.hocon](../registries/tools/serply_search.hocon),
+- see also [MCP server configuration](../neuro_san_studio/mcp/mcp_info.hocon)
+
 ## Tavily Search
 
 Tavily Search is a developer-focused search API designed specifically for LLMs, AI agents, and automation. It is
@@ -242,6 +290,7 @@ _Example Usage in Neuro San Studio:_
 | Google | Lets you build a search engine tailored to specific websites or topics | Yes | Google’s index (simpler ranking, limited personalization) | Yes |
 | Serper | Third-party Google Search API service that scrapes Google Search results in JSON format | No | Real Google Search results via scraping | Yes |
 | OpenAI | Built-in web search system used by ChatGP | No | Uses Bing API + other sources | No |
+| Serply | Third-party Google Search API service that returns Google web, News and Scholar results via MCP | No | Real Google Search results via scraping | Yes |
 | Tavily | Search API designed specifically for LLMs, AI agents, and automation | No | Mix of search providers + own crawlers + extraction pipeline | Yes |
 | You.com | Developer-focused search platform with web search, content extraction, and AI research via MCP | No | Own search index + multiple web sources + AI synthesis | Yes |
 <!-- pyml enable line-length -->
@@ -259,6 +308,7 @@ The cost and rate limit comparison is provided in the table below.
 | Google Search | Yes<br>100 searches/day | Yes<br>$5 for 1,000 queries<br>10,000 queries/day |
 | Google Serper | Yes<br>2,500 queries (one-time) | Yes<br>$50, 50k queries, 50 queries/sec |
 | OpenAI Search | Yes (Internal to ChatGPT)<br>Check OpenAI rate limits | Yes (Internal to ChatGPT)<br>Check OpenAI rate limits |
+| Serply Search | Yes<br>2,500 credits in the first 30 days<br>No credit card required | Yes<br>Prepaid packs that never expire, from $5 for 2,500 credits ($2.00 per 1,000 requests) down to $0.75 per 1,000 requests<br>1 credit = 1 successful uncached request |
 | Tavily Search | Yes<br>1,000 API credits/month | Yes<br>Pay-as-you-go: $0.008 per credit<br>Monthly plans: $0.0075 - $0.005 per credit |
 | You.com Search | Yes<br>$100 in free credits<br>No credit card required | Yes<br>Web Search: $5 per 1,000 calls<br>Contents: $1 per 1,000 pages<br>Research: from ~$6.50 per 1,000 calls |
 <!-- pyml enable line-length -->
@@ -269,5 +319,6 @@ Links for cost and rate limit comparison data:
 1. [Brave Search](https://brave.com/search/api/)
 2. [Google Search](https://support.google.com/programmable-search/answer/9069107?hl=en)
 3. [Google Serper](https://serper.dev/)
-4. [Tavily Search](https://www.tavily.com/#pricing)
-5. [You.com Search](https://you.com/pricing)
+4. [Serply Search](https://serply.io/pricing)
+5. [Tavily Search](https://www.tavily.com/#pricing)
+6. [You.com Search](https://you.com/pricing)

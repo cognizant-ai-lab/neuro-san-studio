@@ -150,6 +150,12 @@
     # Refer to ``docs/examples/tools/persistent_memory_mem0.md`` for a usage example.
     "tools/persistent_memory_mem0.hocon": false,
 
+    # Requirement to use this agent network:
+    # - neuro-san>=0.6.24
+    # - SERPLY_API_KEY. Get one with 2,500 free credits (no credit card required) at https://serply.io
+    # - Use MCP_SERVERS_INFO_FILE for authentication. See ../../neuro_san_studio/mcp/mcp_info.hocon and ../../docs/user_guide.md#authentication
+    "tools/serply_search.hocon": false,
+
     # To use this agent network, follow the instructions in ./docs/examples/visual_question_answering.md
     "tools/visual_question_answering.hocon": false,
 
