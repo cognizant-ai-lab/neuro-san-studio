@@ -130,6 +130,52 @@ class TestBulkImportResult(unittest.TestCase):
 
         self.assertEqual(bulk.skipped_preexisting, 0)
 
+    def test_mixed_import_modes_recognize_the_same_file(self) -> None:
+        """
+        A file recorded registries-relative by one mode and target-relative by another is one file.
+
+        `ns import foo.hocon bundle.zip` copies registries/foo.hocon via the first input, which
+        records it as "foo.hocon", then skips it via the zip, which records "registries/foo.hocon".
+        That skip is a within-batch re-offer, not prior state.
+        """
+        from_hocon: ImportResult = ImportResult(
+            network_name="foo",
+            hocon_path="foo.hocon",
+            copied_files=["foo.hocon"],
+        )
+        from_zip: ImportResult = ImportResult(
+            network_name="bundle",
+            hocon_path="bundle.zip",
+            skipped_files=["registries/foo.hocon"],
+        )
+        bulk: BulkImportResult = BulkImportResult(results=[from_hocon, from_zip])
+
+        self.assertEqual(bulk.skipped, 1)
+        self.assertEqual(bulk.skipped_preexisting, 0)
+
+    def test_mixed_import_modes_in_the_other_order_still_match(self) -> None:
+        """
+        The zip landing the file first and the bare HOCON skipping it second is also a re-offer.
+
+        A genuinely pre-existing sibling in the same batch must still be counted, so the
+        canonical comparison collapses only true duplicates.
+        """
+        from_zip: ImportResult = ImportResult(
+            network_name="bundle",
+            hocon_path="bundle.zip",
+            copied_files=["registries/foo.hocon", "coded_tools/foo/tool.py"],
+            skipped_files=["registries/other.hocon"],
+        )
+        from_hocon: ImportResult = ImportResult(
+            network_name="foo",
+            hocon_path="foo.hocon",
+            skipped_files=["foo.hocon"],
+        )
+        bulk: BulkImportResult = BulkImportResult(results=[from_zip, from_hocon])
+
+        self.assertEqual(bulk.skipped, 2)
+        self.assertEqual(bulk.skipped_preexisting, 1)
+
     def test_empty_batch_has_no_preexisting_skips(self) -> None:
         """
         An empty batch reports zero without tripping over empty aggregates.

@@ -62,17 +62,22 @@ class BulkImportResult:
         a directory the batch copied (a package dependency lands via copytree under the
         directory's display) was also delivered by the batch and is excluded.
 
+        Displays are compared in canonical target-relative form: a registry HOCON imported by
+        name is recorded as ``foo.hocon`` while the same file inside a zip is recorded as
+        ``registries/foo.hocon``, so a batch mixing import modes would otherwise report its
+        own re-offer as pre-existing.
+
         :return: The count of distinct skipped display paths that the batch neither copied
             directly nor delivered inside a copied directory.
         """
         copied_in_batch: Set[str] = set()
         for result in self.results:
             for copied_file in result.copied_files:
-                copied_in_batch.add(copied_file)
+                copied_in_batch.add(ImportResult.canonical_display(copied_file))
         distinct_skips: Set[str] = set()
         for result in self.results:
             for skipped_file in result.skipped_files:
-                distinct_skips.add(skipped_file)
+                distinct_skips.add(ImportResult.canonical_display(skipped_file))
         count: int = 0
         for skipped_file in distinct_skips:
             if skipped_file in copied_in_batch:
@@ -87,8 +92,8 @@ class BulkImportResult:
         """
         Whether a skipped display path lies inside a directory display the batch copied.
 
-        :param skipped_file: The skipped file's display path, e.g. ``"coded_tools/pkg/helper.py"``.
-        :param copied_in_batch: Every display path the batch recorded as copied.
+        :param skipped_file: The skipped file's canonical display path, e.g. ``"coded_tools/pkg/helper.py"``.
+        :param copied_in_batch: Every display path the batch recorded as copied, canonical form.
         :return: True when some copied display is a directory prefix of ``skipped_file``.
         """
         for copied_file in copied_in_batch:

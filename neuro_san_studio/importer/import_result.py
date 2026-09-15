@@ -18,7 +18,9 @@
 
 from dataclasses import dataclass
 from dataclasses import field
+from typing import ClassVar
 from typing import List
+from typing import Tuple
 
 
 @dataclass
@@ -44,3 +46,30 @@ class ImportResult:  # pylint: disable=too-many-instance-attributes
     # in the manifest, and because skipped (already-present) HOCONs still need their key
     # ensured in the manifest if the import had to register a new entry for it.
     manifest_entries: List[str] = field(default_factory=list)
+
+    # Display-path convention for copied_files / skipped_files. Everything the importer records
+    # is relative to the target project root ("coded_tools/pkg/tool.py", or "registries/x.hocon"
+    # for a zip entry) EXCEPT registry HOCONs delivered by name, which are recorded relative to
+    # registries/ ("basic/music_nerd.hocon") because that is the form the manifest and the CLI
+    # speak. Cross-mode comparisons must therefore go through canonical_display first. This is
+    # also the zip whitelist: the importer aliases it so the two lists cannot drift apart.
+    TARGET_ROOTS: ClassVar[Tuple[str, ...]] = ("registries/", "coded_tools/", "middleware/", "skills/", "mcp/")
+
+    @staticmethod
+    def canonical_display(display: str) -> str:
+        """
+        Return a recorded display path in target-relative form.
+
+        A display that already starts with one of the target's top-level roots is target-relative
+        and comes back unchanged; anything else is a registries-relative HOCON name and gains the
+        ``registries/`` prefix. Batches mixing import modes need this: ``ns import foo.hocon
+        bundle.zip`` records the very same target file as ``foo.hocon`` from the first input and
+        ``registries/foo.hocon`` from the second.
+
+        :param display: A path as recorded in ``copied_files`` or ``skipped_files``.
+        :return: The same path expressed relative to the target project root.
+        """
+        for root in ImportResult.TARGET_ROOTS:
+            if display.startswith(root):
+                return display
+        return "registries/" + display
