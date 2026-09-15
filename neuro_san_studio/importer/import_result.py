@@ -66,6 +66,12 @@ class ImportResult:  # pylint: disable=too-many-instance-attributes
         bundle.zip`` records the very same target file as ``foo.hocon`` from the first input and
         ``registries/foo.hocon`` from the second.
 
+        The inference rests on registry group directories never being named after a
+        project root (a network living at ``registries/coded_tools/x.hocon`` would be
+        misread as target-relative). No shipped or generated group is, and the
+        alternative -- recording target-relative paths at copy time -- would change the
+        registries-relative form the manifest and CLI messages rely on.
+
         :param display: A path as recorded in ``copied_files`` or ``skipped_files``.
         :return: The same path expressed relative to the target project root.
         """

@@ -60,7 +60,8 @@ class BulkImportResult:
         Distinct files, not skip events: eight networks re-offering the same pre-existing
         include is one file the user already has, not eight. A skip whose path sits inside
         a directory the batch copied (a package dependency lands via copytree under the
-        directory's display) was also delivered by the batch and is excluded.
+        directory's display) was also delivered by the batch and is excluded, as is a
+        skipped directory that only exists because the batch copied a file beneath it.
 
         Displays are compared in canonical target-relative form: a registry HOCON imported by
         name is recorded as ``foo.hocon`` while the same file inside a zip is recorded as
@@ -84,6 +85,8 @@ class BulkImportResult:
                 continue
             if self._inside_copied_directory(skipped_file, copied_in_batch):
                 continue
+            if self._created_by_a_copy_beneath(skipped_file, copied_in_batch):
+                continue
             count += 1
         return count
 
@@ -98,6 +101,26 @@ class BulkImportResult:
         """
         for copied_file in copied_in_batch:
             if skipped_file.startswith(copied_file + "/"):
+                return True
+        return False
+
+    @staticmethod
+    def _created_by_a_copy_beneath(skipped_file: str, copied_in_batch: Set[str]) -> bool:
+        """
+        Whether a skipped display is a directory that an earlier copy in the batch brought into being.
+
+        `_copy_file_or_dir` records a directory dependency as skipped whenever its target
+        already exists -- including when the only reason it exists is that an earlier
+        dependency copied a file beneath it and `os.makedirs` created the directory on the
+        way. That directory is batch output, not prior state, so it must not be reported
+        as "already exist".
+
+        :param skipped_file: The skipped display's canonical path, e.g. ``"coded_tools/pkg"``.
+        :param copied_in_batch: Every display path the batch recorded as copied, canonical form.
+        :return: True when some copied display lies beneath ``skipped_file``.
+        """
+        for copied_file in copied_in_batch:
+            if copied_file.startswith(skipped_file + "/"):
                 return True
         return False
 

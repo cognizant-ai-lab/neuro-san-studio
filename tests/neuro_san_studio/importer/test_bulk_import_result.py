@@ -176,6 +176,31 @@ class TestBulkImportResult(unittest.TestCase):
         self.assertEqual(bulk.skipped, 2)
         self.assertEqual(bulk.skipped_preexisting, 1)
 
+    def test_directory_created_by_an_earlier_file_copy_is_not_preexisting(self) -> None:
+        """
+        A directory dependency skipped because a sibling's file copy already created it is batch output.
+
+        Copying coded_tools/pkg/helper.py makes os.makedirs create coded_tools/pkg; a later
+        directory dependency on coded_tools/pkg then finds the target present and is recorded
+        as skipped. The directory is an ancestor of a copied path, not inside one, so the
+        containment check alone would report it as a pre-existing collision.
+        """
+        by_file: ImportResult = ImportResult(
+            network_name="first",
+            hocon_path="first.hocon",
+            copied_files=["first.hocon", "coded_tools/pkg/helper.py"],
+        )
+        by_directory: ImportResult = ImportResult(
+            network_name="second",
+            hocon_path="second.hocon",
+            copied_files=["second.hocon"],
+            skipped_files=["coded_tools/pkg"],
+        )
+        bulk: BulkImportResult = BulkImportResult(results=[by_file, by_directory])
+
+        self.assertEqual(bulk.skipped, 1)
+        self.assertEqual(bulk.skipped_preexisting, 0)
+
     def test_empty_batch_has_no_preexisting_skips(self) -> None:
         """
         An empty batch reports zero without tripping over empty aggregates.
