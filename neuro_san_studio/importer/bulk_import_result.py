@@ -115,6 +115,12 @@ class BulkImportResult:
         way. That directory is batch output, not prior state, so it must not be reported
         as "already exist".
 
+        This is an inference from recorded paths, not filesystem history: a directory that
+        pre-existed and merely received a new file during the batch is read the same way.
+        Telling the two apart needs the importer to record the directories it creates,
+        which ImportResult does not carry; the fresh-import shape is the one this summary
+        exists to get right, so the inference errs toward it.
+
         :param skipped_file: The skipped display's canonical path, e.g. ``"coded_tools/pkg"``.
         :param copied_in_batch: Every display path the batch recorded as copied, canonical form.
         :return: True when some copied display lies beneath ``skipped_file``.
