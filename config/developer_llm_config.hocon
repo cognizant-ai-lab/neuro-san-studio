@@ -46,6 +46,8 @@
         #
         # Note:
         # - For Ollama, the model must be downloaded locally before use.
+        # - llmman (https://github.com/llmmanorg/llmman) serves the Ollama API on port 17434:
+        #   use class `ollama` with `"base_url": "http://localhost:17434"`.
         # - Additional LLM parameters (e.g., `temperature`, `max_tokens`) can be configured below.
         # - Agent-level control (e.g., `max_steps`) can also be set here.
         # - It is possible to have a separate llm_config describing a different LLM with different parameters for each agent network hocon file
