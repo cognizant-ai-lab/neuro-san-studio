@@ -80,6 +80,7 @@ Perform real-time web searches using various search engines and APIs.
 * **`anthropic_search`** — Web search via Anthropic's search tool
 * **`brave_search`** — Search using Brave Search API
 * **`ddgs_search`** — Search using DuckDuckGo (no API key required)
+* **`firecrawl_search`** — Search using the Firecrawl Search API, with the cleaned content of each result
 * **`google_search`** — Search using Google Custom Search Engine
 * **`google_serper`** — Search using Google Serper API with advanced filtering
 * **`openai_search`** — Web search via OpenAI's search tool
