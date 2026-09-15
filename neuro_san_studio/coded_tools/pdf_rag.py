@@ -31,6 +31,7 @@ from neuro_san.interfaces.coded_tool import CodedTool
 
 from neuro_san_studio.coded_tools.base_rag import BaseRag
 from neuro_san_studio.coded_tools.base_rag import PostgresConfig
+from neuro_san_studio.coded_tools.utils.pdf_utils import PDF_HEADER_WINDOW
 from neuro_san_studio.coded_tools.utils.pdf_utils import PdfUtils
 from neuro_san_studio.coded_tools.utils.safe_fetch import MAX_RESPONSE_BYTES
 from neuro_san_studio.coded_tools.utils.safe_fetch import SafeFetch
@@ -48,13 +49,16 @@ class PdfRag(CodedTool, BaseRag):
 
     Remote PDFs are downloaded through the shared SSRF-hardened fetch path
     (SafeFetch): private/loopback/reserved hosts are rejected, DNS records are
-    validated at connection time (anti DNS-rebinding), redirects are not followed,
-    and response sizes are capped. Local file paths (a documented input form for
-    this tool) are read directly from disk — SafeFetch governs network fetches
-    only — subject to the same byte cap as downloads. Items with any other URL
-    scheme (file://, s3://, ...) are skipped with a logged message. All PDFs are
-    parsed with pypdf via the shared PdfUtils helper, one Document per page so
-    page numbers survive into the vector store metadata.
+    validated at connection time (anti DNS-rebinding), redirects are subject to
+    SafeFetch's redirect policy, and response sizes are capped. Local file paths
+    (a documented input form for this tool) are read directly from disk — SafeFetch
+    governs network fetches only — subject to the same byte cap as downloads, and
+    are checked for a PDF header ("%PDF-" within the first PDF_HEADER_WINDOW bytes)
+    before being read in full, so a non-PDF that merely carries a .pdf name is
+    skipped early with a clear message. Items with any other URL scheme (file://,
+    s3://, ...) are skipped with a logged message. All PDFs are parsed with pypdf
+    via the shared PdfUtils helper, one Document per page so page numbers survive
+    into the vector store metadata.
     """
 
     async def async_invoke(self, args: dict[str, Any], sly_data: dict[str, Any]) -> str | list[dict[str, Any]]:
@@ -338,15 +342,35 @@ class PdfRag(CodedTool, BaseRag):
 
         :param path: The local filesystem path of the PDF.
         :return: The extracted text of each page, in page order.
-        :raises OSError: When the file is missing or unreadable.
-        :raises ValueError: response_too_large when the file exceeds MAX_RESPONSE_BYTES.
+        :raises OSError: When the file is missing, unreadable, or not seekable (a FIFO, say).
+        :raises ValueError: not_a_pdf when no "%PDF-" header appears in the sniff
+            window (PDF_HEADER_WINDOW bytes, or MAX_RESPONSE_BYTES + 1 if smaller);
+            response_too_large when the file exceeds MAX_RESPONSE_BYTES.
         """
-        # Apply the same byte cap the remote path enforces, as a bound on the read
-        # itself rather than an os.path.getsize() pre-check: a size probe is not a
-        # hard cap (special files such as /dev/zero report size 0, and a regular
-        # file can grow or be replaced between the probe and the read). Reading at
-        # most one byte past the cap is cheap and makes the limit unconditional.
         with open(path, "rb") as pdf_file:
+            # Sniff the header BEFORE reading the rest. Without this, a /dev/zero
+            # style special file, a large non-PDF, or an HTML error page saved as
+            # report.pdf is read in full (up to the 50 MB cap) only for pypdf to
+            # fail with "Stream has ended unexpectedly", which points nowhere near
+            # the real problem. Stopping after the sniff window costs one small read
+            # and produces an error that names the actual cause. The window is
+            # bounded by the byte budget too, so the cap holds even if it is ever
+            # set below PDF_HEADER_WINDOW (the sniff then sees a shorter head, and
+            # the message reports the window that was actually inspected).
+            sniff_window: int = min(PDF_HEADER_WINDOW, MAX_RESPONSE_BYTES + 1)
+            head: bytes = pdf_file.read(sniff_window)
+            if not PdfUtils.has_pdf_header(head):
+                raise ValueError(f"not_a_pdf: '{path}' has no PDF header in its first {sniff_window} bytes.")
+            # Apply the same byte cap the remote path enforces, as a bound on the
+            # read itself rather than an os.path.getsize() pre-check: a size probe
+            # is not a hard cap (special files such as /dev/zero report size 0, and
+            # a regular file can grow or be replaced between the probe and the
+            # read). Reading at most one byte past the cap is cheap and makes the
+            # limit unconditional. Rewinding and reading the whole file in one go,
+            # rather than concatenating the head with a remainder read, avoids
+            # holding the remainder twice (briefly up to 2 x the cap) during the
+            # concatenation; re-reading the sniffed kilobyte is negligible.
+            pdf_file.seek(0)
             data: bytes = pdf_file.read(MAX_RESPONSE_BYTES + 1)
         if len(data) > MAX_RESPONSE_BYTES:
             raise ValueError(f"response_too_large: '{path}' exceeds the {MAX_RESPONSE_BYTES}-byte limit.")

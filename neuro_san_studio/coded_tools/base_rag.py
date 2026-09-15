@@ -137,8 +137,10 @@ class BaseRag(ABC):
 
         # Try to load existing vector store for in-memory vector store
         if vector_store_type == "in_memory":
-            existing_store = await self._load_existing_vector_store()
-            if existing_store:
+            existing_store: Optional[VectorStore] = await self._load_existing_vector_store()
+            # "is not None", not truthiness: InMemoryVectorStore has neither __bool__ nor __len__, so a truthiness
+            # test could never tell an empty store from a full one. _load_existing_vector_store decides emptiness.
+            if existing_store is not None:
                 return existing_store
 
         # Load and process documents
@@ -150,7 +152,15 @@ class BaseRag(ABC):
         return vectorstore
 
     async def _load_existing_vector_store(self) -> Optional[VectorStore]:
-        """Try to load existing vector store from file."""
+        """
+        Try to load an existing in-memory vector store from the configured JSON file.
+
+        A saved store that contains no documents is treated as absent: it carries no content worth
+        serving and would otherwise shadow the source forever (see GitHub issue #1368).
+
+        :return: The loaded vector store, or None when no path is configured, the file does not exist,
+                 or the saved store is empty (so the caller rebuilds from source).
+        """
 
         if not self.abs_vector_store_path:
             return None
@@ -159,11 +169,21 @@ class BaseRag(ABC):
             vector_store: VectorStore = InMemoryVectorStore.load(
                 path=self.abs_vector_store_path, embedding=self.embeddings
             )
-            logger.info("Loaded vector store from: %s\n", self.abs_vector_store_path)
-            return vector_store
         except FileNotFoundError:
             logger.info("Vector store not found at: %s. Creating from source.\n", self.abs_vector_store_path)
             return None
+
+        # An empty saved store has no content worth serving (it was written before the save-side guard existed,
+        # or by something outside this class); if we returned it the tool would answer "no content" on every
+        # later run until someone deleted the file by hand.
+        if self._is_empty_vector_store(vector_store):
+            logger.warning(
+                "Ignoring empty saved vector store at %s; rebuilding from source.\n", self.abs_vector_store_path
+            )
+            return None
+
+        logger.info("Loaded vector store from: %s\n", self.abs_vector_store_path)
+        return vector_store
 
     async def _create_new_vector_store(
         self,
@@ -274,12 +294,55 @@ class BaseRag(ABC):
             logger.error("Fail to create vector store due to invalid DB name. %s\n", invalid_catalog_error)
             return None
 
-    async def _save_vector_store(self, vectorstore: VectorStore, vector_store_type: Literal["in_memory", "postgres"]):
-        """Save vector store to file if configured."""
-        should_save: bool = self.save_vector_store and self.abs_vector_store_path and vector_store_type == "in_memory"
+    @staticmethod
+    def _is_empty_vector_store(vectorstore: Optional[VectorStore]) -> bool:
+        """
+        Report whether a vector store holds no documents at all.
+
+        Truthiness cannot be used for this: InMemoryVectorStore defines neither __bool__ nor __len__, so
+        ``bool(store)`` is always True even when the store has zero documents. Its public ``store`` attribute
+        is a dict keyed by document id, which gives an exact and cheap count.
+
+        :param vectorstore: The vector store to inspect, or None.
+        :return: True for None and for an InMemoryVectorStore with no documents; False otherwise.
+        """
+        if vectorstore is None:
+            return True
+
+        if isinstance(vectorstore, InMemoryVectorStore):
+            return len(vectorstore.store) == 0
+
+        # Other store types (e.g. postgres) cannot be counted without a round trip to the backend, and they
+        # are never saved to or loaded from disk by this class, so assume they have content.
+        return False
+
+    async def _save_vector_store(
+        self, vectorstore: Optional[VectorStore], vector_store_type: Literal["in_memory", "postgres"]
+    ) -> None:
+        """
+        Save the vector store to the configured JSON file if saving is enabled.
+
+        Only in-memory stores are persisted, and only when they hold at least one document. Persisting an
+        empty store would poison the cache: every later run would load it and never look at the source again.
+
+        :param vectorstore: The vector store to persist; None or an empty store is skipped without writing.
+        :param vector_store_type: Type of vector store; only "in_memory" stores are ever written to disk.
+        """
+        should_save: bool = bool(
+            self.save_vector_store and self.abs_vector_store_path and vector_store_type == "in_memory"
+        )
 
         if not should_save:
-            return None
+            return
+
+        # Leave any previously saved (good) file untouched rather than overwriting it with nothing.
+        if self._is_empty_vector_store(vectorstore):
+            logger.warning(
+                "Not persisting an empty vector store to %s: every source failed or was skipped; "
+                "keeping any previous file.\n",
+                self.abs_vector_store_path,
+            )
+            return
 
         try:
             os.makedirs(os.path.dirname(self.abs_vector_store_path), exist_ok=True)
