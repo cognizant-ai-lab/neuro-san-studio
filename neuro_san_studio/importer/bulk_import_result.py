@@ -19,6 +19,7 @@
 from dataclasses import dataclass
 from dataclasses import field
 from typing import List
+from typing import Set
 
 from neuro_san_studio.importer.import_result import ImportResult
 
@@ -44,6 +45,56 @@ class BulkImportResult:
     def skipped(self) -> int:
         """Total number of files left alone because the target already had them."""
         return sum(len(result.skipped_files) for result in self.results)
+
+    @property
+    def skipped_preexisting(self) -> int:
+        """
+        Number of distinct files skipped that were NOT delivered earlier in this same batch.
+
+        Networks in a batch routinely re-offer files a sibling already landed — every network
+        offers the shared includes, and a sub-network copied transitively may also be listed
+        top-level. Those skips are batch bookkeeping, not project state: reporting them as
+        "already exist" makes a fresh `ns init` look like it found prior files. Only the
+        files counted here genuinely predate the batch.
+
+        Distinct files, not skip events: eight networks re-offering the same pre-existing
+        include is one file the user already has, not eight. A skip whose path sits inside
+        a directory the batch copied (a package dependency lands via copytree under the
+        directory's display) was also delivered by the batch and is excluded.
+
+        :return: The count of distinct skipped display paths that the batch neither copied
+            directly nor delivered inside a copied directory.
+        """
+        copied_in_batch: Set[str] = set()
+        for result in self.results:
+            for copied_file in result.copied_files:
+                copied_in_batch.add(copied_file)
+        distinct_skips: Set[str] = set()
+        for result in self.results:
+            for skipped_file in result.skipped_files:
+                distinct_skips.add(skipped_file)
+        count: int = 0
+        for skipped_file in distinct_skips:
+            if skipped_file in copied_in_batch:
+                continue
+            if self._inside_copied_directory(skipped_file, copied_in_batch):
+                continue
+            count += 1
+        return count
+
+    @staticmethod
+    def _inside_copied_directory(skipped_file: str, copied_in_batch: Set[str]) -> bool:
+        """
+        Whether a skipped display path lies inside a directory display the batch copied.
+
+        :param skipped_file: The skipped file's display path, e.g. ``"coded_tools/pkg/helper.py"``.
+        :param copied_in_batch: Every display path the batch recorded as copied.
+        :return: True when some copied display is a directory prefix of ``skipped_file``.
+        """
+        for copied_file in copied_in_batch:
+            if skipped_file.startswith(copied_file + "/"):
+                return True
+        return False
 
     @property
     def warnings(self) -> List[str]:
