@@ -19,11 +19,13 @@
 import asyncio
 import os
 import re
+import tempfile
 from copy import deepcopy
 from pathlib import Path
 from typing import Any
 from unittest import TestCase
 
+from neuro_san.internals.persistence.abstract_async_config_restorer import AbstractAsyncConfigRestorer
 from pyhocon import ConfigFactory
 
 from middleware.agent_network_designer.persistence.agent_network_assembler import (
@@ -86,7 +88,8 @@ def test_hocon_assembler_adds_max_execution_seconds():
 class TestHoconAssemblerSlyDataSchema(TestCase):
     """
     The generated HOCON text declares the network's MCP header needs and renders the metadata block
-    it is given, stamping nothing itself.
+    it is given. Until #1422 moves timestamps into the persistence middleware, the header still stamps
+    date_created on a block that has none, and nothing else.
     """
 
     def test_front_man_declares_the_schema_and_it_parses(self):
@@ -312,6 +315,48 @@ class TestHoconAssemblerSlyDataSchema(TestCase):
         self.assertNotIn('we\\"ird', text)
         self.assertNotIn("\\u0007", text)
         self.assertNotIn("null", text.split('"tools"')[0])
+
+    @staticmethod
+    def _restore_with_neuro_san(hocon_text: str) -> dict[str, Any]:
+        """
+        Write emitted HOCON to a temp file and read its metadata block back with the restorer neuro-san,
+        the designer's load path and the fallback read all use, from the repo root so the includes resolve.
+
+        :param hocon_text: The emitted HOCON text
+        :return: The "metadata" block exactly as the restorer returns it
+        """
+        with tempfile.NamedTemporaryFile("w", suffix=".hocon", encoding="utf-8", delete=False) as handle:
+            handle.write(hocon_text)
+            path: str = handle.name
+        cwd: str = os.getcwd()
+        os.chdir(REPO_ROOT)
+        try:
+            restorer: AbstractAsyncConfigRestorer = AbstractAsyncConfigRestorer(file_purpose="test", must_exist=True)
+            config: dict[str, Any] = asyncio.run(restorer.async_restore(file_reference=path))
+        finally:
+            os.chdir(cwd)
+            os.unlink(path)
+        return config["metadata"]
+
+    def test_dotted_and_url_keys_round_trip_verbatim_through_the_restorer(self) -> None:
+        """
+        Keys holding dots (a URL, "owner.name", "a.b.c") come back exactly as written, top-level and nested,
+        through neuro-san's restorer. pyhocon keeps such keys quoted inside its ConfigTree, which is why the
+        module-level unquote() helper exists for raw-tree assertions, but the as_plain_ordered_dict() conversion
+        every real reader applies (leaf_common's HoconSerializationFormat) removes the quotes again.
+        """
+        supplied: dict[str, Any] = {
+            "owner.name": "platform",
+            "https://x.example.com/z": ["Authorization"],
+            "nested": {"a.b.c": 1},
+        }
+        text: str = self._assemble_text([], supplied)
+
+        block: dict[str, Any] = self._restore_with_neuro_san(text)
+
+        block.pop("date_created")
+        self.assertEqual(block, supplied)
+        self.assertEqual(list(block.keys()), list(supplied.keys()))
 
     def test_emitted_text_with_a_metadata_block_still_parses_with_the_repo_root_includes(self) -> None:
         """
