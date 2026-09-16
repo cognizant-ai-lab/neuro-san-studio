@@ -29,6 +29,7 @@ from pyhocon import ConfigFactory
 from middleware.agent_network_designer.persistence.agent_network_assembler import (
     GENERATED_NETWORK_MAX_EXECUTION_SECONDS,
 )
+from middleware.agent_network_designer.persistence.agent_network_metadata import AgentNetworkMetadata
 from middleware.agent_network_designer.persistence.hocon_agent_network_assembler import HoconAgentNetworkAssembler
 
 REPO_ROOT = Path(__file__).resolve().parents[4]
@@ -285,26 +286,32 @@ class TestHoconAssemblerSlyDataSchema(TestCase):
         self.assertNotIn('"note"', text)
         self.assertEqual(supplied, snapshot)
 
-    def test_unstorable_keys_never_reach_the_file_so_it_matches_the_returned_block(self) -> None:
+    def test_unstorable_entries_never_reach_the_file_so_it_matches_the_returned_block(self) -> None:
         """
-        A key holding a double quote, a backslash or a newline is dropped before rendering, at the top level
-        and nested alike (pyhocon would read it back changed or split), so the parsed block equals the
-        sanitized input and the escaped key text is nowhere in the file.
+        Entries pyhocon would read back changed are dropped before rendering, at the top level and nested alike:
+        keys holding a double quote, a backslash or a newline, string values holding a bell character, empty
+        strings inside lists and None-valued keys. The parsed block equals the sanitized block, which is what
+        the client receives, and none of the escaped text is in the file.
         """
         supplied: dict[str, Any] = {
             "description": "A demo",
             'we"ird': "top",
-            "owner": {"team": "platform", "back\\slash": 1, "a\nb": 2},
+            "beep": "a\x07b",
+            "tags": ["", "ok", "tab\tfine"],
+            "owner": {"team": "platform", "back\\slash": 1, "a\nb": 2, "lead": None},
         }
 
         with self.assertLogs("AgentNetworkMetadata", level="WARNING"):
             text: str = self._assemble_text([], supplied)
+            sanitized: dict[str, Any] | None = AgentNetworkMetadata.sanitize(supplied)
         block: dict[str, Any] = self._parse_metadata(text)
 
         block.pop("date_created")
-        self.assertEqual(block, {"description": "A demo", "owner": {"team": "platform"}})
+        self.assertEqual(block, {"description": "A demo", "tags": ["ok", "tab\tfine"], "owner": {"team": "platform"}})
+        self.assertEqual(block, sanitized)
         self.assertNotIn('we\\"ird', text)
-        self.assertNotIn("back\\\\slash", text)
+        self.assertNotIn("\\u0007", text)
+        self.assertNotIn("null", text.split('"tools"')[0])
 
     def test_emitted_text_with_a_metadata_block_still_parses_with_the_repo_root_includes(self) -> None:
         """

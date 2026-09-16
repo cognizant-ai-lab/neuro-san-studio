@@ -215,6 +215,74 @@ class TestAgentNetworkMetadata(unittest.TestCase):  # pylint: disable=too-many-p
         self.assertIn(repr("owner.back\\slash"), messages[1])
         self.assertIn(repr("notes[0].a\nb"), messages[2])
 
+    def test_is_storable_string_allows_tab_newline_return_and_rejects_other_control_characters(self) -> None:
+        """
+        is_storable_string() is True for text with a tab, a newline, a carriage return, quotes, backslashes,
+        non-ASCII text, DEL, U+2028 and for the empty string, and False for any other control character (NUL,
+        bell, backspace, form feed, U+001F).
+        """
+        storable: list[str] = [
+            "plain",
+            "tab\there",
+            "line\nbreak",
+            "cr\rx",
+            'quote"back\\slash',
+            "caf\u00e9",
+            "del\x7fx",
+            "sep\u2028arated",
+            "",
+        ]
+        unstorable: list[str] = ["nul\x00x", "bell\x07x", "back\x08space", "form\x0cfeed", "unit\x1fsep"]
+        for text in storable:
+            with self.subTest(text=text):
+                self.assertTrue(AgentNetworkMetadata.is_storable_string(text))
+        for text in unstorable:
+            with self.subTest(text=text):
+                self.assertFalse(AgentNetworkMetadata.is_storable_string(text))
+
+    def test_sanitize_drops_none_valued_keys_at_every_depth_but_keeps_null_list_items(self) -> None:
+        """
+        A None-valued key is dropped inside a nested object and inside an object held in a list, as at the top
+        level, without a warning; a None item inside a list stays, since pyhocon reads a null item back as None.
+        """
+        supplied: dict[str, Any] = {
+            "owner": {"team": "platform", "lead": None},
+            "notes": [{"ok": True, "gone": None}, None, "plain"],
+        }
+        expected: dict[str, Any] = {"owner": {"team": "platform"}, "notes": [{"ok": True}, None, "plain"]}
+
+        with self.assertNoLogs(LOGGER_NAME, level="WARNING"):
+            result: dict[str, Any] | None = AgentNetworkMetadata.sanitize(supplied)
+
+        self.assertEqual(result, expected)
+
+    def test_sanitize_drops_unstorable_strings_and_empty_list_items_and_warns(self) -> None:
+        """
+        A string value holding a control character pyhocon does not decode is dropped, as a key's value and as a
+        list item; an empty string inside a list is dropped while an empty string as a value is kept; and one
+        WARNING names each dropped entry by its path.
+        """
+        supplied: dict[str, Any] = {
+            "description": "",
+            "beep": "a\x07b",
+            "tags": ["", "ok", "form\x0cfeed", "tab\tfine"],
+            "owner": {"note": "bell\x07"},
+        }
+        expected: dict[str, Any] = {"description": "", "tags": ["ok", "tab\tfine"], "owner": {}}
+
+        with self.assertLogs(LOGGER_NAME, level="WARNING") as captured:
+            result: dict[str, Any] | None = AgentNetworkMetadata.sanitize(supplied)
+
+        self.assertEqual(result, expected)
+        messages: list[str] = []
+        for record in captured.records:
+            messages.append(record.getMessage())
+        self.assertEqual(len(messages), 4)
+        self.assertIn(repr("beep"), messages[0])
+        self.assertIn(repr("tags[0]"), messages[1])
+        self.assertIn(repr("tags[2]"), messages[2])
+        self.assertIn(repr("owner.note"), messages[3])
+
     def test_is_query_list_true_for_non_empty_str_list(self) -> None:
         """
         is_query_list() accepts a non-empty list whose items are all strings.

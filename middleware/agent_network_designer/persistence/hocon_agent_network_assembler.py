@@ -230,15 +230,15 @@ class HoconAgentNetworkAssembler(AgentNetworkAssembler):
         fragment always parses as written: HOCON performs no ${...} substitution inside
         double-quoted strings, newlines, tabs and quotes inside values come out as JSON
         escapes that pyhocon reads back verbatim, and ensure_ascii=False keeps non-ASCII text
-        (and non-ASCII keys, which pyhocon would not un-escape) as raw characters. pyhocon reads
-        keys back raw, so a key holding a double quote, a backslash or a control character would
-        not come back as written: AgentNetworkMetadata.sanitize() drops such keys from the
-        metadata block before it gets here, and the schema block's keys are URLs, which never
-        contain them. Two pyhocon limits remain for values, both irrelevant to LLM-generated
-        queries: other control characters are read back as their escape text, and empty
-        strings are dropped from lists. The text is split on the newline character only:
-        str.splitlines() would also split on the Unicode line and paragraph separators and on
-        NEL inside a value and corrupt the file.
+        (and non-ASCII keys, which pyhocon would not un-escape) as raw characters. pyhocon has
+        three reading limits: keys come back raw (a double quote, a backslash or a control
+        character in a key does not survive), control characters other than tab, newline and
+        carriage return come back as their escape text, and empty strings are dropped from
+        lists. AgentNetworkMetadata.sanitize() removes exactly those entries from the metadata
+        block before it gets here, so the block reads back as written; the schema block holds
+        URLs, header names and fixed text, which never contain them. The text is split on the
+        newline character only: str.splitlines() would also split on the Unicode line and
+        paragraph separators and on NEL inside a value and corrupt the file.
 
         :param value: The dict to render
         :param indent: The indentation of the key the fragment follows; every line but the

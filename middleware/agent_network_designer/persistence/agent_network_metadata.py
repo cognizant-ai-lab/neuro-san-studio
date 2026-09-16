@@ -55,6 +55,12 @@ class AgentNetworkMetadata:
     # describe one temporary deployment, so they must never be carried into the next save.
     STORAGE_OWNED_KEYS: ClassVar[frozenset[str]] = frozenset({"reservation", "stored_at"})
     LOGGER: ClassVar[AndLogger] = AndLogger(getLogger("AgentNetworkMetadata"))
+    # Reasons named in the warning for an entry sanitize() drops; see _copy_storable.
+    UNSTORABLE_KEY_REASON: ClassVar[str] = "a key holding a double quote, a backslash or a control character"
+    UNSTORABLE_VALUE_REASON: ClassVar[str] = (
+        "a value holding a control character other than tab, newline or carriage return"
+    )
+    EMPTY_LIST_ITEM_REASON: ClassVar[str] = "an empty string inside a list"
 
     @staticmethod
     def sanitize(candidate: Any) -> dict[str, Any] | None:
@@ -63,23 +69,22 @@ class AgentNetworkMetadata:
 
         :param candidate: The value a client sent, or the value found under "metadata"
                 in a parsed network config. Anything that is not a mapping is not a block.
-        :return: A deep copy of the block, as a plain dict, without the storage-owned keys,
-                without None-valued keys (a None would otherwise be written as null) and
-                without the keys a HOCON file cannot hold (see is_storable_key; each one is
-                logged), or None when candidate is not a mapping
+        :return: A deep copy of the block, as a plain dict, without the storage-owned keys and,
+                at every depth, without None-valued keys (a None would otherwise be written as
+                null) and without the entries a HOCON file cannot hold as written (see
+                _copy_storable; each one is logged), or None when candidate is not a mapping
         """
         # Mapping rather than dict: the assemblers accept any Mapping for the block, so a
         # read-only proxy or another mapping type must not be mistaken for "no block".
         if not isinstance(candidate, Mapping):
             return None
-        block: dict[str, Any] = {}
+        top_level: dict[Any, Any] = {}
         for key, value in candidate.items():
-            if key in AgentNetworkMetadata.STORAGE_OWNED_KEYS or value is None:
+            # The storage writers add their keys at the top level of a stored spec only.
+            if key in AgentNetworkMetadata.STORAGE_OWNED_KEYS:
                 continue
-            if not AgentNetworkMetadata.is_storable_key(key):
-                AgentNetworkMetadata._warn_unstorable_key(str(key))
-                continue
-            block[key] = AgentNetworkMetadata._copy_storable(value, key)
+            top_level[key] = value
+        block: dict[str, Any] = AgentNetworkMetadata._copy_storable(top_level, "")
         return block
 
     @staticmethod
@@ -107,43 +112,79 @@ class AgentNetworkMetadata:
         return True
 
     @staticmethod
+    def is_storable_string(text: str) -> bool:
+        """
+        Tell whether a string value survives the trip through a generated HOCON file.
+
+        json.dumps escapes every control character, but pyhocon decodes only the tab, newline
+        and carriage-return escapes; any other control character (a bell, a form feed, ...) is
+        read back as its escape text. Quotes, backslashes, non-ASCII text, DEL and the Unicode
+        line separators are decoded fine (verified with pyhocon 0.3.63 through the assembler and
+        neuro-san's restorer).
+
+        :param text: The string value to check
+        :return: True when the value reads back from a HOCON file exactly as written
+        """
+        for char in text:
+            if ord(char) < 32 and char not in "\t\n\r":
+                return False
+        return True
+
+    @staticmethod
     def _copy_storable(value: Any, path: str) -> Any:
         """
-        Deep-copy a metadata value, dropping the nested keys a HOCON file cannot hold.
+        Deep-copy a metadata value, dropping what a HOCON file cannot hold as written.
 
-        The block is rendered as one JSON object, so the key rule applies at every depth:
-        inside nested objects and inside objects held in lists alike.
+        The block is rendered as one JSON object, so the rules apply at every depth: None-valued
+        keys go (they would be written as null), keys and string values pyhocon cannot read back
+        go (see is_storable_key and is_storable_string), and so do empty strings inside lists,
+        which pyhocon drops when reading. Each dropped entry is logged with its path. What is
+        left reads back exactly as written, so the block returned to the client is the block the
+        file holds. A None inside a list stays: pyhocon reads a null list item back as None.
 
         :param value: The value to copy
-        :param path: The path of value inside the block, named in the warning for a dropped key
-        :return: A copy of value with the unstorable keys removed at every level
+        :param path: The path of value inside the block ("" for the block itself), used in the
+                warning for a dropped entry
+        :return: A copy of value with the unstorable entries removed at every level
         """
         if isinstance(value, Mapping):
             copied: dict[str, Any] = {}
             for key, item in value.items():
-                if not AgentNetworkMetadata.is_storable_key(key):
-                    AgentNetworkMetadata._warn_unstorable_key(f"{path}.{key}")
+                item_path: str = f"{path}.{key}" if path else str(key)
+                if item is None:
                     continue
-                copied[key] = AgentNetworkMetadata._copy_storable(item, f"{path}.{key}")
+                if not AgentNetworkMetadata.is_storable_key(key):
+                    AgentNetworkMetadata._warn_dropped(item_path, AgentNetworkMetadata.UNSTORABLE_KEY_REASON)
+                    continue
+                if isinstance(item, str) and not AgentNetworkMetadata.is_storable_string(item):
+                    AgentNetworkMetadata._warn_dropped(item_path, AgentNetworkMetadata.UNSTORABLE_VALUE_REASON)
+                    continue
+                copied[key] = AgentNetworkMetadata._copy_storable(item, item_path)
             return copied
         if isinstance(value, list):
             copied_list: list[Any] = []
             for index, item in enumerate(value):
-                copied_list.append(AgentNetworkMetadata._copy_storable(item, f"{path}[{index}]"))
+                item_path = f"{path}[{index}]"
+                if isinstance(item, str) and item == "":
+                    AgentNetworkMetadata._warn_dropped(item_path, AgentNetworkMetadata.EMPTY_LIST_ITEM_REASON)
+                    continue
+                if isinstance(item, str) and not AgentNetworkMetadata.is_storable_string(item):
+                    AgentNetworkMetadata._warn_dropped(item_path, AgentNetworkMetadata.UNSTORABLE_VALUE_REASON)
+                    continue
+                copied_list.append(AgentNetworkMetadata._copy_storable(item, item_path))
             return copied_list
         return deepcopy(value)
 
     @staticmethod
-    def _warn_unstorable_key(path: str) -> None:
+    def _warn_dropped(path: str, reason: str) -> None:
         """
-        Log that a metadata key was dropped because a HOCON file cannot hold it.
+        Log that a metadata entry was dropped because a HOCON file cannot hold it as written.
 
-        :param path: The path of the key inside the block
+        :param path: The path of the entry inside the block
+        :param reason: What the entry is, one of the *_REASON constants
         """
         AgentNetworkMetadata.LOGGER.warning(
-            "Dropping metadata key %r: a key holding a double quote, a backslash or a control "
-            "character cannot be stored in an agent network file.",
-            path,
+            "Dropping metadata entry %r: %s cannot be stored in an agent network file as written.", path, reason
         )
 
     @staticmethod
