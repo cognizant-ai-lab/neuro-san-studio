@@ -18,8 +18,9 @@
 #   - neuro-san >= 0.6.24
 #   - This network targets the hosted Firecrawl MCP server, which works without an API key
 #     (rate limited per IP per day, for both requests and credits).
-#     To lift those limits and expose the full tool surface, set FIRECRAWL_API_KEY and uncomment
-#     the http_headers block in neuro_san_studio/mcp/mcp_info.hocon.
+#     To raise those limits, set FIRECRAWL_API_KEY and uncomment the http_headers block in
+#     neuro_san_studio/mcp/mcp_info.hocon. The "tools" list in that same entry controls which
+#     Firecrawl tools this agent sees; remove the key entirely to load every tool the server exposes.
 
 {
     # Optional metadata describing this agent network

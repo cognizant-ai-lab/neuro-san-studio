@@ -65,7 +65,8 @@
     "tools/ddgs_search.hocon": true,
 
     # Firecrawl Search via the hosted Firecrawl MCP server. Works with no API key (rate limited per IP);
-    # set FIRECRAWL_API_KEY and uncomment the header in mcp_info.hocon for the full tool surface.
+    # set FIRECRAWL_API_KEY and uncomment the header in mcp_info.hocon for higher limits. The "tools"
+    # list in that mcp_info.hocon entry controls which Firecrawl tools the agent sees.
     "tools/firecrawl_search.hocon": true,
 
     # Requirement to use this agent network:

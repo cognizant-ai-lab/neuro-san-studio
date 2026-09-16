@@ -112,7 +112,7 @@ _MCP Configuration:_
 Firecrawl is integrated as an MCP server at `https://mcp.firecrawl.dev/v2/mcp`, configured in
 [mcp\_info.hocon](../neuro_san_studio/mcp/mcp_info.hocon). It is enabled by default and needs no credentials.
 
-The server exposes three tools:
+The keyless server exposes three tools, and the `tools` list in `mcp_info.hocon` is set to exactly those three:
 
 - **`firecrawl_search`** — Web, news and image search that returns ranked results and, in the same call, the
   cleaned Markdown of each result page. Supports the `developer`, `research` and `pdf` categories described above.
@@ -130,8 +130,10 @@ _Getting an API Key:_
 2. You receive **1,000 credits per month** on the free plan
 3. Get your API key at [https://www.firecrawl.dev/app/api-keys](https://www.firecrawl.dev/app/api-keys)
 4. Set it using the `FIRECRAWL_API_KEY` environment variable, then uncomment the `http_headers` block in
-   [mcp\_info.hocon](../neuro_san_studio/mcp/mcp_info.hocon). Keyless and keyed usage share the same URL, so no
-   other change is needed.
+   [mcp\_info.hocon](../neuro_san_studio/mcp/mcp_info.hocon). Keyless and keyed usage share the same URL. The key
+   raises the rate limits; it does not change which tools the agent sees. With a key the server exposes more
+   tools, so add their names to the `tools` list in that entry, or remove the `tools` key entirely to load every
+   tool the server exposes for your connection.
 5. For full pricing details, see [https://www.firecrawl.dev/pricing](https://www.firecrawl.dev/pricing)
 
 _Example Usage in Neuro San Studio:_
