@@ -702,32 +702,34 @@ see [Ollama python SDK](https://github.com/ollama/ollama-python/blob/main/ollama
 
 #### Using llmman
 
-[llmman](https://github.com/llmmanorg/llmman) is a local model runner that serves the Ollama API on port `17434`,
-so it works with the `ollama` class; only the port differs.
+[llmman](https://github.com/llmmanorg/llmman) is a local model runner that serves the Ollama, OpenAI and Anthropic APIs
+on port `17434`. Since `langchain-openai` is installed by default, the simplest setup is to use the `openai` class.
 
 1. Install and start llmman, then pull a model:
 
     ```bash
-    curl -fsSL https://raw.githubusercontent.com/llmmanorg/llmman/main/install.sh | sh
+    curl -fsSL https://llmmanorg.github.io/install.sh | sh
     llmman serve
     llmman pull gemma4
     ```
 
-2. Point the `ollama` class at llmman via `base_url`:
+2. Point the `openai` class at llmman via `openai_api_base`:
 
     ```hocon
         "llm_config": {
-            "class": "ollama",
+            "class": "openai",
             "model_name": "gemma4",
-            "base_url": "http://localhost:17434"
+            "openai_api_base": "http://localhost:17434/v1",
+            "openai_api_key": "llmman"
         }
     ```
 
-    Alternatively, set `OLLAMA_HOST=127.0.0.1:17434` in the environment and omit `base_url`.
+    llmman does not require an API key by default, but the OpenAI client does, so any non-empty value works.
+    Alternatively, set `OPENAI_API_BASE=http://localhost:17434/v1` in the environment and omit `openai_api_base`.
 
 llmman model names (e.g. `gemma4`, `hf.co/unsloth/Qwen3.5-0.8B-GGUF`) are not in the
 [default llm info file](https://github.com/cognizant-ai-lab/neuro-san/blob/main/neuro_san/internals/run_context/langchain/llms/default_llm_info.hocon),
-so `"class": "ollama"` must be set explicitly. As with Ollama, the model must support tool calling.
+so `"class": "openai"` must be set explicitly.
 
 #### Example agent network
 
