@@ -14,12 +14,15 @@
 #
 # END COPYRIGHT
 
-"""Tests for HoconAgentNetworkAssembler's sly_data_schema emission."""
+"""Tests for HoconAgentNetworkAssembler's sly_data_schema emission and metadata block rendering."""
 
 import asyncio
 import os
 import re
+from copy import deepcopy
 from pathlib import Path
+from typing import Any
+from unittest import TestCase
 
 from pyhocon import ConfigFactory
 
@@ -79,8 +82,11 @@ def test_hocon_assembler_adds_max_execution_seconds():
     assert f'"max_execution_seconds": {GENERATED_NETWORK_MAX_EXECUTION_SECONDS}' in content
 
 
-class TestHoconAssemblerSlyDataSchema:
-    """The generated HOCON text declares the network's MCP header needs."""
+class TestHoconAssemblerSlyDataSchema(TestCase):
+    """
+    The generated HOCON text declares the network's MCP header needs and renders the metadata block
+    it is given, stamping nothing itself.
+    """
 
     def test_front_man_declares_the_schema_and_it_parses(self):
         """The emitted text stays valid HOCON and carries the nsflow contract."""
@@ -139,3 +145,158 @@ class TestHoconAssemblerSlyDataSchema:
         http_headers = parse(text)["tools"][0]["function"]["sly_data_schema"]["properties"]["http_headers"]
         assert [unquote(url) for url in http_headers["properties"]] == [unicode_url]
         assert list(http_headers["required"]) == [unicode_url]
+
+    # Tests for the metadata block (issue #1398). The block is rendered as one JSON object so that any
+    # key carries forward: AgentNetworkMetadata.merge() builds it from the metadata keyword and the
+    # sample_queries argument, and the header adds only a date_created stamp when the block has none.
+
+    # Strings that broke the former triple-quoted rendering or that HOCON could misread: an embedded
+    # quote, a newline, three double quotes, substitution syntax, non-ASCII text, a tab and the
+    # U+2028 LINE SEPARATOR (written as an escape so it is visible).
+    HOSTILE_STRINGS: list[str] = [
+        'He said "hi"',
+        "line one\nline two",
+        'three """ quotes',
+        "Price ${PRICE} is $5 ${?OPT}",
+        "caf\u00e9 \U0001f600",
+        "tab\there",
+        "sep\u2028arated",
+    ]
+
+    @staticmethod
+    def _assemble_text(sample_queries: list[str], metadata: dict[str, Any] | None) -> str:
+        """
+        Assemble the test network into HOCON text with the given metadata inputs.
+
+        :param sample_queries: The positional sample_queries argument
+        :param metadata: The metadata keyword argument, None for the pre-#1398 call shape
+        :return: The emitted HOCON text
+        """
+        assembler: HoconAgentNetworkAssembler = HoconAgentNetworkAssembler(demo_mode=False)
+        return asyncio.run(
+            assembler.assemble_agent_network(NETWORK_DEF, "front_man", "test_net", sample_queries, metadata=metadata)
+        )
+
+    @staticmethod
+    def _parse_metadata(hocon_text: str) -> dict[str, Any]:
+        """
+        Parse emitted HOCON text from the repo root and return its metadata block as plain containers.
+
+        pyhocon reads objects back as ConfigTree instances; converting them to plain dicts keeps the
+        assertions literal and their failure output legible.
+
+        :param hocon_text: The emitted HOCON text
+        :return: The "metadata" block as pyhocon read it back, as plain dicts and lists
+        """
+        return parse(hocon_text)["metadata"].as_plain_ordered_dict()
+
+    @staticmethod
+    def _assemble_metadata(sample_queries: list[str], metadata: dict[str, Any] | None) -> dict[str, Any]:
+        """
+        Assemble the test network and return the parsed metadata block of the emitted HOCON.
+
+        :param sample_queries: The positional sample_queries argument
+        :param metadata: The metadata keyword argument, None for the pre-#1398 call shape
+        :return: The "metadata" block as pyhocon read it back, as plain dicts and lists
+        """
+        text: str = TestHoconAssemblerSlyDataSchema._assemble_text(sample_queries, metadata)
+        return TestHoconAssemblerSlyDataSchema._parse_metadata(text)
+
+    def test_metadata_keyword_is_written_whole_and_fresh_queries_overlay_only_sample_queries(self) -> None:
+        """
+        A metadata block passed in is written whole, in its own key order, and a non-empty sample_queries
+        argument replaces only the block's sample_queries: every other key, including a nested object and
+        the client's date_created, comes back exactly as sent.
+        """
+        supplied: dict[str, Any] = {
+            "description": "A demo",
+            "tags": ["generated"],
+            "owner": {"team": "platform", "level": 2},
+            "sample_queries": ["Old one?"],
+            "date_created": "2026-01-01T00:00:00+00:00",
+        }
+        expected: dict[str, Any] = deepcopy(supplied)
+        expected["sample_queries"] = ["New one?"]
+
+        block: dict[str, Any] = self._assemble_metadata(["New one?"], supplied)
+
+        self.assertEqual(block, expected)
+        # Key order is preserved so a hand-edited file keeps its shape after a save.
+        self.assertEqual(list(block.keys()), list(supplied.keys()))
+
+    def test_no_metadata_and_no_queries_renders_only_date_created(self) -> None:
+        """
+        The pre-#1398 call shape with neither queries nor a block renders a block holding only the
+        date_created stamp, as the header always did; no empty sample_queries list is written any more.
+        """
+        text: str = self._assemble_text([], None)
+        block: dict[str, Any] = self._parse_metadata(text)
+
+        self.assertEqual(list(block.keys()), ["date_created"])
+        self.assertNotIn('"sample_queries"', text)
+        # The stamp keeps the format the header always used: UTC ISO-8601 with an explicit offset.
+        self.assertTrue(block["date_created"].endswith("+00:00"))
+
+    def test_sample_queries_only_renders_sample_queries_and_date_created(self) -> None:
+        """
+        With queries but no block the parsed block holds exactly sample_queries and the date_created stamp.
+        """
+        block: dict[str, Any] = self._assemble_metadata(["First?", "Second?"], None)
+
+        self.assertEqual(list(block.keys()), ["sample_queries", "date_created"])
+        self.assertEqual(block["sample_queries"], ["First?", "Second?"])
+
+    def test_hostile_strings_round_trip_through_the_json_block(self) -> None:
+        """
+        Hostile strings parse back verbatim from the JSON-rendered block, both as sample queries and
+        inside a client-supplied key, since json.dumps escapes every value the same way.
+        """
+        block: dict[str, Any] = self._assemble_metadata(
+            self.HOSTILE_STRINGS, {"notes": list(self.HOSTILE_STRINGS), "description": self.HOSTILE_STRINGS[3]}
+        )
+
+        self.assertEqual(list(block["sample_queries"]), self.HOSTILE_STRINGS)
+        self.assertEqual(list(block["notes"]), self.HOSTILE_STRINGS)
+        self.assertEqual(block["description"], "Price ${PRICE} is $5 ${?OPT}")
+
+    def test_storage_keys_and_none_values_are_stripped_without_mutating_the_caller(self) -> None:
+        """
+        The keys neuro-san's reservation storage owns (reservation, stored_at) and None-valued keys are
+        dropped from the written block, and the dict the caller passed in is left exactly as it was.
+        """
+        supplied: dict[str, Any] = {
+            "description": "A demo",
+            "reservation": {"id": "net-1"},
+            "sample_queries": ["Old one?"],
+            "stored_at": 1.0,
+            "note": None,
+        }
+        snapshot: dict[str, Any] = deepcopy(supplied)
+
+        text: str = self._assemble_text(["New one?"], supplied)
+
+        block: dict[str, Any] = self._parse_metadata(text)
+        # The header stamps date_created on a block without one; the rest must be exactly the kept keys.
+        block.pop("date_created")
+        self.assertEqual(block, {"description": "A demo", "sample_queries": ["New one?"]})
+        # Stripped keys are absent from the text itself, so no "null" is ever written either.
+        self.assertNotIn('"reservation"', text)
+        self.assertNotIn('"stored_at"', text)
+        self.assertNotIn('"note"', text)
+        self.assertEqual(supplied, snapshot)
+
+    def test_emitted_text_with_a_metadata_block_still_parses_with_the_repo_root_includes(self) -> None:
+        """
+        The JSON block sits between the two include statements of the header; with a populated block the
+        whole file still parses from the repo root and both includes contribute their keys.
+        """
+        text: str = self._assemble_text(["Q?"], {"description": "A demo", "tags": ["generated"]})
+
+        config: dict[str, Any] = parse(text)
+
+        # registries/aaosa.hocon and config/llm_config.hocon resolved, so the block broke neither include.
+        self.assertIn("aaosa_call", config)
+        self.assertIn("llm_config", config)
+        self.assertEqual(config["max_execution_seconds"], GENERATED_NETWORK_MAX_EXECUTION_SECONDS)
+        self.assertEqual(config["tools"][0]["name"], "front_man")
+        self.assertEqual(config["metadata"]["description"], "A demo")

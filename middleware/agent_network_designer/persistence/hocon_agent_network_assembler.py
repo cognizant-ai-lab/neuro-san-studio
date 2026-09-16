@@ -14,7 +14,6 @@
 #
 # END COPYRIGHT
 
-import datetime
 import json
 from collections.abc import Collection
 from collections.abc import Mapping
@@ -25,6 +24,7 @@ from middleware.agent_network_designer.persistence.agent_network_assembler impor
     GENERATED_NETWORK_MAX_EXECUTION_SECONDS,
 )
 from middleware.agent_network_designer.persistence.agent_network_assembler import AgentNetworkAssembler
+from middleware.agent_network_designer.persistence.agent_network_metadata import AgentNetworkMetadata
 
 HOCON_HEADER_START = (
     "{\n"
@@ -42,12 +42,7 @@ HOCON_HEADER_START = (
     '    include "registries/aaosa.hocon"\n'
     "\n"
     "# Optional metadata describing this agent network\n"
-    '    "metadata": {\n'
-    '        "sample_queries": [\n'
-    "            %s\n"
-    "        ],\n"
-    '        "date_created": "%s"\n'
-    "    },\n"
+    '    "metadata": %s,\n'
     "\n"
     "# Load the shared LLM configuration from a single source of truth.\n"
     "# This allows users to change the model in one file rather than\n"
@@ -149,6 +144,7 @@ class HoconAgentNetworkAssembler(AgentNetworkAssembler):
         agent_network_name: str,
         sample_queries: list[str],
         client_token_mcp_headers: Mapping[str, Collection[str]] | None = None,
+        metadata: Mapping[str, Any] | None = None,
     ) -> str:
         """
         Substitutes value from agent network definition into the template of agent network HOCON file
@@ -160,13 +156,21 @@ class HoconAgentNetworkAssembler(AgentNetworkAssembler):
         :param client_token_mcp_headers: Optional mapping of client-token MCP
                 server URL to the header names the conversation supplied for it,
                 driving the front man's sly_data_schema (see the base class)
+        :param metadata: Metadata block to carry forward (see the base class);
+                None builds the block from sample_queries alone
 
         :return: A full agent network HOCON as a string.
         """
         use_network_def: dict[str, Any] = shallow_copy(network_def)
         use_network_def = self._move_top_agent_first(use_network_def, top_agent_name)
 
-        header: str = self._build_header(agent_network_name, sample_queries)
+        # Idempotent when a caller already merged: the same queries overlay the same block.
+        merged_metadata: dict[str, Any] = AgentNetworkMetadata.merge(metadata, sample_queries)
+        # The header keeps stamping date_created on a block that has none, as it always did, so
+        # generated files do not lose the date before the persistence middleware takes over the
+        # timestamps (#1422). A block that already carries one keeps it.
+        merged_metadata.setdefault(AgentNetworkMetadata.DATE_CREATED_KEY, AgentNetworkMetadata.utc_now_iso())
+        header: str = self._build_header(agent_network_name, merged_metadata)
 
         sly_data_schema_block: str = self._render_sly_data_schema_block(
             self.build_mcp_sly_data_schema(use_network_def, client_token_mcp_headers)
@@ -192,35 +196,21 @@ class HoconAgentNetworkAssembler(AgentNetworkAssembler):
             return {top_agent_name: top_agent, **network_def}
         return network_def
 
-    def _format_sample_queries(self, sample_queries: list[str]) -> str:
-        """
-        Format sample queries as HOCON list elements.
-
-        :param sample_queries: List of sample queries for the agent network
-
-        :return: Formatted sample queries as a string.
-        """
-        formatted_queries: str = ""
-        if sample_queries:
-            parts: list[str] = []
-            for query in sample_queries:
-                # Put each query in triple quotes to allow for multi-line queries and
-                # to avoid issues with special characters.
-                parts.append(f'"""{query}"""')
-            formatted_queries = ",\n            ".join(parts)
-        return formatted_queries
-
-    def _build_header(self, agent_network_name: str, sample_queries: list[str]) -> str:
+    def _build_header(self, agent_network_name: str, metadata: dict[str, Any]) -> str:
         """
         Build the header of the HOCON agent network file.
 
         :param agent_network_name: The file name, without the .hocon extension
-        :param sample_queries: List of sample queries for the agent network
+        :param metadata: The merged metadata block to write, as returned by
+                AgentNetworkMetadata.merge; may be empty
 
         :return: The header of the HOCON agent network file as a string.
         """
-        formatted_queries: str = self._format_sample_queries(sample_queries)
-        date_created: str = datetime.datetime.now(tz=datetime.timezone.utc).isoformat()
+        # The block is rendered as JSON rather than the former hand-built triple-quoted list so
+        # that arbitrary keys carry forward (issue #1398) and so that a query containing three
+        # double quotes or a tab, which broke the triple-quoted rendering, survives a round trip
+        # (see _render_json_block for what pyhocon still cannot read back).
+        metadata_block: str = self._render_json_block(metadata, " " * 4)
         demo_mode_block: str = (
             '   "demo_mode": "You are part of a demo system, so when queried, make up a realistic '
             "response as if you are actually grounded in real data or you are operating a real "
@@ -229,11 +219,35 @@ class HoconAgentNetworkAssembler(AgentNetworkAssembler):
             else ""
         )
 
-        return (
-            HOCON_HEADER_START % (formatted_queries, date_created)
-            + agent_network_name
-            + HOCON_HEADER_REMAINDER % demo_mode_block
-        )
+        return HOCON_HEADER_START % metadata_block + agent_network_name + HOCON_HEADER_REMAINDER % demo_mode_block
+
+    @staticmethod
+    def _render_json_block(value: dict[str, Any], indent: str) -> str:
+        """
+        Render a dict as an indented HOCON object fragment.
+
+        JSON is valid HOCON, and json.dumps keeps every key and value double-quoted, so the
+        fragment always parses as written: HOCON performs no ${...} substitution inside
+        double-quoted strings, newlines, tabs and quotes inside values come out as JSON
+        escapes that pyhocon reads back verbatim, and ensure_ascii=False keeps non-ASCII text
+        (and non-ASCII keys, which pyhocon would not un-escape) as raw characters. A few pyhocon
+        limits remain, all irrelevant to LLM-generated queries and to the known metadata keys:
+        other control characters in a value are read back as their escape text, empty strings
+        are dropped from lists, and a key containing a double quote, a backslash or a newline
+        does not read back as written (pyhocon splits or keeps the escape). The text is split
+        on the newline character only: str.splitlines() would also split on the Unicode line
+        and paragraph separators and on NEL inside a value and corrupt the file.
+
+        :param value: The dict to render
+        :param indent: The indentation of the key the fragment follows; every line but the
+                first ("{", which lands right after the key) is prefixed with it
+        :return: The rendered fragment, starting with "{" and ending with "}"
+        """
+        lines: list[str] = json.dumps(value, indent=4, ensure_ascii=False).split("\n")
+        body_lines: list[str] = [lines[0]]
+        for line in lines[1:]:
+            body_lines.append(indent + line)
+        return "\n".join(body_lines)
 
     @staticmethod
     def _render_sly_data_schema_block(schema: dict[str, Any] | None) -> str:
@@ -260,13 +274,7 @@ class HoconAgentNetworkAssembler(AgentNetworkAssembler):
         if not schema:
             return ""
         indent: str = " " * 16
-        lines: list[str] = json.dumps(schema, indent=4, ensure_ascii=False).splitlines()
-        # Re-indent every line but the first ("{"), which lands right after
-        # the key on the same line and needs no leading spaces of its own.
-        body_lines: list[str] = [lines[0]]
-        for line in lines[1:]:
-            body_lines.append(indent + line)
-        body: str = "\n".join(body_lines)
+        body: str = HoconAgentNetworkAssembler._render_json_block(schema, indent)
         return f',\n{indent}"sly_data_schema": {body}'
 
     def _render_agent_block(

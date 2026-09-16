@@ -23,6 +23,15 @@ AGENT_NETWORK_DEFINITION: str = "agent_network_definition"
 # Assembled HOCON file content of the agent network, produced for client consumption.
 AGENT_NETWORK_HOCON_TEXT: str = "agent_network_hocon_text"
 
+# The network's top-level "metadata" block, exactly as written into the saved network and as
+# connectivity() serves it, minus the reservation/stored_at keys neuro-san's reservation storage adds
+# to a temporary network. The designer is stateless, so the client owns this block the way it owns
+# the definition and the name: AgentNetworkPersistenceMiddleware returns it after every save and reads
+# it back from the next request, adding only the sample queries and (file mode) timestamps the server
+# produced itself. AgentNetworkDefinitionMiddleware sets it from a network it loaded from a HOCON file
+# or a reservation so the client receives that network's block too.
+AGENT_NETWORK_METADATA: str = "agent_network_metadata"
+
 # Name of the agent network, used as the persistence file path or reservation identifier.
 AGENT_NETWORK_NAME: str = "agent_network_name"
 

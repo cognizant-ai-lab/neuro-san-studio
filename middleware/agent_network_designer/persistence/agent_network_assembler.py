@@ -41,6 +41,7 @@ class AgentNetworkAssembler:
         agent_network_name: str,
         sample_queries: list[str],
         client_token_mcp_headers: Mapping[str, Collection[str]] | None = None,
+        metadata: Mapping[str, Any] | None = None,
     ) -> Any:
         """
         Assemble the agent network from the definition.
@@ -54,6 +55,12 @@ class AgentNetworkAssembler:
                 (the sly_data http_headers servers not configured in
                 mcp_info.hocon). Drives the sly_data_schema emitted into the
                 assembled network; None or empty means no schema is emitted.
+        :param metadata: Metadata block to carry into the assembled network, typically
+                the block the persistence middleware built from what the client sent
+                back (see AgentNetworkMetadata.merge). It is re-merged with
+                sample_queries, whose non-empty list replaces the block's own. None
+                builds the block from sample_queries alone, the pre-#1398 behaviour
+                for callers with nothing to carry.
 
         :return: Some representation of the agent network
         """

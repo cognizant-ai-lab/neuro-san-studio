@@ -14,11 +14,14 @@
 #
 # END COPYRIGHT
 
-"""Tests for DeployableAgentNetworkAssembler's sly_data_schema emission."""
+"""Tests for DeployableAgentNetworkAssembler's sly_data_schema emission and metadata block."""
 
 import asyncio
 import os
+from copy import deepcopy
 from pathlib import Path
+from typing import Any
+from unittest import TestCase
 
 import pytest
 
@@ -79,8 +82,11 @@ def test_deployable_assembler_adds_max_execution_seconds():
     assert config["max_execution_seconds"] == GENERATED_NETWORK_MAX_EXECUTION_SECONDS
 
 
-class TestDeployableAssemblerSlyDataSchema:
-    """The deployable config dict declares the network's MCP header needs."""
+class TestDeployableAssemblerSlyDataSchema(TestCase):
+    """
+    The deployable config dict declares the network's MCP header needs and carries the metadata block
+    it is given, stamping nothing itself.
+    """
 
     def test_front_man_declares_the_schema(self):
         """The top agent's function block carries the nsflow contract."""
@@ -107,3 +113,94 @@ class TestDeployableAssemblerSlyDataSchema:
         for client_headers in (None, {}):
             agent_network = assemble(client_headers)
             assert "sly_data_schema" not in agent_network["tools"][0]["function"]
+
+    # Tests for the metadata block (issue #1398): carried whole with the storage-owned keys stripped,
+    # fresh queries overlaid, and omitted when there is nothing to say. The assembler stamps nothing
+    # itself: a temporary network gets its own stamps from neuro-san's reservation storage.
+
+    @staticmethod
+    def _assemble_spec(sample_queries: list[str], metadata: dict[str, Any] | None) -> dict[str, Any]:
+        """
+        Assemble the test network from the repo root with the given metadata inputs.
+
+        :param sample_queries: The positional sample_queries argument
+        :param metadata: The metadata keyword argument, None for the pre-#1398 call shape
+        :return: The assembled deployable spec
+        """
+        assembler: DeployableAgentNetworkAssembler = DeployableAgentNetworkAssembler(demo_mode=False)
+        cwd: str = os.getcwd()
+        os.chdir(REPO_ROOT)
+        try:
+            return asyncio.run(
+                assembler.assemble_agent_network(
+                    NETWORK_DEF, "front_man", "test_net", sample_queries, metadata=metadata
+                )
+            )
+        finally:
+            os.chdir(cwd)
+
+    def test_no_metadata_and_no_queries_omits_the_metadata_key(self) -> None:
+        """
+        With neither queries nor a block to carry, whether the keyword is None or an empty dict, the spec
+        has no "metadata" key at all: nothing is stamped to fill it.
+        """
+        for metadata in (None, {}):
+            with self.subTest(metadata=metadata):
+                spec: dict[str, Any] = self._assemble_spec([], metadata)
+
+                self.assertNotIn("metadata", spec)
+
+    def test_sample_queries_only_writes_just_sample_queries(self) -> None:
+        """
+        With queries but no block the metadata holds exactly sample_queries, no timestamp or other key.
+        """
+        spec: dict[str, Any] = self._assemble_spec(["First?", "Second?"], None)
+
+        self.assertEqual(spec["metadata"], {"sample_queries": ["First?", "Second?"]})
+
+    def test_metadata_keyword_is_carried_whole_with_storage_keys_stripped(self) -> None:
+        """
+        A block passed in is carried whole minus the keys neuro-san's reservation storage owns and minus
+        None-valued keys, a non-empty sample_queries argument replaces only its sample_queries, and the
+        caller's dict is neither mutated nor aliased by the spec.
+        """
+        supplied: dict[str, Any] = {
+            "description": "A demo",
+            "tags": ["generated"],
+            "sample_queries": ["Old one?"],
+            "date_created": "2026-01-01T00:00:00+00:00",
+            "reservation": {"id": "net-1"},
+            "stored_at": 1.0,
+            "note": None,
+        }
+        snapshot: dict[str, Any] = deepcopy(supplied)
+
+        spec: dict[str, Any] = self._assemble_spec(["New one?"], supplied)
+
+        self.assertEqual(
+            spec["metadata"],
+            {
+                "description": "A demo",
+                "tags": ["generated"],
+                "sample_queries": ["New one?"],
+                "date_created": "2026-01-01T00:00:00+00:00",
+            },
+        )
+        self.assertEqual(supplied, snapshot)
+        # The spec holds a copy: neuro-san's storage writers add keys to it, which must not reach the caller.
+        self.assertIsNot(spec["metadata"], supplied)
+        self.assertIsNot(spec["metadata"]["tags"], supplied["tags"])
+
+    def test_timestamps_in_the_block_pass_through_unchanged(self) -> None:
+        """
+        A block carrying date_created and date_modified comes out identical: the assembler neither refreshes
+        date_modified nor adds anything, because timestamps belong to the persistence middleware.
+        """
+        supplied: dict[str, Any] = {
+            "date_created": "2026-01-01T00:00:00+00:00",
+            "date_modified": "2026-02-01T00:00:00+00:00",
+        }
+
+        spec: dict[str, Any] = self._assemble_spec([], supplied)
+
+        self.assertEqual(spec["metadata"], supplied)
