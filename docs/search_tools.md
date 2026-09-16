@@ -5,7 +5,7 @@ Neuro SAN offers search capability via the following search engines:
 1. [Anthropic Search](#anthropic-search) — Web search via Anthropic's search tool
 2. [Brave Search](#brave-search) — Search using Brave Search API
 3. [Dux Distributed Global Search (DDGS)](#dux-distributed-global-search-ddgs) — Search using DuckDuckGo (no API key required)
-4. [Firecrawl Search](#firecrawl-search) — Search the web and get the cleaned content of each result in one call
+4. [Firecrawl Search](#firecrawl-search) — Search with the cleaned content of each result, via Firecrawl MCP server
 5. [Google Custom Search Engine](#google-custom-search-engine) — Search using Google Custom Search Engine
 6. [Google Serper](#google-serper) — Search using Google Serper API with advanced filtering
 7. [OpenAI Search](#openai-search) — Web search via OpenAI's search tool
@@ -107,25 +107,37 @@ records; and `pdf` returns PDF documents.
 
 ![Firecrawl](./images/Firecrawl.png)
 
-_Environment Variables:_
+_MCP Configuration:_
 
-To use this search tool, obtain an API key from [https://www.firecrawl.dev/](https://www.firecrawl.dev/). Once you
-have the API key, set it using the `FIRECRAWL_API_KEY` environment variable.
+Firecrawl is integrated as an MCP server at `https://mcp.firecrawl.dev/v2/mcp`, configured in
+[mcp\_info.hocon](../neuro_san_studio/mcp/mcp_info.hocon). It is enabled by default and needs no credentials.
 
-The Firecrawl search URL is specified via the `FIRECRAWL_URL` environment variable. If `FIRECRAWL_URL` is not set,
-the default value listed below is used:
+The server exposes three tools:
 
-[https://api.firecrawl.dev/v2/search](https://api.firecrawl.dev/v2/search)
+- **`firecrawl_search`** — Web, news and image search that returns ranked results and, in the same call, the
+  cleaned Markdown of each result page. Supports the `developer`, `research` and `pdf` categories described above.
+- **`firecrawl_scrape`** — Extracts a single URL as clean Markdown.
+- **`firecrawl_parse`** — Extracts the contents of a document, such as a PDF, as Markdown.
 
-Optionally, you can override the default value by setting the `FIRECRAWL_URL` environment variable (E.g., if you are
-running a self-hosted Firecrawl instance). You can also configure the request timeout (in seconds) using
-`FIRECRAWL_TIMEOUT`; the default is 120 seconds. Scraping the result pages takes longer than a snippet-only
-search, so keep the timeout generous unless you set `scrape_content` to `false`.
+_Free Tier (No Credentials Required):_
+
+The same URL works with no `Authorization` header. The keyless tier is rate limited per IP per day, on both
+requests and credits. No signup is required.
+
+_Getting an API Key:_
+
+1. Sign up at [https://www.firecrawl.dev/](https://www.firecrawl.dev/) — no credit card required
+2. You receive **1,000 credits per month** on the free plan
+3. Get your API key at [https://www.firecrawl.dev/app/api-keys](https://www.firecrawl.dev/app/api-keys)
+4. Set it using the `FIRECRAWL_API_KEY` environment variable, then uncomment the `http_headers` block in
+   [mcp\_info.hocon](../neuro_san_studio/mcp/mcp_info.hocon). Keyless and keyed usage share the same URL, so no
+   other change is needed.
+5. For full pricing details, see [https://www.firecrawl.dev/pricing](https://www.firecrawl.dev/pricing)
 
 _Example Usage in Neuro San Studio:_
 
 - [firecrawl\_search.hocon](../registries/tools/firecrawl_search.hocon),
-- available as a tool in [toolbox\_info.hocon](../neuro_san_studio/toolbox/toolbox_info.hocon)
+- see also [MCP server configuration](../neuro_san_studio/mcp/mcp_info.hocon)
 
 ## Google Custom Search Engine
 
@@ -274,7 +286,7 @@ _Example Usage in Neuro San Studio:_
 | Anthropic | built-in web search system used by Claude | No | Uses external APIs (e.g., Bing, Brave) | No |
 | Brave | Privacy-focused independent search engine | Yes | Own independent index | Yes |
 | DDGS | A meta-search library, aggregates results from diverse web search services | No | Scrapes public search result pages from DuckDuckGo, Bing, Brave, Google | No |
-| Firecrawl | Search API that returns ranked results together with the cleaned Markdown of each result page | No | Web search results passed through its own scraping and cleaning pipeline, with category filters for developer, academic and PDF sources | Yes |
+| Firecrawl | Web data platform whose search returns ranked results together with the cleaned Markdown of each result page, plus scrape and parse, via MCP | No | Web search results passed through its own scraping and cleaning pipeline, with category filters for developer, academic and PDF sources | Yes |
 | Google | Lets you build a search engine tailored to specific websites or topics | Yes | Google’s index (simpler ranking, limited personalization) | Yes |
 | Serper | Third-party Google Search API service that scrapes Google Search results in JSON format | No | Real Google Search results via scraping | Yes |
 | OpenAI | Built-in web search system used by ChatGP | No | Uses Bing API + other sources | No |
@@ -292,7 +304,7 @@ The cost and rate limit comparison is provided in the table below.
 | Anthropic Search | Yes<br> (Internal to Claude)<br>Check Anthropic rate limits | Yes<br> (Internal to Claude)<br>Check Anthropic rate limits |
 | Brave Search | Yes<br> 1 request/second<br>2,000 request /month | Base AI: $5 per 1,000 requests<br>20 requests/second<br>20 million queries/month<br>Pro AI: $9 per 1,000 requests<br>50 requests/second<br>Unlimited queries/month |
 | DDGS | Yes<br>Rate limit: backend specific | No |
-| Firecrawl Search | Yes<br>1,000 credits/month<br>No credit card required<br>10 requests/minute | Yes<br>Hobby: $19/month, or $16/month billed annually<br>5,000 credits, 100 requests/minute<br>Standard: $83/month billed annually<br>100,000 credits, 500 requests/minute<br>Search costs 2 credits per 10 results (rounded up), plus 1 credit for each result page scraped |
+| Firecrawl Search | Yes<br>Keyless via MCP: no signup, rate limited per IP per day<br>With a free API key: 1,000 credits/month<br>No credit card required<br>10 requests/minute | Yes<br>Hobby: $19/month, or $16/month billed annually<br>5,000 credits, 100 requests/minute<br>Standard: $83/month billed annually<br>100,000 credits, 500 requests/minute<br>Search costs 2 credits per 10 results (rounded up), plus 1 credit for each result page scraped |
 | Google Search | Yes<br>100 searches/day | Yes<br>$5 for 1,000 queries<br>10,000 queries/day |
 | Google Serper | Yes<br>2,500 queries (one-time) | Yes<br>$50, 50k queries, 50 queries/sec |
 | OpenAI Search | Yes (Internal to ChatGPT)<br>Check OpenAI rate limits | Yes (Internal to ChatGPT)<br>Check OpenAI rate limits |
