@@ -230,13 +230,15 @@ class HoconAgentNetworkAssembler(AgentNetworkAssembler):
         fragment always parses as written: HOCON performs no ${...} substitution inside
         double-quoted strings, newlines, tabs and quotes inside values come out as JSON
         escapes that pyhocon reads back verbatim, and ensure_ascii=False keeps non-ASCII text
-        (and non-ASCII keys, which pyhocon would not un-escape) as raw characters. A few pyhocon
-        limits remain, all irrelevant to LLM-generated queries and to the known metadata keys:
-        other control characters in a value are read back as their escape text, empty strings
-        are dropped from lists, and a key containing a double quote, a backslash or a newline
-        does not read back as written (pyhocon splits or keeps the escape). The text is split
-        on the newline character only: str.splitlines() would also split on the Unicode line
-        and paragraph separators and on NEL inside a value and corrupt the file.
+        (and non-ASCII keys, which pyhocon would not un-escape) as raw characters. pyhocon reads
+        keys back raw, so a key holding a double quote, a backslash or a control character would
+        not come back as written: AgentNetworkMetadata.sanitize() drops such keys from the
+        metadata block before it gets here, and the schema block's keys are URLs, which never
+        contain them. Two pyhocon limits remain for values, both irrelevant to LLM-generated
+        queries: other control characters are read back as their escape text, and empty
+        strings are dropped from lists. The text is split on the newline character only:
+        str.splitlines() would also split on the Unicode line and paragraph separators and on
+        NEL inside a value and corrupt the file.
 
         :param value: The dict to render
         :param indent: The indentation of the key the fragment follows; every line but the

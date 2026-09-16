@@ -285,6 +285,27 @@ class TestHoconAssemblerSlyDataSchema(TestCase):
         self.assertNotIn('"note"', text)
         self.assertEqual(supplied, snapshot)
 
+    def test_unstorable_keys_never_reach_the_file_so_it_matches_the_returned_block(self) -> None:
+        """
+        A key holding a double quote, a backslash or a newline is dropped before rendering, at the top level
+        and nested alike (pyhocon would read it back changed or split), so the parsed block equals the
+        sanitized input and the escaped key text is nowhere in the file.
+        """
+        supplied: dict[str, Any] = {
+            "description": "A demo",
+            'we"ird': "top",
+            "owner": {"team": "platform", "back\\slash": 1, "a\nb": 2},
+        }
+
+        with self.assertLogs("AgentNetworkMetadata", level="WARNING"):
+            text: str = self._assemble_text([], supplied)
+        block: dict[str, Any] = self._parse_metadata(text)
+
+        block.pop("date_created")
+        self.assertEqual(block, {"description": "A demo", "owner": {"team": "platform"}})
+        self.assertNotIn('we\\"ird', text)
+        self.assertNotIn("back\\\\slash", text)
+
     def test_emitted_text_with_a_metadata_block_still_parses_with_the_repo_root_includes(self) -> None:
         """
         The JSON block sits between the two include statements of the header; with a populated block the

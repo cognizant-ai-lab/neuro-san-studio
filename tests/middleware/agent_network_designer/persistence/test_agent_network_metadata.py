@@ -39,7 +39,7 @@ NOW_STAMP: str = "2026-09-16T10:11:12+00:00"
 LOGGER_NAME: str = "AgentNetworkMetadata"
 
 
-class TestAgentNetworkMetadata(unittest.TestCase):
+class TestAgentNetworkMetadata(unittest.TestCase):  # pylint: disable=too-many-public-methods
     """
     Unit tests for AgentNetworkMetadata.
 
@@ -159,6 +159,61 @@ class TestAgentNetworkMetadata(unittest.TestCase):
         message: str = captured.records[0].getMessage()
         self.assertIn("list", message)
         self.assertIn(source, message)
+
+    def test_is_storable_key_accepts_ordinary_keys_and_rejects_unstorable_ones(self) -> None:
+        """
+        is_storable_key() is True for keys pyhocon reads back verbatim (dots, spaces, '#', '${', '//', non-ASCII
+        text, U+2028) and False for a double quote, a backslash, a newline, a tab, another control character
+        and a non-str key.
+        """
+        storable: list[str] = [
+            "dot.key",
+            "space key",
+            "hash#key",
+            "dollar${x}",
+            "slashes//key",
+            "caf\u00e9",
+            "sep\u2028arated",
+        ]
+        unstorable: list[Any] = ['we"ird', "back\\slash", "a\nb", "tab\there", "bell\x07x", 7]
+        for key in storable:
+            with self.subTest(key=key):
+                self.assertTrue(AgentNetworkMetadata.is_storable_key(key))
+        for key in unstorable:
+            with self.subTest(key=key):
+                self.assertFalse(AgentNetworkMetadata.is_storable_key(key))
+
+    def test_sanitize_drops_unstorable_keys_at_every_level_and_warns(self) -> None:
+        """
+        sanitize() drops a key a HOCON file cannot hold at the top level, inside a nested object and inside an
+        object held in a list; every sibling is kept, the input is untouched, and one WARNING names each
+        dropped key by its path.
+        """
+        supplied: dict[str, Any] = {
+            "description": "A demo",
+            'we"ird': "top",
+            "owner": {"team": "platform", "back\\slash": 1},
+            "notes": [{"ok": True, "a\nb": 2}, "plain"],
+        }
+        snapshot: dict[str, Any] = deepcopy(supplied)
+        expected: dict[str, Any] = {
+            "description": "A demo",
+            "owner": {"team": "platform"},
+            "notes": [{"ok": True}, "plain"],
+        }
+
+        with self.assertLogs(LOGGER_NAME, level="WARNING") as captured:
+            result: dict[str, Any] | None = AgentNetworkMetadata.sanitize(supplied)
+
+        self.assertEqual(result, expected)
+        self.assertEqual(supplied, snapshot)
+        messages: list[str] = []
+        for record in captured.records:
+            messages.append(record.getMessage())
+        self.assertEqual(len(messages), 3)
+        self.assertIn(repr('we"ird'), messages[0])
+        self.assertIn(repr("owner.back\\slash"), messages[1])
+        self.assertIn(repr("notes[0].a\nb"), messages[2])
 
     def test_is_query_list_true_for_non_empty_str_list(self) -> None:
         """
