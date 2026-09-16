@@ -392,6 +392,26 @@ class TestAgentNetworkMetadata(unittest.TestCase):  # pylint: disable=too-many-p
 
     # ------------------------------------------------------ apply_file_timestamps
 
+    def test_merge_filters_generated_queries_like_the_client_block(self) -> None:
+        """
+        merge() drops a generated query that is empty or holds a control character pyhocon does not decode,
+        with one WARNING each naming sample_queries[<index>], and keeps the client's list when nothing is left.
+        """
+        client: dict[str, Any] = {"sample_queries": ["Old one?"]}
+
+        with self.assertLogs(LOGGER_NAME, level="WARNING") as captured:
+            result: dict[str, Any] = AgentNetworkMetadata.merge(client, ["", "Fine?", "bell\x07"])
+
+        self.assertEqual(result, {"sample_queries": ["Fine?"]})
+        self.assertEqual(len(captured.records), 2)
+        self.assertIn(repr("sample_queries[0]"), captured.records[0].getMessage())
+        self.assertIn(repr("sample_queries[2]"), captured.records[1].getMessage())
+
+        with self.assertLogs(LOGGER_NAME, level="WARNING"):
+            kept: dict[str, Any] = AgentNetworkMetadata.merge(client, ["\x07"])
+
+        self.assertEqual(kept, {"sample_queries": ["Old one?"]})
+
     def test_apply_file_timestamps_on_empty_block_sets_both_dates_to_now(self) -> None:
         """
         apply_file_timestamps() on {} stamps date_created and date_modified with now, in place, and returns None.

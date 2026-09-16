@@ -243,14 +243,24 @@ class AgentNetworkMetadata:
 
         :param client_block: The metadata block the client sent back under AGENT_NETWORK_METADATA,
                 or the block stashed by the load path; None or a non-mapping means none
-        :param sample_queries: Sample queries generated on this turn; None or [] means none
+        :param sample_queries: Sample queries generated on this turn; None or [] means none.
+                A query a HOCON file cannot hold as written (empty, or holding a control
+                character other than tab, newline or carriage return) is dropped with a
+                warning like any other entry; when none is left the client's list is kept
         :return: A new dict that aliases neither input, empty when there is nothing to say
         """
         block: dict[str, Any] | None = AgentNetworkMetadata.sanitize(client_block)
         if block is None:
             block = {}
         if AgentNetworkMetadata.is_query_list(sample_queries):
-            block[AgentNetworkMetadata.SAMPLE_QUERIES_KEY] = list(sample_queries)
+            # Generated queries go through the same round-trip filter as the client's block,
+            # otherwise a stray empty or control-character query would make the file differ
+            # from the block handed back.
+            storable_queries: list[Any] = AgentNetworkMetadata._copy_storable(
+                list(sample_queries), AgentNetworkMetadata.SAMPLE_QUERIES_KEY
+            )
+            if storable_queries:
+                block[AgentNetworkMetadata.SAMPLE_QUERIES_KEY] = storable_queries
         return block
 
     @staticmethod
