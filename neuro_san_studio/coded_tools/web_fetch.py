@@ -27,6 +27,7 @@ from neuro_san_studio.coded_tools.utils.safe_fetch import SafeFetch
 MAX_CHARS: int = 20_000
 SUPPORTED_CONTENT_TYPES: set[str] = {
     "application/atom+xml",
+    "application/json",
     "application/pdf",
     "application/rss+xml",
     "application/xhtml+xml",
@@ -43,7 +44,9 @@ class WebFetch(CodedTool):
     """
     CodedTool implementation that fetches a URL and returns its plain-text body.
 
-    XML and feed responses are returned as extracted text; raw XML markup is not preserved.
+    XML and feed responses are returned as extracted text; raw XML markup is not
+    preserved. JSON responses are returned verbatim (a JSON body does not start
+    with "<", so the HTML stripper leaves it untouched).
 
     All validation and network access is delegated to the shared SSRF-hardened
     fetch path (SafeFetch): private/loopback/reserved hosts are rejected,
@@ -59,7 +62,7 @@ class WebFetch(CodedTool):
                                     or returns a redirect.
         url_not_accessible       – HTTP error or network failure while fetching the page.
         too_many_requests        – Server returned HTTP 429.
-        unsupported_content_type – Content type is not an approved text, XML, feed, HTML, or PDF type.
+        unsupported_content_type – Content type is not an approved text, XML, feed, JSON, HTML, or PDF type.
         response_too_large       – Content-Length header or streamed body (text or PDF) exceeds the byte limit.
     """
 
@@ -108,12 +111,12 @@ class WebFetch(CodedTool):
             # affect the decision, and substring matching would misclassify types
             # like "image/png; profile=text/plain" or "application/x-text/plain".
             base_type: str = content_type.split(";", 1)[0].strip().lower()
-            is_pdf: bool = base_type == "application/pdf" or url.lower().endswith(".pdf")
+            is_pdf: bool = SafeFetch.is_pdf(content_type, url)
 
             if not is_pdf and not self._is_supported_content_type(base_type):
                 raise ValueError(
                     f"unsupported_content_type: Content type '{content_type}' is not supported. "
-                    "Only approved text, XML, feed, HTML, and PDF types are accepted."
+                    "Only approved text, XML, feed, JSON, HTML, and PDF types are accepted."
                 )
 
             retrieved_at: str = datetime.now(timezone.utc).isoformat()
