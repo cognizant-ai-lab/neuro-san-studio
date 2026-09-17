@@ -64,6 +64,11 @@
 
     "tools/ddgs_search.hocon": true,
 
+    # Firecrawl Search via the hosted Firecrawl MCP server. Works with no API key (rate limited per IP);
+    # set FIRECRAWL_API_KEY and uncomment the header in mcp_info.hocon for higher limits. The "tools"
+    # list in that mcp_info.hocon entry controls which Firecrawl tools the agent sees.
+    "tools/firecrawl_search.hocon": true,
+
     # Requirement to use this agent network:
     # - google-genai
     # - GOOGLE_API_KEY
@@ -136,8 +141,6 @@
     "tools/openai_video_generation.hocon": false,
     "tools/openai_web_search.hocon": true,
 
-    # To use this agent network, start by installing the required package:
-    #     pip install pymupdf >= 1.25.5
     "tools/pdf_rag.hocon": false,
     
     # File system-backed long-term memory tool (per-agent): CRUD + keyword search.

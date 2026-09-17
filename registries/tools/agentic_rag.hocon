@@ -68,23 +68,18 @@
                 "num_results": 3
             }
         },
-        # RAG tool that loads data from a PDF URL into an in-memory vectorstore and answers queries.
+        # RAG tool that loads the RFP PDF into an in-memory vectorstore and answers queries.
+        # This is the shared toolbox "pdf_rag" tool (PdfRag), so the PDF is fetched through the
+        # SSRF-hardened SafeFetch path and parsed with pypdf. See registries/tools/pdf_rag.hocon
+        # for the optional arguments (vector_store_type, save_vector_store, vector_store_path).
         {
             "name": "rag_retriever",
-            "function": {
-                "description": "Retrieve information from the given rfp documents",
-                "parameters": {
-                    "type": "object",
-                    "properties": {
-                        "query": {
-                            "type": "string",
-                            "description": "Query for retrieval"
-                        }
-                    },
-                    "required": ["query"]
-                }
+            "toolbox": "pdf_rag",
+            "args": {
+                "urls": [
+                    """https://www.usac.org/wp-content/uploads/rural-health-care/documents/samples/LargeProjectScopeRFP.pdf""",
+                ],
             },
-            "class": "rag.Rag"
         },
         # Retrieves messages from a specified Slack channel.
         # Install slack-sdk and set SLACK_BOT_TOKEN or SLACK_USER_TOKEN to use this tool.

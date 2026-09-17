@@ -26,6 +26,7 @@
       - [Ollama Prerequisites](#ollama-prerequisites)
       - [Ollama Configuration](#ollama-configuration)
       - [Using Ollama in Docker or Remote Server](#using-ollama-in-docker-or-remote-server)
+      - [Using llmman](#using-llmman)
       - [Example agent network](#example-agent-network)
     - [Mistral](#mistral)
     - [Configuring Default Models with Environment Variables](#configuring-default-models-with-environment-variables)
@@ -699,6 +700,37 @@ You can also set the environment variable `OLLAMA_HOST`, but `base_url` takes pr
 For more information on logic of parsing the `base_url`
 see [Ollama python SDK](https://github.com/ollama/ollama-python/blob/main/ollama/_client.py#L1274)
 
+#### Using llmman
+
+[llmman](https://github.com/llmmanorg/llmman) is a local model runner that serves the Ollama, OpenAI and Anthropic APIs
+on port `17434`. Since `langchain-openai` is installed by default, the simplest setup is to use the `openai` class.
+
+1. Install and start llmman, then pull a model:
+
+    ```bash
+    curl -fsSL https://llmmanorg.github.io/install.sh | sh
+    llmman serve
+    llmman pull gemma4
+    ```
+
+2. Point the `openai` class at llmman via `openai_api_base`:
+
+    ```hocon
+        "llm_config": {
+            "class": "openai",
+            "model_name": "gemma4",
+            "openai_api_base": "http://localhost:17434/v1",
+            "openai_api_key": "llmman"
+        }
+    ```
+
+    llmman does not require an API key by default, but the OpenAI client does, so any non-empty value works.
+    Alternatively, set `OPENAI_API_BASE=http://localhost:17434/v1` in the environment and omit `openai_api_base`.
+
+llmman model names (e.g. `gemma4`, `hf.co/unsloth/Qwen3.5-0.8B-GGUF`) are not in the
+[default llm info file](https://github.com/cognizant-ai-lab/neuro-san/blob/main/neuro_san/internals/run_context/langchain/llms/default_llm_info.hocon),
+so `"class": "openai"` must be set explicitly.
+
 #### Example agent network
 
 See the [./examples/music_nerd_pro_local.md](examples/basic/music_nerd_pro_local.md) for a complete working example.
@@ -1245,25 +1277,18 @@ To use tools from toolbox in your agent network, simply call them with field `to
         Example:
 
         ```json
-            "rag_retriever": {
-                "class": "rag.Rag",
-                "description": "Retrieve information on the given urls",
+            "slack_tool": {
+                "class": "slack.Slack",
+                "description": "Retrieve messages from the given slack channel",
                 "parameters": {
                     "type": "object",
                     "properties": {
-                        "urls": {
-                            "type": "array",
-                            "items": {
-                                "type": "string"
-                            },
-                            "description": "List of url to retrieve info from"
-                        },
-                        "query": {
+                        "channel_name": {
                             "type": "string",
-                            "description": "Query for retrieval"
+                            "description": "slack channel to get messages from"
                         }
                     },
-                    "required": ["urls", "query"]
+                    "required": ["channel_name"]
                 },
             }
         ```

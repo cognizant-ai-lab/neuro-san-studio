@@ -167,6 +167,19 @@ def make_pdf_bytes(pages: int = 1) -> bytes:
     return buffer.getvalue()
 
 
+async def open_session_user_agent() -> str | None:
+    """
+    Open a real SafeFetch session and return its User-Agent header, closing the session.
+
+    :return: The session's User-Agent header value, or None when absent.
+    """
+    session = SafeFetch.open_session()
+    try:
+        return session.headers.get("User-Agent")
+    finally:
+        await session.close()
+
+
 class TestSafeFetch(TestCase):  # pylint: disable=too-many-public-methods
     """Unit tests for the SafeFetch shared SSRF-hardened fetch utility.
 
@@ -743,10 +756,60 @@ class TestSafeFetch(TestCase):  # pylint: disable=too-many-public-methods
                 asyncio.run(SafeFetch.get_content_type("http://example.com", session))
         self.assertIn("response_too_large", str(ctx.exception))
 
-    def test_get_content_type_non_2xx_raises_with_url_not_accessible_prefix(self):
-        """Tests that a non-2xx HTTP error raises ClientResponseError with url_not_accessible prefix."""
+    def test_open_session_honors_user_agent_env(self):
+        """Tests that open_session applies the USER_AGENT env value as the session's User-Agent.
+
+        The langchain WebBaseLoader honored USER_AGENT; some sites answer 403 to
+        aiohttp's default User-Agent, so the hardened session keeps that operator
+        knob. Without the variable, no explicit User-Agent header is set. The unset
+        case asserts session-level configuration only: session.headers reflects
+        just constructor-supplied headers — aiohttp injects its default User-Agent
+        per request, never onto the session — so assertIsNone is deterministic.
+        """
+        with patch.dict("os.environ", {"USER_AGENT": "studio-test-agent/1.0"}):
+            self.assertEqual(asyncio.run(open_session_user_agent()), "studio-test-agent/1.0")
+        with patch.dict("os.environ", {}, clear=True):
+            self.assertIsNone(asyncio.run(open_session_user_agent()))
+
+    def test_get_content_type_head_403_falls_back_to_get(self):
+        """Tests that a HEAD failure other than 429 still falls back to GET.
+
+        Presigned S3/Azure URLs sign only the GET method and answer 403 to HEAD;
+        the probe must not report such a resource inaccessible when a plain GET
+        (through the same redirect/size checks) succeeds.
+        """
+        session, _ = make_head_session(status=403)
+        get_response = MagicMock()
+        get_response.status = 200
+        get_response.headers = {"Content-Type": "application/pdf"}
+        get_response.raise_for_status = MagicMock()
+        get_cm = MagicMock()
+        get_cm.__aenter__ = AsyncMock(return_value=get_response)
+        get_cm.__aexit__ = AsyncMock(return_value=False)
+        session.get = MagicMock(return_value=get_cm)
+
+        content_type, body = asyncio.run(SafeFetch.get_content_type("http://example.com/presigned", session))
+        self.assertEqual(content_type, "application/pdf")
+        self.assertIsNone(body)
+        session.get.assert_called_once()
+
+    def test_get_content_type_head_and_get_both_failing_raises_url_not_accessible(self):
+        """Tests that when HEAD fails and the fallback GET also fails, the GET error surfaces.
+
+        A HEAD failure alone no longer raises — it only triggers the GET fallback —
+        so the inaccessible verdict must come from the GET.
+        """
+        session, _ = make_head_session(status=404)
         exc = make_response_error(404)
-        session, _ = make_head_session(status=404, raise_for_status_exc=exc)
+        get_response = MagicMock()
+        get_response.status = 404
+        get_response.headers = {}
+        get_response.raise_for_status = MagicMock(side_effect=exc)
+        get_cm = MagicMock()
+        get_cm.__aenter__ = AsyncMock(return_value=get_response)
+        get_cm.__aexit__ = AsyncMock(return_value=False)
+        session.get = MagicMock(return_value=get_cm)
+
         with self.assertRaises(ClientResponseError) as ctx:
             asyncio.run(SafeFetch.get_content_type("http://example.com", session))
         self.assertIn("url_not_accessible", ctx.exception.message)
@@ -832,6 +895,25 @@ class TestSafeFetch(TestCase):  # pylint: disable=too-many-public-methods
         self.assertNotIn("<p>", result)
         self.assertNotIn("alert", result)
         self.assertNotIn("body{}", result)
+
+    def test_fetch_text_bom_prefixed_html_is_still_stripped(self):
+        """Tests that a UTF-8 BOM before the markup does not defeat the HTML sniff.
+
+        A BOM decodes to a leading U+FEFF, which str.lstrip() does not remove
+        (it is not whitespace), so without the decode-time strip the body would
+        come back as raw markup instead of extracted text.
+        """
+        html = "\ufeff<html><body><p>Hello</p></body></html>"
+        session, _ = make_get_response(body=html)
+        result = asyncio.run(SafeFetch.fetch_text("http://example.com", session))
+        self.assertIn("Hello", result)
+        self.assertNotIn("<p>", result)
+
+    def test_fetch_text_bom_prefixed_plain_text_loses_only_the_bom(self):
+        """Tests that a BOM on a non-HTML body is dropped while the text is otherwise unchanged."""
+        session, _ = make_get_response(body="\ufeffjust plain text")
+        result = asyncio.run(SafeFetch.fetch_text("http://example.com", session))
+        self.assertEqual(result, "just plain text")
 
     def test_fetch_text_non_2xx_raises_client_response_error_with_prefix(self):
         """Tests that a non-2xx HTTP error raises ClientResponseError with url_not_accessible prefix."""
@@ -1042,3 +1124,72 @@ class TestSafeFetch(TestCase):  # pylint: disable=too-many-public-methods
         with self.assertRaises(ClientError) as ctx:
             self._call_download_pdf_bytes(session)
         self.assertIn("url_not_accessible", str(ctx.exception))
+
+    def test_is_pdf_detects_suffix_despite_query_or_fragment(self):
+        """Tests that a .pdf path is detected even with a query string or fragment after it."""
+        self.assertTrue(SafeFetch.is_pdf("", "https://example.com/file.pdf?download=1"))
+        self.assertTrue(SafeFetch.is_pdf("", "https://example.com/file.PDF#page=2"))
+        self.assertTrue(SafeFetch.is_pdf("application/pdf", "https://example.com/report"))
+        # A .pdf that is not the path suffix must not match.
+        self.assertFalse(SafeFetch.is_pdf("text/html", "https://example.com/file.pdf.html"))
+        self.assertFalse(SafeFetch.is_pdf("text/html", "https://example.com/page?name=file.pdf"))
+
+    def test_is_pdf_trusts_concrete_declared_type_over_url_suffix(self):
+        """Tests that a concrete declared type beats the ".pdf" suffix; generic types defer to the URL.
+
+        A .pdf path serving declared text/html is an error page or a moved document
+        and must not be force-fed to the PDF parser. Generic download types carry no
+        format information, so there the URL decides — including a filename that only
+        appears in the query string ("/download?name=report.pdf"), which download
+        endpoints commonly use.
+        """
+        # Concrete declared types win over the path suffix.
+        self.assertFalse(SafeFetch.is_pdf("text/html", "https://example.com/file.pdf"))
+        self.assertFalse(SafeFetch.is_pdf("application/zip", "https://example.com/file.pdf"))
+        # Generic download types defer to the URL.
+        self.assertTrue(SafeFetch.is_pdf("application/octet-stream", "https://example.com/file.pdf"))
+        self.assertTrue(SafeFetch.is_pdf("binary/octet-stream", "https://example.com/file.pdf"))
+        # With a generic type, a filename in the query string is still recognized —
+        # both trailing and mid-query ("...&sig=x" after the filename parameter).
+        self.assertTrue(SafeFetch.is_pdf("application/octet-stream", "https://example.com/download?name=report.pdf"))
+        self.assertTrue(
+            SafeFetch.is_pdf("application/octet-stream", "https://example.com/download?name=report.pdf&sig=abc123")
+        )
+        # ... but a concrete declared type still wins over a query-string filename.
+        self.assertFalse(SafeFetch.is_pdf("text/html", "https://example.com/download?name=report.pdf&sig=abc123"))
+        # A generic type with no .pdf anywhere in the URL is not a PDF.
+        self.assertFalse(SafeFetch.is_pdf("application/octet-stream", "https://example.com/download?name=report.zip"))
+        # A bare valueless query token still counts (parse_qs drops it; the
+        # query-suffix check catches it) ...
+        self.assertTrue(SafeFetch.is_pdf("application/octet-stream", "https://example.com/download?report.pdf"))
+        # ... but a fragment never does: fragments are not sent to the server, so
+        # "/page#report.pdf" says nothing about what /page serves.
+        self.assertFalse(SafeFetch.is_pdf("application/octet-stream", "https://example.com/page#report.pdf"))
+
+    def test_is_text_content_type_rejects_images_including_svg(self):
+        """Tests that declared image types are not text, even XML-based ones like image/svg+xml."""
+        self.assertFalse(SafeFetch.is_text_content_type("image/svg+xml"))
+        self.assertFalse(SafeFetch.is_text_content_type("image/png"))
+        # Genuinely textual types remain accepted.
+        self.assertTrue(SafeFetch.is_text_content_type("application/xml"))
+        self.assertTrue(SafeFetch.is_text_content_type("application/json"))
+        self.assertTrue(SafeFetch.is_text_content_type("text/markdown"))
+        self.assertTrue(SafeFetch.is_text_content_type("TEXT/HTML; charset=utf-8"))
+
+    def test_is_text_content_type_rejects_binary_vendor_types_containing_xml(self):
+        """Tests that ZIP-container vendor types whose names contain 'xml' are not treated as text.
+
+        Guards against the old substring scan: .docx/.xlsx/.pptx media types contain
+        "xml" (openxmlformats) but are binary ZIP containers, while genuine XML types
+        are recognized by the RFC 6839 "+xml" structured suffix.
+        """
+        self.assertFalse(
+            SafeFetch.is_text_content_type("application/vnd.openxmlformats-officedocument.wordprocessingml.document")
+        )
+        self.assertFalse(
+            SafeFetch.is_text_content_type("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+        )
+        # Real XML feed/document types keep matching via the "+xml" suffix.
+        self.assertTrue(SafeFetch.is_text_content_type("application/rss+xml"))
+        self.assertTrue(SafeFetch.is_text_content_type("application/atom+xml"))
+        self.assertTrue(SafeFetch.is_text_content_type("application/xhtml+xml"))
