@@ -64,6 +64,12 @@ class OrderAPI(CodedTool):
             logger.debug(error)
             return error
 
+        if sly_data.get("username") is not None and args.get("customer_name") is not None:
+            if " ".join(customer_name.strip().lower().split()) != " ".join(sly_data["username"].strip().lower().split()):
+                error = "Error: Customer name mismatch. The name on file is '" + sly_data["username"] + "'. Please confirm the correct customer name."
+                logger.debug(error)
+                return error
+
         # Now we have a client name. Keep it in the sly_data if it wasn't there before.
         if sly_data.get("username", None) is None:
             sly_data["username"] = customer_name

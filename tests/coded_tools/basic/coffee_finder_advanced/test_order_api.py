@@ -66,6 +66,32 @@ class TestOrderAPI(TestCase):
         expected_error_2 = "Error: Please provide a valid shop name."
         self.assertTrue(response_2.startswith(expected_error_2))
 
+    def test_invoke_customer_name_mismatch(self):
+        """
+        Tests that a partial customer name that doesn't match the name
+        on file is rejected and the name on file is left untouched.
+        """
+        order_api = OrderAPI()
+        sly_data = {"username": "Pixel Smith"}
+        order = {"customer_name": "Pixel", "shop_name": OrderAPI.SHOP_1, "order_details": "Black coffee"}
+        response = order_api.invoke(args=order, sly_data=sly_data)
+        expected_error = "Error: Customer name mismatch. The name on file is 'Pixel Smith'. Please confirm the correct customer name."
+        self.assertEqual(expected_error, response)
+        self.assertEqual("Pixel Smith", sly_data["username"])
+
+    def test_invoke_customer_name_match_is_case_and_whitespace_insensitive(self):
+        """
+        Tests that a customer name matching the name on file (modulo case and whitespace)
+        is accepted and the order is placed successfully.
+        """
+        order_api = OrderAPI()
+        sly_data = {"username": "Pixel Smith"}
+        order = {"customer_name": "  pixel  smith  ", "shop_name": OrderAPI.SHOP_1, "order_details": "Latte"}
+        response = order_api.invoke(args=order, sly_data=sly_data)
+        expected = f"Order 101 placed successfully for   pixel  smith   at {OrderAPI.SHOP_1}. Details: Latte"
+        self.assertEqual(expected, response)
+        self.assertEqual("Pixel Smith", sly_data["username"])
+
     def test_invoke_order_id(self):
         """
         Tests the invoke method of the OrderAPI CodedTool.
