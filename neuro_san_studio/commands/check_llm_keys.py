@@ -136,6 +136,10 @@ class EnvValidator:
             (len(v) >= 20),
             "Firecrawl API keys should be at least 20 characters",
         ),
+        "SERPLY_API_KEY": lambda v: (
+            (len(v) >= 20),
+            "Serply API keys should be at least 20 characters",
+        ),
     }
 
     LLM_API_KEYS = [
