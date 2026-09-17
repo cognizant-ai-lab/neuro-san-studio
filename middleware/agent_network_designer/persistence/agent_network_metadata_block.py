@@ -38,8 +38,11 @@ class AgentNetworkMetadataBlock:
     Sanitizing means, at every depth: the keys neuro-san's reservation storage owns
     (reservation, stored_at) go, None-valued keys go (they would be written as null), and so
     does every entry HoconStorabilityUtil says pyhocon would read back changed, plus empty
-    strings inside lists, which pyhocon drops. Each drop is logged with the path of the entry
-    and the source the block came from.
+    strings inside lists, which pyhocon drops. The first two go silently, because they are
+    expected rather than data lost: the storage keys sit on every block read back from a
+    reservation, and a null value carries nothing a file could keep. The others are data the
+    file cannot hold as sent, so each of those drops is logged with the path of the entry and
+    the source the block came from.
 
     The merge is block-level on purpose (issue #1398): any key the client or a person added to
     the block survives a save that did not regenerate it, not only sample_queries.
@@ -137,11 +140,11 @@ class AgentNetworkMetadataBlock:
         Deep-copy a value, dropping what a HOCON file cannot hold as written.
 
         The block is rendered as one JSON object, so the rules apply at every depth: None-valued
-        keys go (they would be written as null), keys and string values pyhocon cannot read back
-        go (see HoconStorabilityUtil), and so do empty strings inside lists, which pyhocon drops
-        when reading. What is left reads back exactly as written, so the block returned to the
-        client is the block the file holds. A None inside a list stays: pyhocon reads a null list
-        item back as None.
+        keys go silently (they would be written as null), keys and string values pyhocon cannot
+        read back go with a warning (see HoconStorabilityUtil), and so do empty strings inside
+        lists, which pyhocon drops when reading. What is left reads back exactly as written, so
+        the block returned to the client is the block the file holds. A None inside a list
+        stays: pyhocon reads a null list item back as None.
 
         :param value: The value to copy
         :param path: The path of value inside the block ("" for the block itself), used in the
