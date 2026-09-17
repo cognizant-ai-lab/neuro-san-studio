@@ -1,21 +1,4 @@
-# Neuro SAN Studio
-
-**Your launchpad for building intelligent multi-agent systems.** Neuro SAN Studio is a hands-on playground for the
-[Neuro SAN](https://github.com/cognizant-ai-lab/neuro-san) framework, featuring ready-to-run examples, tutorials, and
-tools that let you design, test, and deploy sophisticated agent networks in minutes—not months. Whether you're a
-researcher exploring adaptive AI systems, a developer prototyping production solutions, or a domain expert configuring
-agents without code, this studio handles the orchestration complexity so you can focus on solving real problems.
-
----
-
-<!-- pyml disable-next-line no-inline-html -->
-<p align="center">
-  Neuro SAN is the open-source library powering the Cognizant Neuro® AI Multi-Agent Accelerator, allowing domain experts,
-  researchers and developers to immediately start prototyping and building agent networks across any industry vertical.
-</p>
-
----
-
+<!-- Badges -->
 <!-- pyml disable-next-line no-inline-html -->
 <p align="center">
   <!-- GitHub Stats -->
@@ -50,6 +33,22 @@ agents without code, this studio handles the orchestration complexity so you can
   <img alt="neuro-san@PyPI" src="https://img.shields.io/pypi/v/neuro-san.svg?style=flat-square"></a>
   <a href="https://deepwiki.com/cognizant-ai-lab/neuro-san">
   <img src="https://deepwiki.com/badge.svg" alt="Ask DeepWiki: Neuro SAN" /></a>
+</p>
+
+# Neuro SAN Studio
+
+**Your launchpad for building intelligent multi-agent systems.** Neuro SAN Studio is a hands-on playground for the
+[Neuro SAN](https://github.com/cognizant-ai-lab/neuro-san) framework, featuring ready-to-run examples, tutorials, and
+tools that let you design, test, and deploy sophisticated agent networks in minutes—not months. Whether you're a
+researcher exploring adaptive AI systems, a developer prototyping production solutions, or a domain expert configuring
+agents without code, this studio handles the orchestration complexity so you can focus on solving real problems.
+
+---
+
+<!-- pyml disable-next-line no-inline-html -->
+<p align="center">
+  Neuro SAN is the open-source library powering the Cognizant Neuro® AI Multi-Agent Accelerator, allowing domain experts,
+  researchers and developers to immediately start prototyping and building agent networks across any industry vertical.
 </p>
 
 ## What is Neuro SAN?
