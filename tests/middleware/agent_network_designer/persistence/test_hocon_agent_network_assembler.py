@@ -14,7 +14,10 @@
 #
 # END COPYRIGHT
 
-"""Tests for HoconAgentNetworkAssembler's sly_data_schema emission and metadata block rendering."""
+"""
+Tests for HoconAgentNetworkAssembler: sly_data_schema emission, the generated-network execution timeout and
+metadata block rendering.
+"""
 
 import asyncio
 import os
@@ -34,121 +37,157 @@ from middleware.agent_network_designer.persistence.agent_network_assembler impor
 from middleware.agent_network_designer.persistence.agent_network_metadata import AgentNetworkMetadata
 from middleware.agent_network_designer.persistence.hocon_agent_network_assembler import HoconAgentNetworkAssembler
 
-REPO_ROOT = Path(__file__).resolve().parents[4]
+REPO_ROOT: Path = Path(__file__).resolve().parents[4]
 
-OAUTH_URL = "https://oauth.example.com/mcp"
-FILE_AUTH_URL = "https://file-auth.example.com/mcp"
+OAUTH_URL: str = "https://oauth.example.com/mcp"
+FILE_AUTH_URL: str = "https://file-auth.example.com/mcp"
 
 # Client-token servers (from the conversation's sly_data http_headers), each
 # mapped to the header names it supplied; FILE_AUTH_URL is a file-configured
 # server and deliberately not in it.
 CLIENT_TOKEN_MCP_HEADERS: dict[str, list[str]] = {OAUTH_URL: ["Authorization"]}
 
-NETWORK_DEF: dict = {
+NETWORK_DEF: dict[str, Any] = {
     "front_man": {"description": "top", "instructions": "Coordinate.", "tools": ["helper", OAUTH_URL]},
     "helper": {"description": "helps", "instructions": "Help.", "tools": [FILE_AUTH_URL]},
 }
 
 
-def assemble(client_token_mcp_headers: dict[str, list[str]] | None) -> str:
-    """Assemble the test network into HOCON text."""
-    assembler = HoconAgentNetworkAssembler(demo_mode=False)
-    return asyncio.run(
-        assembler.assemble_agent_network(NETWORK_DEF, "front_man", "test_net", ["query one"], client_token_mcp_headers)
-    )
-
-
-def parse(hocon_text: str) -> dict:
-    """Parse assembled HOCON from the repo root so its includes resolve."""
-    cwd = os.getcwd()
-    os.chdir(REPO_ROOT)
-    try:
-        return ConfigFactory.parse_string(hocon_text)
-    finally:
-        os.chdir(cwd)
-
-
-def unquote(key: str) -> str:
+class TestHoconAgentNetworkAssembler(TestCase):
     """
-    Strip the quotes pyhocon keeps embedded in quoted keys that contain dots
-    (URL keys come back as '"https://..."'). Clients normalize the same way —
-    see nsflow's _clean_schema_url — and the neuro-san restorer shows the
-    identical artifact for the hand-written you_search.hocon.
-    """
-    return key.strip('"')
+    Tests for HoconAgentNetworkAssembler, which renders a designed network as HOCON text.
 
-
-def test_hocon_assembler_adds_max_execution_seconds():
-    """Generated HOCON networks include the generated-network execution timeout."""
-    content = assemble(None)
-
-    assert f'"max_execution_seconds": {GENERATED_NETWORK_MAX_EXECUTION_SECONDS}' in content
-
-
-class TestHoconAssemblerSlyDataSchema(TestCase):
-    """
-    The generated HOCON text declares the network's MCP header needs and renders the metadata block
-    it is given. Until #1422 moves timestamps into the persistence middleware, the header still stamps
-    date_created on a block that has none, and nothing else.
+    The generated text declares the network's MCP header needs in the front man's sly_data_schema, carries the
+    generated-network execution timeout and renders the metadata block it is given. Until #1422 moves timestamps
+    into the persistence middleware, the header still stamps date_created on a block that has none, and nothing
+    else.
     """
 
-    def test_front_man_declares_the_schema_and_it_parses(self):
-        """The emitted text stays valid HOCON and carries the nsflow contract."""
-        config = parse(assemble(CLIENT_TOKEN_MCP_HEADERS))
+    @staticmethod
+    def _assemble(client_token_mcp_headers: dict[str, list[str]] | None) -> str:
+        """
+        Assemble the test network into HOCON text.
 
-        front_man = config["tools"][0]
-        assert front_man["name"] == "front_man"
-        http_headers = front_man["function"]["sly_data_schema"]["properties"]["http_headers"]
+        :param client_token_mcp_headers: The client-token MCP servers mapped to the header names they supplied,
+                                         or None for the call shape without any
+        :return: The emitted HOCON text
+        """
+        assembler: HoconAgentNetworkAssembler = HoconAgentNetworkAssembler(demo_mode=False)
+        return asyncio.run(
+            assembler.assemble_agent_network(
+                NETWORK_DEF, "front_man", "test_net", ["query one"], client_token_mcp_headers
+            )
+        )
+
+    @staticmethod
+    def _parse(hocon_text: str) -> dict[str, Any]:
+        """
+        Parse assembled HOCON from the repo root so its includes resolve.
+
+        :param hocon_text: The emitted HOCON text
+        :return: The parsed configuration, as pyhocon read it back
+        """
+        cwd: str = os.getcwd()
+        os.chdir(REPO_ROOT)
+        try:
+            return ConfigFactory.parse_string(hocon_text)
+        finally:
+            os.chdir(cwd)
+
+    @staticmethod
+    def _unquote(key: str) -> str:
+        """
+        Strip the quotes pyhocon keeps embedded in quoted keys that contain dots
+        (URL keys come back as '"https://..."'). Clients normalize the same way —
+        see nsflow's _clean_schema_url — and the neuro-san restorer shows the
+        identical artifact for the hand-written you_search.hocon.
+
+        :param key: The key as pyhocon returned it
+        :return: The key with its embedded quotes stripped
+        """
+        return key.strip('"')
+
+    def test_hocon_assembler_adds_max_execution_seconds(self) -> None:
+        """
+        Generated HOCON networks include the generated-network execution timeout.
+        """
+        content: str = self._assemble(None)
+
+        self.assertIn(f'"max_execution_seconds": {GENERATED_NETWORK_MAX_EXECUTION_SECONDS}', content)
+
+    def test_front_man_declares_the_schema_and_it_parses(self) -> None:
+        """
+        The emitted text stays valid HOCON and carries the nsflow contract.
+        """
+        config: dict[str, Any] = self._parse(self._assemble(CLIENT_TOKEN_MCP_HEADERS))
+
+        front_man: dict[str, Any] = config["tools"][0]
+        self.assertEqual(front_man["name"], "front_man")
+        http_headers: dict[str, Any] = front_man["function"]["sly_data_schema"]["properties"]["http_headers"]
         # Only the client-token URL is declared, and it is required.
-        url_properties = {unquote(url): value for url, value in http_headers["properties"].items()}
-        assert list(url_properties) == [OAUTH_URL]
-        assert list(http_headers["required"]) == [OAUTH_URL]
-        assert list(url_properties[OAUTH_URL]["required"]) == ["Authorization"]
+        url_properties: dict[str, Any] = {}
+        for url, value in http_headers["properties"].items():
+            url_properties[self._unquote(url)] = value
+        self.assertEqual(list(url_properties), [OAUTH_URL])
+        self.assertEqual(list(http_headers["required"]), [OAUTH_URL])
+        self.assertEqual(list(url_properties[OAUTH_URL]["required"]), ["Authorization"])
         # The description substitution still landed alongside the schema.
-        assert "top" in front_man["function"]["description"]
+        self.assertIn("top", front_man["function"]["description"])
 
-    def test_non_top_agents_carry_no_schema(self):
-        """Only the front man talks to clients; helpers must not declare one."""
-        config = parse(assemble(CLIENT_TOKEN_MCP_HEADERS))
+    def test_non_top_agents_carry_no_schema(self) -> None:
+        """
+        Only the front man talks to clients; helpers must not declare one.
+        """
+        config: dict[str, Any] = self._parse(self._assemble(CLIENT_TOKEN_MCP_HEADERS))
         for agent in config["tools"][1:]:
-            assert "sly_data_schema" not in agent.get("function", {})
+            self.assertNotIn("sly_data_schema", agent.get("function", {}))
 
-    def test_no_mcp_means_no_schema_and_unchanged_output(self):
-        """Without MCP the text is byte-identical to the pre-schema behavior."""
-        without_client_urls = assemble(None)
-        with_no_client_urls = assemble({})
+    def test_no_mcp_means_no_schema_and_unchanged_output(self) -> None:
+        """
+        Without MCP the text is byte-identical to the pre-schema behavior.
+        """
+        without_client_urls: str = self._assemble(None)
+        with_no_client_urls: str = self._assemble({})
 
-        assert "sly_data_schema" not in without_client_urls
+        self.assertNotIn("sly_data_schema", without_client_urls)
         # The two renders differ only in the date_created stamp.
-        strip_date = re.compile(r'"date_created": "[^"]*"')
-        assert strip_date.sub("", without_client_urls) == strip_date.sub("", with_no_client_urls)
+        strip_date: re.Pattern[str] = re.compile(r'"date_created": "[^"]*"')
+        self.assertEqual(strip_date.sub("", without_client_urls), strip_date.sub("", with_no_client_urls))
 
-        config = parse(without_client_urls)
-        assert "sly_data_schema" not in config["tools"][0]["function"]
+        config: dict[str, Any] = self._parse(without_client_urls)
+        self.assertNotIn("sly_data_schema", config["tools"][0]["function"])
 
-    def test_a_non_ascii_url_key_round_trips_verbatim(self):
-        """ensure_ascii=False keeps a non-ASCII URL key matching the tools list;
-        an escaped key would read back as literal text pyhocon never decodes."""
+    def test_a_non_ascii_url_key_round_trips_verbatim(self) -> None:
+        """
+        ensure_ascii=False keeps a non-ASCII URL key matching the tools list;
+        an escaped key would read back as literal text pyhocon never decodes.
+        """
         # The non-ASCII character must live in the path, not the host: CI
         # link-checks string literals (lychee) and skips example.com hosts,
         # but a non-ASCII host punycodes to a real, checkable domain.
-        unicode_url = "https://example.com/mçp"
-        network_def = {"front_man": {"description": "top", "instructions": "Go.", "tools": [unicode_url]}}
-        assembler = HoconAgentNetworkAssembler(demo_mode=False)
-        text = asyncio.run(
+        unicode_url: str = "https://example.com/mçp"
+        network_def: dict[str, Any] = {
+            "front_man": {"description": "top", "instructions": "Go.", "tools": [unicode_url]}
+        }
+        assembler: HoconAgentNetworkAssembler = HoconAgentNetworkAssembler(demo_mode=False)
+        text: str = asyncio.run(
             assembler.assemble_agent_network(
                 network_def, "front_man", "test_net", ["q"], {unicode_url: ["Authorization"]}
             )
         )
 
         # The raw character survives in the emitted text, not a \uXXXX escape...
-        assert unicode_url in text
-        assert "m\\u00e7p" not in text
+        self.assertIn(unicode_url, text)
+        self.assertNotIn("m\\u00e7p", text)
 
         # ...and parses back to the same key the tools list uses.
-        http_headers = parse(text)["tools"][0]["function"]["sly_data_schema"]["properties"]["http_headers"]
-        assert [unquote(url) for url in http_headers["properties"]] == [unicode_url]
-        assert list(http_headers["required"]) == [unicode_url]
+        front_man: dict[str, Any] = self._parse(text)["tools"][0]
+        http_headers: dict[str, Any] = front_man["function"]["sly_data_schema"]["properties"]["http_headers"]
+        unquoted_urls: list[str] = []
+        for url in http_headers["properties"]:
+            unquoted_urls.append(self._unquote(url))
+        self.assertEqual(unquoted_urls, [unicode_url])
+        self.assertEqual(list(http_headers["required"]), [unicode_url])
 
     # Tests for the metadata block (issue #1398). The block is rendered as one JSON object so that any
     # key carries forward: AgentNetworkMetadata.merge() builds it from the metadata keyword and the
@@ -192,7 +231,7 @@ class TestHoconAssemblerSlyDataSchema(TestCase):
         :param hocon_text: The emitted HOCON text
         :return: The "metadata" block as pyhocon read it back, as plain dicts and lists
         """
-        return parse(hocon_text)["metadata"].as_plain_ordered_dict()
+        return TestHoconAgentNetworkAssembler._parse(hocon_text)["metadata"].as_plain_ordered_dict()
 
     @staticmethod
     def _assemble_metadata(sample_queries: list[str], metadata: dict[str, Any] | None) -> dict[str, Any]:
@@ -203,8 +242,8 @@ class TestHoconAssemblerSlyDataSchema(TestCase):
         :param metadata: The metadata keyword argument, None for the pre-#1398 call shape
         :return: The "metadata" block as pyhocon read it back, as plain dicts and lists
         """
-        text: str = TestHoconAssemblerSlyDataSchema._assemble_text(sample_queries, metadata)
-        return TestHoconAssemblerSlyDataSchema._parse_metadata(text)
+        text: str = TestHoconAgentNetworkAssembler._assemble_text(sample_queries, metadata)
+        return TestHoconAgentNetworkAssembler._parse_metadata(text)
 
     def test_metadata_keyword_is_written_whole_and_fresh_queries_overlay_only_sample_queries(self) -> None:
         """
@@ -342,7 +381,7 @@ class TestHoconAssemblerSlyDataSchema(TestCase):
         """
         Keys holding dots (a URL, "owner.name", "a.b.c") come back exactly as written, top-level and nested,
         through neuro-san's restorer. pyhocon keeps such keys quoted inside its ConfigTree, which is why the
-        module-level unquote() helper exists for raw-tree assertions, but the as_plain_ordered_dict() conversion
+        _unquote() helper on this class exists for raw-tree assertions, but the as_plain_ordered_dict() conversion
         every real reader applies (leaf_common's HoconSerializationFormat) removes the quotes again.
         """
         supplied: dict[str, Any] = {
@@ -365,7 +404,7 @@ class TestHoconAssemblerSlyDataSchema(TestCase):
         """
         text: str = self._assemble_text(["Q?"], {"description": "A demo", "tags": ["generated"]})
 
-        config: dict[str, Any] = parse(text)
+        config: dict[str, Any] = self._parse(text)
 
         # registries/aaosa.hocon and config/llm_config.hocon resolved, so the block broke neither include.
         self.assertIn("aaosa_call", config)

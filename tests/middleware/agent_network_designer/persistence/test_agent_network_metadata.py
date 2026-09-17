@@ -17,12 +17,12 @@
 """Unit tests for AgentNetworkMetadata, the policy behind a designed network's "metadata" block (issue #1398)."""
 
 import logging
-import unittest
 from copy import deepcopy
 from datetime import datetime
 from datetime import timedelta
 from datetime import timezone
 from typing import Any
+from unittest import TestCase
 from unittest.mock import patch
 
 from coded_tools.agent_network_editor.constants import AGENT_NETWORK_METADATA
@@ -39,7 +39,7 @@ NOW_STAMP: str = "2026-09-16T10:11:12+00:00"
 LOGGER_NAME: str = "AgentNetworkMetadata"
 
 
-class TestAgentNetworkMetadata(unittest.TestCase):  # pylint: disable=too-many-public-methods
+class TestAgentNetworkMetadata(TestCase):  # pylint: disable=too-many-public-methods
     """
     Unit tests for AgentNetworkMetadata.
 
@@ -131,7 +131,7 @@ class TestAgentNetworkMetadata(unittest.TestCase):  # pylint: disable=too-many-p
             with self.subTest(candidate=candidate):
                 self.assertIsNone(AgentNetworkMetadata.sanitize(candidate))
 
-    # -------------------------------------------------------------- is_query_list
+    # ------------------------------ sanitize_or_warn, storable keys and values, deep sanitize
 
     def test_sanitize_or_warn_returns_block_or_empty_dict(self) -> None:
         """
@@ -283,6 +283,8 @@ class TestAgentNetworkMetadata(unittest.TestCase):  # pylint: disable=too-many-p
         self.assertIn(repr("tags[2]"), messages[2])
         self.assertIn(repr("owner.note"), messages[3])
 
+    # -------------------------------------------------------------- is_query_list
+
     def test_is_query_list_true_for_non_empty_str_list(self) -> None:
         """
         is_query_list() accepts a non-empty list whose items are all strings.
@@ -390,8 +392,6 @@ class TestAgentNetworkMetadata(unittest.TestCase):  # pylint: disable=too-many-p
         self.assertEqual(client, snapshot)
         self.assertEqual(queries, ["fresh"])
 
-    # ------------------------------------------------------ apply_file_timestamps
-
     def test_merge_filters_generated_queries_like_the_client_block(self) -> None:
         """
         merge() drops a generated query that is empty or holds a control character pyhocon does not decode,
@@ -411,6 +411,8 @@ class TestAgentNetworkMetadata(unittest.TestCase):  # pylint: disable=too-many-p
             kept: dict[str, Any] = AgentNetworkMetadata.merge(client, ["\x07"])
 
         self.assertEqual(kept, {"sample_queries": ["Old one?"]})
+
+    # ------------------------------------------------------ apply_file_timestamps
 
     def test_apply_file_timestamps_on_empty_block_sets_both_dates_to_now(self) -> None:
         """
