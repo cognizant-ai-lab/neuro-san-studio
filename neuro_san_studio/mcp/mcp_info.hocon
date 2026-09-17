@@ -48,6 +48,23 @@
         "tools": ["you-search"]
     },
 
+    # Firecrawl MCP — web search that returns the cleaned Markdown of each result page, plus scrape and parse.
+    # Keyless: no API key required; rate limited per IP per day (both requests and credits).
+    # Optional: set FIRECRAWL_API_KEY and uncomment http_headers below for higher limits.
+    # Keyless and keyed share the same URL, so this is one entry rather than two.
+    # The "tools" list below controls which tools the agent sees, with or without a key. Add names to it,
+    # or remove the "tools" key entirely to load every tool the server exposes for your connection
+    # (neuro-san only filters when the list is non-empty).
+    # Docs: https://docs.firecrawl.dev/mcp-server/keyless
+    "https://mcp.firecrawl.dev/v2/mcp": {
+        # "http_headers": {
+        #    # FIRECRAWL_API_KEY is an environment variable that should contain a valid Firecrawl API key.
+        #    # "${...}" syntax will substitute the value of the environment variable at runtime.
+        #     "Authorization": "Bearer "${FIRECRAWL_API_KEY}
+        # },
+        "tools": ["firecrawl_search", "firecrawl_scrape", "firecrawl_parse"]
+    },
+
     # Uncomment this section to use GitHub Copilot MCP server.
     # Make sure to set the environment variable GITHUB_TOKEN with a valid token.
     # "https://api.githubcopilot.com/mcp": {
