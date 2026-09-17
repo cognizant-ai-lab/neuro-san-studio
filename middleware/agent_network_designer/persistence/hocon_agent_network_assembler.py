@@ -15,16 +15,16 @@
 # END COPYRIGHT
 
 import json
-from collections.abc import Collection
-from collections.abc import Mapping
 from copy import copy as shallow_copy
+from datetime import datetime
+from datetime import timezone
 from typing import Any
 
 from middleware.agent_network_designer.persistence.agent_network_assembler import (
     GENERATED_NETWORK_MAX_EXECUTION_SECONDS,
 )
 from middleware.agent_network_designer.persistence.agent_network_assembler import AgentNetworkAssembler
-from middleware.agent_network_designer.persistence.agent_network_metadata import AgentNetworkMetadata
+from middleware.agent_network_designer.persistence.agent_network_metadata_block import AgentNetworkMetadataBlock
 
 HOCON_HEADER_START = (
     "{\n"
@@ -143,8 +143,8 @@ class HoconAgentNetworkAssembler(AgentNetworkAssembler):
         top_agent_name: str,
         agent_network_name: str,
         sample_queries: list[str],
-        client_token_mcp_headers: Mapping[str, Collection[str]] | None = None,
-        metadata: Mapping[str, Any] | None = None,
+        client_token_mcp_headers: dict[str, list[str]] | None = None,
+        metadata: dict[str, Any] | None = None,
     ) -> str:
         """
         Substitutes value from agent network definition into the template of agent network HOCON file
@@ -164,13 +164,17 @@ class HoconAgentNetworkAssembler(AgentNetworkAssembler):
         use_network_def: dict[str, Any] = shallow_copy(network_def)
         use_network_def = self._move_top_agent_first(use_network_def, top_agent_name)
 
-        # Idempotent when a caller already merged: the same queries overlay the same block.
-        merged_metadata: dict[str, Any] = AgentNetworkMetadata.merge(metadata, sample_queries)
+        # Idempotent when a caller already built the block: the same queries overlay the same block.
+        block: dict[str, Any] = (
+            AgentNetworkMetadataBlock(metadata, f"agent network {agent_network_name}")
+            .merge_sample_queries(sample_queries)
+            .as_dict()
+        )
         # The header keeps stamping date_created on a block that has none, as it always did, so
         # generated files do not lose the date before the persistence middleware takes over the
         # timestamps (#1422). A block that already carries one keeps it.
-        merged_metadata.setdefault(AgentNetworkMetadata.DATE_CREATED_KEY, AgentNetworkMetadata.utc_now_iso())
-        header: str = self._build_header(agent_network_name, merged_metadata)
+        block.setdefault(AgentNetworkMetadataBlock.DATE_CREATED_KEY, datetime.now(tz=timezone.utc).isoformat())
+        header: str = self._build_header(agent_network_name, block)
 
         sly_data_schema_block: str = self._render_sly_data_schema_block(
             self.build_mcp_sly_data_schema(use_network_def, client_token_mcp_headers)
@@ -202,7 +206,7 @@ class HoconAgentNetworkAssembler(AgentNetworkAssembler):
 
         :param agent_network_name: The file name, without the .hocon extension
         :param metadata: The merged metadata block to write, as returned by
-                AgentNetworkMetadata.merge; may be empty
+                AgentNetworkMetadataBlock.as_dict(); may be empty
 
         :return: The header of the HOCON agent network file as a string.
         """
@@ -234,11 +238,11 @@ class HoconAgentNetworkAssembler(AgentNetworkAssembler):
         three reading limits: keys come back raw (a double quote, a backslash or a control
         character in a key does not survive), control characters other than tab, newline and
         carriage return come back as their escape text, and empty strings are dropped from
-        lists. AgentNetworkMetadata.sanitize() removes exactly those entries from the metadata
-        block before it gets here, so the block reads back as written; the schema block holds
-        URLs, header names and fixed text, which never contain them. The text is split on the
-        newline character only: str.splitlines() would also split on the Unicode line and
-        paragraph separators and on NEL inside a value and corrupt the file.
+        lists. AgentNetworkMetadataBlock drops exactly those entries from the metadata block
+        before it gets here (see HoconStorabilityUtil), so it reads back as written; the
+        schema block holds URLs, header names and fixed text, which never contain them. The
+        text is split on the newline character only: str.splitlines() would also split on the
+        Unicode line and paragraph separators and on NEL inside a value and corrupt the file.
 
         :param value: The dict to render
         :param indent: The indentation of the key the fragment follows; every line but the

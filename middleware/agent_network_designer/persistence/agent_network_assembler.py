@@ -14,8 +14,6 @@
 #
 # END COPYRIGHT
 
-from collections.abc import Collection
-from collections.abc import Mapping
 from typing import Any
 
 from neuro_san.internals.validation.network.abstract_network_validator import AbstractNetworkValidator
@@ -40,8 +38,8 @@ class AgentNetworkAssembler:
         top_agent_name: str,
         agent_network_name: str,
         sample_queries: list[str],
-        client_token_mcp_headers: Mapping[str, Collection[str]] | None = None,
-        metadata: Mapping[str, Any] | None = None,
+        client_token_mcp_headers: dict[str, list[str]] | None = None,
+        metadata: dict[str, Any] | None = None,
     ) -> Any:
         """
         Assemble the agent network from the definition.
@@ -55,12 +53,11 @@ class AgentNetworkAssembler:
                 (the sly_data http_headers servers not configured in
                 mcp_info.hocon). Drives the sly_data_schema emitted into the
                 assembled network; None or empty means no schema is emitted.
-        :param metadata: Metadata block to carry into the assembled network, typically
-                the block the persistence middleware built from what the client sent
-                back (see AgentNetworkMetadata.merge). It is re-merged with
-                sample_queries, whose non-empty list replaces the block's own. None
-                builds the block from sample_queries alone, the pre-#1398 behaviour
-                for callers with nothing to carry.
+        :param metadata: Metadata block to carry into the assembled network. It goes
+                through AgentNetworkMetadataBlock, so it is sanitized and sample_queries,
+                when non-empty, replaces the block's own list. None builds the block from
+                sample_queries alone, the pre-#1398 behaviour for callers with nothing to
+                carry.
 
         :return: Some representation of the agent network
         """
@@ -68,7 +65,7 @@ class AgentNetworkAssembler:
 
     @staticmethod
     def build_mcp_sly_data_schema(
-        network_def: dict[str, Any], client_token_mcp_headers: Mapping[str, Collection[str]] | None
+        network_def: dict[str, Any], client_token_mcp_headers: dict[str, list[str]] | None
     ) -> dict[str, Any] | None:
         """
         Build the sly_data_schema declaring the HTTP headers the assembled
@@ -103,8 +100,8 @@ class AgentNetworkAssembler:
                 client_token_mcp_headers — a membership test, never URL pattern
                 matching, since tools lists also hold agent names and
                 subnetwork references.
-        :param client_token_mcp_headers: Mapping of client-token MCP server URL
-                to the header names the conversation supplied for it, or None.
+        :param client_token_mcp_headers: Client-token MCP server URL to the
+                header names the conversation supplied for it, or None.
                 The keys are the URLs whose auth is client-supplied. Names are
                 declared verbatim: the producing side supplies stripped, legal,
                 deduped names (McpHeaderHygiene.usable_header_names is the

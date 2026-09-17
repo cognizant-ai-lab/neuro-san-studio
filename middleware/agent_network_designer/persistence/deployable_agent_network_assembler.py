@@ -14,8 +14,6 @@
 #
 # END COPYRIGHT
 
-from collections.abc import Collection
-from collections.abc import Mapping
 from copy import copy as shallow_copy
 from copy import deepcopy
 from typing import Any
@@ -26,7 +24,7 @@ from neuro_san.internals.graph.filters.string_common_defs_config_filter import S
 from neuro_san.internals.persistence.abstract_async_config_restorer import AbstractAsyncConfigRestorer
 
 from middleware.agent_network_designer.persistence.agent_network_assembler import AgentNetworkAssembler
-from middleware.agent_network_designer.persistence.agent_network_metadata import AgentNetworkMetadata
+from middleware.agent_network_designer.persistence.agent_network_metadata_block import AgentNetworkMetadataBlock
 
 
 class DeployableAgentNetworkAssembler(AgentNetworkAssembler):
@@ -60,8 +58,8 @@ class DeployableAgentNetworkAssembler(AgentNetworkAssembler):
         top_agent_name: str,
         agent_network_name: str,
         sample_queries: list[str],
-        client_token_mcp_headers: Mapping[str, Collection[str]] | None = None,
-        metadata: Mapping[str, Any] | None = None,
+        client_token_mcp_headers: dict[str, list[str]] | None = None,
+        metadata: dict[str, Any] | None = None,
     ) -> dict[str, Any]:
         """
         Assemble the agent network from the definition.
@@ -99,7 +97,11 @@ class DeployableAgentNetworkAssembler(AgentNetworkAssembler):
         # storage writers add their own keys (reservation, stored_at) to whatever block is
         # present. A temporary network gets no studio timestamps, so the block is omitted when
         # there is nothing to say, as it always was without queries.
-        metadata_block: dict[str, Any] = AgentNetworkMetadata.merge(metadata, sample_queries)
+        metadata_block: dict[str, Any] = (
+            AgentNetworkMetadataBlock(metadata, f"agent network {agent_network_name}")
+            .merge_sample_queries(sample_queries)
+            .as_dict()
+        )
         if metadata_block:
             agent_network["metadata"] = metadata_block
 

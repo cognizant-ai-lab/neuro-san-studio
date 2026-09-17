@@ -34,7 +34,7 @@ from pyhocon import ConfigFactory
 from middleware.agent_network_designer.persistence.agent_network_assembler import (
     GENERATED_NETWORK_MAX_EXECUTION_SECONDS,
 )
-from middleware.agent_network_designer.persistence.agent_network_metadata import AgentNetworkMetadata
+from middleware.agent_network_designer.persistence.agent_network_metadata_block import AgentNetworkMetadataBlock
 from middleware.agent_network_designer.persistence.hocon_agent_network_assembler import HoconAgentNetworkAssembler
 
 REPO_ROOT: Path = Path(__file__).resolve().parents[4]
@@ -190,7 +190,7 @@ class TestHoconAgentNetworkAssembler(TestCase):
         self.assertEqual(list(http_headers["required"]), [unicode_url])
 
     # Tests for the metadata block (issue #1398). The block is rendered as one JSON object so that any
-    # key carries forward: AgentNetworkMetadata.merge() builds it from the metadata keyword and the
+    # key carries forward: AgentNetworkMetadataBlock builds it from the metadata keyword and the
     # sample_queries argument, and the header adds only a date_created stamp when the block has none.
 
     # Strings that broke the former triple-quoted rendering or that HOCON could misread: an embedded
@@ -343,9 +343,9 @@ class TestHoconAgentNetworkAssembler(TestCase):
             "owner": {"team": "platform", "back\\slash": 1, "a\nb": 2, "lead": None},
         }
 
-        with self.assertLogs("AgentNetworkMetadata", level="WARNING"):
+        with self.assertLogs("AgentNetworkMetadataBlock", level="WARNING"):
             text: str = self._assemble_text([], supplied)
-            sanitized: dict[str, Any] | None = AgentNetworkMetadata.sanitize(supplied)
+            sanitized: dict[str, Any] = AgentNetworkMetadataBlock(supplied, "test").as_dict()
         block: dict[str, Any] = self._parse_metadata(text)
 
         block.pop("date_created")
@@ -354,6 +354,22 @@ class TestHoconAgentNetworkAssembler(TestCase):
         self.assertNotIn('we\\"ird', text)
         self.assertNotIn("\\u0007", text)
         self.assertNotIn("null", text.split('"tools"')[0])
+
+    def test_a_non_dict_metadata_value_is_ignored_with_a_warning_naming_the_network(self) -> None:
+        """
+        A metadata value that is not a dict is not a block: the file is rendered as if none was given,
+        so the queries still land, and one WARNING names the offending type and the network being saved
+        so the client or file bug can be traced.
+        """
+        not_a_block: Any = "not a block"
+
+        with self.assertLogs("AgentNetworkMetadataBlock", level="WARNING") as captured:
+            block: dict[str, Any] = self._assemble_metadata(["First?"], not_a_block)
+
+        self.assertEqual(list(block.keys()), ["sample_queries", "date_created"])
+        self.assertEqual(block["sample_queries"], ["First?"])
+        self.assertEqual(len(captured.output), 1)
+        self.assertIn("type str (not a dict) from agent network test_net", captured.output[0])
 
     @staticmethod
     def _restore_with_neuro_san(hocon_text: str) -> dict[str, Any]:
