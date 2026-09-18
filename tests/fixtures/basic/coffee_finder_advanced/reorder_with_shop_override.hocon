@@ -19,42 +19,40 @@
 # The schema specifications for this file are documented here:
 # https://github.com/cognizant-ai-lab/neuro-san/blob/main/docs/test_case_hocon_reference.md
 
+# The agent reorders the user's usual drink but routes it to a different shop when the user overrides the location.
+
 {
     # Describes what agent to test against.
     "agent": "basic/coffee_finder_advanced",
 
-    # Timeout for the entire test.
-    # It's also possible to have a timeout_in_seconds on a per-interaction basis.
-    "timeout_in_seconds": 180,
-
-    # success_ratio is useful for passing to the assessor to find out why
-    # a test is intermitently failing. Sometimes it's the agent prompt, but
-    # sometimes it's the test itself.
-    # Note: This number was increased for network failure identification and should be reverted afterward to 1/1.
+    # Minimum pass ratio for intermittent-failure triage.
     "success_ratio": "1/1",
 
     # Interactions are a series of dictionaries with request elements paired with
     # descriptions of response checks.
     "interactions": [
         {
-            # MUST DELETE MEMORY FILE before running this test case!!!
-            # test case is a negative test as the is no existing order. 
-            # Expected TopicMemory.json file empty or no order of this list Name listed.
+            "timeout_in_seconds": 90,
 
+            # Expected memory file existed.
+            # test case re-order usual coffee type from existed order, but at the new location.
+            
             # This is to enable streaming_chat contents to thinking file for debug.
             # "chat_filter": "MAXIMAL",
 
-            # Using the sly_data to set a hard time
+            # Using the sly_data to set a hard time.
             "sly_data": {
-                "time": "1 am"
+                "test_mode": true,
+                "time": "8 am"
             },
             
             # This is what we send as input to streaming_chat()
             "text": """
-Hey, it's Pixel. Get me the same as usual please.
+Hey, it’s Pixel Smith. Can you reorder the same coffee I got from Joe’s Gas Station,
+but this time from Bob’s Coffee Shop?
 """,
 
-            # The response block treats how we are going to test what comes back
+            # The response block describes how we are going to test what comes back
             "response": {
 
                 # Text block says how we are going to examine the text of the response.
@@ -63,9 +61,17 @@ Hey, it's Pixel. Get me the same as usual please.
                     # Gist says we are going to ask an LLM about how the response
                     # matches up to our description of acceptance criteria.
                     # Each component of the list needs to pass muster in order to pass.
-                    "gist": ["""
-- don't have order yet
-                            """]
+                    "gist": [
+"The response mentions order ID 101.",
+"The response identifies the customer as Pixel Smith.",
+"The response identifies the item as black coffee.",
+"The response identifies the shop as Bob's Coffee Shop."
+                    ],
+                    "not_gist": [
+"The response says the order was placed at Joe's Gas Station.",
+"The response says the order was placed at Henry's Fast Food.",
+"The response says the order was placed at Jack's Liquor Store."
+                    ]
                 }
             }
         }
