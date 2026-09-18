@@ -695,7 +695,6 @@ class TestDefaultNetworks:
             "agent_network_editor.hocon",
             "agent_network_instructions_editor.hocon",
             "agent_network_query_generator.hocon",
-            "tools/internet_info_gatherer.hocon",
             "experimental/cruse_theme_agent.hocon",
             "experimental/cruse_widget_agent.hocon",
         ):
@@ -709,6 +708,7 @@ class TestDefaultNetworks:
             "basic/music_nerd.hocon",
             "agent_network_designer.hocon",
             "agent_network_test_generator.hocon",
+            "tools/internet_info_gatherer.hocon",
         ):
             assert keys[public] is True, public
 
