@@ -304,7 +304,7 @@ class NeuroSanStudioCli:  # pylint: disable=too-few-public-methods
         verbose: bool = typer.Option(
             False,
             "--verbose",
-            help="Print an agent network summary and the manifest discovery summary when validation passes.",
+            help="Print the manifest discovery summary, and an agent network summary when validation passes.",
         ),
         external_agents: Optional[str] = typer.Option(
             None,
