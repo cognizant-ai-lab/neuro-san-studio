@@ -51,15 +51,18 @@ class WebFetch(CodedTool):
     All validation and network access is delegated to the shared SSRF-hardened
     fetch path (SafeFetch): private/loopback/reserved hosts are rejected,
     DNS records are validated at connection time by GlobalOnlyResolver
-    (anti DNS-rebinding), redirects are not followed, and response sizes are
-    capped. HTML is stripped with BeautifulSoup; PDF bodies are parsed with pypdf.
-    Use allowed_domains / blocked_domains for stricter control.
+    (anti DNS-rebinding), redirects are followed up to SafeFetch's MAX_REDIRECTS
+    hops with every hop re-validated as a brand-new URL (including this tool's own
+    allowed_domains / blocked_domains, which are forwarded to SafeFetch for that
+    purpose), and response sizes are capped. HTML is stripped with BeautifulSoup;
+    PDF bodies are parsed with pypdf. Use allowed_domains / blocked_domains for
+    stricter control.
 
     Error types (raised as ValueError or aiohttp.ClientResponseError or aiohttp.ClientError with the specified message)
         invalid_input            – URL is missing, not a valid http/https URL, or a parameter has an invalid type.
         url_too_long             – URL exceeds the SafeFetch URL length limit.
         url_not_allowed          – URL targets a private/reserved host, is blocked by domain rules,
-                                    or returns a redirect.
+                                    or a redirect hop fails those checks / the chain exceeds MAX_REDIRECTS.
         url_not_accessible       – HTTP error or network failure while fetching the page.
         too_many_requests        – Server returned HTTP 429.
         unsupported_content_type – Content type is not an approved text, XML, feed, JSON, HTML, or PDF type.
@@ -96,24 +99,29 @@ class WebFetch(CodedTool):
         :raises aiohttp.ClientResponseError: url_not_accessible / too_many_requests (non-2xx response).
         :raises aiohttp.ClientError: url_not_accessible when PDF or text fetch fails.
         """
-        url: str = SafeFetch.validate_url(
-            args.get("url", ""), args.get("allowed_domains"), args.get("blocked_domains")
-        )
+        allowed_domains: Any = args.get("allowed_domains")
+        blocked_domains: Any = args.get("blocked_domains")
+        url: str = SafeFetch.validate_url(args.get("url", ""), allowed_domains, blocked_domains)
         max_chars: int = self._validate_max_content_chars(args)
 
         logger: Logger = getLogger(self.__class__.__name__)
         logger.info("WebFetch: fetching %s", url)
 
+        # The domain rules are forwarded to every SafeFetch network call so they are
+        # re-applied to each redirect hop: validating only the URL the agent supplied
+        # would let an open redirect on an allowed domain lead to a blocked or
+        # non-allowed one.
         async with SafeFetch.open_session() as session:
-            content_type, prefetched_text = await SafeFetch.get_content_type(url, session)
-            # Route on the base media type only, case-insensitively (RFC 9110). A
-            # parameter such as "; charset=..." or "; profile=text/plain" must not
-            # affect the decision, and substring matching would misclassify types
-            # like "image/png; profile=text/plain" or "application/x-text/plain".
-            base_type: str = content_type.split(";", 1)[0].strip().lower()
-            is_pdf: bool = SafeFetch.is_pdf(content_type, url)
+            content_type, prefetched_text, final_url = await SafeFetch.get_content_type(
+                url, session, allowed_domains=allowed_domains, blocked_domains=blocked_domains
+            )
+            # Classify by the URL the headers actually came from: a link that redirects
+            # to a .pdf served as a generic download type is a PDF even though the
+            # requested URL carries no .pdf suffix. The fetch below still starts from
+            # the requested URL and re-validates every hop.
+            is_pdf: bool = SafeFetch.is_pdf(content_type, final_url)
 
-            if not is_pdf and not self._is_supported_content_type(base_type):
+            if not is_pdf and not self._is_supported_content_type(content_type):
                 raise ValueError(
                     f"unsupported_content_type: Content type '{content_type}' is not supported. "
                     "Only approved text, XML, feed, JSON, HTML, and PDF types are accepted."
@@ -123,12 +131,16 @@ class WebFetch(CodedTool):
             if is_pdf:
                 # Note: passing the PDF as base64 directly to the model would be
                 # preferable once neuro-san supports multimodal input.
-                text: str = await SafeFetch.fetch_pdf_text(url, session)
+                text: str = await SafeFetch.fetch_pdf_text(
+                    url, session, allowed_domains=allowed_domains, blocked_domains=blocked_domains
+                )
             elif prefetched_text is not None:
                 # Body was already fetched during the 405 HEAD fallback GET; no second request needed.
                 text = SafeFetch.parse_raw_text(prefetched_text)
             else:
-                text = await SafeFetch.fetch_text(url, session)
+                text = await SafeFetch.fetch_text(
+                    url, session, allowed_domains=allowed_domains, blocked_domains=blocked_domains
+                )
 
         text = text[:max_chars]
 
@@ -142,17 +154,20 @@ class WebFetch(CodedTool):
         }
 
     @staticmethod
-    def _is_supported_content_type(base_type: str) -> bool:
+    def _is_supported_content_type(content_type: str) -> bool:
         """
-        Report whether a base media type is exactly one of the supported text and PDF types.
+        Report whether a Content-Type's base media type is exactly one of the supported text and PDF types.
 
+        The decision uses the base media type only, case-insensitively (RFC 9110): a
+        parameter such as "; charset=..." or "; profile=text/plain" must not affect it.
         Exact membership (not substring) is required so an unsupported type that merely
         contains a supported token, such as "application/x-text/plain", or a parameter
         like "image/png; profile=text/plain" once reduced to its base, is rejected.
 
-        :param base_type: The base media type with parameters removed, lower-cased.
-        :return: True if base_type is exactly one of SUPPORTED_CONTENT_TYPES.
+        :param content_type: The raw Content-Type header value, parameters included.
+        :return: True if the base media type is exactly one of SUPPORTED_CONTENT_TYPES.
         """
+        base_type: str = content_type.split(";", 1)[0].strip().lower()
         return base_type in SUPPORTED_CONTENT_TYPES
 
     @staticmethod

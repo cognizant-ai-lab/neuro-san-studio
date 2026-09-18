@@ -19,7 +19,11 @@
 # pylint: disable=too-many-lines
 
 import asyncio
+from collections.abc import AsyncIterator
+from collections.abc import Mapping
+from functools import partial
 from io import BytesIO
+from typing import Any
 from unittest import TestCase
 from unittest.mock import AsyncMock
 from unittest.mock import MagicMock
@@ -28,10 +32,13 @@ from unittest.mock import patch
 from aiohttp import ClientError
 from aiohttp import ClientResponseError
 from aiohttp import ClientSession
+from aiohttp import DummyCookieJar
 from aiohttp import TCPConnector
+from multidict import CIMultiDict
 from pypdf import PdfWriter
 
 from neuro_san_studio.coded_tools.utils.global_only_resolver import GlobalOnlyResolver
+from neuro_san_studio.coded_tools.utils.safe_fetch import MAX_REDIRECTS
 from neuro_san_studio.coded_tools.utils.safe_fetch import MAX_RESPONSE_BYTES
 from neuro_san_studio.coded_tools.utils.safe_fetch import MAX_URL_LENGTH
 from neuro_san_studio.coded_tools.utils.safe_fetch import SafeFetch
@@ -185,7 +192,10 @@ class TestSafeFetch(TestCase):  # pylint: disable=too-many-public-methods
 
     Validation performs no DNS lookups; DNS records are validated at connection
     time by GlobalOnlyResolver (see test_global_only_resolver.py). Network-facing
-    methods are exercised with mocked aiohttp sessions built by the helpers above.
+    methods are exercised with mocked aiohttp sessions built by the helpers above;
+    redirect chains use the _make_chain_session static helpers on this class, whose
+    session.head / session.get hand out successive hop responses in order while
+    recording every (method, url) request made.
     """
 
     def test_open_session_wires_ssrf_connector(self):
@@ -209,6 +219,28 @@ class TestSafeFetch(TestCase):  # pylint: disable=too-many-public-methods
                 await session.close()
 
         asyncio.run(check())
+
+    @staticmethod
+    async def _open_session_cookie_jar_type() -> type:
+        """
+        Open a real SafeFetch session, read the type of its cookie jar, and close it.
+
+        :return: The class of the session's cookie jar.
+        """
+        session = SafeFetch.open_session()
+        try:
+            return type(session.cookie_jar)
+        finally:
+            await session.close()
+
+    def test_open_session_uses_dummy_cookie_jar(self) -> None:
+        """Tests that open_session disables cookie persistence.
+
+        aiohttp gives every ClientSession a real CookieJar by default, which would
+        replay a cookie set on an https hop over a later http hop of the same chain
+        (and across unrelated URLs in one RAG session). SafeFetch never needs cookies.
+        """
+        self.assertIs(asyncio.run(self._open_session_cookie_jar_type()), DummyCookieJar)
 
     def test_network_methods_reject_unprotected_session(self):
         """Tests that network methods refuse a session not created by open_session.
@@ -638,7 +670,9 @@ class TestSafeFetch(TestCase):  # pylint: disable=too-many-public-methods
     def test_get_content_type_head_success_returns_content_type(self):
         """Tests that a successful HEAD response returns the Content-Type header value with no prefetched body."""
         session, _ = make_head_session(status=200, content_type="text/html; charset=utf-8")
-        content_type, body = asyncio.run(SafeFetch.get_content_type("http://example.com", session))
+        content_type, body, final_url = asyncio.run(SafeFetch.get_content_type("http://example.com", session))
+        # No redirect happened, so the URL the headers came from is the requested one.
+        self.assertEqual(final_url, "http://example.com")
         self.assertEqual(content_type, "text/html; charset=utf-8")
         self.assertIsNone(body)
 
@@ -654,7 +688,7 @@ class TestSafeFetch(TestCase):  # pylint: disable=too-many-public-methods
         get_cm.__aexit__ = AsyncMock(return_value=False)
         session.get = MagicMock(return_value=get_cm)
 
-        content_type, body = asyncio.run(SafeFetch.get_content_type("http://example.com", session))
+        content_type, body, _ = asyncio.run(SafeFetch.get_content_type("http://example.com", session))
         self.assertEqual(content_type, "application/pdf")
         self.assertIsNone(body)
         session.get.assert_called_once()
@@ -677,7 +711,7 @@ class TestSafeFetch(TestCase):  # pylint: disable=too-many-public-methods
         get_cm.__aexit__ = AsyncMock(return_value=False)
         session.get = MagicMock(return_value=get_cm)
 
-        content_type, body = asyncio.run(SafeFetch.get_content_type("http://example.com", session))
+        content_type, body, _ = asyncio.run(SafeFetch.get_content_type("http://example.com", session))
         self.assertEqual(content_type, "text/html")
         self.assertEqual(body, "<html>Hello</html>")
 
@@ -698,7 +732,7 @@ class TestSafeFetch(TestCase):  # pylint: disable=too-many-public-methods
         get_cm.__aexit__ = AsyncMock(return_value=False)
         session.get = MagicMock(return_value=get_cm)
 
-        content_type, body = asyncio.run(SafeFetch.get_content_type("http://example.com", session))
+        content_type, body, _ = asyncio.run(SafeFetch.get_content_type("http://example.com", session))
         self.assertEqual(content_type, "image/png")
         self.assertIsNone(body)
         get_response.text.assert_not_awaited()
@@ -725,7 +759,7 @@ class TestSafeFetch(TestCase):  # pylint: disable=too-many-public-methods
         get_cm.__aexit__ = AsyncMock(return_value=False)
         session.get = MagicMock(return_value=get_cm)
 
-        content_type, body = asyncio.run(SafeFetch.get_content_type("http://example.com", session))
+        content_type, body, _ = asyncio.run(SafeFetch.get_content_type("http://example.com", session))
         self.assertEqual(content_type, 'application/pdf; profile="text/html"')
         self.assertIsNone(body)
 
@@ -788,7 +822,7 @@ class TestSafeFetch(TestCase):  # pylint: disable=too-many-public-methods
         get_cm.__aexit__ = AsyncMock(return_value=False)
         session.get = MagicMock(return_value=get_cm)
 
-        content_type, body = asyncio.run(SafeFetch.get_content_type("http://example.com/presigned", session))
+        content_type, body, _ = asyncio.run(SafeFetch.get_content_type("http://example.com/presigned", session))
         self.assertEqual(content_type, "application/pdf")
         self.assertIsNone(body)
         session.get.assert_called_once()
@@ -854,31 +888,536 @@ class TestSafeFetch(TestCase):  # pylint: disable=too-many-public-methods
             asyncio.run(SafeFetch.get_content_type("http://example.com", session))
         self.assertIn("response_too_large", str(ctx.exception))
 
-    def test_get_content_type_head_redirect_raises_url_not_allowed(self):
-        """Tests that a 3xx HEAD response raises ValueError containing url_not_allowed and the Location URL."""
-        session, _ = make_head_session(status=301, extra_headers={"Location": "http://other.com/"})
+    # ------------------------------------------------------------------
+    # Redirect following (_open_following_redirects) — chain mock helpers
+    # ------------------------------------------------------------------
+
+    @staticmethod
+    async def _iter_single_chunk(body: bytes, _chunk_size: int) -> AsyncIterator[bytes]:
+        """
+        Yield a body as a single chunk; stands in for response.content.iter_chunked.
+
+        :param body: The bytes to yield.
+        :param _chunk_size: The chunk size requested by the reader (ignored).
+        :return: An async iterator yielding body once.
+        """
+        yield body
+
+    @staticmethod
+    def _make_hop_response(
+        status: int,
+        headers: Mapping[str, str] | None = None,
+        body: bytes = b"",
+        raise_for_status_exc: Exception | None = None,
+    ) -> MagicMock:
+        """
+        Build one mocked aiohttp response representing a single hop of a redirect chain.
+
+        :param status: The HTTP status code of the hop.
+        :param headers: The response headers (e.g. Location, Content-Type); empty when None.
+                        Any Mapping is accepted so a test can pass a CIMultiDict with
+                        repeated header names, as aiohttp itself would.
+        :param body: The bytes streamed by response.content.iter_chunked (utf-8 for text).
+        :param raise_for_status_exc: Exception raised by response.raise_for_status(), if any.
+        :return: The mocked response.
+        """
+        response = MagicMock()
+        response.status = status
+        response.headers = headers if headers is not None else {}
+        response.charset = "utf-8"
+        response.raise_for_status = MagicMock(side_effect=raise_for_status_exc)
+        response.content.iter_chunked = partial(TestSafeFetch._iter_single_chunk, body)
+        return response
+
+    @staticmethod
+    def _redirect(status: int, location: str | None) -> MagicMock:
+        """
+        Build a mocked 3xx hop response.
+
+        :param status: The 3xx status code.
+        :param location: The Location header value, or None to omit the header.
+        :return: The mocked redirect response.
+        """
+        headers: dict[str, str] = {}
+        if location is not None:
+            headers["Location"] = location
+        return TestSafeFetch._make_hop_response(status, headers)
+
+    @staticmethod
+    def _record_exit(events: list[tuple[str, str]], url: str, *_exc_info: Any) -> bool:
+        """
+        Log that a hop's response context was exited; bound as that hop's __aexit__ side_effect.
+
+        :param events: The shared event log receiving an ("EXIT", url) entry.
+        :param url: The URL of the hop whose response context is being exited.
+        :param _exc_info: The (exc_type, exc, traceback) triple __aexit__ receives, ignored.
+        :return: False, so an exception raised inside the context propagates as it would
+                 from a real aiohttp response.
+        """
+        events.append(("EXIT", url))
+        return False
+
+    @staticmethod
+    def _next_hop(
+        calls: list[tuple[str, str]],
+        events: list[tuple[str, str]],
+        hops: list[MagicMock],
+        method: str,
+        url: str,
+        **kwargs: Any,
+    ) -> MagicMock:
+        """
+        Record a request and return the next hop's async context manager.
+
+        Bound with functools.partial as the side_effect of session.head / session.get,
+        so the chain session hands out responses strictly in order regardless of
+        which method the follower picks, while the recorded (method, url) pairs let a
+        test assert exactly what was requested and what was not. The events log
+        additionally interleaves ("EXIT", url) entries (see _record_exit) so a test can
+        assert that a hop's connection is released before the next hop is requested.
+
+        :param calls: The shared list receiving one (method, url) entry per request.
+        :param events: The shared log receiving the same (method, url) entries plus
+                       ("EXIT", url) when each hop's response context is exited.
+        :param hops: The remaining hop responses, consumed front to back.
+        :param method: The HTTP method this side_effect is bound to.
+        :param url: The URL the follower requested.
+        :param kwargs: Extra request keyword arguments; allow_redirects must be False.
+        :return: An async context manager mock yielding the next hop response.
+        :raises AssertionError: when the follower requests more hops than were scripted,
+                or requests a hop without allow_redirects=False.
+        """
+        # Every hop MUST disable aiohttp's built-in following. If the follower ever
+        # dropped allow_redirects=False, aiohttp would chase each Location itself and
+        # silently skip every per-hop validate_url check (the whole point of manual
+        # following), while a scripted chain like this one would still look healthy.
+        # Fail loudly instead, on HEAD and GET hops alike.
+        if kwargs.get("allow_redirects") is not False:
+            raise AssertionError(f"{method} {url} was requested without allow_redirects=False: {kwargs}")
+        calls.append((method, url))
+        events.append((method, url))
+        if not hops:
+            raise AssertionError(f"unexpected extra request {method} {url}")
+        response_cm = MagicMock()
+        response_cm.__aenter__ = AsyncMock(return_value=hops.pop(0))
+        response_cm.__aexit__ = AsyncMock(side_effect=partial(TestSafeFetch._record_exit, events, url))
+        return response_cm
+
+    @staticmethod
+    def _make_chain_session(
+        hops: list[MagicMock], events: list[tuple[str, str]] | None = None
+    ) -> tuple[MagicMock, list[tuple[str, str]]]:
+        """
+        Build a session mock that serves the given hop responses in order.
+
+        :param hops: The responses to return, one per request, in request order.
+        :param events: Optional log that also receives ("EXIT", url) entries as each hop's
+                       response context is exited; a throwaway list is used when None.
+        :return: A (session, calls) tuple; calls records every (method, url) requested.
+        """
+        calls: list[tuple[str, str]] = []
+        event_log: list[tuple[str, str]] = events if events is not None else []
+        remaining: list[MagicMock] = list(hops)
+        session = MagicMock()
+        session.head = MagicMock(side_effect=partial(TestSafeFetch._next_hop, calls, event_log, remaining, "HEAD"))
+        session.get = MagicMock(side_effect=partial(TestSafeFetch._next_hop, calls, event_log, remaining, "GET"))
+        return session, calls
+
+    def test_fetch_raw_follows_redirect_to_final_body(self) -> None:
+        """Tests that each method-preserving 3xx followed by a 200 returns the final body via GET.
+
+        301, 302, 307 and 308 are all followed with the original method; covering the
+        whole set guards against a regression that enumerated only some of them.
+        """
+        for status in (301, 302, 307, 308):
+            with self.subTest(status=status):
+                hops = [
+                    self._redirect(status, "http://example.org/moved"),
+                    self._make_hop_response(200, {"Content-Type": "text/plain"}, b"final body"),
+                ]
+                session, calls = self._make_chain_session(hops)
+                result = asyncio.run(SafeFetch.fetch_raw("http://example.com/start", session))
+                self.assertEqual(result, "final body")
+                self.assertEqual(calls, [("GET", "http://example.com/start"), ("GET", "http://example.org/moved")])
+
+    def test_fetch_raw_releases_hop_connection_before_requesting_next(self) -> None:
+        """Tests that a redirect hop's response context is exited before the next hop is requested.
+
+        The follower computes the next URL inside the hop's context and only then
+        leaves it, so the connection goes back to the pool (or is closed) instead of
+        being held open across the whole chain; this pins that ordering.
+        """
+        events: list[tuple[str, str]] = []
+        hops = [
+            self._redirect(301, "http://example.com/final"),
+            self._make_hop_response(200, {"Content-Type": "text/plain"}, b"ok"),
+        ]
+        session, _ = self._make_chain_session(hops, events)
+        asyncio.run(SafeFetch.fetch_raw("http://example.com/start", session))
+        self.assertEqual(
+            events,
+            [
+                ("GET", "http://example.com/start"),
+                ("EXIT", "http://example.com/start"),
+                ("GET", "http://example.com/final"),
+                ("EXIT", "http://example.com/final"),
+            ],
+        )
+
+    def test_fetch_raw_resolves_relative_location_against_hop_url(self) -> None:
+        """Tests that a relative or scheme-relative Location is resolved against the hop that issued it.
+
+        RFC 7231 permits relative Location values; validating and requesting them
+        verbatim would fail, so they must be joined onto the current hop first. The
+        padded cases pin the observable whitespace handling: a padded Location must
+        never reach the wire with its padding (the follower strips it before urljoin,
+        and validate_url strips again), whichever of those layers ends up doing it.
+        """
+        cases = (
+            ("/new/path", "http://example.com/new/path"),
+            ("//example.org/x", "http://example.org/x"),
+            ("  /new/path  ", "http://example.com/new/path"),
+            ("  http://example.com/final ", "http://example.com/final"),
+        )
+        for location, expected in cases:
+            with self.subTest(location=location):
+                hops = [
+                    self._redirect(302, location),
+                    self._make_hop_response(200, {"Content-Type": "text/plain"}, b"ok"),
+                ]
+                session, calls = self._make_chain_session(hops)
+                asyncio.run(SafeFetch.fetch_raw("http://example.com/old/page", session))
+                self.assertEqual(calls[1], ("GET", expected))
+
+    def test_fetch_raw_follows_first_of_multiple_location_headers(self) -> None:
+        """Tests that when a hop carries several Location headers, only the first is followed.
+
+        aiohttp exposes headers as a CIMultiDict whose .get returns the first value;
+        the follower must not pick a later one (here a private IP that validate_url
+        would refuse), so the request sequence proves which value was used.
+        """
+        headers: CIMultiDict[str] = CIMultiDict(
+            [("Location", "http://example.org/first"), ("Location", "http://192.168.1.1/second")]
+        )
+        hops = [
+            self._make_hop_response(301, headers),
+            self._make_hop_response(200, {"Content-Type": "text/plain"}, b"first"),
+        ]
+        session, calls = self._make_chain_session(hops)
+        result = asyncio.run(SafeFetch.fetch_raw("http://example.com/start", session))
+        self.assertEqual(result, "first")
+        self.assertEqual(calls, [("GET", "http://example.com/start"), ("GET", "http://example.org/first")])
+
+    def test_fetch_raw_follows_exactly_max_redirects(self) -> None:
+        """Tests that a chain of exactly MAX_REDIRECTS hops ending in 200 succeeds."""
+        hops: list[MagicMock] = []
+        for index in range(MAX_REDIRECTS):
+            hops.append(self._redirect(301, f"http://example.com/hop{index}"))
+        hops.append(self._make_hop_response(200, {"Content-Type": "text/plain"}, b"arrived"))
+        session, calls = self._make_chain_session(hops)
+        result = asyncio.run(SafeFetch.fetch_raw("http://example.com/start", session))
+        self.assertEqual(result, "arrived")
+        self.assertEqual(len(calls), MAX_REDIRECTS + 1)
+
+    def test_fetch_raw_exceeding_max_redirects_raises_and_stops_requesting(self) -> None:
+        """Tests that MAX_REDIRECTS + 1 redirects raise url_not_allowed without requesting the next hop.
+
+        The cap bounds the number of requests a remote server can drive from this host;
+        the trailing 200 hop is scripted only to prove it is never reached.
+        """
+        hops: list[MagicMock] = []
+        for index in range(MAX_REDIRECTS + 1):
+            hops.append(self._redirect(301, f"http://example.com/hop{index}"))
+        hops.append(self._make_hop_response(200, {"Content-Type": "text/plain"}, b"never"))
+        session, calls = self._make_chain_session(hops)
         with self.assertRaises(ValueError) as ctx:
-            asyncio.run(SafeFetch.get_content_type("http://example.com", session))
+            asyncio.run(SafeFetch.fetch_raw("http://example.com/start", session))
         error = str(ctx.exception)
         self.assertIn("url_not_allowed", error)
-        self.assertIn("http://other.com/", error)
+        self.assertIn("MAX_REDIRECTS", error)
+        self.assertIn("http://example.com/start", error)
+        self.assertEqual(len(calls), MAX_REDIRECTS + 1)
+        self.assertNotIn(("GET", f"http://example.com/hop{MAX_REDIRECTS}"), calls)
 
-    def test_get_content_type_405_get_redirect_raises_url_not_allowed(self):
-        """Tests that a 405 HEAD + 3xx GET raises ValueError with url_not_allowed and the Location URL."""
-        session, _ = make_head_session(status=405)
-        get_response = MagicMock()
-        get_response.status = 302
-        get_response.headers = {"Location": "http://other.com/"}
-        get_cm = MagicMock()
-        get_cm.__aenter__ = AsyncMock(return_value=get_response)
-        get_cm.__aexit__ = AsyncMock(return_value=False)
-        session.get = MagicMock(return_value=get_cm)
-
+    def test_fetch_raw_redirect_loop_raises_url_not_allowed(self) -> None:
+        """Tests that a server redirecting back to the same URL forever is cut off by the cap."""
+        hops: list[MagicMock] = []
+        for _ in range(MAX_REDIRECTS + 1):
+            hops.append(self._redirect(302, "http://example.com/loop"))
+        session, calls = self._make_chain_session(hops)
         with self.assertRaises(ValueError) as ctx:
-            asyncio.run(SafeFetch.get_content_type("http://example.com", session))
+            asyncio.run(SafeFetch.fetch_raw("http://example.com/loop", session))
+        self.assertIn("url_not_allowed", str(ctx.exception))
+        self.assertEqual(len(calls), MAX_REDIRECTS + 1)
+
+    def test_fetch_raw_redirect_to_private_ip_raises_and_is_never_requested(self) -> None:
+        """Tests that a hop to a private IP literal raises url_not_allowed before any request to it.
+
+        This is the core SSRF guarantee of manual following: an open redirect on a
+        public site must not be able to steer the fetch at an internal address.
+        """
+        hops = [
+            self._redirect(301, "http://192.168.1.1/x"),
+            self._make_hop_response(200, {"Content-Type": "text/plain"}, b"internal"),
+        ]
+        session, calls = self._make_chain_session(hops)
+        with self.assertRaises(ValueError) as ctx:
+            asyncio.run(SafeFetch.fetch_raw("http://example.com/start", session))
         error = str(ctx.exception)
         self.assertIn("url_not_allowed", error)
-        self.assertIn("http://other.com/", error)
+        self.assertIn("http://192.168.1.1/x", error)
+        self.assertEqual(calls, [("GET", "http://example.com/start")])
+
+    def test_fetch_raw_https_to_http_downgrade_hop_raises_and_is_never_requested(self) -> None:
+        """Tests that a redirect from an https hop to an http URL is refused before the http request is made.
+
+        The URL itself can carry a bearer secret (a presigned query string, say), and
+        the Location is server-controlled, so a downgrade hop could deliberately put
+        that secret on a plaintext connection.
+        """
+        hops = [
+            self._redirect(302, "http://example.com/plain"),
+            self._make_hop_response(200, {"Content-Type": "text/plain"}, b"leaked"),
+        ]
+        session, calls = self._make_chain_session(hops)
+        with self.assertRaises(ValueError) as ctx:
+            asyncio.run(SafeFetch.fetch_raw("https://example.com/start", session))
+        error = str(ctx.exception)
+        self.assertIn("url_not_allowed", error)
+        self.assertIn("downgrade", error)
+        self.assertEqual(calls, [("GET", "https://example.com/start")])
+
+    def test_fetch_raw_http_to_https_upgrade_hop_is_followed(self) -> None:
+        """Tests that an http -> https hop (the common canonicalisation redirect) is followed normally."""
+        hops = [
+            self._redirect(301, "https://example.com/start"),
+            self._make_hop_response(200, {"Content-Type": "text/plain"}, b"secure"),
+        ]
+        session, calls = self._make_chain_session(hops)
+        body: str = asyncio.run(SafeFetch.fetch_raw("http://example.com/start", session))
+        self.assertEqual(body, "secure")
+        self.assertEqual(calls, [("GET", "http://example.com/start"), ("GET", "https://example.com/start")])
+
+    def test_fetch_raw_unparseable_location_raises_url_not_allowed(self) -> None:
+        """Tests that a Location urljoin itself cannot parse fails closed with the documented error, not a bare one.
+
+        urllib raises ValueError("Invalid IPv6 URL") for an unmatched bracket; that
+        must surface as url_not_allowed naming the hop, like every other bad target.
+        """
+        hops = [
+            self._redirect(302, "http://[::1/x"),
+            self._make_hop_response(200, {"Content-Type": "text/plain"}, b"never"),
+        ]
+        session, calls = self._make_chain_session(hops)
+        with self.assertRaises(ValueError) as ctx:
+            asyncio.run(SafeFetch.fetch_raw("http://example.com/start", session))
+        error = str(ctx.exception)
+        self.assertIn("url_not_allowed", error)
+        self.assertIn("failed validation", error)
+        self.assertIn("http://[::1/x", error)
+        self.assertEqual(calls, [("GET", "http://example.com/start")])
+
+    def test_fetch_raw_redirect_to_blocked_domain_raises(self) -> None:
+        """Tests that the caller's blocked_domains apply to a redirect hop, not just the starting URL."""
+        hops = [
+            self._redirect(301, "http://example.org/x"),
+            self._make_hop_response(200, {"Content-Type": "text/plain"}, b"blocked"),
+        ]
+        session, calls = self._make_chain_session(hops)
+        with self.assertRaises(ValueError) as ctx:
+            asyncio.run(SafeFetch.fetch_raw("http://example.com/start", session, blocked_domains=["example.org"]))
+        error = str(ctx.exception)
+        self.assertIn("url_not_allowed", error)
+        self.assertIn("blocked", error)
+        self.assertEqual(calls, [("GET", "http://example.com/start")])
+
+    def test_fetch_raw_redirect_outside_allowed_domains_raises(self) -> None:
+        """Tests that a hop leaving the caller's allowed_domains raises url_not_allowed."""
+        hops = [
+            self._redirect(301, "http://example.org/x"),
+            self._make_hop_response(200, {"Content-Type": "text/plain"}, b"outside"),
+        ]
+        session, calls = self._make_chain_session(hops)
+        with self.assertRaises(ValueError) as ctx:
+            asyncio.run(SafeFetch.fetch_raw("http://example.com/start", session, allowed_domains=["example.com"]))
+        error = str(ctx.exception)
+        self.assertIn("url_not_allowed", error)
+        self.assertIn("allowed_domains", error)
+        self.assertEqual(calls, [("GET", "http://example.com/start")])
+
+    def test_fetch_raw_redirect_to_non_http_scheme_raises_url_not_allowed(self) -> None:
+        """Tests that a Location with a non-http(s) scheme is refused as url_not_allowed.
+
+        validate_url itself reports a bad scheme as invalid_input (it assumes a
+        caller-supplied URL); the follower re-tags every hop failure as
+        url_not_allowed because the redirect target was chosen by the server, not the
+        caller, and preserves the inner reason in the message.
+        """
+        hops = [self._redirect(302, "ftp://example.com/x")]
+        session, calls = self._make_chain_session(hops)
+        with self.assertRaises(ValueError) as ctx:
+            asyncio.run(SafeFetch.fetch_raw("http://example.com/start", session))
+        error = str(ctx.exception)
+        self.assertTrue(error.startswith("url_not_allowed"), error)
+        self.assertIn("ftp://example.com/x", error)
+        self.assertIn("invalid_input", error)
+        self.assertEqual(calls, [("GET", "http://example.com/start")])
+
+    def test_fetch_raw_redirect_without_location_raises_url_not_allowed(self) -> None:
+        """Tests that a 3xx with no Location header (e.g. 304) raises url_not_allowed."""
+        for status in (304, 302):
+            with self.subTest(status=status):
+                session, calls = self._make_chain_session([self._redirect(status, None)])
+                with self.assertRaises(ValueError) as ctx:
+                    asyncio.run(SafeFetch.fetch_raw("http://example.com/start", session))
+                error = str(ctx.exception)
+                self.assertIn("url_not_allowed", error)
+                self.assertIn("without a Location", error)
+                self.assertEqual(len(calls), 1)
+
+    def test_get_content_type_follows_head_redirect_chain(self) -> None:
+        """Tests that the HEAD probe follows each method-preserving 3xx with HEAD and returns the final Content-Type.
+
+        301, 302, 307 and 308 must all keep HEAD (303 does too, see the next test), so
+        the second request is asserted to be a HEAD for every one of them.
+        """
+        for status in (301, 302, 307, 308):
+            with self.subTest(status=status):
+                hops = [
+                    self._redirect(status, "http://example.com/final"),
+                    self._make_hop_response(200, {"Content-Type": "text/html; charset=utf-8"}),
+                ]
+                session, calls = self._make_chain_session(hops)
+                content_type, body, final_url = asyncio.run(
+                    SafeFetch.get_content_type("http://example.com/start", session)
+                )
+                self.assertEqual(final_url, "http://example.com/final")
+                self.assertEqual(content_type, "text/html; charset=utf-8")
+                self.assertIsNone(body)
+                self.assertEqual(calls, [("HEAD", "http://example.com/start"), ("HEAD", "http://example.com/final")])
+
+    def test_get_content_type_303_keeps_head(self) -> None:
+        """Tests that a 303 See Other during the HEAD probe is followed with HEAD, not GET.
+
+        RFC 9110 lets a 303 be retrieved with GET or HEAD matching the original
+        request; switching the probe to GET would fetch a body it never reads and
+        hit endpoints that distinguish the two methods.
+        """
+        hops = [
+            self._redirect(303, "http://example.com/result"),
+            self._make_hop_response(200, {"Content-Type": "application/pdf"}),
+        ]
+        session, calls = self._make_chain_session(hops)
+        content_type, _, final_url = asyncio.run(SafeFetch.get_content_type("http://example.com/start", session))
+        self.assertEqual(final_url, "http://example.com/result")
+        self.assertEqual(content_type, "application/pdf")
+        self.assertEqual(calls, [("HEAD", "http://example.com/start"), ("HEAD", "http://example.com/result")])
+
+    def test_get_content_type_get_fallback_follows_redirect_and_prefetches_body(self) -> None:
+        """Tests that after a 405 HEAD the GET fallback restarts from the original URL and follows its redirect."""
+        hops = [
+            self._make_hop_response(405),
+            self._redirect(302, "http://example.com/moved"),
+            self._make_hop_response(200, {"Content-Type": "text/plain"}, b"hello"),
+        ]
+        session, calls = self._make_chain_session(hops)
+        content_type, body, final_url = asyncio.run(SafeFetch.get_content_type("http://example.com/start", session))
+        self.assertEqual(final_url, "http://example.com/moved")
+        self.assertEqual(content_type, "text/plain")
+        self.assertEqual(body, "hello")
+        self.assertEqual(
+            calls,
+            [
+                ("HEAD", "http://example.com/start"),
+                ("GET", "http://example.com/start"),
+                ("GET", "http://example.com/moved"),
+            ],
+        )
+
+    def test_get_content_type_head_redirect_to_private_ip_raises(self) -> None:
+        """Tests that the HEAD probe applies the SSRF policy to its redirect target as well."""
+        hops = [self._redirect(301, "http://192.168.1.1/x"), self._make_hop_response(200)]
+        session, calls = self._make_chain_session(hops)
+        with self.assertRaises(ValueError) as ctx:
+            asyncio.run(SafeFetch.get_content_type("http://example.com/start", session))
+        self.assertIn("url_not_allowed", str(ctx.exception))
+        self.assertEqual(calls, [("HEAD", "http://example.com/start")])
+
+    def test_get_content_type_head_redirect_to_blocked_domain_raises(self) -> None:
+        """Tests that the HEAD probe applies the caller's blocked_domains to its redirect target.
+
+        This is the scenario issue #1369 is about: an open redirect on a permitted
+        site must not land the probe on a host the caller blocked. The WebFetch tests
+        cannot cover it because they mock SafeFetch, so it is pinned here.
+        """
+        hops = [self._redirect(301, "http://example.org/x"), self._make_hop_response(200)]
+        session, calls = self._make_chain_session(hops)
+        with self.assertRaises(ValueError) as ctx:
+            asyncio.run(
+                SafeFetch.get_content_type("http://example.com/start", session, blocked_domains=["example.org"])
+            )
+        error = str(ctx.exception)
+        self.assertIn("url_not_allowed", error)
+        self.assertIn("blocked", error)
+        self.assertEqual(calls, [("HEAD", "http://example.com/start")])
+
+    def test_get_content_type_get_fallback_redirect_outside_allowed_domains_raises(self) -> None:
+        """Tests that the GET fallback applies the caller's allowed_domains to its redirect target.
+
+        The GET fallback is a second, independent follower call; dropping the domain
+        rules from it alone would leave the HEAD path safe and the GET path open.
+        """
+        hops = [
+            self._make_hop_response(405),
+            self._redirect(302, "http://example.org/x"),
+            self._make_hop_response(200, {"Content-Type": "text/plain"}, b"outside"),
+        ]
+        session, calls = self._make_chain_session(hops)
+        with self.assertRaises(ValueError) as ctx:
+            asyncio.run(
+                SafeFetch.get_content_type("http://example.com/start", session, allowed_domains=["example.com"])
+            )
+        error = str(ctx.exception)
+        self.assertIn("url_not_allowed", error)
+        self.assertIn("allowed_domains", error)
+        self.assertEqual(calls, [("HEAD", "http://example.com/start"), ("GET", "http://example.com/start")])
+
+    def test_get_content_type_429_after_head_redirect_is_authoritative(self) -> None:
+        """Tests that a 429 on the final HEAD hop raises too_many_requests without a GET fallback.
+
+        429 is authoritative for a direct HEAD; following a redirect first must not
+        change that, or a rate-limited server behind a canonicalising redirect would
+        be hit again with GET.
+        """
+        hops = [
+            self._redirect(301, "http://example.com/final"),
+            self._make_hop_response(429, raise_for_status_exc=make_response_error(429)),
+        ]
+        session, calls = self._make_chain_session(hops)
+        with self.assertRaises(ClientResponseError) as ctx:
+            asyncio.run(SafeFetch.get_content_type("http://example.com/start", session))
+        self.assertIn("too_many_requests", ctx.exception.message)
+        self.assertEqual(ctx.exception.status, 429)
+        self.assertEqual(calls, [("HEAD", "http://example.com/start"), ("HEAD", "http://example.com/final")])
+
+    def test_fetch_raw_non_2xx_after_redirect_chain_is_translated(self) -> None:
+        """Tests that a non-2xx final hop still surfaces via _raise_translated after redirects.
+
+        404 must become url_not_accessible and 429 too_many_requests exactly as for a
+        direct response; following redirects must not change the error contract.
+        """
+        cases = ((404, "url_not_accessible"), (429, "too_many_requests"))
+        for status, prefix in cases:
+            with self.subTest(status=status):
+                hops = [
+                    self._redirect(301, "http://example.com/final"),
+                    self._make_hop_response(status, raise_for_status_exc=make_response_error(status)),
+                ]
+                session, _ = self._make_chain_session(hops)
+                with self.assertRaises(ClientResponseError) as ctx:
+                    asyncio.run(SafeFetch.fetch_raw("http://example.com/start", session))
+                self.assertIn(prefix, ctx.exception.message)
+                self.assertEqual(ctx.exception.status, status)
 
     def test_fetch_text_plain_text_returned_as_is(self):
         """Tests that plain text body content is returned unchanged."""
@@ -931,16 +1470,34 @@ class TestSafeFetch(TestCase):  # pylint: disable=too-many-public-methods
             asyncio.run(SafeFetch.fetch_text("http://example.com", session))
         self.assertIn("too_many_requests", ctx.exception.message)
 
-    def test_fetch_text_redirect_raises_url_not_allowed(self):
-        """Tests that a 3xx GET response raises ValueError with url_not_allowed and the Location URL."""
-        session, response = make_get_response(status=301)
-        response.headers["Location"] = "http://other.com/"
+    def test_fetch_text_follows_redirect_and_strips_final_html(self) -> None:
+        """Tests that fetch_text follows a 301 and returns the stripped text of the final hop's HTML body."""
+        hops = [
+            self._redirect(301, "http://example.com/final"),
+            self._make_hop_response(200, {"Content-Type": "text/html"}, b"<html><body><p>Moved here</p></body>"),
+        ]
+        session, calls = self._make_chain_session(hops)
+        result = asyncio.run(SafeFetch.fetch_text("http://example.com", session))
+        self.assertEqual(result, "Moved here")
+        self.assertEqual(calls, [("GET", "http://example.com"), ("GET", "http://example.com/final")])
 
+    def test_fetch_text_redirect_to_blocked_domain_raises(self) -> None:
+        """Tests that fetch_text forwards the caller's blocked_domains to fetch_raw's redirect handling.
+
+        WebFetch calls fetch_text, not fetch_raw, so this forwarding is what actually
+        protects the tool; the fetch_raw tests alone would not notice it being dropped.
+        """
+        hops = [
+            self._redirect(301, "http://example.org/x"),
+            self._make_hop_response(200, {"Content-Type": "text/html"}, b"<p>blocked</p>"),
+        ]
+        session, calls = self._make_chain_session(hops)
         with self.assertRaises(ValueError) as ctx:
-            asyncio.run(SafeFetch.fetch_text("http://example.com", session))
+            asyncio.run(SafeFetch.fetch_text("http://example.com/start", session, blocked_domains=["example.org"]))
         error = str(ctx.exception)
         self.assertIn("url_not_allowed", error)
-        self.assertIn("http://other.com/", error)
+        self.assertIn("blocked", error)
+        self.assertEqual(calls, [("GET", "http://example.com/start")])
 
     def test_fetch_text_connection_error_raises_client_error_with_prefix(self):
         """Tests that a connection error raises ClientError with url_not_accessible prefix."""
@@ -1059,6 +1616,26 @@ class TestSafeFetch(TestCase):  # pylint: disable=too-many-public-methods
                 self._call_fetch_pdf("http://example.com/doc.pdf", MagicMock())
         self.assertIn("url_not_accessible", str(ctx.exception))
 
+    def test_fetch_pdf_text_redirect_outside_allowed_domains_raises(self) -> None:
+        """Tests that fetch_pdf_text forwards the caller's allowed_domains to download_pdf_bytes.
+
+        WebFetch's PDF route calls fetch_pdf_text, not download_pdf_bytes, so this
+        forwarding is the layer that keeps a redirected PDF inside the allow-list.
+        """
+        hops = [
+            self._redirect(302, "http://example.org/real.pdf"),
+            self._make_hop_response(200, {"Content-Type": "application/pdf"}, b"%PDF-1.4"),
+        ]
+        session, calls = self._make_chain_session(hops)
+        with self.assertRaises(ValueError) as ctx:
+            asyncio.run(
+                SafeFetch.fetch_pdf_text("http://example.com/doc.pdf", session, allowed_domains=["example.com"])
+            )
+        error = str(ctx.exception)
+        self.assertIn("url_not_allowed", error)
+        self.assertIn("allowed_domains", error)
+        self.assertEqual(calls, [("GET", "http://example.com/doc.pdf")])
+
     def test_fetch_pdf_download_uses_provided_session(self):
         """Tests that the PDF download goes through the session passed by async_invoke."""
         data = make_pdf_bytes()
@@ -1077,12 +1654,26 @@ class TestSafeFetch(TestCase):  # pylint: disable=too-many-public-methods
         session, _ = make_stream_session([b"%PDF", b"-1.4", b" body"])
         self.assertEqual(self._call_download_pdf_bytes(session), b"%PDF-1.4 body")
 
-    def test_download_pdf_bytes_redirect_raises_url_not_allowed(self):
-        """Tests that a 3xx response raises ValueError with url_not_allowed."""
-        session, _ = make_stream_session([], status=302)
+    def test_download_pdf_bytes_follows_redirect_then_streams_body(self) -> None:
+        """Tests that a 302 is followed and the final hop's body is streamed back."""
+        hops = [
+            self._redirect(302, "http://example.com/real.pdf"),
+            self._make_hop_response(200, {"Content-Type": "application/pdf"}, b"%PDF-1.4 body"),
+        ]
+        session, calls = self._make_chain_session(hops)
+        self.assertEqual(self._call_download_pdf_bytes(session), b"%PDF-1.4 body")
+        self.assertEqual(calls, [("GET", "http://example.com/doc.pdf"), ("GET", "http://example.com/real.pdf")])
+
+    def test_download_pdf_bytes_redirect_to_blocked_domain_raises(self) -> None:
+        """Tests that download_pdf_bytes applies the caller's blocked_domains to a redirect hop."""
+        hops = [self._redirect(302, "http://example.org/real.pdf"), self._make_hop_response(200)]
+        session, calls = self._make_chain_session(hops)
         with self.assertRaises(ValueError) as ctx:
-            self._call_download_pdf_bytes(session)
+            asyncio.run(
+                SafeFetch.download_pdf_bytes("http://example.com/doc.pdf", session, blocked_domains=["example.org"])
+            )
         self.assertIn("url_not_allowed", str(ctx.exception))
+        self.assertEqual(calls, [("GET", "http://example.com/doc.pdf")])
 
     def test_download_pdf_bytes_429_maps_to_too_many_requests(self):
         """Tests that HTTP 429 raises ClientResponseError with too_many_requests prefix."""
