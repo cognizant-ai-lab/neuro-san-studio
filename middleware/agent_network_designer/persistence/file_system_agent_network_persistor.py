@@ -151,10 +151,12 @@ class FileSystemAgentNetworkPersistor(AgentNetworkPersistor):
                 return None
             config: Any = await restorer.async_restore(file_reference=str(file_path))
         except (OSError, ValueError) as error:
-            # ValueError is how the restorer reports HOCON/JSON parse and substitution failures. A
-            # generated file read from the wrong CWD lands here too: pyhocon only warns about the
-            # include it cannot find, then the ${aaosa_call} substitution fails. OSError covers
-            # unreadable paths, a stat that fails included.
+            # ValueError is how the restorer reports HOCON/JSON parse and substitution failures: its
+            # async_restore catches pyparsing's ParseException and ParseSyntaxException, JSONDecodeError
+            # and pyhocon's ConfigException itself and re-raises them as ValueError, so no parser
+            # exception escapes it. A generated file read from the wrong CWD lands here too: pyhocon
+            # only warns about the include it cannot find, then the ${aaosa_call} substitution fails.
+            # OSError covers unreadable paths, a stat that fails included.
             self.logger.warning(
                 "Could not read existing agent network %s; saving without its metadata: %s", file_path, error
             )
