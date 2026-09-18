@@ -49,11 +49,10 @@ pytestmark = pytest.mark.smoke
 
 REPO_ROOT: Path = Path(__file__).resolve().parents[3]
 
-# One network on top of what `ns init` scaffolds, which is all it takes to exercise `ns import`
-# and the dependency walk behind it. internet_info_gatherer is the one the default scaffold needs
-# and does not install: agent_network_designer calls /tools/internet_info_gatherer, so without it
-# the designer registry fails validation and neuro-san drops it.
-IMPORTED_NETWORKS: List[str] = ["tools/internet_info_gatherer"]
+# One network on top of what `ns init` scaffolds, which is all it takes to exercise `ns import`.
+# Everything the default scaffold needs, agent_network_designer's dependencies included, is
+# `ns init`'s job to install.
+IMPORTED_NETWORKS: List[str] = ["basic/hello_world"]
 
 LISTED_AGENT: re.Pattern = re.compile(r'"agent_name"\s*:\s*"(?P<name>[^"]+)"')
 
