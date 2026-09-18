@@ -15,11 +15,16 @@
 # END COPYRIGHT
 
 import os
+from logging import getLogger
 from pathlib import Path
+from typing import Any
+from uuid import uuid4
 
 import aiofiles
 from leaf_common.serialization.util.text_file_reader import TextFileReader
+from neuro_san.internals.persistence.abstract_async_config_restorer import AbstractAsyncConfigRestorer
 
+from coded_tools.agent_network_editor.and_logger import AndLogger
 from middleware.agent_network_designer.persistence.agent_network_assembler import AgentNetworkAssembler
 from middleware.agent_network_designer.persistence.agent_network_persistor import AgentNetworkPersistor
 from middleware.agent_network_designer.persistence.hocon_agent_network_assembler import HoconAgentNetworkAssembler
@@ -35,7 +40,7 @@ class FileSystemAgentNetworkPersistor(AgentNetworkPersistor):
     as a hocon file. Also modifies the local manifest file.
     """
 
-    def __init__(self, demo_mode: bool, subdirectory: str = DEFAULT_SUBDIRECTORY):
+    def __init__(self, demo_mode: bool, subdirectory: str = DEFAULT_SUBDIRECTORY) -> None:
         """
         Creates a new persistor of the specified type.
 
@@ -44,6 +49,7 @@ class FileSystemAgentNetworkPersistor(AgentNetworkPersistor):
                 Leading and trailing slashes are stripped so callers can pass either
                 "generated" or "generated/" interchangeably.
         """
+        self.logger: AndLogger = AndLogger(getLogger(self.__class__.__name__))
         self.demo_mode: bool = demo_mode
         self.subdirectory: str = subdirectory.strip("/")
 
@@ -86,6 +92,90 @@ class FileSystemAgentNetworkPersistor(AgentNetworkPersistor):
         """
         return HoconAgentNetworkAssembler(self.demo_mode)
 
+    def get_network_file_path(self, file_reference: str) -> Path:
+        """
+        Resolve the path of the HOCON file a network is persisted under.
+
+        Shared by async_persist and async_restore_metadata so the fallback read in
+        AgentNetworkPersistenceMiddleware targets exactly the file the write overwrites.
+        Path() handles OS-specific separators: even though the relative name contains '/',
+        pathlib recognizes it as an alt-separator on Windows and normalizes it to a backslash
+        when the path is handed to the file system APIs.
+
+        :param file_reference: The raw network name, without subdirectory prefix or extension
+        :return: <output_path>/<subdirectory>/<file_reference>.hocon
+        """
+        return Path(self.output_path) / f"{self.subdirectory}/{file_reference}.hocon"
+
+    async def async_restore_metadata(self, file_reference: str) -> dict[str, Any] | None:
+        """
+        Read the metadata block of the network currently persisted under file_reference.
+
+        Parses the whole file with the restorer the designer also loads networks with, so the
+        block comes back as plain dicts and lists. Generated files include registries/aaosa.hocon
+        and config/llm_config.hocon relative to the process CWD, so the read only succeeds from
+        the project root, where the server that serves those files runs anyway.
+
+        Read and parse failures are not fatal to the save: a network that cannot be read is
+        logged and treated as having no metadata, which is exactly the pre-#1398 behaviour, so a
+        corrupt file can still be repaired by saving over it.
+
+        :param file_reference: The raw network name, without subdirectory prefix or extension
+        :return: The metadata block, or None when the file does not exist, cannot be parsed,
+                or has no dict-valued "metadata"
+        """
+        file_path: Path = self.get_network_file_path(file_reference)
+        # An empty file parses as an empty config and would pass as "no metadata" silently; it
+        # is never something the persistor wrote, so leave a trace before saving over it.
+        if file_path.is_file() and file_path.stat().st_size == 0:
+            self.logger.warning("Existing agent network %s is empty; saving without its metadata.", file_path)
+            return None
+        # must_exist=False: a first save has nothing to carry forward and must not be an error.
+        restorer: AbstractAsyncConfigRestorer = AbstractAsyncConfigRestorer(
+            file_purpose="existing agent network", must_exist=False
+        )
+        try:
+            config: Any = await restorer.async_restore(file_reference=str(file_path))
+        except (OSError, ValueError) as error:
+            # ValueError is how the restorer reports HOCON/JSON parse and substitution failures. A
+            # generated file read from the wrong CWD lands here too: pyhocon only warns about the
+            # include it cannot find, then the ${aaosa_call} substitution fails. OSError covers
+            # unreadable paths.
+            self.logger.warning(
+                "Could not read existing agent network %s; saving without its metadata: %s", file_path, error
+            )
+            return None
+        return self._metadata_from_config(config, file_path)
+
+    def _metadata_from_config(self, config: Any, file_path: Path) -> dict[str, Any] | None:
+        """
+        Pick the metadata block out of a parsed network config, warning about the shapes that
+        cannot hold one.
+
+        :param config: What the restorer returned for the existing network file
+        :param file_path: The file it came from, named in the warnings
+        :return: The block, or None when the config is empty, not an object, has no
+                "metadata" or a non-dict one
+        """
+        if config is None:
+            return None
+        if not isinstance(config, dict):
+            self.logger.warning(
+                "Existing agent network %s is not an object (%s); saving without its metadata.",
+                file_path,
+                type(config).__name__,
+            )
+            return None
+        metadata: Any = config.get("metadata")
+        if metadata is None:
+            return None
+        if not isinstance(metadata, dict):
+            self.logger.warning(
+                "Ignoring non-dict 'metadata' (%s) in existing agent network %s.", type(metadata).__name__, file_path
+            )
+            return None
+        return metadata
+
     async def async_persist(self, obj: str, file_reference: str = None) -> str:
         """
         Persists the object passed in.
@@ -95,21 +185,33 @@ class FileSystemAgentNetworkPersistor(AgentNetworkPersistor):
         :param file_reference: The file reference to use when persisting.
                 Default is None, implying the file reference is up to the
                 implementation.
-        :return an object describing the location to which the object was persisted
+        :return: The path the network was written to, or None when the manifest already
+                listed the network (the file is still rewritten; see #1425)
         """
 
         the_agent_network_hocon_str: str = obj
         # Prepend subdirectory to form the full relative network path.
         the_agent_network_name: str = f"{self.subdirectory}/{file_reference}"
 
-        # Write the agent network file. Path() handles OS-specific separators: even though
-        # `the_agent_network_name` contains '/', pathlib recognizes it as an alt-separator on
-        # Windows and normalizes to '\' when the path is passed to the file system APIs.
-        file_path: Path = Path(self.output_path) / (the_agent_network_name + ".hocon")
+        # Write the agent network file; see get_network_file_path for the OS-separator note.
+        file_path: Path = self.get_network_file_path(file_reference)
         # Create parent directory automatically if necessary
         file_path.parent.mkdir(parents=True, exist_ok=True)
-        async with aiofiles.open(file_path, "w", encoding="utf-8", newline="\n") as file:
-            await file.write(the_agent_network_hocon_str)
+        # Write a sibling temp file and swap it in with os.replace, which is atomic on POSIX and
+        # Windows. Opening the target with "w" would truncate it first and fill it on a later
+        # thread hop, and a concurrent same-name save reading the block through
+        # async_restore_metadata in that window would see an empty file, take it as "no
+        # metadata" and write the network without its block. With the swap a reader always
+        # sees either the complete old file or the complete new one.
+        temp_path: Path = file_path.with_name(f"{file_path.name}.{uuid4().hex}.tmp")
+        try:
+            async with aiofiles.open(temp_path, "w", encoding="utf-8", newline="\n") as file:
+                await file.write(the_agent_network_hocon_str)
+            os.replace(temp_path, file_path)
+        finally:
+            # Still present only if the write or the swap raised; never leave it behind.
+            if temp_path.exists():
+                temp_path.unlink()
 
         # Update the manifest.hocon file
         manifest_path: Path = Path(self.output_path) / self.subdirectory / MANIFEST_FILENAME

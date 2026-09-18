@@ -14,6 +14,8 @@
 #
 # END COPYRIGHT
 
+from datetime import datetime
+from datetime import timezone
 from logging import getLogger
 from os import environ
 from typing import Any
@@ -30,6 +32,7 @@ from coded_tools.agent_network_editor.and_logger import AndLogger
 from coded_tools.agent_network_editor.connectivity_dictionary_converter import ConnectivityDictionaryConverter
 from coded_tools.agent_network_editor.constants import AGENT_NETWORK_DEFINITION
 from coded_tools.agent_network_editor.constants import AGENT_NETWORK_HOCON_TEXT
+from coded_tools.agent_network_editor.constants import AGENT_NETWORK_METADATA
 from coded_tools.agent_network_editor.constants import AGENT_NETWORK_NAME
 from coded_tools.agent_network_editor.get_mcp_tool import GetMcpTool
 from coded_tools.agent_network_editor.get_subnetwork import GetSubnetwork
@@ -38,6 +41,7 @@ from coded_tools.agent_network_editor.mcp_servers_load import McpServersLoad
 from coded_tools.agent_network_query_generator.set_sample_queries import AGENT_NETWORK_QUERIES
 from middleware.agent_network_designer.agent_network_definition_middleware import SKIP_DESIGNER
 from middleware.agent_network_designer.persistence.agent_network_assembler import AgentNetworkAssembler
+from middleware.agent_network_designer.persistence.agent_network_metadata_block import AgentNetworkMetadataBlock
 from middleware.agent_network_designer.persistence.agent_network_persistor import AgentNetworkPersistor
 from middleware.agent_network_designer.persistence.agent_network_persistor_factory import AgentNetworkPersistorFactory
 from middleware.agent_network_designer.persistence.file_system_agent_network_persistor import DEFAULT_SUBDIRECTORY
@@ -100,6 +104,10 @@ class AgentNetworkPersistenceMiddleware(AgentMiddleware):
 
                 Keys expected for this implementation are:
                     "agent_network_definition": an outline of an agent network
+                    "agent_network_name": the name to save the network under (optional)
+                    "agent_network_queries": sample queries generated on this turn (optional)
+                    "agent_network_metadata": the network's metadata block as the client
+                        received it after the previous save (optional, issue #1398)
         """
         self.logger: AndLogger = AndLogger(getLogger(self.__class__.__name__))
         self.reservationist = reservationist
@@ -287,26 +295,16 @@ class AgentNetworkPersistenceMiddleware(AgentMiddleware):
                 )
         return client_token_mcp_headers
 
-    async def _assemble_and_persist(
-        self,
-        network_def: dict[str, Any],
-        agent_network_name: str,
-        sample_queries: list[str],
-    ) -> None:
+    async def _create_persistor(self) -> tuple[AgentNetworkPersistor, dict[str, list[str]]]:
         """
-        Assemble the agent network, store HOCON text in sly_data, and persist it.
+        Create the persistor for this save, together with the client-token MCP header map the
+        assemblers need for the front man's sly_data_schema.
 
-        HOCON content is always assembled first and stored in sly_data for client consumption.
-        If WRITE_TO_FILE is True, that same HOCON content is persisted to disk; the subdirectory
-        prefix is added by FileSystemAgentNetworkPersistor internally.
-        Otherwise, a deployable config is assembled and registered as a temporary network via
-        the reservationist interface using the sanitized raw name.
+        Split out of _assemble_and_persist so that method stays within pylint's local-variable
+        budget after the metadata block handling was added.
 
-        :param agent_network_name: The raw network name without any subdirectory prefix.
+        :return: The persistor and the client-token MCP header map (see _client_token_mcp_headers)
         """
-        self.logger.info(">>>>>>>>>>>>>>>>>>>Assemble and Persist Agent Network>>>>>>>>>>>>>>>>>>")
-        self.logger.info("Agent Network Name: %s", agent_network_name)
-
         subnetwork_names: list[str] = await GetSubnetwork.get_subnetwork_names()
         load: McpServersLoad = await GetMcpTool.get_mcp_servers_load()
         client_token_mcp_headers: dict[str, list[str]] = self._client_token_mcp_headers(load)
@@ -319,7 +317,97 @@ class AgentNetworkPersistenceMiddleware(AgentMiddleware):
             subnetwork_names,
             mcp_servers,
         )
+        return persistor, client_token_mcp_headers
+
+    @staticmethod
+    def _utc_now_iso() -> str:
+        """
+        Read the clock for the file-mode timestamps.
+
+        The one place this middleware reads the clock, so a test can pin it. The format is the
+        timezone-aware ISO-8601 UTC string the HOCON header always used for date_created.
+
+        :return: The current UTC time as an ISO-8601 string with an explicit offset
+        """
+        return datetime.now(tz=timezone.utc).isoformat()
+
+    async def _build_metadata(
+        self, persistor: AgentNetworkPersistor, agent_network_name: str, sample_queries: list[str]
+    ) -> dict[str, Any]:
+        """
+        Build the metadata block to save.
+
+        The designer is stateless: the block the client sent back under AGENT_NETWORK_METADATA
+        (issue #1398) is the base, exactly as it owns the definition and the name. This turn's
+        sample queries replace the block's own only when the generator ran. In file mode the
+        server stamps date_created once and date_modified on every save; a temporary network
+        gets no studio timestamps, neuro-san's reservation storage adds its own. The caller
+        writes the result back to sly_data once the save happened, so it flows upstream and the
+        client can send it again. A client value that is not a dict is ignored with a warning.
+
+        A client that says nothing about the block (key absent or null) predates the contract;
+        nsflow's manual save, as of nsflow 0.7.1, is the known case. Erasing the block on its behalf
+        would be the very loss this fixes, so the persistor is asked once for the block of the
+        network about to be overwritten and that block is the base instead. A client that sends
+        the key, even as an empty object, owns the block and nothing is read.
+
+        :param persistor: The persistor this save goes through; the fallback reads the network
+                it is about to overwrite (the reservations persistor has none and answers None)
+        :param agent_network_name: The raw network name the persistor reads and writes under
+        :param sample_queries: The sample queries generated on this turn, [] when none were
+        :return: The block to hand to the assemblers
+        """
+        candidate: Any = self.sly_data.get(AGENT_NETWORK_METADATA)
+        source: str = f"sly_data['{AGENT_NETWORK_METADATA}']"
+        if candidate is None:
+            # Compatibility fallback for clients that predate the key: the only read of the
+            # network being saved (manifest and cached config reads are unrelated), and only
+            # when the client said nothing.
+            candidate = await persistor.async_restore_metadata(agent_network_name)
+            source = f"existing network {agent_network_name}"
+        block: AgentNetworkMetadataBlock = AgentNetworkMetadataBlock(candidate, source).merge_sample_queries(
+            sample_queries
+        )
+        if WRITE_TO_FILE:
+            block.stamp_file_dates(self._utc_now_iso())
+        return block.as_dict()
+
+    async def _assemble_and_persist(
+        self,
+        network_def: dict[str, Any],
+        agent_network_name: str,
+        sample_queries: list[str],
+    ) -> None:
+        """
+        Assemble the agent network, store HOCON text in sly_data, and persist it.
+
+        The metadata block is built from what the client sent back (or, for a client that sent
+        no block, from the network being overwritten) plus what this turn generated, see
+        _build_metadata; it is never regenerated from the definition alone, so a skip_designer
+        save or a designer turn that skipped the query generator keeps the block intact.
+
+        HOCON content is always assembled first and stored in sly_data for client consumption.
+        If WRITE_TO_FILE is True, that same HOCON content is persisted to disk; the subdirectory
+        prefix is added by FileSystemAgentNetworkPersistor internally.
+        Otherwise, a deployable config is assembled and registered as a temporary network via
+        the reservationist interface using the sanitized raw name.
+
+        :param network_def: The validated agent network definition to persist
+        :param agent_network_name: The raw network name without any subdirectory prefix.
+        :param sample_queries: The sample queries generated on this turn, [] when none were
+        """
+        self.logger.info(">>>>>>>>>>>>>>>>>>>Assemble and Persist Agent Network>>>>>>>>>>>>>>>>>>")
+        self.logger.info("Agent Network Name: %s", agent_network_name)
+
+        persistor: AgentNetworkPersistor
+        client_token_mcp_headers: dict[str, list[str]]
+        persistor, client_token_mcp_headers = await self._create_persistor()
         top_agent_name: str = UnreachableNodesNetworkValidator().find_all_front_man_agents(network_def).pop()
+        # Built once so the HOCON text handed to the client and the persisted content carry one block,
+        # and before the write so the fallback read never sees a half-written file. The assemblers run
+        # the same merge again on it; that pass is idempotent (nothing new to drop), at most a generated
+        # query that cannot be stored is logged once more per assembler.
+        metadata: dict[str, Any] = await self._build_metadata(persistor, agent_network_name, sample_queries)
 
         # Always assemble and store HOCON content for client consumption.
         persisted_content: str = await HoconAgentNetworkAssembler(DEMO_MODE).assemble_agent_network(
@@ -328,6 +416,7 @@ class AgentNetworkPersistenceMiddleware(AgentMiddleware):
             agent_network_name,
             sample_queries,
             client_token_mcp_headers=client_token_mcp_headers,
+            metadata=metadata,
         )
         self.logger.info("The resulting agent network content: \n %s", persisted_content)
         self.sly_data[AGENT_NETWORK_HOCON_TEXT] = persisted_content
@@ -347,6 +436,7 @@ class AgentNetworkPersistenceMiddleware(AgentMiddleware):
                 agent_network_name,
                 sample_queries,
                 client_token_mcp_headers=client_token_mcp_headers,
+                metadata=metadata,
             )
         # Persist the agent network
         persisted_reference: str | list[dict[str, Any]] = await persistor.async_persist(
@@ -355,6 +445,9 @@ class AgentNetworkPersistenceMiddleware(AgentMiddleware):
         # Store information on reservations in the sly data
         if isinstance(persisted_reference, list):
             self.sly_data["agent_reservations"] = persisted_reference
+        # The block goes back to the client only once the save it describes has happened, so a failed
+        # save never hands out a date_modified for a write that did not take place.
+        self.sly_data[AGENT_NETWORK_METADATA] = metadata
 
     def _determine_exported_network_definition(self, sly_data: dict[str, Any], agent_progress_style: str):
         """

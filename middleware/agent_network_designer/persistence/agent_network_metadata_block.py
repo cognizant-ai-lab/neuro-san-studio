@@ -29,11 +29,12 @@ class AgentNetworkMetadataBlock:
 
     An instance is short-lived and belongs to one request. It is built from whatever the caller
     holds, sanitized on construction so that it only ever contains what a HOCON file reads back
-    as written, takes the sample queries generated on the turn, and hands the result out as a
-    plain dict for the assemblers. The designer is stateless, so the block is meant to travel
-    with the client like the definition and the name do: this module gives the assemblers a
-    block to carry forward, #1422 makes the persistence middleware take it from and return it
-    through sly_data, and #1423 sets it from a network loaded from a file or a reservation.
+    as written, takes the sample queries generated on the turn and, for a network saved to a
+    file, the studio's timestamps, and hands the result out as a plain dict for the assemblers
+    and for sly_data. The designer is stateless, so the block travels with the client like the
+    definition and the name do: the persistence middleware takes it from sly_data under
+    AGENT_NETWORK_METADATA and returns the saved block there (issue #1398), and #1423 sets it
+    from a network loaded from a file or a reservation.
 
     Sanitizing means, at every depth: the keys neuro-san's reservation storage owns
     (reservation, stored_at) go, None-valued keys go (they would be written as null), and so
@@ -50,6 +51,7 @@ class AgentNetworkMetadataBlock:
 
     SAMPLE_QUERIES_KEY: ClassVar[str] = "sample_queries"
     DATE_CREATED_KEY: ClassVar[str] = "date_created"
+    DATE_MODIFIED_KEY: ClassVar[str] = "date_modified"
     # Keys neuro-san's reservation storage writers add to a stored spec's metadata. They
     # describe one temporary deployment, so they must never be carried into the next save.
     STORAGE_OWNED_KEYS: ClassVar[frozenset[str]] = frozenset({"reservation", "stored_at"})
@@ -107,6 +109,23 @@ class AgentNetworkMetadataBlock:
         )
         if storable_queries:
             self._block[AgentNetworkMetadataBlock.SAMPLE_QUERIES_KEY] = storable_queries
+        return self
+
+    def stamp_file_dates(self, now: str) -> "AgentNetworkMetadataBlock":
+        """
+        Stamp the studio's timestamps for a network saved to a file.
+
+        date_created is set on the first save and kept afterwards; date_modified is set on every
+        save. Both take the same value, so a first save shows one instant. A temporary network
+        gets no studio timestamps (neuro-san's reservation storage adds its own stored_at), so
+        the caller stamps in file mode only.
+
+        :param now: The current time as an ISO-8601 UTC string; the caller reads the clock so a
+                test can pin it
+        :return: This block, so a caller can chain as_dict()
+        """
+        self._block.setdefault(AgentNetworkMetadataBlock.DATE_CREATED_KEY, now)
+        self._block[AgentNetworkMetadataBlock.DATE_MODIFIED_KEY] = now
         return self
 
     def as_dict(self) -> dict[str, Any]:

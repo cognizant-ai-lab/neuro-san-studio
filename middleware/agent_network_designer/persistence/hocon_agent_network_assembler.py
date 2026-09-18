@@ -16,8 +16,6 @@
 
 import json
 from copy import copy as shallow_copy
-from datetime import datetime
-from datetime import timezone
 from typing import Any
 
 from middleware.agent_network_designer.persistence.agent_network_assembler import (
@@ -164,16 +162,14 @@ class HoconAgentNetworkAssembler(AgentNetworkAssembler):
         use_network_def: dict[str, Any] = shallow_copy(network_def)
         use_network_def = self._move_top_agent_first(use_network_def, top_agent_name)
 
-        # Idempotent when a caller already built the block: the same queries overlay the same block.
+        # Idempotent when the persistence middleware already built the block: the same queries
+        # overlay the same block. Timestamps are the middleware's business (file mode only), so
+        # the header stamps nothing itself.
         block: dict[str, Any] = (
             AgentNetworkMetadataBlock(metadata, f"agent network {agent_network_name}")
             .merge_sample_queries(sample_queries)
             .as_dict()
         )
-        # The header keeps stamping date_created on a block that has none, as it always did, so
-        # generated files do not lose the date before the persistence middleware takes over the
-        # timestamps (#1422). A block that already carries one keeps it.
-        block.setdefault(AgentNetworkMetadataBlock.DATE_CREATED_KEY, datetime.now(tz=timezone.utc).isoformat())
         header: str = self._build_header(agent_network_name, block)
 
         sly_data_schema_block: str = self._render_sly_data_schema_block(
