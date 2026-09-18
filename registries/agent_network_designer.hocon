@@ -130,7 +130,8 @@ after the previous save. Send it back unchanged so a save that does not regenera
 description, tags and any other key are written as sent; sample_queries is replaced only on a turn
 where the query generator ran; date_created and date_modified are the server's (file mode only).
 reservation and stored_at belong to neuro-san's reservation storage and are ignored if present.
-Leave the key out (or send null) only when you hold no block at all: in file mode the server then keeps
+Leave the key out only when you hold no block at all (a null value is treated the same): in file mode the
+server then keeps
 the block of the file it overwrites. A client that sends the key, even as an empty object, owns the block
 and nothing is read from disk. A temporary network has nothing to fall back on.
 """,
