@@ -304,7 +304,74 @@ class TestFileSystemAgentNetworkPersistor(IsolatedAsyncioTestCase):  # pylint: d
             persistor: FileSystemAgentNetworkPersistor = FileSystemAgentNetworkPersistor(demo_mode=False)
         self.assertEqual(persistor.get_network_file_path("my_net"), Path("registries", "generated", "my_net.hocon"))
 
+    def test_get_network_file_path_allows_nested_names(self) -> None:
+        """
+        A nested name stays inside the generated directory and maps to a nested file, so networks can be
+        grouped in subdirectories.
+        """
+        tmp_dir: str = self._make_temp_dir()
+        persistor: FileSystemAgentNetworkPersistor = self._make_persistor(tmp_dir)
+        self.assertEqual(
+            persistor.get_network_file_path("team/my_net"), Path(tmp_dir, "generated", "team", "my_net.hocon")
+        )
+
+    def test_get_network_file_path_rejects_names_that_escape_the_generated_directory(self) -> None:
+        """
+        A name that climbs out of <output_path>/<subdirectory>, by a leading or an embedded parent reference,
+        is refused with ValueError, so neither the fallback read nor the write can reach a file outside it.
+        """
+        tmp_dir: str = self._make_temp_dir()
+        persistor: FileSystemAgentNetworkPersistor = self._make_persistor(tmp_dir)
+        for name in ("../outside", "../../etc/passwd", "team/../../outside", "sub/../../../x"):
+            with self.subTest(name=name), self.assertRaises(ValueError):
+                persistor.get_network_file_path(name)
+
+    async def test_restore_metadata_refuses_a_name_that_escapes_and_reads_nothing(self) -> None:
+        """
+        The fallback read refuses a traversing name before touching the file system: a HOCON file planted right
+        above the generated directory is never parsed and its metadata never returned.
+        """
+        tmp_dir: str = self._make_temp_dir()
+        persistor: FileSystemAgentNetworkPersistor = self._make_persistor(tmp_dir)
+        Path(tmp_dir, "outside.hocon").write_text('{"metadata": {"description": "secret"}}\n', encoding="utf-8")
+
+        with self.assertRaises(ValueError):
+            await persistor.async_restore_metadata("../outside")
+
+    async def test_persist_refuses_a_name_that_escapes_and_writes_nothing(self) -> None:
+        """
+        async_persist refuses a traversing name before writing anything: no file appears above the generated
+        directory and the generated directory itself is not even created.
+        """
+        tmp_dir: str = self._make_temp_dir()
+        persistor: FileSystemAgentNetworkPersistor = self._make_persistor(tmp_dir)
+
+        with self.assertRaises(ValueError):
+            await persistor.async_persist('{"tools": []}\n', "../escaped")
+
+        self.assertFalse(Path(tmp_dir, "escaped.hocon").exists())
+        self.assertFalse(Path(tmp_dir, "generated").exists())
+
     # Tests for async_restore_metadata
+
+    async def test_restore_metadata_stat_failure_returns_none_and_warns(self) -> None:
+        """
+        A file whose size cannot be read (a permission or transient file system error) is treated like any
+        unreadable file: None plus one WARNING, so the save goes on without the block instead of failing.
+        """
+        tmp_dir: str = self._make_temp_dir()
+        persistor: FileSystemAgentNetworkPersistor = self._make_persistor(tmp_dir)
+        self._write_network_file(tmp_dir, "flaky_net", '{"metadata": {"description": "x"}}\n')
+
+        with (
+            patch.object(Path, "stat", side_effect=PermissionError("simulated stat failure")),
+            self.assertLogs(LOGGER_NAME, level=logging.WARNING) as captured,
+        ):
+            result: dict[str, Any] | None = await persistor.async_restore_metadata("flaky_net")
+
+        self.assertIsNone(result)
+        self.assertEqual(len(captured.records), 1)
+        self.assertIn("simulated stat failure", captured.records[0].getMessage())
 
     async def test_restore_metadata_missing_file_returns_none_silently(self) -> None:
         """

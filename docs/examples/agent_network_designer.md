@@ -340,9 +340,8 @@ other key are written as sent, `sample_queries` is replaced only when `agent_net
 that turn, and in file mode `date_created` is stamped once and `date_modified` on every save. The saved block
 is returned under `agent_network_metadata` for the client to send back with its next request. A
 `skip_designer` save that carries the block therefore leaves `metadata` intact. A client that sends no
-`agent_network_metadata` at all (nsflow's manual save sends nothing as of nsflow 0.7.1; a null value counts as
-absent) gets the existing file's block kept in file mode; sending the key, even empty, makes the block
-client-owned and nothing is read from disk.
+`agent_network_metadata` at all (nsflow's manual save sends nothing as of nsflow 0.7.1) gets the existing file's
+block kept in file mode; sending the key, even empty, makes the block client-owned and nothing is read from disk.
 - Updates the local `manifest.hocon` file in file mode
 
 ### Research Tool

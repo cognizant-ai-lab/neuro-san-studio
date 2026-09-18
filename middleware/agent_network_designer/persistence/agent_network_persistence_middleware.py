@@ -395,6 +395,8 @@ class AgentNetworkPersistenceMiddleware(AgentMiddleware):
         :param network_def: The validated agent network definition to persist
         :param agent_network_name: The raw network name without any subdirectory prefix.
         :param sample_queries: The sample queries generated on this turn, [] when none were
+        :raises ValueError: In file mode, when agent_network_name resolves to a file outside the
+                generated directory (see FileSystemAgentNetworkPersistor.get_network_file_path)
         """
         self.logger.info(">>>>>>>>>>>>>>>>>>>Assemble and Persist Agent Network>>>>>>>>>>>>>>>>>>")
         self.logger.info("Agent Network Name: %s", agent_network_name)

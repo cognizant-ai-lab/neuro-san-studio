@@ -102,10 +102,22 @@ class FileSystemAgentNetworkPersistor(AgentNetworkPersistor):
         pathlib recognizes it as an alt-separator on Windows and normalizes it to a backslash
         when the path is handed to the file system APIs.
 
+        The network name is client input. A nested name (team/my_net) is fine; a name that climbs
+        out of <output_path>/<subdirectory> ("../x") is refused, since the fallback read would hand
+        that file's metadata upstream and the write would land outside the registries directory.
+
         :param file_reference: The raw network name, without subdirectory prefix or extension
         :return: <output_path>/<subdirectory>/<file_reference>.hocon
+        :raises ValueError: When the name resolves to a path outside <output_path>/<subdirectory>
         """
-        return Path(self.output_path) / f"{self.subdirectory}/{file_reference}.hocon"
+        root: Path = Path(self.output_path) / self.subdirectory
+        file_path: Path = Path(self.output_path) / f"{self.subdirectory}/{file_reference}.hocon"
+        # resolve() folds ".." and follows symlinks on both sides, so a root that is itself a symlink
+        # (macOS temp dirs, for one) compares consistently; a first save, whose file does not exist
+        # yet, resolves fine because strict is False.
+        if not file_path.resolve().is_relative_to(root.resolve()):
+            raise ValueError(f"Agent network name {file_reference!r} resolves outside {root}")
+        return file_path
 
     async def async_restore_metadata(self, file_reference: str) -> dict[str, Any] | None:
         """
@@ -121,26 +133,28 @@ class FileSystemAgentNetworkPersistor(AgentNetworkPersistor):
         corrupt file can still be repaired by saving over it.
 
         :param file_reference: The raw network name, without subdirectory prefix or extension
-        :return: The metadata block, or None when the file does not exist, cannot be parsed,
-                or has no dict-valued "metadata"
+        :return: The metadata block, or None when the file does not exist, cannot be read or
+                parsed, or has no dict-valued "metadata"
+        :raises ValueError: When the name resolves outside the generated directory (see
+                get_network_file_path); a bad name is the client's error, not a file to skip
         """
         file_path: Path = self.get_network_file_path(file_reference)
-        # An empty file parses as an empty config and would pass as "no metadata" silently; it
-        # is never something the persistor wrote, so leave a trace before saving over it.
-        if file_path.is_file() and file_path.stat().st_size == 0:
-            self.logger.warning("Existing agent network %s is empty; saving without its metadata.", file_path)
-            return None
         # must_exist=False: a first save has nothing to carry forward and must not be an error.
         restorer: AbstractAsyncConfigRestorer = AbstractAsyncConfigRestorer(
             file_purpose="existing agent network", must_exist=False
         )
         try:
+            # An empty file parses as an empty config and would pass as "no metadata" silently; it
+            # is never something the persistor wrote, so leave a trace before saving over it.
+            if file_path.is_file() and file_path.stat().st_size == 0:
+                self.logger.warning("Existing agent network %s is empty; saving without its metadata.", file_path)
+                return None
             config: Any = await restorer.async_restore(file_reference=str(file_path))
         except (OSError, ValueError) as error:
             # ValueError is how the restorer reports HOCON/JSON parse and substitution failures. A
             # generated file read from the wrong CWD lands here too: pyhocon only warns about the
             # include it cannot find, then the ${aaosa_call} substitution fails. OSError covers
-            # unreadable paths.
+            # unreadable paths, a stat that fails included.
             self.logger.warning(
                 "Could not read existing agent network %s; saving without its metadata: %s", file_path, error
             )

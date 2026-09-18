@@ -528,6 +528,23 @@ class TestAgentNetworkPersistenceMiddleware(IsolatedAsyncioTestCase):  # pylint:
         self.assertNotIn("date_modified", sly_data["agent_network_metadata"])
         self.assertNotIn("agent_network_hocon_text", sly_data)
 
+    async def test_name_that_escapes_the_generated_directory_is_refused_before_anything_is_touched(self) -> None:
+        """
+        A client-supplied network name that climbs out of the generated directory fails the save with
+        ValueError before the fallback read or the write: nothing appears in the registries directory above,
+        and neither a block nor HOCON text is handed back.
+        """
+        self._freeze_clock(NOW_STAMP)
+        sly_data: dict[str, Any] = self._request(skip_designer=True)
+        sly_data["agent_network_name"] = "../escaped"
+
+        with self.assertRaises(ValueError):
+            await self._save(sly_data)
+
+        self.assertFalse(Path(self.registries_dir, "escaped.hocon").exists())
+        self.assertNotIn("agent_network_metadata", sly_data)
+        self.assertNotIn("agent_network_hocon_text", sly_data)
+
     async def test_designer_turn_without_queries_keeps_client_sample_queries(self) -> None:
         """
         A designer turn that skipped the query generator (skip_designer absent, no
