@@ -31,6 +31,13 @@
         "serve": true,
         "public": false
     },
+    "tools/internet_info_gatherer.hocon": {
+        # The designer researches named organizations through this network before it
+        # designs anything, so it must be served wherever the designer is. Served but not
+        # listed, like the other designer dependencies.
+        "serve": true,
+        "public": false
+    },
 
     # Generates test fixtures for an existing agent network.
     "agent_network_test_generator.hocon": true,

@@ -20,11 +20,13 @@ import ast
 import logging
 import os
 import sys
+import tempfile
 from pathlib import Path
 from typing import Any
 from typing import List
 from typing import Optional
 from typing import Tuple
+from unittest import TestCase
 
 import pytest
 from neuro_san.internals.graph.persistence.raw_manifest_restorer import RawManifestRestorer
@@ -54,6 +56,7 @@ EXPECTED_DEFAULT_NETWORKS: List[str] = [
     "agent_network_editor.hocon",
     "agent_network_instructions_editor.hocon",
     "agent_network_query_generator.hocon",
+    "tools/internet_info_gatherer.hocon",
     "agent_network_test_generator.hocon",
     "experimental/cruse_theme_agent.hocon",
     "experimental/cruse_widget_agent.hocon",
@@ -692,6 +695,7 @@ class TestDefaultNetworks:
             "agent_network_editor.hocon",
             "agent_network_instructions_editor.hocon",
             "agent_network_query_generator.hocon",
+            "tools/internet_info_gatherer.hocon",
             "experimental/cruse_theme_agent.hocon",
             "experimental/cruse_widget_agent.hocon",
         ):
@@ -790,3 +794,91 @@ class TestDefaultNetworkDerivation:
             for segment in network.split("/"):
                 path = path / segment
             assert path.is_file(), f"{network} is declared in templates/manifest.hocon but is not in registries/."
+
+
+class TestScaffoldDeclaresWhatItInstalls(TestCase):
+    """Every agent network `ns init` puts on disk must be declared in the scaffolded manifest.
+
+    Init installs each template network together with its transitive sub-networks, but writes no
+    manifest entries of its own: the template is expected to declare everything. A network that
+    gains a new sub-network dependency therefore lands that dependency on disk while the
+    manifest stays silent about it -- the network is installed, never served, and fails to load
+    with no hint why. This test fails the moment the template drifts behind the dependencies.
+    """
+
+    _tmp: tempfile.TemporaryDirectory
+    _project: Path
+
+    @classmethod
+    def setUpClass(cls) -> None:
+        """
+        Scaffold one project for the read-only assertions in this class.
+        """
+        cls._tmp = tempfile.TemporaryDirectory()  # pylint: disable=consider-using-with
+        cls._project = Path(cls._tmp.name) / "project"
+        cls._project.mkdir()
+        InitCommand(providers_arg="openai", root_dir=str(cls._project)).run()
+
+    @classmethod
+    def tearDownClass(cls) -> None:
+        """
+        Remove the scaffolded project.
+        """
+        cls._tmp.cleanup()
+
+    @staticmethod
+    def _installed_networks(project: Path) -> List[str]:
+        """
+        List every agent-network HOCON the scaffold placed under registries/.
+
+        Manifests and the shared substitution fragments are not networks and are excluded;
+        everything else under registries/ is something the server would have to serve.
+
+        :param project: Root of the scaffolded project.
+        :return: Sorted registries-relative paths, e.g. ``["agent_network_designer.hocon", ...]``.
+        """
+        registries: Path = project / "registries"
+        found: List[str] = []
+        for path in sorted(registries.rglob("*.hocon")):
+            if path.name.startswith("manifest"):
+                continue
+            relative: str = path.relative_to(registries).as_posix()
+            if relative in SHARED_REGISTRY_INCLUDES:
+                continue
+            found.append(relative)
+        return found
+
+    @staticmethod
+    def _declared_networks(project: Path) -> List[str]:
+        """
+        Read the keys the scaffolded manifest declares, includes resolved.
+
+        pyhocon resolves ``include`` against the process CWD, so the read runs from the project
+        root, the way the server reads it.
+
+        :param project: Root of the scaffolded project.
+        :return: The declared registries-relative keys, quote characters stripped.
+        """
+        prev_cwd: str = os.getcwd()
+        try:
+            os.chdir(project)
+            raw: Any = RawManifestRestorer().restore(file_reference=os.path.join("registries", "manifest.hocon"))
+        finally:
+            os.chdir(prev_cwd)
+        keys: List[str] = []
+        for key in raw:
+            if isinstance(key, str):
+                keys.append(key.strip('"'))
+        return keys
+
+    def test_every_installed_network_is_declared(self) -> None:
+        """
+        No network may sit on disk unserved: each installed HOCON needs a manifest key.
+        """
+        declared: List[str] = self._declared_networks(self._project)
+        undeclared: List[str] = []
+        for installed in self._installed_networks(self._project):
+            if installed not in declared:
+                undeclared.append(installed)
+
+        self.assertEqual(undeclared, [], f"installed but not declared in registries/manifest.hocon: {undeclared}")
