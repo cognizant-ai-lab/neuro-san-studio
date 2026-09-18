@@ -393,6 +393,24 @@ class TestFileSystemAgentNetworkPersistor(IsolatedAsyncioTestCase):  # pylint: d
         self.assertEqual(len(captured.records), 1)
         self.assertIn("non-dict 'metadata' (list)", captured.output[0])
 
+    async def test_restore_metadata_null_metadata_returns_none_and_warns(self) -> None:
+        """
+        A file whose "metadata" is an explicit null (never something either assembler writes) yields None and one
+        WARNING naming the path and the type, unlike a file without the key, which yields None silently.
+        """
+        tmp_dir: str = self._make_temp_dir()
+        persistor: FileSystemAgentNetworkPersistor = self._make_persistor(tmp_dir)
+        file_path: Path = self._write_network_file(tmp_dir, "null_net", '{"metadata": null, "tools": []}\n')
+
+        with self.assertLogs(LOGGER_NAME, level=logging.WARNING) as captured:
+            result: dict[str, Any] | None = await persistor.async_restore_metadata("null_net")
+
+        self.assertIsNone(result)
+        self.assertEqual(len(captured.records), 1)
+        message: str = captured.records[0].getMessage()
+        self.assertIn("NoneType", message)
+        self.assertIn(str(file_path), message)
+
     async def test_restore_metadata_absent_key_returns_none_silently(self) -> None:
         """
         async_restore_metadata returns None and logs nothing when the file parses but has no

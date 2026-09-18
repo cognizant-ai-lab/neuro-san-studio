@@ -155,7 +155,7 @@ class FileSystemAgentNetworkPersistor(AgentNetworkPersistor):
         :param config: What the restorer returned for the existing network file
         :param file_path: The file it came from, named in the warnings
         :return: The block, or None when the config is empty, not an object, has no
-                "metadata" or a non-dict one
+                "metadata" or a non-dict one (an explicit null included)
         """
         if config is None:
             return None
@@ -166,9 +166,10 @@ class FileSystemAgentNetworkPersistor(AgentNetworkPersistor):
                 type(config).__name__,
             )
             return None
-        metadata: Any = config.get("metadata")
-        if metadata is None:
+        if "metadata" not in config:
             return None
+        # An explicit null is a non-dict too: neither assembler writes one, so it gets the same trace.
+        metadata: Any = config["metadata"]
         if not isinstance(metadata, dict):
             self.logger.warning(
                 "Ignoring non-dict 'metadata' (%s) in existing agent network %s.", type(metadata).__name__, file_path

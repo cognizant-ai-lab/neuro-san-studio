@@ -409,8 +409,8 @@ class AgentNetworkPersistenceMiddleware(AgentMiddleware):
         # query that cannot be stored is logged once more per assembler.
         metadata: dict[str, Any] = await self._build_metadata(persistor, agent_network_name, sample_queries)
 
-        # Always assemble and store HOCON content for client consumption.
-        persisted_content: str = await HoconAgentNetworkAssembler(DEMO_MODE).assemble_agent_network(
+        # Always assemble HOCON content for client consumption.
+        hocon_text: str = await HoconAgentNetworkAssembler(DEMO_MODE).assemble_agent_network(
             network_def,
             top_agent_name,
             agent_network_name,
@@ -418,8 +418,8 @@ class AgentNetworkPersistenceMiddleware(AgentMiddleware):
             client_token_mcp_headers=client_token_mcp_headers,
             metadata=metadata,
         )
-        self.logger.info("The resulting agent network content: \n %s", persisted_content)
-        self.sly_data[AGENT_NETWORK_HOCON_TEXT] = persisted_content
+        self.logger.info("The resulting agent network content: \n %s", hocon_text)
+        persisted_content: str | dict[str, Any] = hocon_text
 
         # Reservations API forbids '/', ':', and ' ' — sanitize the raw name for that case.
         # FileSystemAgentNetworkPersistor handles its own subdirectory prefixing internally.
@@ -430,7 +430,7 @@ class AgentNetworkPersistenceMiddleware(AgentMiddleware):
             # For reservations, assemble a deployable config instead of HOCON.
             assembler: AgentNetworkAssembler = persistor.get_assembler()
             # The persisted content for reservations is config.
-            persisted_content: dict[str, Any] = await assembler.assemble_agent_network(
+            persisted_content = await assembler.assemble_agent_network(
                 network_def,
                 top_agent_name,
                 agent_network_name,
@@ -445,8 +445,9 @@ class AgentNetworkPersistenceMiddleware(AgentMiddleware):
         # Store information on reservations in the sly data
         if isinstance(persisted_reference, list):
             self.sly_data["agent_reservations"] = persisted_reference
-        # The block goes back to the client only once the save it describes has happened, so a failed
-        # save never hands out a date_modified for a write that did not take place.
+        # The HOCON text and the block go back to the client only once the save they describe has
+        # happened, so a failed save never hands out a date_modified for a write that did not take place.
+        self.sly_data[AGENT_NETWORK_HOCON_TEXT] = hocon_text
         self.sly_data[AGENT_NETWORK_METADATA] = metadata
 
     def _determine_exported_network_definition(self, sly_data: dict[str, Any], agent_progress_style: str):

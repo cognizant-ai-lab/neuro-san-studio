@@ -512,7 +512,7 @@ class TestAgentNetworkPersistenceMiddleware(IsolatedAsyncioTestCase):  # pylint:
     async def test_failed_persist_hands_back_no_freshly_stamped_block(self) -> None:
         """
         When the persistor raises, the error propagates and sly_data still holds the block exactly as the
-        client sent it: the freshly stamped block is published only after the save it describes happened,
+        client sent it and no HOCON text: both are published only after the save they describe happened,
         so the client never learns a date_modified for a write that did not take place.
         """
         self._freeze_clock(NOW_STAMP)
@@ -526,6 +526,7 @@ class TestAgentNetworkPersistenceMiddleware(IsolatedAsyncioTestCase):  # pylint:
         failing_persist.assert_awaited_once()
         self.assertEqual(sly_data["agent_network_metadata"], CLIENT_METADATA)
         self.assertNotIn("date_modified", sly_data["agent_network_metadata"])
+        self.assertNotIn("agent_network_hocon_text", sly_data)
 
     async def test_designer_turn_without_queries_keeps_client_sample_queries(self) -> None:
         """
