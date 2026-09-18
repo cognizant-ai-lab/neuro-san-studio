@@ -1,3 +1,4 @@
+<!-- pyml disable-next-line first-line-heading -->
 <!-- Badges -->
 <!-- pyml disable-next-line no-inline-html -->
 <p align="center">
@@ -42,6 +43,21 @@
 tools that let you design, test, and deploy sophisticated agent networks in minutes—not months. Whether you're a
 researcher exploring adaptive AI systems, a developer prototyping production solutions, or a domain expert configuring
 agents without code, this studio handles the orchestration complexity so you can focus on solving real problems.
+
+<!-- pyml disable-next-line no-inline-html -->
+<h3 align="center">
+  🚀 Try Neuro SAN now, no install required:
+  <a href="https://neuro-san.evolution.ml/">https://neuro-san.evolution.ml/</a>
+</h3>
+<!-- pyml disable-next-line no-inline-html -->
+<p align="center">
+  <a href="https://neuro-san.evolution.ml/"><img alt="Launch Neuro SAN"
+  src="https://img.shields.io/badge/Launch_Neuro_SAN-2ea44f?style=for-the-badge" /></a>
+</p>
+<!-- pyml disable-next-line no-inline-html -->
+<p align="center">
+  This is a Bring Your Own Key (BYOK) instance, so you will need an API key from OpenAI, Anthropic or Gemini.
+</p>
 
 ---
 
