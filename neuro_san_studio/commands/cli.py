@@ -296,7 +296,7 @@ class NeuroSanStudioCli:  # pylint: disable=too-few-public-methods
 
     @staticmethod
     @app.command("validate", help="Validate the structure of an agent network HOCON file.")
-    def _validate_command(
+    def _validate_command(  # pylint: disable=too-many-arguments,too-many-positional-arguments
         hocon_path: str = typer.Argument(
             ...,
             help="Path to the agent network HOCON file to validate.",
@@ -304,12 +304,23 @@ class NeuroSanStudioCli:  # pylint: disable=too-few-public-methods
         verbose: bool = typer.Option(
             False,
             "--verbose",
-            help="Print an agent network summary when validation passes.",
+            help="Print an agent network summary and the manifest discovery summary when validation passes.",
         ),
         external_agents: Optional[str] = typer.Option(
             None,
             "--external-agents",
-            help="Comma-separated external agent references to treat as valid (e.g. '/agent1,/agent2').",
+            help=(
+                "Additional comma-separated external agent references to treat as valid, on top of those "
+                "discovered from the manifest (e.g. '/agent1,/agent2')."
+            ),
+        ),
+        manifest: Optional[str] = typer.Option(
+            None,
+            "--manifest",
+            help=(
+                "Manifest HOCON whose served networks are accepted as external agents. "
+                "Defaults to AGENT_MANIFEST_FILE, then <registry-dir>/registries/manifest.hocon."
+            ),
         ),
         mcp_servers: Optional[str] = typer.Option(
             None,
@@ -319,7 +330,10 @@ class NeuroSanStudioCli:  # pylint: disable=too-few-public-methods
         registry_dir: Optional[str] = typer.Option(
             None,
             "--registry-dir",
-            help="Base directory for resolving HOCON includes. Defaults to the current directory.",
+            help=(
+                "Base directory for resolving HOCON includes and for locating registries/manifest.hocon. "
+                "Defaults to the current directory."
+            ),
         ),
     ) -> None:
         """Run the agent network HOCON validation and propagate its exit code."""
@@ -333,6 +347,7 @@ class NeuroSanStudioCli:  # pylint: disable=too-few-public-methods
                 external_agents=external_agents,
                 mcp_servers=mcp_servers,
                 registry_dir=registry_dir,
+                manifest=manifest,
             ).run()
         )
 
