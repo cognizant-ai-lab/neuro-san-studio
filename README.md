@@ -12,6 +12,8 @@
   <img src="https://img.shields.io/github/last-commit/cognizant-ai-lab/neuro-san-studio" alt="Last Commit">
   <img src="https://img.shields.io/github/issues/cognizant-ai-lab/neuro-san-studio" alt="Issues">
   <img src="https://img.shields.io/github/issues-pr/cognizant-ai-lab/neuro-san-studio" alt="Pull Requests">
+  <a href="https://github.com/cognizant-ai-lab/neuro-san-studio/blob/main/LICENSE.txt"><img alt="License"
+  src="https://img.shields.io/github/license/cognizant-ai-lab/neuro-san-studio"></a>
   <a href="https://pepy.tech/projects/neuro-san-studio"><img alt="PyPI Downloads"
   src="https://static.pepy.tech/badge/neuro-san-studio" /></a>
   <a href="https://pypi.org/project/neuro-san-studio/">
@@ -28,6 +30,8 @@
   <a href="https://github.com/cognizant-ai-lab/neuro-san"><img alt="GitHub Repo"
   src="https://img.shields.io/badge/GitHub-Repo-green.svg" /></a>
   <img src="https://img.shields.io/github/commit-activity/m/cognizant-ai-lab/neuro-san" alt="commit activity">
+  <a href="https://github.com/cognizant-ai-lab/neuro-san/blob/main/LICENSE.txt"><img alt="License"
+  src="https://img.shields.io/github/license/cognizant-ai-lab/neuro-san"></a>
   <a href="https://pepy.tech/projects/neuro-san"><img alt="PyPI Downloads"
   src="https://static.pepy.tech/badge/neuro-san" /></a>
   <a href="https://pypi.org/project/neuro-san/">
