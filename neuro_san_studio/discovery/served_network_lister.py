@@ -16,6 +16,7 @@
 
 """List the external agent references served by one or more agent network manifests."""
 
+import logging
 import os
 from typing import Any
 from typing import Dict
@@ -170,8 +171,15 @@ class ServedNetworkLister:  # pylint: disable=too-few-public-methods
             The reason is appended to ``warnings``. The caller checks the shape.
         """
         include_base: Optional[str] = self.base_dir or ManifestProjectRoot(abs_manifest).resolve()
+        # pyhocon logs "Cannot include file ..." at WARNING for a missing non-required include and then carries
+        # on. The root manifest includes registries/generated/manifest.hocon, which is gitignored, so on a fresh
+        # clone that would fire on every run. Same scoped demotion as DependencyAnalyzer: ERROR is the lowest
+        # level that mutes it, and the previous level is restored even when the read fails.
+        pyhocon_logger: logging.Logger = logging.getLogger("pyhocon.config_parser")
+        prev_level: int = pyhocon_logger.level
         prev_cwd: str = os.getcwd()
         try:
+            pyhocon_logger.setLevel(logging.ERROR)
             if include_base:
                 os.chdir(include_base)
             raw_manifest: Optional[Any] = RawManifestRestorer().restore(file_reference=abs_manifest)
@@ -182,6 +190,7 @@ class ServedNetworkLister:  # pylint: disable=too-few-public-methods
             return None
         finally:
             os.chdir(prev_cwd)
+            pyhocon_logger.setLevel(prev_level)
 
         if raw_manifest is None:
             self.warnings.append(f"manifest file '{abs_manifest}' not found")

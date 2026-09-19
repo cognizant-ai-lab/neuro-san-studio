@@ -16,9 +16,11 @@
 
 """Tests for ServedNetworkLister: which manifest entries become accepted external agent names."""
 
+import logging
 from pathlib import Path
 
 import pytest
+from pytest import LogCaptureFixture
 from pytest import MonkeyPatch
 
 from neuro_san_studio.discovery.manifest_read_error import ManifestReadError
@@ -277,3 +279,37 @@ class TestFailures:
         assert not lister.list_names()
         assert len(lister.warnings) == 1
         assert lister.warnings[0].startswith(f"could not process manifest '{bad}'")
+
+
+class TestLoggingNoise:
+    """A missing optional include must not reach stderr, and pyhocon's logger level must be restored."""
+
+    @staticmethod
+    def _manifest_with_missing_include(root: Path) -> Path:
+        """Scaffold a root manifest that includes the gitignored registries/generated/manifest.hocon."""
+        return _write(
+            root / "registries" / "manifest.hocon",
+            '{\n    include "registries/generated/manifest.hocon",\n    "a.hocon": true\n}\n',
+        )
+
+    def test_missing_include_does_not_log_a_warning(self, tmp_path: Path, caplog: LogCaptureFixture) -> None:
+        """pyhocon's 'Cannot include file' complaint is muted while the manifest is read."""
+        manifest = self._manifest_with_missing_include(tmp_path / "project")
+        with caplog.at_level(logging.WARNING):
+            assert _names(manifest) == ["/a"]
+        assert not [record for record in caplog.records if record.name == "pyhocon.config_parser"]
+
+    def test_pyhocon_logger_level_is_restored(self, tmp_path: Path) -> None:
+        """The demotion is scoped to the read: the previous level comes back afterwards."""
+        pyhocon_logger = logging.getLogger("pyhocon.config_parser")
+        before = pyhocon_logger.level
+        _names(self._manifest_with_missing_include(tmp_path / "project"))
+        assert pyhocon_logger.level == before
+
+    def test_pyhocon_logger_level_is_restored_after_failure(self, tmp_path: Path) -> None:
+        """The level comes back even when the manifest cannot be parsed."""
+        pyhocon_logger = logging.getLogger("pyhocon.config_parser")
+        before = pyhocon_logger.level
+        bad = _write(tmp_path / "project" / "registries" / "manifest.hocon", '{ "a.hocon": true\n')
+        assert not _names(bad)
+        assert pyhocon_logger.level == before
