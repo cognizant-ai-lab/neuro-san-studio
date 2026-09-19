@@ -28,7 +28,9 @@ accepts ``/external_agent`` tool references that are listed in
 ``--external-agents``; it never reads the manifest. Studio fills that list with
 the networks served by the project's manifest (``--manifest``, else
 ``AGENT_MANIFEST_FILE``, else ``<registry-dir or cwd>/registries/manifest.hocon``)
-so a network that calls sibling networks validates with no flags. Explicit
+so a network that calls sibling networks validates with no flags. Several
+manifests separated by ``os.pathsep`` are composed as the server composes them:
+later manifests override earlier ones entry by entry. Explicit
 ``--external-agents`` are added on top. A manifest that cannot be read produces
 a warning, not a failure.
 
@@ -88,7 +90,8 @@ class ValidateCommand:  # pylint: disable=too-few-public-methods
             registry_dir: Base directory for resolving HOCON includes. Also anchors the
                 default manifest location, ``<registry_dir>/registries/manifest.hocon``.
             manifest: Manifest HOCON whose served networks are accepted as external
-                agents. An ``os.pathsep``-separated list is allowed. Defaults to
+                agents. An ``os.pathsep``-separated list is composed as the server
+                composes it, later manifests overriding earlier ones. Defaults to
                 ``AGENT_MANIFEST_FILE``, then ``<registry_dir or cwd>/registries/manifest.hocon``.
         """
         self.hocon_path = hocon_path
@@ -109,35 +112,27 @@ class ValidateCommand:  # pylint: disable=too-few-public-methods
         manifest_spec: str = self.manifest or ProjectEnvironment(base_dir).resolve_manifest_file()
         return [path for path in manifest_spec.split(os.pathsep) if path]
 
-    def _include_base_dir(self, manifest_file: str) -> str:
-        """Return the directory whose ``registries/`` folder anchors the manifest's ``include`` directives.
-
-        ``--registry-dir`` when given; otherwise the manifest's grandparent, which is the
-        project root in the standard ``<root>/registries/manifest.hocon`` layout. This is
-        the same rule ``HoconValidatorCli`` applies to derive its own default registry dir.
-        """
-        return self.registry_dir or os.path.dirname(os.path.dirname(os.path.abspath(manifest_file)))
-
     def _discover_external_agents(self) -> List[str]:
-        """Collect ``/<network_name>`` references for every network served by the manifest(s).
+        """Collect ``/<network_name>`` references for every network the composed manifest(s) serve.
 
-        An unreadable manifest is reported on stderr and skipped, so validation proceeds
-        with whatever was provided explicitly.
+        Several manifests are composed as the server composes them: later manifests override
+        earlier ones entry by entry. A manifest that cannot be read is reported on stderr and
+        skipped, so validation proceeds with whatever else was provided.
         """
-        names: List[str] = []
-        for manifest_file in self._manifest_files():
-            lister = ServedNetworkLister(manifest_file, base_dir=self._include_base_dir(manifest_file))
-            try:
-                found: List[str] = lister.list_names()
-            except ManifestReadError as error:
-                print(
-                    f"Warning: {error}; networks from this manifest will not be accepted as external agents.",
-                    file=sys.stderr,
-                )
-                continue
-            if self.verbose:
-                print(f"Using {len(found)} external agent name(s) from manifest {manifest_file}")
-            names.extend(found)
+        manifest_files: List[str] = self._manifest_files()
+        lister = ServedNetworkLister(manifest_files, base_dir=self.registry_dir)
+        try:
+            names: List[str] = lister.list_names()
+        except ManifestReadError as error:
+            print(f"Warning: {error}; no external agents will be discovered from the manifest.", file=sys.stderr)
+            return []
+        for message in lister.warnings:
+            print(
+                f"Warning: {message}; networks from this manifest will not be accepted as external agents.",
+                file=sys.stderr,
+            )
+        if self.verbose:
+            print(f"Using {len(names)} external agent name(s) from manifest(s): {', '.join(manifest_files)}")
         return names
 
     def _resolve_external_agents(self) -> Optional[str]:

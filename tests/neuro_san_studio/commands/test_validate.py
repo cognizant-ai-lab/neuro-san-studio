@@ -37,6 +37,7 @@ class TestValidateCommandRun(TestCase):
         self.mock_lister = lister_patcher.start()
         self.addCleanup(lister_patcher.stop)
         self.mock_lister.return_value.list_names.return_value = []
+        self.mock_lister.return_value.warnings = []
 
         env_patcher = patch.dict(os.environ)
         env_patcher.start()
@@ -128,7 +129,7 @@ class TestValidateCommandRun(TestCase):
 
 
 class TestValidateCommandManifestDiscovery(TestCase):
-    """Tests for how ValidateCommand seeds --external-agents from the manifest."""
+    """Tests for how ValidateCommand seeds --external-agents from the composed manifest(s)."""
 
     def setUp(self):
         """Patch the lister and isolate the environment, as in TestValidateCommandRun."""
@@ -136,6 +137,7 @@ class TestValidateCommandManifestDiscovery(TestCase):
         self.mock_lister = lister_patcher.start()
         self.addCleanup(lister_patcher.stop)
         self.mock_lister.return_value.list_names.return_value = []
+        self.mock_lister.return_value.warnings = []
 
         env_patcher = patch.dict(os.environ)
         env_patcher.start()
@@ -173,45 +175,63 @@ class TestValidateCommandManifestDiscovery(TestCase):
         self.assertEqual(argv[argv.index("--external-agents") + 1], "/b,/c,/a")
 
     def test_manifest_read_error_warns_and_continues(self):
-        """An unreadable manifest is reported on stderr and validation still runs without discovered names."""
-        self.mock_lister.return_value.list_names.side_effect = ManifestReadError("manifest file '/m' not found")
+        """A ManifestReadError is reported on stderr and validation still runs without discovered names."""
+        self.mock_lister.return_value.list_names.side_effect = ManifestReadError(
+            "include base directory '/reg' does not exist"
+        )
         exit_code, argv, stderr = self._run_capturing_argv(ValidateCommand("agent.hocon"), stream_name="stderr")
         self.assertEqual(exit_code, 0)
-        self.assertIn("Warning: manifest file '/m' not found", stderr)
+        self.assertIn(
+            "Warning: include base directory '/reg' does not exist; "
+            "no external agents will be discovered from the manifest.",
+            stderr,
+        )
         self.assertNotIn("--external-agents", argv)
 
+    def test_lister_warnings_are_printed(self):
+        """Each manifest the lister skipped is reported on stderr while the discovered names are still used."""
+        self.mock_lister.return_value.list_names.return_value = ["/a"]
+        self.mock_lister.return_value.warnings = ["manifest file '/m' not found"]
+        _, argv, stderr = self._run_capturing_argv(ValidateCommand("agent.hocon"), stream_name="stderr")
+        self.assertIn(
+            "Warning: manifest file '/m' not found; "
+            "networks from this manifest will not be accepted as external agents.",
+            stderr,
+        )
+        self.assertEqual(argv[argv.index("--external-agents") + 1], "/a")
+
     def test_manifest_option_takes_precedence_over_env(self):
-        """--manifest wins over AGENT_MANIFEST_FILE, and its grandparent is the include base."""
+        """--manifest wins over AGENT_MANIFEST_FILE."""
         os.environ["AGENT_MANIFEST_FILE"] = "/env/registries/manifest.hocon"
         self._run_capturing_argv(ValidateCommand("agent.hocon", manifest="/opt/registries/manifest.hocon"))
-        self.mock_lister.assert_called_once_with("/opt/registries/manifest.hocon", base_dir="/opt")
+        self.mock_lister.assert_called_once_with(["/opt/registries/manifest.hocon"], base_dir=None)
 
-    def test_env_manifest_pathsep_list_reads_each(self):
-        """An os.pathsep-separated AGENT_MANIFEST_FILE constructs one lister per manifest."""
+    def test_env_manifest_pathsep_list_is_composed_in_one_lister(self):
+        """An os.pathsep-separated AGENT_MANIFEST_FILE is handed to a single lister, in order."""
         first = "/p1/registries/manifest.hocon"
         second = "/p2/registries/manifest.hocon"
         os.environ["AGENT_MANIFEST_FILE"] = os.pathsep.join([first, second])
         self._run_capturing_argv(ValidateCommand("agent.hocon"))
-        self.assertEqual([call.args[0] for call in self.mock_lister.call_args_list], [first, second])
+        self.mock_lister.assert_called_once_with([first, second], base_dir=None)
 
     def test_default_manifest_is_under_registry_dir(self):
         """Without --manifest or the env var, the manifest is <registry_dir>/registries/manifest.hocon."""
         self._run_capturing_argv(ValidateCommand("agent.hocon", registry_dir="/reg"))
         expected = os.path.join("/reg", "registries", "manifest.hocon")
-        self.mock_lister.assert_called_once_with(expected, base_dir="/reg")
+        self.mock_lister.assert_called_once_with([expected], base_dir="/reg")
 
     def test_default_manifest_is_under_cwd_without_registry_dir(self):
         """Without --registry-dir either, the manifest is <cwd>/registries/manifest.hocon."""
         self._run_capturing_argv(ValidateCommand("agent.hocon"))
         expected = os.path.join(os.getcwd(), "registries", "manifest.hocon")
-        self.mock_lister.assert_called_once_with(expected, base_dir=os.getcwd())
+        self.mock_lister.assert_called_once_with([expected], base_dir=None)
 
     def test_verbose_prints_discovery_summary(self):
-        """--verbose reports how many names were taken from which manifest."""
+        """--verbose reports how many names were taken from which manifest(s)."""
         self.mock_lister.return_value.list_names.return_value = ["/a", "/b"]
         command = ValidateCommand("agent.hocon", verbose=True, manifest="/m/registries/manifest.hocon")
         _, _, stdout = self._run_capturing_argv(command, stream_name="stdout")
-        self.assertIn("Using 2 external agent name(s) from manifest /m/registries/manifest.hocon", stdout)
+        self.assertIn("Using 2 external agent name(s) from manifest(s): /m/registries/manifest.hocon", stdout)
 
     def test_discovery_exception_is_caught_by_run_guard(self):
         """An unexpected error during discovery is reported as exit code 1 and sys.argv is restored."""

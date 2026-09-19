@@ -59,8 +59,10 @@ knows the target exists, so `validate` builds that list from the manifest:
 
 1. The manifest is located using `--manifest`, then the `AGENT_MANIFEST_FILE` environment variable (typically set in
    `.env`), then `<registry-dir>/registries/manifest.hocon`, where `--registry-dir` defaults to the current directory.
-   A list of manifests separated by the platform path separator (`:` on macOS and Linux) is accepted, as it is for
-   the server.
+   A list of manifests separated by the platform path separator (`:` on macOS and Linux) is composed as the server
+   composes it: later manifests override earlier ones entry by entry, so an overlay can disable a network with
+   `false` or re-enable one with `true`. `registries/manifest_multiuser_overlay.hocon` is such an overlay, and
+   `deploy/Dockerfile` lists it after the main manifest.
 2. Only **served** entries count: a key set to `true`, or a dictionary with `"serve": true`. An entry that is `false`,
    has `"serve": false`, or omits `serve` is not accepted, so a reference to it is reported. The same reference would
    fail once the server is running, because that network is not served.
@@ -69,11 +71,11 @@ knows the target exists, so `validate` builds that list from the manifest:
 4. Anything passed with `--external-agents` is added to the discovered list, so references to networks served
    elsewhere can still be allowed.
 
-`include` directives inside the manifest are resolved relative to `--registry-dir` when given, otherwise relative to
-the manifest's grandparent directory, which is the project root in the standard `registries/manifest.hocon` layout.
+`include` directives inside a manifest are resolved relative to `--registry-dir` when given, otherwise relative to
+that manifest's grandparent directory, which is the project root in the standard `registries/manifest.hocon` layout.
 
-If the manifest cannot be found or parsed, the command prints a warning to stderr and continues with only the
-explicitly provided `--external-agents`, so the structural checks still run.
+If a manifest cannot be found or parsed, the command prints a warning to stderr, skips it, and continues with the
+remaining manifests and any explicitly provided `--external-agents`, so the structural checks still run.
 
 `--mcp-servers` plays the same role for MCP tool servers that the network references by URL.
 
