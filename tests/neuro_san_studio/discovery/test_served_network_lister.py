@@ -165,6 +165,14 @@ class TestOverlayComposition:
         monkeypatch.chdir(elsewhere)
         assert set(_names([first, second])) == {"/a", "/b", "/tools/x"}
 
+    def test_malformed_overlay_is_skipped_and_base_kept(self, tmp_path: Path) -> None:
+        """A later manifest that neuro-san's filters cannot process is skipped and reported; the base still counts."""
+        manifests = _base_and_overlay(tmp_path, '{ "a.hocon": true }\n', '[ "a.hocon" ]\n')
+        lister = _lister(manifests)
+        assert lister.list_names() == ["/a"]
+        assert len(lister.warnings) == 1
+        assert "overlay.hocon" in lister.warnings[0]
+
 
 class TestIncludeResolution:
     """pyhocon resolves includes against the working directory, so the include base controls what is found."""
@@ -242,3 +250,21 @@ class TestFailures:
         with pytest.raises(ManifestReadError, match="include base directory"):
             _names(manifest, base_dir=tmp_path / "nope")
         assert Path.cwd().resolve() == tmp_path.resolve()
+
+    def test_list_shaped_manifest_is_skipped_with_warning(self, tmp_path: Path) -> None:
+        """A manifest whose top level is a list is a manifest problem, reported as such and skipped."""
+        bad = _write(tmp_path / "manifest.hocon", '[ "a.hocon" ]\n')
+        lister = _lister(bad)
+        assert not lister.list_names()
+        assert lister.warnings == [f"manifest '{bad}' must be a dictionary of entries, not list"]
+
+    def test_entry_the_filters_cannot_process_is_skipped_with_warning(self, tmp_path: Path) -> None:
+        """An entry shape that makes neuro-san's filters raise is reported as a manifest problem and skipped."""
+        bad = _write(
+            tmp_path / "manifest.hocon",
+            '{ "a.hocon": { "serve": true, "periodic": { "interactions": "x" } } }\n',
+        )
+        lister = _lister(bad)
+        assert not lister.list_names()
+        assert len(lister.warnings) == 1
+        assert lister.warnings[0].startswith(f"could not process manifest '{bad}'")

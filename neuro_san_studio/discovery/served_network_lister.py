@@ -46,10 +46,10 @@ class ServedNetworkLister:  # pylint: disable=too-few-public-methods
     a live entry after composition. Names are derived exactly as the server derives them (``"tools/x.hocon"``
     becomes ``"/tools/x"``), and ``include`` directives are flattened by pyhocon.
 
-    Two deliberate simplifications. A manifest that is missing or unparseable is skipped with a message in
-    ``warnings`` rather than aborting, as the server does. And every served entry is treated as served, whereas the
-    server stores nothing for a served entry whose network fails to load; knowing that would require loading every
-    network.
+    Two deliberate simplifications. A manifest that is missing, unparseable, or malformed is skipped with a
+    message in ``warnings`` rather than aborting, as the server does. And every served entry is treated as
+    served, whereas the server stores nothing for a served entry whose network fails to load; knowing that
+    would require loading every network.
 
     This is the shared home for the recipe that ``coded_tools/agent_network_editor/get_subnetwork.py`` also
     implements for the designer's own manifest.
@@ -88,21 +88,53 @@ class ServedNetworkLister:  # pylint: disable=too-few-public-methods
         # (storage class, "/name") -> served? Later manifests overwrite earlier keys, mirroring the server's overlay.
         composite: Dict[Tuple[str, str], bool] = {}
         for manifest_file in self.manifest_files:
-            abs_manifest: str = os.path.abspath(manifest_file)
-            raw_manifest: Optional[Dict[str, Any]] = self._read_raw_manifest(abs_manifest)
-            if raw_manifest is None:
-                continue
-            entries: Dict[str, Dict[str, Any]] = self._normalize(abs_manifest, raw_manifest)
-            names: List[str] = RegistryManifestRestorer(manifest_files=abs_manifest).find_external_network_names(
-                entries
-            )
-            for entry, name in zip(entries.values(), names):
-                storage: str = StorageClass.PUBLIC if entry.get(StorageClass.PUBLIC) else StorageClass.PROTECTED
-                composite[(storage, name)] = bool(entry.get("serve", False))
+            for storage, name, is_served in self._serve_statuses(os.path.abspath(manifest_file)):
+                composite[(storage, name)] = is_served
 
         served: List[str] = [name for (_, name), is_served in composite.items() if is_served]
         # A name that is live in both storage classes appears once.
         return list(dict.fromkeys(served))
+
+    def _serve_statuses(self, abs_manifest: str) -> List[Tuple[str, str, bool]]:
+        """Read one manifest and return ``(storage class, "/name", served?)`` for each of its entries.
+
+        Every failure here is a problem with the manifest, not with the network being validated, so it
+        is recorded in ``warnings`` and the manifest is skipped, as the server skips a manifest it
+        cannot use.
+
+        Args:
+            abs_manifest: Absolute path to the manifest HOCON.
+
+        Returns:
+            One tuple per entry in manifest order, or an empty list when the manifest was skipped.
+        """
+        raw_manifest: Optional[Any] = self._read_raw_manifest(abs_manifest)
+        if raw_manifest is None:
+            return []
+        if not isinstance(raw_manifest, dict):
+            self.warnings.append(
+                f"manifest '{abs_manifest}' must be a dictionary of entries, not {type(raw_manifest).__name__}"
+            )
+            return []
+        try:
+            entries: Dict[str, Dict[str, Any]] = self._normalize(abs_manifest, raw_manifest)
+            names: List[str] = RegistryManifestRestorer(manifest_files=abs_manifest).find_external_network_names(
+                entries
+            )
+            return [
+                (
+                    StorageClass.PUBLIC if entry.get(StorageClass.PUBLIC) else StorageClass.PROTECTED,
+                    name,
+                    bool(entry.get("serve", False)),
+                )
+                for name, entry in zip(names, entries.values())
+            ]
+        except Exception as error:  # pylint: disable=broad-except
+            # neuro-san's filters assume well-formed entries and raise AttributeError or similar on odd
+            # shapes, for example a string where a dictionary is expected. Any such failure is a manifest
+            # problem and must not surface as a validation error against the network file.
+            self.warnings.append(f"could not process manifest '{abs_manifest}': {error}")
+            return []
 
     @staticmethod
     def _normalize(abs_manifest: str, raw_manifest: Dict[str, Any]) -> Dict[str, Dict[str, Any]]:
@@ -125,21 +157,21 @@ class ServedNetworkLister:  # pylint: disable=too-few-public-methods
         filter_chain.register(ManifestDictConfigFilter(abs_manifest))
         return filter_chain.filter_config(raw_manifest)
 
-    def _read_raw_manifest(self, abs_manifest: str) -> Optional[Dict[str, Any]]:
+    def _read_raw_manifest(self, abs_manifest: str) -> Optional[Any]:
         """Parse one manifest with its includes resolved, restoring the working directory afterwards.
 
         Args:
             abs_manifest: Absolute path to the manifest HOCON.
 
         Returns:
-            The raw manifest dictionary, or ``None`` when the manifest was skipped. The reason is appended to
-            ``warnings``.
+            Whatever the HOCON parsed to, normally a dictionary, or ``None`` when the manifest was skipped.
+            The reason is appended to ``warnings``. The caller checks the shape.
         """
         include_base: str = self.base_dir or os.path.dirname(os.path.dirname(abs_manifest))
         prev_cwd: str = os.getcwd()
         try:
             os.chdir(include_base)
-            raw_manifest: Optional[Dict[str, Any]] = RawManifestRestorer().restore(file_reference=abs_manifest)
+            raw_manifest: Optional[Any] = RawManifestRestorer().restore(file_reference=abs_manifest)
         except (ParseException, ValueError, OSError) as error:
             # neuro-san's restorer re-wraps HOCON parse errors as ValueError; ParseException is kept in case that
             # wrapping ever goes away. OSError covers an unreadable file or include base directory.

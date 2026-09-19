@@ -74,8 +74,8 @@ knows the target exists, so `validate` builds that list from the manifest:
 `include` directives inside a manifest are resolved relative to `--registry-dir` when given, otherwise relative to
 that manifest's grandparent directory, which is the project root in the standard `registries/manifest.hocon` layout.
 
-If a manifest cannot be found or parsed, the command prints a warning to stderr, skips it, and continues with the
-remaining manifests and any explicitly provided `--external-agents`, so the structural checks still run.
+If a manifest cannot be found, parsed, or processed, the command prints a warning to stderr, skips it, and continues
+with the remaining manifests and any explicitly provided `--external-agents`, so the structural checks still run.
 
 `--mcp-servers` plays the same role for MCP tool servers that the network references by URL.
 
