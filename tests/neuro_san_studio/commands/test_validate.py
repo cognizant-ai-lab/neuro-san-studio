@@ -106,10 +106,10 @@ class TestValidateCommandRun(TestCase):
         self.assertIn("--registry-dir", argv)
         self.assertIn("/reg", argv)
 
-    def test_optional_flags_omitted_when_not_set(self):
-        """Only the file path is passed when no optional flags are provided and nothing is discovered."""
+    def test_only_derived_registry_dir_added_when_no_flags_set(self):
+        """With no options and nothing discovered, only the file path and the derived registry dir are passed."""
         argv = self._run_capturing_argv(ValidateCommand("agent.hocon"))
-        self.assertEqual(argv, ["hocon_validator_cli", "agent.hocon"])
+        self.assertEqual(argv, ["hocon_validator_cli", "agent.hocon", "--registry-dir", os.getcwd()])
 
     def test_sys_argv_restored_after_success(self):
         """sys.argv is restored after a normal run."""
@@ -241,3 +241,69 @@ class TestValidateCommandManifestDiscovery(TestCase):
             mock_cli.return_value.main.return_value = 0
             self.assertEqual(ValidateCommand("agent.hocon").run(), 1)
         self.assertEqual(sys.argv, before)
+
+
+class TestValidateCommandRegistryDir(TestCase):
+    """Tests for the --registry-dir value handed to HoconValidatorCli.
+
+    It is always passed: left unset, the library derives its default from the raw AGENT_MANIFEST_FILE
+    string, which is a nonexistent path for an os.pathsep list (neuro-san issue #1370).
+    """
+
+    def setUp(self):
+        """Patch the lister and isolate the environment, as in TestValidateCommandRun."""
+        lister_patcher = patch(f"{_MODULE}.ServedNetworkLister")
+        self.mock_lister = lister_patcher.start()
+        self.addCleanup(lister_patcher.stop)
+        self.mock_lister.return_value.list_names.return_value = []
+        self.mock_lister.return_value.warnings = []
+
+        env_patcher = patch.dict(os.environ)
+        env_patcher.start()
+        self.addCleanup(env_patcher.stop)
+        os.environ.pop("AGENT_MANIFEST_FILE", None)
+
+    @staticmethod
+    def _registry_dir_arg(command: ValidateCommand) -> str:
+        """Run the command against a fake HoconValidatorCli and return the --registry-dir value it saw."""
+        captured = {}
+
+        def fake_main():
+            captured["argv"] = list(sys.argv)
+            return 0
+
+        with patch(f"{_MODULE}.HoconValidatorCli") as mock_cli:
+            mock_cli.return_value.main.side_effect = fake_main
+            command.run()
+        argv = captured["argv"]
+        return argv[argv.index("--registry-dir") + 1]
+
+    def test_explicit_registry_dir_is_forwarded(self):
+        """--registry-dir given by the user is passed through unchanged."""
+        self.assertEqual(self._registry_dir_arg(ValidateCommand("agent.hocon", registry_dir="/reg")), "/reg")
+
+    def test_pathsep_list_uses_first_manifest_project_root(self):
+        """A two-entry AGENT_MANIFEST_FILE yields the first manifest's project root, not the library's bogus path."""
+        os.environ["AGENT_MANIFEST_FILE"] = os.pathsep.join(
+            ["/p/registries/manifest.hocon", "/q/registries/overlay.hocon"]
+        )
+        self.assertEqual(self._registry_dir_arg(ValidateCommand("agent.hocon")), "/p")
+
+    def test_single_env_manifest_uses_its_project_root(self):
+        """A single AGENT_MANIFEST_FILE yields the same directory the library would derive itself."""
+        os.environ["AGENT_MANIFEST_FILE"] = "/p/registries/manifest.hocon"
+        self.assertEqual(self._registry_dir_arg(ValidateCommand("agent.hocon")), "/p")
+
+    def test_manifest_option_uses_its_project_root(self):
+        """--manifest inside a registries folder yields that folder's parent."""
+        command = ValidateCommand("agent.hocon", manifest="/opt/registries/manifest.hocon")
+        self.assertEqual(self._registry_dir_arg(command), "/opt")
+
+    def test_manifest_outside_registries_folder_falls_back_to_cwd(self):
+        """A scratch --manifest has no project root, so the current directory is used, not its grandparent."""
+        command = ValidateCommand("agent.hocon", manifest="/tmp/scratch.hocon")
+        self.assertEqual(self._registry_dir_arg(command), os.getcwd())
+
+    def test_default_manifest_yields_cwd(self):
+        """The default <cwd>/registries/manifest.hocon resolves to the current directory."""
+        self.assertEqual(self._registry_dir_arg(ValidateCommand("agent.hocon")), os.getcwd())

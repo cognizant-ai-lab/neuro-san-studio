@@ -47,7 +47,7 @@ otherwise loaded.
 | `--manifest` | Manifest HOCON whose served networks are accepted as external agents. Defaults to `AGENT_MANIFEST_FILE`, then `<registry-dir>/registries/manifest.hocon`. |
 | `--external-agents` | Additional comma-separated external agent references to treat as valid, on top of those discovered from the manifest, e.g. `'/agent1,/agent2'`. |
 | `--mcp-servers` | Comma-separated MCP server URLs to treat as valid. |
-| `--registry-dir` | Base directory for resolving HOCON `include` directives and for locating `registries/manifest.hocon`. Defaults to the current directory. |
+| `--registry-dir` | Base directory for resolving HOCON `include` directives and for locating `registries/manifest.hocon`. Defaults to the first manifest's project root (the directory containing its `registries` folder), else the current directory. |
 
 <!-- pyml enable line-length -->
 
@@ -72,7 +72,8 @@ knows the target exists, so `validate` builds that list from the manifest:
    elsewhere can still be allowed.
 
 `include` directives inside a manifest are resolved relative to `--registry-dir` when given, otherwise relative to
-that manifest's grandparent directory, which is the project root in the standard `registries/manifest.hocon` layout.
+that manifest's project root, the directory containing its `registries` folder. A manifest that lives elsewhere is
+parsed from the current directory, as the server does.
 
 If a manifest cannot be found, parsed, or processed, the command prints a warning to stderr, skips it, and continues
 with the remaining manifests and any explicitly provided `--external-agents`, so the structural checks still run.

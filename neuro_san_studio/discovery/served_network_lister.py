@@ -32,6 +32,7 @@ from neuro_san.internals.graph.persistence.registry_manifest_restorer import Reg
 from neuro_san.internals.interfaces.storage_class import StorageClass
 from pyparsing.exceptions import ParseException
 
+from neuro_san_studio.discovery.manifest_project_root import ManifestProjectRoot
 from neuro_san_studio.discovery.manifest_read_error import ManifestReadError
 
 
@@ -63,8 +64,9 @@ class ServedNetworkLister:  # pylint: disable=too-few-public-methods
                 against the current working directory before any directory change.
             base_dir: Directory to change into while parsing every manifest so that ``include "registries/..."``
                 directives resolve. pyhocon resolves includes against the process working directory, not the
-                manifest's location. ``None`` uses each manifest's grandparent directory, which is the project
-                root in the standard ``<root>/registries/manifest.hocon`` layout.
+                manifest's location. ``None`` uses each manifest's project root, the directory containing its
+                ``registries`` folder; a manifest that lives elsewhere is parsed from the current working
+                directory, as the server does.
         """
         self.manifest_files: List[str] = list(manifest_files)
         self.base_dir: Optional[str] = base_dir
@@ -167,10 +169,11 @@ class ServedNetworkLister:  # pylint: disable=too-few-public-methods
             Whatever the HOCON parsed to, normally a dictionary, or ``None`` when the manifest was skipped.
             The reason is appended to ``warnings``. The caller checks the shape.
         """
-        include_base: str = self.base_dir or os.path.dirname(os.path.dirname(abs_manifest))
+        include_base: Optional[str] = self.base_dir or ManifestProjectRoot(abs_manifest).resolve()
         prev_cwd: str = os.getcwd()
         try:
-            os.chdir(include_base)
+            if include_base:
+                os.chdir(include_base)
             raw_manifest: Optional[Any] = RawManifestRestorer().restore(file_reference=abs_manifest)
         except (ParseException, ValueError, OSError) as error:
             # neuro-san's restorer re-wraps HOCON parse errors as ValueError; ParseException is kept in case that

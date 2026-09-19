@@ -193,6 +193,15 @@ class TestIncludeResolution:
         monkeypatch.chdir(elsewhere)
         assert set(_names(root)) == {"/a", "/tools/x"}
 
+    def test_manifest_outside_registries_folder_parses_from_cwd(
+        self, tmp_path: Path, monkeypatch: MonkeyPatch
+    ) -> None:
+        """A manifest with no registries folder has no project root, so its includes resolve against the cwd."""
+        _write(tmp_path / "scratch" / "manifest.hocon", '{\n    include "extra.hocon",\n    "a.hocon": true\n}\n')
+        _write(tmp_path / "cwd" / "extra.hocon", '{ "b.hocon": true }\n')
+        monkeypatch.chdir(tmp_path / "cwd")
+        assert set(_names(tmp_path / "scratch" / "manifest.hocon")) == {"/a", "/b"}
+
     def test_relative_manifest_path_is_resolved_before_chdir(self, tmp_path: Path, monkeypatch: MonkeyPatch) -> None:
         """A relative manifest path is anchored to the caller's cwd, not to base_dir."""
         _project_with_include(tmp_path / "project")

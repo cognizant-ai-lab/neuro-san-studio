@@ -332,7 +332,7 @@ class NeuroSanStudioCli:  # pylint: disable=too-few-public-methods
             "--registry-dir",
             help=(
                 "Base directory for resolving HOCON includes and for locating registries/manifest.hocon. "
-                "Defaults to the current directory."
+                "Defaults to the first manifest's project root, else the current directory."
             ),
         ),
     ) -> None:
