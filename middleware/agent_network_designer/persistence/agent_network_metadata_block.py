@@ -18,6 +18,7 @@ from copy import deepcopy
 from logging import getLogger
 from typing import Any
 from typing import ClassVar
+from typing import Self
 
 from coded_tools.agent_network_editor.and_logger import AndLogger
 from middleware.agent_network_designer.persistence.hocon_storability_util import HoconStorabilityUtil
@@ -78,18 +79,18 @@ class AgentNetworkMetadataBlock:
             top_level: dict[Any, Any] = {}
             for key, value in candidate.items():
                 # The storage writers add their keys at the top level of a stored spec only.
-                if key in AgentNetworkMetadataBlock.STORAGE_OWNED_KEYS:
+                if key in self.STORAGE_OWNED_KEYS:
                     continue
                 top_level[key] = value
             self._block = self._copy_storable(top_level, "")
         elif candidate is not None:
             # None is the ordinary "nothing sent" case and deserves no noise; any other
             # non-dict value is a client or file bug worth a trace.
-            AgentNetworkMetadataBlock.LOGGER.warning(
+            self.LOGGER.warning(
                 "Ignoring metadata block of type %s (not a dict) from %s.", type(candidate).__name__, source
             )
 
-    def merge_sample_queries(self, sample_queries: Any) -> "AgentNetworkMetadataBlock":
+    def merge_sample_queries(self, sample_queries: Any) -> Self:
         """
         Overlay the sample queries generated on this turn, if any.
 
@@ -102,16 +103,14 @@ class AgentNetworkMetadataBlock:
         :param sample_queries: Sample queries generated on this turn; None or [] means none
         :return: This block, so a caller can chain as_dict()
         """
-        if not AgentNetworkMetadataBlock._is_query_list(sample_queries):
+        if not self._is_query_list(sample_queries):
             return self
-        storable_queries: list[Any] = self._copy_storable(
-            list(sample_queries), AgentNetworkMetadataBlock.SAMPLE_QUERIES_KEY
-        )
+        storable_queries: list[Any] = self._copy_storable(list(sample_queries), self.SAMPLE_QUERIES_KEY)
         if storable_queries:
-            self._block[AgentNetworkMetadataBlock.SAMPLE_QUERIES_KEY] = storable_queries
+            self._block[self.SAMPLE_QUERIES_KEY] = storable_queries
         return self
 
-    def stamp_file_dates(self, now: str) -> "AgentNetworkMetadataBlock":
+    def stamp_file_dates(self, now: str) -> Self:
         """
         Stamp the studio's timestamps for a network saved to a file.
 
@@ -124,8 +123,8 @@ class AgentNetworkMetadataBlock:
                 test can pin it
         :return: This block, so a caller can chain as_dict()
         """
-        self._block.setdefault(AgentNetworkMetadataBlock.DATE_CREATED_KEY, now)
-        self._block[AgentNetworkMetadataBlock.DATE_MODIFIED_KEY] = now
+        self._block.setdefault(self.DATE_CREATED_KEY, now)
+        self._block[self.DATE_MODIFIED_KEY] = now
         return self
 
     def as_dict(self) -> dict[str, Any]:
@@ -177,10 +176,10 @@ class AgentNetworkMetadataBlock:
                 if item is None:
                     continue
                 if not HoconStorabilityUtil.is_storable_key(key):
-                    self._warn_dropped(item_path, AgentNetworkMetadataBlock.UNSTORABLE_KEY_REASON)
+                    self._warn_dropped(item_path, self.UNSTORABLE_KEY_REASON)
                     continue
                 if isinstance(item, str) and not HoconStorabilityUtil.is_storable_string(item):
-                    self._warn_dropped(item_path, AgentNetworkMetadataBlock.UNSTORABLE_VALUE_REASON)
+                    self._warn_dropped(item_path, self.UNSTORABLE_VALUE_REASON)
                     continue
                 copied[key] = self._copy_storable(item, item_path)
             return copied
@@ -189,10 +188,10 @@ class AgentNetworkMetadataBlock:
             for index, item in enumerate(value):
                 item_path = f"{path}[{index}]"
                 if isinstance(item, str) and item == "":
-                    self._warn_dropped(item_path, AgentNetworkMetadataBlock.EMPTY_LIST_ITEM_REASON)
+                    self._warn_dropped(item_path, self.EMPTY_LIST_ITEM_REASON)
                     continue
                 if isinstance(item, str) and not HoconStorabilityUtil.is_storable_string(item):
-                    self._warn_dropped(item_path, AgentNetworkMetadataBlock.UNSTORABLE_VALUE_REASON)
+                    self._warn_dropped(item_path, self.UNSTORABLE_VALUE_REASON)
                     continue
                 copied_list.append(self._copy_storable(item, item_path))
             return copied_list
@@ -205,7 +204,7 @@ class AgentNetworkMetadataBlock:
         :param path: The path of the entry inside the block
         :param reason: What the entry is, one of the *_REASON constants
         """
-        AgentNetworkMetadataBlock.LOGGER.warning(
+        self.LOGGER.warning(
             "Dropping metadata entry %r from %s: %s cannot be stored in an agent network file as written.",
             path,
             self._source,
