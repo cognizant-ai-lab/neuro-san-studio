@@ -629,7 +629,13 @@ class AgentNetworkDefinitionMiddleware(AgentMiddleware):
                 network_def[name] = agent_def
 
         if network_def:
-            self.sly_data[AGENT_NETWORK_METADATA] = AgentNetworkMetadataBlock(config.get("metadata"), source).as_dict()
+            candidate: Any = config.get("metadata")
+            if candidate is None and "metadata" in config:
+                # A file without the key is ordinary and stays quiet; an explicit null is never
+                # something the assemblers write, so it leaves the same trace the persistence
+                # layer's read-back leaves for it before the client gets an empty block.
+                self.logger.warning("Ignoring null 'metadata' in %s; the client receives an empty block.", source)
+            self.sly_data[AGENT_NETWORK_METADATA] = AgentNetworkMetadataBlock(candidate, source).as_dict()
 
         return network_def
 

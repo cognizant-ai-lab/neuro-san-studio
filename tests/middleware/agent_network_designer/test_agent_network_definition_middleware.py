@@ -194,11 +194,36 @@ class TestAgentNetworkDefinitionMiddleware(IsolatedAsyncioTestCase):
         sly_data[AGENT_NETWORK_METADATA] = dict(CLIENT_METADATA)
         middleware: AgentNetworkDefinitionMiddleware = AgentNetworkDefinitionMiddleware(sly_data=sly_data)
 
-        result: dict[str, Any] | None = await middleware.abefore_model({}, None)
+        # A file without the key is ordinary: no warning from the hook or the block class.
+        with (
+            self.assertNoLogs(MIDDLEWARE_LOGGER, level="WARNING"),
+            self.assertNoLogs("AgentNetworkMetadataBlock", level="WARNING"),
+        ):
+            result: dict[str, Any] | None = await middleware.abefore_model({}, None)
 
         self.assertIsNone(result)
         self.assertEqual(sly_data[AGENT_NETWORK_METADATA], {})
         self.assertEqual(sly_data[AGENT_NETWORK_NAME], "bare_network")
+
+    async def test_abefore_model_returns_empty_metadata_and_warns_for_null_metadata(self) -> None:
+        """
+        A file whose "metadata" is an explicit null (never something the assemblers write) is treated like
+        any other non-dict block, with one WARNING from the hook naming the file, unlike a file without the
+        key, which is quiet: the client receives an empty block and the load itself still succeeds.
+        """
+        config: dict[str, Any] = {"metadata": None, "tools": self._tools()}
+        sly_data: dict[str, Any] = self._sly_data_for_file("nully_network", config)
+        middleware: AgentNetworkDefinitionMiddleware = AgentNetworkDefinitionMiddleware(sly_data=sly_data)
+
+        with self.assertLogs(MIDDLEWARE_LOGGER, level="WARNING") as captured:
+            result: dict[str, Any] | None = await middleware.abefore_model({}, None)
+
+        self.assertIsNone(result)
+        self.assertEqual(sly_data[AGENT_NETWORK_METADATA], {})
+        self.assertEqual(sly_data[AGENT_NETWORK_NAME], "nully_network")
+        self.assertEqual(len(captured.records), 1)
+        self.assertIn("null 'metadata'", captured.output[0])
+        self.assertIn(sly_data[AGENT_NETWORK_HOCON_FILE], captured.output[0])
 
     async def test_abefore_model_returns_empty_metadata_and_warns_for_list_metadata(self) -> None:
         """
