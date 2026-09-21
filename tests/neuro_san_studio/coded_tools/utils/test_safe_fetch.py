@@ -38,6 +38,8 @@ from multidict import CIMultiDict
 from pypdf import PdfWriter
 
 from neuro_san_studio.coded_tools.utils.global_only_resolver import GlobalOnlyResolver
+from neuro_san_studio.coded_tools.utils.pdf_utils import PDF_HEADER_WINDOW
+from neuro_san_studio.coded_tools.utils.pdf_utils import PdfUtils
 from neuro_san_studio.coded_tools.utils.safe_fetch import MAX_REDIRECTS
 from neuro_san_studio.coded_tools.utils.safe_fetch import MAX_RESPONSE_BYTES
 from neuro_san_studio.coded_tools.utils.safe_fetch import MAX_URL_LENGTH
@@ -1715,6 +1717,172 @@ class TestSafeFetch(TestCase):  # pylint: disable=too-many-public-methods
         with self.assertRaises(ClientError) as ctx:
             self._call_download_pdf_bytes(session)
         self.assertIn("url_not_accessible", str(ctx.exception))
+
+    # ------------------------------------------------------------------
+    # download_pdf_bytes — "%PDF-" header sniff on the streamed body
+    # ------------------------------------------------------------------
+
+    @staticmethod
+    async def _iter_recording_chunks(
+        chunks: list[bytes], yielded: list[bytes], _chunk_size: int
+    ) -> AsyncIterator[bytes]:
+        """
+        Yield scripted chunks in order, logging each one at the moment it is handed to the reader.
+
+        Bound with functools.partial as response.content.iter_chunked, so a test can
+        prove how far the reader consumed the stream: a chunk absent from the log was
+        never requested, which is what "stop reading after the sniff" means.
+
+        :param chunks: The scripted chunks, yielded in order.
+        :param yielded: The shared log receiving each chunk as it is yielded.
+        :param _chunk_size: The chunk size requested by the reader (ignored).
+        :return: An async iterator over chunks.
+        """
+        for chunk in chunks:
+            yielded.append(chunk)
+            yield chunk
+
+    @staticmethod
+    def _make_recording_stream_session(
+        chunks: list[bytes], content_type: str = "application/pdf"
+    ) -> tuple[MagicMock, list[bytes]]:
+        """
+        Build a GET session mock whose body streams the given chunks and logs each one yielded.
+
+        :param chunks: The byte chunks the response body yields, in order.
+        :param content_type: The declared Content-Type header of the response.
+        :return: A (session, yielded) pair; yielded gains one entry per chunk the reader consumed.
+        """
+        yielded: list[bytes] = []
+        session, response = make_stream_session([], content_type=content_type)
+        response.content.iter_chunked = partial(TestSafeFetch._iter_recording_chunks, chunks, yielded)
+        return session, yielded
+
+    def test_download_pdf_bytes_non_pdf_body_raises_not_a_pdf_and_stops_reading(self) -> None:
+        """Tests that an HTML body served as a PDF is refused as not_a_pdf after the first chunk; the rest is unread.
+
+        Previously the whole body streamed (up to the cap) only for pypdf to fail with
+        "Stream has ended unexpectedly". The message names the URL and the declared
+        Content-Type, the quickest hint that the link now serves an error page.
+        """
+        first_chunk: bytes = b"<html><body>404 Not Found</body></html>" + b"x" * PDF_HEADER_WINDOW
+        chunks: list[bytes] = [first_chunk, b"never read"]
+        session, yielded = self._make_recording_stream_session(chunks, content_type="text/html")
+        with self.assertRaises(ValueError) as ctx:
+            self._call_download_pdf_bytes(session)
+        message: str = str(ctx.exception)
+        self.assertIn("not_a_pdf", message)
+        self.assertIn("http://example.com/doc.pdf", message)
+        self.assertIn(f"first {PDF_HEADER_WINDOW} bytes", message)
+        self.assertIn("declared Content-Type 'text/html'", message)
+        self.assertEqual(yielded, [first_chunk])
+
+    def test_download_pdf_bytes_small_pdf_in_tiny_chunks_returned_intact(self) -> None:
+        """Tests that a PDF shorter than the sniff window, split across several tiny chunks, is returned whole.
+
+        The window never fills, so the sniff must run at end of stream on the joined
+        bytes rather than refuse the body for never reaching PDF_HEADER_WINDOW.
+        """
+        chunks: list[bytes] = [b"%P", b"DF", b"-1.4", b" tiny", b" body"]
+        session, yielded = self._make_recording_stream_session(chunks)
+        self.assertEqual(self._call_download_pdf_bytes(session), b"%PDF-1.4 tiny body")
+        self.assertEqual(yielded, chunks)
+
+    def test_download_pdf_bytes_junk_before_header_within_window_returned_intact(self) -> None:
+        """Tests that leading junk before "%PDF-" is tolerated when the marker sits inside the sniff window.
+
+        Adobe's implementation notes allow the header anywhere in the first 1024 bytes
+        and pypdf parses such files, so a strict startswith check would reject valid PDFs.
+        """
+        body: bytes = b"j" * (PDF_HEADER_WINDOW - 20) + b"%PDF-1.4" + b"x" * 3000
+        session, _ = self._make_recording_stream_session([body[:1500], body[1500:]])
+        self.assertEqual(self._call_download_pdf_bytes(session), body)
+
+    def test_download_pdf_bytes_header_straddling_chunk_boundary_returned_intact(self) -> None:
+        """Tests that a "%PDF-" marker split across two chunks is recognized by a single sniff of the joined bytes.
+
+        Neither chunk alone contains the marker, so a per-chunk sniff would wrongly
+        refuse the body; the sniff must run on the joined bytes. It must also run
+        exactly once, as soon as the window fills: a re-sniff on every later chunk would
+        re-join the whole accumulated body each time (quadratic on a 50 MB download), and
+        a sniff deferred to end of stream would forfeit the early refusal of a huge non-PDF.
+        """
+        chunk1: bytes = b"j" * 500 + b"%PD"
+        chunk2: bytes = b"F-1.4 rest of the document" + b"x" * PDF_HEADER_WINDOW
+        chunk3: bytes = b"y" * 3000
+        session, yielded = self._make_recording_stream_session([chunk1, chunk2, chunk3])
+        # wraps= keeps the real check running while recording how it was called.
+        with patch.object(PdfUtils, "has_pdf_header", wraps=PdfUtils.has_pdf_header) as header_spy:
+            result: bytes = self._call_download_pdf_bytes(session)
+        self.assertEqual(result, chunk1 + chunk2 + chunk3)
+        self.assertEqual(yielded, [chunk1, chunk2, chunk3])
+        header_spy.assert_called_once()
+        sniffed: bytes = header_spy.call_args.args[0]
+        # The sniff saw the JOINED prefix (chunk1 plus the start of chunk2), not a lone chunk...
+        self.assertEqual(sniffed[:PDF_HEADER_WINDOW], (chunk1 + chunk2)[:PDF_HEADER_WINDOW])
+        # ...and it ran as soon as the window filled, before chunk3 was accumulated.
+        self.assertLessEqual(len(sniffed), len(chunk1 + chunk2))
+
+    def test_download_pdf_bytes_empty_body_raises_not_a_pdf(self) -> None:
+        """Tests that an empty body is refused as not_a_pdf rather than handed to pypdf as zero bytes."""
+        session, _ = self._make_recording_stream_session([])
+        with self.assertRaises(ValueError) as ctx:
+            self._call_download_pdf_bytes(session)
+        self.assertIn("not_a_pdf", str(ctx.exception))
+
+    def test_download_pdf_bytes_header_sniff_precedes_size_cap(self) -> None:
+        """Tests that the sniff runs before the cap check when one chunk both fills the window and overshoots the cap.
+
+        With the cap lowered to 2000 bytes, a single 2500-byte non-PDF chunk makes both
+        conditions true in the same loop iteration, so only the check order decides which
+        error surfaces: it must be the specific not_a_pdf, never response_too_large (a
+        1500-byte chunk could not tell the two orders apart). The second chunk is never read.
+        """
+        first_chunk: bytes = b"<html>" + b"x" * 2494
+        session, yielded = self._make_recording_stream_session([first_chunk, b"y" * 1000])
+        with patch(f"{MODULE}.MAX_RESPONSE_BYTES", 2000):
+            with self.assertRaises(ValueError) as ctx:
+                self._call_download_pdf_bytes(session)
+        self.assertIn("not_a_pdf", str(ctx.exception))
+        self.assertNotIn("response_too_large", str(ctx.exception))
+        self.assertEqual(yielded, [first_chunk])
+
+    def test_download_pdf_bytes_pdf_body_over_cap_still_raises_response_too_large(self) -> None:
+        """Tests that a body with a genuine PDF header that exceeds the cap is still refused as response_too_large.
+
+        The sniff must not weaken the byte cap: passing the header check only means the
+        stream keeps being read under the same running limit as before.
+        """
+        session, _ = self._make_recording_stream_session([b"%PDF-1.4" + b"x" * 1492, b"y" * 1000])
+        with patch(f"{MODULE}.MAX_RESPONSE_BYTES", 2000):
+            with self.assertRaises(ValueError) as ctx:
+                self._call_download_pdf_bytes(session)
+        self.assertIn("response_too_large", str(ctx.exception))
+
+    def test_download_pdf_bytes_redirect_to_html_final_body_raises_not_a_pdf(self) -> None:
+        """Tests that after a redirect chain, an HTML final body is refused as not_a_pdf naming the requested URL."""
+        html_body: bytes = b"<html>moved</html>" + b"x" * PDF_HEADER_WINDOW
+        hops = [
+            self._redirect(302, "http://example.org/moved.pdf"),
+            self._make_hop_response(200, {"Content-Type": "text/html"}, html_body),
+        ]
+        session, calls = self._make_chain_session(hops)
+        with self.assertRaises(ValueError) as ctx:
+            self._call_download_pdf_bytes(session)
+        self.assertIn("not_a_pdf", str(ctx.exception))
+        self.assertIn("http://example.com/doc.pdf", str(ctx.exception))
+        self.assertEqual(calls, [("GET", "http://example.com/doc.pdf"), ("GET", "http://example.org/moved.pdf")])
+
+    def test_fetch_pdf_text_propagates_not_a_pdf_as_value_error(self) -> None:
+        """Tests that fetch_pdf_text propagates not_a_pdf as ValueError instead of wrapping it as url_not_accessible.
+
+        The refusal is a policy result raised by the download, not a pypdf parse
+        failure, so it must keep its own error prefix for callers and their logs.
+        """
+        session, _ = make_stream_session([b"<html>not a pdf</html>" + b"x" * PDF_HEADER_WINDOW])
+        with self.assertRaises(ValueError) as ctx:
+            self._call_fetch_pdf("http://example.com/doc.pdf", session)
+        self.assertIn("not_a_pdf", str(ctx.exception))
 
     def test_is_pdf_detects_suffix_despite_query_or_fragment(self):
         """Tests that a .pdf path is detected even with a query string or fragment after it."""

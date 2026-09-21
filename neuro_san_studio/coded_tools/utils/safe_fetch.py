@@ -14,6 +14,12 @@
 #
 # END COPYRIGHT
 
+# pylint: disable=too-many-lines
+# SafeFetch passed pylint's 1000-line budget with the redirect follower (#1417) and
+# the PDF header sniff. Issue #1442 splits the URL validation into its own module
+# and removes this disable; trimming the rationale kept in these comments is not
+# the fix.
+
 import os
 from asyncio import TimeoutError as AsyncTimeoutError
 from asyncio import to_thread
@@ -42,6 +48,7 @@ from aiohttp.helpers import is_ip_address
 from bs4 import BeautifulSoup
 
 from neuro_san_studio.coded_tools.utils.global_only_resolver import GlobalOnlyResolver
+from neuro_san_studio.coded_tools.utils.pdf_utils import PDF_HEADER_WINDOW
 from neuro_san_studio.coded_tools.utils.pdf_utils import PdfUtils
 
 # Maximum accepted URL length, shared by every tool on this path (WebFetch and
@@ -91,8 +98,7 @@ class SafeFetch:
     """
     Shared SSRF-hardened URL fetching for coded tools that retrieve remote content.
 
-    Currently used by WebFetch; intended for reuse by the RAG tools (webpage RAG,
-    PDF RAG) as they migrate onto it.
+    Used by WebFetch, WebpageRag and PdfRag.
 
     SSRF protection blocks private/loopback/reserved ranges and localhost.
     Localhost names and IP literals are rejected up front (validate_hostname_safety);
@@ -112,7 +118,8 @@ class SafeFetch:
     The byte cap (MAX_RESPONSE_BYTES) is enforced both via the Content-Length header
     (pre-check) and on the actual streamed bytes, for text fetches and PDF downloads
     alike, so a server that lies about or omits Content-Length cannot deliver an
-    oversized body.
+    oversized body. A PDF download is also sniffed for a "%PDF-" header within its
+    first PDF_HEADER_WINDOW bytes and refused (not_a_pdf) before the rest is read.
 
     Error types (raised as ValueError or aiohttp.ClientResponseError or aiohttp.ClientError with the specified message)
         invalid_input            – URL is missing, not a valid http/https URL, or a parameter has an invalid type.
@@ -122,6 +129,7 @@ class SafeFetch:
         url_not_accessible       – HTTP error or network failure while fetching the page.
         too_many_requests        – Server returned HTTP 429.
         response_too_large       – Content-Length header or streamed body exceeds MAX_RESPONSE_BYTES.
+        not_a_pdf                – PDF download has no "%PDF-" header in its first PDF_HEADER_WINDOW bytes.
     """
 
     @staticmethod
@@ -748,8 +756,10 @@ class SafeFetch:
         Download a PDF through the protected session and extract its text with pypdf.
 
         The download uses download_pdf_bytes, so it inherits the full SSRF policy,
-        the bounded per-hop-validated redirect following, and the streamed
-        MAX_RESPONSE_BYTES cap.
+        the bounded per-hop-validated redirect following, the streamed
+        MAX_RESPONSE_BYTES cap, and the "%PDF-" header sniff. A not_a_pdf refusal
+        propagates as ValueError: it is a policy result, not a pypdf parse failure,
+        so it is deliberately not wrapped into url_not_accessible below.
 
         :param url: The PDF URL to fetch.
         :param session: A session created by open_session (enforces the SSRF policy).
@@ -759,8 +769,8 @@ class SafeFetch:
                                 URL and to every redirect hop.
         :return: The extracted text of the PDF.
         :raises ValueError: url_not_allowed when a redirect hop fails validation or the
-                chain exceeds MAX_REDIRECTS, or response_too_large when the body
-                exceeds MAX_RESPONSE_BYTES.
+                chain exceeds MAX_REDIRECTS, response_too_large when the body exceeds
+                MAX_RESPONSE_BYTES, or not_a_pdf when the body carries no PDF header.
         :raises aiohttp.ClientResponseError: url_not_accessible / too_many_requests on a non-2xx response.
         :raises aiohttp.ClientError: url_not_accessible on a download or PDF-parse failure.
         """
@@ -786,7 +796,10 @@ class SafeFetch:
         addition to the Content-Length pre-check), so a server that lies about or
         omits Content-Length cannot deliver an oversized body. Redirects are followed
         through _open_following_redirects, so the body streamed is that of the
-        chain's final (re-validated) location.
+        chain's final (re-validated) location. The body is sniffed for a "%PDF-"
+        header once PDF_HEADER_WINDOW bytes have arrived (or at end of stream when
+        shorter) and refused as not_a_pdf without reading further, so an HTML error
+        page served as application/pdf costs one chunk, not 50 MB.
 
         :param url: The PDF URL to fetch.
         :param session: A session created by open_session (enforces the SSRF policy).
@@ -796,8 +809,9 @@ class SafeFetch:
                                 URL and to every redirect hop.
         :return: The raw PDF bytes.
         :raises ValueError: url_not_allowed when a redirect hop fails validation or the
-                chain exceeds MAX_REDIRECTS, or response_too_large when the streamed
-                body exceeds MAX_RESPONSE_BYTES.
+                chain exceeds MAX_REDIRECTS, response_too_large when the streamed body
+                exceeds MAX_RESPONSE_BYTES, or not_a_pdf when no PDF header appears in
+                its first PDF_HEADER_WINDOW bytes.
         :raises aiohttp.ClientResponseError: url_not_accessible / too_many_requests on a non-2xx response.
         :raises aiohttp.ClientError: url_not_accessible on a connection/DNS/timeout failure.
         """
@@ -811,7 +825,7 @@ class SafeFetch:
             ):
                 response.raise_for_status()
                 SafeFetch.check_content_length(response.headers.get("Content-Length"), url)
-                return await SafeFetch._read_capped_body(response, url)
+                return await SafeFetch._read_capped_body(response, url, require_pdf_header=True)
         except (ClientError, AsyncTimeoutError) as exc:
             SafeFetch._raise_translated(exc, url)
 
@@ -864,23 +878,68 @@ class SafeFetch:
             SafeFetch._raise_translated(exc, url)
 
     @staticmethod
-    async def _read_capped_body(response: Any, url: str) -> bytes:
+    async def _read_capped_body(response: Any, url: str, *, require_pdf_header: bool = False) -> bytes:
         """
         Stream a response body into memory, enforcing the running byte cap.
 
+        With require_pdf_header the accumulated bytes are checked for a "%PDF-" header
+        exactly once: as soon as PDF_HEADER_WINDOW bytes have arrived, or at end of stream
+        when the body is shorter (a small or empty body). A failing body is refused right there.
+
         :param response: The aiohttp response whose body to stream.
         :param url: The URL being fetched, included in the raised message.
+        :param require_pdf_header: When True, refuse the body as not_a_pdf unless a PDF
+                header appears within its first PDF_HEADER_WINDOW bytes.
         :return: The full response body as bytes (at most MAX_RESPONSE_BYTES).
-        :raises ValueError: response_too_large when the received bytes exceed the limit.
+        :raises ValueError: response_too_large when the received bytes exceed the limit;
+                not_a_pdf when require_pdf_header is set and the header check fails.
         """
         chunks: list[bytes] = []
         received: int = 0
+        header_pending: bool = require_pdf_header
         async for chunk in response.content.iter_chunked(DOWNLOAD_CHUNK_BYTES):
+            chunks.append(chunk)
             received += len(chunk)
+            # Sniff the JOINED bytes, never the chunk alone: iter_chunked yields whatever is
+            # buffered (up to 64 KB), so the marker can straddle two chunks and the window may
+            # take several chunks to fill; either way a huge non-PDF is refused once the window
+            # fills, not after 50 MB. Sniff before the cap check so a chunk that both fills the
+            # window and overshoots a (small) cap reports the more specific not_a_pdf, as PdfRag's local reader does.
+            if header_pending and received >= PDF_HEADER_WINDOW:
+                SafeFetch._check_pdf_header(b"".join(chunks), response, url)
+                header_pending = False
             if received > MAX_RESPONSE_BYTES:
                 raise ValueError(f"response_too_large: '{url}' body exceeds the {MAX_RESPONSE_BYTES}-byte limit.")
-            chunks.append(chunk)
-        return b"".join(chunks)
+        body: bytes = b"".join(chunks)
+        # Stream ended before the window filled (a small PDF, or an empty body):
+        # sniff whatever arrived, so the check still runs exactly once.
+        if header_pending:
+            SafeFetch._check_pdf_header(body, response, url)
+        return body
+
+    @staticmethod
+    def _check_pdf_header(head: bytes, response: Any, url: str) -> None:
+        """
+        Raise not_a_pdf unless the leading bytes of a download carry a PDF header.
+
+        Mirrors the local-file sniff in PdfRag. Without it an HTML error page served as
+        application/pdf (or a .pdf link that now returns HTML) is downloaded in full only
+        for pypdf to fail with "Stream has ended unexpectedly", which fetch_pdf_text reports
+        as url_not_accessible: nowhere near the real problem. The declared Content-Type is
+        named when present because it is the quickest diagnostic ("text/html" = stale link).
+
+        :param head: The bytes received so far (at least PDF_HEADER_WINDOW when the
+                     body is that long; extra bytes are ignored).
+        :param response: The aiohttp response, read only for its declared Content-Type.
+        :param url: The URL being fetched, included in the raised message.
+        :raises ValueError: not_a_pdf when "%PDF-" does not occur within the first
+                PDF_HEADER_WINDOW bytes of head.
+        """
+        if PdfUtils.has_pdf_header(head):
+            return
+        declared: str = response.headers.get("Content-Type", "")
+        detail: str = f" (declared Content-Type '{declared}')" if declared else ""
+        raise ValueError(f"not_a_pdf: '{url}' has no PDF header in its first {PDF_HEADER_WINDOW} bytes{detail}.")
 
     @staticmethod
     async def _read_capped_text(response: Any, url: str) -> str:
