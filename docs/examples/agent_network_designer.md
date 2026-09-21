@@ -337,7 +337,9 @@ specifically given the hocon file name in the user prompt
 - Writes the network's top-level `metadata` block from the `agent_network_metadata` sly data the client sent
 back, so the block survives a save the same way the definition and the name do: `description`, `tags` and any
 other key are written as sent, `sample_queries` is replaced only when `agent_network_query_generator` ran on
-that turn, and in file mode `date_created` is stamped once and `date_modified` on every save. The saved block
+that turn, and in file mode `date_created` is stamped once and `date_modified` on every save. A temporary
+network gets no studio dates in its deployed spec (neuro-san records `stored_at`), but the HOCON text returned
+for download always carries a `date_created`, as a saved file would. The saved block
 is returned under `agent_network_metadata` for the client to send back with its next request. A
 `skip_designer` save that carries the block therefore leaves `metadata` intact. A client that sends no
 `agent_network_metadata` at all (nsflow's manual save sends nothing as of nsflow 0.7.1) gets the existing file's

@@ -645,7 +645,8 @@ class TestAgentNetworkPersistenceMiddleware(IsolatedAsyncioTestCase):  # pylint:
         In reservations mode the deployable spec handed to ReservationUtil.wait_for_one carries the
         client's block with the storage-owned keys stripped and this turn's queries overlaid, gets no
         studio timestamps, sly_data["agent_reservations"] describes the reservation, the block handed
-        back equals the spec's, and no file is written.
+        back equals the spec's, and no file is written. The HOCON text handed back for download is the
+        one place a date appears: a date_created, never a date_modified.
         """
         wait_for_one: AsyncMock = self._enter_reservations_mode()
         client_block: dict[str, Any] = {
@@ -682,11 +683,13 @@ class TestAgentNetworkPersistenceMiddleware(IsolatedAsyncioTestCase):  # pylint:
         )
         self.assertEqual(sly_data["agent_network_metadata"], agent_spec["metadata"])
         self.assertFalse(self._generated_path().exists())
+        self.assertIn('"date_created"', sly_data["agent_network_hocon_text"])
+        self.assertNotIn("date_modified", sly_data["agent_network_hocon_text"])
 
     async def test_reservations_mode_without_block_or_queries_omits_metadata_key(self) -> None:
         """
-        With no client block and no queries the deployable spec has no "metadata" key at all, and
-        the client is handed an empty block.
+        With no client block and no queries the deployable spec has no "metadata" key at all, the
+        client is handed an empty block, and the downloadable HOCON text still carries a date_created.
         """
         wait_for_one: AsyncMock = self._enter_reservations_mode()
         sly_data: dict[str, Any] = self._request(skip_designer=True)
@@ -697,6 +700,7 @@ class TestAgentNetworkPersistenceMiddleware(IsolatedAsyncioTestCase):  # pylint:
         self.assertNotIn("metadata", agent_spec)
         self.assertEqual(sly_data["agent_network_metadata"], {})
         self.assertIn("agent_reservations", sly_data)
+        self.assertIn('"date_created"', sly_data["agent_network_hocon_text"])
 
     async def test_reservations_mode_passes_client_dates_through_unchanged(self) -> None:
         """

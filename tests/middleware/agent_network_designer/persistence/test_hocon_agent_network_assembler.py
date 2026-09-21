@@ -21,6 +21,7 @@ metadata block rendering.
 
 import asyncio
 import os
+import re
 import tempfile
 from copy import deepcopy
 from pathlib import Path
@@ -57,8 +58,9 @@ class TestHoconAgentNetworkAssembler(TestCase):
     Tests for HoconAgentNetworkAssembler, which renders a designed network as HOCON text.
 
     The generated text declares the network's MCP header needs in the front man's sly_data_schema, carries the
-    generated-network execution timeout and renders the metadata block it is given, stamping nothing itself:
-    timestamps are the persistence middleware's business.
+    generated-network execution timeout and renders the metadata block it is given. The header stamps date_created
+    on a block that has none, so the text a client downloads always carries a creation date; date_modified is the
+    persistence middleware's business (file mode only) and the header never adds it.
     """
 
     @staticmethod
@@ -148,8 +150,9 @@ class TestHoconAgentNetworkAssembler(TestCase):
         with_no_client_urls: str = self._assemble({})
 
         self.assertNotIn("sly_data_schema", without_client_urls)
-        # Nothing in the header depends on the clock, so the renders are byte-identical.
-        self.assertEqual(without_client_urls, with_no_client_urls)
+        # The two renders differ only in the date_created stamp.
+        strip_date: re.Pattern[str] = re.compile(r'"date_created": "[^"]*"')
+        self.assertEqual(strip_date.sub("", without_client_urls), strip_date.sub("", with_no_client_urls))
 
         config: dict[str, Any] = self._parse(without_client_urls)
         self.assertNotIn("sly_data_schema", config["tools"][0]["function"])
@@ -188,7 +191,8 @@ class TestHoconAgentNetworkAssembler(TestCase):
 
     # Tests for the metadata block (issue #1398). The block is rendered as one JSON object so that any
     # key carries forward: AgentNetworkMetadataBlock builds it from the metadata keyword and the
-    # sample_queries argument; timestamps are the persistence middleware's business, so the header stamps nothing.
+    # sample_queries argument, and the header adds only a date_created stamp when the block has none (the
+    # text is what a client downloads, so it always carries a creation date; date_modified is never added).
 
     # Strings that broke the former triple-quoted rendering or that HOCON could misread: an embedded
     # quote, a newline, three double quotes, substitution syntax, non-ASCII text, a tab and the
@@ -264,25 +268,29 @@ class TestHoconAgentNetworkAssembler(TestCase):
         # Key order is preserved so a hand-edited file keeps its shape after a save.
         self.assertEqual(list(block.keys()), list(supplied.keys()))
 
-    def test_no_metadata_and_no_queries_renders_an_empty_block(self) -> None:
+    def test_no_metadata_and_no_queries_renders_only_date_created(self) -> None:
         """
-        The pre-#1398 call shape with neither queries nor a block renders "metadata": {} and stamps
-        nothing: no date_created appears anywhere in the emitted text and no empty sample_queries list.
+        The pre-#1398 call shape with neither queries nor a block renders a block holding only the
+        date_created stamp, as the header always did; no empty sample_queries list is written any more and
+        no date_modified, which only the persistence middleware adds, in file mode.
         """
         text: str = self._assemble_text([], None)
+        block: dict[str, Any] = self._parse_metadata(text)
 
-        self.assertIn('    "metadata": {},\n', text)
-        self.assertNotIn("date_created", text)
+        self.assertEqual(list(block.keys()), ["date_created"])
         self.assertNotIn('"sample_queries"', text)
-        self.assertEqual(self._parse_metadata(text), {})
+        self.assertNotIn("date_modified", text)
+        # The stamp keeps the format the header always used: UTC ISO-8601 with an explicit offset.
+        self.assertTrue(block["date_created"].endswith("+00:00"))
 
-    def test_sample_queries_only_renders_just_sample_queries(self) -> None:
+    def test_sample_queries_only_renders_sample_queries_and_date_created(self) -> None:
         """
-        With queries but no block the parsed block holds exactly sample_queries, no timestamp or other key.
+        With queries but no block the parsed block holds exactly sample_queries and the date_created stamp.
         """
         block: dict[str, Any] = self._assemble_metadata(["First?", "Second?"], None)
 
-        self.assertEqual(block, {"sample_queries": ["First?", "Second?"]})
+        self.assertEqual(list(block.keys()), ["sample_queries", "date_created"])
+        self.assertEqual(block["sample_queries"], ["First?", "Second?"])
 
     def test_hostile_strings_round_trip_through_the_json_block(self) -> None:
         """
@@ -314,6 +322,8 @@ class TestHoconAgentNetworkAssembler(TestCase):
         text: str = self._assemble_text(["New one?"], supplied)
 
         block: dict[str, Any] = self._parse_metadata(text)
+        # The header stamps date_created on a block without one; the rest must be exactly the kept keys.
+        block.pop("date_created")
         self.assertEqual(block, {"description": "A demo", "sample_queries": ["New one?"]})
         # Stripped keys are absent from the text itself, so no "null" is ever written either.
         self.assertNotIn('"reservation"', text)
@@ -341,6 +351,7 @@ class TestHoconAgentNetworkAssembler(TestCase):
             sanitized: dict[str, Any] = AgentNetworkMetadataBlock(supplied, "test").as_dict()
         block: dict[str, Any] = self._parse_metadata(text)
 
+        block.pop("date_created")
         self.assertEqual(block, {"description": "A demo", "tags": ["ok", "tab\tfine"], "owner": {"team": "platform"}})
         self.assertEqual(block, sanitized)
         self.assertNotIn('we\\"ird', text)
@@ -358,7 +369,8 @@ class TestHoconAgentNetworkAssembler(TestCase):
         with self.assertLogs("AgentNetworkMetadataBlock", level="WARNING") as captured:
             block: dict[str, Any] = self._assemble_metadata(["First?"], not_a_block)
 
-        self.assertEqual(block, {"sample_queries": ["First?"]})
+        self.assertEqual(list(block.keys()), ["sample_queries", "date_created"])
+        self.assertEqual(block["sample_queries"], ["First?"])
         self.assertEqual(len(captured.output), 1)
         self.assertIn("type str (not a dict) from agent network test_net", captured.output[0])
 
@@ -400,6 +412,7 @@ class TestHoconAgentNetworkAssembler(TestCase):
 
         block: dict[str, Any] = self._restore_with_neuro_san(text)
 
+        block.pop("date_created")
         self.assertEqual(block, supplied)
         self.assertEqual(list(block.keys()), list(supplied.keys()))
 

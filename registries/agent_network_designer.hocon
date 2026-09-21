@@ -199,7 +199,11 @@ Send agent_network_metadata back with it so the saved network keeps its metadata
                         },
                         "agent_network_hocon_text": {
                             "type": "string",
-                            "description": "The contents of an agent network HOCON file describing the created network"
+                            "description": """
+The contents of an agent network HOCON file describing the created network. In file mode this is exactly
+the saved file. In reservations mode it is the downloadable form of the deployed network and carries a
+date_created the deployed spec does not have.
+"""
                         },
                         "agent_network_metadata": {
                             "type": "object",

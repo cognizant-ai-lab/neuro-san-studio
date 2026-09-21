@@ -341,7 +341,9 @@ class AgentNetworkPersistenceMiddleware(AgentMiddleware):
         (issue #1398) is the base, exactly as it owns the definition and the name. This turn's
         sample queries replace the block's own only when the generator ran. In file mode the
         server stamps date_created once and date_modified on every save; a temporary network
-        gets no studio timestamps, neuro-san's reservation storage adds its own. The caller
+        gets no studio timestamps in its deployed spec (a reservation is a new network on every
+        save and neuro-san records its write time as stored_at), only the HOCON text rendered for
+        download carries a date_created, added by the HOCON assembler. The caller
         writes the result back to sly_data once the save happened, so it flows upstream and the
         client can send it again. A client value that is not a dict is ignored with a warning.
 
@@ -408,7 +410,9 @@ class AgentNetworkPersistenceMiddleware(AgentMiddleware):
         # Built once so the HOCON text handed to the client and the persisted content carry one block,
         # and before the write so the fallback read never sees a half-written file. The assemblers run
         # the same merge again on it; that pass is idempotent (nothing new to drop), at most a generated
-        # query that cannot be stored is logged once more per assembler.
+        # query that cannot be stored is logged once more per assembler. The HOCON assembler alone adds
+        # a date_created when the block has none, so the downloadable text always carries a creation
+        # date; in file mode the block already has one, in reservations mode the deployed spec keeps none.
         metadata: dict[str, Any] = await self._build_metadata(persistor, agent_network_name, sample_queries)
 
         # Always assemble HOCON content for client consumption.
