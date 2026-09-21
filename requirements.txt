@@ -1,6 +1,6 @@
 # Neuro SAN
-leaf-common>=1.4.0
-neuro-san==0.7.0
+leaf-common>=1.4.2
+neuro-san==0.7.4
 nsflow==0.7.0
 
 # For config parsing
