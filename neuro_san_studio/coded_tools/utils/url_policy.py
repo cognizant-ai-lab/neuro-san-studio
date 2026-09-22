@@ -16,6 +16,7 @@
 
 """URL-level SSRF policy (scheme, length, hostname canonicalization, domain rules) behind SafeFetch."""
 
+import re
 from ipaddress import IPv4Address
 from ipaddress import IPv6Address
 from ipaddress import ip_address
@@ -39,6 +40,9 @@ MAX_URL_LENGTH: int = 2000
 # literals are validated separately; a genuine hostname containing anything outside
 # this set means IDNA could not canonicalize it and it is not a usable DNS name.
 HOSTNAME_ALLOWED_CHARS: frozenset[str] = frozenset("abcdefghijklmnopqrstuvwxyz0123456789.-_")
+# An http(s) URL embedded in free text (an error message, say). Quotes and angle brackets end a
+# match because SafeFetch's messages quote the URL they name ("... for 'http://...'.").
+URL_IN_TEXT_PATTERN: re.Pattern[str] = re.compile(r"https?://[^\s'\"<>]+")
 
 
 class UrlPolicy:
@@ -317,3 +321,35 @@ class UrlPolicy:
             host = f"{host}:{port}"
         query: str = "[redacted]" if parsed.query else ""
         return urlunparse((parsed.scheme, host, parsed.path, "", query, ""))
+
+    @staticmethod
+    def redact_urls_in_text(text: str) -> str:
+        """
+        Redact every http(s) URL embedded in free text, for log lines that quote an error message.
+
+        SafeFetch's translated errors interpolate the URL they were given, and for a body fetch
+        that is the server-controlled redirect target; a log line that quotes such a message
+        would leak a presigned token exactly as logging the URL itself would. Every match is
+        replaced by its redact_for_log form.
+
+        :param text: The text to scan, typically str(exception).
+        :return: The text with every embedded URL reduced to scheme, host and path.
+        """
+        return URL_IN_TEXT_PATTERN.sub(UrlPolicy._redact_match, text)
+
+    @staticmethod
+    def _redact_match(match: re.Match[str]) -> str:
+        """
+        Redact one URL found by URL_IN_TEXT_PATTERN, keeping sentence punctuation that followed it.
+
+        :param match: The regex match holding the URL (and possibly a trailing "." or ",").
+        :return: The redacted URL followed by whatever punctuation the match swallowed.
+        """
+        url: str = match.group(0)
+        trailing: str = ""
+        # The pattern cannot tell "http://host/path." (sentence end) from a path ending in a
+        # dot, so peel sentence punctuation off and re-append it after redaction.
+        while url and url[-1] in ".,;:)":
+            trailing = url[-1] + trailing
+            url = url[:-1]
+        return UrlPolicy.redact_for_log(url) + trailing

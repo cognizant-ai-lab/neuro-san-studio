@@ -99,7 +99,7 @@ async def cancel_mid_flight_load(tool: WebpageRag) -> None:
     await task
 
 
-class TestWebpageRag(TestCase):
+class TestWebpageRag(TestCase):  # pylint: disable=too-many-public-methods
     """Unit tests for WebpageRag: SSRF-hardened loading, PDF/HTML routing, input guards."""
 
     def setUp(self):
@@ -272,6 +272,27 @@ class TestWebpageRag(TestCase):
         self.assertNotIn("secret-token", joined)
         self.assertIn("redirected to http://files.example.com/landing?[redacted]", joined)
         self.assertEqual(docs[0].metadata["source"], final)
+
+    def test_fetch_failure_log_redacts_server_controlled_url_in_error(self) -> None:
+        """Tests that a fetch failure at a presigned redirect target is logged without the token in the error text.
+
+        SafeFetch's translated errors quote the URL they were given, which is now final_url;
+        the per-URL catch must not copy that token into the log.
+        """
+        final: str = "http://files.example.com/landing?X-Amz-Signature=secret-token"
+        failure = ClientError(f"url_not_accessible: Could not reach '{final}': connection reset")
+        with (
+            patch.object(SafeFetch, "open_session", return_value=make_session_cm()),
+            patch.object(SafeFetch, "get_content_type", new=AsyncMock(return_value=("text/html", None, final))),
+            patch.object(SafeFetch, "fetch_raw", new=AsyncMock(side_effect=failure)),
+        ):
+            with self.assertLogs("neuro_san_studio.coded_tools.webpage_rag", level="ERROR") as logs:
+                docs = self._load(["http://example.com/go"])
+
+        joined: str = "\n".join(logs.output)
+        self.assertEqual(docs, [])
+        self.assertNotIn("secret-token", joined)
+        self.assertIn("Could not reach 'http://files.example.com/landing?[redacted]'", joined)
 
     def test_pdf_not_a_pdf_is_skipped_and_logged(self) -> None:
         """A PDF-classified URL whose body fails SafeFetch's header sniff is logged as not_a_pdf and skipped.

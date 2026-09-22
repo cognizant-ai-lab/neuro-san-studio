@@ -453,3 +453,22 @@ class TestUrlPolicy(TestCase):  # pylint: disable=too-many-public-methods
     def test_redact_for_log_reports_unparseable_url(self) -> None:
         """Tests that a URL urlparse rejects is replaced by a fixed marker rather than logged raw."""
         self.assertEqual(UrlPolicy.redact_for_log("https://[::1/"), "[unparseable url]")
+
+    def test_redact_urls_in_text_redacts_quoted_url_in_error_message(self) -> None:
+        """Tests that a SafeFetch-style error message quoting a presigned URL loses the query but keeps its shape."""
+        message: str = "url_not_accessible: Could not reach 'https://files.example.com/a.pdf?X-Amz-Signature=secret'."
+        redacted: str = UrlPolicy.redact_urls_in_text(message)
+        self.assertEqual(redacted, "url_not_accessible: Could not reach 'https://files.example.com/a.pdf?[redacted]'.")
+        self.assertNotIn("secret", redacted)
+
+    def test_redact_urls_in_text_handles_several_urls_and_trailing_punctuation(self) -> None:
+        """Tests that every embedded URL is redacted and sentence punctuation after a bare URL survives."""
+        message: str = "from http://example.com/a?k=1, to http://example.org/b?k=2."
+        self.assertEqual(
+            UrlPolicy.redact_urls_in_text(message),
+            "from http://example.com/a?[redacted], to http://example.org/b?[redacted].",
+        )
+
+    def test_redact_urls_in_text_leaves_text_without_urls_unchanged(self) -> None:
+        """Tests that text holding no URL is returned as it was."""
+        self.assertEqual(UrlPolicy.redact_urls_in_text("connection reset by peer"), "connection reset by peer")

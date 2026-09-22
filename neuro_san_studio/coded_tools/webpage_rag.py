@@ -211,7 +211,10 @@ class WebpageRag(CodedTool, BaseRag):
             if isinstance(result, Document):
                 documents.append(result)
             elif result is not None:
-                logger.error("Skipped a URL after an unexpected error: %r", result)
+                # Same redaction as the per-URL catch: the message may quote the fetched URL.
+                logger.error(
+                    "Skipped a URL after an unexpected error: %s", UrlPolicy.redact_urls_in_text(repr(result))
+                )
         return documents
 
     async def _load_single(self, url: str, session: ClientSession, semaphore: Semaphore) -> Document | None:
@@ -297,7 +300,10 @@ class WebpageRag(CodedTool, BaseRag):
         # URL", never "abort the whole load". The error is logged so nothing fails
         # silently.
         except Exception as error:  # pylint: disable=broad-exception-caught
-            logger.error("Failed to load webpage %s: %s", url, error)
+            # SafeFetch's errors quote the URL they were given, and for the body fetch that is
+            # the server-controlled final_url (possibly a presigned link); redact any URL in the
+            # message so the log carries the failure, not the token.
+            logger.error("Failed to load webpage %s: %s", url, UrlPolicy.redact_urls_in_text(str(error)))
             return None
 
         logger.info("Successfully loaded webpage from %s", validated_url)
