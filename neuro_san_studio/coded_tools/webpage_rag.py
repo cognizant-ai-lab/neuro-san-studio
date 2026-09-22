@@ -46,7 +46,8 @@ class WebpageRag(CodedTool, BaseRag):
     Content is downloaded through the shared SSRF-hardened fetch path (SafeFetch):
     private/loopback/reserved hosts are rejected, DNS records are validated at
     connection time (anti DNS-rebinding), redirects are followed up to a bounded
-    number of hops with every hop re-validated, and response sizes are capped. Each
+    number of hops with every hop re-validated, the body is fetched from the chain's
+    final URL (recorded as the Document's source), and response sizes are capped. Each
     URL is routed by content type: PDFs are parsed with pypdf
     (via SafeFetch.fetch_pdf_text) and HTML/text is stripped to plain text, so a PDF
     link is ingested as readable text instead of being embedded as binary garbage.
@@ -243,14 +244,21 @@ class WebpageRag(CodedTool, BaseRag):
                 prefetched_text: str | None
                 final_url: str
                 content_type, prefetched_text, final_url = await SafeFetch.get_content_type(validated_url, session)
+                if final_url != validated_url:
+                    logger.info("%s redirected to %s", validated_url, final_url)
 
-                # Classify by the URL the headers came from (after redirects), so a link
-                # that redirects to a .pdf served as a generic download type is parsed
-                # as a PDF. The source metadata below still records the requested URL.
+                # Classify by the URL the headers came from (after redirects), fetch from
+                # it, and record it as the source. A link that redirects to a .pdf served
+                # as a generic download type is parsed as a PDF. Fetching from final_url
+                # avoids a second walk of the redirect chain and keeps the body and the
+                # classification from the same place (the probe re-validated every hop,
+                # and the fetch re-validates final_url at entry). Recording final_url as
+                # the source means citations point at the document, not the redirector,
+                # and two configured links to one document collapse to one source.
                 if SafeFetch.is_pdf(content_type, final_url):
-                    pdf_text: str = await SafeFetch.fetch_pdf_text(validated_url, session)
+                    pdf_text: str = await SafeFetch.fetch_pdf_text(final_url, session)
                     # PDFs carry no HTML metadata; record only the source.
-                    return Document(page_content=pdf_text, metadata={"source": validated_url})
+                    return Document(page_content=pdf_text, metadata={"source": final_url})
 
                 # An empty/missing Content-Type is treated as text rather than skipped:
                 # WebBaseLoader (the loader this replaces) fetched regardless of type,
@@ -268,7 +276,7 @@ class WebpageRag(CodedTool, BaseRag):
                 if prefetched_text is not None:
                     raw = prefetched_text
                 else:
-                    raw = await SafeFetch.fetch_raw(validated_url, session)
+                    raw = await SafeFetch.fetch_raw(final_url, session)
 
                 # BeautifulSoup parsing is blocking CPU work. Calling it directly would
                 # occupy the single event-loop thread for its whole duration and freeze
@@ -276,7 +284,7 @@ class WebpageRag(CodedTool, BaseRag):
                 # returned. to_thread() runs _to_document on a background worker thread
                 # and awaits its result, so the event loop stays free to drive the other
                 # downloads meanwhile (SafeFetch.fetch_pdf_text offloads pypdf the same way).
-                document: Document = await to_thread(self._to_document, validated_url, raw)
+                document: Document = await to_thread(self._to_document, final_url, raw)
         # A broad catch keeps the batch resilient: URL-policy failures (ValueError),
         # network/HTTP failures (ClientError), and HTML-parse failures (e.g. a
         # RecursionError on pathologically nested markup) all mean "skip this one

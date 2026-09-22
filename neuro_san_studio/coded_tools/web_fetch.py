@@ -54,7 +54,8 @@ class WebFetch(CodedTool):
     (anti DNS-rebinding), redirects are followed up to SafeFetch's MAX_REDIRECTS
     hops with every hop re-validated as a brand-new URL (including this tool's own
     allowed_domains / blocked_domains, which are forwarded to SafeFetch for that
-    purpose), and response sizes are capped. HTML is stripped with BeautifulSoup;
+    purpose), the body is fetched from the chain's final URL (reported as
+    "final_url"), and response sizes are capped. HTML is stripped with BeautifulSoup;
     PDF bodies are sniffed for a "%PDF-" header while streaming, then parsed with
     pypdf. Use allowed_domains / blocked_domains for stricter control.
 
@@ -92,7 +93,9 @@ class WebFetch(CodedTool):
 
         :return:
             A dictionary with the following keys:
-                "url"          (str): The URL that was fetched.
+                "url"          (str): The URL that was requested.
+                "final_url"    (str): The URL the content was fetched from, after any
+                                      redirects (equal to "url" when there were none).
                 "content"      (str): Plain-text body of the fetched page.
                 "retrieved_at" (str): ISO-8601 UTC timestamp when the content was retrieved.
 
@@ -117,10 +120,20 @@ class WebFetch(CodedTool):
             content_type, prefetched_text, final_url = await SafeFetch.get_content_type(
                 url, session, allowed_domains=allowed_domains, blocked_domains=blocked_domains
             )
-            # Classify by the URL the headers actually came from: a link that redirects
-            # to a .pdf served as a generic download type is a PDF even though the
-            # requested URL carries no .pdf suffix. The fetch below still starts from
-            # the requested URL and re-validates every hop.
+            # Log the redirect before fetching, so the requested -> final link is on record
+            # even when the body fetch below fails: SafeFetch's error message names only the
+            # URL it was given, which is now final_url rather than the one logged above.
+            if final_url != url:
+                logger.info("WebFetch: %s redirected to %s", url, final_url)
+            # Classify by the URL the headers actually came from, and fetch from it too.
+            # A link that redirects to a .pdf served as a generic download type is a PDF
+            # even though the requested URL carries no .pdf suffix. Starting the body
+            # fetch at final_url instead of the requested URL avoids walking the redirect
+            # chain a second time and guarantees the body comes from the same place the
+            # classification did: a rotating or expiring redirect could otherwise send
+            # the second walk elsewhere and hand a PDF body to the HTML stripper (or the
+            # reverse). Nothing is skipped by this: the probe re-validated every hop under
+            # the same domain rules, and the fetch re-validates final_url at entry again.
             is_pdf: bool = SafeFetch.is_pdf(content_type, final_url)
 
             if not is_pdf and not self._is_supported_content_type(content_type):
@@ -134,23 +147,25 @@ class WebFetch(CodedTool):
                 # Note: passing the PDF as base64 directly to the model would be
                 # preferable once neuro-san supports multimodal input.
                 text: str = await SafeFetch.fetch_pdf_text(
-                    url, session, allowed_domains=allowed_domains, blocked_domains=blocked_domains
+                    final_url, session, allowed_domains=allowed_domains, blocked_domains=blocked_domains
                 )
             elif prefetched_text is not None:
                 # Body was already fetched during the 405 HEAD fallback GET; no second request needed.
                 text = SafeFetch.parse_raw_text(prefetched_text)
             else:
                 text = await SafeFetch.fetch_text(
-                    url, session, allowed_domains=allowed_domains, blocked_domains=blocked_domains
+                    final_url, session, allowed_domains=allowed_domains, blocked_domains=blocked_domains
                 )
 
         text = text[:max_chars]
 
-        logger.info("WebFetch: returned %d characters from %s", len(text), url)
+        logger.info("WebFetch: returned %d characters from %s", len(text), final_url)
 
-        # return format taken from Anthropic's webfetch tool
+        # return format taken from Anthropic's webfetch tool, plus final_url so the
+        # agent can cite where the content actually came from
         return {
             "url": url,
+            "final_url": final_url,
             "content": text,
             "retrieved_at": retrieved_at,
         }
