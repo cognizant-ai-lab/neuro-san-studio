@@ -1005,16 +1005,32 @@ class TestSafeFetch(TestCase):  # pylint: disable=too-many-public-methods
         aiohttp's own message may quote the URL (InvalidURL does); a traceback log prints the
         cause verbatim, so the cause is dropped and its class name and redacted text kept instead.
         """
-        failure = ClientError("boom while connecting to http://example.com/x?token=secret")
+        failure = ClientError("boom while connecting to 'http://example.com/x'?token=secret")
         session = MagicMock()
         session.get = MagicMock(side_effect=failure)
         with self.assertRaises(ClientError) as ctx:
             asyncio.run(SafeFetch.fetch_raw("http://example.com/x?token=secret", session))
         message: str = str(ctx.exception)
         self.assertNotIn("secret", message)
-        self.assertIn("Could not reach 'http://example.com/x?[redacted]': ClientError: boom", message)
+        # The original text names a URL, so it is withheld outright rather than partially redacted.
+        self.assertEqual(
+            message,
+            "url_not_accessible: Could not reach 'http://example.com/x?[redacted]': ClientError: "
+            "[message withheld: it quotes a URL]",
+        )
         self.assertIsNone(ctx.exception.__cause__)
         self.assertNotIn("secret", "".join(traceback.format_exception(ctx.exception)))
+
+    def test_fetch_raw_translated_transport_error_keeps_text_that_names_no_url(self) -> None:
+        """Tests that a transport failure whose text names no URL keeps that text for diagnosis."""
+        session = MagicMock()
+        session.get = MagicMock(side_effect=ClientError("connection reset by peer"))
+        with self.assertRaises(ClientError) as ctx:
+            asyncio.run(SafeFetch.fetch_raw("http://example.com/x", session))
+        self.assertEqual(
+            str(ctx.exception),
+            "url_not_accessible: Could not reach 'http://example.com/x': ClientError: connection reset by peer",
+        )
 
     def test_fetch_raw_redirect_without_location_raises_url_not_allowed(self) -> None:
         """Tests that a 3xx with no Location header (e.g. 304) raises url_not_allowed."""

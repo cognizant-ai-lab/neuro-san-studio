@@ -510,3 +510,14 @@ class TestUrlPolicy(TestCase):  # pylint: disable=too-many-public-methods
         self.assertEqual(UrlPolicy.redact_for_log(bad_port_url), expected)
         self.assertEqual(UrlPolicy.redact_for_log("https://user:pass@[::1/x"), "https://[::1/x")
         self.assertEqual(UrlPolicy.redact_for_log("https://user:pass@[::1"), "https://[::1")
+
+    def test_redact_urls_in_text_survives_a_quote_inside_the_url(self) -> None:
+        """Tests that an apostrophe inside a quoted URL does not end the match before its query."""
+        message: str = "Could not reach 'https://files.example.com/a'b?token=secret'."
+        redacted: str = UrlPolicy.redact_urls_in_text(message)
+        self.assertNotIn("secret", redacted)
+        self.assertEqual(redacted, "Could not reach 'https://files.example.com/a'b?[redacted]'.")
+
+    def test_redact_for_log_drops_userinfo_from_protocol_relative_unparseable_url(self) -> None:
+        """Tests that a protocol-relative Location urlparse rejects also loses its userinfo and query."""
+        self.assertEqual(UrlPolicy.redact_for_log("//user:pass@[::1/x?token=secret"), "//[::1/x?[redacted]")

@@ -876,7 +876,8 @@ class SafeFetch:
         :raises aiohttp.ClientResponseError: when exc is a ClientResponseError, tagged
                 too_many_requests or url_not_accessible.
         :raises aiohttp.ClientError: for any other transport failure, tagged url_not_accessible, with
-                the original's class name and redacted text in the message and no chained cause.
+                the original's class name in the message (and its text, unless that text names a
+                URL) and no chained cause.
         """
         if isinstance(exc, ClientResponseError):
             prefix: str = "too_many_requests" if exc.status == HTTPStatus.TOO_MANY_REQUESTS else "url_not_accessible"
@@ -901,9 +902,13 @@ class SafeFetch:
                 headers=exc.headers,
             ) from exc
         # Transport errors are not chained: aiohttp's message may quote the URL (InvalidURL does)
-        # and a traceback log would print the cause verbatim. The class name and the redacted text
-        # of the original are kept in the message instead, so nothing needed for diagnosis is lost.
+        # and a traceback log would print the cause verbatim. The class name is kept, and the
+        # original text only when it names no URL at all ("://" is the delimiter-independent test):
+        # a text-level redaction cannot be trusted to find the end of a quoted URL, so a message
+        # that quotes one is withheld rather than partially redacted.
+        detail: str = str(exc)
+        if "://" in detail:
+            detail = "[message withheld: it quotes a URL]"
         raise ClientError(
-            f"url_not_accessible: Could not reach '{UrlPolicy.redact_for_log(url)}': "
-            f"{type(exc).__name__}: {UrlPolicy.redact_urls_in_text(str(exc))}"
+            f"url_not_accessible: Could not reach '{UrlPolicy.redact_for_log(url)}': {type(exc).__name__}: {detail}"
         ) from None

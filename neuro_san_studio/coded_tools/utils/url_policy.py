@@ -41,12 +41,13 @@ MAX_URL_LENGTH: int = 2000
 # this set means IDNA could not canonicalize it and it is not a usable DNS name.
 HOSTNAME_ALLOWED_CHARS: frozenset[str] = frozenset("abcdefghijklmnopqrstuvwxyz0123456789.-_")
 # A URL with an authority ("scheme://...") embedded in free text, such as an error message. Any
-# scheme is matched, not only http(s): the redirect follower's url_not_allowed message quotes the
-# rejected Location verbatim, and that server-controlled value may be ftp://... or anything else
-# with a credential in its query. Quotes and angle brackets end a match because SafeFetch's
-# messages wrap the URL they name in single quotes. Case-insensitive because validate_url accepts
-# an upper-case scheme and hands the original spelling on.
-URL_IN_TEXT_PATTERN: re.Pattern[str] = re.compile(r"[a-z][a-z0-9+.-]*://[^\s'\"<>]+", re.IGNORECASE)
+# scheme is matched, not only http(s), and the match runs to the next whitespace: a URL may itself
+# contain quotes or brackets, so stopping at one would leave its query behind. Whatever quoting or
+# punctuation the surrounding text closed the URL with is peeled off again in _redact_match.
+# Case-insensitive because validate_url accepts an upper-case scheme and hands the spelling on.
+URL_IN_TEXT_PATTERN: re.Pattern[str] = re.compile(r"[a-z][a-z0-9+.-]*://\S+", re.IGNORECASE)
+# Characters that surrounding prose may attach to the end of a quoted URL; they are not part of it.
+URL_TRAILING_CHARS: frozenset[str] = frozenset(".,;:)]>'\"")
 
 
 class UrlPolicy:
@@ -352,9 +353,9 @@ class UrlPolicy:
         """
         url: str = match.group(0)
         trailing: str = ""
-        # The pattern cannot tell a sentence-ending dot right after a URL from a path that ends
-        # in a dot, so peel sentence punctuation off and re-append it after redaction.
-        while url and url[-1] in ".,;:)":
+        # The pattern runs to whitespace, so closing quotes, brackets and sentence punctuation
+        # that belong to the prose end up inside the match; peel them off, redact, re-append.
+        while url and url[-1] in URL_TRAILING_CHARS:
             trailing = url[-1] + trailing
             url = url[:-1]
         return UrlPolicy.redact_for_log(url) + trailing
@@ -374,10 +375,15 @@ class UrlPolicy:
         """
         head: str = url.split("?", 1)[0].split("#", 1)[0]
         marker: str = "" if head == url else "?[redacted]"
-        scheme_end: int = head.find("://")
-        if scheme_end == -1:
-            return head + marker
-        authority_start: int = scheme_end + 3
+        # The authority follows "scheme://", or starts right after a protocol-relative "//".
+        authority_start: int
+        if head.startswith("//"):
+            authority_start = 2
+        else:
+            scheme_end: int = head.find("://")
+            if scheme_end == -1:
+                return head + marker
+            authority_start = scheme_end + 3
         path_start: int = head.find("/", authority_start)
         authority: str = head[authority_start:] if path_start == -1 else head[authority_start:path_start]
         if "@" in authority:
