@@ -109,21 +109,21 @@ for warning in lister.warnings:
 """
 
 
-def _clean_env() -> Dict[str, str]:
-    """
-    Build the environment a fresh user's shell would have.
-
-    :return: An allow-listed copy of the test process's environment.
-    """
-    return {
-        key: value
-        for key, value in os.environ.items()
-        if key in INHERITED_VARIABLES or key.upper().startswith(INHERITED_PREFIXES)
-    }
-
-
 class PackagedProject:
     """A project scaffolded by the `ns` console script of a freshly installed wheel."""
+
+    @staticmethod
+    def clean_env() -> Dict[str, str]:
+        """
+        Build the environment a fresh user's shell would have.
+
+        :return: An allow-listed copy of the test process's environment.
+        """
+        return {
+            key: value
+            for key, value in os.environ.items()
+            if key in INHERITED_VARIABLES or key.upper().startswith(INHERITED_PREFIXES)
+        }
 
     def __init__(self, project_dir: Path, venv_dir: Path):
         """
@@ -134,7 +134,7 @@ class PackagedProject:
         bin_dir: Path = venv_dir / ("Scripts" if os.name == "nt" else "bin")
         self.python: Path = bin_dir / ("python.exe" if os.name == "nt" else "python")
         self.ns: Path = bin_dir / ("ns.exe" if os.name == "nt" else "ns")
-        self.env: Dict[str, str] = _clean_env()
+        self.env: Dict[str, str] = self.clean_env()
         self.env["PATH"] = os.pathsep.join([str(bin_dir), self.env.get("PATH", "")])
 
     def run(self, *args: str) -> subprocess.CompletedProcess:
@@ -193,7 +193,7 @@ def _build_wheel(dist_dir: Path) -> Path:
     # sys.path, and a leftover ``build/`` dir at the repo root (gitignored output of
     # ``python setup.py build``) would shadow the ``build`` package itself.
     dist_dir.mkdir(exist_ok=True)
-    env: Dict[str, str] = _clean_env()
+    env: Dict[str, str] = PackagedProject.clean_env()
     # The version comes from git metadata; CI checkouts are shallow, so it is pinned there.
     if "SETUPTOOLS_SCM_PRETEND_VERSION" in os.environ:
         env["SETUPTOOLS_SCM_PRETEND_VERSION"] = os.environ["SETUPTOOLS_SCM_PRETEND_VERSION"]
