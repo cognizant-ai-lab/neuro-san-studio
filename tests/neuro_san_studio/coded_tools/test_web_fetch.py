@@ -128,6 +128,28 @@ class TestWebFetch(TestCase):  # pylint: disable=too-many-public-methods
                 asyncio.run(self.tool.async_invoke({"url": "http://example.com/download?id=43"}, self.sly_data))
         self.assertIn("unsupported_content_type", str(ctx.exception))
 
+    def test_pdf_not_a_pdf_propagates_as_value_error(self) -> None:
+        """A not_a_pdf refusal from fetch_pdf_text surfaces as ValueError with its prefix intact.
+
+        not_a_pdf is a documented error of this tool: a link classified as PDF whose
+        body carries no "%PDF-" header (an HTML error page served as application/pdf)
+        must not be reported as a generic url_not_accessible parse failure.
+        """
+        refusal = ValueError("not_a_pdf: 'http://example.com/file.pdf' has no PDF header in its first 1024 bytes.")
+        with (
+            patch.object(
+                SafeFetch,
+                "get_content_type",
+                new=AsyncMock(return_value=("application/pdf", None, "http://example.com/file.pdf")),
+            ),
+            patch.object(SafeFetch, "fetch_pdf_text", new=AsyncMock(side_effect=refusal)) as mock_pdf,
+        ):
+            with self.assertRaises(ValueError) as ctx:
+                asyncio.run(self.tool.async_invoke({"url": "http://example.com/file.pdf"}, self.sly_data))
+
+        mock_pdf.assert_awaited_once()
+        self.assertIn("not_a_pdf", str(ctx.exception))
+
     def test_unsupported_content_type_raises(self):
         """Tests that an unsupported content type raises ValueError with unsupported_content_type."""
         for content_type in ("image/png", "image/svg+xml"):
