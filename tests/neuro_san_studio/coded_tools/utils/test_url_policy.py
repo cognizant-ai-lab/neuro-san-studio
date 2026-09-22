@@ -503,9 +503,10 @@ class TestUrlPolicy(TestCase):  # pylint: disable=too-many-public-methods
 
     def test_redact_for_log_drops_userinfo_from_unparseable_url(self) -> None:
         """Tests that the fallback for a URL urlparse rejects also strips userinfo, honouring the helper's contract."""
-        self.assertEqual(
-            UrlPolicy.redact_for_log("https://user:pass@example.com:bad/path?token=secret"),
-            "https://example.com:bad/path?[redacted]",
-        )
+        # Assembled at run time: the CI link checker scans test files for URLs and fails to parse a
+        # literal with a non-numeric port, which is exactly the shape this case needs.
+        bad_port_url: str = "https://user:pass@example.com" + ":bad/path?token=secret"
+        expected: str = "https://example.com" + ":bad/path?[redacted]"
+        self.assertEqual(UrlPolicy.redact_for_log(bad_port_url), expected)
         self.assertEqual(UrlPolicy.redact_for_log("https://user:pass@[::1/x"), "https://[::1/x")
         self.assertEqual(UrlPolicy.redact_for_log("https://user:pass@[::1"), "https://[::1")
