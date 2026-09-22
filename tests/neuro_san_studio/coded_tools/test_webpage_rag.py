@@ -210,6 +210,33 @@ class TestWebpageRag(TestCase):
         mock_raw.assert_not_awaited()
         self.assertEqual(docs[0].page_content, "PDF after redirect")
 
+    def test_pdf_not_a_pdf_is_skipped_and_logged(self) -> None:
+        """A PDF-classified URL whose body fails SafeFetch's header sniff is logged as not_a_pdf and skipped.
+
+        The ValueError lands in the broad per-URL catch: nothing is ingested for that
+        URL, the HTML path is never tried as a fallback, and the load does not abort.
+        """
+        refusal = ValueError("not_a_pdf: 'http://example.com/doc.pdf' has no PDF header in its first 1024 bytes.")
+        with (
+            patch.object(SafeFetch, "open_session", return_value=make_session_cm()),
+            patch.object(
+                SafeFetch,
+                "get_content_type",
+                new=AsyncMock(return_value=("application/pdf", None, "http://example.com/doc.pdf")),
+            ),
+            patch.object(SafeFetch, "fetch_pdf_text", new=AsyncMock(side_effect=refusal)) as mock_pdf,
+            patch.object(SafeFetch, "fetch_raw", new=AsyncMock(return_value=HTML_PAGE)) as mock_raw,
+        ):
+            with self.assertLogs("neuro_san_studio.coded_tools.webpage_rag", level="ERROR") as logs:
+                docs = self._load(["http://example.com/doc.pdf"])
+
+        self.assertEqual(docs, [])
+        mock_pdf.assert_awaited_once()
+        mock_raw.assert_not_awaited()
+        joined_logs: str = "\n".join(logs.output)
+        self.assertIn("not_a_pdf", joined_logs)
+        self.assertIn("http://example.com/doc.pdf", joined_logs)
+
     def test_unsupported_binary_type_is_skipped(self):
         """A binary content type (image) is skipped without decoding it as text or PDF."""
         with (

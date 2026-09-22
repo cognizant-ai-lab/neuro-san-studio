@@ -55,8 +55,8 @@ class WebFetch(CodedTool):
     hops with every hop re-validated as a brand-new URL (including this tool's own
     allowed_domains / blocked_domains, which are forwarded to SafeFetch for that
     purpose), and response sizes are capped. HTML is stripped with BeautifulSoup;
-    PDF bodies are parsed with pypdf. Use allowed_domains / blocked_domains for
-    stricter control.
+    PDF bodies are sniffed for a "%PDF-" header while streaming, then parsed with
+    pypdf. Use allowed_domains / blocked_domains for stricter control.
 
     Error types (raised as ValueError or aiohttp.ClientResponseError or aiohttp.ClientError with the specified message)
         invalid_input            – URL is missing, not a valid http/https URL, or a parameter has an invalid type.
@@ -67,6 +67,8 @@ class WebFetch(CodedTool):
         too_many_requests        – Server returned HTTP 429.
         unsupported_content_type – Content type is not an approved text, XML, feed, JSON, HTML, or PDF type.
         response_too_large       – Content-Length header or streamed body (text or PDF) exceeds the byte limit.
+        not_a_pdf                – Body classified as PDF has no "%PDF-" header in its first bytes
+                                    (e.g. an HTML error page served as application/pdf).
     """
 
     async def async_invoke(self, args: dict[str, Any], sly_data: dict[str, Any]) -> dict[str, Any]:
@@ -95,7 +97,7 @@ class WebFetch(CodedTool):
                 "retrieved_at" (str): ISO-8601 UTC timestamp when the content was retrieved.
 
         :raises ValueError: invalid_input, url_too_long, url_not_allowed,
-                            unsupported_content_type, response_too_large.
+                            unsupported_content_type, response_too_large, not_a_pdf.
         :raises aiohttp.ClientResponseError: url_not_accessible / too_many_requests (non-2xx response).
         :raises aiohttp.ClientError: url_not_accessible when PDF or text fetch fails.
         """
