@@ -254,7 +254,10 @@ class WebpageRag(CodedTool, BaseRag):
                 # classification from the same place (the probe re-validated every hop,
                 # and the fetch re-validates final_url at entry). Recording final_url as
                 # the source means citations point at the document, not the redirector,
-                # and two configured links to one document collapse to one source.
+                # and two configured links to one document collapse to one source. The
+                # source is the probe's terminal URL: a redirect that appears only at fetch
+                # time is followed by SafeFetch under the same rules, but its fetch methods
+                # return the body alone, so it is not reflected here.
                 if SafeFetch.is_pdf(content_type, final_url):
                     pdf_text: str = await SafeFetch.fetch_pdf_text(final_url, session)
                     # PDFs carry no HTML metadata; record only the source.

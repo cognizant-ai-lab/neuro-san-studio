@@ -94,8 +94,10 @@ class WebFetch(CodedTool):
         :return:
             A dictionary with the following keys:
                 "url"          (str): The URL that was requested.
-                "final_url"    (str): The URL the content was fetched from, after any
-                                      redirects (equal to "url" when there were none).
+                "final_url"    (str): The URL the probe ended on after redirects, and the URL
+                                      the body fetch started from (equal to "url" when there
+                                      were none). A redirect that appears only at fetch time
+                                      is followed under the same rules but is not reported here.
                 "content"      (str): Plain-text body of the fetched page.
                 "retrieved_at" (str): ISO-8601 UTC timestamp when the content was retrieved.
 
@@ -129,11 +131,14 @@ class WebFetch(CodedTool):
             # A link that redirects to a .pdf served as a generic download type is a PDF
             # even though the requested URL carries no .pdf suffix. Starting the body
             # fetch at final_url instead of the requested URL avoids walking the redirect
-            # chain a second time and guarantees the body comes from the same place the
-            # classification did: a rotating or expiring redirect could otherwise send
-            # the second walk elsewhere and hand a PDF body to the HTML stripper (or the
-            # reverse). Nothing is skipped by this: the probe re-validated every hop under
-            # the same domain rules, and the fetch re-validates final_url at entry again.
+            # chain a second time and keeps the body and the classification from the same
+            # place: a rotating or expiring redirect could otherwise send the second walk
+            # elsewhere and hand a PDF body to the HTML stripper (or the reverse). One
+            # window remains: a redirect that appears only at fetch time is followed by
+            # SafeFetch under the same rules, but its fetch methods return the body alone,
+            # so final_url stays the probe's terminal URL. Nothing is skipped by this: the
+            # probe re-validated every hop under the same domain rules, and the fetch
+            # re-validates final_url at entry again.
             is_pdf: bool = SafeFetch.is_pdf(content_type, final_url)
 
             if not is_pdf and not self._is_supported_content_type(content_type):
