@@ -64,6 +64,11 @@
 
     "tools/ddgs_search.hocon": true,
 
+    # Firecrawl Search via the hosted Firecrawl MCP server. Works with no API key (rate limited per IP);
+    # set FIRECRAWL_API_KEY and uncomment the header in mcp_info.hocon for higher limits. The "tools"
+    # list in that mcp_info.hocon entry controls which Firecrawl tools the agent sees.
+    "tools/firecrawl_search.hocon": true,
+
     # Requirement to use this agent network:
     # - google-genai
     # - GOOGLE_API_KEY
@@ -136,8 +141,6 @@
     "tools/openai_video_generation.hocon": false,
     "tools/openai_web_search.hocon": true,
 
-    # To use this agent network, start by installing the required package:
-    #     pip install pymupdf >= 1.25.5
     "tools/pdf_rag.hocon": false,
     
     # File system-backed long-term memory tool (per-agent): CRUD + keyword search.
@@ -151,6 +154,12 @@
     # - ``MEM0_API_KEY`` environment variable.
     # Refer to ``docs/examples/tools/persistent_memory_mem0.md`` for a usage example.
     "tools/persistent_memory_mem0.hocon": false,
+
+    # Requirement to use this agent network:
+    # - neuro-san>=0.6.24
+    # - SERPLY_API_KEY. Get one with 2,500 free credits (no credit card required) at https://serply.io
+    # - Use MCP_SERVERS_INFO_FILE for authentication. See ../../neuro_san_studio/mcp/mcp_info.hocon and ../../docs/user_guide.md#authentication
+    "tools/serply_search.hocon": false,
 
     # To use this agent network, follow the instructions in ./docs/examples/visual_question_answering.md
     "tools/visual_question_answering.hocon": false,

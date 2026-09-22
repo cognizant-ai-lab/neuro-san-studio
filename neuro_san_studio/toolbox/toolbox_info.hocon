@@ -390,10 +390,11 @@
         }
     },
 
-    # To use tool, start by installing the required package:
-    #     pip install pymupdf >= 1.25.5
     "pdf_rag": {
         # This is a coded tool for RAG on PDF files.
+        # PDFs are fetched through the shared SSRF-hardened SafeFetch path and
+        # parsed with pypdf, which ships with this repo's requirements — no extra
+        # package install is needed.
         "class": "neuro_san_studio.coded_tools.pdf_rag.PdfRag",
         "description": "Retrieve information from the given PDF files",
         "parameters": {

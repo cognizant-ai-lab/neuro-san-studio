@@ -87,6 +87,7 @@ in the RFP.
    - Additional info on [DDGS Search](https://github.com/deedy5/ddgs).
 
 2. **rag_retriever**
+   - Powered by the shared `pdf_rag` toolbox tool (see [PDF RAG](pdf_rag.md)).
    - Uses a Retrieval-Augmented Generation pipeline.
    - Accepts a `query` and returns answers based on embedded PDF documents.
    - Useful for answering domain-specific or internal document-based questions.
@@ -106,7 +107,8 @@ These tools are independently defined and invoked by the frontman agent:
     - Accepts configurable arguments like number of results.
 
 - **RAG PDF Retriever (`rag_retriever`)**
-    - Loads a remote PDF, builds an in-memory vectorstore, and answers questions from it.
+    - Loads a remote PDF through the SSRF-hardened fetch path, builds an in-memory vectorstore,
+      and answers questions from it.
     - Ideal for scenarios where precise answers are locked inside static documents.
 
 - **Slack Message Retriever (`slack_tool`)**
