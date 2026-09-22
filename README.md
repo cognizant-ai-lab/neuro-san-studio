@@ -370,6 +370,7 @@ See [`docs/cli/export.md`](docs/cli/export.md) for details.
 | `ns export`         | Bundle a network from the current project into a shareable file. | Positional: network name (e.g. `music_nerd` or `basic/music_nerd`). `-o` / `--output` to set the output path. Omit args for interactive picker.                                 |
 | `ns check-llm-keys` | Validate LLM API keys / env vars.                                | `--tier 1` (placeholder), `--tier 2` (format), `--tier 3` (live API call, default)                                                                                              |
 | `ns check-config`   | Validate the LLM configurations in a HOCON file.                 | `--hocon-path` (defaults to `config/llm_config.hocon`)                                                                                                                          |
+| `ns validate`       | Validate the structure of an agent network HOCON file.           | Positional: HOCON path. `--verbose`, `--manifest`, `--external-agents`, `--registry-dir`. References to other networks (`/name`) are checked against the networks served by the manifest.                                    |
 
 <!-- pyml enable line-length -->
 

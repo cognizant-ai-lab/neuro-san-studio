@@ -24,10 +24,14 @@ from unittest import TestCase
 
 from middleware.agent_network_designer.persistence.agent_network_metadata_block import AgentNetworkMetadataBlock
 
-# Fixed timestamps a block the client sends back already carries; the block class must neither
-# drop nor rewrite them (timestamps are stamped elsewhere, in a later PR).
+# Fixed timestamps a block the client sends back already carries; construction and merge_sample_queries()
+# must neither drop nor rewrite them, and stamp_file_dates() may rewrite only date_modified.
 OLD_CREATED_STAMP: str = "2020-01-02T03:04:05+00:00"
 OLD_MODIFIED_STAMP: str = "2021-06-07T08:09:10+00:00"
+# What the persistence middleware reads from its clock on a file-mode save and hands to stamp_file_dates();
+# two distinct values, so a second save is distinguishable from the first.
+NOW_STAMP: str = "2026-09-16T10:11:12+00:00"
+LATER_STAMP: str = "2026-09-16T10:20:30+00:00"
 
 # The name of the stdlib logger AgentNetworkMetadataBlock.LOGGER wraps, as declared in the source.
 LOGGER_NAME: str = "AgentNetworkMetadataBlock"
@@ -40,11 +44,13 @@ class TestAgentNetworkMetadataBlock(TestCase):  # pylint: disable=too-many-publi
     """
     Unit tests for AgentNetworkMetadataBlock.
 
-    Covers the three things a block does for one request: sanitizing on construction (storage-owned
+    Covers the four things a block does for one request: sanitizing on construction (storage-owned
     and None-valued keys stripped, entries a HOCON file cannot hold as written dropped with a warning
     naming their path and source, everything deep-copied), merge_sample_queries() (the freshly
-    generated queries as the only overlay, filtered the same way, the block kept whole otherwise) and
-    as_dict() (a deep copy on every call). The class constants are pinned as well.
+    generated queries as the only overlay, filtered the same way, the block kept whole otherwise),
+    stamp_file_dates() (date_created set once and kept, date_modified set on every call, from a value
+    the caller reads off the clock) and as_dict() (a deep copy on every call). The class constants are
+    pinned as well.
     """
 
     @staticmethod
@@ -418,6 +424,89 @@ class TestAgentNetworkMetadataBlock(TestCase):  # pylint: disable=too-many-publi
         self.assertEqual(block.as_dict(), {"sample_queries": ["fresh"]})
         self.assertEqual(queries, ["fresh", "mutated"])
 
+    # --------------------------------------------------------- stamp_file_dates
+
+    def test_stamp_file_dates_on_empty_block_sets_both_dates_to_now(self) -> None:
+        """
+        On an empty block stamp_file_dates(now) sets date_created and date_modified, both to now so a first
+        save shows one instant, and in that order so the file lists the creation date first.
+        """
+        block: AgentNetworkMetadataBlock = AgentNetworkMetadataBlock(None, SOURCE)
+
+        result: dict[str, Any] = block.stamp_file_dates(NOW_STAMP).as_dict()
+
+        self.assertEqual(result, {"date_created": NOW_STAMP, "date_modified": NOW_STAMP})
+        # Dict equality ignores order, so check the key order explicitly.
+        self.assertEqual(list(result.keys()), ["date_created", "date_modified"])
+
+    def test_stamp_file_dates_keeps_date_created_and_rewrites_date_modified(self) -> None:
+        """
+        A block that already carries date_created keeps it while date_modified is rewritten to now; every
+        other key (description, tags, sample_queries, owner and a nested dict) is exactly as it was, and
+        no key moves, since both date keys already had a place.
+        """
+        candidate: dict[str, Any] = self._client_block()
+        candidate["nested"] = {"k": [1], "inner": {"x": "y"}}
+        expected: dict[str, Any] = deepcopy(candidate)
+        expected["date_modified"] = NOW_STAMP
+        block: AgentNetworkMetadataBlock = AgentNetworkMetadataBlock(candidate, SOURCE)
+
+        result: dict[str, Any] = block.stamp_file_dates(NOW_STAMP).as_dict()
+
+        self.assertEqual(result, expected)
+        self.assertEqual(result["date_created"], OLD_CREATED_STAMP)
+        self.assertEqual(result["date_modified"], NOW_STAMP)
+        # The previous modification stamp must really have been replaced, not merely kept.
+        self.assertNotEqual(result["date_modified"], OLD_MODIFIED_STAMP)
+        self.assertEqual(list(result.keys()), list(expected.keys()))
+
+    def test_stamp_file_dates_returns_the_same_instance_and_chains(self) -> None:
+        """
+        stamp_file_dates() returns the very block it was called on, so that
+        merge_sample_queries(...).stamp_file_dates(now).as_dict() chains and the dict holds the generated
+        queries and both stamps alongside what the block already had.
+        """
+        block: AgentNetworkMetadataBlock = AgentNetworkMetadataBlock({"description": "a network"}, SOURCE)
+
+        self.assertIs(block.stamp_file_dates(NOW_STAMP), block)
+
+        chained: AgentNetworkMetadataBlock = AgentNetworkMetadataBlock({"description": "a network"}, SOURCE)
+        result: dict[str, Any] = chained.merge_sample_queries(["fresh"]).stamp_file_dates(NOW_STAMP).as_dict()
+
+        self.assertEqual(
+            result,
+            {
+                "description": "a network",
+                "sample_queries": ["fresh"],
+                "date_created": NOW_STAMP,
+                "date_modified": NOW_STAMP,
+            },
+        )
+
+    def test_stamp_file_dates_logs_nothing(self) -> None:
+        """
+        Stamping is not a sanitizing step: neither a first stamp on an empty block nor a re-stamp of a block
+        that already carries both dates logs anything on the block's logger, at any level.
+        """
+        # Built outside the context so that only the stamping itself is under observation.
+        empty: AgentNetworkMetadataBlock = AgentNetworkMetadataBlock(None, SOURCE)
+        full: AgentNetworkMetadataBlock = AgentNetworkMetadataBlock(self._client_block(), SOURCE)
+
+        with self.assertNoLogs(LOGGER_NAME, level="DEBUG"):
+            empty.stamp_file_dates(NOW_STAMP)
+            full.stamp_file_dates(NOW_STAMP)
+
+    def test_stamp_file_dates_twice_keeps_first_created_and_takes_second_modified(self) -> None:
+        """
+        Stamping twice with different values, as two saves of one file do, keeps the first date_created and
+        takes the second date_modified.
+        """
+        block: AgentNetworkMetadataBlock = AgentNetworkMetadataBlock(None, SOURCE)
+
+        result: dict[str, Any] = block.stamp_file_dates(NOW_STAMP).stamp_file_dates(LATER_STAMP).as_dict()
+
+        self.assertEqual(result, {"date_created": NOW_STAMP, "date_modified": LATER_STAMP})
+
     # ------------------------------------------------------------------ as_dict
 
     def test_as_dict_returns_deep_copies_each_call(self) -> None:
@@ -471,10 +560,11 @@ class TestAgentNetworkMetadataBlock(TestCase):  # pylint: disable=too-many-publi
 
     def test_key_constants(self) -> None:
         """
-        SAMPLE_QUERIES_KEY and DATE_CREATED_KEY name the keys the assemblers and UIs read.
+        SAMPLE_QUERIES_KEY, DATE_CREATED_KEY and DATE_MODIFIED_KEY name the keys the assemblers and UIs read.
         """
         self.assertEqual(AgentNetworkMetadataBlock.SAMPLE_QUERIES_KEY, "sample_queries")
         self.assertEqual(AgentNetworkMetadataBlock.DATE_CREATED_KEY, "date_created")
+        self.assertEqual(AgentNetworkMetadataBlock.DATE_MODIFIED_KEY, "date_modified")
 
     def test_storage_owned_keys(self) -> None:
         """

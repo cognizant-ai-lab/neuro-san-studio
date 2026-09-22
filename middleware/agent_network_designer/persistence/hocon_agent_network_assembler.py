@@ -164,15 +164,19 @@ class HoconAgentNetworkAssembler(AgentNetworkAssembler):
         use_network_def: dict[str, Any] = shallow_copy(network_def)
         use_network_def = self._move_top_agent_first(use_network_def, top_agent_name)
 
-        # Idempotent when a caller already built the block: the same queries overlay the same block.
+        # Idempotent when the persistence middleware already built the block: the same queries
+        # overlay the same block.
         block: dict[str, Any] = (
             AgentNetworkMetadataBlock(metadata, f"agent network {agent_network_name}")
             .merge_sample_queries(sample_queries)
             .as_dict()
         )
-        # The header keeps stamping date_created on a block that has none, as it always did, so
-        # generated files do not lose the date before the persistence middleware takes over the
-        # timestamps (#1422). A block that already carries one keeps it.
+        # A rendered file always carries a creation date: this text is what a client downloads
+        # and drops into a registries directory, so a block that has none is stamped here, as the
+        # header always did. In file mode the persistence middleware has already stamped both
+        # dates and this is a no-op. In reservations mode the block deliberately has no studio
+        # dates (a reservation is a new network on every save; neuro-san records its write time
+        # as stored_at), so only the downloadable text gets the date, not the deployed spec.
         block.setdefault(AgentNetworkMetadataBlock.DATE_CREATED_KEY, datetime.now(tz=timezone.utc).isoformat())
         header: str = self._build_header(agent_network_name, block)
 

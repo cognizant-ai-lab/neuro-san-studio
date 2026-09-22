@@ -21,9 +21,6 @@ from collections.abc import AsyncGenerator
 from contextlib import AbstractAsyncContextManager
 from contextlib import asynccontextmanager
 from http import HTTPStatus
-from ipaddress import IPv4Address
-from ipaddress import IPv6Address
-from ipaddress import ip_address
 from typing import Any
 from typing import NoReturn
 from urllib.parse import ParseResult
@@ -31,25 +28,19 @@ from urllib.parse import parse_qs
 from urllib.parse import urljoin
 from urllib.parse import urlparse
 
-import idna
 from aiohttp import ClientError
 from aiohttp import ClientResponseError
 from aiohttp import ClientSession
 from aiohttp import ClientTimeout
 from aiohttp import DummyCookieJar
 from aiohttp import TCPConnector
-from aiohttp.helpers import is_ip_address
 from bs4 import BeautifulSoup
 
 from neuro_san_studio.coded_tools.utils.global_only_resolver import GlobalOnlyResolver
+from neuro_san_studio.coded_tools.utils.pdf_utils import PDF_HEADER_WINDOW
 from neuro_san_studio.coded_tools.utils.pdf_utils import PdfUtils
+from neuro_san_studio.coded_tools.utils.url_policy import UrlPolicy
 
-# Maximum accepted URL length, shared by every tool on this path (WebFetch and
-# the RAG loaders) so they all accept the same URLs. 2000 is what browsers and
-# CDNs commonly tolerate, and it leaves room for presigned object-store links
-# (S3/Azure SAS), which routinely run 300-1000+ characters; anything longer is
-# far more likely malformed or hostile than legitimate.
-MAX_URL_LENGTH: int = 2000
 # Maximum bytes accepted via Content-Length header before downloading; also the
 # running cap enforced on streamed response bodies (text and PDF alike). One
 # shared limit for every tool on this path: large enough for real-world PDF
@@ -81,28 +72,25 @@ GENERIC_DOWNLOAD_CONTENT_TYPES: frozenset[str] = frozenset(
         "application/force-download",
     }
 )
-# Characters permitted in a canonical (post-IDNA, lower-cased) DNS hostname. IP
-# literals are validated separately; a genuine hostname containing anything outside
-# this set means IDNA could not canonicalize it and it is not a usable DNS name.
-HOSTNAME_ALLOWED_CHARS: frozenset[str] = frozenset("abcdefghijklmnopqrstuvwxyz0123456789.-_")
 
 
 class SafeFetch:
     """
     Shared SSRF-hardened URL fetching for coded tools that retrieve remote content.
 
-    Currently used by WebFetch; intended for reuse by the RAG tools (webpage RAG,
-    PDF RAG) as they migrate onto it.
+    Used by WebFetch, WebpageRag and PdfRag.
 
     SSRF protection blocks private/loopback/reserved ranges and localhost.
-    Localhost names and IP literals are rejected up front (validate_hostname_safety);
-    other hostnames are validated at connection time by GlobalOnlyResolver, which
-    requires every DNS record to be globally routable and closes the DNS-rebinding
-    gap. Every network method (get_content_type, fetch_raw, download_pdf_bytes, and
-    the fetch_text/fetch_pdf_text wrappers built on them) re-validates the URL at
-    entry, so the SSRF policy holds even for a caller that skipped validate_url; all
-    requests must still go through a session created by open_session to inherit the
-    connection-time resolver check.
+    The URL-level rules live in UrlPolicy (scheme, MAX_URL_LENGTH, hostname
+    canonicalization, the caller's allowed_domains / blocked_domains, and the
+    up-front rejection of localhost names and IP literals); validate_url on this
+    class delegates to it. Ordinary hostnames are validated at connection time by
+    GlobalOnlyResolver, which requires every DNS record to be globally routable and
+    closes the DNS-rebinding gap. Every network method (get_content_type, fetch_raw,
+    download_pdf_bytes, and the fetch_text/fetch_pdf_text wrappers built on them)
+    re-validates the URL at entry, so the SSRF policy holds even for a caller that
+    skipped validate_url; all requests must still go through a session created by
+    open_session to inherit the connection-time resolver check.
     Redirects are followed manually, up to MAX_REDIRECTS hops, and every Location
     target is re-validated with validate_url (including the caller's domain rules)
     before it is requested; a hop that fails validation, a 3xx without a Location,
@@ -112,7 +100,8 @@ class SafeFetch:
     The byte cap (MAX_RESPONSE_BYTES) is enforced both via the Content-Length header
     (pre-check) and on the actual streamed bytes, for text fetches and PDF downloads
     alike, so a server that lies about or omits Content-Length cannot deliver an
-    oversized body.
+    oversized body. A PDF download is also sniffed for a "%PDF-" header within its
+    first PDF_HEADER_WINDOW bytes and refused (not_a_pdf) before the rest is read.
 
     Error types (raised as ValueError or aiohttp.ClientResponseError or aiohttp.ClientError with the specified message)
         invalid_input            – URL is missing, not a valid http/https URL, or a parameter has an invalid type.
@@ -122,6 +111,7 @@ class SafeFetch:
         url_not_accessible       – HTTP error or network failure while fetching the page.
         too_many_requests        – Server returned HTTP 429.
         response_too_large       – Content-Length header or streamed body exceeds MAX_RESPONSE_BYTES.
+        not_a_pdf                – PDF download has no "%PDF-" header in its first PDF_HEADER_WINDOW bytes.
     """
 
     @staticmethod
@@ -192,6 +182,10 @@ class SafeFetch:
         """
         Validate a URL's format, length, and domain rules and return the cleaned URL.
 
+        Delegates to UrlPolicy.validate_url. Kept on SafeFetch so the tools (WebFetch,
+        WebpageRag, PdfRag) have one entry point for validating and fetching; the
+        network methods and the redirect follower on this class call UrlPolicy directly.
+
         :param url_value: The candidate URL; must be an http/https string.
         :param allowed_domains: Optional allow-list (str or list[str]); if non-empty,
                                 the host must equal or be a subdomain of one entry.
@@ -201,190 +195,28 @@ class SafeFetch:
         :raises ValueError: invalid_input, url_too_long, or url_not_allowed when the
                 URL fails any format, length, domain, or hostname-safety check.
         """
-        if not isinstance(url_value, str):
-            raise ValueError(f"invalid_input: 'url' must be a string, got {url_value!r}.")
-
-        url: str = url_value.strip()
-        if not url:
-            raise ValueError("invalid_input: No 'url' provided.")
-
-        # urlparse itself raises ValueError on some malformed authorities (e.g. an
-        # unmatched IPv6 bracket "https://[::1/"); translate it to invalid_input
-        # rather than let the raw ValueError escape the documented contract.
-        try:
-            parsed: ParseResult = urlparse(url)
-        except ValueError as exc:
-            raise ValueError(f"invalid_input: URL is malformed: {exc}") from exc
-
-        if parsed.scheme not in ("http", "https"):
-            raise ValueError(f"invalid_input: URL must use http or https scheme, got '{parsed.scheme}'.")
-
-        if len(url) > MAX_URL_LENGTH:
-            raise ValueError(f"url_too_long: URL exceeds maximum length of {MAX_URL_LENGTH} characters.")
-
-        raw_hostname: str | None = parsed.hostname
-        if not raw_hostname:
-            raise ValueError("invalid_input: URL must include a hostname.")
-
-        # urlparse defers port validation until parsed.port is accessed, so a
-        # non-numeric or out-of-range port would otherwise slip through and fail
-        # later inside aiohttp with an untranslated ValueError.
-        try:
-            _ = parsed.port
-        except ValueError as exc:
-            raise ValueError(f"invalid_input: URL has an invalid port: {exc}") from exc
-
-        # Canonicalize the host the same way aiohttp/yarl will before connecting, so
-        # every domain and safety check runs on the exact form the request targets.
-        # parsed.hostname strips the port/credentials; _to_ascii_host applies IDNA
-        # (Unicode IDN -> punycode) and maps Unicode dot separators (U+3002 and
-        # friends) to ASCII '.'.
-        hostname: str = SafeFetch._to_ascii_host(raw_hostname.lower())
-        # Strip the DNS root-label dot only AFTER IDNA encoding: a Unicode trailing
-        # dot becomes a strippable ASCII '.' during encoding. Doing this before the
-        # domain and hostname-safety checks stops DNS-equivalent spellings
-        # ("example.com.", "example.com。", "localhost。") from bypassing the block
-        # list or the loopback guard.
-        hostname = hostname.rstrip(".")
-        # A root-only authority ("http://./", "http://../") has a non-empty
-        # parsed.hostname but canonicalizes to an empty string here; reject it as
-        # invalid_input rather than let an empty host slip past the checks and reach
-        # DNS.
-        if not hostname:
-            raise ValueError("invalid_input: URL must include a valid hostname.")
-
-        allowed: list[str] = SafeFetch.validate_domain_list(allowed_domains, "allowed_domains")
-        if allowed and not SafeFetch._hostname_matches_any(hostname, allowed):
-            raise ValueError(f"url_not_allowed: Domain '{hostname}' is not in the allowed_domains list.")
-
-        blocked: list[str] = SafeFetch.validate_domain_list(blocked_domains, "blocked_domains")
-        if blocked and SafeFetch._hostname_matches_any(hostname, blocked):
-            raise ValueError(f"url_not_allowed: Domain '{hostname}' is blocked.")
-
-        SafeFetch.validate_hostname_safety(hostname)
-
-        return url
-
-    @staticmethod
-    def _hostname_matches_any(hostname: str, domains: list[str]) -> bool:
-        """
-        Return whether a hostname matches any domain under a strict boundary.
-
-        A domain entry "example.com" matches the host "example.com" and any
-        subdomain "sub.example.com", but not "badexample.com". Matching is
-        case-insensitive.
-
-        :param hostname: The host to test, already canonicalized by validate_url
-                (lower-cased, IDNA-ASCII, root-label dot stripped).
-        :param domains: The domain entries to test against.
-        :return: True if the hostname equals or is a subdomain of any entry.
-        """
-        # Canonicalize each entry the same way the host was (IDNA-ASCII + trailing
-        # dot stripped) so both sides compare in the form aiohttp connects to; a
-        # Unicode IDN spelling and its punycode entry (or a "example.com." FQDN
-        # entry) would otherwise miss and bypass the configured block/allow rule.
-        for domain in domains:
-            lowered: str = SafeFetch._to_ascii_host(domain.lower()).rstrip(".")
-            if hostname == lowered or hostname.endswith("." + lowered):
-                return True
-        return False
-
-    @staticmethod
-    def _to_ascii_host(host: str) -> str:
-        """
-        Return the IDNA (punycode) ASCII form of a host for domain-policy matching.
-
-        aiohttp/yarl connect to the IDNA-ASCII form of a Unicode host, and yarl uses
-        this same "idna" package, so matching in its UTS#46 form gives exact parity
-        with what the request targets. Falls back to the input unchanged when it
-        cannot be encoded (IP literals, underscore labels, invalid IDN input), which
-        leaves ASCII inputs exactly as the raw comparison saw them and defers those
-        cases to the other checks.
-
-        :param host: The already-lower-cased host or domain entry to canonicalize.
-        :return: The IDNA-ASCII form, or the input unchanged if it cannot be encoded.
-        """
-        try:
-            return idna.encode(host, uts46=True).decode("ascii")
-        except (idna.IDNAError, UnicodeError):
-            return host
+        return UrlPolicy.validate_url(url_value, allowed_domains, blocked_domains)
 
     @staticmethod
     def validate_hostname_safety(hostname: str) -> None:
         """
         Reject localhost names and IP literals that are not globally routable.
 
-        Non-IP hostnames are intentionally NOT DNS-resolved here: their records are
-        validated at connection time by GlobalOnlyResolver on the session's
-        TCPConnector, which checks the exact addresses the client connects to and
-        therefore prevents DNS rebinding (a pre-fetch check could be answered with a
-        safe address and rebound to an internal one before the connection).
-
-        IP literals must be checked up front because aiohttp short-circuits them in
-        TCPConnector._resolve_host and never calls the resolver for them. Zoned IPv6
-        literals (e.g. "fe80::1%eth0") are parsed by ip_address() on Python >= 3.9 and
-        validated like any other literal; strings that ip_address() cannot parse but
-        that contain characters illegal in DNS hostnames ('%' or ':') are rejected
-        outright, because aiohttp's own literal detection may still treat them as IP
-        literals and bypass the resolver. For the same reason, a host that aiohttp's
-        is_ip_address() accepts but ipaddress.ip_address() cannot parse (e.g. the
-        integer form "2130706433" or shorthand "127.1", which resolve to loopback)
-        is rejected rather than deferred to a resolver that will never run for it.
+        Delegates to UrlPolicy.validate_hostname_safety; see it for the rationale.
 
         :param hostname: The already-lower-cased host to check.
-        :raises ValueError: url_not_allowed when the host is localhost, an
-                unparseable/zoned/shorthand IP literal, or a non-global IP literal;
-                invalid_input when a genuine hostname holds characters that are not
-                valid in a DNS name (IDNA could not canonicalize it).
+        :raises ValueError: url_not_allowed for localhost or a non-global / unsupported
+                IP literal; invalid_input for a hostname holding characters that are
+                not valid in a DNS name.
         """
-        if hostname == "localhost" or hostname.endswith(".localhost"):
-            raise ValueError(f"url_not_allowed: Host '{hostname}' targets a loopback address.")
-
-        addr: IPv4Address | IPv6Address
-        try:
-            addr = ip_address(hostname)
-        except ValueError as parse_exc:
-            if "%" in hostname or ":" in hostname:
-                # Not parseable as an IP address, yet it cannot be a DNS hostname
-                # either: '%' and ':' are illegal in hostnames. Treat it as a
-                # malformed or zoned IP literal and fail closed — aiohttp may
-                # consider such strings IP literals and skip GlobalOnlyResolver,
-                # so anything ip_address() cannot vouch for must not pass.
-                raise ValueError(
-                    f"url_not_allowed: Host '{hostname}' is not a valid hostname or IP address."
-                ) from parse_exc
-            if is_ip_address(hostname):
-                # ip_address() could not parse this, but aiohttp's own literal
-                # detection (the exact is_ip_address() check TCPConnector uses to
-                # decide whether to skip the resolver) does treat it as an IP
-                # literal — e.g. the 32-bit integer form "2130706433" or
-                # dotted-shorthand "127.1", both of which the OS resolves to
-                # 127.0.0.1. aiohttp will connect to it without ever calling
-                # GlobalOnlyResolver, and ip_address() cannot vouch that it is
-                # globally routable, so fail closed instead of deferring to a
-                # resolver that will never run for it.
-                raise ValueError(
-                    f"url_not_allowed: Host '{hostname}' is an unsupported IP-literal form."
-                ) from parse_exc
-            # A genuine (non-IP) hostname. If IDNA could not canonicalize it,
-            # _to_ascii_host returned it unchanged, so reject any host still holding
-            # characters invalid in a DNS name (e.g. a space or '$'): that is a
-            # malformed URL and must surface as invalid_input here rather than fail
-            # later inside aiohttp/yarl with an off-contract error. Otherwise
-            # GlobalOnlyResolver validates its DNS records at connection time.
-            for char in hostname:
-                if char not in HOSTNAME_ALLOWED_CHARS:
-                    raise ValueError(
-                        f"invalid_input: Host '{hostname}' contains characters that are not valid in a hostname."
-                    ) from parse_exc
-            return
-
-        GlobalOnlyResolver.ensure_global_address(hostname, addr)
+        UrlPolicy.validate_hostname_safety(hostname)
 
     @staticmethod
     def validate_domain_list(value: Any, param_name: str) -> list[str]:
         """
         Coerce and validate a domain-list parameter.
+
+        Delegates to UrlPolicy.validate_domain_list.
 
         :param value: The parameter to coerce; accepts None, a single str, or a
                       list[str].
@@ -393,19 +225,7 @@ class SafeFetch:
         :raises ValueError: invalid_input when value is neither None, str, nor a
                 list of strings.
         """
-        if value is None:
-            return []
-        if isinstance(value, str):
-            return [value]
-        if not isinstance(value, list):
-            raise ValueError(f"invalid_input: '{param_name}' must be a list of strings, got {value!r}.")
-        for item in value:
-            if not isinstance(item, str):
-                raise ValueError(
-                    f"invalid_input: '{param_name}' must be a list of strings, "
-                    f"but contains non-string element {item!r}."
-                )
-        return value
+        return UrlPolicy.validate_domain_list(value, param_name)
 
     @staticmethod
     def is_redirection(status: int) -> bool:
@@ -516,7 +336,7 @@ class SafeFetch:
                 # then rejects. urljoin parses the server-controlled value and can itself
                 # raise ValueError (an unmatched IPv6 bracket), hence inside this try.
                 next_url = urljoin(current_url, location)
-                validated_next: str = SafeFetch.validate_url(next_url, allowed_domains, blocked_domains)
+                validated_next: str = UrlPolicy.validate_url(next_url, allowed_domains, blocked_domains)
             except ValueError as exc:
                 # validate_url phrases its errors (invalid_input / url_too_long /
                 # url_not_allowed) from the perspective of a caller-supplied URL, but a
@@ -675,7 +495,7 @@ class SafeFetch:
         # is pure and idempotent, so the redundant call on WebFetch's
         # already-validated URL is harmless. The domain rules are applied here too
         # so the first URL and every redirect hop are held to the same policy.
-        url = SafeFetch.validate_url(url, allowed_domains, blocked_domains)
+        url = UrlPolicy.validate_url(url, allowed_domains, blocked_domains)
         try:
             head_chain: AbstractAsyncContextManager[tuple[Any, str]] = SafeFetch._open_following_redirects(
                 session, "HEAD", url, allowed_domains, blocked_domains
@@ -748,8 +568,10 @@ class SafeFetch:
         Download a PDF through the protected session and extract its text with pypdf.
 
         The download uses download_pdf_bytes, so it inherits the full SSRF policy,
-        the bounded per-hop-validated redirect following, and the streamed
-        MAX_RESPONSE_BYTES cap.
+        the bounded per-hop-validated redirect following, the streamed
+        MAX_RESPONSE_BYTES cap, and the "%PDF-" header sniff. A not_a_pdf refusal
+        propagates as ValueError: it is a policy result, not a pypdf parse failure,
+        so it is deliberately not wrapped into url_not_accessible below.
 
         :param url: The PDF URL to fetch.
         :param session: A session created by open_session (enforces the SSRF policy).
@@ -759,8 +581,8 @@ class SafeFetch:
                                 URL and to every redirect hop.
         :return: The extracted text of the PDF.
         :raises ValueError: url_not_allowed when a redirect hop fails validation or the
-                chain exceeds MAX_REDIRECTS, or response_too_large when the body
-                exceeds MAX_RESPONSE_BYTES.
+                chain exceeds MAX_REDIRECTS, response_too_large when the body exceeds
+                MAX_RESPONSE_BYTES, or not_a_pdf when the body carries no PDF header.
         :raises aiohttp.ClientResponseError: url_not_accessible / too_many_requests on a non-2xx response.
         :raises aiohttp.ClientError: url_not_accessible on a download or PDF-parse failure.
         """
@@ -786,7 +608,10 @@ class SafeFetch:
         addition to the Content-Length pre-check), so a server that lies about or
         omits Content-Length cannot deliver an oversized body. Redirects are followed
         through _open_following_redirects, so the body streamed is that of the
-        chain's final (re-validated) location.
+        chain's final (re-validated) location. The body is sniffed for a "%PDF-"
+        header once PDF_HEADER_WINDOW bytes have arrived (or at end of stream when
+        shorter) and refused as not_a_pdf without reading further, so an HTML error
+        page served as application/pdf costs one chunk, not 50 MB.
 
         :param url: The PDF URL to fetch.
         :param session: A session created by open_session (enforces the SSRF policy).
@@ -796,14 +621,15 @@ class SafeFetch:
                                 URL and to every redirect hop.
         :return: The raw PDF bytes.
         :raises ValueError: url_not_allowed when a redirect hop fails validation or the
-                chain exceeds MAX_REDIRECTS, or response_too_large when the streamed
-                body exceeds MAX_RESPONSE_BYTES.
+                chain exceeds MAX_REDIRECTS, response_too_large when the streamed body
+                exceeds MAX_RESPONSE_BYTES, or not_a_pdf when no PDF header appears in
+                its first PDF_HEADER_WINDOW bytes.
         :raises aiohttp.ClientResponseError: url_not_accessible / too_many_requests on a non-2xx response.
         :raises aiohttp.ClientError: url_not_accessible on a connection/DNS/timeout failure.
         """
         SafeFetch._require_protected_session(session)
         # Re-validate at the network boundary (see get_content_type).
-        url = SafeFetch.validate_url(url, allowed_domains, blocked_domains)
+        url = UrlPolicy.validate_url(url, allowed_domains, blocked_domains)
         try:
             async with SafeFetch._open_following_redirects(session, "GET", url, allowed_domains, blocked_domains) as (
                 response,
@@ -811,7 +637,7 @@ class SafeFetch:
             ):
                 response.raise_for_status()
                 SafeFetch.check_content_length(response.headers.get("Content-Length"), url)
-                return await SafeFetch._read_capped_body(response, url)
+                return await SafeFetch._read_capped_body(response, url, require_pdf_header=True)
         except (ClientError, AsyncTimeoutError) as exc:
             SafeFetch._raise_translated(exc, url)
 
@@ -848,7 +674,7 @@ class SafeFetch:
         """
         SafeFetch._require_protected_session(session)
         # Re-validate at the network boundary (see get_content_type).
-        url = SafeFetch.validate_url(url, allowed_domains, blocked_domains)
+        url = UrlPolicy.validate_url(url, allowed_domains, blocked_domains)
         try:
             # The follower resolves any 3xx (or raises url_not_allowed) before yielding,
             # so a server that redirects on GET but not on an earlier HEAD probe is
@@ -864,23 +690,68 @@ class SafeFetch:
             SafeFetch._raise_translated(exc, url)
 
     @staticmethod
-    async def _read_capped_body(response: Any, url: str) -> bytes:
+    async def _read_capped_body(response: Any, url: str, *, require_pdf_header: bool = False) -> bytes:
         """
         Stream a response body into memory, enforcing the running byte cap.
 
+        With require_pdf_header the accumulated bytes are checked for a "%PDF-" header
+        exactly once: as soon as PDF_HEADER_WINDOW bytes have arrived, or at end of stream
+        when the body is shorter (a small or empty body). A failing body is refused right there.
+
         :param response: The aiohttp response whose body to stream.
         :param url: The URL being fetched, included in the raised message.
+        :param require_pdf_header: When True, refuse the body as not_a_pdf unless a PDF
+                header appears within its first PDF_HEADER_WINDOW bytes.
         :return: The full response body as bytes (at most MAX_RESPONSE_BYTES).
-        :raises ValueError: response_too_large when the received bytes exceed the limit.
+        :raises ValueError: response_too_large when the received bytes exceed the limit;
+                not_a_pdf when require_pdf_header is set and the header check fails.
         """
         chunks: list[bytes] = []
         received: int = 0
+        header_pending: bool = require_pdf_header
         async for chunk in response.content.iter_chunked(DOWNLOAD_CHUNK_BYTES):
+            chunks.append(chunk)
             received += len(chunk)
+            # Sniff the JOINED bytes, never the chunk alone: iter_chunked yields whatever is
+            # buffered (up to 64 KB), so the marker can straddle two chunks and the window may
+            # take several chunks to fill; either way a huge non-PDF is refused once the window
+            # fills, not after 50 MB. Sniff before the cap check so a chunk that both fills the
+            # window and overshoots a (small) cap reports the more specific not_a_pdf, as PdfRag's local reader does.
+            if header_pending and received >= PDF_HEADER_WINDOW:
+                SafeFetch._check_pdf_header(b"".join(chunks), response, url)
+                header_pending = False
             if received > MAX_RESPONSE_BYTES:
                 raise ValueError(f"response_too_large: '{url}' body exceeds the {MAX_RESPONSE_BYTES}-byte limit.")
-            chunks.append(chunk)
-        return b"".join(chunks)
+        body: bytes = b"".join(chunks)
+        # Stream ended before the window filled (a small PDF, or an empty body):
+        # sniff whatever arrived, so the check still runs exactly once.
+        if header_pending:
+            SafeFetch._check_pdf_header(body, response, url)
+        return body
+
+    @staticmethod
+    def _check_pdf_header(head: bytes, response: Any, url: str) -> None:
+        """
+        Raise not_a_pdf unless the leading bytes of a download carry a PDF header.
+
+        Mirrors the local-file sniff in PdfRag. Without it an HTML error page served as
+        application/pdf (or a .pdf link that now returns HTML) is downloaded in full only
+        for pypdf to fail with "Stream has ended unexpectedly", which fetch_pdf_text reports
+        as url_not_accessible: nowhere near the real problem. The declared Content-Type is
+        named when present because it is the quickest diagnostic ("text/html" = stale link).
+
+        :param head: The bytes received so far (at least PDF_HEADER_WINDOW when the
+                     body is that long; extra bytes are ignored).
+        :param response: The aiohttp response, read only for its declared Content-Type.
+        :param url: The URL being fetched, included in the raised message.
+        :raises ValueError: not_a_pdf when "%PDF-" does not occur within the first
+                PDF_HEADER_WINDOW bytes of head.
+        """
+        if PdfUtils.has_pdf_header(head):
+            return
+        declared: str = response.headers.get("Content-Type", "")
+        detail: str = f" (declared Content-Type '{declared}')" if declared else ""
+        raise ValueError(f"not_a_pdf: '{url}' has no PDF header in its first {PDF_HEADER_WINDOW} bytes{detail}.")
 
     @staticmethod
     async def _read_capped_text(response: Any, url: str) -> str:

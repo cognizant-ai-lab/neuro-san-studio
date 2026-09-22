@@ -58,9 +58,9 @@ class TestHoconAgentNetworkAssembler(TestCase):
     Tests for HoconAgentNetworkAssembler, which renders a designed network as HOCON text.
 
     The generated text declares the network's MCP header needs in the front man's sly_data_schema, carries the
-    generated-network execution timeout and renders the metadata block it is given. Until #1422 moves timestamps
-    into the persistence middleware, the header still stamps date_created on a block that has none, and nothing
-    else.
+    generated-network execution timeout and renders the metadata block it is given. The header stamps date_created
+    on a block that has none, so the text a client downloads always carries a creation date; date_modified is the
+    persistence middleware's business (file mode only) and the header never adds it.
     """
 
     @staticmethod
@@ -191,7 +191,8 @@ class TestHoconAgentNetworkAssembler(TestCase):
 
     # Tests for the metadata block (issue #1398). The block is rendered as one JSON object so that any
     # key carries forward: AgentNetworkMetadataBlock builds it from the metadata keyword and the
-    # sample_queries argument, and the header adds only a date_created stamp when the block has none.
+    # sample_queries argument, and the header adds only a date_created stamp when the block has none (the
+    # text is what a client downloads, so it always carries a creation date; date_modified is never added).
 
     # Strings that broke the former triple-quoted rendering or that HOCON could misread: an embedded
     # quote, a newline, three double quotes, substitution syntax, non-ASCII text, a tab and the
@@ -270,13 +271,15 @@ class TestHoconAgentNetworkAssembler(TestCase):
     def test_no_metadata_and_no_queries_renders_only_date_created(self) -> None:
         """
         The pre-#1398 call shape with neither queries nor a block renders a block holding only the
-        date_created stamp, as the header always did; no empty sample_queries list is written any more.
+        date_created stamp, as the header always did; no empty sample_queries list is written any more and
+        no date_modified, which only the persistence middleware adds, in file mode.
         """
         text: str = self._assemble_text([], None)
         block: dict[str, Any] = self._parse_metadata(text)
 
         self.assertEqual(list(block.keys()), ["date_created"])
         self.assertNotIn('"sample_queries"', text)
+        self.assertNotIn("date_modified", text)
         # The stamp keeps the format the header always used: UTC ISO-8601 with an explicit offset.
         self.assertTrue(block["date_created"].endswith("+00:00"))
 
