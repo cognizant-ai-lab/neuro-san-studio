@@ -347,8 +347,8 @@ class UrlPolicy:
         """
         url: str = match.group(0)
         trailing: str = ""
-        # The pattern cannot tell "http://host/path." (sentence end) from a path ending in a
-        # dot, so peel sentence punctuation off and re-append it after redaction.
+        # The pattern cannot tell a sentence-ending dot right after a URL from a path that ends
+        # in a dot, so peel sentence punctuation off and re-append it after redaction.
         while url and url[-1] in ".,;:)":
             trailing = url[-1] + trailing
             url = url[:-1]
