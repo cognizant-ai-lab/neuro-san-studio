@@ -63,6 +63,9 @@ IMPORTED_NETWORKS: List[str] = ["basic/hello_world"]
 # `ns chat --list` prints log lines, then this anchor, then one JSON document.
 LISTING_ANCHOR: str = "Available agents:"
 
+# The validator's verdict line.
+VALIDATION_PASSED: str = "Validation passed"
+
 # A syntactically valid key that no provider call is made with: tier 1 only checks that the
 # variable is set to something other than a placeholder.
 FAKE_OPENAI_KEY: str = "sk-not-a-real-key-only-checked-for-presence"
@@ -281,10 +284,14 @@ def test_served_networks_validate(packaged_project: PackagedProject) -> None:
     failing any assertion above. `ns validate` exits non-zero on a file that fails to parse,
     fails to validate, or is missing from the wheel, and it accepts `/agent_name` references
     to the other networks the manifest serves, so each served entry gets checked directly.
+
+    The exit code alone is not enough: `ns` exits 0 on a usage error too, so the validator's
+    own verdict has to be in the output.
     """
     for network in packaged_project.served_networks():
         result = packaged_project.run("validate", f"registries/{network}.hocon")
         assert result.returncode == 0, f"`ns validate` failed for {network}:\n{result.stdout}"
+        assert VALIDATION_PASSED in result.stdout, f"`ns validate` gave no verdict for {network}:\n{result.stdout}"
 
 
 def test_check_llm_keys_reads_project_env(packaged_project: PackagedProject) -> None:
