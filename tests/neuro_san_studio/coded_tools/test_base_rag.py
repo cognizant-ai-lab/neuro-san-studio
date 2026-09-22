@@ -315,12 +315,12 @@ class TestBaseRag(TestCase):
                 self.assertEqual(len(self._load_store(path).store), len(GOOD_DOCS))
 
     def test_failed_dump_keeps_previous_file_and_leaves_no_temp_file(self) -> None:
-        """A dump that fails mid-write leaves the previous good file intact and no temporary file behind.
+        """A dump that fails mid-write leaves the previous good file intact and nothing else in the directory.
 
-        The store is written to a sibling temporary file and renamed over the target, so the target is either
-        the old store or the complete new one, never the truncated file that #1447 is about. The stand-in dump
-        truncates and partially writes whatever path it is handed, so a save that dumped straight to the real
-        path would fail this test.
+        The store is dumped inside a private sibling staging directory and renamed over the target, so the
+        target is either the old store or the complete new one, never the truncated file that #1447 is about.
+        The stand-in dump truncates and partially writes whatever path it is handed, so a save that dumped
+        straight to the real path would fail this test; the staging directory must be gone afterwards too.
         """
         path: str = self._configure_save()
         self._dump_store(path, ["Cached page one"])
@@ -334,7 +334,7 @@ class TestBaseRag(TestCase):
         self.assertEqual(os.listdir(self.tmp_dir), [os.path.basename(path)])
 
     def test_successful_save_leaves_only_the_store_file(self) -> None:
-        """A successful save renames the temporary file into place, leaving nothing else in the directory."""
+        """A successful save renames the staged file into place and removes its staging directory."""
         path: str = self._configure_save()
         self._build_and_save(GOOD_DOCS)
 
@@ -342,7 +342,7 @@ class TestBaseRag(TestCase):
         self.assertEqual(len(self._load_store(path).store), len(GOOD_DOCS))
 
     def test_saved_store_keeps_conventional_file_mode(self) -> None:
-        """A newly saved store gets the umask-filtered default mode, not the private 0600 a mkstemp file carries.
+        """A newly saved store gets the umask-filtered default mode, as the direct dump it replaces did.
 
         Readers of a shared cache directory rely on the conventional mode; the atomic write must not
         silently downgrade it compared to the direct dump it replaced.

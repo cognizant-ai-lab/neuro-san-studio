@@ -22,10 +22,10 @@ import shutil
 from abc import ABC
 from abc import abstractmethod
 from dataclasses import dataclass
+from tempfile import mkdtemp
 from typing import Any
 from typing import Literal
 from typing import Optional
-from uuid import uuid4
 
 from langchain_core.documents import Document
 from langchain_core.embeddings import Embeddings
@@ -364,53 +364,48 @@ class BaseRag(ABC):
             )
             return
 
-        # Dump into a sibling temporary file and rename it over the target. os.replace is atomic
-        # when both paths are on the same filesystem (the temporary file is created in the target's
-        # directory for exactly that reason), so a crash, kill or full disk mid-dump leaves the
-        # previous good file in place and a half-written store never sits at the real path, where
-        # the next run would fail to load it (see GitHub issue #1447).
+        # Stage the dump in a private sibling directory and rename the finished file over the
+        # target. os.replace is atomic when both paths are on the same filesystem (the staging
+        # directory lives inside the target's directory for exactly that reason), so a crash, kill
+        # or full disk mid-dump leaves the previous good file in place and a half-written store never
+        # sits at the real path, where the next run would fail to load it (see GitHub issue #1447).
+        # The directory is private (mkdtemp: unpredictable name, mode 0o700) because dump opens its
+        # path by name: a staged file in a directory writable by another principal could be swapped
+        # for a symlink between the dump and the rename, and dump cannot write through an
+        # already-open descriptor the way WriteFile does.
         target_dir: str = os.path.dirname(self.abs_vector_store_path)
-        temp_path: Optional[str] = None
+        staging_dir: Optional[str] = None
         try:
             os.makedirs(target_dir, exist_ok=True)
-            # O_EXCL guards against temp-name collisions. Mode 0o666 is filtered by the process
-            # umask at creation, exactly like the plain open() the direct dump used to do, so a new
-            # store keeps the conventional default mode; tempfile.mkstemp would fix it at 0o600 and
-            # os.replace would carry that onto the saved store, silently making it private. Same
-            # pattern as WriteFile._write_atomically.
-            candidate: str = os.path.join(
-                target_dir, f".{os.path.basename(self.abs_vector_store_path)}.{uuid4().hex}.tmp"
-            )
-            temp_fd: int = os.open(candidate, os.O_CREAT | os.O_EXCL | os.O_WRONLY, 0o666)
-            # dump opens the path by name itself; the descriptor only served to create the file.
-            os.close(temp_fd)
-            temp_path = candidate
-            # When replacing an existing store, keep whatever mode an operator gave it.
+            staging_dir = mkdtemp(dir=target_dir, prefix=".vector_store_staging.")
+            staged_path: str = os.path.join(staging_dir, os.path.basename(self.abs_vector_store_path))
+            # dump creates the file with a plain open(), so a new store gets the umask-filtered default
+            # mode, exactly as the direct dump this replaces did. When replacing an existing store,
+            # keep whatever mode an operator gave it instead.
+            vectorstore.dump(path=staged_path)
             if os.path.exists(self.abs_vector_store_path):
-                shutil.copymode(self.abs_vector_store_path, temp_path)
-            vectorstore.dump(path=temp_path)
-            os.replace(temp_path, self.abs_vector_store_path)
+                shutil.copymode(self.abs_vector_store_path, staged_path)
+            os.replace(staged_path, self.abs_vector_store_path)
             logger.info("Vector store saved to: %s\n", self.abs_vector_store_path)
         except OSError as os_error:
             logger.error("Failed to save vector store to %s: %s\n", self.abs_vector_store_path, os_error)
         finally:
-            # Present only when dump or replace failed part-way; never leave it behind.
-            if temp_path is not None:
-                self._discard_partial_file(temp_path)
+            # Always remove the staging directory: empty after a successful rename, holding the
+            # partial dump after a failure; neither may be left behind.
+            if staging_dir is not None:
+                self._discard_staging_dir(staging_dir)
 
     @staticmethod
-    def _discard_partial_file(path: str) -> None:
+    def _discard_staging_dir(path: str) -> None:
         """
-        Remove a temporary file left over from a failed atomic save, if it still exists.
+        Remove the private staging directory of an atomic save, together with anything still in it.
 
-        :param path: The temporary file path created by _save_vector_store; already renamed away on success.
+        :param path: The staging directory created by _save_vector_store.
         """
-        if not os.path.exists(path):
-            return
         try:
-            os.remove(path)
+            shutil.rmtree(path)
         except OSError as remove_error:
-            logger.warning("Could not remove partial vector store file %s: %s\n", path, remove_error)
+            logger.warning("Could not remove vector store staging directory %s: %s\n", path, remove_error)
 
     async def query_vectorstore(self, vectorstore: VectorStore, query: str) -> str:
         """
