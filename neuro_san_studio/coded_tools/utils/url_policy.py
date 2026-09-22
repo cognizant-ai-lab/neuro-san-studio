@@ -40,11 +40,13 @@ MAX_URL_LENGTH: int = 2000
 # literals are validated separately; a genuine hostname containing anything outside
 # this set means IDNA could not canonicalize it and it is not a usable DNS name.
 HOSTNAME_ALLOWED_CHARS: frozenset[str] = frozenset("abcdefghijklmnopqrstuvwxyz0123456789.-_")
-# An http(s) URL embedded in free text (an error message, say). Quotes and angle brackets end a
-# match because SafeFetch's messages wrap the URL they name in single quotes. Case-insensitive:
-# validate_url accepts an upper-case scheme and hands the original spelling on, so a URL that
-# reaches an error message may read HTTPS://... and must still be caught here.
-URL_IN_TEXT_PATTERN: re.Pattern[str] = re.compile(r"https?://[^\s'\"<>]+", re.IGNORECASE)
+# A URL with an authority ("scheme://...") embedded in free text, such as an error message. Any
+# scheme is matched, not only http(s): the redirect follower's url_not_allowed message quotes the
+# rejected Location verbatim, and that server-controlled value may be ftp://... or anything else
+# with a credential in its query. Quotes and angle brackets end a match because SafeFetch's
+# messages wrap the URL they name in single quotes. Case-insensitive because validate_url accepts
+# an upper-case scheme and hands the original spelling on.
+URL_IN_TEXT_PATTERN: re.Pattern[str] = re.compile(r"[a-z][a-z0-9+.-]*://[^\s'\"<>]+", re.IGNORECASE)
 
 
 class UrlPolicy:
@@ -327,7 +329,7 @@ class UrlPolicy:
     @staticmethod
     def redact_urls_in_text(text: str) -> str:
         """
-        Redact every http(s) URL embedded in free text, for log lines that quote an error message.
+        Redact every URL with an authority embedded in free text, for log lines that quote an error message.
 
         SafeFetch's translated errors interpolate the URL they were given, and for a body fetch
         that is the server-controlled redirect target; a log line that quotes such a message

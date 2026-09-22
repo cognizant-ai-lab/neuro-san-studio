@@ -479,3 +479,18 @@ class TestUrlPolicy(TestCase):  # pylint: disable=too-many-public-methods
         redacted: str = UrlPolicy.redact_urls_in_text(message)
         self.assertNotIn("secret", redacted)
         self.assertEqual(redacted, "url_not_accessible: Could not reach 'https://files.example.com/a.pdf?[redacted]'.")
+
+    def test_redact_urls_in_text_redacts_rejected_non_http_redirect_target(self) -> None:
+        """Tests that a follower url_not_allowed message quoting a rejected ftp Location loses that target's query.
+
+        The rejected Location is server-controlled and never passed validate_url, so it may carry any
+        scheme; the redaction must not be limited to http(s).
+        """
+        message: str = (
+            "url_not_allowed: 'http://example.com/go' redirects to 'ftp://files.example.com/a?token=secret' (302), "
+            "which failed validation: invalid_input: URL must use http or https scheme, got 'ftp'."
+        )
+        redacted: str = UrlPolicy.redact_urls_in_text(message)
+        self.assertNotIn("secret", redacted)
+        self.assertIn("redirects to 'ftp://files.example.com/a?[redacted]' (302)", redacted)
+        self.assertIn("'http://example.com/go' redirects", redacted)
