@@ -24,6 +24,10 @@ aiohttp>=3.13.0,<4.0
 # imports it directly and relies on yarl-matching UTS#46 behavior.
 idna>=3.0
 
+# aiohttp's URL type, used to hand a translated ClientResponseError a redacted RequestInfo in
+# SafeFetch. Already required by aiohttp; declared here because SafeFetch imports it directly.
+yarl>=1.9
+
 # For HTML parsing
 beautifulsoup4>=4.12.0
 

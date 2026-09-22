@@ -979,13 +979,20 @@ class TestSafeFetch(TestCase):  # pylint: disable=too-many-public-methods
         self.assertIn("redirects to 'ftp://files.example.com/a?[redacted]'", error)
 
     def test_fetch_raw_translated_http_error_names_url_without_its_query(self) -> None:
-        """Tests that a translated HTTP failure names the fetched URL without its query string."""
-        exc = make_response_error(503)
+        """Tests that a translated HTTP failure carries no query string in its message, its str() or its request info.
+
+        ClientResponseError.__str__ renders request_info.real_url, so redacting the message alone
+        would still leak a presigned query to any caller that logs str(error).
+        """
+        exc = make_response_error(503, url="http://example.com/x?token=secret")
         session, _ = make_get_response(status=503, raise_for_status_exc=exc)
         with self.assertRaises(ClientResponseError) as ctx:
             asyncio.run(SafeFetch.fetch_raw("http://example.com/x?token=secret", session))
         self.assertNotIn("secret", ctx.exception.message)
         self.assertIn("for 'http://example.com/x?[redacted]'", ctx.exception.message)
+        self.assertNotIn("secret", str(ctx.exception))
+        self.assertEqual(str(ctx.exception.request_info.real_url), "http://example.com/x?[redacted]")
+        self.assertEqual(ctx.exception.request_info.method, "HEAD")
 
     def test_fetch_raw_redirect_without_location_raises_url_not_allowed(self) -> None:
         """Tests that a 3xx with no Location header (e.g. 304) raises url_not_allowed."""

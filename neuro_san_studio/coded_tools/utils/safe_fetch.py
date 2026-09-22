@@ -33,8 +33,10 @@ from aiohttp import ClientResponseError
 from aiohttp import ClientSession
 from aiohttp import ClientTimeout
 from aiohttp import DummyCookieJar
+from aiohttp import RequestInfo
 from aiohttp import TCPConnector
 from bs4 import BeautifulSoup
+from yarl import URL
 
 from neuro_san_studio.coded_tools.utils.global_only_resolver import GlobalOnlyResolver
 from neuro_san_studio.coded_tools.utils.pdf_utils import PDF_HEADER_WINDOW
@@ -877,8 +879,17 @@ class SafeFetch:
         """
         if isinstance(exc, ClientResponseError):
             prefix: str = "too_many_requests" if exc.status == HTTPStatus.TOO_MANY_REQUESTS else "url_not_accessible"
+            # ClientResponseError.__str__ renders request_info.real_url, so a redacted message alone
+            # would still leak a presigned query through str(error). Hand the translated error a
+            # RequestInfo whose URLs are redacted too (encoded=True keeps the marker literal instead
+            # of percent-encoding its brackets). Headers are kept: the protected session sends no
+            # credentials, and __str__ does not render them.
+            shown_url: URL = URL(UrlPolicy.redact_for_log(str(exc.request_info.real_url)), encoded=True)
+            request_info: RequestInfo = RequestInfo(
+                shown_url, exc.request_info.method, exc.request_info.headers, shown_url
+            )
             raise ClientResponseError(
-                exc.request_info,
+                request_info,
                 exc.history,
                 status=exc.status,
                 message=f"{prefix}: HTTP {exc.status} for '{UrlPolicy.redact_for_log(url)}'.",
