@@ -120,6 +120,8 @@ The path of an agent network config file. HOCON (.hocon) is preferred — hence 
 (1) an absolute path; (2) a path relative to the current working directory (typically the repo root, e.g. 'registries/generated/foo.hocon');
 (3) a path relative to the registries folder — the directory of the first file in the AGENT_MANIFEST_FILE env var, falling back to 'registries' in the repo root.
 This is for users who want to provide the full agent network definition as input.
+The file's top-level metadata block is returned under agent_network_metadata and replaces any block sent
+with the same request.
 """
                         },
                         "agent_network_metadata": {
@@ -132,7 +134,8 @@ where the query generator ran; date_created and date_modified are the server's (
 reservation and stored_at belong to neuro-san's reservation storage and are ignored if present.
 Leave the key out only when you hold no block at all: in file mode the server then keeps the block of the
 file it overwrites. A client that sends the key, even as an empty object, owns the block and nothing is read
-from disk. A temporary network has nothing to fall back on.
+from disk, unless the request also names a network to load (agent_network_hocon_file or agent_reservations):
+the loaded network's block then replaces it. A temporary network has nothing to fall back on.
 """,
                             "properties": {
                                 "description": {"type": "string"},
@@ -151,6 +154,8 @@ from disk. A temporary network has nothing to fall back on.
                             "description": """
 A list of reservation structures describing the temporary agent networks that were created by interacting
 with this agent. By convention, the last one in the list is a top-level handle which may reference any others listed.
+When a reservation is loaded, its metadata block is returned under agent_network_metadata (without the
+reservation and stored_at keys neuro-san's storage adds) and replaces any block sent with the same request.
 """,
                             "items": {
                                 "type": "object",
@@ -210,8 +215,8 @@ date_created the deployed spec does not have.
                             "description": """
 The network's top-level metadata block exactly as written into the saved network and as connectivity()
 serves it, minus the reservation and stored_at keys neuro-san's reservation storage adds to a temporary
-network. Send it back unchanged with the next request (see the input schema). Present after a save;
-absent otherwise.
+network. Send it back unchanged with the next request (see the input schema). Present after a save and
+after a network was loaded from agent_network_hocon_file or a reservation; absent otherwise.
 """,
                             "properties": {
                                 "description": {"type": "string"},

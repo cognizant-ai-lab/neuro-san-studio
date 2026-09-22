@@ -47,9 +47,11 @@ from pyparsing.exceptions import ParseException
 from coded_tools.agent_network_editor.and_logger import AndLogger
 from coded_tools.agent_network_editor.connectivity_dictionary_converter import ConnectivityDictionaryConverter
 from coded_tools.agent_network_editor.constants import AGENT_NETWORK_DEFINITION
+from coded_tools.agent_network_editor.constants import AGENT_NETWORK_METADATA
 from coded_tools.agent_network_editor.constants import AGENT_NETWORK_NAME
 from coded_tools.agent_network_editor.progress_handler import ProgressHandler
 from coded_tools.agent_network_editor.sly_data_lock import SlyDataLock
+from middleware.agent_network_designer.persistence.agent_network_metadata_block import AgentNetworkMetadataBlock
 from middleware.agent_network_designer.persistence.file_system_agent_network_persistor import DEFAULT_REGISTRIES_DIR
 from middleware.agent_network_designer.persistence.file_system_agent_network_persistor import (
     FileSystemAgentNetworkPersistor,
@@ -599,6 +601,15 @@ class AgentNetworkDefinitionMiddleware(AgentMiddleware):
         """
         Convert a parsed HOCON config dictionary into an agent network definition.
 
+        Also hands the config's top-level "metadata" block to the client under
+        AGENT_NETWORK_METADATA (issue #1398): the definition keeps only the agents, and the block
+        would otherwise be lost when the network is saved again. The designer is stateless, so
+        the client holds the loaded block and sends it back on the next save like the block of a
+        network it saved itself; AgentNetworkMetadataBlock strips the reservation/stored_at keys a
+        loaded temporary network carries and anything a HOCON file cannot store. This happens only
+        when the load yields at least one agent, so a config that parses but describes no usable
+        network does not leave a stale block behind for whatever network the designer builds next.
+
         :param config: Parsed HOCON config
         :param source: Identifier for the config source (hocon file path or reservation ID), used for error messages
         :return: Agent network definition, or None on failure
@@ -616,6 +627,15 @@ class AgentNetworkDefinitionMiddleware(AgentMiddleware):
             name, agent_def = await self._parse_agent(agent, source)
             if name is not None:
                 network_def[name] = agent_def
+
+        if network_def:
+            candidate: Any = config.get("metadata")
+            if candidate is None and "metadata" in config:
+                # A file without the key is ordinary and stays quiet; an explicit null is never
+                # something the assemblers write, so it leaves the same trace the persistence
+                # layer's read-back leaves for it before the client gets an empty block.
+                self.logger.warning("Ignoring null 'metadata' in %s; the client receives an empty block.", source)
+            self.sly_data[AGENT_NETWORK_METADATA] = AgentNetworkMetadataBlock(candidate, source).as_dict()
 
         return network_def
 

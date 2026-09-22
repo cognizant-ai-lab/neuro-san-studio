@@ -328,6 +328,16 @@ by setting the file to `agent_network_hocon_file` sly data or
 specifically given the hocon file name in the user prompt
 - Used for state inspection throughout workflow
 
+#### Definition (Middleware)
+
+[`AgentNetworkDefinitionMiddleware`](../../middleware/agent_network_designer/agent_network_definition_middleware.py)
+- Runs before the model is called and resolves the `agent_network_definition` from sly data, from the file
+named in `agent_network_hocon_file`, or from the reservation named in `agent_reservations`
+- When the network comes from a file or a reservation, its top-level `metadata` block is returned under
+`agent_network_metadata` (without the `reservation`/`stored_at` keys of a temporary network), so the client
+holds the loaded network's block and sends it back on the next save like any other. The loaded block replaces
+any `agent_network_metadata` sent with the same request
+
 #### Persistence (Middleware)
 
 [`AgentNetworkPersistenceMiddleware`](../../middleware/agent_network_designer/persistence/agent_network_persistence_middleware.py)
