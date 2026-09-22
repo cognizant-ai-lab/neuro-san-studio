@@ -20,6 +20,9 @@ jobs:
       # Every version the package claims support for: what the wheel ships, and whether its
       # dependencies resolve at all, differs per interpreter.
       test-python-versions: '["3.12", "3.13", "3.14"]'
+      # The runtime dependency tree is installed into the clean venv under test; the test
+      # process itself only needs requirements-build.txt (pytest, build).
+      requirements-file: ''
       # Lint runs in tests.yml; this workflow only builds and exercises the wheel.
       lint-command-override: 'true'
       # The smoke test builds a wheel, so setuptools-scm needs a version. The gate checks the
@@ -28,5 +31,6 @@ jobs:
       test-command-override: >-
         SETUPTOOLS_SCM_PRETEND_VERSION=0.0.0
         pytest --verbose -m "smoke"
+        tests/neuro_san_studio/commands/test_packaged_cli_smoke.py
     secrets:
       SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}

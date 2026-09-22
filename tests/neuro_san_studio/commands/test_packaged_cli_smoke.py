@@ -27,59 +27,99 @@ end users twice (a shared include missing from the scaffold, and the project `.e
 loaded by the CLI), so what is under test here is the installed artifact: the wheel's package
 data, the console script, and the project the CLI writes into an empty directory.
 
+Nothing here imports from the checkout: the only requirements on the test process are
+`pytest` and `build`, so a CI job can collect this file without installing the runtime
+dependency tree it is about to install into the clean venv anyway.
+
 Marked `smoke`: the wheel build plus a cold `pip install` of the full dependency tree takes
 minutes, so `make test-unit` deselects it and a dedicated workflow runs it.
 """
 
+import json
 import os
 import re
 import subprocess
 import sys
 import venv
 from pathlib import Path
+from typing import Any
 from typing import Dict
 from typing import List
 from typing import Set
-from typing import Tuple
 
 import pytest
-from pyhocon import ConfigFactory
 
 pytestmark = pytest.mark.smoke
 
 REPO_ROOT: Path = Path(__file__).resolve().parents[3]
 
+# What `ns init` installs into every new project. Its dependencies are `ns init`'s job to
+# install and register, so they are covered by the served-network checks rather than listed.
+DEFAULT_NETWORKS: List[str] = ["agent_network_designer"]
+
 # One network on top of what `ns init` scaffolds, which is all it takes to exercise `ns import`.
-# Everything the default scaffold needs, agent_network_designer's dependencies included, is
-# `ns init`'s job to install.
 IMPORTED_NETWORKS: List[str] = ["basic/hello_world"]
 
-LISTED_AGENT: re.Pattern = re.compile(r'"agent_name"\s*:\s*"(?P<name>[^"]+)"')
-
-# A registry file that fails to parse or validate is logged and skipped rather than raised, so
-# loading "succeeds" with the network silently missing and the command still exits 0. Matching
-# neuro-san's exact log wording would go stale the first time those messages are reworded, so
-# any of these words in a log line counts as a failed load; a clean run has none of them.
-LOAD_FAILURE_WORDS: re.Pattern = re.compile(
-    r"\b(error|errors|fail|fails|failed|failure|failures|skip|skipped|skipping|traceback)\b",
-    re.IGNORECASE,
-)
-
-# Tells the log lines apart from the JSON listing they surround: agent descriptions are prose
-# and say things like "in case its first configured LLM fails", which is not a failure.
-JSON_FIELD: re.Pattern = re.compile(r'^\s*"[^"]+"\s*:')
+# `ns chat --list` prints log lines, then this anchor, then one JSON document.
+LISTING_ANCHOR: str = "Available agents:"
 
 # A syntactically valid key that no provider call is made with: tier 1 only checks that the
 # variable is set to something other than a placeholder.
 FAKE_OPENAI_KEY: str = "sk-not-a-real-key-only-checked-for-presence"
+
+# What a subprocess needs from the test process's environment to run at all: locate binaries,
+# write temp files, talk to a package index through a proxy. Everything else -- PYTHONPATH,
+# AGENT_*, NEURO_SAN_*, provider keys, MCP_SERVERS_INFO_FILE -- is dropped, so the packaged CLI
+# can only find what the wheel ships and the key the `.env` assertion looks for can only have
+# come from the scaffolded project.
+INHERITED_VARIABLES: Set[str] = {
+    "PATH",
+    "HOME",
+    "TMPDIR",
+    "TEMP",
+    "TMP",
+    "LANG",
+    "LC_ALL",
+    "LC_CTYPE",
+    # Windows: the process cannot start, or Python cannot find its DLLs, without these.
+    "SYSTEMROOT",
+    "COMSPEC",
+    "PATHEXT",
+    "USERPROFILE",
+    "LOCALAPPDATA",
+}
+INHERITED_PREFIXES: tuple = ("PIP_", "SSL_CERT_", "REQUESTS_CA_", "HTTP_PROXY", "HTTPS_PROXY", "NO_PROXY")
 
 # Generous, because these bounds only exist to keep a hung subprocess from hanging all of CI:
 # a cold `pip install` dominates the runtime and is the reason the install bound is separate.
 INSTALL_TIMEOUT_SECONDS: int = 1800
 COMMAND_TIMEOUT_SECONDS: int = 600
 
+# Lists the networks the scaffolded manifest serves, using the installed package's own reader
+# so the test agrees with the CLI about which entries are live.
+LIST_SERVED_SCRIPT: str = """
+from neuro_san_studio.discovery.served_network_lister import ServedNetworkLister
+lister = ServedNetworkLister(["registries/manifest.hocon"])
+print("\\n".join(lister.list_names()))
+for warning in lister.warnings:
+    raise SystemExit(f"manifest warning: {warning}")
+"""
 
-class PackagedProject:  # pylint: disable=too-few-public-methods
+
+def _clean_env() -> Dict[str, str]:
+    """
+    Build the environment a fresh user's shell would have.
+
+    :return: An allow-listed copy of the test process's environment.
+    """
+    return {
+        key: value
+        for key, value in os.environ.items()
+        if key in INHERITED_VARIABLES or key.upper().startswith(INHERITED_PREFIXES)
+    }
+
+
+class PackagedProject:
     """A project scaffolded by the `ns` console script of a freshly installed wheel."""
 
     def __init__(self, project_dir: Path, venv_dir: Path):
@@ -91,42 +131,46 @@ class PackagedProject:  # pylint: disable=too-few-public-methods
         bin_dir: Path = venv_dir / ("Scripts" if os.name == "nt" else "bin")
         self.python: Path = bin_dir / ("python.exe" if os.name == "nt" else "python")
         self.ns: Path = bin_dir / ("ns.exe" if os.name == "nt" else "ns")
-        self.env: Dict[str, str] = self._child_env(bin_dir)
-
-    @staticmethod
-    def _child_env(bin_dir: Path) -> Dict[str, str]:
-        """
-        Build the environment a fresh user's shell would have.
-
-        The test process inherits whatever points at this checkout -- PYTHONPATH,
-        AGENT_MANIFEST_FILE, AGENT_TOOL_PATH, an active venv -- and any of those would let the
-        packaged CLI find files the wheel does not ship. Provider keys are dropped too, so the
-        key the `.env` assertion looks for can only have come from the scaffolded project.
-
-        :param bin_dir: The installed venv's script directory, put first on PATH.
-        :return: The environment to run every `ns` invocation with.
-        """
-        dropped: Set[str] = {"PYTHONPATH", "PYTHONHOME", "VIRTUAL_ENV", "OPENAI_API_KEY"}
-        env: Dict[str, str] = {
-            key: value
-            for key, value in os.environ.items()
-            if key not in dropped and not key.startswith("AGENT_") and not key.startswith("NEURO_SAN_")
-        }
-        env["PATH"] = os.pathsep.join([str(bin_dir), env.get("PATH", "")])
-        return env
+        self.env: Dict[str, str] = _clean_env()
+        self.env["PATH"] = os.pathsep.join([str(bin_dir), self.env.get("PATH", "")])
 
     def run(self, *args: str) -> subprocess.CompletedProcess:
         """
         Run the packaged `ns` console script in the project directory.
 
         :param args: Arguments to `ns`, e.g. ("import", "basic").
-        :return: The completed process, with stdout and stderr merged so log lines written to
-            either stream are covered by the failure-marker assertions.
+        :return: The completed process, with stdout and stderr merged so a failure report shows
+            log lines written to either stream.
+        """
+        return self._run_in_venv([str(self.ns), *args])
+
+    def served_networks(self) -> List[str]:
+        """
+        Ask the installed package which networks the scaffolded manifest serves.
+
+        :return: Registry-relative network names, e.g. ``basic/hello_world``.
+        """
+        result = self._run_in_venv([str(self.python), "-c", LIST_SERVED_SCRIPT])
+        assert result.returncode == 0, f"listing served networks failed:\n{result.stdout}"
+        served: List[str] = [line.removeprefix("/") for line in result.stdout.splitlines() if line.strip()]
+        assert served, f"no served networks in the scaffolded manifest:\n{result.stdout}"
+        return served
+
+    def _run_in_venv(self, command: List[str]) -> subprocess.CompletedProcess:
+        """
+        Run a command in the project directory with the clean environment.
+
+        stdin is an empty pipe rather than a TTY, so a command that would prompt reads EOF
+        instead of hanging the test.
+
+        :param command: The command line to run.
+        :return: The completed process, stdout and stderr merged.
         """
         return subprocess.run(
-            [str(self.ns), *args],
+            command,
             cwd=self.project_dir,
             env=self.env,
+            input="",
             stdout=subprocess.PIPE,
             stderr=subprocess.STDOUT,
             text=True,
@@ -146,9 +190,16 @@ def _build_wheel(dist_dir: Path) -> Path:
     # sys.path, and a leftover ``build/`` dir at the repo root (gitignored output of
     # ``python setup.py build``) would shadow the ``build`` package itself.
     dist_dir.mkdir(exist_ok=True)
+    env: Dict[str, str] = _clean_env()
+    # The version comes from git metadata; CI checkouts are shallow, so it is pinned there.
+    if "SETUPTOOLS_SCM_PRETEND_VERSION" in os.environ:
+        env["SETUPTOOLS_SCM_PRETEND_VERSION"] = os.environ["SETUPTOOLS_SCM_PRETEND_VERSION"]
     subprocess.run(
         [sys.executable, "-m", "build", "--wheel", "--outdir", str(dist_dir), str(REPO_ROOT)],
         cwd=dist_dir,
+        env=env,
+        input="",
+        text=True,
         check=True,
         timeout=INSTALL_TIMEOUT_SECONDS,
     )
@@ -178,6 +229,9 @@ def fixture_packaged_project(tmp_path_factory: pytest.TempPathFactory) -> Packag
     project.project_dir.mkdir()
     subprocess.run(
         [str(project.python), "-m", "pip", "install", "--quiet", str(wheel)],
+        env=project.env,
+        input="",
+        text=True,
         check=True,
         timeout=INSTALL_TIMEOUT_SECONDS,
     )
@@ -185,60 +239,38 @@ def fixture_packaged_project(tmp_path_factory: pytest.TempPathFactory) -> Packag
     init = project.run("init", "--providers", "openai")
     assert init.returncode == 0, f"`ns init` failed:\n{init.stdout}"
 
+    # `ns import` warns and exits 0 on a network it does not know, so the exit code alone
+    # does not show the import happened.
     imported = project.run("import", *IMPORTED_NETWORKS)
     assert imported.returncode == 0, f"`ns import` failed:\n{imported.stdout}"
+    manifest_text: str = (project.project_dir / "registries" / "manifest.hocon").read_text(encoding="utf-8")
+    for network in IMPORTED_NETWORKS:
+        assert (project.project_dir / "registries" / f"{network}.hocon").is_file(), (
+            f"`ns import` did not copy {network}:\n{imported.stdout}"
+        )
+        assert f"{network}.hocon" in manifest_text, f"`ns import` did not register {network}:\n{imported.stdout}"
 
     (project.project_dir / ".env").write_text(f"OPENAI_API_KEY={FAKE_OPENAI_KEY}\n", encoding="utf-8")
     return project
 
 
-def _scaffold_manifest_entries(project_dir: Path) -> Tuple[Set[str], Set[str]]:
-    """
-    Read the networks the scaffolded manifest serves and the subset it lists as public.
-
-    A manifest key declared with a bare `true` is served and public. Keys with a dict body
-    are support networks declared with explicit `serve`/`public` flags. Includes are
-    resolved relative to the project root, matching how the packaged CLI sees them.
-
-    :param project_dir: The scaffolded project root.
-    :return: (served keys, public keys). Keys are the manifest's registry-relative
-        ``.hocon`` file names, e.g. ``basic/hello_world.hocon``.
-    """
-    manifest: Path = project_dir / "registries" / "manifest.hocon"
-    parsed = ConfigFactory.parse_string(manifest.read_text(encoding="utf-8"), basedir=str(project_dir))
-
-    # pyhocon keeps the literal quotes of a quoted key, so strip them back off.
-    entries = ((key.strip().strip('"'), value) for key, value in parsed.items())
-    served: Set[str] = set()
-    public: Set[str] = set()
-    for key, value in entries:
-        if value is True:
-            served.add(key)
-            public.add(key)
-        elif isinstance(value, dict):
-            if value.get("serve", False):
-                served.add(key)
-            if value.get("public", False):
-                public.add(key)
-
-    assert served, f"no served networks found in {manifest}"
-    return served, public
-
-
 def test_scaffolded_networks_load(packaged_project: PackagedProject) -> None:
-    """Every network the scaffold and import wrote loads in the scaffolded project."""
+    """The networks the scaffold and the import wrote load and are listed in the scaffolded project.
+
+    A registry file that fails to parse or validate is logged and skipped rather than raised,
+    so the command exits 0 with the network silently missing. The listing itself is what is
+    checked: it is the JSON document after the anchor, and every expected network must be in it.
+    """
     listed = packaged_project.run("chat", "--list")
-
     assert listed.returncode == 0, f"`ns chat --list` failed:\n{listed.stdout}"
-    complaints: List[str] = [
-        line for line in listed.stdout.splitlines() if not JSON_FIELD.match(line) and LOAD_FAILURE_WORDS.search(line)
-    ]
-    assert not complaints, "`ns chat --list` reported a problem:\n" + "\n".join(complaints)
 
-    listed_agents: Set[str] = {match.group("name") for match in LISTED_AGENT.finditer(listed.stdout)}
-    _, public = _scaffold_manifest_entries(packaged_project.project_dir)
-    missing: Set[str] = {key.removesuffix(".hocon") for key in public} - listed_agents
-    assert not missing, f"manifest networks missing from `ns chat --list`: {sorted(missing)}\n{listed.stdout}"
+    _, anchor, listing = listed.stdout.partition(LISTING_ANCHOR)
+    assert anchor, f"`ns chat --list` printed no listing:\n{listed.stdout}"
+    payload: Dict[str, Any] = json.loads(listing)
+    listed_agents: Set[str] = {agent.get("agent_name") for agent in payload.get("agents", [])}
+
+    missing: Set[str] = set(DEFAULT_NETWORKS + IMPORTED_NETWORKS) - listed_agents
+    assert not missing, f"networks missing from `ns chat --list`: {sorted(missing)}\n{listed.stdout}"
 
 
 def test_served_networks_validate(packaged_project: PackagedProject) -> None:
@@ -247,18 +279,12 @@ def test_served_networks_validate(packaged_project: PackagedProject) -> None:
     `ns chat --list` only reports public networks and tolerates a failed load by logging
     and skipping, so support networks (`"serve": true, "public": false`) could break without
     failing any assertion above. `ns validate` exits non-zero on a file that fails to parse,
-    fails to validate, or is missing from the wheel, so each served entry gets checked
-    directly instead of relying on the absence of a log marker.
+    fails to validate, or is missing from the wheel, and it accepts `/agent_name` references
+    to the other networks the manifest serves, so each served entry gets checked directly.
     """
-    served, _ = _scaffold_manifest_entries(packaged_project.project_dir)
-
-    # `ns validate` checks one file at a time, so `/agent_name` references to the other
-    # networks in the manifest must be declared to it explicitly. At load time they
-    # resolve as external agents, which is exactly what `--external-agents` declares.
-    external_agents: str = ",".join(f"/{key.removesuffix('.hocon')}" for key in sorted(served))
-    for network_file in sorted(served):
-        result = packaged_project.run("validate", f"registries/{network_file}", "--external-agents", external_agents)
-        assert result.returncode == 0, f"`ns validate` failed for {network_file}:\n{result.stdout}"
+    for network in packaged_project.served_networks():
+        result = packaged_project.run("validate", f"registries/{network}.hocon")
+        assert result.returncode == 0, f"`ns validate` failed for {network}:\n{result.stdout}"
 
 
 def test_check_llm_keys_reads_project_env(packaged_project: PackagedProject) -> None:
@@ -266,4 +292,4 @@ def test_check_llm_keys_reads_project_env(packaged_project: PackagedProject) -> 
     checked = packaged_project.run("check-llm-keys", "--tier", "1")
 
     assert checked.returncode == 0, f"`ns check-llm-keys --tier 1` failed:\n{checked.stdout}"
-    assert re.search(r"OPENAI_API_KEY:.*Set", checked.stdout), f"key not reported as set:\n{checked.stdout}"
+    assert re.search(r"(?m)^\s*OPENAI_API_KEY:.*Set", checked.stdout), f"key not reported as set:\n{checked.stdout}"
