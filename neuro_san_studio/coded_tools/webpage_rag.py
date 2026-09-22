@@ -300,9 +300,9 @@ class WebpageRag(CodedTool, BaseRag):
         # URL", never "abort the whole load". The error is logged so nothing fails
         # silently.
         except Exception as error:  # pylint: disable=broad-exception-caught
-            # SafeFetch's errors quote the URL they were given, and for the body fetch that is
-            # the server-controlled final_url (possibly a presigned link); redact any URL in the
-            # message so the log carries the failure, not the token.
+            # SafeFetch already names URLs in its messages in redacted form; this text pass is the
+            # fallback for other libraries' messages (aiohttp, BeautifulSoup) that may quote the
+            # server-controlled final_url, so the log carries the failure, not a token.
             logger.error("Failed to load webpage %s: %s", url, UrlPolicy.redact_urls_in_text(str(error)))
             return None
 

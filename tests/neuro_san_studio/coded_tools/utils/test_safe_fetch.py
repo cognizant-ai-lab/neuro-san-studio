@@ -964,6 +964,29 @@ class TestSafeFetch(TestCase):  # pylint: disable=too-many-public-methods
         self.assertIn("invalid_input", error)
         self.assertEqual(calls, [("GET", "http://example.com/start")])
 
+    def test_fetch_raw_refused_location_is_named_without_its_query(self) -> None:
+        """Tests that a refused redirect target with a credential in its query is named in redacted form.
+
+        The Location is chosen by the server and never passed validate_url, so the message
+        names it only as scheme, host and path: these messages end up in logs.
+        """
+        hops = [self._redirect(302, "ftp://files.example.com/a?token=secret")]
+        session, _ = self._make_chain_session(hops)
+        with self.assertRaises(ValueError) as ctx:
+            asyncio.run(SafeFetch.fetch_raw("http://example.com/start", session))
+        error = str(ctx.exception)
+        self.assertNotIn("secret", error)
+        self.assertIn("redirects to 'ftp://files.example.com/a?[redacted]'", error)
+
+    def test_fetch_raw_translated_http_error_names_url_without_its_query(self) -> None:
+        """Tests that a translated HTTP failure names the fetched URL without its query string."""
+        exc = make_response_error(503)
+        session, _ = make_get_response(status=503, raise_for_status_exc=exc)
+        with self.assertRaises(ClientResponseError) as ctx:
+            asyncio.run(SafeFetch.fetch_raw("http://example.com/x?token=secret", session))
+        self.assertNotIn("secret", ctx.exception.message)
+        self.assertIn("for 'http://example.com/x?[redacted]'", ctx.exception.message)
+
     def test_fetch_raw_redirect_without_location_raises_url_not_allowed(self) -> None:
         """Tests that a 3xx with no Location header (e.g. 304) raises url_not_allowed."""
         for status in (304, 302):

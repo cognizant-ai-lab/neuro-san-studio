@@ -308,15 +308,19 @@ class UrlPolicy:
         marker, so a reader can still tell one was present; the fragment and any userinfo are
         dropped.
 
-        :param url: The URL to redact. Expected to have passed validate_url; a string that does
-                    not parse is reported as such rather than logged raw.
+        :param url: The URL to redact. Usually one that passed validate_url, but a raw redirect
+                    Location of any scheme is accepted too; a string urlparse rejects is cut at
+                    its first "?" or "#" instead.
         :return: The redacted URL, e.g. "https://files.example.com/report.pdf?[redacted]".
         """
         try:
             parsed: ParseResult = urlparse(url)
             port: int | None = parsed.port
         except ValueError:
-            return "[unparseable url]"
+            # urlparse refused it (an unbalanced IPv6 bracket, a bad port). Keep the diagnostic
+            # value of naming it, but still cut off anything that could be a query or fragment.
+            head: str = url.split("?", 1)[0].split("#", 1)[0]
+            return head if head == url else f"{head}?[redacted]"
         host: str = parsed.hostname or ""
         # urlparse strips the brackets from an IPv6 literal; put them back so the log stays a URL.
         if ":" in host:

@@ -103,6 +103,10 @@ class SafeFetch:
     oversized body. A PDF download is also sniffed for a "%PDF-" header within its
     first PDF_HEADER_WINDOW bytes and refused (not_a_pdf) before the rest is read.
 
+    Every URL named in an error message is reduced to scheme, host and path
+    (UrlPolicy.redact_for_log): redirect targets are server-controlled and routinely carry a
+    bearer credential in their query string, and these messages end up in logs.
+
     Error types (raised as ValueError or aiohttp.ClientResponseError or aiohttp.ClientError with the specified message)
         invalid_input            – URL is missing, not a valid http/https URL, or a parameter has an invalid type.
         url_too_long             – URL exceeds MAX_URL_LENGTH characters.
@@ -313,8 +317,9 @@ class SafeFetch:
                 # requests from this host (DoS, or probing the SSRF policy hop by hop).
                 if redirects_followed >= MAX_REDIRECTS:
                     raise ValueError(
-                        f"url_not_allowed: '{url}' exceeded MAX_REDIRECTS ({MAX_REDIRECTS}) redirects "
-                        f"(last hop '{current_url}' answered {status})."
+                        f"url_not_allowed: '{UrlPolicy.redact_for_log(url)}' exceeded MAX_REDIRECTS "
+                        f"({MAX_REDIRECTS}) redirects (last hop '{UrlPolicy.redact_for_log(current_url)}' "
+                        f"answered {status})."
                     )
                 # 304 Not Modified and any other 3xx without a Location cannot be
                 # followed. Refuse rather than fall through and hand the redirect
@@ -322,7 +327,8 @@ class SafeFetch:
                 location: str = (response.headers.get("Location") or "").strip()
                 if not location:
                     raise ValueError(
-                        f"url_not_allowed: '{url}' answered {status} at '{current_url}' without a Location header."
+                        f"url_not_allowed: '{UrlPolicy.redact_for_log(url)}' answered {status} at "
+                        f"'{UrlPolicy.redact_for_log(current_url)}' without a Location header."
                     )
             # The hop's response context has now been exited, so its connection is
             # released (back to the pool, or closed) before the next request is made
@@ -344,8 +350,11 @@ class SafeFetch:
                 # caller's URL was fine; the server pointed somewhere this policy
                 # refuses, so surface every hop failure uniformly as url_not_allowed
                 # and keep the inner reason for diagnosis.
+                # next_url is the raw, unvalidated Location the server chose: it may be any scheme
+                # and may carry a credential in its query, so it is named in redacted form only.
                 raise ValueError(
-                    f"url_not_allowed: '{url}' redirects to '{next_url}' ({status}), which failed validation: {exc}"
+                    f"url_not_allowed: '{UrlPolicy.redact_for_log(url)}' redirects to "
+                    f"'{UrlPolicy.redact_for_log(next_url)}' ({status}), which failed validation: {exc}"
                 ) from exc
             # Refuse https -> http downgrade hops. The session stores no cookies and
             # sends no credentials, but the URL itself can carry a bearer secret (a
@@ -353,8 +362,9 @@ class SafeFetch:
             # so a downgrade hop could deliberately put that secret on plaintext.
             if urlparse(current_url).scheme.lower() == "https" and urlparse(validated_next).scheme.lower() == "http":
                 raise ValueError(
-                    f"url_not_allowed: '{url}' redirects from https '{current_url}' to http '{validated_next}' "
-                    f"({status}); downgrade redirects are not followed."
+                    f"url_not_allowed: '{UrlPolicy.redact_for_log(url)}' redirects from https "
+                    f"'{UrlPolicy.redact_for_log(current_url)}' to http "
+                    f"'{UrlPolicy.redact_for_log(validated_next)}' ({status}); downgrade redirects are not followed."
                 )
             current_url = validated_next
             redirects_followed += 1
@@ -546,7 +556,7 @@ class SafeFetch:
         Raise response_too_large if a Content-Length header exceeds MAX_RESPONSE_BYTES.
 
         :param content_length_header: The Content-Length header value, or None if absent.
-        :param url: The URL being fetched, included in the raised message.
+        :param url: The URL being fetched, named (redacted to scheme, host and path) in the raised message.
         :raises ValueError: response_too_large when the parsed length exceeds the limit.
         """
         if content_length_header is not None:
@@ -556,7 +566,7 @@ class SafeFetch:
                 return
             if size > MAX_RESPONSE_BYTES:
                 raise ValueError(
-                    f"response_too_large: '{url}' reports Content-Length {size} bytes, "
+                    f"response_too_large: '{UrlPolicy.redact_for_log(url)}' reports Content-Length {size} bytes, "
                     f"which exceeds the {MAX_RESPONSE_BYTES}-byte limit."
                 )
 
@@ -595,7 +605,9 @@ class SafeFetch:
             # or complex PDF does not stall the event loop.
             return await to_thread(PdfUtils.parse_pdf_bytes, data)
         except Exception as exc:
-            raise ClientError(f"url_not_accessible: Failed to parse PDF '{url}': {exc}") from exc
+            raise ClientError(
+                f"url_not_accessible: Failed to parse PDF '{UrlPolicy.redact_for_log(url)}': {exc}"
+            ) from exc
 
     @staticmethod
     async def download_pdf_bytes(
@@ -699,7 +711,7 @@ class SafeFetch:
         when the body is shorter (a small or empty body). A failing body is refused right there.
 
         :param response: The aiohttp response whose body to stream.
-        :param url: The URL being fetched, included in the raised message.
+        :param url: The URL being fetched, named (redacted to scheme, host and path) in the raised message.
         :param require_pdf_header: When True, refuse the body as not_a_pdf unless a PDF
                 header appears within its first PDF_HEADER_WINDOW bytes.
         :return: The full response body as bytes (at most MAX_RESPONSE_BYTES).
@@ -721,7 +733,10 @@ class SafeFetch:
                 SafeFetch._check_pdf_header(b"".join(chunks), response, url)
                 header_pending = False
             if received > MAX_RESPONSE_BYTES:
-                raise ValueError(f"response_too_large: '{url}' body exceeds the {MAX_RESPONSE_BYTES}-byte limit.")
+                raise ValueError(
+                    f"response_too_large: '{UrlPolicy.redact_for_log(url)}' body exceeds the "
+                    f"{MAX_RESPONSE_BYTES}-byte limit."
+                )
         body: bytes = b"".join(chunks)
         # Stream ended before the window filled (a small PDF, or an empty body):
         # sniff whatever arrived, so the check still runs exactly once.
@@ -743,7 +758,7 @@ class SafeFetch:
         :param head: The bytes received so far (at least PDF_HEADER_WINDOW when the
                      body is that long; extra bytes are ignored).
         :param response: The aiohttp response, read only for its declared Content-Type.
-        :param url: The URL being fetched, included in the raised message.
+        :param url: The URL being fetched, named (redacted to scheme, host and path) in the raised message.
         :raises ValueError: not_a_pdf when "%PDF-" does not occur within the first
                 PDF_HEADER_WINDOW bytes of head.
         """
@@ -751,7 +766,10 @@ class SafeFetch:
             return
         declared: str = response.headers.get("Content-Type", "")
         detail: str = f" (declared Content-Type '{declared}')" if declared else ""
-        raise ValueError(f"not_a_pdf: '{url}' has no PDF header in its first {PDF_HEADER_WINDOW} bytes{detail}.")
+        raise ValueError(
+            f"not_a_pdf: '{UrlPolicy.redact_for_log(url)}' has no PDF header in its first "
+            f"{PDF_HEADER_WINDOW} bytes{detail}."
+        )
 
     @staticmethod
     async def _read_capped_text(response: Any, url: str) -> str:
@@ -765,7 +783,7 @@ class SafeFetch:
         dropped from the decoded text.
 
         :param response: The aiohttp response whose body to stream and decode.
-        :param url: The URL being fetched, included in the raised message.
+        :param url: The URL being fetched, named (redacted to scheme, host and path) in the raised message.
         :return: The decoded response body (at most MAX_RESPONSE_BYTES of raw bytes),
                  without a leading byte-order mark.
         :raises ValueError: response_too_large when the received bytes exceed the limit.
@@ -852,7 +870,7 @@ class SafeFetch:
 
         :param exc: The caught aiohttp ClientError (possibly a ClientResponseError)
                     or asyncio timeout to translate.
-        :param url: The URL being fetched, included in the raised message.
+        :param url: The URL being fetched, named (redacted to scheme, host and path) in the raised message.
         :raises aiohttp.ClientResponseError: when exc is a ClientResponseError, tagged
                 too_many_requests or url_not_accessible.
         :raises aiohttp.ClientError: for any other transport failure, tagged url_not_accessible.
@@ -863,7 +881,11 @@ class SafeFetch:
                 exc.request_info,
                 exc.history,
                 status=exc.status,
-                message=f"{prefix}: HTTP {exc.status} for '{url}'.",
+                message=f"{prefix}: HTTP {exc.status} for '{UrlPolicy.redact_for_log(url)}'.",
                 headers=exc.headers,
             ) from exc
-        raise ClientError(f"url_not_accessible: Could not reach '{url}': {exc}") from exc
+        # aiohttp's own message may quote the URL too (InvalidURL does), so it gets the text pass.
+        raise ClientError(
+            f"url_not_accessible: Could not reach '{UrlPolicy.redact_for_log(url)}': "
+            f"{UrlPolicy.redact_urls_in_text(str(exc))}"
+        ) from exc

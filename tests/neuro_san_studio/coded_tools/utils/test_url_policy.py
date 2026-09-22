@@ -450,9 +450,15 @@ class TestUrlPolicy(TestCase):  # pylint: disable=too-many-public-methods
             UrlPolicy.redact_for_log("http://[2001:db8::1]:8080/x?y=1"), "http://[2001:db8::1]:8080/x?[redacted]"
         )
 
-    def test_redact_for_log_reports_unparseable_url(self) -> None:
-        """Tests that a URL urlparse rejects is replaced by a fixed marker rather than logged raw."""
-        self.assertEqual(UrlPolicy.redact_for_log("https://[::1/"), "[unparseable url]")
+    def test_redact_for_log_keeps_unparseable_url_but_cuts_its_query(self) -> None:
+        """Tests that a URL urlparse rejects is still named for diagnosis, minus anything after "?" or "#"."""
+        self.assertEqual(UrlPolicy.redact_for_log("https://[::1/x"), "https://[::1/x")
+        self.assertEqual(UrlPolicy.redact_for_log("https://[::1/x?token=secret"), "https://[::1/x?[redacted]")
+        self.assertEqual(UrlPolicy.redact_for_log("https://[::1/x#frag"), "https://[::1/x?[redacted]")
+
+    def test_redact_for_log_handles_authority_less_scheme(self) -> None:
+        """Tests that a rejected data: Location, which has no authority, still loses its query."""
+        self.assertEqual(UrlPolicy.redact_for_log("data:text/plain?token=secret"), "data:text/plain?[redacted]")
 
     def test_redact_urls_in_text_redacts_quoted_url_in_error_message(self) -> None:
         """Tests that a SafeFetch-style error message quoting a presigned URL loses the query but keeps its shape."""
