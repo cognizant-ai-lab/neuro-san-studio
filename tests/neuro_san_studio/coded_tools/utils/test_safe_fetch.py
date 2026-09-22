@@ -42,8 +42,8 @@ from neuro_san_studio.coded_tools.utils.pdf_utils import PDF_HEADER_WINDOW
 from neuro_san_studio.coded_tools.utils.pdf_utils import PdfUtils
 from neuro_san_studio.coded_tools.utils.safe_fetch import MAX_REDIRECTS
 from neuro_san_studio.coded_tools.utils.safe_fetch import MAX_RESPONSE_BYTES
-from neuro_san_studio.coded_tools.utils.safe_fetch import MAX_URL_LENGTH
 from neuro_san_studio.coded_tools.utils.safe_fetch import SafeFetch
+from neuro_san_studio.coded_tools.utils.url_policy import UrlPolicy
 
 MODULE = "neuro_san_studio.coded_tools.utils.safe_fetch"
 
@@ -192,8 +192,9 @@ async def open_session_user_agent() -> str | None:
 class TestSafeFetch(TestCase):  # pylint: disable=too-many-public-methods
     """Unit tests for the SafeFetch shared SSRF-hardened fetch utility.
 
-    Validation performs no DNS lookups; DNS records are validated at connection
-    time by GlobalOnlyResolver (see test_global_only_resolver.py). Network-facing
+    URL validation itself lives in UrlPolicy and is covered by test_url_policy.py;
+    here only SafeFetch's delegations to it are checked. DNS records are validated
+    at connection time by GlobalOnlyResolver (see test_global_only_resolver.py). Network-facing
     methods are exercised with mocked aiohttp sessions built by the helpers above;
     redirect chains use the _make_chain_session static helpers on this class, whose
     session.head / session.get hand out successive hop responses in order while
@@ -267,381 +268,79 @@ class TestSafeFetch(TestCase):  # pylint: disable=too-many-public-methods
 
         asyncio.run(check())
 
-    def _call_validate_url(self, args):
-        """Invoke validate_url with the given args dict and return the result."""
-        return SafeFetch.validate_url(args.get("url", ""), args.get("allowed_domains"), args.get("blocked_domains"))
+    def test_validate_url_delegates_to_url_policy(self) -> None:
+        """Tests that SafeFetch.validate_url forwards all three arguments to UrlPolicy and returns its result."""
+        with patch.object(UrlPolicy, "validate_url", return_value="https://example.com/clean") as delegate:
+            result: str = SafeFetch.validate_url(" https://example.com/clean ", ["example.com"], ["bad.example.org"])
+        delegate.assert_called_once_with(" https://example.com/clean ", ["example.com"], ["bad.example.org"])
+        self.assertEqual(result, "https://example.com/clean")
 
-    def test_validate_url_valid_http_url(self):
-        """Tests that a valid HTTP URL is accepted."""
-        self.assertEqual(self._call_validate_url({"url": "http://example.com/page"}), "http://example.com/page")
-
-    def test_validate_url_valid_https_url(self):
-        """Tests that a valid HTTPS URL is accepted."""
-        self.assertEqual(self._call_validate_url({"url": "https://example.com"}), "https://example.com")
-
-    def test_validate_url_strips_whitespace(self):
-        """Tests that leading and trailing whitespace is stripped from the URL."""
-        self.assertEqual(self._call_validate_url({"url": "  https://example.com  "}), "https://example.com")
-
-    def test_validate_url_missing_url_key(self):
-        """Tests that a missing 'url' key raises ValueError with invalid_input."""
+    def test_validate_url_unpatched_still_enforces_policy(self) -> None:
+        """Tests that the delegation is wired to the real policy: a loopback URL is still refused."""
         with self.assertRaises(ValueError) as ctx:
-            self._call_validate_url({})
-        self.assertIn("invalid_input", str(ctx.exception))
-
-    def test_validate_url_empty_url(self):
-        """Tests that an empty URL string raises ValueError with invalid_input."""
-        with self.assertRaises(ValueError) as ctx:
-            self._call_validate_url({"url": ""})
-        self.assertIn("invalid_input", str(ctx.exception))
-
-    def test_validate_url_non_string_url(self):
-        """Tests that a non-string URL value raises ValueError with invalid_input."""
-        with self.assertRaises(ValueError) as ctx:
-            self._call_validate_url({"url": 42})
-        self.assertIn("invalid_input", str(ctx.exception))
-
-    def test_validate_url_none_url(self):
-        """Tests that a None URL value raises ValueError with invalid_input."""
-        with self.assertRaises(ValueError) as ctx:
-            self._call_validate_url({"url": None})
-        self.assertIn("invalid_input", str(ctx.exception))
-
-    def test_validate_url_ftp_scheme_rejected(self):
-        """Tests that an FTP scheme URL is rejected with invalid_input."""
-        with self.assertRaises(ValueError) as ctx:
-            self._call_validate_url({"url": "ftp://example.com"})
-        self.assertIn("invalid_input", str(ctx.exception))
-
-    def test_validate_url_url_too_long(self):
-        """Tests that a URL exceeding the maximum length raises ValueError with url_too_long."""
-        long_url = "https://example.com/" + "a" * MAX_URL_LENGTH
-        with self.assertRaises(ValueError) as ctx:
-            self._call_validate_url({"url": long_url})
-        self.assertIn("url_too_long", str(ctx.exception))
-
-    def test_validate_url_url_at_max_length_is_accepted(self):
-        """Tests that a URL exactly at the maximum allowed length is accepted."""
-        prefix = "https://test.co/"
-        url = prefix + "a" * (MAX_URL_LENGTH - len(prefix))
-        self.assertEqual(self._call_validate_url({"url": url}), url)
-
-    def test_validate_url_missing_hostname(self):
-        """Tests that a URL with no hostname raises ValueError with invalid_input."""
-        with self.assertRaises(ValueError) as ctx:
-            self._call_validate_url({"url": "https:///no-host"})
-        self.assertIn("invalid_input", str(ctx.exception))
-
-    def test_validate_url_allowed_domains_pass(self):
-        """Tests that a URL matching an allowed domain passes validation."""
-        url = self._call_validate_url({"url": "https://api.example.com/data", "allowed_domains": ["example.com"]})
-        self.assertEqual(url, "https://api.example.com/data")
-
-    def test_validate_url_allowed_domains_exact_match(self):
-        """Tests that a URL exactly matching an allowed domain passes validation."""
-        url = self._call_validate_url({"url": "https://example.com/", "allowed_domains": ["example.com"]})
-        self.assertEqual(url, "https://example.com/")
-
-    def test_validate_url_allowed_domains_rejects_unrelated(self):
-        """Tests that a URL not matching any allowed domain raises ValueError with url_not_allowed."""
-        with self.assertRaises(ValueError) as ctx:
-            self._call_validate_url({"url": "https://test-other.com/", "allowed_domains": ["test-example.com"]})
+            SafeFetch.validate_url("http://127.0.0.1/admin")
         self.assertIn("url_not_allowed", str(ctx.exception))
 
-    def test_validate_url_allowed_domains_does_not_match_partial_prefix(self):
-        """Tests that a hostname sharing a suffix but not a domain boundary is rejected."""
-        with self.assertRaises(ValueError) as ctx:
-            self._call_validate_url({"url": "https://test-badexample.com/", "allowed_domains": ["test-example.com"]})
-        self.assertIn("url_not_allowed", str(ctx.exception))
+    def test_validate_hostname_safety_delegates_to_url_policy(self) -> None:
+        """Tests that SafeFetch.validate_hostname_safety forwards the hostname to UrlPolicy."""
+        with patch.object(UrlPolicy, "validate_hostname_safety") as delegate:
+            SafeFetch.validate_hostname_safety("example.com")
+        delegate.assert_called_once_with("example.com")
 
-    def test_validate_url_blocked_domains_rejects(self):
-        """Tests that a URL exactly matching a blocked domain raises ValueError with url_not_allowed."""
-        with self.assertRaises(ValueError) as ctx:
-            self._call_validate_url({"url": "https://test-blocked.com/", "blocked_domains": ["test-blocked.com"]})
-        self.assertIn("url_not_allowed", str(ctx.exception))
+    def test_validate_domain_list_delegates_to_url_policy(self) -> None:
+        """Tests that SafeFetch.validate_domain_list forwards both arguments to UrlPolicy and returns its result."""
+        with patch.object(UrlPolicy, "validate_domain_list", return_value=["example.com"]) as delegate:
+            result: list[str] = SafeFetch.validate_domain_list("example.com", "allowed_domains")
+        delegate.assert_called_once_with("example.com", "allowed_domains")
+        self.assertEqual(result, ["example.com"])
 
-    def test_validate_url_blocked_domains_subdomain_rejected(self):
-        """Tests that a subdomain of a blocked domain is also rejected."""
-        with self.assertRaises(ValueError) as ctx:
-            self._call_validate_url({"url": "https://test-sub.blocked.com/", "blocked_domains": ["blocked.com"]})
-        self.assertIn("url_not_allowed", str(ctx.exception))
+    def test_get_content_type_private_ip_url_rejected_without_network(self) -> None:
+        """Tests that get_content_type re-validates the URL at entry, blocking SSRF without a prior validate_url call.
 
-    def test_validate_url_blocked_domains_partial_prefix_not_blocked(self):
-        """Tests that a domain sharing a suffix with a blocked domain but not a boundary is allowed."""
-        url = self._call_validate_url({"url": "https://test-notblocked.com/", "blocked_domains": ["test-blocked.com"]})
-        self.assertEqual(url, "https://test-notblocked.com/")
-
-    def test_validate_url_url_with_port_matches_domain(self):
-        """Tests that a URL with a port number still matches the allowed domain correctly."""
-        url = self._call_validate_url({"url": "https://example.com:8080/path", "allowed_domains": ["example.com"]})
-        self.assertEqual(url, "https://example.com:8080/path")
-
-    def test_validate_url_blocked_domain_checked_against_hostname(self):
-        """Tests that blocked domains are enforced on the hostname itself."""
-        # Regression test: the hostname must never be replaced by a resolved IP
-        # before domain checks run.
-        with self.assertRaises(ValueError) as ctx:
-            self._call_validate_url({"url": "https://test-blocked.com/x", "blocked_domains": ["test-blocked.com"]})
-        self.assertIn("Domain 'test-blocked.com' is blocked", str(ctx.exception))
-
-    def test_validate_url_trailing_dot_host_still_blocked(self):
-        """Tests that a trailing-dot FQDN cannot bypass a block-list entry.
-
-        'example.com.' is DNS-equivalent to 'example.com'; without canonicalizing
-        the hostname it would evade blocked_domains=['example.com'].
+        The session's head/get are MagicMocks that would 'succeed' if reached; the raised
+        url_not_allowed and the untouched mocks confirm the check runs at the fetch boundary.
         """
+        session = MagicMock()
+        session.head = MagicMock()
+        session.get = MagicMock()
         with self.assertRaises(ValueError) as ctx:
-            self._call_validate_url({"url": "https://example.com./x", "blocked_domains": ["example.com"]})
+            asyncio.run(SafeFetch.get_content_type("http://169.254.169.254/latest/meta-data/", session))
         self.assertIn("url_not_allowed", str(ctx.exception))
+        session.head.assert_not_called()
+        session.get.assert_not_called()
 
-    def test_validate_url_trailing_dot_host_matches_allowed(self):
-        """Tests that a trailing-dot FQDN still matches an allowed_domains entry."""
-        url = self._call_validate_url({"url": "https://example.com./data", "allowed_domains": ["example.com"]})
-        self.assertEqual(url, "https://example.com./data")
-
-    def test_validate_url_trailing_dot_localhost_blocked(self):
-        """Tests that 'localhost.' cannot dodge the loopback guard via a trailing dot."""
+    def test_download_pdf_bytes_private_ip_url_rejected_without_network(self) -> None:
+        """Tests that download_pdf_bytes re-validates the URL at entry, blocking SSRF without a prior validate_url."""
+        session = MagicMock()
+        session.get = MagicMock()
         with self.assertRaises(ValueError) as ctx:
-            self._call_validate_url({"url": "http://localhost./"})
+            asyncio.run(SafeFetch.download_pdf_bytes("http://169.254.169.254/doc.pdf", session))
         self.assertIn("url_not_allowed", str(ctx.exception))
+        session.get.assert_not_called()
 
-    def test_validate_url_idn_unicode_host_matches_punycode_block(self):
-        """Tests that a Unicode IDN host is blocked by its punycode blocked_domains entry.
+    def test_network_methods_apply_domain_rules_at_entry_without_network(self) -> None:
+        """Tests that get_content_type, fetch_raw and download_pdf_bytes apply the caller's domain rules at entry.
 
-        aiohttp connects to the IDNA-ASCII form, so 'münchen.de' must match a
-        blocked 'xn--mnchen-3ya.de' or the block is bypassed by spelling.
+        A host outside allowed_domains, or inside blocked_domains, must be refused before any
+        request is made. This pins the allowed_domains / blocked_domains arguments of the three
+        UrlPolicy.validate_url entry calls, which the redirect-hop tests do not exercise.
         """
-        with self.assertRaises(ValueError) as ctx:
-            self._call_validate_url({"url": "https://münchen.de/x", "blocked_domains": ["xn--mnchen-3ya.de"]})
-        self.assertIn("url_not_allowed", str(ctx.exception))
-
-    def test_validate_url_idn_punycode_host_matches_unicode_block(self):
-        """Tests the inverse spelling: a punycode host is blocked by a Unicode blocked_domains entry."""
-        with self.assertRaises(ValueError) as ctx:
-            self._call_validate_url({"url": "https://xn--mnchen-3ya.de/x", "blocked_domains": ["münchen.de"]})
-        self.assertIn("url_not_allowed", str(ctx.exception))
-
-    def test_validate_url_invalid_port_rejected(self):
-        """Tests that a non-numeric port raises invalid_input rather than failing later in aiohttp."""
-        # Assembled from parts so the CI link checker (lychee) does not extract and
-        # fail to parse this deliberately-invalid port.
-        bad_port_url = "https://example.com" + ":not-a-port/x"
-        with self.assertRaises(ValueError) as ctx:
-            self._call_validate_url({"url": bad_port_url})
-        self.assertIn("invalid_input", str(ctx.exception))
-
-    def test_validate_url_unmatched_ipv6_bracket_rejected(self):
-        """Tests that a malformed IPv6 authority (unmatched bracket) raises invalid_input."""
-        with self.assertRaises(ValueError) as ctx:
-            self._call_validate_url({"url": "https://[::1/x"})
-        self.assertIn("invalid_input", str(ctx.exception))
-
-    def test_validate_url_unicode_dot_separator_host_still_blocked(self):
-        """Tests that a Unicode dot separator (U+3002) cannot bypass a block-list entry.
-
-        IDNA encoding maps 'example.com。' to the trailing-dot form of 'example.com',
-        so it must be blocked by blocked_domains=['example.com'].
-        """
-        with self.assertRaises(ValueError) as ctx:
-            self._call_validate_url({"url": "https://example.com。/x", "blocked_domains": ["example.com"]})
-        self.assertIn("url_not_allowed", str(ctx.exception))
-
-    def test_validate_url_unicode_dot_separator_localhost_blocked(self):
-        """Tests that 'localhost。' (U+3002) cannot dodge the loopback guard."""
-        with self.assertRaises(ValueError) as ctx:
-            self._call_validate_url({"url": "http://localhost。/"})
-        self.assertIn("url_not_allowed", str(ctx.exception))
-
-    def test_validate_url_trailing_dot_block_entry_matches_bare_host(self):
-        """Tests that a fully-qualified block-list entry ('example.com.') blocks the bare host."""
-        with self.assertRaises(ValueError) as ctx:
-            self._call_validate_url({"url": "https://example.com/x", "blocked_domains": ["example.com."]})
-        self.assertIn("url_not_allowed", str(ctx.exception))
-
-    def test_validate_url_uts46_mapping_matches_yarl(self):
-        """Tests that canonicalization uses UTS#46 (like yarl), not IDNA2003.
-
-        IDNA2003 maps 'faß.de' to 'fass.de', but aiohttp/yarl connect to
-        'xn--fa-hia.de'; a UTS#46 block entry in that punycode form must therefore
-        block the Unicode host, which IDNA2003 would let bypass.
-        """
-        with self.assertRaises(ValueError) as ctx:
-            self._call_validate_url({"url": "https://faß.de/x", "blocked_domains": ["xn--fa-hia.de"]})
-        self.assertIn("url_not_allowed", str(ctx.exception))
-
-    def test_validate_url_root_only_host_rejected(self):
-        """Tests that a root-only authority canonicalizing to an empty host is rejected.
-
-        'http://./' and 'http://../' have a non-empty parsed.hostname that reduces to
-        '' after IDNA encoding and trailing-dot stripping; they must raise
-        invalid_input rather than be returned as valid and reach DNS.
-        """
-        for url in ("http://./", "http://../"):
-            with self.subTest(url=url):
-                with self.assertRaises(ValueError) as ctx:
-                    self._call_validate_url({"url": url})
-                self.assertIn("invalid_input", str(ctx.exception))
-
-    def _call_validate_hostname_safety(self, hostname: str) -> None:
-        """Invoke validate_hostname_safety with the given hostname."""
-        SafeFetch.validate_hostname_safety(hostname)
-
-    def test_validate_hostname_safety_non_ip_hostname_allowed_without_dns(self):
-        """Tests that a non-IP hostname passes without a DNS lookup (validated later by the resolver)."""
-        self._call_validate_hostname_safety("example.com")  # should not raise
-
-    def test_validate_hostname_safety_public_ip_allowed(self):
-        """Tests that a publicly routable IP address does not raise an error."""
-        self._call_validate_hostname_safety("8.8.8.8")  # should not raise
-
-    def test_validate_hostname_safety_localhost_blocked(self):
-        """Tests that 'localhost' is blocked with url_not_allowed."""
-        with self.assertRaises(ValueError) as ctx:
-            self._call_validate_hostname_safety("localhost")
-        self.assertIn("url_not_allowed", str(ctx.exception))
-
-    def test_validate_hostname_safety_localhost_subdomain_blocked(self):
-        """Tests that a subdomain of localhost is blocked with url_not_allowed."""
-        with self.assertRaises(ValueError) as ctx:
-            self._call_validate_hostname_safety("app.localhost")
-        self.assertIn("url_not_allowed", str(ctx.exception))
-
-    def test_validate_hostname_safety_loopback_ipv4_blocked(self):
-        """Tests that the IPv4 loopback address 127.0.0.1 is blocked with url_not_allowed."""
-        with self.assertRaises(ValueError) as ctx:
-            self._call_validate_hostname_safety("127.0.0.1")
-        self.assertIn("url_not_allowed", str(ctx.exception))
-
-    def test_validate_hostname_safety_private_ipv4_blocked(self):
-        """Tests that private IPv4 addresses are blocked with url_not_allowed."""
-        for ip in ("10.0.0.1", "192.168.1.1", "172.16.0.1"):
-            with self.subTest(ip=ip):
-                with self.assertRaises(ValueError) as ctx:
-                    self._call_validate_hostname_safety(ip)
-                self.assertIn("url_not_allowed", str(ctx.exception))
-
-    def test_validate_hostname_safety_link_local_blocked(self):
-        """Tests that a link-local IP address such as the AWS metadata endpoint is blocked."""
-        with self.assertRaises(ValueError) as ctx:
-            self._call_validate_hostname_safety("169.254.169.254")  # AWS metadata endpoint
-        self.assertIn("url_not_allowed", str(ctx.exception))
-
-    def test_validate_hostname_safety_integer_and_shorthand_ipv4_literals_blocked(self):
-        """Tests that IPv4 forms aiohttp treats as literals but ip_address() rejects are blocked.
-
-        The 32-bit integer form '2130706433' and dotted-shorthand '127.1' both
-        resolve to 127.0.0.1 and are treated as IP literals by aiohttp, so aiohttp
-        skips GlobalOnlyResolver for them; validate_hostname_safety must reject them
-        up front rather than defer to a resolver that never runs.
-        """
-        for host in ("2130706433", "127.1", "0177.0.0.1"):
-            with self.subTest(host=host):
-                with self.assertRaises(ValueError) as ctx:
-                    self._call_validate_hostname_safety(host)
-                self.assertIn("url_not_allowed", str(ctx.exception))
-
-    def test_validate_hostname_safety_ipv6_loopback_blocked(self):
-        """Tests that the IPv6 loopback address ::1 is blocked with url_not_allowed."""
-        with self.assertRaises(ValueError) as ctx:
-            self._call_validate_hostname_safety("::1")
-        self.assertIn("url_not_allowed", str(ctx.exception))
-
-    def test_validate_hostname_safety_unspecified_ipv4_blocked(self):
-        """Tests that the unspecified IPv4 address 0.0.0.0 is blocked with url_not_allowed."""
-        with self.assertRaises(ValueError) as ctx:
-            self._call_validate_hostname_safety("0.0.0.0")
-        self.assertIn("url_not_allowed", str(ctx.exception))
-
-    def test_validate_hostname_safety_unspecified_ipv6_blocked(self):
-        """Tests that the unspecified IPv6 address :: is blocked with url_not_allowed."""
-        with self.assertRaises(ValueError) as ctx:
-            self._call_validate_hostname_safety("::")
-        self.assertIn("url_not_allowed", str(ctx.exception))
-
-    def test_validate_hostname_safety_cgnat_blocked(self):
-        """Tests that a CGNAT address (100.64.0.0/10) is blocked with url_not_allowed."""
-        with self.assertRaises(ValueError) as ctx:
-            self._call_validate_hostname_safety("100.64.0.1")
-        self.assertIn("url_not_allowed", str(ctx.exception))
-
-    def test_validate_hostname_safety_zoned_ipv6_link_local_blocked(self):
-        """Tests that zoned IPv6 link-local literals (RFC 6874) are blocked with url_not_allowed.
-
-        Covers both the raw zone form and the percent-encoded form as surfaced by
-        urlparse().hostname. ip_address() parses zoned literals on Python >= 3.9,
-        so these are rejected as non-global addresses.
-        """
-        for hostname in ("fe80::1%eth0", "fe80::1%25eth0"):
-            with self.subTest(hostname=hostname):
-                with self.assertRaises(ValueError) as ctx:
-                    self._call_validate_hostname_safety(hostname)
-                self.assertIn("url_not_allowed", str(ctx.exception))
-
-    def test_validate_hostname_safety_malformed_ip_like_string_blocked(self):
-        """Tests that IP-like strings that ip_address() cannot parse fail closed.
-
-        '%' and ':' are illegal in DNS hostnames, so such strings can only be
-        malformed or zoned IP literals. They must be rejected rather than deferred
-        to the resolver, because aiohttp's literal detection may treat them as IP
-        literals and bypass GlobalOnlyResolver.
-        """
-        for hostname in ("fe80::1%", "gggg::1", "1.2.3.4%zone"):
-            with self.subTest(hostname=hostname):
-                with self.assertRaises(ValueError) as ctx:
-                    self._call_validate_hostname_safety(hostname)
-                self.assertIn("url_not_allowed", str(ctx.exception))
-
-    def test_validate_hostname_safety_malformed_chars_rejected(self):
-        """Tests that a genuine hostname with characters invalid in a DNS name is rejected.
-
-        IDNA cannot canonicalize a host containing a space or '$', so _to_ascii_host
-        leaves it unchanged; it must surface as invalid_input rather than pass through
-        and fail later inside aiohttp with an off-contract error.
-        """
-        for hostname in ("exa mple.com", "ex$mple.com"):
-            with self.subTest(hostname=hostname):
-                with self.assertRaises(ValueError) as ctx:
-                    self._call_validate_hostname_safety(hostname)
-                self.assertIn("invalid_input", str(ctx.exception))
-
-    def test_validate_hostname_safety_underscore_label_allowed(self):
-        """Tests that underscore labels are tolerated (aiohttp/yarl accept them), not over-rejected."""
-        self._call_validate_hostname_safety("a_b.example.com")  # should not raise
-
-    def _call_validate_domain_list(self, value, param_name="test_param"):
-        """Invoke validate_domain_list with the given value and return the result."""
-        return SafeFetch.validate_domain_list(value, param_name)
-
-    def test_validate_domain_list_none_returns_empty_list(self):
-        """Tests that passing None returns an empty list."""
-        self.assertEqual(self._call_validate_domain_list(None), [])
-
-    def test_validate_domain_list_single_string_coerced_to_list(self):
-        """Tests that a single string domain is coerced into a one-element list."""
-        self.assertEqual(self._call_validate_domain_list("example.com"), ["example.com"])
-
-    def test_validate_domain_list_valid_list_returned_unchanged(self):
-        """Tests that a valid list of domain strings is returned unchanged."""
-        domains = ["example.com", "other.org"]
-        self.assertEqual(self._call_validate_domain_list(domains), domains)
-
-    def test_validate_domain_list_non_list_non_string_raises(self):
-        """Tests that a non-list, non-string value raises ValueError with invalid_input."""
-        with self.assertRaises(ValueError) as ctx:
-            self._call_validate_domain_list(123)
-        self.assertIn("invalid_input", str(ctx.exception))
-
-    def test_validate_domain_list_list_with_non_string_element_raises(self):
-        """Tests that a list containing a non-string element raises ValueError with invalid_input."""
-        with self.assertRaises(ValueError) as ctx:
-            self._call_validate_domain_list(["example.com", 42])
-        self.assertIn("invalid_input", str(ctx.exception))
-
-    def test_validate_domain_list_dict_raises(self):
-        """Tests that passing a dict raises ValueError with invalid_input."""
-        with self.assertRaises(ValueError) as ctx:
-            self._call_validate_domain_list({"domain": "example.com"})
-        self.assertIn("invalid_input", str(ctx.exception))
+        session = MagicMock()
+        session.head = MagicMock()
+        session.get = MagicMock()
+        rules: list[dict[str, list[str]]] = [
+            {"allowed_domains": ["example.com"]},
+            {"blocked_domains": ["example.org"]},
+        ]
+        methods: list[Any] = [SafeFetch.get_content_type, SafeFetch.fetch_raw, SafeFetch.download_pdf_bytes]
+        for method in methods:
+            for rule in rules:
+                with self.subTest(method=method.__name__, rule=rule):
+                    with self.assertRaises(ValueError) as ctx:
+                        asyncio.run(method("http://example.org/doc.pdf", session, **rule))
+                    self.assertIn("url_not_allowed", str(ctx.exception))
+        session.head.assert_not_called()
+        session.get.assert_not_called()
 
     def _call_check_content_length(self, header, url="http://example.com"):
         """Invoke check_content_length with the given Content-Length header value."""
