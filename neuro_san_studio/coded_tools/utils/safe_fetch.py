@@ -875,7 +875,8 @@ class SafeFetch:
         :param url: The URL being fetched, named (redacted to scheme, host and path) in the raised message.
         :raises aiohttp.ClientResponseError: when exc is a ClientResponseError, tagged
                 too_many_requests or url_not_accessible.
-        :raises aiohttp.ClientError: for any other transport failure, tagged url_not_accessible.
+        :raises aiohttp.ClientError: for any other transport failure, tagged url_not_accessible, with
+                the original's class name and redacted text in the message and no chained cause.
         """
         if isinstance(exc, ClientResponseError):
             prefix: str = "too_many_requests" if exc.status == HTTPStatus.TOO_MANY_REQUESTS else "url_not_accessible"
@@ -888,6 +889,10 @@ class SafeFetch:
             request_info: RequestInfo = RequestInfo(
                 shown_url, exc.request_info.method, exc.request_info.headers, shown_url
             )
+            # The original error stays chained as the cause for its status and reason phrase, but a
+            # traceback log renders str(cause), which renders the cause's own real_url; give the
+            # cause the redacted RequestInfo too, so nothing in the chain names the query.
+            exc.request_info = request_info
             raise ClientResponseError(
                 request_info,
                 exc.history,
@@ -895,8 +900,10 @@ class SafeFetch:
                 message=f"{prefix}: HTTP {exc.status} for '{UrlPolicy.redact_for_log(url)}'.",
                 headers=exc.headers,
             ) from exc
-        # aiohttp's own message may quote the URL too (InvalidURL does), so it gets the text pass.
+        # Transport errors are not chained: aiohttp's message may quote the URL (InvalidURL does)
+        # and a traceback log would print the cause verbatim. The class name and the redacted text
+        # of the original are kept in the message instead, so nothing needed for diagnosis is lost.
         raise ClientError(
             f"url_not_accessible: Could not reach '{UrlPolicy.redact_for_log(url)}': "
-            f"{UrlPolicy.redact_urls_in_text(str(exc))}"
-        ) from exc
+            f"{type(exc).__name__}: {UrlPolicy.redact_urls_in_text(str(exc))}"
+        ) from None

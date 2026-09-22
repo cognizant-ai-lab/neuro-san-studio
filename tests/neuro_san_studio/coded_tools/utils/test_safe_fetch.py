@@ -19,6 +19,7 @@
 # pylint: disable=too-many-lines
 
 import asyncio
+import traceback
 from collections.abc import AsyncIterator
 from collections.abc import Mapping
 from functools import partial
@@ -993,6 +994,27 @@ class TestSafeFetch(TestCase):  # pylint: disable=too-many-public-methods
         self.assertNotIn("secret", str(ctx.exception))
         self.assertEqual(str(ctx.exception.request_info.real_url), "http://example.com/x?[redacted]")
         self.assertEqual(ctx.exception.request_info.method, "HEAD")
+        # The chained cause is rendered by traceback logging too; it must carry the redacted URL as well.
+        self.assertIsInstance(ctx.exception.__cause__, ClientResponseError)
+        formatted: str = "".join(traceback.format_exception(ctx.exception))
+        self.assertNotIn("secret", formatted)
+
+    def test_fetch_raw_translated_transport_error_has_no_url_bearing_cause(self) -> None:
+        """Tests that a transport failure whose text quotes the URL is translated without a chained cause.
+
+        aiohttp's own message may quote the URL (InvalidURL does); a traceback log prints the
+        cause verbatim, so the cause is dropped and its class name and redacted text kept instead.
+        """
+        failure = ClientError("boom while connecting to http://example.com/x?token=secret")
+        session = MagicMock()
+        session.get = MagicMock(side_effect=failure)
+        with self.assertRaises(ClientError) as ctx:
+            asyncio.run(SafeFetch.fetch_raw("http://example.com/x?token=secret", session))
+        message: str = str(ctx.exception)
+        self.assertNotIn("secret", message)
+        self.assertIn("Could not reach 'http://example.com/x?[redacted]': ClientError: boom", message)
+        self.assertIsNone(ctx.exception.__cause__)
+        self.assertNotIn("secret", "".join(traceback.format_exception(ctx.exception)))
 
     def test_fetch_raw_redirect_without_location_raises_url_not_allowed(self) -> None:
         """Tests that a 3xx with no Location header (e.g. 304) raises url_not_allowed."""
