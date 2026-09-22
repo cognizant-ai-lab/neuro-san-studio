@@ -425,3 +425,31 @@ class TestUrlPolicy(TestCase):  # pylint: disable=too-many-public-methods
         with self.assertRaises(ValueError) as ctx:
             self._call_validate_domain_list({"domain": "example.com"})
         self.assertIn("invalid_input", str(ctx.exception))
+
+    def test_redact_for_log_replaces_query_and_drops_fragment(self) -> None:
+        """Tests that a presigned-style URL is logged with its query replaced by a marker and no fragment."""
+        url: str = "https://files.example.com/report.pdf?X-Amz-Signature=secret-token&X-Amz-Expires=300#page=2"
+        redacted: str = UrlPolicy.redact_for_log(url)
+        self.assertEqual(redacted, "https://files.example.com/report.pdf?[redacted]")
+        self.assertNotIn("secret-token", redacted)
+
+    def test_redact_for_log_drops_userinfo_and_keeps_port(self) -> None:
+        """Tests that credentials in userinfo are removed while the host and a non-default port survive."""
+        self.assertEqual(
+            UrlPolicy.redact_for_log("https://user:pass@example.com:8443/path/doc"),
+            "https://example.com:8443/path/doc",
+        )
+
+    def test_redact_for_log_leaves_plain_url_unchanged(self) -> None:
+        """Tests that a URL without query, fragment or userinfo is returned as it was."""
+        self.assertEqual(UrlPolicy.redact_for_log("http://example.com/page"), "http://example.com/page")
+
+    def test_redact_for_log_keeps_ipv6_brackets(self) -> None:
+        """Tests that an IPv6 literal host keeps its brackets so the log line is still a URL."""
+        self.assertEqual(
+            UrlPolicy.redact_for_log("http://[2001:db8::1]:8080/x?y=1"), "http://[2001:db8::1]:8080/x?[redacted]"
+        )
+
+    def test_redact_for_log_reports_unparseable_url(self) -> None:
+        """Tests that a URL urlparse rejects is replaced by a fixed marker rather than logged raw."""
+        self.assertEqual(UrlPolicy.redact_for_log("https://[::1/"), "[unparseable url]")

@@ -253,6 +253,26 @@ class TestWebpageRag(TestCase):
         self.assertEqual(docs[0].metadata["source"], "http://www.example.com/landing")
         self.assertIn("Hello world", docs[0].page_content)
 
+    def test_redirect_log_redacts_server_controlled_url_but_source_keeps_it(self) -> None:
+        """Tests that a presigned redirect target is logged without its query while the Document source keeps it.
+
+        Logs must not persist a bearer token chosen by the server; the source metadata needs the
+        full URL so the document can be fetched again from where it lives.
+        """
+        final: str = "http://files.example.com/landing?X-Amz-Signature=secret-token"
+        with (
+            patch.object(SafeFetch, "open_session", return_value=make_session_cm()),
+            patch.object(SafeFetch, "get_content_type", new=AsyncMock(return_value=("text/html", None, final))),
+            patch.object(SafeFetch, "fetch_raw", new=AsyncMock(return_value=HTML_PAGE)),
+        ):
+            with self.assertLogs("neuro_san_studio.coded_tools.webpage_rag", level="INFO") as logs:
+                docs = self._load(["http://example.com/go"])
+
+        joined: str = "\n".join(logs.output)
+        self.assertNotIn("secret-token", joined)
+        self.assertIn("redirected to http://files.example.com/landing?[redacted]", joined)
+        self.assertEqual(docs[0].metadata["source"], final)
+
     def test_pdf_not_a_pdf_is_skipped_and_logged(self) -> None:
         """A PDF-classified URL whose body fails SafeFetch's header sniff is logged as not_a_pdf and skipped.
 

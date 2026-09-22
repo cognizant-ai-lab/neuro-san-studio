@@ -22,6 +22,7 @@ from ipaddress import ip_address
 from typing import Any
 from urllib.parse import ParseResult
 from urllib.parse import urlparse
+from urllib.parse import urlunparse
 
 import idna
 from aiohttp.helpers import is_ip_address
@@ -286,3 +287,33 @@ class UrlPolicy:
                     f"but contains non-string element {item!r}."
                 )
         return value
+
+    @staticmethod
+    def redact_for_log(url: str) -> str:
+        """
+        Return a URL reduced to scheme, host and path, for log lines.
+
+        Redirect targets are server-controlled and routinely carry bearer credentials in the
+        query string (presigned object-store links, signed CDN URLs) or, rarely, in userinfo.
+        A log line that records such a URL verbatim persists the credential for as long as the
+        logs live. This keeps what identifies the resource and replaces the query with a fixed
+        marker, so a reader can still tell one was present; the fragment and any userinfo are
+        dropped.
+
+        :param url: The URL to redact. Expected to have passed validate_url; a string that does
+                    not parse is reported as such rather than logged raw.
+        :return: The redacted URL, e.g. "https://files.example.com/report.pdf?[redacted]".
+        """
+        try:
+            parsed: ParseResult = urlparse(url)
+            port: int | None = parsed.port
+        except ValueError:
+            return "[unparseable url]"
+        host: str = parsed.hostname or ""
+        # urlparse strips the brackets from an IPv6 literal; put them back so the log stays a URL.
+        if ":" in host:
+            host = f"[{host}]"
+        if port is not None:
+            host = f"{host}:{port}"
+        query: str = "[redacted]" if parsed.query else ""
+        return urlunparse((parsed.scheme, host, parsed.path, "", query, ""))

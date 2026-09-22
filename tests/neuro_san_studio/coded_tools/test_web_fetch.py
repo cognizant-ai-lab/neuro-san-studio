@@ -145,6 +145,27 @@ class TestWebFetch(TestCase):  # pylint: disable=too-many-public-methods
         self.assertEqual(result["final_url"], final)
         self.assertEqual(result["content"], "Landed")
 
+    def test_redirect_logs_redact_server_controlled_url(self) -> None:
+        """Tests that a presigned redirect target is logged without its query, while the result keeps the full URL.
+
+        The redirect target is chosen by the server and may carry a bearer token in its query
+        string; log lines must not persist it. The agent still receives the full final URL,
+        which it needs to cite the document.
+        """
+        requested: str = "http://example.com/report"
+        final: str = "http://files.example.com/report.pdf?X-Amz-Signature=secret-token"
+        with (
+            patch.object(SafeFetch, "get_content_type", new=AsyncMock(return_value=("application/pdf", None, final))),
+            patch.object(SafeFetch, "fetch_pdf_text", new=AsyncMock(return_value="PDF content")),
+        ):
+            with self.assertLogs("WebFetch", level="INFO") as logs:
+                result = asyncio.run(self.tool.async_invoke({"url": requested}, self.sly_data))
+
+        joined: str = "\n".join(logs.output)
+        self.assertNotIn("secret-token", joined)
+        self.assertIn("redirected to http://files.example.com/report.pdf?[redacted]", joined)
+        self.assertEqual(result["final_url"], final)
+
     def test_redirected_generic_download_without_pdf_suffix_is_unsupported(self) -> None:
         """A generic download type whose final URL has no .pdf suffix is still rejected, not guessed as PDF."""
         with patch.object(

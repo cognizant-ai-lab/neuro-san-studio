@@ -31,6 +31,7 @@ from neuro_san.interfaces.coded_tool import CodedTool
 from neuro_san_studio.coded_tools.base_rag import BaseRag
 from neuro_san_studio.coded_tools.base_rag import PostgresConfig
 from neuro_san_studio.coded_tools.utils.safe_fetch import SafeFetch
+from neuro_san_studio.coded_tools.utils.url_policy import UrlPolicy
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -244,8 +245,10 @@ class WebpageRag(CodedTool, BaseRag):
                 prefetched_text: str | None
                 final_url: str
                 content_type, prefetched_text, final_url = await SafeFetch.get_content_type(validated_url, session)
+                # The redirect target is server-controlled and may be a presigned URL carrying a
+                # bearer token in its query, so it is logged redacted (scheme, host, path only).
                 if final_url != validated_url:
-                    logger.info("%s redirected to %s", validated_url, final_url)
+                    logger.info("%s redirected to %s", validated_url, UrlPolicy.redact_for_log(final_url))
 
                 # Classify by the URL the headers came from (after redirects), fetch from
                 # it, and record it as the source. A link that redirects to a .pdf served

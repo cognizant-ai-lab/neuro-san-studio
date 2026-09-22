@@ -23,6 +23,7 @@ from typing import Any
 from neuro_san.interfaces.coded_tool import CodedTool
 
 from neuro_san_studio.coded_tools.utils.safe_fetch import SafeFetch
+from neuro_san_studio.coded_tools.utils.url_policy import UrlPolicy
 
 MAX_CHARS: int = 20_000
 SUPPORTED_CONTENT_TYPES: set[str] = {
@@ -124,9 +125,11 @@ class WebFetch(CodedTool):
             )
             # Log the redirect before fetching, so the requested -> final link is on record
             # even when the body fetch below fails: SafeFetch's error message names only the
-            # URL it was given, which is now final_url rather than the one logged above.
+            # URL it was given, which is now final_url rather than the one logged above. The
+            # target is server-controlled and may be a presigned URL carrying a bearer token
+            # in its query, so it is logged redacted (scheme, host, path only).
             if final_url != url:
-                logger.info("WebFetch: %s redirected to %s", url, final_url)
+                logger.info("WebFetch: %s redirected to %s", url, UrlPolicy.redact_for_log(final_url))
             # Classify by the URL the headers actually came from, and fetch from it too.
             # A link that redirects to a .pdf served as a generic download type is a PDF
             # even though the requested URL carries no .pdf suffix. Starting the body
@@ -164,7 +167,7 @@ class WebFetch(CodedTool):
 
         text = text[:max_chars]
 
-        logger.info("WebFetch: returned %d characters from %s", len(text), final_url)
+        logger.info("WebFetch: returned %d characters from %s", len(text), UrlPolicy.redact_for_log(final_url))
 
         # return format taken from Anthropic's webfetch tool, plus final_url so the
         # agent can cite where the content actually came from
