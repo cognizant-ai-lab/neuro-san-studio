@@ -317,10 +317,7 @@ class UrlPolicy:
             parsed: ParseResult = urlparse(url)
             port: int | None = parsed.port
         except ValueError:
-            # urlparse refused it (an unbalanced IPv6 bracket, a bad port). Keep the diagnostic
-            # value of naming it, but still cut off anything that could be a query or fragment.
-            head: str = url.split("?", 1)[0].split("#", 1)[0]
-            return head if head == url else f"{head}?[redacted]"
+            return UrlPolicy._redact_unparseable(url)
         host: str = parsed.hostname or ""
         # urlparse strips the brackets from an IPv6 literal; put them back so the log stays a URL.
         if ":" in host:
@@ -361,3 +358,30 @@ class UrlPolicy:
             trailing = url[-1] + trailing
             url = url[:-1]
         return UrlPolicy.redact_for_log(url) + trailing
+
+    @staticmethod
+    def _redact_unparseable(url: str) -> str:
+        """
+        Redact a URL that urlparse rejected, by text, keeping enough of it to diagnose the refusal.
+
+        An unbalanced IPv6 bracket or a non-numeric port makes urlparse raise, yet the value is
+        still worth naming in the error. Cut off anything that could be a query or fragment, and
+        drop any userinfo from the authority, so the same guarantees hold as on the parsed path.
+
+        :param url: The string urlparse refused.
+        :return: The scheme, host (with port text) and path that remain, plus "?[redacted]" when a
+                 query or fragment was removed.
+        """
+        head: str = url.split("?", 1)[0].split("#", 1)[0]
+        marker: str = "" if head == url else "?[redacted]"
+        scheme_end: int = head.find("://")
+        if scheme_end == -1:
+            return head + marker
+        authority_start: int = scheme_end + 3
+        path_start: int = head.find("/", authority_start)
+        authority: str = head[authority_start:] if path_start == -1 else head[authority_start:path_start]
+        if "@" in authority:
+            # Everything up to the last "@" is userinfo; the host follows it.
+            authority = authority.rsplit("@", 1)[1]
+        rest: str = "" if path_start == -1 else head[path_start:]
+        return head[:authority_start] + authority + rest + marker

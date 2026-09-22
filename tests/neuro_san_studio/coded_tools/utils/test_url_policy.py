@@ -500,3 +500,12 @@ class TestUrlPolicy(TestCase):  # pylint: disable=too-many-public-methods
         self.assertNotIn("secret", redacted)
         self.assertIn("redirects to 'ftp://files.example.com/a?[redacted]' (302)", redacted)
         self.assertIn("'http://example.com/go' redirects", redacted)
+
+    def test_redact_for_log_drops_userinfo_from_unparseable_url(self) -> None:
+        """Tests that the fallback for a URL urlparse rejects also strips userinfo, honouring the helper's contract."""
+        self.assertEqual(
+            UrlPolicy.redact_for_log("https://user:pass@example.com:bad/path?token=secret"),
+            "https://example.com:bad/path?[redacted]",
+        )
+        self.assertEqual(UrlPolicy.redact_for_log("https://user:pass@[::1/x"), "https://[::1/x")
+        self.assertEqual(UrlPolicy.redact_for_log("https://user:pass@[::1"), "https://[::1")
