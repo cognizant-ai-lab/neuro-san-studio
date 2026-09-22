@@ -18,9 +18,10 @@ aiofiles>=24.1.0
 # For asynchronous HTTP requests
 aiohttp>=3.13.0,<4.0
 
-# For IDNA/UTS#46 hostname canonicalization in SafeFetch domain-policy checks.
-# Already required transitively by yarl (via aiohttp) and neuro-san; declared here
-# because SafeFetch imports it directly and relies on yarl-matching UTS#46 behavior.
+# For IDNA/UTS#46 hostname canonicalization in UrlPolicy's domain-policy checks
+# (neuro_san_studio/coded_tools/utils/url_policy.py, behind SafeFetch). Already required
+# transitively by yarl (via aiohttp) and neuro-san; declared here because UrlPolicy
+# imports it directly and relies on yarl-matching UTS#46 behavior.
 idna>=3.0
 
 # For HTML parsing
