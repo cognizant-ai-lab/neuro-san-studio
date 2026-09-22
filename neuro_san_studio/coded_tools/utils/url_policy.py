@@ -41,8 +41,10 @@ MAX_URL_LENGTH: int = 2000
 # this set means IDNA could not canonicalize it and it is not a usable DNS name.
 HOSTNAME_ALLOWED_CHARS: frozenset[str] = frozenset("abcdefghijklmnopqrstuvwxyz0123456789.-_")
 # An http(s) URL embedded in free text (an error message, say). Quotes and angle brackets end a
-# match because SafeFetch's messages quote the URL they name ("... for 'http://...'.").
-URL_IN_TEXT_PATTERN: re.Pattern[str] = re.compile(r"https?://[^\s'\"<>]+")
+# match because SafeFetch's messages wrap the URL they name in single quotes. Case-insensitive:
+# validate_url accepts an upper-case scheme and hands the original spelling on, so a URL that
+# reaches an error message may read HTTPS://... and must still be caught here.
+URL_IN_TEXT_PATTERN: re.Pattern[str] = re.compile(r"https?://[^\s'\"<>]+", re.IGNORECASE)
 
 
 class UrlPolicy:

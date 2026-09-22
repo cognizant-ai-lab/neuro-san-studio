@@ -472,3 +472,10 @@ class TestUrlPolicy(TestCase):  # pylint: disable=too-many-public-methods
     def test_redact_urls_in_text_leaves_text_without_urls_unchanged(self) -> None:
         """Tests that text holding no URL is returned as it was."""
         self.assertEqual(UrlPolicy.redact_urls_in_text("connection reset by peer"), "connection reset by peer")
+
+    def test_redact_urls_in_text_matches_upper_case_scheme(self) -> None:
+        """Tests that an upper-case scheme, which validate_url accepts and preserves, is still redacted in text."""
+        message: str = "url_not_accessible: Could not reach 'HTTPS://files.example.com/a.pdf?token=secret'."
+        redacted: str = UrlPolicy.redact_urls_in_text(message)
+        self.assertNotIn("secret", redacted)
+        self.assertEqual(redacted, "url_not_accessible: Could not reach 'https://files.example.com/a.pdf?[redacted]'.")
