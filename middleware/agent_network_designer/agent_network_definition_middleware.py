@@ -794,9 +794,10 @@ class AgentNetworkDefinitionMiddleware(AgentMiddleware):
         """
         Derive the agent network name from a reservation id by stripping its trailing UUID.
 
-        neuro-san mints reservation ids as "<prefix>-<uuid4>" (AgentReservation.get_reservation_id),
-        so the name is the prefix: everything before the final "-<uuid>" group. An id without that
-        suffix, such as one minted with an empty prefix, is returned unchanged.
+        neuro-san mints reservation ids as "<prefix>-<uuid4>", or as a bare "<uuid4>" when the prefix
+        is empty: AgentReservation.__init__ appends the hyphen only to a non-empty prefix, and
+        get_reservation_id concatenates prefix and UUID. The name is the prefix, everything before
+        the final "-<uuid>" group; a bare UUID has no such group and is returned unchanged.
 
         :param reservation_id: The reservation id taken from the last agent_reservations entry
         :return: The prefix before the trailing UUID, or the whole id when there is no such suffix
