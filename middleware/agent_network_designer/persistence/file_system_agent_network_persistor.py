@@ -202,8 +202,9 @@ class FileSystemAgentNetworkPersistor(AgentNetworkPersistor):
         :param file_reference: The file reference to use when persisting.
                 Default is None, implying the file reference is up to the
                 implementation.
-        :return: The path the network was written to, or None when the manifest already
-                listed the network (the file is still rewritten; see #1425)
+        :return: The path the network was written to. The manifest update is skipped for a name
+                the manifest already lists, but the file itself is rewritten on every save, so the
+                path comes back on both paths (issue #1425)
         """
 
         the_agent_network_hocon_str: str = obj
@@ -245,12 +246,13 @@ class FileSystemAgentNetworkPersistor(AgentNetworkPersistor):
         # Read the current manifest content
         manifest_content: str = await TextFileReader.async_read_text_file(str(manifest_path))
 
-        # Check if the entry already exists to avoid duplicates
+        # Check if the entry already exists to avoid duplicates. The network file was already
+        # rewritten above, so its location is known and is reported exactly as on a first save.
         if (
             f'"{the_agent_network_name}.hocon"' in manifest_content
             or f"{the_agent_network_name}.hocon" in manifest_content
         ):
-            return
+            return str(file_path)
 
         # Detect format: JSON (has braces) or HOCON (no braces)
         is_json_format = "{" in manifest_content and "}" in manifest_content

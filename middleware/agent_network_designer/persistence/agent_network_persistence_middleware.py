@@ -23,6 +23,7 @@ from typing import Any
 from langchain.agents.middleware import AgentMiddleware
 from langchain.agents.middleware import AgentState
 from langchain.agents.middleware import hook_config
+from langchain.messages import AIMessage
 from langchain.messages import HumanMessage
 from langgraph.runtime import Runtime
 from neuro_san.interfaces.reservationist import Reservationist
@@ -144,6 +145,9 @@ class AgentNetworkPersistenceMiddleware(AgentMiddleware):
         errors are found, injects a human message with the errors and jumps back to the model
         so it can self-correct. If no definition is present, returns None so the agent can
         respond freely (e.g., to report a loading error from AgentNetworkDefinitionMiddleware).
+        In reservations mode a deployment the persistor reported as failed ends the turn with
+        an error message appended for the client and none of the save's artefacts published,
+        see _deploy_error_response (issue #1425).
 
         This validation acts as a final safety net: even if the agent bypassed calling
         the necessary tools or subnetworks (and thus their built-in validators never ran),
@@ -151,7 +155,8 @@ class AgentNetworkPersistenceMiddleware(AgentMiddleware):
 
         :param state: Current agent state
         :param runtime: Runtime context
-        :return: Dict with error message and jump directive, or None if valid
+        :return: Dict with error message and jump directive on a validation failure, dict with
+                the error message alone on a failed deployment, or None otherwise
         """
         network_def: dict[str, Any] = self.sly_data.get(AGENT_NETWORK_DEFINITION)
         agent_network_name: str = self.sly_data.get(AGENT_NETWORK_NAME)
@@ -205,7 +210,10 @@ class AgentNetworkPersistenceMiddleware(AgentMiddleware):
 
             sample_queries: list[str] = self.sly_data.get(AGENT_NETWORK_QUERIES, [])
 
-            await self._assemble_and_persist(network_def, agent_network_name, sample_queries)
+            # None means the save happened; a str is the deploy error the reservations persistor reported.
+            deploy_error: str | None = await self._assemble_and_persist(
+                network_def, agent_network_name, sample_queries
+            )
 
             agent_progress_style: str = environ.get("AGENT_NETWORK_DESIGNER_PROGRESS_STYLE", "internal")
 
@@ -218,9 +226,16 @@ class AgentNetworkPersistenceMiddleware(AgentMiddleware):
             # and HOCON parse on the event loop.
             if agent_progress_style == "connectivity":
                 await ConnectivityDictionaryConverter.get_shared_toolbox_factory()
+            # The export runs on a deploy error too: the definition handed back describes the network
+            # the client asked for and is what it needs to retry the save; it does not depend on the
+            # deploy. Only the artefacts of the save itself (reservation, HOCON text, metadata block)
+            # are withheld, see _assemble_and_persist.
             self._determine_exported_network_definition(self.sly_data, agent_progress_style)
 
             self.logger.debug(">>>>>>>>>>>>>>>>>>> DONE %s !!!>>>>>>>>>>>>>>>>>>", self.__class__.__name__)
+
+            if deploy_error is not None:
+                return self._deploy_error_response(deploy_error)
 
         return None
 
@@ -236,6 +251,36 @@ class AgentNetworkPersistenceMiddleware(AgentMiddleware):
             # Use human message to ensure that the model follows the instructions
             "messages": [HumanMessage(content)],
             "jump_to": "model",
+        }
+
+    def _deploy_error_response(self, error: str) -> dict[str, Any]:
+        """
+        Build the state update that tells the client a temporary-network deployment failed.
+
+        The error is appended to the conversation as an AIMessage and becomes the answer of the
+        turn: neuro-san takes the last AIMessage of the final state as the agent's reply
+        (neuro-san 0.7.4, run_context_runnable.py, find_ai_message).
+
+        Unlike _error_response there is no jump_to: a deployment failure is infrastructure
+        (reservations not allowed, a spec the server rejected, an unreachable external network),
+        which the model cannot fix by editing the definition, and a jump to model would re-run
+        validation and attempt the same deploy again. For the same reason neither
+        _validation_attempts nor SKIP_DESIGNER is touched: the definition was valid and the
+        designer changed nothing in it. A "messages" update without "jump_to" is a plain state
+        update: the after_agent edge (langchain 1.4.2, agents/factory.py, _add_middleware_edge)
+        resolves state.get("jump_to") and falls back to its default destination, the next
+        after_agent hook in the chain (AgentNetworkDefinitionMiddleware.aafter_agent in the
+        designer registry, which only flushes progress) and from there END, so the run finishes
+        without re-entering the model. hook_config(can_jump_to=["model"]) declares the optional
+        jump without requiring it.
+
+        :param error: The error text ReservationsAgentNetworkPersistor.async_persist returned
+        :return: The state update carrying the error message and nothing else
+        """
+        return {
+            "messages": [
+                AIMessage(content=f"Error: the agent network could not be deployed as a temporary network: {error}")
+            ],
         }
 
     async def _validate_network(self, network_def: dict[str, Any]) -> tuple[list[str], list[str]]:
@@ -379,16 +424,17 @@ class AgentNetworkPersistenceMiddleware(AgentMiddleware):
         network_def: dict[str, Any],
         agent_network_name: str,
         sample_queries: list[str],
-    ) -> None:
+    ) -> str | None:
         """
-        Assemble the agent network, store HOCON text in sly_data, and persist it.
+        Assemble the agent network, persist it, and then store HOCON text and metadata in sly_data.
 
         The metadata block is built from what the client sent back (or, for a client that sent
         no block, from the network being overwritten) plus what this turn generated, see
         _build_metadata; it is never regenerated from the definition alone, so a skip_designer
         save or a designer turn that skipped the query generator keeps the block intact.
 
-        HOCON content is always assembled first and stored in sly_data for client consumption.
+        HOCON content is always assembled first; it is stored in sly_data for client consumption
+        once the save it describes has happened (see the :return: note).
         If WRITE_TO_FILE is True, that same HOCON content is persisted to disk; the subdirectory
         prefix is added by FileSystemAgentNetworkPersistor internally.
         Otherwise, a deployable config is assembled and registered as a temporary network via
@@ -397,6 +443,9 @@ class AgentNetworkPersistenceMiddleware(AgentMiddleware):
         :param network_def: The validated agent network definition to persist
         :param agent_network_name: The raw network name without any subdirectory prefix.
         :param sample_queries: The sample queries generated on this turn, [] when none were
+        :return: None when the save happened. In reservations mode, the error text the persistor
+                reported when the temporary network could not be deployed; nothing has been
+                published to sly_data in that case (issue #1425)
         :raises ValueError: In file mode, when agent_network_name resolves to a file outside the
                 generated directory (see FileSystemAgentNetworkPersistor.get_network_file_path)
         """
@@ -445,9 +494,21 @@ class AgentNetworkPersistenceMiddleware(AgentMiddleware):
                 metadata=metadata,
             )
         # Persist the agent network
-        persisted_reference: str | list[dict[str, Any]] = await persistor.async_persist(
+        persisted_reference: str | list[dict[str, Any]] | None = await persistor.async_persist(
             obj=persisted_content, file_reference=file_reference
         )
+        # A str is a success in file mode (the path written) but the deploy error text in reservations
+        # mode: ReservationsAgentNetworkPersistor.async_persist hands back what ReservationUtil.wait_for_one
+        # reported instead of raising, so the two contracts have to be told apart by mode. Nothing is
+        # published for a failed deploy: agent_reservations would name no network, and the HOCON text and
+        # the block describe a save that did not happen (issue #1425).
+        if not WRITE_TO_FILE and isinstance(persisted_reference, str):
+            self.logger.error(
+                "Agent network %s could not be deployed as a temporary network: %s",
+                agent_network_name,
+                persisted_reference,
+            )
+            return persisted_reference
         # Store information on reservations in the sly data
         if isinstance(persisted_reference, list):
             self.sly_data["agent_reservations"] = persisted_reference
@@ -455,6 +516,7 @@ class AgentNetworkPersistenceMiddleware(AgentMiddleware):
         # happened, so a failed save never hands out a date_modified for a write that did not take place.
         self.sly_data[AGENT_NETWORK_HOCON_TEXT] = hocon_text
         self.sly_data[AGENT_NETWORK_METADATA] = metadata
+        return None
 
     def _determine_exported_network_definition(self, sly_data: dict[str, Any], agent_progress_style: str):
         """

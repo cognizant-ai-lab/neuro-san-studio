@@ -179,14 +179,33 @@ class TestFileSystemAgentNetworkPersistor(IsolatedAsyncioTestCase):  # pylint: d
             with open(manifest_path, "wb") as f:
                 f.write(b'{\n    "generated/existing.hocon": true,\n    "caf\xe9.hocon": true,\n}\n')
 
-            result: str | None = await persistor.async_persist("agent = {}", "existing")
+            result: str = await persistor.async_persist("agent = {}", "existing")
 
-            # A duplicate name is reported as None rather than a path, and the manifest must not
-            # gain a second copy of the entry.
-            self.assertIsNone(result)
+            # A name the manifest already lists reports the path like a first save does (issue #1425:
+            # the file is rewritten either way), and the manifest must not gain a second copy of the entry.
+            self.assertEqual(result, str(persistor.get_network_file_path("existing")))
             with open(manifest_path, "rb") as f:
                 raw: bytes = f.read()
             self.assertEqual(raw.count(b"existing.hocon"), 1)
+
+    async def test_persist_same_name_twice_returns_the_same_path_and_lists_it_once(self) -> None:
+        """
+        Issue #1425: a second async_persist of a name the manifest already lists returns the same path as
+        the first (the file is rewritten before the duplicate check, so the location is always known), the
+        file holds the second text, and the manifest names the network exactly once.
+        """
+        tmp_dir: str = self._make_temp_dir()
+        persistor: FileSystemAgentNetworkPersistor = self._make_persistor(tmp_dir)
+        second_text: str = '{"tools": [{"name": "second"}]}\n'
+
+        first: str = await persistor.async_persist('{"tools": [{"name": "first"}]}\n', "same_net")
+        second: str = await persistor.async_persist(second_text, "same_net")
+
+        self.assertEqual(first, str(persistor.get_network_file_path("same_net")))
+        self.assertEqual(second, first)
+        self.assertEqual(Path(first).read_text(encoding="utf-8"), second_text)
+        manifest: str = Path(tmp_dir, "generated", "manifest.hocon").read_text(encoding="utf-8")
+        self.assertEqual(manifest.count("generated/same_net.hocon"), 1)
 
     # Tests for _async_update_main_manifest reading non-UTF-8 content
 
