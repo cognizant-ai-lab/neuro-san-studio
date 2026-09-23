@@ -95,6 +95,28 @@
     #     # See https://developers.google.com/maps/ai/grounding-lite for more details on the tools and how to get started.
     # },
 
+    # Serply MCP — Google web, News and Scholar search (and more) via the Serply API.
+    # Serply does not run a search engine of its own: it returns real Google results as
+    # structured JSON, so Google's own query syntax works as written.
+    # Get an API key with 2,500 free credits (no credit card required) at https://serply.io
+    # Set the SERPLY_API_KEY environment variable, then uncomment this section to enable.
+    # Docs: https://serply.io/mcp
+    # "https://api.serply.io/mcp": {
+    #     "http_headers": {
+    #        # SERPLY_API_KEY is an environment variable that should contain a valid Serply API key.
+    #        # "${...}" syntax will substitute the value of the environment variable at runtime.
+    #        # Note this is a bare key header, not "Authorization: Bearer".
+    #         "X-Api-Key": ${SERPLY_API_KEY}
+    #     },
+    #     "tools": ["google_search", "google_news_search", "google_scholar_search"]
+    #     # The three tools listed above cover the search verticals documented in
+    #     # ../../docs/search_tools.md. The server also exposes bing_search,
+    #     # google_maps_search, google_video_search, google_jobs_search,
+    #     # amazon_product_search, scrape_url and a set of Reddit tools (reddit_post,
+    #     # reddit_post_comments, reddit_subreddit_about, reddit_subreddit_posts,
+    #     # reddit_user_posts); add them to the list above to enable them.
+    # },
+
     # You.com MCP — paid tier (authenticated, requires API key).
     # Adds you-contents and you-research on top of you-search (the free tier above only exposes you-search).
     # Get an API key with $100 in free credits (no credit card required) at https://you.com/platform

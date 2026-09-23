@@ -82,7 +82,10 @@ lint-check: lint-check-source lint-check-tests
 lint: format lint-check
 
 test-unit: venv-guard ## Run unit tests with coverage, without lint
-	python -m pytest tests/ --verbose --cov=coded_tools --cov=neuro_san_studio -m "not integration"
+	python -m pytest tests/ --verbose --cov=coded_tools --cov=neuro_san_studio -m "not integration and not smoke"
+
+test-smoke: venv-guard ## Run the packaged-install smoke tests (builds a wheel, installs it)
+	python -m pytest tests/ --verbose -m "smoke"
 
 test: lint test-unit ## Run lint, then tests with coverage
 

@@ -42,8 +42,8 @@ http://link/a
 http://link/b
 http://x/
 
-# For unit test, test_safe_fetch domain-policy fixtures (never actually fetched;
-# validate_url rejects them before any network call). lychee IDNA-normalizes hosts,
+# For unit test, test_url_policy domain-policy fixtures (never actually fetched;
+# UrlPolicy.validate_url rejects them before any network call). lychee IDNA-normalizes hosts,
 # so these are the punycode/trailing-dot forms it derives from example.com.,
 # münchen.de and faß.de. Dots are escaped so the trailing-dot entry does not also
 # match the plain https://example.com/... URLs used elsewhere.
