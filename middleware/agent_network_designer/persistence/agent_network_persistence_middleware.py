@@ -83,8 +83,8 @@ class AgentNetworkPersistenceMiddleware(AgentMiddleware):
 
     In reservations mode a third outcome exists: when the persistor reports that the temporary
     network could not be deployed, the turn ends with an error message for the client, the
-    HOCON text and the metadata block are still published, and only agent_reservations is
-    withheld (issue #1425, see aafter_agent and _deploy_error_response).
+    HOCON text and the metadata block are still published, and agent_reservations is cleared
+    (issue #1425, see aafter_agent and _deploy_error_response).
 
     Note: Validation is intentionally duplicated here even though individual subnetworks
     already perform their own validation. This is a safeguard for cases where the agent
@@ -153,8 +153,9 @@ class AgentNetworkPersistenceMiddleware(AgentMiddleware):
         respond freely (e.g., to report a loading error from AgentNetworkDefinitionMiddleware).
         In reservations mode a deployment the persistor reported as failed ends the turn with
         an error message appended for the client; the HOCON text and the metadata block are
-        still published, since they describe the design rather than the deploy, and only
-        agent_reservations is withheld, see _deploy_error_response (issue #1425).
+        still published, since they describe the design rather than the deploy, and
+        agent_reservations is cleared, a handle the request carried included, see
+        _deploy_error_response (issue #1425).
 
         This validation acts as a final safety net: even if the agent bypassed calling
         the necessary tools or subnetworks (and thus their built-in validators never ran),
@@ -455,7 +456,8 @@ class AgentNetworkPersistenceMiddleware(AgentMiddleware):
         :return: None when the save happened. In reservations mode, the error text the persistor
                 reported when the temporary network could not be deployed; the HOCON text and the
                 metadata block are published all the same, since they describe the design the
-                client may download and retry, and only agent_reservations is left unset (issue #1425)
+                client may download and retry, and agent_reservations is removed, a handle the
+                request carried included (issue #1425)
         :raises ValueError: In file mode, when agent_network_name resolves to a file outside the
                 generated directory (see FileSystemAgentNetworkPersistor.get_network_file_path)
         """
@@ -518,9 +520,14 @@ class AgentNetworkPersistenceMiddleware(AgentMiddleware):
                 agent_network_name,
                 deploy_error,
             )
-        # Store information on reservations in the sly data; a failed deploy has none to store.
+        # Store information on reservations in the sly data. A failed deploy has none to store, and a
+        # request that loaded its network from an earlier deploy arrives carrying that deploy's handle
+        # (nothing upstream removes it), so the key is cleared: left in place, the old handle would go
+        # back to the client as if it were this save's and point at the previous version of the network.
         if isinstance(persisted_reference, list):
             self.sly_data["agent_reservations"] = persisted_reference
+        elif deploy_error is not None:
+            self.sly_data.pop("agent_reservations", None)
         # The HOCON text and the block go back to the client once the persistor has returned. An exception
         # (in file mode, an unwritable path) skips them, so a failed write never hands out a date_modified
         # for a write that did not take place. A rejected deploy returns normally and skips nothing: the

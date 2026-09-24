@@ -358,9 +358,10 @@ is returned under `agent_network_metadata` for the client to send back with its 
 `agent_network_metadata` at all (nsflow's manual save sends nothing as of nsflow 0.7.1) gets the existing file's
 block kept in file mode; sending the key, even empty, makes the block client-owned and nothing is read from disk.
 - In reservations mode a deployment the server rejects ends the turn with an error message
-(`Error: the agent network could not be deployed as a temporary network: ...`) and sets no `agent_reservations`;
-`agent_network_definition`, `agent_network_hocon_text` and `agent_network_metadata` are still returned, so the
-network can be downloaded and the save retried
+(`Error: the agent network could not be deployed as a temporary network: ...`) and clears `agent_reservations`,
+a handle the request carried from an earlier deploy included; `agent_network_definition`,
+`agent_network_hocon_text` and `agent_network_metadata` are still returned, so the network can be downloaded and
+the save retried
 - Updates the local `manifest.hocon` file in file mode
 
 ### Research Tool

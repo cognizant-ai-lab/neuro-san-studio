@@ -727,7 +727,8 @@ class TestAgentNetworkPersistenceMiddleware(IsolatedAsyncioTestCase):  # pylint:
         Issue #1425: when ReservationUtil.wait_for_one reports an error, aafter_agent returns a dict of
         exactly one AIMessage naming the error and no jump_to (an infrastructure failure is not something
         the model can fix by editing the definition), logs exactly one ERROR naming the network and the
-        error, and sets no agent_reservations for the network that was never deployed. The HOCON text
+        error, and clears agent_reservations: this save created none, and the handle of the earlier
+        deploy the request carried would otherwise go back as if it were this save's. The HOCON text
         and the metadata block are published all the same: they describe the design, which the client
         may download and retry, and the block is the only way this turn's sample queries reach the
         client. skip_designer keeps its value and the validation counter is not incremented, unlike on
@@ -742,6 +743,9 @@ class TestAgentNetworkPersistenceMiddleware(IsolatedAsyncioTestCase):  # pylint:
         sly_data: dict[str, Any] = self._request(
             queries=list(FRESH_QUERIES), skip_designer=True, client_block=client_block, network_def=network_def
         )
+        # The request loaded its network from an earlier deploy and so carries that deploy's handle, which
+        # the failed save must clear rather than hand back as its own.
+        sly_data["agent_reservations"] = [{"reservation_id": "probe_net-00000000-0000-4000-8000-000000000000"}]
         # Built by hand rather than through _save so the validation counter can be read afterwards.
         middleware: AgentNetworkPersistenceMiddleware = AgentNetworkPersistenceMiddleware(Reservationist(), sly_data)
 
