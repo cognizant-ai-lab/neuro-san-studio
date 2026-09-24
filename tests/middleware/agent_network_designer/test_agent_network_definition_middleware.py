@@ -14,13 +14,14 @@
 #
 # END COPYRIGHT
 
-"""Tests for AgentNetworkDefinitionMiddleware path resolution and the loaded metadata block it returns."""
+"""Tests for AgentNetworkDefinitionMiddleware: path resolution, the loaded metadata block, and failed loads."""
 
 import json
 import os
 import shutil
 import tempfile
 from copy import deepcopy
+from logging import LogRecord
 from typing import Any
 from unittest import IsolatedAsyncioTestCase
 from unittest.mock import patch
@@ -79,8 +80,11 @@ class TestAgentNetworkDefinitionMiddleware(IsolatedAsyncioTestCase):
     the client owns the network's top-level "metadata" block and sends it back under
     AGENT_NETWORK_METADATA. A network the hook loads from a HOCON file or an S3 reservation
     must therefore leave that network's sanitized block under the key, replacing whatever the
-    client sent, while a definition passed directly, a failed load, or a load that yields no
-    agents must not touch the key.
+    client sent, while a definition passed directly or a failed load must not touch the key.
+
+    A load whose "tools" yields no usable agent is a failed load, not a silent no-op, and the
+    S3 path sets AGENT_NETWORK_NAME only when a definition was loaded, like the HOCON path
+    always did (issue #1426); the tests for both are here as well.
     """
 
     def setUp(self) -> None:
@@ -166,6 +170,39 @@ class TestAgentNetworkDefinitionMiddleware(IsolatedAsyncioTestCase):
         with open(path, "w", encoding="utf-8") as config_file:
             json.dump(config, config_file)
         return {AGENT_NETWORK_HOCON_FILE: path}
+
+    async def _abefore_model_from_s3(
+        self, middleware: AgentNetworkDefinitionMiddleware, config: dict[str, Any]
+    ) -> dict[str, Any] | None:
+        """
+        Run abefore_model with the S3 round trip replaced by a stand-in that returns the given config.
+
+        :param middleware: The middleware under test, built over sly_data that names a reservation
+        :param config: The config dict the patched fetch_reservation_from_s3 returns
+        :return: Whatever abefore_model returned
+        """
+        # Same stand-in as the happy-path S3 test: fetch_reservation_from_s3 is a @staticmethod the hook
+        # runs through asyncio.to_thread, so a synchronous mock with a return_value is enough.
+        with (
+            patch.dict(os.environ, {"AGENT_RESERVATIONS_S3_BUCKET": S3_BUCKET}),
+            patch.object(AgentNetworkDefinitionMiddleware, "fetch_reservation_from_s3", return_value=config),
+        ):
+            return await middleware.abefore_model({}, None)
+
+    @staticmethod
+    def _messages_at_level(records: list[LogRecord], level_name: str) -> list[str]:
+        """
+        Collect the formatted messages of the captured records emitted at one level.
+
+        :param records: The records an assertLogs context captured
+        :param level_name: The level name to keep, for example "WARNING"
+        :return: The messages of the records at that level, in emission order
+        """
+        messages: list[str] = []
+        for record in records:
+            if record.levelname == level_name:
+                messages.append(record.getMessage())
+        return messages
 
     async def test_abefore_model_returns_stripped_metadata_from_hocon_file(self) -> None:
         """
@@ -345,12 +382,12 @@ class TestAgentNetworkDefinitionMiddleware(IsolatedAsyncioTestCase):
         self.assertEqual(sly_data[AGENT_NETWORK_METADATA], CLIENT_METADATA)
         self.assertNotIn(AGENT_NETWORK_NAME, sly_data)
 
-    async def test_abefore_model_returns_neither_metadata_nor_name_when_tools_yield_no_agents(self) -> None:
+    async def test_abefore_model_reports_error_and_returns_no_metadata_when_tools_yield_no_agents(self) -> None:
         """
-        A config whose "tools" list parses but yields no agents (every entry lacks a "name") is not
-        an error, yet nothing is loaded: the hook proceeds normally, warns about the skipped entry,
-        and sets neither the block nor the name nor the definition, so the config's block cannot
-        become a stale block for whatever network the designer builds next.
+        A config whose "tools" list parses but yields no agents (every entry lacks a "name") is a failed
+        load, not a silent no-op (issue #1426): the hook reports an error naming the file and saying no
+        usable agent was found, jumps to end, still warns once per skipped entry, and sets neither the
+        block nor the name nor the definition.
         """
         config: dict[str, Any] = {"metadata": dict(STORED_METADATA), "tools": [{"instructions": "Nameless."}]}
         sly_data: dict[str, Any] = self._sly_data_for_file("nameless_network", config)
@@ -359,12 +396,91 @@ class TestAgentNetworkDefinitionMiddleware(IsolatedAsyncioTestCase):
         with self.assertLogs(MIDDLEWARE_LOGGER, level="WARNING") as captured:
             result: dict[str, Any] | None = await middleware.abefore_model({}, None)
 
-        # An empty definition is falsy, so the hook neither errors nor jumps: it proceeds to the model.
-        self.assertIsNone(result)
+        self.assertIsInstance(result, dict)
+        self.assertEqual(result.get("jump_to"), "end")
+        message: str = result.get("messages")[0].content
+        self.assertIn("No usable agent found", message)
+        self.assertIn(sly_data.get(AGENT_NETWORK_HOCON_FILE), message)
         self.assertNotIn(AGENT_NETWORK_METADATA, sly_data)
         self.assertNotIn(AGENT_NETWORK_NAME, sly_data)
         self.assertNotIn(AGENT_NETWORK_DEFINITION, sly_data)
-        # One skip warning per unusable entry, naming the file so an operator can fix it.
-        self.assertEqual(len(captured.records), 1)
-        self.assertIn("missing/invalid 'name'", captured.output[0])
-        self.assertIn(sly_data[AGENT_NETWORK_HOCON_FILE], captured.output[0])
+        # Still one skip warning per unusable entry, naming the file so an operator can fix it, and the
+        # error the client received logged once at ERROR: nothing else.
+        warnings: list[str] = self._messages_at_level(captured.records, "WARNING")
+        self.assertEqual(len(warnings), 1)
+        self.assertIn("missing/invalid 'name'", warnings[0])
+        self.assertIn(sly_data.get(AGENT_NETWORK_HOCON_FILE), warnings[0])
+        self.assertEqual(self._messages_at_level(captured.records, "ERROR"), [message])
+        self.assertEqual(len(captured.records), 2)
+
+    async def test_abefore_model_reports_error_when_tools_list_is_empty(self) -> None:
+        """
+        An empty "tools" list is the same failed load as a list whose entries are all skipped (issue #1426):
+        the hook reports that no usable agent was found, naming the file, jumps to end, logs that once at
+        ERROR with no skip warning (there was no entry to skip), and sets neither the block nor the name
+        nor the definition.
+        """
+        config: dict[str, Any] = {"metadata": dict(STORED_METADATA), "tools": []}
+        sly_data: dict[str, Any] = self._sly_data_for_file("empty_network", config)
+        middleware: AgentNetworkDefinitionMiddleware = AgentNetworkDefinitionMiddleware(sly_data=sly_data)
+
+        with self.assertLogs(MIDDLEWARE_LOGGER, level="WARNING") as captured:
+            result: dict[str, Any] | None = await middleware.abefore_model({}, None)
+
+        self.assertIsInstance(result, dict)
+        self.assertEqual(result.get("jump_to"), "end")
+        message: str = result.get("messages")[0].content
+        self.assertIn("No usable agent found", message)
+        self.assertIn(sly_data.get(AGENT_NETWORK_HOCON_FILE), message)
+        self.assertNotIn(AGENT_NETWORK_METADATA, sly_data)
+        self.assertNotIn(AGENT_NETWORK_NAME, sly_data)
+        self.assertNotIn(AGENT_NETWORK_DEFINITION, sly_data)
+        self.assertEqual(self._messages_at_level(captured.records, "WARNING"), [])
+        self.assertEqual(self._messages_at_level(captured.records, "ERROR"), [message])
+
+    async def test_abefore_model_leaves_name_unset_when_s3_tools_not_list(self) -> None:
+        """
+        An S3 reservation whose spec has a "tools" that is not a list fails the load the same way a HOCON
+        file does, and leaves AGENT_NETWORK_NAME unset (issue #1426): before the fix the S3 path derived
+        the name from the reservation id before loading, so the request ended with a name and no definition.
+        """
+        config: dict[str, Any] = {"metadata": dict(STORED_METADATA), "tools": "front_man"}
+        sly_data: dict[str, Any] = {AGENT_RESERVATIONS: [{RESERVATION_ID: RESERVATION_ID_VALUE}]}
+        middleware: AgentNetworkDefinitionMiddleware = AgentNetworkDefinitionMiddleware(sly_data=sly_data)
+
+        result: dict[str, Any] | None = await self._abefore_model_from_s3(middleware, config)
+
+        self.assertIsInstance(result, dict)
+        self.assertEqual(result.get("jump_to"), "end")
+        self.assertIn("not a list", result.get("messages")[0].content)
+        self.assertIn(RESERVATION_ID_VALUE, result.get("messages")[0].content)
+        self.assertNotIn(AGENT_NETWORK_NAME, sly_data)
+        self.assertNotIn(AGENT_NETWORK_METADATA, sly_data)
+        self.assertNotIn(AGENT_NETWORK_DEFINITION, sly_data)
+
+    async def test_abefore_model_reports_error_and_leaves_name_unset_when_s3_tools_yield_no_agents(self) -> None:
+        """
+        An S3 reservation whose "tools" list yields no usable agent reports the same error as the HOCON
+        path, naming the reservation, and leaves AGENT_NETWORK_NAME unset along with the block and the
+        definition (issue #1426); the per-entry skip warning still names the reservation.
+        """
+        config: dict[str, Any] = {"metadata": dict(STORED_METADATA), "tools": [{"instructions": "Nameless."}]}
+        sly_data: dict[str, Any] = {AGENT_RESERVATIONS: [{RESERVATION_ID: RESERVATION_ID_VALUE}]}
+        middleware: AgentNetworkDefinitionMiddleware = AgentNetworkDefinitionMiddleware(sly_data=sly_data)
+
+        with self.assertLogs(MIDDLEWARE_LOGGER, level="WARNING") as captured:
+            result: dict[str, Any] | None = await self._abefore_model_from_s3(middleware, config)
+
+        self.assertIsInstance(result, dict)
+        self.assertEqual(result.get("jump_to"), "end")
+        message: str = result.get("messages")[0].content
+        self.assertIn("No usable agent found", message)
+        self.assertIn(RESERVATION_ID_VALUE, message)
+        self.assertNotIn(AGENT_NETWORK_NAME, sly_data)
+        self.assertNotIn(AGENT_NETWORK_METADATA, sly_data)
+        self.assertNotIn(AGENT_NETWORK_DEFINITION, sly_data)
+        warnings: list[str] = self._messages_at_level(captured.records, "WARNING")
+        self.assertEqual(len(warnings), 1)
+        self.assertIn("missing/invalid 'name'", warnings[0])
+        self.assertIn(RESERVATION_ID_VALUE, warnings[0])
+        self.assertEqual(self._messages_at_level(captured.records, "ERROR"), [message])
