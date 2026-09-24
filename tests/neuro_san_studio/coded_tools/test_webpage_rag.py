@@ -120,7 +120,11 @@ class TestWebpageRag(TestCase):
         """An HTML page is stripped to text and keeps source/title/description/language metadata."""
         with (
             patch.object(SafeFetch, "open_session", return_value=make_session_cm()),
-            patch.object(SafeFetch, "get_content_type", new=AsyncMock(return_value=("text/html", None))),
+            patch.object(
+                SafeFetch,
+                "get_content_type",
+                new=AsyncMock(return_value=("text/html", None, "http://example.com/page")),
+            ),
             patch.object(SafeFetch, "fetch_raw", new=AsyncMock(return_value=HTML_PAGE)),
         ):
             docs = self._load(["http://example.com/page"])
@@ -142,7 +146,9 @@ class TestWebpageRag(TestCase):
         """A page without title/description/language yields metadata with only the source."""
         with (
             patch.object(SafeFetch, "open_session", return_value=make_session_cm()),
-            patch.object(SafeFetch, "get_content_type", new=AsyncMock(return_value=("text/html", None))),
+            patch.object(
+                SafeFetch, "get_content_type", new=AsyncMock(return_value=("text/html", None, "http://example.com"))
+            ),
             patch.object(SafeFetch, "fetch_raw", new=AsyncMock(return_value="<html><body>plain</body></html>")),
         ):
             docs = self._load(["http://example.com"])
@@ -153,7 +159,11 @@ class TestWebpageRag(TestCase):
         """An application/pdf response is parsed via fetch_pdf_text, not the HTML path."""
         with (
             patch.object(SafeFetch, "open_session", return_value=make_session_cm()),
-            patch.object(SafeFetch, "get_content_type", new=AsyncMock(return_value=("application/pdf", None))),
+            patch.object(
+                SafeFetch,
+                "get_content_type",
+                new=AsyncMock(return_value=("application/pdf", None, "http://example.com/doc")),
+            ),
             patch.object(SafeFetch, "fetch_pdf_text", new=AsyncMock(return_value="Extracted PDF body")) as mock_pdf,
             patch.object(SafeFetch, "fetch_raw", new=AsyncMock(return_value=HTML_PAGE)) as mock_raw,
         ):
@@ -169,7 +179,9 @@ class TestWebpageRag(TestCase):
         with (
             patch.object(SafeFetch, "open_session", return_value=make_session_cm()),
             patch.object(
-                SafeFetch, "get_content_type", new=AsyncMock(return_value=("application/octet-stream", None))
+                SafeFetch,
+                "get_content_type",
+                new=AsyncMock(return_value=("application/octet-stream", None, "http://example.com/report.pdf")),
             ),
             patch.object(SafeFetch, "fetch_pdf_text", new=AsyncMock(return_value="PDF from suffix")) as mock_pdf,
             patch.object(SafeFetch, "fetch_raw", new=AsyncMock(return_value=HTML_PAGE)) as mock_raw,
@@ -180,11 +192,60 @@ class TestWebpageRag(TestCase):
         mock_raw.assert_not_awaited()
         self.assertEqual(docs[0].page_content, "PDF from suffix")
 
+    def test_redirected_pdf_is_classified_by_final_url(self) -> None:
+        """A URL that redirects to a .pdf served as a generic download type is parsed as PDF via the final URL."""
+        with (
+            patch.object(SafeFetch, "open_session", return_value=make_session_cm()),
+            patch.object(
+                SafeFetch,
+                "get_content_type",
+                new=AsyncMock(return_value=("application/octet-stream", None, "http://example.com/files/report.pdf")),
+            ),
+            patch.object(SafeFetch, "fetch_pdf_text", new=AsyncMock(return_value="PDF after redirect")) as mock_pdf,
+            patch.object(SafeFetch, "fetch_raw", new=AsyncMock(return_value=HTML_PAGE)) as mock_raw,
+        ):
+            docs = self._load(["http://example.com/download"])
+
+        mock_pdf.assert_awaited_once()
+        mock_raw.assert_not_awaited()
+        self.assertEqual(docs[0].page_content, "PDF after redirect")
+
+    def test_pdf_not_a_pdf_is_skipped_and_logged(self) -> None:
+        """A PDF-classified URL whose body fails SafeFetch's header sniff is logged as not_a_pdf and skipped.
+
+        The ValueError lands in the broad per-URL catch: nothing is ingested for that
+        URL, the HTML path is never tried as a fallback, and the load does not abort.
+        """
+        refusal = ValueError("not_a_pdf: 'http://example.com/doc.pdf' has no PDF header in its first 1024 bytes.")
+        with (
+            patch.object(SafeFetch, "open_session", return_value=make_session_cm()),
+            patch.object(
+                SafeFetch,
+                "get_content_type",
+                new=AsyncMock(return_value=("application/pdf", None, "http://example.com/doc.pdf")),
+            ),
+            patch.object(SafeFetch, "fetch_pdf_text", new=AsyncMock(side_effect=refusal)) as mock_pdf,
+            patch.object(SafeFetch, "fetch_raw", new=AsyncMock(return_value=HTML_PAGE)) as mock_raw,
+        ):
+            with self.assertLogs("neuro_san_studio.coded_tools.webpage_rag", level="ERROR") as logs:
+                docs = self._load(["http://example.com/doc.pdf"])
+
+        self.assertEqual(docs, [])
+        mock_pdf.assert_awaited_once()
+        mock_raw.assert_not_awaited()
+        joined_logs: str = "\n".join(logs.output)
+        self.assertIn("not_a_pdf", joined_logs)
+        self.assertIn("http://example.com/doc.pdf", joined_logs)
+
     def test_unsupported_binary_type_is_skipped(self):
         """A binary content type (image) is skipped without decoding it as text or PDF."""
         with (
             patch.object(SafeFetch, "open_session", return_value=make_session_cm()),
-            patch.object(SafeFetch, "get_content_type", new=AsyncMock(return_value=("image/png", None))),
+            patch.object(
+                SafeFetch,
+                "get_content_type",
+                new=AsyncMock(return_value=("image/png", None, "http://example.com/img.png")),
+            ),
             patch.object(SafeFetch, "fetch_pdf_text", new=AsyncMock(return_value="nope")) as mock_pdf,
             patch.object(SafeFetch, "fetch_raw", new=AsyncMock(return_value="nope")) as mock_raw,
         ):
@@ -198,7 +259,11 @@ class TestWebpageRag(TestCase):
         """A body prefetched during the 405 GET fallback is reused without a second fetch_raw."""
         with (
             patch.object(SafeFetch, "open_session", return_value=make_session_cm()),
-            patch.object(SafeFetch, "get_content_type", new=AsyncMock(return_value=("text/html", HTML_PAGE))),
+            patch.object(
+                SafeFetch,
+                "get_content_type",
+                new=AsyncMock(return_value=("text/html", HTML_PAGE, "http://example.com/page")),
+            ),
             patch.object(SafeFetch, "fetch_raw", new=AsyncMock(return_value="should not be used")) as mock_raw,
         ):
             docs = self._load(["http://example.com/page"])
@@ -210,7 +275,11 @@ class TestWebpageRag(TestCase):
         """A URL that fails SSRF validation is skipped and never fetched; others still load."""
         with (
             patch.object(SafeFetch, "open_session", return_value=make_session_cm()),
-            patch.object(SafeFetch, "get_content_type", new=AsyncMock(return_value=("text/html", None))),
+            patch.object(
+                SafeFetch,
+                "get_content_type",
+                new=AsyncMock(return_value=("text/html", None, "http://192.168.1.1/internal")),
+            ),
             patch.object(SafeFetch, "fetch_raw", new=AsyncMock(return_value=HTML_PAGE)) as mock_raw,
         ):
             # validate_url is NOT mocked, so the private-IP URL is rejected for real.
@@ -231,7 +300,11 @@ class TestWebpageRag(TestCase):
 
         with (
             patch.object(SafeFetch, "open_session", return_value=make_session_cm()),
-            patch.object(SafeFetch, "get_content_type", new=AsyncMock(return_value=("text/html", None))),
+            patch.object(
+                SafeFetch,
+                "get_content_type",
+                new=AsyncMock(return_value=("text/html", None, "http://bad.example.com")),
+            ),
             patch.object(SafeFetch, "fetch_raw", new=AsyncMock(side_effect=fetch_raw)),
         ):
             docs = self._load(["http://bad.example.com", "http://example.com/good"])
@@ -243,7 +316,9 @@ class TestWebpageRag(TestCase):
         """A missing/empty Content-Type is loaded as text rather than skipped (WebBaseLoader parity)."""
         with (
             patch.object(SafeFetch, "open_session", return_value=make_session_cm()),
-            patch.object(SafeFetch, "get_content_type", new=AsyncMock(return_value=("", None))),
+            patch.object(
+                SafeFetch, "get_content_type", new=AsyncMock(return_value=("", None, "http://example.com/page"))
+            ),
             patch.object(SafeFetch, "fetch_raw", new=AsyncMock(return_value=HTML_PAGE)) as mock_raw,
         ):
             docs = self._load(["http://example.com/page"])
@@ -256,7 +331,11 @@ class TestWebpageRag(TestCase):
         """A parse error in _to_document skips that URL instead of aborting the whole load."""
         with (
             patch.object(SafeFetch, "open_session", return_value=make_session_cm()),
-            patch.object(SafeFetch, "get_content_type", new=AsyncMock(return_value=("text/html", None))),
+            patch.object(
+                SafeFetch,
+                "get_content_type",
+                new=AsyncMock(return_value=("text/html", None, "http://example.com/page")),
+            ),
             patch.object(SafeFetch, "fetch_raw", new=AsyncMock(return_value=HTML_PAGE)),
             patch.object(WebpageRag, "_to_document", side_effect=RecursionError("boom")),
         ):
@@ -309,7 +388,11 @@ class TestWebpageRag(TestCase):
         """A single URL passed as a bare string loads as one page, not one fetch per character."""
         with (
             patch.object(SafeFetch, "open_session", return_value=make_session_cm()),
-            patch.object(SafeFetch, "get_content_type", new=AsyncMock(return_value=("text/html", None))) as mock_ct,
+            patch.object(
+                SafeFetch,
+                "get_content_type",
+                new=AsyncMock(return_value=("text/html", None, "http://example.com/page")),
+            ) as mock_ct,
             patch.object(SafeFetch, "fetch_raw", new=AsyncMock(return_value=HTML_PAGE)),
         ):
             docs = asyncio.run(self.tool.load_documents({"urls": "http://example.com/page"}))

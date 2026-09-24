@@ -164,7 +164,7 @@ For macOS/Linux:
 ```bash
 make lint               # Run linting on source code
 make lint-tests         # Run linting on test code
-make test               # Run all tests with coverage except integration test
+make test               # Run all tests with coverage except integration and smoke tests
 make test-integration   # run integration test
 make test-smoke         # run packaged-install smoke tests (builds a wheel and installs it; slow)
 
@@ -318,7 +318,7 @@ The Makefile provides convenient commands for development (macOS/Linux):
 - `make activate` - Get activation instructions
 - `make lint` - Run code formatting and linting
 - `make lint-tests` - Run linting on tests
-- `make test` - Run all tests with coverage except integration test
+- `make test` - Run all tests with coverage except integration and smoke tests
 - `make test-integration` - Run integration test
 - `make test-smoke` - Run the packaged-install smoke tests (builds a wheel, installs it in a clean venv; slow)
 

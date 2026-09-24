@@ -18,9 +18,11 @@ import asyncio
 import logging
 import os
 import re
+import shutil
 from abc import ABC
 from abc import abstractmethod
 from dataclasses import dataclass
+from tempfile import mkdtemp
 from typing import Any
 from typing import Literal
 from typing import Optional
@@ -137,8 +139,10 @@ class BaseRag(ABC):
 
         # Try to load existing vector store for in-memory vector store
         if vector_store_type == "in_memory":
-            existing_store = await self._load_existing_vector_store()
-            if existing_store:
+            existing_store: Optional[VectorStore] = await self._load_existing_vector_store()
+            # "is not None", not truthiness: InMemoryVectorStore has neither __bool__ nor __len__, so a truthiness
+            # test could never tell an empty store from a full one. _load_existing_vector_store decides emptiness.
+            if existing_store is not None:
                 return existing_store
 
         # Load and process documents
@@ -150,7 +154,18 @@ class BaseRag(ABC):
         return vectorstore
 
     async def _load_existing_vector_store(self) -> Optional[VectorStore]:
-        """Try to load existing vector store from file."""
+        """
+        Try to load an existing in-memory vector store from the configured JSON file.
+
+        A saved store that contains no documents is treated as absent: it carries no content worth
+        serving and would otherwise shadow the source forever (see GitHub issue #1368). A saved file
+        that cannot be read back (zero bytes, truncated by a crash mid-write, or otherwise not the
+        JSON the store wrote) is treated the same way, with an error naming the file, instead of
+        raising on every run until someone deletes it by hand (see GitHub issue #1447).
+
+        :return: The loaded vector store, or None when no path is configured, the file does not exist,
+                 the file is unreadable, or the saved store is empty (so the caller rebuilds from source).
+        """
 
         if not self.abs_vector_store_path:
             return None
@@ -159,11 +174,34 @@ class BaseRag(ABC):
             vector_store: VectorStore = InMemoryVectorStore.load(
                 path=self.abs_vector_store_path, embedding=self.embeddings
             )
-            logger.info("Loaded vector store from: %s\n", self.abs_vector_store_path)
-            return vector_store
         except FileNotFoundError:
             logger.info("Vector store not found at: %s. Creating from source.\n", self.abs_vector_store_path)
             return None
+        except ValueError as load_error:
+            # InMemoryVectorStore.load is json.load plus langchain's deserializer. A zero-byte,
+            # truncated or non-JSON file raises json.JSONDecodeError, invalid UTF-8 raises
+            # UnicodeDecodeError, and a JSON document langchain refuses raises ValueError; all
+            # three are ValueError subclasses. Log the full exception so the line is actionable,
+            # then rebuild: the next successful save replaces the unusable file.
+            logger.error(
+                "Ignoring unreadable saved vector store at %s (%s: %s); rebuilding from source.\n",
+                self.abs_vector_store_path,
+                type(load_error).__name__,
+                load_error,
+            )
+            return None
+
+        # An empty saved store has no content worth serving (it was written before the save-side guard existed,
+        # or by something outside this class); if we returned it the tool would answer "no content" on every
+        # later run until someone deleted the file by hand.
+        if self._is_empty_vector_store(vector_store):
+            logger.warning(
+                "Ignoring empty saved vector store at %s; rebuilding from source.\n", self.abs_vector_store_path
+            )
+            return None
+
+        logger.info("Loaded vector store from: %s\n", self.abs_vector_store_path)
+        return vector_store
 
     async def _create_new_vector_store(
         self,
@@ -274,19 +312,100 @@ class BaseRag(ABC):
             logger.error("Fail to create vector store due to invalid DB name. %s\n", invalid_catalog_error)
             return None
 
-    async def _save_vector_store(self, vectorstore: VectorStore, vector_store_type: Literal["in_memory", "postgres"]):
-        """Save vector store to file if configured."""
-        should_save: bool = self.save_vector_store and self.abs_vector_store_path and vector_store_type == "in_memory"
+    @staticmethod
+    def _is_empty_vector_store(vectorstore: Optional[VectorStore]) -> bool:
+        """
+        Report whether a vector store holds no documents at all.
+
+        Truthiness cannot be used for this: InMemoryVectorStore defines neither __bool__ nor __len__, so
+        ``bool(store)`` is always True even when the store has zero documents. Its public ``store`` attribute
+        is a dict keyed by document id, which gives an exact and cheap count.
+
+        :param vectorstore: The vector store to inspect, or None.
+        :return: True for None and for an InMemoryVectorStore with no documents; False otherwise.
+        """
+        if vectorstore is None:
+            return True
+
+        if isinstance(vectorstore, InMemoryVectorStore):
+            return len(vectorstore.store) == 0
+
+        # Other store types (e.g. postgres) cannot be counted without a round trip to the backend, and they
+        # are never saved to or loaded from disk by this class, so assume they have content.
+        return False
+
+    async def _save_vector_store(
+        self, vectorstore: Optional[VectorStore], vector_store_type: Literal["in_memory", "postgres"]
+    ) -> None:
+        """
+        Save the vector store to the configured JSON file if saving is enabled.
+
+        Only in-memory stores are persisted, and only when they hold at least one document. Persisting an
+        empty store would poison the cache: every later run would load it and never look at the source again.
+        The file is written atomically (same-directory temporary file, then rename), so a save that fails
+        part-way leaves any previous file intact and never leaves a half-written store at the real path.
+
+        :param vectorstore: The vector store to persist; None or an empty store is skipped without writing.
+        :param vector_store_type: Type of vector store; only "in_memory" stores are ever written to disk.
+        """
+        should_save: bool = bool(
+            self.save_vector_store and self.abs_vector_store_path and vector_store_type == "in_memory"
+        )
 
         if not should_save:
-            return None
+            return
 
+        # Leave any previously saved (good) file untouched rather than overwriting it with nothing.
+        if self._is_empty_vector_store(vectorstore):
+            logger.warning(
+                "Not persisting an empty vector store to %s: every source failed or was skipped; "
+                "keeping any previous file.\n",
+                self.abs_vector_store_path,
+            )
+            return
+
+        # Stage the dump in a private sibling directory and rename the finished file over the
+        # target. os.replace is atomic when both paths are on the same filesystem (the staging
+        # directory lives inside the target's directory for exactly that reason), so a crash, kill
+        # or full disk mid-dump leaves the previous good file in place and a half-written store never
+        # sits at the real path, where the next run would fail to load it (see GitHub issue #1447).
+        # The directory is private (mkdtemp: unpredictable name, mode 0o700) because dump opens its
+        # path by name: a staged file in a directory writable by another principal could be swapped
+        # for a symlink between the dump and the rename, and dump cannot write through an
+        # already-open descriptor the way WriteFile does.
+        target_dir: str = os.path.dirname(self.abs_vector_store_path)
+        staging_dir: Optional[str] = None
         try:
-            os.makedirs(os.path.dirname(self.abs_vector_store_path), exist_ok=True)
-            vectorstore.dump(path=self.abs_vector_store_path)
+            os.makedirs(target_dir, exist_ok=True)
+            staging_dir = mkdtemp(dir=target_dir, prefix=".vector_store_staging.")
+            staged_path: str = os.path.join(staging_dir, os.path.basename(self.abs_vector_store_path))
+            # dump creates the file with a plain open(), so a new store gets the umask-filtered default
+            # mode, exactly as the direct dump this replaces did. When replacing an existing store,
+            # keep whatever mode an operator gave it instead.
+            vectorstore.dump(path=staged_path)
+            if os.path.exists(self.abs_vector_store_path):
+                shutil.copymode(self.abs_vector_store_path, staged_path)
+            os.replace(staged_path, self.abs_vector_store_path)
             logger.info("Vector store saved to: %s\n", self.abs_vector_store_path)
         except OSError as os_error:
             logger.error("Failed to save vector store to %s: %s\n", self.abs_vector_store_path, os_error)
+        finally:
+            # Always remove the staging directory: empty after a successful rename, holding the
+            # partial dump after a failure; neither may be left behind.
+            if staging_dir is not None:
+                self._discard_staging_dir(staging_dir)
+
+    @staticmethod
+    def _discard_staging_dir(path: str) -> None:
+        """
+        Remove the private staging directory of an atomic save, together with anything still in it.
+
+        :param path: The staging directory created by _save_vector_store.
+        """
+        try:
+            shutil.rmtree(path)
+        except OSError as remove_error:
+            logger.warning("Could not remove vector store staging directory %s: %s\n", path, remove_error)
 
     async def query_vectorstore(self, vectorstore: VectorStore, query: str) -> str:
         """
