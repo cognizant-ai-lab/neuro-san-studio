@@ -42,7 +42,6 @@ from langchain_core.messages import SystemMessage
 from leaf_common.resolution.resolver_util import ResolverUtil
 from neuro_san.interfaces.agent_progress_reporter import AgentProgressReporter
 from neuro_san.internals.persistence.abstract_async_config_restorer import AbstractAsyncConfigRestorer
-from pyparsing.exceptions import ParseException
 
 from coded_tools.agent_network_editor.and_logger import AndLogger
 from coded_tools.agent_network_editor.connectivity_dictionary_converter import ConnectivityDictionaryConverter
@@ -57,6 +56,7 @@ from middleware.agent_network_designer.persistence.file_system_agent_network_per
     FileSystemAgentNetworkPersistor,
 )
 
+SUPPORTED_CONFIG_EXTENSIONS: tuple[str, ...] = (".hocon", ".json")
 AGENT_NETWORK_HOCON_FILE: str = "agent_network_hocon_file"
 AGENT_RESERVATIONS: str = "agent_reservations"
 RESERVATION_ID: str = "reservation_id"
@@ -358,15 +358,20 @@ class AgentNetworkDefinitionMiddleware(AgentMiddleware):
             self.error_message = error_message
             return None
 
-        # When loading from s3, use extract the name from id and used as the agent network name.
-        # This is because the agent network name is only created when using the CreateNetwork tool.
-        self.sly_data[AGENT_NETWORK_NAME] = self._extract_name_from_reservation_id(reservation_id)
         self.logger.info(
             ">>>>>>>>>>>>>Reading & Parsing Agent Network Config from Reservation %s in %s S3 Bucket>>>>>>>>>>>>>>>>>",
             reservation_id,
             os.getenv("AGENT_RESERVATIONS_S3_BUCKET"),
         )
-        return await self._config_to_network_def(config, reservation_id)
+        network_def: dict[str, Any] | None = await self._config_to_network_def(config, reservation_id)
+        # When loading from S3, the reservation id supplies the agent network name (its prefix, without the
+        # UUID); the CreateNetwork tool is the only other place a name is minted. Set it only once a
+        # definition was actually loaded, mirroring the HOCON path in _resolve_network_def: a failed load
+        # must not leave a name behind without a definition, or the two load paths end the request in
+        # different states for the same broken config (issue #1426).
+        if network_def:
+            self.sly_data[AGENT_NETWORK_NAME] = self._extract_name_from_reservation_id(reservation_id)
+        return network_def
 
     @staticmethod
     def fetch_reservation_from_s3(bucket: str, reservation_id: str) -> dict[str, Any]:
@@ -567,12 +572,26 @@ class AgentNetworkDefinitionMiddleware(AgentMiddleware):
         if file_reference is None:
             return None
 
+        # Screen the extension before handing the file to the restorer. The restorer reports both an
+        # unsupported extension and a parse failure as ValueError, so this check is what keeps the two
+        # apart and lets the ValueError handler below mean "could not be parsed" and nothing else. The
+        # comparison is a case-sensitive endswith() to match the restorer's own check exactly, so any
+        # file accepted here is one the restorer accepts too.
+        if not file_reference.endswith(SUPPORTED_CONFIG_EXTENSIONS):
+            error_message: str = (
+                f"Error: Unsupported agent network config file '{file_reference}'. "
+                f"Expected one of: {', '.join(SUPPORTED_CONFIG_EXTENSIONS)}."
+            )
+            self.logger.error(error_message)
+            self.error_message = error_message
+            return None
+
         # Note we don't need to cache this because we only expect to read the file once.
         try:
             hocon = AbstractAsyncConfigRestorer(file_purpose="get_agent_network_definition", must_exist=True)
             return await hocon.async_restore(file_reference=file_reference)
         except FileNotFoundError:
-            error_message: str = f"Error: Agent network config file not found: {file_reference}"
+            error_message = f"Error: Agent network config file not found: {file_reference}"
             self.logger.error(error_message)
             self.error_message = error_message
             return None
@@ -584,15 +603,12 @@ class AgentNetworkDefinitionMiddleware(AgentMiddleware):
             self.error_message = error_message
             return None
         except ValueError as value_error:
-            # Raised by AbstractAsyncConfigRestorer when the file extension is not .hocon or .json.
-            error_message = f"Error: Unsupported agent network config file '{file_reference}'. {value_error}"
-            self.logger.error(error_message)
-            self.error_message = error_message
-            return None
-        except ParseException as parse_error:
-            # AbstractAsyncConfigRestorer wraps HOCON/JSON parse failures (ParseException,
-            # ParseSyntaxException, JSONDecodeError, ConfigException) into ParseException.
-            error_message = f"Error: Failed to parse agent network config file '{file_reference}'. {parse_error}"
+            # How the restorer reports the parser and substitution failures past its extension check: it catches
+            # pyparsing's ParseException and ParseSyntaxException, json's JSONDecodeError and pyhocon's
+            # ConfigException (unresolved ${...} substitutions included) and re-raises them all as
+            # ValueError, so no parser exception escapes it. The extension screen above already
+            # returned, so an unsupported file cannot reach here.
+            error_message = f"Error: Failed to parse agent network config file '{file_reference}'. {value_error}"
             self.logger.error(error_message)
             self.error_message = error_message
             return None
@@ -606,9 +622,12 @@ class AgentNetworkDefinitionMiddleware(AgentMiddleware):
         would otherwise be lost when the network is saved again. The designer is stateless, so
         the client holds the loaded block and sends it back on the next save like the block of a
         network it saved itself; AgentNetworkMetadataBlock strips the reservation/stored_at keys a
-        loaded temporary network carries and anything a HOCON file cannot store. This happens only
-        when the load yields at least one agent, so a config that parses but describes no usable
-        network does not leave a stale block behind for whatever network the designer builds next.
+        loaded temporary network carries and anything a HOCON file cannot store.
+
+        A "tools" field that is missing or not a list, or a list none of whose entries _parse_agent
+        accepts, is a failed load (issue #1426): error_message is set and None is returned, so the
+        caller reports it instead of running the model as if a new network had been requested, and
+        no metadata block is handed off for a network that was never loaded.
 
         :param config: Parsed HOCON config
         :param source: Identifier for the config source (hocon file path or reservation ID), used for error messages
@@ -628,14 +647,28 @@ class AgentNetworkDefinitionMiddleware(AgentMiddleware):
             if name is not None:
                 network_def[name] = agent_def
 
-        if network_def:
-            candidate: Any = config.get("metadata")
-            if candidate is None and "metadata" in config:
-                # A file without the key is ordinary and stays quiet; an explicit null is never
-                # something the assemblers write, so it leaves the same trace the persistence
-                # layer's read-back leaves for it before the client gets an empty block.
-                self.logger.warning("Ignoring null 'metadata' in %s; the client receives an empty block.", source)
-            self.sly_data[AGENT_NETWORK_METADATA] = AgentNetworkMetadataBlock(candidate, source).as_dict()
+        if not network_def:
+            # _parse_agent already logged one WARNING per skipped entry saying why; this names the source
+            # and points at them. Returning {} here instead would be read as "nothing was loaded" by the
+            # callers (they test `if network_def:`), and the model would run as if the user had asked to
+            # design a new network, with those warnings as the only trace (issue #1426).
+            error_message = (
+                f"Error: No usable agent found in the 'tools' list in config from {source}. "
+                "The list is empty or every entry was skipped; see the preceding warnings for the reason per entry."
+            )
+            self.logger.error(error_message)
+            self.error_message = error_message
+            return None
+
+        # Reached only with at least one agent loaded, so the hand-off never leaves a block behind for a
+        # network that was not.
+        candidate: Any = config.get("metadata")
+        if candidate is None and "metadata" in config:
+            # A file without the key is ordinary and stays quiet; an explicit null is never
+            # something the assemblers write, so it leaves the same trace the persistence
+            # layer's read-back leaves for it before the client gets an empty block.
+            self.logger.warning("Ignoring null 'metadata' in %s; the client receives an empty block.", source)
+        self.sly_data[AGENT_NETWORK_METADATA] = AgentNetworkMetadataBlock(candidate, source).as_dict()
 
         return network_def
 
@@ -769,6 +802,17 @@ class AgentNetworkDefinitionMiddleware(AgentMiddleware):
         return aaosa_instructions
 
     def _extract_name_from_reservation_id(self, reservation_id: str) -> str:
+        """
+        Derive the agent network name from a reservation id by stripping its trailing UUID.
+
+        neuro-san mints reservation ids as "<prefix>-<uuid4>", or as a bare "<uuid4>" when the prefix
+        is empty: AgentReservation.__init__ appends the hyphen only to a non-empty prefix, and
+        get_reservation_id concatenates prefix and UUID. The name is the prefix, everything before
+        the final "-<uuid>" group; a bare UUID has no such group and is returned unchanged.
+
+        :param reservation_id: The reservation id taken from the last agent_reservations entry
+        :return: The prefix before the trailing UUID, or the whole id when there is no such suffix
+        """
         # re.search() scans through the string looking for the UUID pattern
         # The pattern explained:
         #   -           matches a literal hyphen (separator between name and UUID)

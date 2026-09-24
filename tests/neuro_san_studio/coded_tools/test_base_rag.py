@@ -14,11 +14,15 @@
 #
 # END COPYRIGHT
 
-"""Tests for BaseRag's vector store persistence: never save, and never trust, an empty store (issue #1368)."""
+"""
+Tests for BaseRag's vector store persistence: never save, and never trust, an empty store (issue #1368); never
+trust an unreadable one, and write the store atomically so a crash mid-save cannot leave one behind (issue #1447).
+"""
 
 import asyncio
 import os
 import shutil
+import stat
 import tempfile
 from typing import Optional
 from unittest import TestCase
@@ -151,6 +155,21 @@ class TestBaseRag(TestCase):
         """
         return InMemoryVectorStore.load(path, self.tool.embeddings)
 
+    @staticmethod
+    def _truncating_dump(path: str) -> None:
+        """
+        Stand in for InMemoryVectorStore.dump as a dump that dies mid-write.
+
+        Opens the target for writing (which truncates it, exactly as the real dump does), writes the front of a
+        document, then fails. A non-atomic save would leave this fragment at the real path.
+
+        :param path: The path the caller asked dump to write to.
+        :raises OSError: Always, after the partial document has been written.
+        """
+        with open(path, "w", encoding="utf-8") as handle:
+            handle.write('{"abc": {"id": "abc", "vector": [0.1, 0.2')
+        raise OSError("disk full")
+
     def test_all_fail_run_does_not_create_file_and_warns(self) -> None:
         """An all-fail run returns an empty store without raising, writes no file, and warns naming the path."""
         path: str = self._configure_save()
@@ -262,6 +281,90 @@ class TestBaseRag(TestCase):
         loader.assert_not_awaited()
         self.assertIsInstance(store, InMemoryVectorStore)
         self.assertEqual(len(store.store), 3)
+
+    def test_unreadable_saved_store_is_ignored_and_rebuilt(self) -> None:
+        """An unloadable saved file is logged with its exception, ignored, and replaced by the rebuilt store.
+
+        Zero bytes and a truncated document are what a crash mid-write leaves behind; arbitrary bytes stand in for
+        anything else that ended up at the path. Each case must recover on the next run instead of raising forever.
+        """
+        path: str = self._configure_save()
+        cases: dict[str, tuple[bytes, str]] = {
+            "zero-byte": (b"", "JSONDecodeError"),
+            "truncated": (b'{"abc": {"id": "abc", "vector": [0.1, 0.2', "JSONDecodeError"),
+            "not-json": (b"\x00\x01garbage", "JSONDecodeError"),
+            # Not valid UTF-8: fails in the text decoder before json ever runs, a different ValueError subclass.
+            "invalid-utf8": (b"\xff\xfe", "UnicodeDecodeError"),
+        }
+        for label, (payload, expected_error) in cases.items():
+            with self.subTest(case=label):
+                with open(path, "wb") as handle:
+                    handle.write(payload)
+
+                with self.assertLogs(LOGGER_NAME, level="ERROR") as logs:
+                    store, loader = self._generate(GOOD_DOCS)
+
+                loader.assert_awaited_once()
+                self.assertIsInstance(store, InMemoryVectorStore)
+                self.assertEqual(len(store.store), len(GOOD_DOCS))
+                joined_logs: str = "\n".join(logs.output)
+                self.assertIn(path, joined_logs)
+                # The log line must carry the exception, not just "unreadable", so it is actionable.
+                self.assertIn(expected_error, joined_logs)
+                # The rebuilt store replaces the unreadable file on disk.
+                self.assertEqual(len(self._load_store(path).store), len(GOOD_DOCS))
+
+    def test_failed_dump_keeps_previous_file_and_leaves_no_temp_file(self) -> None:
+        """A dump that fails mid-write leaves the previous good file intact and nothing else in the directory.
+
+        The store is dumped inside a private sibling staging directory and renamed over the target, so the
+        target is either the old store or the complete new one, never the truncated file that #1447 is about.
+        The stand-in dump truncates and partially writes whatever path it is handed, so a save that dumped
+        straight to the real path would fail this test; the staging directory must be gone afterwards too.
+        """
+        path: str = self._configure_save()
+        self._dump_store(path, ["Cached page one"])
+
+        with patch.object(InMemoryVectorStore, "dump", side_effect=self._truncating_dump):
+            with self.assertLogs(LOGGER_NAME, level="ERROR") as logs:
+                self._build_and_save(GOOD_DOCS)
+
+        self.assertIn(path, "\n".join(logs.output))
+        self.assertEqual(len(self._load_store(path).store), 1)
+        self.assertEqual(os.listdir(self.tmp_dir), [os.path.basename(path)])
+
+    def test_successful_save_leaves_only_the_store_file(self) -> None:
+        """A successful save renames the staged file into place and removes its staging directory."""
+        path: str = self._configure_save()
+        self._build_and_save(GOOD_DOCS)
+
+        self.assertEqual(os.listdir(self.tmp_dir), [os.path.basename(path)])
+        self.assertEqual(len(self._load_store(path).store), len(GOOD_DOCS))
+
+    def test_saved_store_keeps_conventional_file_mode(self) -> None:
+        """A newly saved store gets the umask-filtered default mode, as the direct dump it replaces did.
+
+        Readers of a shared cache directory rely on the conventional mode; the atomic write must not
+        silently downgrade it compared to the direct dump it replaced.
+        """
+        path: str = self._configure_save()
+        self._build_and_save(GOOD_DOCS)
+
+        # os.umask only reads by setting; restore the original value immediately.
+        current_umask: int = os.umask(0)
+        os.umask(current_umask)
+        self.assertEqual(stat.S_IMODE(os.stat(path).st_mode), 0o666 & ~current_umask)
+
+    def test_replacing_saved_store_preserves_existing_file_mode(self) -> None:
+        """Replacing an existing store keeps the mode an operator set on it."""
+        path: str = self._configure_save()
+        self._dump_store(path, ["Cached page one"])
+        os.chmod(path, 0o640)
+
+        self._build_and_save(GOOD_DOCS)
+
+        self.assertEqual(stat.S_IMODE(os.stat(path).st_mode), 0o640)
+        self.assertEqual(len(self._load_store(path).store), len(GOOD_DOCS))
 
     def test_is_empty_vector_store(self) -> None:
         """_is_empty_vector_store is True for None and empty in-memory stores, False otherwise."""

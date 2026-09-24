@@ -1921,7 +1921,7 @@ make test
 or
 
 ```bash
-python -m pytest tests/ -v --cov=coded_tools --cov=neuro_san_studio -m "not integration"
+python -m pytest tests/ -v --cov=coded_tools --cov=neuro_san_studio -m "not integration and not smoke"
 ```
 
 ### Integration Test

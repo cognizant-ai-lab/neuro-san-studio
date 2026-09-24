@@ -337,6 +337,9 @@ named in `agent_network_hocon_file`, or from the reservation named in `agent_res
 `agent_network_metadata` (without the `reservation`/`stored_at` keys of a temporary network), so the client
 holds the loaded network's block and sends it back on the next save like any other. The loaded block replaces
 any `agent_network_metadata` sent with the same request
+- A load that yields no agent (a `tools` list that is missing, not a list, empty, or whose every entry is skipped)
+ends the turn with an error message, as a missing or unparseable file does. `agent_network_name` is set from the
+file name or the reservation id only once the load has produced a definition
 
 #### Persistence (Middleware)
 
