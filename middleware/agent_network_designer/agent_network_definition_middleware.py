@@ -598,7 +598,7 @@ class AgentNetworkDefinitionMiddleware(AgentMiddleware):
             self.error_message = error_message
             return None
         except ValueError as value_error:
-            # How the restorer reports every HOCON/JSON failure past its extension check: it catches
+            # How the restorer reports the parser and substitution failures past its extension check: it catches
             # pyparsing's ParseException and ParseSyntaxException, json's JSONDecodeError and pyhocon's
             # ConfigException (unresolved ${...} substitutions included) and re-raises them all as
             # ValueError, so no parser exception escapes it. The extension screen above already
