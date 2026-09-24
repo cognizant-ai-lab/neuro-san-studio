@@ -70,7 +70,9 @@ S3_BUCKET: str = "bucket"
 MIDDLEWARE_LOGGER: str = "AgentNetworkDefinitionMiddleware"
 
 
-class TestAgentNetworkDefinitionMiddleware(IsolatedAsyncioTestCase):
+class TestAgentNetworkDefinitionMiddleware(  # pylint: disable=too-many-public-methods, useless-suppression
+    IsolatedAsyncioTestCase
+):
     """
     Tests for AgentNetworkDefinitionMiddleware.
 
