@@ -722,23 +722,25 @@ class TestAgentNetworkPersistenceMiddleware(IsolatedAsyncioTestCase):  # pylint:
         self.assertNotIn("date_modified", agent_spec["metadata"])
         self.assertEqual(sly_data["agent_network_metadata"], CLIENT_METADATA)
 
-    async def test_reservations_mode_deploy_error_is_surfaced_and_nothing_is_published(self) -> None:
+    async def test_reservations_mode_deploy_error_is_surfaced_and_only_reservations_are_withheld(self) -> None:
         """
         Issue #1425: when ReservationUtil.wait_for_one reports an error, aafter_agent returns a dict of
         exactly one AIMessage naming the error and no jump_to (an infrastructure failure is not something
         the model can fix by editing the definition), logs exactly one ERROR naming the network and the
-        error, and publishes nothing for the network that was never deployed: no agent_reservations, no
-        agent_network_hocon_text, and agent_network_metadata is the very object the client sent, with the
-        same content. skip_designer keeps its value and the validation counter is not incremented, unlike
-        on a validation failure, and the definition export still runs so the client can retry with it.
+        error, and sets no agent_reservations for the network that was never deployed. The HOCON text
+        and the metadata block are published all the same: they describe the design, which the client
+        may download and retry, and the block is the only way this turn's sample queries reach the
+        client. skip_designer keeps its value and the validation counter is not incremented, unlike on
+        a validation failure, and the definition export still runs so the client can retry with it.
         """
         wait_for_one: AsyncMock = self._enter_reservations_mode()
         wait_for_one.return_value = (None, "boom")
         client_block: dict[str, Any] = deepcopy(CLIENT_METADATA)
-        before: dict[str, Any] = deepcopy(client_block)
         network_def: dict[str, Any] = self._network_def()
+        # Queries generated on this turn: the one part of the published block that differs from what
+        # the client sent, so the assertion below can tell "block published" from "block left as sent".
         sly_data: dict[str, Any] = self._request(
-            skip_designer=True, client_block=client_block, network_def=network_def
+            queries=list(FRESH_QUERIES), skip_designer=True, client_block=client_block, network_def=network_def
         )
         # Built by hand rather than through _save so the validation counter can be read afterwards.
         middleware: AgentNetworkPersistenceMiddleware = AgentNetworkPersistenceMiddleware(Reservationist(), sly_data)
@@ -762,9 +764,15 @@ class TestAgentNetworkPersistenceMiddleware(IsolatedAsyncioTestCase):  # pylint:
         self.assertIn("could not be deployed as a temporary network", result.get("messages")[0].content)
         self.assertIn("boom", result.get("messages")[0].content)
         self.assertNotIn("agent_reservations", sly_data)
-        self.assertNotIn("agent_network_hocon_text", sly_data)
-        self.assertIs(sly_data.get("agent_network_metadata"), client_block)
-        self.assertEqual(client_block, before)
+        # The text and the block are the design's, not the deploy's: the text is the downloadable HOCON
+        # with its presentation-only date_created, and the block is the client's with this turn's queries
+        # merged in and no server-stamped dates (the client's own date_created passes through).
+        self.assertIn("agent_network_hocon_text", sly_data)
+        self.assertIn('"date_created"', sly_data.get("agent_network_hocon_text"))
+        self.assertNotIn("date_modified", sly_data.get("agent_network_hocon_text"))
+        expected_block: dict[str, Any] = deepcopy(CLIENT_METADATA)
+        expected_block["sample_queries"] = list(FRESH_QUERIES)
+        self.assertEqual(sly_data.get("agent_network_metadata"), expected_block)
         self.assertIs(sly_data.get("skip_designer"), True)
         self.assertEqual(middleware._validation_attempts, 0)  # pylint: disable=protected-access
         self.assertFalse(self._generated_path().exists())

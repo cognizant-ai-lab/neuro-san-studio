@@ -206,8 +206,8 @@ Send agent_network_metadata back with it so the saved network keeps its metadata
                             "type": "string",
                             "description": """
 The contents of an agent network HOCON file describing the created network. In file mode this is exactly
-the saved file. In reservations mode it is the downloadable form of the deployed network and carries a
-date_created the deployed spec does not have.
+the saved file. In reservations mode it is the downloadable form of the network, returned whether or not the
+deploy succeeded, and carries a date_created the deployed spec does not have.
 """
                         },
                         "agent_network_metadata": {
@@ -215,8 +215,9 @@ date_created the deployed spec does not have.
                             "description": """
 The network's top-level metadata block exactly as written into the saved network and as connectivity()
 serves it, minus the reservation and stored_at keys neuro-san's reservation storage adds to a temporary
-network. Send it back unchanged with the next request (see the input schema). Present after a save and
-after a network was loaded from agent_network_hocon_file or a reservation; absent otherwise.
+network. Send it back unchanged with the next request (see the input schema). Present after a save attempt,
+a rejected temporary-network deploy included, and after a network was loaded from agent_network_hocon_file
+or a reservation; absent otherwise.
 """,
                             "properties": {
                                 "description": {"type": "string"},
