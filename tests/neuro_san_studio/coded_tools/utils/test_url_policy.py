@@ -425,3 +425,99 @@ class TestUrlPolicy(TestCase):  # pylint: disable=too-many-public-methods
         with self.assertRaises(ValueError) as ctx:
             self._call_validate_domain_list({"domain": "example.com"})
         self.assertIn("invalid_input", str(ctx.exception))
+
+    def test_redact_for_log_replaces_query_and_drops_fragment(self) -> None:
+        """Tests that a presigned-style URL is logged with its query replaced by a marker and no fragment."""
+        url: str = "https://files.example.com/report.pdf?X-Amz-Signature=secret-token&X-Amz-Expires=300#page=2"
+        redacted: str = UrlPolicy.redact_for_log(url)
+        self.assertEqual(redacted, "https://files.example.com/report.pdf?[redacted]")
+        self.assertNotIn("secret-token", redacted)
+
+    def test_redact_for_log_drops_userinfo_and_keeps_port(self) -> None:
+        """Tests that credentials in userinfo are removed while the host and a non-default port survive."""
+        self.assertEqual(
+            UrlPolicy.redact_for_log("https://user:pass@example.com:8443/path/doc"),
+            "https://example.com:8443/path/doc",
+        )
+
+    def test_redact_for_log_leaves_plain_url_unchanged(self) -> None:
+        """Tests that a URL without query, fragment or userinfo is returned as it was."""
+        self.assertEqual(UrlPolicy.redact_for_log("http://example.com/page"), "http://example.com/page")
+
+    def test_redact_for_log_keeps_ipv6_brackets(self) -> None:
+        """Tests that an IPv6 literal host keeps its brackets so the log line is still a URL."""
+        self.assertEqual(
+            UrlPolicy.redact_for_log("http://[2001:db8::1]:8080/x?y=1"), "http://[2001:db8::1]:8080/x?[redacted]"
+        )
+
+    def test_redact_for_log_keeps_unparseable_url_but_cuts_its_query(self) -> None:
+        """Tests that a URL urlparse rejects is still named for diagnosis, minus anything after "?" or "#"."""
+        self.assertEqual(UrlPolicy.redact_for_log("https://[::1/x"), "https://[::1/x")
+        self.assertEqual(UrlPolicy.redact_for_log("https://[::1/x?token=secret"), "https://[::1/x?[redacted]")
+        self.assertEqual(UrlPolicy.redact_for_log("https://[::1/x#frag"), "https://[::1/x?[redacted]")
+
+    def test_redact_for_log_handles_authority_less_scheme(self) -> None:
+        """Tests that a rejected data: Location, which has no authority, still loses its query."""
+        self.assertEqual(UrlPolicy.redact_for_log("data:text/plain?token=secret"), "data:text/plain?[redacted]")
+
+    def test_redact_urls_in_text_redacts_quoted_url_in_error_message(self) -> None:
+        """Tests that a SafeFetch-style error message quoting a presigned URL loses the query but keeps its shape."""
+        message: str = "url_not_accessible: Could not reach 'https://files.example.com/a.pdf?X-Amz-Signature=secret'."
+        redacted: str = UrlPolicy.redact_urls_in_text(message)
+        self.assertEqual(redacted, "url_not_accessible: Could not reach 'https://files.example.com/a.pdf?[redacted]'.")
+        self.assertNotIn("secret", redacted)
+
+    def test_redact_urls_in_text_handles_several_urls_and_trailing_punctuation(self) -> None:
+        """Tests that every embedded URL is redacted and sentence punctuation after a bare URL survives."""
+        message: str = "from http://example.com/a?k=1, to http://example.org/b?k=2."
+        self.assertEqual(
+            UrlPolicy.redact_urls_in_text(message),
+            "from http://example.com/a?[redacted], to http://example.org/b?[redacted].",
+        )
+
+    def test_redact_urls_in_text_leaves_text_without_urls_unchanged(self) -> None:
+        """Tests that text holding no URL is returned as it was."""
+        self.assertEqual(UrlPolicy.redact_urls_in_text("connection reset by peer"), "connection reset by peer")
+
+    def test_redact_urls_in_text_matches_upper_case_scheme(self) -> None:
+        """Tests that an upper-case scheme, which validate_url accepts and preserves, is still redacted in text."""
+        message: str = "url_not_accessible: Could not reach 'HTTPS://files.example.com/a.pdf?token=secret'."
+        redacted: str = UrlPolicy.redact_urls_in_text(message)
+        self.assertNotIn("secret", redacted)
+        self.assertEqual(redacted, "url_not_accessible: Could not reach 'https://files.example.com/a.pdf?[redacted]'.")
+
+    def test_redact_urls_in_text_redacts_rejected_non_http_redirect_target(self) -> None:
+        """Tests that a follower url_not_allowed message quoting a rejected ftp Location loses that target's query.
+
+        The rejected Location is server-controlled and never passed validate_url, so it may carry any
+        scheme; the redaction must not be limited to http(s).
+        """
+        message: str = (
+            "url_not_allowed: 'http://example.com/go' redirects to 'ftp://files.example.com/a?token=secret' (302), "
+            "which failed validation: invalid_input: URL must use http or https scheme, got 'ftp'."
+        )
+        redacted: str = UrlPolicy.redact_urls_in_text(message)
+        self.assertNotIn("secret", redacted)
+        self.assertIn("redirects to 'ftp://files.example.com/a?[redacted]' (302)", redacted)
+        self.assertIn("'http://example.com/go' redirects", redacted)
+
+    def test_redact_for_log_drops_userinfo_from_unparseable_url(self) -> None:
+        """Tests that the fallback for a URL urlparse rejects also strips userinfo, honouring the helper's contract."""
+        # Assembled at run time: the CI link checker scans test files for URLs and fails to parse a
+        # literal with a non-numeric port, which is exactly the shape this case needs.
+        bad_port_url: str = "https://user:pass@example.com" + ":bad/path?token=secret"
+        expected: str = "https://example.com" + ":bad/path?[redacted]"
+        self.assertEqual(UrlPolicy.redact_for_log(bad_port_url), expected)
+        self.assertEqual(UrlPolicy.redact_for_log("https://user:pass@[::1/x"), "https://[::1/x")
+        self.assertEqual(UrlPolicy.redact_for_log("https://user:pass@[::1"), "https://[::1")
+
+    def test_redact_urls_in_text_survives_a_quote_inside_the_url(self) -> None:
+        """Tests that an apostrophe inside a quoted URL does not end the match before its query."""
+        message: str = "Could not reach 'https://files.example.com/a'b?token=secret'."
+        redacted: str = UrlPolicy.redact_urls_in_text(message)
+        self.assertNotIn("secret", redacted)
+        self.assertEqual(redacted, "Could not reach 'https://files.example.com/a'b?[redacted]'.")
+
+    def test_redact_for_log_drops_userinfo_from_protocol_relative_unparseable_url(self) -> None:
+        """Tests that a protocol-relative Location urlparse rejects also loses its userinfo and query."""
+        self.assertEqual(UrlPolicy.redact_for_log("//user:pass@[::1/x?token=secret"), "//[::1/x?[redacted]")

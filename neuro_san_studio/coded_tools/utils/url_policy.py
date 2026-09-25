@@ -16,12 +16,14 @@
 
 """URL-level SSRF policy (scheme, length, hostname canonicalization, domain rules) behind SafeFetch."""
 
+import re
 from ipaddress import IPv4Address
 from ipaddress import IPv6Address
 from ipaddress import ip_address
 from typing import Any
 from urllib.parse import ParseResult
 from urllib.parse import urlparse
+from urllib.parse import urlunparse
 
 import idna
 from aiohttp.helpers import is_ip_address
@@ -38,6 +40,14 @@ MAX_URL_LENGTH: int = 2000
 # literals are validated separately; a genuine hostname containing anything outside
 # this set means IDNA could not canonicalize it and it is not a usable DNS name.
 HOSTNAME_ALLOWED_CHARS: frozenset[str] = frozenset("abcdefghijklmnopqrstuvwxyz0123456789.-_")
+# A URL with an authority ("scheme://...") embedded in free text, such as an error message. Any
+# scheme is matched, not only http(s), and the match runs to the next whitespace: a URL may itself
+# contain quotes or brackets, so stopping at one would leave its query behind. Whatever quoting or
+# punctuation the surrounding text closed the URL with is peeled off again in _redact_match.
+# Case-insensitive because validate_url accepts an upper-case scheme and hands the spelling on.
+URL_IN_TEXT_PATTERN: re.Pattern[str] = re.compile(r"[a-z][a-z0-9+.-]*://\S+", re.IGNORECASE)
+# Characters that surrounding prose may attach to the end of a quoted URL; they are not part of it.
+URL_TRAILING_CHARS: frozenset[str] = frozenset(".,;:)]>'\"")
 
 
 class UrlPolicy:
@@ -286,3 +296,98 @@ class UrlPolicy:
                     f"but contains non-string element {item!r}."
                 )
         return value
+
+    @staticmethod
+    def redact_for_log(url: str) -> str:
+        """
+        Return a URL reduced to scheme, host and path, for log lines.
+
+        Redirect targets are server-controlled and routinely carry bearer credentials in the
+        query string (presigned object-store links, signed CDN URLs) or, rarely, in userinfo.
+        A log line that records such a URL verbatim persists the credential for as long as the
+        logs live. This keeps what identifies the resource and replaces the query with a fixed
+        marker, so a reader can still tell one was present; the fragment and any userinfo are
+        dropped.
+
+        :param url: The URL to redact. Usually one that passed validate_url, but a raw redirect
+                    Location of any scheme is accepted too; a string urlparse rejects is cut at
+                    its first "?" or "#" instead.
+        :return: The redacted URL, e.g. "https://files.example.com/report.pdf?[redacted]".
+        """
+        try:
+            parsed: ParseResult = urlparse(url)
+            port: int | None = parsed.port
+        except ValueError:
+            return UrlPolicy._redact_unparseable(url)
+        host: str = parsed.hostname or ""
+        # urlparse strips the brackets from an IPv6 literal; put them back so the log stays a URL.
+        if ":" in host:
+            host = f"[{host}]"
+        if port is not None:
+            host = f"{host}:{port}"
+        query: str = "[redacted]" if parsed.query else ""
+        return urlunparse((parsed.scheme, host, parsed.path, "", query, ""))
+
+    @staticmethod
+    def redact_urls_in_text(text: str) -> str:
+        """
+        Redact every URL with an authority embedded in free text, for log lines that quote an error message.
+
+        SafeFetch's translated errors interpolate the URL they were given, and for a body fetch
+        that is the server-controlled redirect target; a log line that quotes such a message
+        would leak a presigned token exactly as logging the URL itself would. Every match is
+        replaced by its redact_for_log form.
+
+        :param text: The text to scan, typically str(exception).
+        :return: The text with every embedded URL reduced to scheme, host and path.
+        """
+        return URL_IN_TEXT_PATTERN.sub(UrlPolicy._redact_match, text)
+
+    @staticmethod
+    def _redact_match(match: re.Match[str]) -> str:
+        """
+        Redact one URL found by URL_IN_TEXT_PATTERN, keeping sentence punctuation that followed it.
+
+        :param match: The regex match holding the URL (and possibly a trailing "." or ",").
+        :return: The redacted URL followed by whatever punctuation the match swallowed.
+        """
+        url: str = match.group(0)
+        trailing: str = ""
+        # The pattern runs to whitespace, so closing quotes, brackets and sentence punctuation
+        # that belong to the prose end up inside the match; peel them off, redact, re-append.
+        while url and url[-1] in URL_TRAILING_CHARS:
+            trailing = url[-1] + trailing
+            url = url[:-1]
+        return UrlPolicy.redact_for_log(url) + trailing
+
+    @staticmethod
+    def _redact_unparseable(url: str) -> str:
+        """
+        Redact a URL that urlparse rejected, by text, keeping enough of it to diagnose the refusal.
+
+        An unbalanced IPv6 bracket or a non-numeric port makes urlparse raise, yet the value is
+        still worth naming in the error. Cut off anything that could be a query or fragment, and
+        drop any userinfo from the authority, so the same guarantees hold as on the parsed path.
+
+        :param url: The string urlparse refused.
+        :return: The scheme, host (with port text) and path that remain, plus "?[redacted]" when a
+                 query or fragment was removed.
+        """
+        head: str = url.split("?", 1)[0].split("#", 1)[0]
+        marker: str = "" if head == url else "?[redacted]"
+        # The authority follows "scheme://", or starts right after a protocol-relative "//".
+        authority_start: int
+        if head.startswith("//"):
+            authority_start = 2
+        else:
+            scheme_end: int = head.find("://")
+            if scheme_end == -1:
+                return head + marker
+            authority_start = scheme_end + 3
+        path_start: int = head.find("/", authority_start)
+        authority: str = head[authority_start:] if path_start == -1 else head[authority_start:path_start]
+        if "@" in authority:
+            # Everything up to the last "@" is userinfo; the host follows it.
+            authority = authority.rsplit("@", 1)[1]
+        rest: str = "" if path_start == -1 else head[path_start:]
+        return head[:authority_start] + authority + rest + marker

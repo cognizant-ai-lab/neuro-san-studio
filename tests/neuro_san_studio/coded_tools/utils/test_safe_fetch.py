@@ -19,6 +19,7 @@
 # pylint: disable=too-many-lines
 
 import asyncio
+import traceback
 from collections.abc import AsyncIterator
 from collections.abc import Mapping
 from functools import partial
@@ -963,6 +964,73 @@ class TestSafeFetch(TestCase):  # pylint: disable=too-many-public-methods
         self.assertIn("ftp://example.com/x", error)
         self.assertIn("invalid_input", error)
         self.assertEqual(calls, [("GET", "http://example.com/start")])
+
+    def test_fetch_raw_refused_location_is_named_without_its_query(self) -> None:
+        """Tests that a refused redirect target with a credential in its query is named in redacted form.
+
+        The Location is chosen by the server and never passed validate_url, so the message
+        names it only as scheme, host and path: these messages end up in logs.
+        """
+        hops = [self._redirect(302, "ftp://files.example.com/a?token=secret")]
+        session, _ = self._make_chain_session(hops)
+        with self.assertRaises(ValueError) as ctx:
+            asyncio.run(SafeFetch.fetch_raw("http://example.com/start", session))
+        error = str(ctx.exception)
+        self.assertNotIn("secret", error)
+        self.assertIn("redirects to 'ftp://files.example.com/a?[redacted]'", error)
+
+    def test_fetch_raw_translated_http_error_names_url_without_its_query(self) -> None:
+        """Tests that a translated HTTP failure carries no query string in its message, its str() or its request info.
+
+        ClientResponseError.__str__ renders request_info.real_url, so redacting the message alone
+        would still leak a presigned query to any caller that logs str(error).
+        """
+        exc = make_response_error(503, url="http://example.com/x?token=secret")
+        session, _ = make_get_response(status=503, raise_for_status_exc=exc)
+        with self.assertRaises(ClientResponseError) as ctx:
+            asyncio.run(SafeFetch.fetch_raw("http://example.com/x?token=secret", session))
+        self.assertNotIn("secret", ctx.exception.message)
+        self.assertIn("for 'http://example.com/x?[redacted]'", ctx.exception.message)
+        self.assertNotIn("secret", str(ctx.exception))
+        self.assertEqual(str(ctx.exception.request_info.real_url), "http://example.com/x?[redacted]")
+        self.assertEqual(ctx.exception.request_info.method, "HEAD")
+        # The chained cause is rendered by traceback logging too; it must carry the redacted URL as well.
+        self.assertIsInstance(ctx.exception.__cause__, ClientResponseError)
+        formatted: str = "".join(traceback.format_exception(ctx.exception))
+        self.assertNotIn("secret", formatted)
+
+    def test_fetch_raw_translated_transport_error_has_no_url_bearing_cause(self) -> None:
+        """Tests that a transport failure whose text quotes the URL is translated without a chained cause.
+
+        aiohttp's own message may quote the URL (InvalidURL does); a traceback log prints the
+        cause verbatim, so the cause is dropped and its class name and redacted text kept instead.
+        """
+        failure = ClientError("boom while connecting to 'http://example.com/x'?token=secret")
+        session = MagicMock()
+        session.get = MagicMock(side_effect=failure)
+        with self.assertRaises(ClientError) as ctx:
+            asyncio.run(SafeFetch.fetch_raw("http://example.com/x?token=secret", session))
+        message: str = str(ctx.exception)
+        self.assertNotIn("secret", message)
+        # The original text names a URL, so it is withheld outright rather than partially redacted.
+        self.assertEqual(
+            message,
+            "url_not_accessible: Could not reach 'http://example.com/x?[redacted]': ClientError: "
+            "[message withheld: it quotes a URL]",
+        )
+        self.assertIsNone(ctx.exception.__cause__)
+        self.assertNotIn("secret", "".join(traceback.format_exception(ctx.exception)))
+
+    def test_fetch_raw_translated_transport_error_keeps_text_that_names_no_url(self) -> None:
+        """Tests that a transport failure whose text names no URL keeps that text for diagnosis."""
+        session = MagicMock()
+        session.get = MagicMock(side_effect=ClientError("connection reset by peer"))
+        with self.assertRaises(ClientError) as ctx:
+            asyncio.run(SafeFetch.fetch_raw("http://example.com/x", session))
+        self.assertEqual(
+            str(ctx.exception),
+            "url_not_accessible: Could not reach 'http://example.com/x': ClientError: connection reset by peer",
+        )
 
     def test_fetch_raw_redirect_without_location_raises_url_not_allowed(self) -> None:
         """Tests that a 3xx with no Location header (e.g. 304) raises url_not_allowed."""
