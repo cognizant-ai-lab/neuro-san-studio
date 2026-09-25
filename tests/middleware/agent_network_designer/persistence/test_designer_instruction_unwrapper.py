@@ -354,27 +354,53 @@ class TestDesignerInstructionUnwrapper(IsolatedAsyncioTestCase):
 
     def test_reads_only_the_ends_of_a_long_text(self) -> None:
         """
-        Only the words at the two ends of a text are read, so two megabytes of own text between the copies cost
-        about a millisecond and no more memory than two copies of the text, whatever it holds.
+        Only the words at the two ends of a text are read, and only its end is copied to be read backwards: two
+        megabytes of own text between the copies cost about a millisecond, a text without copies allocates next to
+        nothing, and a wrapped one little more than the text returned.
         """
         own_text: str = "a " * 1_000_000
         wrapped: str = (
             f"{self._prefix(NETWORK_NAME)} \n{DesignerWrapperTexts.FRONT_MAN_LINES}\n{own_text}\n{self.aaosa}"
         )
+        unwrapper: DesignerInstructionUnwrapper = self._unwrapper()
 
         tracemalloc.start()
         started: float = time.perf_counter()
-        clean_result: str = self._unwrapper().unwrap(own_text)
-        wrapped_result: str = self._unwrapper().unwrap(wrapped)
+        clean_result: str = unwrapper.unwrap(own_text)
+        clean_peak: int
+        _, clean_peak = tracemalloc.get_traced_memory()
+        tracemalloc.reset_peak()
+        wrapped_result: str = unwrapper.unwrap(wrapped)
         elapsed: float = time.perf_counter() - started
-        peak: int
-        _, peak = tracemalloc.get_traced_memory()
+        wrapped_peak: int
+        _, wrapped_peak = tracemalloc.get_traced_memory()
         tracemalloc.stop()
 
         self.assertIs(clean_result, own_text)
         self.assertEqual(wrapped_result, own_text.strip())
         self.assertLess(elapsed, 0.25)
-        self.assertLess(peak, 3 * len(wrapped))
+        # A few kilobytes read from the end, nowhere near a copy of the text.
+        self.assertLess(clean_peak, len(own_text) // 100)
+        # The text left between the copies and its stripped copy, which is returned.
+        self.assertLess(wrapped_peak, 3 * len(wrapped))
+
+    def test_strips_trailing_copies_wider_than_the_first_read_from_the_end(self) -> None:
+        """
+        The end of a text is read in a window of about twice the AAOSA instructions' length, doubled while a copy
+        runs past it. Copies whose whitespace spreads them wider than that, with words falling across the window's
+        edges, are stripped all the same, and one that differs in a word beyond the first window is not.
+        """
+        aaosa_words: list[str] = self.aaosa.split()
+        # The same words with the first one changed, so the difference lies at the far end of the copy.
+        altered_words: list[str] = ["Whenever"] + aaosa_words[1:]
+        for gap in (1, 5, 9, 17, 40):
+            with self.subTest(gap=gap):
+                wide_aaosa: str = (" " * gap).join(aaosa_words)
+                instructions: str = f"{self._prefix(NETWORK_NAME)} \nOwn text.\n{wide_aaosa} \n {wide_aaosa}\n"
+                altered: str = "Own text.\n" + (" " * gap).join(altered_words)
+
+                self.assertEqual(self._unwrapper().unwrap(instructions), "Own text.")
+                self.assertEqual(self._unwrapper().unwrap(altered), altered)
 
     def _unwrapper(self) -> DesignerInstructionUnwrapper:
         """

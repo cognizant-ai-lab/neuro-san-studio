@@ -19,6 +19,7 @@ Tests for AgentNetworkDefinitionMiddleware: path resolution, the loaded metadata
 removal of designer wrapper copies from the definition.
 """
 
+import asyncio
 import json
 import os
 import shutil
@@ -820,24 +821,34 @@ class TestAgentNetworkDefinitionMiddleware(IsolatedAsyncioTestCase):  # pylint: 
     async def test_abefore_model_warns_once_and_keeps_aaosa_copies_when_the_aaosa_file_is_missing(self) -> None:
         """
         Without registries/aaosa.hocon the AAOSA copies cannot be recognized: the other pieces are still stripped,
-        the AAOSA text stays, and the missing file is reported once for the process, not on every model call.
+        the AAOSA text stays, and the missing file is reported once for the process, not on every model call, even
+        when the first calls run at the same time and all read the file.
         """
         resolved: dict[str, Any] = await self._resolved_definition(OWN_TEXT_DEFINITION, "travel")
         missing: str = os.path.join(self.temp_dir, "no_aaosa.hocon")
+        sly_datas: list[dict[str, Any]] = []
+        for _ in range(3):
+            sly_datas.append({AGENT_NETWORK_DEFINITION: deepcopy(resolved), AGENT_NETWORK_NAME: "travel"})
         warnings: list[str] = []
         with (
             patch(AAOSA_FILE_TARGET, missing),
             patch.object(AgentNetworkDefinitionMiddleware, "_wrapper_aaosa_instructions", None),
             self.assertLogs(MIDDLEWARE_LOGGER, level="WARNING") as captured,
         ):
-            for _ in range(2):
-                sly_data: dict[str, Any] = {AGENT_NETWORK_DEFINITION: deepcopy(resolved), AGENT_NETWORK_NAME: "travel"}
-                await AgentNetworkDefinitionMiddleware(sly_data=sly_data).abefore_model({}, None)
+            # The first two start together, as concurrent first requests do: the file read awaits, so both miss the
+            # cache and read it. The third comes after them and gets the cached value.
+            await asyncio.gather(
+                AgentNetworkDefinitionMiddleware(sly_data=sly_datas[0]).abefore_model({}, None),
+                AgentNetworkDefinitionMiddleware(sly_data=sly_datas[1]).abefore_model({}, None),
+            )
+            await AgentNetworkDefinitionMiddleware(sly_data=sly_datas[2]).abefore_model({}, None)
+            warnings = self._messages_at_level(captured.records, "WARNING")
+
+        for index, sly_data in enumerate(sly_datas):
+            with self.subTest(call=index):
                 front: str = sly_data.get(AGENT_NETWORK_DEFINITION).get("front").get("instructions")
                 self.assertTrue(front.startswith("Route travel requests."))
                 self.assertEqual(front.count(AAOSA_MARKER), 1)
-            warnings = self._messages_at_level(captured.records, "WARNING")
-
         self.assertEqual(len(warnings), 1)
         self.assertIn(missing, warnings[0])
 

@@ -474,8 +474,9 @@ class AgentNetworkDefinitionMiddleware(AgentMiddleware):
 
         Unlike _get_aaosa_instructions, this keeps nothing in sly_data: it is read on every model call, and sly_data
         comes from the client, which could put anything under a cache key there. The file is the one every
-        generated network includes (see HoconAgentNetworkAssembler), so its text is what a save adds. Two first
-        calls at the same time may both read the file; they store the same value.
+        generated network includes (see HoconAgentNetworkAssembler), so its text is what a save adds. The read
+        awaits, so first calls at the same time may all read the file; the first to finish keeps its value and
+        reports any problem, and the others use that value (see _cache_wrapper_aaosa_instructions).
 
         :return: The AAOSA instructions, or "" when the file is missing, unreadable or malformed or defines none.
                 Copies of them are then not stripped, the reason is logged once, and fixing the file takes a
@@ -485,7 +486,6 @@ class AgentNetworkDefinitionMiddleware(AgentMiddleware):
         if cached is not None:
             return cached
 
-        aaosa_instructions: str = ""
         try:
             restorer: AbstractAsyncConfigRestorer = AbstractAsyncConfigRestorer(
                 file_purpose="agent network designer - AAOSA instructions to unwrap", must_exist=True
@@ -493,8 +493,8 @@ class AgentNetworkDefinitionMiddleware(AgentMiddleware):
             config: dict[str, Any] = await restorer.async_restore(file_reference=AAOSA_FILE)
             value: Any = config.get("aaosa_instructions")
             if isinstance(value, str) and value.strip():
-                aaosa_instructions = value
-            else:
+                self._cache_wrapper_aaosa_instructions(value)
+            elif self._cache_wrapper_aaosa_instructions(""):
                 self.logger.warning(
                     "%s defines no aaosa_instructions; copies of them will not be removed from agent instructions.",
                     AAOSA_FILE,
@@ -502,21 +502,41 @@ class AgentNetworkDefinitionMiddleware(AgentMiddleware):
         except FileNotFoundError:
             # The generated networks include the same working-directory-relative path, so they would not load
             # either.
-            self.logger.warning(
-                "%s not found in the working directory %s; copies of the AAOSA instructions will not be removed "
-                "from agent instructions.",
-                AAOSA_FILE,
-                os.getcwd(),
-            )
+            if self._cache_wrapper_aaosa_instructions(""):
+                self.logger.warning(
+                    "%s not found in the working directory %s; copies of the AAOSA instructions will not be removed "
+                    "from agent instructions.",
+                    AAOSA_FILE,
+                    os.getcwd(),
+                )
         except (OSError, ValueError) as error:
             # The restorer reports a parse or substitution failure as ValueError (see _hocon_to_config).
-            self.logger.error(
-                "Could not read %s: %s. Copies of the AAOSA instructions will not be removed from agent instructions.",
-                AAOSA_FILE,
-                error,
-            )
-        AgentNetworkDefinitionMiddleware._wrapper_aaosa_instructions = aaosa_instructions
+            if self._cache_wrapper_aaosa_instructions(""):
+                self.logger.error(
+                    "Could not read %s: %s. Copies of the AAOSA instructions will not be removed from agent "
+                    "instructions.",
+                    AAOSA_FILE,
+                    error,
+                )
+        aaosa_instructions: str = AgentNetworkDefinitionMiddleware._wrapper_aaosa_instructions
         return aaosa_instructions
+
+    @staticmethod
+    def _cache_wrapper_aaosa_instructions(aaosa_instructions: str) -> bool:
+        """
+        Keep the AAOSA instructions for the rest of the process, unless a first call running at the same time
+        already did.
+
+        Nothing awaits between the check and the store, so on the event loop only one of the first calls stores
+        its value, and only that one reports a problem with the file.
+
+        :param aaosa_instructions: The AAOSA instructions read, or "" when the file could not supply them
+        :return: True when this call stored the value, False when another call had stored one already
+        """
+        if AgentNetworkDefinitionMiddleware._wrapper_aaosa_instructions is not None:
+            return False
+        AgentNetworkDefinitionMiddleware._wrapper_aaosa_instructions = aaosa_instructions
+        return True
 
     async def _inject_into_request(
         self,

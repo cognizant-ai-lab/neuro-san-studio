@@ -55,10 +55,11 @@ class DesignerInstructionUnwrapper:
       22a84541 used, whose names were single words. That old wording is also what some hand-written networks use
       for their own prefix with a longer name ("You are part of a smart home network of assistants." in
       registries/basic/smart_home.hocon), and those are not designer copies, so they are left alone.
-    - Only the words at the two ends of the text are ever read, so the cost grows with the copies stripped, not
-      with the length of the text. The words are compared one by one rather than with a regular expression: a
-      pattern anchored at the end of the text is quadratic when many copies of the AAOSA instructions come before
-      other text, and this runs on the event loop before every model call.
+    - Only the words at the two ends of the text are ever read, and only the end is copied, to be read backwards
+      (see _trailing_copy), so the cost grows with the copies stripped, not with the length of the text. The words
+      are compared one by one rather than with a regular expression: a pattern anchored at the end of the text is
+      quadratic when many copies of the AAOSA instructions come before other text, and this runs on the event loop
+      before every model call.
 
     A text holding none of the wrapper is returned unchanged, byte for byte. A text holding nothing but wrapper
     copies keeps one copy of each piece found instead of becoming empty: an empty text fails the designer's
@@ -119,6 +120,11 @@ class DesignerInstructionUnwrapper:
         self.trailing_pieces: list[tuple[str, list[str | int]]] = []
         if reversed_aaosa_pattern:
             self.trailing_pieces.append((self.AAOSA_INSTRUCTIONS, reversed_aaosa_pattern))
+        # How many characters _trailing_copy first reads from the end: twice a copy of the AAOSA instructions with
+        # single spaces, so a copy with the indentation of registries/aaosa.hocon fits in one read.
+        self.trailing_window: int = 1
+        for word in reversed_aaosa_pattern:
+            self.trailing_window += 2 * (len(word) + 1)
 
     def unwrap_definition(self, network_def: dict[str, Any]) -> tuple[dict[str, Any], list[str]]:
         """
@@ -189,10 +195,6 @@ class DesignerInstructionUnwrapper:
         :return: The offsets that bound the text left, as instructions[start:end], and the offsets of the first
                 copy found of each piece, by piece key
         """
-        # Regular expressions only scan forwards, so the end of the text is read from its reversed copy. It is
-        # made only when a piece is looked for at the end.
-        reversed_instructions: str = instructions[::-1] if self.trailing_pieces else ""
-
         # Each pass takes the copies it finds at either end and the loop repeats until a pass finds none, because
         # the leading pieces can interleave. Every match consumes a whole copy, so the number of passes is bounded
         # by the number of copies.
@@ -210,12 +212,12 @@ class DesignerInstructionUnwrapper:
                     found = True
                     copy = self._leading_copy(instructions, start, end, pattern)
             for piece, pattern in self.trailing_pieces:
-                copy = self._trailing_copy(reversed_instructions, start, end, pattern)
+                copy = self._trailing_copy(instructions, start, end, pattern)
                 while copy is not None:
                     first_copies.setdefault(piece, copy)
                     end = copy[0]
                     found = True
-                    copy = self._trailing_copy(reversed_instructions, start, end, pattern)
+                    copy = self._trailing_copy(instructions, start, end, pattern)
         return start, end, first_copies
 
     def _leading_copy(
@@ -284,34 +286,67 @@ class DesignerInstructionUnwrapper:
         return 0
 
     def _trailing_copy(
-        self, reversed_instructions: str, start: int, end: int, reversed_pattern: list[str | int]
+        self, instructions: str, start: int, end: int, reversed_pattern: list[str | int]
     ) -> tuple[int, int] | None:
         """
-        Find a whole copy of a piece at the end of the text still left, reading the reversed text from its start.
+        Find a whole copy of a piece at the end of the text still left.
 
-        :param reversed_instructions: The agent's instructions reversed
-        :param start: The offset, in the instructions, the text still left begins at
-        :param end: The offset, in the instructions, the text still left ends at
+        Regular expressions only scan forwards, so the end is read from a reversed copy of the last characters
+        only: a window of trailing_window characters, doubled only while the words matched so far reach its far
+        edge. Only the end of the text is ever copied, however long the text is.
+
+        :param instructions: The agent's instructions
+        :param start: The offset the text still left begins at
+        :param end: The offset the text still left ends at
         :param reversed_pattern: The words of the piece, last word first and each word spelled backwards
-        :return: The offsets, in the instructions, of the copy's first and past its last character, or None when
-                the text does not end with a copy
+        :return: The offsets of the copy's first and past its last character, or None when the text does not end
+                with a copy
         """
-        length: int = len(reversed_instructions)
+        window: int = self.trailing_window
+        while True:
+            window_start: int = max(start, end - window)
+            copy: tuple[int, int] | None
+            cut_short: bool
+            copy, cut_short = self._reversed_copy(
+                instructions[window_start:end][::-1], window_start > start, reversed_pattern
+            )
+            if not cut_short:
+                if copy is None:
+                    return None
+                # Offset i of the reversed window is offset end - 1 - i of the instructions.
+                return end - copy[1], end - copy[0]
+            window *= 2
+
+    def _reversed_copy(
+        self, reversed_tail: str, truncated: bool, reversed_pattern: list[str | int]
+    ) -> tuple[tuple[int, int] | None, bool]:
+        """
+        Match a piece at the start of the reversed end of a text.
+
+        :param reversed_tail: The last characters of the text still left, reversed
+        :param truncated: Whether the text still left goes on beyond those characters
+        :param reversed_pattern: The words of the piece, last word first and each word spelled backwards
+        :return: The offsets, in reversed_tail, of the copy's first and past its last character, or None when there
+                is no copy; and whether the answer needs more characters, because the words matched so far reach
+                the far edge of a truncated tail, where the next word may be cut in two or not read at all
+        """
         first_span: tuple[int, int] | None = None
         last_span: tuple[int, int] | None = None
         count: int = 0
-        # instructions[start:end] is reversed_instructions[length - end:length - start].
-        for match in self.WORD.finditer(reversed_instructions, length - end, length - start):
+        for match in self.WORD.finditer(reversed_tail):
+            if truncated and match.end() == len(reversed_tail):
+                # The word may go on beyond the tail, so it cannot be compared yet.
+                return None, True
             if match.group() != reversed_pattern[count]:
-                return None
+                return None, False
             if first_span is None:
                 first_span = match.span()
             last_span = match.span()
             count += 1
             if count == len(reversed_pattern):
-                # The last word matched in the reversed text is the copy's first word in the instructions.
-                return length - last_span[1], length - first_span[0]
-        return None
+                return (first_span[0], last_span[1]), False
+        # Every word read matched, but the copy is not complete yet: the rest of it may lie beyond the tail.
+        return None, truncated
 
     @classmethod
     def _words(cls, text: str | None) -> list[str | int]:
