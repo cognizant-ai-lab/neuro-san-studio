@@ -14,7 +14,7 @@
 #
 # END COPYRIGHT
 
-"""Tests for CommonInstructionStripper: one copy of the common instructions per save, own text kept (issue #1458)."""
+"""Tests for CommonInstructionStripper: one copy of the common instructions per save, own text kept as written."""
 
 import time
 import tracemalloc
@@ -88,7 +88,7 @@ class TestCommonInstructionStripper(IsolatedAsyncioTestCase):
         """
         A definition deployed as a reservations spec in demo mode comes back as the own text. Demo mode off is not
         covered: there the leaf template's "{demo_mode}" placeholder stays in the deployed text as written, because
-        neuro-san's StringCommonDefsConfigFilter skips an empty replacement string (issue #1466).
+        neuro-san's StringCommonDefsConfigFilter skips an empty replacement string.
         """
         deployed: dict[str, Any] = await self._reservations_round_trip(DEFINITION, NETWORK_NAME, True)
         self.assertEqual(deployed.get("front").get("instructions").count(FRONT_MAN_MARKER), 1)

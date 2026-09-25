@@ -81,7 +81,7 @@ class AgentNetworkDefinitionMiddleware(AgentMiddleware):
     silently loses that end-of-run flush.
 
     Before anything reads the definition, it also strips the copies of the designer's common
-    instructions that the instructions already hold (issue #1458, see _strip_common_instructions).
+    instructions that the instructions already hold (see _strip_common_instructions).
     """
 
     # The AAOSA instructions _strip_common_instructions strips, read once per process by
@@ -182,7 +182,7 @@ class AgentNetworkDefinitionMiddleware(AgentMiddleware):
         if self.network_def:
             self.network_def = self._normalize_network_def(self.network_def)
             # Before the skip_designer hand-off below, so the persistence middleware validates and saves the
-            # stripped definition, and before awrap_model_call, so the LLM sees it too (issue #1458).
+            # stripped definition, and before awrap_model_call, so the LLM sees it too.
             self.network_def = await self._strip_common_instructions(self.network_def)
 
             # This is used for manual editing where users modify the agent network definition and only want to use the
@@ -445,7 +445,7 @@ class AgentNetworkDefinitionMiddleware(AgentMiddleware):
 
         The instructions in agent_network_definition are each agent's custom instructions, and every save adds
         the common instructions again. A client that read a saved network with its HOCON substitutions resolved
-        sends them back inlined, and each save used to add one more copy (issue #1458). Every piece is stripped
+        sends them back inlined, and each save used to add one more copy. Every piece is stripped
         from every agent, whatever its role and whether demo mode is on; see CommonInstructionStripper for the
         rules.
 

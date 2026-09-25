@@ -89,8 +89,8 @@ MIDDLEWARE_LOGGER: str = "AgentNetworkDefinitionMiddleware"
 REPO_ROOT: Path = Path(__file__).resolve().parents[3]
 # Patched to point the once-per-process read of the AAOSA instructions at another file.
 AAOSA_FILE_TARGET: str = "middleware.agent_network_designer.agent_network_definition_middleware.AAOSA_FILE"
-# A definition holding only the agents' own text (issue #1458): a front man, an agent with tools and a leaf. The
-# texts are one line each because a network loaded from a file still has its whitespace collapsed (issue #1456).
+# A definition holding only the agents' own text: a front man, an agent with tools and a leaf. The texts are
+# one line each because the load path still collapses the whitespace of a network loaded from a file.
 OWN_TEXT_DEFINITION: dict[str, Any] = {
     "front": {"instructions": "Route travel requests.", "tools": ["booker", "weather"]},
     "booker": {"instructions": "Book trips.", "tools": ["weather"]},
@@ -120,8 +120,8 @@ class TestAgentNetworkDefinitionMiddleware(IsolatedAsyncioTestCase):  # pylint: 
     extension, an unreadable path and a missing file, driven through the real restorer, plus
     the hook's hand-off of that error to the client.
 
-    Finally covers the removal of copies of the designer's common instructions from the definition
-    (issue #1458), for a definition sent in sly_data, a network loaded from a generated file and one
+    Finally covers the removal of copies of the designer's common instructions from the definition,
+    for a definition sent in sly_data, a network loaded from a generated file and one
     loaded from an S3 reservation, and where the AAOSA instructions to strip come from.
     """
 
@@ -675,7 +675,7 @@ class TestAgentNetworkDefinitionMiddleware(IsolatedAsyncioTestCase):  # pylint: 
         self.assertIn(RESERVATION_ID_VALUE, warnings[0])
         self.assertEqual(self._messages_at_level(captured.records, "ERROR"), [message])
 
-    # Tests for the removal of copies of the common instructions from the definition (issue #1458). The matching
+    # Tests for the removal of copies of the common instructions from the definition. The matching
     # rules are tested with CommonInstructionStripper itself; these check that the hook applies them to every source
     # before anything reads the definition.
 

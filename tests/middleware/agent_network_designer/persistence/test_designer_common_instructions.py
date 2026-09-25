@@ -34,7 +34,7 @@ class TestDesignerCommonInstructions(IsolatedAsyncioTestCase):
 
     HoconAgentNetworkAssembler builds its header and top-agent template from the constants, but the reservations
     templates are HOCON files and hold their own copies. CommonInstructionStripper strips copies by the
-    constants' words, so a template reworded on its own would bring back the growth of issue #1458 for networks
+    constants' words, so a template reworded on its own would bring back the growth of copies for networks
     saved in reservations mode. The template texts are compared word by word, as the stripper matches them.
     """
 

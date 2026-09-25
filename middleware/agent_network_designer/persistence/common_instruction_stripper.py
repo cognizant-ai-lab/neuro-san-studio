@@ -31,7 +31,7 @@ class CommonInstructionStripper:
     text: every save adds the common instructions again, which are the prefix, the front man's lines, the demo
     sentence and the AAOSA instructions (see DesignerCommonInstructions). A client that reads a saved network with
     its HOCON substitutions resolved gets them inlined in every agent's instructions. Sending that text back as
-    the definition used to add one more copy of each piece per save (issue #1458, reported as #1429).
+    the definition used to add one more copy of each piece per save.
 
     All four pieces are stripped from every agent, whatever its role and whether demo mode is on. The definition
     never needs them, since each save adds back the ones the agent's role calls for. Stripping only those would

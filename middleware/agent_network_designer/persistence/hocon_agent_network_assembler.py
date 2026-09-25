@@ -28,7 +28,7 @@ from middleware.agent_network_designer.persistence.agent_network_metadata_block 
 from middleware.agent_network_designer.persistence.designer_common_instructions import DesignerCommonInstructions
 
 # The common instructions in the header and templates below come from DesignerCommonInstructions, which
-# CommonInstructionStripper reads as well to strip copies of them from a definition (issue #1458).
+# CommonInstructionStripper reads as well to strip copies of them from a definition.
 HOCON_HEADER_START = (
     "{\n"
     "# Importing content from other HOCON files\n"

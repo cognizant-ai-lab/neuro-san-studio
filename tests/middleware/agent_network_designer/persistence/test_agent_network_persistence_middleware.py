@@ -20,7 +20,7 @@ handling of the persisted metadata block (issue #1398) in both file mode and res
 including the compatibility fallback that reads the block of the network about to be overwritten
 when the client sent no agent_network_metadata key at all, the surfacing of a failed
 temporary-network deployment (issue #1425), and the single copy of the common instructions a
-skip_designer save writes for resolved instructions sent back (issue #1458).
+skip_designer save writes for resolved instructions sent back.
 """
 
 # This is the one-class test module for AgentNetworkPersistenceMiddleware (one file per class,
@@ -1036,7 +1036,7 @@ class TestAgentNetworkPersistenceMiddleware(IsolatedAsyncioTestCase):  # pylint:
         # isoformat() keeps a fixed field order and zero-pads every field, so string order is time order.
         self.assertLessEqual(first, second)
 
-    # ------------------------------------------------------------------ common instructions (issue #1458)
+    # ------------------------------------------------------------------ common instructions
 
     async def test_skip_designer_saves_of_resolved_text_keep_one_copy_of_the_common_instructions(self) -> None:
         """
