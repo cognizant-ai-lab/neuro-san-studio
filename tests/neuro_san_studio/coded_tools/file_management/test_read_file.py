@@ -456,6 +456,12 @@ class TestReadFile(TestCase):  # pylint: disable=too-many-public-methods
         """Tests that a valid positive integer is accepted and returned as-is."""
         self.assertEqual(self._call_validate_max_content_chars({"max_content_chars": 500}), 500)
 
+    def test_validate_max_content_chars_bool_raises(self):
+        """Tests that booleans are rejected: True must not silently pass as 1 (family-wide rule)."""
+        with self.assertRaises(ValueError) as ctx:
+            self._call_validate_max_content_chars({"max_content_chars": True})
+        self.assertIn("invalid_input", str(ctx.exception))
+
     def test_validate_max_content_chars_zero_raises(self):
         """Tests that zero raises ValueError with invalid_input."""
         with self.assertRaises(ValueError) as ctx:
