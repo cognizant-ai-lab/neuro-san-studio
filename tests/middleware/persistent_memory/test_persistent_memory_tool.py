@@ -16,8 +16,6 @@
 
 """Dispatch + per-call disk I/O tests for ``PersistentMemoryTool``."""
 
-from __future__ import annotations
-
 import asyncio
 from unittest.mock import AsyncMock
 
