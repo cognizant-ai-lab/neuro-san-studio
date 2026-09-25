@@ -18,9 +18,14 @@
 Tests for AgentNetworkPersistenceMiddleware.aafter_agent: validation gating and the stateless
 handling of the persisted metadata block (issue #1398) in both file mode and reservations mode,
 including the compatibility fallback that reads the block of the network about to be overwritten
-when the client sent no agent_network_metadata key at all, and the surfacing of a failed
-temporary-network deployment (issue #1425).
+when the client sent no agent_network_metadata key at all, the surfacing of a failed
+temporary-network deployment (issue #1425), and the single copy of the common instructions a
+skip_designer save writes for resolved instructions sent back.
 """
+
+# This is the one-class test module for AgentNetworkPersistenceMiddleware (one file per class,
+# per the repo convention), so it legitimately exceeds pylint's default line limit.
+# pylint: disable=too-many-lines
 
 import json
 import os
@@ -48,11 +53,13 @@ from coded_tools.agent_network_editor.get_subnetwork import GetSubnetwork
 from coded_tools.agent_network_editor.get_toolbox import GetToolbox
 from coded_tools.agent_network_editor.globals import ProcessGlobals
 from coded_tools.agent_network_editor.mcp_servers_load import McpServersLoad
+from middleware.agent_network_designer.agent_network_definition_middleware import AgentNetworkDefinitionMiddleware
 from middleware.agent_network_designer.persistence import agent_network_persistence_middleware as persistence_module
 from middleware.agent_network_designer.persistence.agent_network_persistence_middleware import (
     AgentNetworkPersistenceMiddleware,
 )
 from middleware.agent_network_designer.persistence.agent_network_persistor import AgentNetworkPersistor
+from middleware.agent_network_designer.persistence.designer_common_instructions import DesignerCommonInstructions
 from middleware.agent_network_designer.persistence.file_system_agent_network_persistor import (
     FileSystemAgentNetworkPersistor,
 )
@@ -101,6 +108,9 @@ AWKWARD_QUERIES: list[str] = [
 ]
 # What the fake Reservation reports, echoed by the persistor into sly_data["agent_reservations"].
 RESERVATION_ID: str = "probe_net-0123abcd"
+# Words that occur once in registries/aaosa.hocon and once in the front man's lines, for counting copies.
+AAOSA_MARKER: str = "When you receive an inquiry, you will:"
+FRONT_MAN_MARKER: str = "Never express irrelevance"
 LIFETIME_SECONDS: float = 3600.0
 EXPIRATION_SECONDS: float = 1_800_000_000.0
 
@@ -359,6 +369,36 @@ class TestAgentNetworkPersistenceMiddleware(IsolatedAsyncioTestCase):  # pylint:
             return await TestAgentNetworkPersistenceMiddleware._save(sly_data)
         finally:
             os.chdir(cwd)
+
+    @staticmethod
+    async def _strip_from_repo_root(sly_data: dict[str, Any]) -> dict[str, Any] | None:
+        """
+        Run AgentNetworkDefinitionMiddleware.abefore_model over the given sly_data with the repo root as CWD.
+
+        The hook reads registries/aaosa.hocon relative to the CWD for the AAOSA instructions it strips, as the
+        server does from the project root.
+
+        :param sly_data: The request's sly_data, mutated in place by the hook
+        :return: What abefore_model returned: a jump to end for a skip_designer request
+        """
+        cwd: str = os.getcwd()
+        os.chdir(REPO_ROOT)
+        try:
+            return await AgentNetworkDefinitionMiddleware(sly_data).abefore_model({}, None)
+        finally:
+            os.chdir(cwd)
+
+    def _read_resolved_definition(self) -> dict[str, Any]:
+        """
+        Read the persisted HOCON back as nsflow's editor does, with its substitutions resolved.
+
+        :return: _network_def() with each agent's instructions replaced by the resolved text the file gives it
+        """
+        text: str = self._generated_path().read_text(encoding="utf-8")
+        definition: dict[str, Any] = self._network_def()
+        for agent in ConfigFactory.parse_string(text, basedir=str(REPO_ROOT)).get("tools"):
+            definition.get(agent.get("name"))["instructions"] = agent.get("instructions")
+        return definition
 
     def _spy_on_restore(self, persistor_class: type[AgentNetworkPersistor]) -> Any:
         """
@@ -995,3 +1035,37 @@ class TestAgentNetworkPersistenceMiddleware(IsolatedAsyncioTestCase):  # pylint:
         self.assertTrue(first.endswith("+00:00"))
         # isoformat() keeps a fixed field order and zero-pads every field, so string order is time order.
         self.assertLessEqual(first, second)
+
+    # ------------------------------------------------------------------ common instructions
+
+    async def test_skip_designer_saves_of_resolved_text_keep_one_copy_of_the_common_instructions(self) -> None:
+        """
+        A client that reads every save back with its substitutions resolved and sends the instructions straight
+        back with skip_designer gets a file with one copy of the common instructions each time, and the agents'
+        custom instructions back:
+        AgentNetworkDefinitionMiddleware strips the copies before this middleware validates, saves and exports.
+        The last save runs with demo mode off, and the demo sentence the earlier saves wrote is gone from it.
+        """
+        # Read afresh from the repo root rather than whatever an earlier test left in the process-wide copy.
+        self._start(mock.patch.object(AgentNetworkDefinitionMiddleware, "_aaosa_instructions", None))
+        definition: dict[str, Any] = self._network_def()
+
+        for demo_mode in (True, True, False):
+            sly_data: dict[str, Any] = self._request(skip_designer=True, client_block={}, network_def=definition)
+            hand_off: dict[str, Any] | None = await self._strip_from_repo_root(sly_data)
+            self.assertEqual(hand_off.get("jump_to"), "end")
+
+            with mock.patch.object(persistence_module, "DEMO_MODE", demo_mode):
+                self.assertIsNone(await self._save(sly_data))
+
+            exported: dict[str, Any] = sly_data.get("agent_network_definition")
+            self.assertEqual(exported.get("front_man").get("instructions"), "Delegate.")
+            self.assertEqual(exported.get("helper").get("instructions"), "Answer.")
+            definition = self._read_resolved_definition()
+            front_man: str = definition.get("front_man").get("instructions")
+            helper: str = definition.get("helper").get("instructions")
+            self.assertEqual(front_man.count(DesignerCommonInstructions.PREFIX_OPENING), 1)
+            self.assertEqual(front_man.count(FRONT_MAN_MARKER), 1)
+            self.assertEqual(front_man.count(AAOSA_MARKER), 1)
+            self.assertEqual(helper.count(DesignerCommonInstructions.PREFIX_OPENING), 1)
+            self.assertEqual(helper.count(DesignerCommonInstructions.DEMO_SENTENCE), 1 if demo_mode else 0)
