@@ -22,8 +22,6 @@ filtering to the server, so tests assert on the filter payloads as well as
 the CRUD outcomes.
 """
 
-from __future__ import annotations
-
 import asyncio
 import os
 from typing import Any
