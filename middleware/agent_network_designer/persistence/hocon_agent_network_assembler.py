@@ -25,7 +25,10 @@ from middleware.agent_network_designer.persistence.agent_network_assembler impor
 )
 from middleware.agent_network_designer.persistence.agent_network_assembler import AgentNetworkAssembler
 from middleware.agent_network_designer.persistence.agent_network_metadata_block import AgentNetworkMetadataBlock
+from middleware.agent_network_designer.persistence.designer_wrapper_texts import DesignerWrapperTexts
 
+# The wrapper texts in the header and templates below come from DesignerWrapperTexts, which
+# DesignerInstructionUnwrapper reads as well to strip copies of them from a definition (issue #1458).
 HOCON_HEADER_START = (
     "{\n"
     "# Importing content from other HOCON files\n"
@@ -52,18 +55,17 @@ HOCON_HEADER_START = (
     "\n"
     f'    "max_execution_seconds": {GENERATED_NETWORK_MAX_EXECUTION_SECONDS},\n'
     "\n"
-    '   "instructions_prefix": """\n'
-    "You are part of a team of assistants in "
+    '   "instructions_prefix": """\n' + DesignerWrapperTexts.PREFIX_OPENING + " "
 )
 HOCON_HEADER_REMAINDER = (
-    ".\n"
-    "Only answer inquiries that are directly within your area of expertise.\n"
-    "Do not try to help for other matters.\n"
-    "Do not mention what you can NOT do. Only mention what you can do.\n"
+    ".\n" + DesignerWrapperTexts.PREFIX_RULES + "\n"
     '""",\n'
+    # The slot for the "demo_mode" entry, empty when demo mode is off (see _build_header).
     "%s"
     '   "tools": [\n'
 )
+# The top-agent template indents the front man's lines by this much inside the triple-quoted body.
+FRONT_MAN_LINES_INDENT: str = " " * 12
 TOP_AGENT_TEMPLATE = (
     "        {\n"
     '            "name": "%s",\n'
@@ -76,9 +78,9 @@ TOP_AGENT_TEMPLATE = (
     '                """%s\n'
     "            },\n"
     '            "instructions": ${instructions_prefix} """\n'
-    "            Never express irrelevance unless you have first consulted all your tools.\n"
-    "            Once you have determined the relevant tools, do not express that to the user, rather,\n"
-    "            call all the relevant tools and make sure the command is fully serviced and express the end result.\n"
+    + FRONT_MAN_LINES_INDENT
+    + DesignerWrapperTexts.FRONT_MAN_LINES.replace("\n", "\n" + FRONT_MAN_LINES_INDENT)
+    + "\n"
     "%s\n"
     '""" ${aaosa_instructions},\n'
     '            "tools": [%s]\n'
@@ -219,13 +221,7 @@ class HoconAgentNetworkAssembler(AgentNetworkAssembler):
         # double quotes or a tab, which broke the triple-quoted rendering, survives a round trip
         # (see _render_json_block for what pyhocon still cannot read back).
         metadata_block: str = self._render_json_block(metadata, " " * 4)
-        demo_mode_block: str = (
-            '   "demo_mode": "You are part of a demo system, so when queried, make up a realistic '
-            "response as if you are actually grounded in real data or you are operating a real "
-            'application API or microservice.",\n'
-            if self.demo_mode
-            else ""
-        )
+        demo_mode_block: str = f'   "demo_mode": "{DesignerWrapperTexts.DEMO_SENTENCE}",\n' if self.demo_mode else ""
 
         return HOCON_HEADER_START % metadata_block + agent_network_name + HOCON_HEADER_REMAINDER % demo_mode_block
 

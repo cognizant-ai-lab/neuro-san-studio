@@ -14,7 +14,10 @@
 #
 # END COPYRIGHT
 
-"""Tests for AgentNetworkDefinitionMiddleware: path resolution, the loaded metadata block, and failed loads."""
+"""
+Tests for AgentNetworkDefinitionMiddleware: path resolution, the loaded metadata block, failed loads, and the
+removal of designer wrapper copies from the definition.
+"""
 
 import json
 import os
@@ -22,19 +25,29 @@ import shutil
 import tempfile
 from copy import deepcopy
 from logging import LogRecord
+from pathlib import Path
 from typing import Any
 from unittest import IsolatedAsyncioTestCase
 from unittest.mock import patch
 
 from langchain_core.messages import AIMessage
+from pyhocon import ConfigFactory
+from pyhocon import ConfigTree
 
 from coded_tools.agent_network_editor.constants import AGENT_NETWORK_DEFINITION
 from coded_tools.agent_network_editor.constants import AGENT_NETWORK_METADATA
 from coded_tools.agent_network_editor.constants import AGENT_NETWORK_NAME
+from middleware.agent_network_designer.agent_network_definition_middleware import AAOSA_FILE
 from middleware.agent_network_designer.agent_network_definition_middleware import AGENT_NETWORK_HOCON_FILE
 from middleware.agent_network_designer.agent_network_definition_middleware import AGENT_RESERVATIONS
 from middleware.agent_network_designer.agent_network_definition_middleware import RESERVATION_ID
+from middleware.agent_network_designer.agent_network_definition_middleware import SKIP_DESIGNER
 from middleware.agent_network_designer.agent_network_definition_middleware import AgentNetworkDefinitionMiddleware
+from middleware.agent_network_designer.persistence.deployable_agent_network_assembler import (
+    DeployableAgentNetworkAssembler,
+)
+from middleware.agent_network_designer.persistence.hocon_agent_network_assembler import HOCON_HEADER_START
+from middleware.agent_network_designer.persistence.hocon_agent_network_assembler import HoconAgentNetworkAssembler
 
 # A metadata block the way neuro-san's reservation storage writers store it: the user-authored keys, plus
 # "reservation" in ReservationDictionaryConverter's shape and "stored_at" as time.time(). Those two describe
@@ -71,6 +84,19 @@ EXPECTED_NETWORK_NAME: str = "net_abc"
 S3_BUCKET: str = "bucket"
 # The logger name AgentNetworkDefinitionMiddleware builds from its class name.
 MIDDLEWARE_LOGGER: str = "AgentNetworkDefinitionMiddleware"
+# Generated networks include registries/aaosa.hocon relative to the repository root.
+REPO_ROOT: Path = Path(__file__).resolve().parents[3]
+# Patched to point the once-per-process read of the AAOSA instructions at another file.
+AAOSA_FILE_TARGET: str = "middleware.agent_network_designer.agent_network_definition_middleware.AAOSA_FILE"
+# A definition holding only the agents' own text (issue #1458): a front man, an agent with tools and a leaf. The
+# texts are one line each because a network loaded from a file still has its whitespace collapsed (issue #1456).
+OWN_TEXT_DEFINITION: dict[str, Any] = {
+    "front": {"instructions": "Route travel requests.", "tools": ["booker", "weather"]},
+    "booker": {"instructions": "Book trips.", "tools": ["weather"]},
+    "weather": {"instructions": "Report the weather."},
+}
+# Words that occur once in the AAOSA instructions and nowhere in OWN_TEXT_DEFINITION, for counting copies.
+AAOSA_MARKER: str = "When you receive an inquiry, you will:"
 
 
 class TestAgentNetworkDefinitionMiddleware(IsolatedAsyncioTestCase):  # pylint: disable=too-many-public-methods
@@ -92,6 +118,10 @@ class TestAgentNetworkDefinitionMiddleware(IsolatedAsyncioTestCase):  # pylint: 
     loaded (issue #1440): a parse or substitution failure, an unsupported or upper-case
     extension, an unreadable path and a missing file, driven through the real restorer, plus
     the hook's hand-off of that error to the client.
+
+    Finally covers the removal of copies of the designer's instruction wrapper from the definition
+    (issue #1458), for a definition sent in sly_data, a network loaded from a generated file and one
+    loaded from an S3 reservation, and where the AAOSA instructions to strip come from.
     """
 
     def setUp(self) -> None:
@@ -643,3 +673,177 @@ class TestAgentNetworkDefinitionMiddleware(IsolatedAsyncioTestCase):  # pylint: 
         self.assertIn("missing/invalid 'name'", warnings[0])
         self.assertIn(RESERVATION_ID_VALUE, warnings[0])
         self.assertEqual(self._messages_at_level(captured.records, "ERROR"), [message])
+
+    # Tests for the removal of designer wrapper copies from the definition (issue #1458). The rules per role are
+    # tested with DesignerInstructionUnwrapper itself; these check that the hook applies them to every source
+    # before anything reads the definition.
+
+    @staticmethod
+    async def _resolved_definition(definition: dict[str, Any], network_name: str) -> dict[str, Any]:
+        """
+        Save a definition as HOCON and read it back as nsflow's editor does, with the substitutions resolved.
+
+        :param definition: The definition to save
+        :param network_name: The network name to save it under
+        :return: Agent name to the resolved instructions and, when present, the tools
+        """
+        text: str = await HoconAgentNetworkAssembler(True).assemble_agent_network(
+            definition, "front", network_name, []
+        )
+        config: ConfigTree = ConfigFactory.parse_string(text, basedir=str(REPO_ROOT))
+        resolved: dict[str, Any] = {}
+        for agent in config.get("tools"):
+            entry: dict[str, Any] = {"instructions": agent.get("instructions")}
+            tools: list[str] | None = agent.get("tools", None)
+            if tools:
+                entry["tools"] = list(tools)
+            resolved[agent.get("name")] = entry
+        return resolved
+
+    async def test_abefore_model_unwraps_a_resolved_definition_before_a_skip_designer_save(self) -> None:
+        """
+        A skip_designer save of instructions that hold the wrapper twice, resolved from saves under other network
+        names, leaves only the own text in sly_data, where the persistence middleware validates, saves and returns
+        the definition.
+        """
+        resolved: dict[str, Any] = await self._resolved_definition(OWN_TEXT_DEFINITION, "old_name")
+        resolved = await self._resolved_definition(resolved, "generated/old_name")
+        self.assertEqual(resolved.get("front").get("instructions").count(AAOSA_MARKER), 2)
+        sly_data: dict[str, Any] = {
+            AGENT_NETWORK_DEFINITION: resolved,
+            AGENT_NETWORK_NAME: "new_name",
+            SKIP_DESIGNER: True,
+        }
+        middleware: AgentNetworkDefinitionMiddleware = AgentNetworkDefinitionMiddleware(sly_data=sly_data)
+
+        result: dict[str, Any] | None = await middleware.abefore_model({}, None)
+
+        self.assertEqual(result.get("jump_to"), "end")
+        self.assertEqual(sly_data.get(AGENT_NETWORK_DEFINITION), OWN_TEXT_DEFINITION)
+        self.assertEqual(middleware.network_def, OWN_TEXT_DEFINITION)
+
+    async def test_abefore_model_strips_the_aaosa_instructions_from_a_hand_written_leaf(self) -> None:
+        """
+        A hand-written network that gives a leaf the AAOSA instructions, as registries/basic/smart_home.hocon does,
+        loads with them removed from that leaf too: the designer never writes them for a leaf, so after the next
+        save the leaf works like the ones the designer writes.
+        """
+        text: str = (
+            "{\n"
+            '  include "registries/aaosa.hocon"\n'
+            '  "tools": [\n'
+            '    {"name": "house", "instructions": "Control the house." ${aaosa_instructions}, "tools": ["Book"]},\n'
+            '    {"name": "Book", "instructions": "Your name is Book. You are a book." ${aaosa_instructions}}\n'
+            "  ]\n"
+            "}\n"
+        )
+        path: str = self._write_config_file("smart_house.hocon", text)
+        sly_data: dict[str, Any] = {AGENT_NETWORK_HOCON_FILE: path}
+        middleware: AgentNetworkDefinitionMiddleware = AgentNetworkDefinitionMiddleware(sly_data=sly_data)
+
+        result: dict[str, Any] | None = await middleware.abefore_model({}, None)
+
+        self.assertIsNone(result)
+        loaded: dict[str, Any] = sly_data.get(AGENT_NETWORK_DEFINITION)
+        self.assertEqual(loaded.get("house").get("instructions"), "Control the house.")
+        self.assertEqual(loaded.get("Book").get("instructions"), "Your name is Book. You are a book.")
+
+    async def test_abefore_model_keeps_a_definition_without_wrapper_copies_as_sent(self) -> None:
+        """
+        A definition holding only own text is neither copied nor changed: sly_data keeps the very dict the client
+        sent.
+        """
+        sent: dict[str, Any] = deepcopy(OWN_TEXT_DEFINITION)
+        sly_data: dict[str, Any] = {AGENT_NETWORK_DEFINITION: sent, AGENT_NETWORK_NAME: "travel", SKIP_DESIGNER: True}
+        middleware: AgentNetworkDefinitionMiddleware = AgentNetworkDefinitionMiddleware(sly_data=sly_data)
+
+        await middleware.abefore_model({}, None)
+
+        self.assertIs(sly_data.get(AGENT_NETWORK_DEFINITION), sent)
+        self.assertEqual(sent, OWN_TEXT_DEFINITION)
+
+    async def test_abefore_model_unwraps_a_network_loaded_from_a_generated_hocon_file(self) -> None:
+        """
+        A network the designer saved and then loads again through agent_network_hocon_file comes back as the own
+        text, instead of the resolved wrapper the next save would add to.
+        """
+        text: str = await HoconAgentNetworkAssembler(True).assemble_agent_network(
+            OWN_TEXT_DEFINITION, "front", "travel", []
+        )
+        path: str = self._write_config_file("travel.hocon", text)
+        sly_data: dict[str, Any] = {AGENT_NETWORK_HOCON_FILE: path}
+        middleware: AgentNetworkDefinitionMiddleware = AgentNetworkDefinitionMiddleware(sly_data=sly_data)
+
+        result: dict[str, Any] | None = await middleware.abefore_model({}, None)
+
+        self.assertIsNone(result)
+        loaded: dict[str, Any] = sly_data.get(AGENT_NETWORK_DEFINITION)
+        for agent_name, agent in OWN_TEXT_DEFINITION.items():
+            with self.subTest(agent_name=agent_name):
+                self.assertEqual(loaded.get(agent_name).get("instructions"), agent.get("instructions"))
+
+    async def test_abefore_model_unwraps_a_network_loaded_from_an_s3_reservation(self) -> None:
+        """
+        A network deployed in reservations mode and loaded again from its S3 copy comes back as the own text.
+        """
+        spec: dict[str, Any] = await DeployableAgentNetworkAssembler(True).assemble_agent_network(
+            OWN_TEXT_DEFINITION, "front", "travel", []
+        )
+        sly_data: dict[str, Any] = {AGENT_RESERVATIONS: [{RESERVATION_ID: RESERVATION_ID_VALUE}]}
+        middleware: AgentNetworkDefinitionMiddleware = AgentNetworkDefinitionMiddleware(sly_data=sly_data)
+
+        result: dict[str, Any] | None = await self._abefore_model_from_s3(middleware, spec)
+
+        self.assertIsNone(result)
+        loaded: dict[str, Any] = sly_data.get(AGENT_NETWORK_DEFINITION)
+        for agent_name, agent in OWN_TEXT_DEFINITION.items():
+            with self.subTest(agent_name=agent_name):
+                self.assertEqual(loaded.get(agent_name).get("instructions"), agent.get("instructions"))
+
+    async def test_abefore_model_ignores_aaosa_instructions_sent_in_sly_data(self) -> None:
+        """
+        The AAOSA instructions to strip come from registries/aaosa.hocon, never from sly_data, which the client
+        writes: a value planted under the key the load path caches it in changes nothing.
+        """
+        resolved: dict[str, Any] = await self._resolved_definition(OWN_TEXT_DEFINITION, "travel")
+        sly_data: dict[str, Any] = {
+            AGENT_NETWORK_DEFINITION: resolved,
+            AGENT_NETWORK_NAME: "travel",
+            "aaosa_instructions": "Not the AAOSA instructions.",
+        }
+        middleware: AgentNetworkDefinitionMiddleware = AgentNetworkDefinitionMiddleware(sly_data=sly_data)
+
+        await middleware.abefore_model({}, None)
+
+        self.assertEqual(sly_data.get(AGENT_NETWORK_DEFINITION), OWN_TEXT_DEFINITION)
+
+    async def test_abefore_model_warns_once_and_keeps_aaosa_copies_when_the_aaosa_file_is_missing(self) -> None:
+        """
+        Without registries/aaosa.hocon the AAOSA copies cannot be recognized: the other pieces are still stripped,
+        the AAOSA text stays, and the missing file is reported once for the process, not on every model call.
+        """
+        resolved: dict[str, Any] = await self._resolved_definition(OWN_TEXT_DEFINITION, "travel")
+        missing: str = os.path.join(self.temp_dir, "no_aaosa.hocon")
+        warnings: list[str] = []
+        with (
+            patch(AAOSA_FILE_TARGET, missing),
+            patch.object(AgentNetworkDefinitionMiddleware, "_wrapper_aaosa_instructions", None),
+            self.assertLogs(MIDDLEWARE_LOGGER, level="WARNING") as captured,
+        ):
+            for _ in range(2):
+                sly_data: dict[str, Any] = {AGENT_NETWORK_DEFINITION: deepcopy(resolved), AGENT_NETWORK_NAME: "travel"}
+                await AgentNetworkDefinitionMiddleware(sly_data=sly_data).abefore_model({}, None)
+                front: str = sly_data.get(AGENT_NETWORK_DEFINITION).get("front").get("instructions")
+                self.assertTrue(front.startswith("Route travel requests."))
+                self.assertEqual(front.count(AAOSA_MARKER), 1)
+            warnings = self._messages_at_level(captured.records, "WARNING")
+
+        self.assertEqual(len(warnings), 1)
+        self.assertIn(missing, warnings[0])
+
+    def test_the_aaosa_file_read_is_the_one_generated_networks_include(self) -> None:
+        """
+        The AAOSA instructions stripped are those of the file every generated network includes, so what the save
+        adds is what gets recognized.
+        """
+        self.assertIn(f'include "{AAOSA_FILE}"', HOCON_HEADER_START)

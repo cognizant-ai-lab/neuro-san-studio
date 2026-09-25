@@ -111,7 +111,13 @@
                     "properties": {
                         "agent_network_definition": {
                             "type": "object",
-                            "description": "An internal representation of the agent network used for further iteration."
+                            "description": """
+An internal representation of the agent network used for further iteration.
+Each agent's instructions are meant to hold only the agent's own text: every save wraps it again in the pieces the
+agent's role calls for (the instructions prefix, the front man's fixed lines, the demo mode sentence and the AAOSA
+instructions). Copies of any of those pieces at the start or end of any agent's instructions, such as the resolved text
+of a saved network, are removed before the definition is used.
+"""
                         },
                         "agent_network_hocon_file": {
                             "type": "string",
@@ -200,7 +206,10 @@ Send agent_network_metadata back with it so the saved network keeps its metadata
                     "properties": {
                         "agent_network_definition": {
                             "type": "object",
-                            "description": "An internal representation of the agent network used for further iteration."
+                            "description": """
+An internal representation of the agent network used for further iteration.
+Send it back as it is: each agent's instructions are its own text, which the next save wraps again.
+"""
                         },
                         "agent_network_hocon_text": {
                             "type": "string",

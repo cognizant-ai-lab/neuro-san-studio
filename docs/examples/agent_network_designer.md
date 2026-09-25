@@ -340,6 +340,14 @@ any `agent_network_metadata` sent with the same request
 - A load that yields no agent (a `tools` list that is missing, not a list, empty, or whose every entry is skipped)
 ends the turn with an error message, as a missing or unparseable file does. `agent_network_name` is set from the
 file name or the reservation id only once the load has produced a definition
+- Each agent's `instructions` in the `agent_network_definition` hold only the agent's own text, since every save adds
+the wrapper again: the instructions prefix, the front man's fixed lines, the demo mode sentence and the AAOSA
+instructions. Copies of that wrapper already in the instructions, such as the resolved text of a saved network sent
+back by a client, are removed before the definition is validated, shown to the LLM or saved, so a save writes one
+copy instead of adding another. Every piece is removed from every agent, whatever its role and whatever
+`AGENT_NETWORK_DESIGNER_DEMO_MODE` is set to, and the save adds back the ones the agent's role calls for. So a
+hand-written network that gives its leaves the AAOSA instructions loses them from those leaves once loaded. An agent
+whose instructions are nothing but wrapper keeps one copy of each piece
 
 #### Persistence (Middleware)
 
