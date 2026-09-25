@@ -50,11 +50,12 @@ class DesignerInstructionUnwrapper:
       (registries/basic/wolfram_mcp.hocon) or quotes a wrapper sentence in the middle is left alone.
     - Every copy, however many there are and in whatever order: after several saves the leading pieces
       interleave (prefix, front man's lines, prefix, front man's lines, ...).
-    - The prefix under any network name of up to MAX_NAME_WORDS words, since a copy carries the name the network
-      was saved under, which can differ from the name of this save; and in the wording networks generated before
-      22a84541 used, whose names were single words. That old wording is also what some hand-written networks use
-      for their own prefix with a longer name ("You are part of a smart home network of assistants." in
-      registries/basic/smart_home.hocon), and those are not designer copies, so they are left alone.
+    - The prefix under any network name of up to MAX_NAME_WORDS words, followed by the period a save writes
+      after it, since a copy carries the name the network was saved under, which can differ from the name of
+      this save; and in the wording networks generated before 22a84541 used, whose names were single words.
+      That old wording is also what some hand-written networks use for their own prefix with a longer name
+      ("You are part of a smart home network of assistants." in registries/basic/smart_home.hocon), and those
+      are not designer copies, so they are left alone.
     - Only the words at the two ends of the text are ever read, and only the end is copied, to be read backwards
       (see _trailing_copy), so the cost grows with the copies stripped, not with the length of the text. The words
       are compared one by one rather than with a regular expression: a pattern anchored at the end of the text is
@@ -88,24 +89,25 @@ class DesignerInstructionUnwrapper:
         Prepare the word patterns of the wrapper pieces.
 
         The prefix, the front man's lines and the demo sentence are fixed texts from DesignerWrapperTexts. A copy of
-        the prefix names the network it was saved under, so up to MAX_NAME_WORDS words stand in for the name (one
-        word for the legacy wording).
+        the prefix names the network it was saved under, so up to MAX_NAME_WORDS words stand in for the name, the
+        last of them ending with the period the save writes after it (one word, without the period, for the
+        legacy wording, where "of assistants." follows the name).
 
         :param aaosa_instructions: The AAOSA instructions the save appends to the front man and to agents with
                 tools, from registries/aaosa.hocon, or None to strip none
         """
-        # An int entry stands for the network name, which differs from copy to copy: it matches one word up to
-        # that many words.
-        current_prefix: list[str | int] = self._words(DesignerWrapperTexts.PREFIX_OPENING)
-        current_prefix.append(self.MAX_NAME_WORDS)
+        # A (count, ending) entry stands for the network name, which differs from copy to copy: it matches one word
+        # up to count words, the last of them ending with ending.
+        current_prefix: list[str | tuple[int, str]] = self._words(DesignerWrapperTexts.PREFIX_OPENING)
+        current_prefix.append((self.MAX_NAME_WORDS, "."))
         current_prefix.extend(self._words(DesignerWrapperTexts.PREFIX_RULES))
-        legacy_prefix: list[str | int] = self._words(DesignerWrapperTexts.LEGACY_PREFIX_OPENING)
-        legacy_prefix.append(1)
+        legacy_prefix: list[str | tuple[int, str]] = self._words(DesignerWrapperTexts.LEGACY_PREFIX_OPENING)
+        legacy_prefix.append((1, ""))
         legacy_prefix.extend(self._words(DesignerWrapperTexts.LEGACY_PREFIX_CLOSING))
         legacy_prefix.extend(self._words(DesignerWrapperTexts.PREFIX_RULES))
 
         # (piece key, word pattern) pairs for the pieces a save writes before the agent's own text.
-        self.leading_pieces: list[tuple[str, list[str | int]]] = [
+        self.leading_pieces: list[tuple[str, list[str | tuple[int, str]]]] = [
             (self.PREFIX, current_prefix),
             (self.PREFIX, legacy_prefix),
             (self.FRONT_MAN_LINES, self._words(DesignerWrapperTexts.FRONT_MAN_LINES)),
@@ -114,10 +116,10 @@ class DesignerInstructionUnwrapper:
         # The AAOSA instructions, the one piece a save writes after the own text, are matched on the reversed text
         # (see _trailing_copy), so their pattern is kept the way that text reads: last word first, and every word
         # spelled backwards. Without them there is nothing to look for at the end.
-        reversed_aaosa_pattern: list[str | int] = []
+        reversed_aaosa_pattern: list[str | tuple[int, str]] = []
         for word in reversed(self._words(aaosa_instructions)):
             reversed_aaosa_pattern.append(word[::-1])
-        self.trailing_pieces: list[tuple[str, list[str | int]]] = []
+        self.trailing_pieces: list[tuple[str, list[str | tuple[int, str]]]] = []
         if reversed_aaosa_pattern:
             self.trailing_pieces.append((self.AAOSA_INSTRUCTIONS, reversed_aaosa_pattern))
         # How many characters _trailing_copy first reads from the end: twice a copy of the AAOSA instructions with
@@ -221,7 +223,7 @@ class DesignerInstructionUnwrapper:
         return start, end, first_copies
 
     def _leading_copy(
-        self, instructions: str, start: int, end: int, pattern: list[str | int]
+        self, instructions: str, start: int, end: int, pattern: list[str | tuple[int, str]]
     ) -> tuple[int, int] | None:
         """
         Find a whole copy of a piece at the start of the text still left.
@@ -229,20 +231,20 @@ class DesignerInstructionUnwrapper:
         :param instructions: The agent's instructions
         :param start: The offset the text still left begins at
         :param end: The offset the text still left ends at
-        :param pattern: The words of the piece; an int entry stands for one word up to that many words of a network
-                name
+        :param pattern: The words of the piece; a (count, ending) entry stands for one word up to count words
+                of a network name, the last of them ending with ending
         :return: The offsets of the copy's first and past its last character, or None when the text does not
                 begin with a copy
         """
         # The words before the name, or all of them when the piece has no name.
         head_length: int = len(pattern)
         for index, entry in enumerate(pattern):
-            if isinstance(entry, int):
+            if isinstance(entry, tuple):
                 head_length = index
                 break
         limit: int = len(pattern)
         if head_length < len(pattern):
-            limit = len(pattern) - 1 + pattern[head_length]
+            limit = len(pattern) - 1 + pattern[head_length][0]
 
         # Only as many words as a copy can span are read, and reading stops at the first word that differs.
         words: list[str] = []
@@ -260,14 +262,15 @@ class DesignerInstructionUnwrapper:
             return None
         return spans[0][0], spans[length - 1][1]
 
-    def _copy_length(self, words: list[str], pattern: list[str | int], head_length: int) -> int:
+    def _copy_length(self, words: list[str], pattern: list[str | tuple[int, str]], head_length: int) -> int:
         """
         Count the words a copy of a piece spans at the start of a list of words.
 
         :param words: The first words of the text still left
-        :param pattern: The words of the piece; an int entry stands for one word up to that many words of a network
-                name
-        :param head_length: The number of pattern words before the int entry, or the pattern's length without one
+        :param pattern: The words of the piece; a (count, ending) entry stands for one word up to count words
+                of a network name, the last of them ending with ending
+        :param head_length: The number of pattern words before the (count, ending) entry, or the pattern's length
+                without one
         :return: The number of words the copy spans, or 0 when the words do not begin with a copy
         """
         if words[:head_length] != pattern[:head_length]:
@@ -276,17 +279,21 @@ class DesignerInstructionUnwrapper:
             return head_length
         # Try the shortest name first: the words after the name are fixed, so at most one length can fit a real
         # copy, and a name cannot hold the rule sentences that follow it.
-        tail: list[str | int] = pattern[head_length + 1 :]
-        for name_length in range(1, pattern[head_length] + 1):
+        tail: list[str | tuple[int, str]] = pattern[head_length + 1 :]
+        max_name_words: int
+        ending: str
+        max_name_words, ending = pattern[head_length]
+        for name_length in range(1, max_name_words + 1):
             tail_start: int = head_length + name_length
             if tail_start + len(tail) > len(words):
                 return 0
-            if words[tail_start : tail_start + len(tail)] == tail:
+            # A name that stops short of the period is not a whole copy of the prefix.
+            if words[tail_start - 1].endswith(ending) and words[tail_start : tail_start + len(tail)] == tail:
                 return tail_start + len(tail)
         return 0
 
     def _trailing_copy(
-        self, instructions: str, start: int, end: int, reversed_pattern: list[str | int]
+        self, instructions: str, start: int, end: int, reversed_pattern: list[str | tuple[int, str]]
     ) -> tuple[int, int] | None:
         """
         Find a whole copy of a piece at the end of the text still left.
@@ -318,7 +325,7 @@ class DesignerInstructionUnwrapper:
             window *= 2
 
     def _reversed_copy(
-        self, reversed_tail: str, truncated: bool, reversed_pattern: list[str | int]
+        self, reversed_tail: str, truncated: bool, reversed_pattern: list[str | tuple[int, str]]
     ) -> tuple[tuple[int, int] | None, bool]:
         """
         Match a piece at the start of the reversed end of a text.
@@ -349,7 +356,7 @@ class DesignerInstructionUnwrapper:
         return None, truncated
 
     @classmethod
-    def _words(cls, text: str | None) -> list[str | int]:
+    def _words(cls, text: str | None) -> list[str | tuple[int, str]]:
         """
         Split a wrapper text into the words its copies are matched by.
 
@@ -357,7 +364,7 @@ class DesignerInstructionUnwrapper:
         :return: Its words, split the same way as the instructions are; empty for None, a non-string or a blank
                 text, which makes the piece one that is never stripped
         """
-        words: list[str | int] = []
+        words: list[str | tuple[int, str]] = []
         if isinstance(text, str):
             for match in cls.WORD.finditer(text):
                 words.append(match.group())

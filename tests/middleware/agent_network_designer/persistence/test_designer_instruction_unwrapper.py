@@ -190,6 +190,9 @@ class TestDesignerInstructionUnwrapper(IsolatedAsyncioTestCase):
             # A hand-written network's own prefix in the legacy wording with a longer name
             # (registries/basic/smart_home.hocon), which no designer version wrote.
             f"You are part of a smart home network of assistants.\n{DesignerWrapperTexts.PREFIX_RULES}\nOwn text.",
+            # The prefix's words without the period a save writes right after the name, for one name word or more.
+            f"{PREFIX_MARKER} travel\n{DesignerWrapperTexts.PREFIX_RULES}\nOwn text.",
+            f"{PREFIX_MARKER} My Travel Desk\n{DesignerWrapperTexts.PREFIX_RULES}\nOwn text.",
         ]
         for text in texts:
             with self.subTest(text=text[:30]):
