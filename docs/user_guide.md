@@ -1974,40 +1974,40 @@ with ongoing additions of test cases to improve coverage.
 
 Please select the execution option that best aligns with the level of validation you want to perform.
 
-`--timer-top-n 100` flag is optional. It shows the top 100 slowest test cases.
+`--durations=100` flag is optional. It shows the 100 slowest test phases (setup, call, teardown).
 
 - Run all integration test cases:
 
     Example:
 
     ```bash
-    pytest -s -m "integration" --timer-top-n 100
+    pytest -s -m "integration" --durations=100
     ```
 
 - Run by a group or groups of those test cases:
 
     ```bash
-    pytest -s -m "<name of folder>" --timer-top-n 100
+    pytest -s -m "<name of folder>" --durations=100
     ```
 
     Example:
 
     ```bash
-    pytest -s -m "integration_basic" --timer-top-n 100
-    pytest -s -m "integration_industry" --timer-top-n 100
+    pytest -s -m "integration_basic" --durations=100
+    pytest -s -m "integration_industry" --durations=100
     ```
 
 - Run by the network agent hocon name of those test cases:
 
     ```bash
-    pytest -s -m "<name of network_agent hocon>" --timer-top-n 100
+    pytest -s -m "<name of network_agent hocon>" --durations=100
     ```
 
     Example:
 
     ```bash
-    pytest -s -m "integration_basic_coffee_finder_advanced" --timer-top-n 100
-    pytest -s -m "integration_industry_airline_policy" --timer-top-n 100
+    pytest -s -m "integration_basic_coffee_finder_advanced" --durations=100
+    pytest -s -m "integration_industry_airline_policy" --durations=100
     ```
 
 - Run a single test case:
