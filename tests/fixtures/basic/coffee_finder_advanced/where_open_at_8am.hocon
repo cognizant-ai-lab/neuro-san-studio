@@ -19,40 +19,38 @@
 # The schema specifications for this file are documented here:
 # https://github.com/cognizant-ai-lab/neuro-san/blob/main/docs/test_case_hocon_reference.md
 
+# At 8 am all four coffee shops are open, so the agent must list every option.
+
 {
     # Describes what agent to test against.
     "agent": "basic/coffee_finder_advanced",
 
-    # Timeout for the entire test.
-    # It's also possible to have a timeout_in_seconds on a per-interaction basis.
-    "timeout_in_seconds": 180,
-
-    # success_ratio is useful for passing to the assessor to find out why
-    # a test is intermitently failing. Sometimes it's the agent prompt, but
-    # sometimes it's the test itself.
-    # Note: This number was increased for network failure identification and should be reverted afterward to 1/1.
+    # Minimum pass ratio for intermittent-failure triage.
     "success_ratio": "1/1",
 
     # Interactions are a series of dictionaries with request elements paired with
     # descriptions of response checks.
     "interactions": [
         {
+            "timeout_in_seconds": 90,
+
             # Test case confirm shops open and close.
             
             # This is to enable streaming_chat contents to thinking file for debug.
             # "chat_filter": "MAXIMAL",
 
-            # Using the sly_data to set a hard timer.
+            # Using the sly_data to set a hard time.
             "sly_data": {
-                "time": "6 am"
+                "test_mode": true,
+                "time": "8 am"
             },
             
             # This is what we send as input to streaming_chat()
             "text": """
-Get me black coffee from Bob's Coffee Shop or Henry's Fast Food or Joe’s Gas Station
+Where can I get coffee?
 """,
 
-            # The response block treats how we are going to test what comes back
+            # The response block describes how we are going to test what comes back
             "response": {
 
                 # Text block says how we are going to examine the text of the response.
@@ -61,15 +59,11 @@ Get me black coffee from Bob's Coffee Shop or Henry's Fast Food or Joe’s Gas S
                     # Gist says we are going to ask an LLM about how the response
                     # matches up to our description of acceptance criteria.
                     # Each component of the list needs to pass muster in order to pass.
-                    "gist": ["""
-Got it — Bob’s Coffee Shop is closed.
-                             """],
-                    "not_gist": ["""
-Got it — Henry's Fast Food is closed.
-                             """],
-                    "not_gist": ["""
-Got it — Joe’s Gas Station is closed.
-                             """]
+                    "gist": [
+"The response indicates Bob's Coffee Shop is open or can serve coffee.",
+"The response indicates Henry's Fast Food is open or can serve coffee.",
+"The response indicates Joe's Gas Station is open or can serve coffee."
+                    ]
                 }
             }
         }
