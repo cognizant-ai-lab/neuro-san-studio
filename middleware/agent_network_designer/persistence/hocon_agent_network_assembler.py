@@ -25,10 +25,10 @@ from middleware.agent_network_designer.persistence.agent_network_assembler impor
 )
 from middleware.agent_network_designer.persistence.agent_network_assembler import AgentNetworkAssembler
 from middleware.agent_network_designer.persistence.agent_network_metadata_block import AgentNetworkMetadataBlock
-from middleware.agent_network_designer.persistence.designer_wrapper_texts import DesignerWrapperTexts
+from middleware.agent_network_designer.persistence.designer_common_instructions import DesignerCommonInstructions
 
-# The wrapper texts in the header and templates below come from DesignerWrapperTexts, which
-# DesignerInstructionUnwrapper reads as well to strip copies of them from a definition (issue #1458).
+# The common instructions in the header and templates below come from DesignerCommonInstructions, which
+# CommonInstructionStripper reads as well to strip copies of them from a definition (issue #1458).
 HOCON_HEADER_START = (
     "{\n"
     "# Importing content from other HOCON files\n"
@@ -55,10 +55,10 @@ HOCON_HEADER_START = (
     "\n"
     f'    "max_execution_seconds": {GENERATED_NETWORK_MAX_EXECUTION_SECONDS},\n'
     "\n"
-    '   "instructions_prefix": """\n' + DesignerWrapperTexts.PREFIX_OPENING + " "
+    '   "instructions_prefix": """\n' + DesignerCommonInstructions.PREFIX_OPENING + " "
 )
 HOCON_HEADER_REMAINDER = (
-    ".\n" + DesignerWrapperTexts.PREFIX_RULES + "\n"
+    ".\n" + DesignerCommonInstructions.PREFIX_RULES + "\n"
     '""",\n'
     # The slot for the "demo_mode" entry, empty when demo mode is off (see _build_header).
     "%s"
@@ -79,7 +79,7 @@ TOP_AGENT_TEMPLATE = (
     "            },\n"
     '            "instructions": ${instructions_prefix} """\n'
     + FRONT_MAN_LINES_INDENT
-    + DesignerWrapperTexts.FRONT_MAN_LINES.replace("\n", "\n" + FRONT_MAN_LINES_INDENT)
+    + DesignerCommonInstructions.FRONT_MAN_LINES.replace("\n", "\n" + FRONT_MAN_LINES_INDENT)
     + "\n"
     "%s\n"
     '""" ${aaosa_instructions},\n'
@@ -221,7 +221,9 @@ class HoconAgentNetworkAssembler(AgentNetworkAssembler):
         # double quotes or a tab, which broke the triple-quoted rendering, survives a round trip
         # (see _render_json_block for what pyhocon still cannot read back).
         metadata_block: str = self._render_json_block(metadata, " " * 4)
-        demo_mode_block: str = f'   "demo_mode": "{DesignerWrapperTexts.DEMO_SENTENCE}",\n' if self.demo_mode else ""
+        demo_mode_block: str = (
+            f'   "demo_mode": "{DesignerCommonInstructions.DEMO_SENTENCE}",\n' if self.demo_mode else ""
+        )
 
         return HOCON_HEADER_START % metadata_block + agent_network_name + HOCON_HEADER_REMAINDER % demo_mode_block
 

@@ -14,16 +14,17 @@
 #
 # END COPYRIGHT
 """
-The fixed texts the agent network designer wraps around every agent's own instructions when it saves a network.
+The common instructions: the fixed texts the agent network designer adds to every agent's custom instructions on
+save.
 """
 
 
-class DesignerWrapperTexts:  # pylint: disable=too-few-public-methods
+class DesignerCommonInstructions:  # pylint: disable=too-few-public-methods
     """
-    The wording of the wrapper the designer adds around each agent's own instructions on save.
+    The wording of the common instructions the designer adds to each agent's custom instructions on save.
 
-    An agent's "instructions" in agent_network_definition is only the agent's own text. Every save adds the
-    wrapper back, and which pieces an agent gets depends on its role:
+    An agent's "instructions" in agent_network_definition hold only its custom instructions, the agent's own
+    text. Every save adds the common instructions back, and which pieces an agent gets depends on its role:
 
     - the prefix, for every LLM agent;
     - the front man's three fixed lines, for the top agent;
@@ -32,11 +33,11 @@ class DesignerWrapperTexts:  # pylint: disable=too-few-public-methods
       registries/aaosa.hocon, the file every generated network includes, so it is not repeated here.
 
     HoconAgentNetworkAssembler builds its header and top-agent template from these constants, and
-    DesignerInstructionUnwrapper strips them again from a definition whose instructions already hold them, so the
+    CommonInstructionStripper strips them again from a definition whose instructions already hold them, so the
     two cannot drift apart. deployable_template.hocon and deployable_template_demo.hocon are HOCON and cannot import
     them; a test pins their copies to these values.
 
-    Data only: the rules for stripping the texts belong to DesignerInstructionUnwrapper.
+    Data only: the rules for stripping the texts belong to CommonInstructionStripper.
     """
 
     # The words the prefix opens with. The network name and a period follow them, then PREFIX_RULES, so the file

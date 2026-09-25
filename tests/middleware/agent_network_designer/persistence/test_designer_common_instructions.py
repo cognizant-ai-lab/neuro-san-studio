@@ -14,7 +14,7 @@
 #
 # END COPYRIGHT
 
-"""Tests for DesignerWrapperTexts: the reservations templates carry the same wrapper wording."""
+"""Tests for DesignerCommonInstructions: the reservations templates carry the same common instructions."""
 
 from pathlib import Path
 from typing import Any
@@ -22,19 +22,20 @@ from unittest import IsolatedAsyncioTestCase
 
 from neuro_san.internals.persistence.abstract_async_config_restorer import AbstractAsyncConfigRestorer
 
-from middleware.agent_network_designer.persistence.designer_wrapper_texts import DesignerWrapperTexts
+from middleware.agent_network_designer.persistence.designer_common_instructions import DesignerCommonInstructions
 
 PERSISTENCE_DIR: Path = Path(__file__).resolve().parents[4] / "middleware" / "agent_network_designer" / "persistence"
 
 
-class TestDesignerWrapperTexts(IsolatedAsyncioTestCase):
+class TestDesignerCommonInstructions(IsolatedAsyncioTestCase):
     """
-    Pins the wrapper wording in deployable_template.hocon and deployable_template_demo.hocon to DesignerWrapperTexts.
+    Pins the common instructions in deployable_template.hocon and deployable_template_demo.hocon to
+    DesignerCommonInstructions.
 
     HoconAgentNetworkAssembler builds its header and top-agent template from the constants, but the reservations
-    templates are HOCON files and hold their own copies. DesignerInstructionUnwrapper strips copies by the
+    templates are HOCON files and hold their own copies. CommonInstructionStripper strips copies by the
     constants' words, so a template reworded on its own would bring back the growth of issue #1458 for networks
-    saved in reservations mode. The template texts are compared word by word, as the unwrapper matches them.
+    saved in reservations mode. The template texts are compared word by word, as the stripper matches them.
     """
 
     async def test_reservations_prefix_is_the_designer_prefix(self) -> None:
@@ -43,9 +44,9 @@ class TestDesignerWrapperTexts(IsolatedAsyncioTestCase):
         """
         template: dict[str, Any] = await self._restore("deployable_template_standard.hocon")
 
-        expected: list[str] = DesignerWrapperTexts.PREFIX_OPENING.split()
+        expected: list[str] = DesignerCommonInstructions.PREFIX_OPENING.split()
         expected.append("{agent_network_name}.")
-        expected.extend(DesignerWrapperTexts.PREFIX_RULES.split())
+        expected.extend(DesignerCommonInstructions.PREFIX_RULES.split())
         self.assertEqual(self._replacement_string(template, "instructions_prefix").split(), expected)
 
     async def test_reservations_demo_sentence_is_the_designer_demo_sentence(self) -> None:
@@ -56,11 +57,12 @@ class TestDesignerWrapperTexts(IsolatedAsyncioTestCase):
         standard_template: dict[str, Any] = await self._restore("deployable_template_standard.hocon")
 
         self.assertEqual(
-            self._replacement_string(demo_template, "demo_mode").split(), DesignerWrapperTexts.DEMO_SENTENCE.split()
+            self._replacement_string(demo_template, "demo_mode").split(),
+            DesignerCommonInstructions.DEMO_SENTENCE.split(),
         )
         self.assertEqual(self._replacement_string(standard_template, "demo_mode"), "")
 
-    async def test_reservations_templates_wrap_each_role_with_the_designer_pieces(self) -> None:
+    async def test_reservations_templates_give_each_role_the_designer_pieces(self) -> None:
         """
         The top template writes the front man's lines between the prefix and the agent's text; the top and regular
         templates end with the AAOSA instructions; only the leaf template has the demo sentence.
@@ -69,7 +71,7 @@ class TestDesignerWrapperTexts(IsolatedAsyncioTestCase):
         tools: list[dict[str, Any]] = template.get("tools")
 
         expected_top: list[str] = ["{instructions_prefix}"]
-        expected_top.extend(DesignerWrapperTexts.FRONT_MAN_LINES.split())
+        expected_top.extend(DesignerCommonInstructions.FRONT_MAN_LINES.split())
         expected_top.extend(["{agent_instructions}", "{aaosa_instructions}"])
         self.assertEqual(tools[0].get("instructions").split(), expected_top)
         self.assertEqual(
@@ -90,7 +92,7 @@ class TestDesignerWrapperTexts(IsolatedAsyncioTestCase):
                 directory, which is the repository root under pytest
         """
         restorer: AbstractAsyncConfigRestorer = AbstractAsyncConfigRestorer(
-            "DesignerWrapperTexts test template reader"
+            "DesignerCommonInstructions test template reader"
         )
         return await restorer.async_restore(file_reference=str(PERSISTENCE_DIR / file_name))
 

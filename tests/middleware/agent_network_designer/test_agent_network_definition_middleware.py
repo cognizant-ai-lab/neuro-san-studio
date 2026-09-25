@@ -16,7 +16,7 @@
 
 """
 Tests for AgentNetworkDefinitionMiddleware: path resolution, the loaded metadata block, failed loads, and the
-removal of designer wrapper copies from the definition.
+removal of copies of the designer's common instructions from the definition.
 """
 
 import asyncio
@@ -120,7 +120,7 @@ class TestAgentNetworkDefinitionMiddleware(IsolatedAsyncioTestCase):  # pylint: 
     extension, an unreadable path and a missing file, driven through the real restorer, plus
     the hook's hand-off of that error to the client.
 
-    Finally covers the removal of copies of the designer's instruction wrapper from the definition
+    Finally covers the removal of copies of the designer's common instructions from the definition
     (issue #1458), for a definition sent in sly_data, a network loaded from a generated file and one
     loaded from an S3 reservation, and where the AAOSA instructions to strip come from.
     """
@@ -675,8 +675,8 @@ class TestAgentNetworkDefinitionMiddleware(IsolatedAsyncioTestCase):  # pylint: 
         self.assertIn(RESERVATION_ID_VALUE, warnings[0])
         self.assertEqual(self._messages_at_level(captured.records, "ERROR"), [message])
 
-    # Tests for the removal of designer wrapper copies from the definition (issue #1458). The rules per role are
-    # tested with DesignerInstructionUnwrapper itself; these check that the hook applies them to every source
+    # Tests for the removal of copies of the common instructions from the definition (issue #1458). The matching
+    # rules are tested with CommonInstructionStripper itself; these check that the hook applies them to every source
     # before anything reads the definition.
 
     @staticmethod
@@ -701,11 +701,11 @@ class TestAgentNetworkDefinitionMiddleware(IsolatedAsyncioTestCase):  # pylint: 
             resolved[agent.get("name")] = entry
         return resolved
 
-    async def test_abefore_model_unwraps_a_resolved_definition_before_a_skip_designer_save(self) -> None:
+    async def test_abefore_model_strips_a_resolved_definition_before_a_skip_designer_save(self) -> None:
         """
-        A skip_designer save of instructions that hold the wrapper twice, resolved from saves under other network
-        names, leaves only the own text in sly_data, where the persistence middleware validates, saves and returns
-        the definition.
+        A skip_designer save of instructions that hold the common instructions twice, resolved from saves under
+        other network names, leaves only the own text in sly_data, where the persistence middleware validates,
+        saves and returns the definition.
         """
         resolved: dict[str, Any] = await self._resolved_definition(OWN_TEXT_DEFINITION, "old_name")
         resolved = await self._resolved_definition(resolved, "generated/old_name")
@@ -749,7 +749,7 @@ class TestAgentNetworkDefinitionMiddleware(IsolatedAsyncioTestCase):  # pylint: 
         self.assertEqual(loaded.get("house").get("instructions"), "Control the house.")
         self.assertEqual(loaded.get("Book").get("instructions"), "Your name is Book. You are a book.")
 
-    async def test_abefore_model_keeps_a_definition_without_wrapper_copies_as_sent(self) -> None:
+    async def test_abefore_model_keeps_a_definition_without_common_instructions_as_sent(self) -> None:
         """
         A definition holding only own text is neither copied nor changed: sly_data keeps the very dict the client
         sent.
@@ -763,10 +763,10 @@ class TestAgentNetworkDefinitionMiddleware(IsolatedAsyncioTestCase):  # pylint: 
         self.assertIs(sly_data.get(AGENT_NETWORK_DEFINITION), sent)
         self.assertEqual(sent, OWN_TEXT_DEFINITION)
 
-    async def test_abefore_model_unwraps_a_network_loaded_from_a_generated_hocon_file(self) -> None:
+    async def test_abefore_model_strips_a_network_loaded_from_a_generated_hocon_file(self) -> None:
         """
         A network the designer saved and then loads again through agent_network_hocon_file comes back as the own
-        text, instead of the resolved wrapper the next save would add to.
+        text, instead of the resolved common instructions the next save would add to.
         """
         text: str = await HoconAgentNetworkAssembler(True).assemble_agent_network(
             OWN_TEXT_DEFINITION, "front", "travel", []
@@ -783,7 +783,7 @@ class TestAgentNetworkDefinitionMiddleware(IsolatedAsyncioTestCase):  # pylint: 
             with self.subTest(agent_name=agent_name):
                 self.assertEqual(loaded.get(agent_name).get("instructions"), agent.get("instructions"))
 
-    async def test_abefore_model_unwraps_a_network_loaded_from_an_s3_reservation(self) -> None:
+    async def test_abefore_model_strips_a_network_loaded_from_an_s3_reservation(self) -> None:
         """
         A network deployed in reservations mode and loaded again from its S3 copy comes back as the own text.
         """
@@ -832,7 +832,7 @@ class TestAgentNetworkDefinitionMiddleware(IsolatedAsyncioTestCase):  # pylint: 
         warnings: list[str] = []
         with (
             patch(AAOSA_FILE_TARGET, missing),
-            patch.object(AgentNetworkDefinitionMiddleware, "_wrapper_aaosa_instructions", None),
+            patch.object(AgentNetworkDefinitionMiddleware, "_aaosa_instructions", None),
             self.assertLogs(MIDDLEWARE_LOGGER, level="WARNING") as captured,
         ):
             # The first two start together, as concurrent first requests do: the file read awaits, so both miss the

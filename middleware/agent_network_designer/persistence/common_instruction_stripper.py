@@ -14,24 +14,24 @@
 #
 # END COPYRIGHT
 """
-Removal of copies of the designer's instruction wrapper from the instructions in an agent network definition.
+Removal of copies of the designer's common instructions from the instructions in an agent network definition.
 """
 
 import re
 from typing import Any
 
-from middleware.agent_network_designer.persistence.designer_wrapper_texts import DesignerWrapperTexts
+from middleware.agent_network_designer.persistence.designer_common_instructions import DesignerCommonInstructions
 
 
-class DesignerInstructionUnwrapper:
+class CommonInstructionStripper:
     """
-    Strips copies of the designer's instruction wrapper from agent instructions, so that a save adds exactly one.
+    Strips copies of the designer's common instructions from agent instructions, so that a save adds exactly one.
 
-    The instructions in agent_network_definition are meant to hold only each agent's own text: every save wraps
-    them in the prefix, the front man's lines, the demo sentence and the AAOSA instructions again (see
-    DesignerWrapperTexts). A client that reads a saved network with its HOCON substitutions resolved gets the
-    wrapper inlined in every agent's instructions. Sending that text back as the definition used to add one more
-    copy of each piece per save (issue #1458, reported as #1429).
+    The instructions in agent_network_definition are meant to hold only each agent's custom instructions, its own
+    text: every save adds the common instructions again, which are the prefix, the front man's lines, the demo
+    sentence and the AAOSA instructions (see DesignerCommonInstructions). A client that reads a saved network with
+    its HOCON substitutions resolved gets them inlined in every agent's instructions. Sending that text back as
+    the definition used to add one more copy of each piece per save (issue #1458, reported as #1429).
 
     All four pieces are stripped from every agent, whatever its role and whether demo mode is on. The definition
     never needs them, since each save adds back the ones the agent's role calls for. Stripping only those would
@@ -47,7 +47,7 @@ class DesignerInstructionUnwrapper:
       remains keeps its own whitespace exactly as written.
     - Whole copies only, anchored at the start for the prefix, the front man's lines and the demo sentence, and
       at the end for the AAOSA instructions. A text that ends with the prefix's rules
-      (registries/basic/wolfram_mcp.hocon) or quotes a wrapper sentence in the middle is left alone.
+      (registries/basic/wolfram_mcp.hocon) or quotes one of their sentences in the middle is left alone.
     - Every copy, however many there are and in whatever order: after several saves the leading pieces
       interleave (prefix, front man's lines, prefix, front man's lines, ...).
     - The prefix under any network name of up to MAX_NAME_WORDS words, followed by the period a save writes
@@ -62,8 +62,8 @@ class DesignerInstructionUnwrapper:
       quadratic when many copies of the AAOSA instructions come before other text, and this runs on the event loop
       before every model call.
 
-    A text holding none of the wrapper is returned unchanged, byte for byte. A text holding nothing but wrapper
-    copies keeps one copy of each piece found instead of becoming empty: an empty text fails the designer's
+    A text holding none of the common instructions is returned unchanged, byte for byte. A text holding nothing
+    but copies of them keeps one copy of each piece found instead of becoming empty: an empty text fails the designer's
     validation (turning a plain save into an LLM run), and an empty leaf would be written as a toolbox reference.
     One copy of each is the smallest text that stays the same over any number of saves.
     """
@@ -76,8 +76,8 @@ class DesignerInstructionUnwrapper:
     # stripped too.
     MAX_NAME_WORDS: int = 16
 
-    # Keys for the wrapper pieces, and the order a wrapper-only text keeps them in, which is the order a save
-    # writes them in.
+    # Keys for the pieces, and the order a text made only of common instructions keeps them in, which is the
+    # order a save writes them in.
     PREFIX: str = "prefix"
     FRONT_MAN_LINES: str = "front_man_lines"
     DEMO_SENTENCE: str = "demo_sentence"
@@ -86,32 +86,32 @@ class DesignerInstructionUnwrapper:
 
     def __init__(self, aaosa_instructions: str | None) -> None:
         """
-        Prepare the word patterns of the wrapper pieces.
+        Prepare the word patterns of the pieces.
 
-        The prefix, the front man's lines and the demo sentence are fixed texts from DesignerWrapperTexts. A copy of
-        the prefix names the network it was saved under, so up to MAX_NAME_WORDS words stand in for the name, the
-        last of them ending with the period the save writes after it (one word, without the period, for the
-        legacy wording, where "of assistants." follows the name).
+        The prefix, the front man's lines and the demo sentence are fixed texts from DesignerCommonInstructions. A
+        copy of the prefix names the network it was saved under, so up to MAX_NAME_WORDS words stand in for the
+        name, the last of them ending with the period the save writes after it (one word, without the period, for
+        the legacy wording, where "of assistants." follows the name).
 
         :param aaosa_instructions: The AAOSA instructions the save appends to the front man and to agents with
                 tools, from registries/aaosa.hocon, or None to strip none
         """
         # A (count, ending) entry stands for the network name, which differs from copy to copy: it matches one word
         # up to count words, the last of them ending with ending.
-        current_prefix: list[str | tuple[int, str]] = self._words(DesignerWrapperTexts.PREFIX_OPENING)
+        current_prefix: list[str | tuple[int, str]] = self._words(DesignerCommonInstructions.PREFIX_OPENING)
         current_prefix.append((self.MAX_NAME_WORDS, "."))
-        current_prefix.extend(self._words(DesignerWrapperTexts.PREFIX_RULES))
-        legacy_prefix: list[str | tuple[int, str]] = self._words(DesignerWrapperTexts.LEGACY_PREFIX_OPENING)
+        current_prefix.extend(self._words(DesignerCommonInstructions.PREFIX_RULES))
+        legacy_prefix: list[str | tuple[int, str]] = self._words(DesignerCommonInstructions.LEGACY_PREFIX_OPENING)
         legacy_prefix.append((1, ""))
-        legacy_prefix.extend(self._words(DesignerWrapperTexts.LEGACY_PREFIX_CLOSING))
-        legacy_prefix.extend(self._words(DesignerWrapperTexts.PREFIX_RULES))
+        legacy_prefix.extend(self._words(DesignerCommonInstructions.LEGACY_PREFIX_CLOSING))
+        legacy_prefix.extend(self._words(DesignerCommonInstructions.PREFIX_RULES))
 
         # (piece key, word pattern) pairs for the pieces a save writes before the agent's own text.
         self.leading_pieces: list[tuple[str, list[str | tuple[int, str]]]] = [
             (self.PREFIX, current_prefix),
             (self.PREFIX, legacy_prefix),
-            (self.FRONT_MAN_LINES, self._words(DesignerWrapperTexts.FRONT_MAN_LINES)),
-            (self.DEMO_SENTENCE, self._words(DesignerWrapperTexts.DEMO_SENTENCE)),
+            (self.FRONT_MAN_LINES, self._words(DesignerCommonInstructions.FRONT_MAN_LINES)),
+            (self.DEMO_SENTENCE, self._words(DesignerCommonInstructions.DEMO_SENTENCE)),
         ]
         # The AAOSA instructions, the one piece a save writes after the own text, are matched on the reversed text
         # (see _trailing_copy), so their pattern is kept the way that text reads: last word first, and every word
@@ -128,9 +128,9 @@ class DesignerInstructionUnwrapper:
         for word in reversed_aaosa_pattern:
             self.trailing_window += 2 * (len(word) + 1)
 
-    def unwrap_definition(self, network_def: dict[str, Any]) -> tuple[dict[str, Any], list[str]]:
+    def strip_definition(self, network_def: dict[str, Any]) -> tuple[dict[str, Any], list[str]]:
         """
-        Strip the wrapper copies from the instructions of every agent in a definition.
+        Strip the copies of the common instructions from the instructions of every agent in a definition.
 
         :param network_def: The agent network definition, agent name to agent dict. It is not modified.
         :return: The definition to use and the names of the agents whose instructions changed. When none changed,
@@ -141,30 +141,30 @@ class DesignerInstructionUnwrapper:
             # Not a definition at all: the validators report it, and there is no agent to strip anything from.
             return network_def, []
 
-        unwrapped_def: dict[str, Any] = {}
+        stripped_def: dict[str, Any] = {}
         changed: list[str] = []
         for agent_name, agent in network_def.items():
-            unwrapped_def[agent_name] = agent
+            stripped_def[agent_name] = agent
             if not isinstance(agent, dict):
                 # Malformed entries are the validators' to report; there is nothing here to strip.
                 continue
             instructions: Any = agent.get("instructions")
             if not isinstance(instructions, str):
                 continue
-            unwrapped: str = self.unwrap(instructions)
-            if unwrapped != instructions:
-                unwrapped_agent: dict[str, Any] = dict(agent)
-                unwrapped_agent["instructions"] = unwrapped
-                unwrapped_def[agent_name] = unwrapped_agent
+            stripped: str = self.strip(instructions)
+            if stripped != instructions:
+                stripped_agent: dict[str, Any] = dict(agent)
+                stripped_agent["instructions"] = stripped
+                stripped_def[agent_name] = stripped_agent
                 changed.append(agent_name)
 
         if not changed:
             return network_def, changed
-        return unwrapped_def, changed
+        return stripped_def, changed
 
-    def unwrap(self, instructions: str) -> str:
+    def strip(self, instructions: str) -> str:
         """
-        Strip every copy of the wrapper pieces from an agent's instructions.
+        Strip every copy of the common instructions' pieces from an agent's instructions.
 
         :param instructions: The agent's instructions as received
         :return: The instructions unchanged when they hold no copy; otherwise the text between the copies,
@@ -181,7 +181,8 @@ class DesignerInstructionUnwrapper:
         if remaining:
             return remaining
 
-        # Nothing but wrapper: keep the first copy found of each piece, as written, in the order a save writes them.
+        # Nothing but common instructions: keep the first copy found of each piece, as written, in the order a
+        # save writes them.
         kept: list[str] = []
         for piece in self.PIECE_ORDER:
             copy: tuple[int, int] | None = first_copies.get(piece)
@@ -358,9 +359,9 @@ class DesignerInstructionUnwrapper:
     @classmethod
     def _words(cls, text: str | None) -> list[str | tuple[int, str]]:
         """
-        Split a wrapper text into the words its copies are matched by.
+        Split the text of a piece into the words its copies are matched by.
 
-        :param text: The wrapper text, or None
+        :param text: The text of the piece, or None
         :return: Its words, split the same way as the instructions are; empty for None, a non-string or a blank
                 text, which makes the piece one that is never stripped
         """
