@@ -18,7 +18,8 @@
 Tests for AgentNetworkPersistenceMiddleware.aafter_agent: validation gating and the stateless
 handling of the persisted metadata block (issue #1398) in both file mode and reservations mode,
 including the compatibility fallback that reads the block of the network about to be overwritten
-when the client sent no agent_network_metadata key at all.
+when the client sent no agent_network_metadata key at all, and the surfacing of a failed
+temporary-network deployment (issue #1425).
 """
 
 import json
@@ -35,6 +36,7 @@ from unittest import IsolatedAsyncioTestCase
 from unittest import mock
 from unittest.mock import AsyncMock
 
+from langchain.messages import AIMessage
 from langchain.messages import HumanMessage
 from neuro_san.interfaces.reservation import Reservation
 from neuro_san.interfaces.reservationist import Reservationist
@@ -66,7 +68,8 @@ NETWORK_NAME: str = "probe_net"
 # distinct from None, which _request sends as an explicit null: the middleware treats both alike
 # (fallback read), and the tests must be able to show that for each of them separately.
 NO_BLOCK: object = object()
-# Logger names the persistor and the metadata block warn on; both are built from the class name.
+# Logger names the middleware, the persistor and the metadata block log on; all are built from the class name.
+MIDDLEWARE_LOGGER: str = "AgentNetworkPersistenceMiddleware"
 PERSISTOR_LOGGER: str = "FileSystemAgentNetworkPersistor"
 METADATA_LOGGER: str = "AgentNetworkMetadataBlock"
 SAMPLE_QUERIES: list[str] = ["What can you do?", "Help me with X"]
@@ -181,7 +184,9 @@ class TestAgentNetworkPersistenceMiddleware(IsolatedAsyncioTestCase):  # pylint:
         Switch the middleware to reservations mode and stub the neuro-san deployment call.
 
         The fake Reservation reports RESERVATION_ID / LIFETIME_SECONDS / EXPIRATION_SECONDS, which
-        ReservationsAgentNetworkPersistor echoes into sly_data["agent_reservations"].
+        ReservationsAgentNetworkPersistor echoes into sly_data["agent_reservations"]. A test that
+        needs a failed deploy sets the mock's return_value to (None, "<error>"), the shape
+        ReservationUtil.wait_for_one uses to report one.
 
         :return: The AsyncMock standing in for ReservationUtil.wait_for_one, so a test can inspect
                 the agent_spec it was awaited with (positional argument 1) and the prefix (argument 3)
@@ -254,7 +259,8 @@ class TestAgentNetworkPersistenceMiddleware(IsolatedAsyncioTestCase):  # pylint:
         over from one request to the next.
 
         :param sly_data: The request's sly_data, mutated in place by the middleware
-        :return: What aafter_agent returned: None on success, a jump_to dict on validation failure
+        :return: What aafter_agent returned: None on success, a jump_to dict on validation failure,
+                a messages-only dict on a failed deploy
         """
         middleware: AgentNetworkPersistenceMiddleware = AgentNetworkPersistenceMiddleware(Reservationist(), sly_data)
         return await middleware.aafter_agent({}, None)
@@ -715,6 +721,69 @@ class TestAgentNetworkPersistenceMiddleware(IsolatedAsyncioTestCase):  # pylint:
         self.assertEqual(agent_spec["metadata"], CLIENT_METADATA)
         self.assertNotIn("date_modified", agent_spec["metadata"])
         self.assertEqual(sly_data["agent_network_metadata"], CLIENT_METADATA)
+
+    async def test_reservations_mode_deploy_error_is_surfaced_and_only_reservations_are_withheld(self) -> None:
+        """
+        Issue #1425: when ReservationUtil.wait_for_one reports an error, aafter_agent returns a dict of
+        exactly one AIMessage naming the error and no jump_to (an infrastructure failure is not something
+        the model can fix by editing the definition), logs exactly one ERROR naming the network and the
+        error, and clears agent_reservations: this save created none, and the handle of the earlier
+        deploy the request carried would otherwise go back as if it were this save's. The HOCON text
+        and the metadata block are published all the same: they describe the design, which the client
+        may download and retry, and the block is the only way this turn's sample queries reach the
+        client. skip_designer keeps its value and the validation counter is not incremented, unlike on
+        a validation failure, and the definition export still runs so the client can retry with it.
+        """
+        wait_for_one: AsyncMock = self._enter_reservations_mode()
+        wait_for_one.return_value = (None, "boom")
+        client_block: dict[str, Any] = deepcopy(CLIENT_METADATA)
+        network_def: dict[str, Any] = self._network_def()
+        # Queries generated on this turn: the one part of the published block that differs from what
+        # the client sent, so the assertion below can tell "block published" from "block left as sent".
+        sly_data: dict[str, Any] = self._request(
+            queries=list(FRESH_QUERIES), skip_designer=True, client_block=client_block, network_def=network_def
+        )
+        # The request loaded its network from an earlier deploy and so carries that deploy's handle, which
+        # the failed save must clear rather than hand back as its own.
+        sly_data["agent_reservations"] = [{"reservation_id": "probe_net-00000000-0000-4000-8000-000000000000"}]
+        # Built by hand rather than through _save so the validation counter can be read afterwards.
+        middleware: AgentNetworkPersistenceMiddleware = AgentNetworkPersistenceMiddleware(Reservationist(), sly_data)
+
+        # autospec keeps the instance as the first argument, so the call can be pinned exactly; under the
+        # default "internal" style the real export writes the same object back and would prove nothing.
+        with (
+            self.assertLogs(MIDDLEWARE_LOGGER, level="ERROR") as captured,
+            mock.patch.object(
+                AgentNetworkPersistenceMiddleware, "_determine_exported_network_definition", autospec=True
+            ) as export,
+        ):
+            result: dict[str, Any] | None = await middleware.aafter_agent({}, None)
+
+        wait_for_one.assert_awaited_once()
+        export.assert_called_once_with(middleware, sly_data, "internal")
+        self.assertIsInstance(result, dict)
+        self.assertEqual(set(result), {"messages"})
+        self.assertEqual(len(result.get("messages")), 1)
+        self.assertIsInstance(result.get("messages")[0], AIMessage)
+        self.assertIn("could not be deployed as a temporary network", result.get("messages")[0].content)
+        self.assertIn("boom", result.get("messages")[0].content)
+        self.assertNotIn("agent_reservations", sly_data)
+        # The text and the block are the design's, not the deploy's: the text is the downloadable HOCON
+        # with its presentation-only date_created, and the block is the client's with this turn's queries
+        # merged in and no server-stamped dates (the client's own date_created passes through).
+        self.assertIn("agent_network_hocon_text", sly_data)
+        self.assertIn('"date_created"', sly_data.get("agent_network_hocon_text"))
+        self.assertNotIn("date_modified", sly_data.get("agent_network_hocon_text"))
+        expected_block: dict[str, Any] = deepcopy(CLIENT_METADATA)
+        expected_block["sample_queries"] = list(FRESH_QUERIES)
+        self.assertEqual(sly_data.get("agent_network_metadata"), expected_block)
+        self.assertIs(sly_data.get("skip_designer"), True)
+        self.assertEqual(middleware._validation_attempts, 0)  # pylint: disable=protected-access
+        self.assertFalse(self._generated_path().exists())
+        self.assertEqual(len(captured.records), 1)
+        message: str = captured.records[0].getMessage()
+        self.assertIn(NETWORK_NAME, message)
+        self.assertIn("boom", message)
 
     # ------------------------------------------------------------------ absent-key fallback
 
