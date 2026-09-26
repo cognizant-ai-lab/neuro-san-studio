@@ -90,21 +90,13 @@ make test             # Lint + run pytest (unit tests only, excludes integration
 python -m pytest tests/path/to/test_file.py -v  # Run a single test file
 python -m pytest -s -m "integration_basic"      # Run integration tests for a specific marker
 make test-integration # Run integration tests (needs API keys + server env vars)
+python -m neuro_san_studio validate registries/path/to/agent_network.hocon  # Validate an agent network's HOCON file
+python -m neuro_san_studio run  # Start the full app (server + UI)
 ```
 
 Notes:
 - `make lint` scans only `./docs` and `./README.md` for Markdown. Any other `.md`, this file included, needs
   `pymarkdown --config ./.pymarkdownlint.yaml scan <path>` run by hand.
-
-Start the full app (server + UI):
-```bash
-python -m neuro_san_studio run
-```
-
-Validate an agent network's HOCON file:
-```bash
-python -m neuro_san_studio validate registries/path/to/agent_network.hocon
-```
 
 ## 5. Opening a PR
 
