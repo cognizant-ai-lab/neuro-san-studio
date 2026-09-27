@@ -22,7 +22,7 @@ tests/coded_tools/tools/now_agents/
 ## 🚀 Quick Start
 
 ### Prerequisites
-- Python 3.8+
+- Python 3.12+
 - Testing dependencies installed:
   - `pip install pytest pytest-cov` (individual packages)
   - OR `pip install -r build-requirements.txt` (all build dependencies - recommended)

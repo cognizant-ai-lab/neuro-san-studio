@@ -22,8 +22,7 @@ from neuro_san.interfaces.coded_tool import CodedTool
 from neuro_san.internals.run_context.langchain.toolbox.toolbox_info_restorer import ToolboxInfoRestorer
 
 from coded_tools.agent_network_editor.and_logger import AndLogger
-from coded_tools.agent_network_editor.constants import TOOLBOX_INFO
-from coded_tools.agent_network_editor.sly_data_lock import SlyDataLock
+from coded_tools.agent_network_editor.shared_process_cache import SharedProcessCache
 
 DEFAULT_TOOLBOX_INFO_FILE = os.path.join("neuro_san_studio", "toolbox", "agent_network_designer_toolbox_info.hocon")
 logger = AndLogger(logging.getLogger(__name__))
@@ -35,47 +34,109 @@ class GetToolbox(CodedTool):
     """
 
     @staticmethod
-    async def get_toolbox_info(sly_data: dict[str, Any]) -> dict[str, Any]:
+    def _load_shared_toolbox_info() -> dict[str, str]:
         """
-        Read toolbox info from a cache in sly_data
-        or load it from a file.
+        Loader for the shared toolbox info (runs inside SharedProcessCache).
 
-        :param sly_data: sly_data possibly containing cached toolbox info
-        :return: dict mapping tool names to descriptions; empty if loading fails
+        Resolves the toolbox info file — the AGENT_NETWORK_DESIGNER_TOOLBOX_INFO_FILE
+        env var or the default — reads and parses it, and reduces each entry to its
+        description.
+
+        :return: dict mapping tool names to descriptions; never empty.
+        :raise FileNotFoundError: When the file does not exist, or when it
+                yields no tools at all (after logging a warning with the
+                resolved path). The cache publishes nothing on a raise, so a
+                transient gap — a deploy replacing the file, a wrong-CWD
+                launch, a read that comes back empty — cannot pin an empty
+                toolbox for the life of the process: the next call retries
+                and heals the moment the file reads correctly. A malformed
+                file raises out of the parse, likewise unpublished.
         """
-        tools: dict[str, Any] = {}
+        # Check for toolbox info file in env var
+        toolbox_info_file: str = os.getenv("AGENT_NETWORK_DESIGNER_TOOLBOX_INFO_FILE")
+        if not toolbox_info_file:
+            # Use a default if no value specified
+            toolbox_info_file = DEFAULT_TOOLBOX_INFO_FILE
 
-        async with await SlyDataLock.get_lock(sly_data, "toolbox_info_lock"):
-            # Try getting from sly_data
-            if TOOLBOX_INFO in sly_data:
-                # Return whatever we had cached before, including an empty dict
-                return sly_data.get(TOOLBOX_INFO)
+        # Go fish — once per process once it succeeds.
+        logger.info(">>>>>>>>>>>>>>>>>>>Getting Tool Definition from Toolbox>>>>>>>>>>>>>>>>>>>")
+        logger.info("Toolbox info file: %s", toolbox_info_file)
 
-            # Check for toolbox info file in env var
-            toolbox_info_file: str = os.getenv("AGENT_NETWORK_DESIGNER_TOOLBOX_INFO_FILE")
-            if not toolbox_info_file:
-                # Use a default if no value specified
-                toolbox_info_file = DEFAULT_TOOLBOX_INFO_FILE
+        try:
+            raw_tools: dict[str, Any] = ToolboxInfoRestorer().restore(toolbox_info_file)
+        except FileNotFoundError:
+            # The warning lives here because only the loader knows the resolved
+            # path; the callers' policy (return empty for this call) lives with
+            # them. The recurring warning is the operator's signal.
+            logger.warning("Error: Failed to load toolbox info from %s.", toolbox_info_file)
+            raise
 
-            # Go fish, but only once.
-            logger.info(">>>>>>>>>>>>>>>>>>>Getting Tool Definition from Toolbox>>>>>>>>>>>>>>>>>>>")
-            logger.info("Toolbox info file: %s", toolbox_info_file)
-            try:
-                # Need to do the load
-                tools = await ToolboxInfoRestorer().async_restore(toolbox_info_file)
-                logger.info("Successfully loaded the following toolbox: %s", str(tools))
+        logger.info("Successfully loaded the following toolbox: %s", str(raw_tools))
 
-                # Clean up the dict so that it only contains "description" key.
-                for tool_name, tool_info in tools.items():
-                    tools[tool_name] = tool_info.get("description", "")
+        # Keep only each tool's description.
+        tools: dict[str, str] = {}
+        for tool_name, tool_info in raw_tools.items():
+            tools[tool_name] = tool_info.get("description", "")
 
-            except FileNotFoundError:
-                logger.warning("Error: Failed to load toolbox info from %s.", toolbox_info_file)
-
-            # Cache the results in sly_data - success or failure.
-            sly_data[TOOLBOX_INFO] = tools
-
+        if not tools:
+            # The designer's toolbox file always defines tools, so an empty
+            # mapping only ever means the read went wrong — observed in the
+            # wild as a one-off restore() returning {} that this cache (no
+            # fingerprint) then pinned until a server restart. Raising
+            # instead of returning keeps the empty result unpublished: this
+            # call degrades to an empty toolbox, and the next call retries
+            # and heals. FileNotFoundError so callers' existing
+            # missing-file policy applies unchanged.
+            logger.warning("Toolbox info from %s came back empty; treating as a failed load.", toolbox_info_file)
+            raise FileNotFoundError(f"Toolbox info file {toolbox_info_file} yielded no tools")
         return tools
+
+    # Process-wide cache of the {tool_name: description} mapping parsed from
+    # the toolbox info file. With no fingerprint the mapping is
+    # deliberately never refreshed once loaded, so picking up an edited
+    # toolbox info file requires a process restart — the same trade-off as
+    # ConnectivityDictionaryConverter's shared ToolboxFactory. Previously the
+    # cache lived in sly_data, so a server handling N concurrent conversations
+    # re-parsed the same HOCON N times, on the event loop. Locking, publish
+    # ordering, and the async once-gate live in SharedProcessCache; access
+    # goes through the class by name (not cls) so a hypothetical subclass
+    # shares the one cache instead of splitting it.
+    _shared_toolbox_info_cache: SharedProcessCache[dict[str, str]] = SharedProcessCache(
+        loader=_load_shared_toolbox_info
+    )
+
+    @classmethod
+    def clear_shared_toolbox_info_for_testing(cls):
+        """
+        Reset the process-wide toolbox info cache. For test isolation only.
+
+        Production code must never call this: the cache is deliberately
+        load-once-per-process (see the class comment above). Tests call it
+        (via tests/conftest.py) so toolbox info loaded under one test's
+        AGENT_NETWORK_DESIGNER_TOOLBOX_INFO_FILE state cannot leak into later
+        tests. Living here rather than in conftest keeps all the singleton
+        policy in this one class.
+        """
+        GetToolbox._shared_toolbox_info_cache.clear_for_testing()
+
+    @staticmethod
+    async def get_toolbox_info() -> dict[str, str]:
+        """
+        Read toolbox info from the process-wide cache, loading it from a file
+        on the first call in the process. The cold load runs off the event
+        loop and is shared by concurrent cold callers.
+
+        :return: dict mapping tool names to descriptions; empty if the toolbox
+                info file does not exist (retried on the next call, never
+                cached). A malformed file raises. The returned dict is a copy,
+                so callers may mutate it without corrupting the shared cache.
+        """
+        try:
+            tools: dict[str, str] = await GetToolbox._shared_toolbox_info_cache.aget()
+        except FileNotFoundError:
+            # Already logged by the loader with the resolved path.
+            return {}
+        return dict(tools)
 
     async def async_invoke(self, args: dict[str, Any], sly_data: dict[str, Any]) -> dict[str, Any]:
         """
@@ -103,6 +164,7 @@ class GetToolbox(CodedTool):
             In case of successful execution:
                 the tool definition from toolbox as a dictionary.
             otherwise:
-                an empty dictionary.
+                an empty dictionary if the toolbox info file does not exist;
+                a malformed file raises.
         """
-        return await self.get_toolbox_info(sly_data)
+        return await self.get_toolbox_info()

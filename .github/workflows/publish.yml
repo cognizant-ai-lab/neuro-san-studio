@@ -24,10 +24,10 @@ jobs:
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
 
       - name: Setup Python environment
-        # 1.0.8
-        uses: cognizant-ai-lab/build-common/actions/setup-python-env@30321843331e00848309b34e08b839e1f6490ba2
+        # 1.0.12
+        uses: cognizant-ai-lab/build-common/actions/setup-python-env@3f4cdab31b6ac10382c99452b720eb0b8b2dab8f
         with:
-          python-version: '3.10'
+          python-version: '3.12'
           requirements-file: ''
           requirements-build-file: ''
           install-extras: 'build'
@@ -41,8 +41,8 @@ jobs:
 
       - name: Notify Slack
         if: ${{ !cancelled() }}
-        # 1.0.8
-        uses: cognizant-ai-lab/build-common/actions/slack-notify@30321843331e00848309b34e08b839e1f6490ba2
+        # 1.0.12
+        uses: cognizant-ai-lab/build-common/actions/slack-notify@3f4cdab31b6ac10382c99452b720eb0b8b2dab8f
         with:
           status: ${{ job.status }}
           webhook-url: ${{ secrets.SLACK_WEBHOOK_URL }}

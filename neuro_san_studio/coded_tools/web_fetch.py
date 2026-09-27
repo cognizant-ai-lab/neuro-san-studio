@@ -14,70 +14,61 @@
 #
 # END COPYRIGHT
 
-from asyncio import AbstractEventLoop
-from asyncio import TimeoutError as AsyncTimeoutError
-from asyncio import get_running_loop
 from datetime import datetime
 from datetime import timezone
-from http import HTTPStatus
-from ipaddress import IPv4Address
-from ipaddress import IPv6Address
-from ipaddress import ip_address
 from logging import Logger
 from logging import getLogger
-from socket import SOCK_STREAM
-from socket import gaierror
 from typing import Any
-from urllib.parse import ParseResult
-from urllib.parse import urlparse
 
-from aiohttp import ClientError
-from aiohttp import ClientResponseError
-from aiohttp import ClientSession
-from aiohttp import ClientTimeout
-from bs4 import BeautifulSoup
-from langchain_community.document_loaders import PyPDFLoader
-from langchain_core.documents import Document
 from neuro_san.interfaces.coded_tool import CodedTool
 
+from neuro_san_studio.coded_tools.utils.safe_fetch import SafeFetch
+
 MAX_CHARS: int = 20_000
-MAX_URL_LENGTH: int = 250
-# Maximum bytes accepted via Content-Length header before downloading
-MAX_RESPONSE_BYTES: int = 10 * 1024 * 1024  # 10 MB
 SUPPORTED_CONTENT_TYPES: set[str] = {
-    "text/html",
-    "text/plain",
-    "application/xhtml+xml",
+    "application/atom+xml",
+    "application/json",
     "application/pdf",
+    "application/rss+xml",
+    "application/xhtml+xml",
+    "application/xml",
+    "text/csv",
+    "text/html",
+    "text/markdown",
+    "text/plain",
+    "text/xml",
 }
-TIMEOUT_SECONDS: int = 15
 
 
 class WebFetch(CodedTool):
     """
     CodedTool implementation that fetches a URL and returns its plain-text body.
 
-    Uses aiohttp for HTTP requests and BeautifulSoup to strip HTML markup from
-    the response. PDF URLs are handled via PyPDFLoader.
+    XML and feed responses are returned as extracted text; raw XML markup is not
+    preserved. JSON responses are returned verbatim (a JSON body does not start
+    with "<", so the HTML stripper leaves it untouched).
 
-    Note: SSRF protection blocks private/loopback/reserved ranges and localhost. Non-IP
-    hostnames are DNS-resolved and every resolved address must be globally routable.
-    DNS rebinding is not mitigated (see _validate_hostname_safety); use allowed_domains
-    for stricter control.
-    Redirects are not followed; a 3xx response raises url_not_allowed.
-    The byte cap (MAX_RESPONSE_BYTES) is enforced via the Content-Length header only (checked
-    before download). A server that lies about or omits Content-Length can still deliver an
-    arbitrarily large body.
+    All validation and network access is delegated to the shared SSRF-hardened
+    fetch path (SafeFetch): private/loopback/reserved hosts are rejected,
+    DNS records are validated at connection time by GlobalOnlyResolver
+    (anti DNS-rebinding), redirects are followed up to SafeFetch's MAX_REDIRECTS
+    hops with every hop re-validated as a brand-new URL (including this tool's own
+    allowed_domains / blocked_domains, which are forwarded to SafeFetch for that
+    purpose), and response sizes are capped. HTML is stripped with BeautifulSoup;
+    PDF bodies are sniffed for a "%PDF-" header while streaming, then parsed with
+    pypdf. Use allowed_domains / blocked_domains for stricter control.
 
     Error types (raised as ValueError or aiohttp.ClientResponseError or aiohttp.ClientError with the specified message)
         invalid_input            – URL is missing, not a valid http/https URL, or a parameter has an invalid type.
-        url_too_long             – URL exceeds MAX_URL_LENGTH characters.
+        url_too_long             – URL exceeds the SafeFetch URL length limit.
         url_not_allowed          – URL targets a private/reserved host, is blocked by domain rules,
-                                    or returns a redirect.
+                                    or a redirect hop fails those checks / the chain exceeds MAX_REDIRECTS.
         url_not_accessible       – HTTP error or network failure while fetching the page.
         too_many_requests        – Server returned HTTP 429.
-        unsupported_content_type – Content type is not text/HTML or PDF.
-        response_too_large       – Content-Length header exceeds MAX_RESPONSE_BYTES.
+        unsupported_content_type – Content type is not an approved text, XML, feed, JSON, HTML, or PDF type.
+        response_too_large       – Content-Length header or streamed body (text or PDF) exceeds the byte limit.
+        not_a_pdf                – Body classified as PDF has no "%PDF-" header in its first bytes
+                                    (e.g. an HTML error page served as application/pdf).
     """
 
     async def async_invoke(self, args: dict[str, Any], sly_data: dict[str, Any]) -> dict[str, Any]:
@@ -106,35 +97,52 @@ class WebFetch(CodedTool):
                 "retrieved_at" (str): ISO-8601 UTC timestamp when the content was retrieved.
 
         :raises ValueError: invalid_input, url_too_long, url_not_allowed,
-                            unsupported_content_type, response_too_large.
+                            unsupported_content_type, response_too_large, not_a_pdf.
         :raises aiohttp.ClientResponseError: url_not_accessible / too_many_requests (non-2xx response).
         :raises aiohttp.ClientError: url_not_accessible when PDF or text fetch fails.
         """
-        url: str = await self._validate_url(args)
+        allowed_domains: Any = args.get("allowed_domains")
+        blocked_domains: Any = args.get("blocked_domains")
+        url: str = SafeFetch.validate_url(args.get("url", ""), allowed_domains, blocked_domains)
         max_chars: int = self._validate_max_content_chars(args)
 
         logger: Logger = getLogger(self.__class__.__name__)
         logger.info("WebFetch: fetching %s", url)
 
-        timeout = ClientTimeout(total=TIMEOUT_SECONDS)
-        async with ClientSession(timeout=timeout) as session:
-            content_type, prefetched_text = await self._get_content_type(url, session)
-            is_pdf: bool = "application/pdf" in content_type or url.lower().endswith(".pdf")
+        # The domain rules are forwarded to every SafeFetch network call so they are
+        # re-applied to each redirect hop: validating only the URL the agent supplied
+        # would let an open redirect on an allowed domain lead to a blocked or
+        # non-allowed one.
+        async with SafeFetch.open_session() as session:
+            content_type, prefetched_text, final_url = await SafeFetch.get_content_type(
+                url, session, allowed_domains=allowed_domains, blocked_domains=blocked_domains
+            )
+            # Classify by the URL the headers actually came from: a link that redirects
+            # to a .pdf served as a generic download type is a PDF even though the
+            # requested URL carries no .pdf suffix. The fetch below still starts from
+            # the requested URL and re-validates every hop.
+            is_pdf: bool = SafeFetch.is_pdf(content_type, final_url)
 
-            if not is_pdf and not any(ct in content_type for ct in SUPPORTED_CONTENT_TYPES):
+            if not is_pdf and not self._is_supported_content_type(content_type):
                 raise ValueError(
                     f"unsupported_content_type: Content type '{content_type}' is not supported. "
-                    "Only text/HTML and PDF are accepted."
+                    "Only approved text, XML, feed, JSON, HTML, and PDF types are accepted."
                 )
 
             retrieved_at: str = datetime.now(timezone.utc).isoformat()
             if is_pdf:
-                text: str = await self._fetch_pdf(url)
+                # Note: passing the PDF as base64 directly to the model would be
+                # preferable once neuro-san supports multimodal input.
+                text: str = await SafeFetch.fetch_pdf_text(
+                    url, session, allowed_domains=allowed_domains, blocked_domains=blocked_domains
+                )
             elif prefetched_text is not None:
                 # Body was already fetched during the 405 HEAD fallback GET; no second request needed.
-                text = self._parse_raw_text(prefetched_text)
+                text = SafeFetch.parse_raw_text(prefetched_text)
             else:
-                text = await self._fetch_text(url, session)
+                text = await SafeFetch.fetch_text(
+                    url, session, allowed_domains=allowed_domains, blocked_domains=blocked_domains
+                )
 
         text = text[:max_chars]
 
@@ -147,229 +155,44 @@ class WebFetch(CodedTool):
             "retrieved_at": retrieved_at,
         }
 
-    async def _validate_url(self, args: dict[str, Any]) -> str:
-        """Validate URL format, length, and domain rules. Returns the cleaned URL."""
-        url_value: Any = args.get("url", "")
-        if not isinstance(url_value, str):
-            raise ValueError(f"invalid_input: 'url' must be a string, got {url_value!r}.")
-
-        url: str = url_value.strip()
-        if not url:
-            raise ValueError("invalid_input: No 'url' provided.")
-
-        parsed: ParseResult = urlparse(url)
-        if parsed.scheme not in ("http", "https"):
-            raise ValueError(f"invalid_input: URL must use http or https scheme, got '{parsed.scheme}'.")
-
-        if len(url) > MAX_URL_LENGTH:
-            raise ValueError(f"url_too_long: URL exceeds maximum length of {MAX_URL_LENGTH} characters.")
-
-        raw_hostname: str | None = parsed.hostname
-        if not raw_hostname:
-            raise ValueError("invalid_input: URL must include a hostname.")
-
-        # Use parsed.hostname (strips port/credentials) and enforce a strict domain boundary:
-        # an allowed/blocked entry "example.com" matches "example.com" and "sub.example.com"
-        # but not "badexample.com".
-        hostname: str = raw_hostname.lower()
-
-        allowed_domains: list[str] = self._validate_domain_list(args.get("allowed_domains"), "allowed_domains")
-        if allowed_domains and not any(
-            hostname == domain.lower() or hostname.endswith("." + domain.lower()) for domain in allowed_domains
-        ):
-            raise ValueError(f"url_not_allowed: Domain '{hostname}' is not in the allowed_domains list.")
-
-        blocked_domains: list[str] = self._validate_domain_list(args.get("blocked_domains"), "blocked_domains")
-        if blocked_domains and any(
-            hostname == domain.lower() or hostname.endswith("." + domain.lower()) for domain in blocked_domains
-        ):
-            raise ValueError(f"url_not_allowed: Domain '{hostname}' is blocked.")
-
-        # Domain rules run first so rejected URLs never trigger a DNS lookup.
-        await self._validate_hostname_safety(hostname)
-
-        return url
-
-    async def _validate_hostname_safety(self, hostname: str) -> None:
-        """Reject hosts that are, or resolve to, non-globally-routable IP addresses.
-
-        IP literals are checked directly. Other hostnames are DNS-resolved, and every
-        resolved address must be globally routable (rejects private/loopback/link-local/
-        multicast/reserved ranges and localhost).
-
-        Warning: this does not prevent DNS rebinding. The HTTP client re-resolves the
-        hostname at connection time, so an attacker-controlled DNS server can return a
-        safe address here and an internal one for the actual fetch. Closing that gap
-        requires pinning the validated addresses into the connection (e.g. a custom
-        resolver on the aiohttp TCPConnector).
+    @staticmethod
+    def _is_supported_content_type(content_type: str) -> bool:
         """
-        if hostname == "localhost" or hostname.endswith(".localhost"):
-            raise ValueError(f"url_not_allowed: Host '{hostname}' targets a loopback address.")
+        Report whether a Content-Type's base media type is exactly one of the supported text and PDF types.
 
-        addresses: list[IPv4Address | IPv6Address]
-        try:
-            addresses = [ip_address(hostname)]
-        except ValueError as literal_exc:
-            # Not an IP literal; resolve the hostname and validate every DNS record.
-            loop: AbstractEventLoop = get_running_loop()
-            try:
-                # loop.getaddrinfo works like socket.getaddrinfo but is non-blocking
-                addr_infos = await loop.getaddrinfo(hostname, None, type=SOCK_STREAM)
-            except gaierror as dns_exc:
-                raise ValueError(f"url_not_allowed: Host '{hostname}' could not be resolved.") from dns_exc
+        The decision uses the base media type only, case-insensitively (RFC 9110): a
+        parameter such as "; charset=..." or "; profile=text/plain" must not affect it.
+        Exact membership (not substring) is required so an unsupported type that merely
+        contains a supported token, such as "application/x-text/plain", or a parameter
+        like "image/png; profile=text/plain" once reduced to its base, is rejected.
 
-            addresses = []
-            for info in addr_infos:
-                addresses.append(ip_address(info[4][0]))
-            if not addresses:
-                raise ValueError(
-                    f"url_not_allowed: Host '{hostname}' doesn't resolve to an IP address."
-                ) from literal_exc
+        :param content_type: The raw Content-Type header value, parameters included.
+        :return: True if the base media type is exactly one of SUPPORTED_CONTENT_TYPES.
+        """
+        base_type: str = content_type.split(";", 1)[0].strip().lower()
+        return base_type in SUPPORTED_CONTENT_TYPES
 
-        # Every address must be global: with multiple DNS records the OS may connect
-        # to any of them, so a single non-global record makes the host unsafe.
-        for addr in addresses:
-            if not addr.is_global:
-                raise ValueError(
-                    f"url_not_allowed: Host '{hostname}' uses IP address '{addr}', "
-                    "which is not a globally routable address."
-                )
+    @staticmethod
+    def _validate_max_content_chars(args: dict[str, Any]) -> int:
+        """
+        Validate the optional max_content_chars argument and return its value.
 
-    def _validate_domain_list(self, value: Any, param_name: str) -> list[str]:
-        """Coerce and validate a domain list parameter. Accepts None, list[str], or a single str."""
+        A present value must be a positive integer. 0 and negative values are
+        rejected rather than silently falling back to MAX_CHARS: this is a
+        deliberate change from an earlier revision, so a nonsensical cap surfaces
+        as invalid_input instead of an unexpectedly huge default.
+
+        :param args: The tool argument dictionary; "max_content_chars" is optional.
+        :return: The validated positive-integer character cap, defaulting to MAX_CHARS
+                 when the key is absent or None.
+        :raises ValueError: invalid_input when the value is present but not a positive
+                int (0, a negative number, a bool, or a non-int all fail).
+        """
+        value: Any = args.get("max_content_chars")
         if value is None:
-            return []
-        if isinstance(value, str):
-            return [value]
-        if not isinstance(value, list):
-            raise ValueError(f"invalid_input: '{param_name}' must be a list of strings, got {value!r}.")
-        for item in value:
-            if not isinstance(item, str):
-                raise ValueError(
-                    f"invalid_input: '{param_name}' must be a list of strings, "
-                    f"but contains non-string element {item!r}."
-                )
-        return value
-
-    def _validate_max_content_chars(self, args: dict[str, Any]) -> int:
-        """Return a validated max_content_chars value, raising invalid_input on bad input."""
-        value: int = args.get("max_content_chars", MAX_CHARS)
-        if not isinstance(value, int) or value <= 0:
+            return MAX_CHARS
+        # bool is a subclass of int, so reject it explicitly; True would otherwise
+        # pass as 1 and silently truncate output to a single character.
+        if isinstance(value, bool) or not isinstance(value, int) or value <= 0:
             raise ValueError(f"invalid_input: 'max_content_chars' must be a positive integer, got {value!r}.")
         return value
-
-    def _is_redirection(self, status: int) -> bool:
-        """Return True if the HTTP status code is a 3xx redirection."""
-        return 300 <= status <= 399
-
-    def _raise_if_redirect(self, response: Any, url: str) -> None:
-        """Raise ValueError with url_not_allowed if the response is a 3xx redirect.
-
-        Must be called explicitly when allow_redirects=False, because raise_for_status()
-        only covers 4xx/5xx and silently passes 3xx responses through.
-        """
-        if self._is_redirection(response.status):
-            location: str = response.headers.get("Location", "unknown")
-            raise ValueError(
-                f"url_not_allowed: '{url}' redirects to '{location}' ({response.status}); redirects are not followed."
-            )
-
-    async def _get_content_type(self, url: str, session: ClientSession) -> tuple[str, str | None]:
-        """Probe the URL with a HEAD request and return (Content-Type, prefetched_body).
-
-        Falls back to a GET request if the server returns 405 (Method Not Allowed).
-        In the 405 case the response body is read and returned as the second element so
-        async_invoke can skip a second GET for text content types.
-        Redirects are not followed; a 3xx response raises ValueError with url_not_allowed.
-        Raises ClientResponseError with a url_not_accessible / too_many_requests prefix on non-2xx,
-        and ClientError with a url_not_accessible prefix on connection/DNS/timeout failures.
-        Raises ValueError with a response_too_large prefix when Content-Length exceeds MAX_RESPONSE_BYTES.
-        """
-        try:
-            async with session.head(url, allow_redirects=False) as head:
-                self._raise_if_redirect(head, url)
-                if head.status == HTTPStatus.METHOD_NOT_ALLOWED:
-                    # Server does not support HEAD; probe with GET and read the body so
-                    # async_invoke can reuse it and avoid a second round-trip.
-                    async with session.get(url, allow_redirects=False) as get:
-                        self._raise_if_redirect(get, url)
-                        get.raise_for_status()
-                        self._check_content_length(get.headers.get("Content-Length"), url)
-                        content_type: str = get.headers.get("Content-Type", "")
-                        # Skip reading body for PDFs; PyPDFLoader handles those separately.
-                        body: str | None = None if "application/pdf" in content_type else await get.text()
-                        return content_type, body
-                head.raise_for_status()
-                self._check_content_length(head.headers.get("Content-Length"), url)
-                return head.headers.get("Content-Type", ""), None
-        except ClientResponseError as exc:
-            prefix: str = "too_many_requests" if exc.status == HTTPStatus.TOO_MANY_REQUESTS else "url_not_accessible"
-            raise ClientResponseError(
-                exc.request_info,
-                exc.history,
-                status=exc.status,
-                message=f"{prefix}: HTTP {exc.status} for '{url}'.",
-                headers=exc.headers,
-            ) from exc
-        except (ClientError, AsyncTimeoutError) as exc:
-            raise ClientError(f"url_not_accessible: Could not reach '{url}': {exc}") from exc
-
-    def _check_content_length(self, content_length_header: str | None, url: str) -> None:
-        """Raise ValueError if Content-Length exceeds MAX_RESPONSE_BYTES."""
-        if content_length_header is not None:
-            try:
-                size = int(content_length_header)
-            except ValueError:
-                return
-            if size > MAX_RESPONSE_BYTES:
-                raise ValueError(
-                    f"response_too_large: '{url}' reports Content-Length {size} bytes, "
-                    f"which exceeds the {MAX_RESPONSE_BYTES}-byte limit."
-                )
-
-    async def _fetch_pdf(self, url: str) -> str:
-        """Download and extract text from a PDF URL.
-
-        Note: PyPDFLoader manages its own HTTP session internally, so the shared
-        ClientSession from async_invoke is not used here. This method is temporary:
-        once neuro-san supports multimodal input, the PDF can be passed as base64
-        directly to the model instead of being parsed to text.
-        """
-        try:
-            docs: list[Document] = await PyPDFLoader(url).aload()
-        except Exception as exc:
-            raise ClientError(f"url_not_accessible: Failed to load PDF '{url}': {exc}") from exc
-        return "\n".join(doc.page_content for doc in docs)
-
-    async def _fetch_text(self, url: str, session: ClientSession) -> str:
-        """Fetch a URL via aiohttp GET and return its plain-text body, stripping HTML if needed."""
-        try:
-            async with session.get(url, allow_redirects=False) as response:
-                # raise_for_status() only covers 4xx/5xx; 3xx passes through silently
-                # returning useless redirect-page HTML. Check explicitly so a server
-                # that behaves differently on GET vs the earlier HEAD probe is still caught.
-                self._raise_if_redirect(response, url)
-                response.raise_for_status()
-                raw_content: str = await response.text()
-        except ClientResponseError as exc:
-            prefix: str = "too_many_requests" if exc.status == HTTPStatus.TOO_MANY_REQUESTS else "url_not_accessible"
-            raise ClientResponseError(
-                exc.request_info,
-                exc.history,
-                status=exc.status,
-                message=f"{prefix}: HTTP {exc.status} for '{url}'.",
-                headers=exc.headers,
-            ) from exc
-        except (ClientError, AsyncTimeoutError) as exc:
-            raise ClientError(f"url_not_accessible: Failed to fetch '{url}': {exc}") from exc
-
-        return self._parse_raw_text(raw_content)
-
-    def _parse_raw_text(self, raw: str) -> str:
-        """Strip HTML markup from raw text if it looks like HTML; otherwise return as-is."""
-        if not raw.lstrip().startswith("<"):
-            return raw
-        soup = BeautifulSoup(raw, "html.parser")
-        for tag in soup(["script", "style", "noscript"]):
-            tag.decompose()
-        return soup.get_text(separator="\n", strip=True)

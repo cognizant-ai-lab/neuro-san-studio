@@ -6,7 +6,7 @@ build-backend = "setuptools.build_meta"
 name = "neuro-san-studio"
 dynamic = ["version", "dependencies", "optional-dependencies", "readme"]
 description = "Multi-agent orchestration studio built on the neuro-san framework."
-requires-python = ">=3.10"
+requires-python = ">=3.12"
 license = "Apache-2.0"
 license-files = ["LICENSE.txt"]
 authors = [{ name = "Cognizant AI Lab" }]
@@ -25,6 +25,7 @@ Homepage = "https://github.com/cognizant-ai-lab/neuro-san-studio"
 [tool.setuptools.dynamic]
 dependencies = { file = ["requirements.txt"] }
 optional-dependencies.dev = { file = ["requirements-build.txt"] }
+optional-dependencies.langfuse = { file = ["neuro_san_studio/plugins/langfuse/requirements.txt"] }
 readme = { file = ["README.md"], content-type = "text/markdown" }
 
 [tool.setuptools.packages.find]
@@ -103,6 +104,7 @@ addopts = "--verbose --cov=. --cov-report=term-missing --no-cov-on-fail"
 markers = [
     "existing_marker: ...",
     "integration: integration tests that may be slow or hit external services",
+    "smoke: packaged-install smoke tests that build a wheel and install it into a clean venv",
 ]
 
 [tool.coverage.run]

@@ -22,7 +22,7 @@ from typing import Any
 
 from anthropic import Anthropic
 from anthropic._response import BinaryAPIResponse
-from anthropic.types.beta.file_metadata import FileMetadata
+from anthropic.types.beta import BetaFileMetadata
 from neuro_san.interfaces.coded_tool import CodedTool
 
 from neuro_san_studio.coded_tools.anthropic_tool import AnthropicTool
@@ -134,7 +134,7 @@ class AnthropicCodeExecution(CodedTool):
 
         for file_id in file_ids:
             # Get the file name e.g. output.png
-            file_metadata: FileMetadata = client.beta.files.retrieve_metadata(file_id)
+            file_metadata: BetaFileMetadata = client.beta.files.retrieve_metadata(file_id)
             filename: str = file_metadata.filename
 
             # Download from Anthropic container and save the file on disk

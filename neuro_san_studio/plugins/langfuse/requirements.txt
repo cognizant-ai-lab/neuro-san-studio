@@ -1,1 +1,7 @@
-langfuse==4.6.1
+# Optional dependency for Langfuse observability, handled by neuro-san's
+# built-in tracing (enabled via LANGFUSE_ENABLED=true and the LANGFUSE_* keys).
+# See README.md in this directory for setup details. Install with:
+#   pip install -r neuro_san_studio/plugins/langfuse/requirements.txt
+# or
+#   pip install "neuro-san-studio[langfuse]"
+langfuse>=4.6.1,<5.0

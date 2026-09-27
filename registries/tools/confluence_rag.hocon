@@ -116,15 +116,13 @@
                 # PNG (.png)
                 # JPEG/JPG (.jpeg, .jpg)
                 # SVG (.svg)
-                # Word (.doc, .docx)
+                # Word (.docx)
                 # Excel (.xls, .xlsx)
                 #
-                # Note: Some file types require additional Python packages (e.g., pytesseract, pdf2image, Pillow)
-                # and external system dependencies (e.g., Poppler for PDFs, Tesseract for OCR).
+                # Note: Some file types require additional Python packages (e.g., pytesseract, Pillow, pandas)
+                # and external system dependencies (e.g., Tesseract for OCR).
                 #
-                # For full details on supported arguments and required dependencies for loading Confluence pages,
-                # refer to the official LangChain documentation:
-                # https://python.langchain.com/api_reference/_modules/langchain_community/document_loaders/confluence.html#ConfluenceLoader
+                # See docs/examples/tools/confluence_rag.md for attachment dependencies.
 
                 # Vector Store
                 #

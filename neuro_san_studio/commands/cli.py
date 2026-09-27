@@ -16,11 +16,14 @@
 
 """Typer CLI dispatcher for the neuro-san-studio package."""
 
+import os
+import sys
 from typing import List
 from typing import Optional
 
 import typer
 
+from neuro_san_studio.commands.project_environment import ProjectEnvironment
 from neuro_san_studio.commands.run import NeuroSanRunner
 
 
@@ -49,6 +52,7 @@ class NeuroSanStudioCli:  # pylint: disable=too-few-public-methods
     @staticmethod
     @app.callback()
     def _main(
+        ctx: typer.Context,
         _version: bool = typer.Option(
             False,
             "--version",
@@ -59,6 +63,13 @@ class NeuroSanStudioCli:  # pylint: disable=too-few-public-methods
         ),
     ) -> None:
         """Neuro SAN Studio CLI."""
+        # Click runs this callback before parsing the subcommand's own args, so `ns run --help`
+        # would load the project .env just to render a help screen. Nothing in help output depends
+        # on the environment. (`ns --help`, bare `ns` and `ns --version` already exit before here.)
+        # sys.argv is the only source of those args: Click empties ctx.args before this runs.
+        if any(arg in ctx.help_option_names for arg in sys.argv[1:]):
+            return
+        ProjectEnvironment(os.getcwd()).load_env_file()
 
     @staticmethod
     def _validate_run_flags(overrides: dict) -> None:
@@ -225,7 +236,7 @@ class NeuroSanStudioCli:  # pylint: disable=too-few-public-methods
         "chat",
         help=(
             "Chat with an agent network directly (without starting nsflow).\n\n"
-            "Pass the agent name as AGENT, e.g. ns chat music_nerd"
+            "Pass the agent name as AGENT, e.g. ns chat basic/music_nerd"
         ),
         no_args_is_help=True,
         context_settings={
@@ -285,7 +296,7 @@ class NeuroSanStudioCli:  # pylint: disable=too-few-public-methods
 
     @staticmethod
     @app.command("validate", help="Validate the structure of an agent network HOCON file.")
-    def _validate_command(
+    def _validate_command(  # pylint: disable=too-many-arguments,too-many-positional-arguments
         hocon_path: str = typer.Argument(
             ...,
             help="Path to the agent network HOCON file to validate.",
@@ -293,12 +304,23 @@ class NeuroSanStudioCli:  # pylint: disable=too-few-public-methods
         verbose: bool = typer.Option(
             False,
             "--verbose",
-            help="Print an agent network summary when validation passes.",
+            help="Print the manifest discovery summary, and an agent network summary when validation passes.",
         ),
         external_agents: Optional[str] = typer.Option(
             None,
             "--external-agents",
-            help="Comma-separated external agent references to treat as valid (e.g. '/agent1,/agent2').",
+            help=(
+                "Additional comma-separated external agent references to treat as valid, on top of those "
+                "discovered from the manifest (e.g. '/agent1,/agent2')."
+            ),
+        ),
+        manifest: Optional[str] = typer.Option(
+            None,
+            "--manifest",
+            help=(
+                "Manifest HOCON whose served networks are accepted as external agents. "
+                "Defaults to AGENT_MANIFEST_FILE, then <registry-dir>/registries/manifest.hocon."
+            ),
         ),
         mcp_servers: Optional[str] = typer.Option(
             None,
@@ -308,7 +330,10 @@ class NeuroSanStudioCli:  # pylint: disable=too-few-public-methods
         registry_dir: Optional[str] = typer.Option(
             None,
             "--registry-dir",
-            help="Base directory for resolving HOCON includes. Defaults to the current directory.",
+            help=(
+                "Base directory for resolving HOCON includes and for locating registries/manifest.hocon. "
+                "Defaults to the first manifest's project root, else the current directory."
+            ),
         ),
     ) -> None:
         """Run the agent network HOCON validation and propagate its exit code."""
@@ -322,6 +347,7 @@ class NeuroSanStudioCli:  # pylint: disable=too-few-public-methods
                 external_agents=external_agents,
                 mcp_servers=mcp_servers,
                 registry_dir=registry_dir,
+                manifest=manifest,
             ).run()
         )
 

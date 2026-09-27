@@ -5,7 +5,7 @@ controlling authorization access for agents.
 
 ## Clarifications
 
-### Authentation != Authorization
+### Authentication != Authorization
 
 Note that _authorization_ - the ability to determine permission to access a resource (in
 Neuro SAN's case an agent network) - is not to be confused with _authentication_ -
@@ -85,7 +85,7 @@ enable the use of the OpenFGA server for authorization within your Neuro SAN ser
 
 ```bash
 # What class neuro-san server should use for authorization
-export AGENT_AUTHORIZER=neuro_san.internals.authorization.openfga.open_fga_authorizer.OpenFgaAuthorizer
+export AGENT_AUTHORIZER=neuro_san.service.authorization.openfga.open_fga_authorizer.OpenFgaAuthorizer
 
 # The request metadata field to use as the user id for authorization
 export AGENT_AUTHORIZER_ACTOR_ID_METADATA_KEY=user_id
@@ -166,7 +166,7 @@ Available agents:
 
 ## Extra Credit
 
-For any of the below extra credit exercizes, you will need the fga command line tool.
+For any of the below extra credit exercises, you will need the fga command line tool.
 
 To install the fga command line tool use the script below if you are running on linux.
 
@@ -256,10 +256,10 @@ are defined correctly.  We have included one test with this example. To run it:
 - [The Neuro SAN Dockerfile](https://github.com/cognizant-ai-lab/neuro-san/blob/main/neuro_san/deploy/Dockerfile)
   has the documentation for each of the environment variables mentioned above.
 
-- [The Neuro SAN Authorizer interface](https://github.com/cognizant-ai-lab/neuro-san/blob/main/neuro_san/internals/authorization/interfaces/authorizer.py)
+- [The Neuro SAN Authorizer interface](https://github.com/cognizant-ai-lab/neuro-san/blob/main/neuro_san/service/authorization/interfaces/authorizer.py)
   contains documentation and examples for each of the methods of the Authorizer interface
 
-- [The OpenFGA implementation of the Authorizer interface](https://github.com/cognizant-ai-lab/neuro-san/blob/main/neuro_san/internals/authorization/openfga/open_fga_authorizer.py)
+- [The OpenFGA implementation of the Authorizer interface](https://github.com/cognizant-ai-lab/neuro-san/blob/main/neuro_san/service/authorization/openfga/open_fga_authorizer.py)
   Seeing the details of the OpenFGA implementation can give you some ideas as to how to extend it for your own purposes.
   It's worth noting that we have used an extended version of the OpenFGA Authorizer and supplied schema
   to allow for many other objects under authorization control, including special users, and storing information

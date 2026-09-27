@@ -44,3 +44,19 @@ class AgentNetworkPersistor:
         """
         _ = obj, file_reference
         return None
+
+    async def async_restore_metadata(self, file_reference: str) -> dict[str, Any] | None:
+        """
+        Read back the metadata block of the network previously persisted under file_reference,
+        so a save on behalf of a client that sent no block can carry it forward instead of
+        erasing it (issue #1398).
+
+        This default is a real implementation, not abstract: the base class doubles as the null
+        persistor AgentNetworkPersistorFactory returns when nothing can be persisted.
+        Implementations treat a missing or unreadable network as None rather than an error.
+
+        :param file_reference: The file reference the network was persisted under
+        :return: The metadata block, or None when there is nothing to carry forward
+        """
+        _ = file_reference
+        return None

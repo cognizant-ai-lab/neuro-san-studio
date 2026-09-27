@@ -24,6 +24,7 @@ from neuro_san.internals.graph.filters.string_common_defs_config_filter import S
 from neuro_san.internals.persistence.abstract_async_config_restorer import AbstractAsyncConfigRestorer
 
 from middleware.agent_network_designer.persistence.agent_network_assembler import AgentNetworkAssembler
+from middleware.agent_network_designer.persistence.agent_network_metadata_block import AgentNetworkMetadataBlock
 
 
 class DeployableAgentNetworkAssembler(AgentNetworkAssembler):
@@ -50,9 +51,15 @@ class DeployableAgentNetworkAssembler(AgentNetworkAssembler):
         self.template: dict[str, Any] = None
         self.aaosa_defs: dict[str, Any] = None
 
-    # pylint: disable=too-many-locals
+    # pylint: disable=too-many-locals, too-many-arguments, too-many-positional-arguments
     async def assemble_agent_network(
-        self, network_def: dict[str, Any], top_agent_name: str, agent_network_name: str, sample_queries: list[str]
+        self,
+        network_def: dict[str, Any],
+        top_agent_name: str,
+        agent_network_name: str,
+        sample_queries: list[str],
+        client_token_mcp_headers: dict[str, list[str]] | None = None,
+        metadata: dict[str, Any] | None = None,
     ) -> dict[str, Any]:
         """
         Assemble the agent network from the definition.
@@ -61,6 +68,11 @@ class DeployableAgentNetworkAssembler(AgentNetworkAssembler):
         :param top_agent_name: The name of the top agent
         :param agent_network_name: The file name, without the .hocon extension
         :param sample_queries: List of sample queries for the agent network
+        :param client_token_mcp_headers: Optional mapping of client-token MCP
+                server URL to the header names the conversation supplied for it,
+                driving the front man's sly_data_schema (see the base class)
+        :param metadata: Metadata block to carry forward (see the base class);
+                None builds the block from sample_queries alone
 
         :return: Some representation of the agent network
         """
@@ -80,9 +92,23 @@ class DeployableAgentNetworkAssembler(AgentNetworkAssembler):
         agent_network["tools"] = []
         del agent_network["commondefs"]
 
-        # Add metadata if sample queries are provided
-        if sample_queries:
-            agent_network["metadata"] = {"sample_queries": sample_queries}
+        # The metadata block is carried forward whole (issue #1398): neuro-san serves
+        # config["metadata"] to clients as-is and no validator inspects it, and the reservation
+        # storage writers add their own keys (reservation, stored_at) to whatever block is
+        # present. A temporary network gets no studio timestamps, so the block is omitted when
+        # there is nothing to say, as it always was without queries.
+        metadata_block: dict[str, Any] = (
+            AgentNetworkMetadataBlock(metadata, f"agent network {agent_network_name}")
+            .merge_sample_queries(sample_queries)
+            .as_dict()
+        )
+        if metadata_block:
+            agent_network["metadata"] = metadata_block
+
+        # None when the network uses no client-token MCP servers.
+        sly_data_schema: dict[str, Any] | None = self.build_mcp_sly_data_schema(
+            use_network_def, client_token_mcp_headers
+        )
 
         agent_name: str = None
         agent_def: dict[str, Any] = {}
@@ -131,6 +157,12 @@ class DeployableAgentNetworkAssembler(AgentNetworkAssembler):
                     agent_spec["function"]["description"] = (
                         agent_description or "An assistant that answers inquiries from the user."
                     )
+                    # Injected after filter_agent() on purpose: there is no
+                    # template placeholder to delete for the no-MCP case, and
+                    # the URL keys never pass through the string filter's
+                    # {placeholder} replacement.
+                    if sly_data_schema:
+                        agent_spec["function"]["sly_data_schema"] = sly_data_schema
                 else:
                     agent_spec["function"]["description"] = agent_description
 

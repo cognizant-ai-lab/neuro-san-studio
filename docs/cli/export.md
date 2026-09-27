@@ -1,12 +1,12 @@
 # export
 
 Bundles an agent network from the current project into the exact shape that
-`ns import -f` consumes. The output format is auto-detected from the network's
+`ns import` consumes. The output format is auto-detected from the network's
 dependencies: a self-contained `.hocon` if there are none, a `.zip` carrying the
 network plus its deps otherwise.
 
-Pairs round-trip with [`ns import -f`](./import.md#from-a-local-file--f). Build a
-network in one project, run `ns export`, ship the file, run `ns import -f` on
+Pairs round-trip with [`ns import`](./import.md#from-a-local-file). Build a
+network in one project, run `ns export`, ship the file, run `ns import` on
 the receiver.
 
 ## Usage

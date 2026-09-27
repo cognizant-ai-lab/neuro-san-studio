@@ -21,6 +21,7 @@ import socket
 import subprocess
 import sys
 import time
+from importlib.util import find_spec
 from pathlib import Path
 from typing import Any
 from typing import Dict
@@ -62,11 +63,21 @@ class NeuroSanRunner:
         self.thinking_file = self.logs_dir / "agent_thinking.txt"
         self.thinking_dir = self.logs_dir / "thinking_dir"
         print(f"Root directory: {self.root_dir}")
-        # Shared project-resource resolution (manifest, tool path, mcp, toolbox, .env),
+        # Shared project-resource resolution (manifest, tool path, mcp, toolbox),
         # also used by `ns chat` so the two commands resolve a project identically.
+        # The project .env file is loaded once, globally, by the CLI's top-level
+        # callback before any subcommand runs.
         self.project_env = ProjectEnvironment(self.root_dir)
-        # Load environment variables from the project .env file (if any)
-        self.project_env.load_env_file()
+
+        # Fail fast on a misconfiguration that otherwise surfaces as per-request
+        # server errors and an nsflow client that hangs forever: neuro-san's
+        # built-in Langfuse tracing requires the optional langfuse package.
+        if os.getenv("LANGFUSE_ENABLED", "false").strip().lower() == "true" and find_spec("langfuse") is None:
+            sys.exit(
+                "LANGFUSE_ENABLED=true but the 'langfuse' package is not installed.\n"
+                "Install it with: pip install -r neuro_san_studio/plugins/langfuse/requirements.txt\n"
+                '(or: pip install "neuro-san-studio[langfuse]"), or set LANGFUSE_ENABLED=false.'
+            )
 
         plugins_file = PluginLoader.resolve_plugins_file(self.root_dir)
         self.plugin_classes = PluginLoader.load_plugin_classes(plugins_file)
@@ -77,6 +88,9 @@ class NeuroSanRunner:
             "server_http_port": int(os.getenv("NEURO_SAN_SERVER_HTTP_PORT", "8080")),
             "server_connection": str(os.getenv("NEURO_SAN_SERVER_CONNECTION", "http")),
             "manifest_update_period_seconds": int(os.getenv("AGENT_MANIFEST_UPDATE_PERIOD_SECONDS", "5")),
+            # "spawn" is not the fastest, but the safest and most available on all OSes.
+            # See comment on the env var in the Dockerfile for more info.
+            "manifest_concurrency_context": os.getenv("AGENT_MANIFEST_CONCURRENCY_CONTEXT", "spawn"),
             "default_sly_data": str(os.getenv("DEFAULT_SLY_DATA", "")),
             "nsflow_host": os.getenv("NSFLOW_HOST", "localhost"),
             "nsflow_port": int(os.getenv("NSFLOW_PORT", "4173")),
@@ -90,6 +104,7 @@ class NeuroSanRunner:
             "agent_manifest_file": self.project_env.resolve_manifest_file(),
             "agent_tool_path": self.project_env.resolve_tool_path(),
             "agent_toolbox_info_file": self.project_env.resolve_toolbox_info_file(),
+            "agent_network_designer_toolbox_info_file": self.project_env.resolve_designer_toolbox_info_file(),
             "mcp_servers_info_file": self.project_env.resolve_mcp_info_file(),
             "logs_dir": str(self.logs_dir),
             # Run-mode flags default off; a CLI override flips them on. Kept in the base dict
@@ -122,10 +137,12 @@ class NeuroSanRunner:
         self.nsflow_process = None
 
     def _apply_toolbox_env(self) -> None:
-        """Export AGENT_TOOLBOX_INFO_FILE only if a user-provided toolbox path is configured.
+        """Export the two toolbox paths, unless resolution deliberately yielded nothing.
 
-        When unset, the neuro-san framework falls back to its built-in default toolbox,
-        so a user-provided file is a pure override and is optional.
+        Resolution (see ProjectEnvironment.resolve_toolbox_info_file) falls back to the
+        HOCONs bundled in the neuro_san_studio package, so in practice both are set. An empty
+        value only happens when the user explicitly exported an empty env var to opt out, in
+        which case the neuro-san framework uses its built-in default toolbox alone.
         """
         toolbox_file = self.args["agent_toolbox_info_file"]
         if toolbox_file:
@@ -133,6 +150,11 @@ class NeuroSanRunner:
             print(f"AGENT_TOOLBOX_INFO_FILE set to: {toolbox_file}")
         else:
             print("AGENT_TOOLBOX_INFO_FILE: (not set — using built-in default toolbox)")
+
+        designer_toolbox_file = self.args["agent_network_designer_toolbox_info_file"]
+        if designer_toolbox_file:
+            os.environ["AGENT_NETWORK_DESIGNER_TOOLBOX_INFO_FILE"] = designer_toolbox_file
+            print(f"AGENT_NETWORK_DESIGNER_TOOLBOX_INFO_FILE set to: {designer_toolbox_file}")
 
     def set_environment_variables(self):
         """Set required environment variables, optionally using neuro-san defaults."""
@@ -146,6 +168,7 @@ class NeuroSanRunner:
         os.environ["MCP_SERVERS_INFO_FILE"] = self.args["mcp_servers_info_file"]
         os.environ["NEURO_SAN_SERVER_CONNECTION"] = self.args["server_connection"]
         os.environ["AGENT_MANIFEST_UPDATE_PERIOD_SECONDS"] = str(self.args["manifest_update_period_seconds"])
+        os.environ["AGENT_MANIFEST_CONCURRENCY_CONTEXT"] = str(self.args["manifest_concurrency_context"])
         os.environ["LOG_LEVEL"] = self.args["log_level"]
         print(f"PYTHONPATH set to: {os.environ['PYTHONPATH']}")
         print(f"AGENT_MANIFEST_FILE set to: {os.environ['AGENT_MANIFEST_FILE']}")
@@ -153,6 +176,7 @@ class NeuroSanRunner:
         print(f"MCP_SERVERS_INFO_FILE set to: {os.environ['MCP_SERVERS_INFO_FILE']}")
         print(f"NEURO_SAN_SERVER_CONNECTION set to: {os.environ['NEURO_SAN_SERVER_CONNECTION']}")
         print(f"AGENT_MANIFEST_UPDATE_PERIOD_SECONDS set to: {os.environ['AGENT_MANIFEST_UPDATE_PERIOD_SECONDS']}")
+        print(f"AGENT_MANIFEST_CONCURRENCY_CONTEXT set to: {os.environ['AGENT_MANIFEST_CONCURRENCY_CONTEXT']}")
         print(f"LOG_LEVEL set to: {os.environ['LOG_LEVEL']}\n")
 
         # Client-only env variables
@@ -265,7 +289,7 @@ class NeuroSanRunner:
                 self.server_process.terminate()
             else:
                 os.killpg(os.getpgid(self.server_process.pid), signal.SIGTERM)
-            # Wait for the server to finish cleanup (e.g. flushing Langfuse traces)
+            # Wait for the server to finish cleanup (e.g. flushing observability traces)
             self.server_process.wait(timeout=10)
 
         if self.nsflow_process:

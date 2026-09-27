@@ -14,7 +14,7 @@ and invoking it with a trivial test prompt. It is useful for verifying that:
 neuro-san-studio check-config
 
 # Validate a specific HOCON file
-neuro-san-studio check-config registries/music_nerd.hocon
+neuro-san-studio check-config registries/basic/music_nerd.hocon
 neuro-san-studio check-config path/to/llm_config.hocon
 ```
 
