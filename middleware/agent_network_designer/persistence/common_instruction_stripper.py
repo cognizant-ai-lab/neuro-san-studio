@@ -99,17 +99,19 @@ class CommonInstructionStripper:
         :param aaosa_instructions: The AAOSA instructions the save appends to the front man and to agents with
                 tools, from registries/aaosa.hocon, or None to strip none
         """
-        # The pieces a save writes before the custom instructions, as (key, words before the network name, words
-        # after it). Only the prefix names the network; the other two are fixed texts, so their second list is
+        # The pieces a save writes before the custom instructions, as (key, (words before the network name, words
+        # after it)). Only the prefix names the network; the other two are fixed texts, so their second list is
         # empty and their words are matched as they are.
-        self.leading_pieces: list[tuple[str, list[str], list[str]]] = [
+        self.leading_pieces: list[tuple[str, tuple[list[str], list[str]]]] = [
             (
                 self.PREFIX,
-                self._words(DesignerCommonInstructions.PREFIX_OPENING),
-                self._words(DesignerCommonInstructions.PREFIX_RULES),
+                (
+                    self._words(DesignerCommonInstructions.PREFIX_OPENING),
+                    self._words(DesignerCommonInstructions.PREFIX_RULES),
+                ),
             ),
-            (self.FRONT_MAN_LINES, self._words(DesignerCommonInstructions.FRONT_MAN_LINES), []),
-            (self.DEMO_SENTENCE, self._words(DesignerCommonInstructions.DEMO_SENTENCE), []),
+            (self.FRONT_MAN_LINES, (self._words(DesignerCommonInstructions.FRONT_MAN_LINES), [])),
+            (self.DEMO_SENTENCE, (self._words(DesignerCommonInstructions.DEMO_SENTENCE), [])),
         ]
         # The AAOSA instructions, the one piece a save writes after the custom instructions. The end of a text is
         # read backwards (see _trailing_copy), so their words are kept last word first and each spelled backwards.
@@ -200,13 +202,13 @@ class CommonInstructionStripper:
         found: bool = True
         while found:
             found = False
-            for piece, head, tail in self.leading_pieces:
-                copy: tuple[int, int] | None = self._leading_copy(instructions, start, end, head, tail)
+            for piece, pattern in self.leading_pieces:
+                copy: tuple[int, int] | None = self._leading_copy(instructions, start, end, pattern)
                 while copy is not None:
                     first_copies.setdefault(piece, copy)
                     start = copy[1]
                     found = True
-                    copy = self._leading_copy(instructions, start, end, head, tail)
+                    copy = self._leading_copy(instructions, start, end, pattern)
             if self.reversed_aaosa:
                 copy = self._trailing_copy(instructions, start, end)
                 while copy is not None:
@@ -217,7 +219,7 @@ class CommonInstructionStripper:
         return start, end, first_copies
 
     def _leading_copy(
-        self, instructions: str, start: int, end: int, head: list[str], tail: list[str]
+        self, instructions: str, start: int, end: int, pattern: tuple[list[str], list[str]]
     ) -> tuple[int, int] | None:
         """
         Find a whole copy of a piece at the start of the text still left.
@@ -225,11 +227,12 @@ class CommonInstructionStripper:
         :param instructions: The agent's instructions
         :param start: The offset the text still left begins at
         :param end: The offset the text still left ends at
-        :param head: The words of the piece, up to the network name when the piece has one
-        :param tail: The words after the network name, or an empty list for a piece without one
+        :param pattern: The words of the piece up to the network name, and the words after it, which are an empty
+                list for a piece without a name
         :return: The offsets of the copy's first and past its last character, or None when the text does not
                 begin with a copy
         """
+        head, tail = pattern
         if not head:
             return None
         # A fixed piece spans its words; the prefix spans its head, a name of up to MAX_NAME_WORDS words and its
