@@ -16,12 +16,11 @@
 
 """Tests for the write-per-call ``PersistentMemoryMiddleware``."""
 
-from __future__ import annotations
-
 import asyncio
 import json
 from pathlib import Path
 from typing import Any
+from typing import Self
 from unittest.mock import AsyncMock
 
 from middleware.persistent_memory.persistent_memory_middleware import PersistentMemoryMiddleware
@@ -83,7 +82,7 @@ class PersistentMemoryMiddlewareTests(MemoryTestBase):
 
             system_message = None
 
-            def override(self, system_message: Any) -> "_StubRequest":
+            def override(self, system_message: Any) -> Self:
                 """Record the overridden system message and return self."""
                 captured["system_message"] = system_message
                 return self
