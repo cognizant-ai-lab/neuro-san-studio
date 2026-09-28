@@ -73,7 +73,10 @@ class CommonInstructionStripper:
     One copy of each is the smallest text that stays the same over any number of saves.
     """
 
-    # One word of a text: what the matching compares, so whitespace never takes part in it.
+    # One word of a text: a run of one or more characters that are not whitespace (\S is "not a space, tab or line
+    # break", + means "one or more"). finditer with it yields the words one by one, with their offsets, and skips
+    # whatever whitespace lies between them. Words are what the matching compares, so indentation and line breaks
+    # never take part in it.
     WORD: re.Pattern[str] = re.compile(r"\S+")
 
     # The most words a network name in a copy of the prefix may span. Names are usually one word, but nothing
@@ -94,28 +97,24 @@ class CommonInstructionStripper:
 
     def __init__(self, aaosa_instructions: str | None) -> None:
         """
-        Prepare the words of each piece.
+        Split each piece into the words its copies are matched by.
 
         :param aaosa_instructions: The AAOSA instructions the save appends to the front man and to agents with
                 tools, from registries/aaosa.hocon, or None to strip none
         """
-        # The pieces a save writes before the custom instructions, as (key, (words before the network name, words
-        # after it)). Only the prefix names the network; the other two are fixed texts, so their second list is
-        # empty and their words are matched as they are.
-        self.leading_pieces: list[tuple[str, tuple[list[str], list[str]]]] = [
-            (
-                self.PREFIX,
-                (
-                    self._words(DesignerCommonInstructions.PREFIX_OPENING),
-                    self._words(DesignerCommonInstructions.PREFIX_RULES),
-                ),
-            ),
-            (self.FRONT_MAN_LINES, (self._words(DesignerCommonInstructions.FRONT_MAN_LINES), [])),
-            (self.DEMO_SENTENCE, (self._words(DesignerCommonInstructions.DEMO_SENTENCE), [])),
-        ]
-        # The AAOSA instructions, the one piece a save writes after the custom instructions. The end of a text is
-        # read backwards (see _trailing_copy), so their words are kept last word first and each spelled backwards.
-        # Empty when there are none to strip.
+        # The three pieces a save writes before the custom instructions. The prefix is the opening words, then the
+        # network name and a period, then the rule lines, so it is kept as two lists and the name is matched
+        # between them (see _prefix_copy). The other two are fixed texts.
+        self.prefix_opening: list[str] = self._words(DesignerCommonInstructions.PREFIX_OPENING)
+        self.prefix_rules: list[str] = self._words(DesignerCommonInstructions.PREFIX_RULES)
+        self.front_man_lines: list[str] = self._words(DesignerCommonInstructions.FRONT_MAN_LINES)
+        self.demo_sentence: list[str] = self._words(DesignerCommonInstructions.DEMO_SENTENCE)
+        # The AAOSA instructions, the one piece a save writes after the custom instructions, kept last word first
+        # with each word spelled backwards. A copy can only be at the end of the text, and the text can be long (a
+        # front man that grew over many saves holds many copies), so the whole of it must not be read to find one.
+        # Regular expressions only scan forwards, so the end is examined by reversing its last characters and
+        # matching from the start of that reversed string (see _trailing_copy), and the words to compare with have
+        # to be reversed the same way. Empty when there are none to strip.
         self.reversed_aaosa: list[str] = self._reversed_words(aaosa_instructions)
         # How many characters _trailing_copy first reads from the end: twice a copy of the AAOSA instructions with
         # single spaces, so a copy with the indentation of registries/aaosa.hocon fits in one read.
@@ -202,13 +201,13 @@ class CommonInstructionStripper:
         found: bool = True
         while found:
             found = False
-            for piece, pattern in self.leading_pieces:
-                copy: tuple[int, int] | None = self._leading_copy(instructions, start, end, pattern)
+            for piece in (self.PREFIX, self.FRONT_MAN_LINES, self.DEMO_SENTENCE):
+                copy: tuple[int, int] | None = self._leading_copy(piece, instructions, start, end)
                 while copy is not None:
                     first_copies.setdefault(piece, copy)
                     start = copy[1]
                     found = True
-                    copy = self._leading_copy(instructions, start, end, pattern)
+                    copy = self._leading_copy(piece, instructions, start, end)
             if self.reversed_aaosa:
                 copy = self._trailing_copy(instructions, start, end)
                 while copy is not None:
@@ -218,66 +217,80 @@ class CommonInstructionStripper:
                     copy = self._trailing_copy(instructions, start, end)
         return start, end, first_copies
 
-    def _leading_copy(
-        self, instructions: str, start: int, end: int, pattern: tuple[list[str], list[str]]
-    ) -> tuple[int, int] | None:
+    def _leading_copy(self, piece: str, instructions: str, start: int, end: int) -> tuple[int, int] | None:
         """
-        Find a whole copy of a piece at the start of the text still left.
+        Find a whole copy of one of the leading pieces at the start of the text still left.
+
+        :param piece: The piece's key: PREFIX, FRONT_MAN_LINES or DEMO_SENTENCE
+        :param instructions: The agent's instructions
+        :param start: The offset the text still left begins at
+        :param end: The offset the text still left ends at
+        :return: The offsets of the copy's first and past its last character, or None when the text does not
+                begin with a copy
+        """
+        if piece == self.PREFIX:
+            return self._prefix_copy(instructions, start, end)
+        if piece == self.FRONT_MAN_LINES:
+            return self._match_words(instructions, start, end, self.front_man_lines)
+        # DEMO_SENTENCE is the only leading piece left; _strip_copies passes no other key.
+        return self._match_words(instructions, start, end, self.demo_sentence)
+
+    def _prefix_copy(self, instructions: str, start: int, end: int) -> tuple[int, int] | None:
+        """
+        Find a whole copy of the prefix at the start of the text still left: the opening words, a network name of
+        one to MAX_NAME_WORDS words whose last word ends with NAME_ENDING, and the rule lines.
 
         :param instructions: The agent's instructions
         :param start: The offset the text still left begins at
         :param end: The offset the text still left ends at
-        :param pattern: The words of the piece up to the network name, and the words after it, which are an empty
-                list for a piece without a name
         :return: The offsets of the copy's first and past its last character, or None when the text does not
                 begin with a copy
         """
-        head, tail = pattern
-        if not head:
+        opening: tuple[int, int] | None = self._match_words(instructions, start, end, self.prefix_opening)
+        if opening is None:
             return None
-        # A fixed piece spans its words; the prefix spans its head, a name of up to MAX_NAME_WORDS words and its
-        # tail. Only that many words are read, and reading stops at the first word of the head that differs.
-        limit: int = len(head)
-        if tail:
-            limit += self.MAX_NAME_WORDS + len(tail)
-        words: list[str] = []
-        spans: list[tuple[int, int]] = []
-        for match in self.WORD.finditer(instructions, start, end):
-            if len(words) < len(head) and match.group() != head[len(words)]:
+        # The name's length is not known, so the rule lines are tried after each name word that ends with the
+        # period, shortest name first. The first fit is the copy: a name cannot contain the rule sentences.
+        position: int = opening[1]
+        for _ in range(self.MAX_NAME_WORDS):
+            name_word: re.Match[str] | None = self.WORD.search(instructions, position, end)
+            if name_word is None:
+                # The text ran out inside the name.
                 return None
-            words.append(match.group())
-            spans.append(match.span())
-            if len(words) == limit:
-                break
+            position = name_word.end()
+            if name_word.group().endswith(self.NAME_ENDING):
+                rules: tuple[int, int] | None = self._match_words(instructions, position, end, self.prefix_rules)
+                if rules is not None:
+                    return opening[0], rules[1]
+        return None
 
-        length: int = self._copy_length(words, head, tail)
-        if length == 0:
+    def _match_words(self, instructions: str, start: int, end: int, words: list[str]) -> tuple[int, int] | None:
+        """
+        Check whether the text still left begins with the given words, whatever the whitespace between them.
+
+        :param instructions: The agent's instructions
+        :param start: The offset the text still left begins at
+        :param end: The offset the text still left ends at
+        :param words: The words to look for, in order; an empty list never matches
+        :return: The offsets of the first word's first character and past the last word's last character, or None
+                when the text does not begin with the words
+        """
+        if not words:
+            # A blank piece has no words (see _words) and is never stripped. For the prefix this holds for its
+            # opening and its rules separately (see _prefix_copy).
             return None
-        return spans[0][0], spans[length - 1][1]
-
-    def _copy_length(self, words: list[str], head: list[str], tail: list[str]) -> int:
-        """
-        Count the words a copy of a piece spans at the start of a list of words that begin with its head.
-
-        :param words: The first words of the text still left, known to begin with the head as far as they go
-        :param head: The words of the piece, up to the network name when the piece has one
-        :param tail: The words after the network name, or an empty list for a piece without one
-        :return: The number of words the copy spans, or 0 when the words do not hold a whole copy
-        """
-        if len(words) < len(head):
-            return 0
-        if not tail:
-            return len(head)
-        # Try the shortest name first: the words after the name are fixed, so at most one length can fit a real
-        # copy, and a name cannot hold the rule sentences that follow it.
-        for name_length in range(1, self.MAX_NAME_WORDS + 1):
-            tail_start: int = len(head) + name_length
-            if tail_start + len(tail) > len(words):
-                return 0
-            # A name that stops short of the period is not a whole copy of the prefix.
-            if words[tail_start - 1].endswith(self.NAME_ENDING) and words[tail_start : tail_start + len(tail)] == tail:
-                return tail_start + len(tail)
-        return 0
+        first_start: int = 0
+        matched: int = 0
+        for match in self.WORD.finditer(instructions, start, end):
+            if match.group() != words[matched]:
+                return None
+            if matched == 0:
+                first_start = match.start()
+            matched += 1
+            if matched == len(words):
+                return first_start, match.end()
+        # The text ran out before the last word.
+        return None
 
     def _trailing_copy(self, instructions: str, start: int, end: int) -> tuple[int, int] | None:
         """
