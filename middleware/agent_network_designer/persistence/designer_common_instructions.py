@@ -33,9 +33,14 @@ class DesignerCommonInstructions:  # pylint: disable=too-few-public-methods
       registries/aaosa.hocon, the file every generated network includes, so it is not repeated here.
 
     HoconAgentNetworkAssembler builds its header and top-agent template from these constants, and
-    CommonInstructionStripper strips them again from a definition whose instructions already hold them, so the
-    two cannot drift apart. deployable_template.hocon and deployable_template_demo.hocon are HOCON and cannot import
-    them; a test pins their copies to these values.
+    CommonInstructionStripper matches copies by the same constants, so a change here changes what is written and
+    what is stripped at once. deployable_template.hocon and deployable_template_demo.hocon are HOCON and cannot
+    import them; a test pins their copies to these values.
+
+    Changing a wording is a deliberate step, and a test pins each wording so that it is made knowingly. The
+    stripper keeps no old wordings: a network saved under the old wording and sent back with its substitutions
+    resolved keeps one copy of the old text in the agent's custom instructions, and that copy does not grow (see
+    CommonInstructionStripper).
 
     Data only: the rules for stripping the texts belong to CommonInstructionStripper.
     """
@@ -51,12 +56,6 @@ class DesignerCommonInstructions:  # pylint: disable=too-few-public-methods
         "Do not try to help for other matters.\n"
         "Do not mention what you can NOT do. Only mention what you can do."
     )
-
-    # Networks generated before 22a84541 (2025-10-09) opened the prefix with
-    # "You are part of a <network name> of assistants." instead, followed by the same PREFIX_RULES. The designer no
-    # longer writes it, but copies of it can still sit inside the instructions of such networks.
-    LEGACY_PREFIX_OPENING: str = "You are part of a"
-    LEGACY_PREFIX_CLOSING: str = "of assistants."
 
     # The lines the top-agent template writes inside the front man's own triple-quoted body, ahead of its text.
     FRONT_MAN_LINES: str = (

@@ -347,7 +347,9 @@ as the resolved text of a saved network sent back by a client, are removed befor
 to the LLM or saved, so a save writes one copy instead of adding another. Every piece is removed from every agent, whatever its role and whatever
 `AGENT_NETWORK_DESIGNER_DEMO_MODE` is set to, and the save adds back the ones the agent's role calls for. So a
 hand-written network that gives its leaves the AAOSA instructions loses them from those leaves once loaded. An agent
-whose instructions are nothing but common instructions keeps one copy of each piece
+whose instructions are nothing but common instructions keeps one copy of each piece. Only the current wording of
+each piece is recognized: after a wording changes, a copy of the old wording that a client sends back stays in the
+agent's own text, once, and does not grow
 
 #### Persistence (Middleware)
 

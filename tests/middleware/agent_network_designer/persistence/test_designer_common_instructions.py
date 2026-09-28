@@ -14,7 +14,7 @@
 #
 # END COPYRIGHT
 
-"""Tests for DesignerCommonInstructions: the reservations templates carry the same common instructions."""
+"""Tests for DesignerCommonInstructions: the wordings are pinned, and the reservations templates carry the same."""
 
 from pathlib import Path
 from typing import Any
@@ -29,14 +29,40 @@ PERSISTENCE_DIR: Path = Path(__file__).resolve().parents[4] / "middleware" / "ag
 
 class TestDesignerCommonInstructions(IsolatedAsyncioTestCase):
     """
-    Pins the common instructions in deployable_template.hocon and deployable_template_demo.hocon to
-    DesignerCommonInstructions.
+    Pins the wordings of the common instructions, and the copies of them in deployable_template.hocon and
+    deployable_template_demo.hocon, to DesignerCommonInstructions.
 
     HoconAgentNetworkAssembler builds its header and top-agent template from the constants, but the reservations
     templates are HOCON files and hold their own copies. CommonInstructionStripper strips copies by the
     constants' words, so a template reworded on its own would bring back the growth of copies for networks
     saved in reservations mode. The template texts are compared word by word, as the stripper matches them.
     """
+
+    def test_the_wordings_are_the_ones_saved_networks_carry(self) -> None:
+        """
+        Pins each wording to the text saved networks carry today, so that a change to it is made knowingly. A new
+        wording is fine, but it has a cost to weigh: the stripper knows the current wording only, so a network
+        saved under the old one and sent back with its substitutions resolved keeps one copy of the old text in
+        each agent's custom instructions (it does not grow), and the reservations templates must change with it.
+        """
+        self.assertEqual(DesignerCommonInstructions.PREFIX_OPENING, "You are part of a team of assistants in")
+        self.assertEqual(
+            DesignerCommonInstructions.PREFIX_RULES,
+            "Only answer inquiries that are directly within your area of expertise.\n"
+            "Do not try to help for other matters.\n"
+            "Do not mention what you can NOT do. Only mention what you can do.",
+        )
+        self.assertEqual(
+            DesignerCommonInstructions.FRONT_MAN_LINES,
+            "Never express irrelevance unless you have first consulted all your tools.\n"
+            "Once you have determined the relevant tools, do not express that to the user, rather,\n"
+            "call all the relevant tools and make sure the command is fully serviced and express the end result.",
+        )
+        self.assertEqual(
+            DesignerCommonInstructions.DEMO_SENTENCE,
+            "You are part of a demo system, so when queried, make up a realistic response as if you are actually "
+            "grounded in real data or you are operating a real application API or microservice.",
+        )
 
     async def test_reservations_prefix_is_the_designer_prefix(self) -> None:
         """

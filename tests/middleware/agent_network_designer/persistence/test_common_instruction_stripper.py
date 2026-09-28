@@ -162,25 +162,31 @@ class TestCommonInstructionStripper(IsolatedAsyncioTestCase):
 
         self.assertEqual(stripped, DEFINITION)
 
-    def test_strips_the_prefix_in_its_legacy_wording(self) -> None:
+    async def test_a_copy_in_a_retired_wording_stays_at_one_copy_over_saves(self) -> None:
         """
-        Networks generated before 22a84541 opened the prefix with "You are part of a <name> of assistants.".
+        The stripper knows the current wording only. A copy in a wording no save writes any more, here the prefix
+        the designer wrote before October 2025, is left in the agent's custom instructions, and over repeated saves
+        the agent keeps exactly one copy of it and one of the current prefix: nothing grows, because a save adds
+        only the current wording and that is what gets stripped.
         """
-        legacy_prefix: str = (
-            f"\n{DesignerCommonInstructions.LEGACY_PREFIX_OPENING} travel "
-            f"{DesignerCommonInstructions.LEGACY_PREFIX_CLOSING}\n"
-            f"{DesignerCommonInstructions.PREFIX_RULES}\n"
-        )
-        instructions: str = f"{self._prefix('travel')} {legacy_prefix} \nReport the weather.\n"
+        retired_prefix: str = f"You are part of a travel of assistants.\n{DesignerCommonInstructions.PREFIX_RULES}\n"
+        definition: dict[str, Any] = deepcopy(DEFINITION)
+        definition.get("weather")["instructions"] = f"{retired_prefix}Report the weather."
 
-        self.assertEqual(self._stripper().strip(instructions), "Report the weather.")
+        for _ in range(3):
+            resolved: dict[str, Any] = await self._hocon_round_trip(definition, NETWORK_NAME, True)
+            leaf: str = resolved.get("weather").get("instructions")
+            self.assertEqual(leaf.count(PREFIX_MARKER), 1)
+            self.assertEqual(leaf.count("You are part of a travel of assistants."), 1)
+            definition, _ = self._stripper().strip_definition(resolved)
+            self.assertEqual(definition.get("weather").get("instructions"), f"{retired_prefix}Report the weather.")
 
     def test_leaves_text_without_common_instructions_unchanged(self) -> None:
         """
         Text that holds no whole copy at its start or end comes back byte for byte, outer whitespace included: a
         custom prefix, the prefix's rules at the end of the text (registries/basic/wolfram_mcp.hocon), a reworded
-        prefix, sentences of the common instructions quoted mid-text, and a hand-written prefix in the legacy
-        wording with a name of several words.
+        prefix, sentences of the common instructions quoted mid-text, and the prefix wording the designer wrote
+        before October 2025, whether hand-written with a name of several words or from an old generated file.
         """
         texts: list[str] = [
             "Follow the airline policy at all times.\nQuote the relevant policy section.",
@@ -188,12 +194,14 @@ class TestCommonInstructionStripper(IsolatedAsyncioTestCase):
             f"{PREFIX_MARKER} travel. Only answer questions about travel.",
             f"Start here.\n{DesignerCommonInstructions.FRONT_MAN_LINES}\n{self.aaosa}\nEnd here.",
             "   Surrounding whitespace stays.\n\n",
-            # A hand-written network's own prefix in the legacy wording with a longer name
-            # (registries/basic/smart_home.hocon), which no designer version wrote.
+            # A hand-written network's own prefix in the old wording with a longer name
+            # (registries/basic/smart_home.hocon), and the same wording with the one-word name the designer wrote
+            # before October 2025: the stripper keeps no old wordings, so both stay as the agent's own text.
             (
                 "You are part of a smart home network of assistants.\n"
                 f"{DesignerCommonInstructions.PREFIX_RULES}\nOwn text."
             ),
+            f"You are part of a travel of assistants.\n{DesignerCommonInstructions.PREFIX_RULES}\nOwn text.",
             # The prefix's words without the period a save writes right after the name, for one name word or more.
             f"{PREFIX_MARKER} travel\n{DesignerCommonInstructions.PREFIX_RULES}\nOwn text.",
             f"{PREFIX_MARKER} My Travel Desk\n{DesignerCommonInstructions.PREFIX_RULES}\nOwn text.",
