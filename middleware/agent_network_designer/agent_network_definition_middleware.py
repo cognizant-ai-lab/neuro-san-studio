@@ -42,7 +42,6 @@ from langchain_core.messages import SystemMessage
 from leaf_common.resolution.resolver_util import ResolverUtil
 from neuro_san.interfaces.agent_progress_reporter import AgentProgressReporter
 from neuro_san.internals.persistence.abstract_async_config_restorer import AbstractAsyncConfigRestorer
-from pyparsing.exceptions import ParseException
 
 from coded_tools.agent_network_editor.and_logger import AndLogger
 from coded_tools.agent_network_editor.connectivity_dictionary_converter import ConnectivityDictionaryConverter
@@ -57,6 +56,7 @@ from middleware.agent_network_designer.persistence.file_system_agent_network_per
     FileSystemAgentNetworkPersistor,
 )
 
+SUPPORTED_CONFIG_EXTENSIONS: tuple[str, ...] = (".hocon", ".json")
 AGENT_NETWORK_HOCON_FILE: str = "agent_network_hocon_file"
 AGENT_RESERVATIONS: str = "agent_reservations"
 RESERVATION_ID: str = "reservation_id"
@@ -572,12 +572,26 @@ class AgentNetworkDefinitionMiddleware(AgentMiddleware):
         if file_reference is None:
             return None
 
+        # Screen the extension before handing the file to the restorer. The restorer reports both an
+        # unsupported extension and a parse failure as ValueError, so this check is what keeps the two
+        # apart and lets the ValueError handler below mean "could not be parsed" and nothing else. The
+        # comparison is a case-sensitive endswith() to match the restorer's own check exactly, so any
+        # file accepted here is one the restorer accepts too.
+        if not file_reference.endswith(SUPPORTED_CONFIG_EXTENSIONS):
+            error_message: str = (
+                f"Error: Unsupported agent network config file '{file_reference}'. "
+                f"Expected one of: {', '.join(SUPPORTED_CONFIG_EXTENSIONS)}."
+            )
+            self.logger.error(error_message)
+            self.error_message = error_message
+            return None
+
         # Note we don't need to cache this because we only expect to read the file once.
         try:
             hocon = AbstractAsyncConfigRestorer(file_purpose="get_agent_network_definition", must_exist=True)
             return await hocon.async_restore(file_reference=file_reference)
         except FileNotFoundError:
-            error_message: str = f"Error: Agent network config file not found: {file_reference}"
+            error_message = f"Error: Agent network config file not found: {file_reference}"
             self.logger.error(error_message)
             self.error_message = error_message
             return None
@@ -589,15 +603,12 @@ class AgentNetworkDefinitionMiddleware(AgentMiddleware):
             self.error_message = error_message
             return None
         except ValueError as value_error:
-            # Raised by AbstractAsyncConfigRestorer when the file extension is not .hocon or .json.
-            error_message = f"Error: Unsupported agent network config file '{file_reference}'. {value_error}"
-            self.logger.error(error_message)
-            self.error_message = error_message
-            return None
-        except ParseException as parse_error:
-            # AbstractAsyncConfigRestorer wraps HOCON/JSON parse failures (ParseException,
-            # ParseSyntaxException, JSONDecodeError, ConfigException) into ParseException.
-            error_message = f"Error: Failed to parse agent network config file '{file_reference}'. {parse_error}"
+            # How the restorer reports the parser and substitution failures past its extension check: it catches
+            # pyparsing's ParseException and ParseSyntaxException, json's JSONDecodeError and pyhocon's
+            # ConfigException (unresolved ${...} substitutions included) and re-raises them all as
+            # ValueError, so no parser exception escapes it. The extension screen above already
+            # returned, so an unsupported file cannot reach here.
+            error_message = f"Error: Failed to parse agent network config file '{file_reference}'. {value_error}"
             self.logger.error(error_message)
             self.error_message = error_message
             return None

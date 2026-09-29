@@ -136,9 +136,6 @@
     # https://python.langchain.com/docs/integrations/chat/openai/#responses-api
     "tools/openai_code_interpreter.hocon": true,
     "tools/openai_image_generation.hocon": true,
-    # This network also requires opencv-python
-    # See docs/examples/tools/openai_video_generation.hocon#Prerequisites for more information.
-    "tools/openai_video_generation.hocon": false,
     "tools/openai_web_search.hocon": true,
 
     "tools/pdf_rag.hocon": false,

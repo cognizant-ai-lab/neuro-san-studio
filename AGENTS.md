@@ -33,6 +33,8 @@ Rules for coding agents in Neuro-san-studio. Follow them and the §4 gates pass 
   `asyncio.to_thread()`.
 - Use `snake_case` for functions, methods, variables, parameters and attributes, `PascalCase` for classes, and
   `UPPER_CASE` for constants. Comment the reason if an external API forces `camelCase`.
+- Annotate a method that returns `self` or `cls(...)` with `typing.Self`, not its class name, and do not add
+  `from __future__ import annotations`; the Python floor is 3.12.
 - Dictionary access uses `.get()`, never `dict[key]`.
 - Catch specific exceptions that can be handled at that level; never a generalized `Exception`.
 - Never fail silently. Report a missing or unreadable file, malformed input or an unknown choice with the full

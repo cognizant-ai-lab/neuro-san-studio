@@ -1,31 +1,29 @@
 ---
 name: Checkmarx One
 
-permissions:
-    contents: read
-    security-events: write
-
 on:
     schedule:
         # M-F at 3:00 am UTC (offset from neuro-san and neuro-san-ui)
         - cron: "0 3 * * 1-5"
     workflow_dispatch:
+    release:
+        types:
+            - published
 
 jobs:
-    checkmarx-scan:
-        runs-on: ubuntu-latest
-        steps:
-            - name: Checkout repository
-              # v6.0.2
-              uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
-              with:
-                  fetch-depth: 0
-
-            - name: Run Checkmarx One scan
-              # build-common 1.0.12
-              uses: cognizant-ai-lab/build-common/actions/checkmarx-one@3f4cdab31b6ac10382c99452b720eb0b8b2dab8f
-              with:
-                  base-uri: ${{ vars.CX_BASE_URI }}
-                  cx-tenant: ${{ vars.CX_TENANT }}
-                  cx-client-id: ${{ vars.CX_CLIENT_ID }}
-                  cx-client-secret: ${{ secrets.CX_CLIENT_SECRET }}
+    checkmarx:
+        # 1.0.12
+        uses: cognizant-ai-lab/build-common/.github/workflows/_checkmarx.yml@3f4cdab31b6ac10382c99452b720eb0b8b2dab8f
+        with:
+            # 1.0.12
+            build-common-ref: "3f4cdab31b6ac10382c99452b720eb0b8b2dab8f"
+            base-uri: ${{ vars.CX_BASE_URI }}
+            cx-tenant: ${{ vars.CX_TENANT }}
+            cx-client-id: ${{ vars.CX_CLIENT_ID }}
+            scan-params: '--sast-preset-name "Checkmarx Default" --threshold "sast-critical=1;sast-high=1"'
+        secrets:
+            CX_CLIENT_SECRET: ${{ secrets.CX_CLIENT_SECRET }}
+            SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+        permissions:
+            contents: write
+            security-events: write

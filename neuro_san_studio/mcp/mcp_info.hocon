@@ -65,6 +65,30 @@
         "tools": ["firecrawl_search", "firecrawl_scrape", "firecrawl_parse"]
     },
 
+    # World Clock Pro MCP — current time, time zone conversion and daylight saving time (DST) facts from the
+    # IANA time zone database, so agents look up the date, time and UTC offset instead of guessing them.
+    # Free, public and read-only; no API key required. No rate limits are published, but the terms welcome
+    # automated access and ask callers not to overload the service.
+    # Tools provided (all five are listed below):
+    # get_current_time: Current local time, or the time at a given instant, in up to 50 locations.
+    # convert_time: Converts a UTC instant, or a wall time in a source location, into up to 50 target locations.
+    # time_by_coordinates: Resolves the time zone for a latitude/longitude and returns the local time there.
+    # get_dst_transitions: Whether a location observes DST, its next clock change and every change in a year.
+    # search_cities: Finds cities by name, with each one's IANA time zone, country and coordinates.
+    # A location can be a city name, an IANA time zone id, a time zone abbreviation or coordinates.
+    # IANA ids such as "Europe/Zurich" or "America/Los_Angeles" are the reliable form (checked September 2026):
+    # - Abbreviations map to a fixed standard offset: "pst" in June returns UTC-8, not Los Angeles summer
+    #   time (UTC-7), even though the result names America/Los_Angeles.
+    # - A bare city name can resolve to a smaller namesake: "Zurich" and "Geneva" resolve to towns in the
+    #   United States. Call search_cities first, with the country filter if needed, and check the country.
+    # There is no date arithmetic tool; for questions such as counting business days, use WolframAlpha above.
+    # Every response includes a source_url, and the terms ask that results not be presented as coming from
+    # another source.
+    # Docs: https://worldclock.pro/mcp  Terms: https://worldclock.pro/terms
+    "https://worldclock.pro/mcp": {
+        "tools": ["get_current_time", "convert_time", "time_by_coordinates", "get_dst_transitions", "search_cities"]
+    },
+
     # Uncomment this section to use GitHub Copilot MCP server.
     # Make sure to set the environment variable GITHUB_TOKEN with a valid token.
     # "https://api.githubcopilot.com/mcp": {
