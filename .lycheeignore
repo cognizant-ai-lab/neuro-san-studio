@@ -22,6 +22,10 @@ https://test
 https://www.united.com/
 https://mcp/
 
+# Serply's domain is parked and its HTTPS endpoints do not respond
+https://serply\.io
+https://api\.serply\.io
+
 # Login-walled pages that redirect through an auth flow lychee can't resolve
 https://admin.mistral.ai/
 
