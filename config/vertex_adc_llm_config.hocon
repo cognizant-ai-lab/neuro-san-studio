@@ -1,0 +1,42 @@
+# Copyright © 2025-2026 Cognizant Technology Solutions Corp, www.cognizant.com.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
+# END COPYRIGHT
+
+{
+    # This file is NOT an agent network HOCON.
+    # It defines a set of key-value pairs for substitution, typically used in agent network HOCON files.
+    # Each key can be referenced in agent configs using the ${key} syntax.
+    # Do not define agents or tools directly here—this file only provides reusable values.
+
+    # Gemini via Vertex AI using Application Default Credentials (ADC) instead of an API key -
+    # for enterprise deployments where issuing individual API keys isn't desired or allowed.
+    # Unlike the ChatVertexAI class in docs/user_guide.md's "Gemini with ADC" section, this uses
+    # the built-in `gemini` class (no extra dependency) with no explicit project/location keys:
+    # Vertex mode is picked up entirely from these env vars, resolved by the Google client itself:
+    #
+    #   GOOGLE_GENAI_USE_VERTEXAI="true"
+    #   GOOGLE_CLOUD_PROJECT="your-gcp-project-id"
+    #   GOOGLE_CLOUD_LOCATION="us-central1"   # or another Vertex AI region
+    #
+    # A service account with `roles/aiplatform.user` (GCP VM/Cloud Run/GKE) resolves credentials
+    # automatically; for local dev, run `gcloud auth application-default login` first. Do NOT set
+    # GOOGLE_API_KEY alongside these - the two auth paths are mutually exclusive.
+    #
+    # To use this config, copy it over this directory's llm_config.hocon file.
+    "llm_config" {
+        "class": "gemini",
+        "model_name": "gemini-3-flash",
+    }
+}

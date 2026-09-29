@@ -22,6 +22,7 @@
       - [Gemini with ADC](#gemini-with-adc)
         - [Gemini with ADC Prerequisites](#gemini-with-adc-prerequisites)
         - [Gemini with ADC Configuration](#gemini-with-adc-configuration)
+        - [Simpler ADC Alternative: Built-in gemini Class](#simpler-adc-alternative-built-in-gemini-class)
     - [Ollama](#ollama)
       - [Ollama Prerequisites](#ollama-prerequisites)
       - [Ollama Configuration](#ollama-configuration)
@@ -537,7 +538,8 @@ API keys is not desirable or permitted.
     gcloud auth application-default login
     ```
 
-3. Install the required package (already included in `requirements.txt`):
+3. Install the required package. This is a separate, optional dependency — it is **not**
+   included in `requirements.txt` by default, since only this `ChatVertexAI`-based path needs it:
 
     ```bash
     pip install langchain-google-vertexai
@@ -585,6 +587,30 @@ No API key is required — authentication is handled transparently by Google's A
 For more information on Vertex AI authentication and available models, see the
 [Vertex AI documentation](https://cloud.google.com/vertex-ai/docs/authentication) and the
 [LangChain ChatVertexAI reference](https://python.langchain.com/docs/integrations/chat/google_vertex_ai_palm/).
+
+##### Simpler ADC Alternative: Built-in gemini Class
+
+`ChatVertexAI` (above) is also flagged by LangChain itself as deprecated in favor of
+`langchain-google-genai`, which neuro-san's built-in `class: "gemini"` already uses under the
+hood. That class can be routed into Vertex AI/ADC mode purely through environment variables,
+with no explicit `project`/`location` keys in the config and no extra dependency to install:
+
+```hocon
+llm_config: {
+    class: "gemini"
+    model_name: "gemini-3-flash"
+}
+```
+
+```bash
+GOOGLE_GENAI_USE_VERTEXAI="true"
+GOOGLE_CLOUD_PROJECT="your-gcp-project-id"
+GOOGLE_CLOUD_LOCATION="us-central1"   # or another Vertex AI region
+```
+
+See [`config/vertex_adc_llm_config.hocon`](../config/vertex_adc_llm_config.hocon) for a
+ready-to-use version of this config, and run `ns check-config` to verify it can actually
+connect before deploying it.
 
 ### Ollama
 

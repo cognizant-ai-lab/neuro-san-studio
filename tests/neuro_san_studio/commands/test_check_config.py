@@ -23,6 +23,7 @@ from unittest.mock import MagicMock
 from unittest.mock import patch
 
 from neuro_san_studio.commands.check_config import CheckConfigCommand
+from neuro_san_studio.commands.check_config import _adc_hint
 from neuro_san_studio.commands.check_config import _expand_fallbacks
 from neuro_san_studio.commands.check_config import extract_llm_configs_from_agent_network
 from neuro_san_studio.commands.check_config import extract_llm_configs_from_studio_config
@@ -335,6 +336,30 @@ class TestParseHoconFileResolvesRelativeInclude(TestCase):
 
 
 _CHECKS_MODULE = "neuro_san_studio.commands.check_config"
+
+
+class TestAdcHint(TestCase):
+    """Tests for _adc_hint's Google ADC error detection."""
+
+    def test_recognizes_default_credentials_error(self):
+        """A real DefaultCredentialsError produces an actionable, specific hint."""
+        try:
+            from google.auth.exceptions import DefaultCredentialsError  # pylint: disable=import-outside-toplevel
+        except ImportError:
+            self.skipTest("google-auth not installed in this environment")
+        hint = _adc_hint(DefaultCredentialsError("Your default credentials were not found."))
+        self.assertIsNotNone(hint)
+        self.assertIn("gcloud auth application-default login", hint)
+        self.assertIn("vertex_adc_llm_config.hocon", hint)
+
+    def test_unrelated_exception_returns_none(self):
+        """A non-ADC exception (e.g. a bad API key) gets no hint."""
+        self.assertIsNone(_adc_hint(ValueError("invalid api key")))
+
+    def test_missing_google_auth_degrades_to_none(self):
+        """If google-auth can't be imported at all, _adc_hint must not raise."""
+        with patch.dict("sys.modules", {"google.auth.exceptions": None}):
+            self.assertIsNone(_adc_hint(Exception("anything")))
 
 
 class TestCheckConfigCommand(TestCase):

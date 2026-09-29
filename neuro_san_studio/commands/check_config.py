@@ -102,6 +102,20 @@ def _is_sensitive_key(key: str) -> bool:
     return False
 
 
+def _adc_hint(exc: Exception) -> Optional[str]:
+    """Return an actionable hint if *exc* is Google's ADC-not-found error, else None."""
+    try:
+        from google.auth.exceptions import DefaultCredentialsError  # pylint: disable=import-outside-toplevel
+    except ImportError:
+        return None
+    if not isinstance(exc, DefaultCredentialsError):
+        return None
+    return (
+        "Hint: run 'gcloud auth application-default login', or deploy where the runtime "
+        "service account has Vertex AI access. See config/vertex_adc_llm_config.hocon."
+    )
+
+
 def redact_llm_config(config: Dict[str, Any]) -> Dict[str, Any]:
     """
     Return a shallow copy of *config* with sensitive values replaced by
@@ -331,6 +345,9 @@ async def test_llm_configs(
             successes.append((labels, llm_cfg))
         except Exception as exc:  # pylint: disable=broad-except
             error_msg = f"Failed to invoke LLM: {exc}"
+            hint: Optional[str] = _adc_hint(exc)
+            if hint:
+                error_msg = f"{error_msg}\n    {hint}"
             print(f"    FAIL (invocation): {error_msg}")
             traceback.print_exc()
             failures.append((labels, llm_cfg, error_msg))
