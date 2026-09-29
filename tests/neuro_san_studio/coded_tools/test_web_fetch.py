@@ -36,7 +36,7 @@ class TestWebFetch(TestCase):  # pylint: disable=too-many-public-methods
         self.sly_data: dict = {}
 
     def test_html_fetch_returns_correct_keys(self):
-        """Tests that fetching an HTML page returns a result with url, content, and retrieved_at keys."""
+        """Tests that an HTML fetch returns url, final_url, content and retrieved_at keys."""
         with (
             patch.object(
                 SafeFetch, "get_content_type", new=AsyncMock(return_value=("text/html", None, "http://example.com"))
@@ -46,6 +46,7 @@ class TestWebFetch(TestCase):  # pylint: disable=too-many-public-methods
             result = asyncio.run(self.tool.async_invoke({"url": "http://example.com"}, self.sly_data))
 
         self.assertEqual(result["url"], "http://example.com")
+        self.assertEqual(result["final_url"], "http://example.com")
         self.assertEqual(result["content"], "Hello world")
         self.assertIn("retrieved_at", result)
 
@@ -99,8 +100,9 @@ class TestWebFetch(TestCase):  # pylint: disable=too-many-public-methods
         """A link without a .pdf suffix that redirects to a .pdf served as a generic download type is parsed as PDF.
 
         The suffix fallback must look at the URL the headers came from, not the
-        requested one. The PDF fetch itself still starts from the requested URL so
-        every hop is re-validated on the way down, and the result keeps that URL.
+        requested one. The PDF fetch then starts from that final URL (one walk of the
+        redirect chain, body and classification from the same place); the result keeps
+        the requested URL as "url" and reports the fetched one as "final_url".
         """
         requested: str = "http://example.com/download?id=42"
         final: str = "http://cdn.example.com/files/report.pdf"
@@ -113,9 +115,56 @@ class TestWebFetch(TestCase):  # pylint: disable=too-many-public-methods
             result = asyncio.run(self.tool.async_invoke({"url": requested}, self.sly_data))
 
         mock_pdf.assert_awaited_once()
-        self.assertEqual(mock_pdf.await_args.args[0], requested)
+        self.assertEqual(mock_pdf.await_args.args[0], final)
         self.assertEqual(result["content"], "PDF content")
         self.assertEqual(result["url"], requested)
+        self.assertEqual(result["final_url"], final)
+
+    def test_redirected_text_page_is_fetched_from_final_url_with_domain_rules(self) -> None:
+        """Tests that a redirected HTML page is fetched from the probe's final URL, with the domain rules forwarded.
+
+        The redirect chain is walked once (by the probe), so the body comes from the
+        same place the classification did. "url" stays the requested URL so the caller
+        can match the result to its request; "final_url" says where the content came
+        from. The allow-list must still reach the fetch, which re-validates final_url.
+        """
+        requested: str = "http://example.com/go"
+        final: str = "http://www.example.com/landing"
+        with (
+            patch.object(SafeFetch, "get_content_type", new=AsyncMock(return_value=("text/html", None, final))),
+            patch.object(SafeFetch, "fetch_text", new=AsyncMock(return_value="Landed")) as mock_text,
+        ):
+            result = asyncio.run(
+                self.tool.async_invoke({"url": requested, "allowed_domains": ["example.com"]}, self.sly_data)
+            )
+
+        mock_text.assert_awaited_once()
+        self.assertEqual(mock_text.await_args.args[0], final)
+        self.assertEqual(mock_text.await_args.kwargs["allowed_domains"], ["example.com"])
+        self.assertEqual(result["url"], requested)
+        self.assertEqual(result["final_url"], final)
+        self.assertEqual(result["content"], "Landed")
+
+    def test_redirect_logs_redact_server_controlled_url(self) -> None:
+        """Tests that a presigned redirect target is logged without its query, while the result keeps the full URL.
+
+        The redirect target is chosen by the server and may carry a bearer token in its query
+        string; log lines must not persist it. The agent still receives the full final URL,
+        which it needs to cite the document.
+        """
+        requested: str = "http://example.com/report"
+        final: str = "http://files.example.com/report.pdf?X-Amz-Signature=secret-token"
+        with (
+            patch.object(SafeFetch, "get_content_type", new=AsyncMock(return_value=("application/pdf", None, final))),
+            patch.object(SafeFetch, "fetch_pdf_text", new=AsyncMock(return_value="PDF content")),
+        ):
+            with self.assertLogs("WebFetch", level="INFO") as logs:
+                result = asyncio.run(self.tool.async_invoke({"url": requested}, self.sly_data))
+
+        joined: str = "\n".join(logs.output)
+        self.assertNotIn("secret-token", joined)
+        self.assertIn("redirected to http://files.example.com/report.pdf?[redacted]", joined)
+        self.assertEqual(result["final_url"], final)
 
     def test_redirected_generic_download_without_pdf_suffix_is_unsupported(self) -> None:
         """A generic download type whose final URL has no .pdf suffix is still rejected, not guessed as PDF."""
