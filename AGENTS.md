@@ -30,7 +30,7 @@ Custom Python tools live in `coded_tools/`.
 ## 2. Coding style
 
 - Clean Code Standards: follow Robert C. Martin’s (Uncle Bob) *Clean Code* and *The Clean Coder* recommendations
-- Keep things simple, to the point, readable and maintainable.
+- Keep things simple, to the point, readable, maintainable and individually testable.
 - Line length: 119 characters, both for .py and .md files.
 
 ### 2.1 Python
@@ -57,7 +57,7 @@ Custom Python tools live in `coded_tools/`.
   class; check the interface, or add an interface method that answers the question.
 - Comment the non-obvious: which `_method`s are overrides, threading and lifecycle behavior, design decisions, and
   a breadcrumb to related code or documentation. Order lifecycle methods logically, `start()` before `stop()`.
-- Docstrings required on functions, classes and modules.
+- Docstrings required on classes and functions/methods.
 - Use long-form flags (`--force`, not `-f`)
 - Cover new behavior with a test: a unit test for a coded tool, an integration fixture for a network.
 
