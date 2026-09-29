@@ -43,7 +43,7 @@ jobs:
         export PYTHONPATH=".:${PYTHONPATH:-}"
         build_scripts/server_start.sh
         if ! pytest --capture=no --verbose \
-            -m "integration_agent_network_designer" --timer-top-n 100; then
+            -m "integration_agent_network_designer" --durations=100; then
           echo "===================================================="
           echo "=== Server Log ==="
           cat logs/server.log || echo "(no server.log found)"

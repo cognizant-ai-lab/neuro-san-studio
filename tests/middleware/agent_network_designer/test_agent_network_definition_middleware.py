@@ -26,6 +26,8 @@ from typing import Any
 from unittest import IsolatedAsyncioTestCase
 from unittest.mock import patch
 
+from langchain_core.messages import AIMessage
+
 from coded_tools.agent_network_editor.constants import AGENT_NETWORK_DEFINITION
 from coded_tools.agent_network_editor.constants import AGENT_NETWORK_METADATA
 from coded_tools.agent_network_editor.constants import AGENT_NETWORK_NAME
@@ -71,7 +73,7 @@ S3_BUCKET: str = "bucket"
 MIDDLEWARE_LOGGER: str = "AgentNetworkDefinitionMiddleware"
 
 
-class TestAgentNetworkDefinitionMiddleware(IsolatedAsyncioTestCase):
+class TestAgentNetworkDefinitionMiddleware(IsolatedAsyncioTestCase):  # pylint: disable=too-many-public-methods
     """
     Tests for AgentNetworkDefinitionMiddleware.
 
@@ -85,6 +87,11 @@ class TestAgentNetworkDefinitionMiddleware(IsolatedAsyncioTestCase):
     A load whose "tools" yields no usable agent is a failed load, not a silent no-op, and the
     S3 path sets AGENT_NETWORK_NAME only when a definition was loaded, like the HOCON path
     always did (issue #1426); the tests for both are here as well.
+
+    Also covers the error each branch of _hocon_to_config reports for a file that cannot be
+    loaded (issue #1440): a parse or substitution failure, an unsupported or upper-case
+    extension, an unreadable path and a missing file, driven through the real restorer, plus
+    the hook's hand-off of that error to the client.
     """
 
     def setUp(self) -> None:
@@ -136,6 +143,158 @@ class TestAgentNetworkDefinitionMiddleware(IsolatedAsyncioTestCase):
                 "generated/does_not_exist.hocon"
             )
         self.assertEqual(resolved, "registries/generated/does_not_exist.hocon")
+
+    # Tests for the error branches of _hocon_to_config (issue #1440). Every message here is what the
+    # client sees: abefore_model puts self.error_message straight into the AIMessage it jumps to end with.
+
+    def _write_config_file(self, name: str, contents: str) -> str:
+        """
+        Write raw text to a file in the scratch directory, bypassing the JSON writer so the
+        test can produce content no serializer would emit.
+
+        :param name: File name including extension; the extension is what the screen under test reads
+        :param contents: Exact bytes to write, malformed on purpose in most of these tests
+        :return: The absolute path, which _resolve_hocon_path uses as-is
+        """
+        path: str = os.path.join(self.temp_dir, name)
+        with open(path, "w", encoding="utf-8") as config_file:
+            config_file.write(contents)
+        return path
+
+    async def _assert_load_error(
+        self, name: str, contents: str | None, expected: str, details: tuple[str, ...] = ()
+    ) -> AgentNetworkDefinitionMiddleware:
+        """
+        Load a config file through _hocon_to_config and check the error it reports.
+
+        :param name: File name to load from the scratch directory
+        :param contents: Text to write first, or None to write nothing, for a path that is absent or a
+                directory the test created
+        :param expected: Substring the reported message and the logged ERROR line must both contain
+        :param details: Additional substrings required in the reported message
+        :return: Middleware instance that reported the error
+        """
+        path: str = (
+            self._write_config_file(name, contents) if contents is not None else os.path.join(self.temp_dir, name)
+        )
+        middleware: AgentNetworkDefinitionMiddleware = AgentNetworkDefinitionMiddleware(sly_data={})
+
+        with self.assertLogs(MIDDLEWARE_LOGGER, level="ERROR") as captured:
+            config: dict[str, Any] | None = await middleware._hocon_to_config(path)  # pylint: disable=protected-access
+
+        self.assertIsNone(config)
+        self.assertIn(expected, middleware.error_message)
+        self.assertIn(path, middleware.error_message)
+        self.assertIn(expected, captured.output[0])
+        for detail in details:
+            self.assertIn(detail, middleware.error_message)
+        return middleware
+
+    async def test_abefore_model_routes_config_load_error_to_end(self) -> None:
+        """
+        A config load failure is returned to the client through abefore_model as one AIMessage carrying
+        the error text and an end jump, is logged once at ERROR, and sets neither the name nor the
+        definition nor the metadata block, so nothing is left behind for a network that did not load.
+        """
+        path: str = self._write_config_file("malformed.hocon", '{"tools": [{"name": "a")')
+        sly_data: dict[str, Any] = {AGENT_NETWORK_HOCON_FILE: path}
+        middleware: AgentNetworkDefinitionMiddleware = AgentNetworkDefinitionMiddleware(sly_data=sly_data)
+
+        with self.assertLogs(MIDDLEWARE_LOGGER, level="WARNING") as captured:
+            result: dict[str, Any] | None = await middleware.abefore_model({}, None)
+
+        self.assertIsInstance(result, dict)
+        self.assertEqual(result.get("jump_to"), "end")
+        messages: list[Any] = result.get("messages")
+        self.assertEqual(len(messages), 1)
+        self.assertIsInstance(messages[0], AIMessage)
+        self.assertEqual(messages[0].content, middleware.error_message)
+        self.assertIn("Failed to parse agent network config file", middleware.error_message)
+        self.assertNotIn(AGENT_NETWORK_NAME, sly_data)
+        self.assertNotIn(AGENT_NETWORK_DEFINITION, sly_data)
+        self.assertNotIn(AGENT_NETWORK_METADATA, sly_data)
+        # Exactly one record at WARNING or above, and it is the ERROR carrying the error text.
+        self.assertEqual(len(captured.records), 1)
+        self.assertEqual(self._messages_at_level(captured.records, "ERROR"), [middleware.error_message])
+
+    async def test_hocon_to_config_reports_parse_failure_for_malformed_hocon(self) -> None:
+        """
+        A .hocon file with a syntax error is reported as a parse failure, not an unsupported file.
+
+        The restorer re-raises pyparsing's ParseSyntaxException as ValueError, which used to land in
+        the "Unsupported" branch and tell a user with a typo that the file type was wrong.
+        """
+        await self._assert_load_error(
+            "malformed.hocon",
+            '{"tools": [{"name": "a")',
+            "Failed to parse agent network config file",
+            ("ParseSyntaxException",),
+        )
+
+    async def test_hocon_to_config_reports_parse_failure_for_unresolved_substitution(self) -> None:
+        """
+        A .hocon file with an unresolved ${...} reference is reported as a parse failure.
+
+        pyhocon raises ConfigSubstitutionException after parsing succeeds; the restorer folds it into
+        the same ValueError, so it must surface the same way.
+        """
+        await self._assert_load_error(
+            "missing_sub.hocon",
+            "tools = [${nope}]",
+            "Failed to parse agent network config file",
+            ("ConfigSubstitutionException", "nope"),
+        )
+
+    async def test_hocon_to_config_reports_parse_failure_for_malformed_json(self) -> None:
+        """
+        A .json file that is not valid JSON is reported as a parse failure: the restorer accepts
+        .json as readily as .hocon, and its JSONDecodeError arrives as the same ValueError.
+        """
+        await self._assert_load_error(
+            "bad.json", '{"tools": [}', "Failed to parse agent network config file", ("JSONDecodeError",)
+        )
+
+    async def test_hocon_to_config_reports_unsupported_extension_and_names_the_accepted_ones(self) -> None:
+        """
+        A file whose extension is neither .hocon nor .json is the one genuinely unsupported case, and
+        the message names the extensions that would work.
+        """
+        middleware: AgentNetworkDefinitionMiddleware = await self._assert_load_error(
+            "wrong.txt", "tools = []", "Unsupported agent network config file"
+        )
+        self.assertIn(".hocon", middleware.error_message)
+        self.assertIn(".json", middleware.error_message)
+
+    async def test_hocon_to_config_reports_unsupported_extension_before_checking_existence(self) -> None:
+        """
+        A path that does not exist and ends in an unsupported extension is reported as unsupported, not
+        as not found: the extension check runs before the restorer reads anything, so a typo'd path with
+        the wrong suffix gets the more actionable message.
+        """
+        await self._assert_load_error("absent.txt", None, "Unsupported agent network config file")
+
+    async def test_hocon_to_config_rejects_an_upper_case_extension(self) -> None:
+        """
+        The extension check is case-sensitive, like the restorer's own, so network.HOCON is unsupported.
+        Were the check ever relaxed, the restorer would still reject the file with its ValueError and the
+        parse handler would report it as "Failed to parse": the #1440 mix-up in reverse.
+        """
+        await self._assert_load_error("network.HOCON", "tools = []", "Unsupported agent network config file")
+
+    async def test_hocon_to_config_reports_read_failure_for_a_directory(self) -> None:
+        """
+        A directory whose name ends in .hocon passes the extension check and then fails to open, which
+        the OSError handler reports as a read failure rather than a parse failure or a missing file.
+        """
+        os.mkdir(os.path.join(self.temp_dir, "directory.hocon"))
+        await self._assert_load_error("directory.hocon", None, "Failed to read agent network config file")
+
+    async def test_hocon_to_config_reports_missing_file(self) -> None:
+        """
+        A supported extension that does not exist is reported as missing, not as a parse failure:
+        the extension screen passes it through to the restorer, which raises FileNotFoundError.
+        """
+        await self._assert_load_error("absent.hocon", None, "Agent network config file not found")
 
     # Tests for the metadata block abefore_model returns in sly_data after a load (issue #1398).
 
