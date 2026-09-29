@@ -31,6 +31,7 @@ from neuro_san.interfaces.coded_tool import CodedTool
 from neuro_san_studio.coded_tools.base_rag import BaseRag
 from neuro_san_studio.coded_tools.base_rag import PostgresConfig
 from neuro_san_studio.coded_tools.utils.safe_fetch import SafeFetch
+from neuro_san_studio.coded_tools.utils.url_policy import UrlPolicy
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -46,7 +47,8 @@ class WebpageRag(CodedTool, BaseRag):
     Content is downloaded through the shared SSRF-hardened fetch path (SafeFetch):
     private/loopback/reserved hosts are rejected, DNS records are validated at
     connection time (anti DNS-rebinding), redirects are followed up to a bounded
-    number of hops with every hop re-validated, and response sizes are capped. Each
+    number of hops with every hop re-validated, the body is fetched from the chain's
+    final URL (recorded as the Document's source), and response sizes are capped. Each
     URL is routed by content type: PDFs are parsed with pypdf
     (via SafeFetch.fetch_pdf_text) and HTML/text is stripped to plain text, so a PDF
     link is ingested as readable text instead of being embedded as binary garbage.
@@ -209,7 +211,10 @@ class WebpageRag(CodedTool, BaseRag):
             if isinstance(result, Document):
                 documents.append(result)
             elif result is not None:
-                logger.error("Skipped a URL after an unexpected error: %r", result)
+                # Same redaction as the per-URL catch: the message may quote the fetched URL.
+                logger.error(
+                    "Skipped a URL after an unexpected error: %s", UrlPolicy.redact_urls_in_text(repr(result))
+                )
         return documents
 
     async def _load_single(self, url: str, session: ClientSession, semaphore: Semaphore) -> Document | None:
@@ -243,14 +248,26 @@ class WebpageRag(CodedTool, BaseRag):
                 prefetched_text: str | None
                 final_url: str
                 content_type, prefetched_text, final_url = await SafeFetch.get_content_type(validated_url, session)
+                # The redirect target is server-controlled and may be a presigned URL carrying a
+                # bearer token in its query, so it is logged redacted (scheme, host, path only).
+                if final_url != validated_url:
+                    logger.info("%s redirected to %s", validated_url, UrlPolicy.redact_for_log(final_url))
 
-                # Classify by the URL the headers came from (after redirects), so a link
-                # that redirects to a .pdf served as a generic download type is parsed
-                # as a PDF. The source metadata below still records the requested URL.
+                # Classify by the URL the headers came from (after redirects), fetch from
+                # it, and record it as the source. A link that redirects to a .pdf served
+                # as a generic download type is parsed as a PDF. Fetching from final_url
+                # avoids a second walk of the redirect chain and keeps the body and the
+                # classification from the same place (the probe re-validated every hop,
+                # and the fetch re-validates final_url at entry). Recording final_url as
+                # the source means citations point at the document, not the redirector,
+                # and two configured links to one document collapse to one source. The
+                # source is the probe's terminal URL: a redirect that appears only at fetch
+                # time is followed by SafeFetch under the same rules, but its fetch methods
+                # return the body alone, so it is not reflected here.
                 if SafeFetch.is_pdf(content_type, final_url):
-                    pdf_text: str = await SafeFetch.fetch_pdf_text(validated_url, session)
+                    pdf_text: str = await SafeFetch.fetch_pdf_text(final_url, session)
                     # PDFs carry no HTML metadata; record only the source.
-                    return Document(page_content=pdf_text, metadata={"source": validated_url})
+                    return Document(page_content=pdf_text, metadata={"source": final_url})
 
                 # An empty/missing Content-Type is treated as text rather than skipped:
                 # WebBaseLoader (the loader this replaces) fetched regardless of type,
@@ -268,7 +285,7 @@ class WebpageRag(CodedTool, BaseRag):
                 if prefetched_text is not None:
                     raw = prefetched_text
                 else:
-                    raw = await SafeFetch.fetch_raw(validated_url, session)
+                    raw = await SafeFetch.fetch_raw(final_url, session)
 
                 # BeautifulSoup parsing is blocking CPU work. Calling it directly would
                 # occupy the single event-loop thread for its whole duration and freeze
@@ -276,14 +293,17 @@ class WebpageRag(CodedTool, BaseRag):
                 # returned. to_thread() runs _to_document on a background worker thread
                 # and awaits its result, so the event loop stays free to drive the other
                 # downloads meanwhile (SafeFetch.fetch_pdf_text offloads pypdf the same way).
-                document: Document = await to_thread(self._to_document, validated_url, raw)
+                document: Document = await to_thread(self._to_document, final_url, raw)
         # A broad catch keeps the batch resilient: URL-policy failures (ValueError),
         # network/HTTP failures (ClientError), and HTML-parse failures (e.g. a
         # RecursionError on pathologically nested markup) all mean "skip this one
         # URL", never "abort the whole load". The error is logged so nothing fails
         # silently.
         except Exception as error:  # pylint: disable=broad-exception-caught
-            logger.error("Failed to load webpage %s: %s", url, error)
+            # SafeFetch already names URLs in its messages in redacted form; this text pass is the
+            # fallback for other libraries' messages (aiohttp, BeautifulSoup) that may quote the
+            # server-controlled final_url, so the log carries the failure, not a token.
+            logger.error("Failed to load webpage %s: %s", url, UrlPolicy.redact_urls_in_text(str(error)))
             return None
 
         logger.info("Successfully loaded webpage from %s", validated_url)
