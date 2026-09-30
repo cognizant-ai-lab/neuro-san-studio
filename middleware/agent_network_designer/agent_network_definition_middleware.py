@@ -57,6 +57,7 @@ from middleware.agent_network_designer.persistence.file_system_agent_network_per
 )
 
 SUPPORTED_CONFIG_EXTENSIONS: tuple[str, ...] = (".hocon", ".json")
+CONFIG_FILE_UNAVAILABLE_MESSAGE: str = "Error: Agent network config file is unavailable or not permitted."
 AGENT_NETWORK_HOCON_FILE: str = "agent_network_hocon_file"
 AGENT_RESERVATIONS: str = "agent_reservations"
 RESERVATION_ID: str = "reservation_id"
@@ -534,7 +535,7 @@ class AgentNetworkDefinitionMiddleware(AgentMiddleware):
         # relative branch where the leading slash is stripped — preventing the input
         # from bypassing base_dir.
         if candidate.is_absolute() and (os.name != "nt" or candidate.drive):
-            return candidate.as_posix()
+            return self._confine_to_registries_root(candidate.as_posix())
 
         # Strip leading separators so a user-supplied "/foo.hocon" cannot escape base_dir.
         # POSIX absolute paths are handled above; this catches the Windows drive-rooted
@@ -547,14 +548,46 @@ class AgentNetworkDefinitionMiddleware(AgentMiddleware):
         # covers any repo-root-relative path, including "registries/generated/foo.hocon"
         # or files outside the registries folder.
         if Path(trimmed_input).is_file():
-            return trimmed_input
+            return self._confine_to_registries_root(trimmed_input)
 
         # Derive the base registries directory from AGENT_MANIFEST_FILE (the dirname of the
         # first non-empty entry), falling back to the default registries directory. The
         # parse is shared with the persistor so loads and saves cannot drift apart again.
         first_manifest: str = FileSystemAgentNetworkPersistor.get_first_manifest_path()
         base_dir: str = os.path.dirname(first_manifest) if first_manifest else DEFAULT_REGISTRIES_DIR
-        return (Path(base_dir) / trimmed_input).as_posix()
+        return self._confine_to_registries_root((Path(base_dir) / trimmed_input).as_posix())
+
+    def _confine_to_registries_root(self, file_reference: str) -> str | None:
+        """
+        Allow only paths whose canonical target is inside a configured registry directory.
+
+        :param file_reference: Candidate file path selected by _resolve_hocon_path
+        :return: The original candidate path, or None after reporting a disallowed path
+        """
+        manifest_paths: list[str] = [
+            path for path in os.environ.get("AGENT_MANIFEST_FILE", "").split(os.pathsep) if path
+        ]
+        allowed_roots: list[str] = [os.path.dirname(path) if os.path.dirname(path) else "." for path in manifest_paths]
+        if not allowed_roots:
+            allowed_roots = [DEFAULT_REGISTRIES_DIR]
+
+        canonical_file: str = os.path.realpath(file_reference)
+        for allowed_root in allowed_roots:
+            canonical_root: str = os.path.realpath(allowed_root)
+            try:
+                common_path: str = os.path.commonpath((canonical_file, canonical_root))
+            except ValueError:
+                continue
+            if os.path.normcase(common_path) == os.path.normcase(canonical_root):
+                return canonical_file
+
+        self.logger.error(
+            "Rejected agent network config path %s; its canonical target is outside configured registry roots %s",
+            canonical_file,
+            allowed_roots,
+        )
+        self.error_message = CONFIG_FILE_UNAVAILABLE_MESSAGE
+        return None
 
     async def _hocon_to_config(self, network_hocon_file: str | None) -> dict[str, Any] | None:
         """
@@ -578,12 +611,12 @@ class AgentNetworkDefinitionMiddleware(AgentMiddleware):
         # comparison is a case-sensitive endswith() to match the restorer's own check exactly, so any
         # file accepted here is one the restorer accepts too.
         if not file_reference.endswith(SUPPORTED_CONFIG_EXTENSIONS):
-            error_message: str = (
-                f"Error: Unsupported agent network config file '{file_reference}'. "
-                f"Expected one of: {', '.join(SUPPORTED_CONFIG_EXTENSIONS)}."
+            self.logger.error(
+                "Unsupported agent network config path %s; expected one of %s",
+                file_reference,
+                SUPPORTED_CONFIG_EXTENSIONS,
             )
-            self.logger.error(error_message)
-            self.error_message = error_message
+            self.error_message = CONFIG_FILE_UNAVAILABLE_MESSAGE
             return None
 
         # Note we don't need to cache this because we only expect to read the file once.
@@ -591,16 +624,14 @@ class AgentNetworkDefinitionMiddleware(AgentMiddleware):
             hocon = AbstractAsyncConfigRestorer(file_purpose="get_agent_network_definition", must_exist=True)
             return await hocon.async_restore(file_reference=file_reference)
         except FileNotFoundError:
-            error_message = f"Error: Agent network config file not found: {file_reference}"
-            self.logger.error(error_message)
-            self.error_message = error_message
+            self.logger.error("Agent network config file not found: %s", file_reference)
+            self.error_message = CONFIG_FILE_UNAVAILABLE_MESSAGE
             return None
         except OSError as os_error:
             # Catches PermissionError, IsADirectoryError, and other OS-level read failures
             # whose specific subclasses differ across operating systems.
-            error_message = f"Error: Failed to read agent network config file '{file_reference}'. {os_error}"
-            self.logger.error(error_message)
-            self.error_message = error_message
+            self.logger.error("Failed to read agent network config file %s: %s", file_reference, os_error)
+            self.error_message = CONFIG_FILE_UNAVAILABLE_MESSAGE
             return None
         except ValueError as value_error:
             # How the restorer reports the parser and substitution failures past its extension check: it catches
