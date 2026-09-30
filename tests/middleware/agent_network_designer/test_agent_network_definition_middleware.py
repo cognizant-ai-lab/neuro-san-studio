@@ -167,14 +167,18 @@ class TestAgentNetworkDefinitionMiddleware(IsolatedAsyncioTestCase):  # pylint: 
         return path
 
     async def _assert_load_error(
-        self, name: str, contents: str | None, expected: str, details: tuple[str, ...] = ()
+        self,
+        name: str,
+        contents: str | None,
+        expected: tuple[str, str],
+        details: tuple[str, ...] = (),
     ) -> AgentNetworkDefinitionMiddleware:
         """
         Load a config file through _hocon_to_config and check the error it reports.
 
         :param name: File name to load from the scratch directory
         :param contents: Text to write first, or None to leave the file absent
-        :param expected: Substring required in the reported message
+        :param expected: Client-facing message substring and server-log substring
         :param details: Additional substrings required in the reported message
         :return: Middleware instance that reported the error
         """
@@ -187,9 +191,10 @@ class TestAgentNetworkDefinitionMiddleware(IsolatedAsyncioTestCase):  # pylint: 
             config: dict[str, Any] | None = await middleware._hocon_to_config(path)  # pylint: disable=protected-access
 
         self.assertIsNone(config)
-        self.assertIn(expected, middleware.error_message)
+        self.assertIn(expected[0], middleware.error_message)
+        self.assertIn(expected[1], captured.output[0])
         self.assertIn(path, captured.output[0])
-        if expected == CONFIG_FILE_UNAVAILABLE_MESSAGE:
+        if expected[0] == CONFIG_FILE_UNAVAILABLE_MESSAGE:
             self.assertNotIn(path, middleware.error_message)
         else:
             self.assertIn(path, middleware.error_message)
@@ -231,7 +236,7 @@ class TestAgentNetworkDefinitionMiddleware(IsolatedAsyncioTestCase):  # pylint: 
         await self._assert_load_error(
             "malformed.hocon",
             '{"tools": [{"name": "a")',
-            "Failed to parse agent network config file",
+            ("Failed to parse agent network config file", "Failed to parse agent network config file"),
             ("ParseSyntaxException",),
         )
 
@@ -245,7 +250,7 @@ class TestAgentNetworkDefinitionMiddleware(IsolatedAsyncioTestCase):  # pylint: 
         await self._assert_load_error(
             "missing_sub.hocon",
             "tools = [${nope}]",
-            "Failed to parse agent network config file",
+            ("Failed to parse agent network config file", "Failed to parse agent network config file"),
             ("ConfigSubstitutionException", "nope"),
         )
 
@@ -255,35 +260,42 @@ class TestAgentNetworkDefinitionMiddleware(IsolatedAsyncioTestCase):  # pylint: 
         .json as readily as .hocon, and its JSONDecodeError arrives as the same ValueError.
         """
         await self._assert_load_error(
-            "bad.json", '{"tools": [}', "Failed to parse agent network config file", ("JSONDecodeError",)
+            "bad.json",
+            '{"tools": [}',
+            ("Failed to parse agent network config file", "Failed to parse agent network config file"),
+            ("JSONDecodeError",),
         )
 
     async def test_hocon_to_config_reports_generic_error_for_unsupported_extension(self) -> None:
         """
         A file whose extension is neither .hocon nor .json is the one genuinely unsupported case, and
-        its client-facing message is the same generic response used for missing and disallowed paths.
+        its client-facing message is generic while the server log records the unsupported extension.
         """
         await self._assert_load_error(
             "wrong.txt",
             "tools = []",
-            CONFIG_FILE_UNAVAILABLE_MESSAGE,
+            (CONFIG_FILE_UNAVAILABLE_MESSAGE, "Unsupported agent network config path"),
         )
 
     async def test_hocon_to_config_reports_unsupported_extension_before_checking_existence(self) -> None:
         """
-        A path that does not exist and ends in an unsupported extension is reported as unsupported, not
-        as not found: the extension check runs before the restorer reads anything, so a typo'd path with
-        the wrong suffix gets the more actionable message.
+        The server log identifies the unsupported extension before any file-existence check, while the
+        client receives the same generic response used for missing and disallowed paths.
         """
-        await self._assert_load_error("absent.txt", None, CONFIG_FILE_UNAVAILABLE_MESSAGE)
+        await self._assert_load_error(
+            "absent.txt", None, (CONFIG_FILE_UNAVAILABLE_MESSAGE, "Unsupported agent network config path")
+        )
 
     async def test_hocon_to_config_rejects_an_upper_case_extension(self) -> None:
         """
         The extension check is case-sensitive, like the restorer's own, so network.HOCON is unsupported.
-        Were the check ever relaxed, the restorer would still reject the file with its ValueError and the
-        parse handler would report it as "Failed to parse": the #1440 mix-up in reverse.
+        The server log identifies the unsupported extension and the client receives a generic response.
         """
-        await self._assert_load_error("network.HOCON", "tools = []", CONFIG_FILE_UNAVAILABLE_MESSAGE)
+        await self._assert_load_error(
+            "network.HOCON",
+            "tools = []",
+            (CONFIG_FILE_UNAVAILABLE_MESSAGE, "Unsupported agent network config path"),
+        )
 
     async def test_hocon_to_config_reports_read_failure_for_a_directory(self) -> None:
         """
@@ -291,13 +303,19 @@ class TestAgentNetworkDefinitionMiddleware(IsolatedAsyncioTestCase):  # pylint: 
         the OSError handler logs as a read failure while returning a generic client-facing message.
         """
         os.mkdir(os.path.join(self.temp_dir, "directory.hocon"))
-        await self._assert_load_error("directory.hocon", None, CONFIG_FILE_UNAVAILABLE_MESSAGE)
+        await self._assert_load_error(
+            "directory.hocon",
+            None,
+            (CONFIG_FILE_UNAVAILABLE_MESSAGE, "Failed to read agent network config file"),
+        )
 
     async def test_hocon_to_config_reports_missing_file(self) -> None:
         """
-        A missing supported file is logged as missing and receives the generic client-facing response.
+        A missing supported file has a distinct log reason and the generic client-facing response.
         """
-        await self._assert_load_error("absent.hocon", None, CONFIG_FILE_UNAVAILABLE_MESSAGE)
+        await self._assert_load_error(
+            "absent.hocon", None, (CONFIG_FILE_UNAVAILABLE_MESSAGE, "Agent network config file not found")
+        )
 
     def test_resolve_rejects_absolute_path_outside_registry_root(self) -> None:
         """An absolute path outside configured registries is rejected without exposing it to the client."""
@@ -311,6 +329,7 @@ class TestAgentNetworkDefinitionMiddleware(IsolatedAsyncioTestCase):  # pylint: 
 
         self.assertIsNone(resolved)
         self.assertEqual(middleware.error_message, CONFIG_FILE_UNAVAILABLE_MESSAGE)
+        self.assertIn("Rejected agent network config path", captured.output[0])
         self.assertIn(outside_path, captured.output[0])
         self.assertNotIn(outside_path, middleware.error_message)
 
@@ -325,6 +344,7 @@ class TestAgentNetworkDefinitionMiddleware(IsolatedAsyncioTestCase):  # pylint: 
 
         self.assertIsNone(resolved)
         self.assertEqual(middleware.error_message, CONFIG_FILE_UNAVAILABLE_MESSAGE)
+        self.assertIn("Rejected agent network config path", captured.output[0])
         self.assertIn(os.path.realpath(outside_path), captured.output[0])
 
     def test_resolve_rejects_symlink_to_file_outside_registry_root(self) -> None:
@@ -346,6 +366,7 @@ class TestAgentNetworkDefinitionMiddleware(IsolatedAsyncioTestCase):  # pylint: 
 
         self.assertIsNone(resolved)
         self.assertEqual(middleware.error_message, CONFIG_FILE_UNAVAILABLE_MESSAGE)
+        self.assertIn("Rejected agent network config path", captured.output[0])
         self.assertIn(os.path.realpath(outside_path), captured.output[0])
 
     async def test_hocon_to_config_loads_absolute_path_inside_registry_root(self) -> None:

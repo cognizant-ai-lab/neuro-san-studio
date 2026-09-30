@@ -514,7 +514,7 @@ class AgentNetworkDefinitionMiddleware(AgentMiddleware):
         On invalid input, sets ``self.error_message`` and returns None.
 
         :param network_hocon_file: Agent network hocon file path
-        :return: The resolved file reference as a forward-slash path string, or None if invalid
+        :return: The canonical file reference using OS-native separators, or None if invalid
         """
         if not isinstance(network_hocon_file, str) or not network_hocon_file.strip():
             error_message: str = (
@@ -562,7 +562,7 @@ class AgentNetworkDefinitionMiddleware(AgentMiddleware):
         Allow only paths whose canonical target is inside a configured registry directory.
 
         :param file_reference: Candidate file path selected by _resolve_hocon_path
-        :return: The original candidate path, or None after reporting a disallowed path
+        :return: The canonical candidate path, or None after reporting a disallowed path
         """
         manifest_paths: list[str] = [
             path for path in os.environ.get("AGENT_MANIFEST_FILE", "").split(os.pathsep) if path
