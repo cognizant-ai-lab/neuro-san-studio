@@ -28,7 +28,7 @@
     #
     #   GOOGLE_GENAI_USE_VERTEXAI="true"
     #   GOOGLE_CLOUD_PROJECT="your-gcp-project-id"
-    #   GOOGLE_CLOUD_LOCATION="us-central1"   # or another Vertex AI region
+    #   GOOGLE_CLOUD_LOCATION="global"   # newer Gemini models are often global-only on Vertex AI
     #
     # A service account with `roles/aiplatform.user` (GCP VM/Cloud Run/GKE) resolves credentials
     # automatically; for local dev, run `gcloud auth application-default login` first. Do NOT set
@@ -37,6 +37,8 @@
     # To use this config, copy it over this directory's llm_config.hocon file.
     "llm_config" {
         "class": "gemini",
-        "model_name": "gemini-3-flash",
+        # A stable (non-preview) model - preview models are commonly unavailable via Vertex AI
+        # even when they work fine on the plain Gemini Developer API.
+        "model_name": "gemini-3.5-flash",
     }
 }

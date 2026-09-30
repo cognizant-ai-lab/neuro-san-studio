@@ -598,19 +598,20 @@ with no explicit `project`/`location` keys in the config and no extra dependency
 ```hocon
 llm_config: {
     class: "gemini"
-    model_name: "gemini-3-flash"
+    model_name: "gemini-3.5-flash"
 }
 ```
 
 ```bash
 GOOGLE_GENAI_USE_VERTEXAI="true"
 GOOGLE_CLOUD_PROJECT="your-gcp-project-id"
-GOOGLE_CLOUD_LOCATION="us-central1"   # or another Vertex AI region
+GOOGLE_CLOUD_LOCATION="global"   # a specific region may 404 on newer models; global is the safe default
 ```
 
 See [`config/vertex_adc_llm_config.hocon`](../config/vertex_adc_llm_config.hocon) for a
 ready-to-use version of this config, and run `ns check-config` to verify it can actually
-connect before deploying it.
+connect before deploying it - live-tested (`gemini-3.5-flash`, `GOOGLE_CLOUD_LOCATION=global`)
+against a real GCP project; `us-central1` and `us-west2` both 404/412'd for this model.
 
 ### Ollama
 
