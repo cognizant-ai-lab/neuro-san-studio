@@ -26,6 +26,7 @@
       - [Ollama Prerequisites](#ollama-prerequisites)
       - [Ollama Configuration](#ollama-configuration)
       - [Using Ollama in Docker or Remote Server](#using-ollama-in-docker-or-remote-server)
+      - [Using llmman](#using-llmman)
       - [Example agent network](#example-agent-network)
     - [Mistral](#mistral)
     - [Configuring Default Models with Environment Variables](#configuring-default-models-with-environment-variables)
@@ -698,6 +699,37 @@ You can also set the environment variable `OLLAMA_HOST`, but `base_url` takes pr
 
 For more information on logic of parsing the `base_url`
 see [Ollama python SDK](https://github.com/ollama/ollama-python/blob/main/ollama/_client.py#L1274)
+
+#### Using llmman
+
+[llmman](https://github.com/llmmanorg/llmman) is a local model runner that serves the Ollama, OpenAI and Anthropic APIs
+on port `17434`. Since `langchain-openai` is installed by default, the simplest setup is to use the `openai` class.
+
+1. Install and start llmman, then pull a model:
+
+    ```bash
+    curl -fsSL https://llmmanorg.github.io/install.sh | sh
+    llmman serve
+    llmman pull gemma4
+    ```
+
+2. Point the `openai` class at llmman via `openai_api_base`:
+
+    ```hocon
+        "llm_config": {
+            "class": "openai",
+            "model_name": "gemma4",
+            "openai_api_base": "http://localhost:17434/v1",
+            "openai_api_key": "llmman"
+        }
+    ```
+
+    llmman does not require an API key by default, but the OpenAI client does, so any non-empty value works.
+    Alternatively, set `OPENAI_API_BASE=http://localhost:17434/v1` in the environment and omit `openai_api_base`.
+
+llmman model names (e.g. `gemma4`, `hf.co/unsloth/Qwen3.5-0.8B-GGUF`) are not in the
+[default llm info file](https://github.com/cognizant-ai-lab/neuro-san/blob/main/neuro_san/internals/run_context/langchain/llms/default_llm_info.hocon),
+so `"class": "openai"` must be set explicitly.
 
 #### Example agent network
 
@@ -1889,7 +1921,7 @@ make test
 or
 
 ```bash
-python -m pytest tests/ -v --cov=coded_tools --cov=neuro_san_studio -m "not integration"
+python -m pytest tests/ -v --cov=coded_tools --cov=neuro_san_studio -m "not integration and not smoke"
 ```
 
 ### Integration Test
@@ -1942,40 +1974,40 @@ with ongoing additions of test cases to improve coverage.
 
 Please select the execution option that best aligns with the level of validation you want to perform.
 
-`--timer-top-n 100` flag is optional. It shows the top 100 slowest test cases.
+`--durations=100` flag is optional. It shows the 100 slowest test phases (setup, call, teardown).
 
 - Run all integration test cases:
 
     Example:
 
     ```bash
-    pytest -s -m "integration" --timer-top-n 100
+    pytest -s -m "integration" --durations=100
     ```
 
 - Run by a group or groups of those test cases:
 
     ```bash
-    pytest -s -m "<name of folder>" --timer-top-n 100
+    pytest -s -m "<name of folder>" --durations=100
     ```
 
     Example:
 
     ```bash
-    pytest -s -m "integration_basic" --timer-top-n 100
-    pytest -s -m "integration_industry" --timer-top-n 100
+    pytest -s -m "integration_basic" --durations=100
+    pytest -s -m "integration_industry" --durations=100
     ```
 
 - Run by the network agent hocon name of those test cases:
 
     ```bash
-    pytest -s -m "<name of network_agent hocon>" --timer-top-n 100
+    pytest -s -m "<name of network_agent hocon>" --durations=100
     ```
 
     Example:
 
     ```bash
-    pytest -s -m "integration_basic_coffee_finder_advanced" --timer-top-n 100
-    pytest -s -m "integration_industry_airline_policy" --timer-top-n 100
+    pytest -s -m "integration_basic_coffee_finder_advanced" --durations=100
+    pytest -s -m "integration_industry_airline_policy" --durations=100
     ```
 
 - Run a single test case:

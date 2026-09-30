@@ -27,6 +27,7 @@ from neuro_san_studio.commands import cli as cli_module
 from neuro_san_studio.commands import import_networks as import_networks_module
 from neuro_san_studio.commands import init as init_module
 from neuro_san_studio.commands import internalize_agents as internalize_agents_module
+from neuro_san_studio.commands import validate as validate_module
 from neuro_san_studio.commands.cli import main
 
 
@@ -124,6 +125,34 @@ class TestMainEntryPoint:
         monkeypatch.setattr(sys, "argv", ["neuro-san-studio", "import", "a.hocon", "b.zip", "--force"])
         main()
         assert captured == [{"networks_arg": ["a.hocon", "b.zip"], "force": True}]
+
+    def test_main_with_validate_forwards_manifest(self, monkeypatch: MonkeyPatch) -> None:
+        """`neuro-san-studio validate x.hocon --manifest m.hocon` forwards every option to ValidateCommand."""
+        captured: list = []
+
+        class FakeValidate:  # pylint: disable=too-few-public-methods
+            """Stand-in for ValidateCommand that records constructor kwargs."""
+
+            def __init__(self, hocon_path: str, **kwargs: object) -> None:
+                captured.append({"hocon_path": hocon_path, **kwargs})
+
+            def run(self) -> int:
+                """Report success."""
+                return 0
+
+        monkeypatch.setattr(validate_module, "ValidateCommand", FakeValidate)
+        monkeypatch.setattr(sys, "argv", ["neuro-san-studio", "validate", "x.hocon", "--manifest", "m.hocon"])
+        main()
+        assert captured == [
+            {
+                "hocon_path": "x.hocon",
+                "verbose": False,
+                "external_agents": None,
+                "mcp_servers": None,
+                "registry_dir": None,
+                "manifest": "m.hocon",
+            }
+        ]
 
     def test_main_with_internalize_agents_passes_args_through(self, monkeypatch: MonkeyPatch) -> None:
         """`internalize-agents <in> -o <out> --search-paths <p>` forwards all three kwargs."""

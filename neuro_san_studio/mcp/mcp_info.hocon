@@ -48,6 +48,47 @@
         "tools": ["you-search"]
     },
 
+    # Firecrawl MCP — web search that returns the cleaned Markdown of each result page, plus scrape and parse.
+    # Keyless: no API key required; rate limited per IP per day (both requests and credits).
+    # Optional: set FIRECRAWL_API_KEY and uncomment http_headers below for higher limits.
+    # Keyless and keyed share the same URL, so this is one entry rather than two.
+    # The "tools" list below controls which tools the agent sees, with or without a key. Add names to it,
+    # or remove the "tools" key entirely to load every tool the server exposes for your connection
+    # (neuro-san only filters when the list is non-empty).
+    # Docs: https://docs.firecrawl.dev/mcp-server/keyless
+    "https://mcp.firecrawl.dev/v2/mcp": {
+        # "http_headers": {
+        #    # FIRECRAWL_API_KEY is an environment variable that should contain a valid Firecrawl API key.
+        #    # "${...}" syntax will substitute the value of the environment variable at runtime.
+        #     "Authorization": "Bearer "${FIRECRAWL_API_KEY}
+        # },
+        "tools": ["firecrawl_search", "firecrawl_scrape", "firecrawl_parse"]
+    },
+
+    # World Clock Pro MCP — current time, time zone conversion and daylight saving time (DST) facts from the
+    # IANA time zone database, so agents look up the date, time and UTC offset instead of guessing them.
+    # Free, public and read-only; no API key required. No rate limits are published, but the terms welcome
+    # automated access and ask callers not to overload the service.
+    # Tools provided (all five are listed below):
+    # get_current_time: Current local time, or the time at a given instant, in up to 50 locations.
+    # convert_time: Converts a UTC instant, or a wall time in a source location, into up to 50 target locations.
+    # time_by_coordinates: Resolves the time zone for a latitude/longitude and returns the local time there.
+    # get_dst_transitions: Whether a location observes DST, its next clock change and every change in a year.
+    # search_cities: Finds cities by name, with each one's IANA time zone, country and coordinates.
+    # A location can be a city name, an IANA time zone id, a time zone abbreviation or coordinates.
+    # IANA ids such as "Europe/Zurich" or "America/Los_Angeles" are the reliable form (checked September 2026):
+    # - Abbreviations map to a fixed standard offset: "pst" in June returns UTC-8, not Los Angeles summer
+    #   time (UTC-7), even though the result names America/Los_Angeles.
+    # - A bare city name can resolve to a smaller namesake: "Zurich" and "Geneva" resolve to towns in the
+    #   United States. Call search_cities first, with the country filter if needed, and check the country.
+    # There is no date arithmetic tool; for questions such as counting business days, use WolframAlpha above.
+    # Every response includes a source_url, and the terms ask that results not be presented as coming from
+    # another source.
+    # Docs: https://worldclock.pro/mcp  Terms: https://worldclock.pro/terms
+    "https://worldclock.pro/mcp": {
+        "tools": ["get_current_time", "convert_time", "time_by_coordinates", "get_dst_transitions", "search_cities"]
+    },
+
     # Uncomment this section to use GitHub Copilot MCP server.
     # Make sure to set the environment variable GITHUB_TOKEN with a valid token.
     # "https://api.githubcopilot.com/mcp": {
@@ -76,6 +117,28 @@
     #     # Compute routes: Request information about driving or walking routes between two locations and return route distance and duration information.
     #     # Note: Grounding Lite does not provide step-by-step routing, directions, real-time traffic, or navigation information
     #     # See https://developers.google.com/maps/ai/grounding-lite for more details on the tools and how to get started.
+    # },
+
+    # Serply MCP — Google web, News and Scholar search (and more) via the Serply API.
+    # Serply does not run a search engine of its own: it returns real Google results as
+    # structured JSON, so Google's own query syntax works as written.
+    # Get an API key with 2,500 free credits (no credit card required) at https://serply.io
+    # Set the SERPLY_API_KEY environment variable, then uncomment this section to enable.
+    # Docs: https://serply.io/mcp
+    # "https://api.serply.io/mcp": {
+    #     "http_headers": {
+    #        # SERPLY_API_KEY is an environment variable that should contain a valid Serply API key.
+    #        # "${...}" syntax will substitute the value of the environment variable at runtime.
+    #        # Note this is a bare key header, not "Authorization: Bearer".
+    #         "X-Api-Key": ${SERPLY_API_KEY}
+    #     },
+    #     "tools": ["google_search", "google_news_search", "google_scholar_search"]
+    #     # The three tools listed above cover the search verticals documented in
+    #     # ../../docs/search_tools.md. The server also exposes bing_search,
+    #     # google_maps_search, google_video_search, google_jobs_search,
+    #     # amazon_product_search, scrape_url and a set of Reddit tools (reddit_post,
+    #     # reddit_post_comments, reddit_subreddit_about, reddit_subreddit_posts,
+    #     # reddit_user_posts); add them to the list above to enable them.
     # },
 
     # You.com MCP — paid tier (authenticated, requires API key).

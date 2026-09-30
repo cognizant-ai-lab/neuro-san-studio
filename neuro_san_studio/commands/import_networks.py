@@ -28,6 +28,7 @@ import questionary
 from neuro_san_studio.discovery.agent_network_registry import AgentNetworkRegistry
 from neuro_san_studio.importer.agent_network_importer import AgentNetworkImporter
 from neuro_san_studio.importer.bulk_import_result import BulkImportResult
+from neuro_san_studio.importer.import_result import ImportResult
 from neuro_san_studio.utils.cli_prompt import CliPrompt
 from neuro_san_studio.utils.cli_status import CliStatus
 from neuro_san_studio.utils.import_reporter import ImportReporter
@@ -166,7 +167,7 @@ class ImportCommand:  # pylint: disable=too-few-public-methods
         CliStatus.ok(f"Done with importing {len(results)} agent network(s) from local storage.")
         print()
 
-    def _import_one_file(self, file_path: str, importer: AgentNetworkImporter):
+    def _import_one_file(self, file_path: str, importer: AgentNetworkImporter) -> Optional[ImportResult]:
         """Validate, confirm, and import a single local file. Returns the ImportResult,
         or ``None`` if the user declined the confirmation for this file."""
         source_path = os.path.abspath(os.path.expanduser(file_path))
@@ -192,12 +193,22 @@ class ImportCommand:  # pylint: disable=too-few-public-methods
         CliStatus.info(f"Importing from {source_path}...")
         print()
         try:
-            return importer.import_from_path(source_path, force=self.force)
+            result = importer.import_from_path(source_path, force=self.force)
         except (OSError, ValueError) as exc:
             print()
             CliStatus.err(str(exc))
             print()
             sys.exit(1)
+        # Say so right here when this file's own HOCON was not written. The batch summary
+        # de-duplicates within-batch skips, so when an earlier file in the same command
+        # already landed registries/<basename> (two paths sharing a basename), this line
+        # is the only signal that THIS file's content was not imported.
+        if result.hocon_path in result.skipped_files:
+            CliStatus.skip(
+                f"{result.hocon_path} already exists in the project — this file was not imported. "
+                "Use --force to overwrite."
+            )
+        return result
 
     def _confirm_from_file(self, source_path: str, suffix: str) -> bool:
         """Show a preview tailored to the file shape, then ask y/N."""

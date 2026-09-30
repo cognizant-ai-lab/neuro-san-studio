@@ -48,7 +48,9 @@ class AgentNetworkImporter:
     # importer extracts it into memory and merges into the receiver's file additively rather than
     # dropping it on disk verbatim — receivers may have already-configured URLs we must not
     # overwrite (e.g. with their own `${ENV}` headers).
-    ALLOWED_TOP_LEVEL = ("registries/", "coded_tools/", "middleware/", "skills/", "mcp/")
+    # Single source of truth lives on ImportResult, next to the display-path convention the
+    # whitelist also defines; aliasing keeps the two from drifting apart.
+    ALLOWED_TOP_LEVEL = ImportResult.TARGET_ROOTS
     MAX_ARCHIVE_BYTES = 100 * 1024 * 1024  # 100 MB
     MAX_ARCHIVE_ENTRIES = 100
 

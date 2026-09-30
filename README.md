@@ -1,21 +1,5 @@
-# Neuro SAN Studio
-
-**Your launchpad for building intelligent multi-agent systems.** Neuro SAN Studio is a hands-on playground for the
-[Neuro SAN](https://github.com/cognizant-ai-lab/neuro-san) framework, featuring ready-to-run examples, tutorials, and
-tools that let you design, test, and deploy sophisticated agent networks in minutes—not months. Whether you're a
-researcher exploring adaptive AI systems, a developer prototyping production solutions, or a domain expert configuring
-agents without code, this studio handles the orchestration complexity so you can focus on solving real problems.
-
----
-
-<!-- pyml disable-next-line no-inline-html -->
-<p align="center">
-  Neuro SAN is the open-source library powering the Cognizant Neuro® AI Multi-Agent Accelerator, allowing domain experts,
-  researchers and developers to immediately start prototyping and building agent networks across any industry vertical.
-</p>
-
----
-
+<!-- pyml disable-next-line first-line-heading -->
+<!-- Badges -->
 <!-- pyml disable-next-line no-inline-html -->
 <p align="center">
   <!-- GitHub Stats -->
@@ -28,6 +12,8 @@ agents without code, this studio handles the orchestration complexity so you can
   <img src="https://img.shields.io/github/last-commit/cognizant-ai-lab/neuro-san-studio" alt="Last Commit">
   <img src="https://img.shields.io/github/issues/cognizant-ai-lab/neuro-san-studio" alt="Issues">
   <img src="https://img.shields.io/github/issues-pr/cognizant-ai-lab/neuro-san-studio" alt="Pull Requests">
+  <a href="https://github.com/cognizant-ai-lab/neuro-san-studio/blob/main/LICENSE.txt"><img alt="License"
+  src="https://img.shields.io/github/license/cognizant-ai-lab/neuro-san-studio"></a>
   <a href="https://pepy.tech/projects/neuro-san-studio"><img alt="PyPI Downloads"
   src="https://static.pepy.tech/badge/neuro-san-studio" /></a>
   <a href="https://pypi.org/project/neuro-san-studio/">
@@ -44,12 +30,45 @@ agents without code, this studio handles the orchestration complexity so you can
   <a href="https://github.com/cognizant-ai-lab/neuro-san"><img alt="GitHub Repo"
   src="https://img.shields.io/badge/GitHub-Repo-green.svg" /></a>
   <img src="https://img.shields.io/github/commit-activity/m/cognizant-ai-lab/neuro-san" alt="commit activity">
+  <a href="https://github.com/cognizant-ai-lab/neuro-san/blob/main/LICENSE.txt"><img alt="License"
+  src="https://img.shields.io/github/license/cognizant-ai-lab/neuro-san"></a>
   <a href="https://pepy.tech/projects/neuro-san"><img alt="PyPI Downloads"
   src="https://static.pepy.tech/badge/neuro-san" /></a>
   <a href="https://pypi.org/project/neuro-san/">
   <img alt="neuro-san@PyPI" src="https://img.shields.io/pypi/v/neuro-san.svg?style=flat-square"></a>
   <a href="https://deepwiki.com/cognizant-ai-lab/neuro-san">
   <img src="https://deepwiki.com/badge.svg" alt="Ask DeepWiki: Neuro SAN" /></a>
+</p>
+
+# Neuro SAN Studio
+
+**Your launchpad for building intelligent multi-agent systems.** Neuro SAN Studio is a hands-on playground for the
+[Neuro SAN](https://github.com/cognizant-ai-lab/neuro-san) framework, featuring ready-to-run examples, tutorials, and
+tools that let you design, test, and deploy sophisticated agent networks in minutes—not months. Whether you're a
+researcher exploring adaptive AI systems, a developer prototyping production solutions, or a domain expert configuring
+agents without code, this studio handles the orchestration complexity so you can focus on solving real problems.
+
+<!-- pyml disable-next-line no-inline-html -->
+<h3 align="center">
+  🚀 Try Neuro SAN now, no install required:
+  <a href="https://neuro-san.evolution.ml/">https://neuro-san.evolution.ml/</a>
+</h3>
+<!-- pyml disable-next-line no-inline-html -->
+<p align="center">
+  <a href="https://neuro-san.evolution.ml/"><img alt="Launch Neuro SAN"
+  src="https://img.shields.io/badge/Launch_Neuro_SAN-2ea44f?style=for-the-badge" /></a>
+</p>
+<!-- pyml disable-next-line no-inline-html -->
+<p align="center">
+  This is a Bring Your Own Key (BYOK) instance, so you will need an API key from OpenAI, Anthropic or Gemini.
+</p>
+
+---
+
+<!-- pyml disable-next-line no-inline-html -->
+<p align="center">
+  Neuro SAN is the open-source library powering the Cognizant Neuro® AI Multi-Agent Accelerator, allowing domain experts,
+  researchers and developers to immediately start prototyping and building agent networks across any industry vertical.
 </p>
 
 ## What is Neuro SAN?
@@ -351,6 +370,7 @@ See [`docs/cli/export.md`](docs/cli/export.md) for details.
 | `ns export`         | Bundle a network from the current project into a shareable file. | Positional: network name (e.g. `music_nerd` or `basic/music_nerd`). `-o` / `--output` to set the output path. Omit args for interactive picker.                                 |
 | `ns check-llm-keys` | Validate LLM API keys / env vars.                                | `--tier 1` (placeholder), `--tier 2` (format), `--tier 3` (live API call, default)                                                                                              |
 | `ns check-config`   | Validate the LLM configurations in a HOCON file.                 | `--hocon-path` (defaults to `config/llm_config.hocon`)                                                                                                                          |
+| `ns validate`       | Validate the structure of an agent network HOCON file.           | Positional: HOCON path. `--verbose`, `--manifest`, `--external-agents`, `--registry-dir`. References to other networks (`/name`) are checked against the networks served by the manifest.                                    |
 
 <!-- pyml enable line-length -->
 

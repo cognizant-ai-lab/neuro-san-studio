@@ -25,6 +25,10 @@ https://mcp/
 # Login-walled pages that redirect through an auth flow lychee can't resolve
 https://admin.mistral.ai/
 
+# TEMPORARY: serply.io is down (as of 2026-09-29). Remove once the site is back.
+https://serply.io
+https://api.serply.io
+
 # URLs whose base path is not browsable (returns 400 or 404)
 https://raw.githubusercontent.com/anthropics/skills/main/skills/internal-comms/
 https://api.anthropic.com/
@@ -42,8 +46,8 @@ http://link/a
 http://link/b
 http://x/
 
-# For unit test, test_safe_fetch domain-policy fixtures (never actually fetched;
-# validate_url rejects them before any network call). lychee IDNA-normalizes hosts,
+# For unit test, test_url_policy domain-policy fixtures (never actually fetched;
+# UrlPolicy.validate_url rejects them before any network call). lychee IDNA-normalizes hosts,
 # so these are the punycode/trailing-dot forms it derives from example.com.,
 # münchen.de and faß.de. Dots are escaped so the trailing-dot entry does not also
 # match the plain https://example.com/... URLs used elsewhere.

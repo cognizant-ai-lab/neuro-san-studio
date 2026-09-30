@@ -43,12 +43,21 @@ class ImportReporter:
 
     @classmethod
     def report(cls, bulk: BulkImportResult) -> None:
-        """Print the copied/skipped totals, any warnings and errors, then the MCP deltas."""
+        """
+        Print the copied/skipped totals, any warnings and errors, then the MCP deltas.
+
+        Only skips of files that genuinely predate the batch are reported: networks in a
+        batch re-offer files a sibling already copied (shared includes, transitively-copied
+        sub-networks), and counting those as "already exist" made a fresh `ns init` in an
+        empty directory report dozens of skips as if it had found prior state.
+
+        :param bulk: The aggregate outcome of the import batch to render.
+        """
         print()
         CliStatus.info("Summary:")
         CliStatus.ok(f"Copied: {bulk.copied} files")
-        if bulk.skipped:
-            CliStatus.skip(f"Skipped: {bulk.skipped} files (already exist)")
+        if bulk.skipped_preexisting:
+            CliStatus.skip(f"Skipped: {bulk.skipped_preexisting} files (already exist)")
         cls._print_list("Warnings", bulk.warnings, CliStatus.warn)
         cls._print_list("Errors", bulk.all_errors, CliStatus.err)
         cls._print_mcp(bulk)

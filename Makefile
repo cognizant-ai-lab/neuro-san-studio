@@ -82,7 +82,10 @@ lint-check: lint-check-source lint-check-tests
 lint: format lint-check
 
 test-unit: venv-guard ## Run unit tests with coverage, without lint
-	python -m pytest tests/ --verbose --cov=coded_tools --cov=neuro_san_studio -m "not integration"
+	python -m pytest tests/ --verbose --cov=coded_tools --cov=neuro_san_studio -m "not integration and not smoke"
+
+test-smoke: venv-guard ## Run the packaged-install smoke tests (builds a wheel, installs it)
+	python -m pytest tests/ --verbose -m "smoke"
 
 test: lint test-unit ## Run lint, then tests with coverage
 
@@ -91,7 +94,7 @@ test-integration: install
 	export PYTHONPATH=`pwd` && \
 	export AGENT_TOOL_PATH=coded_tools/ && \
 	export AGENT_MANIFEST_FILE=registries/manifest.hocon && \
-	pytest -s -m "integration" --timer-top-n 100
+	pytest -s -m "integration" --durations=100
 
 # Test the Agent Network Designer (AND)
 test-designer: install
@@ -109,7 +112,7 @@ test-designer: install
 	export PYTHONPATH=`pwd` && \
 	export AGENT_TOOL_PATH=coded_tools/ && \
 	export AGENT_MANIFEST_FILE=registries/manifest.hocon && \
-	pytest --capture=no --verbose -m "integration_agent_network_designer" --timer-top-n 100
+	pytest --capture=no --verbose -m "integration_agent_network_designer" --durations=100
 
 help: ## Show this help message and exit
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | \
