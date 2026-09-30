@@ -4,6 +4,9 @@ on:
   pull_request:
     branches:
       - main
+  push:
+    branches:
+      - devin/1790789201-windows-smoke-verify-build-common
   workflow_dispatch:      # enables manual triggering
 
 permissions:
