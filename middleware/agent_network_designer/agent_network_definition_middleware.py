@@ -51,6 +51,7 @@ from coded_tools.agent_network_editor.constants import AGENT_NETWORK_NAME
 from coded_tools.agent_network_editor.progress_handler import ProgressHandler
 from coded_tools.agent_network_editor.sly_data_lock import SlyDataLock
 from middleware.agent_network_designer.persistence.agent_network_metadata_block import AgentNetworkMetadataBlock
+from middleware.agent_network_designer.persistence.common_instruction_stripper import CommonInstructionStripper
 from middleware.agent_network_designer.persistence.file_system_agent_network_persistor import DEFAULT_REGISTRIES_DIR
 from middleware.agent_network_designer.persistence.file_system_agent_network_persistor import (
     FileSystemAgentNetworkPersistor,
@@ -61,6 +62,8 @@ AGENT_NETWORK_HOCON_FILE: str = "agent_network_hocon_file"
 AGENT_RESERVATIONS: str = "agent_reservations"
 RESERVATION_ID: str = "reservation_id"
 SKIP_DESIGNER: str = "skip_designer"
+# The file every generated network includes for its AAOSA instructions, relative to the working directory.
+AAOSA_FILE: str = "registries/aaosa.hocon"
 
 
 class AgentNetworkDefinitionMiddleware(AgentMiddleware):
@@ -76,7 +79,14 @@ class AgentNetworkDefinitionMiddleware(AgentMiddleware):
     ProgressHandler's throttle suppressed during the run (see flush_pending()).
     A network that wires the editor tools without registering this middleware
     silently loses that end-of-run flush.
+
+    Before anything reads the definition, it also strips the copies of the designer's common
+    instructions that the instructions already hold (see _strip_common_instructions).
     """
+
+    # The AAOSA instructions _strip_common_instructions strips, read once per process by
+    # _read_aaosa_instructions; None until then.
+    _aaosa_instructions: str | None = None
 
     def __init__(self, sly_data: dict[str, Any], progress_reporter: AgentProgressReporter | None = None) -> None:
         """
@@ -115,8 +125,12 @@ class AgentNetworkDefinitionMiddleware(AgentMiddleware):
         If loading from a HOCON file or S3 reservation fails, or if the agent network name is
         missing or invalid, reports the error back to the client and jumps to end.
 
-        If skip_designer is set, normalizes the definition and jumps to end immediately so the
-        persistence middleware can save the user-modified network without LLM involvement.
+        Whatever its source, the definition is normalized to dict format and cleared of the copies of the
+        designer's common instructions its instructions already hold (see _strip_common_instructions), so the
+        persistence middleware and the LLM both get each agent's custom instructions.
+
+        If skip_designer is set, jumps to end right after that, so the persistence middleware can save the
+        user-modified network without LLM involvement.
 
         Note that this is done before model, not before agent, because the definition may change
         between each model call (e.g., when the agent calls a tool that updates the network definition).
@@ -167,6 +181,9 @@ class AgentNetworkDefinitionMiddleware(AgentMiddleware):
         # middleware as a list and crash validators that expect a dict (e.g. network_def.items()).
         if self.network_def:
             self.network_def = self._normalize_network_def(self.network_def)
+            # Before the skip_designer hand-off below, so the persistence middleware validates and saves the
+            # stripped definition, and before awrap_model_call, so the LLM sees it too.
+            self.network_def = await self._strip_common_instructions(self.network_def)
 
             # This is used for manual editing where users modify the agent network definition and only want to use the
             # agent network designer to persist the changes, skipping the LLM entirely.
@@ -421,6 +438,106 @@ class AgentNetworkDefinitionMiddleware(AgentMiddleware):
         # Cache the agent network definition as dict in sly_data for subsequent calls within the same session.
         self.sly_data[AGENT_NETWORK_DEFINITION] = network_def
         return network_def
+
+    async def _strip_common_instructions(self, network_def: dict[str, Any]) -> dict[str, Any]:
+        """
+        Strip the copies of the designer's common instructions that the definition's instructions already hold.
+
+        The instructions in agent_network_definition are each agent's custom instructions, and every save adds
+        the common instructions again. A client that read a saved network with its HOCON substitutions resolved
+        sends them back inlined, and each save used to add one more copy. Every piece is stripped
+        from every agent, whatever its role and whether demo mode is on; see CommonInstructionStripper for the
+        rules.
+
+        Runs on every model call and for every source of the definition (sly_data, a HOCON file or an S3
+        reservation), so the validators, the LLM, both assemblers and the definition returned to the client all
+        see the same text. Stripping is idempotent, so a definition that is already clean comes through unchanged.
+
+        :param network_def: The agent network definition in dict format, as _normalize_network_def returns it
+        :return: The definition without the copies, also cached in sly_data when it changed; network_def
+                itself when no agent held a copy
+        """
+        aaosa_instructions: str = await self._read_aaosa_instructions()
+        stripper: CommonInstructionStripper = CommonInstructionStripper(aaosa_instructions)
+        stripped_def: dict[str, Any]
+        changed: list[str]
+        stripped_def, changed = stripper.strip_definition(network_def)
+        if changed:
+            self.logger.info(
+                "Removed copies of the designer's common instructions from the instructions of %s.", changed
+            )
+            self.sly_data[AGENT_NETWORK_DEFINITION] = stripped_def
+        return stripped_def
+
+    async def _read_aaosa_instructions(self) -> str:
+        """
+        Get the AAOSA instructions a save appends, read from registries/aaosa.hocon once per process.
+
+        Unlike _get_aaosa_instructions, this keeps nothing in sly_data: it is read on every model call, and sly_data
+        comes from the client, which could put anything under a cache key there. The file is the one every
+        generated network includes (see HoconAgentNetworkAssembler), so its text is what a save adds. The read
+        awaits, so first calls at the same time may all read the file; the first to finish keeps its value and
+        reports any problem, and the others use that value (see _cache_aaosa_instructions).
+
+        :return: The AAOSA instructions, or "" when the file is missing, unreadable or malformed or defines none.
+                Copies of them are then not stripped, the reason is logged once, and fixing the file takes a
+                restart.
+        """
+        cached: str | None = AgentNetworkDefinitionMiddleware._aaosa_instructions
+        if cached is not None:
+            return cached
+
+        try:
+            restorer: AbstractAsyncConfigRestorer = AbstractAsyncConfigRestorer(
+                file_purpose="agent network designer - AAOSA instructions to strip", must_exist=True
+            )
+            config: dict[str, Any] = await restorer.async_restore(file_reference=AAOSA_FILE)
+            value: Any = config.get("aaosa_instructions")
+            if isinstance(value, str) and value.strip():
+                self._cache_aaosa_instructions(value)
+            elif self._cache_aaosa_instructions(""):
+                self.logger.warning(
+                    "%s defines no aaosa_instructions; copies of them will not be removed from agent instructions.",
+                    AAOSA_FILE,
+                )
+        except FileNotFoundError:
+            # The generated networks include the same working-directory-relative path, so they would not load
+            # either.
+            if self._cache_aaosa_instructions(""):
+                self.logger.warning(
+                    "%s not found in the working directory %s; copies of the AAOSA instructions will not be removed "
+                    "from agent instructions.",
+                    AAOSA_FILE,
+                    os.getcwd(),
+                )
+        except (OSError, ValueError) as error:
+            # The restorer reports a parse or substitution failure as ValueError (see _hocon_to_config).
+            if self._cache_aaosa_instructions(""):
+                self.logger.error(
+                    "Could not read %s: %s. Copies of the AAOSA instructions will not be removed from agent "
+                    "instructions.",
+                    AAOSA_FILE,
+                    error,
+                )
+        aaosa_instructions: str = AgentNetworkDefinitionMiddleware._aaosa_instructions
+        return aaosa_instructions
+
+    @staticmethod
+    def _cache_aaosa_instructions(aaosa_instructions: str) -> bool:
+        """
+        Keep the AAOSA instructions for the rest of the process, unless a first call running at the same time
+        already did.
+
+        Nothing awaits between the check and the store, so on the event loop only one of the first calls stores
+        its value, and only that one reports a problem with the file.
+
+        :param aaosa_instructions: The AAOSA instructions read, or "" when the file could not supply them
+        :return: True when this call stored the value, False when another call had stored one already
+        """
+        if AgentNetworkDefinitionMiddleware._aaosa_instructions is not None:
+            return False
+        AgentNetworkDefinitionMiddleware._aaosa_instructions = aaosa_instructions
+        return True
 
     async def _inject_into_request(
         self,
