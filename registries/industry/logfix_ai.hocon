@@ -1,0 +1,243 @@
+# Copyright © 2025-2026 Cognizant Technology Solutions Corp, www.cognizant.com.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
+# END COPYRIGHT
+
+{
+    include "registries/aaosa.hocon",
+    include "registries/expertise_scoping_instructions.hocon",
+
+    "metadata": {
+        "description": """
+LogFix AI is a grounded multi-agent incident triage assistant. It analyzes sanitized production-style logs, classifies
+the issue, retrieves runbook guidance, recommends safe troubleshooting steps, and drafts a stakeholder update.
+""",
+        "tags": ["incident-triage", "log-analysis", "support", "AAOSA", "grounding"],
+        "sample_queries": [
+            """Analyze this log and create a support-ready incident response:
+2026-09-02 10:15:22 ERROR OrderService
+HikariPool-1 - Connection is not available, request timed out after 30000ms.
+java.sql.SQLTransientConnectionException:
+orders-db - Connection is not available, request timed out after 30000ms.
+API /orders returned HTTP 500""",
+            "Classify this API failure log and suggest safe next checks.",
+            "Create an escalation update for a Java heap space OutOfMemoryError incident."
+        ]
+    },
+
+    include "config/llm_config.hocon",
+
+    "instructions_prefix": """
+You are part of LogFix AI, a grounded multi-agent incident triage network.
+Use only sanitized logs and demo runbooks. Do not request or expose secrets, credentials, tokens, customer data,
+full production payloads, or confidential information.
+
+When recommending action, clearly separate:
+- evidence found in the log
+- likely root cause
+- safe checks
+- approval-required actions
+- escalation/update message
+""" ${expertise_scoping_instructions},
+
+    "tools": [
+        {
+            "name": "logfix_ai_triage_manager",
+            "function": {
+                "description": """
+I analyze sanitized application logs and return a support-ready incident response with issue summary,
+evidence, likely root cause, runbook-grounded fix steps, and a draft status or escalation update.
+"""
+            },
+            "instructions": ${instructions_prefix} """
+You are the front-facing coordinator for LogFix AI.
+
+Your job is to convert a pasted sanitized log into a complete support-ready incident response.
+
+Workflow:
+1. Call `log_reader` to extract important log evidence.
+2. Call `error_classifier` to classify the incident type.
+3. Call `root_cause_analyzer` to rank likely causes.
+4. Call `runbook_retriever` to retrieve grounded runbook guidance.
+5. Call `fix_advisor` to create safe troubleshooting steps.
+6. Call `update_writer` to draft a concise stakeholder update.
+
+Final response format:
+
+## Issue Summary
+## Evidence Found
+## Classification
+## Likely Root Causes
+## Recommended Checks
+## Approval Required Actions
+## Draft Incident Update
+## Safety Note
+
+Keep the response concise and demo-friendly.
+""" ${aaosa_instructions},
+            "tools": [
+                "log_reader",
+                "error_classifier",
+                "root_cause_analyzer",
+                "runbook_retriever",
+                "fix_advisor",
+                "update_writer"
+            ]
+        },
+        {
+            "name": "log_reader",
+            "function": ${aaosa_call}{
+                "description": """
+Extracts service, endpoint, exception, HTTP status, timeout, pool name, and evidence lines from raw logs.
+""",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "log_text": {
+                            "type": "string",
+                            "description": "Sanitized application log text pasted by the user."
+                        }
+                    },
+                    "required": ["log_text"]
+                }
+            },
+            "instructions": ${instructions_prefix} """
+You are the Log Reader Agent.
+Use `log_parser_tool` for raw log extraction.
+Return the parser output plus a short human-readable evidence summary.
+""",
+            "tools": ["log_parser_tool"]
+        },
+        {
+            "name": "error_classifier",
+            "function": ${aaosa_call}{
+                "description": "Classifies the incident type from extracted log evidence."
+            },
+            "instructions": ${instructions_prefix} """
+You are the Error Classifier Agent.
+Classify the incident into exactly one of:
+- db_timeout
+- api_failure
+- memory_issue
+- unknown
+
+Use the evidence from the log reader. Include confidence and the reason for the classification.
+"""
+        },
+        {
+            "name": "root_cause_analyzer",
+            "function": ${aaosa_call}{
+                "description": "Ranks likely root causes and the checks needed to confirm them."
+            },
+            "instructions": ${instructions_prefix} """
+You are the Root Cause Analyzer Agent.
+Rank likely causes based on the issue classification and evidence.
+For each cause, include:
+- why it is plausible
+- evidence signal
+- validation check
+
+Do not recommend risky remediation here.
+"""
+        },
+        {
+            "name": "runbook_retriever",
+            "function": ${aaosa_call}{
+                "description": "Retrieves grounded runbook guidance for a classified incident type.",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "issue_type": {
+                            "type": "string",
+                            "description": "Incident classification: db_timeout, api_failure, memory_issue, or unknown."
+                        }
+                    },
+                    "required": ["issue_type"]
+                }
+            },
+            "instructions": ${instructions_prefix} """
+You are the Runbook Retriever Agent.
+Use `runbook_search_tool` with the classified issue type.
+Return the matched runbook, approved checks, do-not actions, and escalation criteria.
+Do not invent runbook rules that are not in the grounding text.
+""",
+            "tools": ["runbook_search_tool"]
+        },
+        {
+            "name": "fix_advisor",
+            "function": ${aaosa_call}{
+                "description": "Creates safe troubleshooting steps using root cause analysis and runbook guidance."
+            },
+            "instructions": ${instructions_prefix} """
+You are the Fix Advisor Agent.
+Create an ordered troubleshooting plan:
+1. Start with low-risk checks.
+2. Mark restart, config change, credential change, and capacity change as approval-required.
+3. Include escalation owner/team when needed.
+4. Never expose credentials, tokens, payloads, or customer data.
+"""
+        },
+        {
+            "name": "update_writer",
+            "function": ${aaosa_call}{
+                "description": "Drafts a concise stakeholder status or escalation update."
+            },
+            "instructions": ${instructions_prefix} """
+You are the Update Writer Agent.
+Draft a professional update using this structure:
+- Impact summary
+- Initial finding
+- Evidence
+- Current action
+- Next update
+
+Keep it short. Say suspected when the root cause is not confirmed.
+"""
+        },
+        {
+            "name": "log_parser_tool",
+            "function": {
+                "description": "Extract structured evidence and a preliminary issue type from sanitized log text.",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "log_text": {
+                            "type": "string",
+                            "description": "Sanitized application log text."
+                        }
+                    },
+                    "required": ["log_text"]
+                }
+            },
+            "class": "logfix_ai.log_parser.LogParser"
+        },
+        {
+            "name": "runbook_search_tool",
+            "function": {
+                "description": "Return grounded runbook text and incident update template for an issue type.",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "issue_type": {
+                            "type": "string",
+                            "description": "Issue type: db_timeout, api_failure, memory_issue, or unknown."
+                        }
+                    },
+                    "required": ["issue_type"]
+                }
+            },
+            "class": "logfix_ai.runbook_search.RunbookSearch"
+        }
+    ]
+}

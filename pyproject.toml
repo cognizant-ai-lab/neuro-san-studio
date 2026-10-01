@@ -39,7 +39,7 @@ exclude = ["apps*", "build_scripts*", "config*", "deploy*", "docs*", "servers*",
 "neuro_san_studio.toolbox" = ["*.hocon"]
 # Include registries, coded_tools, middleware, and skills directories
 "registries" = ["**/*.hocon"]
-"coded_tools" = ["**/*.py"]
+"coded_tools" = ["**/*.py", "**/*.md"]
 "middleware" = ["**/*.py"]
 "skills" = ["**/*.md", "**/*.py"]
 
