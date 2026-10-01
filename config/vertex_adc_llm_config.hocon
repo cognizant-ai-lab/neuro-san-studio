@@ -40,6 +40,9 @@
         # A stable (non-preview) model - preview models are commonly unavailable via Vertex AI
         # even when they work fine on the plain Gemini Developer API.
         "model_name": "gemini-3.5-flash",
+        # Gemini 3+ models should explicitly set temperature to 1.0; the 0.7 default can cause
+        # infinite loops, degraded reasoning, and failures on complex tasks (see docs/user_guide.md).
+        "temperature": 1.0,
         # Gemini 3+ models default thinking_level to "high", adding several seconds of internal
         # reasoning to every call even for trivial prompts (measured ~7.7s vs ~2.3s live against
         # a real Vertex AI project). "minimal" matches "no thinking" for most queries; raise to

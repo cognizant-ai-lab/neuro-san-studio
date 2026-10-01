@@ -102,20 +102,6 @@ def _is_sensitive_key(key: str) -> bool:
     return False
 
 
-def _adc_hint(exc: Exception) -> Optional[str]:
-    """Return an actionable hint if *exc* is Google's ADC-not-found error, else None."""
-    try:
-        from google.auth.exceptions import DefaultCredentialsError  # pylint: disable=import-outside-toplevel
-    except ImportError:
-        return None
-    if not isinstance(exc, DefaultCredentialsError):
-        return None
-    return (
-        "Hint: run 'gcloud auth application-default login', or deploy where the runtime "
-        "service account has Vertex AI access. See config/vertex_adc_llm_config.hocon."
-    )
-
-
 def redact_llm_config(config: Dict[str, Any]) -> Dict[str, Any]:
     """
     Return a shallow copy of *config* with sensitive values replaced by
@@ -334,6 +320,9 @@ async def test_llm_configs(
             print(f"    LLM instance created: {type(llm).__name__}")
         except Exception as exc:  # pylint: disable=broad-except
             error_msg: str = f"Failed to create LLM: {exc}"
+            hint: Optional[str] = CheckConfigCommand.adc_hint(exc)
+            if hint:
+                error_msg = f"{error_msg}\n    {hint}"
             print(f"    FAIL (creation): {error_msg}")
             failures.append((labels, llm_cfg, error_msg))
             continue
@@ -345,7 +334,7 @@ async def test_llm_configs(
             successes.append((labels, llm_cfg))
         except Exception as exc:  # pylint: disable=broad-except
             error_msg = f"Failed to invoke LLM: {exc}"
-            hint: Optional[str] = _adc_hint(exc)
+            hint = CheckConfigCommand.adc_hint(exc)
             if hint:
                 error_msg = f"{error_msg}\n    {hint}"
             print(f"    FAIL (invocation): {error_msg}")
@@ -450,7 +439,7 @@ async def run_checks(hocon_path: str) -> bool:
     return not failures
 
 
-class CheckConfigCommand:  # pylint: disable=too-few-public-methods
+class CheckConfigCommand:
     """Validate LLM configurations in a HOCON file.
 
     Accepts both agent network files (with a 'tools' list) and standalone
@@ -466,6 +455,20 @@ class CheckConfigCommand:  # pylint: disable=too-few-public-methods
                 config/llm_config.hocon when not provided.
         """
         self.hocon_path = hocon_path or DEFAULT_HOCON_PATH
+
+    @staticmethod
+    def adc_hint(exc: Exception) -> Optional[str]:
+        """Return an actionable hint if *exc* is Google's ADC-not-found error, else None."""
+        try:
+            from google.auth.exceptions import DefaultCredentialsError  # pylint: disable=import-outside-toplevel
+        except ImportError:
+            return None
+        if not isinstance(exc, DefaultCredentialsError):
+            return None
+        return (
+            "Hint: run 'gcloud auth application-default login', or deploy where the runtime "
+            "service account has Vertex AI access. See config/vertex_adc_llm_config.hocon."
+        )
 
     def run(self) -> int:
         """Run validation and return an exit code (0 on success, 1 on failure)."""
