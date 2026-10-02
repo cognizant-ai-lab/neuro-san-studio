@@ -17,6 +17,7 @@
 import os
 
 from openai import OpenAI
+from openai import OpenAIError
 
 
 def test_open_ai_api_key():
@@ -45,9 +46,9 @@ def test_open_ai_api_key():
         print("Successful call to OpenAI")
         print(f"response: {response.choices[0].message.content}")
 
-    except Exception as e:
+    except (OpenAIError, AttributeError, IndexError, TypeError, ValueError) as error:
         print("Failed call to OpenAI. Exception:")
-        print(e)
+        print(error)
 
 
 if __name__ == "__main__":

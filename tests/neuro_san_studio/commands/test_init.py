@@ -53,6 +53,7 @@ REPO_ROOT: Path = Path(__file__).resolve().parents[3]
 EXPECTED_DEFAULT_NETWORKS: List[str] = [
     "basic/music_nerd.hocon",
     "agent_network_designer.hocon",
+    "agent_network_consultant.hocon",
     "agent_network_editor.hocon",
     "agent_network_instructions_editor.hocon",
     "agent_network_query_generator.hocon",
@@ -692,6 +693,7 @@ class TestDefaultNetworks:
         keys = self._manifest_keys(scaffolded_project)
 
         for support in (
+            "agent_network_consultant.hocon",
             "agent_network_editor.hocon",
             "agent_network_instructions_editor.hocon",
             "agent_network_query_generator.hocon",
