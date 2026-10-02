@@ -56,6 +56,7 @@ Here are a few examples ordered by level of complexity.
     - [Intranet Agents](#intranet-agents)
     - [Intranet Agents With Tools](#intranet-agents-with-tools)
     - [Intranet Agents With Memory Routing](#intranet-agents-with-memory-routing)
+    - [Intranet Agents With Jev Routing](#intranet-agents-with-jev-routing)
     - [Airline Policy 360 Assistant](#airline-policy-360-assistant)
     - [Airline Policy Web Search Assistant](#airline-policy-web-search-assistant)
     - [Telco Network Orchestration](#telco-network-orchestration)
@@ -465,6 +466,19 @@ Disabled by default: it uses the Mem0 cloud backend, so it requires `pip install
 `MEM0_API_KEY` environment variable.
 
 **Tags:** `tool`, `API`, `AAOSA`, `memory`, `routing`
+
+### Intranet Agents With Jev Routing
+
+[Intranet Agents With Jev Routing](examples/industry/intranet_agents_with_jev_routing.md) is the Intranet Agents
+With Tools network with a fast path in front of its AAOSA routing: the `JevToolSelectorMiddleware` asks Jev,
+TypeSafe AI's typed-decision model, which department handles the latest message in the context of the
+conversation, and when Jev is confident it dispatches a "Fulfill" (or "Follow up") call to that department with
+no LLM call for the routing step. Unclear, ambiguous or off-topic turns run through the unchanged AAOSA front man.
+The document includes a measured comparison with AAOSA routing on clear queries and on the edge cases that take
+the fallback path. Disabled by default: it requires `pip install typesafe-sdk` and the `TYPESAFE_API_KEY`
+environment variable.
+
+**Tags:** `tool`, `API`, `AAOSA`, `middleware`, `routing`, `jev`
 
 ### Airline Policy 360 Assistant
 

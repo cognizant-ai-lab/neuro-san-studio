@@ -1511,7 +1511,10 @@ When multiple middleware are listed, order of appearance matters — they are ap
 
 For an overview of middleware, see the [Overview](https://docs.langchain.com/oss/python/langchain/middleware/overview).
 
-For a working example, see [pii_middleware.hocon](../registries/basic/pii_middleware.hocon).
+For a working example, see [pii_middleware.hocon](../registries/basic/pii_middleware.hocon). For a middleware that
+puts a typed-decision model in front of an agent's LLM-based (AAOSA) routing, see
+[Intranet Agents With Jev Routing](examples/industry/intranet_agents_with_jev_routing.md)
+([JevToolSelectorMiddleware](../middleware/jev_tool_selector_middleware.py)).
 
 ### class
 
