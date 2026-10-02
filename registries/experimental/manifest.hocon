@@ -30,6 +30,8 @@
     "experimental/conscious_agent.hocon": false,
     # Set the following agent network to true before running apps/log_analyzer/log_analyzer.py
     "experimental/log_analysis_agents.hocon": false,
+    # Deterministic preprocessing is provided by apps/log_analyzer; enable to request an agent interpretation.
+    "experimental/load_test_analyst.hocon": false,
     "experimental/six_thinking_hats.hocon": true,
     "experimental/cruse_theme_agent.hocon": {
         # This is a support network for Cruse Interface

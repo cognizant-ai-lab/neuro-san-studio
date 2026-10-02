@@ -14,6 +14,7 @@
 #
 # END COPYRIGHT
 
+import argparse
 import json
 import os
 import re
@@ -21,6 +22,9 @@ import re
 from leaf_common.serialization.util.text_file_reader import TextFileReader
 from neuro_san.client.agent_session_factory import AgentSessionFactory
 from neuro_san.client.streaming_input_processor import StreamingInputProcessor
+
+from apps.log_analyzer.load_test import analyze_load_test
+from apps.log_analyzer.load_test import render_markdown
 
 AGENT_THINKING_LOGS_DIRECTORY = "/private/tmp/agent_thinking"
 
@@ -262,8 +266,8 @@ def agentic_log_analyzer(analysis_session, analysis_thread, combined_input):
     return analysis, analysis_thread
 
 
-# Example usage:
-if __name__ == "__main__":
+def run_transcript_analyzer():
+    """Run the original agent-thinking transcript analyzer."""
     # Replace these with your actual objects/functions
     the_analysis_session, the_analysis_thread = set_up_log_analyzer()
 
@@ -271,3 +275,50 @@ if __name__ == "__main__":
     parse_log_files(AGENT_THINKING_LOGS_DIRECTORY, agentic_log_analyzer, the_analysis_session, the_analysis_thread)
 
     tear_down_analysis_assistant(the_analysis_session)
+
+
+def run_load_test_analyzer(args):
+    """Analyze load-test artifacts and write Markdown and JSON reports."""
+    analysis = analyze_load_test(
+        raw_results=args.raw_results,
+        load_test_log=args.load_test_log,
+        debug_log=args.debug_log,
+        server_log=args.server_log,
+    )
+    markdown = render_markdown(analysis)
+    if args.output:
+        with open(args.output, "w", encoding="utf-8") as stream:
+            stream.write(markdown)
+    else:
+        print(markdown, end="")
+    if args.json_output:
+        with open(args.json_output, "w", encoding="utf-8") as stream:
+            json.dump(analysis, stream, indent=2)
+            stream.write("\n")
+
+
+def create_argument_parser():
+    """Create the command-line parser."""
+    parser = argparse.ArgumentParser(description="Analyze agent transcripts or load-test artifacts.")
+    subparsers = parser.add_subparsers(dest="command")
+    load_test = subparsers.add_parser("load-test", help="Analyze neuro-san load-test output.")
+    load_test.add_argument("--raw-results", help="Path to raw_results.json.")
+    load_test.add_argument("--load-test-log", help="Path to load_test.log.")
+    load_test.add_argument("--debug-log", help="Path to debug.log.")
+    load_test.add_argument("--server-log", help="Path to server.log.")
+    load_test.add_argument("--output", help="Write the Markdown report to this path.")
+    load_test.add_argument("--json-output", help="Write the normalized JSON analysis to this path.")
+    return parser
+
+
+def main():
+    """Run the selected analyzer mode."""
+    args = create_argument_parser().parse_args()
+    if args.command == "load-test":
+        run_load_test_analyzer(args)
+    else:
+        run_transcript_analyzer()
+
+
+if __name__ == "__main__":
+    main()
