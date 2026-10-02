@@ -20,6 +20,8 @@ jobs:
       # Every version the package claims support for: what the wheel ships, and whether its
       # dependencies resolve at all, differs per interpreter.
       test-python-versions: '["3.12", "3.13", "3.14"]'
+      # The wheel and the ns console script are installed per platform, so exercise Windows too.
+      test-os: '["ubuntu-latest", "windows-latest"]'
       # The runtime dependency tree is installed into the clean venv under test; the test
       # process itself only needs requirements-build.txt (pytest, build).
       requirements-file: ''
