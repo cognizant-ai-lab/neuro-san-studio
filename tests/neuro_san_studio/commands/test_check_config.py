@@ -29,6 +29,7 @@ from neuro_san_studio.commands.check_config import extract_llm_configs_from_stud
 from neuro_san_studio.commands.check_config import parse_hocon_file
 from neuro_san_studio.commands.check_config import redact_llm_config
 from neuro_san_studio.commands.check_config import run_checks
+from neuro_san_studio.commands.check_config import test_llm_configs as check_llm_configs
 
 
 class TestExpandFallbacks(TestCase):
@@ -335,6 +336,68 @@ class TestParseHoconFileResolvesRelativeInclude(TestCase):
 
 
 _CHECKS_MODULE = "neuro_san_studio.commands.check_config"
+
+
+class TestAdcHint(TestCase):
+    """Tests for CheckConfigCommand.adc_hint's Google ADC error detection."""
+
+    def test_recognizes_default_credentials_error(self):
+        """A real DefaultCredentialsError produces an actionable, specific hint."""
+        try:
+            from google.auth.exceptions import DefaultCredentialsError  # pylint: disable=import-outside-toplevel
+        except ImportError:
+            self.skipTest("google-auth not installed in this environment")
+        hint = CheckConfigCommand.adc_hint(DefaultCredentialsError("Your default credentials were not found."))
+        self.assertIsNotNone(hint)
+        self.assertIn("gcloud auth application-default login", hint)
+        self.assertIn("vertex_adc_llm_config.hocon", hint)
+
+    def test_unrelated_exception_returns_none(self):
+        """A non-ADC exception (e.g. a bad API key) gets no hint."""
+        self.assertIsNone(CheckConfigCommand.adc_hint(ValueError("invalid api key")))
+
+    def test_missing_google_auth_degrades_to_none(self):
+        """If google-auth can't be imported at all, adc_hint must not raise."""
+        with patch.dict("sys.modules", {"google.auth.exceptions": None}):
+            self.assertIsNone(CheckConfigCommand.adc_hint(Exception("anything")))
+
+
+class TestTestLlmConfigsAdcHint(TestCase):
+    """Tests that CheckConfigCommand.adc_hint's guidance reaches both failure branches of test_llm_configs."""
+
+    def _run(self, coro):
+        return asyncio.run(coro)
+
+    def test_creation_failure_includes_adc_hint(self):
+        """A DefaultCredentialsError raised while creating the LLM instance surfaces the ADC hint."""
+        try:
+            from google.auth.exceptions import DefaultCredentialsError  # pylint: disable=import-outside-toplevel
+        except ImportError:
+            self.skipTest("google-auth not installed in this environment")
+        with patch(
+            f"{_CHECKS_MODULE}.create_llm_instance",
+            side_effect=DefaultCredentialsError("Your default credentials were not found."),
+        ):
+            _, failures = self._run(check_llm_configs(MagicMock(), [("my.hocon", {"model_name": "gemini-3.5-flash"})]))
+        self.assertEqual(len(failures), 1)
+        self.assertIn("gcloud auth application-default login", failures[0][2])
+
+    def test_invocation_failure_includes_adc_hint(self):
+        """A DefaultCredentialsError raised while invoking the LLM surfaces the ADC hint."""
+        try:
+            from google.auth.exceptions import DefaultCredentialsError  # pylint: disable=import-outside-toplevel
+        except ImportError:
+            self.skipTest("google-auth not installed in this environment")
+        with (
+            patch(f"{_CHECKS_MODULE}.create_llm_instance", return_value=MagicMock()),
+            patch(
+                f"{_CHECKS_MODULE}.invoke_llm",
+                new=AsyncMock(side_effect=DefaultCredentialsError("Your default credentials were not found.")),
+            ),
+        ):
+            _, failures = self._run(check_llm_configs(MagicMock(), [("my.hocon", {"model_name": "gemini-3.5-flash"})]))
+        self.assertEqual(len(failures), 1)
+        self.assertIn("gcloud auth application-default login", failures[0][2])
 
 
 class TestCheckConfigCommand(TestCase):
