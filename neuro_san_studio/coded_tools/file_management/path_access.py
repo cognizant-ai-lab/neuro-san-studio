@@ -18,6 +18,8 @@ import asyncio
 from pathlib import Path
 from typing import Any
 
+from neuro_san_studio.coded_tools.file_management.path_not_allowed_error import PathNotAllowedError
+
 
 class PathAccess:
     """
@@ -78,20 +80,67 @@ class PathAccess:
                 checks before existence checks and avoid leaking filesystem layout
                 via error type.
         """
-        value: Any = args.get(param_name, "")
-        if not isinstance(value, str):
-            raise ValueError(f"invalid_input: '{param_name}' must be a string, got {value!r}.")
-        path_str: str = value.strip()
-        if not path_str:
-            raise ValueError(f"invalid_input: No '{param_name}' provided.")
-
+        value: str = PathAccess._path_argument(args, param_name)
         try:
             # expanduser() raises RuntimeError (not OSError) when the home directory
             # of a '~user' path cannot be determined, so it must be caught explicitly
             # to keep the invalid_input taxonomy instead of leaking a raw traceback.
-            return Path(path_str).expanduser().resolve(strict=False)
+            return Path(value).expanduser().resolve(strict=False)
         except (ValueError, OSError, RuntimeError) as exc:
-            raise ValueError(f"invalid_input: Cannot resolve '{param_name}' '{path_str}': {exc}") from exc
+            raise ValueError(f"invalid_input: Cannot resolve '{param_name}' '{value}': {exc}") from exc
+
+    @staticmethod
+    def supplied_name(args: dict[str, Any], resolved: Path, param_name: str = "file_path") -> str:
+        """
+        Return the final component of a path argument exactly as the caller supplied it.
+
+        resolve_path follows symlinks, so a target reached through a link is only
+        known by the link target's name afterwards. Extension rules must also see
+        the name the caller used — a directory reached as 'prod.env' has to be
+        denied under blocked_file_extensions=[".env"] even when the link points at
+        'data' — so callers pass this alongside the resolved path. Pure string
+        work: nothing here touches the filesystem, so it is safe on the event loop.
+
+        :param args: The tool argument dictionary.
+        :param resolved: The path as already returned by resolve_path for the same
+                argument; supplies the fallback name so no second resolution is needed.
+        :param param_name: Name of the args key holding the path.
+        :return: The last component of the supplied path after user expansion; when
+                that component is empty, '.', or '..', the resolved path's own name.
+        :raises ValueError: invalid_input when the argument is missing, not a
+                string, blank, or cannot be expanded.
+        """
+        value: str = PathAccess._path_argument(args, param_name)
+        try:
+            supplied: Path = Path(value).expanduser()
+        except (ValueError, RuntimeError) as exc:
+            raise ValueError(f"invalid_input: Cannot resolve '{param_name}' '{value}': {exc}") from exc
+        if supplied.name in ("", ".", ".."):
+            return resolved.name
+        return supplied.name
+
+    @staticmethod
+    def _path_argument(args: dict[str, Any], param_name: str) -> str:
+        """
+        Return the raw string value of a path argument, validated but otherwise untouched.
+
+        Whitespace is only used to detect an effectively-empty argument — the path
+        is used verbatim afterwards. Stripping it would break round-tripping:
+        list_directory emits entry names verbatim, so a file named 'reports '
+        (trailing space) must be addressable by the very name the listing
+        advertised.
+
+        :param args: The tool argument dictionary.
+        :param param_name: Name of the args key holding the path.
+        :return: The supplied path string.
+        :raises ValueError: invalid_input when the value is missing, not a string, or blank.
+        """
+        value: Any = args.get(param_name, "")
+        if not isinstance(value, str):
+            raise ValueError(f"invalid_input: '{param_name}' must be a string, got {value!r}.")
+        if not value.strip():
+            raise ValueError(f"invalid_input: No '{param_name}' provided.")
+        return value
 
     @staticmethod
     def validate_allowed_paths(args: dict[str, Any]) -> list[str]:
@@ -103,7 +152,18 @@ class PathAccess:
 
     @staticmethod
     def validate_and_check_access(args: dict[str, Any], file_path: Path) -> None:
-        """Validate the four allow/block rule lists from args and enforce them against file_path."""
+        """Validate the four allow/block rule lists from args and enforce them against file_path.
+
+        This is the one-shot check for tools that judge a single file. Tools that
+        judge a directory target or many entries per call use PathRules instead,
+        which parses the same rules once and knows about directories (exempt from
+        the extension allow-list, never from block rules).
+
+        :param args: The tool argument dictionary.
+        :param file_path: The resolved path to check.
+        :raises ValueError: invalid_input for malformed rule lists; PathNotAllowedError
+                (path_not_allowed) when the rules deny the path.
+        """
         PathAccess.check_path_allowed(
             file_path,
             PathAccess.validate_allowed_paths(args),
@@ -164,6 +224,19 @@ class PathAccess:
             raise ValueError(f"invalid_input: '{param_name}' must be a boolean, got {value!r}.")
         return value
 
+    @staticmethod
+    def validate_positive_int(args: dict[str, Any], param_name: str, default: int) -> int:
+        """Return a validated positive integer parameter, raising invalid_input on bad input.
+
+        bool is explicitly rejected even though it subclasses int, so True does not
+        silently pass as 1. Shared by every tool with a count/cap parameter so the
+        family judges the same input the same way.
+        """
+        value: Any = args.get(param_name, default)
+        if not isinstance(value, int) or isinstance(value, bool) or value <= 0:
+            raise ValueError(f"invalid_input: '{param_name}' must be a positive integer, got {value!r}.")
+        return value
+
     # ------------------------------------------------------------------
     # Access-control helpers
     # ------------------------------------------------------------------
@@ -176,7 +249,8 @@ class PathAccess:
         blocked_paths: list[str],
         blocked_file_extensions: list[str] | None,
     ) -> None:
-        """Raise ValueError(path_not_allowed) when the file fails the allow/block rules.
+        """Raise PathNotAllowedError (a ValueError with the path_not_allowed prefix)
+        when the file fails the allow/block rules.
 
         Evaluation order:
           1. allowed_paths:      non-empty whitelist (caller guarantees this via validation).
@@ -184,42 +258,53 @@ class PathAccess:
           3. blocked_paths:      [] or omitted = skip; non-empty = deny matching paths/dirs.
           4. blocked_file_extensions: [] or omitted = skip; non-empty = deny matching extensions.
         """
-        # pathlib returns suffix="" for dotfiles (".gitignore") and extensionless files ("Dockerfile").
-        # Fall back to the filename, ensuring a leading dot so it normalizes to the same shape
-        # as a real extension and can be matched against allow/block lists.
-        suffix: str = file_path.suffix.lower()
-        if not suffix:
-            name: str = file_path.name.lower()
-            suffix = name if name.startswith(".") else f".{name}"
+        suffix: str = PathAccess.effective_suffix(file_path.name)
 
         # 1. allowed_paths
         if not PathAccess.path_matches_any(file_path, allowed_paths):
-            raise ValueError(f"path_not_allowed: '{file_path}' is not within any of the allowed_paths entries.")
+            raise PathNotAllowedError(
+                f"path_not_allowed: '{file_path}' is not within any of the allowed_paths entries."
+            )
 
         # 2. allowed_file_extensions
         if allowed_file_extensions is not None:
             if not allowed_file_extensions:
-                raise ValueError(
+                raise PathNotAllowedError(
                     f"path_not_allowed: Extension '{suffix}' is not allowed (allowed_file_extensions is empty)."
                 )
             normalized_allowed_exts: list[str] = PathAccess.normalize_extensions(allowed_file_extensions)
             if suffix not in normalized_allowed_exts:
-                raise ValueError(
+                raise PathNotAllowedError(
                     f"path_not_allowed: Extension '{suffix}' is not in "
                     f"allowed_file_extensions {allowed_file_extensions}."
                 )
 
         # 3. blocked_paths
         if blocked_paths and PathAccess.path_matches_any(file_path, blocked_paths):
-            raise ValueError(f"path_not_allowed: '{file_path}' is blocked by blocked_paths.")
+            raise PathNotAllowedError(f"path_not_allowed: '{file_path}' is blocked by blocked_paths.")
 
         # 4. blocked_file_extensions
         if blocked_file_extensions:
             normalized_blocked_exts: list[str] = PathAccess.normalize_extensions(blocked_file_extensions)
             if suffix in normalized_blocked_exts:
-                raise ValueError(
+                raise PathNotAllowedError(
                     f"path_not_allowed: Extension '{suffix}' is in blocked_file_extensions {blocked_file_extensions}."
                 )
+
+    @staticmethod
+    def effective_suffix(name: str) -> str:
+        """Return the lowercase extension of a file name, with the dotless-name fallback.
+
+        pathlib returns suffix="" for dotfiles (".gitignore") and extensionless
+        files ("Dockerfile"). Fall back to the filename, ensuring a leading dot so
+        it normalizes to the same shape as a real extension and can be matched
+        against allow/block lists.
+        """
+        suffix: str = Path(name).suffix.lower()
+        if not suffix:
+            lowered: str = name.lower()
+            suffix = lowered if lowered.startswith(".") else f".{lowered}"
+        return suffix
 
     @staticmethod
     def normalize_extensions(extensions: list[str]) -> list[str]:
