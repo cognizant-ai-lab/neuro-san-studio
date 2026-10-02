@@ -51,9 +51,9 @@ def test_anthropic_api_key():
         print("Successful call to Anthropic")
         print(f"response: {message.content[0].text}")
 
-    except Exception as e:
+    except (anthropic.APIError, AttributeError, IndexError, TypeError, ValueError) as error:
         print("Failed call to Anthropic. Exception:")
-        print(e)
+        print(error)
 
 
 if __name__ == "__main__":

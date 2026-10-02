@@ -17,6 +17,7 @@
 import os
 
 from google import genai
+from google.genai import errors
 
 
 def test_gemini_api_key():
@@ -41,9 +42,9 @@ def test_gemini_api_key():
         print("Successful call to Gemini")
         print(response.text)
 
-    except Exception as e:
+    except (errors.APIError, AttributeError, TypeError, ValueError) as error:
         print("Failed call to Gemini. Exception:")
-        print(e)
+        print(error)
 
 
 if __name__ == "__main__":

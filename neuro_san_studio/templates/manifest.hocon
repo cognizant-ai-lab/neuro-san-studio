@@ -17,6 +17,11 @@
     # is there.
     #
     "agent_network_designer.hocon": true,
+    "agent_network_consultant.hocon": {
+        # Support network for the Self Improvement tab.
+        "serve": true,
+        "public": false
+    },
     "agent_network_editor.hocon": {
         # Support network for agent_network_designer.
         # We want it served up, but not listed as a public agent network.
