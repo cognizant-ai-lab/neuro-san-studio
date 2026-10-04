@@ -350,7 +350,7 @@ class TestAdcHint(TestCase):
         hint = CheckConfigCommand.adc_hint(DefaultCredentialsError("Your default credentials were not found."))
         self.assertIsNotNone(hint)
         self.assertIn("gcloud auth application-default login", hint)
-        self.assertIn("vertex_adc_llm_config.hocon", hint)
+        self.assertIn("docs/user_guide.md", hint)
 
     def test_unrelated_exception_returns_none(self):
         """A non-ADC exception (e.g. a bad API key) gets no hint."""
@@ -369,14 +369,19 @@ class TestTestLlmConfigsAdcHint(TestCase):
         return asyncio.run(coro)
 
     def test_creation_failure_includes_adc_hint(self):
-        """A DefaultCredentialsError raised while creating the LLM instance surfaces the ADC hint."""
+        """A DefaultCredentialsError wrapped as ValueError (as neuro-san does) surfaces the ADC hint."""
         try:
             from google.auth.exceptions import DefaultCredentialsError  # pylint: disable=import-outside-toplevel
         except ImportError:
             self.skipTest("google-auth not installed in this environment")
+        # neuro-san 0.7.4+ re-raises DefaultCredentialsError as ValueError("...") from exc;
+        # the hint must surface even when it is not the top-level exception type.
+        cause = DefaultCredentialsError("Your default credentials were not found.")
+        wrapped = ValueError("set GOOGLE_API_KEY or configure ADC")
+        wrapped.__cause__ = cause
         with patch(
             f"{_CHECKS_MODULE}.create_llm_instance",
-            side_effect=DefaultCredentialsError("Your default credentials were not found."),
+            side_effect=wrapped,
         ):
             _, failures = self._run(check_llm_configs(MagicMock(), [("my.hocon", {"model_name": "gemini-3.5-flash"})]))
         self.assertEqual(len(failures), 1)

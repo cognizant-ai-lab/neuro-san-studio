@@ -45,3 +45,14 @@ The command prints, in order:
 
 Sensitive keys (anything containing `key`, `token`, `secret`, `credential`, or
 `password` at a word boundary) are redacted in the printed configs.
+
+When a failure is caused by a missing Google Application Default Credential — the most common
+reason a Gemini Vertex AI config fails with no API key set — the command prints an actionable
+hint alongside the error instead of a bare stack trace:
+
+```text
+    FAIL (creation): Failed to create LLM: ...
+    Hint: run 'gcloud auth application-default login', or deploy where the runtime
+    service account has Vertex AI access. See the 'Simpler ADC Alternative' section
+    in docs/user_guide.md.
+```

@@ -555,8 +555,8 @@ API keys is not desirable or permitted.
 ##### Gemini with ADC Configuration
 
 Because ADC-based Vertex AI access requires the `project` and `location` fields — which are not part of
-Neuro-SAN's default Gemini model definitions — you must use the `class` key to instantiate
-`ChatVertexAI` directly in your `llm_config`:
+Neuro-SAN's default Gemini model definitions — you can use the `class` key to instantiate
+`ChatVertexAI` directly in your `llm_config` (see also the simpler alternative below):
 
 ```hocon
 llm_config: {
@@ -593,7 +593,12 @@ For more information on Vertex AI authentication and available models, see the
 `ChatVertexAI` (above) is also flagged by LangChain itself as deprecated in favor of
 `langchain-google-genai`, which neuro-san's built-in `class: "gemini"` already uses under the
 hood. That class can be routed into Vertex AI/ADC mode purely through environment variables,
-with no explicit `project`/`location` keys in the config and no extra dependency to install:
+with no explicit `project`/`location` keys in the config and no extra dependency to install.
+
+Note that these variables apply to the whole server process: once set, every Gemini client in
+the process routes to Vertex AI, including fallback models in other configs and the
+`gemini_image_generation` tool. A BYOK `google_api_key` from `sly_data` is silently ignored
+and the request is billed to the server's GCP project instead.
 
 ```hocon
 llm_config: {
@@ -610,11 +615,10 @@ GOOGLE_CLOUD_LOCATION="global"   # a specific region may 404 on newer models; gl
 ```
 
 See [`config/vertex_adc_llm_config.hocon`](../config/vertex_adc_llm_config.hocon) for a
-ready-to-use version of this config, and run `ns check-config` to verify it can actually
-connect before deploying it - live-tested (`gemini-3.5-flash`, `GOOGLE_CLOUD_LOCATION=global`)
-against a real GCP project; `us-central1` and `us-west2` both 404'd for this model. (A separate
-attempt with the preview model name `gemini-3-flash` failed differently, with `400 FAILED_PRECONDITION`,
-regardless of region - preview models are commonly unavailable via Vertex AI.)
+ready-to-use version of this config, and run
+`ns check-config --hocon-path config/vertex_adc_llm_config.hocon` to verify it can actually
+connect before deploying it. Use `GOOGLE_CLOUD_LOCATION=global`; newer Gemini models may not be
+available in all regional endpoints.
 
 ### Ollama
 

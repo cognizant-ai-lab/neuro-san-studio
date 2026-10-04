@@ -338,7 +338,8 @@ async def test_llm_configs(
             if hint:
                 error_msg = f"{error_msg}\n    {hint}"
             print(f"    FAIL (invocation): {error_msg}")
-            traceback.print_exc()
+            if not hint:
+                traceback.print_exc()
             failures.append((labels, llm_cfg, error_msg))
 
         print()
@@ -458,17 +459,23 @@ class CheckConfigCommand:
 
     @staticmethod
     def adc_hint(exc: Exception) -> Optional[str]:
-        """Return an actionable hint if *exc* is Google's ADC-not-found error, else None."""
+        """Return an actionable hint if *exc* or any chained cause is a Google ADC error, else None."""
         try:
             from google.auth.exceptions import DefaultCredentialsError  # pylint: disable=import-outside-toplevel
         except ImportError:
             return None
-        if not isinstance(exc, DefaultCredentialsError):
-            return None
-        return (
-            "Hint: run 'gcloud auth application-default login', or deploy where the runtime "
-            "service account has Vertex AI access. See config/vertex_adc_llm_config.hocon."
-        )
+        # neuro-san may re-raise DefaultCredentialsError wrapped as ValueError("...") from exc,
+        # so walk the cause chain rather than checking only the top-level exception type.
+        candidate: Optional[BaseException] = exc
+        while candidate is not None:
+            if isinstance(candidate, DefaultCredentialsError):
+                return (
+                    "Hint: run 'gcloud auth application-default login', or deploy where the runtime "
+                    "service account has Vertex AI access. See the 'Simpler ADC Alternative' section "
+                    "in docs/user_guide.md."
+                )
+            candidate = candidate.__cause__
+        return None
 
     def run(self) -> int:
         """Run validation and return an exit code (0 on success, 1 on failure)."""
