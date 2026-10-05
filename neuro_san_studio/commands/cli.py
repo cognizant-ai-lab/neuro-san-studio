@@ -37,6 +37,13 @@ class NeuroSanStudioCli:  # pylint: disable=too-few-public-methods
         add_completion=False,
     )
 
+    _new_app = typer.Typer(
+        name="new",
+        help="Scaffold a new network or tool inside the current project.",
+        no_args_is_help=True,
+    )
+    app.add_typer(_new_app)
+
     @staticmethod
     def _version_callback(value: bool) -> bool:
         """Print the neuro-san-studio version (and where it resolved from) and exit."""
@@ -393,6 +400,28 @@ class NeuroSanStudioCli:  # pylint: disable=too-few-public-methods
                 search_paths=search_paths,
             ).run()
         )
+
+    @staticmethod
+    @_new_app.command("network", help="Scaffold a new agent network HOCON file and register it in the manifest.")
+    def _new_network_command(
+        name: str = typer.Argument(..., help="Snake-case network name, e.g. my_network."),
+    ) -> None:
+        """Create registries/<name>.hocon, add it to the manifest, and write a sample fixture."""
+        # pylint: disable-next=import-outside-toplevel
+        from neuro_san_studio.commands.new_network import NewNetworkCommand
+
+        raise typer.Exit(code=NewNetworkCommand(name=name).run())
+
+    @staticmethod
+    @_new_app.command("tool", help="Scaffold a new CodedTool subclass and a unit test.")
+    def _new_tool_command(
+        name: str = typer.Argument(..., help="Snake-case tool name, e.g. my_tool."),
+    ) -> None:
+        """Create coded_tools/<name>/<name>.py and tests/neuro_san_studio/coded_tools/test_<name>.py."""
+        # pylint: disable-next=import-outside-toplevel
+        from neuro_san_studio.commands.new_tool import NewToolCommand
+
+        raise typer.Exit(code=NewToolCommand(name=name).run())
 
 
 def main() -> None:
