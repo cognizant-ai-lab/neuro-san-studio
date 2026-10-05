@@ -2026,6 +2026,10 @@ Please select the execution option that best aligns with the level of validation
 
 ## Improving agent networks
 
+Use [Agent Network Consultant](examples/agent_network_consultant.md) to generate and run fixtures, diagnose failures,
+and apply targeted repairs from the `ns consultant` command. Its guide covers nsflow integration, Git snapshots, and
+every output location.
+
 <!-- pyml disable line-length -->
 
 Best practices for building and tuning AAOSA-based agent networks.

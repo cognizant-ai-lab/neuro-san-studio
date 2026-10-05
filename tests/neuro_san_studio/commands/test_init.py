@@ -53,6 +53,7 @@ REPO_ROOT: Path = Path(__file__).resolve().parents[3]
 EXPECTED_DEFAULT_NETWORKS: List[str] = [
     "basic/music_nerd.hocon",
     "agent_network_designer.hocon",
+    "agent_network_consultant.hocon",
     "agent_network_editor.hocon",
     "agent_network_instructions_editor.hocon",
     "agent_network_query_generator.hocon",
@@ -329,6 +330,7 @@ class TestRunFlow:
         # Every default network lands on disk...
         for network in EXPECTED_DEFAULT_NETWORKS:
             assert (tmp_path / "registries" / network).is_file(), f"{network} was not scaffolded"
+        assert (tmp_path / "registries" / "agent_network_instruction_improver.hocon").is_file()
         # ...along with the coded tools and middleware they need.
         assert (tmp_path / "coded_tools" / "agent_network_editor" / "add_agent.py").is_file()
         assert (
@@ -692,6 +694,7 @@ class TestDefaultNetworks:
         keys = self._manifest_keys(scaffolded_project)
 
         for support in (
+            "agent_network_consultant.hocon",
             "agent_network_editor.hocon",
             "agent_network_instructions_editor.hocon",
             "agent_network_query_generator.hocon",

@@ -70,6 +70,7 @@ Here are a few examples ordered by level of complexity.
     - [Sentiment Analysis of News Sources](#sentiment-analysis-of-news-sources)
   - [🧪 Experimental and Research](#-experimental-and-research)
     - [Agent Network Designer](#agent-network-designer)
+    - [Agent Network Consultant](#agent-network-consultant)
     - [Agent Network Architect](#agent-network-architect)
     - [Copy Cat](#copy-cat)
     - [CRUSE Theme Agent](#cruse-theme-agent)
@@ -589,6 +590,13 @@ Enter the name of an organization or describe the use-case and will create an ag
 your registries directory and give you some usage examples.
 
 **Tags:** `tool`
+
+### Agent Network Consultant
+
+[Agent Network Consultant](examples/agent_network_consultant.md) generates and runs fixtures for an agent network,
+diagnoses failures, and applies targeted repairs while preserving the network's intended behavior.
+
+**Tags:** `tool`, `testing`, `nsflow`
 
 ### Agent Network Architect
 
