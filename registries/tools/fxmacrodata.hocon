@@ -1,0 +1,111 @@
+# Copyright © 2025-2026 Cognizant Technology Solutions Corp, www.cognizant.com.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
+# END COPYRIGHT
+
+# Requirements to use this agent network:
+#   - neuro-san >= 0.6.24
+#   - This network targets the hosted FXMacroData MCP server, which works without an API key for US data:
+#     USD announcements for the most recent 90 days (each release readable 15 minutes after publication),
+#     the USD release calendar, Federal Reserve press releases and FX market sessions.
+#     For the other 21 currencies, full history and real-time releases, set FXMACRODATA_API_KEY and uncomment
+#     the http_headers block in neuro_san_studio/mcp/mcp_info.hocon. The "tools" list in that same entry
+#     controls which FXMacroData tools this agent sees; remove the key entirely to load every tool the server
+#     exposes.
+# See docs/examples/tools/fxmacrodata.md.
+
+{
+    # Optional metadata describing this agent network
+    "metadata": {
+        "description": "Agent network with a single agent that answers questions about official macroeconomic data, release calendars and central-bank press releases using the FXMacroData MCP server.",
+        "tags": ["tool", "mcp", "fxmacrodata"],
+        "sample_queries": [
+            "What was the latest US CPI inflation reading, and when was it released?",
+            "When is the next US payrolls release scheduled?",
+            "Summarize the most recent Federal Reserve press releases.",
+            "Which FX trading sessions are open right now?"
+        ]
+    },
+
+    include "registries/expertise_scoping_instructions.hocon",
+
+    # Load the shared LLM configuration from a single source of truth.
+    # This allows users to change the model in one file rather than
+    # modifying the configuration for each agent network.
+    # Note that the file path here is relative to the root level of the repo.
+    include "config/llm_config.hocon",
+
+    # Bounds for a single request: a typical answer needs one to three tool calls.
+    "max_steps": 100,
+    "max_execution_seconds": 300,
+
+    "tools": [
+        # This first agent definition is regarded as the "Front Man", which
+        # does all the talking to the outside world/client.
+        #
+        # Some disqualifications from being a front man:
+        #   1) Cannot use a CodedTool "class" definition
+        #   2) Cannot use a Tool "toolbox" definition
+        #
+        # Besides the first agent being the front man, these tool definitions
+        # do not have to be in any particular order. How they are linked and
+        # call each other is defined within their own specs.
+        # This could be a graph, potentially even with cycles.
+        {
+            "name": "fx_macro_analyst",
+
+            "function": {
+                "description": "Assist caller with official macroeconomic data for FX analysis: latest indicator values, indicator history, upcoming release dates, central-bank press releases and FX market session times, using FXMacroData.",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "user_inquiry": {
+                            "type": "string",
+                            "description": "An inquiry from a user."
+                        },
+                    },
+                    "required": ["user_inquiry"]
+                }
+            },
+
+            "instructions": """
+You are an FX macro analyst. Use your FXMacroData tools to answer from official data rather than from memory.
+
+Pick the tool that matches the inquiry:
+- latest_announcements for the latest value of every indicator in one currency. It also lists the exact
+  indicator slugs (such as inflation or non_farm_payrolls) that the other tools expect.
+- indicator_query for the history of one indicator.
+- release_calendar for when an upcoming release is scheduled.
+- press_releases for recent central-bank press releases.
+- market_sessions for which FX trading sessions are open.
+
+Read dates carefully:
+- Where a row has a `date`, it is the reference period the value describes, not the day it was published.
+  A CPI row dated 2026-08-31 is August inflation.
+- When a release was or will be published is given by `announcement_datetime` (Unix seconds), usually with
+  `announcement_datetime_utc` and `announcement_datetime_local` alongside it. Use these whenever the user asks
+  when something was released or is due, and state the time zone.
+
+Currency codes are three letters, such as usd or eur. If a result reports that a currency or tool needs a
+subscription, say that the data exists and needs an FXMacroData API key, then answer the closest question you
+can with US data. If a result reports a release withheld by the 15-minute free-tier delay, say that a newer
+value has been published but is not yet available without a key, rather than presenting the older value as the
+latest.
+
+Cite the official source named in each result.
+""" ${expertise_scoping_instructions},
+            "tools": ["https://mcp.fxmacrodata.com"]
+        },
+    ]
+}
