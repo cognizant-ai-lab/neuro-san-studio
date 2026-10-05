@@ -31,7 +31,7 @@ class TestToClassName:
         assert NewToolCommand._to_class_name("my_tool") == "MyTool"  # pylint: disable=protected-access
 
     def test_single_word(self) -> None:
-        """Single-word name is capitalised."""
+        """Single-word name is capitalized."""
         assert NewToolCommand._to_class_name("fetcher") == "Fetcher"  # pylint: disable=protected-access
 
     def test_three_words(self) -> None:

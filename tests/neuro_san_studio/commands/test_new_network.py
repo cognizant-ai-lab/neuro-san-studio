@@ -31,7 +31,7 @@ class TestToClassName:
         assert NewNetworkCommand._to_class_name("my_network") == "MyNetwork"  # pylint: disable=protected-access
 
     def test_single_word(self) -> None:
-        """Single-word name is capitalised."""
+        """Single-word name is capitalized."""
         assert NewNetworkCommand._to_class_name("agent") == "Agent"  # pylint: disable=protected-access
 
     def test_kebab_case(self) -> None:
