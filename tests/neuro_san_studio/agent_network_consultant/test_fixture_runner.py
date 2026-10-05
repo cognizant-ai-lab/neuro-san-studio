@@ -80,12 +80,13 @@ class TestFixtureRunner(TestCase):
         return driver
 
     @staticmethod
-    def _ignore_thinking_trace(_fixture_name: str, _started: float) -> None:
+    def _ignore_thinking_trace(_fixture_name: str, _started: float, _run_id: str) -> None:
         """
         Disable thinking-trace output for the isolated fixture test.
 
         :param _fixture_name: The unused fixture name required by the patched interface.
         :param _started: The unused fixture start time required by the patched interface.
+        :param _run_id: The unused Consultant run identifier required by the patched interface.
         """
 
     def test_a_subset_round_keeps_the_verdicts_it_did_not_re_run(self) -> None:
@@ -178,13 +179,50 @@ class TestFixtureRunner(TestCase):
             patch.object(FixtureRunner, "_create_driver", partial(TestFixtureRunner._return_driver, driver)),
             patch.object(ThinkingTraceCollector, "write", TestFixtureRunner._ignore_thinking_trace),
         ):
-            result = FixtureRunner.run_fixture("tests/fixtures/example.hocon")
+            result = FixtureRunner.run_fixture("tests/fixtures/example.hocon", "run-one")
 
         self.assertIs(result.get("infrastructure_error"), True)
         self.assertEqual(
             result.get("message"),
             "Provider API-key validation failed. Verify the configured credentials.",
         )
+
+    def test_success_ratio_override_is_applied_in_memory(self) -> None:
+        """Run the requested number of attempts without changing the fixture file."""
+        fixture = self.tmp_path / "example.hocon"
+        fixture_text = '{"agent": "example", "success_ratio": "1/1", "interactions": []}'
+        fixture.write_text(fixture_text, encoding="utf-8")
+        successful_result = Mock()
+        successful_result.get_asserts.return_value = []
+
+        with (
+            patch(
+                "neuro_san.test.driver.data_driven_tests_driver.DataDrivenTestsDriver.run_tests",
+                return_value=[successful_result, successful_result, successful_result],
+            ) as run_tests,
+            patch.object(ThinkingTraceCollector, "write", TestFixtureRunner._ignore_thinking_trace),
+        ):
+            result = FixtureRunner.run_fixture(str(fixture), "run-one", {"example.hocon": "3/3"})
+
+        test_cases, required_successes = run_tests.call_args.args
+        self.assertEqual(3, len(test_cases))
+        self.assertEqual(3, required_successes)
+        for test_case in test_cases:
+            self.assertEqual("3/3", test_case.get("success_ratio"))
+        self.assertIs(result.get("passed"), True)
+        self.assertEqual(fixture_text, fixture.read_text(encoding="utf-8"))
+
+    def test_unknown_subset_fixture_is_reported_before_any_fixture_runs(self) -> None:
+        """Reject every unknown selected fixture instead of silently running only the names that exist."""
+        fixture_paths = ["tests/fixtures/example/valid.hocon"]
+        with (
+            patch.object(FixtureRunner, "fixture_paths", return_value=fixture_paths),
+            patch.object(FixtureRunner, "run_fixture") as run_fixture,
+            self.assertRaisesRegex(ValueError, "missing.hocon"),
+        ):
+            FixtureRunner.run_all_tests("example", "run-one", ["valid.hocon", "missing.hocon"])
+
+        run_fixture.assert_not_called()
 
     def test_sensitive_values_are_redacted_from_returned_and_persisted_messages(self) -> None:
         """Remove credential values before a fixture verdict reaches callers or the results file."""

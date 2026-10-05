@@ -26,12 +26,11 @@ from neuro_san.interfaces.coded_tool import CodedTool
 from typing_extensions import override
 
 from coded_tools.agent_network_editor.and_logger import AndLogger
+from middleware.agent_network_consultant.consultant_state import ConsultantState
+from neuro_san_studio.agent_network_consultant.thinking_trace_collector import ThinkingTraceCollector
 from neuro_san_studio.coded_tools.file_management.read_file import MAX_FILE_BYTES
 from neuro_san_studio.coded_tools.file_management.read_file import ReadFile
 
-# Matches network_consultant/thinking_trace_collector.py's IMPROVEMENT_THINKING_DIR and the
-# "--- <agent_origin> ---" section headers _write_consolidated_thinking writes.
-THINKING_DIR = Path("logs/thinking_dir/improvement").resolve()
 SECTION_HEADER = re.compile(r"^--- (.+) ---$", re.MULTILINE)
 
 
@@ -62,18 +61,19 @@ class ReadThinkingTrace(CodedTool):
         return sections
 
     @staticmethod
-    async def _read_trace(path: Path, sly_data: dict[str, Any]) -> str | None:
+    async def _read_trace(path: Path, run_directory: Path, sly_data: dict[str, Any]) -> str | None:
         """
         Read a trace through the shared file-management controls.
 
         :param path: The file or token path to process.
+        :param run_directory: The isolated directory containing this run's traces.
         :param sly_data: The shared agent runtime data.
         :return: The resulting value, or `None` when unavailable.
         :raises ValueError: If an existing trace cannot be read safely.
         """
         file_args: dict[str, Any] = {
             "file_path": str(path),
-            "allowed_paths": [str(THINKING_DIR)],
+            "allowed_paths": [str(run_directory)],
             "allowed_file_extensions": [".txt"],
             "max_content_chars": MAX_FILE_BYTES,
         }
@@ -123,14 +123,20 @@ class ReadThinkingTrace(CodedTool):
         if not fixture_name:
             return "Error: No 'fixture_name' provided."
 
-        safe_name = re.sub(r"[^\w.\-]", "_", Path(fixture_name).name)
-        trace_path = (THINKING_DIR / f"{safe_name}.txt").resolve()
+        run_id = str(sly_data.get(ConsultantState.NETWORK_CONSULTANT_RUN_ID) or "")
         try:
-            trace_path.relative_to(THINKING_DIR)
+            run_directory = Path(ThinkingTraceCollector.run_directory(run_id)).resolve()
+        except ValueError as exc:
+            logger.error("Could not resolve the Consultant thinking-trace directory: %s", exc)
+            return f"Error: {exc}"
+        safe_name = re.sub(r"[^\w.\-]", "_", Path(fixture_name).name)
+        trace_path = (run_directory / f"{safe_name}.txt").resolve()
+        try:
+            trace_path.relative_to(run_directory)
         except ValueError:
             return "Error: fixture_name resolves outside the thinking-trace directory."
         try:
-            content: str | None = await self._read_trace(trace_path, sly_data)
+            content: str | None = await self._read_trace(trace_path, run_directory, sly_data)
         except ValueError as exc:
             logger.error("Could not read thinking trace %s: %s", trace_path, exc)
             return f"Error: {exc}"

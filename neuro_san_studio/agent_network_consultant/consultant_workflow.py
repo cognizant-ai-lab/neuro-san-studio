@@ -16,14 +16,15 @@
 """Reusable orchestration for the Network Consultant CLI."""
 
 import logging
+import operator
 from pathlib import PurePosixPath
 from typing import Any
 
+from middleware.agent_network_consultant.consultant_state import ConsultantState
 from neuro_san_studio.agent_network_consultant.consultant_job_files import ConsultantJobFiles
 from neuro_san_studio.agent_network_consultant.consultant_scoring import ConsultantScoring
 from neuro_san_studio.agent_network_consultant.consultant_session import ConsultantSession
 from neuro_san_studio.agent_network_consultant.fixture_runner import FixtureRunner
-from neuro_san_studio.agent_network_consultant.parse_error_capture import ParseErrorCapture
 from neuro_san_studio.agent_network_consultant.stuck_patch_error import StuckPatchError
 
 logger = logging.getLogger("network_consultant")
@@ -32,14 +33,17 @@ logger = logging.getLogger("network_consultant")
 class ConsultantWorkflow:
     """Coordinate Consultant conversations, prompts, and nsflow reporting."""
 
+    PERSISTENCE_FAILURE_THRESHOLD = 3
+
     @staticmethod
     def _ask_headless(question: str) -> str:
         """
-        Write `question` to a file nsflow's backend surfaces in the UI, then block until a human answers it there
-        (a file appears in the same directory), and return that answer.
+        Write `question` to a file nsflow surfaces, wait up to five minutes for an answer, and return that answer.
 
         :param question: The clarification question to present.
         :return: The resulting text.
+        :raises RuntimeError: If no nsflow job-file context is active.
+        :raises TimeoutError: If nsflow does not supply an answer within five minutes.
         """
         return ConsultantJobFiles.ask(question, ConsultantSession.headless_poll_interval())
 
@@ -80,8 +84,7 @@ class ConsultantWorkflow:
         sly_data: dict[str, Any] | None = None,
     ) -> str:
         """
-        ConsultantSession.chat(), but raises StuckPatchError if the parse-error signature repeats during the call
-        instead of letting consultant retry a doomed tool call indefinitely.
+        Run one chat and stop after repeated structured source-persistence failures.
 
         :param session: The active Consultant session.
         :param message: The message sent to the Consultant or stored in a verdict.
@@ -90,14 +93,12 @@ class ConsultantWorkflow:
         :return: The response text from the Consultant.
         :raises StuckPatchError: Raised when the requested operation cannot complete.
         """
-        capture = ParseErrorCapture()
-        root_logger = logging.getLogger()
-        root_logger.addHandler(capture)
-        try:
-            response = session.chat(message, sly_data=sly_data)
-        finally:
-            root_logger.removeHandler(capture)
-        if capture.is_stuck():
+        chat_sly_data: dict[str, Any] = dict(sly_data or {})
+        chat_sly_data.update({ConsultantState.AGENT_NETWORK_PERSISTENCE_FAILURE_COUNT: 0})
+        response = session.chat(message, sly_data=chat_sly_data)
+        failure_count_value = session.sly_data_value(ConsultantState.AGENT_NETWORK_PERSISTENCE_FAILURE_COUNT)
+        failure_count = 0 if failure_count_value is None else operator.index(failure_count_value)
+        if failure_count >= ConsultantWorkflow.PERSISTENCE_FAILURE_THRESHOLD:
             raise StuckPatchError(
                 f"consultant is stuck patching {hocon_file} -- its source-preserving editor "
                 "doesn't support this file's brace-less/'=' HOCON style. Skipping."

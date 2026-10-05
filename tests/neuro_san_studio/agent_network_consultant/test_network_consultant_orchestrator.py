@@ -17,13 +17,18 @@
 """Characterization tests for the refactored Network Consultant run orchestration."""
 
 import logging
+import os
+import shutil
 from contextlib import ExitStack
 from functools import partial
+from tempfile import TemporaryDirectory
 from typing import Any
 from unittest import TestCase
 from unittest.mock import Mock
+from unittest.mock import call
 from unittest.mock import patch
 
+from neuro_san_studio.agent_network_consultant import thinking_trace_collector
 from neuro_san_studio.agent_network_consultant.consultant_options import ConsultantOptions
 from neuro_san_studio.agent_network_consultant.consultant_resources import ConsultantResources
 from neuro_san_studio.agent_network_consultant.consultant_round_state import ConsultantRoundState
@@ -33,6 +38,7 @@ from neuro_san_studio.agent_network_consultant.consultant_session import Consult
 from neuro_san_studio.agent_network_consultant.consultant_target import ConsultantTarget
 from neuro_san_studio.agent_network_consultant.network_consultant_orchestrator import NetworkConsultantOrchestrator
 from neuro_san_studio.agent_network_consultant.progress_tracker import ProgressTracker
+from neuro_san_studio.agent_network_consultant.thinking_trace_collector import ThinkingTraceCollector
 
 
 class TestNetworkConsultantOrchestrator(TestCase):
@@ -58,9 +64,11 @@ class TestNetworkConsultantOrchestrator(TestCase):
             ungrounded="stop",
             use_case=None,
         )
+        session = Mock(spec=ConsultantSession)
+        session.run_identifier.return_value = "run-one"
         return ConsultantRunContext(
             options,
-            Mock(spec=ConsultantSession),
+            session,
             ConsultantTarget("example.hocon", "example", "Preserve behavior", "registries/example.hocon"),
             ConsultantResources(),
             ConsultantScoreState(),
@@ -161,6 +169,46 @@ class TestNetworkConsultantOrchestrator(TestCase):
         :param _args: Unused positional arguments required by the patched interface.
         """
 
+    @staticmethod
+    def _remove_or_fail_improvement_cleanup(
+        real_rmtree: Any,
+        path: Any,
+        *args: Any,
+        **kwargs: Any,
+    ) -> None:
+        """
+        Fail improvement-trace cleanup while preserving unrelated temporary cleanup.
+
+        :param real_rmtree: The unpatched recursive directory remover.
+        :param path: The directory selected for removal.
+        :param args: Additional positional arguments accepted by the remover.
+        :param kwargs: Additional keyword arguments accepted by the remover.
+        :raises OSError: Raised for the configured improvement-trace directory.
+        """
+        expected_path = ThinkingTraceCollector.run_directory("run-one")
+        if os.path.normpath(os.fspath(path)) == os.path.normpath(expected_path):
+            raise OSError("cleanup denied")
+        real_rmtree(path, *args, **kwargs)
+
+    @staticmethod
+    def _record_session_directory(
+        directories: list[tuple[str, bool]],
+        _agent_name: str,
+        thinking_directory: str,
+    ) -> Mock:
+        """
+        Record whether the run-owned thinking directory exists during session construction.
+
+        :param directories: The directory observations collected by the test.
+        :param _agent_name: The unused agent name required by the patched interface.
+        :param thinking_directory: The run-owned thinking directory.
+        :return: An inert Consultant session replacement.
+        """
+        directories.append((thinking_directory, os.path.isdir(thinking_directory)))
+        session = Mock(spec=ConsultantSession)
+        session.run_identifier.return_value = "run-one"
+        return session
+
     def test_iteration_preserves_stage_order(self) -> None:
         """
         Keep load, record, score, and consult stages in their original order.
@@ -240,10 +288,9 @@ class TestNetworkConsultantOrchestrator(TestCase):
 
     def test_execute_always_cleans_temporary_resources(self) -> None:
         """
-        Restore fixture ratios and stop versioning even after an early terminal round.
+        Stop versioning even after an early terminal round.
         """
         context = self._context()
-        context.resources().remember_original_ratios({"fixture.hocon": "1/1"})
         cleanup_calls: list[tuple[str, Any]] = []
 
         with ExitStack() as stack:
@@ -251,12 +298,6 @@ class TestNetworkConsultantOrchestrator(TestCase):
                 patch.object(NetworkConsultantOrchestrator, "_start_git_versioning", self._return_worktree)
             )
             stack.enter_context(patch.object(NetworkConsultantOrchestrator, "_iterate", self._return_true))
-            stack.enter_context(
-                patch(
-                    "neuro_san_studio.agent_network_consultant.network_consultant_orchestrator.FixtureRatioManager.restore",
-                    partial(self._record_cleanup_call, cleanup_calls, "ratios"),
-                )
-            )
             stack.enter_context(
                 patch(
                     "neuro_san_studio.agent_network_consultant.network_consultant_orchestrator."
@@ -272,7 +313,97 @@ class TestNetworkConsultantOrchestrator(TestCase):
             )
             NetworkConsultantOrchestrator.execute(context)
 
-        self.assertEqual(cleanup_calls, [("ratios", {"fixture.hocon": "1/1"}), ("git", "worktree")])
+        self.assertEqual(cleanup_calls, [("git", "worktree")])
+
+    def test_round_rechecks_apply_in_memory_ratio_overrides(self) -> None:
+        """Pass confidence ratios to ordinary fixture rechecks without editing fixture files."""
+        context = self._context()
+        context.resources().remember_success_ratio_overrides(["failure.hocon"], "3/3")
+        results = [{"fixture": "failure.hocon", "passed": True}]
+
+        with ExitStack() as stack:
+            stack.enter_context(
+                patch(
+                    "neuro_san_studio.agent_network_consultant.network_consultant_orchestrator."
+                    "ConsultantJobFiles.active",
+                    return_value=False,
+                )
+            )
+            run_all_tests = stack.enter_context(
+                patch(
+                    "neuro_san_studio.agent_network_consultant.network_consultant_orchestrator."
+                    "FixtureRunner.run_all_tests",
+                    return_value=results,
+                )
+            )
+            stack.enter_context(patch.object(NetworkConsultantOrchestrator, "_record_round"))
+            stack.enter_context(patch.object(NetworkConsultantOrchestrator, "_log_and_commit_round"))
+            stack.enter_context(
+                patch.object(NetworkConsultantOrchestrator, "_handle_passing_round", return_value=True)
+            )
+
+            should_stop = NetworkConsultantOrchestrator.run_iteration(context)
+
+        self.assertTrue(should_stop)
+        run_all_tests.assert_called_once_with(
+            "example",
+            "run-one",
+            only_fixtures=None,
+            success_ratio_overrides={"failure.hocon": "3/3"},
+        )
+
+    def test_full_suite_uses_declared_fixture_ratios(self) -> None:
+        """Exclude confidence overrides from authoritative full-suite scoring."""
+        context = self._context()
+        context.round_state().record_results([{"fixture": "failure.hocon", "passed": False}])
+        context.round_state().schedule_failure_retests()
+        context.round_state().start_iteration(2)
+        context.resources().remember_success_ratio_overrides(["failure.hocon"], "3/3")
+        passing_results = [{"fixture": "failure.hocon", "passed": True}]
+
+        with ExitStack() as stack:
+            stack.enter_context(
+                patch(
+                    "neuro_san_studio.agent_network_consultant.network_consultant_orchestrator."
+                    "ConsultantJobFiles.active",
+                    return_value=False,
+                )
+            )
+            run_all_tests = stack.enter_context(
+                patch(
+                    "neuro_san_studio.agent_network_consultant.network_consultant_orchestrator."
+                    "FixtureRunner.run_all_tests",
+                    side_effect=[passing_results, passing_results],
+                )
+            )
+            stack.enter_context(patch.object(NetworkConsultantOrchestrator, "_record_round"))
+            stack.enter_context(patch.object(NetworkConsultantOrchestrator, "_log_and_commit_round"))
+            stack.enter_context(
+                patch.object(NetworkConsultantOrchestrator, "_handle_satisfied_network", return_value=True)
+            )
+            stack.enter_context(patch.object(context.progress_tracker(), "record"))
+            stack.enter_context(
+                patch(
+                    "neuro_san_studio.agent_network_consultant.network_consultant_orchestrator."
+                    "GitVersioning.commit_hocon_version"
+                )
+            )
+
+            should_stop = NetworkConsultantOrchestrator.run_iteration(context)
+
+        self.assertTrue(should_stop)
+        self.assertEqual(
+            run_all_tests.call_args_list,
+            [
+                call(
+                    "example",
+                    "run-one",
+                    only_fixtures=["failure.hocon"],
+                    success_ratio_overrides={"failure.hocon": "3/3"},
+                ),
+                call("example", "run-one"),
+            ],
+        )
 
     def test_zero_iterations_runs_tests_directly_without_caching(self) -> None:
         """Run fixtures without repairs or nsflow-only cache writes in a direct CLI context."""
@@ -314,7 +445,7 @@ class TestNetworkConsultantOrchestrator(TestCase):
 
             NetworkConsultantOrchestrator.execute(context)
 
-        run_all_tests.assert_called_once_with("example", only_fixtures=None)
+        run_all_tests.assert_called_once_with("example", "run-one", only_fixtures=None)
         cache_save.assert_not_called()
         progress_record.assert_not_called()
         self.assertIn("Result: 1/2 passing.", "\n".join(captured.output))
@@ -332,9 +463,10 @@ class TestNetworkConsultantOrchestrator(TestCase):
                 )
             )
             stack.enter_context(patch.object(NetworkConsultantOrchestrator, "configure_logging"))
-            stack.enter_context(
+            consultant_session = stack.enter_context(
                 patch("neuro_san_studio.agent_network_consultant.network_consultant_orchestrator.ConsultantSession")
             )
+            consultant_session.return_value.run_identifier.return_value = "run-one"
             stack.enter_context(
                 patch("coded_tools.agent_network_consultant.network_scratchpad.NetworkScratchpad.clear_for_hocon_file")
             )
@@ -347,7 +479,7 @@ class TestNetworkConsultantOrchestrator(TestCase):
             stack.enter_context(
                 patch(
                     "neuro_san_studio.agent_network_consultant.network_consultant_orchestrator.shutil.rmtree",
-                    side_effect=OSError("cleanup denied"),
+                    side_effect=partial(self._remove_or_fail_improvement_cleanup, shutil.rmtree),
                 )
             )
             stack.enter_context(patch.object(NetworkConsultantOrchestrator, "_generate_tests"))
@@ -357,6 +489,86 @@ class TestNetworkConsultantOrchestrator(TestCase):
             NetworkConsultantOrchestrator.run(options)
 
         self.assertIn("cleanup denied", "\n".join(captured.output))
+
+    def test_improvement_trace_cleanup_removes_only_the_current_run(self) -> None:
+        """Preserve another active Consultant run's consolidated traces during initialization."""
+        options = self._context().options()
+        with TemporaryDirectory() as temporary_directory:
+            first_run = os.path.join(temporary_directory, "run-one")
+            second_run = os.path.join(temporary_directory, "run-two")
+            os.makedirs(first_run)
+            os.makedirs(second_run)
+            with ExitStack() as stack:
+                stack.enter_context(
+                    patch.object(NetworkConsultantOrchestrator, "_validate_options", return_value="example.hocon")
+                )
+                stack.enter_context(
+                    patch(
+                        "neuro_san_studio.agent_network_consultant.network_consultant_orchestrator."
+                        "NetworkTestEnvironment"
+                    )
+                )
+                stack.enter_context(patch.object(NetworkConsultantOrchestrator, "configure_logging"))
+                consultant_session = stack.enter_context(
+                    patch(
+                        "neuro_san_studio.agent_network_consultant.network_consultant_orchestrator.ConsultantSession"
+                    )
+                )
+                consultant_session.return_value.run_identifier.return_value = "run-one"
+                stack.enter_context(
+                    patch(
+                        "coded_tools.agent_network_consultant.network_scratchpad.NetworkScratchpad."
+                        "clear_for_hocon_file"
+                    )
+                )
+                stack.enter_context(
+                    patch.object(
+                        thinking_trace_collector,
+                        "IMPROVEMENT_THINKING_DIR",
+                        temporary_directory,
+                    )
+                )
+                stack.enter_context(patch.object(NetworkConsultantOrchestrator, "_generate_tests"))
+                stack.enter_context(patch.object(NetworkConsultantOrchestrator, "execute"))
+
+                NetworkConsultantOrchestrator.run(options)
+
+            self.assertFalse(os.path.exists(first_run))
+            self.assertTrue(os.path.exists(second_run))
+
+    def test_run_scopes_session_thinking_to_an_automatic_temporary_directory(self) -> None:
+        """Give every session one run-owned thinking directory and remove it afterward."""
+        options = self._context().options()
+        directories: list[tuple[str, bool]] = []
+        with ExitStack() as stack:
+            stack.enter_context(
+                patch.object(NetworkConsultantOrchestrator, "_validate_options", return_value="example.hocon")
+            )
+            stack.enter_context(
+                patch(
+                    "neuro_san_studio.agent_network_consultant.network_consultant_orchestrator.NetworkTestEnvironment"
+                )
+            )
+            stack.enter_context(patch.object(NetworkConsultantOrchestrator, "configure_logging"))
+            stack.enter_context(
+                patch(
+                    "neuro_san_studio.agent_network_consultant.network_consultant_orchestrator.ConsultantSession",
+                    side_effect=partial(self._record_session_directory, directories),
+                )
+            )
+            stack.enter_context(
+                patch("coded_tools.agent_network_consultant.network_scratchpad.NetworkScratchpad.clear_for_hocon_file")
+            )
+            stack.enter_context(patch.object(NetworkConsultantOrchestrator, "_clear_improvement_thinking"))
+            stack.enter_context(patch.object(NetworkConsultantOrchestrator, "_generate_tests"))
+            stack.enter_context(patch.object(NetworkConsultantOrchestrator, "execute"))
+
+            NetworkConsultantOrchestrator.run(options)
+
+        self.assertEqual(1, len(directories))
+        thinking_directory, existed_during_run = directories[0]
+        self.assertTrue(existed_during_run)
+        self.assertFalse(os.path.exists(thinking_directory))
 
     def test_configure_logging_does_not_configure_the_root_logger(self) -> None:
         """Keep host-application root logging unchanged when Consultant starts."""

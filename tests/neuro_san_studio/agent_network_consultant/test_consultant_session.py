@@ -17,6 +17,8 @@
 """Tests for direct Network Consultant sessions."""
 
 import os
+import tempfile
+from pathlib import Path
 from unittest import TestCase
 from unittest.mock import Mock
 from unittest.mock import patch
@@ -42,6 +44,7 @@ class TestConsultantSession(TestCase):
         session = ConsultantSession("agent_network_consultant")
 
         self.assertIsNotNone(session)
+        self.assertTrue(session.run_identifier())
         factory.create_session.assert_called_once_with(
             session_type="direct",
             agent_name="agent_network_consultant",
@@ -52,6 +55,14 @@ class TestConsultantSession(TestCase):
     def test_unwrap_json_error_returns_text_from_the_error_envelope(self) -> None:
         """Return error-envelope content when the value exposes the text interface."""
         response = '{"error": "TOOL_ISSUE: retry", "tool": "consultant"}'
+
+        unwrapped = ConsultantSession.unwrap_json_error(response)
+
+        self.assertEqual(unwrapped, "TOOL_ISSUE: retry")
+
+    def test_unwrap_json_error_recovers_a_fenced_malformed_envelope_from_surrounding_text(self) -> None:
+        """Use the shared parser to recover a model-produced error envelope from prose."""
+        response = 'Before\n```json\n{"error": "TOOL_ISSUE: retry",}\n```\nAfter'
 
         unwrapped = ConsultantSession.unwrap_json_error(response)
 
@@ -83,9 +94,21 @@ class TestConsultantSession(TestCase):
             "last_chat_response": "created",
             "sly_data": {"agent_network_name": "generated_network"},
         }
-        session = ConsultantSession("agent_network_designer")
+        with tempfile.TemporaryDirectory() as thinking_directory:
+            session = ConsultantSession("agent_network_designer", thinking_directory)
 
-        response = session.chat("Create a network")
+            response = session.chat("Create a network")
+
+            expected_session_directory = Path(thinking_directory) / "agent_network_designer"
+            streaming_input_processor.assert_called_once_with(
+                "DEFAULT",
+                str(expected_session_directory / "thinking.txt"),
+                agent_session_factory.return_value.create_session.return_value,
+                str(expected_session_directory / "agents"),
+            )
+            self.assertTrue((expected_session_directory / "agents").is_dir())
 
         self.assertEqual(response, "created")
         self.assertEqual(session.sly_data_value("agent_network_name"), "generated_network")
+        self.assertTrue(session.run_identifier())
+        self.assertFalse(Path(thinking_directory).exists())

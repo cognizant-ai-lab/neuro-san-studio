@@ -17,6 +17,7 @@
 """Consultant-only validation and source-preserving persistence."""
 
 import asyncio
+import operator
 from collections.abc import Mapping
 from os import environ
 from typing import Any
@@ -29,6 +30,8 @@ from neuro_san.interfaces.reservationist import Reservationist
 from neuro_san.internals.validation.network.structure_network_validator import StructureNetworkValidator
 from neuro_san.internals.validation.network.toolbox_network_validator import ToolboxNetworkValidator
 from neuro_san.internals.validation.network.url_network_validator import UrlNetworkValidator
+from pyhocon.exceptions import ConfigException
+from pyparsing import ParseBaseException
 from typing_extensions import override
 
 from coded_tools.agent_network_editor.connectivity_dictionary_converter import ConnectivityDictionaryConverter
@@ -210,7 +213,10 @@ class ConsultantPersistenceMiddleware(AgentNetworkPersistenceMiddleware):
         :param agent_network_name: The name of the target agent network.
         :param sample_queries: The sample queries accepted by the parent interface.
         :return: The resulting value, or `None` when unavailable.
-        :raises ValueError: Raised when the requested operation cannot complete.
+        :raises ConfigException: If the staged HOCON configuration is invalid.
+        :raises OSError: If the source file cannot be read, staged, or replaced.
+        :raises ParseBaseException: If the staged HOCON syntax is invalid.
+        :raises ValueError: If source-preserving editing cannot apply the requested change.
         """
         del network_def, agent_network_name, sample_queries
         if not self.preserve_source_hocon:
@@ -219,7 +225,16 @@ class ConsultantPersistenceMiddleware(AgentNetworkPersistenceMiddleware):
         if not source_file:
             raise ValueError("Cannot preserve source HOCON: no agent_network_source_file is available.")
         changes = self.sly_data.get(ConsultantState.AGENT_NETWORK_CHANGES, {})
-        updated_text = await asyncio.to_thread(SourcePreservingHoconEditor.update_file, source_file, changes)
+        try:
+            updated_text = await asyncio.to_thread(SourcePreservingHoconEditor.update_file, source_file, changes)
+        except (ConfigException, ParseBaseException, ValueError):
+            # Only unsupported or malformed HOCON counts as a stuck patch. File-system errors retain their normal
+            # exception path and must not be mislabeled as a source-format limitation.
+            failure_count = operator.index(
+                self.sly_data.get(ConsultantState.AGENT_NETWORK_PERSISTENCE_FAILURE_COUNT, 0)
+            )
+            self.sly_data.update({ConsultantState.AGENT_NETWORK_PERSISTENCE_FAILURE_COUNT: failure_count + 1})
+            raise
         self.sly_data.update(
             {
                 AGENT_NETWORK_HOCON_TEXT: updated_text,
@@ -227,6 +242,7 @@ class ConsultantPersistenceMiddleware(AgentNetworkPersistenceMiddleware):
                 ConsultantState.AGENT_NETWORK_EDITABLE_FIELDS: ConsultantInstructionChanges.snapshot(
                     self.sly_data.get(AGENT_NETWORK_DEFINITION, {})
                 ),
+                ConsultantState.AGENT_NETWORK_PERSISTENCE_FAILURE_COUNT: 0,
             }
         )
         self.logger.info("Persisted surgical agent-network changes to %s", source_file)

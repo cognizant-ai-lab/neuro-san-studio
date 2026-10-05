@@ -19,7 +19,10 @@
 import os
 import shutil
 import tempfile
+from collections.abc import Callable
+from functools import partial
 from pathlib import Path
+from typing import Any
 from unittest import TestCase
 from unittest.mock import patch
 
@@ -49,14 +52,52 @@ class TestConsultantJobFiles(TestCase):
         answer_path = ConsultantJobFiles.path("answer.txt")
         if answer_path is None:
             self.fail("The active test job did not resolve an answer path.")
-        Path(answer_path).write_text("operator answer\n", encoding="utf-8")
+        answer_path.write_text("operator answer\n", encoding="utf-8")
+
+    @staticmethod
+    def _advance_clock(values: list[float]) -> float:
+        """
+        Return and consume the next simulated monotonic-clock value.
+
+        :param values: The remaining clock values.
+        :return: The next clock value.
+        """
+        return values.pop(0)
+
+    @staticmethod
+    def _record_replace(
+        calls: list[tuple[Any, Any]],
+        real_replace: Callable[[Any, Any], None],
+        source: Any,
+        destination: Any,
+    ) -> None:
+        """
+        Record an atomic publication and perform the real replacement.
+
+        :param calls: The collected source and destination pairs.
+        :param real_replace: The unpatched replacement operation.
+        :param source: The staged source path.
+        :param destination: The published destination path.
+        """
+        calls.append((source, destination))
+        real_replace(source, destination)
 
     def test_write_uses_the_active_job_path(self) -> None:
         """Write a result file using the job identifier and requested suffix."""
-        ConsultantJobFiles.write("result.txt", "complete")
+        replacements: list[tuple[Any, Any]] = []
+        real_replace: Callable[[Any, Any], None] = os.replace
+        with patch(
+            "neuro_san_studio.agent_network_consultant.consultant_job_files.os.replace",
+            side_effect=partial(self._record_replace, replacements, real_replace),
+        ):
+            ConsultantJobFiles.write("result.txt", "complete")
 
         self.assertTrue(ConsultantJobFiles.active())
+        self.assertEqual("job-1", ConsultantJobFiles.identifier())
+        self.assertEqual(self.job_directory, ConsultantJobFiles.directory())
         self.assertEqual("complete", (self.job_directory / "job-1.result.txt").read_text(encoding="utf-8"))
+        self.assertEqual(1, len(replacements))
+        self.assertEqual(self.job_directory / "job-1.result.txt", replacements[0][1])
 
     def test_inactive_job_has_no_path_and_does_not_write(self) -> None:
         """Treat either missing environment value as a plain non-nsflow run."""
@@ -84,3 +125,32 @@ class TestConsultantJobFiles(TestCase):
         with patch.dict(os.environ, {"NSFLOW_JOB_DIR": ""}):
             with self.assertRaisesRegex(RuntimeError, "outside an nsflow job"):
                 ConsultantJobFiles.ask("Need guidance", 0.01)
+
+    def test_ask_times_out_and_removes_the_question(self) -> None:
+        """Stop waiting at the monotonic deadline and remove the published question."""
+        clock_values = [100.0, 105.0]
+        with patch(
+            "neuro_san_studio.agent_network_consultant.consultant_job_files.time.monotonic",
+            side_effect=partial(self._advance_clock, clock_values),
+        ):
+            with self.assertRaisesRegex(TimeoutError, "within 5 seconds"):
+                ConsultantJobFiles.ask("Need guidance", 1.0, timeout=5.0)
+
+        self.assertFalse((self.job_directory / "job-1.question.txt").exists())
+
+    def test_ask_reports_an_unreadable_answer_and_removes_the_question(self) -> None:
+        """Propagate an answer-file read error without leaving a stale question."""
+        answer_path = self.job_directory / "job-1.answer.txt"
+        answer_path.write_text("answer", encoding="utf-8")
+        with patch.object(Path, "read_text", side_effect=PermissionError("answer is unreadable")):
+            with self.assertRaisesRegex(PermissionError, "answer is unreadable"):
+                ConsultantJobFiles.ask("Need guidance", 1.0)
+
+        self.assertFalse((self.job_directory / "job-1.question.txt").exists())
+
+    def test_ask_rejects_nonpositive_wait_settings(self) -> None:
+        """Reject wait settings that cannot provide bounded polling."""
+        with self.assertRaisesRegex(ValueError, "polling interval"):
+            ConsultantJobFiles.ask("Need guidance", 0.0)
+        with self.assertRaisesRegex(ValueError, "timeout"):
+            ConsultantJobFiles.ask("Need guidance", 1.0, timeout=0.0)

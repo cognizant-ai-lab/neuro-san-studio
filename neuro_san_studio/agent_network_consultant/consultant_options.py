@@ -44,6 +44,8 @@ class ConsultantOptions(NamedTuple):
 
         :raises ValueError: If an option is malformed or required target context is missing.
         """
+        if self.max_iterations < 0:
+            raise ValueError(f"--max-iterations must be zero or greater, got {self.max_iterations}.")
         if not re.fullmatch(r"\d+/\d+", self.success_ratio):
             raise ValueError(f"--success-ratio must look like 'N/M' (e.g. '3/3'), got {self.success_ratio!r}.")
         if not self.use_case and not self.hocon_file:

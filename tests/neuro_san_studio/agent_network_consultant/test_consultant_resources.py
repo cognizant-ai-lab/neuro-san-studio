@@ -24,16 +24,16 @@ from neuro_san_studio.agent_network_consultant.consultant_resources import Consu
 class TestConsultantResources(TestCase):
     """Verify cleanup resources are updated only through their interface."""
 
-    def test_returns_an_isolated_copy_of_original_ratios(self) -> None:
-        """Prevent callers from mutating stored cleanup ratios."""
+    def test_returns_an_isolated_copy_of_success_ratio_overrides(self) -> None:
+        """Prevent callers from mutating stored fixture execution overrides."""
         resources = ConsultantResources()
-        resources.remember_original_ratios({"fixture.hocon": "1/1"})
+        resources.remember_success_ratio_overrides(["fixture.hocon"], "3/3")
 
-        ratios = resources.original_ratios()
+        ratios = resources.success_ratio_overrides()
         ratios.clear()
 
-        self.assertEqual(resources.original_ratios(), {"fixture.hocon": "1/1"})
-        self.assertTrue(resources.has_original_ratios())
+        self.assertEqual(resources.success_ratio_overrides(), {"fixture.hocon": "3/3"})
+        self.assertTrue(resources.has_success_ratio_overrides())
 
     def test_remembers_the_active_git_worktree(self) -> None:
         """Return the worktree retained for cleanup."""

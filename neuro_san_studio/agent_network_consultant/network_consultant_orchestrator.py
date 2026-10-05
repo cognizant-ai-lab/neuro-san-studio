@@ -16,10 +16,9 @@
 """
 Orchestrate the Network Consultant's iterative test-and-fix workflow.
 
-The fix step calls the specialized agent_network_consultant network instead of
-agent_network_designer in modify mode. agent_network_designer is a general create/modify
-tool that has to first determine whether a change is structural or instruction-only;
-Consultant goes straight from a failing-test report to per-agent instruction fixes.
+The fix step calls the specialized agent_network_consultant network. Consultant classifies each failure before it
+changes anything: it can repair agent instructions, correct an invalid fixture expectation, delegate a structural
+change to Agent Network Designer, or stop for a tool, infrastructure, or grounding problem.
 
 The reusable fixture-running engine lives beside this module in fixture_runner.py; this module is
 the consulting loop that drives it -- generate, test, diagnose, repair, re-test.
@@ -37,6 +36,7 @@ import shutil
 import signal
 import time
 from collections.abc import Callable
+from tempfile import TemporaryDirectory
 from typing import Any
 
 from coded_tools.agent_network_consultant.network_scratchpad import NetworkScratchpad
@@ -52,14 +52,13 @@ from neuro_san_studio.agent_network_consultant.consultant_scoring import Consult
 from neuro_san_studio.agent_network_consultant.consultant_session import ConsultantSession
 from neuro_san_studio.agent_network_consultant.consultant_target import ConsultantTarget
 from neuro_san_studio.agent_network_consultant.consultant_workflow import ConsultantWorkflow
-from neuro_san_studio.agent_network_consultant.fixture_ratio_manager import FixtureRatioManager
 from neuro_san_studio.agent_network_consultant.fixture_runner import FixtureRunner
 from neuro_san_studio.agent_network_consultant.generated_tests_cache import GeneratedTestsCache
 from neuro_san_studio.agent_network_consultant.git_versioning import GitVersioning
 from neuro_san_studio.agent_network_consultant.network_test_environment import NetworkTestEnvironment
 from neuro_san_studio.agent_network_consultant.progress_tracker import ProgressTracker
 from neuro_san_studio.agent_network_consultant.stuck_patch_error import StuckPatchError
-from neuro_san_studio.agent_network_consultant.thinking_trace_collector import IMPROVEMENT_THINKING_DIR
+from neuro_san_studio.agent_network_consultant.thinking_trace_collector import ThinkingTraceCollector
 
 logger = logging.getLogger("network_consultant")
 
@@ -79,12 +78,16 @@ class NetworkConsultantOrchestrator:
         :raises ValueError: If the options do not identify a safe, fully described target.
         """
         normalized_hocon_file = NetworkConsultantOrchestrator._validate_options(options)
-        with NetworkTestEnvironment():
+        with NetworkTestEnvironment(), TemporaryDirectory(prefix="network_consultant_thinking_") as thinking_directory:
             NetworkConsultantOrchestrator.configure_logging()
-            context = NetworkConsultantOrchestrator._initialize_context(options, normalized_hocon_file)
+            context = NetworkConsultantOrchestrator._initialize_context(
+                options,
+                normalized_hocon_file,
+                thinking_directory,
+            )
             if context is None:
                 return
-            NetworkConsultantOrchestrator._generate_tests(context)
+            NetworkConsultantOrchestrator._generate_tests(context, thinking_directory)
             NetworkConsultantOrchestrator.execute(context)
 
     @staticmethod
@@ -96,14 +99,19 @@ class NetworkConsultantOrchestrator:
         logging.getLogger("ServedManifestConfigFilter").setLevel(logging.ERROR)
 
     @staticmethod
-    def _clear_improvement_thinking() -> None:
-        """Remove prior improvement traces while reporting cleanup failures."""
-        if not os.path.exists(IMPROVEMENT_THINKING_DIR):
+    def _clear_improvement_thinking(run_id: str) -> None:
+        """
+        Remove this run's prior improvement traces while reporting cleanup failures.
+
+        :param run_id: The unique Consultant run identifier.
+        """
+        run_directory = ThinkingTraceCollector.run_directory(run_id)
+        if not os.path.exists(run_directory):
             return
         try:
-            shutil.rmtree(IMPROVEMENT_THINKING_DIR)
+            shutil.rmtree(run_directory)
         except OSError as error:
-            logger.warning("Could not clear improvement thinking traces from %s: %s", IMPROVEMENT_THINKING_DIR, error)
+            logger.warning("Could not clear improvement thinking traces from %s: %s", run_directory, error)
 
     @staticmethod
     def _validate_options(options: ConsultantOptions) -> str | None:
@@ -126,23 +134,29 @@ class NetworkConsultantOrchestrator:
     def _initialize_context(
         options: ConsultantOptions,
         normalized_hocon_file: str | None,
+        thinking_directory: str,
     ) -> ConsultantRunContext | None:
         """
         Open the consultant and resolve or create the target network.
 
         :param options: The typed options selected by the caller.
         :param normalized_hocon_file: The validated existing-network HOCON reference.
+        :param thinking_directory: The isolated directory owned by this Consultant run.
         :return: The resulting value, or `None` when unavailable.
         """
-        consultant_session = ConsultantSession("agent_network_consultant")
-        hocon_file = normalized_hocon_file or NetworkConsultantOrchestrator._design_network(options)
+        consultant_session = ConsultantSession("agent_network_consultant", thinking_directory)
+        hocon_file = normalized_hocon_file or NetworkConsultantOrchestrator._design_network(
+            options,
+            thinking_directory,
+        )
         if not hocon_file:
             return None
         network_name = os.path.splitext(hocon_file)[0]
         direction = options.target_direction()
         logger.info("Target network: %s (hocon_file=%s)", network_name, hocon_file)
-        NetworkScratchpad.clear_for_hocon_file(hocon_file)
-        NetworkConsultantOrchestrator._clear_improvement_thinking()
+        run_id = consultant_session.run_identifier()
+        NetworkScratchpad.clear_for_hocon_file(hocon_file, run_id)
+        NetworkConsultantOrchestrator._clear_improvement_thinking(run_id)
         return ConsultantRunContext(
             options,
             consultant_session,
@@ -154,16 +168,17 @@ class NetworkConsultantOrchestrator:
         )
 
     @staticmethod
-    def _design_network(options: ConsultantOptions) -> str | None:
+    def _design_network(options: ConsultantOptions, thinking_directory: str) -> str | None:
         """
         Create a network through the existing Designer when no HOCON was supplied.
 
         :param options: The typed options selected by the caller.
+        :param thinking_directory: The isolated directory owned by this Consultant run.
         :return: The resulting value, or `None` when unavailable.
         """
         design_request = options.design_request()
         logger.info("Designing a new network (use_case=%r)...", design_request)
-        designer_session = ConsultantSession("agent_network_designer")
+        designer_session = ConsultantSession("agent_network_designer", thinking_directory)
         response = designer_session.chat(design_request)
         network_name = designer_session.sly_data_value("agent_network_name")
         logger.info("Designer response: %s", response)
@@ -180,11 +195,12 @@ class NetworkConsultantOrchestrator:
             return None
 
     @staticmethod
-    def _generate_tests(context: ConsultantRunContext) -> None:
+    def _generate_tests(context: ConsultantRunContext, thinking_directory: str) -> None:
         """
         Generate fixtures unless reusable fixtures already exist.
 
         :param context: The active Consultant run context.
+        :param thinking_directory: The isolated directory owned by this Consultant run.
         """
         options = context.options()
         network_name = context.target().network_name()
@@ -193,7 +209,7 @@ class NetworkConsultantOrchestrator:
             logger.info("Existing test fixtures found for %s; skipping ANTeGen.", network_name)
             return
         logger.info("Generating tests (ANTeGen, test_level=%s)...", options.test_level_name())
-        testgen_session = ConsultantSession("agent_network_test_generator")
+        testgen_session = ConsultantSession("agent_network_test_generator", thinking_directory)
         request = options.test_generation_request(network_name)
         logger.info("ANTeGen request: %s", request)
         response = testgen_session.chat(request)
@@ -206,7 +222,7 @@ class NetworkConsultantOrchestrator:
 
         :param context: The active Consultant run context.
         """
-        ConsultantCleanup.configure(context.resources().original_ratios())
+        ConsultantCleanup.configure()
         signal.signal(signal.SIGTERM, ConsultantCleanup.handle_sigterm)
         try:
             if context.options().fixes_disabled():
@@ -217,8 +233,6 @@ class NetworkConsultantOrchestrator:
             if not NetworkConsultantOrchestrator._iterate(context):
                 NetworkConsultantOrchestrator._finish_max_iterations(context)
         finally:
-            logger.info("Restoring original success_ratio values...")
-            FixtureRatioManager.restore(context.resources().original_ratios())
             GitVersioning.stop_git_versioning(context.resources().git_worktree())
 
     @staticmethod
@@ -234,13 +248,23 @@ class NetworkConsultantOrchestrator:
             logger.info("Test run, no fix loop (subset of %s)...", only_fixtures)
         else:
             logger.info("Test run, no fix loop...")
-        results = FixtureRunner.run_all_tests(context.target().network_name(), only_fixtures=only_fixtures)
+        run_id = context.session().run_identifier()
+        results = FixtureRunner.run_all_tests(
+            context.target().network_name(),
+            run_id,
+            only_fixtures=only_fixtures,
+        )
         failures: list[dict[str, Any]] = []
         for result in results:
             if not result.get("passed"):
                 failures.append(result)
         if not is_subset and ConsultantJobFiles.active():
-            GeneratedTestsCache.save(context.target().network_name(), context.target().hocon_path(), results)
+            GeneratedTestsCache.save(
+                context.target().network_name(),
+                context.target().hocon_path(),
+                results,
+                run_id,
+            )
             context.progress_tracker().record(results, "generated", len(results))
         logger.info("Result: %d/%d passing.", len(results) - len(failures), len(results))
 
@@ -310,7 +334,11 @@ class NetworkConsultantOrchestrator:
         target = context.target()
         round_state.begin_round()
         cached_results = (
-            GeneratedTestsCache.load(target.network_name(), target.hocon_path())
+            GeneratedTestsCache.load(
+                target.network_name(),
+                target.hocon_path(),
+                context.session().run_identifier(),
+            )
             if round_state.iteration() == 1 and ConsultantJobFiles.active()
             else None
         )
@@ -320,7 +348,12 @@ class NetworkConsultantOrchestrator:
             FixtureRunner.write_fixture_results(round_state.results())
         else:
             round_state.record_results(
-                FixtureRunner.run_all_tests(target.network_name(), only_fixtures=round_state.fixture_selection())
+                FixtureRunner.run_all_tests(
+                    target.network_name(),
+                    context.session().run_identifier(),
+                    only_fixtures=round_state.fixture_selection(),
+                    success_ratio_overrides=context.resources().success_ratio_overrides(),
+                )
             )
 
     @staticmethod
@@ -446,7 +479,7 @@ class NetworkConsultantOrchestrator:
         :param context: The active Consultant run context.
         :return: Whether the requested condition is met.
         """
-        if context.resources().has_original_ratios():
+        if context.resources().has_success_ratio_overrides():
             logger.info(
                 "consultant made no changes; re-scoring the full suite on the fixtures' own ratios for the After bar."
             )
@@ -500,15 +533,14 @@ class NetworkConsultantOrchestrator:
     @staticmethod
     def _run_full_suite(context: ConsultantRunContext) -> None:
         """
-        Run the complete suite on its original fixture ratios and update current results.
+        Run the complete suite on its declared fixture ratios and update current results.
 
         :param context: The active Consultant run context.
         """
         context.round_state().record_results(
-            FixtureRunner.run_real_ratio_suite(
+            FixtureRunner.run_all_tests(
                 context.target().network_name(),
-                context.resources().original_ratios(),
-                context.options().selected_success_ratio(),
+                context.session().run_identifier(),
             ),
             full_suite=True,
         )
@@ -663,7 +695,7 @@ class NetworkConsultantOrchestrator:
                 fixture_paths,
             )
         except StuckPatchError as exc:
-            logger.error(str(exc))
+            logger.error("Consultant patch failed: %s: %s", type(exc).__name__, exc)
             ConsultantWorkflow.write_tool_issues([str(exc)])
             return True
         except (OSError, RuntimeError, TypeError, ValueError) as exc:

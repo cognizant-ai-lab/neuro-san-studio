@@ -361,7 +361,7 @@ class NeuroSanStudioCli:  # pylint: disable=too-few-public-methods
         only_fixtures: list[str] | None = typer.Option(
             None,
             "--only-fixtures",
-            help="Run only a space-separated list of fixture basenames.",
+            help="Run only a space-separated list of exact fixture filenames, including .hocon.",
         ),
         max_iterations: int = typer.Option(
             20,

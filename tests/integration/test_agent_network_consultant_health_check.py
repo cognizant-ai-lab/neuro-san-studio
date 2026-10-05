@@ -34,7 +34,7 @@ import pytest
 from neuro_san.test.unittest.dynamic_hocon_unit_tests import DynamicHoconUnitTests
 from typing_extensions import override
 
-from coded_tools.agent_network_consultant.network_scratchpad import NetworkScratchpad
+from coded_tools.agent_network_consultant.network_scratchpad import SCRATCHPAD_DIR
 from neuro_san_studio.agent_network_consultant.consultant_options import ConsultantOptions
 from neuro_san_studio.agent_network_consultant.network_consultant_orchestrator import NetworkConsultantOrchestrator
 
@@ -89,6 +89,10 @@ class TestAgentNetworkConsultantHealthCheck(TestCase):
         """
         hocon_reference = f"generated/{network_name}.hocon"
         network_path = self.REPOSITORY_ROOT / "registries" / hocon_reference
+        network_directory = network_path.parent
+        if not network_directory.exists():
+            network_directory.mkdir()
+            self._created_directories.append(network_directory)
         fixture_directory = self.REPOSITORY_ROOT / "tests" / "fixtures" / "generated" / network_name
         if fixture_directory.exists():
             self.fail(f"Integration test refuses to reuse existing directory: {fixture_directory}")
@@ -137,7 +141,8 @@ class TestAgentNetworkConsultantHealthCheck(TestCase):
             fixture_path.write_text(fixture_text.replace('"direct"', f'"{final_connection}"'), encoding="utf-8")
             self.DYNAMIC.one_test_hocon(self, f"consultant_health_check_{final_connection}", fixture_reference)
         finally:
-            NetworkScratchpad.clear_for_hocon_file(hocon_reference)
+            for scratchpad_path in SCRATCHPAD_DIR.glob(f"{network_name}.*.txt"):
+                scratchpad_path.unlink(missing_ok=True)
 
     @pytest.mark.timeout(1200)
     @pytest.mark.integration

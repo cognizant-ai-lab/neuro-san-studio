@@ -40,6 +40,17 @@ class TestConsultantOptions(TestCase):
 
         self.assertEqual("", options.target_direction())
 
+    def test_validation_accepts_zero_max_iterations(self) -> None:
+        """Preserve zero as the documented mode that runs tests without attempting repairs."""
+        ConsultantOptions(hocon_file="example.hocon", max_iterations=0).validate()
+
+    def test_validation_rejects_negative_max_iterations(self) -> None:
+        """Reject an iteration limit that would silently skip the repair loop."""
+        options = ConsultantOptions(hocon_file="example.hocon", max_iterations=-1)
+
+        with self.assertRaisesRegex(ValueError, "--max-iterations must be zero or greater"):
+            options.validate()
+
     def test_fixture_selection_returns_an_isolated_list(self) -> None:
         """Prevent callers from mutating the configured fixture selection."""
         options = ConsultantOptions(use_case="Create a network", only_fixtures=["one.hocon"])

@@ -28,13 +28,13 @@ ns consultant \
 
 ### Run selected fixtures
 
-Pass a space-separated list of fixture basenames to run a subset:
+Pass a space-separated list of exact fixture filenames, including `.hocon`, to run a subset:
 
 ```bash
 ns consultant \
   --hocon-file industry/intranet_agents.hocon \
   --direction "Preserve existing behavior while fixing failing tests." \
-  --only-fixtures employee_policy employee_benefits
+  --only-fixtures employee_policy.hocon employee_benefits.hocon
 ```
 
 ## Options
@@ -50,7 +50,7 @@ ns consultant \
 | `--test-guidance` | Provide additional free-text guidance for test generation. |
 | `--force-generate` | Generate tests even when fixtures exist. Existing fixture files are not deleted. |
 | `--ungrounded` | Choose `stop` or `continue` for criteria that no available tool can satisfy. Defaults to `stop`. |
-| `--only-fixtures` | Run a space-separated list of selected fixture basenames. |
+| `--only-fixtures` | Run a space-separated list of exact fixture filenames, including `.hocon`. |
 | `--max-iterations` | Limit test-and-repair iterations. Defaults to `20`; zero runs tests once without repairs. |
 | `--success-ratio` | Set the verification ratio in `N/M` form. Defaults to `3/3`. |
 | `--git-versions` | Push meaningful HOCON checkpoints to a dedicated branch on the configured upstream. |

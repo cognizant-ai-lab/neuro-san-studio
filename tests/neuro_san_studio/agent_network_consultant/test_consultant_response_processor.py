@@ -20,15 +20,12 @@ from unittest import TestCase
 from unittest.mock import Mock
 from unittest.mock import patch
 
-from neuro_san_studio.agent_network_consultant.consultant_cleanup import ConsultantCleanup
 from neuro_san_studio.agent_network_consultant.consultant_options import ConsultantOptions
 from neuro_san_studio.agent_network_consultant.consultant_resources import ConsultantResources
 from neuro_san_studio.agent_network_consultant.consultant_response_processor import ConsultantResponseProcessor
 from neuro_san_studio.agent_network_consultant.consultant_run_context import ConsultantRunContext
 from neuro_san_studio.agent_network_consultant.consultant_target import ConsultantTarget
 from neuro_san_studio.agent_network_consultant.consultant_workflow import ConsultantWorkflow
-from neuro_san_studio.agent_network_consultant.fixture_ratio_manager import FixtureRatioManager
-from neuro_san_studio.agent_network_consultant.fixture_runner import FixtureRunner
 
 
 class TestConsultantResponseProcessor(TestCase):
@@ -85,18 +82,9 @@ class TestConsultantResponseProcessor(TestCase):
         self.assertFalse(continue_result)
         self.assertEqual(2, write_ungrounded.call_count)
 
-    def test_confident_fixes_raise_ratios_and_register_cleanup(self) -> None:
-        """Apply stricter ratios and retain their originals for both cleanup paths."""
+    def test_confident_fixes_register_in_memory_ratio_overrides(self) -> None:
+        """Apply stricter ratios to subsequent runs without changing fixture files."""
         context = self._context()
-        originals = {"tests/fixtures/example/one.hocon": "1/1"}
-        with (
-            patch.object(FixtureRunner, "fixture_paths", return_value=list(originals)) as fixture_paths,
-            patch.object(FixtureRatioManager, "set_for_fixtures", return_value=originals) as set_for_fixtures,
-            patch.object(ConsultantCleanup, "remember_ratios") as remember_ratios,
-        ):
-            ConsultantResponseProcessor.apply_confident_fixes(context, "CONFIDENT_FIX: one.hocon")
+        ConsultantResponseProcessor.apply_confident_fixes(context, "CONFIDENT_FIX: one.hocon")
 
-        fixture_paths.assert_called_once_with("example")
-        set_for_fixtures.assert_called_once_with(list(originals), ["one.hocon"], "3/3")
-        context.resources().remember_original_ratios.assert_called_once_with(originals)
-        remember_ratios.assert_called_once_with(originals)
+        context.resources().remember_success_ratio_overrides.assert_called_once_with(["one.hocon"], "3/3")

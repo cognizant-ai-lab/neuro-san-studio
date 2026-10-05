@@ -14,91 +14,29 @@
 #
 # END COPYRIGHT
 
-"""Tests for normal and signal-driven Network Consultant cleanup."""
+"""Tests for signal-driven Network Consultant cleanup."""
 
 import os
-import shutil
 import signal
-import subprocess
-import sys
-import tempfile
-import textwrap
-from pathlib import Path
 from unittest import TestCase
+from unittest.mock import patch
+
+from neuro_san_studio.agent_network_consultant.consultant_cleanup import ConsultantCleanup
+from neuro_san_studio.agent_network_consultant.git_versioning import GitVersioning
 
 
 class TestConsultantCleanup(TestCase):
-    """Verify Consultant cleanup preserves the filesystem across termination paths."""
+    """Verify Consultant signal cleanup removes its temporary Git worktree."""
 
-    FIXTURE_TEXT = textwrap.dedent(
-        """\
-        {
-            "agent": "demo",
-            "success_ratio": "3/3",
-            "interactions": []
-        }
-        """
-    )
+    def test_sigterm_removes_git_worktree_before_exiting(self) -> None:
+        """Remove the retained worktree before terminating with the SIGTERM status."""
+        ConsultantCleanup.configure("worktree")
 
-    def setUp(self) -> None:
-        """Create one isolated cleanup directory for each test."""
-        self.tmp_path = Path(tempfile.mkdtemp())
+        with (
+            patch.object(GitVersioning, "stop_git_versioning") as stop_git_versioning,
+            patch.object(os, "_exit") as exit_process,
+        ):
+            ConsultantCleanup.handle_sigterm(signal.SIGTERM, None)
 
-    def tearDown(self) -> None:
-        """Remove the isolated cleanup directory after each test."""
-        shutil.rmtree(self.tmp_path)
-
-    def _run_child(self, body: str) -> subprocess.CompletedProcess[str]:
-        """
-        Exercise signal cleanup in a child process that may terminate immediately.
-
-        :param body: The Python source executed by the child process.
-        :return: The completed child-process result.
-        """
-        script = self.tmp_path / "child.py"
-        preamble = (
-            f"import os, signal, sys\nsys.path.insert(0, {str(os.getcwd())!r})\n"
-            "from neuro_san_studio.agent_network_consultant.consultant_cleanup import ConsultantCleanup\n"
-            "from neuro_san_studio.agent_network_consultant.fixture_ratio_manager import FixtureRatioManager\n"
-        )
-        script.write_text(preamble + textwrap.dedent(body), encoding="utf-8")
-        return subprocess.run([sys.executable, str(script)], capture_output=True, text=True, timeout=60, check=False)
-
-    def test_sigterm_restores_bumped_ratios(self) -> None:
-        """Restore temporarily raised fixture ratios before SIGTERM exits the process."""
-        fixture = self.tmp_path / "a.hocon"
-        fixture.write_text(self.FIXTURE_TEXT, encoding="utf-8")
-
-        result = self._run_child(
-            textwrap.dedent(
-                f"""\
-                ConsultantCleanup.configure({{}})
-                ConsultantCleanup.remember_ratios({{{str(fixture)!r}: "1/1"}})
-                signal.signal(signal.SIGTERM, ConsultantCleanup.handle_sigterm)
-                os.kill(os.getpid(), signal.SIGTERM)
-                sys.exit(0)
-                """
-            ),
-        )
-
-        self.assertEqual(128 + signal.SIGTERM, result.returncode, result.stderr)
-        self.assertIn('"success_ratio": "1/1"', fixture.read_text(encoding="utf-8"))
-
-    def test_default_sigterm_does_not_unwind_finally(self) -> None:
-        """Demonstrate why Consultant installs explicit signal cleanup."""
-        fixture = self.tmp_path / "b.hocon"
-        fixture.write_text(self.FIXTURE_TEXT, encoding="utf-8")
-
-        result = self._run_child(
-            textwrap.dedent(
-                f"""\
-                try:
-                    os.kill(os.getpid(), signal.SIGTERM)
-                finally:
-                    FixtureRatioManager.restore({{{str(fixture)!r}: "1/1"}})
-                """
-            ),
-        )
-
-        self.assertEqual(-signal.SIGTERM, result.returncode)
-        self.assertIn('"success_ratio": "3/3"', fixture.read_text(encoding="utf-8"))
+        stop_git_versioning.assert_called_once_with("worktree")
+        exit_process.assert_called_once_with(128 + signal.SIGTERM)

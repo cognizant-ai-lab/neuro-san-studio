@@ -18,8 +18,10 @@ protecting its intended behavior. Given a network and its generated fixtures, it
 
 Note that:
 
-- Consultant runs through direct, in-process Neuro SAN sessions. A separate Neuro SAN server is not required. nsflow
-  is installed with Studio and has a self improvement tab which can launch Consultant as a background job.
+- Consultant runs through direct, in-process Neuro SAN sessions. A separate Neuro SAN server is not required.
+- The Self Improvement tab is available only in an nsflow build that contains the companion Network Consultant
+  integration. The `ns consultant` command remains available when the installed nsflow release does not include that
+  UI integration.
 
 ---
 
@@ -66,9 +68,11 @@ and repair:
 8. The next iteration retests only the fixtures that were failing. When that subset passes, Consultant runs the full
    suite to detect regressions.
 
-9. The loop stops after a verified pass, an actionable infrastructure or tool error, a clarification request, an
-   acceptable full-suite result, a plateau, or the configured iteration limit. After a plateau or iteration limit,
-   Consultant restores and verifies the best HOCON version observed during the run.
+9. A clarification request pauses the loop. Direct runs wait for terminal input; nsflow runs wait up to five minutes
+   for an answer from the Self Improvement tab and then resume the same conversation. The loop stops after a verified
+   pass, an actionable infrastructure or tool error, a clarification timeout, an acceptable full-suite result, a
+   plateau, or the configured iteration limit. After a plateau or iteration limit, Consultant restores and verifies
+   the best HOCON version observed during the run.
 
 The Python orchestrator owns repeatable operations such as running fixtures, scoring results, rollback, cleanup, and
 file paths. The agent network owns language-based diagnosis and deciding which narrowly scoped repair is justified.
@@ -166,7 +170,8 @@ is the command's deterministic control plane.
 - Run repair iterations and fixture-subset rechecks.
 - Track full-suite and per-criterion progress.
 - Restore the best-known HOCON after a plateau or iteration ceiling.
-- Restore temporary fixture ratios and remove temporary Git worktrees during cleanup.
+- Apply stricter confidence ratios in memory, leaving fixture files unchanged, and remove temporary Git worktrees
+  during cleanup.
 
 ### Frontman Agent: `consultant`
 
@@ -196,11 +201,13 @@ frontman.
 #### `network_behavior_fixer`
 
 This agent handles `AGENT FIX` failures. It reads the run scratchpad, studies the failure and optional thinking trace,
-groups failures by responsible agent, and sends targeted change requests to `write_all_instructions`. It may change
-only agent instructions and descriptions; it cannot add, remove, or rewire tools.
+groups failures by responsible agent, and sends one batched set of targeted change requests to
+`write_all_instructions`. It may change only agent instructions and descriptions; it cannot add, remove, or rewire
+tools.
 
 After choosing a repair, it appends the prior attempt's outcome and the current attempt to `network_scratchpad`.
-This prevents later rounds from silently repeating a failed approach.
+The scratchpad filename contains the run identifier, so concurrent runs of the same network retain separate histories.
+This prevents later rounds in one run from silently repeating a failed approach.
 
 #### `fixture_expectation_fixer`
 
@@ -219,18 +226,19 @@ request.
 
 ### Consultant Instruction Writers
 
-`write_all_instructions` and `instructions_writer` are loaded from
-[agent_network_instruction_improver.hocon](../../registries/agent_network_instruction_improver.hocon).
-The include is owned by Consultant and leaves Agent Network Instructions Editor unchanged. Consultant overlays its
-repair-specific writing rules and definition middleware.
+`write_all_instructions` and `instructions_writer` are defined directly in
+[agent_network_consultant.hocon](../../registries/agent_network_consultant.hocon). Consultant reuses the existing
+`WriteAllInstructions` Python implementation while supplying its repair-specific writer instructions and definition
+middleware. Agent Network Instructions Editor remains unchanged.
 
 ### Diagnostic Coded Tools
 
 #### `read_thinking_trace`
 
 [`ReadThinkingTrace`](../../coded_tools/agent_network_consultant/read_thinking_trace.py) reads one failed fixture's
-filtered trace from `logs/thinking_dir/improvement/`. A call without `agent_name` lists available agents; a second call
-can retrieve one selected agent's trace.
+filtered trace from the current run's `logs/thinking_dir/improvement/<run-id>/` directory. A call without `agent_name`
+lists available agents; a second call can retrieve one selected agent's trace. The run ID comes from Consultant's
+session state, so concurrent runs cannot read one another's traces.
 
 #### `read_job_log`
 
@@ -241,8 +249,8 @@ job, it returns an explicit error instead of guessing a log path.
 #### `network_scratchpad`
 
 [`NetworkScratchpad`](../../coded_tools/agent_network_consultant/network_scratchpad.py) stores append-only attempt
-history for one network during one continuous run. It uses Studio's shared managed-file read and write tools. The
-orchestrator clears that network's scratchpad when a fresh run starts.
+history for one network during one continuous run. It uses Studio's shared managed-file read and write tools. Every
+Consultant session receives a unique run identifier and starts with an empty, run-specific scratchpad.
 
 ### Test Fixture Tools
 
@@ -321,6 +329,10 @@ UI. When nsflow supplies `NSFLOW_JOB_ID` and `NSFLOW_JOB_DIR`, Consultant additi
 - `<job-id>.question.txt` while a clarification is waiting for a response.
 - `<job-id>.git_branch.txt` when Git snapshots are enabled.
 
+An nsflow clarification waits up to five minutes for `<job-id>.answer.txt`. If no answer arrives, Consultant removes
+the pending question and stops the run with a timeout. Direct CLI clarification prompts do not use this job-file
+timeout.
+
 `--max-iterations 0` runs the selected fixtures once without repairing the network in both direct and nsflow runs.
 For an nsflow job, a complete-suite result is also cached once so the immediately following Self-Improve job can use
 it as its first baseline without rerunning unchanged fixtures.
@@ -349,11 +361,12 @@ reports an error before initialization when the environment variable is unset.
 
 - Target network: edited in place under `registries/`.
 - Generated fixtures: `tests/fixtures/<network-name>/`.
-- Filtered failure traces: `logs/thinking_dir/improvement/`.
-- Per-run attempt history: `logs/network_consultant_scratchpad/`.
-- One-shot nsflow generated-test cache: `/tmp/network_consultant_gentests_cache/`.
-- Direct session thinking output: `/tmp/network_consultant_thinking/` and
-  `/tmp/network_consultant_thinking.txt`.
+- Filtered failure traces: `logs/thinking_dir/improvement/<run-id>/`.
+- Per-run attempt history: `logs/network_consultant_scratchpad/<network>.<run-id>.txt`.
+- One-shot nsflow generated-test cache: the project-local `logs/network_consultant_cache/` directory derived from the
+  active nsflow job directory. Each producing job gets isolated result and thinking-trace paths.
+- Direct session thinking output: a run-specific operating-system temporary directory with a
+  `network_consultant_thinking_` prefix.
 - Raw test traces: a run-specific operating-system temporary directory with a
   `network_consultant_test_thinking_` prefix, unless `AGENT_TEST_THINKING_BASIS` was already supplied.
 - Git worktree: a run-specific operating-system temporary directory with a `network_consultant_git_` prefix.
@@ -367,8 +380,9 @@ It does not delete a caller-supplied thinking directory.
 
 - Run `ns validate registries/<network>.hocon` before Consultant when a target network does not load.
 - Use exact fixture filenames, including `.hocon`, with `--only-fixtures`.
-- Check `logs/thinking_dir/improvement/<fixture>.hocon.txt` when a behavioral diagnosis lacks evidence. The actual
-  filename is the fixture basename followed by `.txt`, so a fixture named `case.hocon` produces `case.hocon.txt`.
+- Check `logs/thinking_dir/improvement/<run-id>/<fixture>.hocon.txt` when a behavioral diagnosis lacks evidence. The
+  actual filename is the fixture basename followed by `.txt`, so a fixture named `case.hocon` produces
+  `case.hocon.txt`.
 - For an nsflow job, inspect its `<job-id>.log` for coded-tool exceptions. Direct CLI runs do not have that job log.
 - An infrastructure error means Consultant intentionally made no repair. Fix the API key, import, timeout, or other
   runtime problem and run the command again.

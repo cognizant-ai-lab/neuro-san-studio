@@ -27,4 +27,6 @@ class ConsultantState:
     AGENT_NETWORK_CHANGES: ClassVar[str] = "agent_network_changes"
     AGENT_NETWORK_DIAGNOSTIC_CONTEXT: ClassVar[str] = "agent_network_diagnostic_context"
     AGENT_NETWORK_EDITABLE_FIELDS: ClassVar[str] = "agent_network_editable_fields"
+    AGENT_NETWORK_PERSISTENCE_FAILURE_COUNT: ClassVar[str] = "agent_network_persistence_failure_count"
     AGENT_NETWORK_SOURCE_FILE: ClassVar[str] = "agent_network_source_file"
+    NETWORK_CONSULTANT_RUN_ID: ClassVar[str] = "network_consultant_run_id"

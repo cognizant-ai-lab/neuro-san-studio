@@ -68,9 +68,9 @@ useful reasoning
                 patch.dict(os.environ, {"AGENT_TEST_THINKING_BASIS": str(basis)}),
                 patch.object(thinking_trace_collector, "IMPROVEMENT_THINKING_DIR", str(output)),
             ):
-                ThinkingTraceCollector.write("fixture.hocon", 0.0)
+                ThinkingTraceCollector.write("fixture.hocon", 0.0, "run-one")
 
-            consolidated = (output / "fixture.hocon.txt").read_text(encoding="utf-8")
+            consolidated = (output / "run-one" / "fixture.hocon.txt").read_text(encoding="utf-8")
 
         self.assertIn("--- /worker ---", consolidated)
         self.assertIn("useful reasoning", consolidated)
@@ -86,6 +86,16 @@ useful reasoning
                 patch.dict(os.environ, {"AGENT_TEST_THINKING_BASIS": ""}),
                 patch.object(thinking_trace_collector, "IMPROVEMENT_THINKING_DIR", str(output)),
             ):
-                ThinkingTraceCollector.write("fixture.hocon", 0.0)
+                ThinkingTraceCollector.write("fixture.hocon", 0.0, "run-one")
 
             self.assertFalse(output.exists())
+
+    def test_run_directory_isolates_runs_and_rejects_unsafe_identifiers(self) -> None:
+        """Resolve separate run directories without permitting path traversal."""
+        first = ThinkingTraceCollector.run_directory("run-one")
+        second = ThinkingTraceCollector.run_directory("run-two")
+
+        self.assertNotEqual(first, second)
+        self.assertTrue(first.endswith(os.path.join("improvement", "run-one")))
+        with self.assertRaisesRegex(ValueError, "missing or invalid"):
+            ThinkingTraceCollector.run_directory("../another-run")

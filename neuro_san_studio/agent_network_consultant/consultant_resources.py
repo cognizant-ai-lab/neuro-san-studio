@@ -18,36 +18,38 @@
 
 
 class ConsultantResources:
-    """Manage temporary fixture ratios and an optional Git worktree."""
+    """Manage in-memory fixture-ratio overrides and an optional Git worktree."""
 
     def __init__(self) -> None:
         """Initialize empty cleanup state."""
-        self._original_ratios: dict[str, str] = {}
+        self._success_ratio_overrides: dict[str, str] = {}
         self._git_worktree: str | None = None
 
-    def original_ratios(self) -> dict[str, str]:
+    def success_ratio_overrides(self) -> dict[str, str]:
         """
-        Return an isolated copy of changed fixture ratios.
+        Return an isolated copy of fixture execution overrides.
 
-        :return: The original fixture ratios.
+        :return: Success ratios keyed by fixture basename.
         """
-        return dict(self._original_ratios)
+        return dict(self._success_ratio_overrides)
 
-    def has_original_ratios(self) -> bool:
+    def has_success_ratio_overrides(self) -> bool:
         """
-        Return whether confidence handling changed any fixture ratios.
+        Return whether confidence handling selected stricter fixture ratios.
 
-        :return: Whether original ratios must be restored.
+        :return: Whether any in-memory success-ratio overrides are active.
         """
-        return bool(self._original_ratios)
+        return bool(self._success_ratio_overrides)
 
-    def remember_original_ratios(self, ratios: dict[str, str]) -> None:
+    def remember_success_ratio_overrides(self, fixture_names: list[str], ratio: str) -> None:
         """
-        Retain fixture ratios that must be restored during cleanup.
+        Retain stricter ratios for subsequent executions of selected fixtures.
 
-        :param ratios: The original ratios keyed by fixture path.
+        :param fixture_names: Fixture basenames selected for stricter verification.
+        :param ratio: The success ratio to use for those fixture executions.
         """
-        self._original_ratios.update(ratios)
+        for fixture_name in fixture_names:
+            self._success_ratio_overrides[fixture_name] = ratio
 
     def set_git_worktree(self, worktree: str | None) -> None:
         """

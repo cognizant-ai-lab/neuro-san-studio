@@ -16,16 +16,19 @@
 
 """Tests for Consultant conversations, prompts, and nsflow reporting."""
 
+import logging
 import os
 import shutil
 import tempfile
 from pathlib import Path
 from typing import Any
 from unittest import TestCase
+from unittest.mock import Mock
 from unittest.mock import patch
 
 from pyhocon import ConfigFactory
 
+from middleware.agent_network_consultant.consultant_state import ConsultantState
 from neuro_san_studio.agent_network_consultant.consultant_workflow import ConsultantWorkflow
 from neuro_san_studio.agent_network_consultant.stuck_patch_error import StuckPatchError
 
@@ -52,6 +55,42 @@ class TestConsultantWorkflow(TestCase):
         fixture = self.tmp_path / "a.hocon"
         fixture.write_text("{}", encoding="utf-8")
         return [{**self.FAILURE, "path": str(fixture)}]
+
+    @staticmethod
+    def _chat_with_unrelated_warning(message: str, sly_data: dict[str, Any] | None = None) -> str:
+        """
+        Emit an unrelated root warning during one simulated chat.
+
+        :param message: The simulated chat message.
+        :param sly_data: The simulated shared session state.
+        :return: The simulated response.
+        """
+        del message, sly_data
+        logging.getLogger().warning("unrelated warning")
+        return "complete"
+
+    def test_consult_stops_after_structured_persistence_failure_threshold(self) -> None:
+        """Stop after the persistence middleware reports three consecutive source-edit failures."""
+        session = Mock()
+        session.chat.return_value = "complete"
+        session.sly_data_value.return_value = ConsultantWorkflow.PERSISTENCE_FAILURE_THRESHOLD
+
+        with self.assertRaisesRegex(StuckPatchError, "stuck patching example.hocon"):
+            ConsultantWorkflow.consult(session, "fix it", "example.hocon", {})
+
+        chat_sly_data = session.chat.call_args.kwargs.get("sly_data")
+        self.assertEqual(0, chat_sly_data.get(ConsultantState.AGENT_NETWORK_PERSISTENCE_FAILURE_COUNT))
+
+    def test_consult_ignores_unrelated_root_logger_warnings(self) -> None:
+        """Keep unrelated global warning messages out of persistence control flow."""
+        session = Mock()
+        session.chat.side_effect = self._chat_with_unrelated_warning
+        session.sly_data_value.return_value = 0
+
+        with self.assertLogs(level="WARNING"):
+            response = ConsultantWorkflow.consult(session, "fix it", "example.hocon", {})
+
+        self.assertEqual("complete", response)
 
     def test_ungrounded_results_are_written_where_nsflow_can_surface_them(self) -> None:
         """Write ungrounded results into the active nsflow job directory."""
@@ -101,22 +140,34 @@ class TestConsultantWorkflow(TestCase):
         self.assertIn("read_thinking_trace", front_man.get("tools", []))
 
     def test_consultant_resolves_the_included_instruction_writer_nodes(self) -> None:
-        """Resolve each included writer exactly once while preserving Consultant middleware."""
+        """Reuse the existing fan-out code with the Consultant-specific writing contract."""
         path = Path("registries/agent_network_consultant.hocon")
         config = ConfigFactory.parse_string(path.read_text(encoding="utf-8"), basedir=".", resolve=True)
         names: list[str] = []
+        write_all_instructions: Any | None = None
         instructions_writer: Any | None = None
         for tool in config.get("tools", []):
             name = tool.get("name", "")
             names.append(name)
+            if name == "write_all_instructions":
+                write_all_instructions = tool
             if name == "instructions_writer":
                 instructions_writer = tool
 
         self.assertEqual(1, names.count("write_all_instructions"))
         self.assertEqual(1, names.count("instructions_writer"))
+        self.assertIsNotNone(write_all_instructions)
+        self.assertEqual(
+            "coded_tools.agent_network_instructions_editor.write_all_instructions.WriteAllInstructions",
+            write_all_instructions.get("class", ""),
+        )
         self.assertIsNotNone(instructions_writer)
+        instructions: str = instructions_writer.get("instructions", "")
+        self.assertIn("Goal:", instructions)
+        self.assertIn("ALWAYS edit incrementally", instructions)
         middleware: list[Any] = list(instructions_writer.get("middleware", []))
         self.assertIn("ConsultantDefinitionMiddleware", middleware[0].get("class", ""))
+        self.assertNotIn("agent_network_instruction_improver.hocon", path.read_text(encoding="utf-8"))
 
     def test_all_passing_consult_logs_the_stuck_patch_error_type(self) -> None:
         """Log an actionable exception type when an all-passing consultation cannot apply its patch."""

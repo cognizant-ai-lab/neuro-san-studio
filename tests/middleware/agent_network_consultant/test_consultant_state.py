@@ -30,7 +30,9 @@ class TestConsultantState(TestCase):
             ConsultantState.AGENT_NETWORK_CHANGES,
             ConsultantState.AGENT_NETWORK_DIAGNOSTIC_CONTEXT,
             ConsultantState.AGENT_NETWORK_EDITABLE_FIELDS,
+            ConsultantState.AGENT_NETWORK_PERSISTENCE_FAILURE_COUNT,
             ConsultantState.AGENT_NETWORK_SOURCE_FILE,
+            ConsultantState.NETWORK_CONSULTANT_RUN_ID,
         )
 
         self.assertTrue(all(keys))

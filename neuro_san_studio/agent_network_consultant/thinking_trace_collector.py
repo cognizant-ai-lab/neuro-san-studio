@@ -32,6 +32,19 @@ class ThinkingTraceCollector:
     """Consolidate useful agent reasoning while removing system prompts and telemetry."""
 
     @staticmethod
+    def run_directory(run_id: str) -> str:
+        """
+        Return the isolated consolidated-trace directory for one Consultant run.
+
+        :param run_id: The unique Consultant run identifier.
+        :return: The run-owned consolidated-trace directory.
+        :raises ValueError: If the run identifier is empty or unsafe for use as a directory name.
+        """
+        if not run_id or re.fullmatch(r"[\w.-]+", run_id) is None:
+            raise ValueError("The Consultant run identifier is missing or invalid.")
+        return os.path.join(IMPROVEMENT_THINKING_DIR, run_id)
+
+    @staticmethod
     def _is_noise_paragraph(paragraph: str) -> bool:
         """
         Return whether a trace paragraph contains bookkeeping instead of dialogue.
@@ -149,12 +162,13 @@ class ThinkingTraceCollector:
         return sections
 
     @staticmethod
-    def write(fixture_name: str, started: float) -> None:
+    def write(fixture_name: str, started: float, run_id: str) -> None:
         """
         Consolidate one fixture's useful reasoning into a diagnostic trace.
 
         :param fixture_name: The fixture base name.
         :param started: The fixture start time used to exclude older traces.
+        :param run_id: The unique Consultant run identifier.
         """
         basis_directory = os.environ.get("AGENT_TEST_THINKING_BASIS")
         if not basis_directory:
@@ -165,8 +179,9 @@ class ThinkingTraceCollector:
         if not sections:
             return
 
-        os.makedirs(IMPROVEMENT_THINKING_DIR, exist_ok=True)
-        output_path = os.path.join(IMPROVEMENT_THINKING_DIR, f"{fixture_name}.txt")
+        run_directory = ThinkingTraceCollector.run_directory(run_id)
+        os.makedirs(run_directory, exist_ok=True)
+        output_path = os.path.join(run_directory, f"{fixture_name}.txt")
         with open(output_path, "w", encoding="utf-8") as output_file:
             for agent_origin, chunks in sections.items():
                 output_file.write(f"--- {agent_origin} ---\n")

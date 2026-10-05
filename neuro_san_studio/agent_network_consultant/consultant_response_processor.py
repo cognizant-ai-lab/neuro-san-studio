@@ -18,12 +18,9 @@
 
 import logging
 
-from neuro_san_studio.agent_network_consultant.consultant_cleanup import ConsultantCleanup
 from neuro_san_studio.agent_network_consultant.consultant_run_context import ConsultantRunContext
 from neuro_san_studio.agent_network_consultant.consultant_scoring import ConsultantScoring
 from neuro_san_studio.agent_network_consultant.consultant_workflow import ConsultantWorkflow
-from neuro_san_studio.agent_network_consultant.fixture_ratio_manager import FixtureRatioManager
-from neuro_san_studio.agent_network_consultant.fixture_runner import FixtureRunner
 
 logger = logging.getLogger("network_consultant")
 
@@ -123,16 +120,11 @@ class ConsultantResponseProcessor:
         confident_fixtures = ConsultantScoring.extract_prefixed(response, ConsultantWorkflow.confident_fix_prefix())
         if not confident_fixtures:
             return
-        originals = FixtureRatioManager.set_for_fixtures(
-            FixtureRunner.fixture_paths(context.target().network_name()),
-            confident_fixtures,
-            context.options().selected_success_ratio(),
-        )
-        context.resources().remember_original_ratios(originals)
-        ConsultantCleanup.remember_ratios(originals)
+        ratio = context.options().selected_success_ratio()
+        context.resources().remember_success_ratio_overrides(confident_fixtures, ratio)
         logger.info(
-            "consultant is confident in %d fix(es); bumped to %s for next round: %s",
+            "consultant is confident in %d fix(es); verifying at %s next round: %s",
             len(confident_fixtures),
-            context.options().selected_success_ratio(),
+            ratio,
             confident_fixtures,
         )

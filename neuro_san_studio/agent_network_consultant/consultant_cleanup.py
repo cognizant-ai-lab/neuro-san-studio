@@ -21,40 +21,25 @@ import os
 import signal
 from typing import Any
 
-from neuro_san_studio.agent_network_consultant.fixture_ratio_manager import FixtureRatioManager
 from neuro_san_studio.agent_network_consultant.git_versioning import GitVersioning
 
 logger = logging.getLogger("network_consultant")
 
 
 class ConsultantCleanup:
-    """Remember and restore temporary fixture ratios and an optional Git worktree."""
+    """Remember and remove an optional Git worktree during signal-driven cleanup."""
 
     # A signal handler cannot reach NetworkConsultantOrchestrator.execute()'s local run context.
-    _state: dict[str, Any] = {"original_ratios": {}, "git_worktree": None}
+    _git_worktree: str | None = None
 
     @staticmethod
-    def configure(original_ratios: dict[str, str], git_worktree: str | None = None) -> None:
+    def configure(git_worktree: str | None = None) -> None:
         """
-        Replace the resources restored by normal or signal-driven cleanup.
+        Replace the resource removed by signal-driven cleanup.
 
-        :param original_ratios: The original fixture ratios known at configuration time.
         :param git_worktree: The optional Git worktree to remove.
         """
-        ConsultantCleanup._state = {
-            "original_ratios": dict(original_ratios),
-            "git_worktree": git_worktree,
-        }
-
-    @staticmethod
-    def remember_ratios(original_ratios: dict[str, str]) -> None:
-        """
-        Add newly changed fixture ratios to signal-driven cleanup state.
-
-        :param original_ratios: The additional original ratios keyed by fixture path.
-        """
-        cleanup_ratios = ConsultantCleanup._state.get("original_ratios", {})
-        cleanup_ratios.update(original_ratios)
+        ConsultantCleanup._git_worktree = git_worktree
 
     @staticmethod
     def remember_worktree(git_worktree: str | None) -> None:
@@ -63,23 +48,22 @@ class ConsultantCleanup:
 
         :param git_worktree: The optional Git worktree to remove.
         """
-        ConsultantCleanup._state.update({"git_worktree": git_worktree})
+        ConsultantCleanup._git_worktree = git_worktree
 
     @staticmethod
     def handle_sigterm(_signum: int, _frame: Any) -> None:
         """
-        Restore on-disk state immediately and terminate after an nsflow stop request.
+        Remove the temporary Git worktree and terminate after an nsflow stop request.
 
         Python's default SIGTERM handling does not unwind `finally` blocks. Raising from this handler would unwind
         through `ThreadPoolExecutor.__exit__`, which waits for in-flight fixtures until nsflow escalates to SIGKILL.
-        Direct restoration followed by `os._exit` keeps cleanup inside that shutdown window.
+        Direct cleanup followed by `os._exit` keeps worktree removal inside that shutdown window.
 
         :param _signum: The signal number supplied by the signal handler.
         :param _frame: The interrupted stack frame supplied by the signal handler.
         """
-        logger.warning("Stop requested (SIGTERM) -- restoring fixture success ratios before exit.")
+        logger.warning("Stop requested (SIGTERM) -- removing the temporary Git worktree before exit.")
         try:
-            FixtureRatioManager.restore(ConsultantCleanup._state.get("original_ratios", {}))
-            GitVersioning.stop_git_versioning(ConsultantCleanup._state.get("git_worktree"))
+            GitVersioning.stop_git_versioning(ConsultantCleanup._git_worktree)
         finally:
             os._exit(128 + signal.SIGTERM)

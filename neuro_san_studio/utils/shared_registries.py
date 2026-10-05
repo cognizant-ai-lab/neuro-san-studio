@@ -36,6 +36,5 @@ SHARED_REGISTRY_INCLUDES: Tuple[str, ...] = (
     "aaosa.hocon",
     "aaosa_basic.hocon",
     "aaosa_basic_debug.hocon",
-    "agent_network_instruction_improver.hocon",
     "expertise_scoping_instructions.hocon",
 )

@@ -341,6 +341,13 @@ center of the screen. It opens a new window from which you can chat with the age
 5. If you want to make modifications, go back to the editor window and ask for changes.
 6. You can also edit any agent network by clicking the pen icon next to its name in the main window.
 
+### Agent Network Consultant
+
+Use `ns consultant` to generate and run fixtures for an existing network, diagnose failures, and apply targeted
+repairs without changing its intended behavior. The
+[Agent Network Consultant guide](docs/examples/agent_network_consultant.md) covers setup, nsflow integration, Git
+snapshots, commands, and output locations.
+
 ### Import a project from a file / Export to a file
 
 You can import a project from a .hocon file or from a zip file using the `ns import <PATH>`.
